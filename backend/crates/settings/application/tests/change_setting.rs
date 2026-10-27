@@ -67,6 +67,15 @@ impl SettingsStore for Fake {
         Ok(Vec::new())
     }
 
+    async fn keeps_own_value(
+        &mut self,
+        _: SettingKey,
+        _: Option<Uuid>,
+        _: Timestamp,
+    ) -> Result<Vec<Uuid>, KernelError> {
+        Ok(Vec::new())
+    }
+
     async fn insert(
         &mut self,
         row: NewOverride,
@@ -89,6 +98,7 @@ fn cmd(value: serde_json::Value, effective_from: Option<Timestamp>) -> ChangeSet
         reason_code: "POLICY_REVIEW".to_owned(),
         reason_note: None,
         step_up_assertion_id: None,
+        expected_version: None,
     }
 }
 
@@ -122,7 +132,8 @@ async fn run(
     .await
     .map_err(|e| match e {
         console_settings_application::ChangeError::Refused(e)
-        | console_settings_application::ChangeError::TooSoon { error: e, .. } => e,
+        | console_settings_application::ChangeError::TooSoon { error: e, .. }
+        | console_settings_application::ChangeError::Stale { error: e, .. } => e,
     })
     .map(|(view, events)| {
         assert_eq!(events.len(), 1);

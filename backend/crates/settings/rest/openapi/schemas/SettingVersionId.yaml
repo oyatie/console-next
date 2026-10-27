@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+oneOf:
+- type: string
+  enum: [code_default]
+- type: object
+  required: [override]
+  properties:
+    override:
+      $ref: '#/components/schemas/Uuid'

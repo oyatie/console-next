@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! One validation and authorization path for previews and writes.
 use crate::{Actor, ChangeFacts, ChangeSetting, NewOverride, SettingsStore};
-use console_kernel_core::{KernelError, Timestamp};
+use console_kernel_core::{KernelError, SettingVersionId, Timestamp};
 use console_settings_domain::{
     Direction, LOOSENING_DELAY, SettingError, SettingKey, SettingValue, check_change, resolve,
 };
@@ -14,6 +14,10 @@ pub enum ChangeError {
     TooSoon {
         error: KernelError,
         earliest: Timestamp,
+    },
+    Stale {
+        error: KernelError,
+        current_version: Option<SettingVersionId>,
     },
 }
 
@@ -37,7 +41,6 @@ impl From<SettingError> for ChangeError {
     }
 }
 
-// shortcut: version guards and reach metadata follow in S1b, before settings hub adoption.
 #[derive(Debug, Clone, Serialize)]
 pub struct SettingChangePlan {
     pub key: SettingKey,
@@ -50,6 +53,21 @@ pub struct SettingChangePlan {
     pub requires: Requirements,
     #[serde(with = "time::serde::rfc3339")]
     pub earliest_effective_from: Timestamp,
+    pub in_force: InForce,
+    pub reaches: Reach,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InForce {
+    pub value: Option<SettingValue>,
+    pub version: Option<SettingVersionId>,
+    pub scope_entity_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Reach {
+    pub scope_entity_id: Option<Uuid>,
+    pub keeps_own_value: Vec<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -77,6 +95,20 @@ where
     let facts = store.facts().await?;
     let effective_from = cmd.effective_from.unwrap_or(facts.now);
     let rows = store.rows(key, cmd.scope_entity_id).await?;
+    let current = match resolve(key, &rows, cmd.scope_entity_id, facts.now) {
+        Ok(resolved) => Some(resolved),
+        Err(SettingError::FactUndeclared(_)) => None,
+        Err(other) => return Err(other.into()),
+    };
+    let current_version = current.map(|r| r.version);
+    if cmd.expected_version.is_some() && cmd.expected_version != current_version {
+        return Err(ChangeError::Stale {
+            error: KernelError::conflict("the setting changed; reload its current value")
+                .with_code("setting_version_stale")
+                .with_field("expected_version"),
+            current_version,
+        });
+    }
     let in_force = match resolve(key, &rows, cmd.scope_entity_id, effective_from) {
         Ok(resolved) => Some(resolved.value),
         Err(SettingError::FactUndeclared(_)) => None,
@@ -109,6 +141,13 @@ where
         step_up_assertion_id: cmd.step_up_assertion_id,
         scope_entity_id: cmd.scope_entity_id,
     })?;
+    let source = current_version.and_then(|version| match version {
+        SettingVersionId::Override(id) => rows
+            .iter()
+            .find(|r| r.id == id)
+            .and_then(|r| r.scope_entity_id),
+        SettingVersionId::CodeDefault => None,
+    });
     let plan = SettingChangePlan {
         key,
         scope_entity_id: cmd.scope_entity_id,
@@ -131,6 +170,17 @@ where
             facts.now + LOOSENING_DELAY
         } else {
             facts.now
+        },
+        in_force: InForce {
+            value: current.map(|r| r.value),
+            version: current_version,
+            scope_entity_id: source,
+        },
+        reaches: Reach {
+            scope_entity_id: cmd.scope_entity_id,
+            keeps_own_value: store
+                .keeps_own_value(key, cmd.scope_entity_id, effective_from)
+                .await?,
         },
     };
     let row = NewOverride {

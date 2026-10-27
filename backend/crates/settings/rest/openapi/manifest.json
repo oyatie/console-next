@@ -34,6 +34,7 @@
     "SettingEntry",
     "SettingOverrideRecord",
     "SettingValue",
+    "SettingVersionId",
     "TenantReasonCode"
   ],
   "external_schemas": [

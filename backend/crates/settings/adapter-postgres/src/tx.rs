@@ -5,7 +5,7 @@
 
 use crate::read::{db_error, load_rows_in_tx, parse_direction};
 use crate::reason_codes::validate_reason_in_tx;
-use console_kernel_core::{KernelError, OrgId};
+use console_kernel_core::{KernelError, OrgId, Timestamp};
 use console_settings_application::{
     Actor, ChangeError, InsertedOverride, NewOverride, SettingsStore, StoreFacts,
 };
@@ -33,11 +33,13 @@ pub fn settings_change_payload(key: SettingKey, value: &SettingValue) -> String 
 
 impl SettingsStore for PgSettingsTx<'_, '_> {
     async fn facts(&mut self) -> Result<StoreFacts, KernelError> {
-        let row = sqlx::query("SELECT now() AS now, tenant_setting_onboarding($1) AS onboarding")
-            .bind(self.org.as_uuid())
-            .fetch_one(self.tx.as_mut())
-            .await
-            .map_err(db_error)?;
+        let row = sqlx::query(
+            "SELECT clock_timestamp() AS now, tenant_setting_onboarding($1) AS onboarding",
+        )
+        .bind(self.org.as_uuid())
+        .fetch_one(self.tx.as_mut())
+        .await
+        .map_err(db_error)?;
         Ok(StoreFacts {
             now: row.try_get("now").map_err(db_error)?,
             onboarding: row.try_get("onboarding").map_err(db_error)?,
@@ -126,6 +128,29 @@ impl SettingsStore for PgSettingsTx<'_, '_> {
             direction: parse_direction(&direction),
             onboarding_exempt: inserted.try_get("onboarding_exempt").map_err(db_error)?,
         })
+    }
+
+    async fn keeps_own_value(
+        &mut self,
+        key: SettingKey,
+        entity: Option<Uuid>,
+        as_of: Timestamp,
+    ) -> Result<Vec<Uuid>, KernelError> {
+        sqlx::query_scalar(
+            "SELECT DISTINCT scope_entity_id FROM tenant_setting_overrides
+             WHERE org_id = $1 AND key = $2 AND effective_from <= $4
+               AND scope_entity_id IS NOT NULL AND scope_entity_id IS DISTINCT FROM $3
+               AND ($3::uuid IS NULL OR scope_entity_id IN
+                   (SELECT id FROM workplaces WHERE org_id = $1 AND legal_entity_id = $3))
+             ORDER BY scope_entity_id",
+        )
+        .bind(self.org.as_uuid())
+        .bind(key.as_str())
+        .bind(entity)
+        .bind(as_of)
+        .fetch_all(self.tx.as_mut())
+        .await
+        .map_err(db_error)
     }
 }
 

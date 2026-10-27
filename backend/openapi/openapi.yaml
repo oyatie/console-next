@@ -26982,7 +26982,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
-          description: setting_loosening_too_soon (error.earliest_effective_from), setting_effective_from_taken (write only),
+          description: setting_version_stale (error.current_version), setting_loosening_too_soon (error.earliest_effective_from), setting_effective_from_taken (write only),
             idempotency_key_reused, command_processing, command_applied or command_settled (write admission).
           content:
             application/json:
@@ -27000,6 +27000,9 @@ paths:
                         type: string
                       earliest_effective_from:
                         $ref: '#/components/schemas/Timestamp'
+                      current_version:
+                        allOf: [{$ref: '#/components/schemas/SettingVersionId'}]
+                        nullable: true
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
@@ -58194,7 +58197,7 @@ components:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
-      required: [key, scope_entity_id, value, effective_from, direction, path, requires, earliest_effective_from]
+      required: [key, scope_entity_id, value, effective_from, direction, path, requires, earliest_effective_from, in_force, reaches]
       properties:
         key:
           type: string
@@ -58225,6 +58228,34 @@ components:
               enum: [false]
         earliest_effective_from:
           $ref: '#/components/schemas/Timestamp'
+        in_force:
+          type: object
+          additionalProperties: false
+          description: Value and deciding scope at the request's current time, independent of scheduled changes.
+          required: [value, version, scope_entity_id]
+          properties:
+            value:
+              allOf: [{$ref: '#/components/schemas/SettingValue'}]
+              nullable: true
+            version:
+              allOf: [{$ref: '#/components/schemas/SettingVersionId'}]
+              nullable: true
+            scope_entity_id:
+              allOf: [{$ref: '#/components/schemas/Uuid'}]
+              nullable: true
+        reaches:
+          type: object
+          additionalProperties: false
+          required: [scope_entity_id, keeps_own_value]
+          properties:
+            scope_entity_id:
+              allOf: [{$ref: '#/components/schemas/Uuid'}]
+              nullable: true
+            keeps_own_value:
+              type: array
+              description: Descendant scopes with their own override in force at effective_from.
+              items:
+                $ref: '#/components/schemas/Uuid'
     SettingChangeRequest:
       type: object
       additionalProperties: false
@@ -58243,6 +58274,9 @@ components:
           maxLength: 1000
         step_up_assertion_id:
           $ref: '#/components/schemas/Uuid'
+        expected_version:
+          description: Version read at the request scope now; a mismatch returns 409 setting_version_stale. Omit to retain unconditional writes.
+          allOf: [{$ref: '#/components/schemas/SettingVersionId'}]
     SettingDirection:
       type: string
       enum: [tighten, loosen, neutral]
@@ -58306,14 +58340,7 @@ components:
         version:
           description: '"code_default", or {"override": <row id>}; null when value is null.'
           nullable: true
-          oneOf:
-          - type: string
-            enum: [code_default]
-          - type: object
-            required: [override]
-            properties:
-              override:
-                $ref: '#/components/schemas/Uuid'
+          allOf: [{$ref: '#/components/schemas/SettingVersionId'}]
         effective_from:
           allOf:
           - $ref: '#/components/schemas/Timestamp'
@@ -58377,6 +58404,16 @@ components:
         format: int64
       - type: boolean
       - type: string
+    SettingVersionId:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      oneOf:
+      - type: string
+        enum: [code_default]
+      - type: object
+        required: [override]
+        properties:
+          override:
+            $ref: '#/components/schemas/Uuid'
     SettleNameReviewRequest:
       type: object
       description: Without revision the entity's name stays; with it, the registration's 상호 becomes the name by that dated 정정 (its name must be the review's registration_name).

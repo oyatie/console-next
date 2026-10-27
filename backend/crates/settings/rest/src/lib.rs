@@ -30,7 +30,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use console_kernel_core::{KernelError, Timestamp};
+use console_kernel_core::{KernelError, SettingVersionId, Timestamp};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::Principal;
 use console_platform_request_context::current_audit_context;
@@ -68,11 +68,17 @@ pub fn router(state: SettingsRestState) -> Router {
     let pool = state.store.pool().clone();
     let router = Router::new()
         .route(SETTINGS_PATH, get(list))
-        .route(SETTING_PATH, post(change))
         .route(SETTING_HISTORY_PATH, get(history))
         .merge(reason_codes::routes())
+        .with_state(state.clone());
+    let changes = Router::new()
+        .route(SETTING_PATH, post(change))
         .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    console_platform_request_context::with_request_context(router, verifier.clone(), pool.clone())
+        .merge(
+            console_platform_request_context::with_request_context(changes, verifier, pool)
+                .layer(Extension(console_platform_request_context::SupportsDryRun)),
+        )
 }
 
 /// History shows who changed what and why: settings administrators only.
@@ -124,6 +130,8 @@ struct ChangeRequest {
     reason_note: Option<String>,
     #[serde(default)]
     step_up_assertion_id: Option<Uuid>,
+    #[serde(default)]
+    expected_version: Option<SettingVersionId>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -153,6 +161,7 @@ async fn change(
         reason_code: body.reason_code,
         reason_note: body.reason_note,
         step_up_assertion_id: body.step_up_assertion_id,
+        expected_version: body.expected_version,
     };
     if query.dry_run {
         let plan = state

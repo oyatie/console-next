@@ -15,6 +15,7 @@ pub(crate) struct ApiError {
     status: StatusCode,
     error: KernelError,
     earliest: Option<console_kernel_core::Timestamp>,
+    current_version: Option<Option<console_kernel_core::SettingVersionId>>,
 }
 
 impl From<KernelError> for ApiError {
@@ -25,6 +26,7 @@ impl From<KernelError> for ApiError {
             status,
             error,
             earliest: None,
+            current_version: None,
         }
     }
 }
@@ -35,6 +37,13 @@ impl From<PgSettingsError> for ApiError {
             PgSettingsError::Domain(error) => error.into(),
             PgSettingsError::TooSoon { error, earliest } => Self {
                 earliest: Some(earliest),
+                ..error.into()
+            },
+            PgSettingsError::Stale {
+                error,
+                current_version,
+            } => Self {
+                current_version: Some(current_version),
                 ..error.into()
             },
             PgSettingsError::Db(error) if error.is_unavailable() => {
@@ -58,6 +67,9 @@ impl IntoResponse for ApiError {
             self.error.message
         };
         let mut body = json!({ "error": { "code": code, "message": message } });
+        if let Some(version) = self.current_version {
+            body["error"]["current_version"] = json!(version);
+        }
         if let Some(earliest) = self.earliest {
             body["error"]["earliest_effective_from"] = json!(
                 earliest

@@ -15,3 +15,6 @@ properties:
     maxLength: 1000
   step_up_assertion_id:
     $ref: '#/components/schemas/Uuid'
+  expected_version:
+    description: Version read at the request scope now; a mismatch returns 409 setting_version_stale. Omit to retain unconditional writes.
+    allOf: [{$ref: '#/components/schemas/SettingVersionId'}]

@@ -20,7 +20,9 @@ pub use reason_codes::{CatalogEntry, validate_reason_in_tx};
 pub use reason_stats::{CodeCount, SourceStats};
 pub use tx::settings_change_payload;
 
-use console_kernel_core::{AuditRequestContext, KernelError, OrgId, Timestamp, TraceContext};
+use console_kernel_core::{
+    AuditRequestContext, KernelError, OrgId, SettingVersionId, Timestamp, TraceContext,
+};
 use console_platform_db::{DbError, with_audits, with_org_conn};
 use console_settings_application::{
     Actor, ChangeError, ChangeFacts, ChangeSetting, SettingChangePlan, SettingChangeView,
@@ -39,6 +41,10 @@ pub enum PgSettingsError {
         error: KernelError,
         earliest: Timestamp,
     },
+    Stale {
+        error: KernelError,
+        current_version: Option<SettingVersionId>,
+    },
     Db(DbError),
 }
 
@@ -47,6 +53,13 @@ impl From<ChangeError> for PgSettingsError {
         match error {
             ChangeError::Refused(e) => Self::Domain(e),
             ChangeError::TooSoon { error, earliest } => Self::TooSoon { error, earliest },
+            ChangeError::Stale {
+                error,
+                current_version,
+            } => Self::Stale {
+                error,
+                current_version,
+            },
         }
     }
 }
@@ -96,6 +109,12 @@ impl PgSettingsStore {
     {
         with_audits(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
+                // Serialize every scope of a key: an inherited tenant value can also become stale.
+                sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+                    .bind(format!("console.settings|{}|{}", actor.org, cmd.key))
+                    .execute(tx.as_mut())
+                    .await
+                    .map_err(DbError::Sqlx)?;
                 let mut port = tx::PgSettingsTx { tx, org: actor.org };
                 change_setting(&mut port, authorize, actor, cmd, audit)
                     .await

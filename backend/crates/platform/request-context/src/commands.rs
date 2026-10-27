@@ -22,10 +22,14 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
-struct SettingsPreviewQuery {
+struct PreviewQuery {
     #[serde(default)]
     dry_run: bool,
 }
+
+/// Route-owned opt-in: this endpoint honors `dry_run=true` without business writes.
+#[derive(Clone, Copy)]
+pub struct SupportsDryRun;
 
 pub(crate) async fn run(
     pool: &PgPool,
@@ -74,19 +78,15 @@ pub(crate) async fn run(
         *request.method(),
         Method::GET | Method::HEAD | Method::OPTIONS
     );
-    // A settings preview claims no command; denied access is still audited.
-    let settings_plan = request.method() == Method::POST
-        && request
-            .uri()
-            .path()
-            .strip_prefix("/api/v1/settings/")
-            .is_some_and(|key| !key.is_empty() && !key.contains('/'))
-        && axum::extract::Query::<SettingsPreviewQuery>::try_from_uri(request.uri())
+    // Only opted-in routes can preview; denied access is still audited.
+    let preview = request.method() == Method::POST
+        && request.extensions().get::<SupportsDryRun>().is_some()
+        && axum::extract::Query::<PreviewQuery>::try_from_uri(request.uri())
             .is_ok_and(|query| query.dry_run);
-    if !writable || settings_plan {
+    if !writable || preview {
         return command_context::scope(audit, async {
             let response = next.run(request).await;
-            if settings_plan && response.status() == StatusCode::FORBIDDEN {
+            if preview && response.status() == StatusCode::FORBIDDEN {
                 let (response, code) = response::refusal_code(response).await;
                 if super::record_refusal(pool, p, &code, None).await.is_err() {
                     return refusal(StatusCode::SERVICE_UNAVAILABLE, "service_unavailable", None);
@@ -284,6 +284,8 @@ fn target(path: &str) -> Option<(String, String, Option<Uuid>)> {
     Uuid::parse_str(id).ok()?;
     Some((kind.into(), id.into(), None))
 }
+#[cfg(test)]
+mod preview_tests;
 #[cfg(test)]
 mod test_support;
 #[cfg(test)]
