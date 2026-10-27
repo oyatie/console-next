@@ -48,6 +48,12 @@ test("an applicable refused verb keeps its server-fact reason", () => {
   expect(html).not.toContain("RETURN_FROM_LEAVE-d");
 });
 
+test("the relocation refusal names relocation while using the transfer's server state", () => {
+  const html = render([{ verb: "TRANSFER", enabled: false, why: { kind: "onLeave" } }], detail("ON_LEAVE"));
+  expect(html).toContain("전근은 휴직 중에는 할 수 없습니다.");
+  expect(html).toContain("전보는 휴직 중에는 할 수 없습니다.");
+});
+
 test("a verb without a concrete server-fact refusal is absent", () => {
   expect(render([{ verb: "CONTRACT_RENEWAL", enabled: false, why: { kind: "generic" } }])).not.toContain("계약 갱신");
 });

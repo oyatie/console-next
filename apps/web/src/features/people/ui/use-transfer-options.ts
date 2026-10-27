@@ -16,5 +16,5 @@ export function useTransferOptions(employee: Employee) {
   const entities = useQuery(entitiesRef).data?.items ?? [];
   const roots = useQuery({ ...orgStructureRef, retry: false }).data?.entities ?? [];
   const places = placeOptions(units, roots, entities, null).filter((o) => o.unit.id !== employee.org_unit_id);
-  return { units, options: places.filter((o) => !employee.legal_entity_id || !o.entityId || o.entityId === employee.legal_entity_id) };
+  return { units, options: places.filter((o) => !employee.legal_entity_id || !o.entityId || o.entityId === employee.legal_entity_id), workplaces: entities.flatMap((e) => e.workplaces) };
 }
