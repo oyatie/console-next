@@ -261,7 +261,11 @@
     "ghcr.io/cloudnative-pg/plugin-barman-cloud:v0.15.1": "ghcr.io/cloudnative-pg/plugin-barman-cloud@sha256:c75acad19a36e8176cfe2885761ff1b836c6ef977d7257e298c99a28b5c302ef"
   },
   "upstreamImages": {
+    "seaweed": "docker.io/chrislusf/seaweedfs:4.48",
     "quay.io/argoproj/argo-rollouts:latest": "quay.io/argoproj/argo-rollouts:v1.10.1",
     "ghcr.io/sigstore/policy-controller/policy-controller@sha256:0bcd60beb93f4427c29cf3a669743caf58490e98ded4380c33c09f092734a6ab": "ghcr.io/sigstore/policy-controller/policy-controller:v0.15.1"
+  },
+  "signingWorkflows": {
+    "https://github.com/fluxcd/gha-workflows/.github/workflows/controller-release.yaml": "v0.11.0"
   }
 }
