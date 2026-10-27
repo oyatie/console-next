@@ -1,6 +1,10 @@
 // Korean source for `roster.` ids (the people list: features/people/ui/roster-*.tsx). Rules: the header of
 // ../ko.ts and packages/i18n/GUIDE.md. Counts arrive as numbers; `{date}` and `{rel}` come preformatted.
 export const koRoster = {
+  "roster.page.roster": "명부",
+  "roster.page.appointments": "발령",
+  "roster.page.exits": "퇴직 진행",
+  "roster.unplaced.place": "배치",
   "roster.review.register": "확인 필요",
   "roster.review.register.title": "근로자 명부 항목 빠짐",
 
@@ -60,7 +64,6 @@ export const koRoster = {
   "roster.export.done": "직원 {count, number}명을 내려받았습니다",
   "roster.export.file": "직원명부-{date}.csv",
   "roster.head.title": "직원",
-  "roster.head.count": "인원 {count, number}명",
   "roster.head.setup": "설정 단계",
   "roster.head.op": "운영 중",
   "roster.head.asof": "기준일",
@@ -152,6 +155,7 @@ export const koRoster = {
   "roster.col.type": "고용형태",
   "roster.type.missing": "미입력",
   "roster.unplaced": "미배치",
+  "roster.unplaced.unavailable": "미배치 목록을 볼 권한이 없어 접근 가능한 명부를 표시합니다.",
   "roster.siteDirect": "{site} · 사업장 직속",
   "roster.density.compact": "촘촘",
   "roster.density.regular": "기본",

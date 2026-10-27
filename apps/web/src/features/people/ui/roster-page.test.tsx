@@ -7,7 +7,7 @@ import { ApiError, myAccessQuery } from "../../../reference/authz/api";
 import { RosterPage } from "./roster-page";
 
 const state = vi.hoisted(() => ({ refused: false, body: "roster rows", org: false }));
-vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({}), useNavigate: () => vi.fn() }), Link: () => null, useNavigate: () => vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({}), useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }), Link: () => null, useNavigate: () => vi.fn() }));
 vi.mock("@tanstack/react-query", async original => ({
   ...await original<typeof import("@tanstack/react-query")>(),
   useQuery: (options: { queryFn: unknown }) => options.queryFn === myAccessQuery.queryFn ? {

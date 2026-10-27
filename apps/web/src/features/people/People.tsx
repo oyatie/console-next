@@ -1,25 +1,53 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../lib/react/query-state";
 import { ToggleButton } from "../../ui/button/button";
-import { ApiError, authzQuery, granted } from "../../reference/authz/api";
+import { ApiError, authzQuery, granted, myAccessQuery } from "../../reference/authz/api";
 import { Accounts } from "./Accounts";
 import { PeopleHead, type PeopleView } from "./ui/people-head";
 import { RosterPage } from "./ui/roster-page";
+import { UnplacedRoster } from "./ui/unplaced-roster";
+import { PEOPLE_TABS, type PeopleTab } from "./domain/people-tabs";
+import type { ExitFilter } from "./api";
+import { useTabSearch } from "../../lib/react/use-tab-search";
+import { Page } from "../../ui/page/page";
+import { PageTabs } from "../../ui/tabs/page-tabs";
+import { ReadSkeleton } from "../../ui/skeleton/skeleton";
+import { AccessGate } from "../../reference/authz/ui/access-gate";
+import { accessRefusal } from "../../reference/authz/domain/access";
+
+const AppointmentsContent = lazy(() => import("./ui/appointments-content").then(module => ({ default: module.AppointmentsContent })));
+const ExitCaseListContent = lazy(() => import("./ui/exit-list").then(module => ({ default: module.ExitCaseListContent })));
 
 /**
  * The People page's URL: the view, the selected row, and the roster's filters (`status`: a status or "all",
  * nothing = current staff; `review`: comma-joined attention chips, see domain/roster.ts). The search term (a
  * person's name or number) stays out of the URL and so out of history. `bulk=paste` opens the bulk sheet from a paste.
  */
-export type PeopleSearch = { sel?: string; view?: PeopleView; unit?: string; status?: string; sort?: string; review?: string; bulk?: "paste"; export?: "register" };
+export type PeopleSearch = { tab?: PeopleTab; exitStatus?: ExitFilter; placement?: "unplaced"; sel?: string; view?: PeopleView; unit?: string; status?: string; sort?: string; review?: string; bulk?: "paste"; export?: "register" };
 
 const route = getRouteApi("/app/people");
 
-/** Employees (the roster, ui/roster-page.tsx) or accounts (ui/accounts-list.tsx, through Accounts.tsx). */
 export function People() {
+  const tabs = useTabSearch(PEOPLE_TABS);
+  const { exitStatus } = route.useSearch();
+  const { peopleAccess } = route.useRouteContext();
+  const navigate = route.useNavigate();
+  return <Page floorplan="list" head={{ title: t("roster.head.title"), titleId: "people-title" }}>
+    <PageTabs {...tabs} label={t("roster.head.title")} items={PEOPLE_TABS.map(({ id }) => ({ id, label: t(`roster.page.${id}`) }))}>
+      {selected => <Suspense fallback={<ReadSkeleton layout="list" />}>
+        {selected === "roster" && <AccessGate {...peopleAccess.roster} layout="list"><PeopleDirectory /></AccessGate>}
+        {selected === "appointments" && <AppointmentsContent />}
+        {selected === "exits" && <AccessGate {...peopleAccess.exits} layout="list"><ExitCaseListContent status={exitStatus} onStatus={status => void navigate({ search: previous => ({ ...previous, exitStatus: status }), replace: true })} /></AccessGate>}
+      </Suspense>}
+    </PageTabs>
+  </Page>;
+}
+
+/** Employees (the roster) or accounts, with their existing server capability decisions. */
+export function PeopleDirectory() {
   const { view: asked, sel } = route.useSearch();
   const navigate = route.useNavigate();
   const authz = useQuery(authzQuery);
@@ -43,7 +71,15 @@ export function People() {
       ))}
     </div>
   );
-  if (view === "employees") return <RosterPage key="employees" manage={can("employee_directory_manage", "all")} scoped={scoped} switcher={switcher} />;
+  if (view === "employees") return <Directory manage={can("employee_directory_manage", "all")} scoped={scoped} switcher={switcher} />;
   return <div className="page"><Accounts head={(available, search) => head(search, available)} sel={sel} /></div>;
   }}</QueryState>;
+}
+
+function Directory(props: Parameters<typeof RosterPage>[0]) {
+  const { peopleAccess } = route.useRouteContext();
+  const access = useQuery(myAccessQuery);
+  const unplaced = route.useSearch().placement === "unplaced";
+  const refused = access.data && accessRefusal(access.data, peopleAccess.unplaced) !== null;
+  return unplaced && !refused ? <UnplacedRoster {...props} /> : <RosterPage {...props} notice={unplaced ? t("roster.unplaced.unavailable") : undefined} />;
 }

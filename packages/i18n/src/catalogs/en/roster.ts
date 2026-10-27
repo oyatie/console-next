@@ -1,5 +1,9 @@
 // English for `roster.` ids (the people list).
 export const enRoster = {
+  "roster.page.roster": "Roster",
+  "roster.page.appointments": "Appointments",
+  "roster.page.exits": "Exits in progress",
+  "roster.unplaced.place": "Place people",
   "roster.review.register": "Needs review",
   "roster.review.register.title": "Missing statutory register facts",
 
@@ -59,7 +63,6 @@ export const enRoster = {
   "roster.export.done": "Downloaded {count, number} people",
   "roster.export.file": "employee-roster-{date}.csv",
   "roster.head.title": "People",
-  "roster.head.count": "Headcount {count, number}",
   "roster.head.setup": "Setup",
   "roster.head.op": "Operating",
   "roster.head.asof": "As of",
@@ -151,6 +154,7 @@ export const enRoster = {
   "roster.col.type": "Employment type",
   "roster.type.missing": "Not entered",
   "roster.unplaced": "Unplaced",
+  "roster.unplaced.unavailable": "You do not have access to the unplaced list. Showing the roster you can access.",
   "roster.siteDirect": "{site} · workplace direct",
   "roster.density.compact": "Compact",
   "roster.density.regular": "Regular",
