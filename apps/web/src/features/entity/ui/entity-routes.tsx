@@ -1,5 +1,8 @@
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { getRouteApi, Navigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { QueryState } from "../../../lib/react/query-state";
+import { entityQuery } from "../api";
 import { EntityWizard } from "./entity-wizard";
 import { EntityList } from "./entity-list";
 import { EntityBulkPage } from "./entity-bulk-page";
@@ -35,5 +38,7 @@ export function EntityScreen() {
 const wpRoute = getRouteApi("/app/org/entities/$id/workplaces/new");
 /** add workplace is a sheet over company structure, opened on its legal entity (S5-create); this old address leads there. */
 export function NewWorkplaceScreen() {
-  return <Navigate to="/org" search={{ sel: wpRoute.useParams().id, act: "wp-create" }} replace />;
+  const { id } = wpRoute.useParams();
+  const q = useQuery(entityQuery(id));
+  return <QueryState q={q}>{() => <Navigate to="/org" search={{ sel: id, act: "wp-create" }} replace />}</QueryState>;
 }
