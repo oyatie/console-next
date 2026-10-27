@@ -16,13 +16,13 @@ export type DisabledProps = {
  * touch cannot reach) and an optional remedy after the reason. The control stays focusable
  * (`aria-disabled`, not `disabled`), so a keyboard or screen-reader user reaches it and hears why.
  * Presses do nothing; the caller's own submit handler still re-checks the hard block.
- * `inline` puts the reason beside the control (a row in an action list) instead of under it.
+ * `inline` puts the reason beside the control; `disclosure` reveals it on hover or focus.
  */
 export function DisabledReason({ control, reason, remedy, layout = "stacked" }: {
   control: (p: DisabledProps) => ReactNode;
   reason: ReactNode;
   remedy?: ReactNode;
-  layout?: "stacked" | "inline";
+  layout?: "stacked" | "inline" | "disclosure";
 }) {
   const id = useId();
   return (

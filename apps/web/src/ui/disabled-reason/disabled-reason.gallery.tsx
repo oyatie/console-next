@@ -4,7 +4,7 @@ import { DisabledReason } from "./disabled-reason";
 
 export const order = 152;
 
-/** Plain, with a remedy, and inline in a row list (one action per row, the reason beside it). */
+/** Persistent reasons, an on-focus reason, and an inline remedy. */
 export default function DisabledReasons() {
   return (
     <section className="card gallery__section">
@@ -16,7 +16,7 @@ export default function DisabledReasons() {
         remedy={<Button variant="ghost">{tg("disabledReason.removeFix")}</Button>}
       />
       <ul className="list-plain">
-        <li><DisabledReason layout="inline" control={(p) => <Button {...p}>{tg("disabledReason.rowMove")}</Button>} reason={tg("disabledReason.rowMoveWhy")} /></li>
+        <li><DisabledReason layout="disclosure" control={(p) => <Button {...p}>{tg("disabledReason.rowMove")}</Button>} reason={tg("disabledReason.rowMoveWhy")} /></li>
         <li>
           <DisabledReason
             layout="inline"

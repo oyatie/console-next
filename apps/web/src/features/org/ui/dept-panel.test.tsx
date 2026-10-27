@@ -53,3 +53,10 @@ test("historical department facts offer no edit actions", () => {
   expect(html).not.toContain('id="act-dept-code"');
   expect(html).not.toContain('id="act-dept-head"');
 });
+
+test("department employee anchors and headings follow the glossary", () => {
+  const html = render(false);
+  expect(html).toContain("직원 148");
+  expect(html).toContain("직속 직원 12");
+  expect(html).not.toContain("구성원");
+});

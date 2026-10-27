@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToReadableStream, renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -110,10 +110,13 @@ test("row detail: a deferred change names its flow, a refusal its field and why,
 });
 
 const dry = (rows: ImportRow[]) => ({ rows, decisions: {} }) as unknown as ImportDryRun;
-const resolve = (item: ReviewItem, rows: ImportRow[] = []) =>
-  html(<ReviewResolve item={item} dry={dry(rows)} picks={initialPicks()} busy={false} onResolve={noop} onSheets={noop} />);
+const resolve = async (item: ReviewItem, rows: ImportRow[] = []) => {
+  const stream = await renderToReadableStream(<QueryClientProvider client={new QueryClient()}><ReviewResolve item={item} dry={dry(rows)} picks={initialPicks()} busy={false} onResolve={noop} onSheets={noop} /></QueryClientProvider>);
+  await stream.allReady;
+  return new Response(stream).text();
+};
 
-test("resolve: namesakes are told apart by 사번, 법인·부서 and a masked 생년월일, never a name suffix; a new person is one click", () => {
+test("resolve: namesakes are told apart by 사번, 법인·부서 and a masked 생년월일, never a name suffix; a new person is one click", async () => {
   const r = row({
     row: 4, name: "김민준", outcome: "unresolved_identity",
     candidates: [
@@ -121,7 +124,7 @@ test("resolve: namesakes are told apart by 사번, 법인·부서 and a masked �
       { employee_id: "p2", employee_number: null, status: "ON_LEAVE", basis: "name_only", company: "누리", org_unit: "생산팀" },
     ],
   });
-  const out = resolve({ id: "x", reason: "unresolved_identity", blocking: true, sheet: "SheetA", row: 4, cell: "B4", rows: 1, resolution: { decision: "identity", key: "k4", choices: ["p1", "p2", "new"] } }, [r]);
+  const out = await resolve({ id: "x", reason: "unresolved_identity", blocking: true, sheet: "SheetA", row: 4, cell: "B4", rows: 1, resolution: { decision: "identity", key: "k4", choices: ["p1", "p2", "new"] } }, [r]);
   expect(out).toContain("GR-0001");
   expect(out).toContain("가람 · 인사팀");
   expect(out).toContain("생년월일 1990-01-**");
@@ -132,13 +135,13 @@ test("resolve: namesakes are told apart by 사번, 법인·부서 and a masked �
   expect(out).not.toContain("김민준(2)");
 });
 
-test("resolve: a status text offers the served codes in words; 사번 미부여 asks for the number; a deferred change says where it goes", () => {
-  expect(resolve({ id: "s", reason: "status_unmapped", blocking: true, sheet: "A", rows: 7, value: "휴직중", resolution: { decision: "status_map", key: "휴직중", choices: ["ACTIVE", "ON_LEAVE"] } }))
+test("resolve: a status text offers the served codes in words; 사번 미부여 asks for the number; a deferred change says where it goes", async () => {
+  expect(await resolve({ id: "s", reason: "status_unmapped", blocking: true, sheet: "A", rows: 7, value: "휴직중", resolution: { decision: "status_map", key: "휴직중", choices: ["ACTIVE", "ON_LEAVE"] } }))
     .toMatch(/재직[\s\S]*휴직[\s\S]*7행에 적용/);
-  expect(resolve({ id: "n", reason: "employee_number_missing", blocking: false, sheet: "A", rows: 1, resolution: { decision: "employee_numbers", key: "k2", choices: [] } }, [row({})]))
+  expect(await resolve({ id: "n", reason: "employee_number_missing", blocking: false, sheet: "A", rows: 1, resolution: { decision: "employee_numbers", key: "k2", choices: [] } }, [row({})]))
     .toContain("Kim님에게 줄 사번");
   const deferred = row({ deferred: [{ field: "org_unit", route: "lifecycle_transfer" }] });
-  expect(resolve({ id: "d", reason: "deferred_change", blocking: false, sheet: "SheetA", row: 2, rows: 1, field: "org_unit" }, [deferred])).toContain("가져오기로 변경하지 않습니다. 발령으로 처리합니다.");
+  expect(await resolve({ id: "d", reason: "deferred_change", blocking: false, sheet: "SheetA", row: 2, rows: 1, field: "org_unit" }, [deferred])).toContain("가져오기로 변경하지 않습니다. 발령으로 처리합니다.");
 });
 
 const recordedRun: components["schemas"]["EmployeeImportRun"] = {

@@ -39,7 +39,7 @@ export const enEntityOps = {
   "entityOps.info.product": "Main product",
   "entityOps.info.fax": "Fax",
   "entityOps.info.mail": "Mailing address",
-  "entityOps.info.none": "Not recorded",
+  "entityOps.info.none": "—",
   "entityOps.info.openedHint": "Correction only · first recorded {date}",
   "entityOps.info.openedIsCorrection": "The opening date is when the place opened and does not change. If it was typed wrong, select the reason “Entry correction”.",
   "entityOps.withholding.headSelf": "Head office · files the entity's withholding here",

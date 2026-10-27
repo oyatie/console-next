@@ -1,6 +1,6 @@
 // The bundle's side of the chunk guard. public/chunk-guard.js (loaded before the entry) owns the decision: reload
 // once per build with a cache-busting navigation, then an error screen. This file routes lazy chunks through it.
-type ChunkGuard = { recover(): boolean; reload(): void; loaded(): void; fail(): void; start(): void };
+type ChunkGuard = { handled?(error: unknown): void; recover(): boolean; reload(): void; loaded(): void; fail(): void; start(): void };
 const guard = (): ChunkGuard | undefined => (globalThis as { consoleChunkGuard?: ChunkGuard }).consoleChunkGuard;
 
 // Chromium, Firefox, Safari, and Vite's CSS preload. TanStack's lazyRouteComponent reloads on the first three itself.
@@ -18,6 +18,11 @@ export function chunk<M>(load: Promise<M>): Promise<M> {
     if (guard()?.recover()) return new Promise<M>(() => {});
     throw new Error(`Chunk still missing after a reload: ${(e as Error).message}`, { cause: e });
   });
+}
+
+/** A local boundary keeps the surrounding form; claim Vite's preload failure before its global recovery runs. */
+export function localChunk<M>(load: Promise<M>): Promise<M> {
+  return load.catch((error: unknown) => { guard()?.handled?.(error); throw error; });
 }
 
 /** The error screen's button: a reload that fetches index.html afresh (a plain reload may revalidate a stale one). */

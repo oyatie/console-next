@@ -202,7 +202,7 @@ export async function settleGrants(body: S["AccessGrantBatchRequest"]) {
  * Ending a department honestly (CRUD): the server says whether it is deleted (never used: it and its sub-departments
  * leave the record, audited) or dissolution (used: closed, history kept), and the code for the way it does not offer.
  */
-export const unitEndQuery = (id: string) => get("/api/v1/org-structure/units/{orgUnitId}/end-options", { params: { path: { orgUnitId: id } } });
+export { unitEndQuery } from "../../reference/org/api";
 
 const unitAt = (key: string, id: string) => ({ header: { "Idempotency-Key": key }, path: { orgUnitId: id } });
 

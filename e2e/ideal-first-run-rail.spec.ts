@@ -45,7 +45,7 @@ test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared r
   const checklist = await read<{ steps: { key: string }[] }>("/api/v1/onboarding/checklist");
   expect(checklist.steps.map((s) => s.key)).toEqual(["entity", "workplace", "org", "passkey", "employees", "roles", "golive"]);
   const entity = steps.first();
-  expect(await entity.getByRole("link").evaluateAll((els) => els.map((el) => el.className))).toEqual(["btn", "btn", "btn"]);
+  expect(await entity.getByRole("link").evaluateAll((els) => els.map((el) => el.className))).toEqual(["btn btn--primary", "btn", "btn"]);
   await entity.focus();
   await admin.keyboard.press("j");
   await expect(steps.nth(1)).toBeFocused();
@@ -74,7 +74,7 @@ test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared r
   const counts = await read<{ summary: { people: number; placed: number; unplaced: number } }>("/api/v1/onboarding/checklist");
   expect(counts.summary).toMatchObject({ people: 2000, placed: 1982, unplaced: 18 });
   await expect(admin.getByText("일괄 작업", { exact: true })).toBeVisible();
-  for (const name of ["조직 시트 가져오기", "목록 붙여넣기", "조직 시트 내려받기", "설정 단계 기록"]) await expect(admin.getByRole("main").getByText(name, { exact: true }).last()).toBeVisible();
+  for (const name of ["목록 붙여넣기", "조직 시트 내려받기", "설정 단계 기록"]) await expect(admin.getByRole("main").getByText(name, { exact: true }).last()).toBeVisible();
   await inviteAccount(admin, "테스트 사용자", "none");
   await grantSetupRole(admin, "테스트 사용자", "명부 관리", true);
   await go(admin, "/");

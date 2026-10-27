@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import { checkRouteBudgets, checkInitialBudget, INITIAL_BUDGET_KB } from "./check-bundle.mjs";
+import { checkRouteBudgets, checkInitialBudget, INITIAL_BUDGET_KB, DEFAULT_BUDGET_FILE } from "./check-bundle.mjs";
 
 describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
   const createMockDist = () => {
@@ -185,4 +185,19 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
       assert.match(result.error, /date-calendar.*dynamic entry/);
     } finally { mock.cleanup(); }
   });
+  it("keeps conditional import answers out of wizard first paint", () => {
+    const mock = createMockDist();
+    try {
+      for (const file of ["index-main.js", "vendor-boot.js", "dryrun.js", "calendar.js", "answers.js"]) mock.writeChunk(file, file);
+      const source = "src/features/import/ui/resolve-controls.tsx";
+      const route = "src/features/import/ui/dryrun-step.tsx";
+      mock.dynamic("src/ui/date/date-calendar.tsx", "calendar.js");
+      mock.dynamic(source, "answers.js");
+      mock.dynamic(route, "dryrun.js", [source]);
+      assert.match(checkRouteBudgets(mock.dist, DEFAULT_BUDGET_FILE).error, /resolve-controls.*statically loaded/);
+      mock.dynamic(route, "dryrun.js");
+      assert.strictEqual(checkRouteBudgets(mock.dist, DEFAULT_BUDGET_FILE).ok, true);
+    } finally { mock.cleanup(); }
+  });
+
 });

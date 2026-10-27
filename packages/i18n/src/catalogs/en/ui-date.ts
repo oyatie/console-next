@@ -5,6 +5,7 @@ export const enUiDate: Record<keyof typeof koUiDate, string> = {
   "uiDate.placeholder": "MM/DD/YYYY",
   "uiDate.calendar.open": "Open calendar",
   "uiDate.calendar.label": "Choose date",
+  "uiDate.calendar.failed": "The calendar could not load. Enter the date directly.",
   "uiDate.calendar.previous": "Previous month",
   "uiDate.calendar.next": "Next month",
   "uiDate.disabled": "This date is unavailable.",

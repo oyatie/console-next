@@ -6,6 +6,9 @@ export const regionsQuery = get("/api/v1/regions");
 export const branchesQuery = get("/api/v1/branches");
 export const unitsQuery = get("/api/v1/org-units");
 
+/** The server decides whether a department is deleted or dissolved. */
+export const unitEndQuery = (id: string) => get("/api/v1/org-structure/units/{orgUnitId}/end-options", { params: { path: { orgUnitId: id } } });
+
 /** Every org read: the structure and its change proposals (what an org command may change). */
 export const ORG_READS: PathPrefix[] = ["/api/v1/regions", "/api/v1/branches", "/api/v1/org-units", "/api/v1/org-changes"];
 

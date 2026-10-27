@@ -43,7 +43,6 @@ export const koAccount = {
   "account.second.title": "다른 기기에 패스키 하나 더",
   "account.second.whyOps": "지금은 패스키가 하나뿐입니다. 이 기기를 잃으면 공급사에 본인 확인 후 운영 계정 복구를 요청하고 대기 기간을 거쳐야 합니다. 휴대전화나 보안 키처럼 다른 기기에 하나 더 등록해 두십시오.",
   "account.second.why": "지금은 패스키가 하나뿐입니다. 이 기기를 잃으면 권한 관리 담당자에게 로그인 코드를 다시 받아야 합니다. 다른 기기에 하나 더 등록해 두면 바로 로그인할 수 있습니다.",
-  "account.second.add": "두 번째 패스키 등록",
   "account.domain.title": "회사 도메인",
   "account.domain.current": "회사 도메인: {slug}",
   "account.domain.request": "변경 요청",

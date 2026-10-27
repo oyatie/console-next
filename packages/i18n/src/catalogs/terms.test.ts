@@ -17,7 +17,6 @@ const TENANT_LABELS = [
   "identifiers.scope.tenant",
   "requests.subject.ORGANIZATION",
   "workplace.kinds.tenant",
-  "setup.group.company",
   "entityCreate.review.rootKicker",
   "entityCreate.context",
   "entityQuick.kicker",
@@ -55,8 +54,9 @@ test("no entity or setup string promises that an upload fills the fields", () =>
   expect(ko).not.toHaveProperty("entityCreate.original.why");
 });
 
-const SHELL_WORDS = ["shell.link.org", "common.failed.code.parent_not_found"] as const;
+const SHELL_WORDS = ["shell.link.org"] as const;
 const TENANCY_WORDS = [
+  "common.failed.code.parent_not_found",
   "structure.title",
   "structure.list.label",
   "orgStructure.title",

@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { issueNotice, type NoticeCandidate } from "../api";
 import { NoticeNewPage } from "./notice-new-page";
 
@@ -100,7 +100,8 @@ test("loading and denied candidate reads never claim there are no eligible event
   const html = render();
   expect(html).toContain('role="alert"');
   expect(html).toContain("다시 불러오기");
-  expect(html).toContain("denied");
+  expect(html).toContain(t("common.read.failedReason"));
+  expect(html).not.toContain("denied");
   expect(html).not.toContain("공고에 넣을 발령이 없습니다");
   expect(html).not.toContain('type="checkbox"');
 });
