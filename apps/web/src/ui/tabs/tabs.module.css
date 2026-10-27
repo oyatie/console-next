@@ -1,11 +1,11 @@
 /* ui/tabs: view tabs and route tabs, one look (kit .tabs in .ph / .bpanel__tabs; access .subnav). Tokens only. */
 .tabs { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
 .list { display: flex; flex-wrap: wrap; gap: var(--space-1); border-bottom: 1px solid var(--border); }
-.tab { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-h-sm); padding: 0 var(--space-3); border-radius: var(--radius) var(--radius) 0 0; color: var(--steel); font-weight: var(--fw-medium); text-decoration: none; white-space: nowrap; cursor: pointer; outline: none; }
+.tab { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-h-sm); max-width: 100%; padding: 0 var(--space-3); border-radius: var(--radius) var(--radius) 0 0; color: var(--steel); font-weight: var(--fw-medium); text-decoration: none; white-space: normal; overflow-wrap: anywhere; text-align: start; cursor: pointer; outline: none; }
 .tab:hover, .tab[data-hovered] { background: var(--muted); color: var(--ink); }
 .tab[data-selected], .tab[aria-current="page"], .tab[aria-current="true"] { color: var(--primary); box-shadow: var(--tab-selected); }
 .tab[data-focus-visible], .tab:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-.count { display: inline-grid; place-items: center; min-width: calc(var(--space-5) + var(--space-1)); padding: 0 var(--space-1); border-radius: var(--radius-sm); background: var(--muted); color: var(--steel); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.count { display: inline-grid; flex-shrink: 0; place-items: center; min-width: calc(var(--space-5) + var(--space-1)); padding: 0 var(--space-1); border-radius: var(--radius-sm); background: var(--muted); color: var(--steel); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
 .count:empty { visibility: hidden; }
 .tab[data-selected] .count, .tab[aria-current="page"] .count, .tab[aria-current="true"] .count { background: var(--primary-soft); color: var(--primary); }
 .panel { min-width: 0; outline: none; }

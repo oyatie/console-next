@@ -4,6 +4,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { TABS } from "../../apps/web/src/features/entity/domain/tabs";
 import { expectAxe, fits } from "../a11y";
 import { mockRoute } from "../mock/route";
+import { id } from "../mock/fixtures";
 import { entityRecordPath, entityRecordStates, mockEntityRecord } from "./entity-record";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -54,6 +55,7 @@ for (const state of entityRecordStates) for (const width of state === "long" ? [
         await expect(tabs.getByRole("tab", { selected: true })).toHaveText(/^사업자등록증\s*1$/);
         await tabs.getByRole("tab", { selected: true }).press("End");
         await expect(tabs.getByRole("tab", { selected: true })).toHaveText(/^이력\s*0$/);
+        await expect(tabs.getByRole("tab", { name: /^문서/ })).toHaveText(/^문서\s*0$/);
         await expect(tabs.locator('[tabindex="0"]')).toHaveCount(1);
         await tabs.getByRole("tab", { selected: true }).press("Home");
       }
@@ -109,20 +111,32 @@ test("late document and history counts preserve the tab positions @ui-state", as
   const fixture = await mockEntityRecord(page, "populated");
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
-  for (const path of ["/api/v1/legal-entities/{entityId}/documents", "/api/v1/legal-entities/{entityId}/revisions"] as const) {
-    await mockRoute(page, "get", path, async () => { await held; return { status: 200, json: { items: [] } }; });
-  }
+  await mockRoute(page, "get", "/api/v1/legal-entities/{entityId}/documents", async () => {
+    await held;
+    return { status: 200, json: { items: Array.from({ length: 2 }, (_, n) => ({
+      id: id(4110 + n), kind: "OTHER" as const, file_name: `record-${n}.pdf`, content_type: "application/pdf" as const,
+      byte_size: 100, uploaded_at: "2026-01-01T00:00:00Z", retention_key: "retention.entity_registration_document" as const, extraction_status: "NONE" as const,
+    })) } };
+  });
+  await mockRoute(page, "get", "/api/v1/legal-entities/{entityId}/revisions", async () => {
+    await held;
+    return { status: 200, json: { items: Array.from({ length: 3 }, (_, n) => ({
+      version: n + 1, effective_from: "2026-01-01", recorded_at: "2026-01-01T00:00:00Z", change_mode: "SETUP" as const, changes: [],
+    })) } };
+  });
   try {
     await page.goto(entityRecordPath);
     const tabs = page.getByRole("tablist", { name: t("entityRecord.tabs") });
     const history = tabs.getByRole("tab", { name: /^이력/ });
     const documents = tabs.getByRole("tab", { name: /^문서/ });
     await expect(history).toBeVisible();
+    await expect(documents).toHaveText(t("entityRecord.tab.documents"));
+    await expect(history).toHaveText(t("entityRecord.tab.history"));
     await page.evaluate(() => document.fonts.ready);
     const before = [await documents.boundingBox(), await history.boundingBox()];
     release();
-    await expect(documents).toHaveText(/^문서\s*0$/);
-    await expect(history).toHaveText(/^이력\s*0$/);
+    await expect(documents).toHaveText(/^문서\s*2$/);
+    await expect(history).toHaveText(/^이력\s*3$/);
     expect([await documents.boundingBox(), await history.boundingBox()]).toEqual(before);
     expect(fixture.unexpected).toEqual([]);
   } finally {

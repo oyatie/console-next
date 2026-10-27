@@ -83,8 +83,9 @@ test("gallery components pass axe, and its controls work", { tag: ["@smoke", "@v
   await expect(gallery(page)).toBeVisible();
   await expectAccessible(page, "gallery");
 
-  await page.getByRole("button", { name: "다시 불러오기" }).click();
-  await expect(page.getByText("다시 불러온 데이터입니다.")).toBeVisible();
+  const states = page.getByRole("heading", { name: "화면 상태", exact: true }).locator("..");
+  await states.getByRole("button", { name: "다시 불러오기" }).click();
+  await expect(states.getByText("다시 불러온 데이터입니다.")).toBeVisible();
 
   const picker = page.getByRole("combobox", { name: "조직" });
   await picker.fill("태스크");
@@ -97,11 +98,11 @@ test("gallery components pass axe, and its controls work", { tag: ["@smoke", "@v
   await expect(page.getByRole("status").filter({ hasText: "입력을 확인했습니다." })).toBeVisible();
 
   // View tabs (WAI-ARIA APG): arrows move and select, Home / End jump, the panel follows the selection.
-  const views = page.getByRole("tablist", { name: "보기" });
+  const views = page.getByRole("tablist", { name: "보기", exact: true });
   await views.getByRole("tab", { name: "조직도" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(views.getByRole("tab", { name: /목록/ })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel", { name: /목록/ })).toContainText("목록 보기입니다.");
+  await expect(page.locator('[data-tabs-demo="url"]').getByRole("tabpanel")).toContainText("목록 보기입니다.");
   await page.keyboard.press("End");
   await expect(views.getByRole("tab", { name: /아웃라인/ })).toBeFocused();
   await page.keyboard.press("Home");
