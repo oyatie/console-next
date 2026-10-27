@@ -2,7 +2,7 @@ import { verificationState } from "../present";
 import { useEffect, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { Building2, ChevronRight, Network, PencilLine, Plus } from "lucide-react";
+import { Network, PencilLine, Plus } from "lucide-react";
 import type { LegalEntity, OrgStructureNode } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { BIZ_KIND, label } from "../../../lib/labels";
@@ -11,10 +11,14 @@ import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { checklistRef, orgStructureAt } from "../../../reference/entity/api";
 import { todayKst } from "../../../lib/pure/today";
-import { Button, ToggleButton } from "../../../ui/button/button";
+import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
+import { PageHead } from "../../../ui/page-head/page-head";
+import { Crumbs } from "../../../ui/page-head/crumbs";
+import { Tabs } from "../../../ui/tabs/tabs";
 import { entityDocumentsQuery, entityHistoryQuery, entityQuery } from "../api";
-import { primaryRegistration } from "../domain/view";
+import { officers, primaryRegistration } from "../domain/view";
+import { TABS, type Tab } from "../domain/tabs";
 import { entityName } from "../../../reference/entity/domain/names";
 import { unattached } from "../domain/attach";
 import { LockNotice } from "./record-lock";
@@ -47,9 +51,6 @@ import { NameReview } from "./name-review";
 
 const route = getRouteApi("/app/org/entities/$id");
 
-const TABS = ["overview", "certificates", "workplaces", "officers", "documents", "history"] as const;
-type Tab = (typeof TABS)[number];
-
 const countDepts = (n: OrgStructureNode | undefined): number => (n ? n.children.reduce((a, x) => a + (x.kind === "DEPARTMENT" ? 1 : 0) + countDepts(x), 0) : 0);
 
 /**
@@ -57,8 +58,8 @@ const countDepts = (n: OrgStructureNode | undefined): number => (n ? n.children.
  * and certificates, VAT and worker facts, and beside them where it stands, its history, how it closes and its
  * kept originals. Every fact carries one verb: edit (change (REV) or correction (COR)), correct-only, or an identifier's correction.
  */
-export function EntityRecord({ id, workplace, initialTab }: { id: string; workplace?: string; initialTab?: "history" }) {
-  const { as_of, known_at, reissue, nts } = route.useSearch();
+export function EntityRecord({ id, workplace }: { id: string; workplace?: string }) {
+  const { as_of, known_at, reissue, nts, tab: urlTab } = route.useSearch();
   const navigate = route.useNavigate();
   const point = { as_of, known_at };
   const today = todayKst();
@@ -74,15 +75,11 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
   const phase = phaseQ.data?.phase;
   const structure = useQuery(orgStructureAt(point));
   const node = structure.data?.entities.find((n) => n.id === id);
-  const [tab, setTab] = useState<Tab>(nts ? "certificates" : initialTab ?? (workplace ? "workplaces" : "overview"));
+  const tab = nts ? "certificates" : urlTab ?? (workplace ? "workplaces" : "overview");
+  const setTab = (next: Tab) => void navigate({ search: search => ({ ...search, tab: next, nts: undefined }), replace: true });
   useEffect(() => {
     if (nts && tab === "certificates" && q.isSuccess) requestAnimationFrame(() => document.getElementById(`nts-${nts}`)?.scrollIntoView({ block: "center" }));
   }, [nts, tab, q.isSuccess]);
-  const [selectedWorkplace, setSelectedWorkplace] = useState(workplace);
-  if (selectedWorkplace !== workplace) {
-    setSelectedWorkplace(workplace);
-    if (workplace) setTab("workplaces");
-  }
   const [sheet, setSheet] = useState<ReactNode>(null);
   const [displayed, setDisplayed] = useState(q.data);
   // A conflict re-reads the latest values for its sheet without moving the record behind it.
@@ -98,44 +95,37 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
   const band = <AsOfBand asOf={as_of} knownAt={known_at} onChange={changeDate} />;
   const operating = phase === "OPERATING";
   const depts = countDepts(node);
-  const title = (e: LegalEntity) => <h1 className="page__title" tabIndex={-1}><EntityName entity={e} /></h1>;
-  const head = (e: LegalEntity) => {
+  const head = (e: LegalEntity, tabs: ReactNode) => {
     const primary = primaryRegistration(e);
     const lock = temporal ? "asof" : lockOf(e, phase !== undefined);
     const v = primary ? verificationState(primary) : null;
     return (
-      <div className={s.head}>
-        <nav className={s.crumb} aria-label={t("entityRecord.crumb")}><Network size={14} aria-hidden /><Link to="/org" search={point}>{t("entityRecord.crumbRoot")}</Link><ChevronRight size={14} aria-hidden /><span>{entityName(e)}</span></nav>
-        <div className={s.titleRow}>
-          <Building2 size={22} aria-hidden className={s.titleIcon} />
-          {title(e)}
+      <PageHead band
+        title={<EntityName entity={e} />}
+        crumbs={<Crumbs items={[<Link key="entities" to="/org/entities" search={point}>{t("entity.list.title")}</Link>]} current={entityName(e)} />}
+        meta={<>
           {e.biz_kind && <Chip tone="neutral">{label(BIZ_KIND, e.biz_kind)}</Chip>}
           {/* company-05: an entity being founded reads as founding alone, never "continuing" beside it. */}
           {e.founding ? <Chip tone="info">{t("entityOps.founding.chip")}</Chip> : <Chip tone={e.closed_on ? "neutral" : "ok"}>{t(e.closed_on ? "entityRecord.status.closed" : "entityRecord.status.open")}</Chip>}
           {!e.closed_on && primary?.current?.status === "SUSPENDED" && <Chip tone="warn">{t("enum.recordStatus.SUSPENDED")}</Chip>}
           {v && <Chip tone="neutral">{v.label}</Chip>}
-          <div className="grow" />
+        </>}
+        tools={<>
           <Link to="/org" search={point} className="btn"><Network size={16} aria-hidden /> {t("entityRecord.action.chart")}</Link>
           {(!lock || lock === "loading") && <Link to="/org/entities/$id/workplaces/new" params={{ id: e.id }} className="btn" disabled={lock === "loading"}><Plus size={16} aria-hidden /> {t("entityRecord.action.addWorkplace")}</Link>}
           {(!lock || lock === "loading") && <Button variant="primary" disabled={lock === "loading"} onClick={() => setTab("certificates")}><PencilLine size={16} aria-hidden /> {t("entityRecord.action.editByCert")}</Button>}
-        </div>
-        <div className={s.nameProblems}><NameProblems e={e} onCertificate={() => setTab("certificates")} review={(r) => <NameReview key={r.id} e={e} review={r} editable={e.can_manage && !lock} />} /></div>
-        <LockNotice e={e} lock={lock === "loading" ? null : lock} />
-        {e.can_manage && <QueryState q={phaseQ} inline loading={<></>}>{() => null}</QueryState>}
-        <div role="group" aria-label={t("entityRecord.tabs")} className={s.tabs}>
-          {TABS.map((x) => (
-            <ToggleButton key={x} pressed={tab === x} onClick={() => setTab(x)}>
-              {t(`entityRecord.tab.${x}`)}{" "}
-              {x !== "overview" && <span className={s.count}>{x === "certificates" ? e.registrations.length : x === "workplaces" ? e.workplaces.length : x === "officers" ? (e.current?.representatives?.length ?? 0) + (e.current?.directors?.length ?? 0) : x === "documents" ? (docsQ.data?.items.length ?? "") : (hist.data?.items.length ?? "")}</span>}
-            </ToggleButton>
-          ))}
-        </div>
-      </div>
+        </>}
+        sub={<>
+          <div className={s.nameProblems}><NameProblems e={e} onCertificate={() => setTab("certificates")} review={(r) => <NameReview key={r.id} e={e} review={r} editable={e.can_manage && !lock} />} /></div>
+          <LockNotice e={e} lock={lock === "loading" ? null : lock} />
+          {e.can_manage && <QueryState q={phaseQ} inline loading={<></>}>{() => null}</QueryState>}
+        </>}
+        tabs={tabs}
+      />
     );
   };
   return (
     <div className={s.page}><PageReadGate q={q} title={t("entity.list.title")} back={{ to: "/org/entities", label: t("denied.entity.back") }} removed={t("denied.entity.deleted.reason")}>{band}
-    {q.data && head(q.data)}
     <QueryState q={sheet && displayed ? { ...q, data: displayed } : q} back={{ to: "/org/entities", label: t("denied.entity.back") }} removed={t("denied.entity.deleted.reason")} layout="record">
       {(e) => {
         const readOnly = temporal || Boolean(e.read_only) || phase === undefined;
@@ -149,12 +139,21 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
         };
         const primary = primaryRegistration(e);
         const docs = docsQ.isSuccess ? docsQ.data.items : null;
+        const counts = {
+          certificates: e.registrations.length,
+          workplaces: e.workplaces.length,
+          officers: officers(e).length,
+          documents: docsQ.data?.items.length ?? "",
+          history: hist.data?.items.length ?? "",
+        };
         const reissuing = reissue ? e.registrations.find((r) => r.id === reissue && !r.closed_on) : undefined;
         return (
           <RecordLockProvider key={id} value={temporal ? "asof" : lockOf(e, phase !== undefined)}>
           <>
-            <div className={s.body}>
-              {tab === "overview" && (
+            <Tabs label={t("entityRecord.tabs")} selected={tab} onSelect={next => setTab(next as Tab)} renderList={list => head(e, list)}
+              items={TABS.map(x => ({ id: x, label: t(`entityRecord.tab.${x}`), count: x === "overview" ? undefined : counts[x] }))}>
+              {selected => <div className={s.body}>
+              {selected === "overview" && (
                 <>
                   <div className={s.col}>
                     {e.founding && <FoundingCard e={e} />}
@@ -166,17 +165,18 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
                   <RecordAside e={e} phase={phase} depts={depts} docs={docs} act={act} onTab={setTab} />
                 </>
               )}
-              {tab === "certificates" && (
+              {selected === "certificates" && (
                 <div className={s.wide}>
                   {e.registrations.map((r) => <CertCard showCheck key={r.id} e={e} r={r} act={act} operating={operating} onOriginal={docs?.length ? () => setTab("documents") : undefined} />)}
                   {e.registrations.length === 0 && <NoCertificate e={e} />}
                 </div>
               )}
-              {tab === "workplaces" && <div className={s.wide}><WorkplacesTab e={e} selected={workplace} /></div>}
-              {tab === "officers" && <div className={s.wide}><OfficersTab e={e} act={act} /></div>}
-              {tab === "documents" && <div className={s.wide}><QueryState q={docsQ}>{data => <DocumentsTab docs={data.items} />}</QueryState></div>}
-              {tab === "history" && <div className={s.wide}><HistoryTab e={e} /></div>}
-            </div>
+              {selected === "workplaces" && <div className={s.wide}><WorkplacesTab e={e} selected={workplace} /></div>}
+              {selected === "officers" && <div className={s.wide}><OfficersTab e={e} act={act} /></div>}
+              {selected === "documents" && <div className={s.wide}><QueryState q={docsQ}>{data => <DocumentsTab docs={data.items} />}</QueryState></div>}
+              {selected === "history" && <div className={s.wide}><HistoryTab e={e} /></div>}
+            </div>}
+            </Tabs>
             {!readOnly && <CorrectionRegister entityId={e.id} />}
             {!readOnly && sheet}
             {!readOnly && reissuing && <ReissueSheet e={e} r={reissuing} phase={phase} onClose={() => void navigate({ search: (search) => ({ ...search, reissue: undefined }), replace: true })} />}

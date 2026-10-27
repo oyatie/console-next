@@ -37,6 +37,7 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
           columns={[
             {
               header: t("entityRecord.workplaces.col.name"),
+              card: "title",
               cell: (w) => (
                 <span className="row">
                   <b>{w.current?.name}</b>
@@ -49,9 +50,10 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
             { header: t("entityRecord.workplaces.col.brn"), cell: (w) => {
               const brn = registrationOf(e, w.registration_id ?? w.filing_registration_id)?.brn?.display;
               return <span className="code">{w.registration_id ? brn ?? t("workplace.brnPending") : <>{t("workplace.filing.entityBasis")}{brn && ` · ${brn}`}</>}</span>;
-            }, fit: true },
+            }, fit: true, card: "fact" },
             {
               header: t("entityRecord.workplaces.col.status"),
+              card: "status",
               fit: true,
               cell: (w) => {
                 const r = registrationOf(e, w.registration_id);

@@ -41,7 +41,7 @@ test.fail("two administrators change one 법인 and one 사업장: the later sav
   await expect(b.getByRole("heading", { name: /동시변경/, level: 1 })).toBeVisible();
 
   for (const [scope, field, mine, theirs] of [["entity", "대표전화", "02-111-0001", "02-222-0002"], ["workplace", "전화", "031-111-0001", "031-222-0002"]] as const) {
-    if (scope === "workplace") for (const p of [a, b]) await p.getByRole("button", { name: /^사업장 \d/ }).click();
+    if (scope === "workplace") for (const p of [a, b]) await p.getByRole("tab", { name: /^사업장 \d/ }).click();
     // Both open the change on the same revision; A saves first.
     const A = await change(a, scope, field, mine);
     // The expected failure, at once rather than at the test's timeout (which test.fail does not count as a failure):

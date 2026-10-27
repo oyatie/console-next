@@ -126,7 +126,7 @@ test("edits on a bad connection: a failed 법인 or 사업장 change keeps the d
   await setupRail(admin).getByRole("link", { name: "사업장 등록" }).first().click();
   await registerWorkplace(admin, "혼돈변경", "본사");
   await go(admin, entityPage);
-  await admin.getByRole("button", { name: /^사업장 \d/ }).click();
+  await admin.getByRole("tab", { name: /^사업장 \d/ }).click();
   const panel = admin.getByRole("complementary", { name: "본사" });
   await panel.getByRole("button", { name: "전화 수정" }).click();
   const wEdit = admin.getByRole("dialog", { name: "전화 수정" });

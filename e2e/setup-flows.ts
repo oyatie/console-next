@@ -181,7 +181,7 @@ export async function registerBranch(page: Page, entity: string, name: string, b
   await page.getByRole("row", { name: new RegExp(entity) }).click();
   await expect(page.getByRole("heading", { name: new RegExp(entity), level: 1 })).toBeVisible();
   const back = new URL(page.url()).pathname;
-  await c.click(page.getByRole("button", { name: /^사업장 \d/ }));
+  await c.click(page.getByRole("tab", { name: /^사업장 \d/ }));
   await c.click(page.getByRole("link", { name: "사업장 추가" }).first());
   await c.click(option(page, "사업자등록", "이 사업장의 등록증"));
   await workplaceSheet(page).getByLabel("사업장 이름").fill(name);

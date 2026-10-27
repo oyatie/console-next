@@ -18,7 +18,7 @@ test("setup edits: a workplace changed twice, a department renamed, a duplicate 
   await setupCompany(admin, "설정변경", "본사");
 
   // 1. Two 사업장 facts, each from its own row's 수정, twice today: the second save carries the revision the first recorded, and keeps its name.
-  await admin.getByRole("button", { name: /^사업장 \d/ }).click();
+  await admin.getByRole("tab", { name: /^사업장 \d/ }).click();
   for (const [field, value, reason, now] of [["사업장 이름", "서울본사", "이름 변경", "본사"], ["전화", "02-555-0177", "연락처 변경", "서울본사"]] as const) {
     await admin.getByRole("complementary", { name: now }).getByRole("button", { name: `${field} 수정` }).click();
     const edit = admin.getByRole("dialog", { name: `${field} 수정` });
@@ -102,7 +102,7 @@ test("a workplace change scheduled ahead does not block the next change", { tag:
   test.fail(true, "backend: the workplace read has no scheduled revisions, so the next save is stale");
   const admin = await soloTenant(browser, "setupsched", "예약변경");
   await setupCompany(admin, "예약변경", "본사");
-  await admin.getByRole("button", { name: /^사업장 \d/ }).click();
+  await admin.getByRole("tab", { name: /^사업장 \d/ }).click();
   const panel = admin.getByRole("complementary", { name: "본사" });
   for (const [field, value, reason] of [["사업장 이름", "서울본사", "이름 변경"], ["전화", "02-555-0178", "연락처 변경"]] as const) {
     await admin.getByRole("complementary").filter({ has: admin.getByRole("button", { name: `${field} 수정` }) }).getByRole("button", { name: `${field} 수정` }).click();

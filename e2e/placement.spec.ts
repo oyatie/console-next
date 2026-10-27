@@ -63,7 +63,7 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
   await registerBranch(admin, CO, "평택공장", "0008512347");
   await go(admin, "/org/entities/new");
   await registerEntity(admin, CO_B, false, undefined, SECOND);
-  await admin.getByRole("button", { name: /^사업장 \d/ }).click();
+  await admin.getByRole("tab", { name: /^사업장 \d/ }).click();
   await admin.getByRole("link", { name: "사업장 추가" }).first().click();
   await registerWorkplace(admin, CO_B, "판교오피스");
   // The 부서 go on the chart (/setup/org redirects there since cs-chart).

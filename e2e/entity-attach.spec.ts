@@ -81,7 +81,7 @@ test("a 사업장 added without a 등록증 gets its own from where the go-live 
 
   // The 사업장 now files under its own 등록증, from the 법인 › 사업장 tab too.
   await a.getByRole("row", { name: /새온정밀/ }).click();
-  await a.getByRole("button", { name: /^사업장 \d/ }).click();
+  await a.getByRole("tab", { name: /^사업장 \d/ }).click();
   await a.getByRole("row", { name: /평택공장/ }).click();
   await expect(a.getByRole("complementary", { name: "평택공장" })).toContainText(brnDisplay(REGISTRATION_FIXTURES.branch_primary.brn));
 });

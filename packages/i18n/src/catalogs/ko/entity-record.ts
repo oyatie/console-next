@@ -1,7 +1,5 @@
 // Korean source for `entityRecord.` ids (features/entity/ui/record: the 법인 record, its 고치기 sheets, spec S3).
 export const koEntityRecord = {
-  "entityRecord.crumb": "위치",
-  "entityRecord.crumbRoot": "조직 구조",
   "entityRecord.tabs": "법인 정보 보기",
   "entityRecord.tab.overview": "개요",
   "entityRecord.tab.certificates": "사업자등록증",

@@ -1,12 +1,17 @@
 // Reading a legal entity as the server returns it (its current state, registrations and workplaces), and
 // turning its current state back into the full input a dated revision sends. Pure.
-import type { KrAddress, LegalEntity, LegalEntityInput, RegistrationInput, Workplace, WorkplaceInput } from "@console/api/pending";
+import type { DirectorRole, KrAddress, LegalEntity, LegalEntityInput, RegistrationInput, Workplace, WorkplaceInput } from "@console/api/pending";
 
 export const workplaceName = (w: Workplace) => w.current?.name ?? "";
 export const registrationOf = (e: LegalEntity, id?: string | null) => (id ? e.registrations.find((r) => r.id === id) : undefined);
 /** The representative workplace's certificate, else the first one. */
 export const primaryRegistration = (e: LegalEntity) => registrationOf(e, e.workplaces.find((w) => w.is_primary)?.registration_id) ?? e.registrations[0];
 export const headcount = (e: LegalEntity) => e.workplaces.reduce((n, w) => n + w.headcount, 0);
+/** The visible people on the officers tab, in the same order as its two lists. */
+export const officers = (e: LegalEntity): { name: string; role?: DirectorRole; appointed_on?: string | null }[] => [
+  ...(e.current?.representatives ?? []).map(name => ({ name })),
+  ...(e.biz_kind === "CORPORATION" ? e.current?.directors ?? [] : []),
+];
 export const registrationTodo = (w: Workplace) => w.registration_todo;
 /** Certificates entered for the entity that no workplace holds yet (the first one, until its workplace exists). */
 export const unheld = (e: LegalEntity) => e.registrations.filter((r) => !r.holder_workplace_id && !r.closed_on);

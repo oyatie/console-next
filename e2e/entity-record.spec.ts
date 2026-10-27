@@ -32,7 +32,7 @@ test("the record: 변경 from a date, 정정 of the period in force, 정정만, 
     "전자세금계산서 메일", "발급일 · 세무서", "회사성립연월일", "자본금", "결산월", "대표 방식", "대표전화", "임원", "상호출자제한기업집단", "부가가치세 신고 단위", "주된 업종", "우선지원대상기업"])
     await expect(admin.getByText(field, { exact: true }).first()).toBeVisible();
   for (const tab of ["개요", "사업자등록증", "사업장", "임원", "문서", "이력"])
-    await expect(admin.getByRole("group", { name: "법인 정보 보기" }).getByRole("button", { name: new RegExp(`^${tab}(?:\\s|$)`) })).toBeVisible();
+    await expect(admin.getByRole("tablist", { name: "법인 정보 보기" }).getByRole("tab", { name: new RegExp(`^${tab}(?:\\s|$)`) })).toBeVisible();
   await expectAccessible(admin, "S3 entity record");
 
   // 변경: nothing is preselected and nothing saves until a verb and a date are chosen.

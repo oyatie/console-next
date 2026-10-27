@@ -53,7 +53,7 @@ test("parity: legal entity and workplace records, revisions, closure", async ({ 
   await a.getByRole("button", { name: "대표전화 수정" }).click();
   await capture(a, "entities", ["S3-entity-revise-initial"], "Actual dated fact editor, no mode selected.");
   await a.getByRole("dialog").getByRole("button", { name: "취소", exact: true }).click();
-  await a.getByRole("button", { name: /^문서/ }).click();
+  await a.getByRole("tab", { name: /^문서/ }).click();
   await capture(a, "entities", ["S3-entity-docs", "E2-evidence-empty"], "Actual empty documents tab, no evidence upload in this tenant.");
   await go(a, "/");
   await setupRail(a).getByRole("link", { name: "사업장 등록" }).first().click();
@@ -236,7 +236,7 @@ test("parity: schedule pattern, assignment preview and receipt", async ({ browse
 test("parity: record audit history and absent tenant audit surfaces", async ({ browser }) => {
   const a = await openTenant(browser, "parity-audit", "패리티감사");
   await setupCompany(a, "패리티감사", "본사");
-  await a.getByRole("button", { name: /^이력/ }).click();
+  await a.getByRole("tab", { name: /^이력/ }).click();
   await capture(a, "audit", ["M10-changes", "H1-investigation-success"], "Actual entity history; not tenant-wide bounded audit investigation.");
   await inspect(a, "audit", "history");
   await go(a, "/audit");

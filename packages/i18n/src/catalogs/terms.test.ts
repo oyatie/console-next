@@ -60,7 +60,6 @@ const TENANCY_WORDS = [
   "structure.title",
   "structure.list.label",
   "orgStructure.title",
-  "entityRecord.crumbRoot",
   "entityCreate.crumbRoot",
   "orgHistory.crumb",
   "orgBulk.crumb",

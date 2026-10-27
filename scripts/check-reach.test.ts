@@ -32,6 +32,12 @@ test("a fully reached tree passes", () => {
   expect(check(tree)).toEqual([]);
 });
 
+test("the workplace update starts at its tab and the gate accepts tab interactions", () => {
+  const entry = REACH.find(e => e.record === "Entity.workplace" && e.op === "update" && e.page === "entity")!;
+  expect(entry.via[0]).toEqual({ role: "tab", name: "사업장 1", prefix: true });
+  expect(check({ ...tree, reach: reach.map(e => ({ ...e, via: entry.via })) })).toEqual([]);
+});
+
 test("planted: an action the UI does not reach fails, naming the record and op", () => {
   const planted = { ...tree, reach: reach.filter((e) => e.op !== "end") };
   expect(check(planted)).toEqual([expect.stringMatching(/^unreachable: HR\.employee\.emergency_contact·end /)]);
