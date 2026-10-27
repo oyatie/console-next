@@ -17,6 +17,7 @@ mod grant_ops;
 mod grant_types;
 pub mod grants;
 mod grants_store;
+pub mod log_review;
 pub mod notice;
 pub mod pending;
 pub mod requests;
