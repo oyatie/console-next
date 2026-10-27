@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { t } from "@console/i18n";
 import { Avatar } from "../../../ui/avatar/avatar";
-import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
+import { ACCESS_ENFORCEMENT } from "../../../lib/labels";
 import type { Account } from "../api";
-import { enforcementText } from "../present";
 import { personLabel, type PersonIdentity } from "../../../reference/person/present";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import s from "./access.module.css";
@@ -36,6 +36,5 @@ export function PersonHead({ a, ops, title }: { a: Account; ops?: boolean; title
   );
 }
 
-const TONE = { ENFORCED: "ok", PREPARED: "info", SCHEDULED: "info", ROLE_INACTIVE: "warn", SCOPE_UNAVAILABLE: "warn" } as const;
 /** A grant's state: counts now, waits for go-live, starts later, or counts for nothing because its role was retired. */
-export const EnforcementChip = ({ e }: { e: string }) => <Chip tone={TONE[e as keyof typeof TONE] ?? "neutral"}>{enforcementText(e)}</Chip>;
+export const EnforcementChip = ({ e }: { e: string }) => <EnumValue e={ACCESS_ENFORCEMENT} value={e} />;

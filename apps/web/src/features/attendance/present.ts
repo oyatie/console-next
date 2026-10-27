@@ -1,9 +1,22 @@
 import { isMessageId, t } from "@console/i18n";
+import { ATTENDANCE_MARK } from "../../lib/labels";
 import { fmtDate, fmtDateTime, fmtMonth, fmtWeekday } from "@console/i18n/format";
 import { clock, duration, nextDay, workMinutes, type Shift } from "./domain/minutes";
 import type { PageState } from "./domain/month-state";
 import type { DaySpec } from "./domain/pattern";
-import type { BoardRow, ContractualHoliday, Entry, Pattern } from "./api";
+import type { BoardRow, ContractualHoliday, Entry, Mark, Pattern } from "./api";
+
+/** A grid row's mark totals retain their domain categories while tones come from the registry. */
+export function toneCounts(marks: readonly string[]) {
+  const n = { blocking: 0, decision: 0, info: 0 };
+  for (const mark of marks) {
+    const tone = ATTENDANCE_MARK.tone?.[mark as Mark];
+    if (tone === "danger") n.blocking += 1;
+    else if (tone === "warn") n.decision += 1;
+    else if (tone === "info") n.info += 1;
+  }
+  return n;
+}
 
 /** A month label with its year. */
 export const monthText = (d: string) => fmtMonth(d);

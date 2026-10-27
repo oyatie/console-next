@@ -5,7 +5,8 @@ import { PersonDayGrid, type DayColumn } from "../../../ui/person-day-grid/perso
 import { Button } from "../../../ui/button/button";
 import { at, indexOf, rectIn, type Range } from "../../../ui/person-day-grid/range";
 import type { GridRow } from "../api";
-import { cellShape, toneCounts } from "../domain/day";
+import { cellShape } from "../domain/day";
+import { toneCounts } from "../present";
 import { closed } from "../domain/month-state";
 import { baseOf, cellKey, draftState, fill, fillSchedule, readPaste, splitKey, type CellFacts, type Drafts } from "../domain/grid";
 import { duration } from "../domain/minutes";

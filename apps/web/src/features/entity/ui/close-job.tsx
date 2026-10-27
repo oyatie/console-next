@@ -3,12 +3,11 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { Banner } from "../../../ui/banner/banner";
 import { Chip } from "../../../ui/chip";
+import { WORKPLACE_CLOSE_STATE } from "../../../lib/labels";
 import type { CloseJob, ClosePlanView } from "../../../reference/close/api";
 import { jobCounts } from "../../../reference/close/domain/plan";
 import { subjectName, whyText } from "../../../reference/close/present";
 import css from "../../../reference/org/ui/structure.module.css";
-
-const TONE = { SCHEDULED: "info", WAITING: "warn", APPLIED: "neutral", FAILED: "danger", CANCELLED: "neutral" } as const;
 
 /**
  * The close job: the receipt after planning and what a reopened sheet shows while one is open (SCHEDULED, or WAITING
@@ -23,7 +22,7 @@ export function CloseJobPanel({ job, view }: { job: CloseJob; view: ClosePlanVie
   return (
     <section className={css.stack} aria-labelledby="close-job" role="status">
       <h3 id="close-job" className={css.secH}>
-        <Chip tone={TONE[job.state]}>{t(`workplace.close.job.${job.state}`, { date })}</Chip>
+        <Chip tone={WORKPLACE_CLOSE_STATE.tone?.[job.state]}>{t(`workplace.close.job.${job.state}`, { date })}</Chip>
       </h3>
       <p>{t("workplace.close.job.lines", jobCounts(job.lines))}</p>
       {(job.state === "WAITING" || job.state === "SCHEDULED") && waiting.length > 0 && (

@@ -1,3 +1,4 @@
+import { ORG_BULK_SITE_STATE } from "../../../lib/labels";
 import { t } from "@console/i18n";
 import { AddressField } from "../../../ui/address-field/address-field";
 import { ChoiceField } from "../../../ui/choice/choice-field";
@@ -29,7 +30,7 @@ export function SiteCard({ name, value, onChange, mains }: {
     <section className={`card ${s.card}`} aria-label={t("orgBulk.site.title", { name })}>
       <h2 className={s.cardHead}>
         {t("orgBulk.site.title", { name })}
-        <Chip tone={open ? "warn" : "ok"}>{open ? t("orgBulk.site.open", { count: open }) : t("orgBulk.site.done")}</Chip>
+        <Chip tone={ORG_BULK_SITE_STATE.tone?.[open ? "open" : "done"]}>{open ? t("orgBulk.site.open", { count: open }) : t("orgBulk.site.done")}</Chip>
       </h2>
       <ChoiceField
         label={t("orgBulk.site.withholding")}

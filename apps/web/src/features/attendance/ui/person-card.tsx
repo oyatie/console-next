@@ -1,3 +1,4 @@
+import { ATTENDANCE_MONTH_STATE } from "../../../lib/labels";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
@@ -40,7 +41,7 @@ export function PersonCard({ id, month, head }: { id: string; month?: string; he
             <Crumbs items={[<Link key="b" to="/attendance" search={back}>{t(`attendance.tab.${search.tab ?? "month"}`)}</Link>]} current={`${p.name} ${p.employee_number ?? ""}`} />
             <div className={s.inline}>
               <h2>{p.name} <span className="muted num">{p.employee_number}</span></h2>
-              {p.month_state.state === "OPEN" ? p.provisional && <Chip tone="warn">{t("attendanceRecords.card.provisional", { month: monthText(m) })}</Chip> : <MonthStateChip state={pageState([p.month_state])} month={m} />}
+              {p.month_state.state === "OPEN" ? p.provisional && <Chip tone={ATTENDANCE_MONTH_STATE.tone?.OPEN}>{t("attendanceRecords.card.provisional", { month: monthText(m) })}</Chip> : <MonthStateChip state={pageState([p.month_state])} month={m} />}
             </div>
             <p className="muted">{t("attendanceRecords.card.payNote")}</p>
             <StatRow
@@ -98,7 +99,7 @@ function MonthStateChip({ state, month }: { state: PageState; month: string }) {
     : state.relockAt ? t("attendanceRecords.card.reopened", { at: fmtDateTime(state.relockAt) }) : t("attendanceRecords.card.reopenedOpenEnded");
   return (
     <>
-      <Chip tone={state.state === "CLOSED" ? "info" : "warn"}>{label}</Chip>
+      <Chip tone={ATTENDANCE_MONTH_STATE.tone?.[state.state]}>{label}</Chip>
       <Link to="/people/period-locks" search={unlock ? { unlock } : {}}>{link}</Link>
     </>
   );

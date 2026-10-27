@@ -13,6 +13,8 @@ import { checklistRef, orgStructureAt } from "../../../reference/entity/api";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
+import { ENTITY_LIFECYCLE, RECORD_STATUS } from "../../../lib/labels";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { Tabs } from "../../../ui/tabs/tabs";
@@ -106,8 +108,8 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
         meta={<>
           {e.biz_kind && <Chip tone="neutral">{label(BIZ_KIND, e.biz_kind)}</Chip>}
           {/* company-05: an entity being founded reads as founding alone, never "continuing" beside it. */}
-          {e.founding ? <Chip tone="info">{t("entityOps.founding.chip")}</Chip> : <Chip tone={e.closed_on ? "neutral" : "ok"}>{t(e.closed_on ? "entityRecord.status.closed" : "entityRecord.status.open")}</Chip>}
-          {!e.closed_on && primary?.current?.status === "SUSPENDED" && <Chip tone="warn">{t("enum.recordStatus.SUSPENDED")}</Chip>}
+          <EnumValue e={ENTITY_LIFECYCLE} value={e.founding ? "founding" : e.closed_on ? "closed" : "open"} />
+          {!e.closed_on && primary?.current?.status === "SUSPENDED" && <EnumValue e={RECORD_STATUS} value="SUSPENDED" />}
           {v && <Chip tone="neutral">{v.label}</Chip>}
         </>}
         tools={<>

@@ -6,7 +6,8 @@ import { CommandError } from "../../../lib/react/command-error";
 import { reasonLabel } from "../../../lib/reason-codes";
 import { ActionBar } from "../../../ui/action-bar/action-bar";
 import { Button } from "../../../ui/button/button";
-import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
+import { PERIOD_UNLOCK_STATE } from "../../../lib/labels";
 import { Dialog } from "../../../ui/dialog";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
@@ -23,9 +24,7 @@ const subject = (l: PeriodLock) => ({ domain: domainText(l.domain), period: peri
 
 /** The request's state as a chip (waiting, refused, expired); nothing for a state no lock row shows. */
 export function RequestChip({ state }: { state: RequestState }) {
-  if (state === "PENDING") return <Chip tone="info">{t("periodLocks.request.chip.PENDING")}</Chip>;
-  if (state === "REJECTED") return <Chip tone="danger">{t("periodLocks.request.chip.REJECTED")}</Chip>;
-  if (state === "EXPIRED") return <Chip>{t("periodLocks.request.chip.EXPIRED")}</Chip>;
+  if (PERIOD_UNLOCK_STATE.values.some(value => value === state)) return <EnumValue e={PERIOD_UNLOCK_STATE} value={state} />;
   return null;
 }
 

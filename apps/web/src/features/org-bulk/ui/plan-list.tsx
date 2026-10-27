@@ -1,11 +1,11 @@
 import { MapPin, Network } from "lucide-react";
 import { t } from "@console/i18n";
 import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
+import { ORG_BULK_PLAN_STATUS } from "../../../lib/labels";
 import { TextInput } from "../../../ui/field/field";
 import type { PlanRow } from "../domain/plan";
 import s from "./bulk.module.css";
-
-const STATUS_TONE = { link: "neutral", create: "ok", clash: "danger", tooDeep: "danger", kind_not_allowed: "danger" } as const;
 
 /**
  * The "what will be made" column (S7): each pasted line where it lands, with its status in text (D16) — linked to
@@ -31,7 +31,7 @@ export function PlanList({ rows, names, onRename, rootName, levelOffset }: {
             <li key={r.at} className={s.planRow} data-status={r.status} data-depth={Math.min(r.depth, 6)}>
               <Icon size={16} aria-hidden className="muted" />
               <span className={s.planName}>{r.name}</span>
-              <Chip tone={STATUS_TONE[r.status]}>{t(`orgBulk.plan.status.${status}`)}</Chip>
+              <EnumValue e={ORG_BULK_PLAN_STATUS} value={status} />
               {r.kind && r.level === "workplace" && <Chip>{t("orgBulk.plan.kind", { kind: r.kind })}</Chip>}
               {fixing && r.status !== "tooDeep" && (
                 <TextInput

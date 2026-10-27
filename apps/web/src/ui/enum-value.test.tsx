@@ -19,6 +19,11 @@ test("an unknown status is a visible neutral code", () => {
     .toBe('<span class="chip chip--neutral">FUTURE_STATUS</span> ');
 });
 
+test("an unknown support state renders its word and code once", () => {
+  expect(html(<EnumValue e={enums.SUPPORT_SESSION_STATE} value="FUTURE_SESSION" />))
+    .toBe('확인되지 않은 항목 <span class="chip chip--neutral">FUTURE_SESSION</span>');
+});
+
 test("non-status words stay plain and extensible codes retain their diagnostic chip", () => {
   expect(html(<EnumValue e={enums.LEAVE_TYPE} value="WORK_INJURY" />)).toBe(`${t("enum.leaveType.WORK_INJURY")} `);
   const unknown = html(<EnumValue e={enums.LEAVE_TYPE} value="FUTURE_LEAVE" />);
