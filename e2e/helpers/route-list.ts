@@ -52,6 +52,7 @@ const paths = [
   "/requests",
   "/requests/$id",
   "/settings/company-domain",
+  "/settings",
   "/setup/company-names",
   "/setup/go-live",
   "/setup/org",

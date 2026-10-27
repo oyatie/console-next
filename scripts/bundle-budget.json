@@ -34,6 +34,7 @@
       "src/features/people/ui/unplaced-page.tsx",
       "src/features/periods/ui/period-lock-page.tsx",
       "src/features/platform/Tenants.tsx",
+      "src/features/settings/ui/settings-hub.tsx",
       "src/features/statutory/ui/statutory-page.tsx",
       "src/routes/home-screen.tsx",
       "src/routes/org-screen.tsx"

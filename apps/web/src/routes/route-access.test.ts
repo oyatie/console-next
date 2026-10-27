@@ -14,7 +14,12 @@ function assertAccess(route: { fullPath: string; options: { staticData?: StaticD
   const access = route.options.staticData?.access;
   expect(access, route.fullPath).toBeDefined();
   if (access === "signed-in" && !signedIn(route.fullPath)) expect(exceptions, route.fullPath).toHaveProperty(route.fullPath);
-  if (access && access !== "signed-in") expect(routeList.find(item => item.path === route.fullPath)?.reads.length, route.fullPath).toBeGreaterThan(0);
+  if (access && access !== "signed-in") {
+    if ("destinations" in access) {
+      expect(access.destinations.length, route.fullPath).toBeGreaterThan(0);
+      for (const need of access.destinations) expect(appRoutes.some(child => child.options.staticData?.access === need && routeList.some(item => item.path === child.fullPath && item.reads.length)), route.fullPath).toBe(true);
+    } else expect(routeList.find(item => item.path === route.fullPath)?.reads.length, route.fullPath).toBeGreaterThan(0);
+  }
 }
 
 test("every app route declares access; realm exceptions have an owner and reason", () => {
@@ -30,6 +35,7 @@ test("every app route declares access; realm exceptions have an owner and reason
 test("a new undeclared route and removing a live realm exception both fail", () => {
   expect(() => assertAccess({ fullPath: "/new-screen", options: { staticData: {} } }, allow)).toThrow();
   expect(() => assertAccess({ fullPath: "/platform", options: { staticData: { access: "signed-in" } } }, {})).toThrow();
+  expect(() => assertAccess({ fullPath: "/new-hub", options: { staticData: { access: { destinations: [{ domain: "org", level: "view" }] } } } }, {})).toThrow();
 });
 
 test("route access exceptions can only shrink", () => {

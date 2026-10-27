@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { operationAccess } from "../reference/authz/domain/operation-access";
-import type { AccessRequirement, Requirement } from "../reference/authz/domain/access";
+import type { Requirement } from "../reference/authz/domain/access";
 
 type Operation = keyof typeof operationAccess;
 type Reads = { reads: readonly Operation[]; command?: Operation };
@@ -57,7 +57,7 @@ export const routeReads = {
   "/statutory": { reads: ["GET /api/v1/statutory/workplaces"] },
 } as const satisfies Record<string, Reads>;
 
-export function readRequirement(path: keyof typeof routeReads): AccessRequirement {
+export function readRequirement(path: keyof typeof routeReads): Requirement | { allOf: readonly Requirement[] } {
   const { reads, command } = routeReads[path] as Reads;
   const needs: Requirement[] = [...reads, ...(command ? [command] : [])].map(op => operationAccess[op]);
   const allOf = needs.filter((need, i) => needs.findIndex(other => JSON.stringify(other) === JSON.stringify(need)) === i);

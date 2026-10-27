@@ -4,7 +4,7 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import { ApiError } from "@console/api";
 import { t } from "@console/i18n";
 import { ACCESS_REQUEST_REASONS, grantersQuery, myAccessQuery, requestAccess, type AccessRequestReason } from "../../reference/authz/api";
-import { domainText, grantLines, levelText } from "../../reference/authz/present";
+import { grantLines, requirementText } from "../../reference/authz/present";
 import { orgStructureRef } from "../../reference/entity/api";
 import { failureText } from "../refusal";
 import { Banner } from "../../ui/banner/banner";
@@ -87,7 +87,7 @@ export function Denied({ screen, error, title, reason, back, need }: { screen?: 
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
   return (
     <div className="page"><Card label={t("common.denied.title.plain")} flush>
-      <EmptyState title={title ?? (screen ? t("common.denied.title", { screen }) : t("common.denied.title.plain"))} reason={need ? ("domain" in need ? [need] : need.allOf).map(r => `${domainText(r.domain)} · ${levelText(r.level)}`).join(" / ") : null} />
+      <EmptyState title={title ?? (screen ? t("common.denied.title", { screen }) : t("common.denied.title.plain"))} reason={need ? requirementText(need) : null} />
       <div className={css.body}>
       <div className={css.row}>
         <Link to="/account" className={buttonClass("ghost")}>{t("common.denied.myAccess")}</Link>

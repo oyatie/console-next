@@ -6,6 +6,7 @@ import { fmtDate } from "@console/i18n/format";
 import { codeText } from "../../lib/labels";
 import { todayKst } from "../../lib/pure/today";
 import type { AccessEffectiveEntry } from "./api";
+import type { AccessRequirement } from "./domain/access";
 
 type Node = { id: string; name: string; children?: readonly Node[] };
 const ORDER = ["view", "edit", "approve", "export"];
@@ -60,3 +61,9 @@ export const grantRefusal = (code: string) => {
 
 export const domainText = (key: string) => codeText(`accessCodes.domain.${key}`, key);
 export const levelText = (level: components["schemas"]["AccessLevel"]) => t(`accessCodes.level.${level}`);
+
+/** Keep a hub's alternatives distinct from the reads a single page needs together. */
+export function requirementText(need: AccessRequirement): string {
+  if ("destinations" in need) return t("common.denied.alternatives", { requirements: [...new Set(need.destinations.map(requirementText))].join(" / ") });
+  return ("allOf" in need ? need.allOf : [need]).map(r => `${domainText(r.domain)} · ${levelText(r.level)}`).join(" / ");
+}

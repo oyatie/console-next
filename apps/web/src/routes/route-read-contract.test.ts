@@ -16,8 +16,15 @@ const spec = yaml.load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
 const scopeKinds: AccessEffective["entries"][number]["scope"]["kind"][] = spec.components.schemas.AccessScopeKind.enum;
 const source = (file: string) => readFileSync(`backend/crates/${file}`, "utf8");
 
-test("the table covers every guarded route exactly once", () => {
-  const guarded = Object.values(routes).filter(route => route.options.staticData?.access && route.options.staticData.access !== "signed-in").map(route => route.fullPath);
+test("the table covers every guarded leaf; hubs compose only those leaf requirements", () => {
+  const guarded = Object.values(routes).filter(route => {
+    const need = route.options.staticData?.access;
+    if (!need || need === "signed-in") return false;
+    if (!("destinations" in need)) return true;
+    expect(need.destinations.length, route.fullPath).toBeGreaterThan(0);
+    for (const destination of need.destinations) expect(Object.keys(routeReads).some(path => routes[path]?.options.staticData?.access === destination), route.fullPath).toBe(true);
+    return false;
+  }).map(route => route.fullPath);
   expect(Object.keys(routeReads).sort()).toEqual(guarded.sort());
 });
 
