@@ -7,6 +7,8 @@ import { fmtDate } from "@console/i18n/format";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { QueryState } from "../../../lib/react/query-state";
+import { queryView } from "../../../lib/react/query-view";
 import { todayKst } from "../../../lib/pure/today";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Button, Check } from "../../../ui/button/button";
@@ -51,7 +53,8 @@ export function NoticeNewPage() {
   const given = events ? events.split(",").filter(Boolean) : [];
   const choosing = !batch && given.length === 0;
   const candidates = useInfiniteQuery({ ...noticeCandidatesPages, enabled: choosing });
-  const lines = (candidates.data?.pages.flatMap((p) => p.items) ?? []).map((c, i) => ({ ...c, line_no: i + 1 })).sort((a, b) => a.event.effective_date.localeCompare(b.event.effective_date));
+  const view = queryView(candidates);
+  const lines = (view === "denied" || view === "not-found" ? [] : candidates.data?.pages.flatMap((p) => p.items) ?? []).map((c, i) => ({ ...c, line_no: i + 1 })).sort((a, b) => a.event.effective_date.localeCompare(b.event.effective_date));
   const picked = lines.filter((c) => selected.includes(c.event.id));
   const ids = choosing ? picked.map((c) => c.event.id) : given;
   const dates = [...new Set(lines.map((c) => c.event.effective_date))].sort();
@@ -66,10 +69,8 @@ export function NoticeNewPage() {
     <div className="page">
       <PageHead crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>, <Link key="notices" to="/people/notices">{t("notice.crumb")}</Link>]} />} title={t("notice.title")} />
       {choosing && <Card title={t("notice.pick.title")}>
-        <CommandError error={candidates.error} read>
-          <Button onClick={() => void candidates.refetch()}>{t("common.retry")}</Button>
-        </CommandError>
-        {candidates.isPending ? <div role="status">{t("common.loading")}</div> : candidates.data && (lines.length === 0
+        <QueryState q={candidates} layout="list">
+          {() => lines.length === 0
           ? <EmptyState title={t("notice.pick.empty")} reason={t("notice.missing.what")} actions={<Link to="/people" search={{}} className={buttonClass()}>{t("people.title")}</Link>} />
           : <div className={s.form}>
             {dates.map((effectiveDate) => <section key={effectiveDate} aria-label={fmtDate(effectiveDate)}>
@@ -79,7 +80,8 @@ export function NoticeNewPage() {
               </Check>)}
             </section>)}
             {candidates.hasNextPage && <Button aria-disabled={candidates.isFetchingNextPage || undefined} onClick={() => { if (!candidates.isFetchingNextPage) void candidates.fetchNextPage(); }}>{t("notice.pick.more")}</Button>}
-          </div>)}
+          </div>}
+        </QueryState>
       </Card>}
       {(!choosing || lines.length > 0) && <Card titleId="notice-new" title={<><FileText size={16} aria-hidden /> {batch ? t("notice.new.of", { count: count ?? 0 }) : t("notice.new.ofEvents", { count: ids.length })}</>}>
         <div className={s.form}>

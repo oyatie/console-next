@@ -20,7 +20,8 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span>,
 }));
 vi.mock("@tanstack/react-query", () => ({
-  useInfiniteQuery: () => ({ data: state.hasData ? { pages: [{ items: state.candidates, next_cursor: null }] } : undefined, isPending: state.pending, error: state.readError, hasNextPage: false, refetch: vi.fn() }),
+  useQuery: () => ({ isPending: false, error: null, data: undefined }),
+  useInfiniteQuery: () => ({ isError: !!state.readError, data: state.hasData ? { pages: [{ items: state.candidates, next_cursor: null }] } : undefined, isPending: state.pending, error: state.readError, hasNextPage: false, refetch: vi.fn() }),
 }));
 vi.mock("../../../lib/react/command", async (original) => ({
   ...await original<typeof import("../../../lib/react/command")>(),
@@ -98,9 +99,9 @@ test("loading and denied candidate reads never claim there are no eligible event
   state.pending = false;
   state.readError = new ApiError(403, "forbidden", "denied", []);
   const html = render();
-  expect(html).toContain('role="alert"');
-  expect(html).toContain("다시 불러오기");
-  expect(html).toContain(t("common.read.failedReason"));
+  expect(html).toContain(t("common.denied.title.plain"));
+  expect(html).toContain(t("common.denied.granters.unavailable"));
+  expect(html).not.toContain(t("common.read.failedReason"));
   expect(html).not.toContain("denied");
   expect(html).not.toContain("공고에 넣을 발령이 없습니다");
   expect(html).not.toContain('type="checkbox"');
@@ -110,10 +111,20 @@ test("a failed background read keeps candidates visible alongside its retry", ()
   state.readError = new ApiError(0, "network_error", "offline", []);
   const html = render();
   expect(html.match(/type="checkbox"/g)).toHaveLength(2);
-  expect(html).toContain('role="alert"');
+  expect(html).toContain('role="status"');
+  expect(html).toContain(t("common.read.stale"));
   expect(html).toContain("다시 불러오기");
   expect(html).not.toContain("처리 여부 확인 중");
   expect(html).not.toContain("원래 요청의 결과");
+});
+
+test.each([403, 404])("a %s candidate read removes cached candidates, form and preview", status => {
+  state.readError = new ApiError(status, status === 403 ? "forbidden" : "not_found", "raw upstream detail", []);
+  const html = render();
+  expect(html).toContain(t(status === 403 ? "common.denied.title.plain" : "common.read.notFound.title"));
+  expect(html).not.toContain("표진우");
+  expect(html).not.toContain("공고 제목");
+  expect(html).not.toContain('aria-label="공고 미리보기"');
 });
 
 

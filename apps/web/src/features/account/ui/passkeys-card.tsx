@@ -5,7 +5,6 @@ import { KeyRound, Trash2 } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { focusSoon } from "../../../lib/react/announce";
-import { CommandError } from "../../../lib/react/command-error";
 import { PasskeyError } from "../../../lib/react/passkey-error";
 import { useCommand } from "../../../lib/react/command";
 import { QueryState } from "../../../lib/react/query-state";
@@ -135,14 +134,16 @@ export function PasskeysCard({ ops, passkeys }: { ops: boolean | undefined; pass
         }}
       </QueryState>
 
-      <Dialog open={naming !== null} title={editing ? t("account.passkey.renameOne", { name: editing.name }) : t("account.passkey.add")} onClose={closeNaming}>
-        <Field label={t("account.passkey.label")} required={!!editing} hint={max === undefined ? undefined : t("account.passkey.labelHint", { max })} error={invalidLabel ? t("account.passkey.labelInvalid") : undefined}>
-          {(c) => <TextInput {...c} maxLength={max} value={label} placeholder={editing ? undefined : t("account.passkey.name", { n: (passkeys.data?.length ?? 0) + 1 })} onChange={(e) => setLabel(e.target.value)} />}
-        </Field>
-        <ActionBar notice={<><CommandError error={policy.error} read><Button onClick={() => void policy.refetch()}>{t("common.retry")}</Button></CommandError><PasskeyError error={editing ? rename.error : add.error} /></>} actions={<>
+      <Dialog open={naming !== null} title={editing ? t("account.passkey.renameOne", { name: editing.name }) : t("account.passkey.add")} onClose={closeNaming} read>
+        <QueryState q={policy}>
+          {() => <Field label={t("account.passkey.label")} required={!!editing} hint={max === undefined ? undefined : t("account.passkey.labelHint", { max })} error={invalidLabel ? t("account.passkey.labelInvalid") : undefined}>
+            {(c) => <TextInput {...c} maxLength={max} value={label} placeholder={editing ? undefined : t("account.passkey.name", { n: (passkeys.data?.length ?? 0) + 1 })} onChange={(e) => setLabel(e.target.value)} />}
+          </Field>}
+        </QueryState>
+        <ActionBar notice={<PasskeyError error={editing ? rename.error : add.error} />} actions={<>
           <Button disabled={add.isPending || rename.isPending} onClick={closeNaming}>{t("composer.dismiss")}</Button>
-          <Button variant="primary" disabled={add.isPending || rename.isPending || max === undefined || invalidLabel || (!!editing && !label.trim())} onClick={() => {
-            if (max === undefined || invalidLabel) return;
+          <Button variant="primary" disabled={add.isPending || rename.isPending || policy.isError || max === undefined || invalidLabel || (!!editing && !label.trim())} onClick={() => {
+            if (policy.isError || max === undefined || invalidLabel) return;
             if (editing) rename.mutate({ id: editing.id, label: label.trim() });
             else add.mutate({ before: passkeys.data!.length, label: label.trim() || t("account.passkey.name", { n: passkeys.data!.length + 1 }) });
           }}>{t(editing ? "account.passkey.renameCommit" : "account.passkey.addCommit")}</Button>
