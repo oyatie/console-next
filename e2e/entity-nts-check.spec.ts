@@ -133,7 +133,7 @@ test("without a configured key the administrator sees the reason and attaches th
   await expect(sheet).toBeHidden();
   expect(await read(historyPath), "attaching evidence must create no revision or reissue").toEqual(before);
   expect((await read<LegalEntity>(`/api/v1/legal-entities/${id}`)).registrations[0]!.current).toEqual(registration.current);
-  await page.getByRole("button", { name: /^문서 1/ }).click();
+  await page.getByRole("tab", { name: /^문서 1/ }).click();
   await expect(page.getByRole("row", { name: /국세청-수동-증빙\.pdf/ })).toContainText("사용 중");
   await expectAccessible(page, "NTS unavailable original attached");
 });

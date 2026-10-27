@@ -29,7 +29,7 @@ test("one 법인명: ① edits the name every surface shows, and the 약칭 and 
   await long.getByRole("button", { name: "취소", exact: true }).click();
 
   // regression (0h): the 등록증's ① showed its own copy while its 수정 edited the 법인명.
-  await p.getByRole("group", { name: "법인 정보 보기", exact: true }).getByRole("button", { name: /^사업자등록증/ }).click();
+  await p.getByRole("tablist", { name: "법인 정보 보기", exact: true }).getByRole("tab", { name: /^사업자등록증/ }).click();
   await setName(p, "법인명(단체명)", "주식회사 다온테크");
   const title = p.getByRole("heading", { level: 1 });
   await expect(title).toHaveText("주식회사 다온테크 · NURI · Nuri Co., Ltd.");
@@ -115,7 +115,7 @@ test("the server refuses a 대표자 as 법인명 or 영문명 and the sheet say
     ["영문명", "english_name", "Nuri Co., Ltd.", "english_name_is_person", "영문명에 대표자 이름이나 성명 목록을 입력할 수 없습니다"],
     ["법인명(단체명)", "name", "주식회사 다온테크", "legal_name_is_person", "법인명에 대표자 이름이나 성명 목록을 입력할 수 없습니다"],
   ] as const) {
-    if (field === "name") await p.getByRole("group", { name: "법인 정보 보기", exact: true }).getByRole("button", { name: /^사업자등록증/ }).click();
+    if (field === "name") await p.getByRole("tablist", { name: "법인 정보 보기", exact: true }).getByRole("tab", { name: /^사업자등록증/ }).click();
     await p.route(revise, (r) => r.request().method() === "PUT" ? r.fallback({ postData: JSON.stringify({ ...r.request().postDataJSON(), [field]: "홍길동" }) }) : r.fallback());
     const d = await editName(p, label);
     await d.getByRole("textbox", { name: label }).fill(valid);

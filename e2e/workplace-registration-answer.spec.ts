@@ -53,7 +53,7 @@ for (const mode of ["exempt", "abstract", "later-to-exempt"] as const) {
     await go(page, recordPath);
     const row = page.getByRole("row", { name: new RegExp(name) });
     await expect(row).toContainText(`${t("workplace.filing.entityBasis")} · ${brnDisplay(REGISTRATION_FIXTURES.primary.brn)}`);
-    await page.getByRole("button", { name: /^사업장 \d/ }).click();
+    await page.getByRole("tab", { name: /^사업장 \d/ }).click();
     await page.getByRole("row", { name: new RegExp(name) }).click();
     const panel = page.getByRole("complementary", { name });
     await expect(panel).not.toContainText("등록증 없음");

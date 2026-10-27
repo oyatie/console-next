@@ -82,7 +82,7 @@ test("a certificate upload is typed beside, kept as the registration's evidence 
   const a = await admin(browser, "증빙솔루션", "capture-doc");
   await go(a, "/org/entities/new");
   await registerEntity(a, "증빙솔루션", true, undefined, undefined, { name: "사업자등록증.pdf", mimeType: "application/pdf", buffer: PDF });
-  await a.getByRole("button", { name: /^문서 1/ }).click();
+  await a.getByRole("tab", { name: /^문서 1/ }).click();
   const row = a.getByRole("row", { name: /사업자등록증\.pdf/ });
   await expect(row).toContainText("사용 중");
   const saved = a.waitForEvent("download");

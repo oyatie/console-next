@@ -15,7 +15,7 @@ const EDITS: Record<string, Edit> = {
     next: "주식회사 누리테크",
     run: async (w) => {
       await go(w.admin, pageUrl(w, "entity"));
-      await control(w.admin, { role: "button", name: "사업자등록증", prefix: true }).click();
+      await control(w.admin, { role: "tab", name: "사업자등록증", prefix: true }).click();
       await setName(w.admin, "법인명(단체명)", "주식회사 누리테크");
     },
   },
@@ -24,7 +24,7 @@ const EDITS: Record<string, Edit> = {
     next: "다온",
     run: async (w) => {
       await go(w.admin, pageUrl(w, "entity"));
-      await control(w.admin, { role: "button", name: "개요", exact: true }).click();
+      await control(w.admin, { role: "tab", name: "개요", exact: true }).click();
       await setName(w.admin, "약칭", "다온");
     },
   },
@@ -33,7 +33,7 @@ const EDITS: Record<string, Edit> = {
     next: "Daon Tech Ltd.",
     run: async (w) => {
       await go(w.admin, pageUrl(w, "entity"));
-      await control(w.admin, { role: "button", name: "개요", exact: true }).click();
+      await control(w.admin, { role: "tab", name: "개요", exact: true }).click();
       await setName(w.admin, "영문명", "Daon Tech Ltd.");
     },
   },
@@ -124,7 +124,7 @@ for (const live of [false, true]) {
         expect(e, `facts.ts ${fact.id} has no edit in this harness`).toBeDefined();
         if (fact.id === "legal_entity.short_name" || fact.id === "legal_entity.english_name") {
           await go(w.admin, pageUrl(w, "entity"));
-          await control(w.admin, { role: "button", name: "개요", exact: true }).click();
+          await control(w.admin, { role: "tab", name: "개요", exact: true }).click();
           await setName(w.admin, fact.label, e!.old(w));
         }
         await e!.run(w);

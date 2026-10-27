@@ -3,7 +3,7 @@ import type { KrAddress, LegalEntity, Workplace } from "@console/api/pending";
 import {
   addressLine, entityInput, headcount, headOfficeSettled, primaryRegistration, registrationInput,
   samePlace, unheld, unitRegistration, workplaceInput, workplaceName,
-  registrationTodo,
+  registrationTodo, officers,
 } from "./view";
 
 // The server's shapes are wide; each fixture states only what view.ts reads.
@@ -186,4 +186,14 @@ describe("the current state as the input a dated revision sends", () => {
 test("individual registration revisions carry the certificate name, corporations omit it", () => {
   expect(registrationInput(entity({ biz_kind: "INDIVIDUAL" }), "r1")).toHaveProperty("trade_name", "가나");
   expect(registrationInput(entity(), "r1")).not.toHaveProperty("trade_name");
+});
+
+test("officers lists visible representatives and corporate directors in order, without inventing restricted people", () => {
+  const directors = [{ name: "박이사", role: "INSIDE_DIRECTOR", appointed_on: "2026-01-01" }];
+  expect(officers(entity({ current: { ...fullState, directors } }))).toEqual([{ name: "김대표" }, { name: "이대표" }, ...directors]);
+  expect(officers(entity({ current: { ...fullState, directors: [] } }))).toHaveLength(2);
+  expect(officers(entity({ current: { ...fullState, representatives: null, directors } }))).toEqual(directors);
+  expect(officers(entity({ current: { ...fullState, representatives: [], directors: [] } }))).toEqual([]);
+  expect(officers(entity({ current: null }))).toEqual([]);
+  expect(officers(entity({ biz_kind: "INDIVIDUAL", current: { ...fullState, directors } }))).toEqual([{ name: "김대표" }, { name: "이대표" }]);
 });

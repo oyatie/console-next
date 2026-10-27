@@ -72,7 +72,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
 
   // 3. A second workplace with its own (branch) registration, from the entity's page.
   await registerBranch(admin, "가나솔루션", "판교지점", REGISTRATION_FIXTURES.branch_primary.brn, false, c);
-  await c.click(admin.getByRole("button", { name: /^사업장 2/ }));
+  await c.click(admin.getByRole("tab", { name: /^사업장 2/ }));
   await expect(admin.getByRole("row", { name: new RegExp(`판교지점 .*${brnDisplay(REGISTRATION_FIXTURES.branch_primary.brn)}`) })).toBeVisible();
   await expectAccessible(admin, "entity workplaces");
   expect(c.done("second workplace (own registration)")).toBeLessThanOrEqual(BUDGET.branch);

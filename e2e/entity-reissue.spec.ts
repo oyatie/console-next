@@ -14,8 +14,8 @@ const PDF = (tag: string) => ({ name: `사업자등록증-${tag}.pdf`, mimeType:
 // Keep this fixture synthetic while using the corporation code and a matching check digit.
 const REISSUE_ENTITY_IDS = { brn: "0008100009", crn: "0002110006241" };
 const BUSAN = "부산광역시 해운대구 센텀중앙로 79";
-const tabs = (a: Page) => a.getByRole("group", { name: "법인 정보 보기" });
-const tab = (a: Page, name: string) => tabs(a).getByRole("button", { name: new RegExp(`^${name}(?:\\s|$)`) });
+const tabs = (a: Page) => a.getByRole("tablist", { name: "법인 정보 보기" });
+const tab = (a: Page, name: string) => tabs(a).getByRole("tab", { name: new RegExp(`^${name}(?:\\s|$)`) });
 
 test("a new 등록증 changing 대표자 and 소재지 is one dated change every surface shows; the old one stays", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const a = await openTenant(browser, "reissue", "새온그룹");

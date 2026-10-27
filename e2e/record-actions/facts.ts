@@ -12,7 +12,7 @@ export const FACTS: readonly Fact[] = [
     record: "Entity.legal_entity",
     surfaces: [
       { name: "법인 page · header", page: "entity", region: { role: "heading" } },
-      { name: "법인 page · ① card", page: "entity", via: [{ role: "button", name: "사업자등록증", prefix: true }], region: { role: "region", name: "사업자등록증" } },
+      { name: "법인 page · ① card", page: "entity", via: [{ role: "tab", name: "사업자등록증", prefix: true }], region: { role: "region", name: "사업자등록증" } },
       { name: "법인 list · row", page: "entities", region: { role: "grid", name: "법인" } },
       { name: "org chart · node", page: "chart", region: { role: "tree" } },
       { name: "인사카드 · placement", page: "card", region: { role: "group", name: "소속" } },
@@ -49,8 +49,8 @@ export const FACTS: readonly Fact[] = [
     label: "사업장 이름",
     record: "Entity.workplace",
     surfaces: [
-      { name: "법인 page · 사업장 list", page: "entity", via: [{ role: "button", name: "사업장 1", prefix: true }], region: { role: "grid", name: "사업장" } },
-      { name: "법인 page · 사업장 panel", page: "entity", via: [{ role: "button", name: "사업장 1", prefix: true }], region: { role: "complementary" } },
+      { name: "법인 page · 사업장 list", page: "entity", via: [{ role: "tab", name: "사업장 1", prefix: true }], region: { role: "grid", name: "사업장" } },
+      { name: "법인 page · 사업장 panel", page: "entity", via: [{ role: "tab", name: "사업장 1", prefix: true }], region: { role: "complementary" } },
       { name: "법인 page · overview", page: "entity", region: { role: "main" } },
       { name: "org chart · node", page: "chart", region: { role: "tree" } },
       { name: "org chart · side panel", page: "chart", via: [{ role: "treeitem", name: "{workplace}", prefix: true }], region: { role: "complementary" } },

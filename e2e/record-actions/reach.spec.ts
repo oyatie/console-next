@@ -36,7 +36,7 @@ for (const live of [false, true]) {
     const rows: Record<string, string> = { [`비상연락처 ${NAMES.contact}`]: "비상연락처", [NAMES.school]: "학력", [NAMES.career]: "경력" };
     const known = new Set([...FACTS.map((f) => f.label), ...UNTRACKED]);
     const unknown: string[] = [];
-    for (const [page, via] of [["card", []], ["entity", [{ role: "button", name: "사업장 1", prefix: true }]], ["chart", [{ role: "treeitem", name: "{workplace}", prefix: true }]]] as const) {
+    for (const [page, via] of [["card", []], ["entity", [{ role: "tab", name: "사업장 1", prefix: true }]], ["chart", [{ role: "treeitem", name: "{workplace}", prefix: true }]]] as const) {
       await w.admin.keyboard.press("Escape");
       await go(w.admin, pageUrl(w, page));
       for (const s of via) await control(w.admin, s).click();
@@ -52,7 +52,7 @@ for (const live of [false, true]) {
 
 test("planted: an action the UI does not have fails the gate's own assertion, beside a real one that passes", { tag: "@record-actions" }, async ({ browser }) => {
   const w = await soloWorld(browser, "ra-plant", "심음상사", false);
-  const planted: ReachEntry = { record: "Entity.workplace", op: "end", page: "entity", via: [{ role: "button", name: "사업장 1", prefix: true }, { role: "button", name: "사업장 이름 영구 삭제", exact: true }] };
+  const planted: ReachEntry = { record: "Entity.workplace", op: "end", page: "entity", via: [{ role: "tab", name: "사업장 1", prefix: true }, { role: "button", name: "사업장 이름 영구 삭제", exact: true }] };
   const real = REACH.find((e) => e.record === "Entity.workplace" && e.op === "update" && e.page === "entity")!;
   const missed = await missedOf(w, [real, planted], 3_000);
   expect(missed).toEqual([label(planted)]);

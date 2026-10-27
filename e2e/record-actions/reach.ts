@@ -8,7 +8,7 @@
 
 /** One interaction: a control by role and accessible name (`prefix`: the name starts with it, as the org chart's nodes do). */
 /** `any`: the name is one of several "a|b" (the server decides which verb applies: 삭제 while unused, 폐지 once used). */
-export type ReachStep = { role: "button" | "link" | "menuitem" | "treeitem"; name: string; exact?: boolean; prefix?: boolean; any?: boolean; within?: string };
+export type ReachStep = { role: "button" | "link" | "menuitem" | "treeitem" | "tab"; name: string; exact?: boolean; prefix?: boolean; any?: boolean; within?: string };
 /** The record's own page (a route in the world): its list, its record page or the org chart. */
 export type ReachPage = "people" | "card" | "entities" | "entity" | "chart";
 type ReachOp = "create" | "update" | "end";
@@ -26,12 +26,12 @@ export const REACH: readonly ReachEntry[] = [
   { record: "Entity.business_registration", op: "end", page: "entity", via: [b("사업자등록증 · 본점 ", { prefix: true }), { role: "menuitem", name: "삭제", exact: true }], phase: "setup" },
   // 사업장: the same fact rows on the 법인 page's panel and the org chart's (owner: 「사업장 이름은 어떻게 수정해?」)
   { record: "Entity.workplace", op: "create", page: "entity", via: [{ role: "link", name: "사업장 추가" }] },
-  { record: "Entity.workplace", op: "update", page: "entity", via: [b("사업장 1", { prefix: true }), b("사업장 이름 수정", { exact: true, within: "{workplace}" })] },
+  { record: "Entity.workplace", op: "update", page: "entity", via: [{ role: "tab", name: "사업장 1", prefix: true }, b("사업장 이름 수정", { exact: true, within: "{workplace}" })] },
   { record: "Entity.workplace", op: "update", page: "chart", via: [node("{workplace}"), b("사업장 이름 수정", { exact: true })] },
   { record: "Entity.workplace", op: "end", page: "chart", via: [node("{workplace}"), b("사업장 삭제|사업장 폐쇄", { any: true })] },
   // 부서
   { record: "Org.org_unit", op: "create", page: "chart", via: [node("{workplace}"), b("부서 추가", { exact: true })] },
-  { record: "Org.org_unit", op: "update", page: "chart", via: [node("{dept}"), b("부서 이름 수정", { exact: true })] },
+  { record: "Org.org_unit", op: "update", page: "chart", via: [node("{dept}"), b("이름 변경", { exact: true })] },
   { record: "Org.org_unit", op: "end", page: "chart", via: [node("{dept}"), b("부서 삭제|부서 폐지", { any: true })] },
   // 직원 (인사카드)
   { record: "HR.employee", op: "create", page: "people", via: [{ role: "link", name: "직원 등록", exact: true }] },

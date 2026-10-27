@@ -28,7 +28,7 @@ test("a protected workbook is told apart before upload, with how to get a readab
 async function twoEntities(admin: Page) {
   await go(admin, "/org/entities/new");
   await registerEntity(admin, "누리", false, undefined, SECOND);
-  await admin.getByRole("button", { name: /^사업장 \d/ }).click();
+  await admin.getByRole("tab", { name: /^사업장 \d/ }).click();
   await admin.getByRole("link", { name: "사업장 추가" }).first().click();
   await registerWorkplace(admin, "누리", "누리 공장");
   // Setup: each 부서 typed on the chart under its 사업장 applies at once.

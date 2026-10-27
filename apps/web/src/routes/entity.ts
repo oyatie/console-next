@@ -1,4 +1,5 @@
 import { readRequirement } from "./route-reads";
+import { TABS, type Tab } from "../features/entity/domain/tabs";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { app, flag, screen, str } from "./app";
 
@@ -24,7 +25,7 @@ const entity = createRoute({
   path: "/org/entities/$id", staticData: { access: "signed-in" },
   // `wp` opens the workplaces tab with that workplace selected (setup and Home link straight to it). `reissue` opens the
   // certificate reissue sheet for that registration (its one host; the workplace panel on the chart links here).
-  validateSearch: (s: Record<string, unknown>): { wp?: string; as_of?: string; known_at?: string; tab?: "history"; reissue?: string; nts?: string } => ({ wp: str(s.wp), as_of: str(s.as_of), known_at: str(s.known_at), tab: s.tab === "history" ? "history" : undefined, reissue: str(s.reissue), nts: str(s.nts) }),
+  validateSearch: (s: Record<string, unknown>): { wp?: string; as_of?: string; known_at?: string; tab?: Tab; reissue?: string; nts?: string } => ({ wp: str(s.wp), as_of: str(s.as_of), known_at: str(s.known_at), tab: TABS.includes(s.tab as Tab) ? s.tab as Tab : undefined, reissue: str(s.reissue), nts: str(s.nts) }),
   component: lazyRouteComponent(screen(load), "EntityScreen"),
 });
 const newWorkplace = createRoute({ getParentRoute: () => app, path: "/org/entities/$id/workplaces/new", staticData: { access: readRequirement("/org/entities/$id/workplaces/new") }, component: lazyRouteComponent(screen(load), "NewWorkplaceScreen") });

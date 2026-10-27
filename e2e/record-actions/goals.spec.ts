@@ -23,7 +23,7 @@ const GOALS = (w: { entityId: string; personId: string }): Goal[] => [
     goal: "사업장 이름을 바꿔 보세요 (법인 페이지에서)",
     start: (p) => go(p, `/org/entities/${w.entityId}`),
     value: (p) => fact(panel(p), "사업장 이름"),
-    steps: (p) => [p.getByRole("button", { name: /^사업장 1/ }), panel(p).getByRole("button", { name: "사업장 이름 수정", exact: true })],
+    steps: (p) => [p.getByRole("tab", { name: /^사업장 1/ }), panel(p).getByRole("button", { name: "사업장 이름 수정", exact: true })],
   },
   {
     goal: "사업장 이름을 바꿔 보세요 (조직도에서)",
@@ -35,7 +35,7 @@ const GOALS = (w: { entityId: string; personId: string }): Goal[] => [
     goal: "사업장 전화번호를 바꿔 보세요",
     start: (p) => go(p, `/org/entities/${w.entityId}`),
     value: (p) => fact(panel(p), "전화"),
-    steps: (p) => [p.getByRole("button", { name: /^사업장 1/ }), panel(p).getByRole("button", { name: "전화 수정", exact: true })],
+    steps: (p) => [p.getByRole("tab", { name: /^사업장 1/ }), panel(p).getByRole("button", { name: "전화 수정", exact: true })],
   },
   {
     goal: "부서 이름을 바꿔 보세요",

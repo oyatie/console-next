@@ -1,7 +1,5 @@
 // English for `entityRecord.` ids (features/entity/ui/record: the entity record and its edit sheets, spec S3).
 export const enEntityRecord = {
-  "entityRecord.crumb": "Location",
-  "entityRecord.crumbRoot": "Org structure",
   "entityRecord.tabs": "View entity information",
   "entityRecord.tab.overview": "Overview",
   "entityRecord.tab.certificates": "Certificates",

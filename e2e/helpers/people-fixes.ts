@@ -15,7 +15,7 @@ export async function peopleWorld(browser: Browser, slug: string) {
   await go(admin, "/org/entities/new");
   await registerEntity(admin, "사람기술", false, undefined, SECOND);
   const second = new URL(admin.url()).pathname.split("/").pop()!;
-  await admin.getByRole("button", { name: /^사업장 \d/ }).click();
+  await admin.getByRole("tab", { name: /^사업장 \d/ }).click();
   await admin.getByRole("link", { name: "사업장 추가" }).first().click();
   await registerWorkplace(admin, "사람기술", "본사");
   await registerBranch(admin, "사람기술", "분원", "0008512347");

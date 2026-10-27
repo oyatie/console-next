@@ -86,7 +86,7 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
       await go(admin, "/org/entities/new");
       await registerEntity(admin, entity, false, undefined, SECOND);
     }
-    await admin.getByRole("button", { name: /^사업장 \d/ }).click();
+    await admin.getByRole("tab", { name: /^사업장 \d/ }).click();
     await admin.getByRole("link", { name: "사업장 추가" }).first().click();
     await registerWorkplace(admin, entity, place);
   }
