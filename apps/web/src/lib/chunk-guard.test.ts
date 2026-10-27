@@ -3,10 +3,10 @@ import { runInNewContext } from "node:vm";
 import { afterEach, expect, test } from "vitest";
 import { isModuleNotFoundError } from "@tanstack/router-core";
 import { i18n, t } from "@console/i18n";
-import { chunk, isChunkError } from "./chunk-guard";
+import { chunk, isChunkError, localChunk } from "./chunk-guard";
 
 const SRC = readFileSync(new URL("../../public/chunk-guard.js", import.meta.url), "utf8");
-type Guard = { recover(): boolean; loaded(): void; start(): void };
+type Guard = { handled(error: unknown): void; recover(): boolean; loaded(): void; start(): void };
 
 /** One page load of public/chunk-guard.js over a tab's sessionStorage: what it navigated to, and its API. */
 function page(storage: Map<string, string>, entry = "/assets/index-A.js", search = "") {
@@ -25,7 +25,7 @@ function page(storage: Map<string, string>, entry = "/assets/index-A.js", search
   };
   const window = { addEventListener: (type: string, f: (e: unknown) => void) => (listeners[type] = f) } as Record<string, unknown>;
   const document = { querySelectorAll: () => [{ src: `http://localhost${entry}` }] };
-  runInNewContext(SRC, { window, document, location: loc, history, sessionStorage, Date });
+  runInNewContext(SRC, { window, document, location: loc, history, sessionStorage, Date, setTimeout });
   return { navigations, listeners, loc, guard: window.consoleChunkGuard as Guard };
 }
 
@@ -72,7 +72,7 @@ test("the busting parameter keeps the rest of the query as it was written", () =
   expect(page(new Map(), "/assets/index-A.js", "?view=all&_r=123").loc.search).toBe("?view=all");
 });
 
-test("entry assets that fail before the entry runs reload; after it runs, lazy chunks are the bundle's to handle", () => {
+test("entry assets that fail before the entry runs reload; after it runs, lazy chunks are the bundle's to handle", async () => {
   const boot = page(new Map());
   boot.listeners.error!({ target: { tagName: "LINK", rel: "modulepreload" } });
   expect(boot.navigations).toHaveLength(1);
@@ -83,7 +83,20 @@ test("entry assets that fail before the entry runs reload; after it runs, lazy c
   expect(running.navigations).toHaveLength(0);
   // A build's own preload helper reports a failed dynamic import: reload once.
   running.listeners["vite:preloadError"]!({});
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(running.navigations).toHaveLength(1);
+});
+
+test("a locally handled preload rejects to its boundary without reloading the form", async () => {
+  const p = page(new Map());
+  const error = new Error("Importing a module script failed.");
+  const event = { payload: error, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+  p.listeners["vite:preloadError"]!(event);
+  (globalThis as { consoleChunkGuard?: Guard }).consoleChunkGuard = p.guard;
+  await expect(localChunk(Promise.reject(error))).rejects.toBe(error);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(event.defaultPrevented).toBe(true);
+  expect(p.navigations).toEqual([]);
 });
 
 test("the static error screen says what the app's crashed screen says", () => {

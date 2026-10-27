@@ -139,7 +139,7 @@ test("calendar picks refuse bounds and blocked dates and accept an available dat
   closed.props.children[1].props.onOpenChange(true);
   hooks.cursor = 0;
   const tree = DateInput(props);
-  const lazyCalendar = tree.props.children[1].props.children[1].props.children.props.children.props.children;
+  const lazyCalendar = tree.props.children[1].props.children[1].props.children.props.children.props.children.props.children;
   const calendar = DateCalendar(lazyCalendar.props);
   expect(calendar.props.minValue.toString()).toBe("2026-10-01");
   expect(calendar.props.maxValue.toString()).toBe("2026-12-31");

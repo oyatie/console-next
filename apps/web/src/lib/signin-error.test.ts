@@ -15,7 +15,7 @@ test("a dismissed prompt is no error; a fetch fault is the network message; any 
 });
 
 test("a known error code reads from the catalog before the server's message; an unknown one keeps the server's", () => {
-  expect(failureText(new ApiError(409, "stale_revision", "요청을 처리하지 못했습니다."))).toBe(t("common.failed.code.stale_revision"));
+  expect(failureText(new ApiError(403, "tenant_inactive", "요청을 처리하지 못했습니다."))).toBe(t("common.failed.code.tenant_inactive"));
   expect(failureText(new ApiError(409, "something_else", "서버 문구"))).toBe("서버 문구");
 });
 
