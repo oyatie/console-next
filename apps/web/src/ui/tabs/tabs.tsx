@@ -1,8 +1,10 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ReactNode } from "react";
 import { Tab, TabList, TabPanel, Tabs as AriaTabs } from "react-aria-components";
+import { fmtNumber } from "@console/i18n/format";
 import s from "./tabs.module.css";
 
-/** One view: `count` shows after the label (a number, or nothing while it loads: the slot keeps its width). */
+/** Available views only; callers omit refused views using the server's decision. Known nonnegative counts render. */
 export type TabItem = { id: string; label: ReactNode; count?: ReactNode };
 
 /**
@@ -19,18 +21,20 @@ export function Tabs({ label, items, selected, onSelect, renderList, children }:
   renderList?: (list: ReactNode) => ReactNode;
   children: (id: string) => ReactNode;
 }) {
+  if (!items.length) return null;
+  const current = items.some(i => i.id === selected) ? selected : items[0]!.id;
   const list = (
     <TabList aria-label={label} className={s.list}>
       {items.map((i) => (
         <Tab key={i.id} id={i.id} className={s.tab}>
           {i.label}
-          {i.count !== undefined && <span className={s.count}>{i.count}</span>}
+          {i.count !== undefined && <TabCount>{i.count}</TabCount>}
         </Tab>
       ))}
     </TabList>
   );
   return (
-    <AriaTabs selectedKey={selected} onSelectionChange={(k) => onSelect(String(k))} className={s.tabs}>
+    <AriaTabs selectedKey={current} onSelectionChange={(k) => onSelect(String(k))} className={s.tabs}>
       {renderList ? renderList(list) : list}
       {items.map((i) => (
         <TabPanel key={i.id} id={i.id} className={s.panel}>{children(i.id)}</TabPanel>
@@ -47,5 +51,7 @@ export function TabNav({ label, children }: { label: string; children: ReactNode
   return <nav aria-label={label} className={s.list}>{children}</nav>;
 }
 
-/** The count after a tab's label; empty keeps its width while the count loads. */
-export const TabCount = ({ children }: { children?: ReactNode }) => <span className={s.count}>{children}</span>;
+/** Keep unknown counts' layout slots; show zero once the read settles. */
+export const TabCount = ({ children }: { children?: ReactNode }) => <span className={s.count}>
+  {typeof children === "number" && Number.isFinite(children) && children >= 0 ? fmtNumber(children) : null}
+</span>;
