@@ -57,14 +57,7 @@ properties:
   version:
     description: '"code_default", or {"override": <row id>}; null when value is null.'
     nullable: true
-    oneOf:
-    - type: string
-      enum: [code_default]
-    - type: object
-      required: [override]
-      properties:
-        override:
-          $ref: '#/components/schemas/Uuid'
+    allOf: [{$ref: '#/components/schemas/SettingVersionId'}]
   effective_from:
     allOf:
     - $ref: '#/components/schemas/Timestamp'

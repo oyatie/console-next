@@ -43,7 +43,7 @@ responses:
   '403':
     $ref: '#/components/responses/Forbidden'
   '409':
-    description: setting_loosening_too_soon (error.earliest_effective_from), setting_effective_from_taken (write only),
+    description: setting_version_stale (error.current_version), setting_loosening_too_soon (error.earliest_effective_from), setting_effective_from_taken (write only),
       idempotency_key_reused, command_processing, command_applied or command_settled (write admission).
     content:
       application/json:
@@ -61,6 +61,9 @@ responses:
                   type: string
                 earliest_effective_from:
                   $ref: '#/components/schemas/Timestamp'
+                current_version:
+                  allOf: [{$ref: '#/components/schemas/SettingVersionId'}]
+                  nullable: true
   '422':
     $ref: '#/components/responses/ValidationError'
   '503':

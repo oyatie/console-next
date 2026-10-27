@@ -22,6 +22,7 @@ pub fn change(value: Value, effective_from: Option<OffsetDateTime>) -> ChangeSet
         effective_from,
         reason_code: "POLICY_REVIEW".to_owned(),
         reason_note: Some("quarterly review".to_owned()),
+        expected_version: None,
         step_up_assertion_id: None,
     }
 }
@@ -54,6 +55,10 @@ pub fn err_code(err: &PgSettingsError) -> &'static str {
     match err {
         PgSettingsError::Domain(KernelError { code: Some(c), .. })
         | PgSettingsError::TooSoon {
+            error: KernelError { code: Some(c), .. },
+            ..
+        }
+        | PgSettingsError::Stale {
             error: KernelError { code: Some(c), .. },
             ..
         } => c,

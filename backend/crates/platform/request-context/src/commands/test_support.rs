@@ -201,6 +201,9 @@ pub async fn body(response: Response) -> Value {
 }
 async fn apply(f: Fixture, body: Value) -> Response {
     let mode = body.get("mode").and_then(Value::as_str).unwrap_or("ok");
+    if mode == "preview" {
+        return axum::Json(json!({"preview": true})).into_response();
+    }
     if mode == "hold" {
         f.entered.notify_one();
         f.release.notified().await;

@@ -13878,6 +13878,10 @@ const SETTINGS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../settings/rest/openapi/schemas/SettingValue.yaml"),
     },
     NamedYaml {
+        name: "SettingVersionId",
+        body: include_str!("../../settings/rest/openapi/schemas/SettingVersionId.yaml"),
+    },
+    NamedYaml {
         name: "TenantReasonCode",
         body: include_str!("../../settings/rest/openapi/schemas/TenantReasonCode.yaml"),
     },

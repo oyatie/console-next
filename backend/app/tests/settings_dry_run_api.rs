@@ -165,3 +165,6 @@ async fn dry_run_domain_refusals_match_write_and_expose_earliest(pool: PgPool) {
         }
     }
 }
+
+#[path = "settings_dry_run_api/plan.rs"]
+mod plan;

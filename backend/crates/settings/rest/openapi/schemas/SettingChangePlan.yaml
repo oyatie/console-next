@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
 additionalProperties: false
-required: [key, scope_entity_id, value, effective_from, direction, path, requires, earliest_effective_from]
+required: [key, scope_entity_id, value, effective_from, direction, path, requires, earliest_effective_from, in_force, reaches]
 properties:
   key:
     type: string
@@ -32,3 +32,31 @@ properties:
         enum: [false]
   earliest_effective_from:
     $ref: '#/components/schemas/Timestamp'
+  in_force:
+    type: object
+    additionalProperties: false
+    description: Value and deciding scope at the request's current time, independent of scheduled changes.
+    required: [value, version, scope_entity_id]
+    properties:
+      value:
+        allOf: [{$ref: '#/components/schemas/SettingValue'}]
+        nullable: true
+      version:
+        allOf: [{$ref: '#/components/schemas/SettingVersionId'}]
+        nullable: true
+      scope_entity_id:
+        allOf: [{$ref: '#/components/schemas/Uuid'}]
+        nullable: true
+  reaches:
+    type: object
+    additionalProperties: false
+    required: [scope_entity_id, keeps_own_value]
+    properties:
+      scope_entity_id:
+        allOf: [{$ref: '#/components/schemas/Uuid'}]
+        nullable: true
+      keeps_own_value:
+        type: array
+        description: Descendant scopes with their own override in force at effective_from.
+        items:
+          $ref: '#/components/schemas/Uuid'

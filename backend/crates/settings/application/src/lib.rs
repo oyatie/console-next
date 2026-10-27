@@ -14,8 +14,8 @@ pub mod reason_codes;
 pub use plan::{ChangeError, SettingChangePlan, plan_setting};
 
 use console_kernel_core::{
-    AuditAction, AuditEvent, AuditRequestContext, KernelError, OrgId, Timestamp, TraceContext,
-    UserId,
+    AuditAction, AuditEvent, AuditRequestContext, KernelError, OrgId, SettingVersionId, Timestamp,
+    TraceContext, UserId,
 };
 use console_settings_domain::code_lists::ValidReason;
 use console_settings_domain::{Direction, OverrideRow, SettingKey, SettingValue};
@@ -26,8 +26,8 @@ use uuid::Uuid;
 /// The audit action recorded for every accepted change.
 pub const SETTING_CHANGE_AUDIT_ACTION: &str = "settings.override_insert";
 
-/// Facts the store reads at the start of the change, from the database's
-/// clock, so the domain check and the `BEFORE INSERT` trigger see one `now`.
+/// Facts read from the database's clock after write serialization, so a
+/// waiting writer checks versions that became effective while it waited.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StoreFacts {
     pub now: Timestamp,
@@ -84,6 +84,14 @@ pub trait SettingsStore {
         entity: Option<Uuid>,
     ) -> impl Future<Output = Result<Vec<OverrideRow>, KernelError>> + Send;
 
+    /// Descendant scopes with an override in force at the proposed effective time.
+    fn keeps_own_value(
+        &mut self,
+        key: SettingKey,
+        entity: Option<Uuid>,
+        as_of: Timestamp,
+    ) -> impl Future<Output = Result<Vec<Uuid>, KernelError>> + Send;
+
     fn insert(
         &mut self,
         row: NewOverride,
@@ -102,6 +110,7 @@ pub struct ChangeSetting {
     pub reason_code: String,
     pub reason_note: Option<String>,
     pub step_up_assertion_id: Option<Uuid>,
+    pub expected_version: Option<SettingVersionId>,
 }
 
 /// Who acts, and the request trace for the audit row.

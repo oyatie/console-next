@@ -27539,6 +27539,17 @@ export interface components {
                 second_person: false;
             };
             earliest_effective_from: components["schemas"]["Timestamp"];
+            /** @description Value and deciding scope at the request's current time, independent of scheduled changes. */
+            in_force: {
+                value: components["schemas"]["SettingValue"] | null;
+                version: components["schemas"]["SettingVersionId"] | null;
+                scope_entity_id: components["schemas"]["Uuid"] | null;
+            };
+            reaches: {
+                scope_entity_id: components["schemas"]["Uuid"] | null;
+                /** @description Descendant scopes with their own override in force at effective_from. */
+                keeps_own_value: components["schemas"]["Uuid"][];
+            };
         };
         SettingChangeRequest: {
             value: components["schemas"]["SettingValue"];
@@ -27547,6 +27558,8 @@ export interface components {
             reason_code: components["schemas"]["ReasonCode"];
             reason_note?: string;
             step_up_assertion_id?: components["schemas"]["Uuid"];
+            /** @description Version read at the request scope now; a mismatch returns 409 setting_version_stale. Omit to retain unconditional writes. */
+            expected_version?: components["schemas"]["SettingVersionId"];
         };
         /** @enum {string} */
         SettingDirection: "tighten" | "loosen" | "neutral";
@@ -27578,9 +27591,7 @@ export interface components {
             /** @description Null for a tenant fact not declared yet. */
             value: components["schemas"]["SettingValue"] | null;
             /** @description "code_default", or {"override": <row id>}; null when value is null. */
-            version: ("code_default" | {
-                override: components["schemas"]["Uuid"];
-            }) | null;
+            version: components["schemas"]["SettingVersionId"] | null;
             effective_from: components["schemas"]["Timestamp"] | null;
             scheduled: {
                 id: components["schemas"]["Uuid"];
@@ -27607,6 +27618,9 @@ export interface components {
         };
         /** @description A number, boolean or code, by the key's kind. */
         SettingValue: number | boolean | string;
+        SettingVersionId: "code_default" | {
+            override: components["schemas"]["Uuid"];
+        };
         /** @description Without revision the entity's name stays; with it, the registration's 상호 becomes the name by that dated 정정 (its name must be the review's registration_name). */
         SettleNameReviewRequest: {
             revision?: components["schemas"]["LegalEntityRevisionRequest"];
@@ -55638,7 +55652,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description setting_loosening_too_soon (error.earliest_effective_from), setting_effective_from_taken (write only), idempotency_key_reused, command_processing, command_applied or command_settled (write admission). */
+            /** @description setting_version_stale (error.current_version), setting_loosening_too_soon (error.earliest_effective_from), setting_effective_from_taken (write only), idempotency_key_reused, command_processing, command_applied or command_settled (write admission). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -55649,6 +55663,7 @@ export interface operations {
                             code: string;
                             message: string;
                             earliest_effective_from?: components["schemas"]["Timestamp"];
+                            current_version?: components["schemas"]["SettingVersionId"] | null;
                         };
                     };
                 };

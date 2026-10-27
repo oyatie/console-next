@@ -20,6 +20,7 @@ struct Fake {
     inserted: usize,
     step_up_reads: usize,
     onboarding: bool,
+    verified: bool,
 }
 impl SettingsStore for Fake {
     async fn facts(&mut self) -> Result<StoreFacts, KernelError> {
@@ -44,7 +45,7 @@ impl SettingsStore for Fake {
         _: &SettingValue,
     ) -> Result<bool, KernelError> {
         self.step_up_reads += 1;
-        Ok(false)
+        Ok(self.verified)
     }
     async fn rows(
         &mut self,
@@ -53,6 +54,15 @@ impl SettingsStore for Fake {
     ) -> Result<Vec<OverrideRow>, KernelError> {
         Ok(self.rows.clone())
     }
+    async fn keeps_own_value(
+        &mut self,
+        _: SettingKey,
+        _: Option<Uuid>,
+        _: Timestamp,
+    ) -> Result<Vec<Uuid>, KernelError> {
+        Ok(Vec::new())
+    }
+
     async fn insert(
         &mut self,
         _: NewOverride,
@@ -80,11 +90,14 @@ fn cmd(value: Value) -> ChangeSetting {
         reason_code: "POLICY_REVIEW".into(),
         reason_note: None,
         step_up_assertion_id: None,
+        expected_version: None,
     }
 }
 fn refused(error: ChangeError) -> KernelError {
     match error {
-        ChangeError::Refused(e) | ChangeError::TooSoon { error: e, .. } => e,
+        ChangeError::Refused(e)
+        | ChangeError::TooSoon { error: e, .. }
+        | ChangeError::Stale { error: e, .. } => e,
     }
 }
 
@@ -212,4 +225,65 @@ async fn onboarding_and_neutral_report_only_current_enforcement() {
         assert_eq!(plan.requires.step_up, step_up);
         assert_eq!(plan.earliest_effective_from, NOW);
     }
+}
+
+#[tokio::test]
+async fn a_write_stores_only_a_verified_step_up_id_and_a_preview_stores_none() {
+    for (dry_run, verified) in [(false, false), (false, true), (true, true)] {
+        let mut store = Fake {
+            verified,
+            ..Fake::default()
+        };
+        let mut change = cmd(json!(20));
+        let ceremony = Uuid::new_v4();
+        change.step_up_assertion_id = Some(ceremony);
+        let (_, row) = plan_setting(
+            &mut store,
+            |facts| {
+                assert_eq!(facts.step_up, dry_run || verified);
+                Ok(())
+            },
+            actor(),
+            change,
+            dry_run,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            row.step_up_assertion_id,
+            if !dry_run && verified {
+                Some(ceremony)
+            } else {
+                None
+            }
+        );
+        assert_eq!(store.step_up_reads, usize::from(!dry_run));
+    }
+}
+
+#[tokio::test]
+async fn undeclared_facts_report_null_and_refuse_an_expected_default_version() {
+    let mut change = cmd(json!(true));
+    change.key = "corporate.small_company_383_proviso".into();
+    change.effective_from = Some(NOW + LOOSENING_DELAY);
+    let (plan, _) = plan_setting(
+        &mut Fake::default(),
+        |_| Ok(()),
+        actor(),
+        change.clone(),
+        true,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        serde_json::to_value(plan).unwrap()["in_force"],
+        json!({"value": null, "version": null, "scope_entity_id": null})
+    );
+    change.expected_version = Some(console_kernel_core::SettingVersionId::CodeDefault);
+    let error = plan_setting(&mut Fake::default(), |_| Ok(()), actor(), change, true)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(error, ChangeError::Stale { current_version: None, error } if error.code == Some("setting_version_stale"))
+    );
 }

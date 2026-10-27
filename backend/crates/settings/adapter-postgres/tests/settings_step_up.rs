@@ -23,6 +23,7 @@ async fn random_uuid_step_up_is_refused_for_loosening_and_writes_no_row(pool: Pg
         effective_from: Some(later),
         reason_code: "POLICY_REVIEW".to_owned(),
         reason_note: None,
+        expected_version: None,
         step_up_assertion_id: Some(Uuid::new_v4()),
     };
     let err = store
@@ -80,6 +81,7 @@ async fn real_settings_change_step_up_permits_loosening_and_writes_row(pool: PgP
         effective_from: Some(later),
         reason_code: "POLICY_REVIEW".to_owned(),
         reason_note: None,
+        expected_version: None,
         step_up_assertion_id: Some(ceremony_id),
     };
     let view = store
@@ -120,6 +122,7 @@ async fn unknown_reason_code_is_refused_and_writes_no_row(pool: PgPool) {
         effective_from: None,
         reason_code: "UNKNOWN_REASON_CODE".to_owned(),
         reason_note: None,
+        expected_version: None,
         step_up_assertion_id: None,
     };
     let err = store
@@ -135,4 +138,27 @@ async fn unknown_reason_code_is_refused_and_writes_no_row(pool: PgPool) {
             .await
             .unwrap();
     assert_eq!(count, 0);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tightening_does_not_persist_an_unverified_step_up_id(pool: PgPool) {
+    let (actor, store) = tenant(&pool).await;
+    let mut cmd = change(json!(20), None);
+    cmd.step_up_assertion_id = Some(Uuid::new_v4());
+    let view = store
+        .change_setting(actor, cmd, audit(), |facts| {
+            assert!(!facts.step_up);
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let saved: Option<Uuid> = sqlx::query_scalar(
+        "SELECT step_up_assertion_id FROM tenant_setting_overrides WHERE org_id=$1 AND id=$2",
+    )
+    .bind(actor.org.as_uuid())
+    .bind(view.id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(saved, None);
 }
