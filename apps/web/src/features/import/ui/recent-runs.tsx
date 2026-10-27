@@ -3,10 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtZonedDateTime } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
-import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
 import { Table } from "../../../ui/table";
 import { runsQuery } from "../api";
-import { STATUS_TONE, statusLabel } from "../present";
+import { IMPORT_RUN_STATUS } from "../../../lib/labels";
 
 /** Recent applied imports, each opening its stored result on the import screen. */
 export function RecentRuns() {
@@ -26,7 +26,7 @@ export function RecentRuns() {
               rowId={(r) => r.id}
               columns={[
                 { header: t("importRollback.runs.col.file"), cell: (r) => <Link to="/people/import" search={{ run: r.id }}>{r.source_filename}</Link> },
-                { header: t("importRollback.runs.col.status"), cell: (r) => <Chip tone={STATUS_TONE[r.status]}>{statusLabel(r.status)}</Chip>, fit: true },
+                { header: t("importRollback.runs.col.status"), cell: (r) => <EnumValue e={IMPORT_RUN_STATUS} value={r.status} />, fit: true },
                 { header: t("importRollback.runs.col.applied"), cell: (r) => r.applied_at ? <time className="num" dateTime={r.applied_at}>{fmtZonedDateTime(r.applied_at)}</time> : "—", fit: true },
                 { header: t("importRollback.runs.col.counts"), cell: (r) => r.apply_summary ? t("importRollback.runs.counts", { inserted: r.apply_summary.inserted, updated: r.apply_summary.updated }) : "—", fit: true, wide: true },
               ]}

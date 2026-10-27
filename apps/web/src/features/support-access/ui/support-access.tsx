@@ -16,7 +16,8 @@ import { Field, TextInput } from "../../../ui/field/field";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { Table } from "../../../ui/table";
-import { codeText } from "../../../lib/labels";
+import { codeText, SUPPORT_SESSION_STATE } from "../../../lib/labels";
+import { EnumValue } from "../../../ui/enum-value";
 import { buttonClass } from "../../../ui/button/button-class";
 import { ApiError, activeSupportQuery, decideSupportSession, endSupportSession, session, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../../../reference/support-access/api";
 import styles from "./support-access.module.css";
@@ -28,8 +29,6 @@ const decisionText = (decision: string) => {
   const key = `supportAccess.decision.${decision}`;
   return isMessageId(key) ? t(key) : t("enum.unknown");
 };
-
-const stateText = (state:string) => {const key=`supportAccess.state.${state}`;return isMessageId(key)?t(key):t("enum.unknown");};
 
 /** Visible on every tenant page; the shell's SSE stream invalidates this read. */
 export function ActiveSupportBanner() {
@@ -83,7 +82,7 @@ function SessionsList({ data }: { data: Sessions }) {
   return <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current} onSelect={(id) => void navigate({ search: { review: id }, replace: true })}
     columns={[
       { header: t("supportAccess.operator"), cell: (s) => <>{s.operator_label}<div className="muted">{s.ticket_ref}</div></> },
-      { header: t("supportAccess.state"), cell: (s) => <Chip tone={s.state === "ACTIVE" ? "warn" : "neutral"}>{stateText(s.state)}</Chip> },
+      { header: t("supportAccess.state"), cell: (s) => <EnumValue e={SUPPORT_SESSION_STATE} value={s.state} /> },
       { header: t("supportAccess.reason"), cell: (s) => s.reason, wide: true },
       { header: t("supportAccess.requestedAt"), cell: (s) => fmtDateTime(s.requested_at), wide: true },
     ]}

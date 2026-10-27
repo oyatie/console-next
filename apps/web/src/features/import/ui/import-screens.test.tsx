@@ -9,6 +9,9 @@ import { ApiError } from "../api";
 import { loadCatalog, t } from "@console/i18n";
 import type { ImportDryRun, ImportPreview, ImportRow, ReviewItem } from "../domain/contract";
 import { initialPicks } from "../domain/steps";
+import { EnumValue } from "../../../ui/enum-value";
+import * as enums from "../../../lib/labels";
+import { DryRows } from "./dry-rows";
 import { PreviewStep } from "./preview-step";
 import { ReviewResolve } from "./review-resolve";
 import { RowDetail } from "./row-detail";
@@ -17,6 +20,11 @@ import { DoneStep } from "./done-step";
 import { RecentRuns } from "./recent-runs";
 import { RollbackPanel } from "./rollback-panel";
 import { rollbackPreviewQuery, rollbackReasonsQuery, ROLLBACK_REASONS, applyJobQuery, runQuery, runsQuery, type ImportRun, type RollbackPreview } from "../api";
+
+vi.mock("../../../ui/enum-value", async (original) => {
+  const actual = await original<typeof import("../../../ui/enum-value")>();
+  return { ...actual, EnumValue: vi.fn(actual.EnumValue) };
+});
 
 const rollbackState = vi.hoisted(() => ({ acknowledged: false }));
 vi.mock("react", async (original) => {
@@ -302,4 +310,27 @@ test("governed rollback names passkey verification on the action and still requi
   const out = await rollbackScreen(recordedRun, { ...rollbackPlan, mode: "GOVERNED", basis: "STEP_UP" });
   expect(out).toMatch(/<button[^>]*disabled[^>]*>패스키로 확인하고 되돌리기<\/button>/);
   expect(out).toContain(t("importRollback.reason"));
+});
+
+test("import run and outcome statuses render through the shared EnumValue", async () => {
+  vi.mocked(EnumValue).mockClear();
+  const recorded = await recordedScreen(<><RecentRuns /><DoneStep runId={recordedRun.id} /></>);
+  expect(recorded).toContain('<span class="chip chip--ok">반영됨</span>');
+  expect(vi.mocked(EnumValue).mock.calls.filter(([p]) => p.e === enums.IMPORT_RUN_STATUS)).toHaveLength(2);
+  vi.mocked(EnumValue).mockClear();
+  html(<DryRows rows={[row({ outcome: "refused" })]} />);
+  expect(vi.mocked(EnumValue).mock.calls.some(([p]) => p.e === enums.IMPORT_OUTCOME && p.value === "refused")).toBe(true);
+});
+
+test("sheet statuses use EnumValue while remembered skips and classification effects retain their words", () => {
+  vi.mocked(EnumValue).mockClear();
+  const out = html(renderPreview({ ...preview, sheets: [
+    ...preview.sheets,
+    { name: "보관", status: "skipped", source: "remembered", rows: 1 },
+  ], columns: [...preview.columns, { ...preview.columns[1]!, target: "name" }] }));
+  expect(vi.mocked(EnumValue).mock.calls.filter(([p]) => p.e === enums.IMPORT_SHEET_STATUS).map(([p]) => p.value)).toEqual(["mapped", "needs_mapping"]);
+  expect(out).toContain('<span class="chip chip--neutral">지난번에 건너뛴 시트</span>');
+  expect(out).toContain('<span class="chip chip--warn">저장하지 않음</span>');
+  expect(out).toContain('<span class="chip chip--warn">가려서 보관 · 원본에 남기지 않음</span>');
+  expect(out).toContain('<span class="chip chip--ok">직원 정보로 반영</span>');
 });

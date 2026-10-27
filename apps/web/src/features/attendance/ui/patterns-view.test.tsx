@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { type Pattern } from "../api";
+import { EnumValue } from "../../../ui/enum-value";
 import { PatternsView } from "./patterns-view";
 
 const pattern: Pattern = {
@@ -41,4 +42,15 @@ test("served patterns keep their add, retire and retired-record controls", () =>
   expect(html).toContain(t("attendancePatterns.types.retireOne", { name: pattern.name }));
   expect(html).toContain(t("attendancePatterns.types.showRetired"));
   expect(html).not.toContain("종료한 근무");
+});
+
+vi.mock("../../../ui/enum-value", async (original) => {
+  const actual = await original<typeof import("../../../ui/enum-value")>();
+  return { ...actual, EnumValue: vi.fn(actual.EnumValue) };
+});
+
+test("pattern statuses delegate the served word and tone to EnumValue", () => {
+  vi.mocked(EnumValue).mockClear();
+  expect(renderPatterns()).toContain('<span class="chip chip--ok">사용 중</span>');
+  expect(vi.mocked(EnumValue).mock.calls.map(([p]) => [p.e.type, p.value])).toEqual([["attendancePatternStatus", "ACTIVE"]]);
 });

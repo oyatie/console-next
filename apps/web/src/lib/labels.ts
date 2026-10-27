@@ -8,10 +8,10 @@ import { isMessageId, t } from "@console/i18n";
 type S = components["schemas"];
 type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
 export type Labeled = { label: string; tone?: Tone; code?: string };
-export type Enum<V extends string = string> = { type: string; values: readonly V[]; tone?: Partial<Record<V, Tone>>; extensible?: boolean };
+export type Enum<V extends string = string> = { type: string; values: readonly V[]; tone?: Partial<Record<V, Tone>>; extensible?: boolean; message?: (value: string) => string };
 
 const values = <V extends string>(type: string, v: readonly V[]): Enum<V> => ({ type, values: v });
-const toned = <V extends string>(type: string, tone: Record<V, Tone>): Enum<V> => ({ type, values: Object.keys(tone) as V[], tone });
+const toned = <V extends string>(type: string, tone: Record<V, Tone>, message?: Enum["message"]): Enum<V> => ({ type, values: Object.keys(tone) as V[], tone, message });
 
 export const ROLE = values("role", ["SUPER_ADMIN", "EXECUTIVE", "ADMIN", "MEMBER", "MECHANIC", "RECEPTIONIST"]);
 export const ACCOUNT_STATUS = toned<S["AccountStatus"]>("accountStatus", { ACTIVE: "ok", PENDING_SETUP: "warn", ARCHIVED: "neutral" });
@@ -47,6 +47,22 @@ export const JOB_TITLE_KIND = values<S["JobTitleKind"]>("jobTitleKind", ["GRADE"
 export const UNIT_KIND = values("unitKind", ["COMPANY", "SITE", "DEPARTMENT", "TEAM"]);
 export const UNIT_STATUS = toned("unitStatus", { ACTIVE: "ok", DISSOLVED: "neutral" });
 export const IMPORT_CLASSIFICATION = toned("importClassification", { canonical: "ok", retained: "neutral", restricted: "warn", location: "info" });
+// Existing domain catalogs keep their wording while the registry owns every tone.
+export const IMPORT_OUTCOME = toned<S["EmployeeImportPlannedRow"]["outcome"]>("importOutcome", {
+  insert: "ok", update: "info", unchanged: "neutral", excluded: "neutral", refused: "danger", unresolved_identity: "warn",
+}, v => `import.outcome.${v}`);
+export const IMPORT_RUN_STATUS = toned<S["EmployeeImportRun"]["status"] | "PREVIEW">("importRunStatus", {
+  PREVIEW: "neutral", PREVIEWED: "neutral", DRY_RUN: "neutral", APPLIED: "ok", FAILED: "danger", ROLLBACK_REQUESTED: "warn", ROLLBACK_RUNNING: "warn", ROLLED_BACK: "neutral",
+}, v => v === "FAILED" ? "importJob.failed" : `import.status.${v === "PREVIEWED" ? "PREVIEW" : v}`);
+export const IMPORT_SHEET_STATUS = toned<S["EmployeeImportSheetReport"]["status"]>("importSheetStatus", {
+  mapped: "ok", needs_mapping: "danger", empty: "neutral", skipped: "neutral",
+}, v => `importSheet.status.${v}`);
+export const SUPPORT_SESSION_STATE = { ...toned("supportSessionState", {
+  REQUESTED: "neutral", OPERATOR_APPROVED: "neutral", ACTIVE: "warn", ENDED: "neutral", EXPIRED: "neutral", DENIED: "neutral", REVOKED: "neutral",
+}, v => `supportAccess.state.${v}`), extensible: true };
+export const ATTENDANCE_PATTERN_STATUS = toned<S["AttendancePattern"]["status"]>("attendancePatternStatus", {
+  ACTIVE: "ok", RETIRED: "neutral",
+}, v => `attendancePatterns.patternStatus.${v}`);
 export const IMPORT_TARGET = values<NonNullable<S["EmployeeImportColumn"]["target"]>>("importTarget", [
   "name",
   "employee_number",
@@ -94,7 +110,7 @@ export const ID_TYPE = values("idType", ["RRN", "ARC", "DOMESTIC_RESIDENCE", "NO
 export const PROBATION_STATE = toned("probationState", { NONE: "neutral", RUNNING: "info", DUE_SOON: "warn", OVERDUE: "danger", CONFIRMED: "ok" });
 
 const known = (e: Enum, v: string) => {
-  const id = `enum.${e.type}.${v}`;
+  const id = e.message?.(v) ?? `enum.${e.type}.${v}`;
   return isMessageId(id) ? t(id) : null;
 };
 // Legal entities, registrations and workplaces (pending contract).

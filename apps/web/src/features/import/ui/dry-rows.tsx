@@ -8,7 +8,9 @@ import { Chip } from "../../../ui/chip";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import type { ImportRow } from "../domain/contract";
 import { filterRows, needsLook, OUTCOMES, tally, type RowFilter } from "../domain/steps";
-import { employeeStatusLabel, matchedLabel, numberSourceLabel, OUTCOME_TONE, outcomeLabel } from "../present";
+import { employeeStatusLabel, matchedLabel, numberSourceLabel, outcomeLabel } from "../present";
+import { IMPORT_OUTCOME } from "../../../lib/labels";
+import { EnumValue } from "../../../ui/enum-value";
 import { RowDetail } from "./row-detail";
 import s from "./import.module.css";
 
@@ -48,7 +50,7 @@ export function DryRows({ rows }: { rows: readonly ImportRow[] }) {
     { id: "name", header: t("import.rows.col.name"), cell: (r) => r.name, rowHeader: true, width: "1fr" },
     { id: "status", header: t("import.rows.col.status"), cell: (r) => (r.new_person ? employeeStatusLabel(r.new_person.status) : "—"), width: 96 },
     { id: "place", header: t("import.rows.col.place"), cell: place, width: "2fr" },
-    { id: "outcome", header: t("import.rows.col.outcome"), cell: (r) => <Chip tone={OUTCOME_TONE[r.outcome]}>{outcomeLabel(r.outcome)}</Chip>, width: 120 },
+    { id: "outcome", header: t("import.rows.col.outcome"), cell: (r) => <EnumValue e={IMPORT_OUTCOME} value={r.outcome} />, width: 120 },
     { id: "matched", header: t("import.rows.col.matched"), cell: (r) => (r.matched_by ? matchedLabel(r.matched_by) : "—"), width: 110 },
   ];
   const title = t("import.rows.title");

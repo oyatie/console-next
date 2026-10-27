@@ -7,7 +7,6 @@ export type ImportPreview = S["EmployeeImportPreviewResponse"];
 export type ImportColumn = ImportPreview["columns"][number];
 export type Classification = ImportColumn["classification"];
 export type ImportSheet = S["EmployeeImportSheetReport"];
-export type SheetStatus = ImportSheet["status"];
 export type ImportDryRun = Omit<S["EmployeeImportDryRunSummary"], "decisions" | "review"> & { decisions: ImportDecisions; review: Omit<S["EmployeeImportDryRunSummary"]["review"], "items"> & { items: ReviewItem[] } };
 export type ImportRow = S["EmployeeImportPlannedRow"];
 export type ImportOutcome = ImportRow["outcome"];

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { EnumValue } from "../../../ui/enum-value";
 import type { ReactNode } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -163,4 +164,17 @@ test("a revoked approver cannot retain cached support details or controls after 
   expect(html).not.toContain(session.operator_label);
   expect(html).not.toContain(">supportAccess.approve</button>");
   expect(html).not.toContain(">supportAccess.deny</button>");
+});
+
+vi.mock("../../../ui/enum-value", async original => {
+  const actual = await original<typeof import("../../../ui/enum-value")>();
+  return { ...actual, EnumValue: vi.fn(actual.EnumValue) };
+});
+
+test.each(["REQUESTED", "OPERATOR_APPROVED", "ACTIVE", "ENDED", "EXPIRED", "DENIED", "REVOKED"])("support session %s renders through EnumValue", value => {
+  state.data = { sessions: [{ ...session, state: value }], can_approve: false };
+  vi.mocked(EnumValue).mockClear();
+  const out = renderToStaticMarkup(<SupportAccess />);
+  expect(vi.mocked(EnumValue).mock.calls.map(([p]) => [p.e.type, p.value])).toEqual([["supportSessionState", value]]);
+  expect(out).toContain(`<span class="chip chip--${value === "ACTIVE" ? "warn" : "neutral"}">supportAccess.state.${value}</span>`);
 });
