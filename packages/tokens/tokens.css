@@ -43,6 +43,7 @@
   --radius-sm: 4px; --radius: 6px; --radius-lg: 10px;
   --row-h: 40px; --rail-w: 220px; --topbar-h: 48px; --panel-w: 440px;
   --qrow-h: 64px; --queue-w: 400px; --card-w: 640px; --sheet-w: 560px;
+  --z-panel: 15;
   --target: 32px; --target-touch: 44px; --chip-h: 22px;
   /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2. */
   --row-h-compact: 32px; --control-h-sm: 36px;
