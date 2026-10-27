@@ -15,4 +15,5 @@
 @media (max-width: 639px) {
   .panel { inset: 0; width: 100%; height: 100dvh; }
   .panel .back { display: inline-flex; align-self: flex-start; }
+  .panel .close { display: none; }
 }

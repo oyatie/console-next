@@ -36,7 +36,7 @@ export function WorkplaceCreateSheet({ e, kinds, setup, onClose, onSaved }: { e:
   return (
     <Sheet
       open
-      wide
+      size="lg"
       kicker={<><MapPin size={14} aria-hidden />{t("workplace.create.kicker", { entity: entityName(e) })}</>}
       title={t("workplace.add")}
       onClose={onClose}

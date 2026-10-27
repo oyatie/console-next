@@ -48,7 +48,7 @@ export function WorkplaceKindsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet
       open
-      wide
+      size="lg"
       kicker={<><Settings2 size={14} aria-hidden />{t("workplace.kinds.kicker")}</>}
       title={t("workplace.kinds.title")}
       onClose={onClose}

@@ -8,11 +8,11 @@ import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Search, Sun, UserRound } from "lucide-react";
 import { logout, session } from "@console/api";
 import { i18n, LOCALES, t, type Locale } from "@console/i18n";
-import { Announcer } from "../ui/announcer";
 import { ChangeNotice } from "../ui/live/change-notice";
 import { HeldNotice } from "../ui/live/held-notice";
 import { LiveStatus } from "../ui/live/live-status";
-import { bindAnnouncer, focusSoon } from "../lib/react/announce";
+import { focusSoon } from "../lib/react/announce";
+import { get } from "../lib/query";
 import { chunk } from "../lib/chunk-guard";
 import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
@@ -25,6 +25,7 @@ import { PageMain } from "../ui/page/page-main";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
+const identityQuery = get("/api/v1/users/me");
 
 export function Shell() {
   const nav = useNavigate();
@@ -32,6 +33,7 @@ export function Shell() {
   const [theme, toggle] = useTheme();
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
   const platform = !!claims?.platform;
+  const identity = useQuery({ ...identityQuery, enabled: !platform && Boolean(session.token) });
   const router = useRouter();
   const access = useQuery({ ...myAccessQuery, enabled: !platform && Boolean(session.token) });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && Boolean(session.token) });
@@ -73,7 +75,7 @@ export function Shell() {
   // One entry lights up across every group: /org/entities is not also the org entry.
   const current = activeLink(pathname, menu.flatMap((g): readonly { to: string }[] => g.links));
   return (
-    <div className="shell" data-menu={open ? "open" : undefined}>
+    <div className="shell" data-menu={open ? "open" : undefined} data-console-scope={platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined)}>
       <a className="skip" href="#main">{t("shell.skip")}</a>
       <nav id="rail" ref={rail} className="rail" aria-label={t("shell.nav")}>
         <div className="rail__brand"><span className="rail__mark" aria-hidden>C</span>{t("app.name")}</div>
@@ -126,7 +128,6 @@ export function Shell() {
           <JumpPalette onClose={() => setJump(false)} />
         </Suspense>
       )}
-      <Announcer bind={bindAnnouncer} />
     </div>
   );
 }

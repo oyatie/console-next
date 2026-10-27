@@ -130,7 +130,7 @@ export function WorkplaceRegistrationChangeSheet(props: {
   return (
     <Sheet
       open
-      wide
+      size="lg"
       kicker={
         <>
           <Building2 size={14} aria-hidden />

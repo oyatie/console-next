@@ -23,6 +23,8 @@ export const bootKo = {
   "timeline.state.operator": "운영사 지원",
 
   "app.name": "콘솔",
+  "app.title.brand": "Console",
+  "common.denied.panel": "이 항목에 접근 권한이 없습니다",
   "shell.skip": "본문 바로가기",
   "shell.main": "본문",
   "shell.nav": "주 메뉴",
@@ -158,6 +160,8 @@ export const bootEn: Record<BootMessageId, string> = {
   "timeline.state.operator": "Operator support",
 
   "app.name": "Console",
+  "app.title.brand": "Console",
+  "common.denied.panel": "You don’t have access to this item",
   "shell.skip": "Skip to content",
   "shell.main": "Main content",
   "shell.nav": "Main menu",

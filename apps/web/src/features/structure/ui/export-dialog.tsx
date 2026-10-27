@@ -71,7 +71,7 @@ export function ExportDialog({ s, onClose }: { s: Structure; onClose: () => void
   return (
     <Sheet
       open
-      wide
+      size="lg"
       title={t(visible ? "structureChart.list.download" : "structure.export.title")}
       subtitle={visible ? undefined : t("structure.export.subtitle")}
       onClose={onClose}

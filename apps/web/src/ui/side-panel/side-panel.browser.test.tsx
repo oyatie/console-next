@@ -45,6 +45,7 @@ test("Chromium: pending reads keep focus, handled/composing Escape stays local, 
   const picker = page.getByRole("button", { name: "Expanded picker" });
   await picker.press("Escape");
   await element(panel).toBeVisible();
+  await element(panel.getByRole("region", { name: "Panel heading" })).toHaveCount(0);
   const heading = panel.getByRole("heading");
   await heading.focus();
   for (const mode of ["handled", "composing"]) {
@@ -81,12 +82,35 @@ test.each([1280, 1279, 640, 639])("Chromium: the panel changes placement at its 
     const layer = await panel.evaluate(el => ({ actual: getComputedStyle(el).zIndex, token: getComputedStyle(document.documentElement).getPropertyValue("--z-panel").trim() }));
     expect(layer.token).not.toBe("");
     expect(layer.actual).toBe(layer.token);
+    if (width < 768) {
+      const railLayer = await page.locator(".rail").evaluate(el => Number(getComputedStyle(el).zIndex));
+      expect(Number(layer.actual)).toBeGreaterThan(railLayer);
+    }
   }
   expect(Math.round(layout.width)).toBe(width < 640 ? width : 440);
   if (width < 640) expect(layout.top).toBe(0);
   await element(panel.getByRole("button", { name: "돌아가기", exact: true })).toBeVisible({ visible: width < 640 });
+  await element(panel.getByRole("button", { name: "상세 패널 닫기", includeHidden: true })).toBeVisible({ visible: width >= 640 });
   // WCAG 2.4.11: the overlay can be dismissed from its focused heading at every narrow width.
   await page.keyboard.press("Escape");
   await element(panel).toHaveCount(0);
   await element(page.getByRole("button", { name: "Open peek", exact: true })).toBeFocused();
+});
+
+test.each([1440, 390])("Chromium: Dialog and Sheet consume size tokens and fit %spx", async width => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}panel-test`);
+  for (const [trigger, token, wanted] of [["Small dialog", "--dialog-w-sm", 400], ["Medium dialog", "--dialog-w-md", 480], ["Default sheet", "--sheet-w", 560], ["Large sheet", "--sheet-w-lg", 728]] as const) {
+    await page.getByRole("button", { name: trigger, exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await element(dialog).toBeVisible();
+    const modal = dialog.locator("..");
+    expect(Math.round((await modal.boundingBox())!.width)).toBe(Math.min(wanted, width - (trigger.includes("dialog") ? 32 : 0)));
+    // A token override must change the rendered size, including the named large-sheet formula.
+    await page.evaluate(([name]) => document.documentElement.style.setProperty(name!, "320px"), [token]);
+    expect(Math.round((await modal.boundingBox())!.width)).toBe(320);
+    await page.keyboard.press("Escape");
+    await element(dialog).toHaveCount(0);
+    await page.evaluate(([name]) => document.documentElement.style.removeProperty(name!), [token]);
+  }
 });

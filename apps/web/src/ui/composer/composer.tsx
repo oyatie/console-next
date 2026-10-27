@@ -20,7 +20,7 @@ export function Composer(p: {
   layout?: "drawer" | "page" | "inline";
   headingLevel?: 2 | 3 | 4;
   open?: boolean;
-  wide?: boolean;
+  size?: "md" | "lg";
   kicker?: ReactNode;
   title: string;
   subtitle?: ReactNode;
@@ -100,7 +100,7 @@ export function Composer(p: {
     {p.onSaveDraft && <Button variant={p.draftTone} disabled={p.pending || p.locked} title={p.localDraft ? t("composer.draftHint") : undefined} onClick={p.onSaveDraft}>{p.draftAction ? commitLabel(p.draftAction) : t("composer.saveDraft")}</Button>}
     {p.onClose && (p.layout === "page" || p.layout === "inline") && <Button variant="ghost" disabled={p.pending} onClick={p.onClose}>{t("composer.dismiss")}</Button>}
   </>}</div>;
-  if (p.layout !== "page" && p.layout !== "inline") return <Sheet open kicker={p.kicker} title={p.title} subtitle={p.subtitle} onClose={() => p.onClose?.()} pending={p.pending} loading={p.loading} locked={p.locked} wide={p.wide} notice={<>{p.notice}{escapeArmed && p.dirty && <p role="status">{t("composer.unsaved")}</p>}</>} consequence={null} actions={actions}>{body}</Sheet>;
+  if (p.layout !== "page" && p.layout !== "inline") return <Sheet open kicker={p.kicker} title={p.title} subtitle={p.subtitle} onClose={() => p.onClose?.()} pending={p.pending} loading={p.loading} locked={p.locked} size={p.size} notice={<>{p.notice}{escapeArmed && p.dirty && <p role="status">{t("composer.unsaved")}</p>}</>} consequence={null} actions={actions}>{body}</Sheet>;
   return <section className={`${s.page} ${p.layout === "page" ? s.fullPage : ""}`} data-composer-root aria-labelledby={p.layout === "page" ? `${id}-title` : undefined}>
     {p.layout === "page" ? <PageHead band title={p.title} titleId={`${id}-title`} crumbs={p.kicker} sub={p.subtitle} tools={p.tools} /> : <header className={s.head}>{p.kicker}<Heading className={s.heading} id={`${id}-title`}>{p.title}</Heading>{p.subtitle != null && <div>{p.subtitle}</div>}</header>}
     <div inert={p.pending || p.locked || undefined}>{body}</div>

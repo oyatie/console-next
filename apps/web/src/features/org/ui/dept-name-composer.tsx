@@ -34,7 +34,7 @@ export function DeptNameComposer({ mode, place, onClose }: { mode: "create" | "r
     kind: "REORG", target: { kind: "ORG_UNIT", ref: d.id, label: t("orgChange.title.rename", { from: d.name, to: value }) }, proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: d.id, name: value }],
   }, gov);
   return <Composer
-    wide={creating}
+    size={creating ? "lg" : "md"}
     kicker={<><Network size={14} aria-hidden />{creating ? t("orgUnit.gov.addKicker", { path: [place.workplace?.name, d.kind === "WORKPLACE" ? undefined : d.name].filter(Boolean).join(" › ") }) : [...place.path, d.name].join(" › ")}</>}
     title={creating ? t("orgUnit.gov.addTitle") : t("orgUnit.rename.titleGoverned", { name: d.name })}
     onClose={onClose}

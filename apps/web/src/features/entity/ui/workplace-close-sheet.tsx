@@ -70,7 +70,7 @@ function Body({ e, view, place, onClose, onAct }: { e: LegalEntity; view: CloseP
   if (shown) {
     const live = shown.state === "SCHEDULED" || shown.state === "WAITING";
     return (
-      <Sheet open wide kicker={kicker} title={t("workplace.close.title", { name })}  onClose={onClose} pending={cancel.isPending}
+      <Sheet open size="lg" kicker={kicker} title={t("workplace.close.title", { name })}  onClose={onClose} pending={cancel.isPending}
         notice={<CommandError error={cancel.error} />}
         consequence={<span>{t(`workplace.close.job.${shown.state}`, { date: fmtDate(shown.closed_on) })}</span>}
         actions={<>
@@ -87,7 +87,7 @@ function Body({ e, view, place, onClose, onAct }: { e: LegalEntity; view: CloseP
   return (
     <Sheet
       open
-      wide
+      size="lg"
       kicker={kicker}
       title={t("workplace.close.title", { name })}
       onClose={onClose}

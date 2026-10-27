@@ -119,7 +119,7 @@ export function GrantSheet({ account, me, ops, cat, roles, setup, onClose, onGra
   return (
     <Sheet
       open
-      wide
+      size="lg"
       title={t("access.grant.title")}
       subtitle={<PersonHead a={account} ops={account.id === ops} />}
       onClose={close}

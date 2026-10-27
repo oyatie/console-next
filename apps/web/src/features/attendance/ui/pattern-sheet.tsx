@@ -67,7 +67,7 @@ function PatternSheetOpen({ open, onClose, onAdded }: { open: boolean; onClose: 
     <Sheet
       open={open}
       title={t("attendancePatterns.types.add")}
-      wide
+      size="lg"
       onClose={onClose}
       pending={run.isPending}
       notice={<CommandError error={run.error} own={refusalText} />}

@@ -57,7 +57,7 @@ export function BulkEditSheet({ rows, entities, onClose }: { rows: EditRow[]; en
   return (
     <Sheet
       open
-      wide
+      size="lg"
       title={t("orgBulk.edit.title", { count: rows.length })}
       subtitle={t("orgBulk.edit.kicker", { count: rows.length, entities })}
       onClose={onClose}

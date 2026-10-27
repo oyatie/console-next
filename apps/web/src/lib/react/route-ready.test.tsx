@@ -2,6 +2,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { RouteFrame } from "./route-ready";
+vi.mock("./announce", () => ({ useRoutePresentation: vi.fn(), bindAnnouncer: vi.fn() }));
+vi.mock("../../ui/announcer", () => ({ Announcer: () => null }));
 
 const state = vi.hoisted(() => ({ location: { href: "/people/person?act=case%3Aevent#case-event", state: { __TSR_key: "entry" } }, status: "idle", isLoading: false, reading: 0 }));
 vi.mock("@tanstack/react-router", () => ({ Outlet: () => null, useRouterState: () => state }));

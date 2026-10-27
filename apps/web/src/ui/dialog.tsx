@@ -7,7 +7,7 @@ import { useLiveHold } from "../lib/live/hold";
  * Modal dialog (React Aria): focus trap, Esc, inert background — and, unlike a native top-layer
  * <dialog>, popovers opened inside it (pickers, menus) layer above it correctly.
  */
-export function Dialog({ open, title, onClose, children, dismissable = true, read = false }: {
+export function Dialog({ open, title, onClose, children, dismissable = true, read = false, size = "md" }: {
   open: boolean;
   title: string;
   onClose: () => void;
@@ -16,11 +16,12 @@ export function Dialog({ open, title, onClose, children, dismissable = true, rea
   dismissable?: boolean;
   /** Reserve the body across a required read's loading, failure and ready states. */
   read?: boolean;
+  size?: "sm" | "md";
 }) {
   useLiveHold(open);
   return (
     <ModalOverlay className="overlay" isOpen={open} onOpenChange={(o) => !o && onClose()} isDismissable={dismissable} isKeyboardDismissDisabled={!dismissable}>
-      <Modal className="dialog card">
+      <Modal className="dialog card" data-size={size}>
         <AriaDialog className={`dialog__body${read ? " dialog__body--read" : ""}`}>
           <Heading slot="title" className="panel__title">{title}</Heading>
           {children}

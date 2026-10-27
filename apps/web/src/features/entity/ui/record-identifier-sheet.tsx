@@ -62,7 +62,7 @@ export function IdentifierSheet({ e: opened, field, registrationId, operating, o
       open
       onClose={onClose}
       pending={save.isPending}
-      wide
+      size="lg"
       title={t("entityRecord.id.title", { field: t(`entityRecord.id.field.${field}`) })}
       subtitle={<><span className={s.kicker}><FileText size={14} aria-hidden /> {where}</span>{t("entityRecord.id.now", { value: old?.display ?? "—" })}</>}
       notice={<>{save.error && <Link to="/org/entities" hash="identifier-corrections" onClick={onClose}>{t("entityRecord.corrections.track")}</Link>}<EntityError error={upload.error ?? save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "identifier_correction_needs_exception" ? t("entityRecord.id.needsOps") : undefined)} /></>}

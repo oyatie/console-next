@@ -10,7 +10,7 @@ function apply(l: Locale) {
   void chunk(loadCatalog(l)).catch(() => undefined);
   i18n.set(l);
   document.documentElement.lang = l;
-  document.title = t("app.name");
+  if (!document.querySelector("h1")) document.title = t("app.name");
   setAcceptLanguage(l);
 }
 

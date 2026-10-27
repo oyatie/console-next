@@ -185,7 +185,7 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
   return (
     <Composer
       open
-      wide
+      size="lg"
       title={t("bulk.title")}
       subtitle={paste ? t("bulk.subtitle.paste") : matching ? t("bulk.matching", matching) : t("bulk.subtitle.selection", { count: source.picked.size })}
       onClose={onClose}

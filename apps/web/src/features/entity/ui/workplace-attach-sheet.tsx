@@ -36,7 +36,7 @@ export function WorkplaceAttachSheet({ e, w, onClose }: { e: LegalEntity; w: Wor
   return (
     <Sheet
       open
-      wide
+      size="lg"
       kicker={<><FileText size={14} aria-hidden />{t("entityOps.attach.kicker", { entity: entityName(e), name })}</>}
       title={t("entityOps.attach.title", { name })}
       onClose={onClose}

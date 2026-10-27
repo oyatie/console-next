@@ -85,7 +85,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
   const status = f.hire > today ? t("register.foot.statusFuture") : t("register.foot.statusNow");
   return (
     <Composer
-      wide
+      size="lg"
       kicker={<><Lock size={12} aria-hidden />{t("register.rehire.kicker", { name: e.name, number: e.employee_number ?? "—" })}</>}
       title={t("register.rehire.title")}
       onClose={onClose}

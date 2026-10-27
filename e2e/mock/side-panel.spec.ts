@@ -44,7 +44,14 @@ for (const theme of ["light", "dark"] as const) {
         if (state === "loading") await expect(panel.getByRole("status")).toHaveAttribute("aria-busy", "true");
         if (state === "empty") await expect(panel.getByRole("heading", { name: "표시할 항목이 없습니다" })).toBeVisible();
         if (state === "failed") await expect(panel.getByRole("alert")).toContainText("불러오지 못했습니다");
-        if (state === "refused") await expect(panel).toContainText("접근 권한이 없습니다");
+        if (state === "refused") {
+          await expect(panel).toContainText("이 항목에 접근 권한이 없습니다");
+          await expect(panel).not.toContainText("이 화면에 접근 권한이 없습니다");
+          await expect(panel).toContainText("gallery-panel-refused");
+          await expect(panel.getByRole("link", { name: "홈으로" })).toHaveCount(0);
+        }
+        await expect(panel.getByRole("button", { name: "상세 패널 닫기", includeHidden: true })).toBeVisible({ visible: width >= 640 });
+        await expect(panel.getByRole("region", { name: await panel.getByRole("heading").first().innerText(), exact: true })).toHaveCount(0);
         if (state === "long") expect(await panel.locator('[tabindex="0"]').evaluate(el => el.scrollHeight - el.clientHeight)).toBeGreaterThan(0);
         const axe = await new AxeBuilder({ page }).include("[data-side-panel]").analyze();
         expect(axe.violations).toEqual([]);
@@ -76,4 +83,34 @@ test("selection survives reload and Back/Forward, and close restores the selecte
   await section.getByRole("button", { name: "상세 패널 닫기" }).click();
   await expect(trigger).toBeFocused();
   await expect(page).toHaveURL(/keep=scope$/);
+});
+
+for (const keep of ["scope", "범위 이름"]) test(`closing a pushed selection lets the first Back leave the list (${keep}); switching records does not stack peeks`, async ({ page }) => {
+  await page.goto("/login");
+  await page.goto(`/_gallery?${new URLSearchParams({ keep })}`);
+  await closeGalleryDock(page);
+  const section = page.locator("[data-side-panel-gallery]");
+  await section.locator('[data-panel-trigger="populated"]').click();
+  await expect(section.getByRole("complementary")).toBeVisible();
+  await section.locator('[data-panel-trigger="empty"]').click();
+  await expect(page).toHaveURL(/sel=empty/);
+  await section.getByRole("button", { name: "상세 패널 닫기" }).click();
+  await expect.poll(() => {
+    const url = new URL(page.url());
+    return [url.pathname, url.searchParams.get("keep"), url.searchParams.has("sel")];
+  }).toEqual(["/_gallery", keep, false]);
+  await expect(section.locator('[data-panel-trigger="empty"]')).toBeFocused();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+test("closing a direct link stays on the list and preserves the preceding page", async ({ page }) => {
+  await page.goto("/login");
+  await page.goto("/_gallery?keep=scope&sel=populated");
+  await closeGalleryDock(page);
+  const section = page.locator("[data-side-panel-gallery]");
+  await section.getByRole("button", { name: "상세 패널 닫기" }).click();
+  await expect(page).toHaveURL(/_gallery\?keep=scope$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/login$/);
 });
