@@ -58,3 +58,20 @@ test("the repository gate uses its own committed contract despite local backend 
   });
   expect(result.status, result.stdout + result.stderr).toBe(0);
 });
+
+test("the separate ops document is generated and its client drift fails closed", () => {
+  const specPath = "backend/openapi/ops.yaml";
+  const opsOut = path.join(dir, "ops-schema.d.ts");
+  writeFileSync(path.join(repo, specPath), spec(200).replace("/a:", "/api/ops/v1/me:"));
+  git("add", "-A");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-qm", "test ops contract");
+  expect(checkApiSchema({ repo, out: opsOut, specPath, write: true }).ok).toBe(true);
+  const good = readFileSync(opsOut, "utf8");
+  expect(good).toMatch(/^\/\/ SPDX-License-Identifier: LicenseRef-Proprietary\n/);
+  expect(good).toContain("/api/ops/v1/me");
+  expect(good).not.toContain('"/a"');
+  expect(checkApiSchema({ repo, out: opsOut, specPath }).ok).toBe(true);
+  writeFileSync(opsOut, good.replace("200:", "201:"));
+  expect(checkApiSchema({ repo, out: opsOut, specPath })).toMatchObject({ ok: false, message: expect.stringContaining("api schema drift") });
+  expect(checkApiSchema({ repo, out: opsOut, specPath: "backend/openapi/missing.yaml" }).ok).toBe(false);
+});

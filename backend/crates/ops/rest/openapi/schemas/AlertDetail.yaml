@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "group"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  group: {"$ref": "#/components/schemas/AlertGroupDetail"}

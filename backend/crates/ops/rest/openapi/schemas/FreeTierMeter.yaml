@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["key", "used", "limit", "warning_ratio"]
+properties:
+  key: {"$ref": "#/components/schemas/Text"}
+  used: {"$ref": "#/components/schemas/ObservedNumber"}
+  limit: {"$ref": "#/components/schemas/ObservedNumber"}
+  warning_ratio: {"$ref": "#/components/schemas/ObservedNumber"}

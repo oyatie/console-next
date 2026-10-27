@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["key", "remaining_percent", "burn_1h", "burn_6h", "exhaustion_s", "requests_30d"]
+properties:
+  key: {"$ref": "#/components/schemas/Text"}
+  remaining_percent: {"$ref": "#/components/schemas/ObservedNumber"}
+  burn_1h: {"$ref": "#/components/schemas/ObservedNumber"}
+  burn_6h: {"$ref": "#/components/schemas/ObservedNumber"}
+  exhaustion_s: {"$ref": "#/components/schemas/ObservedNumber"}
+  requests_30d: {"$ref": "#/components/schemas/ObservedCount"}

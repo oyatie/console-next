@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "string"
+minLength: 1
+pattern: "^(?!(?:No data|N/A|—)$).+"

@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "string"
+enum: ["Healthy", "Progressing", "Suspended", "Degraded", "Missing", "Unknown"]

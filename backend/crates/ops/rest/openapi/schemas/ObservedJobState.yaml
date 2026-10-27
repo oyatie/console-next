@@ -1,0 +1,2 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+allOf: [{"$ref": "#/components/schemas/Observation"}, {"properties": {"value": {"anyOf": [{"$ref": "#/components/schemas/JobState"}, {"type": "null"}]}}}]

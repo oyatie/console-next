@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "type": "object",
+  "required": [
+    "sources",
+    "access",
+    "origin",
+    "thresholds",
+    "budgets"
+  ],
+  "properties": {
+    "sources": {
+      "type": "object",
+      "required": [
+        "alertmanager",
+        "vmalert",
+        "victoriametrics"
+      ],
+      "properties": {
+        "alertmanager": {
+          "type": "object",
+          "required": [
+            "url",
+            "producer",
+            "interval_s"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "producer": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!(?:No data|N/A|—)$).+"
+            },
+            "interval_s": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "vmalert": {
+          "type": "object",
+          "required": [
+            "url",
+            "producer",
+            "interval_s"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "producer": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!(?:No data|N/A|—)$).+"
+            },
+            "interval_s": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "victoriametrics": {
+          "type": "object",
+          "required": [
+            "url",
+            "producer",
+            "interval_s"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "producer": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!(?:No data|N/A|—)$).+"
+            },
+            "interval_s": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "access": {
+      "type": "object",
+      "required": [
+        "team",
+        "aud",
+        "issuer",
+        "jwks",
+        "interval_s"
+      ],
+      "properties": {
+        "team": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!(?:No data|N/A|—)$).+"
+        },
+        "aud": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!(?:No data|N/A|—)$).+"
+        },
+        "issuer": {
+          "type": "string",
+          "format": "uri"
+        },
+        "jwks": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?:/[^/]|https?://)"
+        },
+        "interval_s": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "origin": {
+      "type": "string",
+      "pattern": "^https?://[^/?#]+$"
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

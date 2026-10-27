@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["key", "mtd", "lag_s", "billed_skus", "limits"]
+properties:
+  key: {"$ref": "#/components/schemas/Text"}
+  mtd: {"$ref": "#/components/schemas/ObservedNumber"}
+  lag_s: {"$ref": "#/components/schemas/ObservedCount"}
+  billed_skus: {"$ref": "#/components/schemas/ObservedCount"}
+  limits: {"type": "array", "items": {"$ref": "#/components/schemas/FreeTierMeter"}}

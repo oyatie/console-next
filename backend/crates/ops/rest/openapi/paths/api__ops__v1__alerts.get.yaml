@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsAlertGroups"
+summary: "Read AlertGroups"
+x-cedar-action: "read.alerts"
+security: [{"accessJwt": []}]
+description: "Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405."
+parameters: [{"in": "query", "name": "state", "required": false, "schema": {"$ref": "#/components/schemas/AlertState"}}, {"in": "query", "name": "severity", "required": false, "schema": {"$ref": "#/components/schemas/Severity"}}, {"in": "query", "name": "component", "required": false, "schema": {"$ref": "#/components/schemas/Text"}}]
+responses: {"200": {"description": "Evaluated evidence; empty collections name what was checked through their envelope.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AlertGroups"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

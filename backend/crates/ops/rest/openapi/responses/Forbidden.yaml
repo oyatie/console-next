@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+description: "OPS_NOT_OPERATOR, OPS_GRANT_NOT_LIVE, OPS_ACTION_DENIED, origin_refused"
+headers: {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}
+content: {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/Error"}, {"properties": {"code": {"enum": ["OPS_NOT_OPERATOR", "OPS_GRANT_NOT_LIVE", "OPS_ACTION_DENIED", "origin_refused"]}}}]}}}

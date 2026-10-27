@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsEvent"
+summary: "Read Event"
+x-cedar-action: "read.home"
+security: [{"accessJwt": []}]
+description: "Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405."
+parameters: [{"in": "header", "name": "Last-Event-ID", "required": false, "schema": {"type": "string", "pattern": "^[0-9]+$"}}]
+responses: {"200": {"description": "Evaluated evidence; empty collections name what was checked through their envelope.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"text/event-stream": {"schema": {"$ref": "#/components/schemas/Event"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

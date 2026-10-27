@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "string"
+format: "date-time"
+pattern: "Z$"

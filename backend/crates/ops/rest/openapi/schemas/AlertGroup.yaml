@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["key", "alertname", "component", "severity", "state", "since", "members_n", "summary", "value_vs_threshold"]
+properties:
+  key: {"$ref": "#/components/schemas/Text"}
+  alertname: {"$ref": "#/components/schemas/Text"}
+  component: {"$ref": "#/components/schemas/ObservedText"}
+  severity: {"$ref": "#/components/schemas/ObservedSeverity"}
+  state: {"$ref": "#/components/schemas/ObservedAlertState"}
+  since: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  members_n: {"$ref": "#/components/schemas/ObservedCount"}
+  summary: {"$ref": "#/components/schemas/ObservedText"}
+  value_vs_threshold: {"$ref": "#/components/schemas/ValueVsThreshold"}
+  lead: {"$ref": "#/components/schemas/ObservedText"}
+description: "Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated."

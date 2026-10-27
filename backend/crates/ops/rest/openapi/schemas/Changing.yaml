@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["key", "digest", "colour", "canary_step", "bundle_sha", "preview_candidate", "maintenance_window", "weight_percent", "watch_until", "freeze", "next"]
+properties:
+  key: {"$ref": "#/components/schemas/Text"}
+  digest: {"$ref": "#/components/schemas/ObservedText"}
+  colour: {"$ref": "#/components/schemas/ObservedText"}
+  canary_step: {"$ref": "#/components/schemas/ObservedText"}
+  bundle_sha: {"$ref": "#/components/schemas/ObservedText"}
+  preview_candidate: {"$ref": "#/components/schemas/ObservedText"}
+  maintenance_window: {"$ref": "#/components/schemas/ObservedText"}
+  weight_percent: {"$ref": "#/components/schemas/ObservedNumber"}
+  watch_until: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  freeze: {"$ref": "#/components/schemas/ObservedBoolean"}
+  next: {"$ref": "#/components/schemas/Link"}

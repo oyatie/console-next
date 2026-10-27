@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["href", "label"]
+properties:
+  href: {"type": "string", "pattern": "^/(?!/)"}
+  label: {"$ref": "#/components/schemas/Text"}
+additionalProperties: false
+description: "Same-origin cockpit navigation only. Runbook and GitHub URLs are plain-text evidence fields, never external navigation links."
