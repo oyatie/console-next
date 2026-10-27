@@ -6,6 +6,7 @@ import { expectAxe, fits } from "../a11y";
 import { failure, id, LONG_NAME } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
+import { orgWorkReads } from "../mock/org-work";
 import { screens } from "./registry";
 
 type EntityList = paths["/api/v1/legal-entities"]["get"]["responses"][200]["content"]["application/json"];
@@ -37,10 +38,40 @@ function entities(state: typeof states[number]): EntityList {
 
 test.beforeAll(() => loadCatalog("ko"));
 
+for (const status of [404, 403] as const) for (const width of [1440, 390]) {
+  test(`old workplace address: ${status} at ${width}px @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, screens.find(s => s.key === "org")!, "populated");
+    await orgWorkReads(page, "operating");
+    const path = `/org/entities/${id(999)}/workplaces/new`;
+    let reads = 0;
+    await mockRoute(page, "get", "/api/v1/legal-entities/{entityId}", () => {
+      reads++;
+      return { status, json: failure(status === 404 ? "not_found" : "forbidden") };
+    });
+    try {
+      await page.goto(path);
+      const main = page.getByRole("main");
+      await expect(main.getByRole("heading", { name: t(status === 404 ? "common.read.notFound.title" : "common.denied.title.plain"), exact: true })).toBeVisible();
+      if (status === 403) await expect(main.getByRole("button", { name: t("common.denied.request"), exact: true })).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(main.locator("[data-box]")).toHaveCount(0);
+      expect(reads).toBe(1);
+      await fits(page, `old-workplace/${status}/${width}`);
+      await expectAxe(page, `old-workplace/${status}/${width}`);
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  });
+}
+
 for (const state of states) for (const width of [1440, 390]) {
   test(`workplace bulk: ${state} at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screens.find(s => s.key === "org")!, "populated");
+    await orgWorkReads(page, "operating");
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     let requests = 0;
