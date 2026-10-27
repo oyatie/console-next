@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const koCommon = {
+  "common.more": "더 보기",
   "common.steps": "진행 단계",
   "common.headcount": "{count, number}명",
   "common.page.label": "페이지 이동",

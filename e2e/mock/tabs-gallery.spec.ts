@@ -2,22 +2,63 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("module tabs round-trip URL state and keep unrelated filters through browser history", async ({ page }) => {
+test("gallery view links preserve scroll at an existing hash and keep the table gallery available", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.route("**/api/**", route => route.fulfill({ status: 403, json: { error: { code: "forbidden", message: "" } } }));
+  await page.goto("/_gallery?scope=workplace#main");
+  const table = page.locator('[data-column-contract="populated"]').getByRole("grid");
+  await expect(table).toBeVisible({ timeout: 15_000 });
+  const demo = page.locator('[data-tabs-demo="url"]');
+  const outline = demo.getByRole("link", { name: "아웃라인", exact: true });
+  await outline.focus();
+  const scroll = await page.evaluate(() => scrollY);
+  expect(scroll).toBeGreaterThan(0);
+  await outline.press("Enter");
+  await expect(page).toHaveURL(/tab=outline#main$/);
+  await expect(demo.locator('[data-page-view="outline"]')).toBeVisible();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => scrollY)).toBe(scroll);
+  await expect(table).toBeVisible();
+  await table.getByRole("button", { name: "열기", exact: true }).click();
+  await expect(table.locator('tr[aria-selected="true"]')).toHaveCount(1);
+});
+
+test("module links replace history and preserve copyable URLs, filters and Back", async ({ page }) => {
+  await page.goto("/_gallery?scope=previous");
   await page.goto("/_gallery?tab=list&scope=workplace#record");
   const demo = page.locator('[data-tabs-demo="url"]');
-  const selected = demo.getByRole("tab", { selected: true });
+  const selected = demo.locator('[aria-current="page"]');
   await expect(selected).toHaveAccessibleName("목록 61");
-  await demo.getByRole("tab", { name: "아웃라인", exact: true }).click();
+  const outline = demo.getByRole("link", { name: "아웃라인", exact: true });
+  const length = await page.evaluate(() => history.length);
+  await expect(outline).toHaveAttribute("href", "/_gallery?tab=outline&scope=workplace#record");
+  for (const init of [{ button: 1 }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }]) {
+    const prevented = await outline.evaluate((el, init) => {
+      let prevented = false;
+      // Observe after React's handler, then suppress the browser action in this synthetic probe.
+      window.addEventListener("click", event => {
+        prevented = event.defaultPrevented;
+        event.preventDefault();
+      }, { once: true });
+      el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, ...init }));
+      return prevented;
+    }, init);
+    expect(prevented, JSON.stringify(init)).toBe(false);
+    await expect(selected).toHaveAccessibleName("목록 61");
+  }
+  await expect(selected).toHaveAccessibleName("목록 61");
+  await outline.click();
   await expect(page).toHaveURL(/tab=outline.*scope=workplace#record$/);
+  expect(await page.evaluate(() => history.length)).toBe(length);
   await page.reload();
   await expect(selected).toHaveAccessibleName("아웃라인");
-  await page.goBack();
-  await expect(selected).toHaveAccessibleName("목록 61");
-  await page.goForward();
-  await expect(selected).toHaveAccessibleName("아웃라인");
-  await demo.getByRole("tab", { name: "조직도", exact: true }).click();
+  await demo.getByRole("link", { name: "조직도", exact: true }).click();
   await expect(page).toHaveURL(/scope=workplace#record$/);
   expect(new URL(page.url()).searchParams.has("tab")).toBe(false);
+  await page.goBack();
+  await expect(page).toHaveURL(/scope=previous$/);
+  await page.goForward();
+  await expect(selected).toHaveAccessibleName("조직도");
 });
 
 for (const width of [1440, 390]) {
@@ -32,7 +73,8 @@ for (const width of [1440, 390]) {
       await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
       const section = page.locator("[data-tabs-gallery]");
       const url = section.locator('[data-tabs-demo="url"]');
-      await expect(url.getByRole("tab", { selected: true })).toHaveAccessibleName("조직도");
+      await expect(url.getByRole("navigation")).toBeVisible();
+      await expect(url.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
       for (const state of ["loading", "empty", "failed", "refused"]) {
         const demo = section.locator(`[data-tabs-demo="${state}"]`);
         await expect(demo.getByRole("tablist")).toBeVisible();
@@ -45,12 +87,36 @@ for (const width of [1440, 390]) {
         await expect(section.locator(`[data-tabs-demo="${state}"] [data-support-reference]`)).toHaveAttribute("data-support-reference", `gallery-tabs-${state}`);
       }
       const long = section.locator('[data-tabs-demo="long"]');
-      await expect(long.getByRole("tab")).toHaveCount(8);
-      await expect(long.getByRole("tab").first()).toContainText("2,000");
-      await long.getByRole("tab").first().focus();
-      await page.keyboard.press("End");
-      await expect(long.getByRole("tab").last()).toBeFocused();
-      await expect(long.getByRole("tab").last()).toHaveAttribute("aria-selected", "true");
+      const more = long.getByRole("button", { name: "더 보기", exact: true });
+      await expect(more).toBeVisible();
+      await expect(long.locator('[aria-current="page"]')).toContainText("2,000");
+      const row = long.getByRole("navigation");
+      expect(await row.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(56);
+      await more.click();
+      const popup = page.getByRole("dialog", { name: "더 보기", exact: true });
+      const last = popup.getByRole("link").last();
+      const lastName = await last.textContent();
+      await last.focus();
+      await last.press("Enter");
+      await expect(popup).toBeHidden();
+      await expect(long.locator('[aria-current="page"]')).toHaveText(lastName!);
+      await page.reload();
+      await expect(long.locator('[aria-current="page"]')).toHaveText(lastName!);
+      if (width === 390) await page.keyboard.press("Escape");
+      await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+      const unavailable = section.locator('[data-tabs-demo="unavailable"]');
+      const blocked = unavailable.getByRole("link", { name: "아웃라인", exact: true });
+      await expect(blocked).toHaveAttribute("aria-disabled", "true");
+      expect(await unavailable.getByRole("navigation").evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(56);
+      await blocked.focus();
+      await expect(blocked).toBeFocused();
+      await expect(blocked).toHaveAccessibleDescription("먼저 설정을 완료합니다");
+      const before = page.url();
+      await blocked.press("Enter");
+      await blocked.click({ force: true });
+      expect(page.url()).toBe(before);
+      await expect(blocked).not.toHaveAttribute("href");
+      await expect(unavailable.locator('[aria-current="page"]')).toHaveAccessibleName("목록");
       expect(await section.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
       expect(await section.getByRole("tablist").evaluateAll(lists => lists.every(el => el.scrollWidth <= el.clientWidth))).toBe(true);
       const { violations } = await new AxeBuilder({ page }).include("[data-tabs-gallery]").withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
