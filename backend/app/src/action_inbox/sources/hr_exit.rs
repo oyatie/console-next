@@ -9,7 +9,7 @@ use console_hr_adapter_postgres::authz::{
     holds_scoped,
 };
 use console_hr_adapter_postgres::own_record::{OwnRecord, own_record_decision};
-use console_hr_adapter_postgres::{HrError, HrService};
+use console_hr_adapter_postgres::{HrError, exits::settlement_deadlines};
 use console_kernel_core::KernelError;
 use console_platform_authz::{Action, Feature, Principal, authorize_capability};
 use console_platform_db::with_org_conn;
@@ -125,17 +125,12 @@ pub(crate) async fn page(
             Ok((visible, total, register))
         })
     }).await.map_err(|error| super::super::source_failure("hr_exit", error.message))?;
-    let service = HrService::new(pool.clone());
     let mut items = Vec::new();
     for (row, kind) in rows {
         let due = if let Some(register) = register.as_ref().filter(|_| kind == "hr_exit_settle") {
-            // The case read already owns both settlement windows and citations.
-            let case = service
-                .exit_case(principal.clone(), row.id, register)
-                .await
-                .map_err(|error| super::super::source_failure("hr_exit", error.message))?;
-            case.settlement_deadlines
-                .unwrap_or_default()
+            // Reuse the case read's clocks over the exit dates already loaded in the batch.
+            settlement_deadlines(&row.exit_date.to_string(), register)
+                .map_err(|error| super::super::source_failure("hr_exit", error.message))?
                 .into_iter()
                 .filter_map(|deadline| deadline.due_date)
                 .filter_map(|date| console_hr_domain::text::parse_yyyy_mm_dd(&date).ok())
@@ -180,16 +175,22 @@ pub(crate) async fn page(
     })
 }
 
+#[cfg(all(test, feature = "test-postgres"))]
+#[path = "../../../tests/inbox_exit_scale/mod.rs"]
+mod scale_tests;
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use console_kernel_core::{BranchScope, OrgId, UserId};
+    #[cfg(feature = "test-postgres")]
     use console_platform_authz::Role;
+    #[cfg(feature = "test-postgres")]
     use console_platform_test_support::{runtime_role_pool, seed_org_and_super_admin};
     use std::collections::BTreeSet;
     use time::OffsetDateTime;
-    use uuid::Uuid;
 
+    #[cfg(feature = "test-postgres")]
     #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
     async fn exit_inbox_preserves_every_home_forward_step_and_omits_closed_cases(pool: PgPool) {
         let org = OrgId::new();
@@ -275,6 +276,7 @@ mod tests {
         assert_eq!(no_items.total, 0);
     }
 
+    #[cfg(feature = "test-postgres")]
     #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
     async fn routed_hq_work_keeps_the_ops_break_glass_path_without_admitting_same_actor_hr(
         pool: PgPool,

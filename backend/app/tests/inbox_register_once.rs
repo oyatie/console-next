@@ -14,6 +14,67 @@ use tracing::instrument::WithSubscriber;
 
 const HOME: &str = "/api/v1/me/action-inbox?filter=turn";
 
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn home_exit_access_is_one_batch_of_visible_subjects_and_absent_without_cases(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let mut subjects = std::collections::BTreeSet::new();
+    let mut cases = std::collections::BTreeSet::new();
+    for _ in 0..2 {
+        let employee = fixtures::seed_employee(&pool, org).await;
+        sqlx::query("UPDATE employees SET employee_number = id::text WHERE id = $1")
+            .bind(employee)
+            .execute(&pool)
+            .await
+            .unwrap();
+        cases.insert(fixtures::seed_exit_case_with_settlement(&pool, org, employee, user).await);
+        subjects.insert(employee);
+    }
+    for visible in [false, true] {
+        sqlx::query("UPDATE employee_exit_cases SET status = $2 WHERE org_id = $1")
+            .bind(org)
+            .bind(if visible {
+                "SETTLEMENT_READY"
+            } else {
+                "CANCELLED"
+            })
+            .execute(&pool)
+            .await
+            .unwrap();
+        let (page, _) = read(&ctx).await;
+        assert_eq!(page["unavailable"], serde_json::json!([]));
+        let shown: std::collections::BTreeSet<uuid::Uuid> = page["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|i| i["kind"] == "hr_exit_settle")
+            .flat_map(|i| i["links"].as_array().unwrap())
+            .filter(|l| l["kind"] == "employee")
+            .map(|l| l["id"].as_str().unwrap().parse().unwrap())
+            .collect();
+        let rows: Vec<Value> = sqlx::query_scalar(
+            "SELECT after_snap FROM audit_events WHERE org_id = $1 AND target_type = 'employee_exit_case'"
+        ).bind(org).fetch_all(&pool).await.unwrap();
+        if visible {
+            assert_eq!(shown, subjects);
+            assert_eq!(rows.len(), 1, "Home must record one exit access batch");
+            let logged: std::collections::BTreeSet<uuid::Uuid> =
+                serde_json::from_value(rows[0]["subject_ids"].clone()).unwrap();
+            assert_eq!(logged, subjects);
+            let logged_cases: std::collections::BTreeSet<uuid::Uuid> =
+                serde_json::from_value(rows[0]["case_ids"].clone()).unwrap();
+            assert_eq!(logged_cases, cases);
+            assert_eq!(rows[0]["view"], "action_inbox");
+        } else {
+            assert!(shown.is_empty());
+            assert!(
+                rows.is_empty(),
+                "no visible case means no exit access event"
+            );
+        }
+    }
+}
+
 async fn read(ctx: &http::Ctx) -> (Value, Vec<Value>) {
     let logs = reference_logs::Logs::default();
     let writer = logs.clone();

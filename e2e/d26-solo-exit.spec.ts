@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
+import type { components } from "@console/api/schema";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, registerEmployee, routeReady, takeCode, unique, vendorPage } from "./flows";
 import { REGISTRATION_FIXTURES, acceptSetupTerms, setupCompany, setupRail, brnDisplay } from "./setup-flows";
 import { signOff } from "./sheet";
+import { apiOf, bearerOf } from "./helpers/api";
 
 // Decisions #26 for a one-person tenant (solo ops, empty DB, no helper account): 결재 is off by default, so setup
 // asks for no approver, 운영 시작 asks for no sole-approver tick, and an exit closes with the same person confirming
@@ -18,6 +20,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await tenantSlugField(v).fill(unique("solo26"));
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
+  const api = apiOf(admin, bearerOf(admin));
 
   // The setup rail names no 결재선 and promises no 결재 after go-live.
   const rail = setupRail(admin);
@@ -77,12 +80,23 @@ test("a solo ops account registers a person and closes their exit alone, with no
   const now = admin.getByRole("region", { name: /지금/ });
   await expect(now.getByRole("heading", { name: "지금 · 본사 확인" })).toBeVisible();
   await now.getByRole("button", { name: "퇴직 본사 확인 1명 적용" }).click();
-  await expect(admin.getByRole("region", { name: "퇴직" })).toContainText("본사 확인됨");
+  await expect(now.getByRole("heading", { name: "지금 · 정산 준비" })).toBeVisible();
   await expect(admin.getByRole("button", { name: "퇴직 취소" })).toHaveCount(0);
   await expectAccessible(admin, "D26: exit closed for HQ by the HR confirmer");
 
   // Home has nothing stuck on a second person: the case waits only on its settlement.
   await go(admin, "/");
+  const detailResponse = await api(`/hr/exit-cases/${caseHref!.split("/").at(-1)}`);
+  expect(detailResponse.status()).toBe(200);
+  const detail = await detailResponse.json() as components["schemas"]["EmployeeExitCase"];
+  const homeResponse = await api("/me/action-inbox?filter=turn");
+  expect(homeResponse.status()).toBe(200);
+  const home = await homeResponse.json() as components["schemas"]["ActionInboxResponse"];
+  const settlement = home.items.find(item => item.kind === "hr_exit_settle"
+    && item.links.some(link => link.kind === "exit_case" && link.id === detail.id));
+  const deadlines = detail.settlement_deadlines!.flatMap(deadline => deadline.due_date ? [deadline.due_date] : []).sort();
+  expect(deadlines).not.toHaveLength(0);
+  expect(settlement?.due?.slice(0, 10)).toBe(deadlines[0]);
   const queue = inbox.getByRole("row").filter({ has: admin.locator(`a[href="${caseHref}?act=prepare_settlement"]`) });
   await expect(queue).toContainText("홀로퇴직");
   await expect(queue.getByRole("link", { name: "퇴직 정산 결재 준비", exact: true })).toBeVisible();

@@ -27,6 +27,24 @@ pub(crate) async fn record(
     if ids.is_empty() {
         return Ok(());
     }
+    let case_ids: Vec<_> = page
+        .items
+        .iter()
+        .flat_map(|i| &i.links)
+        .filter(|link| link.kind == "exit_case")
+        .map(|link| link.id.clone())
+        .collect();
+    let (access, details) = if case_ids.is_empty() {
+        (
+            DirectoryAccess::List,
+            serde_json::json!({"view":"action_inbox"}),
+        )
+    } else {
+        (
+            DirectoryAccess::ExitCaseList,
+            serde_json::json!({"view":"action_inbox", "case_ids":case_ids}),
+        )
+    };
     let ids: Vec<_> = ids.into_iter().collect();
     let principal = principal.clone();
     let places: Vec<(Uuid, Option<String>, Option<String>)> = with_audits::<_, _, HrError>(pool, principal.org_id, move |tx| {
@@ -53,10 +71,10 @@ pub(crate) async fn record(
             let actor = actor_employee_id(tx, &principal).await?;
             let event = access_event(
                 &principal,
-                DirectoryAccess::List,
+                access,
                 &ids,
                 actor,
-                serde_json::json!({"view":"action_inbox"}),
+                details,
             )?;
             Ok((places, vec![event]))
         })
