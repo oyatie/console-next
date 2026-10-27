@@ -69,6 +69,10 @@ pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
             "attendance_public_holidays",
             "statutory 공휴일 reference rows, global, SELECT-only to console_rt",
         ),
+        (
+            "access_log_review_calendar",
+            "migration-owned country-pack weekend reference data, no tenant content, SELECT-only to console_rt",
+        ),
         // MB-2: §54① break floor and the 2026-12-10 4-hour waiver. Migration-only,
         // identical for every tenant, SELECT-only to console_rt.
         (

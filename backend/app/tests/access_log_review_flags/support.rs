@@ -43,7 +43,7 @@ pub async fn event(
         .bind(org.as_uuid()).bind(user.as_uuid()).bind(action).bind(occurred).bind(&after).bind(if detail["denied"] == true {"DENIED"} else {"ALLOWED"}).fetch_one(pool).await.unwrap()
 }
 
-pub async fn performance(pool: PgPool) {
+pub async fn performance(pool: PgPool, sparse: bool) {
     let org = OrgId::new();
     seed_org_and_super_admin(&pool, *org.as_uuid(), "perf").await;
     sqlx::query("INSERT INTO users(id,org_id,display_name,roles) SELECT md5('actor-'||n)::uuid,$1,'Actor '||n,'{}' FROM generate_series(1,2000) n")
@@ -56,40 +56,55 @@ pub async fn performance(pool: PgPool) {
             small_org,
             small_user,
             "employee.read",
-            "2026-09-01T12:00:00Z",
+            "2026-09-01T02:00:00Z",
             json!({}),
         )
         .await;
     }
-    sqlx::query("INSERT INTO audit_events(org_id,actor,action,target_type,target_id,trace_id,span_id,occurred_at,created_at,after_snap,outcome) SELECT $1,md5('actor-'||((n-1)%2000+1))::uuid,'employee.read','employee','test',repeat('a',32),repeat('b',16),'2026-09-01T00:00:00Z'::timestamptz+((n*7919)%2592000)*interval '1 second','2026-09-01T00:00:00Z'::timestamptz+n*interval '1 second','{\"self_read\":false,\"subject_count\":1}'::jsonb,'ALLOWED' FROM generate_series(1,200000) n")
-        .bind(org.as_uuid()).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO audit_events(org_id,actor,action,target_type,target_id,trace_id,span_id,occurred_at,created_at,after_snap,outcome) SELECT $1,md5('actor-'||((n-1)%2000+1))::uuid,CASE WHEN $2 AND n%100000=0 THEN 'employee.rrn_reveal' ELSE 'employee.read' END,'employee','test',repeat('a',32),repeat('b',16),CASE WHEN $2 THEN '2026-09-01T02:00:00Z'::timestamptz ELSE '2026-09-01T00:00:00Z'::timestamptz+((n*7919)%2592000)*interval '1 second' END,'2026-09-01T00:00:00Z'::timestamptz+n*interval '1 second','{\"self_read\":false,\"subject_count\":1}'::jsonb,'ALLOWED' FROM generate_series(1,200000) n")
+        .bind(org.as_uuid()).bind(sparse).execute(&pool).await.unwrap();
     sqlx::query("ANALYZE audit_events")
         .execute(&pool)
         .await
         .unwrap();
-    tracing_subscriber::registry()
-        .try_init()
-        .expect("install the SQLx log bridge");
+    tracing_subscriber::registry().try_init().ok();
     let rt = runtime_role_pool(&pool).await;
     let statements = Statements::default();
     let dispatch = statements.dispatch();
     let mut small_tx = arm(&rt, small_org).await;
     let small = prepare_in_tx(small_tx.as_mut(), small_org, "2026-09")
+        .with_subscriber(dispatch.clone())
         .await
         .unwrap();
+    let small_preparation = statements.take();
     page_in_tx(small_tx.as_mut(), &small, None, 50, true)
         .with_subscriber(dispatch.clone())
         .await
         .unwrap();
+    assert_eq!(small.totals()["flagged"], 0);
     let small_statements = statements.take();
-    assert!(
-        !small_statements.is_empty(),
-        "statement instrumentation must observe real SQL"
-    );
+    page_in_tx(small_tx.as_mut(), &small, None, 50, false)
+        .with_subscriber(dispatch.clone())
+        .await
+        .unwrap();
+    let small_all_statements = statements.take();
+    assert!(!small_all_statements.is_empty(), "instrument real SQL");
     small_tx.commit().await.unwrap();
     let mut tx = arm(&rt, org).await;
     let start = Instant::now();
-    let snapshot = prepare_in_tx(tx.as_mut(), org, "2026-09").await.unwrap();
+    let snapshot = prepare_in_tx(tx.as_mut(), org, "2026-09")
+        .with_subscriber(dispatch.clone())
+        .await
+        .unwrap();
+    let large_preparation = statements.take();
+    assert_eq!(small_preparation.len(), large_preparation.len());
+    eprintln!(
+        "statements/preparation={} at 10 and 200000 rows",
+        large_preparation.len()
+    );
+    // Prove that paging uses serializable evidence, ready for the review-start writer.
+    let snapshot: console_platform_access::log_review::list::Prepared =
+        serde_json::from_value(serde_json::to_value(snapshot).unwrap()).unwrap();
     eprintln!(
         "200000 rows, 2000 actors; one-time preparation {:?}; snapshot {} bytes",
         start.elapsed(),
@@ -97,34 +112,47 @@ pub async fn performance(pool: PgPool) {
     );
     assert_eq!(snapshot.totals()["events"], 200000);
     page_in_tx(tx.as_mut(), &snapshot, None, 50, true)
-        .with_subscriber(dispatch)
+        .with_subscriber(dispatch.clone())
         .await
         .unwrap();
     let large_statements = statements.take();
     assert_eq!(small_statements.len(), large_statements.len());
+    page_in_tx(tx.as_mut(), &snapshot, None, 50, false)
+        .with_subscriber(dispatch)
+        .await
+        .unwrap();
+    let large_all_statements = statements.take();
+    assert_eq!(small_all_statements.len(), large_all_statements.len());
     eprintln!(
-        "statements/page={} at 10 and 200000 rows",
-        large_statements.len()
+        "sparse={sparse}; statements/page flagged={} all={} at 10 and 200000 rows",
+        large_statements.len(),
+        large_all_statements.len()
     );
-    let mut times = Vec::new();
-    let mut cursor = None;
-    for _ in 0..20 {
-        let start = Instant::now();
-        let rows = page_in_tx(tx.as_mut(), &snapshot, cursor, 50, true)
-            .await
-            .unwrap();
-        times.push(start.elapsed().as_millis());
-        assert!(!rows.is_empty());
-        let last = rows.last().unwrap();
-        cursor = Some((last.created_at, last.event_id));
+    if sparse {
+        assert_eq!(snapshot.totals()["flagged"], 2);
     }
-    times.sort_unstable();
-    eprintln!("frozen page p95={}ms; samples={times:?}", times[18]);
-    assert!(times[18] <= 300, "page p95 exceeds 300ms: {times:?}");
+    for flagged in [true, false] {
+        let mut times = Vec::new();
+        let mut cursor = None;
+        for _ in 0..20 {
+            let start = Instant::now();
+            let rows = page_in_tx(tx.as_mut(), &snapshot, cursor, 50, flagged)
+                .await
+                .unwrap();
+            times.push(start.elapsed().as_micros());
+            cursor = rows.last().map(|last| (last.created_at, last.event_id));
+        }
+        times.sort_unstable();
+        eprintln!(
+            "sparse={sparse}; flagged={flagged}; page p95={}µs; samples={times:?}",
+            times[18]
+        );
+        assert!(times[18] <= 300_000, "page p95 exceeds 300ms: {times:?}");
+    }
     let data = serde_json::to_value(&snapshot).unwrap();
-    let sql = large_statements
+    let sql = large_all_statements
         .iter()
-        .find(|s| s.contains("WITH rules"))
+        .find(|s| s.contains("SELECT id AS event_id"))
         .expect("capture the actual page statement");
     // Only the SQL just executed by the production builder is reused; all inputs remain bound.
     let mut explain = sqlx::QueryBuilder::new("EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ");
@@ -146,12 +174,8 @@ pub async fn performance(pool: PgPool) {
             )
             .unwrap(),
         )
-        .bind(&data["rules"])
-        .bind(console_platform_access::log_review::SENSITIVE_READS)
-        .bind(serde_json::to_string(&data["actor_days"]).unwrap())
         .bind(None::<time::OffsetDateTime>)
         .bind(None::<Uuid>)
-        .bind(true)
         .bind(50_i64)
         .fetch_one(tx.as_mut())
         .await
