@@ -21709,7 +21709,7 @@ paths:
         in the locked decision transaction; the drafter and any person who decided another step cannot decide.
         Steps decide strictly in order and a rejection ends the request as REJECTED.
         CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version;
-        a mismatch returns 409 lifecycle.refuse.stale_version with error.current_version.
+        a mismatch returns 409 lifecycle.refuse.stale_version with error.details.current_version.
         Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks.
         through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
       security:
@@ -21749,23 +21749,7 @@ paths:
           content:
             application/json:
               schema:
-                anyOf:
-                - $ref: '#/components/schemas/ErrorBody'
-                - type: object
-                  required: [error]
-                  properties:
-                    error:
-                      type: object
-                      required: [code, message, current_version]
-                      properties:
-                        code:
-                          type: string
-                          enum: [lifecycle.refuse.stale_version]
-                        message:
-                          type: string
-                        current_version:
-                          type: string
-                          description: Current opaque decision version; re-read the document before deciding again.
+                $ref: '#/components/schemas/ErrorBody'
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
@@ -43944,6 +43928,12 @@ components:
           - code
           - message
           properties:
+            details:
+              type: object
+              properties:
+                current_version:
+                  type: string
+                  description: Current opaque decision version; re-read the document before deciding again.
             code:
               type: string
             message:
@@ -50766,7 +50756,7 @@ components:
       properties:
         expected_version:
           type: string
-          description: Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.current_version.
+          description: Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.details.current_version.
         through_step:
           $ref: '#/components/schemas/Uuid'
           description: Merging stored steps is refused with 409 lifecycle.refuse.merge_not_allowed. Each step requires a distinct natural person.

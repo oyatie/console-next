@@ -107,7 +107,8 @@ impl IntoResponse for RestError {
         (
             self.status,
             Json(if let Some(version) = self.current_version {
-                json!({"error":{"code":self.code,"message":self.message,"current_version":version}})
+                // Opaque decision versions must not replace ErrorBody's legacy numeric version.
+                json!({"error":{"code":self.code,"message":self.message,"details":{"current_version":version}}})
             } else if self.reasons.is_empty() {
                 json!({"error":{"code":self.code,"message":self.message}})
             } else {

@@ -73,6 +73,20 @@ test("exit confirmation 409 keeps the N-1 error object and optional schedule ref
   expect(body.properties!.error!.properties!.refusals).toBeDefined();
 });
 
+test("org decision 409 is one object preserving the N-1 error and optional refusal details", () => {
+  const response = spec.paths["/api/v1/org-changes/{id}/approval-steps/{stepId}/decision"]!.post.responses["409"]!.content["application/json"].schema;
+  expect(response).toEqual({ $ref: "#/components/schemas/ErrorBody" });
+  expect(schemas.ErrorBody!.type).toBe("object");
+  expect(schemas.ErrorBody!.required).toEqual(["error"]);
+  expect(schemas.ErrorBody).not.toHaveProperty("anyOf");
+  expect(schemas.ErrorBody).not.toHaveProperty("oneOf");
+  expect(schemas.ErrorBody!.properties!.error!.properties!.details).toEqual({ type: "object", properties: {
+    current_version: { type: "string", description: "Current opaque decision version; re-read the document before deciding again." },
+  } });
+  expect(schemas.ErrorBody!.properties!.error!.required).toEqual(["code", "message"]);
+  expect(schemas.ErrorBody!.properties!.error!.properties!.current_version!.type).toBe("integer");
+});
+
 test("leave commands still reject misspelled known types", () => {
   expect(schemas.CreateEmployeeLifecycleEventRequest!.properties!.leave_type!.enum?.filter((v) => v !== null)).toEqual(schemas.EmployeeLifecycleEvent!.properties!.leave_type!["x-extensible-enum"]);
 });

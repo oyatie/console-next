@@ -9,6 +9,12 @@ properties:
     - code
     - message
     properties:
+      details:
+        type: object
+        properties:
+          current_version:
+            type: string
+            description: Current opaque decision version; re-read the document before deciding again.
       code:
         type: string
       message:
