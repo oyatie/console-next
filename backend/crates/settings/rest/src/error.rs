@@ -14,13 +14,18 @@ use serde_json::json;
 pub(crate) struct ApiError {
     status: StatusCode,
     error: KernelError,
+    earliest: Option<console_kernel_core::Timestamp>,
 }
 
 impl From<KernelError> for ApiError {
     fn from(error: KernelError) -> Self {
         let status =
             StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-        Self { status, error }
+        Self {
+            status,
+            error,
+            earliest: None,
+        }
     }
 }
 
@@ -28,6 +33,10 @@ impl From<PgSettingsError> for ApiError {
     fn from(error: PgSettingsError) -> Self {
         match error {
             PgSettingsError::Domain(error) => error.into(),
+            PgSettingsError::TooSoon { error, earliest } => Self {
+                earliest: Some(earliest),
+                ..error.into()
+            },
             PgSettingsError::Db(error) if error.is_unavailable() => {
                 KernelError::unavailable("settings database unavailable").into()
             }
@@ -42,12 +51,20 @@ impl From<PgSettingsError> for ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let code = self.error.code.unwrap_or_else(|| self.error.kind.code());
+        tracing::info!(code, "settings request refused");
         let message = if self.error.kind == ErrorKind::Internal {
             "internal server error".to_owned()
         } else {
             self.error.message
         };
         let mut body = json!({ "error": { "code": code, "message": message } });
+        if let Some(earliest) = self.earliest {
+            body["error"]["earliest_effective_from"] = json!(
+                earliest
+                    .format(&time::format_description::well_known::Rfc3339)
+                    .unwrap_or_default()
+            );
+        }
         if let Some(field) = self.error.field {
             body["error"]["errors"] = json!([{ "field": field, "code": code }]);
         }

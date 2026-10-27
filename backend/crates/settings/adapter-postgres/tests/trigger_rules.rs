@@ -107,7 +107,7 @@ async fn a_loosening_waits_a_day_once_the_tenant_has_an_employee(pool: PgPool) {
     let too_soon = store
         .change_setting(actor, change(json!(50), None), audit(), |_| Ok(()))
         .await;
-    assert_eq!(code(too_soon), "setting_loosening_delay");
+    assert_eq!(code(too_soon), "setting_loosening_too_soon");
 
     let later = OffsetDateTime::now_utc() + Duration::hours(25);
     let scheduled = store

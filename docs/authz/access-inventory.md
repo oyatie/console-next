@@ -258,7 +258,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/registry/rest/src/lib.rs | reference | 6 |
 | matrix | backend/crates/reporting/rest/src/lib.rs | reference | 7 |
 | matrix | backend/crates/sales/rest/src/lib.rs | reference | 2 |
-| matrix | backend/crates/settings/application/src/lib.rs | reference | 1 |
 | matrix | backend/crates/settings/application/src/reason_codes.rs | reference | 2 |
 | matrix | backend/crates/settings/rest/src/authz.rs | reference | 4 |
 | matrix | backend/crates/support/rest/src/lib.rs | reference | 10 |

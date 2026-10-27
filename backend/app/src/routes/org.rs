@@ -19,10 +19,13 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     router
         // Settings registry + reason-code catalog (BW-00/07): reads for any
         // signed-in member; every write is a Cedar `enforce_action` call.
-        .merge(console_settings_rest::router(SettingsRestState::new(
-            PgSettingsStore::new(pool.clone()),
-            state.jwt_verifier.clone(),
-        )))
+        .merge(
+            console_settings_rest::router(SettingsRestState::new(
+                PgSettingsStore::new(pool.clone()),
+                state.jwt_verifier.clone(),
+            ))
+            .layer(axum::middleware::from_fn(settings_plan_metrics)),
+        )
         // Period locks (BW-15): lock, unlock with a second person, relock.
         .merge(lifecycle::router(
             lifecycle::LifecycleState::new(pool.clone(), state.jwt_verifier.clone())
@@ -44,6 +47,25 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             state.juso.clone(),
             state.nts.clone(),
         ))
+}
+
+async fn settings_plan_metrics(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let response = next.run(request).await;
+    if let Some(plan) = response
+        .extensions()
+        .get::<console_settings_rest::SettingChangePlan>()
+    {
+        let direction = match plan.direction {
+            console_settings_domain::Direction::Tighten => "tighten",
+            console_settings_domain::Direction::Neutral => "neutral",
+            console_settings_domain::Direction::Loosen => "loosen",
+        };
+        metrics::counter!("settings_change_plans_total", "path" => plan.path, "direction" => direction).increment(1);
+    }
+    response
 }
 
 #[cfg(feature = "compliance")]

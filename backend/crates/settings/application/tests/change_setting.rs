@@ -67,7 +67,10 @@ impl SettingsStore for Fake {
         Ok(Vec::new())
     }
 
-    async fn insert(&mut self, row: NewOverride) -> Result<InsertedOverride, KernelError> {
+    async fn insert(
+        &mut self,
+        row: NewOverride,
+    ) -> Result<InsertedOverride, console_settings_application::ChangeError> {
         self.inserted.push(row);
         Ok(InsertedOverride {
             id: Uuid::nil(),
@@ -117,6 +120,10 @@ async fn run(
         (TraceContext::generate(), AuditRequestContext::default()),
     )
     .await
+    .map_err(|e| match e {
+        console_settings_application::ChangeError::Refused(e)
+        | console_settings_application::ChangeError::TooSoon { error: e, .. } => e,
+    })
     .map(|(view, events)| {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].target_id, view.id.to_string());
@@ -182,7 +189,7 @@ async fn a_loosening_waits_the_delay_unless_the_tenant_is_onboarding() {
     let err = run(&mut store, cmd(json!(40), None), &mut seen, true)
         .await
         .unwrap_err();
-    assert_eq!(err.code, Some("setting_loosening_delay"));
+    assert_eq!(err.code, Some("setting_loosening_too_soon"));
 
     let later = NOW + Duration::hours(24);
     run(&mut store, cmd(json!(40), Some(later)), &mut seen, true)

@@ -27523,6 +27523,23 @@ export interface components {
             /** @description A loosening applied at once because the tenant had no employees and no applied payroll run. */
             onboarding_exempt: boolean;
         };
+        SettingChangePlan: {
+            key: string;
+            scope_entity_id: components["schemas"]["Uuid"] | null;
+            value: components["schemas"]["SettingValue"];
+            effective_from: components["schemas"]["Timestamp"];
+            direction: components["schemas"]["SettingDirection"];
+            /** @enum {string} */
+            path: "direct" | "step_up" | "step_up_delayed";
+            requires: {
+                /** @enum {boolean} */
+                reason: true;
+                step_up: boolean;
+                /** @enum {boolean} */
+                second_person: false;
+            };
+            earliest_effective_from: components["schemas"]["Timestamp"];
+        };
         SettingChangeRequest: {
             value: components["schemas"]["SettingValue"];
             effective_from?: components["schemas"]["Timestamp"];
@@ -55585,7 +55602,10 @@ export interface operations {
     };
     changeSetting: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Validate and authorize without writing overrides or idempotency claims. Successful previews write no audit event; a 403 refusal is audited. Missing step-up is reported in the plan. */
+                dry_run?: boolean;
+            };
             header?: never;
             path: {
                 key: string;
@@ -55598,6 +55618,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Change plan; nothing written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingChangePlan"];
+                };
+            };
             /** @description Override recorded. */
             201: {
                 headers: {
@@ -55609,7 +55638,21 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
+            /** @description setting_loosening_too_soon (error.earliest_effective_from), setting_effective_from_taken (write only), idempotency_key_reused, command_processing, command_applied or command_settled (write admission). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            earliest_effective_from?: components["schemas"]["Timestamp"];
+                        };
+                    };
+                };
+            };
             422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
         };

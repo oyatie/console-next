@@ -26946,6 +26946,12 @@ paths:
       security:
       - bearerAuth: []
       parameters:
+      - name: dry_run
+        in: query
+        description: Validate and authorize without writing overrides or idempotency claims. Successful previews write no audit event; a 403 refusal is audited. Missing step-up is reported in the plan.
+        schema:
+          type: boolean
+          default: false
       - name: key
         in: path
         required: true
@@ -26958,6 +26964,12 @@ paths:
             schema:
               $ref: '#/components/schemas/SettingChangeRequest'
       responses:
+        '200':
+          description: Change plan; nothing written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingChangePlan'
         '201':
           description: Override recorded.
           content:
@@ -26969,7 +26981,24 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: setting_loosening_too_soon (error.earliest_effective_from), setting_effective_from_taken (write only),
+            idempotency_key_reused, command_processing, command_applied or command_settled (write admission).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: object
+                    required: [code, message]
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      earliest_effective_from:
+                        $ref: '#/components/schemas/Timestamp'
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
@@ -58160,6 +58189,41 @@ components:
         onboarding_exempt:
           type: boolean
           description: A loosening applied at once because the tenant had no employees and no applied payroll run.
+    SettingChangePlan:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [key, scope_entity_id, value, effective_from, direction, path, requires, earliest_effective_from]
+      properties:
+        key:
+          type: string
+        scope_entity_id:
+          allOf: [{$ref: '#/components/schemas/Uuid'}]
+          nullable: true
+        value:
+          $ref: '#/components/schemas/SettingValue'
+        effective_from:
+          $ref: '#/components/schemas/Timestamp'
+        direction:
+          $ref: '#/components/schemas/SettingDirection'
+        path:
+          type: string
+          enum: [direct, step_up, step_up_delayed]
+        requires:
+          type: object
+          additionalProperties: false
+          required: [reason, step_up, second_person]
+          properties:
+            reason:
+              type: boolean
+              enum: [true]
+            step_up:
+              type: boolean
+            second_person:
+              type: boolean
+              enum: [false]
+        earliest_effective_from:
+          $ref: '#/components/schemas/Timestamp'
     SettingChangeRequest:
       type: object
       additionalProperties: false
