@@ -10050,7 +10050,7 @@ export interface paths {
         put?: never;
         /**
          * Decide one approval step
-         * @description IN_APPROVAL only. Steps decide strictly in step order, the drafter can never decide (a second SoD net is enforced by the gov_approvals CHECK), and a rejection ends the request as REJECTED.
+         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.current_version. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
          */
         post: operations["decideOrgChangeApprovalStep"];
         delete?: never;
@@ -24105,11 +24105,17 @@ export interface components {
             memo?: string;
         };
         OrgChangeDecisionRequest: {
+            /** @description Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.current_version. */
+            expected_version?: string;
+            /** @description Merging stored steps is refused with 409 lifecycle.refuse.merge_not_allowed. Each step requires a distinct natural person. */
+            through_step?: components["schemas"]["Uuid"];
             /** @enum {string} */
             decision: "APPROVED" | "REJECTED";
             memo?: string;
         };
         OrgChangeDetail: components["schemas"]["OrgChangeSummary"] & {
+            /** @description Opaque version derived from this request and its stored step decisions. Send as expected_version when deciding. */
+            version?: string;
             proposal: components["schemas"]["OrgProposalOp"][];
             preflight?: components["schemas"]["OrgChangePreflightReport"];
             approvalSteps: components["schemas"]["OrgChangeApprovalStep"][];
@@ -50801,7 +50807,23 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
+            /** @description State conflict, separation of duties, merge attempt, withdrawn request, or stale document version. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"] | {
+                        error: {
+                            /** @enum {string} */
+                            code: "lifecycle.refuse.stale_version";
+                            message: string;
+                            /** @description Current opaque decision version; re-read the document before deciding again. */
+                            current_version: string;
+                        };
+                    };
+                };
+            };
             422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
         };

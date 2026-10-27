@@ -14,6 +14,7 @@ use uuid::Uuid;
 // would hit the wire as `[year, ordinal]`; this pins the ISO calendar date.
 time::serde::format_description!(iso_date, Date, "[year]-[month]-[day]");
 
+mod decision;
 mod dto;
 pub mod projection;
 mod proposal;
@@ -21,6 +22,7 @@ mod schedule;
 mod status;
 mod tree_order;
 
+pub use decision::*;
 pub use dto::*;
 pub use proposal::*;
 pub use schedule::*;

@@ -90,6 +90,10 @@ pub(crate) struct OrgChangeDecisionRequest {
     pub(crate) decision: WireDecision,
     #[serde(default)]
     pub(crate) memo: Option<String>,
+    #[serde(default, rename = "expected_version")]
+    pub(crate) expected_version: Option<String>,
+    #[serde(default, rename = "through_step")]
+    pub(crate) through_step: Option<Uuid>,
 }
 
 #[derive(Deserialize)]

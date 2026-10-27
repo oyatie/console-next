@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
+#[path = "../../../test-support/org_change_fixtures.rs"]
+mod org_change_fixtures;
+pub(super) use org_change_fixtures::grant_org_approve;
 #[path = "../../../test-support/person_fixtures.rs"]
 mod person_fixtures;
 
@@ -54,5 +57,39 @@ pub(super) async fn seed_user(pool: &PgPool, org: OrgId, role: &str) -> UserId {
     .await
     .unwrap();
     person_fixtures::bind_user_to_distinct_person(pool, user).await;
+    if role == "EXECUTIVE" {
+        org_change_fixtures::grant_org_approve(pool, user).await;
+    }
     user
+}
+
+pub(super) async fn approve_chain(
+    pool: &PgPool,
+    rt: &PgPool,
+    keys: &Keys,
+    org: OrgId,
+    id: &str,
+    steps: &Value,
+) -> Value {
+    let mut last = Value::Null;
+    for step in steps.as_array().unwrap() {
+        let actor = seed_user(pool, org, "EXECUTIVE").await;
+        let token = keys.token(pool, actor, org, &["EXECUTIVE"]).await;
+        let (status, detail) = send(
+            rt,
+            keys,
+            "POST",
+            &format!(
+                "{CHANGES}/{id}/approval-steps/{}/decision",
+                step["id"].as_str().unwrap()
+            ),
+            &token,
+            Some(json!({"decision":"APPROVED"})),
+            None,
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{detail}");
+        last = detail;
+    }
+    last
 }

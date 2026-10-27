@@ -7,6 +7,7 @@ pub(crate) struct RestError {
     /// Machine-readable reasons (`ErrorBody.error.reasons`), e.g. the blocker
     /// codes of a `preflight_blocked` refusal. Omitted when empty.
     reasons: Vec<String>,
+    current_version: Option<String>,
 }
 
 impl RestError {
@@ -16,6 +17,7 @@ impl RestError {
             code,
             message: message.into(),
             reasons: Vec::new(),
+            current_version: None,
         }
     }
 
@@ -26,9 +28,14 @@ impl RestError {
     /// A decisions #18 refusal answers with its own code (the console keys
     /// the message by it); every other error keeps its generic code.
     fn coded(mut self, code: Option<&'static str>) -> Self {
-        if let Some(code) =
-            code.filter(|c| ORG_STRUCTURE_CODES.contains(c) || ORG_CHANGE_CODES.contains(c))
-        {
+        if let Some(code) = code.filter(|c| {
+            ORG_STRUCTURE_CODES.contains(c)
+                || ORG_CHANGE_CODES.contains(c)
+                || matches!(
+                    *c,
+                    "lifecycle.refuse.withdrawn" | "lifecycle.refuse.merge_not_allowed"
+                )
+        }) {
             self.code = code;
         }
         self
@@ -56,6 +63,15 @@ impl RestError {
     }
 
     pub(crate) fn store(e: PgOrgChangeError) -> Self {
+        if let PgOrgChangeError::StaleVersion(version) = e {
+            let mut refusal = Self::new(
+                StatusCode::CONFLICT,
+                "lifecycle.refuse.stale_version",
+                "org change version is stale",
+            );
+            refusal.current_version = Some(version);
+            return refusal;
+        }
         let message = e.message();
         let code = match &e {
             PgOrgChangeError::Domain(k) => k.code,
@@ -90,7 +106,9 @@ impl IntoResponse for RestError {
     fn into_response(self) -> Response {
         (
             self.status,
-            Json(if self.reasons.is_empty() {
+            Json(if let Some(version) = self.current_version {
+                json!({"error":{"code":self.code,"message":self.message,"current_version":version}})
+            } else if self.reasons.is_empty() {
                 json!({"error":{"code":self.code,"message":self.message}})
             } else {
                 json!({"error":{"code":self.code,"message":self.message,"reasons":self.reasons}})

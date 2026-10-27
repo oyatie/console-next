@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[path = "../../../../test-support/org_change_fixtures.rs"]
+mod org_change_fixtures;
 #[path = "../../../../test-support/person_fixtures.rs"]
 mod person_fixtures;
 
@@ -28,7 +30,11 @@ async fn routed_approval_refuses_same_person_accounts_without_decision_or_audit(
         .bind(org.as_uuid()).bind(maker.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(&pool).await.unwrap();
     let step: Uuid = sqlx::query_scalar("INSERT INTO org_change_approval_steps (org_id,request_id,step_order,role_key) VALUES ($1,$2,1,'hr') RETURNING id")
         .bind(org.as_uuid()).bind(request).fetch_one(&pool).await.unwrap();
+    org_change_fixtures::grant_org_approve(&pool, checker).await;
     let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
+    for actor in [maker, same, same_person_alias] {
+        org_change_fixtures::grant_org_approve(&pool, actor).await;
+    }
     let before = snapshot(&pool, step).await;
     for actor in [maker, same, same_person_alias] {
         for approved in [true, false] {
@@ -58,6 +64,7 @@ async fn decisions_require_both_employee_links(pool: PgPool) {
     let org = OrgId::from_uuid(Uuid::new_v4());
     let maker = seed_org_and_super_admin(&pool, *org.as_uuid(), "unlinked-orgchange").await;
     let checker = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "checker").await;
+    org_change_fixtures::grant_org_approve(&pool, checker).await;
     let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
     for bindings in 0..3 {
         if bindings == 1 {
@@ -104,11 +111,13 @@ async fn unbound_maker_or_checker_has_its_own_refusal(pool: PgPool) {
     let org = OrgId::from_uuid(Uuid::new_v4());
     let maker = seed_org_and_super_admin(&pool, *org.as_uuid(), "unbound-orgchange").await;
     let checker = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "checker").await;
+    org_change_fixtures::grant_org_approve(&pool, checker).await;
     let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
     person_fixtures::bind_user_to_distinct_person(&pool, maker).await;
     person_fixtures::bind_user_to_distinct_person(&pool, checker).await;
     let cases = person_fixtures::unverified_decision_parties(&pool, maker, checker).await;
     for (index, (case, maker, checker)) in cases.into_iter().enumerate() {
+        org_change_fixtures::grant_org_approve(&pool, checker).await;
         let request:Uuid=sqlx::query_scalar("INSERT INTO org_change_requests(org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,proposal,drafted_by,idempotency_key,request_fingerprint) VALUES($1,$2,'REORG','IN_APPROVAL','REGION','region','Region',CURRENT_DATE,'Review','[]',$3,$4,repeat('a',64)) RETURNING id").bind(org.as_uuid()).bind(format!("OC-2026-{:04}",index+1)).bind(maker.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(&pool).await.unwrap();
         let step:Uuid=sqlx::query_scalar("INSERT INTO org_change_approval_steps(org_id,request_id,step_order,role_key) VALUES($1,$2,1,'hr') RETURNING id").bind(org.as_uuid()).bind(request).fetch_one(&pool).await.unwrap();
         let before = snapshot(&pool, step).await;

@@ -148,6 +148,7 @@ pub struct OrgChangeEventView {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrgChangeDetail {
+    pub version: String,
     #[serde(flatten)]
     pub summary: OrgChangeSummary,
     pub proposal: Vec<OrgProposalOp>,

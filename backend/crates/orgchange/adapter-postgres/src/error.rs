@@ -18,6 +18,8 @@ pub enum PgOrgChangeError {
     /// `preflight_blocked`), distinct from a generic state conflict.
     #[error("preflight blockers are present; resolve them and re-run preflight")]
     PreflightBlocked(Vec<String>),
+    #[error("org change version is stale")]
+    StaleVersion(String),
 }
 
 impl From<sqlx::Error> for PgOrgChangeError {
@@ -31,7 +33,7 @@ impl PgOrgChangeError {
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(e) | Self::Frozen(e) => e.kind,
-            Self::PreflightBlocked(_) => ErrorKind::Conflict,
+            Self::PreflightBlocked(_) | Self::StaleVersion(_) => ErrorKind::Conflict,
             Self::Db(DbError::Sqlx(sqlx::Error::Database(e)))
                 // unique violation (idempotency/code race), CHECK violation
                 // (gov_approvals self-approval), FK violation (referential net)
@@ -47,7 +49,7 @@ impl PgOrgChangeError {
     pub fn message(&self) -> String {
         match self {
             Self::Domain(e) | Self::Frozen(e) => e.message.clone(),
-            Self::PreflightBlocked(_) => self.to_string(),
+            Self::PreflightBlocked(_) | Self::StaleVersion(_) => self.to_string(),
             Self::Db(DbError::Sqlx(sqlx::Error::Database(e))) => match e.code().as_deref() {
                 Some("23514") => "기안자는 자신의 조직 개편을 승인할 수 없습니다.".to_owned(),
                 Some("23505") => "a conflicting record already exists".to_owned(),

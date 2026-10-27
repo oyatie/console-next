@@ -169,7 +169,17 @@ pub(crate) async fn decide(
     let approved = matches!(b.decision, WireDecision::Approved);
     respond(
         &s.store
-            .decide_step(p.user_id, id, step_id, approved, b.memo)
+            .decide_step_command(
+                p.user_id,
+                id,
+                step_id,
+                console_orgchange_domain::StepDecisionCommand {
+                    approved,
+                    memo: b.memo,
+                    expected_version: b.expected_version,
+                    through_step: b.through_step,
+                },
+            )
             .await
             .map_err(RestError::store)?,
     )
