@@ -30,14 +30,29 @@ pub(super) async fn list_crews(
     h: HeaderMap,
     AttendanceQuery(q): AttendanceQuery<CrewsQuery>,
 ) -> Res<Items<CrewRead>> {
-    let c = caller(&principal(&s, &h).await?, READ)?;
+    let p = principal(&s, &h).await?;
+    let c = caller(&p, READ)?;
     let date = opt_date(q.date.as_ref(), "date")?;
-    Ok(Json(
-        s.store
-            .list_crews(&c, q.workplace_id, date)
-            .await
-            .map_err(RestError::schedule)?,
-    ))
+    let crews = s
+        .store
+        .list_crews(&c, q.workplace_id, date)
+        .await
+        .map_err(RestError::schedule)?;
+    let subjects = crews
+        .items
+        .iter()
+        .flat_map(|crew| crew.members.iter().map(|member| member.employee_id))
+        .collect::<Vec<_>>();
+    crate::audit::read(
+        &s,
+        &p,
+        "attendance.crews_read",
+        "query".to_owned(),
+        &subjects,
+        None,
+    )
+    .await?;
+    Ok(Json(crews))
 }
 
 pub(super) async fn create_crew(
@@ -156,10 +171,19 @@ pub(super) async fn me(
 ) -> Res<ScheduleCalendar> {
     let p = principal(&s, &h).await?;
     let (org, user) = (*p.org_id.as_uuid(), *p.user_id.as_uuid());
-    Ok(Json(
-        s.store
-            .own_schedule(org, user, q.month)
-            .await
-            .map_err(RestError::schedule)?,
-    ))
+    let calendar = s
+        .store
+        .own_schedule(org, user, q.month)
+        .await
+        .map_err(RestError::schedule)?;
+    crate::audit::read(
+        &s,
+        &p,
+        "attendance.own_schedule_read",
+        calendar.scope_id.to_string(),
+        &[calendar.scope_id],
+        Some(calendar.scope_id),
+    )
+    .await?;
+    Ok(Json(calendar))
 }

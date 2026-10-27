@@ -8,7 +8,7 @@ use console_platform_authz::Principal;
 use console_platform_request_context::audit_context::access_log::{AccessRecord, record_access};
 use uuid::Uuid;
 
-pub(super) async fn read(
+pub(crate) async fn read(
     state: &AttendanceRestState,
     principal: &Principal,
     action: &'static str,
@@ -16,6 +16,9 @@ pub(super) async fn read(
     subject_ids: &[Uuid],
     reader_subject: Option<Uuid>,
 ) -> Result<(), RestError> {
+    let mut subjects = subject_ids.to_vec();
+    subjects.sort_unstable();
+    subjects.dedup();
     record_access(
         state.store.pool(),
         principal,
@@ -23,7 +26,7 @@ pub(super) async fn read(
             action,
             target_type: "employee",
             target_id,
-            subject_ids,
+            subject_ids: &subjects,
             reader_subject,
             details: serde_json::json!({}),
         },
@@ -38,7 +41,7 @@ pub(super) async fn read(
     })
 }
 
-pub(super) async fn record(
+pub(crate) async fn record(
     state: &AttendanceRestState,
     principal: &Principal,
     code: &str,
@@ -56,7 +59,7 @@ fn unavailable() -> RestError {
     )
 }
 
-pub(super) async fn read_refusal(
+pub(crate) async fn read_refusal(
     State(state): State<AttendanceRestState>,
     request: Request,
     next: Next,

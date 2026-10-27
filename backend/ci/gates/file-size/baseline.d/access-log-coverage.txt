@@ -1,0 +1,3 @@
+# Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
+# Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
+crates/attendance/rest/src/lib.rs	1233

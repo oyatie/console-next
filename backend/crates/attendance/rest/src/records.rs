@@ -1,8 +1,7 @@
 //! 근태 기록 routes (ATT S2). Reads need the directory read key; writes the
 //! attendance edit key on every person they touch (re-checked per cell).
 
-#[path = "records_audit.rs"]
-mod audit;
+use crate::audit;
 
 use axum::Json;
 use axum::extract::{Path, State};
@@ -31,7 +30,7 @@ pub const BATCH_UNDO_PATH: &str = "/api/v1/attendance/batches/{batch_id}/undo";
 pub const ENTRY_CORRECT_PATH: &str = "/api/v1/attendance/entries/{entry_id}/correct";
 pub const ENTRY_VOID_PATH: &str = "/api/v1/attendance/entries/{entry_id}/void";
 
-pub(crate) fn router(state: AttendanceRestState) -> axum::Router<AttendanceRestState> {
+pub(crate) fn router() -> axum::Router<AttendanceRestState> {
     axum::Router::new()
         .route(DAYS_PATH, get(days))
         .route(MONTH_PATH, get(month))
@@ -41,10 +40,6 @@ pub(crate) fn router(state: AttendanceRestState) -> axum::Router<AttendanceRestS
         .route(BATCH_UNDO_PATH, post(undo))
         .route(ENTRY_CORRECT_PATH, post(correct))
         .route(ENTRY_VOID_PATH, post(void))
-        .layer(axum::middleware::from_fn_with_state(
-            state,
-            audit::read_refusal,
-        ))
 }
 
 /// A refusal that carries its rows (409 `entry_conflict`, 422 `cells_refused`)

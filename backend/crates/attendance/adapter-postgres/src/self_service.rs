@@ -22,7 +22,7 @@ use crate::{
 };
 
 const LIST_OWN_EXCEPTIONS_SQL: &str = "\
-    SELECT e.id,e.code,e.kind,e.status,e.work_date,e.occurred_at,e.detail,e.evidence,e.created_at,\
+    SELECT e.employee_id,e.id,e.code,e.kind,e.status,e.work_date,e.occurred_at,e.detail,e.evidence,e.created_at,\
            r.action AS resolution_action,r.reason AS resolution_reason,\
            r.ot_hours::text AS ot_hours,r.resolved_at \
     FROM attendance_exceptions e \
@@ -142,6 +142,7 @@ impl PgAttendanceStore {
                     acknowledged_at,
                 };
                 Ok(Some(OwnWeek52Read {
+                    employee_id,
                     week_start,
                     current_hours,
                     projected_hours: current_hours,
@@ -186,6 +187,7 @@ fn own_exception_read(
         }),
     };
     Ok(OwnAttendanceExceptionRead {
+        employee_id: row.try_get("employee_id")?,
         id: row.try_get("id")?,
         code: row.try_get("code")?,
         kind: ExceptionKind::parse(&row.try_get::<String, _>("kind")?)
