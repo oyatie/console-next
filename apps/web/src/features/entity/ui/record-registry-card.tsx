@@ -3,6 +3,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { DIRECTOR_ROLE, label, REPRESENTATION } from "../../../lib/labels";
 import { FactRow } from "./record-fact-row";
+import { officers } from "../domain/view";
 import { entityFields } from "./record-entity-fields";
 import type { Act } from "./record-revise-sheet";
 import s from "./record.module.css";
@@ -16,6 +17,7 @@ import { Muted } from "../../../ui/muted/muted";
 export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
   const c = e.current;
   const f = entityFields(e);
+  const people = officers(e);
   const corp = e.biz_kind === "CORPORATION";
   const fix = { kind: "fix" as const };
   return (
@@ -40,15 +42,16 @@ export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
         <FactRow label={t("entityRecord.field.mainPhone")} action={{ ...fix, onPress: () => act.field(f.mainPhone) }}><span className="num">{f.mainPhone.current}</span></FactRow>
         {corp && (
           <FactRow label={t("entityRecord.field.directors")} action={c?.directors ? { ...fix, onPress: () => act.field(f.directors) } : null}>
-            {c?.directors == null ? t("entity.field.restricted") : c.directors.length === 0 ? "—" : c.directors.map((d, i) => (
-              <span key={i} className={s.line}>{label(DIRECTOR_ROLE, d.role)} {d.name}{d.appointed_on && <span className={s.sub}> {t("entityRecord.registry.appointed", { date: fmtDate(d.appointed_on) })}</span>}</span>
+            {people.map((d, i) => (
+              <span key={i} className={s.line}>{d.role ? label(DIRECTOR_ROLE, d.role) : t("entityRecord.field.representatives")} {d.name}{d.appointed_on && <span className={s.sub}> {t("entityRecord.registry.appointed", { date: fmtDate(d.appointed_on) })}</span>}</span>
             ))}
+            {c?.directors == null || c.representatives == null ? t("entity.field.restricted") : people.length === 0 ? "—" : null}
           </FactRow>
         )}
         <FactRow label={t("entityRecord.registry.notCollected")}>
-          <span className={s.line}><span className={s.sub}>{t("entityRecord.registry.noRrn")}</span></span>
+          <span className={`${s.line} ${s.sub}`}>{t("entityRecord.registry.noRrn")}</span>
           <span className={s.line}><small className={s.sub}>{t("entityRecord.registry.noRrnBasis")}</small></span>
-          <span className={s.line}><span className={s.sub}>{t("entityRecord.registry.noAddress")}</span></span>
+          <span className={`${s.line} ${s.sub}`}>{t("entityRecord.registry.noAddress")}</span>
         </FactRow>
         {/* company-05: the number a founding recorded, while no certificate shows it; last, so it never moves the facts above. */}
         {corp && e.registrations.length === 0 && <FactRow label={t("entityRecord.field.crn")}><span className="num">{e.crn?.display ?? "—"}</span></FactRow>}

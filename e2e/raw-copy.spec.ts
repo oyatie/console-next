@@ -19,7 +19,7 @@ test("RAW: one registration reads in Korean in history, ledger, print, consent a
   const page = await openTenant(browser, "raw-copy", "새온기록");
   await setupCompany(page, "새온기록", "본사");
   const entity = new URL(page.url()).pathname;
-  await page.getByRole("button", { name: /^사업장 \d/ }).click();
+  await page.getByRole("tab", { name: /^사업장 \d/ }).click();
   const panel = page.getByRole("complementary", { name: "본사" });
   const history = panel.getByRole("region", { name: "이력" });
   await expect(history).toContainText("건설 사업장 여부: — → 아님");

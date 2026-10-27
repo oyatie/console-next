@@ -28,7 +28,7 @@ export async function reviseFact(page: Page, field: string, verb: "rev" | "cor",
 
 /** The entity's first workplace, from its page: its own certificate's place, name prefilled (as multi-entity.spec). */
 export async function firstWorkplace(admin: Page, entity: string, name: string) {
-  await admin.getByRole("button", { name: /^사업장 \d/ }).click();
+  await admin.getByRole("tab", { name: /^사업장 \d/ }).click();
   await admin.getByRole("link", { name: "사업장 추가" }).first().click();
   await registerWorkplace(admin, entity, name);
 }

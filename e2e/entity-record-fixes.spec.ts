@@ -97,7 +97,7 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
   await expect(rail.getByText(koDate(kstDate())).first()).toBeVisible();
 
   // The 대표전화 정정 lists only 대표전화, not the scheduled 대표자 변경 (backend history diff).
-  await a.getByRole("button", { name: /^이력/ }).click();
+  await a.getByRole("tab", { name: /^이력/ }).click();
   const newest = a.locator("ol.timeline").first().locator("li").first();
   await expect(newest).toContainText("대표전화");
   await expect(newest).not.toContainText("대표자");
@@ -154,7 +154,7 @@ test("a real conflict shows what changed meanwhile and re-applies the value on t
   await expect(phone).toBeHidden();
   await expect(a.getByText("02-555-0142").first()).toBeVisible();
   // Both are in the history: the other person's 정정, then this one; the refused attempt wrote nothing.
-  await a.getByRole("button", { name: /^이력/ }).click();
+  await a.getByRole("tab", { name: /^이력/ }).click();
   const items = a.locator("ol.timeline").first().locator("li");
   await expect(items.nth(0)).toContainText(/대표전화: \S*0199 → \S*0142/);
   await expect(items.nth(1)).toContainText(/대표전화: .*→ \S*0199/);

@@ -31,8 +31,8 @@ export function NewEntityScreen() {
 const entityRoute = getRouteApi("/app/org/entities/$id");
 export function EntityScreen() {
   const { id } = entityRoute.useParams();
-  const { wp, tab } = entityRoute.useSearch();
-  return <EntityRecord key={`${id}:${wp ?? ""}:${tab ?? ""}`} id={id} workplace={wp} initialTab={tab} />;
+  const { wp } = entityRoute.useSearch();
+  return <EntityRecord key={`${id}:${wp ?? ""}`} id={id} workplace={wp} />;
 }
 
 const wpRoute = getRouteApi("/app/org/entities/$id/workplaces/new");

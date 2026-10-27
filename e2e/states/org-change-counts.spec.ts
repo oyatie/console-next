@@ -20,14 +20,14 @@ for (const width of [1440, 390]) {
       else await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible({ timeout: 20_000 });
       const views = main.getByRole("group", { name: t("orgChange.list.views") });
       for (const view of ["open", "mine", "ready", "done", "cancelled", "all"] as const) {
-        const button = views.getByRole("button", { name: `${t(`orgChange.list.view.${view}`)}${state === "failed" ? " —" : ""}`, exact: true });
+        const button = views.getByRole("button", { name: t(`orgChange.list.view.${view}`, { count: state === "failed" ? "—" : "" }).trim(), exact: true });
         await expect(button).toBeVisible();
         if (state === "loading") await expect(button.locator('[aria-hidden="true"]')).toHaveCount(1);
         else await expect(button.locator("[title]")).toHaveAttribute("title", t("orgChange.list.countFailed"));
       }
       if (state === "loading") {
         fixture.release();
-        await expect(views.getByRole("button", { name: `${t("orgChange.list.view.all")} 3`, exact: true })).toBeVisible();
+        await expect(views.getByRole("button", { name: t("orgChange.list.view.all", { count: 3 }), exact: true })).toBeVisible();
       }
       await expectAxe(page, `org-change-counts/${state}/${width}`);
       expect(fixture.unexpected).toEqual([]);
@@ -47,7 +47,7 @@ for (const width of [1440, 390]) {
         const views = main.getByRole("group", { name: t("orgChange.list.views") });
         const rows = main.getByRole("table", { name: t("orgChange.list.title") }).locator("tbody > tr");
         await expect(rows).toHaveCount(2);
-        const mine = views.getByRole("button", { name: `${t("orgChange.list.view.mine")} 1`, exact: true });
+        const mine = views.getByRole("button", { name: t("orgChange.list.view.mine", { count: 1 }), exact: true });
         const requested = page.waitForRequest(request => {
           const url = new URL(request.url());
           return url.pathname === orgChangeList.read && url.searchParams.get("limit") === "50" && url.searchParams.get("drafted_by") === user.id && url.searchParams.get("effective_from") === from && url.searchParams.get("effective_to") === to;

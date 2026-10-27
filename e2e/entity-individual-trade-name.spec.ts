@@ -6,7 +6,7 @@ import { openTenant } from "./helpers/tenant";
 import { brnDisplay, pickKind, registerEntity, typeAddress, workplaceSheet } from "./setup-flows";
 
 const ids = JSON.parse(readFileSync(new URL("./entity-individual-identifiers.json", import.meta.url), "utf8")) as { primary: { brn: string }; second: { brn: string } };
-const tab = (page: Page, name: string) => page.getByRole("group", { name: "법인 정보 보기" }).getByRole("button", { name: new RegExp(`^${name}(?:\\s|$)`) });
+const tab = (page: Page, name: string) => page.getByRole("tablist", { name: "법인 정보 보기" }).getByRole("tab", { name: new RegExp(`^${name}(?:\\s|$)`) });
 
 async function wizardCertificate(page: Page, brn: string) {
   await page.getByRole("textbox", { name: /^사업자등록번호/ }).fill(brn);
@@ -93,7 +93,7 @@ test("each individual's certificate owns its 상호 through entity edits and cer
   await expect(reissue.getByRole("textbox", { name: /^상호/ })).toHaveValue("가나상회 역삼점");
   await reissue.getByRole("button", { name: "취소", exact: true }).click();
   await expect(reissue).toBeHidden();
-  await page.getByRole("group", { name: "법인 정보 보기" }).getByRole("button", { name: /^이력/ }).click();
+  await page.getByRole("tablist", { name: "법인 정보 보기" }).getByRole("tab", { name: /^이력/ }).click();
   await expect(page.getByRole("region", { name: "이력", exact: true })).toContainText(/상호.*가나상회 2호점.*→.*가나상회 역삼점/s);
 });
 

@@ -72,8 +72,9 @@ test("identifier correction: a second person approves, requester applies, and a 
   await grantAccess(admin, "김검토", "full");
   await grantAccess(admin, "이범위", "full", /본사/);
   const managerBearer = bearerOf(manager);
-  await go(manager, "/", true);
+  await manager.reload();
   await passkeyLogin(manager);
+  await expect.poll(managerBearer).not.toBe("");
   const scopedAuthz = await apiOf(manager, managerBearer)("/me/authz");
   expect(scopedAuthz.status()).toBe(200);
   const scopedCapabilities = await scopedAuthz.json() as { capabilities: { feature: string; org_wide: boolean }[] };
@@ -154,13 +155,13 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(detail(admin)).toBeHidden();
   await go(admin, recordPath);
   await expect(admin.getByText(FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.second.crn), { exact: true }).first()).toBeVisible();
-  await admin.getByRole("button", { name: /^이력/ }).click();
+  await admin.getByRole("tab", { name: /^이력/ }).click();
   await expect(admin.getByText("운영 중 변경", { exact: true }).first()).toBeVisible();
   const history = await api(`/legal-entities/${entityId}/revisions`);
   expect((await history.json()).items).toEqual(expect.arrayContaining([expect.objectContaining({ change_mode: "GOVERNED" })]));
 
   // Another proposed certificate is declined: both the applied number and its original stay current.
-  await admin.getByRole("button", { name: "개요", exact: true }).click();
+  await admin.getByRole("tab", { name: "개요", exact: true }).click();
   const declined = await requestCorrection(admin, REGISTRATION_FIXTURES.branch_primary.crn, "declined");
   await register(reviewer).getByRole("row").filter({ hasText: FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.branch_primary.crn) }).click();
   await expect(detail(reviewer).getByRole("button", { name: "거절", exact: true })).toHaveAttribute("aria-disabled", "true");

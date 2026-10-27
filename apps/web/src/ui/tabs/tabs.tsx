@@ -10,23 +10,28 @@ export type TabItem = { id: string; label: ReactNode; count?: ReactNode };
  * and select, Home / End jump, Tab leaves the list for the panel. `children(id)` renders the selected view's panel.
  * Pages that are separate routes use TabNav instead (links with aria-current), which looks the same.
  */
-export function Tabs({ label, items, selected, onSelect, children }: {
+export function Tabs({ label, items, selected, onSelect, renderList, children }: {
   label: string;
   items: readonly TabItem[];
   selected: string;
   onSelect: (id: string) => void;
+  /** Place the tablist in a page head while its panels stay outside that header. */
+  renderList?: (list: ReactNode) => ReactNode;
   children: (id: string) => ReactNode;
 }) {
+  const list = (
+    <TabList aria-label={label} className={s.list}>
+      {items.map((i) => (
+        <Tab key={i.id} id={i.id} className={s.tab}>
+          {i.label}
+          {i.count !== undefined && <span className={s.count}>{i.count}</span>}
+        </Tab>
+      ))}
+    </TabList>
+  );
   return (
     <AriaTabs selectedKey={selected} onSelectionChange={(k) => onSelect(String(k))} className={s.tabs}>
-      <TabList aria-label={label} className={s.list}>
-        {items.map((i) => (
-          <Tab key={i.id} id={i.id} className={s.tab}>
-            {i.label}
-            {i.count !== undefined && <span className={s.count}>{i.count}</span>}
-          </Tab>
-        ))}
-      </TabList>
+      {renderList ? renderList(list) : list}
       {items.map((i) => (
         <TabPanel key={i.id} id={i.id} className={s.panel}>{children(i.id)}</TabPanel>
       ))}

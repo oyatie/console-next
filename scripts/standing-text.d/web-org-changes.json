@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/org/ui/org-change-views.tsx#OrgChangeViews": 8
+  },
+  "newScreens": {
+    "apps/web/src/features/org/ui/org-change-views.tsx#OrgChangeViews": {
+      "FACT": 5,
+      "REFUSAL": 3,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

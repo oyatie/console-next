@@ -24,7 +24,7 @@ for (const live of [false, true]) {
     const { admin } = w;
     // From the 법인 page: the 사업장 tab (1), then 사업장 이름 수정 (2).
     await go(admin, `/org/entities/${w.entityId}`);
-    await admin.getByRole("button", { name: /^사업장 1/ }).click();
+    await admin.getByRole("tab", { name: /^사업장 1/ }).click();
     const fromEntity = admin.getByRole("complementary", { name: NAMES.workplace });
     const entityRows = await rowsOf(fromEntity);
     // 종류 and 본점·대표 are structure acts: from the 법인 page their 수정 opens the chart with that sheet over it.
@@ -32,7 +32,7 @@ for (const live of [false, true]) {
     await expect(admin.getByRole("dialog", { name: new RegExp(`${NAMES.workplace} 종류 변경`) })).toBeVisible();
     await admin.keyboard.press("Escape");
     await go(admin, `/org/entities/${w.entityId}`);
-    await admin.getByRole("button", { name: /^사업장 1/ }).click();
+    await admin.getByRole("tab", { name: /^사업장 1/ }).click();
     const sheet = await edit(admin, fromEntity, "사업장 이름", "가람허브", "이름 변경");
     await expect(sheet.getByText(live ? "바로 반영 · 이력으로 남습니다" : "바로 반영 (설정 단계)")).toBeVisible();
     await expectAccessible(admin, "workplace name sheet");
@@ -65,7 +65,7 @@ for (const live of [false, true]) {
     // A stale save (another tab renamed it first) is refused (409) and said in the sheet; the other tab's name stands.
     const other = await admin.context().newPage();
     await go(other, `/org/entities/${w.entityId}`);
-    await other.getByRole("button", { name: /^사업장 1/ }).click();
+    await other.getByRole("tab", { name: /^사업장 1/ }).click();
     const mine = await edit(admin, fromChart, "사업장 이름", "가람본부", "이름 변경");
     const theirs = await edit(other, other.getByRole("complementary", { name: "가람허브" }), "사업장 이름", "가람타워", "이름 변경");
     await theirs.getByRole("button", { name: "변경 저장" }).click();

@@ -43,7 +43,7 @@ export async function deleteUnusedDept(page: Page, name: string, c: C = plain) {
 export async function addWorkplaceFromEntity(page: Page, entity: RegExp, c: C = plain) {
   await go(page, "/org/entities");
   await c.click(page.getByRole("row", { name: entity }));
-  await c.click(page.getByRole("button", { name: /^사업장 \d/ }));
+  await c.click(page.getByRole("tab", { name: /^사업장 \d/ }));
   await c.click(page.getByRole("link", { name: "사업장 추가" }).first());
   await expect(sheet(page, "사업장 추가")).toBeVisible();
   return sheet(page, "사업장 추가");

@@ -3,6 +3,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { DIRECTOR_ROLE, label, REPRESENTATION } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
+import { officers } from "../domain/view";
 import { entityFields } from "./record-entity-fields";
 import type { Act } from "./record-revise-sheet";
 import { useRecordLock } from "./use-record-lock";
@@ -13,6 +14,7 @@ import { Muted } from "../../../ui/muted/muted";
 export function OfficersTab({ e, act }: { e: LegalEntity; act: Act }) {
   const c = e.current;
   const f = entityFields(e);
+  const people = officers(e);
   const open = !useRecordLock();
   return (
     <div className={s.col}>
@@ -24,8 +26,9 @@ export function OfficersTab({ e, act }: { e: LegalEntity; act: Act }) {
           {open && c?.representatives && <Button variant="ghost" onClick={() => act.field(f.representatives)}>{t("entityRecord.officers.fixReps")}</Button>}
         </div>
         <ul className={s.mlist}>
-          {(c?.representatives ?? []).map((n) => <li key={n}>{n}</li>)}
+          {people.filter(p => !p.role).map((p, i) => <li key={i}>{p.name}</li>)}
           {!c?.representatives && <li className="muted">{t("entity.field.restricted")}</li>}
+          {people.length === 0 && c?.representatives != null && (e.biz_kind !== "CORPORATION" || c.directors != null) && <li className="muted">{t("entityRecord.officers.none")}</li>}
         </ul>
       </section>
       {e.biz_kind === "CORPORATION" && (
@@ -37,11 +40,12 @@ export function OfficersTab({ e, act }: { e: LegalEntity; act: Act }) {
             {open && c?.directors && <Button variant="ghost" onClick={() => act.field(f.directors)}>{t("entityRecord.officers.fixDirectors")}</Button>}
           </div>
           <ul className={s.mlist}>
-            {(c?.directors ?? []).map((d, i) => (
-              <li key={i}><b>{label(DIRECTOR_ROLE, d.role)}</b><span>{d.name}</span><span className={s.r}>{d.appointed_on ? t("entityRecord.registry.appointed", { date: fmtDate(d.appointed_on) }) : ""}</span></li>
+            {people.filter(p => p.role).map((d, i) => (
+              <li key={i}><b>{label(DIRECTOR_ROLE, d.role!)}</b><span>{d.name}</span><span className={s.r}>{d.appointed_on ? t("entityRecord.registry.appointed", { date: fmtDate(d.appointed_on) }) : ""}</span></li>
             ))}
-            {c?.directors?.length === 0 && <li className="muted">{t("entityRecord.officers.none")}</li>}
+            {c?.directors == null && <li className="muted">{t("entity.field.restricted")}</li>}
           </ul>
+          {c?.directors?.length === 0 && <Muted>{t("entityRecord.officers.none")}</Muted>}
         </section>
       )}
       <p className="muted">{t("entityRecord.registry.noRrn")} · {t("entityRecord.registry.noRrnBasis")}</p>

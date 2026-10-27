@@ -1,41 +1,86 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
+import { useQuery } from "@tanstack/react-query";
 import { OrgChanges } from "./org-changes";
-const state = vi.hoisted(() => ({ counts: "success", mine: "success", total: 0 }));
-const query = (status: string) => ({ data: status === "success" ? { items: [], total: state.total } : undefined, isSuccess: status === "success", isError: status === "error", isPending: status === "pending" });
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ effective_from: "2026-11-01", effective_to: "2026-11-30" }), useNavigate: () => vi.fn() }), Link: ({ children }: { children: import("react").ReactNode }) => <span>{children}</span> }));
-vi.mock("@tanstack/react-query", () => ({ keepPreviousData: vi.fn(), useQueries: () => Array.from({ length: 6 }, () => query(state.counts)), useQuery: () => query(state.mine) }));
-vi.mock("../../../lib/react/query-state", () => ({ QueryState: () => null }));
+const state = vi.hoisted(() => ({
+  counts: { data: undefined as Record<string, number> | undefined, isError: false, isPending: true, error: null as unknown },
+  list: { data: { items: [], total: 0 }, isError: false, isPending: false, isPlaceholderData: false, error: null as unknown },
+  mine: { data: { items: [], total: 0 } as { items: []; total: number } | undefined, isError: false },
+}));
+vi.mock("@tanstack/react-query", () => ({
+  keepPreviousData: vi.fn(),
+  useQueries: () => Array.from({ length: 7 }, () => state.counts),
+  useQuery: vi.fn(),
+}));
+vi.mock("../../../lib/react/query-state", () => ({ QueryState: ({ q }: { q: { isError: boolean } }) => q.isError ? <div role="alert" /> : null }));
 vi.mock("./use-change-names", () => ({ useChangeNames: () => ({}) }));
 vi.mock("./use-org-routed", () => ({ useOrgRouted: () => false }));
 beforeAll(() => loadCatalog("ko"));
-beforeEach(() => { state.counts = "success"; state.mine = "success"; state.total = 0; });
+beforeEach(() => {
+  vi.mocked(useQuery).mockReset().mockImplementationOnce(() => state.counts as never).mockImplementationOnce(() => state.list as never).mockImplementation(() => state.mine as never);
+  Object.assign(state.counts, { data: undefined, isError: false, isPending: true, error: null });
+  Object.assign(state.list, { isError: false, isPending: false, isPlaceholderData: false, error: null });
+  Object.assign(state.mine, { data: { items: [], total: 0 }, isError: false });
+});
 test("the removable period filter shows both dates", () => {
   const html = renderToStaticMarkup(<OrgChanges />);
   expect(html).toContain("2026. 11. 01.");
   expect(html).toContain("2026. 11. 30.");
   expect(html).toContain("기간 조건 초기화");
 });
-
-test.each(["pending", "error"])("%s tab counts never claim there are zero changes", status => {
-  state.counts = status;
+const tabs = () => renderToStaticMarkup(<OrgChanges />).match(/<div role="group"[^>]*>(.*?)<\/div>/s)![1]!;
+test("loading counts never render a digit in the tabs", () => {
+  expect(tabs().replace(/<[^>]+>/g, "")).not.toMatch(/\d/);
+});
+test("failed counts show the shared failed marker instead of zero", () => {
+  Object.assign(state.counts, { data: { open: 0, mine: 0, approval: 0, ready: 0, done: 0, closed: 0, all: 0 }, isError: true, isPending: false, error: new Error("count read failed") });
+  const html = tabs();
+  expect(html.replace(/<[^>]+>/g, "")).not.toMatch(/\d/);
+  expect(html).toContain("—</span>");
+  expect(html).toContain("title=");
+  expect(html).not.toContain('aria-disabled="true"');
+});
+test.each(["loading", "failed"])("a %s list keeps every tab inert with a reason", (status) => {
+  Object.assign(state.list, { isPending: status === "loading", isError: status === "failed" });
+  const html = tabs();
+  expect(html.match(/aria-disabled="true"/g)).toHaveLength(6);
+  expect(html.match(/aria-describedby=/g)).toHaveLength(6);
+  const reason = t(status === "failed" ? "orgChange.list.viewsUnavailable" : "common.loading");
+  expect(html.split(reason)).toHaveLength(2);
+  expect(html).not.toContain(t("common.loadFailed.title"));
+});
+test("a background view change keeps tabs usable while the previous page is visible", () => {
+  state.list.isPlaceholderData = true;
+  expect(tabs()).not.toContain('aria-disabled="true"');
+});
+test.each([false, true])("a failed mine read marks only the open count failed with cached data %s", cached => {
+  state.counts.data = { open: 2, mine: 3, approval: 0, ready: 1, done: 1, closed: 0, all: 3 };
+  Object.assign(state.mine, { data: cached ? { items: [], total: 0 } : undefined, isError: true });
+  const html = tabs();
+  expect(html.match(/—<\/span>/g)).toHaveLength(1);
+  expect(html).toContain(`title="${t("orgChange.list.countFailed")}"`);
+  expect(html).not.toContain('aria-hidden="true"');
+  expect(html).not.toContain('aria-disabled="true"');
+});
+test.each([false, true])("failed counts show one error region when the list failure is %s", failedList => {
+  Object.assign(state.counts, { isError: true, isPending: false, error: new Error("count read failed") });
+  Object.assign(state.list, { isError: failedList });
   const html = renderToStaticMarkup(<OrgChanges />);
-  const text = html.replace(/<[^>]*>/g, "");
-  expect(text).not.toMatch(/(?:진행 중|내가 쓴 변경|예정|완료|취소|전체)\s*0/);
-  if (status === "error") expect(text).toContain("—");
-  else expect(html).toContain('aria-hidden="true"');
+  expect(html.match(/role="alert"/g)).toHaveLength(1);
+  expect(html.match(/—<\/span>/g)).toHaveLength(6);
 });
 
 test.each(["pending", "error"])("the open count stays unknown while personal redrafts are %s", status => {
-  state.mine = status;
-  const text = renderToStaticMarkup(<OrgChanges />).replace(/<[^>]*>/g, "");
+  state.counts.data = { open: 0, mine: 0, approval: 0, ready: 0, done: 0, closed: 0, all: 0 };
+  Object.assign(state.mine, { data: undefined, isError: status === "error" });
+  const text = tabs().replace(/<[^>]*>/g, "");
   expect(text).not.toMatch(/진행 중\s*0/);
 });
 
 test.each([0, 2000])("successful tab counts still show the server total %i", total => {
-  state.total = total;
-  const text = renderToStaticMarkup(<OrgChanges />).replace(/<[^>]*>/g, "");
-  expect(text).toMatch(new RegExp(`전체\\s*${total.toLocaleString("ko-KR")}`));
+  state.counts.data = { open: total, mine: total, approval: total, ready: total, done: total, closed: total, all: total };
+  expect(tabs().replace(/<[^>]*>/g, "")).toMatch(new RegExp(`전체\\s*${total.toLocaleString("ko-KR")}`));
 });

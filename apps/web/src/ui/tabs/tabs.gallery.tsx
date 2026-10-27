@@ -2,6 +2,7 @@ import { useState } from "react";
 import { tg } from "@console/i18n/gallery";
 import { tabClass } from "./tab-class";
 import { TabCount, TabNav, Tabs } from "./tabs";
+import { PageHead } from "../page-head/page-head";
 
 export const order = 126;
 
@@ -17,7 +18,7 @@ export default function TabsGallery() {
   return (
     <section className="card gallery__section">
       <h2 className="toolbar__title">{tg("section.tabs")}</h2>
-      <Tabs label={tg("tabs.label")} items={items} selected={view} onSelect={setView}>
+      <Tabs label={tg("tabs.label")} items={items} selected={view} onSelect={setView} renderList={list => <PageHead band title={tg("pageHead.title")} tabs={list} />}>
         {(id) => <p className="muted">{tg(body[id as keyof typeof body])}</p>}
       </Tabs>
       <TabNav label={tg("tabs.nav")}>

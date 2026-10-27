@@ -92,7 +92,7 @@ test("saved views use server filters and keep phone cards linked to their record
     const views = main.getByRole("group", { name: t("orgChange.list.views") });
     const table = main.getByRole("table", { name: t("orgChange.list.title") });
     for (const [view, count] of [["open", 2], ["ready", 1], ["done", 1], ["mine", 2]] as const) {
-      const pick = views.getByRole("button", { name: `${t(`orgChange.list.view.${view}`)} ${fmtNumber(count)}`, exact: true });
+      const pick = views.getByRole("button", { name: t(`orgChange.list.view.${view}`, { count: fmtNumber(count) }), exact: true });
       await pick.click();
       await expect(pick).toHaveAttribute("aria-pressed", "true");
       await expect(table.locator("tbody > tr")).toHaveCount(count);

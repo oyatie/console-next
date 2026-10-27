@@ -19,7 +19,7 @@ async function workplaceTab(page: Page) {
   await page.getByRole("link", { name: "사업장 추가" }).first().click();
   await registerWorkplace(page, "새온정밀", "서울 본사");
   await go(page, new URL(record).pathname);
-  await page.getByRole("button", { name: /^사업장 \d/ }).click();
+  await page.getByRole("tab", { name: /^사업장 \d/ }).click();
   return page.getByRole("complementary", { name: "서울 본사" });
 }
 

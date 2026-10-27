@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { t } from "@console/i18n";
@@ -9,19 +9,19 @@ import { QueryState } from "../../../lib/react/query-state";
 import { todayKst } from "../../../lib/pure/today";
 import { ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
-import { Count } from "../../../ui/count/count";
 import { daysBetween } from "../../../ui/date/days";
 import { EmptyState } from "../../../ui/empty-state";
 import { Pager } from "../../../ui/pager";
 import { Table } from "../../../ui/table";
-import { CHANGE_VIEWS, CHANGES_PAGE, changesViewQuery, myChangesQuery, type ChangeView } from "../api";
+import { CHANGES_PAGE, changesViewQuery, myChangesQuery, type ChangeView } from "../api";
 import { awaitingRedraft, changeTitle } from "../present";
+import { orgChangeCountsQuery } from "../api/counts";
+import { OrgChangeViews } from "./org-change-views";
 import { useChangeNames } from "./use-change-names";
 import { useOrgRouted } from "./use-org-routed";
 import css from "./org-change.module.css";
 
 const route = getRouteApi("/app/org/changes");
-const ALL_VIEWS = Object.keys(CHANGE_VIEWS) as ChangeView[];
 
 /**
  * Org changes in saved views, each with the server's count. There is no text search: the API filters by
@@ -32,13 +32,13 @@ export function OrgChanges() {
   const range = { effective_from, effective_to };
   // decisions #26: the approval view exists only for a tenant that routes org changes.
   const routed = useOrgRouted();
-  const VIEWS = ALL_VIEWS.filter((v) => routed || v !== "approval");
   // org-21 (#26): with approval off nothing is ever rejected, so the closed view reads as cancelled only.
   const word = (v: ChangeView) => (v === "closed" && !routed ? "cancelled" : v);
   const navigate = route.useNavigate();
   const [offset, setOffset] = useState(0);
-  const counts = useQueries({ queries: VIEWS.map((v) => changesViewQuery(v, 0, 1, range)) });
+  const counts = useQuery(orgChangeCountsQuery(range));
   const list = useQuery({ ...changesViewQuery(view, offset, undefined, range), placeholderData: keepPreviousData });
+  const tabsInert = list.isPending || list.isError;
   // My rejected changes awaiting a redraft are still in progress for me: the open view leads with them. A redraft
   // on this page settles its original too, so a newer page never shows both while my changes are re-read.
   const mine = useQuery(myChangesQuery(range));
@@ -60,18 +60,11 @@ export function OrgChanges() {
           void navigate({ search: (q) => ({ ...q, effective_from: undefined, effective_to: undefined }), replace: true });
         }}>{t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })}<X size={14} aria-hidden /></ToggleButton>}
       </div>
-      <div role="group" aria-label={t("orgChange.list.views")} className="tabs">
-        {VIEWS.map((v, i) => {
-          const count = counts[i]!;
-          const known = count.isSuccess && (v !== "open" || mine.isSuccess);
-          const failed = count.isError || (v === "open" && mine.isError);
-          return (
-            <ToggleButton key={v} pressed={v === view} onClick={() => pick(v)}>
-              {t(`orgChange.list.view.${word(v)}`)} <Count n={known ? count.data.total + (v === "open" ? redraft.length : 0) : undefined} failed={failed ? t("orgChange.list.countFailed") : undefined} />
-            </ToggleButton>
-          );
-        })}
+      <div role="group" aria-label={t("orgChange.list.views")}>
+        <OrgChangeViews className="tabs" view={view} routed={routed} totals={counts.data} failed={counts.isError} redrafts={mine.data ? redraft.length : undefined} redraftsFailed={mine.isError}
+          unavailable={tabsInert ? t(list.isError ? "orgChange.list.viewsUnavailable" : "common.loading") : undefined} onPick={pick} />
       </div>
+      {counts.isError && !list.isError && <QueryState q={counts} inline own={() => t("orgChange.list.countFailed")} loading={null}>{() => null}</QueryState>}
       <section className="card">
         <QueryState
           q={list} layout="list"

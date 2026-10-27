@@ -24,7 +24,7 @@
     "apps/web/src/features/org-bulk/ui/history-page.tsx#HistoryPage": 24,
     "apps/web/src/features/org-bulk/ui/import-page.tsx#ImportPage": 92,
     "apps/web/src/features/org-bulk/ui/paste-page.tsx#PastePage": 88,
-    "apps/web/src/features/org/OrgChange.tsx#OrgChanges": 8,
+    "apps/web/src/features/org/OrgChange.tsx#OrgChanges": 6,
     "apps/web/src/features/org/ui/bulk-move-page.tsx#BulkMovePage": 45,
     "apps/web/src/features/people/ui/certificate-page.tsx#CertificatePage": 29,
     "apps/web/src/features/people/ui/certificates-page.tsx#CertificatesPage": 47,
