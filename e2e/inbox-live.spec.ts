@@ -15,7 +15,7 @@ const readFilter = (page: Page, filter: string) => page.waitForResponse((respons
   return response.request().method() === "GET" && url.pathname === INBOX && url.searchParams.get("filter") === filter;
 });
 
-test("one server queue supplies every Home filter and holds remote resolutions until refresh", { tag: ["@hr", "@live"] }, async ({ browser }, info) => {
+test("one server queue supplies Home and every inbox filter and holds remote resolutions until refresh", { tag: ["@hr", "@live"] }, async ({ browser }, info) => {
   test.setTimeout(240_000);
   const { admin } = await staffedTenant(browser, "inboxlive", "업무함실시간");
   const bearer = bearerOf(admin);
@@ -56,23 +56,26 @@ test("one server queue supplies every Home filter and holds remote resolutions u
   const draftItem = body.items.find(item => item.links.some(link => link.kind === "org_change" && link.id === draft.id))!;
   const row = inbox(reader).locator(`[data-id="${draftItem.id}"]`);
   await expect(row).toHaveCount(1);
+  await inbox(reader).getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
+  await expect(reader).toHaveURL(/\/inbox$/);
+  await expect(row).toHaveCount(1);
   await expect(row.getByRole("link", { name: "초안 편집", exact: true })).toBeVisible();
   for (const item of body.items.filter((item) => !item.kind.startsWith("setup_")))
     await expect(inbox(reader).getByText(item.title, { exact: false }).first()).toBeVisible();
 
   for (const [filter, label] of [["waiting", "기다리는 중"], ["scheduled", "예정"], ["deadlines", "기한 임박"], ["failures", "실패·예외"]] as const) {
     const reading = readFilter(reader, filter);
-    const button = inbox(reader).getByRole("button", { name: new RegExp(`^${label} \\d+\\+?$`) });
+    const button = inbox(reader).getByRole("link", { name: new RegExp(`^${label} \\d+\\+?$`) });
     await button.click();
     const response = await reading;
     expect(response.status()).toBe(200);
-    await expect(button).toHaveAttribute("aria-pressed", "true");
+    await expect(button).toHaveAttribute("aria-current", "page");
     const filtered = await response.json() as Inbox;
     if (filter === "waiting" || filter === "scheduled") expect(filtered.items.every((item) => item.lane === filter)).toBe(true);
   }
-  const turn = inbox(reader).getByRole("button", { name: /^내 차례 \d+\+?$/ });
+  const turn = inbox(reader).getByRole("link", { name: /^내 차례 \d+\+?$/ });
   await turn.click();
-  await expect(turn).toHaveAttribute("aria-pressed", "true");
+  await expect(turn).toHaveAttribute("aria-current", "page");
   await expect(row).toHaveCount(1);
   await expectAccessible(reader, "업무함 at 1440px, light and dark");
   await reader.screenshot({ path: info.outputPath("inbox-1440.png"), fullPage: true });
@@ -85,6 +88,9 @@ test("one server queue supplies every Home filter and holds remote resolutions u
 
   let loads = 0;
   reader.on("load", () => { loads++; });
+  await go(admin, "/");
+  const homeRow = inbox(admin).locator(`[data-id="${draftItem.id}"]`);
+  await expect(homeRow).toHaveCount(1);
   const before = queueReads;
   const position = await row.boundingBox();
   const held = reader.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
@@ -102,6 +108,8 @@ test("one server queue supplies every Home filter and holds remote resolutions u
   expect(updated.status()).toBe(200);
   expect((await updated.json() as Inbox).items.some((item) => item.links.some((link) => link.kind === "org_change" && link.id === draft.id))).toBe(false);
   await expect(row).toHaveCount(0);
+  await admin.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ }).click();
+  await expect(homeRow).toHaveCount(0);
   expect(queueReads).toBeGreaterThan(before);
   expect(loads, "SSE updates the open queue without a document reload").toBe(0);
   expect(sourceReads, "Home never assembles source queues in the browser").toEqual([]);

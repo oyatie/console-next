@@ -4,7 +4,7 @@ import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { startOperations, tenantInSetup } from "./setup-flows";
 
-test("Home ranks deadline rows before undated work and keeps a refused action with its reason", { tag: "@hr" }, async ({ browser }, info) => {
+test("Inbox ranks deadline rows before undated work and keeps a refused action with its reason", { tag: "@hr" }, async ({ browser }, info) => {
   const { admin } = await tenantInSetup(browser, "homebuckets", "업무함기한상사");
   await startOperations(admin);
   type Item = components["schemas"]["ActionInboxItem"];
@@ -38,7 +38,7 @@ test("Home ranks deadline rows before undated work and keeps a refused action wi
     return route.fulfill({ status: 403, contentType: "application/json", json: { error: { code: "grant_notice_not_holder", message: "forbidden" } } });
   });
   await admin.setViewportSize({ width: 1440, height: 900 });
-  await admin.reload();
+  await admin.goto("/inbox");
   const queue = admin.getByRole("region", { name: "업무함", exact: true });
   await expect(queue.getByRole("table")).toHaveCount(4);
   await expect(queue.getByRole("heading", { level: 3 })).toHaveText(["기한 지남", "기한 임박", "그 뒤", "기한 없음"]);

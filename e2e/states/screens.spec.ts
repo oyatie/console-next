@@ -39,9 +39,11 @@ for (const screen of screens) for (const state of Object.keys(screen.states) as 
         await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);
         if (screen.key === "home") {
           const rows = main.getByRole("region", { name: "업무함", exact: true }).locator("[data-id]");
-          await expect(rows).toHaveCount(Math.min(fixture.count, 100));
+          await expect(rows).toHaveCount(Math.min(fixture.count, 5));
           await expect(rows.first()).toContainText(state === "long" ? LONG_NAME : "검증직원 1");
           if (state === "large") {
+            await main.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true }).click();
+            await expect(rows).toHaveCount(100);
             await main.getByRole("button", { name: t("home.inbox.more"), exact: true }).click();
             await expect(rows).toHaveCount(200);
             await expect(rows.last()).toContainText("UI-0200");

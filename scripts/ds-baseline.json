@@ -52,7 +52,6 @@
 "apps/web/src/features/entity/ui/workplace-primary-sheet.tsx": {"dsClass":3},
 "apps/web/src/features/entity/ui/workplace-side-panel.tsx": {"dsClass":2},
 "apps/web/src/features/entity/ui/workplaces-tab.tsx": {"dsClass":6},
-"apps/web/src/features/home/Home.tsx": {"dsClass":5},
 "apps/web/src/features/import/ui/done-step.tsx": {"dsClass":5},
 "apps/web/src/features/import/ui/dry-rows.tsx": {"dsClass":3},
 "apps/web/src/features/import/ui/dryrun-step.tsx": {"dsClass":8},
