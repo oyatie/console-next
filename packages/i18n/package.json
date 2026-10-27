@@ -2,6 +2,12 @@
   "name": "@console/i18n",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./format": "./src/format.ts", "./gallery": "./src/gallery.ts" },
-  "dependencies": { "intl-messageformat": "*" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./format": "./src/format.ts",
+    "./gallery": "./src/gallery.ts"
+  },
+  "dependencies": {
+    "intl-messageformat": "^12.1.4"
+  }
 }

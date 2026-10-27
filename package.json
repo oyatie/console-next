@@ -31,16 +31,16 @@
     "check:request-body-contract": "node --test scripts/check-request-body-contract.test.mjs scripts/check-openapi-refs.test.mjs scripts/check-prototype-chain-lookups.test.mjs && node scripts/check-request-body-contract.mjs && node scripts/check-openapi-refs.mjs && node scripts/check-prototype-chain-lookups.mjs"
   },
   "devDependencies": {
-    "@axe-core/playwright": "~4.13.0",
-    "@playwright/test": "^1.63.0",
-    "@stryker-mutator/core": "^10.0.0",
-    "@types/node": "^24.19.0",
+    "@axe-core/playwright": "~4.14.0",
+    "@playwright/test": "^1.64.1",
+    "@stryker-mutator/core": "^10.1.1",
+    "@types/node": "^26.6.5",
     "exceljs": "^4.4.0",
     "openapi-typescript": "^7.13.0",
-    "oxlint": "^1.86.0",
-    "stylelint": "^17.15.0",
+    "oxlint": "^1.89.0",
+    "stylelint": "^17.16.0",
     "stylelint-declaration-strict-value": "^1.12.1",
-    "typescript": "~5.9",
+    "typescript": "~7.0",
     "vitest": "^5.0.5"
   },
   "overrides": {
