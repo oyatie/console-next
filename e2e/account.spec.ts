@@ -42,7 +42,7 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   await only.focus();
   await admin.keyboard.press("Enter");
   await expect(admin.getByRole("dialog")).toHaveCount(0);
-  await passkeys.getByRole("button", { name: "새 패스키 등록", exact: true }).click();
+  await passkeys.getByRole("button", { name: "패스키 등록", exact: true }).click();
   const addButton = main.getByRole("button", { name: "패스키로 확인하고 새 패스키 등록" });
   await expect(addButton).toBeFocused();
   await expectAccessible(admin, "my account");

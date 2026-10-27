@@ -1,4 +1,3 @@
-import { t } from "@console/i18n";
 import { InboxCommand } from "../features/org/ui/inbox-command";
 import { AddPasskey } from "../features/onboarding/ui/add-passkey";
 import { useState } from "react";
@@ -23,7 +22,7 @@ export function HomeScreen() {
   useLiveHold(pending);
   return <Home setup={(c) => <SetupHome c={c} />} setupPending={pending} action={(item) => {
     const link = item.links[0];
-    if (link?.kind === "account") return <AddPasskey count={1} primary label={t("account.second.add")} focusAfter="inbox-title" />;
+    if (link?.kind === "account") return <AddPasskey count={1} primary focusAfter="inbox-title" />;
     if (link?.kind === "org_change" && item.context?.command) return <InboxCommand id={link.id} command={item.context.command} />;
     return null;
   }} />;

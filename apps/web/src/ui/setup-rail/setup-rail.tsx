@@ -23,6 +23,10 @@ export type SetupGroup = { key: string; title: string; steps: readonly SetupStep
 
 const ICON = { todo: Circle, done: CheckCircle2, attention: AlertTriangle, blocked: Ban } as const;
 
+// eslint-disable-next-line react/only-export-components -- Home and the rail share this current-step rule.
+export const currentStep = (steps: readonly Pick<SetupStepView, "key" | "state">[]) =>
+  steps.find((x) => x.state !== "done" && x.state !== "attention")?.key;
+
 /**
  * A guided first-run checklist (design §6.2): steps grouped into phases, each with a state, one primary
  * action and, when blocked, its remedy. The first step not done is the current one (aria-current). J and K
@@ -31,8 +35,9 @@ const ICON = { todo: Circle, done: CheckCircle2, attention: AlertTriangle, block
 export function SetupRail({ title, summary, groups }: { title: string; summary?: ReactNode; groups: readonly SetupGroup[] }) {
   const id = useId();
   const all = groups.flatMap((g) => g.steps);
-  const current = all.find((x) => x.state !== "done" && x.state !== "attention")?.key;
+  const current = currentStep(all);
   const done = all.filter((x) => x.state === "done" || x.state === "attention").length;
+  const progress = t("uiSetupRail.progress", { done, total: all.length });
   const box = useRef<HTMLDivElement>(null);
   // J/K is a convenience on top of Tab (the list stays a list for assistive tech), so it is a plain listener.
   useEffect(() => {
@@ -55,13 +60,13 @@ export function SetupRail({ title, summary, groups }: { title: string; summary?:
     <section className={`card ${s.rail}`} aria-labelledby={id}>
       <div className={s.head}>
         <h2 id={id} className="panel__title">{title}</h2>
-        <span className={s.count}>{t("uiSetupRail.progress", { done, total: all.length })}</span>
+        <span className={s.count} role="progressbar" aria-labelledby={id} aria-valuemin={0} aria-valuenow={done} aria-valuemax={all.length} aria-valuetext={progress}>{progress}</span>
       </div>
       {summary != null && <p className={s.summary}>{summary}</p>}
       <div ref={box} className={s.groups}>
         {groups.map((g) => (
           <div key={g.key} className={s.group}>
-            <h3 className={s.groupTitle}>{g.title}</h3>
+            {groups.length > 1 && <h3 className={s.groupTitle}>{g.title}</h3>}
             <ol className={s.steps}>
               {g.steps.map((x) => {
                 const Icon = ICON[x.state];

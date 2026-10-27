@@ -30,7 +30,7 @@ test("an unknown step key stays readable without a guessed action", () => {
   expect(unknownStep).toBeDefined();
   expect(unknownStep).toContain("future_step");
   expect(unknownStep).not.toContain('href=');
-  expect(html).toContain('href="/settings/company-domain"');
+  expect(html).not.toContain('href="/settings/company-domain"');
 });
 
 test("an employees-only setup grant keeps other steps readable with permissions and no write action", () => {
@@ -43,6 +43,7 @@ test("an employees-only setup grant keeps other steps readable with permissions 
   expect(html).not.toContain('href="/org/entities/new"');
   expect(html).not.toContain('href="/access/roles/new"');
   expect(html).not.toContain('href="/setup/go-live"');
+  expect(html).not.toContain('href="/org/history"');
   expect(html).toContain("조직 등록·수정 권한 필요");
   expect(html).toContain("권한 등록·수정 권한 필요");
   expect(html).toContain("운영 계정 필요");
@@ -79,7 +80,7 @@ test("the trunk rail keeps registration, imports, skips, passkey recovery and th
   for (const text of ["법인 등록", "사업장 등록", "부서 없이 진행", "직원은 나중에", "미배치 18", "법인 미정 3", "패스키", "일괄 작업", "이용약관 동의"]) {
     expect(html, text).toContain(text);
   }
-  expect(html).toContain('aria-label="운영 준비 진행률"');
+  expect(html).toContain('role="progressbar"');
   expect(commands.mutate).not.toHaveBeenCalled();
 });
 
@@ -103,4 +104,68 @@ test("Home keeps the server's department gap and one bulk fix for a solo admin",
   const html = render(checklist([step("org", true, "org::edit", { state: "attention", remedy: "assign_department", count: 3 })]));
   expect(html).toContain("부서 없는 직원 3명");
   expect(html.match(/href="\/people\?review=department"/g)).toHaveLength(1);
+});
+
+const railOf = (html: string) => html.match(/<section[^>]*aria-labelledby[^>]*>[\s\S]*?<\/section>/)![0];
+const rowsOf = (html: string) => [...railOf(html).matchAll(/<li[^>]*data-step[^>]*>[\s\S]*?<\/li>/g)].map((m) => m[0]);
+const ordered = () => [
+  step("entity", true, "org::edit", { group: "company" }),
+  step("workplace", true, "org::edit", { group: "company" }),
+  step("org", true, "org::edit", { group: "company" }),
+  step("people", true, "tenant_ops", { group: "operations" }),
+  step("passkey", true, "own_account", { group: "operations", count: 1 }),
+  step("employees", true, "hr_basic::edit", { group: "people" }),
+  step("roles", true, "access::edit", { group: "operations" }),
+  step("golive", true, "tenant_ops", { group: "people" }),
+];
+
+test("Home renders one list in server order with one named progress and its history", () => {
+  const steps = ordered();
+  steps[0]!.state = "attention";
+  const html = render(checklist(steps));
+  const rail = railOf(html);
+  expect(rail.match(/<ol/g)).toHaveLength(1);
+  expect(rail).not.toContain("<h3");
+  expect(rowsOf(html).map((row) => row.match(/<span[^>]*>([^<]+)/)![1])).toEqual([
+    "법인 등록", "사업장 등록", "조직 구성", "보안 연락처 · 핵심 인원", "다른 기기에 패스키 하나 더", "직원 등록", "역할 · 담당자 초대", "운영 시작",
+  ]);
+  expect(html).not.toContain("<progress");
+  expect(rail).toContain('role="progressbar"');
+  expect(rail).toContain('aria-valuenow="1"');
+  expect(rail).toContain('aria-valuemax="8"');
+  expect(rail).toContain('aria-valuetext="1/8 완료"');
+  expect(rail).toContain('href="/org/history"');
+});
+
+test.each([0, 1, 2, 3, 4, 5, 6, 7])("only current step %i has a primary action", (current) => {
+  const steps = ordered().map((s, i) => ({ ...s, state: i < current ? "done" as const : s.state }));
+  const rows = rowsOf(render(checklist(steps)));
+  expect(rows.join("").match(/btn--primary/g)).toHaveLength(1);
+  expect(rows[current]).toContain('aria-current="step"');
+  expect(rows[current]).toContain("btn--primary");
+});
+
+test.each(["create_legal_entity", "create_workplace"])("a prerequisite %s leaves the blocked step quiet", (remedy) => {
+  const html = render(checklist([step("entity", true, "org::edit"), step("workplace", true, "org::edit", { state: "blocked", remedy })]));
+  const blocked = rowsOf(html)[1]!;
+  expect(blocked).toContain(remedy === "create_legal_entity" ? "대기 · 법인 등록 후" : "대기 · 사업장 등록 후");
+  expect(blocked).not.toMatch(/<(a|button)\b/);
+});
+
+test("bulk offers only download and workplace does not duplicate department import paths", () => {
+  const html = render(checklist(ordered()));
+  const bulk = html.slice(html.indexOf('<section aria-labelledby="setup-bulk"'));
+  expect(bulk).toContain("조직 시트 내려받기");
+  expect(bulk).not.toMatch(/href="\/org\/(import|paste|history)"/);
+  const rows = rowsOf(html);
+  expect(rows[1]).not.toMatch(/href="\/org\/(import|paste)"/);
+  expect(rows[2]).toContain('href="/org/import"');
+  expect(rows[2]).toContain('href="/org/paste"');
+});
+
+test("a current blocked step keeps its own fix primary when it is not waiting on another step", () => {
+  const row = rowsOf(render(checklist([step("golive", true, "tenant_ops", { state: "blocked", remedy: "accept_terms" })])))[0]!;
+  expect(row).toContain("이용약관 동의");
+  expect(row).toContain('href="/setup/go-live"');
+  expect(row.match(/btn--primary/g)).toHaveLength(1);
 });

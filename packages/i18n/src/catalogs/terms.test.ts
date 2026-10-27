@@ -17,7 +17,6 @@ const TENANT_LABELS = [
   "identifiers.scope.tenant",
   "requests.subject.ORGANIZATION",
   "workplace.kinds.tenant",
-  "setup.group.company",
   "entityCreate.review.rootKicker",
   "entityCreate.context",
   "entityQuick.kicker",

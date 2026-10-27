@@ -68,7 +68,6 @@
 "apps/web/src/features/import/ui/upload-step.tsx": {"dsClass":3},
 "apps/web/src/features/onboarding/ui/go-live.module.css": {"restyle":3,"literal":1},
 "apps/web/src/features/onboarding/ui/go-live.tsx": {"dsClass":6},
-"apps/web/src/features/onboarding/ui/setup-home.tsx": {"dsClass":3},
 "apps/web/src/features/org-bulk/ui/bulk-head.tsx": {"dsClass":2},
 "apps/web/src/features/org-bulk/ui/bulk.module.css": {"restyle":51},
 "apps/web/src/features/org-bulk/ui/conflict.module.css": {"restyle":6},
