@@ -6,6 +6,8 @@ import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
 import { browserTestOptimizeDeps } from "../../../lib/browser-test";
+// Firefox runs with the cross-browser suite (E2E_XBROWSER=1); CI installs Chromium only.
+const ENGINES = process.env.E2E_XBROWSER === "1" ? [chromium, firefox] : [chromium];
 
 type Item = components["schemas"]["ActionInboxItem"];
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", title: id, ref: "", lane: "turn", urg: "wait", dueTone: "neutral", days_remaining: null, done: false, links: [], ...extra });
@@ -36,8 +38,7 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  // Firefox runs with the cross-browser suite (E2E_XBROWSER=1); CI installs Chromium only.
-  for (const engine of process.env.E2E_XBROWSER === "1" ? [chromium, firefox] : [chromium]) {
+  for (const engine of ENGINES) {
     const browser = await engine.launch();
     const page = await browser.newPage();
     sessions.push({ browser, page });
@@ -47,7 +48,7 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await Promise.all(sessions.map(({ browser }) => browser.close())); await server?.close(); });
 
-test.each([0, 1].flatMap(engine => [1440, 390].map(width => ({ engine, width }))))("queue cells stay inside each row at $width px, engine $engine, both themes", async ({ engine, width }) => {
+test.each(ENGINES.flatMap((_, engine) => [1440, 390].map(width => ({ engine, width }))))("queue cells stay inside each row at $width px, engine $engine, both themes", async ({ engine, width }) => {
     const { page } = sessions[engine]!;
     await page.setViewportSize({ width, height: 900 });
     const items = [
