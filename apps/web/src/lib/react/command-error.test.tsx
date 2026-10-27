@@ -34,7 +34,7 @@ test("unavailable solo unlock names the second-person remedy", async () => {
   expect(banner).not.toContain("diagnostic");
 });
 
-async function html(error: unknown, props: { children?: ReactNode; historyHref?: string; fieldLabel?: (field: string) => string | null | undefined; own?: (code: string) => string | undefined; live?: "polite" | "assertive"; recover?: boolean; onFocusField?: (field: string) => void; formId?: string; formFields?: string[] } = {}) {
+async function html(error: unknown, props: { children?: ReactNode; historyHref?: string; fieldLabel?: (field: string) => string | null | undefined; own?: (code: string) => string | undefined; live?: "polite" | "assertive"; recover?: boolean; read?: boolean; onFocusField?: (field: string) => void; formId?: string; formFields?: string[] } = {}) {
   const root = createRootRoute({ component: () => <CommandError error={error} {...props} /> });
   const outcome = createRoute({ getParentRoute: () => root, path: "/requests/$id" });
   const router = createRouter({ routeTree: root.addChildren([outcome]), history: createMemoryHistory({ initialEntries: ["/"] }) });
@@ -46,6 +46,29 @@ const callerGuidance = "caller guidance";
 const callerRemedy = "caller remedy";
 const key = "actual-transport-intent-key";
 const operation = "original-operation-id";
+
+test.each([
+  new ApiError(503, "walk_outage", "walk: simulated outage", [], operation, true, [], { supportRef: "read-support-reference" }),
+  new ApiError(502, "http_502", "Bad Gateway", [], operation, false),
+  new TypeError("walk: simulated outage"),
+])("an unkeyed request failure is safe read copy, never command uncertainty: %s", async error => {
+  const banner = await html(error);
+  expect(banner).not.toContain(t("requestOutcome.checking"));
+  expect(banner).not.toContain(t("requestOutcome.remedy"));
+  expect(banner).not.toContain("walk: simulated outage");
+  expect(banner).not.toContain("Bad Gateway");
+  expect(banner).not.toContain("/requests/");
+  expect(banner).toContain('role="alert"');
+  if (error instanceof ApiError && error.supportRef) expect(banner).toContain(error.supportRef);
+});
+
+test("an explicitly marked read uses safe copy even when its error carries a key", async () => {
+  const banner = await html(new ApiError(503, "walk_outage", "walk: simulated outage", [], operation, true, [], { requestKey: key }), { read: true });
+  expect(banner).toContain(t("common.read.failedReason"));
+  expect(banner).not.toContain("walk: simulated outage");
+  expect(banner).not.toContain(t("requestOutcome.checking"));
+  expect(banner).not.toContain("/requests/");
+});
 
 test("an unanswered gateway failure is announced as an alert while preserving the lookup remedy", async () => {
   const banner = await html(new ApiError(502, "http_502", "Bad Gateway", [], undefined, false, [], { requestKey: key }), { live: "assertive" });
