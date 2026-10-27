@@ -95,11 +95,11 @@ export function OrgChanges() {
                     cell: (c) => {
                       const days = daysBetween(today, c.effectiveDate);
                       const ahead = days > 0 && (c.status === "DRAFT" || c.status === "PRECHECKED" || c.status === "IN_APPROVAL" || c.status === "APPROVED");
-                      return <span className={`num ${css.nowrap}`}>{fmtDate(c.effectiveDate)}{ahead && <> · {t("orgChange.rel.ahead", { days })}</>}</span>;
+                      return <time dateTime={c.effectiveDate} className={`num ${css.nowrap}`}>{fmtDate(c.effectiveDate)}{ahead && <> · {t("orgChange.rel.ahead", { days })}</>}</time>;
                     },
                   },
                   { header: t("orgChange.list.col.drafter"), cell: (c) => <span className={css.nowrap}>{actor(c.draftedByName)}</span>, fit: true, wide: true },
-                  { header: t("orgChange.list.col.updated"), cell: (c) => <span className={`num ${css.nowrap}`}>{fmtDateTime(c.updatedAt)}</span>, fit: true, wide: true },
+                  { header: t("orgChange.list.col.updated"), cell: (c) => <time dateTime={c.updatedAt} className={`num ${css.nowrap}`}>{fmtDateTime(c.updatedAt)}</time>, fit: true, wide: true },
                 ]}
               />
               <Pager offset={offset} limit={CHANGES_PAGE} total={d.total} onPage={setOffset} />

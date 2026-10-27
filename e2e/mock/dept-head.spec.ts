@@ -10,7 +10,8 @@ import { forgetResize, recordShifts } from "../stability";
 test("operating list and panel appoint directly, keep the code, and refresh the shared vacancy count", async ({ page }) => {
   await page.addInitScript(recordShifts);
   const fixture = await mockScreen(page, screens[2], "populated");
-  const tree = structure(2);
+  const tree = structure(3);
+  tree.entities[0]!.children[0]!.children[2]!.head = { employee_id: id(102), name: "박부서장", concurrent: false, since: "2026-01-01" };
   const dept = tree.entities[0]!.children[0]!.children[0]!;
   dept.code = "QA-1";
   dept.version = 7;
@@ -39,6 +40,9 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   await page.goto("/org?view=list");
   const filter = page.getByRole("button", { name: "부서장 없음 2", exact: true });
   await filter.click();
+  await expect(filter).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("grid")).toHaveAttribute("aria-rowcount", "5");
+  await expect(page.getByRole("row").filter({ hasText: "검증부서 3" })).toHaveCount(0);
   const row = page.getByRole("row").filter({ hasText: "검증부서 1" });
   const open = row.getByRole("button", { name: "부서장 지정", exact: true });
   const sheet = page.getByRole("dialog", { name: "부서장 지정", exact: true });
@@ -82,7 +86,10 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   await expect(longRow.getByText("E-000123", { exact: true })).toBeVisible();
   expect(await longRow.getByText("E-000123", { exact: true }).evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`/org?sel=${id(101)}`);
+  await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/org-units/${id(101)}`),
+    page.goto(`/org?sel=${id(101)}`),
+  ]);
   const panel = page.getByRole("complementary", { name: "검증부서 2", exact: true });
   await expect(panel.getByText("부서장 없음", { exact: true })).toHaveCount(1);
   await panel.getByRole("button", { name: "부서장 지정", exact: true }).click();

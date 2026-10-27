@@ -50,9 +50,8 @@ const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-a
 const home = createRoute({ getParentRoute: () => app, path: "/", staticData: { access: "signed-in" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
 const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in" }, component: lazyRouteComponent(screen(() => import("../features/account/Account")), "Account") });
 
-// Dev-only component gallery, outside the auth guard; the DEV constant drops it (and its chunk)
-// from production builds.
-const dev = import.meta.env.DEV
+// Test builds keep the gallery for the preview suite; normal production builds drop its route and chunk.
+const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
   ? [createRoute({ getParentRoute: () => root, path: "/_gallery", component: lazyRouteComponent(screen(() => import("../gallery/gallery")), "Gallery") })]
   : [];
 

@@ -19,6 +19,9 @@
 .td { display: flex; align-items: center; height: 100%; padding: 0 var(--space-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; outline: none; }
 .table[data-layout="rows"] .td { height: var(--row-h); }
 [data-density="compact"] .table[data-layout="rows"] .td { height: var(--row-h-compact); }
+/* Label plus control reserve two rows; validation can grow the measured height. */
+.table[data-editable] .td { height: auto; min-height: calc(var(--row-h) * 2); white-space: normal; align-items: start; }
+[data-density="compact"] .table[data-editable] .td { height: auto; min-height: calc(var(--row-h-compact) * 2); }
 .table[data-layout="cards"] .td { align-items: start; white-space: normal; }
 .td[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .check { display: inline-flex; cursor: pointer; }

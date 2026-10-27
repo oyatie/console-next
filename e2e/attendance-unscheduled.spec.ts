@@ -56,16 +56,16 @@ test("일정 없음: warning → filtered people → assign one person; month sa
   await save.getByRole("button", { name: /저장$/ }).click();
   await expect(admin.getByRole("button", { name: "저장", exact: true })).toHaveCount(0);
   await admin.getByRole("button", { name: "자세히", exact: true }).click();
-  const detail = admin.getByRole("table", { name: "일별 · 자세히" });
+  const detail = admin.getByRole("grid", { name: /^일별 · 자세히/ });
   const ledger = (await admin.getByText(/^근태 대상 \d+명/).innerText()).match(/^근태 대상 (\d+)명/)!;
-  await expect(detail.locator("tbody tr[data-id]")).toHaveCount(Number(ledger[1]));
-  await expect(detail.locator('th[scope="rowgroup"]')).toContainText(["3명 · 정상 1 · 일정 없음 2"]);
+  await expect(detail).toHaveAttribute("aria-rowcount", String(Number(ledger[1]) + 1));
+  await expect(admin.getByText(/3명 · 정상 1 · 일정 없음 2/)).toBeVisible();
   await admin.getByRole("button", { name: "확인 필요만", exact: true }).click();
-  await expect(detail.locator("tbody tr[data-id]")).toHaveCount(2);
+  await expect(detail).toHaveAttribute("aria-rowcount", "3");
   await expect(detail.getByRole("button", { name: "일정 지정", exact: true })).toHaveCount(2);
   await expect(admin.getByText(/^근태 대상 3명/)).toBeVisible();
   await admin.getByRole("button", { name: "확인 필요만", exact: true }).click();
-  await expect(detail.locator("tbody tr[data-id]")).toHaveCount(Number(ledger[1]));
+  await expect(detail).toHaveAttribute("aria-rowcount", String(Number(ledger[1]) + 1));
   await expectAccessible(admin, "detail parity at 1440");
   await atPhoneWidth(admin, () => expectAccessible(admin, "detail parity at 390"));
 

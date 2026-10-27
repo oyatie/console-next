@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type ColumnProps, type SortDescriptor } from "react-aria-components";
 import { ArrowDown, ArrowUp } from "lucide-react";
@@ -12,6 +12,9 @@ import type { CardColumn } from "./card-columns";
 import { CardContent } from "./card-content";
 import { useCardLayout } from "./use-card-layout";
 import { SelectInput } from "../field/select-input";
+
+// Native design-system controls participate in the table's focus management.
+export { Focusable as TableControl } from "react-aria-components";
 
 const NONE = new Set<string>();
 
@@ -63,6 +66,8 @@ export function LongTable<R>(p: {
   loading?: boolean;
   empty: ReactNode;
   density?: "regular" | "compact";
+  /** Editing rows grow with validation messages; Tab visits controls and arrows keep editing text. */
+  editable?: boolean;
   onRowAction?: (id: string) => void;
   /** Prefetch hooks: the pointer entered a row, or a row took focus. */
   onRowHover?: (id: string) => void;
@@ -140,6 +145,8 @@ export function LongTable<R>(p: {
     return () => (el.removeEventListener("focusin", focus), keys?.());
   }, [hasFind, hasRowKeys]);
   const density = p.density ?? "regular";
+  const layout = useMemo(() => cardLayout && cardHeight ? { ...LAYOUT[density], estimatedRowHeight: cardHeight }
+    : p.editable ? { ...LAYOUT[density], estimatedRowHeight: LAYOUT[density].estimatedRowHeight * 2 } : LAYOUT[density], [cardLayout, cardHeight, density, p.editable]);
   const loaded = p.rows.map(p.rowId);
   const sel = p.selection;
   const titleId = (r: R) => `${captionId}-${encodeURIComponent(p.rowId(r))}-title`;
@@ -190,7 +197,7 @@ export function LongTable<R>(p: {
         <SelectionBar sel={sel} loaded={loaded.length} total={p.total} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
       )}
       <ResizableTableContainer>
-      <Virtualizer layout={TableLayout} layoutOptions={cardLayout && cardHeight ? { ...LAYOUT[density], estimatedRowHeight: cardHeight } : LAYOUT[density]}>
+      <Virtualizer layout={TableLayout} layoutOptions={layout}>
         <Table
           ref={(el) => {
             grid.current = el;
@@ -200,6 +207,9 @@ export function LongTable<R>(p: {
           aria-describedby={p.caption ? captionId : undefined}
           className={`${css.table} ${cards.surface}`}
           data-layout={cardLayout ? "cards" : "rows"}
+          data-editable={p.editable || undefined}
+          data-total={p.total}
+          keyboardNavigationBehavior={p.editable ? "tab" : "arrow"}
           sortDescriptor={p.sortDescriptor}
           onSortChange={p.onSortChange}
           // An empty virtualized body is as tall as the viewport, so give the empty and loading states a height.
@@ -232,7 +242,11 @@ export function LongTable<R>(p: {
                 const id = p.rowId(r);
                 return (
                   <Row id={id} columns={cols} className={css.row} onHoverStart={p.onRowHover && (() => p.onRowHover?.(id))}>
-                    {(c) => <Cell className={css.td} render={cardLayout && c.id === "__card" ? (props) => <div {...props} aria-labelledby={titleId(r)} /> : undefined}>{c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r)}</Cell>}
+                    {(c) => {
+                      const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
+                      // Collection metadata needs row names; offscreen form controls can wait for a visible cell.
+                      return <Cell className={css.td} render={cardLayout && c.id === "__card" ? (props) => <div {...props} aria-labelledby={titleId(r)} /> : undefined}>{p.editable && !c.rowHeader ? render : render()}</Cell>;
+                    }}
                   </Row>
                 );
               }}

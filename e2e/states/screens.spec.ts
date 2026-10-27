@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { LONG_NAME } from "../mock/fixtures";
+import { id, LONG_NAME } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { screens, type State } from "./registry";
 
@@ -55,7 +55,7 @@ for (const screen of screens) for (const state of Object.keys(screen.states) as 
             for (let loaded = 100; loaded < fixture.count; loaded += 100) {
               const nextPage = page.waitForResponse(response => {
                 const url = new URL(response.url());
-                return url.pathname === screen.read && Number(url.searchParams.get("offset")) === loaded;
+                return url.pathname === screen.read && url.searchParams.get("cursor") === id(100 + loaded - 1) && !url.searchParams.has("offset");
               });
               await table.evaluate(el => { el.scrollTop = el.scrollHeight; });
               await nextPage;

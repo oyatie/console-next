@@ -4,6 +4,9 @@ import { loadCatalog, t } from "@console/i18n";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
 
+// The dev server serves the source module; the prebuilt suite serves the hashed chunk.
+const calendarChunk = (url: URL) => /\/ui\/date\/date-calendar\.tsx$|\/assets\/date-calendar-[^/]+\.js$/.test(url.pathname);
+
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const intent of ["hover", "focus"] as const) {
@@ -12,7 +15,7 @@ for (const intent of ["hover", "focus"] as const) {
     let requests = 0;
     let release!: () => void;
     const held = new Promise<void>(resolve => { release = resolve; });
-    await page.route("**/ui/date/date-calendar.tsx*", async route => {
+    await page.route(calendarChunk, async route => {
       requests++;
       await held;
       await route.continue();
@@ -35,7 +38,7 @@ for (const intent of ["hover", "focus"] as const) {
       await expect(calendar).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(calendar).toHaveCount(0);
-      const delivered = page.waitForResponse("**/ui/date/date-calendar.tsx*");
+      const delivered = page.waitForResponse(response => calendarChunk(new URL(response.url())));
       release();
       await delivered;
       await expect(calendar).toHaveCount(0);
@@ -66,7 +69,7 @@ for (const intent of ["hover", "focus"] as const) {
     const fixture = await mockScreen(page, screens[1], "empty");
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
-    await page.route("**/ui/date/date-calendar.tsx*", route => route.fulfill({
+    await page.route(calendarChunk, route => route.fulfill({
       contentType: "text/javascript", body: 'globalThis.calendarAttempted = true; throw new Error("calendar load failed");',
     }));
     try {
@@ -100,7 +103,7 @@ for (const intent of ["hover", "focus"] as const) {
 test("a missing calendar chunk shows a local error without reloading the draft", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "empty");
   let attempts = 0;
-  await page.route("**/ui/date/date-calendar.tsx*", route => { attempts++; return route.abort(); });
+  await page.route(calendarChunk, route => { attempts++; return route.abort(); });
   try {
     await page.goto("/_gallery");
     const demo = page.locator("section").filter({ has: page.getByRole("heading", { name: "날짜 필드", exact: true }) });

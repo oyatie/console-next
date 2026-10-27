@@ -50,11 +50,12 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const [open, setOpen] = useState<{ id: string; own: boolean } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [assign, setAssign] = useState<AssignTarget | null>(null);
-  const feedback = [note, store.problem && t(`attendanceRecords.drafts.${store.problem}`)].filter(Boolean).join(" · ");
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
   const drafts = Object.keys(store.drafts).length;
+  const feedback = [drafts > 0 && t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 }), note, store.problem && t(`attendanceRecords.drafts.${store.problem}`)].filter(Boolean).join(" · ");
   const saveWhy = !online ? t("attendanceRecords.save.offline") : null;
   const empty = board.data?.ledger.people === 0;
+  const restoringDetail = search.detail && board.isPlaceholderData && board.data?.groups.some(g => g.hidden > 0);
 
   return (
     <div className={s.dayPage}>
@@ -72,13 +73,12 @@ export function DayTab({ head }: { head?: ReactNode }) {
         <ToggleButton size="sm" pressed={!search.detail} onClick={() => go({ detail: undefined })}>{t("attendanceRecords.board.simple")}</ToggleButton>
         <ToggleButton size="sm" pressed={!!search.detail} onClick={() => go({ detail: true })}>{t("attendanceRecords.board.detail")}</ToggleButton>
         {drafts > 0 && <>
-          <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 })}</span>
           {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
         </>}
       </div>}
       {feedback && <p className="muted" role="status">{feedback}</p>}
 
-      <QueryState q={board} own={refusalText} layout="grid">{b => {
+      <QueryState q={restoringDetail ? { ...board, isPending: true } : board} own={refusalText} layout="grid">{b => {
         const ledger = ledgerParts(b.ledger);
         return <>
             <div className={s.monthLayout} data-docked={save || open ? "" : undefined}>
@@ -98,7 +98,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                       <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
                     )
                   ) : search.detail ? (
-                    <DayDetail board={b} store={store} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
+                    <DayDetail board={b} store={store} onNote={setNote} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : (
                     b.groups.map((g) => (
                       <Card

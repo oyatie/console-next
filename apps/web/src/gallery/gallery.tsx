@@ -7,7 +7,7 @@ import { PageHead } from "../ui/page-head/page-head";
 import "./gallery.css";
 
 /**
- * Dev-only (/_gallery, registered only when import.meta.env.DEV): every shared UI component in
+ * Development/test-only (/_gallery): every shared UI component in
  * representative states, for visual regression (e2e/visual.spec.ts) and the axe gate. No backend.
  *
  * Entries are discovered, never listed here: any `src/**\/*.gallery.tsx` that default-exports a

@@ -8,6 +8,10 @@ import type { OrgChangeState, Screen, State } from "../states/registry";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
 export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState) {
+  if (process.env.E2E_CPU_THROTTLE) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.E2E_CPU_THROTTLE) });
+  }
   const unexpected: string[] = [];
   await page.route(url => url.pathname.startsWith("/api/"), async route => {
     unexpected.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);
@@ -59,8 +63,10 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/employees", async request => {
     const failed = await beforeReply("/api/v1/employees");
     const query = new URL(request.url()).searchParams;
-    const offset = Number(query.get("offset") ?? 0), limit = Number(query.get("limit") ?? 100);
-    return failed ?? { status: 200, json: { items: rows.slice(offset, offset + limit), total: count, offset, limit, next_cursor: null } };
+    const cursor = query.get("cursor");
+    const offset = cursor ? rows.findIndex(row => row.id === cursor) + 1 : 0;
+    const limit = Number(query.get("limit") ?? 100), end = offset + limit;
+    return failed ?? { status: 200, json: { items: rows.slice(offset, end), total: count, offset, limit, next_cursor: end < count ? rows[end - 1]!.id : null } };
   });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", async request => {
     const failed = await beforeReply("/api/v1/me/action-inbox");
@@ -81,6 +87,6 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   const record = orgChange(state === "empty" ? "populated" : state);
   await mockRoute(page, "get", "/api/v1/org-changes/{id}", async () => (await beforeReply("/api/v1/org-changes/{id}")) ?? (state === "missing" ? { status: 404, json: failure("not_found") } : { status: 200, json: record }));
   await mockRoute(page, "post", "/api/v1/org-changes/{id}/preflight", { status: 200, json: record });
-  await mockOrgChangeCounts(page, "populated", changes);
-  return { unexpected, release, count, operationId: id(99) };
+  const counts = await mockOrgChangeCounts(page, screen.key === "org-changes" && (state === "loading" || state === "failed") ? state : "populated", changes);
+  return { unexpected, release: () => { release(); counts.release(); }, count, operationId: id(99) };
 }

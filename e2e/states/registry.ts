@@ -9,7 +9,7 @@ const states = {
   refused: "Return the common middleware ErrorBody with 403; granters and my access succeed.",
   populated: "Return three typed items (three departments for the chart).",
   long: "Return long Korean names and placement labels.",
-  large: "Return 2,000 typed rows; honor roster offset/limit and inbox cursor pagination.",
+  large: "Return 2,000 typed rows; honor roster and inbox cursor pagination.",
 } as const;
 export type State = keyof typeof states;
 export const screens = [

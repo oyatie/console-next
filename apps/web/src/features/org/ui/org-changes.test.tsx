@@ -72,3 +72,15 @@ test.each([false, true])("failed counts show one error region when the list fail
   expect(html.match(/role="alert"/g)).toHaveLength(1);
   expect(html.match(/—<\/span>/g)).toHaveLength(6);
 });
+
+test.each(["pending", "error"])("the open count stays unknown while personal redrafts are %s", status => {
+  state.counts.data = { open: 0, mine: 0, approval: 0, ready: 0, done: 0, closed: 0, all: 0 };
+  Object.assign(state.mine, { data: undefined, isError: status === "error" });
+  const text = tabs().replace(/<[^>]*>/g, "");
+  expect(text).not.toMatch(/진행 중\s*0/);
+});
+
+test.each([0, 2000])("successful tab counts still show the server total %i", total => {
+  state.counts.data = { open: total, mine: total, approval: total, ready: total, done: total, closed: total, all: total };
+  expect(tabs().replace(/<[^>]*>/g, "")).toMatch(new RegExp(`전체\\s*${total.toLocaleString("ko-KR")}`));
+});

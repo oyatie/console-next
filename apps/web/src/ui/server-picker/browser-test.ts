@@ -11,6 +11,7 @@ export async function pickerTestServer(name: string, source: string) {
   const server = await createServer({
     // A cold re-optimization mid-test would load React twice.
     optimizeDeps: browserTestOptimizeDeps,
+    define: { "process.env.VIRT_ON": "true" },
     resolve: { dedupe: ["react", "react-dom"] },
     configFile: false, cacheDir: `.cache/${name}`, logLevel: "error",
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
