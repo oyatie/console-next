@@ -115,6 +115,11 @@ export function inventory(files, readInput, metadata = []) {
         if (!match[3] && !match[0].startsWith("docker://")) continue;
         add("container", match[1], { file, user: file, pin: `${match[2] ?? ""}${match[3] ?? ""}`, layer: "CI/supply chain" });
       }
+      for (const match of source.matchAll(/cargo install ([\w-]+) --locked --version "\$\{(\w+)\}"/g)) {
+        const pin = source.match(new RegExp(`^\\s+${match[2]}: ([\\d.]+)$`, "m"))?.[1];
+        if (!pin) throw new Error(`missing pinned tool version: ${file}: ${match[1]}`);
+        add("ci-tool", match[1], { file, user: file, pin, layer: "CI/supply chain" });
+      }
       for (const match of source.matchAll(/https:\/\/github.com\/([^/]+\/[^/]+)\/releases\/download\/([^/]+)\//g)) add("ci-tool", match[1].split("/")[1], { file, user: file, pin: match[2], layer: "CI/supply chain" }, { evidence: [`https://github.com/${match[1]}`] });
     }
     if (/(^|\/)(?:Dockerfile(?:\..*)?|[^/]+\.Dockerfile)$/.test(file)) {
@@ -149,8 +154,9 @@ export function reviewRows(rows, reviews) {
     if (!row.direct) return { ...row, job: row.job ?? `Resolved implementation dependency of ${(row.resolvedParents ?? []).join(", ") || "the committed lock graph"}` };
     const review = reviews[`${row.kind}:${row.name}`];
     if (!review) throw new Error(`missing review: ${row.kind}:${row.name}`);
+    const ownerApproved = review.approval?.by === "owner" && /^\d{4}-\d{2}-\d{2}$/.test(review.approval.on ?? "") && review.approval.ruling;
     if (review.class === "STANDARD" && (!review.approval || !review.architectureRecord ||
-      !["a", "b", "c", "d", "e"].every((key) => review.standardTest?.[key]?.result === "pass" && review.standardTest[key].source)))
+      !ownerApproved && !["a", "b", "c", "d", "e"].every((key) => review.standardTest?.[key]?.result === "pass" && review.standardTest[key].source)))
       throw new Error(`unproven STANDARD: ${row.kind}:${row.name}`);
     return { ...row, ...review, evidence: [...new Set([...(row.evidence ?? []), ...(review.evidence ?? [])])] };
   });
@@ -208,7 +214,7 @@ export function renderArchitecture(rows, file, title) {
       const names = [...new Set(row.approvedUses.filter((u) => u.layer === layer).map((u) => u.user))].sort();
       return names.length ? `${layer}: ${names.map((name) => `\`${name}\``).join(", ")}` : "";
     }).filter(Boolean).join("; ");
-    out.push(`| \`${row.kind}:${row.name}\` | ${row.layer} | ${users} | [${row.approval.ruling}](../quality/dependency-ruling-2026-10-26.md) | ${row.exitPlan} |`);
+    out.push(`| \`${row.kind}:${row.name}\` | ${row.layer} | ${users} | [${row.approval.on ? `${row.approval.on}: ` : ""}${row.approval.ruling}](../quality/dependency-ruling-2026-10-26.md) | ${row.exitPlan} |`);
   }
   out.push("", "No other dependency is approved by this map. Proposed choices and the unresolved owner queue remain in the register; a manifest, lock, licence allowlist or historical comment is not a ruling.", "");
   return out.join("\n");

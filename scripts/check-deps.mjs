@@ -1,30 +1,27 @@
 #!/usr/bin/env node
-// Dependency gate (EN-5): every external package named in a workspace package.json must be on
-// scripts/dependency-allowlist.json, so adding one is a visible allowlist edit in review. Workspace
-// packages (@console/*) are in-repo and always allowed. Stale allowlist entries also fail, so the
-// list shrinks when a dependency is dropped.
+// SPDX-License-Identifier: LicenseRef-Proprietary
+// The owner register is the npm allowlist. Existing pending declarations stay visible;
+// inventory does not approve a new package, consumer, requirement or override.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { inventory } from "./quality/tooling-inventory.mjs";
 
 const FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
 
 // manifests: [{ file, json }]; returns the problem lines (empty = pass).
-export function checkDeps(manifests, allowlist) {
-  const internal = new Set(manifests.map((m) => m.json.name).filter(Boolean));
-  const allowed = new Set(allowlist);
-  const used = new Set();
+export function checkDeps(manifests, register) {
+  const sources = new Map(manifests.map(({ file, json }) => [file, JSON.stringify(json)]));
+  const registered = new Map(register.rows.filter((r) => r.kind === "npm" && r.direct).map((r) => [r.name, r]));
   const problems = [];
-  for (const { file, json } of manifests) {
-    for (const field of FIELDS) {
-      for (const name of Object.keys(json[field] ?? {})) {
-        if (internal.has(name)) continue;
-        used.add(name);
-        if (!allowed.has(name)) problems.push(`${file}: ${field} "${name}" is not on the allowlist`);
-      }
+  for (const row of inventory([...sources.keys()], (file) => sources.get(file))) {
+    const entry = registered.get(row.name);
+    for (const use of row.uses) {
+      if (!entry) problems.push(`${use.file}: "${row.name}" is not in the owner dependency register`);
+      else if (!entry.uses.some((prior) => ["file", "user", "requirement", "layer", "override"].every((key) => prior[key] === use[key])))
+        problems.push(`${use.file}: "${row.name}" use is not recorded in the owner dependency register`);
     }
   }
-  for (const name of allowed) if (!used.has(name)) problems.push(`allowlist: "${name}" is not used by any package.json`);
   return problems;
 }
 
@@ -85,10 +82,10 @@ export function checkDependencyNotes(manifests, previous, notes, lock, readNote)
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const { allow } = JSON.parse(readFileSync(path.join(root, "scripts/dependency-allowlist.json"), "utf8"));
-  const problems = checkDeps(readManifests(root), allow);
+  const register = JSON.parse(readFileSync(path.join(root, "docs/quality/dependency-register.json"), "utf8"));
+  const problems = checkDeps(readManifests(root), register);
   if (problems.length) {
-    console.error(`deps: ${problems.length} problem(s); edit scripts/dependency-allowlist.json with owner approval:\n${problems.join("\n")}`);
+    console.error(`deps: ${problems.length} problem(s); update the owner dependency register only with owner approval:\n${problems.join("\n")}`);
     process.exit(1);
   }
 }

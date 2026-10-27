@@ -224,10 +224,15 @@
       {
         "layer": "CI/supply chain",
         "user": ".github/workflows/platform.yml"
+      },
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
       }
     ],
     "approvedUsers": [
-      ".github/workflows/platform.yml"
+      ".github/workflows/platform.yml",
+      ".github/workflows/ci.yml"
     ],
     "architectureRecord": "docs/architecture/frontend-module-map.md",
     "rulingEvidence": {
@@ -412,10 +417,15 @@
       {
         "layer": "CI/supply chain",
         "user": ".github/workflows/platform.yml"
+      },
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
       }
     ],
     "approvedUsers": [
-      ".github/workflows/platform.yml"
+      ".github/workflows/platform.yml",
+      ".github/workflows/ci.yml"
     ],
     "architectureRecord": "docs/architecture/frontend-module-map.md",
     "rulingEvidence": {
@@ -7191,7 +7201,17 @@
       "source": "docs/quality/dependency-ruling-2026-10-26.md",
       "checkedOn": "2026-10-26",
       "reason": "Image from a personal Docker Hub namespace; Apache-2.0 (seaweedfs org); the usual rivals (MinIO, Garage) are AGPL."
-    }
+    },
+    "architectureRecord": "docs/architecture/backend-module-map.md",
+    "approvedUses": [
+      {
+        "layer": "CI/supply chain",
+        "user": "deploy"
+      }
+    ],
+    "approvedUsers": [
+      "deploy"
+    ]
   },
   "container:docker.io/kindest/node": {
     "group": "Kubernetes/GitOps platform images and tools",
@@ -10519,5 +10539,123 @@
       "checkedOn": "2026-10-26",
       "reason": "a: contest (zod vs valibot 14.4M/wk); c: single npm publisher (colinhacks)."
     }
+  },
+  "ci-tool:cargo-deny": {
+    "group": "CI/supply-chain tools",
+    "job": "Enforce Rust dependency licence, advisory, ban and source policies in required CI",
+    "verdict": "keep",
+    "convention": "owner approved",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-27",
+      "ruling": "cargo deny and cargo audit approved."
+    },
+    "alternatives": "Review Cargo.lock, licence metadata and RustSec advisories manually; own checks would duplicate the maintained policy engines.",
+    "reason": "Explicit owner approval for the CI supply-chain layer; tool versions are pinned in ci.yml.",
+    "evidence": [
+      "https://github.com/EmbarkStudios/cargo-deny"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/ci.yml"
+    ],
+    "approvedUses": [
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
+      }
+    ],
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "exitPlan": "Replace only after licence, source and advisory refusal parity, then remove the tool pin and cached binaries.",
+    "license": "MIT OR Apache-2.0",
+    "securityProcess": "Fetch current RustSec advisories on every run; keep the existing dated exception policy.",
+    "ruleMapping": "Any nonzero tool exit fails the supply-chain job and ci-ok."
+  },
+  "ci-tool:cargo-audit": {
+    "group": "CI/supply-chain tools",
+    "job": "Fail required CI for RustSec advisories in the backend lockfile",
+    "verdict": "keep",
+    "convention": "owner approved",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-27",
+      "ruling": "cargo deny and cargo audit approved."
+    },
+    "alternatives": "Review Cargo.lock, licence metadata and RustSec advisories manually; own checks would duplicate the maintained policy engines.",
+    "reason": "Explicit owner approval for the CI supply-chain layer; tool versions are pinned in ci.yml.",
+    "evidence": [
+      "https://github.com/rustsec/rustsec"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/ci.yml"
+    ],
+    "approvedUses": [
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
+      }
+    ],
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "exitPlan": "Replace only after licence, source and advisory refusal parity, then remove the tool pin and cached binaries.",
+    "license": "MIT OR Apache-2.0",
+    "securityProcess": "Fetch current RustSec advisories on every run; keep the existing dated exception policy.",
+    "ruleMapping": "Any nonzero tool exit fails the supply-chain job and ci-ok."
+  },
+  "gate:scripts/check-contrast.mjs": {
+    "group": "Domain contracts and quality gates",
+    "job": "Token WCAG contrast and colour-vision separation invariants",
+    "verdict": "keep",
+    "convention": "domain contract",
+    "class": "DOMAIN-CONTRACT",
+    "approval": null,
+    "alternatives": "Keep the existing repository gate and its planted-case tests.",
+    "reason": "Existing repository gate predates this slice; register coverage only, with no dependency approval.",
+    "evidence": [
+      "scripts/check-contrast.mjs"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "exitPlan": "Replace at listed users only after contract and performance parity; remove dependency and regenerate locks/register together.",
+    "securityProcess": "not independently verified; no delegated approval",
+    "ruleMapping": "Preserve the existing gate and all its diagnostics; this record changes no enforcement.",
+    "license": "LicenseRef-Proprietary (repository code)",
+    "lastRelease": "repository snapshot 2026-10-26",
+    "maintainers": "repository maintainers",
+    "footprint": "existing gate; runtime delta unmeasured"
+  },
+  "gate:scripts/check-ds-refs.mjs": {
+    "group": "Domain contracts and quality gates",
+    "job": "Design-system token references, ownership and usage invariants",
+    "verdict": "keep",
+    "convention": "domain contract",
+    "class": "DOMAIN-CONTRACT",
+    "approval": null,
+    "alternatives": "Keep the existing repository gate and its planted-case tests.",
+    "reason": "Existing repository gate predates this slice; register coverage only, with no dependency approval.",
+    "evidence": [
+      "scripts/check-ds-refs.mjs"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "exitPlan": "Replace at listed users only after contract and performance parity; remove dependency and regenerate locks/register together.",
+    "securityProcess": "not independently verified; no delegated approval",
+    "ruleMapping": "Preserve the existing gate and all its diagnostics; this record changes no enforcement.",
+    "license": "LicenseRef-Proprietary (repository code)",
+    "lastRelease": "repository snapshot 2026-10-26",
+    "maintainers": "repository maintainers",
+    "footprint": "existing gate; runtime delta unmeasured"
   }
 }

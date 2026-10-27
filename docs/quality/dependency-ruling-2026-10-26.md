@@ -12,3 +12,7 @@ The [backend](../architecture/backend-module-map.md) and [frontend](../architect
 Approval of Rustls, Tokio Rustls and Zeroize is limited to their existing adapter/credential jobs; it does not put mail in release scope. The final ruling also leaves the six observability dependencies awaiting an owner decision. No dependency or gate was added, removed or swapped by this reconciliation.
 
 Research limits remain visible: the review did not inspect pinned image contents; some licences and security-process details were unverified. Source timestamps describe the research snapshot, not a fresh registry query. Existing layer enforcement is unchanged; the later approval-gate slice will enforce the architecture records.
+
+Subsequent explicit owner decisions: SeaweedFS was approved on 2026-10-26 ("approve SeaweedFS"). On 2026-10-27 the owner ruled: "cargo deny and cargo audit approved." The two Cargo tools are STANDARD only in CI/supply chain, with pinned versions and required failure propagation in `ci.yml`. These explicit decisions do not depend on the earlier delegated five-criterion assessment. Their architecture entries and the generated register retain the original approval date and wording.
+
+The npm dependency gate now reads the register rather than a separate name allowlist. It permits recorded declarations, including unresolved inherited uses, and refuses unregistered packages or changes to their recorded consumer, requirement, layer or override. Existing unresolved declarations remain owner findings; their inventory is not a new approval.

@@ -30,6 +30,17 @@ describe("tooling inventory", () => {
     expect(rows.filter((r) => r.kind === "gate").map((r) => r.name)).toEqual(["scripts/check-sample.mjs"]);
     expect(rows.some((r) => r.name === "actions/checkout")).toBe(true);
   });
+  test("discovers locked Cargo CI tools from their workflow version pins and refuses missing pins", () => {
+    const workflow = 'env:\n  AUDIT_VERSION: 0.22.2\nsteps:\n  - run: cargo install cargo-audit --locked --version "${AUDIT_VERSION}"\n';
+    expect(scan({ ".github/workflows/check.yml": workflow }).find((r) => r.name === "cargo-audit")?.uses[0].pin).toBe("0.22.2");
+    expect(() => scan({ ".github/workflows/check.yml": workflow.replace("  AUDIT_VERSION: 0.22.2\n", "") })).toThrow("missing pinned tool version");
+  });
+  test("explicit dated owner approval does not require a delegated STANDARD assessment", () => {
+    const row = { kind: "ci-tool", name: "cargo-audit", direct: true, uses: [], evidence: [] };
+    const review = { class: "STANDARD", approval: { by: "owner", on: "2026-10-27", ruling: "approved" }, architectureRecord: "docs/architecture/frontend-module-map.md" };
+    expect(reviewRows([row], { "ci-tool:cargo-audit": review })[0].approval).toEqual(review.approval);
+    expect(() => reviewRows([row], { "ci-tool:cargo-audit": { ...review, approval: { ...review.approval, on: "" } } })).toThrow("unproven STANDARD");
+  });
   test("new direct dependencies and gates cannot disappear behind the existing census", () => {
     const rows = scan({ "packages/api/package.json": '{"name":"@console/api","dependencies":{"planted":"1"}}', "scripts/check-planted.mjs": "// Planted contract." });
     expect(rows.some((r) => r.name === "planted" && r.direct)).toBe(true);

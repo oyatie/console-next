@@ -22,6 +22,11 @@ ignore = [
   # paste: unmaintained (not a vulnerability). Build-time proc-macro pulled
   # transitively by umya-spreadsheet (Excel export); no runtime attack surface.
   "RUSTSEC-2024-0436", # expires 2027-01-07: paste is unmaintained, not vulnerable; build-time proc-macro via umya-spreadsheet, no runtime surface
+  # Reviewed 2026-10-27; tracking and upgrade criteria: docs/security/rust-advisory-exceptions.md.
+  "RUSTSEC-2026-0387", # expires 2026-11-27: crypto-bigint 0.5 via elliptic-curve/p256/p384; timing risk accepted pending upstream adoption of fixed 0.7.6, no compatible patch
+  "RUSTSEC-2026-0367", # expires 2026-11-27: zip 7/8 via calamine/umya; no archive-to-filesystem extraction, fixed only in zip 9; review upstream upgrades
+  "RUSTSEC-2026-0368", # expires 2026-11-27: zip 7/8 via calamine/umya; entries read in memory without extracting symlinks, fixed only in zip 9; review upstream upgrades
+  "RUSTSEC-2026-0369", # expires 2026-11-27: zip 7/8 via calamine/umya; no extraction or archive-supplied filesystem permissions, fixed only in zip 9; review upstream upgrades
 ]
 
 [licenses]

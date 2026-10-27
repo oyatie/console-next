@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // node --test scripts/check-deps.test.mjs
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -9,21 +10,41 @@ const manifests = [
   { file: "packages/api/package.json", json: { name: "@console/api", peerDependencies: { react: "^19" } } },
 ];
 
-test("passes when every external dependency is allowlisted; workspace packages are implicit", () => {
-  assert.deepEqual(checkDeps(manifests, ["react", "vitest"]), []);
+const register = {
+  rows: [
+    { kind: "npm", name: "react", direct: true, uses: [
+      { file: "apps/web/package.json", user: "@console/web", requirement: "^19", layer: "web: UI" },
+      { file: "packages/api/package.json", user: "@console/api", requirement: "^19", layer: "build/tooling" },
+    ] },
+    { kind: "npm", name: "vitest", direct: true, uses: [{ file: "package.json", requirement: "^5", layer: "test" }] },
+  ],
+};
+
+test("passes recorded external declarations and real workspace dependencies", () => {
+  assert.deepEqual(checkDeps(manifests, register), []);
 });
 
-test("fails on an unlisted dependency in any field of any manifest", () => {
-  const added = [...manifests, { file: "packages/x/package.json", json: { optionalDependencies: { lodash: "^4" } } }];
-  assert.deepEqual(checkDeps(added, ["react", "vitest"]), [
-    'packages/x/package.json: optionalDependencies "lodash" is not on the allowlist',
-  ]);
+test("refuses an unregistered package, including a fake workspace name", () => {
+  for (const name of ["lodash", "@console/not-a-workspace"]) {
+    const added = [...manifests, { file: "packages/x/package.json", json: { optionalDependencies: { [name]: "^4" } } }];
+    assert.match(checkDeps(added, register).join("\n"), /not in the owner dependency register/);
+  }
 });
 
-test("fails on a stale allowlist entry", () => {
-  assert.deepEqual(checkDeps(manifests, ["react", "vitest", "left-pad"]), [
-    'allowlist: "left-pad" is not used by any package.json',
-  ]);
+test("inventory of a transitive package does not allow a direct declaration", () => {
+  assert.match(checkDeps(manifests, { rows: register.rows.map((r) => ({ ...r, direct: false })) }).join("\n"), /not in the owner dependency register/);
+});
+
+test("registered pending dependencies cannot expand to a new user or requirement", () => {
+  const added = [...manifests, { file: "packages/x/package.json", json: { dependencies: { react: "^19" } } }];
+  assert.match(checkDeps(added, register).join("\n"), /use is not recorded/);
+  const changed = [{ file: "package.json", json: { devDependencies: { vitest: "^6" } } }];
+  assert.match(checkDeps(changed, register).join("\n"), /use is not recorded/);
+});
+
+test("an override cannot introduce an unregistered package", () => {
+  const changed = [{ file: "package.json", json: { overrides: { vitest: { planted: "1.0.0" } } } }];
+  assert.match(checkDeps(changed, register).join("\n"), /planted.*not in the owner dependency register/);
 });
 
 test("does not treat inherited previous-dependency entries as verified", () => {
