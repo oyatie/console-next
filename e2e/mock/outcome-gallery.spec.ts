@@ -15,6 +15,8 @@ for (const width of [1440, 390]) {
     await expect(status).toBeVisible();
     await expect(status.locator('[data-enum="orgChangeStatus"] .chip--ok')).toHaveText(["예약됨", "반영됨"]);
     await expect(status.locator('[data-enum="unknown"] .chip--neutral')).toHaveText(["FUTURE_STATUS", "FUTURE_LEAVE"]);
+    await expect(status.locator('[data-enum="unknown"] > *')).toHaveCount(3);
+    await expect(status.locator('[data-enum="unknown"] > *')).toHaveText(["FUTURE_STATUS", "산재 요양", "확인되지 않은 항목 FUTURE_LEAVE"]);
     await expect(status.locator('[data-enum="unknown"]')).toContainText("산재 요양");
     await expect(status.locator('[data-enum="unknown"]')).toContainText("확인되지 않은 항목");
     await expectAxe(page, `outcome status gallery ${width}px`, { include: "[data-outcome-status]" });

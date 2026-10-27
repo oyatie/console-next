@@ -7,7 +7,8 @@ import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
-import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
+import { ATTENDANCE_PATTERN_STATUS } from "../../../lib/labels";
 import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
 import { patternsQuery, retirePattern, type Pattern } from "../api";
@@ -47,7 +48,7 @@ export function PatternsView({ onAdd, onRetired }: { onAdd: () => void; onRetire
                 { header: t("attendancePatterns.types.col.week"), cell: (p) => <span className="num">{duration(p.weekly_minutes)}</span>, fit: true },
                 { header: t("attendancePatterns.types.col.cycle"), cell: (p) => t("attendancePatterns.types.cycle", { days: p.cycle_days }), fit: true },
                 { header: t("attendancePatterns.types.col.notes"), cell: (p) => [p.night_work && t("attendancePatterns.types.night"), t(`attendancePatterns.holidayRule.${p.holiday_rule}`)].filter(Boolean).join(" · ") },
-                { header: t("attendancePatterns.types.col.state"), cell: (p) => <Chip tone={p.status === "ACTIVE" ? "ok" : "neutral"}>{t(`attendancePatterns.patternStatus.${p.status}`)}</Chip>, fit: true },
+                { header: t("attendancePatterns.types.col.state"), cell: (p) => <EnumValue e={ATTENDANCE_PATTERN_STATUS} value={p.status} />, fit: true },
                 {
                   header: t("attendancePatterns.types.col.actions"),
                   fit: true,

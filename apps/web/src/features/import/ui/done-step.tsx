@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtZonedDateTime } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
-import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
 import { SectionHead } from "../../../ui/card/section-head";
 import { runQuery } from "../api";
-import { STATUS_TONE, statusLabel } from "../present";
+import { IMPORT_RUN_STATUS } from "../../../lib/labels";
 import type { ImportReport } from "../domain/contract";
 import { ReconcilePanel } from "./reconcile-panel";
 import { RegisterGaps } from "./register-gaps";
@@ -30,7 +30,7 @@ export function DoneStep({ report, runId }: { report?: ImportReport; runId: stri
       <h2 id="import-done" className="panel__title" tabIndex={-1}>{t(run.data?.status === "APPLIED" ? "import.done.title" : "importRollback.run.title")}</h2>
       <QueryState q={run}>
         {(r) => <>
-          <SectionHead tools={<Chip tone={STATUS_TONE[r.status]}>{statusLabel(r.status)}</Chip>}>{r.source_filename}</SectionHead>
+          <SectionHead tools={<EnumValue e={IMPORT_RUN_STATUS} value={r.status} />}>{r.source_filename}</SectionHead>
           <p className="muted">
             {r.applied_at && r.applied_by ? <time dateTime={r.applied_at}>
               {t("importRollback.run.applied", { name: r.applied_by.name ?? r.applied_by.id, at: fmtZonedDateTime(r.applied_at) })}

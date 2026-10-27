@@ -12,7 +12,8 @@ import { dryRun, rowLimitOf, runExpired } from "../api";
 import type { ImportColumn, ImportDryRun, ImportPreview } from "../domain/contract";
 import { draftOf, draftProblem, sheetMapping, sheetsToMap, withTarget, type Mapping } from "../domain/mapping";
 import { type Picks } from "../domain/steps";
-import { CLASS_TONE, classLabel, fieldLabel, importError, sourceLabel } from "../present";
+import { classLabel, fieldLabel, importError, sourceLabel } from "../present";
+import { IMPORT_CLASSIFICATION, labeled } from "../../../lib/labels";
 import { SheetsPanel } from "./sheets-panel";
 import { useExpiry } from "./use-expiry";
 import s from "./import.module.css";
@@ -113,7 +114,7 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
               { header: t("import.col.source"), cell: (c) => c.source_header },
               { header: t("import.col.target"), cell: (c) => c.target ? <b>{fieldLabel(c.target)}</b> : t("import.col.notImported") },
               { header: t("import.col.how"), cell: (c) => (read(c)?.source ? <Chip tone="neutral">{sourceLabel(read(c)!.source)}</Chip> : null), fit: true },
-              { header: t("import.col.classification"), cell: (c) => <Chip tone={CLASS_TONE[c.classification]}>{c.classification === "restricted" && c.target ? t("import.class.restrictedKept") : classLabel(c.classification)}</Chip>, fit: true },
+              { header: t("import.col.classification"), cell: (c) => <Chip tone={labeled(IMPORT_CLASSIFICATION, c.classification).tone}>{c.classification === "restricted" && c.target ? t("import.class.restrictedKept") : classLabel(c.classification)}</Chip>, fit: true },
             ]}
           />
         </Card>

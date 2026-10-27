@@ -5,7 +5,9 @@ import { Chip } from "../../../ui/chip";
 import { Table } from "../../../ui/table";
 import type { ImportPreview, ImportSheet } from "../domain/contract";
 import { sheetMapping, type Draft, type Mapping } from "../domain/mapping";
-import { fieldLabel, SHEET_TONE, sheetStatusLabel, sourceLabel } from "../present";
+import { fieldLabel, sourceLabel } from "../present";
+import { IMPORT_SHEET_STATUS, labeled } from "../../../lib/labels";
+import { EnumValue } from "../../../ui/enum-value";
 import { SheetEditor } from "./sheet-editor";
 import css from "./import.module.css";
 
@@ -48,7 +50,7 @@ function SheetRow({ s: sh, open, busy, targets, onOpen, onSave, onUnskip }: {
     <section className={css.sheet} aria-label={title}>
       <div className="toolbar">
         <h3 className="toolbar__title">{title}</h3>
-        <Chip tone={SHEET_TONE[sh.status]}>{remembered ? t("importSheet.status.remembered") : sheetStatusLabel(sh.status)}</Chip>
+        {remembered ? <Chip tone={labeled(IMPORT_SHEET_STATUS, sh.status).tone}>{t("importSheet.status.remembered")}</Chip> : <EnumValue e={IMPORT_SHEET_STATUS} value={sh.status} />}
         <span className="muted num">{t("importSheet.rows", { count: sh.rows })}</span>
         {sh.header_row != null && <span className="muted num">{t("importSheet.headerRow", { row: sh.header_row })}</span>}
         {remembered && <Button variant="primary" disabled={busy} onClick={onUnskip}>{t("importSheet.unskip", { name: sh.name })}</Button>}

@@ -13,10 +13,10 @@ export default function OutcomeGallery() {
         <div className="row" data-enum={ORG_CHANGE_STATUS.type}>
           {ORG_CHANGE_STATUS.values.map(value => <EnumValue key={value} e={ORG_CHANGE_STATUS} value={value} />)}
         </div>
-        <div className="row" data-enum="unknown">
-          <EnumValue e={ORG_CHANGE_STATUS} value="FUTURE_STATUS" />
-          <EnumValue e={LEAVE_TYPE} value="WORK_INJURY" />
-          <EnumValue e={LEAVE_TYPE} value="FUTURE_LEAVE" />
+        <div className="stack" data-enum="unknown">
+          <div><EnumValue e={ORG_CHANGE_STATUS} value="FUTURE_STATUS" /></div>
+          <div><EnumValue e={LEAVE_TYPE} value="WORK_INJURY" /></div>
+          <div><EnumValue e={LEAVE_TYPE} value="FUTURE_LEAVE" /></div>
         </div>
       </div>
     </Section>
