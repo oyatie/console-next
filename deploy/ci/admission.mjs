@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { setTimeout } from 'node:timers/promises';
 import { pod, refusals } from './fixtures.mjs';
@@ -31,6 +31,10 @@ for (;;) {
 }
 const accepted = check(pod());
 assert.equal(accepted.status,0,accepted.stderr);
+const database = pod();
+database.spec.containers[0].image = JSON.parse(readFileSync(new URL('../versions.json', import.meta.url))).images.postgres;
+const tagged = check(database);
+assert.equal(tagged.status,0,tagged.stderr);
 for (const [code, mutate] of Object.entries(refusals)) {
   const fixture = pod(); mutate(fixture);
   const result = check(fixture);
@@ -38,4 +42,4 @@ for (const [code, mutate] of Object.entries(refusals)) {
   assert.match(result.stderr,new RegExp(code),`${code}: unrelated failures are not evidence`);
   writeFileSync(`.tmp/evidence/${code}.txt`,result.stderr);
 }
-console.log('VAP: one positive dry-run and eight exact-code refusals passed');
+console.log('VAP: two positive dry-runs and eight exact-code refusals passed');

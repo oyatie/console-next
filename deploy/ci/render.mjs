@@ -53,12 +53,13 @@ docs.forEach(collectReferences);
 yaml.loadAll(execFileSync('kustomize', ['build', 'deploy/base/platform'], {encoding:'utf8',maxBuffer:40*1024*1024})).forEach(collectReferences);
 for (const ref of new Set([...Object.values(lock.images), ...Object.values(lock.platformImages)])) {
   assert.match(ref, /@sha256:[a-f0-9]{64}$/, 'PLAT_IMAGE_DIGEST: upstream image must be locked');
-  const {source, reason, authority} = upstream[ref.split('@')[0]] ?? {};
+  const pinned = ref.replace(/:[^/:@]+(?=@)/, '');
+  const {source, reason, authority} = upstream[pinned.split('@')[0]] ?? {};
   assert.ok(source && reason && authority, `PLAT_IMAGE_AUTHORITY: missing upstream authority for ${ref}`);
   if (!renderedReferences.has(ref)) continue;
   const name = `console-upstream-${ref.split(':').at(-1)}`;
-  // go-containerregistry resolves Docker Hub to index.docker.io before policy glob matching.
-  const glob = ref.replace(/^docker\.io\//, 'index.docker.io/');
+  // go-containerregistry drops tags from digest references and canonicalizes Docker Hub before matching.
+  const glob = pinned.replace(/^docker\.io\//, 'index.docker.io/');
   upstreamNotes.set(name, `# Source: ${source}\n# Reason: ${reason}\n`);
   groups.policies.push({apiVersion:'policy.sigstore.dev/v1beta1',kind:'ClusterImagePolicy',metadata:{name},spec:{images:[{glob}],authorities:[authority]}});
 }

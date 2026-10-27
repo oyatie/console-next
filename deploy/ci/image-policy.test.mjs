@@ -10,8 +10,8 @@ import yaml from 'js-yaml';
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const lock = JSON.parse(readFileSync(join(root, 'deploy/versions.json')));
 const image = `example.invalid/console@sha256:${'a'.repeat(64)}`;
-// policy-controller v0.15.1 pkg/apis/glob: Go name.ParseReference canonicalizes Docker Hub.
-const canonical = ref => ref.replace(/^docker\.io\//, 'index.docker.io/');
+// policy-controller v0.15.1 pkg/apis/glob: name.ParseReference normalizes Docker Hub and drops digest references' tags.
+const canonical = ref => ref.replace(/:[^/:@]+(?=@)/, '').replace(/^docker\.io\//, 'index.docker.io/');
 const matches = (glob, ref) => new RegExp(`^${glob.replaceAll('.', '\\.').replaceAll('**', '#').replaceAll('*', '[^/]*').replaceAll('#', '.*')}$`).test(canonical(ref));
 
 function images(value) {
@@ -67,6 +67,15 @@ test('coverage detects missing policies for nested init containers and canonical
   assert.deepEqual(coverage(images(pod), []), [ref]);
 });
 
+test('tagged digest images match the exact digest policy after admission normalization', () => {
+  const ref = `registry.invalid:5000/postgresql:18.6@sha256:${'a'.repeat(64)}`;
+  const digest = ref.replace(':18.6@', '@');
+  assert.equal(canonical(ref), digest, 'keep registry ports while removing the tag');
+  assert.deepEqual(coverage([ref], [{spec:{images:[{glob:ref}]}}]), [ref]);
+  assert.deepEqual(coverage([ref], [{spec:{images:[{glob:digest}]}}]), []);
+  assert.deepEqual(coverage([ref.replace(/a{64}$/, 'b'.repeat(64))], [{spec:{images:[{glob:digest}]}}]), [ref.replace(/a{64}$/, 'b'.repeat(64))]);
+});
+
 for (const name of ['seaweed', 'rust']) for (const [replacement, code] of [
   ['example.invalid/unreviewed@sha256:' + 'b'.repeat(64), 'PLAT_IMAGE_AUTHORITY'],
   ['docker.io/chrislusf/seaweedfs:latest', 'PLAT_IMAGE_DIGEST'],
@@ -107,11 +116,11 @@ for (const environment of ['exit-test', 'template']) test(`${environment}: only 
       const policy = matched[0];
       assert.deepEqual(policy.spec.images, [{glob:canonical(ref)}], 'upstream policies must never allow tag globs');
       assert.ok(policy.spec.authorities.length);
-      const unsigned = catalog[ref.split('@')[0]].authority.static;
+      const unsigned = catalog[canonical(ref).split('@')[0].replace(/^index\.docker\.io\//, 'docker.io/')].authority.static;
       if (unsigned) assert.deepEqual(policy.spec.authorities, [{static:{action:'pass'}}]);
       else {
         assert.ok(policy.spec.authorities.every(a => (a.keyless || a.key) && !a.static), `published signatures must be required: ${ref}`);
-        if (/cloudnative-pg\/(?:cloudnative-pg|postgresql)@/.test(ref)) assert.equal(policy.spec.authorities[0].signatureFormat, 'bundle');
+        if (/cloudnative-pg\/(?:cloudnative-pg|postgresql)(?::[^/@]+)?@/.test(ref)) assert.equal(policy.spec.authorities[0].signatureFormat, 'bundle');
         if (/jetstack\//.test(ref)) assert.equal(policy.spec.authorities[0].key.hashAlgorithm, 'sha512');
       }
       const resources = readFileSync(join(dir, 'policies/resources.yaml'), 'utf8');
