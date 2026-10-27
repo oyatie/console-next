@@ -17,16 +17,6 @@ export function unitPath(units: Unit[], u: Unit): string {
   return parts.join(" › ");
 }
 
-/** Walks up from a unit to the nearest ancestor of `kind` (SITE → worksite, COMPANY → company). */
-export function ancestor(units: Unit[], from: Unit | undefined, kind: Unit["kind"]): Unit | undefined {
-  const byId = new Map(units.map((u) => [u.id, u]));
-  const root = units.find((u) => u.kind === "COMPANY");
-  for (let u = from; u; u = u.parentId ? byId.get(u.parentId) : u.kind === "SITE" ? root : undefined) {
-    if (u.kind === kind) return u;
-  }
-  return undefined;
-}
-
 /** A unit's parent id; a SITE written before the root was projected has `parentId: null` and sits under the root. */
 export const parentOf = (u: Unit, rootId?: string) => u.parentId ?? (u.kind === "SITE" ? rootId ?? null : null);
 

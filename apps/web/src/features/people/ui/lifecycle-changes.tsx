@@ -2,7 +2,7 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { Table } from "../../../ui/table";
 import type { Verb } from "../domain/lifecycle";
-import { fmtDayShort } from "../present";
+import { fmtDayShort, moveOrigin } from "../present";
 import s from "./lifecycle.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
@@ -10,23 +10,17 @@ type Employee = components["schemas"]["Employee"];
 type Unit = components["schemas"]["OrgUnitHead"];
 type Row = { k: string; label: string; from: string; to: string };
 
-const siteOf = (units: readonly Unit[], id: string | null | undefined) => {
-  const byId = new Map(units.map((u) => [u.id, u]));
-  let u = id ? byId.get(id) : undefined;
-  while (u && u.kind !== "SITE") u = u.parentId ? byId.get(u.parentId) : undefined;
-  return u?.name ?? "";
-};
-
 /**
  * What changes (spec E5): before and after, row by row, for the values the request sends — the unit and both units'
  * headcounts, whether the workplace (and so the register) changes, the title, the status and what a leave blocks,
  * the contract end.
  * Rows appear once their value is picked; nothing is guessed.
  */
-export function LifecycleChanges({ kind, e, units, v, words }: {
+export function LifecycleChanges({ kind, e, units, v, words, site }: {
   kind: Verb;
   e: Employee;
   units: readonly Unit[];
+  site: { from: string; to: string };
   v: { unit: string; position: string; date: string; returnDate: string; endDate: string; contractEnd?: string | null; roleId: string; jobId: string; familyId: string; gradeId: string; toType: string | null };
   /** The role and type before and after, in words (the sheet resolves them from the catalogs). */
   words: { fromGrade: string; toGrade: string; fromRole: string; toRole: string; fromJob: string; toJob: string; fromFamily: string; toFamily: string; fromType: string; toType: string };
@@ -35,10 +29,9 @@ export function LifecycleChanges({ kind, e, units, v, words }: {
   const to = units.find((u) => u.id === v.unit);
   const from = units.find((u) => u.id === e.org_unit_id);
   if (kind === "TRANSFER" && to) {
-    rows.push({ k: "unit", label: t("lifecycle.changes.unit"), from: e.org_unit ?? "—", to: to.name });
+    rows.push({ k: "unit", label: t("lifecycle.changes.unit"), from: moveOrigin(e, from), to: to.name });
     if (from) rows.push({ k: "count", label: t("lifecycle.changes.count"), from: `${from.name} ${from.headcount} → ${from.headcount - 1}`, to: `${to.name} ${to.headcount} → ${to.headcount + 1}` });
-    const a = siteOf(units, e.org_unit_id), b = siteOf(units, to.id);
-    rows.push({ k: "site", label: t("lifecycle.changes.site"), from: a || "—", to: a === b ? t("lifecycle.changes.siteSame", { site: a }) : t("lifecycle.changes.siteMove", { from: a || "—", to: b }) });
+    rows.push({ k: "site", label: t("lifecycle.changes.site"), from: site.from, to: site.to });
   }
   if (kind === "PROMOTE" && v.gradeId) rows.push({ k: "grade", label: t("empFix.field.grade"), from: words.fromGrade, to: words.toGrade });
   if (kind === "PROMOTE" && v.position.trim()) rows.push({ k: "position", label: t("lifecycle.changes.position"), from: e.position ?? "—", to: v.position.trim() });

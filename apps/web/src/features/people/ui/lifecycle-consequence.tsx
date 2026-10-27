@@ -10,7 +10,7 @@ import s from "./lifecycle.module.css";
  * this one replaces. Standing rules are not restated: the server says them when it refuses.
  */
 export function Consequence({ kind, appointJob = false, when, v, replaces, corrects }: {
-  kind: SheetVerb;
+  kind: SheetVerb | "relocate";
   appointJob?: boolean;
   when: "past" | "today" | "future" | "none";
   v: { name: string; date: string; from: string; to: string; fromPosition: string; toPosition: string; returnDate: string; endDate: string; fromRole: string; toRole: string; fromType: string; toType: string };
@@ -19,13 +19,14 @@ export function Consequence({ kind, appointJob = false, when, v, replaces, corre
   /** The date of the applied record this one corrects : it is voided and this one takes its place. */
   corrects?: string;
 }) {
+  const action = kind === "relocate" ? t("lifecycle.menu.relocate") : label(LIFECYCLE_EVENT, kind);
   return (
     <>
       <span>{t(appointJob ? `lifecycle.consequence.job.${when}` : `lifecycle.consequence.${kind}.${when}`, v)}</span>
-      {when === "future" && <span className={s.interim}>{t(kind === "TRANSFER" ? "lifecycle.interim.TRANSFER" : "lifecycle.interim", v)}</span>}
+      {when === "future" && <span className={s.interim}>{t(kind === "TRANSFER" || kind === "relocate" ? "lifecycle.interim.TRANSFER" : "lifecycle.interim", v)}</span>}
       {kind === "LEAVE_OF_ABSENCE" && <span className={s.interim}>{v.returnDate ? t("lifecycle.leave.returnLine", v) : t("lifecycle.leave.noReturn")}</span>}
-      {corrects && <span className={s.interim}>{t("lifecycle.correct.consequence", { date: corrects, action: label(LIFECYCLE_EVENT, kind) })}</span>}
-      {replaces && <span className={s.interim}>{t("lifecycle.replaces", { date: replaces, action: label(LIFECYCLE_EVENT, kind) })}</span>}
+      {corrects && <span className={s.interim}>{t("lifecycle.correct.consequence", { date: corrects, action })}</span>}
+      {replaces && <span className={s.interim}>{t("lifecycle.replaces", { date: replaces, action })}</span>}
     </>
   );
 }

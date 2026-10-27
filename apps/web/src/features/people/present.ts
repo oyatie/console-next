@@ -171,6 +171,9 @@ export const requestedChanges = (r: ChangeRequest) => {
 /** Who a sheet is about, under its title: employee number, unit and position (those on record). */
 export const whoLine = (e: { employee_number?: string | null; org_unit?: string | null; position?: string | null }) =>
   [e.employee_number, e.org_unit, e.position].filter(Boolean).join(" · ");
+/** A workplace placement can be direct, without a department binding. */
+export const moveOrigin = (e: Pick<components["schemas"]["Employee"], "org_unit_id" | "org_unit" | "workplace_id">, unit?: components["schemas"]["OrgUnitHead"]) =>
+  e.workplace_id && (!e.org_unit_id || unit?.kind === "SITE") ? t("lifecycle.changes.siteDirect") : e.org_unit ?? "—";
 /** A source value of an import as quoted on the unplaced screen (spec E8), or that the file gave none. */
 export const sourceText = (v: string) => (v ? t("unplaced.value", { value: v }) : t("unplaced.noValue"));
 

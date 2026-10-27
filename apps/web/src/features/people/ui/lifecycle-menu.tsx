@@ -19,9 +19,9 @@ export function LifecycleMenu({ d, verbs, setup, onOpen, onClose }: { d: Detail;
   const can = useCan();
   const e = d.employee;
   const state = (v: Verb) => verbs.find((x) => x.verb === v);
-  const why = (v: Verb) => {
+  const why = (v: Verb, action = label(LIFECYCLE_EVENT, v)) => {
     const s = state(v);
-    return !s || s.enabled ? undefined : whyText(s.why, [label(LIFECYCLE_EVENT, v)]);
+    return !s || s.enabled ? undefined : whyText(s.why, [action]);
   };
   type K = "transfer" | "relocate" | "group" | "promote" | "appoint" | "job" | "convert" | "renew" | "leave" | "return" | "exit";
   const item = (id: string, icon: ReactNode, key: K, keys: string | undefined, disabled?: string): ActionItem => ({ id, icon, title: t(`lifecycle.menu.${key}`), desc: t(`lifecycle.menu.${key}Desc`), keys, disabled });
@@ -30,7 +30,7 @@ export function LifecycleMenu({ d, verbs, setup, onOpen, onClose }: { d: Detail;
       title: t("lifecycle.menu.group.place"),
       items: [
         item("TRANSFER", <CornerDownRight size={14} />, "transfer", "M", why("TRANSFER")),
-        item("TRANSFER:relocate", <MapPin size={14} />, "relocate", "T", why("TRANSFER")),
+        item("TRANSFER:relocate", <MapPin size={14} />, "relocate", "T", why("TRANSFER", t("lifecycle.menu.relocate"))),
         item("GROUP_TRANSFER", <Building2 size={14} />, "group", "G", why("GROUP_TRANSFER")),
       ],
     },

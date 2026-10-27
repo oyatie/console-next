@@ -13,13 +13,15 @@ import { inBounds } from "../../../ui/date/days";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { User } from "lucide-react";
 import { LifecycleChanges } from "./lifecycle-changes";
-import { ancestor, unitPath } from "../../../reference/org/present";
+import { unitPath } from "../../../reference/org/present";
+import { orgStructureRef } from "../../../reference/entity/api";
 import { exitGuardsQuery, jobTitlesQuery, type LifecycleEvent } from "../api";
 import { appointmentMode, unitByName, type SheetVerb } from "../domain/lifecycle";
+import { moveKind } from "../domain/move";
 import { returnRequired } from "../domain/leave";
 import { applies, effectivePresets } from "../domain/presets";
 import { type JobTitle, activeTitles, currentTitle, DEMOTION_REASON, isDemotion } from "../domain/titles";
-import { fmtDay, fmtDayShort, whoLine } from "../present";
+import { fmtDay, fmtDayShort, moveOrigin, whoLine } from "../present";
 import { Consequence } from "./lifecycle-consequence";
 import { Composer } from "../../../ui/composer/composer";
 import { useTrailPreview } from "./lifecycle-trail-preview";
@@ -27,6 +29,7 @@ import { Changed, LockedDate, Restored } from "./lifecycle-notes";
 import { LifecycleRefusal } from "./lifecycle-refusal";
 import { LifecycleWhat, LifecycleWhy } from "./lifecycle-what";
 import { useLifecycleCommand, VACATE } from "./use-lifecycle-command";
+import { useTransferOptions } from "./use-transfer-options";
 import { EMPLOYMENT_TYPES } from "../domain/register";
 
 const TYPE = { type: "employmentType", values: EMPLOYMENT_TYPES };
@@ -89,9 +92,19 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     comment: locked ? from!.comment : "",
   });
   const v0 = { ...f.draft, ...(kind === "APPOINT" && appointMode === "role" ? { jobId: "", familyId: "" } : kind === "APPOINT" && appointMode === "job" ? { roleId: "" } : {}) };
-  const preview = useTrailPreview([kind], {
+  const transfer = useTransferOptions(e);
+  const placement = useQuery({ ...orgStructureRef, enabled: false });
+  const target = transfer.options.find((o) => o.unit.id === v0.unit);
+  const actionKind = kind === "TRANSFER"
+    ? placement.isSuccess ? moveKind(e.workplace_id, v0.unit ? target?.workplaceId : e.workplace_id) : null
+    : kind;
+  const fromSite = transfer.workplaces.find((w) => w.id === e.workplace_id)?.current?.name ?? "—";
+  const toSite = transfer.workplaces.find((w) => w.id === target?.workplaceId)?.current?.name ?? "—";
+  const current = units.find((u) => u.id === e.org_unit_id);
+  const origin = moveOrigin(e, current);
+  const preview = useTrailPreview(actionKind ? [kind] : [], {
     effective_date: v0.date || undefined,
-    variant: kind === "TRANSFER" && v0.unit && ancestor([...units], units.find((u) => u.id === v0.unit), "SITE")?.id !== ancestor([...units], units.find((u) => u.id === e.org_unit_id), "SITE")?.id ? "WORKPLACE_CHANGE" : undefined,
+    variant: actionKind === "relocate" ? "WORKPLACE_CHANGE" : undefined,
   });
   const [tried, setTried] = useState(false);
   const [pin, setPin] = useState(head);
@@ -120,7 +133,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const basis = pivot ? t(offer.after ? "lifecycle.basis.after" : "lifecycle.basis.before", { date: fmtDayShort(pivot), action: pivotAct ? label(LIFECYCLE_EVENT, pivotAct.event_type) : "—" }) : undefined;
   const when = applies(v0.date, today) ?? "none";
   const unitName = units.find((u) => u.id === v0.unit)?.name;
-  const action = kind === "APPOINT" && appointMode === "job" ? t("lifecycle.menu.job") : label(LIFECYCLE_EVENT, kind);
+  const action = !actionKind ? t("lifecycle.menu.label") : actionKind === "relocate" ? t("lifecycle.menu.relocate") : kind === "APPOINT" && appointMode === "job" ? t("lifecycle.menu.job") : label(LIFECYCLE_EVENT, kind);
   // The reservation this record replaces, by name (BW-11: the server never replaces one silently).
   const sameDay = when === "future" ? events.find((x) => x.state === "SCHEDULED" && x.event_type === kind && x.effective_date === v0.date && x.id !== from?.id) : undefined;
   const replaces = seed?.mode === "edit" ? from!.id : (sameDay?.id ?? (conflict?.date === v0.date ? conflict.id : undefined));
@@ -156,8 +169,8 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const v = {
     name: e.name,
     date: when !== "none" ? fmtDay(v0.date) : "",
-    from: e.org_unit ?? "—",
-    to: unitName ?? t("lifecycle.placeholder.unit"),
+    from: actionKind === "relocate" ? `${fromSite} › ${origin}` : origin,
+    to: actionKind === "relocate" ? `${toSite} › ${unitName}` : unitName ?? t("lifecycle.placeholder.unit"),
     fromPosition: [v0.gradeId ? nowGrade?.label ?? "—" : null, v0.position.trim() ? nowTitle?.label ?? e.position ?? "—" : null].filter(Boolean).join(" · ") || nowTitle?.label || e.position || "—",
     fromGrade: nowGrade?.label ?? "—",
     toGrade: items.find((x) => x.id === v0.gradeId)?.label ?? "—",
@@ -189,7 +202,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       error={run.error}
       kind={kind}
       onLeave={e.status === "ON_LEAVE"}
-      target={kind === "TRANSFER" ? (e.org_unit ?? "—") : (e.position ?? "—")}
+      target={kind === "TRANSFER" ? origin : (e.position ?? "—")}
       onCancelEvent={(id) => onOpen(`cancel:${id}`, act)}
       onClose={onClose} onGroupTransfer={() => onOpen("GROUP_TRANSFER", act)}
       onFocusTarget={() => what.current?.querySelector<HTMLElement>("input, select")?.focus()}
@@ -207,8 +220,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     />
   );
   // "Now: workplace › department › team · since date": the current place and since when (the last move or the hire).
-  const current = units.find((u) => u.id === e.org_unit_id);
-  const here = current ? unitPath([...units], current) : undefined;
+  const here = current ? unitPath([...units], current) : e.workplace_id ? `${fromSite} › ${origin}` : undefined;
   const since = events.filter((x) => x.state === "APPLIED" && !x.voided_by && ["TRANSFER", "ONBOARD", "REHIRE"].includes(x.event_type)).map((x) => x.effective_date).sort().at(-1) ?? e.hire_date ?? "—";
   const dateControl = (
         locked ? (
@@ -235,12 +247,13 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       localDraft
       onSaveDraft={onClose}
       kicker={<><User size={12} aria-hidden />{t("lifecycle.kicker", { name: e.name, number: e.employee_number ?? "—", where: [here?.split(" › ").slice(-2).join(" › ") ?? e.org_unit, e.position].filter(Boolean).join(" · ") })}</>}
-      title={correcting ? t("lifecycle.title.correct", { name: e.name, action }) : locked ? t("lifecycle.title.change", { name: e.name, action }) : kind === "APPOINT" && appointMode === "job" ? action : t(`lifecycle.title.${kind}`)}
+      title={!actionKind ? action : correcting ? t("lifecycle.title.correct", { name: e.name, action }) : locked ? t("lifecycle.title.change", { name: e.name, action }) : kind === "APPOINT" && appointMode === "job" ? action : t(`lifecycle.title.${actionKind}`)}
       subtitle={here ? t("lifecycle.nowSince", { where: here, date: since }) : t("lifecycle.now", { where: whoLine(e) })}
       onClose={onClose}
       pending={run.isSending}
       loading={titles.isPending || (coded && reasons.isPending) || (kind === "LEAVE_OF_ABSENCE" && leaveRules.isPending)}
       locked={checking || noCatalog}
+      blocked={!actionKind ? { reason: t("lifecycle.transfer.placementUnknown") } : undefined}
       notice={
         <>
           {noCatalog && <p className={s.changed} role="status">{t("lifecycle.appoint.noCatalog")}</p>}
@@ -249,14 +262,14 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
           {refusal}
         </>
       }
-      consequence={<><LifecycleChanges kind={kind} e={e} units={units} v={{ ...v0, contractEnd }} words={v} /><Consequence kind={kind} appointJob={kind === "APPOINT" && appointMode === "job"} when={when} v={v} replaces={replaces ? fmtDayShort(v0.date) : undefined} corrects={correcting ? fmtDayShort(v0.date) : undefined} /></>}
+      consequence={<><LifecycleChanges kind={kind} e={e} units={units} v={{ ...v0, contractEnd }} words={v} site={{ from: fromSite, to: toSite }} />{actionKind && <Consequence kind={actionKind} appointJob={kind === "APPOINT" && appointMode === "job"} when={when} v={v} replaces={replaces ? fmtDayShort(v0.date) : undefined} corrects={correcting ? fmtDayShort(v0.date) : undefined} />}</>}
       signoffs={{
         items: offer.required_signoffs.map((k) => ({ id: k, label: t(`people.lifecycle.ack.change.${k}`) })),
         value: offer.required_signoffs.filter((k) => v0.acks[k]),
         onChange: (on) => set({ acks: Object.fromEntries(offer.required_signoffs.map((k) => [k, on.includes(k)])) }),
         missing: show("acks"),
       }}
-      action={{ kind: kind === "PROMOTE" && demotion ? "demotion" : kind, mode: correcting ? "correct" : locked ? "change" : when === "future" || when === "none" ? "schedule" : "apply", count: 1 }}
+      action={{ kind: kind === "PROMOTE" && demotion ? "demotion" : actionKind ?? "appointment", mode: correcting ? "correct" : locked ? "change" : when === "future" || when === "none" ? "schedule" : "apply", count: 1 }}
       tone={locked || when === "future" || when === "none" ? "primary" : "danger"}
       missing={tried ? count : 0}
       recovery={
@@ -269,7 +282,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       }
       onSubmit={() => {
         setTried(true);
-        if (count > 0) return false;
+        if (!actionKind || count > 0) return false;
         run.mutate(undefined);
       }}
     >

@@ -22,6 +22,7 @@ const ACTION_KINDS = {
   REHIRE: ["composer.action.rehire", "people"],
   RESCIND: ["composer.action.appointment", "people"],
   TRANSFER: ["composer.action.TRANSFER", "people"],
+  relocate: ["lifecycle.menu.relocate", "people"],
   PROMOTE: ["composer.action.PROMOTE", "people"],
   APPOINT: ["composer.action.APPOINT", "people"],
   EMPLOYMENT_TYPE_CHANGE: ["composer.action.EMPLOYMENT_TYPE_CHANGE", "people"],
