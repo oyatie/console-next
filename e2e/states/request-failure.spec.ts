@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { fileURLToPath } from "node:url";
 import { loadCatalog, t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { expectAxe } from "../a11y";
@@ -8,8 +7,6 @@ import { AT, checklist, failure, id, inbox, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
-// The browser entry is loaded by URL below; keep it in the statically checked test graph.
-import type {} from "../request-failure.fixture";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -67,29 +64,26 @@ for (const row of [
 
 test("a command lost after send stays uncertain through a failed lookup, then settles by read alone", async ({ page }) => {
   const fixture = await mockScreen(page, screens[2], "populated");
+  const displayName = tg("sample.person", { n: 1 });
   let writes = 0;
   let reads = 0;
   let readAvailable = false;
-  await page.route("**/request-failure-fixture", async route => {
-    const response = await route.fetch({ url: new URL("/", route.request().url()).href });
-    const entry = fileURLToPath(new URL("../request-failure.fixture.tsx", import.meta.url));
-    await route.fulfill({ response, body: (await response.text()).replace('src="/src/main.tsx"', `src="/@fs${entry}"`) });
-  });
   await page.route(url => url.pathname === "/api/v1/users/me", async route => {
     if (route.request().method() === "PATCH") {
       writes++;
       expect(route.request().headers()["idempotency-key"]).toBeTruthy();
-      expect(route.request().postDataJSON()).toEqual({ display_name: "확인한 이름" });
+      expect(route.request().postDataJSON()).toEqual({ display_name: displayName });
       return route.abort("connectionreset");
     }
     reads++;
-    return route.fulfill(readAvailable ? { json: { ...user, display_name: "확인한 이름" } } : { status: 503, json: failure("walk_outage") });
+    return route.fulfill(readAvailable ? { json: { ...user, display_name: displayName } } : { status: 503, json: failure("walk_outage") });
   });
   try {
-    await page.goto("/request-failure-fixture");
-    const submit = page.getByRole("button", { name: t("account.name.edit"), exact: true });
+    await page.goto("/_gallery");
+    const command = page.locator("section").filter({ has: page.getByRole("heading", { name: t("account.name.edit"), exact: true }) });
+    const submit = command.getByRole("button", { name: t("account.name.edit"), exact: true });
     await submit.click();
-    const band = page.getByRole("status").filter({ hasText: t("requestOutcome.checking") });
+    const band = command.getByRole("status").filter({ hasText: t("requestOutcome.checking") });
     await expect(band).toBeVisible();
     await expect(submit).toBeDisabled();
     expect(writes).toBe(1);
@@ -99,7 +93,7 @@ test("a command lost after send stays uncertain through a failed lookup, then se
     await expect(submit).toBeDisabled();
     readAvailable = true;
     await band.getByRole("button", { name: t("requestOutcome.check"), exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText("확인한 이름");
+    await expect(command.getByRole("status")).toHaveText(displayName);
     await expect(submit).toBeEnabled();
     expect(reads).toBe(2);
     expect(writes).toBe(1);
