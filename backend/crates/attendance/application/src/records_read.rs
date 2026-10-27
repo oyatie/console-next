@@ -43,8 +43,17 @@ pub struct RecognitionRead {
     pub recorded: u32,
     pub recognised: u32,
     pub regular: u32,
+    pub outside_scheduled: u32,
+    pub prior_approved: u32,
+    pub post_approved: u32,
+    pub excess_open: u32,
+    pub not_work: u32,
+    pub over_cap: bool,
+    /// Deprecated N-1 alias: prior_approved + post_approved.
     pub approved: u32,
+    /// Deprecated N-1: paid early excess, awaiting disposition.
     pub early_unrecognised: u32,
+    /// Deprecated N-1: paid late excess, awaiting disposition.
     pub late_unrecognised: u32,
     pub late_in: u32,
     pub early_out: u32,
@@ -58,6 +67,12 @@ impl From<Recognition> for RecognitionRead {
             recorded: r.recorded,
             recognised: r.recognised,
             regular: r.regular,
+            outside_scheduled: r.outside_scheduled,
+            prior_approved: r.prior_approved,
+            post_approved: r.post_approved,
+            excess_open: r.excess_open,
+            not_work: r.not_work,
+            over_cap: r.over_cap,
             approved: r.approved,
             early_unrecognised: r.early_unrecognised,
             late_unrecognised: r.late_unrecognised,
@@ -165,9 +180,10 @@ pub struct GridCell {
 pub struct GridTotals {
     /// 인정 합계.
     pub recognised: u32,
-    /// 인정 중 승인으로 인정된 연장 (가산 대상, S3 fills it).
+    pub outside_scheduled: u32,
+    /// Deprecated N-1: approved classification, never the pay gate.
     pub approved: u32,
-    /// 미인정 체류 (근거로만).
+    /// Deprecated N-1: paid open excess, awaiting disposition.
     pub unrecognised: u32,
     /// 미근로.
     pub not_worked: u32,

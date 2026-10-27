@@ -1,4 +1,4 @@
 type: object
-description: 인정 합계 · 연장 가산 (승인으로 인정) · 미인정 · 미근로 · 미해결 ▲ / ◆
+description: 인정 합계 · 소정 밖 근로 · 미승인 초과 (인정 포함) · 미근로 · 미해결 ▲ / ◆
 required: [recognised, approved, unrecognised, not_worked, blocking, decision]
-properties: { recognised: { type: integer }, approved: { type: integer }, unrecognised: { type: integer }, not_worked: { type: integer }, blocking: { type: integer }, decision: { type: integer } }
+properties: { recognised: { type: integer }, approved: { type: integer }, unrecognised: { type: integer }, not_worked: { type: integer }, blocking: { type: integer }, decision: { type: integer }, outside_scheduled: { type: integer } }

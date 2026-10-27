@@ -1,8 +1,7 @@
-//! The owner rule as one pure function (decision #22, AT §4.4a):
-//! 인정 = 기록 ∩ (소정 ∪ 승인). Early arrival and late stays stay 기록 only;
-//! they never become 연장. Minutes are from 00:00 of the work date (0..2880).
+//! Recorded work is paid after scheduled breaks and confirmed non-work.
+//! Approvals classify worked minutes; they never gate recognition.
 
-use crate::schedule::{Shift, Window};
+use crate::schedule::{DayKind, Shift, Window};
 
 const SPAN: usize = 2880;
 const WORDS: usize = SPAN / 64;
@@ -91,9 +90,18 @@ pub struct Recognition {
     pub recognised: u32,
     /// Recognised inside 소정.
     pub regular: u32,
-    /// Recognised only through a 승인 window.
+    pub outside_scheduled: u32,
+    pub prior_approved: u32,
+    pub post_approved: u32,
+    pub excess_open: u32,
+    pub not_work: u32,
+    /// Set by the weekly statutory-cap evaluation; never reduces pay.
+    pub over_cap: bool,
+    /// Deprecated N-1 alias: prior_approved + post_approved.
     pub approved: u32,
+    /// Deprecated N-1: early open excess; these minutes are paid.
     pub early_unrecognised: u32,
+    /// Deprecated N-1: late open excess; these minutes are paid.
     pub late_unrecognised: u32,
     /// 소정 minutes not worked: 지각 · 조퇴 · 이탈.
     pub late_in: u32,
@@ -102,19 +110,41 @@ pub struct Recognition {
     pub approval_unused: u32,
 }
 
-/// `approved` are the 승인 windows of the day, already without their breaks.
+/// Confirmed `not_work` windows exclude presence without work. Prior approval
+/// takes precedence over post approval where their windows overlap.
 #[must_use]
-pub fn recognise(recorded: &[Window], shift: Option<&Shift>, approved: &[Window]) -> Recognition {
+pub fn recognise(
+    recorded: &[Window],
+    shift: Option<&Shift>,
+    day: DayKind,
+    prior_approved: &[Window],
+    post_approved: &[Window],
+    not_work: &[Window],
+) -> Recognition {
+    let shift = shift.filter(|_| day != DayKind::NoSchedule);
     let r = Minutes::of(recorded);
-    let a = Minutes::of(approved);
-    let s = shift.map(scheduled).unwrap_or_default();
-    let recognised = r.and(s.or(a));
-    let outside = r
-        .minus(s.or(a))
-        .minus(shift.map(|x| Minutes::of(&x.breaks)).unwrap_or_default());
-    let missing = s.minus(r);
-    let (start, end) = shift.map_or((0, 0), |x| (x.start, x.end));
-    let worked = r.and(s);
+    let prior = Minutes::of(prior_approved);
+    let post = Minutes::of(post_approved);
+    let a = prior.or(post);
+    let s = shift
+        .filter(|_| day == DayKind::Work)
+        .map(scheduled)
+        .unwrap_or_default();
+    let breaks = shift.map(|x| Minutes::of(&x.breaks)).unwrap_or_default();
+    let excluded = r.minus(breaks).and(Minutes::of(not_work));
+    let recognised = r.minus(breaks).minus(excluded);
+    // A missing plan leaves paid time unclassified until a schedule is assigned.
+    let outside = if day == DayKind::NoSchedule {
+        Minutes::default()
+    } else {
+        recognised.minus(s)
+    };
+    let open = outside.minus(a);
+    let missing = s.minus(recognised);
+    let (start, end) = shift
+        .filter(|_| day == DayKind::Work)
+        .map_or((0, 0), |x| (x.start, x.end));
+    let worked = recognised.and(s);
     let first = worked
         .0
         .iter()
@@ -139,14 +169,21 @@ pub fn recognise(recorded: &[Window], shift: Option<&Shift>, approved: &[Window]
     Recognition {
         recorded: r.count(),
         recognised: recognised.count(),
-        regular: r.and(s).count(),
-        approved: r.and(a).minus(s).count(),
-        early_unrecognised: outside.before(start).count(),
-        late_unrecognised: outside.after(end.max(start)).count(),
+        regular: recognised.and(s).count(),
+        outside_scheduled: outside.count(),
+        prior_approved: outside.and(prior).count(),
+        post_approved: outside.and(post).minus(prior).count(),
+        excess_open: open.count(),
+        not_work: excluded.count(),
+        // shortcut: slice 3 supplies the weekly cap flag; pay never depends on it.
+        over_cap: false,
+        approved: outside.and(a).count(),
+        early_unrecognised: open.before(start).count(),
+        late_unrecognised: open.after(end.max(start)).count(),
         late_in,
         early_out,
         away,
-        approval_unused: a.minus(s).minus(r).count(),
+        approval_unused: a.minus(s).minus(breaks).minus(recognised).count(),
     }
 }
 

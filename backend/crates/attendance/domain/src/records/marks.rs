@@ -17,7 +17,7 @@ pub enum Mark {
     MissingOut,
     /// ▲ no resolved 근무 일정, whether or not time has been recorded.
     NoSchedule,
-    /// ◆ a stay past the shift over the notice minutes, with no 승인 (잔류).
+    /// ◆ any early or late worked time outside the schedule, with no approval.
     UnapprovedExcess,
     /// ◆ work recorded on a 휴일 or 휴무일 with no 승인.
     WorkOnRestDay,
@@ -61,7 +61,7 @@ pub enum Recorded {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Thresholds {
-    /// `attendance.excess.notice_minutes`
+    /// `attendance.excess.notice_minutes`: visual notice only; never hides excess.
     pub notice_minutes: u32,
     /// `attendance.late.grace_minutes`
     pub grace_minutes: u32,
@@ -90,12 +90,12 @@ pub fn marks(
         Recorded::ClockInOnly => out.push(Mark::MissingOut),
         Recorded::Absent if work_day => out.push(Mark::Absent),
         Recorded::Times if day == DayKind::NoSchedule => {}
-        // A 휴일 counts only through a 승인, even on a 교대 that runs through it.
-        Recorded::Times if day != DayKind::Work && rec.recorded > rec.recognised => {
+        // Paid rest-day work still requires a recorded disposition.
+        Recorded::Times if day != DayKind::Work && rec.excess_open > 0 => {
             out.push(Mark::WorkOnRestDay)
         }
         Recorded::Times => {
-            if rec.late_unrecognised > t.notice_minutes {
+            if rec.excess_open > 0 {
                 out.push(Mark::UnapprovedExcess);
             }
             for (minutes, mark) in [
@@ -166,6 +166,7 @@ mod tests {
             r.recorded = 610;
             r.recognised = 480;
             r.late_unrecognised = 130;
+            r.excess_open = 130;
             r.late_in = 10;
         });
         assert_eq!(
@@ -174,10 +175,12 @@ mod tests {
         );
         let short = rec(|r| {
             r.late_unrecognised = 10;
+            r.excess_open = 10;
         });
-        assert!(
-            marks(DayKind::Work, false, Recorded::Times, &short, true, T).is_empty(),
-            "at the notice line, not over it"
+        assert_eq!(
+            marks(DayKind::Work, false, Recorded::Times, &short, true, T),
+            vec![Mark::UnapprovedExcess],
+            "notice never hides worked excess"
         );
         let unset = Thresholds::default();
         assert_eq!(
@@ -190,6 +193,8 @@ mod tests {
     fn rest_day_work_and_no_schedule_and_clock_in_only() {
         let worked = rec(|r| {
             r.recorded = 240;
+            r.recognised = 240;
+            r.excess_open = 240;
         });
         assert_eq!(
             marks(

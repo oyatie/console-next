@@ -113,7 +113,7 @@ async fn unscheduled_recorded_time_stays_in_the_unscheduled_bucket(owner: PgPool
         .rows[0];
     assert_eq!(
         (row.day.recognition.recorded, row.day.recognition.recognised),
-        (540, 0)
+        (540, 540)
     );
     assert_eq!(row.day.marks, vec![Mark::NoSchedule]);
 }

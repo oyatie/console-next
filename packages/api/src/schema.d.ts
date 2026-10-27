@@ -15503,7 +15503,7 @@ export interface components {
             totals: components["schemas"]["AttendanceGridTotals"];
             month_state: components["schemas"]["AttendanceMonthState"];
         };
-        /** @description 인정 합계 · 연장 가산 (승인으로 인정) · 미인정 · 미근로 · 미해결 ▲ / ◆ */
+        /** @description 인정 합계 · 소정 밖 근로 · 미승인 초과 (인정 포함) · 미근로 · 미해결 ▲ / ◆ */
         AttendanceGridTotals: {
             recognised: number;
             approved: number;
@@ -15511,6 +15511,7 @@ export interface components {
             not_worked: number;
             blocking: number;
             decision: number;
+            outside_scheduled?: number;
         };
         AttendanceHistoryRow: {
             /** Format: date */
@@ -15681,7 +15682,7 @@ export interface components {
             pending: number;
         };
         /**
-         * @description blocking (▲): NO_RECORD, MISSING_OUT, NO_SCHEDULE · decision (◆): UNAPPROVED_EXCESS, WORK_ON_REST_DAY · reference (●): the rest
+         * @description blocking (▲): NO_RECORD, MISSING_OUT, NO_SCHEDULE · decision (◆): UNAPPROVED_EXCESS, WORK_ON_REST_DAY · reference (●): the rest; approval never gates recognition, every early/late excess needs disposition before close
          * @enum {string}
          */
         AttendanceMark: "NO_RECORD" | "MISSING_OUT" | "NO_SCHEDULE" | "UNAPPROVED_EXCESS" | "WORK_ON_REST_DAY" | "LATE" | "EARLY_OUT" | "AWAY" | "ABSENT";
@@ -15806,18 +15807,36 @@ export interface components {
         AttendanceReasonInput: {
             reason: string;
         };
-        /** @description minutes; 기록 (recorded) and 인정 (recognised) are never the same number by accident: 인정 = 기록 ∩ (소정 ∪ 승인) */
+        /** @description Minutes; recognised = recorded − scheduled breaks − confirmed not_work. Approval classifies work and never gates pay. */
         AttendanceRecognition: {
             recorded: number;
             recognised: number;
             regular: number;
+            /**
+             * @deprecated
+             * @description N-1 alias for prior_approved + post_approved
+             */
             approved: number;
+            /**
+             * @deprecated
+             * @description Paid early open excess
+             */
             early_unrecognised: number;
+            /**
+             * @deprecated
+             * @description Paid late open excess
+             */
             late_unrecognised: number;
             late_in: number;
             early_out: number;
             away: number;
             approval_unused: number;
+            outside_scheduled?: number;
+            prior_approved?: number;
+            post_approved?: number;
+            excess_open?: number;
+            not_work?: number;
+            over_cap?: boolean;
         };
         /** @enum {string} */
         AttendanceRecordKind: "CLOCK_IN" | "OUT_FOR_WORK" | "BUSINESS_TRIP" | "RETURNED" | "CLOCK_OUT";

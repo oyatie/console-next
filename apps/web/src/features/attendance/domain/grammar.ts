@@ -5,7 +5,7 @@
 //   9-18/90 or the break word + 1, 60, 1:30 (time away) · 9-12,13:30-18 (time away) · 7:52- (in only) · -18 (out only)
 //   = (as scheduled) · x (absent) · o (outside work) · business trip
 //   day off, shift codes (D, S1 …) and leave words are read here; the save resolves them against the day's plan.
-// Refused: +2 or 18+2 (overtime is only an approval record), status words (derived from times), a lone 8 or 8:00 (hours, not
+// Refused: +2 or 18+2 (overtime needs clock times), status words (derived from times), a lone 8 or 8:00 (hours, not
 // times), 0.375 (an Excel fraction), an ambiguous code, unconfirmed policy-long spans, 22-6 without the + off a night plan.
 // A draft is checked here so the typist sees the refusal at once; the server's answer is the one that counts.
 import type { Window } from "./minutes";
