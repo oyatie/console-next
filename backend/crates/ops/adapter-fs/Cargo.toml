@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+[package]
+name = "console-ops-adapter-fs"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+hex.workspace = true
+metrics.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+metrics-exporter-prometheus.workspace = true
+
+[lints]
+workspace = true

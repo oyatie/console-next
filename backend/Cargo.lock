@@ -2950,6 +2950,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "console-ops-adapter-fs"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "serde_json",
+ "sha2 0.11.0",
+ "tracing",
+]
+
+[[package]]
 name = "console-ops-adapter-http"
 version = "0.1.0"
 dependencies = [
