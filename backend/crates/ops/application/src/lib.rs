@@ -5,6 +5,7 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 
 pub mod evaluation;
+pub mod obligations;
 pub mod vmalert;
 pub use vmalert::{Vmalert, VmalertSnapshot};
 

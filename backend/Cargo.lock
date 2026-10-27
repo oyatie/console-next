@@ -2953,6 +2953,7 @@ dependencies = [
 name = "console-ops-adapter-fs"
 version = "0.1.0"
 dependencies = [
+ "console-ops-application",
  "hex",
  "metrics",
  "metrics-exporter-prometheus",
