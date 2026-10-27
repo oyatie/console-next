@@ -116,10 +116,13 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
   expect(elapsed).toBeLessThanOrEqual(2000);
   const grids = page.getByRole("grid", { name: /^일별 · 자세히/ });
   await expect(grids.nth(1)).toHaveAttribute("data-total", "1997");
-  const loaded = Number(await grids.nth(1).getAttribute("aria-rowcount"));
-  expect(loaded).toBeLessThan(1998);
+  await expect(grids.nth(1)).toHaveAttribute("aria-rowcount", "1998");
+  const renderedEnd = async () => Math.max(...await grids.nth(1).getByRole("row").evaluateAll(rows => rows.map(row => Number(row.getAttribute("aria-rowindex") ?? 0))));
+  const before = await renderedEnd();
+  expect(before).toBeLessThan(1998);
   await grids.nth(1).evaluate(el => { el.scrollTop = el.scrollHeight; });
-  await expect.poll(async () => Number(await grids.nth(1).getAttribute("aria-rowcount"))).toBeGreaterThan(loaded);
+  await expect.poll(renderedEnd).toBeGreaterThan(before);
+  await expect(grids.nth(1)).toHaveAttribute("aria-rowcount", "1998");
   expect(await grids.getByRole("row").count()).toBeLessThan(100);
   const find = page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true });
   await find.fill("AT-2000");

@@ -124,7 +124,7 @@ test.each([403, 404])("a %s candidate read removes cached candidates, form and p
   expect(html).toContain(t(status === 403 ? "common.denied.title.plain" : "common.read.notFound.title"));
   expect(html).not.toContain("표진우");
   expect(html).not.toContain("공고 제목");
-  expect(html).not.toContain('aria-label="공고 미리보기"');
+  expect(html).not.toContain('<caption class="sr-only">공고 미리보기</caption>');
 });
 
 
@@ -137,7 +137,7 @@ test("empty candidates hide the unsendable form and offer the people workspace",
 
 test("preview has a reserved region after the form before any event is selected", () => {
   const html = render();
-  const preview = html.indexOf('aria-label="공고 미리보기"');
+  const preview = html.indexOf('<caption class="sr-only">공고 미리보기</caption>');
   expect(preview).toBeGreaterThan(html.indexOf('id="notice-new"'));
 });
 

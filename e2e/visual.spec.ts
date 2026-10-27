@@ -83,7 +83,7 @@ test("gallery components pass axe, and its controls work", { tag: ["@smoke", "@v
   await expect(gallery(page)).toBeVisible();
   await expectAccessible(page, "gallery");
 
-  const states = page.getByRole("heading", { name: "화면 상태", exact: true }).locator("..");
+  const states = page.locator(".gallery__section", { has: page.getByRole("heading", { name: "화면 상태", exact: true }) });
   await states.getByRole("button", { name: "다시 불러오기" }).click();
   await expect(states.getByText("다시 불러온 데이터입니다.")).toBeVisible();
 
