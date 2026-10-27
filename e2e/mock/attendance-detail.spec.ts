@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { id } from "./fixtures";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // Keep trace snapshots out of the browser's measured rendering work.
 test.use({ trace: "off" });
@@ -80,7 +83,7 @@ for (const width of [1440, 390]) test(`detail population, group headers and comp
   await input.fill("+2");
   await expect(input).toBeFocused();
   await expect(input).toHaveAttribute("aria-invalid", "true");
-  await expect(input).toHaveAccessibleDescription(/연장은 승인 기록으로만 반영됩니다/);
+  await expect(input).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
   expect(fixture.reads.some(q => q.includes("rows=all") && q.includes("no_schedule_only=true"))).toBe(true);
   expect(fixture.unexpected).toEqual([]);
 });
@@ -125,7 +128,7 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
   await last.click();
   await last.fill("+2");
   await expect(last).toBeFocused();
-  await expect(last).toHaveAccessibleDescription(/연장은 승인 기록으로만 반영됩니다/);
+  await expect(last).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
   await find.clear();
   await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
   const paper = page.getByRole("table", { name: "일별 · 자세히", exact: true });
