@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { Download, History, List, ListTree, Network, Upload } from "lucide-react";
+import { Download, List, ListTree, Network, Upload } from "lucide-react";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
@@ -66,7 +66,6 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
   return (
     <>
     <div className={`page__head ${css.head}`}>
-      <h1 className="page__title" id="structure-title" tabIndex={-1}>{t("structure.title")}</h1>
       <div role="group" aria-label={t("structure.views")} className={css.views}>
         {VIEWS.map((v) => (
           <Button key={v.id} variant="ghost" aria-pressed={view === v.id} className={css.viewTab} onClick={() => void nav({ search: (search) => ({ ...search, view: v.id === "chart" ? undefined : v.id }) })}>
@@ -78,14 +77,12 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
       {s && <p className={css.phase} data-phase={phase}><span className={css.dot} aria-hidden />{t(phase === "operating" && routed ? "structure.phase.operatingRouted" : `structure.phase.${phase}`)}</p>}
       {!readOnly && orgEdit && selected?.kind === "entity" && <AddUnit n={selected} primary />}
       <span className="grow" />
-      {scheduled > 0 && <Link to="/org/changes" search={{ view: "ready" }} className={buttonClass("ghost", { size: "sm", className: css.scheduled })} id="org-scheduled">{t("orgChange.chip.scheduled", { count: scheduled })}</Link>}
+      {scheduled > 0 && <Link to="/org" search={{ tab: "changes", filter: "ready" }} className={buttonClass("ghost", { size: "sm", className: css.scheduled })} id="org-scheduled">{t("orgChange.chip.scheduled", { count: scheduled })}</Link>}
       {readFailed ? <DisabledReason reason={t("structure.readFailed")} control={(p) => <span className="row">
-        <Button variant="ghost" {...p}><History size={16} aria-hidden />{t("orgChange.chip.history")}</Button>
         {imports.length > 0 && <Button variant="ghost" {...p}><Upload size={16} aria-hidden />{t("structure.import.label")}</Button>}
         <Button {...p}><Download size={16} aria-hidden />{t("structure.export.open")}</Button>
         <Button {...p}>{t("asof.compare")}</Button>
       </span>} /> : <>
-      <Link to="/org/history" className={buttonClass("ghost")}><History size={16} aria-hidden />{t("orgChange.chip.history")}</Link>
       <div id="structure-import" tabIndex={-1} className={css.importEntry} data-hidden={readOnly || imports.length === 0 || undefined} inert={readOnly || imports.length === 0 || undefined}>
         <ActionMenu label={t("structure.import.label")} trigger={<><Upload size={16} aria-hidden />{t("structure.import.label")}</>} actions={imports} />
       </div>

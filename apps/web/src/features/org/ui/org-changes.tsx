@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
@@ -21,15 +21,16 @@ import { useChangeNames } from "./use-change-names";
 import { useOrgRouted } from "./use-org-routed";
 import css from "./org-change.module.css";
 
-const route = getRouteApi("/app/org/changes");
+const route = getRouteApi("/app/org");
 
 /**
  * Org changes in saved views, each with the server's count. There is no text search: the API filters by
  * status, drafter and effective dates, and searching one loaded page would pretend to search them all (§9).
  */
-export function OrgChanges() {
-  const { view = "open", effective_from, effective_to } = route.useSearch();
+export function OrgChanges({ history }: { history?: { chip: ReactNode; body: ReactNode } }) {
+  const { filter: view = "open", effective_from, effective_to } = route.useSearch();
   const range = { effective_from, effective_to };
+  const showingHistory = view === "history";
   // decisions #26: the approval view exists only for a tenant that routes org changes.
   const routed = useOrgRouted();
   // org-21 (#26): with approval off nothing is ever rejected, so the closed view reads as cancelled only.
@@ -37,8 +38,8 @@ export function OrgChanges() {
   const navigate = route.useNavigate();
   const [offset, setOffset] = useState(0);
   const counts = useQuery(orgChangeCountsQuery(range));
-  const list = useQuery({ ...changesViewQuery(view, offset, undefined, range), placeholderData: keepPreviousData });
-  const tabsInert = list.isPending || list.isError;
+  const list = useQuery({ ...changesViewQuery(showingHistory ? "all" : view, offset, undefined, range), enabled: !showingHistory, placeholderData: keepPreviousData });
+  const tabsInert = !showingHistory && (list.isPending || list.isError);
   // My rejected changes awaiting a redraft are still in progress for me: the open view leads with them. A redraft
   // on this page settles its original too, so a newer page never shows both while my changes are re-read.
   const mine = useQuery(myChangesQuery(range));
@@ -48,30 +49,28 @@ export function OrgChanges() {
   const today = todayKst();
   const pick = (v: ChangeView) => {
     setOffset(0);
-    void navigate({ search: (q) => ({ ...q, view: v === "open" ? undefined : v }), replace: true });
+    void navigate({ search: (q) => ({ ...q, filter: v === "open" ? undefined : v }), replace: true });
   };
   return (
-    <div className="page">
-      <div className="page__head">
-        <Link to="/org" search={{}} className="btn btn--ghost">{t("org.title")}</Link>
-        <h1 className="page__title">{t("orgChange.list.title")}</h1>
-        {(effective_from || effective_to) && <ToggleButton pressed look="chip" aria-label={`${t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })} · ${t("asof.clearRange")}`} title={t("asof.clearRange")} onClick={() => {
+    <>
+      {(effective_from || effective_to) && <div className="toolbar">
+        <ToggleButton pressed look="chip" aria-label={`${t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })} · ${t("asof.clearRange")}`} title={t("asof.clearRange")} onClick={() => {
           setOffset(0);
           void navigate({ search: (q) => ({ ...q, effective_from: undefined, effective_to: undefined }), replace: true });
-        }}>{t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })}<X size={14} aria-hidden /></ToggleButton>}
-      </div>
+        }}>{t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })}<X size={14} aria-hidden /></ToggleButton>
+      </div>}
       <div role="group" aria-label={t("orgChange.list.views")}>
         <OrgChangeViews className="tabs" view={view} routed={routed} totals={counts.data} failed={counts.isError} redrafts={mine.data ? redraft.length : undefined} redraftsFailed={mine.isError}
-          unavailable={tabsInert ? t(list.isError ? "orgChange.list.viewsUnavailable" : "common.loading") : undefined} onPick={pick} />
+          unavailable={tabsInert ? t(list.isError ? "orgChange.list.viewsUnavailable" : "common.loading") : undefined} onPick={pick}>{history?.chip}</OrgChangeViews>
       </div>
-      {counts.isError && !list.isError && <QueryState q={counts} inline own={() => t("orgChange.list.countFailed")} loading={null}>{() => null}</QueryState>}
-      <section className="card">
+      {!showingHistory && counts.isError && !list.isError && <QueryState q={counts} inline own={() => t("orgChange.list.countFailed")} loading={null}>{() => null}</QueryState>}
+      {showingHistory ? history?.body : <section className="card">
         <QueryState
           q={list} layout="list"
           empty={(d) =>
             d.items.length || lead.length ? null : (
               <EmptyState
-                title={t(`orgChange.list.empty.${word(view)}`)}
+                title={t(`orgChange.list.empty.${word(showingHistory ? "all" : view)}`)}
                 reason={t("orgChange.list.empty.reason")}
                 actions={<Link to="/org" search={{}} className="btn btn--primary">{t("orgChange.list.empty.action")}</Link>}
               />
@@ -106,7 +105,7 @@ export function OrgChanges() {
             </>
           )}
         </QueryState>
-      </section>
-    </div>
+      </section>}
+    </>
   );
 }

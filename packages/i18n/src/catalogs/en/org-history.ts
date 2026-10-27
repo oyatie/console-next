@@ -1,8 +1,6 @@
 // English for `orgHistory.` ids (source: ko/org-history.ts).
 export const enOrgHistory = {
-  "orgHistory.crumb": "Org structure",
-  "orgHistory.crumbHere": "Change history",
-  "orgHistory.title": "Org chart change history",
+  "orgHistory.title": "Change history",
   "orgHistory.scheduled": "{count, number} scheduled changes · nearest on {date} ({label}{more, plural, =0 {} other { and # more}})",
   "orgHistory.scheduledOpen": "Open in the org change list",
   "orgHistory.filter.source": "Kind",

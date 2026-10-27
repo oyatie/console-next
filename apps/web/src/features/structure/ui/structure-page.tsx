@@ -93,7 +93,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   const empty = s && s.root.children.length === 0;
   return (
     <RegistryExportContext.Provider value={view === "list" ? exportRows : null}>
-    <div className={`page ${css.page}`}>
+    <div className={css.page}>
       <PageHead s={s} view={view} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} />
       {!ready.error && dates.isError && <QueryState q={dates} inline own={() => t("asof.error")}>{() => null}</QueryState>}
       <QueryState q={pageRead} loading={<ChartSkeleton />}>{() => <>

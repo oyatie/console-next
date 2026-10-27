@@ -38,7 +38,8 @@
       "src/features/statutory/ui/statutory-page.tsx",
       "src/routes/home-screen.tsx",
       "src/routes/inbox-screen.tsx",
-      "src/routes/org-screen.tsx"
+      "src/routes/org-screen.tsx",
+      "src/routes/org-tabs.tsx"
     ]
   },
   "record": {

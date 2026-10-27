@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import type { ReactNode } from "react";
 import { t } from "@console/i18n";
 import { ToggleButton } from "../../../ui/button/button";
 import { Count } from "../../../ui/count/count";
@@ -6,8 +7,9 @@ import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { CHANGE_VIEWS, type ChangeView } from "../api";
 
 /** Saved views keep their names and focus while their count or list read is unavailable. */
-export function OrgChangeViews({ view, routed, totals, failed, redrafts, redraftsFailed, unavailable, className, onPick }: {
-  view: ChangeView;
+export function OrgChangeViews({ view, routed, totals, failed, redrafts, redraftsFailed, unavailable, className, onPick, children }: {
+  view: ChangeView | "history";
+  children?: ReactNode;
   routed: boolean;
   totals?: Record<ChangeView, number>;
   failed: boolean;
@@ -28,5 +30,6 @@ export function OrgChangeViews({ view, routed, totals, failed, redrafts, redraft
       const label = <>{t(`orgChange.list.view.${v === "closed" && !routed ? "cancelled" : v}`, { count: "" })}<Count n={n} failed={countFailed ? t("orgChange.list.countFailed") : undefined} /></>;
       return <ToggleButton key={v} pressed={v === view} {...(unavailable ? disabled : { onClick: () => onPick(v) })}>{label}</ToggleButton>;
     })}
+    {children}
   </span>} />;
 }

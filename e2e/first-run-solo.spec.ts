@@ -43,7 +43,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await routeReady(admin);
   await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
   await go(admin, "/setup/company-names", true);
-  await expect(admin).toHaveURL(/\/org\/entities$/);
+  await expect(admin).toHaveURL(/\/org\?tab=entities$/);
   await go(admin, "/account");
 
   await admin.getByRole("link", { name: companyDomain, exact: true }).click();

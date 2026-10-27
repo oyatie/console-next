@@ -5,7 +5,7 @@ import { bootKo } from "../packages/i18n/src/catalogs/boot";
 import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expectAccessible, expectAxe } from "./a11y";
 import { apiOf, bearerOf } from "./helpers/api";
-import { routeList } from "./helpers/route-list";
+import { redirectTargets, routeList } from "./helpers/route-list";
 import { readRequirement } from "../apps/web/src/routes/route-reads";
 import { todayKst } from "../apps/web/src/lib/pure/today";
 import { go, routeReady, vendorPage } from "./flows";
@@ -76,7 +76,7 @@ test.describe("route requirements with a real grantless account", () => {
         try {
           await page.setViewportSize({ width, height: 900 });
           await page.addInitScript(value => { localStorage.setItem("console.theme", value); }, theme);
-          await go(page, path.replace(/\$[^/]+/g, record), ["/access", "/setup/org", "/setup/company-names"].includes(path));
+          await go(page, path.replace(/\$[^/]+/g, record), path in redirectTargets);
           const main = page.getByRole("main");
           const card = main.getByRole("region", { name: bootKo["common.denied.title.plain"], exact: true });
           await expect(card).toHaveCount(1);

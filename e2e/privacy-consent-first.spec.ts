@@ -188,7 +188,7 @@ test("ten in-app navigations make no consent requests after first sign-in", { ta
   await expect(page).toHaveURL(/\/setup-passkey$/);
   await acceptConsent(page);
   await page.getByRole("button", { name: "동의하고 계속", exact: true }).click();
-  await expect(page).toHaveURL(/\/org\/entities\?add=true#entities-title$/);
+  await expect(page).toHaveURL(url => url.pathname === "/org" && url.searchParams.get("tab") === "entities" && url.searchParams.get("add") === "true" && url.hash === "#entities-title");
   await expect(page.locator("#entities-title")).toBeVisible();
   await expect(page.getByRole("heading", { name: "이 화면에 접근 권한이 없습니다", exact: true })).toHaveCount(0);
 });

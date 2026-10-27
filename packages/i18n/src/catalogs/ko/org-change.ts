@@ -1,5 +1,6 @@
 // Korean source for `orgChange.` ids: the org change record and list. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koOrgChange = {
+  "orgChange.subject": "조직 변경",
   "orgChange.list.range": "{from} ~ {to}",
   "orgChange.timeline.scheduled": "예정",
   // Title (one phrase in the list, the record and its receipts)
@@ -156,7 +157,8 @@ export const koOrgChange = {
   "orgChange.receipt.settled": "{label} 완료를 기록했습니다 · {code}",
   "orgChange.receipt.backToOrg": "조직도로 돌아가기",
   // List
-  "orgChange.list.title": "조직 변경",
+  "orgChange.list.title": "변경 이력",
+  "orgChange.list.view.history": "이력",
   "orgChange.list.countFailed": "개수를 불러오지 못했습니다",
   "orgChange.list.views": "목록 보기",
   "orgChange.list.viewsUnavailable": "목록을 다시 불러온 뒤 보기를 변경할 수 있습니다",
@@ -212,7 +214,6 @@ export const koOrgChange = {
   "orgChange.op.reassignSome": "{from} 구성원 {count, number}명 → {to}",
   "orgChange.op.merge": "{unit|을를} {into}에 합침 (폐지, 이력에 남음)",
   "orgChange.chip.scheduled": "예정 {count, number}건",
-  "orgChange.chip.history": "변경\u00a0내역",
   "orgChange.list.view.cancelled": "취소 {count}",
   "orgChange.list.empty.cancelled": "취소된 조직 변경이 없습니다",
 } as const;

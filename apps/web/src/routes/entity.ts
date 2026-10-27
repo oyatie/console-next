@@ -1,6 +1,6 @@
 import { readRequirement } from "./route-reads";
 import { TABS, type Tab } from "../features/entity/domain/tabs";
-import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { app, flag, screen, str } from "./app";
 
 const load = () => import("../features/entity/ui/entity-routes");
@@ -11,7 +11,7 @@ const entities = createRoute({
   getParentRoute: () => app,
   path: "/org/entities", staticData: { access: readRequirement("/org/entities") },
   validateSearch: (s: Record<string, unknown>): { add?: boolean; correction?: string; as_of?: string; known_at?: string; bulk?: "paste" | "import" } => ({ add: flag(s.add), correction: str(s.correction), as_of: str(s.as_of), known_at: str(s.known_at), bulk: s.bulk === "paste" || s.bulk === "import" ? s.bulk : undefined }),
-  component: lazyRouteComponent(screen(load), "EntitiesScreen"),
+  beforeLoad: ({ search, location }) => { throw redirect({ to: "/org", search: { ...search, tab: "entities" }, hash: location.hash, replace: true }); },
 });
 // `kind` and `name` carry what the quick sheet already chose into the full certificate wizard.
 const newEntity = createRoute({

@@ -1,7 +1,6 @@
 import type { koOrg } from "../ko/org";
 
 export const enOrg: Partial<Record<keyof typeof koOrg, string>> = {
-  "org.title": "Organization",
 
 
   "org.unit.picker.label": "Unit",

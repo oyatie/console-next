@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { CalendarClock, ChevronRight, Network } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { ORG_CHANGE_STATUS, actor, labeled } from "../../../lib/labels";
@@ -43,15 +43,7 @@ export function HistoryPage() {
   const names = useMemo(() => unitNames(tree.data?.entities ?? []), [tree.data]);
   const today = todayKst();
   return (
-    <div className="page">
-      <header className={s.head}>
-        <nav className={s.crumb} aria-label={t("orgHistory.crumbHere")}>
-          <Network size={14} aria-hidden />
-          <Link to="/org" search={{}}>{t("orgHistory.crumb")}</Link>
-          <ChevronRight size={14} aria-hidden /> {t("orgHistory.crumbHere")}
-        </nav>
-        <h1 className="page__title">{t("orgHistory.title")}</h1>
-      </header>
+    <>
       <QueryState q={all}>
         {() => {
           const rows = feedRows({ org: org.data!.items, entity: entity.data!.items, changes: changes.data!.items, nameOf: (id) => names.get(id), me: me() });
@@ -65,7 +57,7 @@ export function HistoryPage() {
                 <div className={s.banner} role="status">
                   <CalendarClock size={16} aria-hidden />
                   <span className={s.grow}>{t("orgHistory.scheduled", { count: next.length, date: fmtDate(next[0]!.effectiveDate), label: next[0]!.target.label, more: next.length - 1 })}</span>
-                  <Link to="/org/changes" search={{ view: "ready" }} className="btn">{t("orgHistory.scheduledOpen")}</Link>
+                  <Link to="/org" search={{ tab: "changes", filter: "ready" }} className="btn">{t("orgHistory.scheduledOpen")}</Link>
                 </div>
               )}
               <SectionHead level={2}>{t("orgHistory.filter.scope")}</SectionHead>
@@ -102,7 +94,7 @@ export function HistoryPage() {
           );
         }}
       </QueryState>
-    </div>
+    </>
   );
 }
 

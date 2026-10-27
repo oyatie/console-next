@@ -1,6 +1,7 @@
 import type { koOrgChange } from "../ko/org-change";
 
 export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
+  "orgChange.subject": "Organization change",
   "orgChange.list.range": "{from} ~ {to}",
   "orgChange.timeline.scheduled": "Scheduled",
   "orgChange.title.NEW": "Create {name}",
@@ -145,7 +146,8 @@ export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
   "orgChange.receipt.cancelled": "Cancelled {title} · {code}",
   "orgChange.receipt.settled": "Recorded {label} as done · {code}",
   "orgChange.receipt.backToOrg": "Back to the org chart",
-  "orgChange.list.title": "Org changes",
+  "orgChange.list.title": "Change history",
+  "orgChange.list.view.history": "History",
   "orgChange.list.countFailed": "Couldn’t load counts",
   "orgChange.list.views": "List views",
   "orgChange.list.viewsUnavailable": "Reload the list to change views",
@@ -201,7 +203,6 @@ export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
   "orgChange.op.reassignSome": "{count, number} of {from}'s members → {to}",
   "orgChange.op.merge": "Merge {unit} into {into} (dissolved, kept in the history)",
   "orgChange.chip.scheduled": "{count, number} scheduled",
-  "orgChange.chip.history": "Change\u00a0history",
   "orgChange.list.view.cancelled": "Cancelled {count}",
   "orgChange.list.empty.cancelled": "No cancelled org changes",
 };

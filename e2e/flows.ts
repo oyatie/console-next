@@ -10,6 +10,7 @@ import { recordShifts } from "./stability";
 import { guardConsole } from "./console-guard";
 import { guardRawIds } from "./raw-id-guard";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
+import { redirectTargets } from "./helpers/route-list";
 
 let ipSeq = 0;
 const contextOwners = new Map<BrowserContext, string>();
@@ -109,7 +110,8 @@ export async function go(page: Page, path: string, mayRedirect = false) {
     }, to.href);
   }
   // `mayRedirect`: accept the rendered redirect destination, including a return to the starting pathname.
-  await routeReady(page, mayRedirect ? undefined : path);
+  const target = redirectTargets[new URL(path, page.url()).pathname] ?? path;
+  await routeReady(page, mayRedirect ? undefined : target);
 }
 
 /**

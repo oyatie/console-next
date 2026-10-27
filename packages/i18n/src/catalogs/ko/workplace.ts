@@ -256,7 +256,7 @@ export const koWorkplace = {
   "workplace.kind.done": "{name}의 종류를 {kind|으로로} 변경했습니다",
   "workplace.kinds.title": "사업장 종류 관리",
   "workplace.kinds.kicker": "설정 · 조직 구조",
-  "workplace.kinds.consequence": "변경한 이름은 상자·목록·내보내기에 바로 쓰입니다. 바뀐 내용은 변경 내역에 남습니다.",
+  "workplace.kinds.consequence": "변경한 이름은 상자·목록·내보내기에 바로 쓰입니다. 바뀐 내용은 변경 이력에 남습니다.",
   "workplace.kinds.close": "닫기",
   "workplace.kinds.col.kind": "종류",
   "workplace.kinds.col.source": "출처",

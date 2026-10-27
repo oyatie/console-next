@@ -1,7 +1,6 @@
 // Korean source for `org.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koOrg = {
   // Org: branches and regions
-  "org.title": "조직",
 
   // Org: proposal form
 

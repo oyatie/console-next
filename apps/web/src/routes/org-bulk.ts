@@ -1,6 +1,6 @@
 import { readRequirement } from "./route-reads";
 // The bulk paths and history of company structure (S7, S9): full pages beside /org.
-import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { app, screen, str } from "./app";
 
 const paste = createRoute({
@@ -24,7 +24,7 @@ const bulkEdit = createRoute({
 const history = createRoute({
   getParentRoute: () => app,
   path: "/org/history", staticData: { access: readRequirement("/org/history") },
-  component: lazyRouteComponent(screen(() => import("../features/org-bulk/ui/history-page")), "HistoryPage"),
+  beforeLoad: ({ search, location }) => { throw redirect({ to: "/org", search: { ...search, tab: "changes", filter: "history" }, hash: location.hash, replace: true }); },
 });
 
 export const orgBulkRoutes = [paste, sheetImport, bulkEdit, history];
