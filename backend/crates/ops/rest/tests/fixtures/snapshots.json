@@ -1,0 +1,2093 @@
+{
+  "healthy": {
+    "home": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "verdict": {
+        "text": "Needs a human now · 1 page · evidence fresh",
+        "worst": "Degraded"
+      },
+      "worklist": [
+        {
+          "kind": "page",
+          "title": {
+            "state": "Verified",
+            "value": "Synthetic fixture alert",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "component": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "state": {
+            "state": "Verified",
+            "value": "Firing",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "since": {
+            "state": "Verified",
+            "value": "2026-01-01T00:00:00Z",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "age": {
+            "state": "Verified",
+            "value": 0,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "next": {
+            "href": "/alerts/SyntheticAlert",
+            "label": "Read alert"
+          }
+        }
+      ],
+      "changing": [],
+      "budgets": [],
+      "data_safety": [],
+      "cost": [],
+      "evidence": {
+        "counts": {
+          "Verified": 1,
+          "Monitoring": 0,
+          "Stale": 0,
+          "Unknown": 0
+        },
+        "sources": []
+      }
+    },
+    "alerts": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "groups": [
+        {
+          "key": "SyntheticAlert×fixture",
+          "alertname": "SyntheticAlert",
+          "component": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "severity": {
+            "state": "Verified",
+            "value": "Page",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "state": {
+            "state": "Verified",
+            "value": "Firing",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "since": {
+            "state": "Verified",
+            "value": "2026-01-01T00:00:00Z",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "members_n": {
+            "state": "Verified",
+            "value": 1,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "summary": {
+            "state": "Verified",
+            "value": "Synthetic fixture alert",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "value_vs_threshold": {
+            "value": {
+              "state": "Verified",
+              "value": 3,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": "2026-01-01T00:00:00Z",
+              "age_s": 0,
+              "reason": null
+            },
+            "threshold": {
+              "state": "Verified",
+              "value": 1,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": "2026-01-01T00:00:00Z",
+              "age_s": 0,
+              "reason": null
+            },
+            "operator": {
+              "state": "Verified",
+              "value": ">",
+              "unit": null,
+              "source": "fixture",
+              "observed_at": "2026-01-01T00:00:00Z",
+              "age_s": 0,
+              "reason": null
+            }
+          }
+        }
+      ],
+      "count": {
+        "state": "Verified",
+        "value": 1,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 0,
+        "reason": null
+      }
+    },
+    "alert": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "group": {
+        "key": "SyntheticAlert×fixture",
+        "alertname": "SyntheticAlert",
+        "component": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "severity": {
+          "state": "Verified",
+          "value": "Page",
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "state": {
+          "state": "Verified",
+          "value": "Firing",
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "since": {
+          "state": "Verified",
+          "value": "2026-01-01T00:00:00Z",
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "members_n": {
+          "state": "Verified",
+          "value": 1,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "summary": {
+          "state": "Verified",
+          "value": "Synthetic fixture alert",
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "value_vs_threshold": {
+          "value": {
+            "state": "Verified",
+            "value": 3,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "threshold": {
+            "state": "Verified",
+            "value": 1,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "operator": {
+            "state": "Verified",
+            "value": ">",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        },
+        "impact": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "probable_cause": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "first_action": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "notices": [],
+        "rule": {
+          "expression": {
+            "state": "Verified",
+            "value": "up == 0",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "current_value": {
+            "state": "Verified",
+            "value": 0,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        },
+        "members": [],
+        "changes": [],
+        "links": [
+          {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        ],
+        "footer_key": "SyntheticAlert×fixture"
+      }
+    },
+    "running": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "components": [
+        {
+          "key": "console-1",
+          "group": "app",
+          "host": "onprem-1",
+          "health": {
+            "state": "Verified",
+            "value": "Healthy",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "drift": {
+            "state": "Verified",
+            "value": "Synced",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age": 0,
+          "runbook": {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "membership": "Declared"
+        }
+      ],
+      "hosts": [],
+      "groups": [],
+      "count": {
+        "state": "Verified",
+        "value": 1,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 0,
+        "reason": null
+      }
+    },
+    "jobs": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "jobs": [
+        {
+          "name": "fixture-job",
+          "state": {
+            "state": "Verified",
+            "value": "Succeeded",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "last_run": {
+            "state": "Verified",
+            "value": "2026-01-01T00:00:00Z",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "last_exit": {
+            "state": "Verified",
+            "value": 0,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "budget": {
+            "state": "Verified",
+            "value": 60,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        }
+      ],
+      "count": {
+        "state": "Verified",
+        "value": 1,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 0,
+        "reason": null
+      }
+    },
+    "sources": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "sources": [
+        {
+          "name": "alertmanager",
+          "kind": "alertmanager",
+          "producer": "fixture",
+          "interval": 60,
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age": 0,
+          "state": "Verified",
+          "reason": null
+        }
+      ]
+    },
+    "silences": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "silences": [],
+      "count": {
+        "state": "Verified",
+        "value": 0,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 0,
+        "reason": null
+      }
+    },
+    "me": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "operator": {
+        "person": "00000000-0000-4000-8000-000000000001",
+        "display_email": "operator@example.invalid"
+      },
+      "grants": [
+        {
+          "action": "read.home",
+          "from": "2026-01-01T00:00:00Z",
+          "until": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "allowed_actions": [
+        "read.home"
+      ]
+    }
+  },
+  "stale": {
+    "home": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "verdict": {
+        "text": "Needs a human now · Unknown: stale 3m",
+        "worst": "Unknown"
+      },
+      "worklist": [],
+      "changing": [],
+      "budgets": [],
+      "data_safety": [],
+      "cost": [],
+      "evidence": {
+        "counts": {
+          "Verified": 0,
+          "Monitoring": 0,
+          "Stale": 0,
+          "Unknown": 1
+        },
+        "sources": [
+          {
+            "name": "alertmanager",
+            "kind": "alertmanager",
+            "producer": "fixture",
+            "interval": 60,
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age": 180,
+            "state": "Unknown",
+            "reason": "stale 3m"
+          }
+        ]
+      }
+    },
+    "alerts": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "groups": [
+        {
+          "key": "SyntheticAlert×fixture",
+          "alertname": "SyntheticAlert",
+          "component": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "severity": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "state": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "since": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "members_n": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "summary": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "value_vs_threshold": {
+            "value": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": "2026-01-01T00:00:00Z",
+              "age_s": 180,
+              "reason": "stale 3m"
+            },
+            "threshold": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": "2026-01-01T00:00:00Z",
+              "age_s": 180,
+              "reason": "stale 3m"
+            },
+            "operator": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": "2026-01-01T00:00:00Z",
+              "age_s": 180,
+              "reason": "stale 3m"
+            }
+          }
+        }
+      ],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 180,
+        "reason": "stale 3m"
+      }
+    },
+    "alert": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "group": {
+        "key": "SyntheticAlert×fixture",
+        "alertname": "SyntheticAlert",
+        "component": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "severity": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 180,
+          "reason": "stale 3m"
+        },
+        "state": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 180,
+          "reason": "stale 3m"
+        },
+        "since": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 180,
+          "reason": "stale 3m"
+        },
+        "members_n": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 180,
+          "reason": "stale 3m"
+        },
+        "summary": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 180,
+          "reason": "stale 3m"
+        },
+        "value_vs_threshold": {
+          "value": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "threshold": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "operator": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          }
+        },
+        "impact": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "probable_cause": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "first_action": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "notices": [],
+        "rule": {
+          "expression": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "current_value": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          }
+        },
+        "members": [],
+        "changes": [],
+        "links": [
+          {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        ],
+        "footer_key": "SyntheticAlert×fixture"
+      }
+    },
+    "running": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "components": [
+        {
+          "key": "console-1",
+          "group": "app",
+          "host": "onprem-1",
+          "health": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "drift": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age": 180,
+          "runbook": {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "membership": "Declared"
+        }
+      ],
+      "hosts": [],
+      "groups": [],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 180,
+        "reason": "stale 3m"
+      }
+    },
+    "jobs": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "jobs": [
+        {
+          "name": "fixture-job",
+          "state": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "last_run": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "last_exit": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          },
+          "budget": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 180,
+            "reason": "stale 3m"
+          }
+        }
+      ],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 180,
+        "reason": "stale 3m"
+      }
+    },
+    "sources": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "sources": [
+        {
+          "name": "alertmanager",
+          "kind": "alertmanager",
+          "producer": "fixture",
+          "interval": 60,
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age": 180,
+          "state": "Unknown",
+          "reason": "stale 3m"
+        }
+      ]
+    },
+    "silences": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "silences": [],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 180,
+        "reason": "stale 3m"
+      }
+    },
+    "me": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "operator": {
+        "person": "00000000-0000-4000-8000-000000000001",
+        "display_email": "operator@example.invalid"
+      },
+      "grants": [
+        {
+          "action": "read.home",
+          "from": "2026-01-01T00:00:00Z",
+          "until": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "allowed_actions": [
+        "read.home"
+      ]
+    }
+  },
+  "source_down": {
+    "home": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "verdict": {
+        "text": "Needs a human now · Unknown: source down",
+        "worst": "Unknown"
+      },
+      "worklist": [],
+      "changing": [],
+      "budgets": [],
+      "data_safety": [],
+      "cost": [],
+      "evidence": {
+        "counts": {
+          "Verified": 0,
+          "Monitoring": 0,
+          "Stale": 0,
+          "Unknown": 1
+        },
+        "sources": [
+          {
+            "name": "alertmanager",
+            "kind": "alertmanager",
+            "producer": "fixture",
+            "interval": 60,
+            "observed_at": null,
+            "age": 0,
+            "state": "Unknown",
+            "reason": "source down"
+          }
+        ]
+      }
+    },
+    "alerts": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "groups": [
+        {
+          "key": "SyntheticAlert×fixture",
+          "alertname": "SyntheticAlert",
+          "component": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "severity": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "state": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "since": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "members_n": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "summary": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "value_vs_threshold": {
+            "value": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": null,
+              "age_s": 0,
+              "reason": "source down"
+            },
+            "threshold": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": null,
+              "age_s": 0,
+              "reason": "source down"
+            },
+            "operator": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": null,
+              "age_s": 0,
+              "reason": "source down"
+            }
+          }
+        }
+      ],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": null,
+        "age_s": 0,
+        "reason": "source down"
+      }
+    },
+    "alert": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "group": {
+        "key": "SyntheticAlert×fixture",
+        "alertname": "SyntheticAlert",
+        "component": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "severity": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "source down"
+        },
+        "state": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "source down"
+        },
+        "since": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "source down"
+        },
+        "members_n": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "source down"
+        },
+        "summary": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "source down"
+        },
+        "value_vs_threshold": {
+          "value": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "threshold": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "operator": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          }
+        },
+        "impact": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "probable_cause": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "first_action": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "notices": [],
+        "rule": {
+          "expression": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "current_value": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          }
+        },
+        "members": [],
+        "changes": [],
+        "links": [
+          {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        ],
+        "footer_key": "SyntheticAlert×fixture"
+      }
+    },
+    "running": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "components": [
+        {
+          "key": "console-1",
+          "group": "app",
+          "host": "onprem-1",
+          "health": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "drift": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "source": "fixture",
+          "observed_at": null,
+          "age": 0,
+          "runbook": {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "membership": "Declared"
+        }
+      ],
+      "hosts": [],
+      "groups": [],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": null,
+        "age_s": 0,
+        "reason": "source down"
+      }
+    },
+    "jobs": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "jobs": [
+        {
+          "name": "fixture-job",
+          "state": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "last_run": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "last_exit": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          },
+          "budget": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "source down"
+          }
+        }
+      ],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": null,
+        "age_s": 0,
+        "reason": "source down"
+      }
+    },
+    "sources": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "sources": [
+        {
+          "name": "alertmanager",
+          "kind": "alertmanager",
+          "producer": "fixture",
+          "interval": 60,
+          "observed_at": null,
+          "age": 0,
+          "state": "Unknown",
+          "reason": "source down"
+        }
+      ]
+    },
+    "silences": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "silences": [],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": null,
+        "age_s": 0,
+        "reason": "source down"
+      }
+    },
+    "me": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "operator": {
+        "person": "00000000-0000-4000-8000-000000000001",
+        "display_email": "operator@example.invalid"
+      },
+      "grants": [
+        {
+          "action": "read.home",
+          "from": "2026-01-01T00:00:00Z",
+          "until": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "allowed_actions": [
+        "read.home"
+      ]
+    }
+  },
+  "absent": {
+    "home": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "verdict": {
+        "text": "Needs a human now · Unknown: not instrumented",
+        "worst": "Unknown"
+      },
+      "worklist": [],
+      "changing": [],
+      "budgets": [],
+      "data_safety": [],
+      "cost": [],
+      "evidence": {
+        "counts": {
+          "Verified": 0,
+          "Monitoring": 0,
+          "Stale": 0,
+          "Unknown": 1
+        },
+        "sources": [
+          {
+            "name": "alertmanager",
+            "kind": "alertmanager",
+            "producer": "fixture",
+            "interval": 60,
+            "observed_at": null,
+            "age": 0,
+            "state": "Unknown",
+            "reason": "not instrumented"
+          }
+        ]
+      }
+    },
+    "alerts": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "groups": [
+        {
+          "key": "SyntheticAlert×fixture",
+          "alertname": "SyntheticAlert",
+          "component": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "severity": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "state": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "since": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "members_n": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "summary": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "value_vs_threshold": {
+            "value": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": null,
+              "age_s": 0,
+              "reason": "not instrumented"
+            },
+            "threshold": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": null,
+              "age_s": 0,
+              "reason": "not instrumented"
+            },
+            "operator": {
+              "state": "Unknown",
+              "value": null,
+              "unit": null,
+              "source": "fixture",
+              "observed_at": null,
+              "age_s": 0,
+              "reason": "not instrumented"
+            }
+          }
+        }
+      ],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": null,
+        "age_s": 0,
+        "reason": "not instrumented"
+      }
+    },
+    "alert": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "group": {
+        "key": "SyntheticAlert×fixture",
+        "alertname": "SyntheticAlert",
+        "component": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "severity": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "state": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "since": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "members_n": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "summary": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "value_vs_threshold": {
+          "value": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "threshold": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "operator": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          }
+        },
+        "impact": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "probable_cause": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "first_action": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "notices": [],
+        "rule": {
+          "expression": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "current_value": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          }
+        },
+        "members": [],
+        "changes": [],
+        "links": [
+          {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        ],
+        "footer_key": "SyntheticAlert×fixture"
+      }
+    },
+    "running": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "components": [
+        {
+          "key": "console-1",
+          "group": "app",
+          "host": "onprem-1",
+          "health": {
+            "state": "Verified",
+            "value": "Missing",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "drift": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "source": "fixture",
+          "observed_at": null,
+          "age": 0,
+          "runbook": {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "membership": "Declared"
+        }
+      ],
+      "hosts": [],
+      "groups": [],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": null,
+        "age_s": 0,
+        "reason": "not instrumented"
+      }
+    },
+    "jobs": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "jobs": [
+        {
+          "name": "fixture-job",
+          "state": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "last_run": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "last_exit": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          },
+          "budget": {
+            "state": "Unknown",
+            "value": null,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": null,
+            "age_s": 0,
+            "reason": "not instrumented"
+          }
+        }
+      ],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": null,
+        "age_s": 0,
+        "reason": "not instrumented"
+      }
+    },
+    "sources": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "sources": [
+        {
+          "name": "alertmanager",
+          "kind": "alertmanager",
+          "producer": "fixture",
+          "interval": 60,
+          "observed_at": null,
+          "age": 0,
+          "state": "Unknown",
+          "reason": "not instrumented"
+        }
+      ]
+    },
+    "silences": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "silences": [],
+      "count": {
+        "state": "Unknown",
+        "value": null,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": null,
+        "age_s": 0,
+        "reason": "not instrumented"
+      }
+    },
+    "me": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "operator": {
+        "person": "00000000-0000-4000-8000-000000000001",
+        "display_email": "operator@example.invalid"
+      },
+      "grants": [
+        {
+          "action": "read.home",
+          "from": "2026-01-01T00:00:00Z",
+          "until": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "allowed_actions": [
+        "read.home"
+      ]
+    }
+  },
+  "empty": {
+    "home": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "verdict": {
+        "text": "All quiet · 0 pages · evidence fresh",
+        "worst": "Healthy"
+      },
+      "worklist": [],
+      "changing": [],
+      "budgets": [],
+      "data_safety": [],
+      "cost": [],
+      "evidence": {
+        "counts": {
+          "Verified": 1,
+          "Monitoring": 0,
+          "Stale": 0,
+          "Unknown": 0
+        },
+        "sources": []
+      }
+    },
+    "alerts": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "groups": [],
+      "count": {
+        "state": "Verified",
+        "value": 0,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 0,
+        "reason": null
+      }
+    },
+    "alert": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "group": {
+        "key": "SyntheticAlert×fixture",
+        "alertname": "SyntheticAlert",
+        "component": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "severity": {
+          "state": "Verified",
+          "value": "Page",
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "state": {
+          "state": "Verified",
+          "value": "Firing",
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "since": {
+          "state": "Verified",
+          "value": "2026-01-01T00:00:00Z",
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "members_n": {
+          "state": "Verified",
+          "value": 1,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "summary": {
+          "state": "Verified",
+          "value": "Synthetic fixture alert",
+          "unit": null,
+          "source": "fixture",
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age_s": 0,
+          "reason": null
+        },
+        "value_vs_threshold": {
+          "value": {
+            "state": "Verified",
+            "value": 3,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "threshold": {
+            "state": "Verified",
+            "value": 1,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "operator": {
+            "state": "Verified",
+            "value": ">",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        },
+        "impact": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "probable_cause": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "first_action": {
+          "state": "Unknown",
+          "value": null,
+          "unit": null,
+          "source": "fixture",
+          "observed_at": null,
+          "age_s": 0,
+          "reason": "not instrumented"
+        },
+        "notices": [],
+        "rule": {
+          "expression": {
+            "state": "Verified",
+            "value": "up == 0",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "current_value": {
+            "state": "Verified",
+            "value": 0,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        },
+        "members": [],
+        "changes": [],
+        "links": [
+          {
+            "state": "Verified",
+            "value": "https://example.invalid/runbook",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        ],
+        "footer_key": "SyntheticAlert×fixture"
+      }
+    },
+    "running": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "components": [],
+      "hosts": [],
+      "groups": [],
+      "count": {
+        "state": "Verified",
+        "value": 0,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 0,
+        "reason": null
+      }
+    },
+    "jobs": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "jobs": [
+        {
+          "name": "fixture-job",
+          "state": {
+            "state": "Verified",
+            "value": "Succeeded",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "last_run": {
+            "state": "Verified",
+            "value": "2026-01-01T00:00:00Z",
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "last_exit": {
+            "state": "Verified",
+            "value": 0,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          },
+          "budget": {
+            "state": "Verified",
+            "value": 60,
+            "unit": null,
+            "source": "fixture",
+            "observed_at": "2026-01-01T00:00:00Z",
+            "age_s": 0,
+            "reason": null
+          }
+        }
+      ],
+      "count": {
+        "state": "Verified",
+        "value": 1,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 0,
+        "reason": null
+      }
+    },
+    "sources": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "sources": [
+        {
+          "name": "alertmanager",
+          "kind": "alertmanager",
+          "producer": "fixture",
+          "interval": 60,
+          "observed_at": "2026-01-01T00:00:00Z",
+          "age": 0,
+          "state": "Verified",
+          "reason": null
+        }
+      ]
+    },
+    "silences": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "silences": [],
+      "count": {
+        "state": "Verified",
+        "value": 0,
+        "unit": "count",
+        "source": "fixture",
+        "observed_at": "2026-01-01T00:00:00Z",
+        "age_s": 0,
+        "reason": null
+      }
+    },
+    "me": {
+      "evaluated_at": "2026-01-01T00:00:00Z",
+      "operator": {
+        "person": "00000000-0000-4000-8000-000000000001",
+        "display_email": "operator@example.invalid"
+      },
+      "grants": [
+        {
+          "action": "read.home",
+          "from": "2026-01-01T00:00:00Z",
+          "until": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "allowed_actions": [
+        "read.home"
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["action", "from", "until"]
+properties:
+  action: {"$ref": "#/components/schemas/Text"}
+  from: {"$ref": "#/components/schemas/Timestamp"}
+  until: {"$ref": "#/components/schemas/Timestamp"}
+additionalProperties: false

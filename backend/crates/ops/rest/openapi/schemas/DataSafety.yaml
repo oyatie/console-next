@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["repository", "rpo_s", "limit_s", "last_base_backup", "last_proven_restore"]
+properties:
+  repository: {"$ref": "#/components/schemas/Text"}
+  rpo_s: {"$ref": "#/components/schemas/ObservedNumber"}
+  limit_s: {"$ref": "#/components/schemas/ObservedNumber"}
+  last_base_backup: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  last_proven_restore: {"$ref": "#/components/schemas/ObservedTimestamp"}

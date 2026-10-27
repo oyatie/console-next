@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["text", "worst"]
+properties:
+  text: {"$ref": "#/components/schemas/Text"}
+  worst: {"$ref": "#/components/schemas/Health"}

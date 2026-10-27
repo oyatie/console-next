@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "operator", "grants", "allowed_actions"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  operator: {"type": "object", "required": ["person", "display_email"], "properties": {"person": {"type": "string", "format": "uuid"}, "display_email": {"type": "string", "format": "email"}}}
+  grants: {"type": "array", "items": {"$ref": "#/components/schemas/Grant"}}
+  allowed_actions: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}

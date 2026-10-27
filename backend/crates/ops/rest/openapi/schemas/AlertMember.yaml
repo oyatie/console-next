@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["fingerprint", "labels", "state", "since"]
+properties:
+  fingerprint: {"$ref": "#/components/schemas/Text"}
+  labels: {"type": "object", "additionalProperties": {"$ref": "#/components/schemas/Text"}}
+  state: {"$ref": "#/components/schemas/ObservedAlertState"}
+  since: {"$ref": "#/components/schemas/ObservedTimestamp"}

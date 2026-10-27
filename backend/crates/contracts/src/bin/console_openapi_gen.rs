@@ -10,6 +10,8 @@
 
 #[path = "../gen_registry.rs"]
 mod gen_registry;
+#[path = "../ops_registry.rs"]
+mod ops_registry;
 
 use std::path::PathBuf;
 use std::{env, fs, process};
@@ -17,6 +19,23 @@ use std::{env, fs, process};
 use console_contracts::compose_document;
 
 fn main() {
+    let ops = ops_registry::document().unwrap_or_else(|err| {
+        eprintln!("console-openapi-gen: ops composition failed: {err}");
+        process::exit(1);
+    });
+    let ops_out = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../openapi/ops.yaml");
+    if env::args().any(|arg| arg == "--check-ops") {
+        if fs::read_to_string(&ops_out).ok().as_deref() != Some(ops.as_str()) {
+            eprintln!("ops.yaml differs from composed ops fragments; run console-openapi-gen");
+            process::exit(1);
+        }
+        println!("ops.yaml matches composed ops fragments");
+        return;
+    }
+    fs::write(&ops_out, ops).unwrap_or_else(|err| {
+        eprintln!("cannot write {}: {err}", ops_out.display());
+        process::exit(1);
+    });
     // Examined-zero must fail: a registry that forgot the faces would "regen"
     // an empty/partial document and `git diff` would not catch the omission if
     // openapi.yaml was deleted in the same commit. Require the shared fragment

@@ -2950,6 +2950,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "console-ops-domain"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "serde",
+ "serde_json",
+ "time",
+]
+
+[[package]]
+name = "console-ops-rest"
+version = "0.1.0"
+
+[[package]]
 name = "console-orgchange-adapter-postgres"
 version = "0.1.0"
 dependencies = [

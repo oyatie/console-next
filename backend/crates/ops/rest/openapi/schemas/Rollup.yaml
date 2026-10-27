@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["key", "health", "drift"]
+properties:
+  key: {"$ref": "#/components/schemas/Text"}
+  health: {"$ref": "#/components/schemas/ObservedHealth"}
+  drift: {"$ref": "#/components/schemas/ObservedDrift"}

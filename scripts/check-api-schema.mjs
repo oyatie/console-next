@@ -14,26 +14,27 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SPEC = "backend/openapi/openapi.yaml";
+const OPS_SPEC = "backend/openapi/ops.yaml";
 const GEN = path.join(ROOT, "node_modules/.bin/openapi-typescript");
 
 const git = (repo, ...args) => spawnSync("git", ["-C", repo, ...args], { encoding: "utf8", maxBuffer: 1 << 28 });
 
 // Returns { ok, message }. Every unknown (no repo, no ref, no spec, generator failure) is a failure.
-export function checkApiSchema({ repo, ref = "HEAD", out, write = false }) {
+export function checkApiSchema({ repo, ref = "HEAD", out, write = false, specPath = SPEC }) {
   const fix = "regenerate: npm run gen:api";
   if (!existsSync(repo)) return { ok: false, message: `backend repo not found at ${repo}` };
   const sha = git(repo, "rev-parse", "--verify", `${ref}^{commit}`);
   if (sha.status !== 0) return { ok: false, message: `backend ref ${ref} does not resolve in ${repo}: ${sha.stderr.trim()}` };
   const at = sha.stdout.trim();
-  const spec = git(repo, "show", `${at}:${SPEC}`);
-  if (spec.status !== 0) return { ok: false, message: `${SPEC} is missing at backend ${at}: ${spec.stderr.trim()}` };
+  const spec = git(repo, "show", `${at}:${specPath}`);
+  if (spec.status !== 0) return { ok: false, message: `${specPath} is missing at backend ${at}: ${spec.stderr.trim()}` };
   const tmp = mkdtempSync(path.join(tmpdir(), "api-schema-"));
   try {
     writeFileSync(path.join(tmp, "openapi.yaml"), spec.stdout);
     const gen = spawnSync(GEN, [path.join(tmp, "openapi.yaml"), "-o", path.join(tmp, "schema.d.ts")], { encoding: "utf8" });
     if (gen.status !== 0) return { ok: false, message: `openapi-typescript failed on backend ${at}:\n${gen.stdout}${gen.stderr}` };
-    const want = readFileSync(path.join(tmp, "schema.d.ts"), "utf8");
-    const label = `${path.relative(ROOT, out) || out} vs backend ${at.slice(0, 12)} (${SPEC})`;
+    const want = (specPath === OPS_SPEC ? "// SPDX-License-Identifier: LicenseRef-Proprietary\n" : "") + readFileSync(path.join(tmp, "schema.d.ts"), "utf8");
+    const label = `${path.relative(ROOT, out) || out} vs backend ${at.slice(0, 12)} (${specPath})`;
     if (write) {
       writeFileSync(out, want);
       return { ok: true, message: `wrote ${label}` };
@@ -55,11 +56,18 @@ export function checkApiSchema({ repo, ref = "HEAD", out, write = false }) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const r = checkApiSchema({
-    repo: ROOT,
-    out: path.join(ROOT, "packages/api/src/schema.d.ts"),
-    write: process.argv.includes("--write"),
-  });
-  (r.ok ? console.log : console.error)(r.message);
-  process.exit(r.ok ? 0 : 1);
+  let ok = true;
+  if (!process.argv.includes("--write")) {
+    const composed = spawnSync("cargo", ["run", "--quiet", "--locked", "--manifest-path", path.join(ROOT, "backend/Cargo.toml"), "-p", "console-contracts", "--bin", "console-openapi-gen", "--", "--check-ops"], { cwd: ROOT, encoding: "utf8" });
+    if (composed.status !== 0) {
+      console.error(`ops contract composition check failed:\n${composed.stdout ?? ""}${composed.stderr ?? ""}${composed.error ?? ""}`);
+      ok = false;
+    }
+  }
+  for (const [specPath, output] of [[SPEC, "schema.d.ts"], [OPS_SPEC, "ops-schema.d.ts"]]) {
+    const r = checkApiSchema({ repo: ROOT, specPath, out: path.join(ROOT, "packages/api/src", output), write: process.argv.includes("--write") });
+    (r.ok ? console.log : console.error)(r.message);
+    ok = r.ok && ok;
+  }
+  process.exit(ok ? 0 : 1);
 }

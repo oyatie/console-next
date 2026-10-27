@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "jobs", "count"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  jobs: {"type": "array", "items": {"$ref": "#/components/schemas/Job"}}
+  count: {$ref: '#/components/schemas/ObservedCount'}

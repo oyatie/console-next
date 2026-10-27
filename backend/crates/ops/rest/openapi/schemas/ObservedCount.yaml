@@ -1,0 +1,2 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+allOf: [{"$ref": "#/components/schemas/Observation"}, {"properties": {"value": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}}}]

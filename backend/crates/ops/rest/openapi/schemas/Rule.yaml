@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["expression", "current_value"]
+properties:
+  expression: {"$ref": "#/components/schemas/ObservedText"}
+  current_value: {"$ref": "#/components/schemas/ObservedNumber"}

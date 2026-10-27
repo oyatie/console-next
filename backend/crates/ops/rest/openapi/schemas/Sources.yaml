@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "sources"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  sources: {"type": "array", "items": {"$ref": "#/components/schemas/Source"}}

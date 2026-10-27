@@ -11,7 +11,8 @@
     "suspicious": "warn"
   },
   "ignorePatterns": [
-    "packages/api/src/schema.d.ts"
+    "packages/api/src/schema.d.ts",
+    "packages/api/src/ops-schema.d.ts"
   ],
   "rules": {
     "react/forbid-dom-props": [

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "components", "hosts", "groups", "count"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  components: {"type": "array", "items": {"$ref": "#/components/schemas/Component"}}
+  hosts: {"type": "array", "items": {"$ref": "#/components/schemas/Rollup"}}
+  groups: {"type": "array", "items": {"$ref": "#/components/schemas/Rollup"}}
+  count: {$ref: '#/components/schemas/ObservedCount'}

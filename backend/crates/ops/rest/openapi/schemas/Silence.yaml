@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["id", "matchers", "starts", "ends", "author", "comment"]
+properties:
+  id: {"$ref": "#/components/schemas/Text"}
+  matchers: {"type": "array", "items": {"$ref": "#/components/schemas/Matcher"}}
+  starts: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  ends: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  author: {"$ref": "#/components/schemas/ObservedText"}
+  comment: {"$ref": "#/components/schemas/ObservedText"}

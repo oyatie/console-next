@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "string"
+enum: ["SEV1", "SEV2", "SEV3", "SEV4"]

@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["counts", "sources"]
+properties:
+  counts: {"type": "object", "required": ["Verified", "Monitoring", "Stale", "Unknown"], "properties": {"Verified": {"type": "integer", "minimum": 0}, "Monitoring": {"type": "integer", "minimum": 0}, "Stale": {"type": "integer", "minimum": 0}, "Unknown": {"type": "integer", "minimum": 0}}}
+  sources: {"type": "array", "items": {"$ref": "#/components/schemas/Source"}}

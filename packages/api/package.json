@@ -2,6 +2,6 @@
   "name": "@console/api",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./schema": "./src/schema.d.ts", "./pending": "./src/pending/entity.ts", "./web": "./src/web.ts", "./events": "./src/events.ts" },
+  "exports": { ".": "./src/index.ts", "./schema": "./src/schema.d.ts", "./ops-schema": "./src/ops-schema.d.ts", "./pending": "./src/pending/entity.ts", "./web": "./src/web.ts", "./events": "./src/events.ts" },
   "dependencies": { "openapi-fetch": "0.17.0" }
 }
