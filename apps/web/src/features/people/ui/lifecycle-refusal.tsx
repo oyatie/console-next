@@ -4,6 +4,7 @@ import { t } from "@console/i18n";
 import { LIFECYCLE_EVENT, actor, label } from "../../../lib/labels";
 import { focusSoon } from "../../../lib/react/announce";
 import { CommandError } from "../../../lib/react/command-error";
+import { failureText } from "../../../lib/refusal";
 import { BlockedPanel } from "../../../ui/blocker/blocked-panel";
 import { Button } from "../../../ui/button/button";
 import { refusalOf } from "../api";
@@ -103,7 +104,7 @@ export function LifecycleRefusal({ error, kind, onLeave, target, onCancelEvent, 
           {FIXED_TERM_GROUNDS.map((g) => <li key={g}>{t(`lifecycle.fixedTerm.ground.${g}`)}</li>)}
         </ul>
         <p className={s.blockerText}>{t("lifecycle.blocker.fixedTerm.exception")}</p>
-        <CommandError error={error} own={peopleRefusal} />
+        {failureText(error, peopleRefusal)}
       </BlockedPanel>
     );
   if (r && (SPECIFIC as Set<string>).has(r.code))
