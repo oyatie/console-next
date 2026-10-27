@@ -4,6 +4,8 @@ import { tg } from "@console/i18n/gallery";
 import { useTheme } from "../shell/theme";
 import { Button } from "../ui/button/button";
 import { PageHead } from "../ui/page-head/page-head";
+import { PageHeadingLevel } from "../ui/page/page-scope";
+import { PageMain } from "../ui/page/page-main";
 import "./gallery.css";
 
 /**
@@ -21,9 +23,9 @@ const entries = Object.entries(import.meta.glob<Entry>("../**/*.gallery.tsx", { 
 export function Gallery() {
   const [theme, toggle] = useTheme();
   return (
-    <main className="page" id="main">
+    <PageMain className="page" id="main">
       <PageHead title={tg("title")} sub={tg("hint")} tools={<Button onClick={toggle}>{theme === "dark" ? t("shell.theme.toLight") : t("shell.theme.toDark")}</Button>} />
-      {entries.map(([path, { default: Demo }]) => <Demo key={path} />)}
-    </main>
+      <PageHeadingLevel value={2}>{entries.map(([path, { default: Demo }]) => <Demo key={path} />)}</PageHeadingLevel>
+    </PageMain>
   );
 }

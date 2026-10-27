@@ -6,8 +6,20 @@
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); min-width: 0; }
 .title { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); overflow-wrap: anywhere; }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; color: var(--steel); font-size: var(--text-sm); }
+/* A wrapped loading fact reserves the same text line as its eventual value. */
+.meta > * { min-block-size: 1lh; }
 .grow { flex: 1; }
 .tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.primary { display: flex; flex: none; }
+.secondary { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.overflow { display: none; }
+@media (max-width: 767px) {
+  .secondary { display: none; }
+  .overflow { display: flex; }
+  .title { flex: 1; min-width: 0; }
+  .meta { flex-basis: 100%; order: 1; }
+  .grow { display: none; }
+}
 .sub { margin: 0; color: var(--steel); font-size: var(--text-sm); }
 .crumbs { min-width: 0; font-size: var(--text-sm); color: var(--steel); }
 .trail { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
