@@ -10,7 +10,7 @@
 //!   = 소정 (the 근무 일정's shift) · x 결근 결 · o 외근 외 · 출장
 //!   휴 휴무 OFF (day off) · D E N 주 야 비 당 S1 (shift codes) · 연차 반 병가 … (휴가):
 //!   read here, resolved against the day's plan by `resolve_value`.
-//! Refused: +2, 18+2 or 연장2 (연장 is only a 승인), 지각 · 조퇴 (derived),
+//! Refused: +2, 18+2 or 연장2 (record overtime using clock times), 지각 · 조퇴 (derived),
 //! 8 or 8:00 alone (hours, not times), 0.375 (an Excel fraction), 출 (출근 or
 //! 출장?), unconfirmed policy-long spans, 22-6 without + off a night plan.
 
@@ -37,7 +37,7 @@ pub enum Entry {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseRefusal {
-    /// `+2`: a later 퇴근 never creates 연장 (the 승인 is recorded instead).
+    /// `+2`: record overtime with clock-in and clock-out times.
     OvertimeTyped,
     /// Not a time or a code; the console boxes the wrong character.
     Unreadable,

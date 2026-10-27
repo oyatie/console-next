@@ -1,5 +1,5 @@
 // A person-day as the screens draw it: the scheduled spans, what was recorded, what was recognised, and the short
-// text of a grid cell. Recognition here is drawing only (recorded ∩ scheduled); the numbers are always the server's.
+// text of a grid cell. Drawing excludes scheduled breaks; the totals are always the server's.
 import type { Shift, Window } from "./minutes";
 import { duration } from "./minutes";
 
@@ -31,15 +31,15 @@ export function scheduledSpans(shift: Shift | undefined): Window[] {
   return out;
 }
 
-/** The overlap of two span lists. */
-export function intersect(a: readonly Window[], b: readonly Window[]): Window[] {
-  const out: Window[] = [];
-  for (const x of a) for (const y of b) {
-    const start = Math.max(x.start, y.start);
-    const end = Math.min(x.end, y.end);
-    if (end > start) out.push({ start, end });
-  }
-  return out.sort((p, q) => p.start - q.start);
+/** Recorded spans without scheduled breaks (approval never clips the bar). */
+export function withoutBreaks(recorded: readonly Window[], breaks: readonly Window[]): Window[] {
+  return breaks.reduce<Window[]>((spans, rest) => spans.flatMap((span) => {
+    if (rest.end <= span.start || rest.start >= span.end) return [span];
+    return [
+      ...(span.start < rest.start ? [{ start: span.start, end: rest.start }] : []),
+      ...(rest.end < span.end ? [{ start: rest.end, end: span.end }] : []),
+    ];
+  }), [...recorded]);
 }
 
 /** Hours as the grid prints them: "8" for whole hours, else "7:39". */

@@ -208,7 +208,10 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
       days={columns}
       tail={[
         { key: "rec", header: t("attendanceRecords.total.recognised"), width: "total", cell: (r) => duration(r.totals.recognised) },
-        { key: "prem", header: t("attendanceRecords.total.approved"), width: "total", cell: (r) => (r.totals.approved ? duration(r.totals.approved) : "–") },
+        { key: "prem", header: t("attendanceRecords.total.approved"), width: "total", cell: (r) => {
+          const minutes = r.totals.outside_scheduled ?? r.totals.approved + r.totals.unrecognised;
+          return minutes ? duration(minutes) : "–";
+        } },
         { key: "unrec", header: t("attendanceRecords.total.unrecognised"), width: "total", cell: (r) => (r.totals.unrecognised ? duration(r.totals.unrecognised) : "–") },
         { key: "open", header: t("attendanceRecords.total.open"), width: "total", cell: (r) => (r.totals.blocking || r.totals.decision ? t("attendanceRecords.total.openValue", { blocking: r.totals.blocking, decision: r.totals.decision }) : "–") },
       ]}

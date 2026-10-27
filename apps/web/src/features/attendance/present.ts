@@ -64,7 +64,7 @@ export function problemText(row: BoardRow): string {
   if (!m) return t("attendanceRecords.board.fine", { recognised: duration(r.recognised) });
   return t(`attendanceRecords.board.why.${m}`, {
     recognised: duration(r.recognised),
-    late: duration(r.late_unrecognised),
+    late: duration(r.excess_open ?? r.early_unrecognised + r.late_unrecognised),
     minutes: r.late_in + r.early_out + r.away,
     start: row.day.entry?.segments[0] ? clock(row.day.entry.segments[0].start) : "",
   });

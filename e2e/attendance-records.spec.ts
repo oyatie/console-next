@@ -32,13 +32,13 @@ test("월간 근무표: type, refuse, fix, paste, save with 근거, undo, correc
       original.call(this, key, value);
     };
   });
-  // Typing a later clock-out never makes overtime: `+2` is refused with the pointer to an approval record, and the
+  // Overtime needs clock times: `+2` is refused with the pointer to recording times, and the
   // save stays disabled with its reason; nothing reaches the server.
   await cellOf(admin, "윤하준", date).click();
   await admin.keyboard.type("+2");
   await admin.keyboard.press("Enter");
   await cellOf(admin, "윤하준", date).click();
-  await expect(admin.getByText(/연장은 승인 기록으로만 반영됩니다/).first()).toBeVisible();
+  await expect(admin.getByText(/연장은 시각으로 기록합니다/).first()).toBeVisible();
   await expect(admin.getByRole("status").filter({ hasText: "초안을 이 탭에 보관하지 못했습니다" })).toBeVisible();
   // A refused, focused cell keeps its solid danger outline in either theme (VL-BROKEN-REFS).
   const originalTheme = await admin.locator("html").getAttribute("data-theme");
@@ -99,7 +99,7 @@ test("월간 근무표: type, refuse, fix, paste, save with 근거, undo, correc
   await cellOf(admin, "윤하준", other).click();
   await admin.keyboard.press("p");
   const day = admin.getByRole("complementary", { name: /하루 기록/ });
-  await expect(day.getByText("소정·승인 시간 내 인정 · 승인 없는 연장 미인정", { exact: true })).toBeVisible();
+  await expect(day.getByText("승인이 없어도 근로시간으로 인정 · 마감 전에 처리", { exact: true })).toBeVisible();
   await expect(day).not.toContainText("일정보다 일찍 오거나 늦게 남은 시간은");
   await expectAccessible(admin, "day sheet");
   await day.getByRole("button", { name: "정정" }).click();

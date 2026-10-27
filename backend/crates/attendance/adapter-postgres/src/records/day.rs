@@ -18,7 +18,7 @@ pub(crate) struct Evaluated {
     pub marks: Vec<Mark>,
 }
 
-/// `approved` are the day's 승인 windows (S3; empty until then).
+/// Approval storage and disposition loading arrive in ATT-APPROVALS slices 2–3.
 pub(crate) fn evaluate_day(
     u: &Universe,
     p: &Person,
@@ -86,7 +86,7 @@ pub(crate) fn grid_cell(date: Date, e: &Evaluated, entry: Option<&EntryRead>) ->
         segments: live.map(|x| x.segments.clone()).unwrap_or_default(),
         source: live.map(|x| x.source.clone()),
         recognised: r.recognised,
-        unrecognised: r.early_unrecognised + r.late_unrecognised,
+        unrecognised: r.excess_open,
         not_worked: r.late_in + r.early_out + r.away,
         marks: e.marks.clone(),
     }
@@ -106,7 +106,8 @@ pub(crate) fn add(t: &mut GridTotals, e: &Evaluated) {
     let r = e.recognition;
     t.recognised += r.recognised;
     t.approved += r.approved;
-    t.unrecognised += r.early_unrecognised + r.late_unrecognised;
+    t.outside_scheduled += r.outside_scheduled;
+    t.unrecognised += r.excess_open;
     t.not_worked += r.late_in + r.early_out + r.away;
     for m in &e.marks {
         match m.tone() {
