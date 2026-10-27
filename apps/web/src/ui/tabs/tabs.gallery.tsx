@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
 import { t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { tabClass } from "./tab-class";
 import { TabCount, TabNav, Tabs } from "./tabs";
+import { PageTabs } from "./page-tabs";
 import { PageHead } from "../page-head/page-head";
 import { useTabSearch } from "../../lib/react/use-tab-search";
 import { QueryState } from "../../lib/react/query-state";
@@ -14,7 +14,10 @@ export const order = 126;
 
 /** URL views, panel read states, long labels and large counts; route links share the same look. */
 export default function TabsGallery() {
-  const [long, setLong] = useState("0");
+  const longItems = Array.from({ length: 8 }, (_, n) => ({ id: `long-${n}`, label: `${tg("sample.teamLong")} ${n + 1}`, count: 2000 }));
+  const long = useTabSearch(longItems);
+  const unavailableItems = [{ id: "list", label: tg("tabs.list") }, { id: "unavailable", label: tg("tabs.outline"), disabledReason: tg("tabs.unavailableWhy") }];
+  const unavailable = useTabSearch(unavailableItems);
   const items = [
     { id: "chart", label: tg("tabs.chart") },
     { id: "list", label: tg("tabs.list"), count: 61 },
@@ -25,9 +28,9 @@ export default function TabsGallery() {
   return (
     <section className="card gallery__section" data-tabs-gallery>
       <h2 className="toolbar__title">{tg("section.tabs")}</h2>
-      <div data-tabs-demo="url"><Tabs label={tg("tabs.label")} items={items} {...search} renderList={list => <PageHead band title={tg("pageHead.title")} tabs={list} />}>
+      <div data-tabs-demo="url"><PageTabs label={tg("tabs.label")} items={items} {...search} renderList={list => <PageHead band title={tg("pageHead.title")} tabs={list} />}>
         {(id) => <p className="muted">{tg(body[id as keyof typeof body])}</p>}
-      </Tabs></div>
+      </PageTabs></div>
       {(["loading", "empty", "failed", "refused"] as const).map(state => {
         const reference = <SupportReference reference={`gallery-tabs-${state}`} />;
         return <div key={state} data-tabs-demo={state}>
@@ -40,9 +43,12 @@ export default function TabsGallery() {
           </Tabs>
         </div>;
       })}
-      <div data-tabs-demo="long"><Tabs label={tg("sample.teamLong")} items={Array.from({ length: 8 }, (_, n) => ({ id: String(n), label: `${tg("sample.teamLong")} ${n + 1}`, count: 2000 }))} selected={long} onSelect={setLong}>
+      <div data-tabs-demo="long"><PageTabs label={tg("sample.teamLong")} items={longItems} {...long}>
         {() => <p>{tg("tabs.listBody")}</p>}
-      </Tabs></div>
+      </PageTabs></div>
+      <div data-tabs-demo="unavailable"><PageTabs label={tg("tabs.outline")} items={unavailableItems} {...unavailable}>
+        {() => <p>{tg("tabs.listBody")}</p>}
+      </PageTabs></div>
       <TabNav label={tg("tabs.nav")}>
         <a href="#roles" className={tabClass} aria-current="page">{tg("tabs.roles")}<TabCount>{3}</TabCount></a>
         <a href="#grants" className={tabClass}>{tg("tabs.grants")}<TabCount>{12}</TabCount></a>
