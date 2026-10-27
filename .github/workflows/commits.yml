@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# CI calls this on PRs and merge groups; ci-ok requires its success.
+name: commits
+on:
+  workflow_call:
+permissions: {}
+jobs:
+  subjects:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+      - name: Commit grammar and Git history regression tests
+        run: node --test scripts/check-commit-subjects.test.mjs
+      - name: Check every new commit subject
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        env:
+          COMMIT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          COMMIT_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          COMMIT_EVENT: ${{ github.event_name }}
+        run: node scripts/check-commit-subjects.mjs "$COMMIT_BASE" "$COMMIT_HEAD" "$COMMIT_EVENT"
