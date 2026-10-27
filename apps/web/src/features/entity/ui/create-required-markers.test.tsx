@@ -18,8 +18,9 @@ beforeAll(() => loadCatalog("ko"));
 const schema = (name: string) => readFileSync(new URL(`../../../../../../backend/crates/entity/rest/openapi/schemas/${name}.yaml`, import.meta.url), "utf8");
 const required = (name: string) => [...schema(name).match(/^required:\n((?:- [^\n]+\n)+)/m)![1]!.matchAll(/^- (.+)$/gm)].map((match) => match[1]!);
 const address = { road: "등록증 소재지", zip: "06236", detail: "", verified: true };
+const { primary: { brn: completeBrn } } = JSON.parse(readFileSync(new URL("../../../../../../e2e/registration-identifiers.json", import.meta.url), "utf8")) as { primary: { brn: string } };
 const draft = (kind: Draft["bizKind"]): Draft => ({ ...emptyDraft(), bizKind: kind, headOffice: "SAME", businessAddress: address, representatives: ["대표자"] });
-const render = (d: Draft) => renderToStaticMarkup(<CertForm c={{ draft: d, put: vi.fn(), problems: {}, brnClasses: [], today: "2026-10-24", crnWarn: false } as unknown as CreateState} />);
+const render = (d: Draft, problems: CreateState["problems"] = {}) => renderToStaticMarkup(<CertForm c={{ draft: d, put: vi.fn(), problems, brnClasses: [], today: "2026-10-24", crnWarn: false, checkAvailability: { available: false } } as unknown as CreateState} />);
 const markers = (html: string) => [...html.matchAll(/([^<>]+)<span\b[^>]*>필수<\/span>/g)].map((match) => match[1]!.trim()).sort();
 
 test.each(["CORPORATION", "INDIVIDUAL"] as const)("%s certificate marks exactly the server-required fields", (kind) => {
@@ -56,4 +57,14 @@ test("an additional representative remains optional and an alternate head office
   expect(fields).toContain(t("entityCreate.field.headOfficeAddress"));
   expect(fields).toContain(t("entityCreate.field.headOfficeSame"));
   expect(fields).not.toContain(t("entityCreate.field.representativeN", { n: 2 }));
+});
+
+test.each(["", completeBrn.slice(0, -1)])("no verification status for an incomplete BRN %j", brn => {
+  expect(render({ ...draft("CORPORATION"), brn })).not.toContain(t("nts.state.unavailable"));
+});
+
+test("a complete BRN shows the existing verification state only without a field problem", () => {
+  const d = { ...draft("CORPORATION"), brn: completeBrn };
+  expect(render(d)).toContain(t("nts.state.unavailable"));
+  expect(render(d, { brn: "brnChecksum" })).not.toContain(t("nts.state.unavailable"));
 });

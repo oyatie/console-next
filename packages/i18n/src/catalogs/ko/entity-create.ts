@@ -39,7 +39,7 @@ export const koEntityCreate = {
   "entityCreate.field.coOwners": "공동사업자",
   "entityCreate.field.liquor": "주류판매신고번호",
   "entityCreate.field.unitTaxation": "사업자 단위 과세 적용",
-  "entityCreate.field.unitTaxationHint": "선택하지 않았습니다 · 등록증 ⑩번 칸을 보고 선택합니다. 비워 두면 할 일로 남습니다",
+  "entityCreate.field.unitTaxationHint": "등록증 ⑩",
   "entityCreate.unitTaxation.yes": "여",
   "entityCreate.unitTaxation.no": "부",
   "entityCreate.field.eInvoiceEmail": "전자세금계산서 전용 메일",
