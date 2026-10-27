@@ -12,6 +12,8 @@ import type { CardColumn } from "./card-columns";
 import { CardContent } from "./card-content";
 import { useCardLayout } from "./use-card-layout";
 import { SelectInput } from "../field/select-input";
+import { columnWidths, type ColumnType } from "./column-types";
+import types from "./column-types.module.css";
 
 // Native design-system controls participate in the table's focus management.
 export { Focusable as TableControl } from "react-aria-components";
@@ -19,11 +21,9 @@ export { Focusable as TableControl } from "react-aria-components";
 const NONE = new Set<string>();
 
 /** `width` is a React Aria column size: "1fr" (default), "2fr", a percentage, or px for codes and dates. */
-export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; allowsSorting?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
+export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; type?: ColumnType; allowsSorting?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
 
 const SELECT = "__select";
-// aria-rowcount counts loaded rows, not the server total (React Aria has no override); the caption
-// carries the total and the loaded count, and the grid is described by it.
 // TableLayout needs pixel estimates; CSS measures each row so cards can wrap and desktop densities stay fixed.
 const LAYOUT = {
   regular: { estimatedRowHeight: 40, headingHeight: 40, loaderHeight: 40 },
@@ -55,8 +55,10 @@ export function LongTable<R>(p: {
   onSortChange?: (sort: SortDescriptor) => void;
   rows: R[];
   rowId: (r: R) => string;
-  /** The server's count of rows matching the filter. */
-  total?: number;
+  /** Server count after Cedar and filtering; null means unknown, omitted falls back to paging completion. */
+  total?: number | null;
+  /** One-based position in the server result, excluding the header; defaults to a contiguous loaded prefix. */
+  rowIndex?: (r: R) => number;
   /** A count line for the header (employees: 3,214). */
   caption?: ReactNode;
   hasMore: boolean;
@@ -148,10 +150,12 @@ export function LongTable<R>(p: {
   const layout = useMemo(() => cardLayout && cardHeight ? { ...LAYOUT[density], estimatedRowHeight: cardHeight }
     : p.editable ? { ...LAYOUT[density], estimatedRowHeight: LAYOUT[density].estimatedRowHeight * 2 } : LAYOUT[density], [cardLayout, cardHeight, density, p.editable]);
   const loaded = p.rows.map(p.rowId);
+  const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;
   const titleId = (r: R) => `${captionId}-${encodeURIComponent(p.rowId(r))}-title`;
   const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, cell: (r) => <CardContent row={r} columns={p.columns} titleId={titleId(r)} /> }] : p.columns;
   const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...content] : content;
+  const widths = columnWidths(cols);
   const slotted = p.findSlot !== undefined;
   const [find, setFind] = useState({ source: p.find?.defaultValue, value: p.find?.defaultValue ?? "" });
   if (find.source !== p.find?.defaultValue) setFind({ source: p.find?.defaultValue, value: p.find?.defaultValue ?? "" });
@@ -194,7 +198,7 @@ export function LongTable<R>(p: {
         </div>
       )}
       {sel && p.onSelectionChange && (
-        <SelectionBar sel={sel} loaded={loaded.length} total={p.total} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
+        <SelectionBar sel={sel} loaded={loaded.length} total={p.total ?? undefined} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
       )}
       <ResizableTableContainer>
       <Virtualizer layout={TableLayout} layoutOptions={layout}>
@@ -204,8 +208,10 @@ export function LongTable<R>(p: {
             p.scrollRef?.(el);
           }}
           aria-label={p.label}
+          // React Aria derives these attributes from loaded rows; the server result includes unloaded rows.
+          render={props => <div {...props} aria-rowcount={p.total === undefined ? (p.hasMore ? -1 : loaded.length + 1) : p.total === null ? -1 : p.total + 1} />}
           aria-describedby={p.caption ? captionId : undefined}
-          className={`${css.table} ${cards.surface}`}
+          className={`${css.table} ${cards.surface} ${types.surface}`}
           data-layout={cardLayout ? "cards" : "rows"}
           data-editable={p.editable || undefined}
           data-total={p.total}
@@ -226,7 +232,7 @@ export function LongTable<R>(p: {
         >
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
-              <Column id={c.id} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? "1fr"} minWidth={c.minWidth} className={css.th}>
+              <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={css.th}>
                 {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : <>{c.header}{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
@@ -241,11 +247,12 @@ export function LongTable<R>(p: {
               {(r) => {
                 const id = p.rowId(r);
                 return (
-                  <Row id={id} columns={cols} className={css.row} onHoverStart={p.onRowHover && (() => p.onRowHover?.(id))}>
+                  <Row id={id} columns={cols} className={css.row} render={props => <div {...props} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => p.onRowHover?.(id))}>
                     {(c) => {
                       const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.
-                      return <Cell className={css.td} render={cardLayout && c.id === "__card" ? (props) => <div {...props} aria-labelledby={titleId(r)} /> : undefined}>{p.editable && !c.rowHeader ? render : render()}</Cell>;
+                      const value = p.editable && !c.rowHeader ? render : render();
+                      return <Cell data-type={c.type} className={css.td} render={props => <div {...props} title={typeof value === "string" ? value : undefined} aria-labelledby={cardLayout && c.id === "__card" ? titleId(r) : props["aria-labelledby"]} />}>{value}</Cell>;
                     }}
                   </Row>
                 );

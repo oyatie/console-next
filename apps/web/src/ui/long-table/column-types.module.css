@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.surface [data-type] { text-align: start; font-variant-numeric: tabular-nums; }
+.surface :is([data-type="num"], [data-type="money"], [data-type="pct"], [data-type="time"], [data-type="duration"], [data-type="action"]) { text-align: end; justify-content: flex-end; }
+.surface :is(td, [role="gridcell"])[data-type="code"] { font-family: var(--font-mono); }
+.native[data-typed] { table-layout: fixed; }
+.native[data-typed] thead th { white-space: normal; overflow-wrap: anywhere; }
+.native[data-typed] td[data-type] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.native[data-density="compact"] :is(th, td) { height: var(--row-h-compact); }
+.native[data-typed] td { font-size: var(--text-sm); }
+@container list-table (max-width: 480px) {
+  .native colgroup { display: none; }
+  .native[data-typed] td { height: auto; white-space: normal; overflow-wrap: anywhere; }
+}

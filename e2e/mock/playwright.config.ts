@@ -7,7 +7,7 @@ const dist = `../../.cache/states-${PORTS.web}`;
 // Prebuild lazy chunks once so state assertions never wait on Vite's dev transforms.
 export default defineConfig({
   testDir: "..",
-  testMatch: ["mock/*.spec.ts", "states/*.spec.ts"],
+  testMatch: ["mock/*.spec.ts", "states/*.spec.ts", "layout/layout.spec.ts"],
   outputDir: `${OUTPUT_DIR}-mock`,
   fullyParallel: true,
   workers: Number(process.env.E2E_WORKERS ?? 2),

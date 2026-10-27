@@ -1,9 +1,11 @@
 import { Fragment, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cardRoles, type CardColumn } from "./long-table/card-columns";
 import cards from "./long-table/table-cards.module.css";
+import { columnWidths, type ColumnType } from "./long-table/column-types";
+import types from "./long-table/column-types.module.css";
 
 /** `width` reserves a stable share for live content; `fit` shrinks the column to its content (codes, dates, chips); `wide` hides it at phone widths (secondary detail). */
-export type Column<R> = CardColumn & { header: ReactNode; cell: (r: R) => ReactNode; fit?: boolean; width?: "code" | "status" | "summary" | "datetime" };
+export type Column<R> = CardColumn & { header: ReactNode; cell: (r: R) => ReactNode; type?: ColumnType; fit?: boolean; width?: "code" | "status" | "summary" | "datetime" };
 const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide && "wide-only"].filter(Boolean).join(" ") || undefined;
 
 /**
@@ -12,9 +14,10 @@ const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide &&
  * Enter, Space or a click selects the focused row.
  * `tone` marks a row that needs attention (a refusal to resolve); `detail` adds a full-width row under a row for
  * what resolves it in place (a name clash and its answers).
- * plain <table>; switch to TanStack Table + Virtual when a list needs sorting or >1k rows.
+ * Bounded lists use this native table; headcount lists use LongTable's server paging and virtualization.
+ * Read states belong to the surrounding QueryState boundary; it removes content after a server refusal.
  */
-export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone, detail, groups }: {
+export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone, detail, groups, density }: {
   label: string;
   rows: R[];
   columns: Column<R>[];
@@ -24,6 +27,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   tone?: (r: R) => "danger" | "warn" | undefined;
   detail?: (r: R) => ReactNode;
   groups?: { id: string; header: ReactNode; rows: R[] }[];
+  density?: "regular" | "compact";
 }) {
   const tableRef = useRef<HTMLTableElement>(null);
   const [active, setActive] = useState<string>();
@@ -48,6 +52,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
   const roles = cardRoles(columns);
   const hasCards = columns.some(c => c.card);
+  const widths = columnWidths(columns);
   const renderRows = (items: R[]) => items.map((r) => {
     const id = rowId(r);
     const more = detail?.(r);
@@ -61,7 +66,10 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
         onFocus={onSelect && (() => setActive(id))}
         onClick={onSelect && (() => onSelect(id))}
       >
-        {columns.map((c, i) => <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined}>{c.cell(r)}</td>)}
+        {columns.map((c, i) => {
+          const value = c.cell(r);
+          return <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-type={c.type} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined} title={typeof value === "string" ? value : undefined}>{value}</td>;
+        })}
       </tr>
       {more != null && more !== false && (
         <tr className="table__detail" data-tone={tone?.(r)}>
@@ -72,9 +80,11 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     );
   });
   const table = (
-    <table ref={tableRef} className={`table ${hasCards ? cards.short : ""} ${cards.surface}`} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} aria-label={label} {...grid}>
+    <table ref={tableRef} className={`table ${hasCards ? cards.short : ""} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
+      <caption className="sr-only">{label}</caption>
+      {columns.some(c => c.type) && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
       <thead>
-        <tr>{columns.map((c, i) => <th key={i} className={cls(c)} data-width={c.width}>{c.header}</th>)}</tr>
+        <tr>{columns.map((c, i) => <th key={i} scope="col" className={cls(c)} data-type={c.type} data-width={c.width}>{c.header}</th>)}</tr>
       </thead>
       {groups ? groups.map(g => (
         <tbody key={g.id}>
