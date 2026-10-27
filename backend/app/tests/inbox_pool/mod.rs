@@ -67,9 +67,11 @@ pub async fn context(owner: &PgPool, org: Uuid, user: UserId) -> (http::Ctx, Pro
             record.fetch_add(1, Ordering::SeqCst);
             Box::pin(async { Ok(true) })
         })
-        .connect_with(owner.connect_options().as_ref().clone())
-        .await
-        .unwrap();
+        .connect_lazy_with(owner.connect_options().as_ref().clone());
+    // Open each lease under its own runtime timeout, rather than timing all eight handshakes together.
+    let leases = futures::future::join_all((0..8).map(|_| pool.acquire())).await;
+    let leases = leases.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
+    drop(leases);
     let keys = http::keys();
     let mut ctx = http::ctx(owner, org, user, &["SUPER_ADMIN"], None).await;
     ctx.service = build_router(http::app_state(

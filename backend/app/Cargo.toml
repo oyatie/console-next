@@ -286,6 +286,10 @@ name = "action_inbox_api"
 required-features = ["full"]
 
 [[test]]
+name = "inbox_register_once"
+path = "tests/inbox_register_once.rs"
+
+[[test]]
 name = "attendance_persona_api"
 required-features = ["attendance"]
 

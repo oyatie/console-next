@@ -36,6 +36,7 @@ pub(crate) async fn page(
     pool: &PgPool,
     principal: &Principal,
     query: ActionInboxSourceQuery,
+    register: &super::super::request_register::Register,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     if authorize_hr_scoped(principal, Feature::EmployeeDirectoryRead).is_err()
         || ![
@@ -53,7 +54,8 @@ pub(crate) async fn page(
     let reader = principal.clone();
     let org = reader.org_id;
     let as_of = query.as_of;
-    let (rows, total) = with_org_conn::<_, _, HrError>(pool, org, move |tx| {
+    let register = register.clone();
+    let (rows, total, register) = with_org_conn::<_, _, HrError>(pool, org, move |tx| {
         Box::pin(async move {
             let routed = approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyExit)
                 .await.map_err(HrError::from_kernel)?;
@@ -115,19 +117,14 @@ pub(crate) async fn page(
                 visible.push((row, kind));
             }
             let total = visible.len();
-            Ok((visible, total))
+            let register = if visible.iter().any(|(_, kind)| *kind == "hr_exit_settle") {
+                Some(super::super::request_register::get_in(tx.as_mut(), &register).await.map_err(HrError::from_kernel)?)
+            } else {
+                None
+            };
+            Ok((visible, total, register))
         })
     }).await.map_err(|error| super::super::source_failure("hr_exit", error.message))?;
-    let register = if rows.iter().any(|(_, kind)| *kind == "hr_exit_settle") {
-        Some(
-            console_compliance_adapter_postgres::PgComplianceStore::new(pool.clone())
-                .statutory_register()
-                .await
-                .map_err(|error| super::super::source_failure("hr_exit", error))?,
-        )
-    } else {
-        None
-    };
     let service = HrService::new(pool.clone());
     let mut items = Vec::new();
     for (row, kind) in rows {
@@ -237,6 +234,7 @@ mod tests {
                 after: None,
                 limit: 20,
             },
+            &Default::default(),
         )
         .await
         .unwrap();
@@ -270,6 +268,7 @@ mod tests {
                 after: None,
                 limit: 20,
             },
+            &Default::default(),
         )
         .await
         .unwrap();
@@ -311,7 +310,9 @@ mod tests {
             BranchScope::All,
         );
         let runtime = runtime_role_pool(&pool).await;
-        let denied = page(&runtime, &principal, query.clone()).await.unwrap();
+        let denied = page(&runtime, &principal, query.clone(), &Default::default())
+            .await
+            .unwrap();
         assert!(
             denied.items.is_empty(),
             "ordinary HR cannot confirm their own HQ tier"
@@ -323,9 +324,14 @@ mod tests {
             .execute(&pool)
             .await
             .unwrap();
-        let allowed = page(&runtime, &principal.with_tenant_ops(true), query)
-            .await
-            .unwrap();
+        let allowed = page(
+            &runtime,
+            &principal.with_tenant_ops(true),
+            query,
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             allowed.total, 1,
             "ops can resolve the HQ tier after passkey step-up"
@@ -358,6 +364,7 @@ mod tests {
                 after: None,
                 limit: 10,
             },
+            &Default::default(),
         )
         .await
         .unwrap();
