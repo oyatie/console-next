@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "title": "Declared component vocabulary",
+  "type": "object",
+  "minProperties": 1,
+  "patternProperties": {
+    "^[a-z][a-z0-9-]*$": {
+      "type": "object",
+      "required": [
+        "group",
+        "host",
+        "owner",
+        "dashboard",
+        "runbook",
+        "source",
+        "interval_s"
+      ],
+      "properties": {
+        "group": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!(?:No data|N/A|—)$).+"
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!(?:No data|N/A|—)$).+"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!(?:No data|N/A|—)$).+"
+        },
+        "dashboard": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^/(?!/)"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runbook": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!(?:No data|N/A|—)$).+"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!(?:No data|N/A|—)$).+"
+        },
+        "interval_s": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

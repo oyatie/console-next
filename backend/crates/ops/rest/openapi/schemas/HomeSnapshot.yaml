@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "verdict", "worklist", "changing", "budgets", "data_safety", "cost", "evidence"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  verdict: {"$ref": "#/components/schemas/Verdict"}
+  worklist: {"type": "array", "items": {"$ref": "#/components/schemas/WorkItem"}}
+  changing: {"type": "array", "items": {"$ref": "#/components/schemas/Changing"}}
+  budgets: {"type": "array", "items": {"$ref": "#/components/schemas/Budget"}}
+  data_safety: {"type": "array", "items": {"$ref": "#/components/schemas/DataSafety"}}
+  cost: {"type": "array", "items": {"$ref": "#/components/schemas/Cost"}}
+  evidence: {"$ref": "#/components/schemas/Evidence"}

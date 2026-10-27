@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+title: Console operator cockpit
+version: 0.1.0
+description: Database-free operator reads. Separate host and Access audience from the tenant API. All times UTC Z; links to runbooks and GitHub are plain text.

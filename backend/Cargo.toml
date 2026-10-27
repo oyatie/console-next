@@ -29,6 +29,7 @@ members = [
   "crates/ontology/*",
   "crates/onboarding/*",
   "crates/orgchange/*",
+  "crates/ops/*",
   "crates/registry/*",
   "crates/reporting/*",
   "crates/sales/*",
@@ -62,6 +63,8 @@ license = "LicenseRef-Proprietary"
 publish = false
 
 [workspace.dependencies]
+console-ops-domain = { path = "crates/ops/domain" }
+console-ops-rest = { path = "crates/ops/rest" }
 console-platform-key-notice = { path = "crates/platform/key-notice" }
 console-entity-adapter-nts = { path = "crates/entity/adapter-nts" }
 unicode-normalization = "0.1.25"

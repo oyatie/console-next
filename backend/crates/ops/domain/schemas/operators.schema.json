@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "title": "Operator registry; hashes of lowercased email, never email addresses",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "person",
+      "email_sha256",
+      "grants"
+    ],
+    "properties": {
+      "person": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "email_sha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "grants": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "action",
+            "from",
+            "until"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!(?:No data|N/A|—)$).+"
+            },
+            "from": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            },
+            "until": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "additionalProperties": false
+  },
+  "uniqueItems": true
+}

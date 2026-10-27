@@ -40,8 +40,8 @@ export function CertificatesPage() {
     {employee && <p><Link to="/people/$id" params={{ id: employee }} search={{}}>{t("empDoc.certificate.employee")}</Link> · <Link to="/people/certificates" search={{}}>{t("empDoc.certificate.all")}</Link></p>}
     {configure && <Settings onClose={() => setConfigure(false)} />}
     <Card label={t("empDoc.certificate.register")} flush>
-      <QueryState q={q} own={certificateError} empty={(d) => d.pages.every((p) => p.items.length === 0) ? <EmptyState title={t("empDoc.certificate.empty")} reason={t("empDoc.certificate.start")} /> : null}>
-        {(d) => <Table label={t("empDoc.certificate.register")} rows={d.pages.flatMap((p) => p.items)} rowId={(c) => c.id}
+      <QueryState q={{ ...q, refetch: () => q.isFetchNextPageError ? q.fetchNextPage() : q.refetch() }} own={certificateError} empty={(d) => d.pages.every((p) => p.items.length === 0) ? <EmptyState title={t("empDoc.certificate.empty")} reason={t("empDoc.certificate.start")} /> : null}>
+        {(d) => <><Table label={t("empDoc.certificate.register")} rows={d.pages.flatMap((p) => p.items)} rowId={(c) => c.id}
           onSelect={(id) => void nav({ to: "/people/certificates/$certificateId", params: { certificateId: id } })}
           columns={[
             { header: t("empDoc.certificate.numberLabel"), cell: (c) => c.certificate_no },
@@ -49,10 +49,10 @@ export function CertificatesPage() {
             { header: t("empDoc.cert.kind"), cell: (c) => t(`empDoc.cert.kind.${c.kind}`) },
             { header: t("empDoc.certificate.issuedAt"), cell: (c) => fmtDateTime(c.issued_at) },
             { header: t("empDoc.certificate.state"), cell: (c) => t(c.voided_at ? "empDoc.certificate.voided" : "empDoc.certificate.issued") },
-          ]} />}
+          ]} />
+          {q.hasNextPage && <Button aria-disabled={q.isFetchingNextPage} onClick={() => { if (!q.isFetchingNextPage) void q.fetchNextPage(); }}>{t("empDoc.certificate.more")}</Button>}
+        </>}
       </QueryState>
-      {q.hasNextPage && <Button aria-disabled={q.isFetchingNextPage} onClick={() => { if (!q.isFetchingNextPage) void q.fetchNextPage(); }}>{t("empDoc.certificate.more")}</Button>}
-      {q.isFetchNextPageError && <CommandError error={q.error} own={certificateError} />}
     </Card>
   </div>;
 }

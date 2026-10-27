@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { browserTestOptimizeDeps, chromium, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 
@@ -11,14 +11,14 @@ let page: Page;
 beforeAll(async () => {
   server = await createServer({
     configFile: false, cacheDir: ".cache/collections-test", logLevel: "error",
-    optimizeDeps: { include: ["react", "react/jsx-runtime", "react-dom/client", "intl-messageformat", "lucide-react", "react-aria-components"] },
+    optimizeDeps: browserTestOptimizeDeps,
     resolve: { dedupe: ["react", "react-dom"] },
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
     plugins: [{
       name: "collections-test",
       resolveId: id => id === "/collections-test.js" ? "\0collections-test" : undefined,
       load: id => id === "\0collections-test" ? `
-        import { createElement as h, useState } from 'react';
+        import { createElement as h, useEffect, useState } from 'react';
         import { createRoot } from 'react-dom/client';
         import { loadCatalog } from '@console/i18n';
         import { TimelineLanes } from '/apps/web/src/ui/timeline-lanes/timeline-lanes.tsx';
@@ -31,10 +31,10 @@ beforeAll(async () => {
         await loadCatalog('ko');
         const initial = Array.from({length: 2000}, (_, i) => ({key: 'event-' + i, id: 'ev-' + i, date: '2026-10-01', title: 'Event ' + i}));
         const nodes = [{id: 'alpha', name: 'Alpha', children: [{id: 'beta', name: 'Beta', children: []}]}, {id: 'zulu', name: 'Zulu', children: []}];
-        function Demo() {
+        function Demo({mode, onReady}) {
           const [items, setItems] = useState(initial);
           const [expanded, setExpanded] = useState(new Set(['alpha']));
-          const mode = new URLSearchParams(location.search).get('mode');
+          useEffect(() => { onReady?.(); }, [onReady]);
           if (mode === 'history') return h('section', {className: 'card panel'}, h(RevisionItems, {items: [{
             version: 1, effective_from: '2026-10-26', recorded_at: '2026-10-26T12:14:00Z', change_mode: 'SETUP',
             changes: [
@@ -54,11 +54,18 @@ beforeAll(async () => {
             h(Card, {title: 'Loading', loading: true}),
             h(KeyValue, {label: 'Empty facts', items: [], empty: 'Nothing here'}));
         }
-        createRoot(document.getElementById('root')).render(h(Demo));
+        function App() {
+          const [fixture, setFixture] = useState({mode: 'single', revision: 0});
+          window.renderFixture = mode => new Promise(onReady => {
+            setFixture(previous => ({mode, onReady, revision: previous.revision + 1}));
+          });
+          return h(Demo, {...fixture, key: fixture.revision});
+        }
+        createRoot(document.getElementById('root')).render(h(App));
       ` : undefined,
       configureServer(vite) {
         vite.middlewares.use((req, res, next) => {
-          if (!req.url?.startsWith("/collections-test?")) return next();
+          if (req.url !== "/collections-test") return next();
           res.setHeader("Content-Type", "text/html");
           res.end('<html lang="ko"><title>Collections</title><div id="root"></div><script type="module" src="/collections-test.js"></script></html>');
         });
@@ -69,11 +76,15 @@ beforeAll(async () => {
   browser = await chromium.launch();
   page = await browser.newPage();
   page.setDefaultTimeout(5000);
+  // Compile the cold fixture graph and finish its first render outside the test budget.
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}collections-test`, page.locator("#insert"));
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 const open = async (mode = "single") => {
-  await page.goto(`${server.resolvedUrls!.local[0]}collections-test?mode=${mode}`);
-  await page.locator("#insert").waitFor();
+  await page.evaluate(value => (window as unknown as {
+    renderFixture: (mode: string) => Promise<void>;
+  }).renderFixture(value), mode);
+  await page.evaluate(() => document.fonts.ready);
 };
 
 test.each(["single", "dual"])("%s: every one of 2,000 events is reachable with a bounded DOM", async mode => {
@@ -141,14 +152,29 @@ test("selectable list rows have visible focus and card skeletons have a height",
 
 test.each(["light", "dark"])("390 px entity history keeps Korean field labels within two lines (%s)", async theme => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`${server.resolvedUrls!.local[0]}collections-test?mode=history`);
-  await page.locator("dt").first().waitFor();
+  await open("history");
   await page.evaluate(value => document.documentElement.dataset.theme = value, theme);
-  await page.evaluate(() => document.fonts.ready);
   const labels = await page.locator("dt").evaluateAll(elements => elements.map(el => ({
     text: el.textContent,
     lines: el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight),
   })));
   expect(labels.map(label => label.text)).toEqual(["부가가치세 신고 단위", "산재보험 관리번호", "상호"]);
   for (const label of labels) expect(label.lines, label.text!).toBeLessThanOrEqual(2);
+});
+
+test("fixture modes reset inserted records and pagination without reloading the module graph", async () => {
+  await open();
+  await page.getByRole("button", { name: "다음 페이지", exact: true }).click();
+  await page.locator("#insert").dispatchEvent("click");
+  const navigations: string[] = [];
+  const navigated = () => { navigations.push(page.url()); };
+  page.on("domcontentloaded", navigated);
+  try {
+    await open("history");
+    expect(await page.locator("dt").count()).toBe(3);
+    await open();
+    expect(await page.locator('li[id^="ev-"]').first().getAttribute("id")).toBe("ev-0");
+    expect(await page.getByRole("button", { name: "이전 페이지", exact: true }).isDisabled()).toBe(true);
+    expect(navigations).toEqual([]);
+  } finally { page.off("domcontentloaded", navigated); }
 });

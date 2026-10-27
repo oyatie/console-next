@@ -36,16 +36,16 @@ export function ActiveSupportBanner() {
   const q = useQuery({ ...activeSupportQuery, enabled: !!session.token });
   if (!q.error && (!q.data || (!q.data.sessions.length && !(q.data.can_approve && q.data.pending_count)))) return null;
   return <section className={styles.status} aria-label={t("supportAccess.title")}>
-    {q.error ? <CommandError error={q.error} own={supportRefusal}><Button onClick={() => void q.refetch()}>{t("common.retry")}</Button></CommandError> : q.data && <>
-    {q.data.can_approve && q.data.pending_count > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.pending", { count: fmtNumber(q.data.pending_count) })}
-      actions={<Link to="/audit/support-access" search={{ review: q.data.pending_approvals[0]?.id }} className={buttonClass()}>{t("supportAccess.review")}</Link>}>
-      {q.data.pending_approvals.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.requestDeadline", { at: fmtDateTime(s.request_expires_at) })}</p>)}
+    <QueryState q={q} own={supportRefusal}>{(data) => <>
+    {data.can_approve && data.pending_count > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.pending", { count: fmtNumber(data.pending_count) })}
+      actions={<Link to="/audit/support-access" search={{ review: data.pending_approvals[0]?.id }} className={buttonClass()}>{t("supportAccess.review")}</Link>}>
+      {data.pending_approvals.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.requestDeadline", { at: fmtDateTime(s.request_expires_at) })}</p>)}
     </Banner>}
-    {q.data.sessions.length > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.banner")}
-      actions={q.data.can_approve ? <Link to="/audit/support-access" className={buttonClass()}>{t("supportAccess.bannerAction")}</Link> : undefined}>
-      {q.data.sessions.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.bannerExpiry", { at: s.expires_at ? fmtDateTime(s.expires_at) : "—" })}</p>)}
+    {data.sessions.length > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.banner")}
+      actions={data.can_approve ? <Link to="/audit/support-access" className={buttonClass()}>{t("supportAccess.bannerAction")}</Link> : undefined}>
+      {data.sessions.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.bannerExpiry", { at: s.expires_at ? fmtDateTime(s.expires_at) : "—" })}</p>)}
     </Banner>}
-    </>}
+    </>}</QueryState>
   </section>;
 }
 

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["state", "value", "unit", "source", "observed_at", "age_s", "reason"]
+properties:
+  state: {"$ref": "#/components/schemas/EvidenceState"}
+  value: {}
+  unit: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+  source: {"$ref": "#/components/schemas/Text"}
+  observed_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+  age_s: {"type": "integer", "minimum": 0}
+  reason: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+additionalProperties: false
+description: "Every displayed value carries evidence. Age > 2 × declared interval becomes Unknown, drops the current value and gives reason stale <age>. Unknown renders as Unknown: <reason>; absent series, failed reads and not instrumented are never green."
+oneOf: [{"properties": {"state": {"enum": ["Verified", "Monitoring"]}, "value": {"not": {"type": "null"}}, "observed_at": {"$ref": "#/components/schemas/Timestamp"}, "reason": {"type": "null"}}}, {"properties": {"state": {"const": "Stale"}, "value": {"not": {"type": "null"}}, "observed_at": {"$ref": "#/components/schemas/Timestamp"}, "reason": {"$ref": "#/components/schemas/Text"}}}, {"properties": {"state": {"const": "Unknown"}, "value": {"type": "null"}, "reason": {"$ref": "#/components/schemas/Text"}}}]

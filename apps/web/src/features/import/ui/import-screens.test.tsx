@@ -16,7 +16,7 @@ import { ValueTable } from "./value-table";
 import { DoneStep } from "./done-step";
 import { RecentRuns } from "./recent-runs";
 import { RollbackPanel } from "./rollback-panel";
-import { rollbackPreviewQuery, applyJobQuery, runQuery, runsQuery, type ImportRun, type RollbackPreview } from "../api";
+import { rollbackPreviewQuery, rollbackReasonsQuery, ROLLBACK_REASONS, applyJobQuery, runQuery, runsQuery, type ImportRun, type RollbackPreview } from "../api";
 
 const rollbackState = vi.hoisted(() => ({ acknowledged: false }));
 vi.mock("react", async (original) => {
@@ -202,9 +202,11 @@ const rollbackPlan: RollbackPreview = {
   ],
 };
 
-async function rollbackScreen(run: ImportRun = recordedRun, plan = rollbackPlan, error?: ApiError) {
+async function rollbackScreen(run: ImportRun = recordedRun, plan = rollbackPlan, error?: ApiError, cached = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryOnMount: false, staleTime: Infinity } } });
-  await client.prefetchQuery({ ...rollbackPreviewQuery(run.id), queryFn: async () => { if (error) throw error; return plan; } });
+  if (cached) await client.prefetchQuery({ ...rollbackPreviewQuery(run.id), queryFn: async () => plan });
+  await client.prefetchQuery({ ...rollbackPreviewQuery(run.id), staleTime: 0, queryFn: async () => { if (error) throw error; return plan; } });
+  await client.prefetchQuery({ ...rollbackReasonsQuery, queryFn: async () => ({ domain: ROLLBACK_REASONS, items: [] }) });
   const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
   return renderToStaticMarkup(<RouterContextProvider router={router}><QueryClientProvider client={client}><RollbackPanel run={run} onChanged={noop} /></QueryClientProvider></RouterContextProvider>);
 }
@@ -264,6 +266,19 @@ test("a closed rollback window shows the server's date and a per-record correcti
 test("a forbidden rollback preview uses the shared denied state and offers no execution", async () => {
   const out = await rollbackScreen(recordedRun, rollbackPlan, new ApiError(403, "scope_tenant_wide_only", "denied"));
   expect(out).toContain(t("common.denied.title.plain"));
+  expect(out).not.toMatch(/<button[^>]*>되돌리기<\/button>/);
+});
+
+test.each([false, true])("an unavailable rollback preview remains a read failure with retry (cached plan: %s)", async (cached) => {
+  const out = await rollbackScreen({ ...recordedRun, allowed: [] }, rollbackPlan, new ApiError(503, "read_outage", "raw upstream detail", [], "preview-reference"), cached);
+  expect(out).toContain(t("common.loadFailed.title"));
+  expect(out).toContain(t("common.retry"));
+  expect(out).toContain("preview-reference");
+  expect(out).not.toContain("raw upstream detail");
+  expect(out).not.toContain(t("requestOutcome.checking"));
+  expect(out).not.toContain(t("common.read.stale"));
+  expect(out).not.toContain("After → Before");
+  expect(out).not.toContain(t("importRollback.acknowledged"));
   expect(out).not.toMatch(/<button[^>]*>되돌리기<\/button>/);
 });
 

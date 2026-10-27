@@ -53,7 +53,7 @@ export function RollbackPanel({ run, onChanged }: { run: ImportRun; onChanged: (
           <Link to="/people" search={{}}>{t("importRollback.openPeople")}</Link>
         </> : run.rollback.refusal_code ? <CommandError error={new ApiError(409, run.rollback.refusal_code, run.rollback.refusal_code)} own={importError} /> : canPreview ? <QueryState q={preview} own={importError}>
           {(plan) => <Execute key={plan.preview_digest} run={run} plan={plan} onChanged={onChanged} />}
-        </QueryState> : <CommandError error={preview.error} own={importError} />}
+        </QueryState> : preview.error ? <QueryState q={{ ...preview, data: undefined }} own={importError}>{() => null}</QueryState> : null}
       </>}
       {run.rollback.job?.error && <CommandError error={new ApiError(run.rollback.job.error.status, run.rollback.job.error.code, run.rollback.job.error.message)} own={importError} />}
       <p className="muted">{t("importRollback.kept")}</p>
@@ -103,10 +103,9 @@ function Execute({ run, plan, onChanged }: { run: ImportRun; plan: RollbackPrevi
       ]} />
     </>}
     {!blocked && <>
-      {plan.mode !== "SETUP" && <>
-        <ReasonField label={t("importRollback.reason")} codes={(reasons.data?.items ?? []).filter((r) => r.active).map((r) => ({ code: r.code, label: reasonLabel(ROLLBACK_REASONS, r) }))} other={OTHER} value={reason} onChange={setReason} memoMax={NOTE_MAX} />
-        <CommandError error={reasons.error} />
-      </>}
+      {plan.mode !== "SETUP" && <QueryState q={reasons}>
+        {(data) => <ReasonField label={t("importRollback.reason")} codes={data.items.filter((r) => r.active).map((r) => ({ code: r.code, label: reasonLabel(ROLLBACK_REASONS, r) }))} other={OTHER} value={reason} onChange={setReason} memoMax={NOTE_MAX} />}
+      </QueryState>}
       <Checks label={t("importRollback.acknowledge")} items={[{ id: "acknowledged", label: t("importRollback.acknowledged") }]} value={acknowledged} onChange={setAcknowledged} isDisabled={send.isPending} />
     </>}
     <CommandError error={send.error} own={importError} />

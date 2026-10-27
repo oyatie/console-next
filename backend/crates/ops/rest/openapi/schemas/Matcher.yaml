@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["name", "value", "is_regex", "is_equal"]
+properties:
+  name: {"$ref": "#/components/schemas/Text"}
+  value: {"$ref": "#/components/schemas/Text"}
+  is_regex: {"type": "boolean"}
+  is_equal: {"type": "boolean"}

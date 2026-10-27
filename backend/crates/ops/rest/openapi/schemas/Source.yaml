@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["name", "kind", "producer", "interval", "observed_at", "age", "state", "reason"]
+properties:
+  name: {"$ref": "#/components/schemas/Text"}
+  kind: {"type": "string", "enum": ["alertmanager", "vmalert", "victoriametrics", "bundle", "textfile", "access_jwks", "evaluator"]}
+  producer: {"$ref": "#/components/schemas/Text"}
+  interval: {"type": "integer", "minimum": 1}
+  observed_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+  age: {"type": "integer", "minimum": 0}
+  state: {"$ref": "#/components/schemas/EvidenceState"}
+  reason: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+description: "Source metadata is itself the evidence envelope. Never-observed sources have null observed_at, age 0 and Unknown with a reason. Only Verified sources are omitted from the home evidence list."
+oneOf:
+  - properties: {state: {enum: [Verified, Monitoring]}, observed_at: {$ref: '#/components/schemas/Timestamp'}, reason: {type: 'null'}}
+  - properties: {state: {enum: [Stale, Unknown]}, reason: {$ref: '#/components/schemas/Text'}}

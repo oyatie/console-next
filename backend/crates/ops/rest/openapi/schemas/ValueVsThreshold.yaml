@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["value", "threshold", "operator"]
+properties:
+  value: {"$ref": "#/components/schemas/ObservedNumber"}
+  threshold: {"$ref": "#/components/schemas/ObservedNumber"}
+  operator: {"$ref": "#/components/schemas/ObservedText"}

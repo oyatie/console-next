@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+description: "OPS_ACCESS_JWT_MISSING, OPS_ACCESS_JWT_INVALID, OPS_ACCESS_AUD_MISMATCH"
+headers: {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}
+content: {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/Error"}, {"properties": {"code": {"enum": ["OPS_ACCESS_JWT_MISSING", "OPS_ACCESS_JWT_INVALID", "OPS_ACCESS_AUD_MISMATCH"]}}}]}}}

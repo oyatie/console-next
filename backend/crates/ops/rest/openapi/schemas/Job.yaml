@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["name", "state", "last_run", "last_exit", "budget"]
+properties:
+  name: {"$ref": "#/components/schemas/Text"}
+  state: {"$ref": "#/components/schemas/ObservedJobState"}
+  last_run: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  last_exit: {"$ref": "#/components/schemas/ObservedNumber"}
+  budget: {"$ref": "#/components/schemas/ObservedNumber"}
+  next_run: {"$ref": "#/components/schemas/ObservedTimestamp"}

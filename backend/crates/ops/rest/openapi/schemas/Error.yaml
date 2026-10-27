@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "support_ref", "code", "message"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  support_ref: {"$ref": "#/components/schemas/Text"}
+  code: {"$ref": "#/components/schemas/RefusalCode"}
+  message: {"$ref": "#/components/schemas/Text"}
+additionalProperties: false

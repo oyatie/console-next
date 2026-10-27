@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["key", "group", "host", "health", "drift", "source", "observed_at", "age", "runbook", "membership"]
+properties:
+  key: {"$ref": "#/components/schemas/Text"}
+  group: {"$ref": "#/components/schemas/Text"}
+  host: {"$ref": "#/components/schemas/Text"}
+  health: {"$ref": "#/components/schemas/ObservedHealth"}
+  drift: {"$ref": "#/components/schemas/ObservedDrift"}
+  image: {"$ref": "#/components/schemas/ObservedText"}
+  digest: {"$ref": "#/components/schemas/ObservedText"}
+  started: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  source: {"$ref": "#/components/schemas/Text"}
+  observed_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+  age: {"type": "integer", "minimum": 0}
+  last_error: {"$ref": "#/components/schemas/ObservedText"}
+  runbook: {"$ref": "#/components/schemas/ObservedText"}
+  membership: {"type": "string", "enum": ["Declared", "Extra"]}
+description: "Declared but absent is Missing; observed but undeclared is Extra (inventory membership, not a health ladder word). Image, digest, started and last_error, when included, carry their own evidence."

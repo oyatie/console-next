@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["kind", "title", "component", "state", "since", "age", "next"]
+properties:
+  kind: {"$ref": "#/components/schemas/WorkKind"}
+  title: {"$ref": "#/components/schemas/ObservedText"}
+  component: {"$ref": "#/components/schemas/ObservedText"}
+  state: {"$ref": "#/components/schemas/ObservedState"}
+  since: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  age: {"$ref": "#/components/schemas/ObservedCount"}
+  lead: {"$ref": "#/components/schemas/ObservedText"}
+  next: {"$ref": "#/components/schemas/Link"}

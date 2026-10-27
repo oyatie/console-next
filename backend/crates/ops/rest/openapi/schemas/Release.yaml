@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "string"
+enum: ["Building", "Signed", "On preview", "Canary n%", "Watching", "Active", "Rolled back", "Failed"]

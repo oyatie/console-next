@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["at", "summary"]
+properties:
+  at: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  summary: {"$ref": "#/components/schemas/ObservedText"}

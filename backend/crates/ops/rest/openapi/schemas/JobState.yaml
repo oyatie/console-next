@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "string"
+enum: ["Succeeded", "Failed", "Late", "Never reported", "Running"]
