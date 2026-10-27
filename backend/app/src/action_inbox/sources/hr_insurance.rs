@@ -12,11 +12,11 @@ pub(crate) async fn page(
     pool: &PgPool,
     principal: &Principal,
     query: ActionInboxSourceQuery,
+    register: &super::super::request_register::Register,
 ) -> Result<ActionInboxSourcePage, KernelError> {
-    let register = console_compliance_adapter_postgres::PgComplianceStore::new(pool.clone())
-        .statutory_register()
+    let register = super::super::request_register::get(pool, register)
         .await
-        .map_err(|_| KernelError::internal("failed to load statutory register"))?;
+        .map_err(|error| super::super::source_failure("hr_insurance", error))?;
     let service = HrService::new(pool.clone());
     let request = FilingQuery {
         state: Some("PENDING".into()),
@@ -38,7 +38,7 @@ pub(crate) async fn page(
     {
         Ok(page) => page,
         Err(error) if error.status.as_u16() == 403 => return Ok(super::super::empty_source_page()),
-        Err(_) => return Err(KernelError::internal("failed to load insurance filings")),
+        Err(error) => return Err(super::super::source_failure("hr_insurance", error.message)),
     };
     let has_more = page.next.is_some();
     let total = usize::try_from(page.total).unwrap_or(0);

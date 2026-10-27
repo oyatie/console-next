@@ -1,6 +1,6 @@
 //! Reads the validated migration-owned statutory register.
 use crate::{PgComplianceError, PgComplianceStore};
-use console_compliance_domain::statutory::StatutoryRegister;
+pub use console_compliance_domain::statutory::StatutoryRegister;
 use sqlx::PgConnection;
 
 impl PgComplianceStore {

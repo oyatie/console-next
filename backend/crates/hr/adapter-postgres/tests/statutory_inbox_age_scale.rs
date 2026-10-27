@@ -12,8 +12,12 @@ use serde_json::Value;
 use sqlx::PgPool;
 use tracing::instrument::WithSubscriber;
 
+// Tracing callsite interest is process-wide; serialize the scoped SQL collectors.
+static QUERY_CAPTURE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn birthday_hydration_is_bounded_and_paging_preserves_panel_membership(pool: PgPool) {
+    let _capture = QUERY_CAPTURE.lock().await;
     let w = world::world(&pool).await;
     let mut counts = Vec::new();
     let mut captured = Vec::new();
@@ -115,6 +119,7 @@ async fn birthday_hydration_is_bounded_and_paging_preserves_panel_membership(poo
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn many_due_birthdays_do_not_add_a_statement_per_task(pool: PgPool) {
+    let _capture = QUERY_CAPTURE.lock().await;
     let w = world::world(&pool).await;
     let mut counts = Vec::new();
     for (size, due) in [(20, 20), (1999, 80)] {

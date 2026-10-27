@@ -19,6 +19,7 @@ use time::OffsetDateTime;
 use tracing::Instrument;
 
 mod error;
+mod request_register;
 mod response;
 use error::InboxError;
 
@@ -116,6 +117,7 @@ async fn list_action_inbox(
             .to_owned(),
         setup: tokio::sync::OnceCell::new(),
         support_can_approve: tokio::sync::OnceCell::new(),
+        statutory_register: request_register::Register::default(),
         setup_created_at: created_at,
     };
     let page = run_action_inbox(
@@ -139,6 +141,7 @@ struct PgActionInboxSources {
     principal: Principal,
     setup: tokio::sync::OnceCell<Option<serde_json::Value>>,
     support_can_approve: tokio::sync::OnceCell<bool>,
+    statutory_register: request_register::Register,
     setup_created_at: OffsetDateTime,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     support_reference: String,
@@ -212,7 +215,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     sources::org_change::page(&self.pool, &self.principal, query).await
                 }
                 ActionInboxSource::HrExit => {
-                    sources::hr_exit::page(&self.pool, &self.principal, query).await
+                    sources::hr_exit::page(&self.pool, &self.principal, query, &self.statutory_register).await
                 }
                 ActionInboxSource::HrLifecycle => {
                     sources::hr_lifecycle::page(&self.pool, &self.principal, query).await
@@ -224,7 +227,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     sources::hr_requests::page(&self.pool, &self.principal, query).await
                 }
                 ActionInboxSource::HrInsurance => {
-                    sources::hr_insurance::page(&self.pool, &self.principal, query).await
+                    sources::hr_insurance::page(&self.pool, &self.principal, query, &self.statutory_register).await
                 }
                 #[allow(unreachable_patterns)]
                 _ => Ok(empty_source_page()),
