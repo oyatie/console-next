@@ -29,7 +29,7 @@ export const koImport = {
   // Recent runs and the run record (built for the rollback the backend does not serve yet; not shown)
   "import.status.PREVIEW": "미리보기",
   "import.status.DRY_RUN": "모의 반영",
-  "import.status.APPLIED": "반영됨",
+  "import.status.APPLIED": "적용됨",
   "import.status.ROLLBACK_REQUESTED": "되돌리기 승인 대기",
   "import.status.ROLLED_BACK": "되돌림",
 

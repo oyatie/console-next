@@ -26,7 +26,7 @@ export const koRequestOutcome = {
   "requestOutcome.notFound": "요청을 찾을 수 없습니다. 요청 번호와 조회 권한을 확인하십시오.",
   "requestOutcome.invalid": "요청 번호는 16~200자로 입력하십시오.",
   "requestOutcome.PROCESSING": "처리 중",
-  "requestOutcome.APPLIED": "반영됨",
+  "requestOutcome.APPLIED": "적용됨",
   "requestOutcome.REFUSED": "거절됨",
   "requestOutcome.CONFLICT": "충돌",
   "requestOutcome.CANCELLED": "취소됨",

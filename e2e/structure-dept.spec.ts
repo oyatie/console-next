@@ -61,7 +61,7 @@ test("부서: panel, delete with the sub-units raised, merge into another workpl
   await c.click(targets.getByRole("row", { name: /^품질팀/ }));
   await expect(merge.getByRole("figure", { name: "통합 후 아산공장" })).toContainText("통합됨 · +0명");
   await expectAccessible(admin, "merge department");
-  await c.click(merge.getByRole("button", { name: "부서 통합 1개 반영" }));
+  await c.click(merge.getByRole("button", { name: "부서 통합 1개 적용" }));
   await expect(merge).toBeHidden();
   expect(c.done("merge a department")).toBeLessThanOrEqual(4);
   await expect(box(admin, "설비보전팀")).toHaveCount(0);

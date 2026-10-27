@@ -33,7 +33,7 @@ test("bulk move: four 부서 to another 사업장, one carried, a name clash ren
   // 2. Only this 법인's places are offered; the current place is named and cannot be picked.
   const where = admin.getByRole("treegrid", { name: "어디로" });
   await expect(where.getByRole("row", { name: /^본점 지금 위치/ })).toHaveAttribute("aria-disabled", "true");
-  const submit = admin.getByRole("button", { name: "부서 이동 4개 반영" });
+  const submit = admin.getByRole("button", { name: "부서 이동 4개 적용" });
   await expect(submit).toHaveAttribute("aria-disabled", "true");
   await c.click(where.getByRole("row", { name: /^아산공장/ }));
 

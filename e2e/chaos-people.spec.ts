@@ -1,3 +1,4 @@
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { fillRegister, pressRegister, receiptOf, registerSheet } from "./helpers/register";
@@ -7,6 +8,8 @@ import { setupCompany } from "./setup-flows";
 import { addDepartments } from "./structure-flows";
 import { rosterXlsx } from "./workbook";
 import { chooseWorkbook, payPeriod } from "./helpers/import";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // People on a bad connection keep the original intent and check its outcome, so each person lands once.
 
@@ -35,7 +38,7 @@ test("register on a bad connection: a lost answer still makes one employee, and 
   const checking = registerSheet(admin).getByRole("alert").filter({ hasText: "처리 여부 확인 중" });
   await expect(checking).toContainText(NETWORK_ERROR);
   await expect(registerSheet(admin).getByRole("textbox", { name: /^이름/ })).toHaveValue("유실직원");
-  await expect(registerSheet(admin).getByRole("button", { name: /^직원 등록 1명 반영(?: ⌘|$)/ })).toBeDisabled();
+  await expect(registerSheet(admin).getByRole("button", { name: /^직원 등록 1명 적용(?: ⌘|$)/ })).toBeDisabled();
   await admin.keyboard.press("Enter");
   expect(creates.count()).toBe(1);
   await expectAccessible(admin, "register employee: a lost answer");
@@ -43,7 +46,7 @@ test("register on a bad connection: a lost answer still makes one employee, and 
   const outcome = checking.getByRole("link", { name: "요청 결과 보기", exact: true });
   await expect(outcome).toHaveAttribute("href", `/requests/${key}`);
   await outcome.click();
-  await expect(admin.getByRole("status").filter({ hasText: /^반영됨$/ })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: t("requestOutcome.APPLIED") })).toBeVisible();
   await admin.getByRole("link", { name: /^바뀐 곳 보기 ·/ }).first().click();
   await expect(admin.getByRole("heading", { name: /유실직원/, level: 1 })).toBeVisible();
   await expect(admin.getByRole("heading", { level: 1 }).locator("..")).toContainText("CH-0001");
@@ -57,7 +60,7 @@ test("register on a bad connection: a lost answer still makes one employee, and 
   await fillRegister(admin, { name: "느린직원", number: "CH-0002", unit: "인사팀", hired: kstDate() });
   const again = sent(admin, /\/api\/v1\/employees$/);
   await faultNext(admin, /\/api\/v1\/employees$/, "slow");
-  await registerSheet(admin).getByRole("button", { name: /^직원 등록 1명 반영 · 다음 직원/ }).dblclick();
+  await registerSheet(admin).getByRole("button", { name: /^직원 등록 1명 적용 · 다음 직원/ }).dblclick();
   await expect(receiptOf(admin, "느린직원")).toBeVisible({ timeout: 15_000 });
   await expect(registerSheet(admin).getByRole("textbox", { name: /^이름/ })).toHaveValue("");
   test.info().annotations.push({ type: "sends", description: `register double press: ${again.count()} POST, ${again.keys().size} key` });

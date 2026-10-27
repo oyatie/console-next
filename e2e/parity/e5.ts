@@ -129,7 +129,7 @@ export async function captureE5(page: Page) {
     await sheet(page).getByRole("button", { name: /퇴직 보고$/ }).click();
     await page.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
     await signOff(page.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
-    await page.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (적용|예약)/ }).click();
     await expect(page.getByRole("dialog")).toBeHidden({ timeout: 15_000 });
     await act(page, hero, "rehire");
     await shot(page, "E3-rehire");

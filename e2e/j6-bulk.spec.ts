@@ -14,10 +14,10 @@ const today = koDate(kstDate());
 async function fillCommon(sheet: Locator, admin: Page, c: Clicks) {
   await c.click(sheet.getByRole("radiogroup", { name: /발령 종류/ }).getByText("전보", { exact: true }));
   return async () => {
-    await c.click(sheet.getByRole("button", { name: /오늘 · 바로 반영/ }));
+    await c.click(todayPreset(sheet));
     await c.click(sheet.getByRole("radiogroup", { name: /^사유 분류/ }).getByText("조직 개편", { exact: true }));
     await sheet.getByRole("textbox", { name: /^사유/ }).fill("조직 개편");
-    await expect(admin.getByRole("button", { name: /전보 \d+명 반영$/ })).toHaveClass(/btn--danger/); // applies now: red
+    await expect(admin.getByRole("button", { name: /전보 \d+명 적용$/ })).toHaveClass(/btn--danger/); // applies now: red
   };
 }
 
@@ -52,7 +52,7 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
   await c.click(admin.getByRole("radiogroup", { name: /^사유/ }).getByText("조직 개편", { exact: true }));
   await admin.getByRole("textbox", { name: /^메모/ }).fill("조직 개편");
   await expectAccessible(admin, "J6: bulk workspace ready");
-  await c.click(admin.getByRole("button", { name: "전보 3명 반영" }));
+  await c.click(admin.getByRole("button", { name: "전보 3명 적용" }));
   await expect(admin.getByRole("alert").filter({ hasText: "1명이 거부되어 이 발령은 기록되지 않았습니다" })).toBeVisible();
   await expect(admin.getByRole("row", { name: /박삼번/ })).toContainText("거부됨");
   await expectAccessible(admin, "J6: refused batch");
@@ -60,7 +60,7 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
   // The rescind reasons are read once the batch exists; held back here so they land after the sheet opens (the race a
   // loaded machine hits), for the regression below.
   await admin.route(/\/api\/v1\/reason-codes\?.*lifecycle_cancel/, async (r) => (await new Promise((ok) => setTimeout(ok, 2_000)), r.continue()));
-  await c.click(admin.getByRole("button", { name: "전보 2명 반영" }));
+  await c.click(admin.getByRole("button", { name: "전보 2명 적용" }));
   await expect(admin.getByRole("status").filter({ hasText: "2명 전보 반영함" })).toBeVisible();
   // Base 3 picks + open + kind + unit + date + reason code + commit + retry.
   expect(c.done("J6 bulk transfer of 3 (one refused, retried without)")).toBeLessThanOrEqual(10);
@@ -146,12 +146,12 @@ test("J6 bulk transfer from a paste: lines keyed by employee number, errors firs
   await rest();
   await expect(sheet).toContainText("새 조직이 2곳이어도 한 번의 발령으로 기록합니다");
   // Lines that can't be read stop the commit and take focus to the first one to fix.
-  await sheet.getByRole("button", { name: "전보 4명 반영" }).click({ force: true });
+  await sheet.getByRole("button", { name: "전보 4명 적용" }).click({ force: true });
   await expect(sheet).toContainText("오류 2줄을 수정하거나 제외해야 기록할 수 있습니다");
   await expect(sheet.getByRole("button", { name: "6줄 · P6-9999 제외" })).toBeFocused();
   await sheet.getByRole("button", { name: "6줄 · P6-9999 제외" }).click();
   await sheet.getByRole("button", { name: "7줄 · P6-0005 제외" }).click();
-  await c.click(sheet.getByRole("button", { name: "전보 4명 반영" }));
+  await c.click(sheet.getByRole("button", { name: "전보 4명 적용" }));
   // Paste mode: open + type + date + reason code + commit, plus the 2 required statements; the unit comes from the paste.
   expect(c.done("J6 bulk transfer from a paste")).toBeLessThanOrEqual(5);
 

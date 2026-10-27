@@ -38,6 +38,7 @@ beforeAll(async () => {
               onClose: () => {}, onSubmit: state === 'refusal' ? undefined : () => setSubmits(x => x + 1),
               blocked: state === 'blocked' || state?.startsWith('locate') || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity'), press: state?.startsWith('locate') ? () => setRemedies(x => x + 1) : undefined } : undefined,
               pending: state === 'locate-pending', loading: state === 'locate-loading',
+              routing: state === 'routed' ? { routed: true, steps: [{ key: 'server-step', who: 'Resolved role', state: 'waiting' }] } : state === 'immediate' ? { routed: false, why: 'Resolved policy reason' } : undefined,
               locked: state === 'locked' || state === 'locate-locked', recovery: state === 'recovery' ? h('span', null, 'Checking') : undefined,
             }, state === 'refusal' ? h('form', { onSubmit: event => { event.preventDefault(); setRemedies(x => x + 1); } }, h('input', { 'aria-label': 'Reason' }), h('button', { type: 'submit' }, 'Request access')) : h(TextArea, { 'aria-label': 'Reason' })),
             h('output', { id: 'submits' }, submits), h('output', { id: 'remedies' }, remedies));
@@ -71,6 +72,22 @@ const open = async (state: string) => {
   await page.goto(`${server.resolvedUrls!.local[0]}composer-test?state=${state}`);
   await page.getByRole("heading", { name: "Review" }).waitFor();
 };
+
+test("immediate routing explains the policy with a keyboard disclosure", async () => {
+  await open("immediate");
+  expect(await page.getByText("이 변경은 승인 없이 즉시 적용됩니다").isVisible()).toBe(true);
+  expect(await page.getByText("Resolved policy reason").isVisible()).toBe(false);
+  await page.getByText("이유 보기", { exact: true }).focus();
+  await page.keyboard.press("Enter");
+  expect(await page.getByText("Resolved policy reason").isVisible()).toBe(true);
+  expect(await page.locator('[data-composer-section="approvals"]').count()).toBe(0);
+});
+
+test("routed changes show the resolved chain without an immediate-apply claim", async () => {
+  await open("routed");
+  expect(await page.locator('[data-composer-section="approvals"] ol').innerText()).toContain("Resolved role");
+  expect(await page.getByText("이 변경은 승인 없이 즉시 적용됩니다").count()).toBe(0);
+});
 
 async function actionBoxes() {
   // A visible heading can still use fallback fonts; compare only after font layout finishes.

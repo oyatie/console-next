@@ -31,7 +31,7 @@ test("legal rules appear before submit: protected dismissal, notice pay, renewal
   await expect(sheet).toContainText("해고 보호기간에는 해고할 수 없습니다");
   await expectStable(admin, "protected dismissal preflight leaves report fields in place");
   await sheet.getByRole("textbox", { name: /^퇴직 경위/ }).fill("합성 보고");
-  await sheet.getByRole("button", { name: /^퇴직 보고 1명 반영/ }).click();
+  await sheet.getByRole("button", { name: /^퇴직 보고 1명 적용/ }).click();
   await expect(sheet.getByRole("alert")).toContainText("exit_protected_period");
   await expectAccessible(admin, "protected dismissal preflight and refusal");
   await atPhoneWidth(admin, async () => { await fits(admin, "protected dismissal"); await expectAccessible(admin, "protected dismissal at phone width"); });
@@ -67,7 +67,7 @@ test("legal rules appear before submit: protected dismissal, notice pay, renewal
   await expect(written).toContainText("해고예고수당 지급 대상");
   await expectStable(admin, "short notice restores the disposition without moving later fields");
   await signOff(sheet.getByRole("group", { name: "확인 사항" }));
-  const confirm = sheet.getByRole("button", { name: /^퇴직 1명 반영/ });
+  const confirm = sheet.getByRole("button", { name: /^퇴직 1명 적용/ });
   await expect(confirm).toHaveAttribute("aria-disabled", "true");
   await written.getByRole("radiogroup", { name: /^해고예고 부족 시 조치/ }).getByText("해고예고수당 지급", { exact: true }).click();
   await expectAccessible(admin, "notice pay disposition before confirmation");
@@ -126,7 +126,7 @@ test("legal rules appear before submit: protected dismissal, notice pay, renewal
   sheet = admin.getByRole("dialog");
   await expect(sheet).toContainText("계약기간 만료");
   await sheet.getByRole("textbox", { name: /^퇴직 경위/ }).fill("계약을 갱신하지 않기로 결정했습니다");
-  await sheet.getByRole("button", { name: /^퇴직 보고 1명 반영/ }).click();
+  await sheet.getByRole("button", { name: /^퇴직 보고 1명 적용/ }).click();
   await expect(sheet).toBeHidden();
   const expiryCases = await (await api(`/hr/exit-cases?employee_id=${renewalId}`)).json();
   expect(expiryCases.items).toEqual(expect.arrayContaining([expect.objectContaining({ exit_reason_code: "CONTRACT_END", effective_exit_date: kstDate(40) })]));

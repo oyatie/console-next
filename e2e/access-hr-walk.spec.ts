@@ -98,12 +98,12 @@ test("an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 
   await report.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(-1));
   await report.getByLabel("퇴직 경위").fill("개인 사정으로 사직");
   await report.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+  await report.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
   const exit = admin.getByRole("region", { name: "퇴직", exact: true });
   await exit.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   const confirm = admin.getByRole("dialog");
   await signOff(confirm.getByRole("group", { name: "확인 사항" }), (l) => l.click());
-  await confirm.getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
+  await confirm.getByRole("button", { name: /퇴직 1명 (적용|예약)/ }).click();
   await expect(confirm).toBeHidden();
   await expect(exit).toContainText("인사 확인됨");
 

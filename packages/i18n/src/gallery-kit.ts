@@ -4,6 +4,7 @@ import { orgBulkKitEn, orgBulkKitKo } from "./gallery-org-bulk";
 import { chartEn, chartKo } from "./gallery-chart";
 
 export const kitKo = {
+  "composer.policyReason": "전결 규정에서 이 변경을 즉시 적용하도록 정했습니다",
   "timeline.event": "기록 {number}",
   "meter.usage": "사용량",
   "paper.preview": "미리 보기",
@@ -82,6 +83,7 @@ export const kitKo = {
 } as const;
 
 export const kitEn: Record<keyof typeof kitKo, string> = {
+  "composer.policyReason": "The approval policy allows this change to take effect immediately",
   "timeline.event": "Event {number}",
   "meter.usage": "Usage",
   "paper.preview": "Preview",

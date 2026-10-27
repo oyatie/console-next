@@ -48,7 +48,7 @@ for (const width of [1440, 390]) {
       await sheet.getByRole("textbox", { name: /^사유/ }).fill("사업장 이동 검토");
       await expect(sheet).toHaveAccessibleName("발령");
       await expect(sheet).not.toContainText(/전보|전근/);
-      const commit = sheet.getByRole("button", { name: "발령 1명 반영", exact: true });
+      const commit = sheet.getByRole("button", { name: "발령 1명 적용", exact: true });
       await expect(commit).toHaveAttribute("aria-disabled", "true");
       await expect(commit).toHaveAccessibleDescription("현재 배치와 이동할 사업장을 확인해야 기록할 수 있습니다.");
       await commit.focus();
@@ -86,7 +86,7 @@ for (const width of [1440, 390]) {
       await sheet.getByRole("button", { name: /^오늘 / }).click();
       await sheet.getByRole("textbox", { name: /^사유/ }).fill("배치 검토");
       await expect(sheet).toHaveAccessibleName("전보");
-      await expect(sheet.getByRole("button", { name: "전보 1명 반영", exact: true })).toBeEnabled();
+      await expect(sheet.getByRole("button", { name: "전보 1명 적용", exact: true })).toBeEnabled();
       await expect(sheet).not.toContainText("전근");
       const siteRow = sheet.getByRole("table", { name: "바뀌는 것" }).locator('[data-id="site"]');
       await expect(siteRow).toHaveText(state === "unplaced-target" ? "사업장본사→ —" : "사업장—→ 부산사업장");

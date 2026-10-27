@@ -184,7 +184,7 @@ test("recent import rows link to the served result record with counts from its s
   const out = await recordedScreen(<RecentRuns />);
   expect(out).toContain(`href="/people/import?run=${recordedRun.id}"`);
   expect(out).toContain("등록 10 · 갱신 1");
-  expect(out).toContain("반영됨");
+  expect(out).toContain(t("import.status.APPLIED"));
 });
 
 test("an empty recent-run list promises no fixed rollback window or second-person policy", async () => {
@@ -315,7 +315,7 @@ test("governed rollback names passkey verification on the action and still requi
 test("import run and outcome statuses render through the shared EnumValue", async () => {
   vi.mocked(EnumValue).mockClear();
   const recorded = await recordedScreen(<><RecentRuns /><DoneStep runId={recordedRun.id} /></>);
-  expect(recorded).toContain('<span class="chip chip--ok">반영됨</span>');
+  expect(recorded).toContain('<span class="chip chip--ok">적용됨</span>');
   expect(vi.mocked(EnumValue).mock.calls.filter(([p]) => p.e === enums.IMPORT_RUN_STATUS)).toHaveLength(2);
   vi.mocked(EnumValue).mockClear();
   html(<DryRows rows={[row({ outcome: "refused" })]} />);

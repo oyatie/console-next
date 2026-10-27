@@ -13,7 +13,7 @@ export const koRequests = {
   "requests.statuses": "요청 상태",
   "requests.status.ALL": "전체",
   "requests.status.OPEN": "처리 대기",
-  "requests.status.APPLIED": "반영됨",
+  "requests.status.APPLIED": "적용됨",
   "requests.status.DECLINED": "거절됨",
   "requests.status.WITHDRAWN": "철회됨",
   "requests.col.kind": "요청",

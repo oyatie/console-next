@@ -62,12 +62,12 @@ test("exit report: a later reservation is named first and withdrawn in place; a 
   await admin.route("**/api/v1/hr/exit-cases", (r) =>
     r.request().method() === "POST" ? r.continue({ postData: JSON.stringify({ ...r.request().postDataJSON(), exit_reason_code: "T_RETIRED" }) }) : r.continue(),
   );
-  await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+  await report.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
   await expect(report.getByRole("alert")).toContainText("이 퇴직 사유는 더는 쓰지 않습니다");
   await expect(report).toBeVisible();
   expect(await cases()).toBe(0);
   await admin.unroute("**/api/v1/hr/exit-cases");
-  await c.click(report.getByRole("button", { name: "퇴직 보고 1명 반영" }));
+  await c.click(report.getByRole("button", { name: "퇴직 보고 1명 적용" }));
   await expect(report).toBeHidden({ timeout: 15_000 });
   expect(c.done("E5-exit with a reservation withdrawn in place")).toBeLessThanOrEqual(9);
 

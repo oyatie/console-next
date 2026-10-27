@@ -1,3 +1,4 @@
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test, type Page } from "@playwright/test";
 import { atPhoneWidth, expectAccessible } from "./a11y";
 import { withLifecycleDate } from "./clock";
@@ -7,6 +8,8 @@ import { registerBranch, startOperations, tenantInSetup } from "./setup-flows";
 import { box } from "./structure-flows";
 import { openHistory } from "./record";
 import { holdRead } from "./helpers/read";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // UX-R2 ORGCHANGE (regression: org-01, org-02, org-03, org-07, org-17, org-19, org-25, org-26). After go-live every
 // structure change is an org change: it moves its people with it, says what it does, leaves a receipt on the chart,
@@ -51,7 +54,7 @@ test("an org change moves its people with the unit, stays on the chart with a re
   await expect(totals.getByRole("term").filter({ hasText: /^사업장이 바뀌는 사람$/ }).locator("xpath=preceding-sibling::dd[1]")).toHaveText("1");
   await today(admin.getByRole("main"), "개발 조직 본점 이전");
   await expect(admin.getByRole("main")).not.toContainText(APPROVAL);
-  await admin.getByRole("button", { name: "부서 이동 1개 반영" }).click();
+  await admin.getByRole("button", { name: "부서 이동 1개 적용" }).click();
 
   // org-19, org-25: back on the chart, a receipt names the change by what it does and links its record.
   await expect(admin).toHaveURL(/\/org(\?|$)/);
@@ -97,7 +100,7 @@ test("an org change moves its people with the unit, stays on the chart with a re
   await expect(merge).not.toContainText("삭제됩니다");
   await expect(merge).toContainText("이력에 남음");
   await today(merge, "영업 조직 통합");
-  await merge.getByRole("button", { name: "부서 통합 1개 반영" }).click();
+  await merge.getByRole("button", { name: "부서 통합 1개 적용" }).click();
   await expect(receipt(admin)).toContainText("영업3팀을 인사팀에 합침");
   await expect(box(admin, "영업3팀")).toHaveCount(0);
   await receipt(admin).getByRole("link", { name: /기록 보기$/ }).click();
@@ -170,7 +173,7 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   await withLifecycleDate(due, async () => {
     await expect(async () => {
       await admin.goto(record);
-      await expect(admin.getByRole("main")).toContainText("반영됨", { timeout: 2_000 });
+      await expect(admin.getByRole("main")).toContainText(t("enum.orgChangeStatus.APPLIED"), { timeout: 2_000 });
     }).toPass({ intervals: [2_000, 3_000, 5_000], timeout: 45_000 });
   });
   // the chart reads the real date, so 국내영업팀 shows there from the real 시행일; the record proves the apply.

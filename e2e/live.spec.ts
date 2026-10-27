@@ -82,7 +82,7 @@ test("a change in one session reaches another without reload or polling, survive
   const sheet = admin.getByRole("dialog");
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(30));
   await sheet.getByLabel("퇴직 경위").fill("실시간 확인");
-  await sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+  await sheet.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
   await expect(exitPanel(admin)).toContainText("보고됨");
   await expect(exitPanel(b.page)).toContainText("보고됨", { timeout: 15_000 });
   await expect(b.page.getByRole("status").filter({ hasText: "다른 곳에서 바뀌어" })).toBeVisible();
@@ -155,7 +155,7 @@ test("a sheet holds a change made elsewhere to the record under it, and closing 
   const sheet = admin.getByRole("dialog");
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(30));
   await sheet.getByLabel("퇴직 경위").fill("시트 보류 확인");
-  await sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+  await sheet.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
   await expect(exitPanel(admin)).toContainText("보고됨");
 
   // Past the frame and its debounce: nothing under (or in) the open sheet was re-read or redrawn.
