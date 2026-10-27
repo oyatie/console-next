@@ -52,6 +52,9 @@ jobs:
       - run: npm run check
       # Contract-typed screen states (Vite only): its own step so a local `npm run check` never binds a fixed port.
       - run: npm run e2e:states
+        env:
+          # ubuntu-24.04 public-repo runners have 4 vCPUs; the suite is static preview + route mocks.
+          E2E_WORKERS: "4"
 
   backend:
     runs-on: ubuntu-24.04-arm
