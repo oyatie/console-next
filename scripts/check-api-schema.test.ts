@@ -1,7 +1,7 @@
 // Planted negative controls for the client contract gate (scripts/check-api-schema.mjs), on a
 // throwaway backend repo so the test needs no real backend tree.
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, expect, test } from "vitest";
@@ -74,4 +74,21 @@ test("the separate ops document is generated and its client drift fails closed",
   writeFileSync(opsOut, good.replace("200:", "201:"));
   expect(checkApiSchema({ repo, out: opsOut, specPath })).toMatchObject({ ok: false, message: expect.stringContaining("api schema drift") });
   expect(checkApiSchema({ repo, out: opsOut, specPath: "backend/openapi/missing.yaml" }).ok).toBe(false);
+});
+
+test("the CLI runs --check-ops and propagates a composition failure", () => {
+  const bin = path.join(dir, "bin");
+  const args = path.join(dir, "cargo-args");
+  mkdirSync(bin);
+  const cargo = path.join(bin, "cargo");
+  writeFileSync(cargo, '#!/bin/sh\nprintf "%s\\n" "$@" > "$OPS_TEST_ARGS"\necho synthetic-composition-failure >&2\nexit 17\n');
+  chmodSync(cargo, 0o755);
+  const result = spawnSync(process.execPath, ["scripts/check-api-schema.mjs"], {
+    cwd: path.resolve(import.meta.dirname, ".."), encoding: "utf8",
+    env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, OPS_TEST_ARGS: args },
+  });
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("ops contract composition check failed");
+  expect(result.stderr).toContain("synthetic-composition-failure");
+  expect(readFileSync(args, "utf8").trim().split("\n").at(-1)).toBe("--check-ops");
 });

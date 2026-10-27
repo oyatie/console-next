@@ -100,25 +100,42 @@ pub struct Verdict {
     pub worst: Health,
 }
 
-pub fn verdict(health: Health, work: &[WorkKind], evidence: &[EvidenceState]) -> Verdict {
+pub fn verdict(
+    health: Health,
+    work: &[WorkKind],
+    evidence: &[(EvidenceState, Option<&str>)],
+) -> Verdict {
     let unverified = evidence
         .iter()
-        .filter(|state| **state != EvidenceState::Verified)
+        .filter(|(state, _)| *state != EvidenceState::Verified)
         .count();
     let unknown = unverified > 0 || evidence.is_empty();
     let worst = if unknown { Health::Unknown } else { health };
-    let quiet = worst == Health::Healthy && work.is_empty();
+    let quiet = worst == Health::Healthy && work.iter().all(|kind| *kind == WorkKind::Ticket);
     let evidence_text = if evidence.is_empty() {
         "Unknown: no sources checked".to_owned()
     } else if unknown {
-        format!("Unknown: {unverified} sources not verified")
+        let count = count_text(unverified, "source");
+        let reason = evidence.iter().find_map(|(state, reason)| {
+            (*state != EvidenceState::Verified)
+                .then_some(*reason)
+                .flatten()
+        });
+        match reason {
+            Some(reason) => format!("Unknown: {reason} · {count} not verified"),
+            None => format!("Unknown: {count} not verified"),
+        }
     } else {
         let pages = work.iter().filter(|kind| **kind == WorkKind::Page).count();
         let tickets = work
             .iter()
             .filter(|kind| **kind == WorkKind::Ticket)
             .count();
-        format!("{pages} pages · {tickets} tickets · evidence fresh")
+        let mut text = count_text(pages, "page");
+        if tickets > 0 {
+            text.push_str(&format!(" · {}", count_text(tickets, "ticket")));
+        }
+        format!("{text} · evidence fresh")
     };
     Verdict {
         text: format!(
@@ -131,4 +148,8 @@ pub fn verdict(health: Health, work: &[WorkKind], evidence: &[EvidenceState]) ->
         ),
         worst,
     }
+}
+
+fn count_text(count: usize, noun: &str) -> String {
+    format!("{count} {noun}{}", if count == 1 { "" } else { "s" })
 }

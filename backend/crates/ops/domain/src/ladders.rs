@@ -45,7 +45,7 @@ ladder!(Incident {
     Resolved
 });
 ladder!(IncidentSeverity { Sev1 = "SEV1", Sev2 = "SEV2", Sev3 = "SEV3", Sev4 = "SEV4" });
-ladder!(Release { Building, Signed, OnPreview = "On preview", Canary = "Canary n%", Watching, Active, RolledBack = "Rolled back", Failed });
+ladder!(Release { Building, Signed, OnPreview = "On preview", Canary, Watching, Active, RolledBack = "Rolled back", Failed });
 ladder!(Promotion { Watching, Blocked, Ready, Promoting, Superseded, IntegrationOnly = "Integration-only" });
 ladder!(Credential { Ok = "OK", Due, Overdue, Unknown, Missing, Planned });
 ladder!(JobState { Succeeded, Failed, Late, NeverReported = "Never reported", Running });

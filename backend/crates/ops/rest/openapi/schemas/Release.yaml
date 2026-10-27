@@ -1,3 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 type: "string"
-enum: ["Building", "Signed", "On preview", "Canary n%", "Watching", "Active", "Rolled back", "Failed"]
+enum: ["Building", "Signed", "On preview", "Canary", "Watching", "Active", "Rolled back", "Failed"]
+description: "Canary is a state; its numeric weight is carried separately as Changing.weight_percent."

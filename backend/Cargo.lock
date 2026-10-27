@@ -2950,6 +2950,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "console-ops-adapter-http"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "console-ops-application",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "console-ops-application"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.18",
+ "time",
+]
+
+[[package]]
 name = "console-ops-domain"
 version = "0.1.0"
 dependencies = [
