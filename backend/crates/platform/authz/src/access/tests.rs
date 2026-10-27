@@ -228,6 +228,35 @@ fn no_grant_is_default_deny_and_ops_is_break_glass() {
     }
 }
 
+#[cfg(test)]
+mod platform_validation {
+    use super::*;
+
+    #[test]
+    fn a_validated_platform_slice_does_not_skip_validation_of_tenant_grants() {
+        let t = tree();
+        AccessSlice::compile(&subject(&t, true, vec![])).expect("platform policies validate");
+        let invalid = grant(
+            t.tenant(),
+            vec![RoleLine {
+                domain: Domain::Sensitive,
+                levels: vec![Level::Approve],
+            }],
+            BranchScope::All,
+        );
+        assert!(matches!(
+            AccessSlice::compile(&subject(&t, false, vec![invalid])),
+            Err(AccessEngineError::Compile(_))
+        ));
+        let none = AccessSlice::compile(&subject(&t, false, vec![])).expect("fresh account");
+        assert!(!allows(
+            &none,
+            Feature::EmployeeDirectoryRead.as_str(),
+            &t.tenant()
+        ));
+    }
+}
+
 #[test]
 fn an_incomplete_or_foreign_chain_is_an_error_never_an_allow() {
     let t = tree();
