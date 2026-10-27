@@ -7,6 +7,7 @@ pub mod audit;
 mod close;
 pub mod confirm;
 mod deadlines;
+pub use deadlines::settlement_deadlines;
 pub mod group_transfer_case;
 pub mod payloads;
 pub mod queries;

@@ -16,7 +16,7 @@ use crate::exits::types::ExitSettlementDeadline;
 ///
 /// # Errors
 /// 422 when the stored date is not a date.
-pub(crate) fn settlement_deadlines(
+pub fn settlement_deadlines(
     exit_date: &str,
     register: &StatutoryRegister,
 ) -> Result<Vec<ExitSettlementDeadline>, HrError> {
