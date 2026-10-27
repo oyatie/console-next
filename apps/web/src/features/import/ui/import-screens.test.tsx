@@ -184,7 +184,7 @@ test("recent import rows link to the served result record with counts from its s
   const out = await recordedScreen(<RecentRuns />);
   expect(out).toContain(`href="/people/import?run=${recordedRun.id}"`);
   expect(out).toContain("등록 10 · 갱신 1");
-  expect(out).toContain("반영됨");
+  expect(out).toContain(t("import.status.APPLIED"));
 });
 
 test("an empty recent-run list promises no fixed rollback window or second-person policy", async () => {

@@ -1,3 +1,4 @@
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test } from "@playwright/test";
 import { fmtDateTime } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
@@ -8,6 +9,8 @@ import { reviseFact } from "./helpers/entity";
 import { openTenant } from "./helpers/tenant";
 import { registerEntity } from "./setup-flows";
 import { recordShifts } from "./stability";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const ENTITY = /\/api\/v1\/legal-entities\/[0-9a-f-]{36}$/;
 const OPS_BADGE = "운영 계정 · 긴급 권한";
@@ -102,7 +105,7 @@ test("BL-009/011 two browsers expose the latest authorized change and its origin
   const outcome = await lookup.json();
   expect(outcome).toMatchObject({ id: winnerId, state: "APPLIED", masked: false });
   expect(outcome.touched).toEqual(expect.arrayContaining([expect.objectContaining({ type: "legal_entity", id: entityId, audit_id: change.audit_id })]));
-  await expect(colleague.getByRole("status").filter({ hasText: /^반영됨$/ })).toBeVisible();
+  await expect(colleague.getByRole("status").filter({ hasText: t("requestOutcome.APPLIED") })).toBeVisible();
   expect(attempts.count()).toBe(1);
   await expectAccessible(colleague, "BL-010 record reader opens another actor's command outcome");
   await staleContext.close();

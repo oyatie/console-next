@@ -150,7 +150,7 @@ test("parity 1011: staffed-unit dissolution and workplace-following placement", 
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("생산 지원");
   await capture(a, "people", ["E5-transfer"], "PLACEMENT: actual cross-workplace transfer review in the same entity, explicit destination/date/reason.");
-  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
   await openHistory(a);
   await expect(a.getByRole("region", { name: "인사 이력" })).toContainText("배치직원을 영업팀에서 생산팀으로 전보했습니다");
   await openCard(a);

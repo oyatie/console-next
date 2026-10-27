@@ -42,6 +42,7 @@ export const enComposer = {
   "composer.action.settlement": "exit settlement",
   "composer.action.registration": "employee registration",
   "composer.verb.apply": "Apply",
+  "composer.routing.immediate": "This change takes effect immediately without approval",
   "composer.verb.schedule": "Schedule",
   "composer.verb.request": "Request approval for",
   "composer.verb.change": "Change",

@@ -171,7 +171,7 @@ test.describe("one state contract across console routes", () => {
         await expect(page.getByText("설정 단계 · 운영 시작 전", { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
         const commit = path === "/org/entities/new" ? page.getByRole("button", { name: "다음", exact: true }) :
-          page.getByRole("dialog", { name: "직원 등록" }).getByRole("button", { name: /^직원 등록 1명 반영 · 다음 직원/ });
+          page.getByRole("dialog", { name: "직원 등록" }).getByRole("button", { name: /^직원 등록 1명 적용 · 다음 직원/ });
         await expect(commit).toBeInViewport();
         expect(await commit.evaluate(button => {
           const rect = button.getBoundingClientRect();

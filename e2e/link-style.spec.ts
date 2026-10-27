@@ -112,7 +112,7 @@ test("no anchor on any route renders the browser's default link style", { tag: [
   const sheet = admin.getByRole("dialog");
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(7));
   await sheet.getByLabel("퇴직 경위").fill("이직");
-  await sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+  await sheet.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
   await expect(sheet).toBeHidden();
   await expect(admin.getByRole("region", { name: "퇴직", exact: true })).toContainText("보고됨");
   // An org change (its record is /org/changes/$id) and a role (the roles list links /access/roles/$roleId).
@@ -122,7 +122,7 @@ test("no anchor on any route renders the browser's default link style", { tag: [
   await add.getByLabel("부서 이름").fill("총무부");
   await add.getByRole("button", { name: /^오늘/ }).click();
   await add.getByLabel("사유").fill("총무 기능 신설");
-  await add.getByRole("button", { name: "부서 신설 1개 반영" }).click();
+  await add.getByRole("button", { name: "부서 신설 1개 적용" }).click();
   // The user stays on the chart; the receipt links the change's record (org-19).
   await admin.getByRole("status").getByRole("link", { name: /^OC-\d{4}-\d{4} 기록 보기$/ }).click();
   await expect(admin).toHaveURL(/\/org\/changes\/[0-9a-f-]+/);

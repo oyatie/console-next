@@ -53,7 +53,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await c.click(leave.getByText("개인 사유", { exact: true }));
   await c.click(todayPreset(leave));
   await reasonBox(leave).fill("개인 사정");
-  await c.click(leave.getByRole("button", { name: "휴직 1명 반영", exact: true }));
+  await c.click(leave.getByRole("button", { name: "휴직 1명 적용", exact: true }));
   const refused = leave.getByRole("alert");
   await expect(refused).toContainText("예약된 기록과 맞지 않습니다");
   await expect(refused).toContainText(`${koMonthDay(move)}`);
@@ -64,7 +64,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await expect(history.getByRole("listitem").filter({ hasText: "채용팀 합류" })).toBeFocused();
   await hrAct(admin, "휴직 처리");
   await expect(leave).toContainText("작성하던 내용을 불러왔습니다");
-  await leave.getByRole("button", { name: "휴직 1명 반영", exact: true }).click();
+  await leave.getByRole("button", { name: "휴직 1명 적용", exact: true }).click();
   await expect(refused).toContainText("예약된 기록과 맞지 않습니다");
   await expectAccessible(admin, "lifecycle: schedule conflict names the reservation");
 
@@ -76,7 +76,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await c.click(history.getByRole("button", { name: "휴직 처리 작성으로 돌아가기" }));
   await expect(leave).toContainText("작성하던 내용을 불러왔습니다");
   await expect(reasonBox(leave)).toHaveValue("개인 사정");
-  await c.click(leave.getByRole("button", { name: "휴직 1명 반영", exact: true }));
+  await c.click(leave.getByRole("button", { name: "휴직 1명 적용", exact: true }));
   await expect(history.getByText(/충돌이를 휴직 처리했습니다/)).toBeVisible();
   expect(c.done("leave through one schedule conflict (base 4 with 발령 + 1 type + 1 date + 4 for the detour)")).toBeLessThanOrEqual(10);
 
@@ -123,9 +123,9 @@ test("lifecycle sheets: a lost response freezes the sheet until it is checked, a
   await todayPreset(transfer).click();
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("응답 유실 확인");
-  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
   await expect(transfer).toContainText("응답을 받지 못해 기록됐는지 모릅니다");
-  await expect(transfer.getByRole("button", { name: "전보 1명 반영", exact: true })).toHaveCount(0);
+  await expect(transfer.getByRole("button", { name: "전보 1명 적용", exact: true })).toHaveCount(0);
   await expectAccessible(admin, "lifecycle: a lost response being checked");
   await admin.unroute(/\/lifecycle-events$/);
   await transfer.getByRole("button", { name: "기록됐는지 확인" }).click();

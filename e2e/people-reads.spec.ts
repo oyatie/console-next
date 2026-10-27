@@ -46,7 +46,7 @@ test("roster facets, employment type, purposeful download and exit search", { ta
   await expect(sheet).toContainText("RD-0002");
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(7));
   await sheet.getByLabel("퇴직 경위").fill("계약 종료 전 이직");
-  await sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+  await sheet.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
   await expect(sheet).toBeHidden();
   await expect(admin.getByRole("region", { name: "퇴직" }).last()).toContainText("보고됨");
   await go(admin, "/people/exits");

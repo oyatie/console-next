@@ -43,7 +43,7 @@ test("operating: new department and dissolution proposals, a governed move, dele
   await expect(main.getByRole("button", { name: "부서 추가" })).toHaveAccessibleDescription("운영 중 · 부서 신설을 조직 변경으로 기록합니다");
   await c.click(main.getByRole("button", { name: "부서 추가" }));
   const add = sheet(admin, "부서 신설");
-  const submitAdd = add.getByRole("button", { name: "부서 신설 1개 반영" });
+  const submitAdd = add.getByRole("button", { name: "부서 신설 1개 적용" });
   await expect(submitAdd).toHaveAttribute("aria-disabled", "true");
   await add.getByLabel("부서 이름").fill("마케팅팀");
   // A free name is accepted silently (no standing hint, 5bfb1b2cc): only the date and the reason are left.
@@ -51,7 +51,7 @@ test("operating: new department and dissolution proposals, a governed move, dele
   await expect(add).toContainText("시행일, 사유가 남아 아직 반영할 수 없습니다");
   await c.click(add.getByRole("button", { name: /^오늘/ }));
   await add.getByLabel("사유").fill("마케팅 기능 신설");
-  await expectComposer(add, "부서 신설 1개 반영");
+  await expectComposer(add, "부서 신설 1개 적용");
   await expectAccessible(admin, "new department proposal");
   await c.click(submitAdd);
   // org-19: the user stays on the chart; the receipt names the change and links its record.
@@ -70,12 +70,12 @@ test("operating: new department and dissolution proposals, a governed move, dele
   // took (ChartView on `?act=`), under the sheet's backdrop. The sheet is the screen measured here.
   await expect(dissolve).toBeVisible();
   await leaveScreen(admin);
-  const submitDissolve = dissolve.getByRole("button", { name: "부서 폐지 1개 반영" });
+  const submitDissolve = dissolve.getByRole("button", { name: "부서 폐지 1개 적용" });
   await expect(submitDissolve).toHaveAccessibleDescription(/시행일, 사유/);
   await expect(dissolve.getByRole("region", { name: "본점 직속으로 1명" })).toBeVisible();
   await dissolve.getByRole("button", { name: /^오늘/ }).click();
   await dissolve.getByLabel("사유").fill("인사 기능을 본사 직속으로");
-  await expectComposer(dissolve, "부서 폐지 1개 반영");
+  await expectComposer(dissolve, "부서 폐지 1개 적용");
   await expect(dissolve).toContainText("직속 구성원 1명이 지정한 곳으로 각자 전보되며");
   await expectAccessible(admin, "dissolution proposal");
   await submitDissolve.click();
@@ -90,7 +90,7 @@ test("operating: new department and dissolution proposals, a governed move, dele
   await admin.getByLabel("사유").fill("판교 영업 거점");
   await expect(admin.getByText(/조직 변경 1건\(항목 1개 · 이동 1 · 이름 0\)/)).toBeVisible();
   await expectAccessible(admin, "bulk move (operating)");
-  await admin.getByRole("button", { name: "부서 이동 1개 반영" }).click();
+  await admin.getByRole("button", { name: "부서 이동 1개 적용" }).click();
   await expect(admin).toHaveURL(/\/org(\?|$)/);
   await expect(admin.getByRole("status").filter({ hasText: "영업팀을 판교지점 아래로 이동을 반영했습니다" })).toBeVisible();
 

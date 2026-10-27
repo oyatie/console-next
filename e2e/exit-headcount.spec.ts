@@ -51,7 +51,7 @@ test("the reported last working day counts in live, compare, list and exports un
   await shot(admin, "exit-last-working-day-report");
   await report.getByLabel("퇴직 경위").fill("개인 사정");
   await report.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+  await report.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
   const exit = admin.getByRole("region", { name: "퇴직", exact: true });
   await exit.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   const confirm = admin.getByRole("dialog");

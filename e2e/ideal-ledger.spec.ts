@@ -1,3 +1,4 @@
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { inviteAccount } from "./access-flows";
@@ -5,6 +6,8 @@ import { faultNext, sent } from "./chaos";
 import { chooseRadio, firstSignIn, go } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { acceptSetupTerms, setupCompany } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const GO_LIVE = /\/api\/v1\/onboarding\/go-live$/;
 const APPLY_GRANTS = /\/api\/v1\/access\/grants\/apply$/;
@@ -48,12 +51,12 @@ test("BL-010 a lost go-live response checks the original APPLIED outcome without
   expect(outcome.result.go_live_at).toBeTruthy();
   await expect(admin).toHaveURL(new RegExp(`/requests/${key}$`));
   await expect(admin.getByRole("heading", { name: "요청 결과", level: 1 })).toBeVisible();
-  await expect(admin.getByRole("status").filter({ hasText: /^반영됨$/ })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: t("requestOutcome.APPLIED") })).toBeVisible();
   await expect(admin.getByText(outcome.id, { exact: true })).toBeVisible();
   await expect(admin.getByRole("heading", { name: "처리 결과", exact: true })).toBeVisible();
   await expectAccessible(admin, "BL-010 APPLIED go-live outcome");
   await admin.reload();
-  await expect(admin.getByRole("status").filter({ hasText: /^반영됨$/ })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: t("requestOutcome.APPLIED") })).toBeVisible();
   expect(commands.count()).toBe(1);
 });
 
@@ -106,7 +109,7 @@ test("BL-010 grant apply loses its response, preserves the receipt and is record
   expect(outcome).toMatchObject({ state: "APPLIED", idempotency_key: key, masked: false });
   expect(outcome.result.items).toHaveLength(1);
   expect(outcome.result.operation_id).toBe(outcome.id);
-  await expect(admin.getByRole("status").filter({ hasText: /^반영됨$/ })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: t("requestOutcome.APPLIED") })).toBeVisible();
   await expectAccessible(admin, "BL-010 APPLIED grant receipt");
   await go(admin, "/access/grants");
   const grant = admin.getByRole("row", { name: /김원장/ }).filter({ hasText: "원장 조회" });

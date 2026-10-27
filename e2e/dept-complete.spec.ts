@@ -46,7 +46,7 @@ test("staffed people at 사업장 직속 block go-live even when a department ex
   await admin.getByRole("button", { name: /오늘/ }).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByText("조직 개편", { exact: true }).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("설정 단계 부서 배치");
-  await admin.getByRole("button", { name: "전보 3명 반영", exact: true }).click();
+  await admin.getByRole("button", { name: "전보 3명 적용", exact: true }).click();
   await expect(admin.getByRole("status").filter({ hasText: "3명 전보 반영함" })).toBeVisible();
   await go(admin, "/setup/go-live");
   await expect(admin.getByRole("button", { name: "운영 시작", exact: true })).toBeVisible();

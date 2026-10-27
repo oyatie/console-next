@@ -20,10 +20,11 @@ const entries = Object.entries(import.meta.glob<Entry>("../**/*.gallery.tsx", { 
 
 export function Gallery() {
   const [theme, toggle] = useTheme();
+  const entry = new URLSearchParams(location.search).get("entry");
   return (
     <main className="page" id="main">
       <PageHead title={tg("title")} sub={tg("hint")} tools={<Button onClick={toggle}>{theme === "dark" ? t("shell.theme.toLight") : t("shell.theme.toDark")}</Button>} />
-      {entries.map(([path, { default: Demo }]) => <Demo key={path} />)}
+      {entries.filter(([path]) => !entry || path.endsWith(`/${entry}.gallery.tsx`)).map(([path, { default: Demo }]) => <Demo key={path} />)}
     </main>
   );
 }

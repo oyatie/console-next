@@ -1,3 +1,5 @@
+import { commitLabel } from "../../apps/web/src/ui/composer/actions";
+import { loadCatalog } from "@console/i18n";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go, registerEmployee } from "../flows";
@@ -5,6 +7,8 @@ import { staffedTenant } from "../setup-flows";
 import { reasonBox, sheet, todayPreset } from "../sheet";
 import { apiOf, bearerOf, codeOf } from "../helpers/api";
 import { hrAct } from "../record";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // 직책 임면 (spec E5-appoint, BE-EMP-UI §1) from an empty company: no list is seeded, so the one who keeps the lists adds
 // 팀장 from the sheet itself and it is chosen at once; for anyone the server does not let keep them, the empty lists
@@ -33,7 +37,7 @@ test("appoint: the role list is filled from the sheet by the one who keeps it; t
   await expectAccessible(admin, "E5-appoint: a role added from the sheet");
   await todayPreset(s).click();
   await reasonBox(s).fill("부서장 공석 보충");
-  await s.getByRole("button", { name: "보직 1명 반영" }).click();
+  await s.getByRole("button", { name: commitLabel({ kind: "APPOINT", mode: "apply", count: 1 }) }).click();
   await expect(s).toBeHidden({ timeout: 15_000 });
   await expect(admin.getByRole("region", { name: "인사 이력" })).toContainText("직책·직무를 발령했습니다");
   // The appointment holds the 팀장 just added (the history line does not name it yet: EMP-A's history view).

@@ -37,8 +37,8 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await expect(transfer.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
   await expectAccessible(admin, "J2: transfer sheet");
   // Applies now: red.
-  await expect(transfer.getByRole("button", { name: "전보 1명 반영", exact: true })).toHaveClass(/btn--danger/);
-  await c.click(transfer.getByRole("button", { name: "전보 1명 반영", exact: true }));
+  await expect(transfer.getByRole("button", { name: "전보 1명 적용", exact: true })).toHaveClass(/btn--danger/);
+  await c.click(transfer.getByRole("button", { name: "전보 1명 적용", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /오발령을 인사부에서 채용팀으로 전보했습니다/ })).toBeVisible();
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("status").filter({ hasText: "오발령님을 채용팀으로 전보했습니다" })).toBeVisible();
   expect(c.done("J2 transfer (base 4 with 발령 → 전보, spec §5 + 1 date + 1 reason code)")).toBeLessThanOrEqual(6);
@@ -51,7 +51,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await c.click(todayPreset(promote));
   await c.click(reasonChip(promote, "정기 승진"));
   await reasonBox(promote).fill("정기 승진");
-  await c.click(promote.getByRole("button", { name: "승진 1명 반영", exact: true }));
+  await c.click(promote.getByRole("button", { name: "승진 1명 적용", exact: true }));
   const refused = promote.getByRole("alert");
   await expect(refused).toContainText("바뀌는 것이 없습니다");
   await expect(refused).toContainText("이미 대리입니다");
@@ -59,7 +59,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await c.click(refused.getByRole("button", { name: "다른 직위 입력" }));
   await expect(position).toBeFocused();
   await position.fill("과장");
-  await c.click(promote.getByRole("button", { name: "승진 1명 반영", exact: true }));
+  await c.click(promote.getByRole("button", { name: "승진 1명 적용", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /오발령을 대리에서 과장으로 승진 처리했습니다/ })).toBeVisible();
   expect(c.done("J2 promote (base 3 with 발령 + 1 date + 1 reason code + 2 to fix one refusal)")).toBeLessThanOrEqual(7);
 
