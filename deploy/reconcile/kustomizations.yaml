@@ -121,6 +121,6 @@ spec:
   healthCheckExprs:
     - apiVersion: argoproj.io/v1alpha1
       kind: Rollout
-      failed: has(status) && has(status.phase) && status.phase == 'Degraded'
-      inProgress: '!has(status) || !has(status.phase) || status.phase != "Healthy"'
-      current: has(status) && has(status.phase) && status.phase == 'Healthy'
+      failed: has(status.phase) && status.phase == 'Degraded'
+      inProgress: '!has(status.phase) || status.phase != "Healthy"'
+      current: has(status.phase) && status.phase == 'Healthy'

@@ -3,24 +3,45 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import yaml from 'js-yaml';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const read = path => readFileSync(join(root, path), 'utf8');
 
-for (const environment of ['exit-test', 'template']) test(`${environment}: the rendered platform assigns every namespaced resource to a declared namespace`, () => {
+test('every deploy healthCheckExprs expression uses has() with a field selection', () => {
+  const invalid = [];
+  for (const file of readdirSync(join(root, 'deploy'), {recursive:true}).filter(file => /\.ya?ml$/.test(file))) {
+    for (const doc of yaml.loadAll(read(`deploy/${file}`)).filter(Boolean)) {
+      for (const check of doc.spec?.healthCheckExprs ?? []) {
+        for (const field of ['failed', 'inProgress', 'current']) {
+          if (/\bhas\s*\(\s*[A-Za-z_][A-Za-z0-9_]*\s*\)/.test(check[field] ?? '')) invalid.push(`${file}: ${check.kind} ${field}: ${check[field]}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(invalid, [], 'has() cannot check top-level identifiers; select a field instead');
+});
+
+for (const environment of ['exit-test', 'template']) test(`${environment}: the entire rendered bundle assigns every namespaced resource to a declared namespace`, () => {
   const dir = mkdtempSync(join(tmpdir(), 'platform-render-'));
   try {
     execFileSync(process.execPath, ['deploy/ci/render.mjs', environment, `example.invalid/console@sha256:${'a'.repeat(64)}`, dir], {cwd:root});
-    const docs = yaml.loadAll(execFileSync('kustomize', ['build', join(dir, 'platform')], {encoding:'utf8',maxBuffer:40*1024*1024})).filter(Boolean);
+    const groups = readdirSync(dir, {recursive:true}).filter(file => file.endsWith('kustomization.yaml')).map(dirname);
+    const docs = groups.flatMap(group => yaml.loadAll(execFileSync('kustomize', ['build', join(dir, group)], {encoding:'utf8',maxBuffer:40*1024*1024})).filter(Boolean));
     const namespaces = new Set(['default', 'kube-system', 'kube-public', 'kube-node-lease', ...docs.filter(d => d.kind === 'Namespace').map(d => d.metadata.name)]);
-    const namespaced = new Set(['ServiceAccount', 'Service', 'Deployment', 'ConfigMap', 'Secret', 'Role', 'RoleBinding', 'PodDisruptionBudget', 'NetworkPolicy']);
+    const clusterScoped = new Set(['Namespace', 'CustomResourceDefinition', 'ClusterRole', 'ClusterRoleBinding', 'MutatingWebhookConfiguration', 'ValidatingWebhookConfiguration', 'ValidatingAdmissionPolicy', 'ValidatingAdmissionPolicyBinding']);
+    const scopes = new Map(docs.filter(d => d.kind === 'CustomResourceDefinition').map(d => [`${d.spec.group}/${d.spec.names.kind}`, d.spec.scope]));
+    const missing = [];
     for (const doc of docs) {
-      if (namespaced.has(doc.kind)) assert.ok(namespaces.has(doc.metadata.namespace), `${doc.kind}/${doc.metadata.name}: namespace must be explicit and declared`);
+      const scope = scopes.get(`${doc.apiVersion.split('/')[0]}/${doc.kind}`);
+      if (scope === 'Namespaced' || (scope !== 'Cluster' && !clusterScoped.has(doc.kind))) {
+        if (!namespaces.has(doc.metadata.namespace)) missing.push(`${doc.kind}/${doc.metadata.name}: namespace must be explicit and declared`);
+      }
       for (const subject of doc.subjects ?? []) if (subject.kind === 'ServiceAccount') assert.ok(namespaces.has(subject.namespace), `${doc.kind}/${doc.metadata.name}: ServiceAccount subject namespace`);
     }
+    assert.deepEqual(missing, [], 'every rendered namespaced resource needs metadata.namespace');
     const cluster = yaml.loadAll(readFileSync(join(dir, 'database/resources.yaml'), 'utf8')).find(d => d.kind === 'Cluster');
     const bootstrap = cluster.spec.bootstrap.initdb.postInitSQL.join(';\n');
     const created = new Set([...bootstrap.matchAll(/CREATE ROLE (console_\w+)/g)].map(m => m[1]));
