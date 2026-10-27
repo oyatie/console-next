@@ -26,7 +26,7 @@ test("부서: panel, delete with the sub-units raised, merge into another workpl
   await expect(qa.getByRole("definition").filter({ hasText: "(위치로 정해짐)" })).toBeVisible();
   await expect(qa.getByRole("region", { name: "하위 부서 2" })).toContainText("수입검사팀");
   // Someone sits under it (공정품질팀), so it is not deleted outright (CRUD: decided by use); the panel's verb says 폐지.
-  await expect(qa.getByRole("button", { name: "폐지" })).toHaveAccessibleDescription("구성원 1명이 아직 있습니다 · 먼저 전보하십시오");
+  await expect(qa.getByRole("button", { name: "폐지" })).not.toHaveAttribute("aria-describedby");
   await expectAccessible(admin, "department panel");
 
   // 2. Its end sheet asks where its sub-부서 go, nothing chosen; 「함께」 is refused with the reason (its people), raising them

@@ -12,11 +12,10 @@ import css from "../../../reference/org/ui/structure.module.css";
  * workplace itself), and any one person elsewhere through the same searchable tree. Groups are drawn by destination, so
  * what will happen reads before it is applied.
  */
-export function DissolveMembers({ place, groups, to, defaultTo, onTo, overrides, onOverride, workplaceName }: {
+export function DissolveMembers({ place, groups, to, onTo, overrides, onOverride, workplaceName }: {
   place: Place;
   groups: Group[];
   to: Node;
-  defaultTo: Node;
   onTo: (id: string) => void;
   overrides: ReadonlyMap<string, Node>;
   onOverride: (person: Member, to: string | null) => void;
@@ -41,7 +40,7 @@ export function DissolveMembers({ place, groups, to, defaultTo, onTo, overrides,
     <div className={css.stack}>
       <p className="row">
         <Users size={14} aria-hidden />
-        <span className="grow">{t(to.id === defaultTo.id ? "orgUnit.dissolve.allToDefault" : "orgUnit.dissolve.allTo", { to: label(to, workplaceName) })}</span>
+        <span className="grow">{t("orgUnit.dissolve.allTo", { n: groups.reduce((n, g) => n + g.people.length, 0), to: label(to, workplaceName) })}</span>
         <Button variant="ghost" size="sm" id="dissolve-change-to" aria-expanded={changing} onClick={() => setChanging((x) => !x)}>{t("orgUnit.dissolve.changeTo")}</Button>
       </p>
       {changing && tree(to.id, (id) => { onTo(id); setChanging(false); }, t("orgUnit.dissolve.toLabel"))}
