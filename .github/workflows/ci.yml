@@ -56,6 +56,8 @@ jobs:
       - name: Chromium headless shell for browser-backed unit tests
         run: npx playwright install --with-deps --only-shell chromium
       - run: npm run check
+      - name: Spreadsheet paste browser regression
+        run: npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table-paste.spec.ts
 
   # Contract-typed screen states (Vite preview + route mocks): sharded across jobs so the suite stays inside
   # e2e:states' 10-minute budget as it grows (https://playwright.dev/docs/test-sharding). Add a shard when one nears it.
