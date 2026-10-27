@@ -176,3 +176,44 @@ test("alert count and group count have distinct units in the contract", () => {
     expect(snapshot.alerts).toHaveProperty("alert_count");
   }
 });
+
+test("obligation records accept all synthetic rows and require the audit envelope and signoffs", () => {
+  const schema = JSON.parse(read("backend/crates/ops/domain/schemas/obligation-record.schema.json"));
+  const { items } = JSON.parse(read("backend/crates/ops/domain/tests/fixtures/obligations.json"));
+  const record = {
+    v: 1, seq: 1, prev: "genesis", at: "2026-10-27T00:00:00Z",
+    operator: { person: "00000000-0000-4000-8000-000000000001", method: "access-jwt" },
+    support_ref: "synthetic-ref", obligation_id: "synthetic-obligation", event: "opened", fields: items[0],
+  };
+  expect(items).toHaveLength(31);
+  for (const [index, fields] of items.entries()) {
+    expect(fields.title).toBe(`Synthetic ${fields.kind.replaceAll("-", " ")} ${index + 1}`);
+    expect(fields.evidence_ref).toBe(`ref-${index + 1}`);
+    expect(accepts(schema, { ...record, fields })).toBe(true);
+  }
+  for (const key of Object.keys(record)) {
+    const missing = { ...record } as any;
+    delete missing[key];
+    expect(accepts(schema, missing), key).toBe(false);
+  }
+  for (const patch of [
+    { prev: "bad hash" }, { seq: 0 }, { v: 2 }, { at: "2026-10-27T09:00:00+09:00" },
+    { operator: { ...record.operator, person: "not a person UUID" } },
+    { fields: { ...items[0], kind: "invented" } }, { fields: { ...items[0], reviewer_role: "invented" } },
+    { fields: { ...items[0], title: "   " } }, { fields: { ...items[0], state: "done" } },
+  ]) expect(accepts(schema, { ...record, ...patch })).toBe(false);
+  for (const [event, fields] of [
+    ["in_review", { note: "Assigned" }],
+    ["redated", { due: "2026-11-01", reason: "Agreed deadline" }],
+    ["done", { evidence_ref: "receipt", signer: "Synthetic reviewer", signed_on: "2026-10-27" }],
+    ["waived", { reason: "Not applicable", signer: "Synthetic owner" }],
+  ] as const) {
+    expect(accepts(schema, { ...record, event, fields })).toBe(true);
+    for (const field of Object.keys(fields).filter((name) => name !== "note")) {
+      const missing = { ...fields } as any;
+      delete missing[field];
+      expect(accepts(schema, { ...record, event, fields: missing }), `${event}/${field}`).toBe(false);
+      expect(accepts(schema, { ...record, event, fields: { ...fields, [field]: " " } })).toBe(false);
+    }
+  }
+});
