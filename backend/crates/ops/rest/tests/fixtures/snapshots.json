@@ -482,7 +482,7 @@
     "home": {
       "evaluated_at": "2026-01-01T00:00:00Z",
       "verdict": {
-        "text": "Needs a human now · Unknown: stale 3m · 1 source not verified",
+        "text": "Needs a human now · 0 pages · Unknown: 1 source not verified · Unknown: stale 3m",
         "worst": "Unknown"
       },
       "worklist": [],
@@ -919,7 +919,7 @@
     "home": {
       "evaluated_at": "2026-01-01T00:00:00Z",
       "verdict": {
-        "text": "Needs a human now · Unknown: source down · 1 source not verified",
+        "text": "Needs a human now · 0 pages · Unknown: 1 source not verified · Unknown: source down",
         "worst": "Unknown"
       },
       "worklist": [],
@@ -1356,7 +1356,7 @@
     "home": {
       "evaluated_at": "2026-01-01T00:00:00Z",
       "verdict": {
-        "text": "Needs a human now · Unknown: not instrumented · 1 source not verified",
+        "text": "Needs a human now · 0 pages · Unknown: 1 source not verified · Unknown: not instrumented",
         "worst": "Unknown"
       },
       "worklist": [],

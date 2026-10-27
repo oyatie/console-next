@@ -1,18 +1,33 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use std::{num::NonZeroU64, time::Duration};
+use std::{
+    num::{NonZeroU64, NonZeroUsize},
+    time::Duration,
+};
 
 use console_ops_application::{Alertmanager, AlertmanagerSnapshot, SourceError, SourceFuture};
 use reqwest::{Client, Url};
+use serde::Deserialize;
 use serde::de::DeserializeOwned;
+
+#[derive(Clone, Copy, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpReadLimits {
+    pub request_timeout_ms: NonZeroU64,
+    pub max_response_bytes: NonZeroUsize,
+}
 
 pub struct HttpAlertmanager {
     source: HttpSource,
 }
 
 impl HttpAlertmanager {
-    pub fn new(base_url: &str, interval_s: NonZeroU64) -> Result<Self, SourceError> {
+    pub fn new(
+        base_url: &str,
+        interval_s: NonZeroU64,
+        limits: HttpReadLimits,
+    ) -> Result<Self, SourceError> {
         Ok(Self {
-            source: HttpSource::new(base_url, interval_s)?,
+            source: HttpSource::new(base_url, interval_s, limits)?,
         })
     }
 }
@@ -44,10 +59,19 @@ impl Alertmanager for HttpAlertmanager {
 struct HttpSource {
     base: Url,
     client: Client,
+    max_response_bytes: usize,
 }
 
 impl HttpSource {
-    fn new(base_url: &str, interval_s: NonZeroU64) -> Result<Self, SourceError> {
+    fn new(
+        base_url: &str,
+        interval_s: NonZeroU64,
+        limits: HttpReadLimits,
+    ) -> Result<Self, SourceError> {
+        let timeout = Duration::from_millis(limits.request_timeout_ms.get());
+        if timeout >= Duration::from_secs(interval_s.get()) {
+            return Err(SourceError::Configuration);
+        }
         let mut base = Url::parse(base_url).map_err(|_| SourceError::Configuration)?;
         if !matches!(base.scheme(), "http" | "https")
             || base.host_str().is_none()
@@ -60,11 +84,15 @@ impl HttpSource {
         }
         base.set_path(&format!("{}/", base.path().trim_end_matches('/')));
         let client = Client::builder()
-            .timeout(Duration::from_secs(interval_s.get()))
+            .timeout(timeout)
             .redirect(reqwest::redirect::Policy::none())
             .build()
             .map_err(|_| SourceError::Configuration)?;
-        Ok(Self { base, client })
+        Ok(Self {
+            base,
+            client,
+            max_response_bytes: limits.max_response_bytes.get(),
+        })
     }
 
     async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, SourceError> {
@@ -72,7 +100,7 @@ impl HttpSource {
             .base
             .join(path)
             .map_err(|_| SourceError::Configuration)?;
-        let response = self
+        let mut response = self
             .client
             .get(url)
             .send()
@@ -81,7 +109,19 @@ impl HttpSource {
         if !response.status().is_success() {
             return Err(SourceError::Down);
         }
-        let body = response.bytes().await.map_err(|_| SourceError::Down)?;
+        if response
+            .content_length()
+            .is_some_and(|size| u128::from(size) > self.max_response_bytes as u128)
+        {
+            return Err(SourceError::Invalid);
+        }
+        let mut body = Vec::new();
+        while let Some(chunk) = response.chunk().await.map_err(|_| SourceError::Down)? {
+            if chunk.len() > self.max_response_bytes - body.len() {
+                return Err(SourceError::Invalid);
+            }
+            body.extend_from_slice(&chunk);
+        }
         serde_json::from_slice(&body).map_err(|_| SourceError::Invalid)
     }
 }

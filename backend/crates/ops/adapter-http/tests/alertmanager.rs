@@ -1,82 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used)]
-use std::{
-    collections::BTreeMap,
-    num::NonZeroU64,
-    sync::{Arc, Mutex},
-};
-
-use axum::{
-    Router,
-    extract::{OriginalUri, State},
-    http::StatusCode,
-    response::IntoResponse,
-};
+use axum::http::{StatusCode, header};
 use console_ops_adapter_http::HttpAlertmanager;
 use console_ops_application::{Alertmanager, SourceError};
 use serde_json::{Value, json};
-
-type Replies = Arc<Mutex<BTreeMap<String, (StatusCode, String)>>>;
-
-struct Fixture {
-    replies: Replies,
-    task: tokio::task::JoinHandle<()>,
-    source: HttpAlertmanager,
-}
-
-impl Drop for Fixture {
-    fn drop(&mut self) {
-        self.task.abort();
-    }
-}
-
-impl Fixture {
-    async fn new() -> Self {
-        let replies = Arc::new(Mutex::new(BTreeMap::new()));
-        let app = Router::new()
-            .fallback(
-                |State(replies): State<Replies>, uri: OriginalUri| async move {
-                    let reply = replies.lock().unwrap().get(uri.path()).cloned();
-                    reply
-                        .unwrap_or((StatusCode::NOT_FOUND, "not a fixture route".into()))
-                        .into_response()
-                },
-            )
-            .with_state(Arc::clone(&replies));
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let url = format!("http://{}/monitoring/", listener.local_addr().unwrap());
-        let task = tokio::spawn(async move {
-            axum::serve(listener, app).await.unwrap();
-        });
-        let fixture = Self {
-            replies,
-            task,
-            source: HttpAlertmanager::new(&url, NonZeroU64::new(1).unwrap()).unwrap(),
-        };
-        fixture.set("alerts", json!([{
-            "fingerprint": "fixture-fingerprint", "labels": {"alertname": "SyntheticAlert", "job": "console-1"},
-            "annotations": {"summary": "Synthetic fixture alert"},
-            "startsAt": "2026-01-01T00:00:00Z", "endsAt": "2026-01-01T01:00:00Z",
-            "status": {"state": "active", "silencedBy": [], "inhibitedBy": []}
-        }]));
-        fixture.set("silences", json!([{
-            "id": "fixture-silence", "matchers": [{"name": "job", "value": "console-1", "isRegex": false}],
-            "startsAt": "2026-01-01T00:00:00Z", "endsAt": "2026-01-02T00:00:00Z", "createdBy": "fixture", "comment": "Synthetic silence"
-        }]));
-        fixture.set("status", json!({"versionInfo": {"version": "fixture"}, "uptime": "2026-01-01T00:00:00Z", "config": {"original": "must not enter the snapshot"}}));
-        fixture
-    }
-
-    fn set(&self, path: &str, body: Value) {
-        self.reply(path, StatusCode::OK, body.to_string());
-    }
-    fn reply(&self, path: &str, status: StatusCode, body: String) {
-        self.replies
-            .lock()
-            .unwrap()
-            .insert(format!("/monitoring/api/v2/{path}"), (status, body));
-    }
-}
+use std::num::NonZeroU64;
+mod support;
+use support::{Fixture, limits};
 
 #[tokio::test]
 async fn reads_all_three_endpoints_preserving_uninstrumented_fields_and_matcher_defaults() {
@@ -100,7 +30,7 @@ async fn a_failure_in_any_endpoint_drops_the_entire_current_read_and_can_recover
             fixture.replies.lock().unwrap()[&format!("/monitoring/api/v2/{path}")].clone();
         fixture.reply(path, StatusCode::SERVICE_UNAVAILABLE, "source down".into());
         assert_eq!(fixture.source.read().await.unwrap_err(), SourceError::Down);
-        fixture.reply(path, original.0, original.1);
+        fixture.reply(path, original.0, original.2);
         assert!(fixture.source.read().await.is_ok());
     }
 }
@@ -130,7 +60,7 @@ async fn empty_lists_are_valid_but_missing_or_malformed_evidence_is_not() {
 async fn wrong_timestamps_unknown_states_and_missing_required_fields_fail_closed() {
     let fixture = Fixture::new().await;
     let original: Value =
-        serde_json::from_str(&fixture.replies.lock().unwrap()["/monitoring/api/v2/alerts"].1)
+        serde_json::from_str(&fixture.replies.lock().unwrap()["/monitoring/api/v2/alerts"].2)
             .unwrap();
     for field in [
         "fingerprint",
@@ -153,6 +83,7 @@ async fn wrong_timestamps_unknown_states_and_missing_required_fields_fail_closed
         ("/0/startsAt", json!("tomorrow")),
         ("/0/status/state", json!("healthy")),
         ("/0/labels/alertname", json!("")),
+        ("/0/fingerprint", json!("")),
     ] {
         let mut body = original.clone();
         *body.pointer_mut(pointer).unwrap() = value;
@@ -163,12 +94,34 @@ async fn wrong_timestamps_unknown_states_and_missing_required_fields_fail_closed
             "{pointer}"
         );
     }
+    let mut body = original;
+    body[0]["labels"]
+        .as_object_mut()
+        .unwrap()
+        .remove("alertname");
+    fixture.set("alerts", body);
+    assert_eq!(
+        fixture.source.read().await.unwrap_err(),
+        SourceError::Invalid
+    );
 }
 
 #[tokio::test]
 async fn redirects_are_not_followed_and_disconnections_are_source_down() {
     let fixture = Fixture::new().await;
     fixture.reply("alerts", StatusCode::FOUND, "[]".into());
+    fixture.set("redirect-target", json!([]));
+    fixture
+        .replies
+        .lock()
+        .unwrap()
+        .get_mut("/monitoring/api/v2/alerts")
+        .unwrap()
+        .1
+        .insert(
+            header::LOCATION,
+            "/monitoring/api/v2/redirect-target".parse().unwrap(),
+        );
     assert_eq!(fixture.source.read().await.unwrap_err(), SourceError::Down);
     fixture.task.abort();
     assert_eq!(fixture.source.read().await.unwrap_err(), SourceError::Down);
@@ -180,6 +133,7 @@ async fn an_unresponsive_source_times_out_within_its_declared_interval() {
     let source = HttpAlertmanager::new(
         &format!("http://{}", listener.local_addr().unwrap()),
         NonZeroU64::new(1).unwrap(),
+        limits(),
     )
     .unwrap();
     // Keep the socket open without responding: the request deadline must cover the body too.
@@ -197,12 +151,14 @@ fn invalid_source_urls_are_refused_at_construction() {
     for url in [
         "not a URL",
         "file:///tmp/fixture",
+        "ftp://example.invalid",
         "https://example.invalid/?query=x",
         "https://example.invalid/#fragment",
         "http://user:password@example.invalid",
+        "http://user@example.invalid",
     ] {
         assert!(matches!(
-            HttpAlertmanager::new(url, NonZeroU64::new(1).unwrap()),
+            HttpAlertmanager::new(url, NonZeroU64::new(1).unwrap(), limits()),
             Err(SourceError::Configuration)
         ));
     }
