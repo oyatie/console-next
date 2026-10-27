@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+  - package-ecosystem: cargo
+    directories:
+      - /backend
+      - /backend/fuzz
+      - /apps/desktop/src-tauri
+    target-branch: dev
+    schedule:
+      interval: weekly
+    groups:
+      cargo:
+        patterns: ["*"]

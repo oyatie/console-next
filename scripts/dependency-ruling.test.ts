@@ -11,18 +11,24 @@ const approved = [
   "action:actions/checkout", "action:actions/setup-node", "action:actions/upload-artifact", "action:actions/download-artifact",
   ...["tokio", "bytes", "http", "futures", "serde", "serde_json", "uuid", "url", "tracing", "tracing-subscriber", "stacker", "base64", "zeroize", "rustls", "tokio-rustls"].map((name) => `cargo:${name}`),
 ];
+const ownerApproved = ["container:docker.io/chrislusf/seaweedfs", "ci-tool:cargo-deny", "ci-tool:cargo-audit"];
 const kinds = new Set(["npm", "cargo", "action", "container", "ci-tool"]);
 
 describe("2026-10-26 delegated dependency ruling", () => {
-  test("records exactly the 29 approvals and returns the four Beta trace dependencies to the owner", () => {
+  test("preserves the delegated ruling and includes subsequent explicit owner approvals", () => {
     const rows = register().filter((r) => kinds.has(r.kind));
-    expect(rows).toHaveLength(147);
-    expect(rows.filter((r) => r.class === "STANDARD").map((r) => `${r.kind}:${r.name}`).sort()).toEqual(approved.sort());
-    expect(rows.filter((r) => r.class === "NEEDS-OWNER")).toHaveLength(118);
+    expect(rows).toHaveLength(149);
+    expect(rows.filter((r) => r.class === "STANDARD").map((r) => `${r.kind}:${r.name}`).sort()).toEqual([...approved, ...ownerApproved].sort());
+    expect(rows.filter((r) => r.class === "NEEDS-OWNER")).toHaveLength(117);
     for (const name of ["opentelemetry", "opentelemetry_sdk", "opentelemetry-otlp", "tracing-opentelemetry"]) {
       expect(rows.find((r) => r.kind === "cargo" && r.name === name)).toMatchObject({ class: "NEEDS-OWNER", approval: null, group: "Observability" });
     }
     for (const row of rows.filter((r) => r.class === "STANDARD")) {
+      if (row.approval.by === "owner") {
+        expect(row.approval.on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(row.approval.ruling.length).toBeGreaterThan(0);
+        continue;
+      }
       expect(row.approval.ruling).toContain("2026-10-26");
       for (const criterion of ["a", "b", "c", "d", "e"]) expect(row.standardTest[criterion]).toMatchObject({ result: "pass", source: expect.any(String), reason: expect.any(String) });
     }
@@ -55,11 +61,11 @@ describe("2026-10-26 delegated dependency ruling", () => {
       const entry = map.split("\n").find((line) => line.startsWith(`| \`${row.kind}:${row.name}\` |`));
       expect(entry, row.name).toBeDefined();
       expect(entry).toContain(row.layer);
-      expect(entry).toContain("2026-10-26");
+      expect(entry).toContain(row.approval.on ?? "2026-10-26");
       expect(entry).toContain(row.exitPlan);
       expect(row.approvedUsers.length).toBeGreaterThan(0);
       for (const user of row.approvedUsers) expect(entry).toContain(`\`${user}\``);
-      expect(row.standardTest.e.source).toBe(row.architectureRecord);
+      if (row.approval.by !== "owner") expect(row.standardTest.e.source).toBe(row.architectureRecord);
       expect(row.uses.filter((use) => !row.allowedLayers.includes(use.layer)).every((use) => row.layerFindings.some((finding) => finding.includes(use.user)))).toBe(true);
     }
   });

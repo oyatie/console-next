@@ -13,6 +13,7 @@ on:
   push:
     branches: [dev]
   pull_request:
+  merge_group:
 permissions: {}
 concurrency:
   group: ci-${{ github.ref }}
@@ -89,3 +90,80 @@ jobs:
           done
           echo "Backend code gates: ${SECONDS}s"
           exit "$failed"
+
+  supply-chain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CARGO_DENY_VERSION: 0.20.2
+      CARGO_AUDIT_VERSION: 0.22.2
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: {node-version-file: package.json}
+      # Reuse approved artifact actions for a cross-run binary cache; only dev writes it.
+      - name: Find trusted tool cache
+        id: cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CACHE_KEY: cargo-security-${{ runner.os }}-${{ runner.arch }}-deny-${{ env.CARGO_DENY_VERSION }}-audit-${{ env.CARGO_AUDIT_VERSION }}
+        run: |
+          echo "TOOL_ROOT=${RUNNER_TEMP}/cargo-security-tools" >> "$GITHUB_ENV"
+          echo "key=${CACHE_KEY}" >> "$GITHUB_OUTPUT"
+          curl --fail --silent --show-error --get \
+            -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' \
+            --data-urlencode "name=${CACHE_KEY}" --data-urlencode 'per_page=100' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/artifacts" > "${RUNNER_TEMP}/tool-cache.json"
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const { artifacts } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/tool-cache.json`, 'utf8'));
+          const cached = artifacts.find(a => !a.expired && a.workflow_run?.head_branch === 'dev' && a.workflow_run.head_repository_id === a.workflow_run.repository_id);
+          if (cached) appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${cached.workflow_run.id}\n`);
+          JS
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: steps.cache.outputs.run-id != ''
+        with:
+          name: ${{ steps.cache.outputs.key }}
+          run-id: ${{ steps.cache.outputs.run-id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.TOOL_ROOT }}/bin
+      - name: Install pinned tools on cache miss
+        if: steps.cache.outputs.run-id == ''
+        run: |
+          cargo install cargo-deny --locked --version "${CARGO_DENY_VERSION}" --root "$TOOL_ROOT"
+          cargo install cargo-audit --locked --version "${CARGO_AUDIT_VERSION}" --root "$TOOL_ROOT"
+      - name: Restore executable permissions
+        run: chmod +x "$TOOL_ROOT/bin/cargo-deny" "$TOOL_ROOT/bin/cargo-audit"
+      - name: Prove licence and advisory refusals
+        run: node --test scripts/supply-chain-fixtures.test.mjs
+      - name: cargo-deny
+        run: '"$TOOL_ROOT/bin/cargo-deny" --manifest-path backend/Cargo.toml --locked check'
+      - name: cargo-audit
+        if: ${{ !cancelled() }}
+        working-directory: backend
+        run: '"$TOOL_ROOT/bin/cargo-audit" audit'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.cache.outputs.run-id == ''
+        with:
+          name: ${{ steps.cache.outputs.key }}
+          path: ${{ env.TOOL_ROOT }}/bin/cargo-*
+          retention-days: 90
+          if-no-files-found: error
+
+  ci-ok:
+    if: ${{ always() }}
+    needs: [web, backend, supply-chain]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every CI job
+        run: |
+          test "${{ needs.web.result }}" = success
+          test "${{ needs.backend.result }}" = success
+          test "${{ needs.supply-chain.result }}" = success
