@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { chromium, expect as visible, type Browser, type Locator, type Page } from "@playwright/test";
-import { afterAll, beforeAll, test } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import type { BoardRow, DayBoard } from "../api";
 import { pickerTestServer } from "../../../ui/server-picker/browser-test";
 
@@ -36,9 +36,16 @@ beforeAll(async () => {
   `);
   browser = await chromium.launch();
   page = await browser.newPage();
+  if (process.env.E2E_CPU_THROTTLE) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.E2E_CPU_THROTTLE) });
+  }
+  await page.addInitScript(() => sessionStorage.clear());
+}, 60_000);
+beforeEach(async () => {
   const port = (server.httpServer!.address() as { port: number }).port;
   await page.goto(`http://localhost:${port}/day-detail`);
-}, 60_000);
+});
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 const paste = (input: Locator, text: string) => input.evaluate((el, value) => {
@@ -47,16 +54,46 @@ const paste = (input: Locator, text: string) => input.evaluate((el, value) => {
   el.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: data }));
 }, text);
 
-test("grouped virtual detail keeps editable validation and prints every native row", async () => {
+test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable validation and prints every native row after %s entry", async entry => {
   const grids = page.getByRole("grid");
   await visible(grids).toHaveCount(2);
   await visible(grids.nth(0)).toHaveAttribute("aria-rowcount", "3");
   await visible(grids.nth(1)).toHaveAttribute("aria-rowcount", "4");
   const input = page.getByRole("textbox", { name: /^0-0 입력/ });
+  // Enter the grid as a user: fill() alone starts React Aria's deferred virtual row focus.
+  if (entry === "pointer") await input.click();
+  else {
+    await page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }).click();
+    await page.keyboard.press("Tab");
+    await visible(grids.first().getByRole("row").nth(1)).toBeFocused();
+    for (const column of ["number", "name", "plan", "input"]) {
+      await page.keyboard.press("ArrowRight");
+      await visible(grids.first().locator(`[data-key="0-0:${column}"]`)).toBeFocused();
+    }
+    await visible(grids.first().getByRole("gridcell").filter({ has: input })).toBeFocused();
+    await page.keyboard.press("Tab");
+  }
+  await visible(input).toBeFocused();
+  const original = await input.evaluateHandle(el => {
+    const state = { input: el, row: el.closest('[role="row"]'), blurs: 0 };
+    el.addEventListener("blur", () => state.blurs++);
+    return state;
+  });
   await input.fill("+2");
   await visible(input).toBeFocused();
   await visible(input).toHaveAttribute("aria-invalid", "true");
   await visible(input).toHaveAccessibleDescription(/연장은 승인 기록으로만 반영됩니다/);
+  await input.clear();
+  await visible(input).not.toHaveAttribute("aria-invalid");
+  await visible(input).toBeFocused();
+  await page.keyboard.type("+2");
+  await visible(input).toHaveValue("+2");
+  await visible(input).toHaveAttribute("aria-invalid", "true");
+  await visible(input).toBeFocused();
+  expect(await input.evaluate((el, before) => ({
+    sameInput: el === before.input, sameRow: el.closest('[role="row"]') === before.row, blurs: before.blurs,
+  }), original)).toEqual({ sameInput: true, sameRow: true, blurs: 0 });
+  await original.dispose();
   await input.evaluate((el: HTMLInputElement) => el.setSelectionRange(0, 0));
   await input.press("ArrowRight");
   await visible(input).toBeFocused();
