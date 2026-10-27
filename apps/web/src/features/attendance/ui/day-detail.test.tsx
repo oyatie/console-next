@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { chromium, expect as visible, type Browser, type Locator, type Page } from "@playwright/test";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
+import { loadCatalog, t } from "@console/i18n";
 import type { BoardRow, DayBoard } from "../api";
 import { pickerTestServer } from "../../../ui/server-picker/browser-test";
 
@@ -8,6 +9,7 @@ let server: Awaited<ReturnType<typeof pickerTestServer>>;
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
+  await loadCatalog("ko");
   const row = (id: string): BoardRow => ({
     employee_id: id, name: id, employee_number: id, own: false, month_state: { state: "OPEN" },
     day: { date: "2026-10-06", plan: { kind: "NO_SCHEDULE", holiday_work: false }, marks: ["NO_SCHEDULE"],
@@ -82,7 +84,7 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   await input.fill("+2");
   await visible(input).toBeFocused();
   await visible(input).toHaveAttribute("aria-invalid", "true");
-  await visible(input).toHaveAccessibleDescription(/연장은 승인 기록으로만 반영됩니다/);
+  await visible(input).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
   await input.clear();
   await visible(input).not.toHaveAttribute("aria-invalid");
   await visible(input).toBeFocused();
