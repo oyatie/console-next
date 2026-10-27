@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[path = "access_log_review_flags/attribution.rs"]
+mod attribution;
 #[path = "access_log_review_flags/boundaries.rs"]
 mod boundaries;
 #[path = "access_log_review_flags/statements.rs"]
@@ -118,29 +120,16 @@ async fn frozen_rules_flag_access_rows_without_self_reads_or_review_feedback(poo
     let flags = |id| &rows.iter().find(|r| r.event_id == id).unwrap().flags;
     assert_eq!(
         flags(export),
-        &[
-            "download",
-            "download_repeat",
-            "bulk_subjects",
-            "repeated_denial"
-        ]
+        &["download", "download_repeat", "bulk_subjects"]
     );
-    assert_eq!(
-        flags(off),
-        &[
-            "download_repeat",
-            "off_hours",
-            "bulk_subjects",
-            "repeated_denial"
-        ]
-    );
+    assert_eq!(flags(off), &["off_hours", "bulk_subjects"]);
     assert_eq!(flags(weekend), &["off_hours"]);
     assert_eq!(flags(sensitive), &["sensitive_read"]);
     assert!(flags(self_read).is_empty());
     assert!(flags(review).is_empty());
     assert_eq!(
         snapshot.totals(),
-        &json!({"events":11,"flagged":9,"by_flag":{"download":3,"download_repeat":7,"off_hours":2,"bulk_subjects":7,"sensitive_read":1,"repeated_denial":7}})
+        &json!({"events":11,"flagged":9,"by_flag":{"download":3,"download_repeat":3,"off_hours":2,"bulk_subjects":2,"sensitive_read":1,"repeated_denial":3}})
     );
     let first = page_in_tx(tx.as_mut(), &snapshot, None, 4, true)
         .await
@@ -238,5 +227,10 @@ async fn missing_thresholds_disable_flags_and_period_and_limit_refusals_do_not_w
 async fn frozen_page_meets_budget_at_two_thousand_actors_and_two_hundred_thousand_rows(
     pool: PgPool,
 ) {
-    support::performance(pool).await;
+    support::performance(pool, false).await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn sparse_frozen_flagged_pages_meet_budget_without_scanning_the_month(pool: PgPool) {
+    support::performance(pool, true).await;
 }

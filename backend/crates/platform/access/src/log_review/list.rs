@@ -6,18 +6,18 @@ mod rules;
 
 use console_kernel_core::OrgId;
 use rules::Rules;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqlx::{PgConnection, QueryBuilder, Row};
 use time::{Date, Month, OffsetDateTime};
 use uuid::Uuid;
 
-use super::SENSITIVE_READS;
+use super::{FLAG_CODES, SENSITIVE_READS};
 use crate::{AccessError, AccessResult};
 
 /// Prepared once at start, to be stored in the append-only review evidence.
-/// Page reads reuse these actor-day aggregates and the same resolved rules.
-#[derive(Debug, Serialize)]
+/// Flagged pages reuse the exact frozen keyset, including row-level attribution.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Prepared {
     org: OrgId,
     #[serde(with = "time::serde::rfc3339")]
@@ -25,18 +25,9 @@ pub struct Prepared {
     #[serde(with = "time::serde::rfc3339")]
     to: OffsetDateTime,
     rules: Rules,
-    #[serde(serialize_with = "serialize_actor_days")]
-    actor_days: String,
+    flagged: Vec<FlaggedEvent>,
+    summaries: Value,
     totals: Value,
-}
-
-// Keep the DB's JSON encoding for page binds; only decode when freezing the evidence.
-fn serialize_actor_days<S: serde::Serializer>(
-    text: &str,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let value: Value = serde_json::from_str(text).map_err(serde::ser::Error::custom)?;
-    value.serialize(serializer)
 }
 
 impl Prepared {
@@ -45,14 +36,19 @@ impl Prepared {
         &self.totals
     }
     #[must_use]
+    pub const fn summaries(&self) -> &Value {
+        &self.summaries
+    }
+    #[must_use]
     pub fn disabled_flags(&self) -> Vec<&'static str> {
         self.rules.disabled_flags()
     }
 }
 
-#[derive(Debug, PartialEq, Eq, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
 pub struct FlaggedEvent {
     pub event_id: Uuid,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     pub flags: Vec<String>,
 }
@@ -61,7 +57,7 @@ pub struct FlaggedEvent {
 const EVENTS: &str = r#"
 WITH rules AS (SELECT * FROM jsonb_to_record($4) AS r(time_zone text,start_hour bigint,
     end_hour bigint,off_hours_min bigint,bulk_subjects_min bigint,denied_min bigint,
-    downloads_per_day_min bigint,every_download boolean)),
+    downloads_per_day_min bigint,every_download boolean,weekend_isodays smallint[],holidays date[])),
 events AS (
  SELECT a.id,a.created_at,COALESCE(a.actor::text,'') AS actor_key,a.action,
     (a.occurred_at AT TIME ZONE r.time_zone)::date AS day,
@@ -70,23 +66,23 @@ events AS (
     (a.after_snap->>'self_read')='false' AND a.action<>'access_log.review_read' AS eligible,
     (extract(hour FROM a.occurred_at AT TIME ZONE r.time_zone)>=r.start_hour OR
      extract(hour FROM a.occurred_at AT TIME ZONE r.time_zone)<r.end_hour OR
-     extract(isodow FROM a.occurred_at AT TIME ZONE r.time_zone)>5) AS off_hours
+     extract(isodow FROM a.occurred_at AT TIME ZONE r.time_zone)=ANY(r.weekend_isodays) OR
+     (a.occurred_at AT TIME ZONE r.time_zone)::date=ANY(r.holidays)) AS off_hours
  FROM audit_events a CROSS JOIN rules r
  WHERE a.org_id=$1 AND a.created_at >= $2 AND a.created_at < $3
    AND a.after_snap ? 'self_read'
 "#;
 
-// shortcut: no public holidays in off_hours, until a tenant holiday reader exists.
-// These are the only flag predicates, shared by preparation/totals and page reads.
+// The only flag predicates; wire codes come from FLAG_CODES in predicate order.
 const FLAGS: &str = r#"
 , flagged AS (
- SELECT e.id AS event_id,e.created_at,CASE WHEN e.eligible THEN array_remove(ARRAY[
-    CASE WHEN e.download AND r.every_download THEN 'download' END,
-    CASE WHEN d.downloads>=r.downloads_per_day_min THEN 'download_repeat' END,
-    CASE WHEN e.off_hours AND d.off_hours>=r.off_hours_min THEN 'off_hours' END,
-    CASE WHEN d.subjects>=r.bulk_subjects_min THEN 'bulk_subjects' END,
-    CASE WHEN e.action=ANY($5) THEN 'sensitive_read' END,
-    CASE WHEN d.denials>=r.denied_min THEN 'repeated_denial' END
+ SELECT e.id AS event_id,e.created_at,e.actor_key,e.day,e.subjects,CASE WHEN e.eligible THEN array_remove(ARRAY[
+    CASE WHEN e.download AND r.every_download THEN ($6::text[])[1] END,
+    CASE WHEN e.download AND d.downloads>=r.downloads_per_day_min THEN ($6::text[])[2] END,
+    CASE WHEN e.off_hours AND d.off_hours>=r.off_hours_min THEN ($6::text[])[3] END,
+    CASE WHEN e.subjects>0 AND d.subjects>=r.bulk_subjects_min THEN ($6::text[])[4] END,
+    CASE WHEN e.action=ANY($5) THEN ($6::text[])[5] END,
+    CASE WHEN e.denied AND d.denials>=r.denied_min THEN ($6::text[])[6] END
  ],NULL) ELSE ARRAY[]::text[] END AS flags
  FROM events e CROSS JOIN rules r
 "#;
@@ -100,7 +96,7 @@ const AGGREGATE: &str = r#"
 )
 "#;
 
-/// Calculate the fallback evidence once; no review is created by this projection.
+/// Calculate the frozen evidence once; no review is created by this projection.
 /// # Errors
 /// Invalid/open periods, unresolved required settings, or a database failure.
 pub async fn prepare_in_tx(
@@ -138,9 +134,12 @@ pub async fn prepare_in_tx(
     let mut sql = QueryBuilder::new(EVENTS);
     sql.push(AGGREGATE).push(FLAGS).push(r#"
         LEFT JOIN days d ON d.actor_key=e.actor_key AND d.day=e.day)
-        SELECT COALESCE((SELECT jsonb_object_agg(actor_key,jsonb_build_object('off_hours',off_hours,'days',day_counts))
-          FROM (SELECT actor_key,max(off_hours) AS off_hours,jsonb_object_agg(day,jsonb_build_object('subjects',subjects,'downloads',downloads,'denials',denials)) AS day_counts
-            FROM days GROUP BY actor_key) actors),'{}'::jsonb)::text AS actor_days,
+        SELECT COALESCE((SELECT jsonb_agg(jsonb_build_object('event_id',event_id,'created_at',created_at,'flags',flags) ORDER BY created_at,event_id)
+          FROM flagged WHERE cardinality(flags)>0),'[]'::jsonb) AS flagged,
+        COALESCE((SELECT jsonb_agg(jsonb_build_object('actor',NULLIF(actor_key,''),'day',day,'flag',code,'count',n) ORDER BY actor_key,day,code)
+          FROM (SELECT actor_key,day,code,sum(CASE WHEN code=($6::text[])[4] THEN subjects ELSE 1 END) AS n
+            FROM flagged CROSS JOIN LATERAL unnest(flags) code
+            WHERE code<>($6::text[])[1] AND code<>($6::text[])[5] GROUP BY actor_key,day,code) patterns),'[]'::jsonb) AS summaries,
         jsonb_build_object('events',count(*),'flagged',count(*) FILTER(WHERE cardinality(flags)>0),
           'by_flag',(SELECT jsonb_object_agg(code,n) FROM (SELECT code,count(*) FILTER(WHERE code=ANY(f.flags)) AS n
             FROM unnest($6::text[]) code LEFT JOIN flagged f ON true GROUP BY code) counts)) AS totals FROM flagged"#);
@@ -151,14 +150,7 @@ pub async fn prepare_in_tx(
         .bind(to)
         .bind(json!(rules))
         .bind(SENSITIVE_READS)
-        .bind([
-            "download",
-            "download_repeat",
-            "off_hours",
-            "bulk_subjects",
-            "sensitive_read",
-            "repeated_denial",
-        ])
+        .bind(FLAG_CODES)
         .fetch_one(conn)
         .await?;
     Ok(Prepared {
@@ -166,7 +158,8 @@ pub async fn prepare_in_tx(
         from,
         to,
         rules,
-        actor_days: row.try_get("actor_days")?,
+        flagged: serde_json::from_value(row.try_get("flagged")?).map_err(AccessError::internal)?,
+        summaries: row.try_get("summaries")?,
         totals: row.try_get("totals")?,
     })
 }
@@ -187,22 +180,42 @@ pub async fn page_in_tx(
             "limit must be 1..200",
         ));
     }
-    let mut sql = QueryBuilder::new(EVENTS);
-    sql.push(r#" AND ($7::timestamptz IS NULL OR (a.created_at,a.id)>($7,$8))), snapshot AS MATERIALIZED (SELECT $6::text::jsonb AS actor_days)
-        "#).push(FLAGS).push(r#" CROSS JOIN snapshot s LEFT JOIN LATERAL jsonb_to_record((s.actor_days->e.actor_key->'days'->e.day::text)||jsonb_build_object('off_hours',s.actor_days->e.actor_key->'off_hours')) AS d(subjects bigint,downloads bigint,denials bigint,off_hours bigint) ON true)
-        SELECT event_id,created_at,flags FROM flagged WHERE NOT $9 OR cardinality(flags)>0 ORDER BY created_at,event_id LIMIT $10"#);
-    Ok(sql
-        .build_query_as()
-        .bind(prepared.org.as_uuid())
-        .bind(prepared.from)
-        .bind(prepared.to)
-        .bind(json!(prepared.rules))
-        .bind(SENSITIVE_READS)
-        .bind(&prepared.actor_days)
-        .bind(cursor.map(|c| c.0))
-        .bind(cursor.map(|c| c.1))
-        .bind(flagged)
-        .bind(limit)
-        .fetch_all(conn)
-        .await?)
+    if flagged {
+        let start = cursor.map_or(0, |c| {
+            prepared
+                .flagged
+                .partition_point(|r| (r.created_at, r.event_id) <= c)
+        });
+        return Ok(prepared
+            .flagged
+            .iter()
+            .skip(start)
+            .take(limit as usize)
+            .cloned()
+            .collect());
+    }
+    let mut rows: Vec<FlaggedEvent> = sqlx::query_as(
+        "SELECT id AS event_id,created_at,ARRAY[]::text[] AS flags FROM audit_events \
+         WHERE org_id=$1 AND created_at >= $2 AND created_at < $3 AND after_snap ? 'self_read' \
+         AND ($4::timestamptz IS NULL OR (created_at,id)>($4,$5)) ORDER BY created_at,id LIMIT $6",
+    )
+    .bind(prepared.org.as_uuid())
+    .bind(prepared.from)
+    .bind(prepared.to)
+    .bind(cursor.map(|c| c.0))
+    .bind(cursor.map(|c| c.1))
+    .bind(limit)
+    .fetch_all(conn)
+    .await?;
+    for row in &mut rows {
+        if let Ok(i) = prepared
+            .flagged
+            .binary_search_by_key(&(row.created_at, row.event_id), |r| {
+                (r.created_at, r.event_id)
+            })
+        {
+            row.flags.clone_from(&prepared.flagged[i].flags);
+        }
+    }
+    Ok(rows)
 }

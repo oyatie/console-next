@@ -9,6 +9,7 @@ use sqlx::PgConnection;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
+use super::super::FLAG_CODES;
 use crate::{AccessError, AccessResult};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,6 +22,9 @@ pub(super) struct Rules {
     denied_min: Option<i64>,
     downloads_per_day_min: Option<i64>,
     every_download: Option<bool>,
+    weekend_isodays: Vec<i16>,
+    holidays: Vec<String>,
+    calendar_edition: String,
     pub versions: BTreeMap<String, SettingVersionId>,
 }
 
@@ -63,21 +67,33 @@ impl Rules {
             "versions".into(),
             serde_json::to_value(versions).map_err(AccessError::internal)?,
         );
+        let calendar: Value = sqlx::query_scalar(
+            "SELECT jsonb_build_object('weekend_isodays',weekend_isodays,'calendar_edition',edition,\
+             'holidays',ARRAY(SELECT holiday_date FROM attendance_public_holidays ORDER BY holiday_date)) \
+             FROM access_log_review_calendar WHERE time_zone=$1")
+            .bind(values.get("time_zone").and_then(Value::as_str))
+            .fetch_one(conn).await?;
+        values.extend(
+            calendar
+                .as_object()
+                .ok_or_else(|| AccessError::internal("invalid calendar"))?
+                .clone(),
+        );
         serde_json::from_value(Value::Object(values)).map_err(AccessError::internal)
     }
 
     pub fn disabled_flags(&self) -> Vec<&'static str> {
         [
-            ("download", self.every_download != Some(true)),
-            ("download_repeat", self.downloads_per_day_min.is_none()),
+            (FLAG_CODES[0], self.every_download != Some(true)),
+            (FLAG_CODES[1], self.downloads_per_day_min.is_none()),
             (
-                "off_hours",
+                FLAG_CODES[2],
                 self.off_hours_min.is_none()
                     || self.start_hour.is_none()
                     || self.end_hour.is_none(),
             ),
-            ("bulk_subjects", self.bulk_subjects_min.is_none()),
-            ("repeated_denial", self.denied_min.is_none()),
+            (FLAG_CODES[3], self.bulk_subjects_min.is_none()),
+            (FLAG_CODES[5], self.denied_min.is_none()),
         ]
         .into_iter()
         .filter_map(|(flag, off)| off.then_some(flag))
