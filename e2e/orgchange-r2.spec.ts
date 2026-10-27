@@ -81,7 +81,7 @@ test("an org change moves its people with the unit, stays on the chart with a re
 
   // The record counts the people it moved, and its words are 반영 · 기록, never 기안 or 결재.
   await go(admin, "/org");
-  await expect(admin.getByRole("link", { name: "변경 내역" })).toBeVisible(); // org-26: not inside the import menu
+  await expect(admin.getByRole("navigation", { name: t("structure.tabs"), exact: true }).getByRole("link", { name: t("structure.tab.changes"), exact: true })).toBeVisible(); // org-26: not inside the import menu
   await go(admin, "/org/changes");
   await expect(admin.getByRole("main")).not.toContainText(APPROVAL);
   await go(admin, "/org/changes?view=done");

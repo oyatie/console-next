@@ -1,6 +1,6 @@
 @property --unzoom { syntax: "*"; inherits: true; }
 /* features/structure: the company structure page, its chart chrome and the list view (mockups S1, S2, S2-registry). */
-.page { height: 100%; min-height: 0; gap: var(--space-3); padding-bottom: var(--space-4); }
+.page { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--space-3); padding-bottom: var(--space-4); }
 .head :global(.page__title) { white-space: nowrap; }
 .head { flex-wrap: nowrap; flex-shrink: 0; gap: var(--space-4); min-height: 48px; }
 .scheduled { flex: none; height: var(--target); white-space: nowrap; }
@@ -119,6 +119,7 @@
 /* Below the 1280 desktop the page stacks rather than scrolling sideways (the chart itself pans). */
 @media (max-width: 960px) {
   .head { flex-wrap: wrap; }
+  .phase { flex-basis: 100%; white-space: normal; overflow: visible; }
   .body { flex-direction: column; }
   .side { width: auto; }
 }

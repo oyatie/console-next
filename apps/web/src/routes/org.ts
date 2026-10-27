@@ -1,7 +1,8 @@
 import { readRequirement } from "./route-reads";
-import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { app, flag, screen, str } from "./app";
 import { STRUCTURE_ACTS } from "../reference/org/domain/structure";
+import { ORG_TABS, orgTab } from "./org-tab-search";
 
 /** The proposal or structure sheet a panel opens for its selection (`sel`). Regions and branches are retired (decisions #18, MR-20). */
 const ORG_ACTS = ["create", "rename", "move", "dissolve", "reassign", ...STRUCTURE_ACTS] as const;
@@ -17,7 +18,14 @@ const org = createRoute({
   path: "/org", staticData: { access: readRequirement("/org") },
   // The company structure: `view` (the chart by default, the list or the outline), `focus` (the box the chart is
   // centred on), `sel` (the selection whose panel shows) and the proposal or structure sheet `act` for it.
-  validateSearch: (s: Record<string, unknown>): { view?: (typeof STRUCTURE_VIEWS)[number]; focus?: string; sel?: string; act?: OrgAct; act_unit?: string; kind?: (typeof KINDS)[number]; as_of?: string; known_at?: string; compare_a?: string; compare_b?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { tab?: "entities" | "changes"; filter?: (typeof VIEWS)[number] | "history"; effective_from?: string; effective_to?: string; add?: boolean; correction?: string; bulk?: "paste" | "import"; view?: (typeof STRUCTURE_VIEWS)[number]; focus?: string; sel?: string; act?: OrgAct; act_unit?: string; kind?: (typeof KINDS)[number]; as_of?: string; known_at?: string; compare_a?: string; compare_b?: string } => ({
+    tab: orgTab(s.tab),
+    filter: oneOf([...VIEWS, "history"], s.filter),
+    effective_from: str(s.effective_from),
+    effective_to: str(s.effective_to),
+    add: flag(s.add),
+    correction: str(s.correction),
+    bulk: oneOf(["paste", "import"], s.bulk),
     view: oneOf(STRUCTURE_VIEWS, s.view),
     focus: str(s.focus),
     sel: str(s.sel),
@@ -29,7 +37,7 @@ const org = createRoute({
     compare_a: str(s.compare_a),
     compare_b: str(s.compare_b),
   }),
-  component: lazyRouteComponent(screen(() => import("./org-screen")), "OrgScreen"),
+  component: lazyRouteComponent(screen(() => import("./org-tabs")), "OrgTabs"),
 });
 const orgChanges = createRoute({
   getParentRoute: () => app,
@@ -39,7 +47,7 @@ const orgChanges = createRoute({
     effective_from: str(s.effective_from),
     effective_to: str(s.effective_to),
   }),
-  component: lazyRouteComponent(screen(() => import("../features/org/OrgChange")), "OrgChanges"),
+  beforeLoad: ({ search: { view, ...search }, location }) => { throw redirect({ to: "/org", search: { ...search, tab: ORG_TABS[2], filter: view }, hash: location.hash, replace: true }); },
 });
 const orgChange = createRoute({
   getParentRoute: () => app,

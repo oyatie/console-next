@@ -54,7 +54,7 @@ test("setup edits: a workplace changed twice, a department renamed, a duplicate 
   await expectAccessible(admin, "void entity in setup");
   await option(admin, "삭제 사유", "중복 등록").click();
   await remove.getByRole("button", { name: "법인 삭제" }).click();
-  await expect(admin).toHaveURL(/\/org\/entities$/);
+  await expect(admin).toHaveURL(/\/org\?tab=entities$/);
   const list = admin.getByRole("grid", { name: "법인 목록" });
   await expect(list.getByRole("row", { name: /주식회사 설정변경/ })).toBeVisible();
   await expect(list.getByRole("row", { name: /중복입력/ })).toHaveCount(0);

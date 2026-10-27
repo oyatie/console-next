@@ -25,7 +25,7 @@ export const koStructureChart = {
   "structureChart.sheet.people": "인원",
   "structureChart.sheet.file": "조직 시트 {date}.csv",
   "structureChart.entityUnknown": "법인 미정 {count, number}명",
-  "structureChart.history": "변경 내역",
+  "structureChart.history": "변경 이력",
   "structureChart.list.order": "순서",
   "structureChart.list.setHead": "지정",
   "structureChart.export.selected": "선택한 조직 ({name})",

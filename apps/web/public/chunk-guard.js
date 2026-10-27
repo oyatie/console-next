@@ -9,6 +9,10 @@
   var reloading = false;
   var gaveUp = false;
   var started = false;
+  var leaving = false;
+  // Firefox aborts imports before pagehide; recovery must not cancel the navigation that aborted them.
+  window.addEventListener("beforeunload", function () { leaving = true; });
+  window.addEventListener("pageshow", function () { leaving = false; });
   // The busting parameter is only for the request: drop it before the router reads the URL.
   if (BUST.test(location.search)) history.replaceState(history.state, "", location.pathname + location.search.replace(BUST, "") + location.hash);
 
@@ -24,6 +28,7 @@
   }
   // True: a reload is under way. False: this build already reloaded once (or storage is unavailable): show an error.
   function recover() {
+    if (leaving) return true;
     if (reloading) return true;
     try {
       var key = PREFIX + version();

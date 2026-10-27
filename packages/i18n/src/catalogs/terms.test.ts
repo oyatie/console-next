@@ -3,6 +3,15 @@ import { bootEn, bootKo } from "./boot";
 import { en } from "./en";
 import { ko } from "./ko";
 
+test("organization history links use the glossary term, while decisions name the change", () => {
+  for (const id of ["orgBulk.viewHistory", "orgBulk.links.history", "structureChart.history", "structure.stale.history", "orgConflict.stale.history", "workplace.kinds.consequence"] as const) {
+    expect(ko[id], id).toContain("변경 이력");
+    expect(ko[id], id).not.toContain("변경 내역");
+  }
+  expect(ko).toHaveProperty("orgChange.subject", "조직 변경");
+  expect(en).toHaveProperty("orgChange.subject", "Organization change");
+});
+
 /** Tenant labels refer to the customer account, not a company. */
 const TENANT_LABELS = [
   "enum.unitKind.COMPANY",
@@ -61,7 +70,6 @@ const TENANCY_WORDS = [
   "structure.list.label",
   "orgStructure.title",
   "entityCreate.crumbRoot",
-  "orgHistory.crumb",
   "orgBulk.crumb",
   "orgBulk.close",
   "workplace.kinds.kicker",

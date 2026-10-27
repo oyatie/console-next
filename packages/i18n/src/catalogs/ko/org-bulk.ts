@@ -67,7 +67,7 @@ export const koOrgBulk = {
   "orgBulk.undoing": "되돌리는 중입니다",
   "orgBulk.undone": "되돌렸습니다 · 이번에 추가한 것을 모두 삭제했습니다",
   "orgBulk.viewChart": "조직도에서 보기",
-  "orgBulk.viewHistory": "변경 내역",
+  "orgBulk.viewHistory": "변경 이력",
   "orgBulk.again": "다른 목록 붙여넣기",
   "orgBulk.refused": "서버가 받지 않은 줄이 {count, number}개 있습니다. 수정한 뒤 다시 추가하십시오.",
   "orgBulk.refusedRow": "{name}: {message}",
@@ -192,6 +192,6 @@ export const koOrgBulk = {
   "orgBulk.links.import": "조직 시트 가져오기",
   "orgBulk.links.paste": "목록 붙여넣기",
   "orgBulk.links.edit": "사업장 일괄 수정",
-  "orgBulk.links.history": "변경 내역",
+  "orgBulk.links.history": "변경 이력",
   "orgBulk.import.role.brn": "사업자등록번호",
 } as const;

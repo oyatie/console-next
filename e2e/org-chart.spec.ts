@@ -28,7 +28,8 @@ test("failed chart reads are unknown, with one retry and explained inert actions
     await expect(retry).toHaveCount(1);
     await expect(retry).toBeInViewport({ ratio: 1 });
     await expect(main.getByText("조직 정보를 불러오지 못했습니다.", { exact: true })).toHaveCount(1);
-    for (const name of ["변경 내역", "내보내기", "가져오기", "기준일 비교"]) {
+    await expect(main.getByRole("navigation", { name: "조직 구조 보기", exact: true }).getByRole("link", { name: "변경 이력", exact: true })).toHaveAttribute("href", "/org?tab=changes");
+    for (const name of ["내보내기", "가져오기", "기준일 비교"]) {
       const control = main.getByRole("button", { name, exact: true });
       await expect(control).toBeDisabled();
       await expect(control).toHaveAttribute("aria-disabled", "true");

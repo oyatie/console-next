@@ -9,7 +9,7 @@ import { EntityBulkPage } from "./entity-bulk-page";
 import { EntityRecord } from "./entity-record";
 
 // The slice's screens as route components (routes/entity.ts loads this module lazily).
-const listRoute = getRouteApi("/app/org/entities");
+const listRoute = getRouteApi("/app/org");
 export function EntitiesScreen() {
   const { bulk } = listRoute.useSearch();
   return bulk ? <AccessGate domain="org" level="edit" tenant><EntityBulkPage key={bulk} paste={bulk === "paste"} /></AccessGate> : <EntityList />;
@@ -19,7 +19,7 @@ export function EntitiesScreen() {
 const bulkRoute = getRouteApi("/app/org/entities/bulk");
 export function EntityBulkScreen() {
   const { mode } = bulkRoute.useSearch();
-  return <Navigate to="/org/entities" search={{ bulk: mode }} replace />;
+  return <Navigate to="/org" search={{ tab: "entities", bulk: mode }} hash replace />;
 }
 
 const newRoute = getRouteApi("/app/org/entities/new");

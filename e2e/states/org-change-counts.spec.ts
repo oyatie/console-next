@@ -57,7 +57,7 @@ for (const width of [1440, 390]) {
         await expect(rows).toHaveCount(1);
         await expect(rows.getByRole("link", { name: ownCode, exact: true })).toBeVisible();
         await main.getByRole("button", { name: new RegExp(t("asof.clearRange")) }).click();
-        await expect(page).toHaveURL(/\/org\/changes\?view=mine$/);
+        await expect(page).toHaveURL(/\/org\?tab=changes&filter=mine$/);
         await expect(rows).toHaveCount(2);
         await expect(rows.getByRole("link", { name: "OC-2026-0001", exact: true })).toBeVisible();
         await expect(rows.getByRole("link", { name: "OC-2026-0003", exact: true })).toBeVisible();

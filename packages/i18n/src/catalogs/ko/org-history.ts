@@ -1,9 +1,7 @@
-// Korean source for `orgHistory.` ids (apps/web/src/features/org-bulk): 조직도 변경 내역 (S9), the 기준일 control,
+// Korean source for `orgHistory.` ids (apps/web/src/features/org-bulk): 변경 이력 (S9), the 기준일 control,
 // and the stale-move banner (S11). Rows say what the server recorded; nothing is drawn that it does not keep.
 export const koOrgHistory = {
-  "orgHistory.crumb": "조직 구조",
-  "orgHistory.crumbHere": "변경 내역",
-  "orgHistory.title": "조직도 변경 내역",
+  "orgHistory.title": "변경 이력",
   "orgHistory.scheduled": "예정된 변경 {count, number}건 · 가장 가까운 날 {date} ({label}{more, plural, =0 {} other { 외 #건}})",
   "orgHistory.scheduledOpen": "조직 변경 목록에서 보기",
   "orgHistory.filter.source": "종류",

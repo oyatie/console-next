@@ -6,7 +6,6 @@ import { t } from "@console/i18n";
 import { BIZ_KIND, label } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
-import { PageHead } from "../../../ui/page-head/page-head";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
@@ -21,7 +20,7 @@ import { AsOfBand } from "./asof-band";
 import { EntityName } from "../../../reference/entity/ui/entity-name";
 import { NameProblems } from "./name-problems";
 
-const route = getRouteApi("/app/org/entities");
+const route = getRouteApi("/app/org");
 
 /** The tenant's legal entities (design §0 E1): each with its kind, main registration, workplaces and people. */
 export function EntityList() {
@@ -34,13 +33,12 @@ export function EntityList() {
   const readOnly = Boolean(known_at) || Boolean(as_of && as_of !== today) || Boolean(list.data?.items.some((e) => e.read_only));
   const changeDate = (date: string, knownAt?: string) => void navigate({ search: (s) => ({ ...s, add: undefined, as_of: date === today ? undefined : date, known_at: knownAt }) });
   return (
-    <div className="page">
-      <PageHead titleId="entities-title" title={t("entity.list.title")} />
+    <section id="entities-title" aria-label={t("entity.list.title")} tabIndex={-1}>
       <PageReadGate q={list}>
       <section className="card">
         <div className="toolbar">
           {phase === "SETUP" && <Chip tone="info">{t("entity.phase.setup")}</Chip>}
-          {list.data && !readOnly && <Link to="/org/entities" search={(s) => ({ ...s, add: true })} className="btn btn--primary">
+          {list.data && !readOnly && <Link to="/org" search={{ tab: "entities", add: true, as_of, known_at }} className="btn btn--primary">
             <Plus size={16} aria-hidden /> {t("entityQuick.title")}
           </Link>}
         </div>
@@ -83,6 +81,6 @@ export function EntityList() {
       {list.data && <UnattachedWorkplaces entities={list.data.items} />}
       {list.data && !readOnly && <QuickAdd open={add === true} onClose={() => void navigate({ search: (s) => ({ ...s, add: undefined }) })} />}
       </PageReadGate>
-    </div>
+    </section>
   );
 }

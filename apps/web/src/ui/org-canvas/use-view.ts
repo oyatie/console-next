@@ -49,19 +49,19 @@ export function revealView(v: View, r: Rect, vp: { w: number; h: number }, i: In
 
 /**
  * The first view of a stage `size` wide in a viewport `vw` wide, its top `top` below the viewport's: it fits the width
- * only (a tall chart pans down, as a page scrolls); fitted below what reads comfortably, it opens at 100% on its middle
- * instead (the keyboard's box is then brought into view).
+ * only (a tall chart pans down, as a page scrolls); fitted below what reads comfortably, it opens at 100% from
+ * the start of the chart instead (the keyboard's box is then brought into view).
  */
 export function firstView(vw: number, size: { w: number; h: number }, top: number): View {
   const fitted = size.w > vw ? fitZoom(vw, Infinity, size.w, size.h) : 1;
   const zoom = fitted < READABLE ? 1 : fitted;
-  return { zoom, x: (vw - size.w * zoom) / 2, y: top };
+  return { zoom, x: Math.max(0, (vw - size.w * zoom) / 2), y: top };
 }
 
 /**
  * Pan and zoom of a stage of `size` inside `viewport`. The first view is computed before the first paint (layout
- * effect), so nothing jumps when the chart arrives: content wider than the viewport is fitted, the rest sits at
- * 100% centred along the top. `insets` measures the floating bars (they wrap on a narrow canvas), so a revealed box
+ * effect), so nothing jumps when the chart arrives: a readable fit or the chart's start, with smaller charts centred
+ * along the top. `insets` measures the floating bars (they wrap on a narrow canvas), so a revealed box
  * lands clear of them; until anything moves the view, the bars settling (a font arriving) lays the first view out
  * again. When the viewport changes size (a side panel opens beside it), the view stays; `keep` (the box the keyboard
  * is on) is brought back only if the new edge cut it off entirely.

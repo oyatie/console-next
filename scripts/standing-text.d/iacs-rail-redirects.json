@@ -1,0 +1,47 @@
+{
+  "baseline": {
+    "apps/web/src/routes/org-tabs.tsx#OrgTabs": 10
+  },
+  "newScreens": {
+    "apps/web/src/routes/org-screen.tsx#OrgScreen": {
+      "FACT": 0,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/entity/ui/entity-routes.tsx#EntitiesScreen": {
+      "FACT": 0,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/org-bulk/ui/history-page.tsx#HistoryPage": {
+      "FACT": 0,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/org/OrgChange.tsx#OrgChanges": {
+      "FACT": 0,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/routes/org-tabs.tsx#OrgTabs": {
+      "FACT": 10,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

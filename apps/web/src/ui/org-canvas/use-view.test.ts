@@ -18,8 +18,12 @@ test("a chart a little wider fits its width; its height never shrinks it (it pan
 });
 
 // Regression: a chart far wider than the canvas (a side panel open beside it) opened fitted at 57%, unreadable.
-test("a chart too wide to fit readably opens at 100% on its middle", () => {
-  expect(firstView(600, { w: 1060, h: 700 }, 56)).toEqual({ zoom: 1, x: -230, y: 56 });
+test("a chart too wide to fit readably opens at 100% from its start", () => {
+  expect(firstView(600, { w: 1060, h: 700 }, 56)).toEqual({ zoom: 1, x: 0, y: 56 });
+});
+
+test("a phone canvas opens at the start of a wide chart without clipping its leading labels", () => {
+  expect(firstView(340, { w: 432, h: 900 }, 56)).toEqual({ zoom: 1, x: 0, y: 56 });
 });
 
 test("a box partly under the bottom bar is centred between the bars", () => {

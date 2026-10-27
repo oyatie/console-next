@@ -119,7 +119,7 @@ test("법인 종료 after 운영 시작: blockers first and the date locked; a n
   const remove = admin.getByRole("dialog", { name: "법인 삭제" });
   await option(admin, "삭제 사유", "중복 등록").click();
   await remove.getByRole("button", { name: "법인 삭제" }).click();
-  await expect(admin).toHaveURL(/\/org\/entities$/);
+  await expect(admin).toHaveURL(/\/org\?tab=entities$/);
   await routeReady(admin);
   await expect(admin.getByRole("row", { name: /새온바이오/ })).toHaveCount(0);
 });

@@ -52,6 +52,18 @@ test("a missing chunk reloads once per build, with a fetch of index.html that a 
   expect(page(tab, "/assets/index-A.js").guard.recover()).toBe(false);
 });
 
+test("an import aborted while leaving never replaces the navigation; a restored page recovers again", () => {
+  const tab = new Map<string, string>();
+  const p = page(tab);
+  p.listeners.beforeunload!({});
+  expect(p.guard.recover()).toBe(true);
+  expect(p.navigations).toEqual([]);
+  expect(tab.size).toBe(0);
+  p.listeners.pageshow!({});
+  expect(p.guard.recover()).toBe(true);
+  expect(p.navigations).toHaveLength(1);
+});
+
 test("a page that loads clears the guard, so a later deploy reloads once again", () => {
   const tab = new Map<string, string>();
   expect(page(tab).guard.recover()).toBe(true);

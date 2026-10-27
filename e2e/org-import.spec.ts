@@ -89,7 +89,7 @@ test("import an org sheet: columns, exact-only values, preview with an error row
   // The history lists both receipts; one 되돌리기 on the receipt undoes the whole import.
   await receipt.getByRole("button", { name: "되돌리기" }).click();
   await expect(receipt).toContainText("되돌렸습니다");
-  await receipt.getByRole("link", { name: "변경 내역" }).click();
-  const table = page.getByRole("table", { name: "조직도 변경 내역" });
+  await receipt.getByRole("link", { name: "변경 이력" }).click();
+  const table = page.getByRole("table", { name: "변경 이력" });
   await expect(table.getByRole("cell", { name: "되돌림", exact: true })).toHaveCount(2);
 });

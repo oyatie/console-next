@@ -35,7 +35,7 @@ for (const state of ["loading", "failed", "counts-failed", "counts-loading", "po
         await first.focus();
         await expect(first).toBeFocused();
         await first.press("Enter");
-        await expect(page).toHaveURL(/view=all$/);
+        await expect(page).toHaveURL(/filter=all$/);
       } else {
         await expect(main.getByRole("link", { name: "OC-2026-0001", exact: true })).toBeVisible();
         await expect(tabs.locator('button[aria-disabled="true"]')).toHaveCount(0);

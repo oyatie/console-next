@@ -20,10 +20,10 @@ test("an invalid effective-date range refuses without writes and can be cleared"
   expect(response.status()).toBe(422);
   expect(await response.json()).toMatchObject({ error: { code: "validation" } });
   await expect(admin.getByRole("alert")).toBeVisible();
-  const remedy = admin.getByRole("button", { name: "기간 조건 초기화", exact: true });
+  const remedy = admin.getByRole("button", { name: /기간 조건 초기화$/ });
   await expect(remedy).toBeVisible();
   await remedy.click();
-  await expect(admin).toHaveURL(/\/org\/changes\?view=done$/);
+  await expect(admin).toHaveURL(/\/org\?tab=changes&filter=done$/);
   await expect(admin.getByText("완료된 조직 변경이 없습니다", { exact: true })).toBeVisible();
   expect(writes).toEqual([]);
   admin.off("request", observe);

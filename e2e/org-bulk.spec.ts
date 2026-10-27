@@ -5,7 +5,7 @@ import { clickCounter } from "./clicks";
 import { go, kstDate } from "./flows";
 import { SETUP_DEPARTMENT, tenantInSetup } from "./setup-flows";
 
-// S7 목록 붙여넣기 and S9 변경 내역 from an empty tenant, through the UI only: a list under a 법인 makes a new 사업장
+// S7 목록 붙여넣기 and S9 변경 이력 from an empty tenant, through the UI only: a list under a 법인 makes a new 사업장
 // (its statutory questions answered, nothing preselected) and 부서 at any depth; a clash is renamed in place; one
 // 되돌리기 undoes a whole commit; the history undoes the rest in order and says why a row cannot be undone.
 
@@ -83,9 +83,9 @@ test("paste a list under a 법인, undo it whole, and undo the rest from the his
 
   // The history includes registrations and names the recorded action and actor.
   const historyRead = page.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/org-structure/batches" && r.request().method() === "GET");
-  await page.getByRole("link", { name: "변경 내역" }).click();
-  await expect(page.getByRole("heading", { name: "조직도 변경 내역", level: 1 })).toBeVisible();
-  const table = page.getByRole("table", { name: "조직도 변경 내역" });
+  await page.getByRole("link", { name: "변경 이력" }).click();
+  await expect(page.getByRole("heading", { name: "조직 구조", level: 1 })).toBeVisible();
+  const table = page.getByRole("table", { name: "변경 이력" });
   const kind = (k: string | RegExp) => table.getByRole("row").filter({ has: page.getByRole("cell", { name: k, exact: true }) });
   const undone = kind(/일괄 · 되돌림$/);
   await expect(undone).toHaveCount(1);

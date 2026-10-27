@@ -43,7 +43,7 @@ export function OrgChange() {
   const settling = change.isFetching && change.dataUpdatedAt < opened;
   return (
     <div className="page">
-      <QueryState q={settling ? { ...change, isPending: true } : change} keepOnLoss back={{ to: "/org/changes", label: t("orgChange.list.title") }} layout="record">{(d) => <Record key={d.id} d={d} refetch={change.refetch} />}</QueryState>
+      <QueryState q={settling ? { ...change, isPending: true } : change} keepOnLoss back={{ to: "/org/changes", label: t("structure.tab.changes") }} layout="record">{(d) => <Record key={d.id} d={d} refetch={change.refetch} />}</QueryState>
     </div>
   );
 }
