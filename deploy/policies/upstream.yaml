@@ -1,0 +1,140 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# Authorities for every repository in versions.json; digests are supplied only by the lock.
+# Registry signatures checked with locked cosign on 2026-10-27.
+# shortcut: Static authorities prove only locked bytes; replace them with signatures from the local-registry mirror.
+docker.io/library/rust:
+  source: https://github.com/docker-library/rust
+  reason: Official Rust build stage; no Sigstore signature is published for the locked digest.
+  authority: {static: {action: pass}}
+docker.io/library/node:
+  source: https://github.com/nodejs/docker-node
+  reason: Official Node build stage; no Sigstore signature is published for the locked digest.
+  authority: {static: {action: pass}}
+gcr.io/distroless/cc-debian12:
+  source: https://github.com/GoogleContainerTools/distroless#how-do-i-verify-distroless-images
+  reason: Runtime base; verify the published Distroless keyless signature.
+  authority:
+    keyless:
+      url: &fulcio https://fulcio.sigstore.dev
+      identities:
+        - issuer: https://accounts.google.com
+          subject: keyless@distroless.iam.gserviceaccount.com
+ghcr.io/cloudnative-pg/postgresql:
+  source: https://github.com/cloudnative-pg/postgres-containers#container-image-signatures
+  reason: PostgreSQL operand; verify the published Sigstore bundle from the image build workflow.
+  authority:
+    signatureFormat: bundle
+    keyless:
+      url: *fulcio
+      identities:
+        - issuer: &github https://token.actions.githubusercontent.com
+          subject: https://github.com/cloudnative-pg/postgres-containers/.github/workflows/bake_targets.yml@refs/heads/main
+docker.io/moby/buildkit:
+  source: https://github.com/moby/buildkit
+  reason: Buildx builder; no Sigstore signature is published for the locked digest.
+  authority: {static: {action: pass}}
+docker.io/kindest/node:
+  source: https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster
+  reason: Disposable cluster node; no Sigstore signature is published for the locked digest.
+  authority: {static: {action: pass}}
+docker.io/chrislusf/seaweedfs:
+  source: https://github.com/seaweedfs/seaweedfs/blob/master/docker/README.md#verify-an-image-signature
+  reason: Object storage and bucket initializer; verify the published release workflow signature.
+  authority:
+    keyless:
+      url: *fulcio
+      identities:
+        - issuer: *github
+          subject: https://github.com/seaweedfs/seaweedfs/.github/workflows/container_release_unified.yml@refs/tags/4.48
+ghcr.io/fluxcd/source-controller:
+  source: https://fluxcd.io/flux/security/#container-images
+  reason: Flux source controller; verify the published reusable release workflow signature.
+  authority: &flux
+    keyless:
+      url: *fulcio
+      identities:
+        - issuer: *github
+          subject: https://github.com/fluxcd/gha-workflows/.github/workflows/controller-release.yaml@refs/tags/v0.11.0
+ghcr.io/fluxcd/kustomize-controller:
+  source: https://fluxcd.io/flux/security/#container-images
+  reason: Flux Kustomize controller; verify the published reusable release workflow signature.
+  authority: *flux
+ghcr.io/fluxcd/notification-controller:
+  source: https://fluxcd.io/flux/security/#container-images
+  reason: Flux notification controller; verify the published reusable release workflow signature.
+  authority: *flux
+quay.io/argoproj/argo-rollouts:
+  source: https://argo-rollouts.readthedocs.io/en/stable/security/signed-release-assets/
+  reason: Rollout controller; verify the published image release workflow signature.
+  authority:
+    keyless:
+      url: *fulcio
+      identities:
+        - issuer: *github
+          subject: https://github.com/argoproj/argo-rollouts/.github/workflows/image-reuse.yaml@refs/tags/v1.10.1
+ghcr.io/cloudnative-pg/cloudnative-pg:
+  source: https://cloudnative-pg.io/docs/1.30/installation_upgrade/#verifying-the-operator-container-images
+  reason: Database operator and bootstrap init container; verify the published release Sigstore bundle.
+  authority:
+    signatureFormat: bundle
+    keyless:
+      url: *fulcio
+      identities:
+        - issuer: *github
+          subject: https://github.com/cloudnative-pg/cloudnative-pg/.github/workflows/release-publish.yml@refs/tags/v1.30.1
+ghcr.io/sigstore/policy-controller/policy-controller:
+  source: https://github.com/sigstore/policy-controller/blob/v0.15.1/.github/workflows/release.yaml
+  reason: Image admission controller; verify its published release workflow signature.
+  authority:
+    keyless:
+      url: *fulcio
+      identities:
+        - issuer: *github
+          subject: https://github.com/sigstore/policy-controller/.github/workflows/release.yaml@refs/tags/v0.15.1
+ghcr.io/external-secrets/external-secrets:
+  source: https://github.com/external-secrets/external-secrets/blob/v2.13.0/.github/workflows/release.yml
+  reason: Secret reconciler and webhook; the digest pin restricts the signature from the main-branch release workflow to these exact bytes.
+  authority:
+    keyless:
+      url: *fulcio
+      identities:
+        - issuer: *github
+          subject: https://github.com/external-secrets/external-secrets/.github/workflows/release.yml@refs/heads/main
+ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar:
+  source: https://github.com/cloudnative-pg/plugin-barman-cloud/pkgs/container/plugin-barman-cloud-sidecar
+  reason: Database backup sidecar; no Sigstore signature is published for the locked digest.
+  authority: {static: {action: pass}}
+quay.io/jetstack/cert-manager-cainjector:
+  source: https://cert-manager.io/docs/installation/code-signing/
+  reason: CA injector; verify the published RSA SHA-512 signature with the upstream release public key.
+  authority: &cert-manager
+    key:
+      hashAlgorithm: sha512
+      # https://cert-manager.io/public-keys/cert-manager-pubkey-2021-09-20.pem
+      data: |
+        -----BEGIN PUBLIC KEY-----
+        MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAsZZKaaIRjOpzbiWYIDKO
+        yry9XGBqAfve1iOGmt5VO1jpjNoEseT6zewozHfWTM7osxayy2WjN8G+QV39MlT3
+        Vxo91/31g+Zcq8KcvxG+iB8GRaD9pNgLmghorv+eYDiPYMO/+fhsLImyG5WEoPct
+        MeCBD7umZ/A2t96U9DQxVDqQbTHlsNludno1p1wsgRnfUM3QHexNljDvJg5FcDMo
+        dCpVLpRNvbw0lbJVfybJ4siJ5o/MmXzy0QCJpw+yMIqvqMc8qgKJ1yooJtuTVF4t
+        4/luP+EG/oVIiSWCFeRMqYdbJ3R+CJi+4LN7vFNYQM1Q/NwOB52RteaR7wnqmcBz
+        qSYK32MM8xdPCQ5tioWwnPTRbPZuzsZsRmJsKBO9JUrBYdDntZX1xY5g4QNSufxi
+        QgJgJSU7E4VGMvagEzB1JzvOr6A/qNFCO1Z6JsA3jw3cJLV1rSHfxqfSXBACTLDf
+        6bOPWRILRKydTJA6uLKNKmo1/nFm3jvd5tHKOjy4VAQLJ/Vx9wBsAAiLa+06veun
+        Oz3AJ9sNh3wLp21RL11u9TuOKRBipE/TYsBYp8jpIyWPXDSV+JcD/TZqoT8y0Z6S
+        0damfUmspuK9DTQFL2crpeaqJSG9RA+OuPZLxGD1IMURTsPJB7kXhPtmceeirBnw
+        sVcRHHDitVt8oO/x4Wus1c0CAwEAAQ==
+        -----END PUBLIC KEY-----
+quay.io/jetstack/cert-manager-controller:
+  source: https://cert-manager.io/docs/installation/code-signing/
+  reason: Certificate controller; verify the published RSA SHA-512 signature with the upstream release public key.
+  authority: *cert-manager
+quay.io/jetstack/cert-manager-webhook:
+  source: https://cert-manager.io/docs/installation/code-signing/
+  reason: Certificate webhook; verify the published RSA SHA-512 signature with the upstream release public key.
+  authority: *cert-manager
+ghcr.io/cloudnative-pg/plugin-barman-cloud:
+  source: https://github.com/cloudnative-pg/plugin-barman-cloud/pkgs/container/plugin-barman-cloud
+  reason: Backup plugin controller; no Sigstore signature is published for the locked digest.
+  authority: {static: {action: pass}}

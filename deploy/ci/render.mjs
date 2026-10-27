@@ -42,9 +42,26 @@ for (const doc of yaml.loadAll(readFileSync('deploy/policies/images.yaml', 'utf8
   doc.spec.authorities[0].keyless.identities[0].subject = identity;
   groups.policies.push(doc);
 }
-// Upstream images are a finite digest allow-list, never registry-wide exceptions.
-const infrastructureImages = [...new Set([lock.images.postgres, lock.images.seaweed, ...Object.values(lock.platformImages)])];
-groups.policies.push({apiVersion:'policy.sigstore.dev/v1beta1',kind:'ClusterImagePolicy',metadata:{name:'console-upstream-digests'},spec:{images:infrastructureImages.map(glob=>({glob})),authorities:[{static:{action:'pass'}}]}});
+const upstream = yaml.load(readFileSync('deploy/policies/upstream.yaml', 'utf8'));
+const upstreamNotes = new Map();
+const renderedReferences = new Set();
+function collectReferences(value) {
+  if (typeof value === 'string') renderedReferences.add(value);
+  else if (value && typeof value === 'object') Object.values(value).forEach(collectReferences);
+}
+docs.forEach(collectReferences);
+yaml.loadAll(execFileSync('kustomize', ['build', 'deploy/base/platform'], {encoding:'utf8',maxBuffer:40*1024*1024})).forEach(collectReferences);
+for (const ref of new Set([...Object.values(lock.images), ...Object.values(lock.platformImages)])) {
+  assert.match(ref, /@sha256:[a-f0-9]{64}$/, 'PLAT_IMAGE_DIGEST: upstream image must be locked');
+  const {source, reason, authority} = upstream[ref.split('@')[0]] ?? {};
+  assert.ok(source && reason && authority, `PLAT_IMAGE_AUTHORITY: missing upstream authority for ${ref}`);
+  if (!renderedReferences.has(ref)) continue;
+  const name = `console-upstream-${ref.split(':').at(-1)}`;
+  // go-containerregistry resolves Docker Hub to index.docker.io before policy glob matching.
+  const glob = ref.replace(/^docker\.io\//, 'index.docker.io/');
+  upstreamNotes.set(name, `# Source: ${source}\n# Reason: ${reason}\n`);
+  groups.policies.push({apiVersion:'policy.sigstore.dev/v1beta1',kind:'ClusterImagePolicy',metadata:{name},spec:{images:[{glob}],authorities:[authority]}});
+}
 // Exit-test credentials are generated per run before reconciliation, never inside the artifact.
 if (!groups.secrets.length) groups.secrets.push({apiVersion:'v1',kind:'ConfigMap',metadata:{name:'console-synthetic-data-only',namespace:'console'},data:{classification:'synthetic'}});
 if(environment==='exit-test') {
@@ -57,7 +74,7 @@ if(environment==='exit-test') {
 }
 for (const [group, resources] of Object.entries(groups)) {
   mkdirSync(join(directory, group), { recursive: true });
-  writeFileSync(join(directory, group, 'resources.yaml'), header + resources.map(d => yaml.dump(d, { lineWidth: -1, noRefs: true })).join('---\n'));
+  writeFileSync(join(directory, group, 'resources.yaml'), header + resources.map(d => (upstreamNotes.get(d.metadata.name) ?? '') + yaml.dump(d, { lineWidth: -1, noRefs: true })).join('---\n'));
   writeFileSync(join(directory, group, 'kustomization.yaml'), header + yaml.dump({apiVersion:'kustomize.config.k8s.io/v1beta1',kind:'Kustomization',resources:['resources.yaml']}));
 }
 mkdirSync(join(directory, 'platform'), { recursive: true });
