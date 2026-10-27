@@ -5,14 +5,14 @@
 //! audit row per read naming the subject, the section, the entries returned
 //! and the purpose — never the values.
 //!
-//! the audit row stands in for the 접속기록 row (PII-READS helper,
-//! unmerged); switch to it when it lands on trunk.
+//! The shared access writer makes these reads eligible for 접속기록 점검.
 
 use console_hr_domain::record::Section;
 use console_kernel_core::AuditEvent;
 use console_platform_authz::Principal;
 use console_platform_authz::cedar_pbac::actions::employee_restricted_record::Operation;
 use console_platform_db::with_audits;
+use console_platform_request_context::audit_context::access_log::{AccessRecord, access_event};
 use console_settings_domain::code_lists::ValidReason;
 use serde_json::json;
 use sqlx::{Postgres, Transaction};
@@ -22,9 +22,10 @@ use super::person::bound_person;
 use super::read::history_in_tx;
 use super::restricted::{RecordPurpose, check_purpose, gate_for};
 use super::store;
-use super::support::{audit, view};
+use super::support::view;
 use super::switch::section_states;
 use super::{RecordHistory, RecordList};
+use crate::directory::access_log::actor_employee_id;
 use crate::metrics::record_hr_read;
 use crate::{HrError, HrService};
 
@@ -45,7 +46,8 @@ async fn admit(
     Ok((person, purpose))
 }
 
-fn read_audit(
+async fn read_audit(
+    tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     employee: Uuid,
     section: Section,
@@ -58,13 +60,19 @@ fn read_audit(
         "purpose_code": purpose.code,
         "purpose_note": purpose.note,
     });
-    audit(
-        principal.org_id,
-        principal.user_id,
-        "employee.record.restricted_read",
-        ("employee", employee),
-        detail,
+    let reader = actor_employee_id(tx, principal).await?;
+    access_event(
+        principal,
+        AccessRecord {
+            action: "employee.record.restricted_read",
+            target_type: "employee",
+            target_id: employee.to_string(),
+            subject_ids: &[employee],
+            reader_subject: reader,
+            details: detail,
+        },
     )
+    .map_err(HrError::from_kernel)
 }
 
 impl HrService {
@@ -92,7 +100,7 @@ impl HrService {
                         .collect(),
                 };
                 let ids: Vec<Uuid> = items.iter().map(|i| i.id).collect();
-                let event = read_audit(&principal, employee, section, &ids, &purpose)?;
+                let event = read_audit(tx, &principal, employee, section, &ids, &purpose).await?;
                 Ok((RecordList { sections, items }, vec![event]))
             })
         })
@@ -113,7 +121,8 @@ impl HrService {
                 let (_, purpose) = admit(tx, &principal, employee, section, purpose).await?;
                 let org = *principal.org_id.as_uuid();
                 let history = history_in_tx(tx, org, employee, section, entry).await?;
-                let event = read_audit(&principal, employee, section, &[entry], &purpose)?;
+                let event =
+                    read_audit(tx, &principal, employee, section, &[entry], &purpose).await?;
                 Ok((history, vec![event]))
             })
         })
