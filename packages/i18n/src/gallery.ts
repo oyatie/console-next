@@ -4,9 +4,10 @@ import { createT } from "./index";
 import { kitEn, kitKo } from "./gallery-kit";
 import { dsEn, dsKo } from "./gallery-ds";
 import { pickerEn, pickerKo } from "./gallery-picker";
+import { panelsEn, panelsKo } from "./gallery-panels";
 
 const ko = {
-  ...kitKo, ...dsKo, ...pickerKo,
+  ...kitKo, ...dsKo, ...pickerKo, ...panelsKo,
   "title": "컴포넌트 갤러리",
   "hint": "공용 UI 구성요소를 대표 상태별로 보여 줍니다. 개발 환경에서만 열립니다.",
   "section.chips": "상태 칩",
@@ -156,7 +157,7 @@ const ko = {
 } as const;
 
 const en: Record<keyof typeof ko, string> = {
-  ...kitEn, ...dsEn, ...pickerEn,
+  ...kitEn, ...dsEn, ...pickerEn, ...panelsEn,
   "title": "Component gallery",
   "hint": "Shows the shared UI components in representative states. Opens in development only.",
   "section.chips": "Status chips",

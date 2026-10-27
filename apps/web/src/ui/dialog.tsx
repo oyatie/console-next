@@ -3,6 +3,7 @@ import { ModalOverlay, Dialog as AriaDialog, Heading, Modal } from "react-aria-c
 import { useLiveHold } from "../lib/live/hold";
 
 /**
+ * Confirmation, blocking errors and urgent notices only. Use SidePanel for a peek and Sheet for a command.
  * Modal dialog (React Aria): focus trap, Esc, inert background — and, unlike a native top-layer
  * <dialog>, popovers opened inside it (pickers, menus) layer above it correctly.
  */
