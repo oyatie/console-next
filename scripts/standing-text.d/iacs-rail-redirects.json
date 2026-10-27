@@ -1,6 +1,6 @@
 {
   "baseline": {
-    "apps/web/src/routes/org-tabs.tsx#OrgTabs": 10
+    "apps/web/src/routes/org-tabs.tsx#OrgTabs": 2
   },
   "newScreens": {
     "apps/web/src/routes/org-screen.tsx#OrgScreen": {
@@ -36,7 +36,7 @@
       "EXPLANATION": 0
     },
     "apps/web/src/routes/org-tabs.tsx#OrgTabs": {
-      "FACT": 10,
+      "FACT": 2,
       "REFUSAL": 0,
       "EMPTY": 0,
       "LEGAL": 0,

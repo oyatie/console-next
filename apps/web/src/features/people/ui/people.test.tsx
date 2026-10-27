@@ -5,7 +5,7 @@ import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } fr
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { authzQuery } from "../../../reference/authz/api";
-import { People } from "../People";
+import { PeopleDirectory } from "../People";
 
 vi.mock("@tanstack/react-router", async importOriginal => ({
   ...await importOriginal<typeof import("@tanstack/react-router")>(),
@@ -16,7 +16,7 @@ beforeAll(() => loadCatalog("ko"));
 test("an account with no directory or account-management grant sees one refusal", async () => {
   const client = new QueryClient();
   await client.fetchQuery({ ...authzQuery, queryFn: async () => ({ capabilities: [] }) });
-  const root = createRootRoute({ component: People });
+  const root = createRootRoute({ component: PeopleDirectory });
   const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ["/"] }) });
   await router.load();
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);

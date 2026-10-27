@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { FileSpreadsheet, Plus, Settings2, Upload } from "lucide-react";
 import { fmtDate } from "@console/i18n/format";
 import { t } from "@console/i18n";
@@ -14,14 +14,17 @@ import { checklistRef } from "../../../reference/entity/api";
 import { Band } from "../../../ui/band/band";
 import { AsOf } from "../../../ui/page-head/as-of";
 import { PhaseLine } from "../../../ui/page-head/phase-line";
+import { PageHead } from "../../../ui/page-head/page-head";
+import { myAccessQuery } from "../../../reference/authz/api";
+import { accessRefusal } from "../../../reference/authz/domain/access";
 import s from "./roster.module.css";
 
+const route = getRouteApi("/app/people");
+
 /**
- * The people head (E1): the title with headcount and the phase, as-of date (today only: an as-of read is not served), the commands
- * with their keys, then the view tabs (built-in views; "save view" waits for the view store) and the accounts switch.
+ * The roster's phase, today's as-of fact, commands and built-in filter views, with its accounts switch.
  */
-export function RosterHead({ headcount, manage, status, review, onView, actions, switcher }: {
-  headcount?: number;
+export function RosterHead({ manage, status, review, onView, actions, switcher, unplaced = false }: {
   manage: boolean;
   status: StatusView;
   review: readonly Review[];
@@ -30,24 +33,23 @@ export function RosterHead({ headcount, manage, status, review, onView, actions,
   actions?: ReactNode;
   /** The employees/accounts switch, when the reader has both. */
   switcher?: ReactNode;
+  unplaced?: boolean;
 }) {
   const setup = useQuery({ ...checklistRef, retry: false }).data?.phase === "SETUP";
-  const navigate = useNavigate();
+  const access = useQuery(myAccessQuery);
+  const { peopleAccess } = route.useRouteContext();
+  const navigate = useNavigate({ from: "/people" });
   const view = VIEWS.find((v) => v.status === status && (v.review ?? []).join() === review.join())?.id ?? null;
   return (
-    <Band as="header" className={s.band}>
-      <div className={s.titleRow}>
-        <h1 id="people-title" className={s.title} tabIndex={-1}>{t("roster.head.title")}</h1>
-        <span className={s.headcount}>{headcount === undefined ? "—" : t("roster.head.count", { count: headcount })}</span>
+    <Band className={s.band}>
+      <PageHead title={t(unplaced ? "roster.view.unplaced" : "roster.page.roster")} meta={<>
         <PhaseLine phase={setup ? "setup" : "operating"}>{t(setup ? "roster.head.setup" : "roster.head.op")}</PhaseLine>
-        <span className="grow" />
-        <AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} />
-        {manage && (
+      </>} asOf={<AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} />} actions={manage && (
           <>
             <Link className={buttonClass()} to="/people/import"><Upload size={16} aria-hidden /> {t("roster.head.import")}</Link>
             {actions}
             <Link className={buttonClass()} to="/people/certificates" search={{}}>{t("empDoc.certificate.register")}</Link>
-            <Link className={buttonClass()} from="/people" to="/people" search={(prev) => ({ ...prev, bulk: "paste" })}><FileSpreadsheet size={16} aria-hidden /> {t("bulk.openPaste")}</Link>
+            <Link className={buttonClass()} from="/people" to="/people" search={(prev) => ({ ...prev, tab: "appointments", bulk: "paste" })}><FileSpreadsheet size={16} aria-hidden /> {t("bulk.openPaste")}</Link>
             <MenuButton
               label={t("roster.head.settings")}
               icon={<Settings2 size={16} aria-hidden />}
@@ -59,14 +61,11 @@ export function RosterHead({ headcount, manage, status, review, onView, actions,
             />
             <Link className={buttonClass("primary")} to="/people/new" search={{}}><Plus size={16} aria-hidden /> {t("people.register")} <Kbd k="A" /></Link>
           </>
-        )}
-      </div>
-      <div className={s.views} role="group" aria-label={t("roster.view.label")}>
-        {VIEWS.filter((v) => v.status).map((v) => <ToggleButton key={v.id} pressed={view === v.id} onClick={() => onView(v)}>{t(`roster.view.${v.id}`)}</ToggleButton>)}
-        {manage && <Link className={buttonClass("ghost")} to="/people/unplaced">{t("roster.view.unplaced")}</Link>}
-        <span className="grow" />
+        )} tabs={<div className={s.views} role="group" aria-label={t("roster.view.label")}>
+        {VIEWS.filter((v) => v.status).map((v) => <ToggleButton key={v.id} pressed={!unplaced && view === v.id} onClick={() => onView(v)}>{t(`roster.view.${v.id}`)}</ToggleButton>)}
+        {access.data && accessRefusal(access.data, peopleAccess.unplaced) === null && <ToggleButton pressed={unplaced} onClick={() => void navigate({ to: "/people", search: previous => ({ ...previous, placement: unplaced ? undefined : "unplaced", sel: undefined }), replace: true })}>{t("roster.view.unplaced")}</ToggleButton>}
         {switcher}
-      </div>
+      </div>} />
     </Band>
   );
 }

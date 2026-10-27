@@ -46,7 +46,7 @@ export function RosterBulk({ sel, rows, total, query, onClear }: {
   // The picked people go to the bulk workspace (spec E6-move); a select-all is resolved to ids first.
   const toWorkspace = (m: ReadonlyMap<string, string>, where: Exclude<Act, "exit">) => {
     bulkSelection.set(m);
-    void navigate({ to: where });
+    void navigate(where === "/people/bulk" ? { to: "/people", search: previous => ({ ...previous, tab: "appointments" }) } : { to: where });
   };
   const open = (m: Map<string, string>, act: Act) => (act === "exit" ? setExiting(m) : toWorkspace(m, act));
   const openDialog = (act: Act = "/people/bulk") => {
