@@ -123,7 +123,7 @@ pub fn verdict(
         match reason {
             Some(reason) => {
                 format!(
-                    "Unknown: {} not verified · Unknown: {reason}",
+                    "{} not verified · Unknown: {reason}",
                     count_text(unverified, "source")
                 )
             }

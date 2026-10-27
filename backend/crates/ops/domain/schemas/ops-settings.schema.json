@@ -23,7 +23,8 @@
           "required": [
             "url",
             "producer",
-            "interval_s"
+            "interval_s",
+            "read_limits"
           ],
           "properties": {
             "url": {
@@ -38,6 +39,25 @@
             "interval_s": {
               "type": "integer",
               "minimum": 1
+            },
+            "read_limits": {
+              "type": "object",
+              "required": [
+                "request_timeout_ms",
+                "max_response_bytes"
+              ],
+              "properties": {
+                "request_timeout_ms": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max_response_bytes": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false,
+              "description": "Request deadline must be shorter than interval_s; validated by the source adapter."
             }
           },
           "additionalProperties": false
@@ -47,7 +67,8 @@
           "required": [
             "url",
             "producer",
-            "interval_s"
+            "interval_s",
+            "read_limits"
           ],
           "properties": {
             "url": {
@@ -62,6 +83,25 @@
             "interval_s": {
               "type": "integer",
               "minimum": 1
+            },
+            "read_limits": {
+              "type": "object",
+              "required": [
+                "request_timeout_ms",
+                "max_response_bytes"
+              ],
+              "properties": {
+                "request_timeout_ms": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max_response_bytes": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false,
+              "description": "Request deadline must be shorter than interval_s; validated by the source adapter."
             }
           },
           "additionalProperties": false
@@ -71,7 +111,8 @@
           "required": [
             "url",
             "producer",
-            "interval_s"
+            "interval_s",
+            "read_limits"
           ],
           "properties": {
             "url": {
@@ -86,6 +127,25 @@
             "interval_s": {
               "type": "integer",
               "minimum": 1
+            },
+            "read_limits": {
+              "type": "object",
+              "required": [
+                "request_timeout_ms",
+                "max_response_bytes"
+              ],
+              "properties": {
+                "request_timeout_ms": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max_response_bytes": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false,
+              "description": "Request deadline must be shorter than interval_s; validated by the source adapter."
             }
           },
           "additionalProperties": false

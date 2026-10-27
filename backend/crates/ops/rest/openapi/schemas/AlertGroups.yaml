@@ -1,7 +1,12 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 type: "object"
-required: ["evaluated_at", "groups", "count"]
+required: ["evaluated_at", "groups", "count", "alert_count"]
 properties:
   evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
   groups: {"type": "array", "items": {"$ref": "#/components/schemas/AlertGroup"}}
-  count: {$ref: '#/components/schemas/ObservedCount'}
+  count:
+    allOf: [{"$ref": "#/components/schemas/ObservedCount"}]
+    description: "Number of groups, not member alerts. Unknown when Alertmanager evidence is not current."
+  alert_count:
+    allOf: [{"$ref": "#/components/schemas/ObservedCount"}]
+    description: "Number of individual alerts across all groups. Unknown when Alertmanager evidence is not current."

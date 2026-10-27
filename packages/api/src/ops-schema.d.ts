@@ -193,7 +193,7 @@ export interface components {
             evaluated_at: components["schemas"]["Timestamp"];
             group: components["schemas"]["AlertGroupDetail"];
         };
-        /** @description Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated. */
+        /** @description Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated. A missing or empty field on one member and a present value on another is Unknown: members disagree. An instrumented severity outside page/ticket is Unknown: severity <value> not on the ladder. */
         AlertGroup: {
             key: components["schemas"]["Text"];
             alertname: components["schemas"]["Text"];
@@ -220,7 +220,10 @@ export interface components {
         AlertGroups: {
             evaluated_at: components["schemas"]["Timestamp"];
             groups: components["schemas"]["AlertGroup"][];
+            /** @description Number of groups, not member alerts. Unknown when Alertmanager evidence is not current. */
             count: components["schemas"]["ObservedCount"];
+            /** @description Number of individual alerts across all groups. Unknown when Alertmanager evidence is not current. */
+            alert_count: components["schemas"]["ObservedCount"];
         };
         AlertMember: {
             fingerprint: components["schemas"]["Text"];

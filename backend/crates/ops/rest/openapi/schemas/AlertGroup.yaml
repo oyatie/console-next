@@ -12,4 +12,4 @@ properties:
   summary: {"$ref": "#/components/schemas/ObservedText"}
   value_vs_threshold: {"$ref": "#/components/schemas/ValueVsThreshold"}
   lead: {"$ref": "#/components/schemas/ObservedText"}
-description: "Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated."
+description: "Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated. A missing or empty field on one member and a present value on another is Unknown: members disagree. An instrumented severity outside page/ticket is Unknown: severity <value> not on the ladder."

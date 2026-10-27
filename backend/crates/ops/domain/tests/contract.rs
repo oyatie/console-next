@@ -214,7 +214,7 @@ fn snapshot_verdicts_are_generated_by_the_domain_wording() {
             ]
         )
         .text,
-        "Needs a human now · 0 pages · Unknown: 2 sources not verified · Unknown: source down"
+        "Needs a human now · 0 pages · 2 sources not verified · Unknown: source down"
     );
 }
 
@@ -237,7 +237,7 @@ fn unverified_sources_keep_work_counts_and_ignore_verified_reasons() {
             ]
         )
         .text,
-        "Needs a human now · 3 pages · 1 overdue · 1 due · 1 ticket · Unknown: 1 source not verified · Unknown: source down"
+        "Needs a human now · 3 pages · 1 overdue · 1 due · 1 ticket · 1 source not verified · Unknown: source down"
     );
     for (kind, text) in [(WorkKind::Due, "1 due"), (WorkKind::Overdue, "1 overdue")] {
         assert!(

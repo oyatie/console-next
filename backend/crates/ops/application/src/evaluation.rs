@@ -26,7 +26,9 @@ pub struct AlertGroup {
 
 pub struct AlertEvaluation {
     pub groups: Vec<AlertGroup>,
+    /// Number of groups, independent of the number of member alerts.
     pub count: Observed<usize>,
+    pub alert_count: Observed<usize>,
     pub source: Observed<String>,
 }
 
@@ -122,7 +124,11 @@ impl<'a> AlertmanagerEvaluator<'a> {
                 let severity = match severity.value().map(String::as_str) {
                     Some("page") => self.observe(Some(Severity::Page), now),
                     Some("ticket") => self.observe(Some(Severity::Ticket), now),
-                    _ => Observed::unknown(
+                    Some(value) => Observed::unknown(
+                        self.producer.clone(),
+                        format!("severity {value} not on the ladder"),
+                    ),
+                    None => Observed::unknown(
                         self.producer.clone(),
                         severity.reason().unwrap_or("not instrumented").into(),
                     ),
@@ -169,6 +175,7 @@ impl<'a> AlertmanagerEvaluator<'a> {
             .collect();
         AlertEvaluation {
             count: self.observe(self.current.as_ref().map(|_| self.identities.len()), now),
+            alert_count: self.observe(self.current.as_ref().map(|s| s.alerts.len()), now),
             source: self.observe(
                 self.current
                     .as_ref()

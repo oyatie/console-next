@@ -9,6 +9,9 @@ use reqwest::{Client, Url};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
+mod vmalert;
+pub use vmalert::HttpVmalert;
+
 #[derive(Clone, Copy, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HttpReadLimits {
