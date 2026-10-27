@@ -1,6 +1,7 @@
 //! The MVP statutory panel: worker register and manual insurance filing records.
 mod filing_age;
 mod filing_boundary;
+mod filing_deadline;
 mod filing_placement;
 mod filing_query;
 mod filing_read;

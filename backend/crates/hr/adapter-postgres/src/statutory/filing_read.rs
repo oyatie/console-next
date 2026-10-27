@@ -2,42 +2,30 @@ use super::types::{FilingTask, LossOption};
 use crate::HrError;
 use console_compliance_domain::statutory::filing::Reason;
 use console_compliance_domain::statutory::{Insurer, StatutoryRegister};
+use console_hr_application::statutory::{FilingAssessment, FilingInput};
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use sqlx::{Row, postgres::PgRow};
 
-pub(super) fn task(
-    row: PgRow,
+pub(super) fn assessment(
+    row: &PgRow,
     register: &StatutoryRegister,
-) -> Result<Option<FilingTask>, HrError> {
-    let today: time::Date = row.try_get("today")?;
-    let insurer: String = row.try_get("insurer")?;
-    let kind: String = row.try_get("kind")?;
-    let mut effective_date: String = row.try_get("effective_date")?;
-    let on = parse_yyyy_mm_dd(&effective_date)?;
-    let is_request = row
-        .try_get::<Option<uuid::Uuid>, _>("source_event_id")?
-        .is_some();
-    let Some(assessment) = console_hr_application::statutory::assess(
-        console_hr_application::statutory::FilingInput {
-            kind: &kind,
-            insurer: &insurer,
-            on,
-            acquired_on: row
-                .try_get::<Option<String>, _>("acquired_on")?
-                .as_deref()
-                .map(parse_yyyy_mm_dd)
-                .transpose()?,
-            ended_on: row
-                .try_get::<Option<String>, _>("ended_on")?
-                .as_deref()
-                .map(parse_yyyy_mm_dd)
-                .transpose()?,
-            requested_acquisition_on: row
-                .try_get::<Option<String>, _>("requested_acquisition_on")?
-                .as_deref()
-                .map(parse_yyyy_mm_dd)
-                .transpose()?,
-            today,
+) -> Result<Option<FilingAssessment>, HrError> {
+    let date = |column| -> Result<_, HrError> {
+        Ok(row
+            .try_get::<Option<String>, _>(column)?
+            .as_deref()
+            .map(parse_yyyy_mm_dd)
+            .transpose()?)
+    };
+    let assessment = console_hr_application::statutory::assess(
+        FilingInput {
+            kind: row.try_get("kind")?,
+            insurer: row.try_get("insurer")?,
+            on: parse_yyyy_mm_dd(row.try_get("effective_date")?)?,
+            acquired_on: date("acquired_on")?,
+            ended_on: date("ended_on")?,
+            requested_acquisition_on: date("requested_acquisition_on")?,
+            today: row.try_get("today")?,
             facts: row
                 .try_get::<Option<serde_json::Value>, _>("applicability_facts")?
                 .map(serde_json::from_value)
@@ -50,16 +38,42 @@ pub(super) fn task(
             action: row.try_get("action")?,
             employment_filed: row.try_get::<Option<String>, _>("ei_action")?.as_deref()
                 == Some("COMPLETE"),
-            request: is_request,
+            request: row
+                .try_get::<Option<uuid::Uuid>, _>("source_event_id")?
+                .is_some(),
         },
         register,
-    )?
-    else {
+    )?;
+    if let Some(assessment) = &assessment {
+        let due = assessment
+            .dates
+            .as_ref()
+            .and_then(|dates| dates.due_on.as_deref())
+            .map(parse_yyyy_mm_dd)
+            .transpose()?;
+        if due.is_some_and(|due| due < row.get::<time::Date, _>("go_live_on")) {
+            return Ok(None);
+        }
+    }
+    Ok(assessment)
+}
+
+pub(super) fn task(
+    row: PgRow,
+    register: &StatutoryRegister,
+) -> Result<Option<FilingTask>, HrError> {
+    let today: time::Date = row.try_get("today")?;
+    let insurer: String = row.try_get("insurer")?;
+    let kind: String = row.try_get("kind")?;
+    let is_request = row
+        .try_get::<Option<uuid::Uuid>, _>("source_event_id")?
+        .is_some();
+    let Some(assessment) = assessment(&row, register)? else {
         return Ok(None);
     };
     let on = assessment.on;
     let created_at = row.try_get("created_at")?;
-    effective_date = on.to_string();
+    let effective_date = on.to_string();
     let dates = assessment.dates;
     let rule = assessment.rule;
     let due_date = dates.as_ref().and_then(|d| d.due_on.clone());
@@ -68,14 +82,6 @@ pub(super) fn task(
         .map(parse_yyyy_mm_dd)
         .transpose()?
         .map(|d| (d - today).whole_days());
-    if due_date
-        .as_deref()
-        .map(parse_yyyy_mm_dd)
-        .transpose()?
-        .is_some_and(|due| due < row.get::<time::Date, _>("go_live_on"))
-    {
-        return Ok(None);
-    }
     let not_applicable_reason: Option<Reason> = row
         .try_get::<Option<String>, _>("not_applicable_reason")?
         .map(|s| serde_json::from_value(serde_json::Value::String(s)))

@@ -79,6 +79,7 @@ async fn two_thousand_pre_console_hires_do_not_rescan_before_the_pending_tail(po
                         ..Default::default()
                     },
                     register.clone(),
+                    None,
                 )
                 .with_subscriber(queries.clone()),
         )
@@ -98,10 +99,15 @@ async fn two_thousand_pre_console_hires_do_not_rescan_before_the_pending_tail(po
     let p95 = elapsed[18];
     eprintln!("pre-console inbox: 2,000 people, 20 reads, p95={p95:?}");
     assert_eq!(
-        queries.scans(),
+        queries
+            .statements()
+            .iter()
+            .filter(|s| s.contains("array_agg(inbox_id)"))
+            .count(),
         20,
         "each read must finish in one candidate page"
     );
+    assert_eq!(queries.scans(), 0, "ranking must precede candidate LIMIT");
 
     // Moving the register deadline must make the same historical hires visible.
     sqlx::query("UPDATE statutory_rules SET filing_rule=jsonb_set(filing_rule,'{deadline,value}','500') WHERE code='ins.deadline.acquire.nhis'")
@@ -117,15 +123,20 @@ async fn two_thousand_pre_console_hires_do_not_rescan_before_the_pending_tail(po
                 ..Default::default()
             },
             world::register_rules(&pool).await,
+            None,
         )
         .await
         .unwrap();
-    assert!(!exact);
+    assert!(exact);
+    assert_eq!(page.total, 2004);
     assert_eq!(page.items.len(), 50);
     assert!(page.next.is_some());
-    assert!(page.items.iter().all(|item| {
-        item.event_id != w.event
-            && item.insurer == "NHIS"
-            && item.due_in_days.is_some_and(|days| days > 0)
-    }));
+    assert!(page.items.iter().any(|item| item.event_id != w.event));
+    assert!(page.items.iter().all(|item| item.event_id == w.event
+        || (item.insurer == "NHIS" && item.due_in_days.is_some_and(|days| days > 0))));
+    assert!(
+        page.items
+            .windows(2)
+            .all(|pair| world::inbox_position(&pair[0]) <= world::inbox_position(&pair[1]))
+    );
 }

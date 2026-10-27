@@ -618,13 +618,10 @@ impl PgSupportStore {
         branch_scope: BranchScope,
         assignee: UserId,
         as_of: OffsetDateTime,
-        after: Option<(OffsetDateTime, String)>,
+        after: Option<(Option<OffsetDateTime>, OffsetDateTime, String)>,
         limit: i64,
     ) -> Result<(Vec<TicketSummary>, i64, bool), PgSupportError> {
         let limit = limit.clamp(1, 200);
-        let (after_created_at, after_id) = after.map_or((None, None), |(created_at, id)| {
-            (Some(created_at), Some(id))
-        });
         let push_filters = move |builder: &mut QueryBuilder<Postgres>| {
             builder.push("(");
             push_branch_scope(builder, &branch_scope, false);
@@ -638,17 +635,14 @@ impl PgSupportStore {
         push_filters(&mut count_builder);
         let mut builder = QueryBuilder::<Postgres>::new(format!("{TICKET_SUMMARY_SELECT} WHERE "));
         push_filters(&mut builder);
-        if let (Some(after_created_at), Some(after_id)) = (after_created_at, after_id) {
-            builder.push(" AND (created_at > ");
-            builder.push_bind(after_created_at);
-            builder.push(" OR (created_at = ");
-            builder.push_bind(after_created_at);
-            builder.push(" AND ('support:' || id::text) > ");
-            builder.push_bind(after_id);
-            builder.push("))");
-        }
-        builder.push(" ORDER BY created_at ASC, ('support:' || id::text) ASC LIMIT ");
-        builder.push_bind(limit.clamp(1, 200) + 1);
+        console_platform_db::inbox::push_page(
+            &mut builder,
+            "due_at",
+            "created_at",
+            "('support:' || id::text)",
+            after,
+            limit,
+        );
         let org = current_org().map_err(KernelError::from)?;
         let (total, rows) = with_org_conn::<_, _, PgSupportError>(&self.pool, org, move |tx| {
             Box::pin(async move {

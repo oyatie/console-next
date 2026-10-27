@@ -17,7 +17,7 @@ pub(crate) async fn page(
 ) -> Result<ActionInboxSourcePage, KernelError> {
     let after = query
         .after
-        .map(|position| (position.created_at, position.id));
+        .map(|position| (position.due, position.created_at, position.id));
     let page = HrService::new(pool.clone())
         .register_review_inbox_page(principal, query.as_of, after, query.limit)
         .await

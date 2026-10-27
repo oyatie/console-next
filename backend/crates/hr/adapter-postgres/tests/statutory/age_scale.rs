@@ -32,3 +32,8 @@ pub async fn seed(
     .await
     .unwrap();
 }
+
+pub async fn inbox_ids(pool: &PgPool, org: Uuid) -> Vec<String> {
+    sqlx::query_scalar("SELECT 'insurance_filing_AGE60_NPS:' || id::text FROM employee_lifecycle_events WHERE org_id=$1 ORDER BY created_at,id LIMIT 51")
+        .bind(org).fetch_all(pool).await.unwrap()
+}

@@ -13,7 +13,7 @@ impl PgActionInboxSources {
         let after = query
             .after
             .as_ref()
-            .map(|position| (position.created_at, position.id.clone()));
+            .map(|position| (position.due, position.created_at, position.id.clone()));
         let (tasks, has_more) = workflow_studio::my_action_inbox_tasks_page(
             &self.pool,
             &self.principal,

@@ -32967,6 +32967,9 @@ components:
       - lane
       - days_remaining
       properties:
+        fold_key:
+          type: string
+          description: Server identity of kind, subject and source case (insurance group when present); never derived from display text.
         id:
           type: string
           description: '"{kind}:{uuid}" — source-namespaced so ids never collide.'
@@ -33114,6 +33117,12 @@ components:
               type: object
               required: [insurer, kind, effective_date]
               properties:
+                employee_id:
+                  type: string
+                case_id:
+                  type: string
+                group_id:
+                  type: [string, 'null']
                 insurer:
                   type: string
                 kind:

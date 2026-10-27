@@ -7,10 +7,14 @@ pub use projection::urgency;
 mod complete;
 pub use complete::list_complete_action_inbox;
 mod filter;
+mod fold;
 pub use filter::{InboxFilter, list_filtered_action_inbox};
 mod cursor;
 pub use cursor::{ActionInboxCursor, ActionInboxPosition, encode_cursor, parse_cursor};
 mod namespaced_id;
+mod rank;
+use rank::{compare_items, item_after_cursor};
+pub use rank::{compare_key, page_source_items};
 mod source;
 pub use source::ActionInboxSource;
 
@@ -24,7 +28,7 @@ use time::OffsetDateTime;
 pub const DEFAULT_PAGE_LIMIT: usize = 100;
 pub const MAX_PAGE_LIMIT: usize = 200;
 /// Workbench needs the complete, priority-sortable action set rather than an
-/// immutable creation-order prefix. Bound the composition read to avoid
+/// bounded deadline prefix. Bound the composition read to avoid
 /// converting a single dashboard request into an unbounded source scan.
 pub const MAX_COMPLETE_ITEMS: usize = 1_000;
 const MAX_COMPLETE_PAGES: usize = MAX_COMPLETE_ITEMS / MAX_PAGE_LIMIT;
@@ -95,6 +99,7 @@ pub trait ActionInboxSourcePort: Send + Sync {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ActionInboxItem {
+    pub fold_key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<serde_json::Value>,
     pub id: String,
@@ -252,6 +257,7 @@ pub fn merge_pages(
                     as_of,
                     &ActionInboxPosition {
                         created_at: item.created_at,
+                        due: item.due,
                         id: item.id.clone(),
                     },
                 )
@@ -267,19 +273,6 @@ pub fn merge_pages(
         total_is_exact,
         next_cursor,
     }
-}
-
-fn compare_items(a: &ActionInboxItem, b: &ActionInboxItem) -> std::cmp::Ordering {
-    a.created_at
-        .cmp(&b.created_at)
-        .then_with(|| a.id.cmp(&b.id))
-}
-
-fn item_after_cursor(item: &ActionInboxItem, cursor: &ActionInboxCursor) -> bool {
-    item.created_at
-        .cmp(&cursor.position.created_at)
-        .then_with(|| item.id.cmp(&cursor.position.id))
-        .is_gt()
 }
 
 /// Normalize the historic alias before it reaches clients.
@@ -360,6 +353,7 @@ mod tests {
                 OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap(),
                 &ActionInboxPosition {
                     created_at: OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap(),
+                    due: Some(OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap()),
                     id: format!("{}:{}", namespaced_kind(source), Uuid::from_u128(1)),
                 },
             );
@@ -378,7 +372,8 @@ mod tests {
     fn cursor_round_trips_and_rejects_invalid_or_future_boundaries() {
         let as_of = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
         let position = ActionInboxPosition {
-            created_at: as_of - Duration::seconds(5),
+            created_at: as_of,
+            due: Some(as_of - Duration::seconds(5)),
             id: format!("work:{}", Uuid::from_u128(7)),
         };
         let encoded = encode_cursor(as_of, &position);
@@ -387,10 +382,35 @@ mod tests {
             ActionInboxCursor { as_of, position }
         );
         assert!(parse_cursor("garbage", as_of).is_err());
+        for due in [None, Some(as_of + Duration::DAY)] {
+            let position = ActionInboxPosition {
+                due,
+                created_at: as_of,
+                id: format!("work:{}", Uuid::from_u128(7)),
+            };
+            assert_eq!(
+                parse_cursor(&encode_cursor(as_of, &position), as_of)
+                    .unwrap()
+                    .position,
+                position
+            );
+        }
         assert!(
             parse_cursor(
                 &format!(
                     "{}~{}~work:{}",
+                    as_of.unix_timestamp_nanos(),
+                    as_of.unix_timestamp_nanos(),
+                    Uuid::from_u128(7)
+                ),
+                as_of
+            )
+            .is_err()
+        );
+        assert!(
+            parse_cursor(
+                &format!(
+                    "v2~{}~{}~work:{}",
                     (as_of + Duration::SECOND).unix_timestamp_nanos(),
                     as_of.unix_timestamp_nanos(),
                     Uuid::from_u128(7)
@@ -402,7 +422,7 @@ mod tests {
         assert!(
             parse_cursor(
                 &format!(
-                    "{}~{}~unknown:{}",
+                    "v2~{}~{}~unknown:{}",
                     as_of.unix_timestamp_nanos(),
                     as_of.unix_timestamp_nanos(),
                     Uuid::from_u128(7)
@@ -414,7 +434,7 @@ mod tests {
     }
 
     #[test]
-    fn merge_orders_by_immutable_created_at_then_namespaced_id() {
+    fn merge_orders_by_deadline_then_namespaced_id() {
         let at = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
         let later = at + Duration::SECOND;
         let page = merge_pages(
@@ -499,6 +519,78 @@ mod tests {
     }
 
     #[test]
+    fn deadline_order_spans_pages_and_fold_identity_uses_subject_case_and_optional_filing_group() {
+        let now = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
+        let mut items = (1..=2_000)
+            .map(|id| item("work", id, now - Duration::DAY))
+            .collect::<Vec<_>>();
+        items.push(ActionInboxSourceItem {
+            due: Some(now),
+            ..item("work", 2_001, now)
+        });
+        let query = ActionInboxSourceQuery {
+            filter: InboxFilter::All,
+            require_exact_total: false,
+            now,
+            as_of: now,
+            after: None,
+            limit: 100,
+        };
+        let (first, has_more) = page_source_items(items.clone(), &query);
+        assert!(has_more);
+        assert_eq!(first[0].id, format!("work:{}", Uuid::from_u128(2_001)));
+        let cursor = ActionInboxPosition {
+            created_at: first.last().unwrap().created_at,
+            due: first.last().unwrap().due,
+            id: first.last().unwrap().id.clone(),
+        };
+        let (second, _) = page_source_items(
+            items,
+            &ActionInboxSourceQuery {
+                after: Some(cursor),
+                ..query
+            },
+        );
+        assert!(second.iter().all(|i| i.due.is_none()));
+        assert!(!second.iter().any(|i| first.iter().any(|f| f.id == i.id)));
+        let case = |id| {
+            project_item(
+                ActionInboxSourceItem {
+                    links: vec![ActionInboxLink {
+                        kind: "employee".into(),
+                        id: "person".into(),
+                        label: None,
+                    }],
+                    ..item("hr_lifecycle", id, now)
+                },
+                now,
+                console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            )
+        };
+        assert_ne!(case(1).fold_key, case(2).fold_key);
+        let filing = |group: Option<&str>| {
+            project_item(
+                ActionInboxSourceItem {
+                    context: Some(
+                        serde_json::json!({"insurance":{"kind":"ACQUIRE", "employee_id":"person", "case_id":"case", "group_id":group}}),
+                    ),
+                    ..item("insurance_filing", 1, now)
+                },
+                now,
+                console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            )
+        };
+        assert_eq!(
+            filing(None).fold_key,
+            serde_json::json!(["insurance_filing:ACQUIRE", "person", "case"]).to_string()
+        );
+        assert_eq!(
+            filing(Some("group")).fold_key,
+            serde_json::json!(["insurance_filing:ACQUIRE", "person", "group"]).to_string()
+        );
+    }
+
+    #[test]
     fn urgency_and_wire_projection_preserve_the_existing_rest_shape() {
         let now = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
         let page = merge_pages(
@@ -530,7 +622,7 @@ mod tests {
     }
 
     #[test]
-    fn complete_traversal_collects_every_creation_order_page_for_priority_consumers() {
+    fn complete_traversal_collects_every_deadline_page_for_priority_consumers() {
         const ITEM_COUNT: usize = 421;
         let as_of = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
         let source = FakeActionInboxSource::new(
@@ -708,12 +800,20 @@ mod tests {
                 })
                 .collect(),
         );
-        let expected = source
+        let mut expected = source
             .items
             .iter()
             .map(|(_, item)| item.id.clone())
             .collect::<Vec<_>>();
 
+        expected.sort_by_key(|id| {
+            source
+                .items
+                .iter()
+                .find(|(_, item)| &item.id == id)
+                .map(|(_, item)| (item.created_at, item.id.clone()))
+                .unwrap()
+        });
         let mut cursor = None;
         let mut collected = Vec::new();
         let mut page_count = 0usize;
@@ -761,6 +861,7 @@ mod tests {
                     .find(|(_, item)| &item.id == prior_page_last_id)
                     .map(|(_, item)| ActionInboxPosition {
                         created_at: item.created_at,
+                        due: item.due,
                         id: item.id.clone(),
                     })
                     .unwrap();
@@ -856,18 +957,20 @@ mod tests {
                     *item_source == source
                         && item.created_at <= query.as_of
                         && query.after.as_ref().is_none_or(|after| {
-                            item.created_at
-                                .cmp(&after.created_at)
-                                .then_with(|| item.id.cmp(&after.id))
-                                .is_gt()
+                            compare_key(
+                                (item.due, item.created_at, &item.id),
+                                (after.due, after.created_at, &after.id),
+                            )
+                            .is_gt()
                         })
                 })
                 .map(|(_, item)| item.clone())
                 .collect::<Vec<_>>();
             matching.sort_by(|left, right| {
-                left.created_at
-                    .cmp(&right.created_at)
-                    .then_with(|| left.id.cmp(&right.id))
+                compare_key(
+                    (left.due, left.created_at, &left.id),
+                    (right.due, right.created_at, &right.id),
+                )
             });
             let page_size = self.page_size.unwrap_or(query.limit);
             let has_more =

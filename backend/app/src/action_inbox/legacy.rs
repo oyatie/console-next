@@ -25,7 +25,7 @@ impl PgActionInboxSources {
     ) -> Result<ActionInboxSourcePage, KernelError> {
         let after = query
             .after
-            .map(|position| (position.created_at, position.id));
+            .map(|position| (position.due, position.created_at, position.id));
         let source_limit = i64::try_from(query.limit).unwrap_or(200);
         let (offers, total, has_more) = PgDispatchStore::new(self.pool.clone())
             .list_my_pending_offers_action_page(
@@ -47,7 +47,7 @@ impl PgActionInboxSources {
                 ref_code: offer.request_no.clone(),
                 title: offer.request_no,
                 site: None,
-                who: Some("미배정".to_owned()),
+                who: None,
                 due: Some(offer.accept_window_ends_at),
                 submitted: Some(offer.accept_window_started_at),
                 links: vec![ActionInboxLink {
@@ -73,7 +73,7 @@ impl PgActionInboxSources {
     ) -> Result<ActionInboxSourcePage, KernelError> {
         let after = query
             .after
-            .map(|position| (position.created_at, position.id));
+            .map(|position| (position.due, position.created_at, position.id));
         let source_limit = i64::try_from(query.limit).unwrap_or(200);
         let (tickets, total, has_more) = PgSupportStore::new(self.pool.clone())
             .list_assigned_action_inbox_page(
@@ -127,6 +127,7 @@ impl PgActionInboxSources {
                 query.as_of,
                 query.after.map(|position| WorkOrderActionInboxPosition {
                     created_at: position.created_at,
+                    due: position.due,
                     id: position.id,
                 }),
                 source_limit,
@@ -174,7 +175,7 @@ impl PgActionInboxSources {
         }
         let after = query
             .after
-            .map(|position| (position.created_at, position.id));
+            .map(|position| (position.due, position.created_at, position.id));
         let source_limit = i64::try_from(query.limit).unwrap_or(200);
         let (runs, total, has_more) = PgPayrollStore::new(self.pool.clone())
             .list_submitted_action_inbox_page(
@@ -225,7 +226,7 @@ impl PgActionInboxSources {
         }
         let after = query
             .after
-            .map(|position| (position.created_at, position.id));
+            .map(|position| (position.due, position.created_at, position.id));
         let source_limit = i64::try_from(query.limit).unwrap_or(200);
         let (requests, total, has_more) = PgGovernanceStore::new(self.pool.clone())
             .list_pending_action_inbox_page(

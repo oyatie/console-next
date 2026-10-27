@@ -70,7 +70,7 @@ pub async fn list_filtered_action_inbox(
                 &view
             },
             ListActionInboxQuery {
-                limit: Some(MAX_PAGE_LIMIT),
+                limit: Some(limit.saturating_add(1).min(MAX_PAGE_LIMIT)),
                 cursor: cursor.clone(),
             },
             now,
@@ -95,6 +95,7 @@ pub async fn list_filtered_action_inbox(
                 as_of,
                 &ActionInboxPosition {
                     created_at: last.created_at,
+                    due: last.due,
                     id: last.id.clone(),
                 },
             ));
@@ -271,6 +272,7 @@ mod tests {
                 as_of: OffsetDateTime::UNIX_EPOCH + time::Duration::days(1),
                 after: Some(ActionInboxPosition {
                     created_at: OffsetDateTime::UNIX_EPOCH,
+                    due: Some(OffsetDateTime::UNIX_EPOCH),
                     id: "workflow:previous".into(),
                 }),
                 limit: 17,
@@ -310,6 +312,7 @@ mod tests {
 
     fn item(lane: &'static str, due_tone: &'static str, kind: &str) -> ActionInboxItem {
         ActionInboxItem {
+            fold_key: String::new(),
             context: None,
             id: String::new(),
             kind: kind.into(),

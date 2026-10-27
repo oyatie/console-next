@@ -52,7 +52,7 @@ impl HrService {
         &self,
         principal: &Principal,
         as_of: OffsetDateTime,
-        after: Option<(OffsetDateTime, String)>,
+        after: Option<(Option<OffsetDateTime>, OffsetDateTime, String)>,
         limit: usize,
     ) -> Result<RegisterReviewInboxPage, HrError> {
         let Ok(reach) = hr_reach(principal, Feature::EmployeeDirectoryManage) else {
@@ -87,12 +87,14 @@ impl HrService {
                     crate::register_missing_fields_sql!()
                 ));
                 push_where(&mut q);
-                if let Some((created_at, id)) = after {
-                    q.push(" AND (e.created_at, ('hr_register:' || e.id::text)) > (");
-                    q.push_bind(created_at).push(", ").push_bind(id).push(")");
-                }
-                q.push(" ORDER BY e.created_at, e.id LIMIT ");
-                q.push_bind(i64::try_from(limit + 1).unwrap_or(201));
+                console_platform_db::inbox::push_page(
+                    &mut q,
+                    "NULL::timestamptz",
+                    "e.created_at",
+                    "('hr_register:' || e.id::text)",
+                    after,
+                    i64::try_from(limit).unwrap_or(200),
+                );
                 let mut items = q.build_query_as().fetch_all(tx.as_mut()).await?;
                 let has_more = items.len() > limit;
                 items.truncate(limit);

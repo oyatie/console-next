@@ -742,7 +742,7 @@ impl PgDispatchStore {
         branch_scope: &BranchScope,
         now: OffsetDateTime,
         as_of: OffsetDateTime,
-        after: Option<(OffsetDateTime, String)>,
+        after: Option<(Option<OffsetDateTime>, OffsetDateTime, String)>,
         limit: i64,
     ) -> Result<(Vec<ActionInboxDispatchOffer>, i64, bool), PgDispatchError> {
         let limit = limit.clamp(1, 200);
@@ -758,9 +758,6 @@ impl PgDispatchStore {
                     .collect::<Vec<_>>(),
             ),
         };
-        let (after_created_at, after_id) = after.map_or((None, None), |(created_at, id)| {
-            (Some(created_at), Some(id))
-        });
         with_org_conn::<_, _, PgDispatchError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let total: i64 = sqlx::query_scalar(
@@ -792,18 +789,19 @@ impl PgDispatchStore {
                        AND ($4::boolean OR d.branch_id = ANY($5::uuid[])) \
                        AND NOT EXISTS (SELECT 1 FROM p1_dispatch_responses r \
                          WHERE r.dispatch_id = d.id AND r.user_id = $1) \
-                       AND ($7::text IS NULL OR d.created_at > $6 \
-                         OR (d.created_at = $6 AND ('dispatch:' || d.id::text) > $7)) \
-                     ORDER BY d.created_at ASC, ('dispatch:' || d.id::text) ASC \
-                     LIMIT $8",
+                       AND ($7::text IS NULL OR d.accept_window_ends_at > $6 \
+                         OR (d.accept_window_ends_at = $6 AND (d.created_at, ('dispatch:' || d.id::text)) > ($8, $7))) \
+                     ORDER BY d.accept_window_ends_at ASC NULLS LAST, d.created_at ASC, ('dispatch:' || d.id::text) ASC \
+                     LIMIT $9",
                 )
                 .bind(user_uuid)
                 .bind(now)
                 .bind(as_of)
                 .bind(all_branches)
                 .bind(branch_ids)
-                .bind(after_created_at)
-                .bind(after_id.as_deref())
+                .bind(after.as_ref().and_then(|p| p.0))
+                .bind(after.as_ref().map(|p| p.2.clone()))
+                .bind(after.as_ref().map(|p| p.1))
                 .bind(limit.clamp(1, 200) + 1)
                 .fetch_all(tx.as_mut())
                 .await?;

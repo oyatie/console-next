@@ -71,7 +71,7 @@ pub(super) async fn load(
         next,
     })
 }
-async fn visible_tasks(
+pub(super) async fn visible_tasks(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     query: &FilingQuery,
@@ -144,57 +144,25 @@ impl HrService {
 }
 
 impl HrService {
-    /// Keyset projection for the shared queue. Assess only a bounded candidate
-    /// prefix, using the statutory panel's exact assessment and visibility.
-    /// The count is a lower bound until the candidate set is exhausted.
+    /// The shared queue uses the statutory read's visibility, masking and audit entry.
     pub async fn insurance_inbox_page(
         &self,
         principal: Principal,
-        mut query: FilingQuery,
+        query: FilingQuery,
         register: StatutoryRegister,
+        after: Option<(Option<time::OffsetDateTime>, time::OffsetDateTime, String)>,
     ) -> Result<(FilingPage, bool), HrError> {
         hr_reach_in(&principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
         with_audits::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {
-                // This bounded read is latency-sensitive; JIT compilation costs
-                // more than evaluating its small candidate prefix.
-                sqlx::query("SET LOCAL jit = off")
-                    .execute(tx.as_mut())
-                    .await?;
-                let limit = query.limit.unwrap_or(50).clamp(1, 200);
-                let first = query.inbox_after.is_none();
-                let batch = limit.saturating_add(1);
-                query.inbox_scan_limit = Some(batch);
-                let years = register.filing_rules().iter()
-                    .filter(|r| r.insurer == "NPS" && r.filing_kind == "AGE60")
-                    .filter_map(|r| r.age_trigger_years).min();
-                // A coarse calendar-year bound avoids a second scan for tenants with only younger people.
-                let has_birth = if let Some(years) = years {
-                    sqlx::query_scalar::<_, bool>("WITH clock AS MATERIALIZED (SELECT max(EXTRACT(year FROM (COALESCE($2,now()) AT TIME ZONE z.time_zone))) AS year FROM (SELECT time_zone FROM lifecycle_country_packs WHERE is_default UNION SELECT time_zone FROM workplaces WHERE org_id=$1 UNION SELECT time_zone FROM legal_entities WHERE org_id=$1) z) \
-                        SELECT EXISTS (SELECT 1 FROM person_employees_current x CROSS JOIN clock WHERE x.org_id=$1 AND EXTRACT(year FROM x.birth_date)+$3<=clock.year) \
-                        OR EXISTS (SELECT 1 FROM insurance_filing_records r CROSS JOIN clock WHERE r.org_id=$1 AND EXTRACT(year FROM (r.applicability_facts->>'birth_date')::date)+$3<=clock.year)")
-                        .bind(principal.org_id.as_uuid()).bind(query.inbox_as_of).bind(i32::from(years)).fetch_one(tx.as_mut()).await?
-                } else { false };
-                let (ages, age_exhausted) = if has_birth && query.kind.as_deref().is_none_or(|kind| kind == "AGE60") {
-                    let mut age_query = FilingQuery { kind: Some("AGE60".into()), ..query.clone() };
-                    inbox_tasks(tx, &principal, &mut age_query, &register, limit).await?
-                } else {
-                    (Vec::new(), true)
-                };
-                let (mut items, exhausted) = if query.kind.as_deref() == Some("AGE60") {
-                    (Vec::new(), true)
-                } else {
-                    inbox_tasks(tx, &principal, &mut query, &register, limit).await?
-                };
-                let total = i64::try_from(items.len())
-                    .unwrap_or(i64::MAX)
-                    .saturating_add(i64::try_from(ages.len()).unwrap_or(i64::MAX));
-                items.extend(ages);
-                items.sort_by_key(|t| (t.created_at, t.inbox_id()));
-                let more = items.len() > limit || !exhausted || !age_exhausted;
-                items.truncate(limit);
-                let next = more.then(|| "more".to_owned());
-                let ids = items.iter().map(|i| i.employee_id).collect::<Vec<_>>();
+                let page =
+                    super::filing_deadline::load(tx, &principal, &query, &register, after).await?;
+                let ids = page
+                    .0
+                    .items
+                    .iter()
+                    .map(|i| i.employee_id)
+                    .collect::<Vec<_>>();
                 let me = actor_employee_id(tx, &principal).await?;
                 let event = access_event(
                     &principal,
@@ -203,47 +171,9 @@ impl HrService {
                     me,
                     json!({"view":"insurance_filings"}),
                 )?;
-                Ok((
-                    (
-                        FilingPage {
-                            items,
-                            total,
-                            pending: total,
-                            next,
-                        },
-                        first && exhausted && age_exhausted,
-                    ),
-                    vec![event],
-                ))
+                Ok((page, vec![event]))
             })
         })
         .await
     }
-}
-
-async fn inbox_tasks(
-    tx: &mut Transaction<'_, Postgres>,
-    principal: &Principal,
-    query: &mut FilingQuery,
-    register: &StatutoryRegister,
-    limit: usize,
-) -> Result<(Vec<super::types::FilingTask>, bool), HrError> {
-    use sqlx::Row;
-    let batch = query.inbox_scan_limit.unwrap_or(limit.saturating_add(1));
-    let mut items = Vec::new();
-    let mut exhausted = false;
-    while items.len() <= limit && !exhausted {
-        let rows = super::filing_query::rows(tx, principal, query, register).await?;
-        exhausted = rows.len() < batch;
-        if let Some(last) = rows.last() {
-            query.inbox_after = Some((last.try_get("created_at")?, last.try_get("inbox_id")?));
-        }
-        items.extend(
-            visible_tasks(tx, principal, query, register, rows)
-                .await?
-                .into_iter()
-                .filter(|t| !t.resolved()),
-        );
-    }
-    Ok((items, exhausted))
 }

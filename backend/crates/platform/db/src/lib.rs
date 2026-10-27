@@ -35,6 +35,7 @@ pub mod durability;
 pub mod error;
 pub mod governance_finding;
 pub mod idempotency;
+pub mod inbox;
 pub mod lifecycle;
 pub mod period_lock;
 pub mod settings_read;

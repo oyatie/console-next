@@ -44,7 +44,7 @@ pub(crate) async fn page(
         });
     }
     let org = principal.org_id;
-    let after = query.after.map(|p| (p.created_at, p.id));
+    let after = query.after.map(|p| (p.due, p.created_at, p.id));
     let (as_of, limit) = (query.as_of, query.limit);
     let (rows, total) = with_org_conn::<_, _, DbError>(pool, org, move |tx| {
         Box::pin(async move {
@@ -53,13 +53,14 @@ pub(crate) async fn page(
                  FROM employee_lifecycle_events l \
                  JOIN person_employees_current e ON e.org_id = l.org_id AND e.id = l.employee_id WHERE ",
                 open!(),
-                " AND ($3::timestamptz IS NULL OR (l.created_at, ('hr_lifecycle:' || l.id::text)) > ($3, $4)) \
-                 ORDER BY l.created_at, l.id LIMIT $5"
+                " AND ($4::text IS NULL OR $3::timestamptz IS NOT NULL OR (l.created_at, ('hr_lifecycle:' || l.id::text)) > ($5, $4)) \
+                 ORDER BY l.created_at, ('hr_lifecycle:' || l.id::text) LIMIT $6"
             ))
             .bind(org.as_uuid())
             .bind(as_of)
-            .bind(after.as_ref().map(|a| a.0))
-            .bind(after.as_ref().map(|a| a.1.clone()))
+            .bind(after.as_ref().and_then(|a| a.0))
+            .bind(after.as_ref().map(|a| a.2.clone()))
+            .bind(after.as_ref().map(|a| a.1))
             .bind(i64::try_from(limit).unwrap_or(i64::MAX).saturating_add(1))
             .fetch_all(tx.as_mut())
             .await?;

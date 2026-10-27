@@ -30,7 +30,7 @@ pub struct ChangeRequestInboxPage {
 }
 
 impl HrService {
-    /// Keyset page (created_at, inbox id) ascending: what the caller can act
+    /// Undated inbox-id keyset page: what the caller can act
     /// on. HR sees requests open to the role or named to it; anyone else only
     /// the answer kinds named to it (a 소명 요청, a policy question). The
     /// caller's own requests and those named to someone else are left out.
@@ -38,14 +38,13 @@ impl HrService {
         &self,
         principal: &Principal,
         as_of: OffsetDateTime,
-        after: Option<(OffsetDateTime, String)>,
+        after: Option<(Option<OffsetDateTime>, OffsetDateTime, String)>,
         limit: i64,
     ) -> Result<ChangeRequestInboxPage, HrError> {
         // AX-5: HR acts on the open requests about people inside its grant set.
         let reach = hr_reach(principal, Feature::EmployeeDirectoryManage).ok();
         let limit = limit.clamp(1, 200);
         let me = *principal.user_id.as_uuid();
-        let (after_at, after_id) = after.map_or((None, None), |(at, id)| (Some(at), Some(id)));
         let push_where = move |q: &mut QueryBuilder<Postgres>| {
             q.push(" FROM change_requests c WHERE c.status = 'OPEN' AND c.requested_by <> ");
             q.push_bind(me);
@@ -78,16 +77,14 @@ impl HrService {
                             ELSE c.requested_by END)) AS title",
                 );
                 push_where(&mut q);
-                q.push(" AND (");
-                q.push_bind(after_id.clone());
-                q.push("::text IS NULL OR c.created_at > ");
-                q.push_bind(after_at);
-                q.push(" OR (c.created_at = ");
-                q.push_bind(after_at);
-                q.push(" AND ('hr_request:' || c.id::text) > ");
-                q.push_bind(after_id);
-                q.push(")) ORDER BY c.created_at ASC, ('hr_request:' || c.id::text) ASC LIMIT ");
-                q.push_bind(limit + 1);
+                console_platform_db::inbox::push_page(
+                    &mut q,
+                    "NULL::timestamptz",
+                    "c.created_at",
+                    "('hr_request:' || c.id::text)",
+                    after,
+                    limit,
+                );
                 let rows = q.build().fetch_all(tx.as_mut()).await?;
                 let has_more = i64::try_from(rows.len()).unwrap_or(0) > limit;
                 let items = rows

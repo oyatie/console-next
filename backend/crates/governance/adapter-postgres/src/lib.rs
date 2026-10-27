@@ -25,7 +25,7 @@ use console_kernel_core::{KernelError, UserId};
 use console_platform_authz::cedar_pbac::DecisionEffect;
 use console_platform_db::{DbError, with_audit, with_org_conn};
 use console_platform_request_context::current_org;
-use sqlx::{PgConnection, PgPool, Row};
+use sqlx::{PgConnection, PgPool, Postgres, QueryBuilder, Row};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -266,15 +266,12 @@ impl PgGovernanceStore {
         &self,
         caller: UserId,
         as_of: OffsetDateTime,
-        after: Option<(OffsetDateTime, String)>,
+        after: Option<(Option<OffsetDateTime>, OffsetDateTime, String)>,
         limit: i64,
     ) -> Result<(Vec<GovernanceActionInboxItem>, i64, bool), PgGovernanceError> {
         let limit = limit.clamp(1, 200);
         let org = current_org().map_err(KernelError::from)?;
         let caller_id = *caller.as_uuid();
-        let (after_created_at, after_id) = after.map_or((None, None), |(created_at, id)| {
-            (Some(created_at), Some(id))
-        });
         with_org_conn::<_, _, PgGovernanceError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let total: i64 = sqlx::query_scalar(
@@ -290,27 +287,30 @@ impl PgGovernanceStore {
                 .bind(as_of)
                 .fetch_one(tx.as_mut())
                 .await?;
-                let rows = sqlx::query(
+                let mut query = QueryBuilder::<Postgres>::new(
                     "SELECT r.id, r.request_ref, r.kind, r.created_at \
                      FROM gov_approval_requests r \
-                     WHERE r.requested_by <> $1 \
-                       AND r.created_at <= $2 \
-                       AND NOT EXISTS ( \
+                     WHERE r.requested_by <> ",
+                );
+                query
+                    .push_bind(caller_id)
+                    .push(" AND r.created_at <= ")
+                    .push_bind(as_of)
+                    .push(
+                        " AND NOT EXISTS ( \
                          SELECT 1 FROM gov_approvals a \
                          WHERE a.request_ref = r.request_ref AND a.org_id = r.org_id \
-                       ) \
-                       AND ($4::text IS NULL OR r.created_at > $3 \
-                         OR (r.created_at = $3 AND ('governance:' || r.id::text) > $4)) \
-                     ORDER BY r.created_at ASC, ('governance:' || r.id::text) ASC \
-                     LIMIT $5",
-                )
-                .bind(caller_id)
-                .bind(as_of)
-                .bind(after_created_at)
-                .bind(after_id.as_deref())
-                .bind(limit + 1)
-                .fetch_all(tx.as_mut())
-                .await?;
+                       )",
+                    );
+                console_platform_db::inbox::push_page(
+                    &mut query,
+                    "NULL::timestamptz",
+                    "r.created_at",
+                    "('governance:' || r.id::text)",
+                    after,
+                    limit,
+                );
+                let rows = query.build().fetch_all(tx.as_mut()).await?;
                 let has_more = i64::try_from(rows.len()).unwrap_or(0) > limit;
                 let items = rows
                     .iter()

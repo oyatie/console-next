@@ -2102,7 +2102,7 @@ pub(crate) async fn my_action_inbox_tasks_page(
     pool: &PgPool,
     principal: &Principal,
     as_of: OffsetDateTime,
-    after: Option<(OffsetDateTime, String)>,
+    after: Option<(Option<OffsetDateTime>, OffsetDateTime, String)>,
     limit: usize,
 ) -> Result<(Vec<WaitingTaskListItem>, bool), KernelError> {
     let org = principal.org_id;
@@ -2119,7 +2119,7 @@ pub(crate) async fn my_action_inbox_tasks_page(
     let mut scanned = 0usize;
     loop {
         let (page, source_has_more) = store
-            .list_waiting_tasks_action_page(
+            .list_waiting_tasks_deadline_page(
                 org,
                 principal.user_id,
                 filter.clone(),
@@ -2129,9 +2129,7 @@ pub(crate) async fn my_action_inbox_tasks_page(
             )
             .await?;
         scanned += page.len();
-        let next_cursor = page
-            .last()
-            .map(|item| (item.created_at, format!("approval:{}", item.task_id)));
+        let next_cursor = page.last().map(WaitingTaskListItem::inbox_position);
         visible.extend(
             page.into_iter()
                 .filter(|item| task_visible(principal, org, branch, item)),
@@ -2181,7 +2179,7 @@ pub(crate) async fn my_action_inbox_task_count(
     let mut cursor = None;
     loop {
         let (page, has_more) = store
-            .list_waiting_tasks_action_page(
+            .list_waiting_tasks_deadline_page(
                 org,
                 principal.user_id,
                 filter.clone(),
@@ -2191,9 +2189,7 @@ pub(crate) async fn my_action_inbox_task_count(
             )
             .await?;
         scanned += page.len();
-        cursor = page
-            .last()
-            .map(|item| (item.created_at, format!("approval:{}", item.task_id)));
+        cursor = page.last().map(WaitingTaskListItem::inbox_position);
         count += page
             .iter()
             .filter(|item| task_visible(principal, org, branch, item))
