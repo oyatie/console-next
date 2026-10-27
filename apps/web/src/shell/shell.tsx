@@ -21,6 +21,7 @@ import { PLATFORM_NAV, activeLink, tenantNav } from "./nav";
 import { PhaseBand } from "./phase-band";
 import { SessionRecovery } from "./session-recovery";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
+import { PageMain } from "../ui/page/page-main";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
@@ -112,14 +113,14 @@ export function Shell() {
         </button>
       </header>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
-      <main className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
+      <PageMain className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
         <SessionRecovery>
         <ChangeNotice key={pathname} />
         <HeldNotice />
         {!platform && <DomainNotice />}{!platform && <ActiveSupportBanner />}
         <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand><Outlet /></PhaseBand>}</RouteGuard>
         </SessionRecovery>
-      </main>
+      </PageMain>
       {jump && (
         <Suspense fallback={null}>
           <JumpPalette onClose={() => setJump(false)} />
