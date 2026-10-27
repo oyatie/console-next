@@ -1,10 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { saveFile } from "../../../lib/download";
 import { Button } from "../../../ui/button/button";
-import { buttonClass } from "../../../ui/button/button-class";
 import { SectionHead } from "../../../ui/card/section-head";
 import { entitiesRef, orgStructureRef, kindsRef } from "../../../reference/entity/api";
 import { SHEET_COLUMNS, setupSheet } from "../domain/sheet";
@@ -28,10 +26,7 @@ export function SetupBulk({ allowed }: { allowed: boolean }) {
   return <section aria-labelledby="setup-bulk">
     <SectionHead level={2} id="setup-bulk">{t("setup.bulk.title")}</SectionHead>
     {allowed && <div className="row wrap">
-      <Link to="/org/import" className={buttonClass()}>{t("setup.bulk.import")}</Link>
-      <Link to="/org/paste" className={buttonClass()}>{t("setup.path.paste")}</Link>
       <Button disabled={!q.data || !entities.data || !kinds.data || q.isError || entities.isError || kinds.isError} onClick={download}>{t("setup.bulk.download")}</Button>
-      <Link to="/org/history" className={buttonClass()}>{t("setup.bulk.history")}</Link>
     </div>}
     {allowed && <QueryState q={readGroup([q, entities, kinds])}>{() => null}</QueryState>}
     {!allowed && <p>{t("setup.permissionNeeded", { permission: t("setup.permission.org::edit") })}</p>}

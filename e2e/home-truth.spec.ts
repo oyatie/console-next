@@ -148,7 +148,7 @@ test("an account with no work grant gets an honest home, and 기간 잠금 refus
   const inbox = exec.getByRole("region", { name: "업무함", exact: true });
   await expect(inbox.getByRole("heading", { name: "이 계정으로 처리할 업무가 없습니다", exact: true })).toBeVisible();
   await expect(inbox.getByRole("link", { name: "내 계정", exact: true })).toHaveAttribute("href", "/account");
-  await expect(inbox.getByRole("button", { name: "두 번째 패스키 등록", exact: true })).toBeVisible();
+  await expect(inbox.getByRole("button", { name: "패스키 등록", exact: true })).toBeVisible();
   await expect(inbox).not.toContainText("이임원");
   await expect(inbox.getByRole("group", { name: "업무 구분" }).getByRole("button")).toHaveCount(0);
   await expect(inbox.getByRole("link", { name: "직원 등록", exact: true })).toHaveCount(0);

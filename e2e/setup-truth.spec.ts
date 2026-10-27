@@ -154,8 +154,8 @@ test("go-live counts what the panels show and fixes each record in place; the te
   await shot(admin, "after-home-rail-passkey-step");
   const step = setupRail(admin).getByRole("listitem").filter({ hasText: "다른 기기에 패스키 하나 더" });
   await onSecondDevice(admin);
-  await step.getByRole("button", { name: "새 패스키 등록" }).click();
-  await expect(step.getByRole("button", { name: "새 패스키 등록" })).toBeHidden();
+  await step.getByRole("button", { name: "패스키 등록", exact: true }).click();
+  await expect(step.getByRole("button", { name: "패스키 등록", exact: true })).toBeHidden();
   await expect(step).toHaveAttribute("data-state", "done");
   await admin.unroute("**/api/v1/auth/passkey/register/start");
   await go(admin, "/setup/go-live");
@@ -184,7 +184,7 @@ test("after go-live the only ops holder is asked for a second passkey on Home an
   const home = admin.getByRole("region", { name: "업무함", exact: true });
   const security = home.getByRole("listitem").filter({ hasText: "다른 기기에 패스키 하나 더" });
   await expect(security).toHaveCount(1);
-  await expect(security.getByRole("button", { name: "두 번째 패스키 등록", exact: true })).toBeVisible();
+  await expect(security.getByRole("button", { name: "패스키 등록", exact: true })).toBeVisible();
   await expect(home.getByRole("link", { name: "내 계정", exact: true })).toHaveAttribute("href", "/account");
   await expectAccessible(admin, "Home after go-live: second passkey");
   await shot(admin, "after-home-operating-second-passkey");

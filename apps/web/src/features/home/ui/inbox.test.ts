@@ -46,7 +46,7 @@ vi.mock("../../../ui/button/button", async (original) => {
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", lane: "turn", title: id, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id }], ...extra });
 const page = (items: Item[], extra: Partial<Page> = {}): Page => ({ items, total: items.length, total_is_exact: true, next_cursor: null, unavailable: [], available_filters: ["turn", "waiting", "scheduled", "deadlines", "failures"], counts: {}, upcoming: [], has_work: true, quick_starts: [], as_of: "2026-10-23T00:00:00Z", ...extra });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
-const html = (setupPending = false) => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => Home({ setupPending, setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (row: Item) => row.context?.command ? createElement("button", { "data-command": row.context.command, "data-record": row.links[0]?.id }, row.context.command) : row.kind === "account_security" ? createElement("button", null, t("account.second.add")) : null }))));
+const html = (setupPending = false) => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => Home({ setupPending, setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (row: Item) => row.context?.command ? createElement("button", { "data-command": row.context.command, "data-record": row.links[0]?.id }, row.context.command) : row.kind === "account_security" ? createElement("button", null, t("account.passkey.add")) : null }))));
 const click = (label: string) => view.buttons.find((button) => button.children === label || typeof button.children === "string" && button.children.startsWith(label + " "))!.onClick!({} as MouseEvent<HTMLButtonElement>);
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
@@ -257,7 +257,7 @@ test.each([["birth", "birth", "s1"], ["job", "job", "s2"], ["hire", "contract", 
 test("account security retains inline second-passkey registration and account navigation", () => {
   view.list.data = { pages: [page([item("security", {kind:"account_security",links:[{kind:"account",id:"me"}],context:{is_ops:true}})])] };
   const markup = html();
-  expect(markup).toContain(t("account.second.add"));
+  expect(markup).toContain(t("account.passkey.add"));
   expect(markup).toContain(t("account.second.whyOps"));
   expect(markup).toContain('href="/account"');
 });
