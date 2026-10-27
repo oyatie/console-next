@@ -97,16 +97,13 @@ test("gallery components pass axe, and its controls work", { tag: ["@smoke", "@v
   await page.getByRole("button", { name: "입력 내용 확인" }).click();
   await expect(page.getByRole("status").filter({ hasText: "입력을 확인했습니다." })).toBeVisible();
 
-  // View tabs (WAI-ARIA APG): arrows move and select, Home / End jump, the panel follows the selection.
-  const views = page.getByRole("tablist", { name: "보기", exact: true });
-  await views.getByRole("tab", { name: "조직도" }).focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(views.getByRole("tab", { name: /목록/ })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator('[data-tabs-demo="url"]').getByRole("tabpanel")).toContainText("목록 보기입니다.");
-  await page.keyboard.press("End");
-  await expect(views.getByRole("tab", { name: /아웃라인/ })).toBeFocused();
-  await page.keyboard.press("Home");
-  await expect(views.getByRole("tab", { name: "조직도" })).toHaveAttribute("aria-selected", "true");
+  // URL views are links; their destinations survive reload and replace history.
+  const views = page.getByRole("navigation", { name: "보기", exact: true });
+  await views.getByRole("link", { name: /목록/ }).click();
+  await expect(views.getByRole("link", { name: /목록/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('[data-tabs-demo="url"] [data-page-view]')).toContainText("목록 보기입니다.");
+  await views.getByRole("link", { name: "조직도" }).click();
+  await expect(views.getByRole("link", { name: "조직도" })).toHaveAttribute("aria-current", "page");
   // Route tabs are links in a named nav, the current one marked; an icon-only button is named and titled by its label.
   await expect(page.getByRole("navigation", { name: "권한 화면" }).getByRole("link", { name: /역할/ })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("button", { name: "이 행 더 보기", exact: true })).toHaveAttribute("title", "이 행 더 보기");

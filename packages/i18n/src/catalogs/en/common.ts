@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const enCommon = {
+  "common.more": "More",
   "common.steps": "Progress",
   "common.headcount": "{count, plural, one {# person} other {# people}}",
   "common.page.label": "Pages",
