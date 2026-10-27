@@ -84,6 +84,9 @@ pub struct OwnExceptionResolutionRead {
 /// Reduced exception projection for the linked employee.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OwnAttendanceExceptionRead {
+    /// Internal audit subject; never serialized in the self-service projection.
+    #[serde(skip)]
+    pub employee_id: Uuid,
     pub id: Uuid,
     pub code: String,
     pub kind: ExceptionKind,
@@ -99,6 +102,9 @@ pub struct OwnAttendanceExceptionRead {
 /// Reduced Week52 projection for the linked employee.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OwnWeek52Read {
+    /// Internal audit subject; never serialized in the self-service projection.
+    #[serde(skip)]
+    pub employee_id: Uuid,
     pub week_start: Date,
     pub current_hours: f64,
     pub projected_hours: f64,
@@ -144,6 +150,7 @@ mod tests {
             resolved_at: at,
         };
         let own = OwnAttendanceExceptionRead {
+            employee_id: Uuid::nil(),
             id: Uuid::nil(),
             code: "EX-1".to_owned(),
             kind: ExceptionKind::Late,

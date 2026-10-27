@@ -56,6 +56,33 @@ test("attendance reads commit one access row naming the people returned", { tag:
     expect(row.ip).toBeTruthy();
     expect(Date.parse(row.occurred_at)).not.toBeNaN();
   }
+  const monday = new Date(`${kstDate()}T00:00:00Z`);
+  monday.setUTCDate(monday.getUTCDate() - (monday.getUTCDay() + 6) % 7);
+  for (const [path, action, subjects] of [
+    [`/attendance/week52?week_start=${monday.toISOString().slice(0, 10)}`, "attendance.week52_read", people.items.map(person => person.id)],
+    [`/attendance/schedule/calendar?scope_kind=PERSON&scope_id=${people.items[0]!.id}&month=${month}`, "attendance.schedule_read", [people.items[0]!.id]],
+    [`/attendance/exceptions?month=${month}`, "attendance.exceptions_read", []],
+    [`/attendance/substitutions?month=${month}`, "attendance.substitutions_read", []],
+    ["/attendance/crews", "attendance.crews_read", []],
+    [`/attendance/me/exceptions?month=${month}`, "attendance.own_exceptions_read", []],
+    [`/attendance/me/week52?week_start=${monday.toISOString().slice(0, 10)}`, "attendance.own_week52_read", []],
+  ] as const) {
+    const before = records().length;
+    const response = await api(path);
+    expect(response.status(), await response.text()).toBe(200);
+    const rows = records();
+    expect(rows).toHaveLength(before + 1);
+    const row = rows.filter(row => row.action === action).at(-1)!;
+    expect(row.after.subject_ids.sort()).toEqual([...subjects].sort());
+    expect(row.after.subject_count).toBe(subjects.length);
+    expect(row.after.session_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(row.actor).toMatch(/^[0-9a-f-]{36}$/);
+    expect(row.ip).toBeTruthy();
+    expect(Date.parse(row.occurred_at)).not.toBeNaN();
+    const anonymous = await admin.request.get(`/api/v1${path}`);
+    expect(anonymous.status()).toBe(401);
+    expect(records()).toHaveLength(rows.length);
+  }
   const before = records().length;
   const anonymous = await admin.request.get(`/api/v1/attendance/month?month=${month}`);
   expect(anonymous.status()).toBe(401);

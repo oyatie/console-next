@@ -246,3 +246,8 @@ async fn view_as_access_events_keep_the_operator_tag_and_tenant_subjects(pool: P
     assert_eq!(after["subject_ids"], json!([subject]));
     assert_eq!(after["self_read"], false);
 }
+
+#[path = "attendance_access_log/remaining.rs"]
+mod remaining;
+#[path = "attendance_access_log/view_as.rs"]
+mod view_as;

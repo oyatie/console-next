@@ -127,7 +127,8 @@ pub(super) async fn calendar(
     h: HeaderMap,
     AttendanceQuery(q): AttendanceQuery<ScopeQuery>,
 ) -> Res<ScheduleCalendar> {
-    let c = caller(&principal(&s, &h).await?, READ)?;
+    let p = principal(&s, &h).await?;
+    let c = caller(&p, READ)?;
     let month = q.month.ok_or_else(|| {
         RestError::new(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -135,12 +136,23 @@ pub(super) async fn calendar(
             "month is required",
         )
     })?;
-    Ok(Json(
-        s.store
-            .schedule_calendar(&c, level(&q.scope_kind)?, q.scope_id, month)
-            .await
-            .map_err(RestError::schedule)?,
-    ))
+    let calendar = s
+        .store
+        .schedule_calendar(&c, level(&q.scope_kind)?, q.scope_id, month)
+        .await
+        .map_err(RestError::schedule)?;
+    if calendar.scope_kind == Level::Person {
+        crate::audit::read(
+            &s,
+            &p,
+            "attendance.schedule_read",
+            calendar.scope_id.to_string(),
+            &[calendar.scope_id],
+            None,
+        )
+        .await?;
+    }
+    Ok(Json(calendar))
 }
 
 pub(super) async fn list_layers(

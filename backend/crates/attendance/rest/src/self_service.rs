@@ -181,6 +181,20 @@ pub(super) async fn list_own_exceptions(
         .list_own_exceptions(self_scope(&principal), query)
         .await
         .map_err(RestError::store)?;
+    let subjects = page
+        .items
+        .iter()
+        .map(|row| row.employee_id)
+        .collect::<Vec<_>>();
+    super::audit::read(
+        &state,
+        &principal,
+        "attendance.own_exceptions_read",
+        "query".to_owned(),
+        &subjects,
+        subjects.first().copied(),
+    )
+    .await?;
     Ok(Json(OwnExceptionPageDto {
         items: page.items.into_iter().map(OwnExceptionDto::from).collect(),
         total: page.total,
@@ -203,6 +217,20 @@ pub(super) async fn read_own_week52(
         .read_own_week52(self_scope(&principal), query)
         .await
         .map_err(RestError::store)?;
+    let subjects = result
+        .as_ref()
+        .map(|row| row.employee_id)
+        .into_iter()
+        .collect::<Vec<_>>();
+    super::audit::read(
+        &state,
+        &principal,
+        "attendance.own_week52_read",
+        "query".to_owned(),
+        &subjects,
+        subjects.first().copied(),
+    )
+    .await?;
     Ok(Json(OwnWeek52Response::from(result)))
 }
 
@@ -268,6 +296,7 @@ mod tests {
     #[test]
     fn own_week52_available_response_has_only_status_and_projection() {
         let projection = OwnWeek52Read {
+            employee_id: uuid::Uuid::nil(),
             week_start: Date::from_calendar_date(2026, Month::July, 20).unwrap(),
             current_hours: 24.0,
             projected_hours: 32.0,
