@@ -963,12 +963,6 @@
     },
     {
       "model": "matrix",
-      "file": "backend/app/src/action_inbox/sources/hr_exit.rs",
-      "kind": "reference",
-      "count": 2
-    },
-    {
-      "model": "matrix",
       "file": "backend/app/src/action_inbox/sources/hr_lifecycle.rs",
       "kind": "reference",
       "count": 2

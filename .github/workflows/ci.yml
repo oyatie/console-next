@@ -127,6 +127,32 @@ jobs:
           done
           echo "Backend code gates: ${SECONDS}s"
           exit "$failed"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          cache: npm
+      - name: Served Home probe prerequisites
+        working-directory: .
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps --only-shell chromium
+          npm run build
+      - name: Release backend for Home probe
+        run: cargo build --release --locked -p console-app --features e2e-test-support
+      - name: Served 2,000-person Home budget
+        working-directory: .
+        env:
+          E2E_SERVED: "1"
+          E2E_PREBUILT: "1"
+          E2E_WORKERS: "1"
+          CONSOLE_APP_BIN: backend/target/release/console-app
+        run: npx playwright test e2e/performance/home-inbox.spec.ts --project=parallel
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: home-inbox-performance
+          path: test-results
+          if-no-files-found: error
 
   supply-chain:
     runs-on: ubuntu-24.04

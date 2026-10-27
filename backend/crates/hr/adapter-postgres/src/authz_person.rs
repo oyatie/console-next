@@ -105,10 +105,37 @@ pub async fn authorize_hr_case(
     branch_id: Option<Uuid>,
     employee_id: Uuid,
 ) -> Result<(), HrError> {
-    if holds_scoped(principal, feature) {
-        return authorize_hr_person(tx, principal, feature, employee_id).await;
+    let facts = if holds_scoped(principal, feature) {
+        super::HrCaseFacts::load(tx, *principal.user_id.as_uuid(), &[employee_id]).await?
+    } else {
+        super::HrCaseFacts::default()
+    };
+    facts.authorize(principal, feature, branch_id, employee_id)
+}
+
+impl super::HrCaseFacts {
+    /// The same exit decision for point actions and a page whose resource facts are already loaded.
+    pub fn authorize(
+        &self,
+        principal: &Principal,
+        feature: Feature,
+        branch_id: Option<Uuid>,
+        employee_id: Uuid,
+    ) -> Result<(), HrError> {
+        if !matches!(
+            feature,
+            Feature::ExitCaseReport | Feature::ExitCaseHrConfirm
+        ) || !holds_scoped(principal, feature)
+        {
+            return authorize_hr_scoped_write(principal, feature, branch_id);
+        }
+        let reach = hr_reach(principal, feature)?;
+        if self.contains(&reach, employee_id) {
+            Ok(())
+        } else {
+            Err(refuse(principal, feature, &reach))
+        }
     }
-    authorize_hr_scoped_write(principal, feature, branch_id)
 }
 
 /// The keys a 발령 (a lifecycle event) passes on: 발령 등록·수정, or — as
