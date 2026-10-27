@@ -101,7 +101,7 @@ hex = "0.4.3"
 url = "2.5.8"
 bytes = "1.11.1"
 # Version verified live against crates.io 2026-06-12: jsonwebtoken 10.4.0.
-jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust_crypto", "use_pem"] }
+jsonwebtoken = { version = "11.1.0", default-features = false, features = ["rust_crypto", "use_pem"] }
 # Owner-approved 2026-10-13 (brief 157): P-256 keys (platform-auth SPKI parsing, already
 # in the lock via jsonwebtoken) and the test-only soft passkey for the WebAuthn helpers.
 # Members add their own features.
@@ -118,7 +118,7 @@ calamine = { version = "0.35.0", features = ["dates"] }
 # downloaded staging bytes are authoritative; the declared content_type is
 # advisory). Pure-Rust, no extra runtime binary. Version verified live against
 # crates.io 2026-06-23: infer 0.19.0.
-infer = { version = "0.19.0", default-features = false, features = ["std"] }
+infer = { version = "0.22.0", default-features = false, features = ["std"] }
 # Cron parsing/evaluation for workflow_schedules (BE-AUTO). Versions verified
 # live against crates.io 2026-07-08: croner 3.0.1, chrono 0.4.45,
 # chrono-tz 0.10.4 (croner evaluates over chrono types; chrono-tz supplies the
@@ -126,7 +126,7 @@ infer = { version = "0.19.0", default-features = false, features = ["std"] }
 # must mean 09:00 KST, not UTC). chrono was already in the lockfile
 # transitively; `time` stays the workspace-wide datetime type and chrono is
 # confined to the cron boundary.
-croner = "3.0.1"
+croner = "4.0.2"
 chrono = { version = "0.4.45", default-features = false, features = ["std"] }
 chrono-tz = "0.10.4"
 # Versions verified live against crates.io 2026-06-12:
@@ -140,10 +140,10 @@ tower = "0.5.3"
 http = "1.4.2"
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
-tracing-opentelemetry = "0.33.0"
-opentelemetry = "0.32.0"
-opentelemetry_sdk = "0.32.1"
-opentelemetry-otlp = "0.32.0"
+tracing-opentelemetry = "0.34.0"
+opentelemetry = "0.33.1"
+opentelemetry_sdk = "0.33.1"
+opentelemetry-otlp = "0.33.1"
 # Prometheus metrics: the `metrics` facade records into a process-global
 # recorder; metrics-exporter-prometheus renders the /metrics exposition. Versions
 # verified live against the crates.io index. default-features off: we only render
@@ -167,10 +167,10 @@ lettre = { version = "0.11.22", default-features = false, features = [
 # for per-row DEK + nonce generation rather than adding the standalone `rand`
 # crate (rand 0.10 would pull a SECOND, incompatible `rand_core` major). No
 # async-imap / tokio-rustls is added in this batch (those land in B-mail-3).
-chacha20poly1305 = "0.10.1"
+chacha20poly1305 = "0.11.0"
 secrecy = "0.10.3"
 zeroize = "1.9.0"
-base64 = "0.22.1"
+base64 = "0.23.1"
 subtle = "2.6.1"
 # SSRF guard for outbound webmail connections (B-mail-2). Versions verified live
 # against the crates.io index 2026-06-23: hickory-resolver 0.26.1 (latest
@@ -194,7 +194,7 @@ ipnet = "2.12.0"
 # so `cargo tree -d` stays single-stack (one rustls, one ring, no native-tls /
 # openssl). `mail-parser` is the inbound MIME parser; both appear ONLY in
 # `console-comms-adapter-imap`.
-async-imap = { version = "0.11.2", default-features = false, features = ["runtime-tokio"] }
+async-imap = { version = "0.12.0", default-features = false, features = ["runtime-tokio"] }
 mail-parser = "0.11.4"
 tokio-rustls = { version = "0.26.4", default-features = false, features = ["ring", "tls12"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
@@ -380,7 +380,7 @@ console-platform-test-support = { path = "crates/platform/test-support" }
 # is TRUE in production builds. Each fix was correct and each left a sibling
 # spelling live. Parsing Rust with the parser rustc's own ecosystem uses ends
 # the enumeration instead of extending it.
-syn = { version = "2.0.117", default-features = false, features = ["full", "parsing", "printing", "clone-impls", "visit"] }
+syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "printing", "clone-impls", "visit"] }
 
 # Version verified live against crates.io 2026-10-06: proptest 1.11.0 (MSRV 1.85).
 # Dev-dependency only: property tests for the kr identifiers, the import cell

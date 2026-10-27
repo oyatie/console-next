@@ -19,7 +19,7 @@ path = "src/lib.rs"
 # Path dep, not `workspace = true`: adding the `[workspace.dependencies]` entry
 # needs backend/Cargo.toml, which this lane may not write. See followUps.
 console-ontology-canonical-domain = { path = "../../../crates/ontology/canonical-domain" }
-sqlparser = { version = "0.62.0", default-features = false }
+sqlparser = { version = "0.63.0", default-features = false }
 # Landed by the integration owner so this gate can stop hand-lexing Rust; see the
 # rationale on the `[workspace.dependencies]` entry in backend/Cargo.toml.
 syn = { workspace = true }
