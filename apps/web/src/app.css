@@ -77,7 +77,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top__jump { flex: 0 1 600px; min-width: 0; justify-content: flex-start; color: var(--steel); font-weight: var(--fw-body); background: var(--muted); }
 .top__jumpText { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Phone widths keep ⌘K (keyboard) and drop the field: the top bar has no room for it there. */
-@media (max-width: 640px) {
+@media (--small) {
   .top .top__jump { display: none; }
   .top__name { flex-shrink: 1; }
   /* The slot reserve is a desktop guarantee; on a phone the name yields to the sign-out button. */
@@ -88,7 +88,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .page__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .page__title { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); }
 /* Phone widths: the rail becomes a disclosure opened from the top bar's menu button. */
-@media (max-width: 767px) {
+@media (--phone) {
   .shell { grid-template: "top" var(--topbar-h) "main" 1fr / 1fr; }
   .rail { display: none; }
   .top { gap: var(--space-2); padding: 0 var(--space-2); }
@@ -137,7 +137,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* minmax(0, …): a wide table scrolls inside its card instead of widening the page (a bare 1fr keeps its min-content). */
 .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .split[data-open="true"] { grid-template-columns: minmax(0, 1fr) var(--panel-w); }
-@media (max-width: 1279px) { .split[data-open="true"] { grid-template-columns: minmax(0, 1fr); } }
+@media (--below-wide) { .split[data-open="true"] { grid-template-columns: minmax(0, 1fr); } }
 .panel { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
 /* Only a side pane sticks; a card in the page's one column never does (it drew over the cards scrolled under it). */
 aside.panel { position: sticky; top: 0; }
@@ -211,9 +211,9 @@ aside.panel { position: sticky; top: 0; }
 .section-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); }
 .table th.fit { width: 1%; white-space: nowrap; }
 /* A fitted column's cells (codes, dates, chips) stay on one line where there is room; at phone width they wrap. */
-@media (min-width: 768px) { .table td.fit { white-space: nowrap; } }
+@media (--tablet) { .table td.fit { white-space: nowrap; } }
 /* Phone widths: long unbroken names (keep-all Korean) wrap instead of pushing the table past its card. */
-@media (max-width: 767px) { .table td { overflow-wrap: anywhere; } .table .wide-only { display: none; } }
+@media (--phone) { .table td { overflow-wrap: anywhere; } .table .wide-only { display: none; } }
 .table[data-fixed="true"] { table-layout: fixed; }
 .table th[data-width="code"] { width: 14%; }
 .table th[data-width="status"] { width: 16%; }

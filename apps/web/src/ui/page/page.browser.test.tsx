@@ -20,14 +20,31 @@ beforeAll(async () => {
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), dirname(realpathSync("node_modules/pretendard"))] } },
     plugins: [{ name: "page-test", resolveId: id => id === "/page-test.js" ? "\0page-test" : undefined,
       load: id => id === "\0page-test" ? `
-        import React from 'react'; import {createRoot} from 'react-dom/client';
+        import React, {useState,useEffect} from 'react'; import {createRoot} from 'react-dom/client';
         import {createMemoryHistory,createRootRoute,createRouter,RouterProvider} from '@tanstack/react-router';
+        import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
         import {loadCatalog} from '@console/i18n';
         import Gallery from '/apps/web/src/gallery/sections/page.gallery.tsx';
         import {PageMain} from '/apps/web/src/ui/page/page-main.tsx';
+        import {ListPage} from '/apps/web/src/ui/templates/list-page.tsx';
+        import {SearchField} from '/apps/web/src/ui/search/search-field.tsx';
+        import {ApiError} from '@console/api';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
-        const route=createRootRoute({component:()=>React.createElement(PageMain,null,React.createElement(Gallery))});
+        function FilterDemo() {
+          const [mode,setMode]=useState('populated'), [text,setText]=useState('');
+          useEffect(()=>{
+            const read=event=>setMode(event.detail);
+            document.addEventListener('read-test',read);
+            return ()=>document.removeEventListener('read-test',read);
+          },[]);
+          const q={isPending:mode==='loading',data:mode==='loading'||mode==='failed'?undefined:[],refetch(){},
+            error:mode==='refused'?new ApiError(403,'access_denied','',[],'filter-refusal'):mode==='failed'?new ApiError(503,'service_unavailable','',[],'filter-failure'):null};
+          return React.createElement('div',{'data-read-mode':mode},React.createElement(ListPage,{q,head:{title:'Employees'},
+            filters:React.createElement(SearchField,{label:'Find',value:text,onChange:setText})},()=>React.createElement('p',null,'Body')));
+        }
+        const client=new QueryClient({defaultOptions:{queries:{enabled:false,retry:false}}});
+        const route=createRootRoute({component:()=>React.createElement(PageMain,null,React.createElement(QueryClientProvider,{client},React.createElement(new URL(location.href).searchParams.has('filters')?FilterDemo:Gallery)))});
         const router=createRouter({routeTree:route,history:createMemoryHistory({initialEntries:['/']})});
         await router.load();
         createRoot(document.getElementById('root')).render(React.createElement(RouterProvider,{router}));
@@ -36,7 +53,7 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage({ locale: "ko-KR", timezoneId: "Asia/Seoul" });
-  await page.route("**/page-test", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Page</title><div id="root"></div><script type="module" src="/page-test.js"></script></html>' }));
+  await page.route(url => url.pathname === "/page-test", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Page</title><div id="root"></div><script type="module" src="/page-test.js"></script></html>' }));
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
@@ -110,4 +127,19 @@ test.each([1440, 390])("a count arriving keeps the head, primary action and tabs
   await states.nth(6).click();
   expect(await primary.boundingBox()).toEqual(before);
   expect(await tabs.boundingBox()).toEqual(tabsBefore);
+});
+
+test("list filters retain their value and focus across reads, and disappear on refusal", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}page-test?filters`);
+  const input = page.getByRole("searchbox", { name: "Find", exact: true });
+  await input.fill("typed");
+  for (const mode of ["loading", "failed", "populated"]) {
+    await page.evaluate(value => document.dispatchEvent(new CustomEvent("read-test", { detail: value })), mode);
+    await element(page.locator("[data-read-mode]")).toHaveAttribute("data-read-mode", mode);
+    await element(input).toBeFocused();
+    await element(input).toHaveValue("typed");
+  }
+  await page.evaluate(() => document.dispatchEvent(new CustomEvent("read-test", { detail: "refused" })));
+  await element(input).toHaveCount(0);
+  await element(page.locator("h1")).toHaveCount(1);
 });

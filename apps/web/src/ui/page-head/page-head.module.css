@@ -13,7 +13,7 @@
 .primary { display: flex; flex: none; }
 .secondary { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .overflow { display: none; }
-@media (max-width: 767px) {
+@media (--phone) {
   .secondary { display: none; }
   .overflow { display: flex; }
   .title { flex: 1; min-width: 0; }

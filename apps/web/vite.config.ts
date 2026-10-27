@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 import react from "@vitejs/plugin-react";
 import { fontPolicy } from "./font-policy.ts";
+import postcss from "../../postcss.config.mjs";
 
 // Same-origin: the backend has no CORS layer and the refresh cookie is SameSite=Strict,
 // so dev proxies /api (incl. the /api/v1/ws upgrade) and prod serves both from one host.
@@ -13,6 +14,7 @@ const deps = dirname(realpathSync(resolve(import.meta.dirname, "../../node_modul
 
 export default defineConfig({
   plugins: [react(), fontPolicy()],
+  css: { postcss },
   // The backend CSP allows fonts/images only from 'self' (no data: URIs), so never inline assets.
   build: {
     assetsInlineLimit: 0, manifest: true,
