@@ -38,7 +38,7 @@ for (const screen of screens) for (const state of Object.keys(screen.states) as 
       } else {
         await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);
         if (screen.key === "home") {
-          const rows = main.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem");
+          const rows = main.getByRole("region", { name: "업무함", exact: true }).locator("[data-id]");
           await expect(rows).toHaveCount(Math.min(fixture.count, 100));
           await expect(rows.first()).toContainText(state === "long" ? LONG_NAME : "검증직원 1");
           if (state === "large") {

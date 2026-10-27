@@ -62,7 +62,7 @@ test("period unlock: a second close authority refuses, then approves; the reques
     await go(page, "/", true);
     await passkeyLogin(page);
     await page.reload();
-    const notices = page.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ has: page.getByRole("button", { name: "기간 마감 부여 확인 기록", exact: true }) });
+    const notices = page.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: page.getByRole("button", { name: "기간 마감 부여 확인 기록", exact: true }) });
     await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 });
     await expectAccessible(page, "grant notice");
     await notices.getByRole("button", { name: "기간 마감 부여 확인 기록" }).click();
@@ -72,6 +72,9 @@ test("period unlock: a second close authority refuses, then approves; the reques
   }
   // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the requester acts after it.
   await exec.waitForTimeout(OWN_ECHO_MS);
+  const paintedRows = exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr");
+  const painted = await paintedRows.allTextContents();
+  const position = await paintedRows.first().boundingBox();
 
   // The linked requester locks last month, then asks to unlock it; another authority decides.
   const adminBearer = bearerOf(admin);
@@ -115,11 +118,18 @@ test("period unlock: a second close authority refuses, then approves; the reques
   expect(still.unlockRequest?.status).toBe("PENDING");
   await expect(row).toContainText("승인 대기");
 
-  // The second person, on Home all along, sees the request arrive live and refuses it with a reason,
-  // after the requester's own-write window (OWN_ECHO_MS), as people do.
+  // Home holds the live insert until the second person asks to see it.
   await exec.waitForTimeout(OWN_ECHO_MS);
   const inbox = exec.getByRole("region", { name: "업무함", exact: true });
-  const queue = inbox.getByRole("listitem").filter({ has: exec.locator(`a[href="${LOCKS}?review=${lock.id}"]`) });
+  const queue = inbox.getByRole("row").filter({ has: exec.locator(`a[href="${LOCKS}?review=${lock.id}"]`) });
+  const held = exec.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
+  await expect(held).toBeVisible();
+  await expect(queue).toHaveCount(0);
+  expect(await paintedRows.allTextContents()).toEqual(painted);
+  expect(await paintedRows.first().boundingBox(), "a dated live insert does not move the undated rows").toEqual(position);
+  const refreshed = exec.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/me/action-inbox" && response.request().method() === "GET");
+  await held.click();
+  expect((await refreshed).status()).toBe(200);
   await expect(queue).toContainText(`급여 ${month}`);
   await expect(queue).toContainText("이요청");
   await expect(queue).toContainText("소급 정정");
@@ -180,7 +190,7 @@ test("setup with ops and one linked close authority unlocks with review; go-live
   await grantAccess(operator, "단독마감", "full");
   await go(human, "/", true);
   await passkeyLogin(human);
-  const notice = human.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ has: human.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
+  const notice = human.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: human.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
   await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
   await expect(notice).toBeHidden();
   letGrantsAge(unique(slug), "단독마감");

@@ -19,10 +19,10 @@ export function HomeScreen() {
   const ready = inbox.isError || (!inbox.isPending && (!inbox.isFetching || inbox.isFetchedAfterMount) && (!during || reads.some((q) => q.isError) || reads.every((q) => q.isSuccess && !q.isFetching)));
   const pending = !settled && !ready;
   if (!pending && !settled) setSettled(true);
-  useLiveHold(pending);
+  useLiveHold(!pending && !!inbox.data?.pages.some((page) => page.items.length > 0), true);
   return <Home setup={(c) => <SetupHome c={c} />} setupPending={pending} action={(item) => {
     const link = item.links[0];
-    if (link?.kind === "account") return <AddPasskey count={1} primary focusAfter="inbox-title" />;
+    if (link?.kind === "account") return <AddPasskey count={1} focusAfter="inbox-title" />;
     if (link?.kind === "org_change" && item.context?.command) return <InboxCommand id={link.id} command={item.context.command} />;
     return null;
   }} />;

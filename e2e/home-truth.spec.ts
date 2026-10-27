@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import type { components } from "@console/api/schema";
-import { expectAccessible } from "./a11y";
+import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { inviteAccount } from "./access-flows";
 import { firstSignIn, go } from "./flows";
+import { forgetResize } from "./stability";
 import { homeRail, setupRail, startOperations, tenantInSetup } from "./setup-flows";
 
 // Home keeps healthy sources visible when another source fails;
@@ -22,8 +23,22 @@ function counter(page: Page, url: RegExp) {
 const inviteMember = (admin: Page, name: string) => inviteAccount(admin, name, "none");
 const refused = { status: 403, contentType: "application/json", body: JSON.stringify({ error: { code: "forbidden", message: "forbidden" } }) };
 
+async function walkHome(page: Page, state: string, info: TestInfo) {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await forgetResize(page);
+  const capture = async (width: number) => {
+    await expectAccessible(page, `Home ${state} at ${width}px`);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+      await page.screenshot({ path: info.outputPath(`home-${state}-${width}-${theme}.png`), fullPage: true });
+    }
+  };
+  await capture(1440);
+  await atPhoneWidth(page, async () => { await fits(page, `Home ${state}`); await capture(390); });
+}
+
 // regression (governance-07, worst-case-38): no 보안 연락처 step is counted 완료 or promised while none can be recorded.
-test("the setup rail and go-live promise no security contact that cannot be recorded", { tag: "@hr" }, async ({ browser }) => {
+test("the setup rail and go-live promise no security contact that cannot be recorded", { tag: "@hr" }, async ({ browser }, info) => {
   const { admin } = await tenantInSetup(browser, "truthrail", "약속상사");
   await go(admin, "/");
   await expect(await homeRail(admin)).toBeVisible();
@@ -31,6 +46,7 @@ test("the setup rail and go-live promise no security contact that cannot be reco
   await expect(inbox.getByRole("region", { name: /운영 준비/ })).toHaveCount(1);
   await expect(setupRail(admin)).toHaveCount(1);
   await expect(setupRail(admin)).not.toContainText("보안 연락처");
+  await walkHome(admin, "setup", info);
   await go(admin, "/setup/go-live");
   await expect(admin.getByRole("heading", { name: "운영 시작", level: 1 })).toBeVisible();
   // company-49 (UX-R2 SETUP): a capability that is not offered gets no line on the preview at all.
@@ -38,7 +54,7 @@ test("the setup rail and go-live promise no security contact that cannot be reco
   await expect(admin.getByRole("main")).not.toContainText("보안 연락처");
 });
 
-test("Home keeps healthy work through a source failure, retries it, and asks a refusal once; the calendar locks a month", { tag: "@hr" }, async ({ browser }) => {
+test("Home keeps healthy work through a source failure, retries it, and asks a refusal once; the calendar locks a month", { tag: "@hr" }, async ({ browser }, info) => {
   const { admin } = await tenantInSetup(browser, "truthq", "정직상사");
   await startOperations(admin);
   const inboxPath = /\/api\/v1\/me\/action-inbox(\?|$)/;
@@ -71,12 +87,12 @@ test("Home keeps healthy work through a source failure, retries it, and asks a r
   const failed = inbox.getByRole("alert").filter({ hasText: "변경 요청 업무를 불러오지 못했습니다." });
   await expect(failed).toBeVisible();
   await expect(failed).toContainText(`지원 문의 번호 ${supportReference}`);
-  await expect(inbox.getByRole("listitem").filter({ hasText: healthyTitle }).first()).toBeVisible();
+  await expect(inbox.getByRole("row").filter({ hasText: healthyTitle }).first()).toBeVisible();
   await expect(inbox.getByRole("heading", { name: "불러오지 못했습니다", exact: true })).toHaveCount(0);
   await expect(inbox.getByRole("heading", { name: "처리할 업무가 없습니다" })).toHaveCount(0);
   await expect(inbox.getByRole("heading", { name: "이 계정으로 처리할 업무가 없습니다" })).toHaveCount(0);
   await expect(inbox.getByRole("group", { name: "업무 구분" }).getByRole("button")).toHaveCount(5);
-  await expectAccessible(admin, "Home keeps healthy work beside an unavailable source");
+  await walkHome(admin, "partial", info);
 
   fail = false;
   const asked = reads();
@@ -117,7 +133,7 @@ test("Home keeps healthy work through a source failure, retries it, and asks a r
 
 });
 
-test("an account with no work grant gets an honest home, and 기간 잠금 refuses it once", { tag: "@hr" }, async ({ browser }) => {
+test("an account with no work grant gets an honest home, and 기간 잠금 refuses it once", { tag: "@hr" }, async ({ browser }, info) => {
   const { admin } = await tenantInSetup(browser, "truthn", "권한없음상사");
   await startOperations(admin);
   const exec = await firstSignIn(browser, await inviteMember(admin, "박사원"));
@@ -153,5 +169,5 @@ test("an account with no work grant gets an honest home, and 기간 잠금 refus
   await expect(inbox.getByRole("group", { name: "업무 구분" }).getByRole("button")).toHaveCount(0);
   await expect(inbox.getByRole("link", { name: "직원 등록", exact: true })).toHaveCount(0);
   await expect(exec.getByRole("button", { name: "로그아웃" })).toHaveCount(1);
-  await expectAccessible(exec, "Home shows only this account's security work without business grants");
+  await walkHome(exec, "no-grant", info);
 });
