@@ -8,7 +8,8 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { SectionHead } from "../../../ui/card/section-head";
 import { entitiesRef, orgStructureRef, kindsRef } from "../../../reference/entity/api";
 import { SHEET_COLUMNS, setupSheet } from "../domain/sheet";
-import { CommandError } from "../../../lib/react/command-error";
+import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 
 /** The org sheet columns, including an empty header before the first entity. */
 export function SetupBulk({ allowed }: { allowed: boolean }) {
@@ -32,7 +33,7 @@ export function SetupBulk({ allowed }: { allowed: boolean }) {
       <Button disabled={!q.data || !entities.data || !kinds.data || q.isError || entities.isError || kinds.isError} onClick={download}>{t("setup.bulk.download")}</Button>
       <Link to="/org/history" className={buttonClass()}>{t("setup.bulk.history")}</Link>
     </div>}
-    {allowed && <CommandError error={q.error ?? entities.error ?? kinds.error} />}
+    {allowed && <QueryState q={readGroup([q, entities, kinds])}>{() => null}</QueryState>}
     {!allowed && <p>{t("setup.permissionNeeded", { permission: t("setup.permission.org::edit") })}</p>}
   </section>;
 }

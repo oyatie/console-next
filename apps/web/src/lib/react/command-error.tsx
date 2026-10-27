@@ -7,7 +7,7 @@ import { Banner } from "../../ui/banner/banner";
 import { Button } from "../../ui/button/button";
 import { Chip } from "../../ui/chip";
 import { ErrorSummary, type ErrorSummaryItem } from "../../ui/error-summary";
-import { failureText } from "../refusal";
+import { failureText, readFailureText } from "../refusal";
 import { SupportReference } from "./support-reference";
 import { outcomeUnknown, recoveryOf } from "./command";
 import { OutcomeLink } from "./outcome-link";
@@ -66,9 +66,12 @@ export function CommandError({
 }) {
   if (!error) return null;
   const api = error instanceof ApiError ? error : undefined;
-  const checking = !read && outcomeUnknown(error);
+  // The transport and useCommand attach intent keys to commands; a read's operation ID is only a support reference.
+  const uncertain = outcomeUnknown(error);
+  const readFailure = read || (uncertain && !api?.requestKey);
+  const checking = !readFailure && uncertain;
   const finish = checking && recover ? recoveryOf(error) : undefined;
-  const key = api?.originalOperationId ?? api?.operationId ?? api?.requestKey;
+  const key = readFailure ? undefined : api?.originalOperationId ?? api?.operationId ?? api?.requestKey;
   const change = api?.status === 409 && api.code === "stale_revision" && !checking ? api.lastChange : undefined;
   const fields = change?.fields.map(field => fieldLabel?.(field));
   const knownFields = fields?.filter((label): label is string => Boolean(label)) ?? [];
@@ -111,7 +114,7 @@ export function CommandError({
   return (
     <Banner tone={checking ? "info" : "danger"} live={live ?? (checking ? "polite" : "assertive")} title={checking ? t("requestOutcome.checking") : undefined}
       actions={finish && <Button variant="primary" onClick={finish}>{t("requestOutcome.check")}</Button>}>
-      {api?.status === 0 ? t("common.networkError") : failureText(error, own)}
+      {readFailure ? readFailureText(error, own) : api?.status === 0 ? t("common.networkError") : failureText(error, own)}
       {checking && <p>{t("requestOutcome.remedy")}</p>}
       {change && (change.redacted ? <p>{t("requestOutcome.other")}</p> : <>
         <p>{t("requestOutcome.changed", { actor, at: fmtDateTime(change.recorded_at) })}
