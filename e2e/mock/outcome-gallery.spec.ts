@@ -19,6 +19,10 @@ for (const width of [1440, 390]) {
     await expect(status.locator('[data-enum="unknown"] > *')).toHaveText(["FUTURE_STATUS", "산재 요양", "확인되지 않은 항목 FUTURE_LEAVE"]);
     await expect(status.locator('[data-enum="unknown"]')).toContainText("산재 요양");
     await expect(status.locator('[data-enum="unknown"]')).toContainText("확인되지 않은 항목");
+    await expect(status.locator('[data-enum="supportSessionState"]')).toHaveText("확인되지 않은 항목 FUTURE_SESSION");
+    await expect(status.locator('[data-enum="attendanceMark"] .chip--danger')).toHaveCount(3);
+    await expect(status.locator('[data-enum="orgBulkPlanStatus"] .chip--danger')).toHaveCount(3);
+    await expect(status.locator('[data-enum="identifierCorrectionStatus"] .chip--warn')).toHaveText(["승인 대기", "적용됨 · 사후 검토 대기"]);
     await expectAxe(page, `outcome status gallery ${width}px`, { include: "[data-outcome-status]" });
     const overflow = await status.evaluate(el => el.scrollWidth - el.clientWidth);
     expect(overflow).toBe(0);

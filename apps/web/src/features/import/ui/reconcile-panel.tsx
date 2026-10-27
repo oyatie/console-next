@@ -8,6 +8,8 @@ import { QueryState } from "../../../lib/react/query-state";
 import { entitiesRef } from "../../../reference/entity/api";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
+import { IMPORT_SIGNOFF_STATE } from "../../../lib/labels";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { Table } from "../../../ui/table";
@@ -80,7 +82,7 @@ export function ReconcilePanel({ runId }: { runId: string }) {
               </div>
               {/* The sign-off side: a plain surface (not a second region); its h2 names the whole check above. */}
               <Card>
-                <SectionHead level={2} id="import-reconcile" tools={<Chip tone={r.signoff ? "ok" : "warn"}>{t(r.signoff ? "importReconcile.sign.stateDone" : "importReconcile.sign.stateOpen")}</Chip>}>{t("importReconcile.title")}</SectionHead>
+                <SectionHead level={2} id="import-reconcile" tools={<EnumValue e={IMPORT_SIGNOFF_STATE} value={r.signoff ? "stateDone" : "stateOpen"} />}>{t("importReconcile.title")}</SectionHead>
                 <div className={s.filters}>
                   <Chip tone="ok">{t("importReconcile.counts.confirmed", { n: r.counts.confirmed })}</Chip>
                   <Chip tone={r.counts.needs_check ? "warn" : "neutral"}>{t("importReconcile.counts.needs", { n: r.counts.needs_check })}</Chip>

@@ -26,7 +26,7 @@ test("future effective states stay visible in My access and the person access vi
     enforcement: "FUTURE_STATE", caveats: [],
   };
   expect(grantLines([entry])[0]?.state).toBe("FUTURE_STATE");
-  expect(renderToStaticMarkup(<EnforcementChip e={entry.enforcement} />)).toBe('<span class="chip chip--neutral">FUTURE_STATE</span>');
+  expect(renderToStaticMarkup(<EnforcementChip e={entry.enforcement} />).trim()).toBe('<span class="chip chip--neutral">FUTURE_STATE</span>');
   expect(grantLines([{ ...entry, enforcement: "ENFORCED" }])[0]?.state).toBeUndefined();
   expect(grantLines([{ ...entry, enforcement: "ACCOUNT_INACTIVE" }])[0]?.state).toBe("멈춤 · 계정 비활성");
 });

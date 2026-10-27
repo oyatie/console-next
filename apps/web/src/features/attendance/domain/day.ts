@@ -3,20 +3,7 @@
 import type { Shift, Window } from "./minutes";
 import { duration } from "./minutes";
 
-export const MARK_TONE = {
-  NO_RECORD: "blocking",
-  MISSING_OUT: "blocking",
-  NO_SCHEDULE: "blocking",
-  UNAPPROVED_EXCESS: "decision",
-  WORK_ON_REST_DAY: "decision",
-  LATE: "info",
-  EARLY_OUT: "info",
-  AWAY: "info",
-  ABSENT: "info",
-} as const;
-export type MarkCode = keyof typeof MARK_TONE;
-type Tone = (typeof MARK_TONE)[MarkCode];
-export const GLYPH: Record<Tone, string> = { blocking: "▲", decision: "◆", info: "●" };
+export const GLYPH: Partial<Record<string, string>> = { danger: "▲", warn: "◆", info: "●" };
 
 /** Scheduled work: the shift without its breaks. */
 export function scheduledSpans(shift: Shift | undefined): Window[] {
@@ -63,11 +50,4 @@ export function cellShape(c: { plan_kind: string; entry_kind?: string; recognise
     default:
       return c.plan_kind !== "WORK" && c.plan_kind !== "NO_SCHEDULE" ? { kind: "code", code: "REST" } : { kind: "empty" };
   }
-}
-
-/** A grid row's marks by tone, for the totals column. */
-export function toneCounts(marks: readonly string[]) {
-  const n = { blocking: 0, decision: 0, info: 0 };
-  for (const m of marks) if (m in MARK_TONE) n[MARK_TONE[m as MarkCode]] += 1;
-  return n;
 }

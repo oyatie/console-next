@@ -63,6 +63,43 @@ export const SUPPORT_SESSION_STATE = { ...toned("supportSessionState", {
 export const ATTENDANCE_PATTERN_STATUS = toned<S["AttendancePattern"]["status"]>("attendancePatternStatus", {
   ACTIVE: "ok", RETIRED: "neutral",
 }, v => `attendancePatterns.patternStatus.${v}`);
+export const ATTENDANCE_MARK = toned<S["AttendanceMark"]>("attendanceMark", {
+  NO_RECORD: "danger", MISSING_OUT: "danger", NO_SCHEDULE: "danger", UNAPPROVED_EXCESS: "warn", WORK_ON_REST_DAY: "warn", LATE: "info", EARLY_OUT: "info", AWAY: "info", ABSENT: "info",
+}, v => `attendanceRecords.mark.${v}`);
+export const ATTENDANCE_LAYER_STATE = toned<S["AttendanceScheduleLayer"]["state"]>("attendanceLayerState", {
+  SCHEDULED: "info", IN_EFFECT: "ok", ENDED: "neutral", CANCELLED: "neutral",
+}, v => `attendance.state.${v}`);
+export const ATTENDANCE_MONTH_STATE = toned<S["AttendanceMonthState"]["state"]>("attendanceMonthState", {
+  OPEN: "warn", CLOSED: "info", REOPENED: "warn",
+}, v => `attendanceRecords.card.${v === "OPEN" ? "provisional" : v === "CLOSED" ? "closed" : "reopenedOpenEnded"}`);
+export const ORG_BULK_PLAN_STATUS = toned("orgBulkPlanStatus", {
+  link: "neutral", create: "ok", createSite: "ok", clash: "danger", tooDeep: "danger", kind_not_allowed: "danger",
+}, v => `orgBulk.plan.status.${v}`);
+export const ORG_BULK_SITE_STATE = toned("orgBulkSiteState", { open: "warn", done: "ok" }, v => `orgBulk.site.${v}`);
+export const CHANGE_REQUEST_STATUS = toned<S["ChangeRequest"]["status"]>("changeRequestStatus", {
+  OPEN: "warn", APPLIED: "ok", DECLINED: "danger", WITHDRAWN: "neutral",
+}, v => `requests.status.${v}`);
+export const ACCESS_ENFORCEMENT = toned<S["AccessEnforcement"] | "SCOPE_UNAVAILABLE" | "ACCOUNT_INACTIVE">("accessEnforcement", {
+  ENFORCED: "ok", PREPARED: "info", SCHEDULED: "info", ENDED: "neutral", REVOKED: "neutral", ROLE_INACTIVE: "warn", SCOPE_UNAVAILABLE: "warn", ACCOUNT_INACTIVE: "neutral",
+}, v => `accessCodes.enforcement.${v}`);
+export const IMPORT_RECONCILE_STATE = toned<S["EmployeeImportReconcileRow"]["state"]>("importReconcileState", {
+  UNCHECKED: "neutral", CONFIRMED: "ok", NEEDS_CHECK: "warn",
+}, v => `importReconcile.state.${v}`);
+export const IMPORT_SIGNOFF_STATE = toned("importSignoffState", { stateOpen: "warn", stateDone: "ok" }, v => `importReconcile.sign.${v}`);
+export const PERIOD_UNLOCK_STATE = toned("periodUnlockState", { PENDING: "info", REJECTED: "danger", EXPIRED: "neutral" }, v => `periodLocks.request.chip.${v}`);
+export const JOB_TITLE_STATUS = toned("jobTitleStatus", { active: "ok", inactive: "neutral" }, v => `titles.${v}`);
+export const ENTITY_LIFECYCLE = toned("entityLifecycle", { open: "ok", closed: "neutral", founding: "info" }, v => v === "founding" ? "entityOps.founding.chip" : `entityRecord.status.${v}`);
+export const ENTITY_PHASE = toned("entityPhase", { setup: "ok", operating: "info" }, v => `entityRecord.phase.${v}`);
+export const IDENTIFIER_CORRECTION_STATUS = toned<S["IdentifierCorrectionCase"]["status"] | "REVIEWED">("identifierCorrectionStatus", {
+  PENDING: "warn", APPROVED: "neutral", DECLINED: "neutral", RECORDED: "warn", EXPIRED: "neutral", APPLIED: "neutral", REVIEWED: "neutral",
+}, v => `entityRecord.corrections.status.${v}`);
+export const WORKPLACE_CLOSE_STATE = toned<S["WorkplaceCloseJob"]["state"]>("workplaceCloseState", {
+  SCHEDULED: "info", WAITING: "warn", APPLIED: "neutral", FAILED: "danger", CANCELLED: "neutral",
+}, v => `workplace.close.job.${v}`);
+export const STRUCTURE_RECORD_STATE = toned("structureRecordState", {
+  registration_missing: "warn", needs_confirmation: "warn", unverified: "warn", suspended: "neutral", closed: "neutral",
+}, v => `structure.chip.${v}`);
+export const SETTLEMENT_CERTIFICATION_STATE = toned("settlementCertificationState", { UNCERTIFIED_DRAFT: "warn" }, () => "exit.settlement.uncertified");
 export const IMPORT_TARGET = values<NonNullable<S["EmployeeImportColumn"]["target"]>>("importTarget", [
   "name",
   "employee_number",

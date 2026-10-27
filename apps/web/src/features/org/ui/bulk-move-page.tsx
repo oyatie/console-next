@@ -1,3 +1,4 @@
+import { ENTITY_PHASE, labeled } from "../../../lib/labels";
 import { useState } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { Lock, Network, Plus } from "lucide-react";
@@ -73,7 +74,7 @@ export function BulkMovePage() {
       title={count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count || chosen.length })}
       kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...(first ? first.path : [])].join(" › ")}</span>}
       subtitle={first && t("bulkMove.titleSub", { m: total })}
-      tools={available && entity && <><AddMore entity={entity} chosen={chosen} /><Chip tone={setup ? "ok" : "info"}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip></>}
+      tools={available && entity && <><AddMore entity={entity} chosen={chosen} /><Chip tone={labeled(ENTITY_PHASE, setup ? "setup" : "operating").tone}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip></>}
       onClose={close}
       pending={run.isPending || submit.isPending}
       action={{ kind: "orgMove", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count }}

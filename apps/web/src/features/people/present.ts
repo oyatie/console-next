@@ -2,7 +2,7 @@
 import type { components } from "@console/api/schema";
 import { isMessageId, t, type MessageId } from "@console/i18n";
 import { fmtDate, fmtDateTime, fmtKrw } from "@console/i18n/format";
-import { EMPLOYMENT_TYPE, LEAVE_TYPE, LIFECYCLE_EVENT, LIFECYCLE_STATE, actor, codeText, label, labeled, type Labeled } from "../../lib/labels";
+import { CHANGE_REQUEST_STATUS, EMPLOYMENT_TYPE, LEAVE_TYPE, LIFECYCLE_EVENT, LIFECYCLE_STATE, actor, codeText, label, labeled, type Labeled } from "../../lib/labels";
 import { phoneDisplay } from "../../lib/pure/formats";
 import type { ChangeRequest, LifecycleEvent } from "./api";
 import { FIELDS, type Field } from "./domain/corrections";
@@ -145,11 +145,10 @@ export function hiredText(hire: string | null | undefined, today: string) {
 
 // --- BW-17 change requests ---
 type Employee = components["schemas"]["Employee"];
-const TONE = { OPEN: "warn", APPLIED: "ok", DECLINED: "danger", WITHDRAWN: "neutral" } as const;
 
 export const kindText = (k: ChangeRequest["kind"]) => codeText(`requests.kind.${k}`, k);
 /** A request status in words and its tone. */
-export const statusOf = (s: ChangeRequest["status"]) => ({ label: t(`requests.status.${s}`), tone: TONE[s] });
+export const statusOf = (s: ChangeRequest["status"]) => labeled(CHANGE_REQUEST_STATUS, s);
 /** Who the request is about: the employee's name and number once read (the request carries the id only). */
 export const subjectText = (r: ChangeRequest, e?: Employee) =>
   r.subject_type === "EMPLOYEE" ? (e ? `${e.name} (${e.employee_number ?? "—"})` : t("requests.subject.loading")) : codeText(`requests.subject.${r.subject_type}`, r.subject_type);

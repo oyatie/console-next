@@ -5,7 +5,8 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { reasonLabel } from "../../../lib/reason-codes";
 import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
-import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
+import { SETTLEMENT_CERTIFICATION_STATE } from "../../../lib/labels";
 import { DerivedValue } from "../../../ui/field/derived-value";
 import { actor } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
@@ -108,7 +109,7 @@ export function SettlementFigures({ pkg }: { pkg: Package }) {
     <section className={s.figures} aria-label={t("exit.settlement.figures")}>
       <div className="row">
         <h3 className={`${s.groupTitle} grow`}>{t("exit.settlement.figures")}</h3>
-        {pkg.certification_status === "UNCERTIFIED_DRAFT" && <Chip tone="warn">{t("exit.settlement.uncertified")}</Chip>}
+        {pkg.certification_status === "UNCERTIFIED_DRAFT" && <EnumValue e={SETTLEMENT_CERTIFICATION_STATE} value={pkg.certification_status} />}
       </div>
       <DerivedValue label={t("exit.settlement.serviceDays")} value={pkg.service_days == null ? t("format.notComputable") : t("exit.settlement.days", { days: pkg.service_days })} basis={basis} />
       <DerivedValue label={t("exit.settlement.averageDaily")} value={won(pkg.average_daily_wage_milliwon == null ? undefined : Math.round(pkg.average_daily_wage_milliwon / 1000))} basis={basis} />

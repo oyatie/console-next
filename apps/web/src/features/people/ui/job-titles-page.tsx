@@ -6,12 +6,12 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button, Form } from "../../../ui/button/button";
-import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
 import { EmptyState } from "../../../ui/empty-state";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Table, type Column } from "../../../ui/table";
 import { ChoiceField } from "../../../ui/choice/choice-field";
-import { JOB_TITLE_KIND, label as enumLabel } from "../../../lib/labels";
+import { JOB_TITLE_KIND, JOB_TITLE_STATUS, label as enumLabel } from "../../../lib/labels";
 import { addJobTitle, jobTitlesQuery, updateJobTitle, type JobTitleKind } from "../api";
 import { JobTitleEdit } from "./job-title-edit";
 import type { JobTitle } from "../domain/titles";
@@ -32,7 +32,7 @@ export function JobTitlesPage() {
     { header: t("titles.col.kind"), cell: (x) => enumLabel(JOB_TITLE_KIND, x.kind), fit: true },
     { header: t("titles.col.label"), cell: (x) => x.label, wide: true },
     { header: t("titles.col.rank"), cell: (x) => (x.grade_rank === null ? t("titles.unranked") : <span className="num">{x.grade_rank}</span>), fit: true },
-    { header: t("titles.col.state"), cell: (x) => <Chip tone={x.active ? "ok" : "neutral"}>{t(x.active ? "titles.active" : "titles.inactive")}</Chip>, fit: true },
+    { header: t("titles.col.state"), cell: (x) => <EnumValue e={JOB_TITLE_STATUS} value={x.active ? "active" : "inactive"} />, fit: true },
     ...(manage ? [{ header: t("titles.col.actions"), cell: (x: JobTitle) => <Toggle x={x} />, fit: true }] : []),
   ];
   return (

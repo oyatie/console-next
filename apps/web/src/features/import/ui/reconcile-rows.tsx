@@ -6,7 +6,8 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
-import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
+import { IMPORT_RECONCILE_STATE } from "../../../lib/labels";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Table } from "../../../ui/table";
 import { SectionHead } from "../../../ui/card/section-head";
@@ -16,8 +17,6 @@ import { importError, outcomeLabel } from "../present";
 import type { ImportReconcileRow } from "../domain/contract";
 import { CompanyConfirmation } from "./company-confirmation";
 import s from "./import.module.css";
-
-const TONE = { UNCHECKED: "neutral", CONFIRMED: "ok", NEEDS_CHECK: "warn" } as const;
 
 /**
  * Each applied row checked (spec E7-row): name and employee no. against the record it became, plus unresolved company source
@@ -70,7 +69,7 @@ export function ReconcileRows({ runId, frozen }: { runId: string; frozen: boolea
           { header: t("importReconcile.rows.col.name"), cell: (r) => r.name ?? "—" },
           { header: t("importReconcile.rows.col.number"), cell: (r) => <span className="code">{r.employee_number ?? "—"}</span>, fit: true },
           { header: t("importReconcile.rows.col.outcome"), cell: (r) => outcomeLabel(r.outcome), fit: true },
-          { header: t("importReconcile.rows.col.state"), cell: (r) => <Chip tone={TONE[r.state]}>{t(`importReconcile.state.${r.state}`)}</Chip>, fit: true },
+          { header: t("importReconcile.rows.col.state"), cell: (r) => <EnumValue e={IMPORT_RECONCILE_STATE} value={r.state} />, fit: true },
         ]}
       />
       {current && (

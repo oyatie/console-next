@@ -3,7 +3,8 @@ import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import type { BoardRow } from "../api";
-import { MARK_TONE, GLYPH, type MarkCode } from "../domain/day";
+import { ATTENDANCE_MARK, labeled } from "../../../lib/labels";
+import { GLYPH } from "../domain/day";
 import { draftState, type Draft } from "../domain/grid";
 import { clock } from "../domain/minutes";
 import { closed } from "../domain/month-state";
@@ -17,8 +18,8 @@ import s from "./records.module.css";
  * evidence once for every row. The own row and a closed month's row are read-only.
  */
 export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRow; draft?: Draft; onDraft: (value: string | null) => void; onOpen: () => void; onAssign: () => void }) {
-  const mark = row.day.marks[0] as MarkCode | undefined;
-  const tone = mark ? MARK_TONE[mark] : undefined;
+  const mark = row.day.marks[0];
+  const tone = mark ? labeled(ATTENDANCE_MARK, mark).tone : undefined;
   const start = row.day.entry?.kind === "CLOCK_IN_ONLY" ? row.day.entry.segments[0]?.start : undefined;
   const typed = draft ? (start !== undefined ? draft.value.slice(draft.value.indexOf("-") + 1) : draft.value) : "";
   const state = draft ? draftState(draft, row.day.plan.kind) : null;

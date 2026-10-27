@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { cellShape, hours, withoutBreaks, scheduledSpans, toneCounts } from "./day";
+import { cellShape, hours, withoutBreaks, scheduledSpans } from "./day";
 
 test("recorded work outside the shift stays on the recognised bar", () => {
   const plan = scheduledSpans({ start: 480, end: 1020, breaks: [{ start: 720, end: 780 }] });
@@ -17,5 +17,4 @@ test("a grid cell prints whole hours, h:mm, a code, a rest day or nothing", () =
   expect(cellShape({ plan_kind: "WORK", entry_kind: "ABSENT", recognised: 0 })).toEqual({ kind: "code", code: "ABSENT" });
   expect(cellShape({ plan_kind: "WEEKLY_HOLIDAY", recognised: 0 })).toEqual({ kind: "code", code: "REST" });
   expect(cellShape({ plan_kind: "WORK", recognised: 0 })).toEqual({ kind: "empty" });
-  expect(toneCounts(["NO_RECORD", "UNAPPROVED_EXCESS", "LATE", "LATE"])).toEqual({ blocking: 1, decision: 1, info: 2 });
 });

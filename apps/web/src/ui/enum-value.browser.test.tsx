@@ -31,6 +31,7 @@ beforeAll(async () => {
           h('div', { id: 'known' }, h(EnumValue, { e: ORG_CHANGE_STATUS, value: 'REJECTED' })),
           h('div', { id: 'unknown' }, h(EnumValue, { e: ORG_CHANGE_STATUS, value: 'FUTURE_STATUS' })),
           h('div', { id: 'leave' }, h(EnumValue, { e: LEAVE_TYPE, value: 'FUTURE_LEAVE' })),
+          h('div', { id: 'support-unknown' }, h(EnumValue, { e: SUPPORT_SESSION_STATE, value: 'FUTURE_SESSION' })),
           ...[[IMPORT_OUTCOME, 'refused'], [IMPORT_RUN_STATUS, 'PREVIEWED'], [IMPORT_RUN_STATUS, 'FAILED'], [IMPORT_SHEET_STATUS, 'needs_mapping'], [SUPPORT_SESSION_STATE, 'ACTIVE'], [ATTENDANCE_PATTERN_STATUS, 'RETIRED']].map(([e, value], i) =>
             h('div', { className: 'migrated', key: i }, h(EnumValue, { e, value })))));
       ` : undefined,
@@ -55,6 +56,8 @@ test.each([["ko", "반려됨", "확인되지 않은 항목"], ["en", "Rejected",
     await dom(page.locator("#unknown .chip--neutral")).toHaveText("FUTURE_STATUS");
     await dom(page.locator("#leave")).toContainText(unknown);
     await dom(page.locator("#leave .chip--neutral")).toHaveText("FUTURE_LEAVE");
+    await dom(page.locator("#support-unknown")).toHaveText(`${unknown} FUTURE_SESSION`);
+    await dom(page.locator("#support-unknown .chip--neutral")).toHaveText("FUTURE_SESSION");
     await dom(page.locator(".migrated .chip")).toHaveText(locale === "ko"
       ? ["반영 불가", "미리보기", "반영하지 못했습니다", "연결 필요", "지원 중", "사용 중지"]
       : ["Cannot apply", "Preview", "The apply stopped", "Needs mapping", "Active", "Retired"]);

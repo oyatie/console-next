@@ -8,7 +8,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import s from "./correction-register.module.css";
 import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
-import { BIZ_KIND, label } from "../../../lib/labels";
+import { BIZ_KIND, IDENTIFIER_CORRECTION_STATUS, label } from "../../../lib/labels";
 import { FORMATS } from "../../../lib/pure/formats";
 import { SectionHead } from "../../../ui/card/section-head";
 import { ActionBar } from "../../../ui/action-bar/action-bar";
@@ -16,6 +16,7 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { Button } from "../../../ui/button/button";
 import { EmptyState } from "../../../ui/empty-state";
 import { Chip } from "../../../ui/chip";
+import { EnumValue } from "../../../ui/enum-value";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { KeyValue } from "../../../ui/key-value/key-value";
@@ -26,7 +27,7 @@ import { EntityError } from "./entity-error";
 import { OpenOriginal } from "./open-original";
 
 type Case = IdentifierCorrectionCase;
-const statusText = (r: Case) => t(`entityRecord.corrections.status.${r.reviewed_at ? "REVIEWED" : r.status}`);
+const statusText = (r: Case) => label(IDENTIFIER_CORRECTION_STATUS, r.reviewed_at ? "REVIEWED" : r.status);
 const fieldText = (r: Case) => r.proposal ? t(`entityRecord.id.field.${r.proposal.field}`) : t("entityRecord.corrections.title");
 const valueText = (r: Case) => !r.proposal ? "—" : r.proposal.field === "crn" ? FORMATS.corpRegNo.display(r.proposal.value) : r.proposal.field === "brn" ? FORMATS.bizRegNo.display(r.proposal.value) : label(BIZ_KIND, r.proposal.value);
 
@@ -51,7 +52,7 @@ function Register({ entityId, correctionId, onSelect }: { entityId?: string; cor
         {(data) => <>
           <Table label={t("entityRecord.corrections.title")} rows={data.items} rowId={(r) => r.id} onSelect={select} columns={[
             { header: t("entityRecord.corrections.subject"), cell: (r) => <>{r.entity_name} · {fieldText(r)} <b>{valueText(r)}</b></> },
-            { header: t("entityRecord.corrections.state"), cell: (r) => <div className={s.status}>{(["APPROVED", "RECORDED"] as const).map((status) => <div key={status} aria-hidden className={s.measure}><Chip>{t(`entityRecord.corrections.status.${status}`)}</Chip></div>)}<div><Chip tone={r.status === "PENDING" || r.status === "RECORDED" && !r.reviewed_at ? "warn" : "neutral"}>{statusText(r)}</Chip></div></div>, fit: true },
+            { header: t("entityRecord.corrections.state"), cell: (r) => <div className={s.status}>{(["APPROVED", "RECORDED"] as const).map((status) => <div key={status} aria-hidden className={s.measure}><Chip>{t(`entityRecord.corrections.status.${status}`)}</Chip></div>)}<div><EnumValue e={IDENTIFIER_CORRECTION_STATUS} value={r.reviewed_at ? "REVIEWED" : r.status} /></div></div>, fit: true },
             { header: t("entityRecord.corrections.due"), cell: (r) => fmtDateTimeShort(r.review_due_at ?? r.expires_at), fit: true },
           ]} />
           <ActionBar actions={<>

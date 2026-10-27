@@ -4,20 +4,20 @@ import { Building2, MapPin } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { Chip } from "../../../ui/chip";
+import { STRUCTURE_RECORD_STATE } from "../../../lib/labels";
 import { NodeChips, NodeFoot, NodeKicker, NodeLine, NodeRow } from "../../../ui/org-canvas/org-node";
 import type { Box } from "../domain/layout";
 import { kindWord, nodeName, unitCounts } from "../present";
 import { deptCount, type ChartNode, type Chip as ChipCode } from "../domain/model";
 
 const people = (count: number) => t("common.headcount", { count });
-const CHIP_TONE: Record<ChipCode, "warn" | "neutral" | "info"> = { registration_missing: "warn", needs_confirmation: "warn", unverified: "warn", suspended: "neutral", closed: "neutral" };
 // One vocabulary (company-25): a closed workplace reads "closed", a closed legal entity "ended" (a registration keeps its own status).
 const chipText = (n: ChartNode, c: ChipCode) => (c === "closed" && n.kind === "entity" ? t("structure.chip.closedEntity") : t(`structure.chip.${c}`));
 // company-25: the server marks no legal entity closed yet (ENTITY ask); its primary workplace closes only with it
 // (workplace_holds_entity_role), so a closed primary workplace is the legal entity's end.
 const ended = (n: ChartNode) => n.kind === "entity" && !n.chips.includes("closed") && n.children.some((c) => c.primary && c.chips.includes("closed"));
 const chipsOf = (n: ChartNode): readonly ChipCode[] => (ended(n) ? [...n.chips, "closed"] : n.chips);
-const chips = (n: ChartNode) => chipsOf(n).map((c) => <Chip key={c} tone={CHIP_TONE[c]}>{chipText(n, c)}</Chip>);
+const chips = (n: ChartNode) => chipsOf(n).map((c) => <Chip key={c} tone={STRUCTURE_RECORD_STATE.tone?.[c]}>{chipText(n, c)}</Chip>);
 /** People in a legal entity placed at no workplace yet: they count in its total, and the box says so (S2). */
 const unplaced = (n: ChartNode) => n.unplaced != null && <Chip tone="warn">{t("structureChart.unplaced", { count: n.unplaced })}</Chip>;
 
