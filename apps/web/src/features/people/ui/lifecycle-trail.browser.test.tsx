@@ -19,9 +19,11 @@ beforeAll(async () => {
         import {createMemoryHistory,createRootRoute,createRouter,RouterContextProvider} from '@tanstack/react-router';
         import {loadCatalog} from '@console/i18n';
         import {TrailItems} from '/apps/web/src/features/people/ui/lifecycle-trail.tsx';
+        import ExitBoardGallery from '/apps/web/src/features/people/ui/exit-board.gallery.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         const root=createRoot(document.getElementById('root')),client=new QueryClient();
+        window.showExitBoard=()=>flushSync(()=>root.render(createElement(ExitBoardGallery)));
         const router=createRouter({routeTree:createRootRoute(),history:createMemoryHistory({initialEntries:['/']})});
         window.showTrail=(cancelled)=>flushSync(()=>root.render(createElement(QueryClientProvider,{client},
           createElement(RouterContextProvider,{router},createElement(TrailItems,{onRecord:()=>{},value:{
@@ -71,4 +73,16 @@ test.each([1440, 390].flatMap((width) => ["서명한 입사 계약서", "서명�
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   expect(await page.getByRole("link", { name, exact: true }).count()).toBe(1);
   expect((await next.boundingBox())!.y).toBe(before.y);
+});
+
+test.each([1440, 1200, 390])("the exit board gallery arranges six accessible legs at %i px", async (width) => {
+  await page.setViewportSize({ width, height: 1000 });
+  await page.evaluate(() => (window as unknown as { showExitBoard: () => void }).showExitBoard());
+  const board = page.getByRole("region", { name: "단계별 업무", exact: true });
+  const legs = board.getByRole("region");
+  expect(await legs.count()).toBe(6);
+  expect(await page.getByRole("region", { name: "사건 일정" }).getByText("오늘", { exact: true }).isVisible()).toBe(true);
+  const boxes = await Promise.all(Array.from({ length: 6 }, (_, i) => legs.nth(i).boundingBox()));
+  expect(new Set(boxes.map(box => box!.y)).size).toBe(width === 1440 ? 1 : width === 1200 ? 2 : 6);
+  expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
 });

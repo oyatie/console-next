@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/people/ui/exit-board.tsx#ExitBoard": 27
+  },
+  "newScreens": {
+    "apps/web/src/features/people/ui/exit-board.tsx#ExitBoard": {
+      "FACT": 20,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 3,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}

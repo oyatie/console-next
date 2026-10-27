@@ -56,7 +56,7 @@ export function CaseFacts({ c, full = false }: { c: Case; full?: boolean }) {
  * reader) the person's hire date, service to the exit date and last three records, and the settlement's
  * computed figures once a package exists.
  */
-export function CasePanel({ c }: { c: Case }) {
+export function CasePanel({ c, trailUnavailable }: { c: Case; trailUnavailable?: boolean }) {
   const can = useCan();
   const reader = can("employee_directory_read", "all");
   const person = useQuery({ ...employeeQuery(c.employee_id), enabled: reader });
@@ -78,7 +78,7 @@ export function CasePanel({ c }: { c: Case }) {
       </dl>
       <CaseFacts c={c} />
       {c.dismissal_notice && <NoticeRecord notice={c.dismissal_notice} />}
-      <ExitDeadlines deadlines={c.settlement_deadlines} employeeId={c.employee_id} exitCaseId={c.id} />
+      {trailUnavailable && <ExitDeadlines deadlines={c.settlement_deadlines} />}
       {/* While this user prepares the settlement, the step's form shows the figures beside its inputs: once is enough. */}
       {c.settlement_package && forward !== "prepare_settlement" && <SettlementFigures pkg={c.settlement_package} />}
       {/* Last: the history loads after the case, and above the figures it pushed them down. */}
