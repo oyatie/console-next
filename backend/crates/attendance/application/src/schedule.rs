@@ -89,6 +89,8 @@ pub struct TreeNode {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ScheduleTree {
+    #[serde(skip)]
+    pub access_subject_employees: Vec<Uuid>,
     #[serde(with = "iso_date")]
     pub date: Date,
     pub nodes: Vec<TreeNode>,
@@ -147,6 +149,8 @@ pub struct ScheduleCalendar {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LayerRead {
+    #[serde(skip)]
+    pub access_subject_users: Vec<Uuid>,
     pub id: Uuid,
     pub scope_kind: Level,
     pub scope_id: Uuid,

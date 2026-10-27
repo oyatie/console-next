@@ -136,6 +136,7 @@ impl PgAttendanceStore {
                     tracing::Span::current().record("node_count", nodes.len());
                     tracing::Span::current().record("people_unscheduled", unscheduled);
                     Ok(ScheduleTree {
+                        access_subject_employees: roster.iter().map(|p| p.id).collect(),
                         date,
                         nodes,
                         people_total: i64::try_from(roster.len()).unwrap_or(i64::MAX),

@@ -8,7 +8,16 @@ use time::Duration;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn http_view_as_read_keeps_operator_actor_home_session_and_tenant_subject_set(pool: PgPool) {
-    let (admin, people) = world(&pool).await;
+    let (admin, cases) = super::scopes::cases(&pool).await;
+    let people: Vec<String> =
+        sqlx::query_scalar::<_, Uuid>("SELECT id FROM employees WHERE org_id=$1")
+            .bind(admin.org)
+            .fetch_all(&pool)
+            .await
+            .unwrap()
+            .iter()
+            .map(Uuid::to_string)
+            .collect();
     let operator = support::add_user(&pool, *OrgId::platform().as_uuid(), &["SUPER_ADMIN"]).await;
     let now = OffsetDateTime::now_utc();
     let ttl = Duration::minutes(5);
@@ -105,4 +114,28 @@ async fn http_view_as_read_keeps_operator_actor_home_session_and_tenant_subject_
     assert_eq!(actual, expected);
     assert_eq!(after["subject_count"], 2);
     assert_eq!(body["items"].as_array().unwrap().len(), 2);
+    // These unreviewed surfaces stay closed to support, including their personal-data logs.
+    for (path, action, _) in cases {
+        let before = super::scopes::count(&pool, admin.org, action).await;
+        let support_before = super::scopes::count(&pool, admin.org, "support.access").await;
+        let (status, body) = transport::send(
+            &app,
+            transport::get(
+                path.clone(),
+                &token,
+                transport::DIRECT_PEER,
+                "198.51.100.99",
+            ),
+        )
+        .await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{path}: {body}");
+        assert_eq!(body["error"]["code"], "support.refuse.out_of_scope");
+        assert_eq!(super::scopes::count(&pool, admin.org, action).await, before);
+        assert_eq!(
+            super::scopes::count(&pool, admin.org, "support.access").await,
+            support_before + 1
+        );
+        let recorded: Option<Uuid> = sqlx::query_scalar("SELECT actor FROM audit_events WHERE org_id=$1 AND action='support.access' ORDER BY occurred_at DESC LIMIT 1").bind(admin.org).fetch_one(&pool).await.unwrap();
+        assert_eq!(recorded, Some(*operator.as_uuid()));
+    }
 }

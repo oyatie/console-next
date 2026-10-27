@@ -94,14 +94,29 @@ pub(super) async fn tree(
     h: HeaderMap,
     AttendanceQuery(q): AttendanceQuery<DateQuery>,
 ) -> Res<ScheduleTree> {
-    let c = caller(&principal(&s, &h).await?, READ)?;
+    let p = principal(&s, &h).await?;
+    let c = caller(&p, READ)?;
     let date = opt_date(q.date.as_ref(), "date")?;
-    Ok(Json(
-        s.store
-            .schedule_tree(&c, date)
-            .await
-            .map_err(RestError::schedule)?,
-    ))
+    let tree = s
+        .store
+        .schedule_tree(&c, date)
+        .await
+        .map_err(RestError::schedule)?;
+    crate::audit::read_record(
+        &s,
+        &p,
+        console_platform_request_context::audit_context::access_log::AccessRecord {
+            action: "attendance.schedule_tree_read",
+            target_type: "employee",
+            target_id: "query".into(),
+            subject_ids: &tree.access_subject_employees,
+            reader_subject: None,
+            details: serde_json::json!({}),
+        },
+        &[],
+    )
+    .await?;
+    Ok(Json(tree))
 }
 
 #[derive(Deserialize)]
@@ -160,13 +175,42 @@ pub(super) async fn list_layers(
     h: HeaderMap,
     AttendanceQuery(q): AttendanceQuery<ScopeQuery>,
 ) -> Res<Items<LayerRead>> {
-    let c = caller(&principal(&s, &h).await?, READ)?;
-    Ok(Json(
-        s.store
-            .list_layers(&c, level(&q.scope_kind)?, q.scope_id)
-            .await
-            .map_err(RestError::schedule)?,
-    ))
+    let p = principal(&s, &h).await?;
+    let c = caller(&p, READ)?;
+    let layers = s
+        .store
+        .list_layers(&c, level(&q.scope_kind)?, q.scope_id)
+        .await
+        .map_err(RestError::schedule)?;
+    let mut users: Vec<_> = layers
+        .items
+        .iter()
+        .flat_map(|l| l.access_subject_users.iter().copied())
+        .collect();
+    users.sort_unstable();
+    users.dedup();
+    let employees: Vec<_> = layers
+        .items
+        .iter()
+        .filter(|l| l.scope_kind == Level::Person)
+        .map(|l| l.scope_id)
+        .take(1)
+        .collect();
+    crate::audit::read_record(
+        &s,
+        &p,
+        console_platform_request_context::audit_context::access_log::AccessRecord {
+            action: "attendance.layers_read",
+            target_type: "attendance_schedule_layer",
+            target_id: q.scope_id.to_string(),
+            subject_ids: &employees,
+            reader_subject: None,
+            details: serde_json::json!({}),
+        },
+        &users,
+    )
+    .await?;
+    Ok(Json(layers))
 }
 
 pub(super) async fn preview(

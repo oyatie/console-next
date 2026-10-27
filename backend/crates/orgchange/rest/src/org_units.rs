@@ -16,7 +16,41 @@ pub(crate) async fn get_org_unit(
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
     allow_read(&p)?;
-    respond(&s.store.get_org_unit(id).await.map_err(RestError::store)?)
+    let unit = s.store.get_org_unit(id).await.map_err(RestError::store)?;
+    let mut employees: Vec<_> = unit
+        .members
+        .items
+        .iter()
+        .map(|m| m.employee_id)
+        .chain(unit.revisions.iter().filter_map(|r| r.head_employee_id))
+        .collect();
+    employees.sort_unstable();
+    employees.dedup();
+    let mut users: Vec<_> = unit.revisions.iter().map(|r| r.actor_id).collect();
+    users.sort_unstable();
+    users.dedup();
+    console_platform_request_context::audit_context::access_log::record_person_access(
+        s.store.pool(),
+        &p,
+        console_platform_request_context::audit_context::access_log::AccessRecord {
+            action: "org_unit.read",
+            target_type: "org_unit",
+            target_id: id.to_string(),
+            subject_ids: &employees,
+            reader_subject: None,
+            details: json!({}),
+        },
+        &users,
+    )
+    .await
+    .map_err(|_| {
+        RestError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "unavailable",
+            "org unit access record could not be recorded",
+        )
+    })?;
+    respond(&unit)
 }
 
 pub(crate) async fn draft_create_org_unit(
