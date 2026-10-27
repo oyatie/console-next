@@ -10,6 +10,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
 import { loadCatalog } from "@console/i18n";
 import { PasskeysCard } from "./passkeys-card";
+import { STALE_TIME_MS } from "../../../lib/freshness";
 
 type Passkey = components["schemas"]["PasskeySummary"];
 const key: Passkey = { id: "01980b10-0000-7000-8000-000000000001", label: "보안키", created_at: "2026-10-25T00:00:00Z", last_used_at: null };
@@ -172,3 +173,26 @@ test("the naming field reads the server limit and invalid names never start regi
   expect(await dialog.getByRole("button", { name: "패스키 등록", exact: true }).isDisabled()).toBe(true);
   expect(starts).toBe(0);
 });
+
+test("a failed cached policy keeps naming visible and blocks registration until retry succeeds", async () => {
+  let failing = false;
+  await page.route("**/api/v1/auth/passkeys", route => route.fulfill({ json: [key] }));
+  await page.route("**/api/v1/auth/passkeys/policy", route => route.fulfill(failing
+    ? { status: 503, json: { error: { code: "policy_outage", message: "raw upstream detail" } } }
+    : { json: { label_max_length: 12 } }));
+  await page.goto(`${server.resolvedUrls!.local[0]}passkeys-test`);
+  await page.getByRole("button", { name: "패스키 등록", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect.poll(() => dialog.getByLabel("패스키 이름").getAttribute("maxlength")).toBe("12");
+  await dialog.getByRole("button", { name: "닫기", exact: true }).click();
+  failing = true;
+  await page.clock.setSystemTime(new Date(Date.now() + STALE_TIME_MS + 1));
+  await page.getByRole("button", { name: "패스키 등록", exact: true }).click();
+  await page.getByRole("button", { name: "다시 불러오기", exact: true }).waitFor();
+  expect(await dialog.getByLabel("패스키 이름").count()).toBe(1);
+  expect(await dialog.getByRole("button", { name: "패스키 등록", exact: true }).isDisabled()).toBe(true);
+  expect(await dialog.innerText()).not.toContain("raw upstream detail");
+  failing = false;
+  await dialog.getByRole("button", { name: "다시 불러오기", exact: true }).click();
+  await expect.poll(() => dialog.getByRole("button", { name: "패스키 등록", exact: true }).isEnabled()).toBe(true);
+}, 30_000);

@@ -94,6 +94,19 @@ test("loading, empty and failed active-session reads remain honest", () => {
   expect(renderToStaticMarkup(<ActiveSupportBanner />)).toContain("common.retry");
 });
 
+test("a support read failure retains the active notice until the server refuses it", () => {
+  state.active = { sessions: [session], can_approve: false };
+  state.error = new ApiError(503, "unavailable", "raw upstream detail", []);
+  const stale = renderToStaticMarkup(<ActiveSupportBanner />);
+  expect(stale).toContain(session.operator_label);
+  expect(stale).toContain("common.read.stale");
+  expect(stale).toContain("common.retry");
+  state.error = new ApiError(403, "forbidden", "raw upstream detail", []);
+  const denied = renderToStaticMarkup(<ActiveSupportBanner />);
+  expect(denied).toContain("common.denied.title.plain");
+  expect(denied).not.toContain(session.operator_label);
+});
+
 test("the tenant can withdraw approval before the operator starts", () => {
   state.data = { sessions: [{ ...session, tenant_approved_at: "2026-10-23T00:02:00Z" }], can_approve: true };
   const html = renderToStaticMarkup(<SupportAccess />);
