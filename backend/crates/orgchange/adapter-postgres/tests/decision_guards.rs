@@ -122,3 +122,40 @@ async fn snapshot(pool: &PgPool, id: Uuid) -> Value {
     sqlx::query_scalar("SELECT jsonb_build_array(to_jsonb(r),(SELECT jsonb_agg(to_jsonb(s) ORDER BY step_order) FROM org_change_approval_steps s WHERE request_id=r.id),(SELECT count(*) FROM gov_approvals),(SELECT count(*) FROM audit_events),(SELECT count(*) FROM org_change_events)) FROM org_change_requests r WHERE id=$1")
         .bind(id).fetch_one(pool).await.unwrap()
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn missing_grant_refuses_before_version_and_merge_without_writes(pool: PgPool) {
+    let org = OrgId::new();
+    let maker = seed_org_and_super_admin(&pool, *org.as_uuid(), "missing-grant").await;
+    let actor = seed_active_user(&pool, *org.as_uuid(), "EXECUTIVE", "checker").await;
+    person_fixtures::bind_user_to_distinct_person(&pool, maker).await;
+    person_fixtures::bind_user_to_distinct_person(&pool, actor).await;
+    let id: Uuid = sqlx::query_scalar("INSERT INTO org_change_requests(org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,proposal,drafted_by,idempotency_key,request_fingerprint) VALUES($1,'OC-2026-0001','REORG','IN_APPROVAL','REGION','region','Region',CURRENT_DATE,'Review','[]',$2,$3,repeat('a',64)) RETURNING id")
+        .bind(org.as_uuid()).bind(maker.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(&pool).await.unwrap();
+    let step: Uuid = sqlx::query_scalar("INSERT INTO org_change_approval_steps(org_id,request_id,step_order,role_key) VALUES($1,$2,1,'hr') RETURNING id")
+        .bind(org.as_uuid()).bind(id).fetch_one(&pool).await.unwrap();
+    let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
+    for approved in [true, false] {
+        let before = snapshot(&pool, id).await;
+        let refused = scope_org(
+            org,
+            store.decide_step_command(
+                actor,
+                id,
+                step,
+                console_orgchange_domain::StepDecisionCommand {
+                    approved,
+                    expected_version: Some("stale".into()),
+                    through_step: Some(step),
+                    ..Default::default()
+                },
+            ),
+        )
+        .await
+        .unwrap_err();
+        assert!(
+            matches!(refused, console_orgchange_adapter_postgres::PgOrgChangeError::Domain(e) if e.kind == console_kernel_core::ErrorKind::Forbidden && e.code == Some("org_change.refuse.missing_grant"))
+        );
+        assert_eq!(snapshot(&pool, id).await, before);
+    }
+}

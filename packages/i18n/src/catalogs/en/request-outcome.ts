@@ -1,6 +1,7 @@
 export const enRequestOutcome = {
   "requestOutcome.code.period_unlock_sole_holder_refused": "Solo unlock is unavailable. Ask an access administrator to assign another person with close authority, then request the unlock again.",
   "requestOutcome.code.org_change_sod_violation": "The drafter cannot approve through another account. Ask a different person with approval authority.",
+  "requestOutcome.code.org_change.refuse.missing_grant": "The decision was not recorded because your organization change approval permission is missing or expired. Ask an access administrator to check your approval permission.",
   "requestOutcome.code.leave_decide_requester_forbidden": "The requester cannot decide through another account. Ask a different person with leave decision authority.",
   "requestOutcome.code.sod_violation": "The submitter cannot approve through another account. Ask a different person with payroll approval authority.",
   "requestOutcome.code.second_person_required": "The requester cannot decide through another account. Ask a different person with decision authority.",

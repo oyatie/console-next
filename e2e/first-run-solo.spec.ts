@@ -167,16 +167,19 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await findPressable(admin, "본사");
   await c.click(box(admin, "본사"));
   await admin.keyboard.press("a");
-  const selectedParent = new URL(admin.url()).searchParams.get("sel");
   const proposal = admin.getByRole("dialog", { name: "부서 신설" });
   await proposal.getByLabel("부서 이름").fill("마케팅팀");
   await c.click(proposal.getByRole("button", { name: /^오늘/ }));
   await proposal.getByLabel("사유").fill("마케팅 기능 신설");
   await expectComposer(proposal, "부서 신설 1개 적용");
+  const applied = admin.waitForResponse((r) => r.request().method() === "GET" && /\/api\/v1\/org-changes\/[0-9a-f-]+$/.test(new URL(r.url()).pathname));
   await c.click(proposal.getByRole("button", { name: "부서 신설 1개 적용" }));
-  // org-19: the user stays on the chart; the receipt names the change and links its record.
-  await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(selectedParent);
-  await expect(admin.getByRole("complementary", { name: "본사", exact: true })).toBeVisible();
+  const created = await (await applied).json() as { created_unit_ids: string[] };
+  expect(created.created_unit_ids).toHaveLength(1);
+  await proposal.waitFor({ state: "hidden" });
+  // org-19: stay on the chart, select the department the server created, and link its record in the receipt.
+  await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(created.created_unit_ids[0]);
+  await expect(admin.getByRole("complementary", { name: "마케팅팀", exact: true })).toBeVisible();
   await expect(admin.getByRole("status").filter({ hasText: "마케팅팀 신설을 반영했습니다" }).first()).toBeVisible();
   c.done("org change after go-live: record and apply");
   // The chart opens at 사업장 depth; the find brings the new 부서 into view inside 본사.

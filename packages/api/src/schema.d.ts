@@ -10050,7 +10050,7 @@ export interface paths {
         put?: never;
         /**
          * Decide one approval step
-         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.current_version. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
+         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.current_version. Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
          */
         post: operations["decideOrgChangeApprovalStep"];
         delete?: never;

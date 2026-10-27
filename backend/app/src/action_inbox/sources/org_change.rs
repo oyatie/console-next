@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Org-change work uses the same feature floors, policy and person SoD as its record.
 
 use crate::error::AppError;
@@ -53,10 +54,9 @@ macro_rules! eligible {
           WHEN r.status = 'APPROVED' AND (r.drafted_by = $2 OR $8) AND r.effective_date <= $4 AND $7 \
            THEN 'org_change_apply' \
           WHEN r.drafted_by = $2 AND r.status IN ('IN_APPROVAL','APPROVED') THEN 'org_change_waiting' \
-          WHEN r.status = 'IN_APPROVAL' AND $6 \
+          WHEN r.status = 'IN_APPROVAL' AND r.id = ANY($6::uuid[]) \
            AND EXISTS (SELECT 1 FROM org_change_approval_steps s WHERE s.org_id = r.org_id \
-            AND s.request_id = r.id AND s.decision = 'PENDING') \
-           AND public.console_independent_people($1, r.drafted_by, $2) THEN 'org_change_approve' \
+            AND s.request_id = r.id AND s.decision = 'PENDING') THEN 'org_change_approve' \
          END AS kind \
          FROM org_change_requests r WHERE r.org_id = $1 AND r.created_at <= $3), \
          eligible AS (SELECT * FROM classified WHERE kind IS NOT NULL \
@@ -86,7 +86,6 @@ pub(crate) async fn page(
     let principal = principal.clone();
     let org = principal.org_id;
     let draft = holds(&principal, Feature::OrgChangeDraft);
-    let approve = holds(&principal, Feature::OrgChangeApprove);
     let apply_others = holds(&principal, Feature::OrgChangeApply);
     let filter = match query.filter {
         console_action_inbox_application::InboxFilter::Turn => "turn",
@@ -97,6 +96,14 @@ pub(crate) async fn page(
     };
     let (rows, total) = with_org_conn::<_, _, AppError>(pool, org, move |tx| {
         Box::pin(async move {
+            let approve: Vec<Uuid> = console_orgchange_adapter_postgres::step_decision_facts_in_tx(
+                tx, org, principal.user_id, None,
+            ).await.map_err(|e| AppError::Internal(e.to_string()))?
+                .into_iter().filter_map(|(id, facts)| {
+                    console_platform_authz::cedar_pbac::actions::org_change_step_decide::enforce(
+                        &principal.user_id.to_string(), &org.to_string(), &org.to_string(), facts,
+                    ).is_ok().then_some(id)
+                }).collect();
             let apply = apply_others
                 || (draft
                     && !approval_routes_in_tx(
@@ -114,7 +121,7 @@ pub(crate) async fn page(
                     .bind(query.as_of)
                     .bind(today)
                     .bind(draft)
-                    .bind(approve)
+                    .bind(&approve)
                     .bind(apply)
                     .bind(apply_others)
                     .bind(filter)
@@ -131,7 +138,7 @@ pub(crate) async fn page(
             .bind(query.as_of)
             .bind(today)
             .bind(draft)
-            .bind(approve)
+            .bind(&approve)
             .bind(apply)
             .bind(apply_others)
             .bind(filter)
@@ -179,157 +186,5 @@ pub(crate) async fn page(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use console_kernel_core::{BranchScope, OrgId, UserId};
-    use console_platform_authz::Role;
-    use console_platform_test_support::{
-        runtime_role_pool, seed_active_user, seed_org_and_super_admin,
-    };
-    use std::collections::BTreeSet;
-    use time::OffsetDateTime;
-    use uuid::Uuid;
-
-    mod people {
-        include!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../test-support/person_fixtures.rs"
-        ));
-    }
-
-    #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-    async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(pool: PgPool) {
-        let org = OrgId::new();
-        let me = seed_org_and_super_admin(&pool, *org.as_uuid(), "inbox-org").await;
-        let other = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "maker").await;
-        people::bind_user_to_distinct_person(&pool, me).await;
-        people::bind_user_to_distinct_person(&pool, other).await;
-        let principal = Principal::new(
-            me,
-            org,
-            BTreeSet::from([Role::SuperAdmin]),
-            BranchScope::All,
-        );
-        for (index, (status, maker, days)) in [
-            ("DRAFT", me, 0),
-            ("PRECHECKED", me, 0),
-            ("REJECTED", me, 0),
-            ("SETTLING", me, 0),
-            ("APPROVED", me, 0),
-            ("APPROVED", me, 1),
-            ("IN_APPROVAL", me, 0),
-            ("IN_APPROVAL", other, 0),
-            ("DRAFT", other, 0),
-            ("CANCELLED", me, 0),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let request: Uuid = sqlx::query_scalar(
-                "INSERT INTO org_change_requests (org_id, code, kind, status, target_kind, \
-                 target_ref, target_label, effective_date, reason, drafted_by, idempotency_key, request_fingerprint) \
-                 VALUES ($1,$2,'REORG',$3,'REGION','region','조직 개편', \
-                 (now() AT TIME ZONE 'Asia/Seoul')::date + $4, '업무함 검증',$5,$6,repeat('a',64)) RETURNING id"
-            ).bind(org.as_uuid()).bind(format!("OC-2026-{:04}", index + 1))
-                .bind(status).bind(days).bind(maker.as_uuid()).bind(Uuid::new_v4().to_string())
-                .fetch_one(&pool).await.unwrap();
-            if status == "IN_APPROVAL" {
-                sqlx::query("INSERT INTO org_change_approval_steps (org_id,request_id,step_order,role_key) VALUES ($1,$2,1,'hr')")
-                    .bind(org.as_uuid()).bind(request).execute(&pool).await.unwrap();
-            }
-        }
-        let now = sqlx::query_scalar("SELECT clock_timestamp()")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        let query = ActionInboxSourceQuery {
-            filter: Default::default(),
-            require_exact_total: false,
-            now,
-            as_of: now,
-            after: None,
-            limit: 20,
-        };
-        let actual = page(&runtime_role_pool(&pool).await, &principal, query)
-            .await
-            .unwrap();
-        assert_eq!(actual.total, 8);
-        for kind in [
-            "org_change_draft",
-            "org_change_rejected",
-            "org_change_settle",
-            "org_change_apply",
-            "org_change_scheduled",
-            "org_change_waiting",
-            "org_change_approve",
-        ] {
-            assert!(
-                actual.items.iter().any(|i| i.kind == kind),
-                "missing {kind}"
-            );
-        }
-        assert!(
-            actual
-                .items
-                .iter()
-                .all(|i| i.id.starts_with("org_change:") && i.due.is_some())
-        );
-        for (kind, command) in [
-            ("org_change_approve", "approve"),
-            ("org_change_apply", "effectuate"),
-        ] {
-            let row = actual.items.iter().find(|item| item.kind == kind).unwrap();
-            let context = row.context.as_ref().unwrap();
-            assert_eq!(context["command"], command);
-            assert!(!context["reason"].as_str().unwrap().is_empty());
-            assert!(!context["drafter"].as_str().unwrap().is_empty());
-        }
-
-        let denied = Principal::new(me, org, BTreeSet::new(), BranchScope::All);
-        let no_items = page(
-            &runtime_role_pool(&pool).await,
-            &denied,
-            ActionInboxSourceQuery {
-                filter: Default::default(),
-                require_exact_total: false,
-                now,
-                as_of: now,
-                after: None,
-                limit: 20,
-            },
-        )
-        .await
-        .unwrap();
-        assert_eq!(no_items.total, 0);
-    }
-
-    #[tokio::test]
-    async fn no_org_change_grant_does_not_query_or_disclose_a_source() {
-        let pool = sqlx::postgres::PgPoolOptions::new()
-            .connect_lazy("postgres://unused:unused@127.0.0.1:1/unused")
-            .unwrap();
-        let principal = Principal::new(
-            UserId::new(),
-            OrgId::new(),
-            BTreeSet::new(),
-            BranchScope::All,
-        );
-        let now = OffsetDateTime::now_utc();
-        let result = page(
-            &pool,
-            &principal,
-            ActionInboxSourceQuery {
-                filter: Default::default(),
-                require_exact_total: false,
-                now,
-                as_of: now,
-                after: None,
-                limit: 10,
-            },
-        )
-        .await
-        .unwrap();
-        assert!(result.items.is_empty());
-        assert_eq!(result.total, 0);
-    }
-}
+#[path = "org_change_tests.rs"]
+mod tests;
