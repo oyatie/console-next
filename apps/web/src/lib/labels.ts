@@ -115,7 +115,7 @@ export const label = (e: Enum, v: string) => known(e, v) ?? (e.extensible ? t("e
 export const labeled = (e: Enum, v: string): Labeled => {
   const text = known(e, v);
   if (text === null && e.extensible) return { label: t("enum.unknown"), tone: "neutral", code: v };
-  return text === null ? { label: v, tone: "warn" } : { label: text, tone: (e.tone as Record<string, Tone> | undefined)?.[v] };
+  return text === null ? { label: v, tone: "neutral" } : { label: text, tone: (e.tone as Record<string, Tone> | undefined)?.[v] };
 };
 
 /** A server-resolved actor name; unknown renders as a dash; an unset name uses the shared person label. */

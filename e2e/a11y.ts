@@ -16,13 +16,14 @@ export async function expectAccessible(page: Page, context: string, options: { o
 }
 
 /** State matrices scan the settled state; live journeys also check arrival shifts through expectAccessible. */
-export async function expectAxe(page: Page, context: string, options: { openPicker?: boolean } = {}) {
+export async function expectAxe(page: Page, context: string, options: { openPicker?: boolean; include?: string } = {}) {
   const html = page.locator("html");
   const original = await html.getAttribute("data-theme");
   const found: string[] = [];
   for (const theme of ["light", "dark"]) {
     await html.evaluate((el, t) => (el.dataset.theme = t), theme);
     const scan = new AxeBuilder({ page }).withTags(TAGS);
+    if (options.include) scan.include(options.include);
     // React Aria's virtual-focus combobox deliberately leaves hidden content in the tab order.
     if (options.openPicker) scan.disableRules(["aria-hidden-focus"]);
     const { violations } = await scan.analyze();
