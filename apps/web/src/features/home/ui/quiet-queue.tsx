@@ -4,6 +4,7 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
 import { buttonClass } from "../../../ui/button/button-class";
+import { EmptyState } from "../../../ui/empty-state";
 
 type Page = components["schemas"]["ActionInboxResponse"];
 const TILE = {
@@ -13,8 +14,7 @@ const TILE = {
 
 export function QuietQueue({ page, filter, partial }: { page: Page; filter: string; partial: boolean }) {
   return <div>
-    <h3 id="queue-empty" tabIndex={-1}>{t(partial ? "home.empty.partial.title" : "home.inbox.empty.title")}</h3>
-    <p className="muted">{t(partial ? "home.empty.partial.reason" : "home.inbox.empty.reason")}</p>
+    <EmptyState title={t(partial ? "home.empty.partial.title" : "home.inbox.empty.title")} reason={t(partial ? "home.empty.partial.reason" : "home.inbox.empty.reason")} />
     {filter === "turn" && <>
       {page.upcoming.length > 0 && <><h3>{t("home.next.title")}</h3><ul className="list-plain">{page.upcoming.map((item) => <li className="row" key={item.id}>
         <Link to="/org/changes/$id" params={{ id: item.links[0]!.id }}>{item.title}</Link>

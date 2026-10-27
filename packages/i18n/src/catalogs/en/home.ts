@@ -15,6 +15,8 @@ export const enHome: Partial<Record<keyof typeof koHome, string>> = {
   "home.inbox.column.actions": "Task actions",
   "home.inbox.title": "Inbox",
   "home.inbox.filter.turn": "My turn",
+  "home.inbox.viewInbox": "View all in inbox",
+  "home.inbox.setup.title": "Continue setup on Home",
   "home.inbox.filter.waiting": "Waiting",
   "home.inbox.filter.scheduled": "Scheduled",
   "home.inbox.filter.deadlines": "Due soon",

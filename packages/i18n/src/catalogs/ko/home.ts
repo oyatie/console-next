@@ -14,6 +14,8 @@ export const koHome = {
   "home.inbox.column.actions": "업무 처리",
   "home.inbox.title": "업무함",
   "home.inbox.filter.turn": "내 차례",
+  "home.inbox.viewInbox": "업무함에서 모두 보기",
+  "home.inbox.setup.title": "설정은 홈에서 진행합니다",
   "home.inbox.filter.waiting": "기다리는 중",
   "home.inbox.filter.scheduled": "예정",
   "home.inbox.filter.deadlines": "기한 임박",

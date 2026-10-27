@@ -7,24 +7,21 @@ import type { components } from "@console/api/schema";
 import type { Checklist } from "@console/api/pending";
 import { loadCatalog, t } from "@console/i18n";
 import type { Button } from "../../../ui/button/button";
-import { Home } from "../Home";
+import { InboxQueue } from "./inbox-queue";
+import type { InboxFilter } from "../domain/inbox-filter";
 import { cursorPages, readIdentity } from "../../../lib/query";
 
 type Item = components["schemas"]["ActionInboxItem"];
 type Page = components["schemas"]["ActionInboxResponse"];
 type Options = ReturnType<typeof cursorPages<"/api/v1/me/action-inbox">>;
 const view = vi.hoisted(() => ({
-  get: vi.fn(), filter: "turn", applying: false, reads: [] as string[], options: undefined as Options | undefined,
+  get: vi.fn(), filter: "turn" as InboxFilter, applying: false, reads: [] as string[], options: undefined as Options | undefined,
   buttons: [] as Parameters<typeof Button>[0][], next: vi.fn(), retry: vi.fn(),
   list: { isPending: false, error: null as unknown, data: undefined as { pages: Page[] } | undefined, hasNextPage: false, isFetchingNextPage: false },
 }));
 vi.mock("@console/api", async (original) => {
   const actual = await original<typeof import("@console/api")>();
   return { ...actual, api: { ...actual.api, GET: (...args: unknown[]) => view.get(...args) } };
-});
-vi.mock("react", async (original) => {
-  const actual = await original<typeof import("react")>();
-  return { ...actual, useState: (initial: unknown) => initial === "turn" ? [view.filter, (filter: string) => { view.filter = filter; }] : actual.useState(initial) };
 });
 vi.mock("@tanstack/react-query", async (original) => ({
   ...await original<typeof import("@tanstack/react-query")>(),
@@ -43,7 +40,7 @@ vi.mock("../../../ui/button/button", async (original) => {
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", lane: "turn", title: id, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id }], ...extra });
 const page = (items: Item[], extra: Partial<Page> = {}): Page => ({ items, total: items.length, total_is_exact: true, next_cursor: null, unavailable: [], available_filters: ["turn", "waiting", "scheduled", "deadlines", "failures"], counts: {}, upcoming: [], has_work: true, quick_starts: [], as_of: "2026-10-23T00:00:00Z", ...extra });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
-const html = (setupPending = false) => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => Home({ setupPending, setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (row: Item) => row.context?.command ? createElement("button", { "data-command": row.context.command, "data-record": row.links[0]?.id }, row.context.command) : row.kind === "account_security" ? createElement("button", null, t("account.passkey.add")) : null }))));
+const html = (setupPending = false) => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => InboxQueue({ filter: view.filter, setupPending, preview: !!view.list.data?.pages[0]?.setup, setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (row: Item) => row.context?.command ? createElement("button", { "data-command": row.context.command, "data-record": row.links[0]?.id }, row.context.command) : row.kind === "account_security" ? createElement("button", null, t("account.passkey.add")) : null }))));
 const click = (label: string) => view.buttons.find((button) => button.children === label || typeof button.children === "string" && button.children.startsWith(label + " "))!.onClick!({} as MouseEvent<HTMLButtonElement>);
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
@@ -79,8 +76,7 @@ test.each([
 });
 
 test.each(["waiting", "scheduled", "deadlines", "failures"] as const)("%s requests the server filter", (filter) => {
-  html();
-  click(t(`home.inbox.filter.${filter}`));
+  view.filter = filter;
   html();
   expect(JSON.parse(readIdentity(view.options!))[1]).toEqual({ query: { filter } });
 });
@@ -117,6 +113,7 @@ test("a failed inbox read shows retry without claiming the queue is empty", () =
   const markup = html();
   expect(markup).toContain(t("common.loadFailed.title"));
   expect(markup).not.toContain(t("home.inbox.empty.title"));
+  expect(markup).not.toContain('data-bone="short"');
   click(t("common.retry"));
   expect(view.retry).toHaveBeenCalledOnce();
 });
@@ -141,6 +138,7 @@ test("Home hides cached setup and work until the parent setup references settle"
   expect(ready).toContain("cached work");
   view.applying = true; expect(html(false)).toContain(t("common.loading")); expect(html(false)).not.toContain("cached work");
 });
+
 test("an unregistered record kind stays readable without a guessed destination", () => {
   view.list.data = { pages: [page([item("future work", { links: [{ kind: "future_kind", id: "javascript:bad" }] })])] };
   const markup = html();
@@ -165,7 +163,7 @@ test("one failed source keeps healthy rows, names the outage and offers retry wi
   expect(view.retry).toHaveBeenCalledOnce();
 });
 test("no work grant shows the honest account page without dead filters", () => {
-  view.list.data = { pages: [page([], { has_work: false })] };
+  view.list.data = { pages: [page([], { has_work: false, available_filters: [] })] };
   const markup = html();
   expect(markup).toContain(t("home.noWork.title"));
   expect(markup).toContain('href="/account"');
@@ -193,6 +191,10 @@ test("only usable server filters are offered", () => {
   expect(markup).toContain(t("home.inbox.filter.deadlines"));
   expect(markup).not.toContain(t("home.inbox.filter.waiting"));
   expect(markup).not.toContain(t("home.inbox.filter.failures"));
+});
+test("the server can offer a personal view without work capabilities", () => {
+  view.list.data = { pages: [page([], { has_work: false, available_filters: ["waiting"] })] };
+  expect(html()).toContain(t("home.inbox.filter.waiting"));
 });
 
 test.each(["approve", "effectuate"] as const)("server command %s reaches the inline control beside the record link", (command) => {

@@ -14,6 +14,7 @@ const paths = [
   "/account",
   "/attendance",
   "/audit/support-access",
+  "/inbox",
   "/org",
   "/org/changes",
   "/org/changes/$id",
