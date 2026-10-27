@@ -19,6 +19,7 @@ metadata:
     app.kubernetes.io/version: 0.13.1
     app.kubernetes.io/managed-by: Helm
     control-plane: policy-controller-webhook
+  namespace: sigstore-system
 spec:
   minAvailable: 1
   selector:

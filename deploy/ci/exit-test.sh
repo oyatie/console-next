@@ -9,11 +9,10 @@ export KUBECONFIG="${RUNNER_TEMP:?}/platform-exit-${REPETITION:-1}.kubeconfig"
 cleanup() {
   result=$?
   set +e
-  kubectl get pods,jobs,rollouts,analysisruns,clusters -n console -o wide > .tmp/evidence/workloads.txt 2>&1
-  kubectl get kustomizations,ocirepositories -n flux-system -o yaml > .tmp/evidence/flux.yaml 2>&1
-  kubectl get events -A --sort-by=.lastTimestamp > .tmp/evidence/events.txt 2>&1
-  kubectl logs -n console -l app=console-migrate --all-containers > .tmp/evidence/migration.log 2>&1
-  kind export logs --name "${cluster}" .tmp/evidence/kind >/dev/null 2>&1
+  node deploy/ci/diagnostics.mjs > .tmp/evidence/diagnostics.txt 2>&1
+  if (( result != 0 )); then
+    cat .tmp/evidence/diagnostics.txt
+  fi
   df -h > .tmp/evidence/disk.txt
   printf 'exit=%s\nduration_seconds=%s\narch=%s\n' "${result}" "$((SECONDS-started))" "$(uname -m)" > .tmp/evidence/result.txt
   kind delete cluster --name "${cluster}"

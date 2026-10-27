@@ -25,6 +25,7 @@ spec:
       postInitSQL:
         - CREATE ROLE console_leave_definer NOLOGIN NOINHERIT
         - CREATE ROLE console_ontology_writer NOLOGIN NOINHERIT
+        - CREATE ROLE console_auth_cmd NOLOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION
         - ALTER ROLE console_app BYPASSRLS INHERIT
         - GRANT console_leave_definer, console_ontology_writer TO console_app WITH ADMIN FALSE, INHERIT TRUE, SET TRUE
         - CREATE ROLE console_rt LOGIN NOINHERIT
@@ -83,6 +84,14 @@ spec:
       - name: console_ontology_writer
         login: false
         inherit: false
+      - name: console_auth_cmd
+        login: false
+        inherit: false
+        superuser: false
+        bypassrls: false
+        createdb: false
+        createrole: false
+        replication: false
   plugins:
     - name: barman-cloud.cloudnative-pg.io
       isWALArchiver: true
