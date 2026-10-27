@@ -12,7 +12,7 @@ import s from "./sheet.module.css";
  * Anatomy: head (title, subtitle, close), a scrolling body, and a foot that always states the `consequence` (one
  * sentence built from the values the request sends) above the `actions`. `notice` sits above the consequence for
  * what the server said (a refusal, a lost response). `kicker` names where it applies, above the title. While `pending` it cannot be dismissed, by Esc, an outside
- * click or the close button, and its actions cannot be pressed again. `wide` is for a sheet that shows a table (bulk lines).
+ * click or the close button, and its actions cannot be pressed again. `size="lg"` is for a table (bulk lines).
  */
 export function Sheet(p: {
   open: boolean;
@@ -30,7 +30,7 @@ export function Sheet(p: {
    * pointer and pushed them down.
    */
   loading?: boolean;
-  wide?: boolean;
+  size?: "md" | "lg";
   consequence: ReactNode;
   notice?: ReactNode;
   actions: ReactNode;
@@ -39,7 +39,7 @@ export function Sheet(p: {
   useLiveHold(p.open);
   return (
     <ModalOverlay className={s.overlay} isOpen={p.open} onOpenChange={(o) => !o && !p.pending && p.onClose()} isDismissable={!p.pending} isKeyboardDismissDisabled={p.pending}>
-      <Modal className={s.sheet} data-wide={p.wide || undefined}>
+      <Modal className={s.sheet} data-size={p.size ?? "md"}>
         <Dialog className={s.dialog}>
           <div className={s.head}>
             <div className={s.titles}>

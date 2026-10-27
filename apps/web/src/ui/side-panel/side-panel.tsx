@@ -5,6 +5,7 @@ import { t } from "@console/i18n";
 import { Button, IconButton } from "../button/button";
 import { Skeleton } from "../skeleton/skeleton";
 import s from "./side-panel.module.css";
+import { SidePanelReadContext } from "./read-context";
 
 type SidePanelProps = {
   open: boolean;
@@ -56,13 +57,13 @@ export function SidePanel({ open, title, crumb, chips, openLink, size = "peek", 
       {crumb != null && <div className={s.crumb}>{crumb}</div>}
       <div className={s.heading}>
         <h2 ref={heading} id={id} tabIndex={-1} className={s.title}>{title}</h2>
-        <IconButton label={t("common.closePanel")} onClick={onClose}><X size={16} aria-hidden /></IconButton>
+        <IconButton className={s.close} label={t("common.closePanel")} onClick={onClose}><X size={16} aria-hidden /></IconButton>
       </div>
       {(chips != null || openLink != null) && <div className={s.tools}>{chips}{openLink}</div>}
     </header>
     {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Scrollable read content must be keyboard reachable (WCAG 2.1.1). */}
-    <div className={s.body} role="region" aria-labelledby={id} tabIndex={0} aria-busy={loading || undefined}>
-      {loading ? <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} /> : children}
+    <div className={s.body} tabIndex={0} aria-busy={loading || undefined}>
+      <SidePanelReadContext value={true}>{loading ? <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} /> : children}</SidePanelReadContext>
     </div>
   </aside>;
 }

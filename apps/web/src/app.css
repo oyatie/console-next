@@ -93,7 +93,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .rail { display: none; }
   .top { gap: var(--space-2); padding: 0 var(--space-2); }
   .top .top__menu { display: inline-flex; }
-  .shell[data-menu="open"] .rail { display: flex; position: fixed; top: var(--topbar-h); bottom: 0; left: 0; width: var(--rail-w); z-index: 15; box-shadow: var(--shadow-pop); }
+  .shell[data-menu="open"] .rail { display: flex; position: fixed; top: var(--topbar-h); bottom: 0; left: 0; width: var(--rail-w); z-index: var(--z-rail); box-shadow: var(--shadow-pop); }
 }
 
 /* ── controls ──────────────────────────────────────── */
@@ -187,8 +187,9 @@ aside.panel { position: sticky; top: 0; }
 .alert { padding: var(--space-3); border-radius: var(--radius); border: 1px solid var(--danger-bd); background: var(--danger-bg); color: var(--danger-tx); font-size: var(--text-sm); }
 
 /* ── dialog ────────────────────────────────────────── */
-.overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--ink) 40%, transparent); }
-.dialog { width: min(100%, calc(var(--panel-w) + var(--space-6))); max-height: calc(100dvh - var(--space-6)); overflow: auto; padding: var(--space-5); color: var(--ink); }
+.overlay { position: fixed; inset: 0; z-index: var(--z-sheet); display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.dialog { width: min(100%, var(--dialog-w-md)); max-height: calc(100dvh - var(--space-6)); overflow: auto; padding: var(--space-5); color: var(--ink); }
+.dialog[data-size="sm"] { width: min(100%, var(--dialog-w-sm)); }
 .dialog__body { display: flex; flex-direction: column; gap: var(--space-4); outline: none; }
 .dialog__body--read { min-block-size: min(var(--panel-w), calc(100dvh - var(--space-6) - var(--space-5) * 2)); }
 .popover { z-index: 30; }

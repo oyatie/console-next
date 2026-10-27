@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { t } from "@console/i18n";
 import { useLocation, useRouter } from "@tanstack/react-router";
 
 let say: ((message: string) => void) | null = null;
@@ -63,4 +65,54 @@ export const focusSoon = (...ids: string[]) => {
     else stop();
   };
   requestAnimationFrame(tick);
+  return stop;
 };
+
+// The router remounts on locale changes; that must update the title without taking focus from the language picker.
+let presented: { pathname: string; title: string } | undefined;
+let focusedPath: string | undefined;
+
+/** The rendered heading and identity own the tab title; search-state changes keep the user's current focus. */
+export function useRoutePresentation(pathname: string, ready: boolean) {
+  useEffect(() => {
+    if (!ready) return;
+    let frame = 0;
+    let cancelFocus: (() => void) | undefined;
+    let interacted = false;
+    const stopFocus = () => { interacted = true; cancelFocus?.(); };
+    const update = () => {
+      const heading = document.querySelector<HTMLElement>("main h1, h1") ?? document.querySelector<HTMLElement>("main .state__title");
+      const page = heading?.textContent?.trim();
+      if (!heading || !page) return;
+      if (focusedPath !== pathname) {
+        focusedPath = pathname;
+        if (!interacted && !document.activeElement?.closest("[data-side-panel]")) {
+          heading.id ||= "route-heading";
+          heading.tabIndex = -1;
+          cancelFocus = focusSoon(heading.id);
+        }
+      }
+      const scope = document.querySelector<HTMLElement>("[data-console-scope]")?.dataset.consoleScope;
+      if (scope === "") return;
+      const title = [page, scope, t("app.title.brand")].filter(Boolean).join(" · ");
+      document.title = title;
+      if (presented?.pathname !== pathname || presented.title !== title) {
+        presented = { pathname, title };
+        announce(title);
+      }
+    };
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(update); };
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["data-console-scope"] });
+    document.addEventListener("pointerdown", stopFocus, true);
+    document.addEventListener("keydown", stopFocus, true);
+    schedule();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      cancelFocus?.();
+      document.removeEventListener("pointerdown", stopFocus, true);
+      document.removeEventListener("keydown", stopFocus, true);
+    };
+  }, [pathname, ready]);
+}

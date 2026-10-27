@@ -23,7 +23,7 @@ export default function SheetGallery() {
       </div>
       <Sheet
         open={open}
-        wide
+        size="lg"
         kicker={tg("sample.company")}
         title={tg("sheet.title")}
         subtitle={tg("sheet.subtitle")}

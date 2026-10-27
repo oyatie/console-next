@@ -135,7 +135,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
   return (
     <Composer
       open
-      wide
+      size="lg"
       kicker={<><Users size={12} aria-hidden />{t("register.kicker", { scope })}</>}
       title={t("register.title")}
       onClose={onClose}

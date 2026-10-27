@@ -153,7 +153,7 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
       open
       onClose={onClose}
       pending={save.isPending}
-      wide
+      size="lg"
       title={t("entityRecord.revise.title", { field: spec.label })}
       subtitle={<><span className={s.kicker}><Building2 size={14} aria-hidden /> {entityName(e)} · {spec.group} · {spec.label}</span>{t("entityRecord.revise.now", { value: spec.current, date: fmtDate(since) })}</>}
       notice={

@@ -63,7 +63,7 @@ export function DeptDissolveSheet({ place, places, company, onClose }: { place: 
   const head = d.head;
   return (
     <Composer
-      wide
+      size="lg"
       kicker={<><Network size={14} aria-hidden />{[...place.path, d.name].join(" › ")}</>}
       title={title}
       onClose={onClose}

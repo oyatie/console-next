@@ -95,7 +95,7 @@ export function ReissueSheet({ e: opened, r: openedReg, phase, onClose }: { e: L
   return (
     <Sheet
       open
-      wide
+      size="lg"
       onClose={onClose}
       pending={save.isPending}
       kicker={<><FileText size={14} aria-hidden /> {entityName(e)} · {brn} · {t("entityReissue.issuedOn", { date: r.current?.cert_issued_on ? fmtDate(r.current.cert_issued_on) : "—" })}</>}

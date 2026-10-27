@@ -6,6 +6,7 @@ import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { QueryState } from "./query-state";
 import { queryView, readGroup } from "./query-view";
+import { SidePanel } from "../../ui/side-panel/side-panel";
 
 beforeAll(() => loadCatalog("ko"));
 const network = vi.hoisted(() => ({ online: true }));
@@ -28,9 +29,9 @@ test("a missing read shows its catalog reason without a server fallback", async 
 });
 
 type Read = { isPending: boolean; error: unknown; data: string | undefined; refetch: () => unknown; fetchStatus?: "paused"; isPlaceholderData?: boolean };
-async function markup(q: Read, own?: (code: string) => string | undefined, keepOnLoss = false) {
-  const root = createRootRoute({ component: () => <QueryState q={q} own={own} keepOnLoss={keepOnLoss}
-  >{value => <span>{value}</span>}</QueryState> });
+async function markup(q: Read, own?: (code: string) => string | undefined, keepOnLoss = false, panel = false) {
+  const content = <QueryState q={q} own={own} keepOnLoss={keepOnLoss}>{value => <span>{value}</span>}</QueryState>;
+  const root = createRootRoute({ component: () => panel ? <SidePanel open title="Record" onClose={() => {}}>{content}</SidePanel> : content });
   const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ["/"] }) });
   await router.load();
   return renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><RouterProvider router={router} /></QueryClientProvider>);
@@ -88,6 +89,16 @@ test.each(["forbidden", "out_of_scope", "scope_tenant_wide_only"])("%s shows the
 
 test("empty data is a successful read, never a refusal inferred from a count", () => {
   expect(queryView({ isPending: false, error: null, data: [] })).toBe("ready");
+});
+
+test.each(["forbidden", "out_of_scope", "scope_tenant_wide_only"])("%s inside a panel refuses only the record and retains its support reference", async code => {
+  const html = await markup({ isPending: false, error: new ApiError(403, code, "denied", [], "panel-refusal"), data: "private cached record", refetch: () => {} }, undefined, false, true);
+  expect(html).toContain("이 항목에 접근 권한이 없습니다");
+  expect(html).toContain("panel-refusal");
+  expect(html).not.toContain(t("common.denied.title.plain"));
+  expect(html).not.toContain(t("common.denied.request"));
+  expect(html).not.toContain('href="/"');
+  expect(html).not.toContain("private cached record");
 });
 
 test("a required read's failure wins over a held sibling and retries both", async () => {

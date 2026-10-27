@@ -2,6 +2,8 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { notifyManager, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useRouterState } from "@tanstack/react-router";
+import { Announcer } from "../../ui/announcer";
+import { bindAnnouncer, useRoutePresentation } from "./announce";
 
 function readyHref(committedHref: string, browserHref: string) {
   const browser = new URL(browserHref);
@@ -18,6 +20,7 @@ function readyHref(committedHref: string, browserHref: string) {
  */
 export function RouteFrame() {
   const { location, status, isLoading } = useRouterState();
+  useRoutePresentation(location.pathname, status === "idle" && !isLoading);
   const cache = useQueryClient().getQueryCache();
   const reading = useSyncExternalStore(
     useCallback((changed: () => void) => cache.subscribe(notifyManager.batchCalls(changed)), [cache]),
@@ -27,6 +30,7 @@ export function RouteFrame() {
   const href = typeof window === "undefined" ? location.href : readyHref(location.href, window.location.href);
   return <>
     <Outlet />
+    <Announcer bind={bindAnnouncer} />
     <span hidden data-route-ready={status === "idle" && !isLoading && !reading ? href : undefined} data-route-key={location.state.__TSR_key} />
   </>;
 }

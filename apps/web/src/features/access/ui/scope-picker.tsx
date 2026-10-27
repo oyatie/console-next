@@ -108,7 +108,7 @@ export function ScopeSheet({ rules, value, subtitle, onDone, onCancel }: { rules
   return (
     <Sheet
       open
-      wide
+      size="lg"
       title={t("access.scope.pick")}
       subtitle={subtitle}
       onClose={onCancel}

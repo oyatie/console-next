@@ -42,7 +42,7 @@ export function DeptMergeSheet({ place, places, setup, company, onClose, onDone 
   const pending = run.isPending || submit.isPending;
   return (
     <Composer
-      wide
+      size="lg"
       kicker={<><GitMerge size={14} aria-hidden />{[...place.path, a.name].join(" › ")}</>}
       title={t("orgUnit.merge.title", { name: a.name })}
       subtitle={t("orgUnit.merge.subtitle", { name: a.name })}
