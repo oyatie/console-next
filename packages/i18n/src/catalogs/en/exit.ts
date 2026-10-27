@@ -1,6 +1,20 @@
 import type { koExit } from "../ko/exit";
 
 export const enExit: Partial<Record<keyof typeof koExit, string>> = {
+  "exit.board.board": "Tasks by leg",
+  "exit.board.ribbon": "Case timeline",
+  "exit.board.leg.approval": "Approval",
+  "exit.board.leg.handover": "Handover",
+  "exit.board.leg.settlement": "Settlement and payroll",
+  "exit.board.leg.access": "Access and equipment",
+  "exit.board.leg.documents": "Documents",
+  "exit.board.leg.filing": "Statutory filings",
+  "exit.board.payrollPending": "Payroll integration pending",
+  "exit.board.owner": "Owner",
+  "exit.board.ownerUnknown": "Owner unassigned",
+  "exit.board.empty": "No records",
+  "exit.board.overdue": "Deadline passed",
+  "exit.board.dueSoon": "Deadline approaching",
   "exit.class.involuntary": "Involuntary exit",
   "exit.protection.title": "Dismissal protection",
   "exit.protection.open": "No end date",

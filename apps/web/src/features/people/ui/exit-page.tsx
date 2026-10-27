@@ -17,11 +17,15 @@ import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { EXIT_CASE_STATUS, LIFECYCLE_STATE, labeled } from "../../../lib/labels";
 import { EXIT_FEATURES, authzApplies, authzQuery } from "../../../reference/authz/api";
 import { useCan } from "../../../reference/authz/ui/use-can";
+import { settingsQuery } from "../../../reference/settings/api";
 import { caseQuery } from "../api";
 import { lifecycleCaseQuery } from "../api/lifecycle-trail";
 import { isForward, type BackKey } from "../domain/exits";
 import { CaseAxis } from "./exit-axis";
 import { CloseForm } from "./exit-close";
+import { ExitBoard } from "./exit-board";
+import { LinkedCase } from "./lifecycle-trail";
+import { lifecycleTrailError } from "../present";
 import { CasePanel } from "./exit-facts";
 import { useCaseActions } from "./use-case-actions";
 import s from "./exit.module.css";
@@ -92,6 +96,8 @@ function CaseBody({ c }: { c: Case }) {
   const navigate = route.useNavigate();
   const authz = freshOnOpen(useQuery({ ...authzQuery, enabled: authzApplies(), refetchOnMount: "always" }));
   const trail = freshOnOpen(useQuery({ ...lifecycleCaseQuery(c.id), refetchOnMount: "always" }));
+  const settings = useQuery(settingsQuery);
+  const dueSoonDays = settings.data?.items.find(item => item.key === "display.deadline_due_soon_days")?.value;
   const ready = !authz.isPending || !authzApplies();
   const { usable, forward } = useCaseActions(c);
   const offered = Boolean(act) && usable.some((k) => k === act);
@@ -138,8 +144,9 @@ function CaseBody({ c }: { c: Case }) {
           )}
           <CaseAxis c={c} onBack={setClosing} onDone={done} />
         </div>
-        <CasePanel c={c} />
+        <CasePanel c={c} trailUnavailable={trail.isError} />
       </div>
+      <QueryState q={trail} own={lifecycleTrailError}>{(value) => <><ExitBoard value={value} lastWorkingDay={c.effective_exit_date} dueSoonDays={typeof dueSoonDays === "number" ? dueSoonDays : null} />{value.linked_case_id && <LinkedCase id={value.linked_case_id} />}</>}</QueryState>
       {closing && <CloseForm c={c} reject={closing === "reject_exit"} onClose={close} onDone={done} />}
     </>
   );
