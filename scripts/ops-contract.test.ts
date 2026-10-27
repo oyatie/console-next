@@ -67,6 +67,22 @@ test("envelopes reject missing observation times, wrong ladders and stale curren
   for (const value of ["No data", "N/A", "—"]) expect(accepts(schemas.ObservedText, { ...observation, value })).toBe(false);
 });
 
+test("Timestamp's pattern itself requires UTC Z, independently of format validation", () => {
+  const patternOnly = { type: "string", pattern: schemas.Timestamp.pattern };
+  expect(accepts(patternOnly, "2026-01-01T00:00:00Z")).toBe(true);
+  for (const time of ["2026-01-01T00:00:00+00:00", "2026-01-01T09:00:00+09:00", "2026-01-01T00:00:00"]) {
+    expect(accepts(patternOnly, time), time).toBe(false);
+  }
+});
+
+test("Canary is a closed state and its percentage is a numeric observation", () => {
+  expect(schemas.Release.enum).toContain("Canary");
+  expect(schemas.Release.enum).not.toContain("Canary n%");
+  const weight = { ...fixtures.healthy.running.components[0].health, value: 25, unit: "%" };
+  expect(accepts(schemas.Changing.properties.weight_percent, weight)).toBe(true);
+  expect(accepts(schemas.Changing.properties.weight_percent, { ...weight, value: "25%" })).toBe(false);
+});
+
 test("all nine routes have JWT security, Cedar actions and no-store including refusals", () => {
   expect(Object.keys(document.paths)).toHaveLength(9);
   const refs = [...read("backend/openapi/ops.yaml").matchAll(/#\/components\/(\w+)\/([A-Za-z0-9._-]+)/g)];

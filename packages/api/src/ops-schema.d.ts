@@ -497,8 +497,11 @@ export interface components {
          * @enum {string}
          */
         RefusalCode: "OPS_ACCESS_JWT_MISSING" | "OPS_ACCESS_JWT_INVALID" | "OPS_ACCESS_AUD_MISMATCH" | "OPS_NOT_OPERATOR" | "OPS_GRANT_NOT_LIVE" | "OPS_ACTION_DENIED" | "OPS_CONFIG_INVALID" | "origin_refused";
-        /** @enum {string} */
-        Release: "Building" | "Signed" | "On preview" | "Canary n%" | "Watching" | "Active" | "Rolled back" | "Failed";
+        /**
+         * @description Canary is a state; its numeric weight is carried separately as Changing.weight_percent.
+         * @enum {string}
+         */
+        Release: "Building" | "Signed" | "On preview" | "Canary" | "Watching" | "Active" | "Rolled back" | "Failed";
         Rollup: {
             key: components["schemas"]["Text"];
             health: components["schemas"]["ObservedHealth"];

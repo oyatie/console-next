@@ -93,7 +93,7 @@ fn an_empty_roll_up_or_unverified_evidence_cannot_be_quiet() {
         Health::Unknown
     );
     assert!(
-        verdict(Health::Healthy, &[], &[EvidenceState::Verified])
+        verdict(Health::Healthy, &[], &[(EvidenceState::Verified, None)])
             .text
             .starts_with("All quiet")
     );
@@ -103,13 +103,17 @@ fn an_empty_roll_up_or_unverified_evidence_cannot_be_quiet() {
         vec![EvidenceState::Monitoring],
         vec![EvidenceState::Stale],
     ] {
-        let result = verdict(Health::Healthy, &[], &evidence);
+        let result = verdict(
+            Health::Healthy,
+            &[],
+            &evidence.iter().map(|s| (*s, None)).collect::<Vec<_>>(),
+        );
         assert!(!result.text.contains("All quiet"));
         assert!(!result.text.contains("0 pages"));
         assert_eq!(result.worst, Health::Unknown);
     }
     assert!(
-        !verdict(Health::Missing, &[], &[EvidenceState::Verified])
+        !verdict(Health::Missing, &[], &[(EvidenceState::Verified, None)])
             .text
             .contains("All quiet")
     );
@@ -117,10 +121,101 @@ fn an_empty_roll_up_or_unverified_evidence_cannot_be_quiet() {
         !verdict(
             Health::Healthy,
             &[WorkKind::Page],
-            &[EvidenceState::Verified]
+            &[(EvidenceState::Verified, None)]
         )
         .text
         .contains("All quiet")
+    );
+}
+
+#[test]
+fn tickets_alone_are_quiet_and_counts_are_grammatical() {
+    for (work, text) in [
+        (vec![], "All quiet · 0 pages · evidence fresh"),
+        (
+            vec![WorkKind::Ticket],
+            "All quiet · 0 pages · 1 ticket · evidence fresh",
+        ),
+        (
+            vec![WorkKind::Ticket; 2],
+            "All quiet · 0 pages · 2 tickets · evidence fresh",
+        ),
+        (
+            vec![WorkKind::Page],
+            "Needs a human now · 1 page · evidence fresh",
+        ),
+        (
+            vec![WorkKind::Page; 2],
+            "Needs a human now · 2 pages · evidence fresh",
+        ),
+    ] {
+        assert_eq!(
+            verdict(Health::Healthy, &work, &[(EvidenceState::Verified, None)]).text,
+            text
+        );
+    }
+    for kind in [WorkKind::Due, WorkKind::Overdue] {
+        assert!(
+            verdict(Health::Healthy, &[kind], &[(EvidenceState::Verified, None)])
+                .text
+                .starts_with("Needs a human now")
+        );
+    }
+    assert!(
+        verdict(Health::Healthy, &[], &[(EvidenceState::Unknown, None)])
+            .text
+            .contains("1 source not verified")
+    );
+}
+
+#[test]
+fn release_canary_is_a_state_with_a_separate_weight() {
+    assert_eq!(
+        serde_json::to_value(console_ops_domain::ladders::Release::Canary).unwrap(),
+        "Canary"
+    );
+}
+
+#[test]
+fn snapshot_verdicts_are_generated_by_the_domain_wording() {
+    let fixtures: serde_json::Value =
+        serde_json::from_str(include_str!("../../rest/tests/fixtures/snapshots.json")).unwrap();
+    for (name, fixture) in fixtures.as_object().unwrap() {
+        let home = &fixture["home"];
+        let health = serde_json::from_value(home["verdict"]["worst"].clone()).unwrap();
+        let work: Vec<WorkKind> = home["worklist"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| serde_json::from_value(item["kind"].clone()).unwrap())
+            .collect();
+        let mut evidence = vec![
+            (EvidenceState::Verified, None);
+            home["evidence"]["counts"]["Verified"].as_u64().unwrap() as usize
+        ];
+        for source in home["evidence"]["sources"].as_array().unwrap() {
+            evidence.push((
+                serde_json::from_value(source["state"].clone()).unwrap(),
+                source["reason"].as_str(),
+            ));
+        }
+        assert_eq!(
+            serde_json::to_value(verdict(health, &work, &evidence)).unwrap(),
+            home["verdict"],
+            "{name}"
+        );
+    }
+    assert_eq!(
+        verdict(
+            Health::Healthy,
+            &[],
+            &[
+                (EvidenceState::Unknown, Some("source down")),
+                (EvidenceState::Stale, Some("stale 3m"))
+            ]
+        )
+        .text,
+        "Needs a human now · Unknown: source down · 2 sources not verified"
     );
 }
 
