@@ -20,6 +20,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  commits:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/commits.yml
+
   web:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -185,12 +190,13 @@ jobs:
 
   ci-ok:
     if: ${{ always() }}
-    needs: [web, states, backend, supply-chain]
+    needs: [commits, web, states, backend, supply-chain]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every CI job
         run: |
+          test "${{ needs.commits.result }}" = success
           test "${{ needs.web.result }}" = success
           test "${{ needs.states.result }}" = success
           test "${{ needs.backend.result }}" = success
