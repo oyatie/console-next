@@ -69,6 +69,7 @@ test("inline approval sends the current pending step and refreshes the inbox wit
   expect(markup).toContain(t("orgChange.turn", { role: label(APPROVAL_ROLE, "finance") }));
   expect(state.reads).toEqual(["/api/v1/org-changes/{id}"]);
   const approve = state.buttons[0]!;
+  expect(markup).not.toContain("btn--primary");
   expect(approve.disabled).toBe(false);
   click(approve);
   expect(state.mutate).toHaveBeenCalledWith(undefined);
@@ -96,6 +97,7 @@ test("effectuation loads its consequence with the row and sends only after inlin
   const markup = render("effectuate");
   expect(markup).toContain(t("org.change.effectuate.apply", { code: "OC-2026-0012" }));
   expect(markup).not.toContain('role="dialog"');
+  expect(markup).not.toContain("btn--primary");
   click(state.buttons[0]!);
   expect(state.mutate).not.toHaveBeenCalled();
   const dialog = render("effectuate");

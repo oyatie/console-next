@@ -3,7 +3,7 @@ import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { interactionHeaders, lastTouch, session } from "@console/api";
 import type { StreamOptions, StreamSnapshot, StreamState } from "@console/api/events";
 import { get, isInvalidated } from "../query";
-import { closeLive, holdLive, liveHeld, liveStatus, onRecordChange, openLive, showHeld } from "./live";
+import { closeLive, holdLive, liveApplying, liveHeld, liveStatus, onRecordChange, openLive, showHeld } from "./live";
 
 // A fake stream the test drives: frames, state flips and the cursor.
 const fake = vi.hoisted(() => ({ opts: null as StreamOptions | null, snap: null as StreamSnapshot | null, lastEventId: "", listeners: new Set<() => void>(), closed: 0 }));
@@ -243,20 +243,37 @@ test("recovery changes from the other operator survive this tab's recent-write w
   expect(isInvalidated(qc, query)).toBe(true);
 });
 
-test("the inbox resolves live even while the setup rail holds other reads", async () => {
+test("a dated inbox insert waits behind the dashboard notice without moving the painted rows", async () => {
   const inbox = get("/api/v1/me/action-inbox", { params: { query: {} } });
-  let reads = 0;
-  const observer = new QueryObserver(qc, { ...inbox, queryFn: async () => { reads++; return {} as never; } });
+  const undated = { id: "undated", due: null };
+  const dated = { id: "dated", due: "2026-10-26T00:00:00Z" };
+  let items = [undated] as (typeof undated | typeof dated)[];
+  const read = vi.fn(async () => ({ items }) as never);
+  const observer = new QueryObserver(qc, { ...inbox, queryFn: read });
   const off = observer.subscribe(() => {});
   await vi.advanceTimersByTimeAsync(0);
-  const initial = reads;
-  const release = holdLive();
-  frame("change", { type: "employee", id: "e1" });
-  await vi.advanceTimersByTimeAsync(250);
-  expect(reads).toBe(initial + 1);
-  expect(isInvalidated(qc, E1)).toBe(true);
-  off();
-  release();
+  expect(read).toHaveBeenCalledTimes(1);
+  const release = holdLive(true);
+  try {
+    items = [dated, undated];
+    frame("change", { type: "employee", id: "e1" });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(observer.getCurrentResult().data).toEqual({ items: [undated] });
+    expect(isInvalidated(qc, inbox)).toBe(true);
+    expect(liveHeld.get()).toBe(1);
+    const applying = showHeld();
+    expect(liveApplying.get()).toBe(true);
+    await vi.advanceTimersByTimeAsync(0);
+    await applying;
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(observer.getCurrentResult().data).toEqual({ items: [dated, undated] });
+    expect(liveHeld.get()).toBe(0);
+    expect(liveApplying.get()).toBe(false);
+  } finally {
+    off();
+    release();
+  }
 });
 
 test("an own write refreshes the inbox while record snapshots keep their echo hold", async () => {

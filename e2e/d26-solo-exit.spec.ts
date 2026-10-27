@@ -46,7 +46,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await routeReady(admin);
   await expect(setupRail(admin)).toBeHidden();
   const inbox = admin.getByRole("region", { name: "업무함", exact: true });
-  await expect(inbox.getByRole("listitem")).toHaveCount(1);
+  await expect(inbox.locator("tbody tr")).toHaveCount(1);
   await expect(inbox.getByRole("button", { name: "패스키 등록", exact: true })).toBeVisible();
   await expect(admin.getByRole("main")).not.toContainText(/결재|기안/);
 
@@ -83,7 +83,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
 
   // Home has nothing stuck on a second person: the case waits only on its settlement.
   await go(admin, "/");
-  const queue = inbox.getByRole("listitem").filter({ has: admin.locator(`a[href="${caseHref}?act=prepare_settlement"]`) });
+  const queue = inbox.getByRole("row").filter({ has: admin.locator(`a[href="${caseHref}?act=prepare_settlement"]`) });
   await expect(queue).toContainText("홀로퇴직");
   await expect(queue.getByRole("link", { name: "퇴직 정산 결재 준비", exact: true })).toBeVisible();
   await expect(inbox.getByRole("link", { name: "본사 퇴직 확인", exact: true })).toHaveCount(0);

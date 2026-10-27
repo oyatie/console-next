@@ -122,7 +122,14 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await admin.getByRole("button", { name: "닫고 직원 목록으로", exact: true }).click();
   await expect(admin).toHaveURL(/\/people$/);
   await go(admin, "/");
-  const filings = admin.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ has: admin.getByRole("link", { name: "4대보험 신고 열기", exact: true }) });
+  const queue = admin.getByRole("region", { name: "업무함", exact: true });
+  const filings = queue.locator("[data-id]").filter({ has: admin.getByRole("link", { name: "4대보험 신고 열기", exact: true }) });
+  await expect(filings).toHaveCount(1);
+  const fold = queue.getByRole("button", { name: "4대보험 신고 · 3건", exact: true });
+  await expect(fold).toHaveAttribute("aria-expanded", "false");
+  await expect(fold.locator("xpath=ancestor::tr").getByRole("link", { name: "4대보험 신고 열기", exact: true })).toHaveCount(0);
+  await fold.click();
+  await expect(fold).toHaveAttribute("aria-expanded", "true");
   await expect(filings).toHaveCount(4);
   for (const insurer of ["국민연금", "건강보험", "고용보험", "산재보험"]) {
     const filing = filings.filter({ hasText: insurer });

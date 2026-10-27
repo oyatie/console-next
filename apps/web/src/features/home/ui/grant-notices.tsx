@@ -23,7 +23,7 @@ export function GrantNotice({ id, role, entries }: { id: string; role: string; e
     {line && scope && <div><strong>{line.role}</strong> · {line.scope} · {t("access.period.open", { from: fmtDate(entries[0]!.valid_from) })} · {line.until}
       {line.state && <span> · {line.state}</span>}<p>{line.reach}</p>{line.caveats.map((c) => <p key={c}>{c}</p>)}
     </div>}
-    <Button variant="primary" disabled={!line || !disclosed || confirm.isPending} onClick={() => confirm.mutate(undefined)}>
+    <Button size="sm" disabled={!line || !disclosed || confirm.isPending} onClick={() => confirm.mutate(undefined)}>
       {t("home.grantNotices.confirm", { role })}
     </Button>
     <CommandError error={confirm.error} own={grantRefusal} />
