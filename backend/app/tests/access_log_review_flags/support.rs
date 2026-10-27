@@ -1,0 +1,177 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+use super::statements::Statements;
+use console_kernel_core::{OrgId, UserId};
+use console_platform_access::log_review::list::{page_in_tx, prepare_in_tx};
+use console_platform_test_support::{runtime_role_pool, seed_org_and_super_admin};
+use serde_json::{Value, json};
+use sqlx::{PgPool, Postgres, Transaction};
+use std::time::Instant;
+use tracing::instrument::WithSubscriber;
+use tracing_subscriber::util::SubscriberInitExt;
+use uuid::Uuid;
+
+pub async fn arm(pool: &PgPool, org: OrgId) -> Transaction<'static, Postgres> {
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    tx
+}
+
+pub async fn policy(pool: &PgPool, org: OrgId, user: UserId, suffix: &str, value: i64) {
+    sqlx::query("INSERT INTO tenant_setting_overrides(org_id,key,value,set_by,reason_code,effective_from) VALUES($1,$2,$3,$4,'POLICY_REVIEW',clock_timestamp())")
+        .bind(org.as_uuid()).bind(format!("access_log_review.flag.{suffix}")).bind(json!(value)).bind(user.as_uuid()).execute(pool).await.unwrap();
+}
+
+pub async fn event(
+    pool: &PgPool,
+    org: OrgId,
+    user: UserId,
+    action: &str,
+    occurred: &str,
+    detail: Value,
+) -> Uuid {
+    let mut after = json!({"self_read":false,"subject_count":0});
+    after
+        .as_object_mut()
+        .unwrap()
+        .extend(detail.as_object().unwrap().clone());
+    sqlx::query_scalar("INSERT INTO audit_events(org_id,actor,action,target_type,target_id,trace_id,span_id,occurred_at,created_at,after_snap,outcome) VALUES($1,$2,$3,'employee','test',repeat('a',32),repeat('b',16),$4::text::timestamptz,'2026-09-10T00:00:00Z',$5,$6) RETURNING id")
+        .bind(org.as_uuid()).bind(user.as_uuid()).bind(action).bind(occurred).bind(&after).bind(if detail["denied"] == true {"DENIED"} else {"ALLOWED"}).fetch_one(pool).await.unwrap()
+}
+
+pub async fn performance(pool: PgPool) {
+    let org = OrgId::new();
+    seed_org_and_super_admin(&pool, *org.as_uuid(), "perf").await;
+    sqlx::query("INSERT INTO users(id,org_id,display_name,roles) SELECT md5('actor-'||n)::uuid,$1,'Actor '||n,'{}' FROM generate_series(1,2000) n")
+        .bind(org.as_uuid()).execute(&pool).await.unwrap();
+    let small_org = OrgId::new();
+    let small_user = seed_org_and_super_admin(&pool, *small_org.as_uuid(), "ten").await;
+    for _ in 0..10 {
+        event(
+            &pool,
+            small_org,
+            small_user,
+            "employee.read",
+            "2026-09-01T12:00:00Z",
+            json!({}),
+        )
+        .await;
+    }
+    sqlx::query("INSERT INTO audit_events(org_id,actor,action,target_type,target_id,trace_id,span_id,occurred_at,created_at,after_snap,outcome) SELECT $1,md5('actor-'||((n-1)%2000+1))::uuid,'employee.read','employee','test',repeat('a',32),repeat('b',16),'2026-09-01T00:00:00Z'::timestamptz+((n*7919)%2592000)*interval '1 second','2026-09-01T00:00:00Z'::timestamptz+n*interval '1 second','{\"self_read\":false,\"subject_count\":1}'::jsonb,'ALLOWED' FROM generate_series(1,200000) n")
+        .bind(org.as_uuid()).execute(&pool).await.unwrap();
+    sqlx::query("ANALYZE audit_events")
+        .execute(&pool)
+        .await
+        .unwrap();
+    tracing_subscriber::registry()
+        .try_init()
+        .expect("install the SQLx log bridge");
+    let rt = runtime_role_pool(&pool).await;
+    let statements = Statements::default();
+    let dispatch = statements.dispatch();
+    let mut small_tx = arm(&rt, small_org).await;
+    let small = prepare_in_tx(small_tx.as_mut(), small_org, "2026-09")
+        .await
+        .unwrap();
+    page_in_tx(small_tx.as_mut(), &small, None, 50, true)
+        .with_subscriber(dispatch.clone())
+        .await
+        .unwrap();
+    let small_statements = statements.take();
+    assert!(
+        !small_statements.is_empty(),
+        "statement instrumentation must observe real SQL"
+    );
+    small_tx.commit().await.unwrap();
+    let mut tx = arm(&rt, org).await;
+    let start = Instant::now();
+    let snapshot = prepare_in_tx(tx.as_mut(), org, "2026-09").await.unwrap();
+    eprintln!(
+        "200000 rows, 2000 actors; one-time preparation {:?}; snapshot {} bytes",
+        start.elapsed(),
+        serde_json::to_vec(&snapshot).unwrap().len()
+    );
+    assert_eq!(snapshot.totals()["events"], 200000);
+    page_in_tx(tx.as_mut(), &snapshot, None, 50, true)
+        .with_subscriber(dispatch)
+        .await
+        .unwrap();
+    let large_statements = statements.take();
+    assert_eq!(small_statements.len(), large_statements.len());
+    eprintln!(
+        "statements/page={} at 10 and 200000 rows",
+        large_statements.len()
+    );
+    let mut times = Vec::new();
+    let mut cursor = None;
+    for _ in 0..20 {
+        let start = Instant::now();
+        let rows = page_in_tx(tx.as_mut(), &snapshot, cursor, 50, true)
+            .await
+            .unwrap();
+        times.push(start.elapsed().as_millis());
+        assert!(!rows.is_empty());
+        let last = rows.last().unwrap();
+        cursor = Some((last.created_at, last.event_id));
+    }
+    times.sort_unstable();
+    eprintln!("frozen page p95={}ms; samples={times:?}", times[18]);
+    assert!(times[18] <= 300, "page p95 exceeds 300ms: {times:?}");
+    let data = serde_json::to_value(&snapshot).unwrap();
+    let sql = large_statements
+        .iter()
+        .find(|s| s.contains("WITH rules"))
+        .expect("capture the actual page statement");
+    // Only the SQL just executed by the production builder is reused; all inputs remain bound.
+    let mut explain = sqlx::QueryBuilder::new("EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ");
+    explain.push(sql.as_str());
+    let plan: Value = explain
+        .build_query_scalar()
+        .bind(org.as_uuid())
+        .bind(
+            time::OffsetDateTime::parse(
+                data["from"].as_str().unwrap(),
+                &time::format_description::well_known::Rfc3339,
+            )
+            .unwrap(),
+        )
+        .bind(
+            time::OffsetDateTime::parse(
+                data["to"].as_str().unwrap(),
+                &time::format_description::well_known::Rfc3339,
+            )
+            .unwrap(),
+        )
+        .bind(&data["rules"])
+        .bind(console_platform_access::log_review::SENSITIVE_READS)
+        .bind(serde_json::to_string(&data["actor_days"]).unwrap())
+        .bind(None::<time::OffsetDateTime>)
+        .bind(None::<Uuid>)
+        .bind(true)
+        .bind(50_i64)
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap();
+    let rendered = serde_json::to_string_pretty(&plan).unwrap();
+    assert!(has_cursor_index_scan(&plan), "{rendered}");
+    if let Ok(path) = std::env::var("ACCESS_LOG_REVIEW_EXPLAIN") {
+        std::fs::write(path, &rendered).unwrap();
+    }
+    eprintln!("EXPLAIN confirms Index Scan on idx_audit_events_org_seal_cursor");
+}
+
+fn has_cursor_index_scan(value: &Value) -> bool {
+    match value {
+        Value::Object(fields) => {
+            (fields.get("Node Type") == Some(&json!("Index Scan"))
+                && fields.get("Index Name") == Some(&json!("idx_audit_events_org_seal_cursor")))
+                || fields.values().any(has_cursor_index_scan)
+        }
+        Value::Array(items) => items.iter().any(has_cursor_index_scan),
+        _ => false,
+    }
+}
