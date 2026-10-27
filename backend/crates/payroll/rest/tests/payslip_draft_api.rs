@@ -30,10 +30,7 @@ use console_ontology_canonical_adapter_postgres::person::{
 };
 use console_ontology_canonical_domain::{CanonicalPort, CommandId, CommandReceipt, DispatchTarget};
 use console_payroll_adapter_postgres::PgPayrollStore;
-use console_payroll_domain::{
-    ContributionCode, StatutoryInsuranceInput, build_statutory_insurance_draft,
-    contribution_rate_on, minimum_wage_on, national_pension_limit_on, statutory_contribution_rates,
-};
+use console_payroll_domain::{ContributionCode, statutory_contribution_rates};
 use console_payroll_rest::{PayrollRestState, router};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifier};
 use console_platform_db::{DbError, with_audit};
@@ -586,113 +583,11 @@ async fn withholding_is_explicitly_deferred_and_never_a_silent_zero(owner_pool: 
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn seeded_statutory_rate_register_agrees_with_the_kernel_it_cites(owner_pool: PgPool) {
-    // Two sources of truth is the bug this test exists to make impossible: the
-    // migration's citation rows must carry the SAME numbers the kernel computes
-    // with, or a payslip would cite an instrument it did not obey.
-    let pay_date = date!(2026 - 08 - 10);
-
-    let row = |code: &str| {
-        let code = code.to_owned();
-        let pool = owner_pool.clone();
-        async move {
-            sqlx::query_as::<
-                _,
-                (
-                    Option<i64>,
-                    Option<i64>,
-                    Option<i64>,
-                    Option<i64>,
-                    String,
-                    String,
-                ),
-            >(
-                "SELECT rate_num, rate_den, floor_won, cap_won, basis, bearer \
-                 FROM payroll_statutory_rates \
-                 WHERE code = $1 AND effective_from <= $2 \
-                   AND (effective_to_exclusive IS NULL OR effective_to_exclusive > $2)",
-            )
-            .bind(code)
-            .bind(pay_date)
-            .fetch_one(&pool)
-            .await
-            .unwrap()
-        }
+    use console_payroll_domain::{
+        ContributionBasis as B, ShareRule as S, minimum_wage_rates, national_pension_base_limits,
+        simplified_withholding_table_instruments,
     };
-
-    let pension = contribution_rate_on(ContributionCode::NationalPension, pay_date).unwrap();
-    let seeded = row("NATIONAL_PENSION_EMPLOYEE").await;
-    assert_eq!(
-        (seeded.0, seeded.1),
-        (Some(pension.rate_num), Some(pension.rate_den))
-    );
-    assert_eq!(seeded.5, "EMPLOYEE_WHOLE");
-
-    let health = contribution_rate_on(ContributionCode::HealthInsurance, pay_date).unwrap();
-    let seeded = row("HEALTH_INSURANCE_TOTAL").await;
-    assert_eq!(
-        (seeded.0, seeded.1),
-        (Some(health.rate_num), Some(health.rate_den))
-    );
-    assert_eq!(seeded.5, "HALF_EACH");
-
-    let ltc = contribution_rate_on(ContributionCode::LongTermCare, pay_date).unwrap();
-    let seeded = row("LONG_TERM_CARE_TOTAL").await;
-    assert_eq!(
-        (seeded.0, seeded.1),
-        (Some(ltc.rate_num), Some(ltc.rate_den))
-    );
-    assert_eq!(seeded.4, "HEALTH_INSURANCE_PREMIUM");
-
-    let employment =
-        contribution_rate_on(ContributionCode::EmploymentUnemployment, pay_date).unwrap();
-    let seeded = row("EMPLOYMENT_INSURANCE_EMPLOYEE").await;
-    assert_eq!(
-        (seeded.0, seeded.1),
-        (Some(employment.rate_num), Some(employment.rate_den))
-    );
-
-    let seeded = row("INDUSTRIAL_ACCIDENT_EMPLOYEE").await;
-    assert_eq!(seeded.5, "EMPLOYER_ONLY");
-
-    let band = national_pension_limit_on(pay_date).unwrap();
-    let seeded = row("PENSION_STANDARD_INCOME_BAND").await;
-    assert_eq!(
-        (seeded.2, seeded.3),
-        (Some(band.minimum_won), Some(band.maximum_won))
-    );
-
-    let clamp = contribution_rate_on(ContributionCode::HealthInsurance, pay_date)
-        .unwrap()
-        .clamp
-        .unwrap();
-    let seeded = row("HEALTH_PREMIUM_BAND").await;
-    assert_eq!(
-        (seeded.2, seeded.3),
-        (Some(clamp.floor_won), Some(clamp.cap_won))
-    );
-
-    let wage = minimum_wage_on(pay_date).unwrap();
-    let seeded = row("MINIMUM_WAGE").await;
-    assert_eq!(
-        (seeded.2, seeded.3),
-        (Some(wage.hourly_won), Some(wage.monthly_209h_won))
-    );
-
-    // The numbers agreeing is not enough: a payslip cites a VERSION, and the
-    // 공포번호 + 시행일자 pair IS the version anchor (근로기준법 제42조's 3-year
-    // recomputability). Drift here was found by hand on 2026-08-01 — the register
-    // and the kernel both cited 징수법 「법률 제21532호, 시행 2026-10-08」, a
-    // FUTURE slice, where the text in force is 법률 제19209호 / 2024-01-01. Only
-    // numbers were compared, so nothing failed. This closes that.
-    // And the PROVENANCE, which is the other hand-maintained copy. The
-    // narrative exists twice — `payroll_statutory_rates.provenance_ko`, served
-    // by the adapter, and `StatutoryRate::provenance`, served in the draft JSON
-    // — and nothing compared them, which is exactly how a sentence corrected in
-    // one copy went on living in the other.
-    //
-    // Keyed by (code, effective_from), not by the pay date: a pay-date lookup
-    // can only ever see one of the two 장기요양 rows, and the row it cannot see
-    // is the one that drifts.
+    use std::collections::BTreeSet;
     let register_code = |code: ContributionCode| match code {
         ContributionCode::NationalPension => "NATIONAL_PENSION_EMPLOYEE",
         ContributionCode::HealthInsurance => "HEALTH_INSURANCE_TOTAL",
@@ -700,56 +595,124 @@ async fn seeded_statutory_rate_register_agrees_with_the_kernel_it_cites(owner_po
         ContributionCode::EmploymentUnemployment => "EMPLOYMENT_INSURANCE_EMPLOYEE",
         ContributionCode::IndustrialAccident => "INDUSTRIAL_ACCIDENT_EMPLOYEE",
     };
-    for rate in statutory_contribution_rates() {
-        let code = register_code(rate.code);
-        let from = rate.period.from;
-        let seeded = sqlx::query_as::<_, (String, time::Date, String)>(
-            "SELECT promulgation_ko, enforced_on, provenance_ko FROM payroll_statutory_rates \
-             WHERE code = $1 AND effective_from = $2",
-        )
-        .bind(code)
-        .bind(from)
-        .fetch_one(&owner_pool)
-        .await
-        .unwrap();
-        assert_eq!(
-            (seeded.0.as_str(), seeded.1),
-            (rate.instrument.promulgation_ko, rate.instrument.enforced_on),
-            "{code} {from}: 대장과 커널이 서로 다른 버전을 인용한다"
-        );
-        assert_eq!(
-            seeded.2, rate.provenance,
-            "{code} {from}: 대장의 provenance_ko와 커널의 provenance가 갈라졌다"
-        );
-        // A 시행일자 after the row's own start means a future slice was cited —
-        // the `target=law` trap, which returns the latest PROMULGATED text.
-        // Compared against `effective_from`, not the pay date: the pay-date form
-        // passed on three rows that were nonetheless backdated.
-        assert!(
-            rate.instrument.enforced_on <= from,
-            "{code} {from}: 이 행보다 늦게 시행된 슬라이스를 인용한다 ({})",
-            rate.instrument.enforced_on
-        );
+    let rates = statutory_contribution_rates();
+    let mut periods = Vec::new();
+    for rate in &rates {
+        if rate.code == ContributionCode::HealthInsurance {
+            let band = console_payroll_domain::health_premium_band_on(rate.period.from).ok();
+            let stored: Option<(Option<i64>, Option<i64>)> = sqlx::query_as("SELECT floor_won, cap_won FROM payroll_statutory_rates WHERE code = 'HEALTH_PREMIUM_BAND' AND effective_from <= $1 AND effective_to_exclusive > $1").bind(rate.period.from).fetch_optional(&owner_pool).await.unwrap();
+            assert_eq!(
+                stored,
+                band.map(|b| (Some(b.floor_won), Some(b.cap_won))),
+                "band presence {}",
+                rate.period.from
+            );
+        }
+        let basis = match rate.basis {
+            B::MonthlyStandardIncome => "PENSION_STANDARD_INCOME",
+            B::MonthlyRemuneration => "MONTHLY_REMUNERATION",
+            B::HealthInsurancePremium => "HEALTH_INSURANCE_PREMIUM",
+            B::IndustryTariff => "INDUSTRY_TARIFF",
+        };
+        let bearer = match rate.employee_share {
+            S::WholeOfRate => "EMPLOYEE_WHOLE",
+            S::Half { .. } => "HALF_EACH",
+            S::EmployerOnly => "EMPLOYER_ONLY",
+        };
+        periods.push((
+            register_code(rate.code),
+            rate.period,
+            (Some(rate.rate_num), Some(rate.rate_den), None, None),
+            (basis, bearer),
+            rate.instrument,
+            Some(rate.provenance),
+        ));
     }
-
-    // And the kernel's own pipeline used that same LTC ratio for this pay date.
-    let draft = build_statutory_insurance_draft(&StatutoryInsuranceInput {
-        pay_date,
-        monthly_remuneration_won: 3_000_000,
-        pension_standard_monthly_income_won: None,
-        monthly_standard_hours: Some(209),
-    })
-    .unwrap();
-    let component = draft
-        .components
-        .iter()
-        .find(|component| component.code == ContributionCode::LongTermCare)
-        .unwrap();
+    for band in national_pension_base_limits() {
+        periods.push((
+            "PENSION_STANDARD_INCOME_BAND",
+            band.period,
+            (None, None, Some(band.minimum_won), Some(band.maximum_won)),
+            ("PENSION_STANDARD_INCOME", "NOT_APPLICABLE"),
+            band.instrument,
+            None,
+        ));
+    }
+    for (period, band) in console_payroll_domain::health_premium_bands() {
+        periods.push((
+            "HEALTH_PREMIUM_BAND",
+            period,
+            (None, None, Some(band.floor_won), Some(band.cap_won)),
+            ("MONTHLY_REMUNERATION", "NOT_APPLICABLE"),
+            band.instrument,
+            None,
+        ));
+    }
+    for wage in minimum_wage_rates() {
+        periods.push((
+            "MINIMUM_WAGE",
+            wage.period,
+            (
+                None,
+                None,
+                Some(wage.hourly_won),
+                Some(wage.monthly_209h_won),
+            ),
+            ("MONTHLY_REMUNERATION", "NOT_APPLICABLE"),
+            wage.instrument,
+            None,
+        ));
+    }
+    for (period, instrument) in simplified_withholding_table_instruments() {
+        periods.push((
+            "SIMPLIFIED_WITHHOLDING_TABLE",
+            period,
+            (None, None, None, None),
+            ("NOT_APPLICABLE", "NOT_APPLICABLE"),
+            instrument,
+            None,
+        ));
+    }
+    let mut kernel_keys = BTreeSet::new();
+    for (code, period, amounts, (basis, bearer), instrument, provenance) in periods {
+        let from = period.from;
+        assert!(
+            kernel_keys.insert((code.to_string(), from)),
+            "duplicate kernel period {code} {from}"
+        );
+        let row = sqlx::query_as::<_, (Option<Date>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, String, String, String, Date, String)>(
+            "SELECT effective_to_exclusive, rate_num, rate_den, floor_won, cap_won, basis, bearer, promulgation_ko, enforced_on, provenance_ko FROM payroll_statutory_rates WHERE code = $1 AND effective_from = $2"
+        ).bind(code).bind(from).fetch_optional(&owner_pool).await.unwrap().unwrap_or_else(|| panic!("{code} {from}: missing DB period"));
+        assert_eq!(
+            (row.0, (row.1, row.2, row.3, row.4)),
+            (period.to_exclusive, amounts),
+            "{code} {from}"
+        );
+        assert_eq!(
+            (row.5.as_str(), row.6.as_str(), row.7.as_str(), row.8),
+            (
+                basis,
+                bearer,
+                instrument.promulgation_ko,
+                instrument.enforced_on
+            ),
+            "{code} {from}"
+        );
+        if let Some(provenance) = provenance {
+            assert_eq!(row.9, provenance, "{code} {from}");
+        }
+    }
+    let db_keys: BTreeSet<(String, Date)> =
+        sqlx::query_as("SELECT code, effective_from FROM payroll_statutory_rates")
+            .fetch_all(&owner_pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .collect();
     assert_eq!(
-        (component.rate_num, component.rate_den),
-        (Some(ltc.rate_num), Some(ltc.rate_den))
+        db_keys, kernel_keys,
+        "every DB period must have a kernel period"
     );
-    assert_eq!(component.employee_won, Some(14_170));
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -1225,9 +1188,9 @@ async fn a_rate_row_backdated_before_its_own_instrument_is_rejected(owner_pool: 
         }
     };
 
-    // In force from 2027-01-01, citing a 고시 enforced 2027-06-01 — exactly the
+    // In force from 2027-01-02 (away from the seeded annual row), citing a 고시 enforced 2027-06-01 — exactly the
     // shape 건강보험(2026-01-01 → 제36116호/2026-02-19) shipped in.
-    let error = plant("2027-01-01", "2027-06-01")
+    let error = plant("2027-01-02", "2027-06-01")
         .await
         .expect_err("a row cannot be in force before the document that sets it");
     assert!(
@@ -1240,7 +1203,7 @@ async fn a_rate_row_backdated_before_its_own_instrument_is_rejected(owner_pool: 
     // Positive control: the same row, dated after its own instrument, stores.
     // Without this the assertion above would also pass on a table that rejects
     // every INSERT.
-    plant("2027-01-01", "2026-12-30")
+    plant("2027-01-02", "2026-12-30")
         .await
         .expect("a row whose instrument was already in force is storable");
 }
