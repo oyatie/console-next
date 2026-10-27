@@ -65,7 +65,7 @@ export function CertForm({ c, onOpenTaken }: { c: CreateState; onOpenTaken?: () 
         error={p.brn && <BrnProblem c={c} onOpen={onOpenTaken} />}
         warning={p.brn ? undefined : brnWarningText(d, c.brnClasses)}
         hint={t("entityCreate.brn.hint")}
-        status={<Chip tone={checkState(c.preview?.answer, c.checkAvailability?.available).tone}>{checkState(c.preview?.answer, c.checkAvailability?.available).label}</Chip>}
+        status={d.brn.length === FORMATS.bizRegNo.max && !p.brn && <Chip tone={checkState(c.preview?.answer, c.checkAvailability?.available).tone}>{checkState(c.preview?.answer, c.checkAvailability?.available).label}</Chip>}
       />
       <BrnConfirm brn={d.brn} confirmed={d.brnConfirmed} onConfirm={(v) => put("brnConfirmed", v)} />
       {!ind && (
@@ -161,7 +161,7 @@ export function CertForm({ c, onOpenTaken }: { c: CreateState; onOpenTaken?: () 
           options={[{ value: "Y", label: t("entityCreate.unitTaxation.yes") }, { value: "N", label: t("entityCreate.unitTaxation.no") }]}
           value={d.unitTaxation === null ? null : d.unitTaxation ? "Y" : "N"}
           onChange={(v) => put("unitTaxation", v === "Y")}
-          hint={d.unitTaxation === null ? t("entityCreate.field.unitTaxationHint") : undefined}
+          hint={t("entityCreate.field.unitTaxationHint")}
         />
       </Item>
       <Item no={11}>

@@ -39,7 +39,7 @@ export const enEntityCreate = {
   "entityCreate.field.coOwners": "Co-owners",
   "entityCreate.field.liquor": "Liquor sales report number",
   "entityCreate.field.unitTaxation": "Business-unit taxation",
-  "entityCreate.field.unitTaxationHint": "Not chosen · read box 10 on the certificate. Empty stays a to-do",
+  "entityCreate.field.unitTaxationHint": "Certificate item ⑩",
   "entityCreate.unitTaxation.yes": "Yes",
   "entityCreate.unitTaxation.no": "No",
   "entityCreate.field.eInvoiceEmail": "E-invoice email",
