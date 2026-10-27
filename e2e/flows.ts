@@ -243,8 +243,8 @@ export async function propose(page: Page, reason: string, c: Pick<Clicks, "click
   await c.click(card.getByRole("button", { name: /^오늘/ }));
   await card.getByLabel("사유").fill(reason);
   // With 결재 (the tenant set approval.policy.org_structure = route) it is 「… 상신」 and waits at 결재 0/4; with none
-  // (decisions #26, the default) it is 「… 반영」 and applies at once.
-  await c.click(card.getByRole("button", { name: /(상신|반영)$/ }));
+  // (decisions #26, the default) it is 「… 적용」 and applies at once.
+  await c.click(card.getByRole("button", { name: /(결재 요청|적용)$/ }));
   await expect(page.locator('.rail-steps [aria-current="step"]')).toHaveText(/^(결재 0\/4|시행 )/);
 }
 

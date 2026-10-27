@@ -37,10 +37,10 @@ test("rehire: refused while employed at both levels; after the exit, a new perio
   await fillDate(report, kstDate(-1), "마지막 근무일");
   await report.getByRole("textbox", { name: /^퇴직 경위/ }).fill("개인 사정");
   await report.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+  await report.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
   await admin.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
-  await admin.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
+  await admin.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (적용|예약)/ }).click();
   await expect(admin.getByRole("dialog")).toBeHidden({ timeout: 15_000 });
   await expect.poll(async () => (await revision()).status).toBe("EXITED");
 
@@ -57,7 +57,7 @@ test("rehire: refused while employed at both levels; after the exit, a new perio
   await go(admin, path);
   const caseHref = await admin.getByRole("link", { name: "퇴직 건 열기", exact: true }).getAttribute("href");
   await go(admin, caseHref!);
-  await admin.getByRole("region", { name: /지금/ }).getByRole("button", { name: "퇴직 본사 확인 1명 반영", exact: true }).click();
+  await admin.getByRole("region", { name: /지금/ }).getByRole("button", { name: "퇴직 본사 확인 1명 적용", exact: true }).click();
   await expect(admin.getByRole("main")).toContainText("본사 확인됨");
 
   // The rehire sheet: nothing chosen; a commit names every gap and writes nothing.
@@ -71,7 +71,7 @@ test("rehire: refused while employed at both levels; after the exit, a new perio
   // The record behind the sheet shifts once as its reads land; this check is about the sheet, so it starts after them.
   await expect(admin.getByText("불러오는 중")).toHaveCount(0);
   await forgetResize(admin);
-  await sheet.getByRole("button", { name: /재입사 1명 (예약|반영)/ }).click();
+  await sheet.getByRole("button", { name: /재입사 1명 (예약|적용)/ }).click();
   await expect(sheet).toContainText(/채울 것 \d+개/);
   expect((await revision()).status).toBe("EXITED");
   await expectAccessible(admin, "E3-rehire: gaps named");
@@ -81,11 +81,11 @@ test("rehire: refused while employed at both levels; after the exit, a new perio
   await admin.getByRole("option", { name: /채용팀/ }).first().click();
   await fillDate(sheet, kstDate(0), "입사일");
   await sheet.getByRole("radiogroup", { name: /^고용형태/ }).getByText("정규직", { exact: true }).click();
-  await sheet.getByRole("button", { name: /재입사 1명 (예약|반영)/ }).click();
+  await sheet.getByRole("button", { name: /재입사 1명 (예약|적용)/ }).click();
   await expect(sheet).toBeVisible();
   expect((await revision()).status).toBe("EXITED");
   await statement(acknowledgement).click();
-  await sheet.getByRole("button", { name: /재입사 1명 (예약|반영)/ }).click();
+  await sheet.getByRole("button", { name: /재입사 1명 (예약|적용)/ }).click();
   await expect(sheet).toBeHidden({ timeout: 15_000 });
   const after = await revision();
   expect(after.status).toBe("ACTIVE");

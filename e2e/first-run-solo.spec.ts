@@ -172,8 +172,8 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await proposal.getByLabel("부서 이름").fill("마케팅팀");
   await c.click(proposal.getByRole("button", { name: /^오늘/ }));
   await proposal.getByLabel("사유").fill("마케팅 기능 신설");
-  await expectComposer(proposal, "부서 신설 1개 반영");
-  await c.click(proposal.getByRole("button", { name: "부서 신설 1개 반영" }));
+  await expectComposer(proposal, "부서 신설 1개 적용");
+  await c.click(proposal.getByRole("button", { name: "부서 신설 1개 적용" }));
   // org-19: the user stays on the chart; the receipt names the change and links its record.
   await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(selectedParent);
   await expect(admin.getByRole("complementary", { name: "본사", exact: true })).toBeVisible();

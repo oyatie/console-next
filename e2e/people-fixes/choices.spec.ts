@@ -1,3 +1,5 @@
+import { commitLabel } from "../../apps/web/src/ui/composer/actions";
+import { loadCatalog } from "@console/i18n";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go, kstDate } from "../flows";
@@ -6,6 +8,8 @@ import { peopleWorld, pickBulk, registerAt } from "../helpers/people-fixes";
 import { addTitle } from "../helpers/titles";
 import { hrAct, openHistory } from "../record";
 import { fillDate, reasonBox, sheet, todayPreset } from "../sheet";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive entries require reactivation", { tag: ["@hr", "@regression", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
@@ -41,7 +45,7 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   await todayPreset(admin).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByText("정기 승진", { exact: true }).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("정기 평가");
-  await admin.getByRole("button", { name: "승진 1명 반영" }).click();
+  await admin.getByRole("button", { name: commitLabel({ kind: "PROMOTE", mode: "apply", count: 1 }) }).click();
   await expect(admin.getByRole("status").filter({ hasText: /1명 승진/ }).first()).toBeVisible();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "선임")!.id);
 
@@ -53,10 +57,10 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   await expect(reasons).toContainText("강등(징계)");
   await todayPreset(admin).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("징계 결정에 따른 강등");
-  await admin.getByRole("button", { name: "강등 1명 반영" }).click();
+  await admin.getByRole("button", { name: commitLabel({ kind: "demotion", mode: "apply", count: 1 }) }).click();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "선임")!.id);
   await reasons.getByText("강등(징계)", { exact: true }).click();
-  await admin.getByRole("button", { name: "강등 1명 반영" }).click();
+  await admin.getByRole("button", { name: commitLabel({ kind: "demotion", mode: "apply", count: 1 }) }).click();
   await expect(admin.getByRole("status").filter({ hasText: /1명 승진/ }).first()).toBeVisible();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "사원")!.id);
 
@@ -72,7 +76,7 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   await expect(appoint.getByRole("radio", { name: "팀장", exact: true })).toBeChecked();
   await todayPreset(appoint).click();
   await reasonBox(appoint).fill("부서장 임면");
-  await appoint.getByRole("button", { name: "보직 1명 반영" }).click();
+  await appoint.getByRole("button", { name: commitLabel({ kind: "APPOINT", mode: "apply", count: 1 }) }).click();
   await expect(appoint).toBeHidden();
   await expectAccessible(admin, "people: reactivated entry selected and recorded");
 });
@@ -88,7 +92,7 @@ test("solo: a conversion correction keeps its contract end and a fixed-term refu
   await todayPreset(convert).click();
   await fillDate(convert, kstDate(400), "계약 종료일");
   await reasonBox(convert).fill("기간제 전환");
-  await convert.getByRole("button", { name: "고용 형태 변경 1명 반영" }).click();
+  await convert.getByRole("button", { name: commitLabel({ kind: "EMPLOYMENT_TYPE_CHANGE", mode: "apply", count: 1 }) }).click();
   await expect(convert).toBeHidden();
   await openHistory(admin);
   await admin.getByRole("region", { name: "인사 이력" }).getByRole("button", { name: "정정", exact: true }).click();

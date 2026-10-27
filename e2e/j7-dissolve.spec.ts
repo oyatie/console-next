@@ -23,7 +23,7 @@ test("J7 dissolve: one sheet sends each member somewhere, closes the unit on its
   await todayPreset(leave).click();
   await reasonBox(leave).fill("개인 사유 휴직");
   await signOff(leave);
-  await leave.getByRole("button", { name: "휴직 1명 반영", exact: true }).click();
+  await leave.getByRole("button", { name: "휴직 1명 적용", exact: true }).click();
   await expect(admin.getByRole("region", { name: "인사 이력" })).toContainText("이동이를 휴직 처리했습니다");
   await registerEmployee(admin, { name: "이동일", unit: "채용팀" });
   const moved = new URL(admin.url()).pathname;
@@ -45,7 +45,7 @@ test("J7 dissolve: one sheet sends each member somewhere, closes the unit on its
   await expect(dissolve).toContainText("이 부서 범위로 준 권한이 없습니다");
   await expect(dissolve).not.toContainText(/이 서버가|삭제됩니다|기안|상신|결재/);
   // Nothing is defaulted that the user must decide: the date and reason are named until given (negative).
-  const submit = dissolve.getByRole("button", { name: "부서 폐지 1개 반영" });
+  const submit = dissolve.getByRole("button", { name: "부서 폐지 1개 적용" });
   await expect(submit).toHaveAttribute("aria-disabled", "true");
   await expect(submit).toHaveAccessibleDescription(/시행일, 사유/);
   await expectAccessible(admin, "J7: dissolution sheet, blockers first");

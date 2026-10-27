@@ -87,7 +87,7 @@ test("regression: after a change the chart keeps its boxes and draws the result 
   await add.getByLabel("부서 이름").fill("결산파트");
   await add.getByRole("button", { name: /^오늘/ }).click();
   await add.getByLabel("사유").fill("결산 기능 분리");
-  await add.getByRole("button", { name: "부서 신설 1개 반영" }).click();
+  await add.getByRole("button", { name: "부서 신설 1개 적용" }).click();
   await expect(admin.getByRole("status").filter({ hasText: "결산파트 신설을 반영했습니다" })).toBeVisible();
   await expect(box(admin, "결산파트")).toBeVisible();
   await shot(admin, "after-org-22-chart-shows-result");

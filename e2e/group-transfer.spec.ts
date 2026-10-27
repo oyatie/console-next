@@ -1,3 +1,5 @@
+import { commitLabel } from "../apps/web/src/ui/composer/actions";
+import { loadCatalog } from "@console/i18n";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { inviteAccount, grantAccess } from "./access-flows";
@@ -9,6 +11,8 @@ import { hrAct, openHistory } from "./record";
 import { reasonBox, todayPreset } from "./sheet";
 import { registerEntity, registerWorkplace, SECOND, setupRail, startOperations } from "./setup-flows";
 import { addDepartments } from "./structure-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // 전적 (decisions #30): 퇴직 at one 법인 and 채용 at another as one act, with the employee's consent (「민법」 제657조제1항)
 // and 퇴직금 · 연차 · 근속 each chosen, none preselected. From an empty database: the sheet says why there is nowhere to go
@@ -110,7 +114,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   await expect(preview).toContainText("주식회사 가나홀딩스에서 지급 · 퇴직 정산 처리가 열립니다");
   await expect(preview).toContainText("주식회사 가나홀딩스에서 남은 연차 수당 지급");
   await expectAccessible(admin, "group transfer: filled sheet");
-  await g.getByRole("button", { name: "전적 1명 반영", exact: true }).click();
+  await g.getByRole("button", { name: commitLabel({ kind: "GROUP_TRANSFER", mode: "apply", count: 1 }), exact: true }).click();
   await expect(g).toBeHidden();
 
   // The card follows: the 법인 row, the history line with its facts.
@@ -198,7 +202,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   await chooseRadio(g, /^새 법인 근속은/);
   await g.getByRole("button", { name: /^입사일과 같게/ }).click();
   await reasonBox(g).fill("복귀");
-  await g.getByRole("button", { name: "전적 1명 반영", exact: true }).click();
+  await g.getByRole("button", { name: commitLabel({ kind: "GROUP_TRANSFER", mode: "apply", count: 1 }), exact: true }).click();
   const refused = g.getByRole("alert");
   await expect(refused).toContainText("같은 법인 안으로는 전적하지 않습니다");
   await expect(refused).toContainText("기록한 것은 없습니다");

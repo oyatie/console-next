@@ -69,7 +69,7 @@ test("nobody acts on their own record, the ops account keeps its sign-in path, a
     const report = admin.getByRole("dialog");
     await report.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(30));
     await report.getByLabel("퇴직 경위").fill("본인 사정");
-    await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
+    await report.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
     const exit = admin.getByRole("region", { name: "퇴직", exact: true });
     await expect(exit).toContainText("보고됨");
     await expect(exit.getByRole("button", { name: "인사 확인하고 퇴직 처리" })).toBeVisible();

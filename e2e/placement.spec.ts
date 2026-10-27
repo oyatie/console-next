@@ -124,7 +124,7 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
     await todayPreset(s).click();
     await reasonChip(s, "업무 필요").click();
     await reasonBox(s).fill("생산 지원");
-    await s.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
+    await s.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
     await openHistory(admin);
     await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /이전근을 영업팀에서 생산팀으로 전보했습니다/ })).toBeVisible();
     await openCard(admin);
@@ -158,7 +158,7 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
     await reasonBox(s).fill("판교 지원");
     const planning = await unitId("기획팀");
     const sent = await tamperOnce(admin, /\/lifecycle-events$/, (b) => (b.to_org_unit_id = planning));
-    await s.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
+    await s.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
     await expect(s.getByRole("alert")).toContainText("전적");
     await expectAccessible(admin, "transfer refused: another 법인's 부서");
     await shot(admin, "move-01-transfer-refused");

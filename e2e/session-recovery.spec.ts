@@ -52,7 +52,7 @@ for (const [reason, message, passkey] of [
       return denied ? route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: { code: "unauthorized", message: "ended" } }) }) : route.fallback();
     });
     await page.route(REFRESH, (route) => route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: { code: reason, message: "ended" } }) }));
-    await form.getByRole("button", { name: "퇴직 보고 1명 반영", exact: true }).click();
+    await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
     const recovery = page.getByRole("dialog", { name: "다시 로그인" });
     await expect(recovery).toContainText(message);
     await expect(recovery.getByRole("button", { name: "패스키로 다시 로그인" })).toHaveCount(passkey ? 1 : 0);
@@ -166,7 +166,7 @@ test("S23 passkey reset and S25 deactivation deliver their actual server reasons
   await stepUp(admin.getByRole("dialog", { name: "패스키 초기화" }), "패스키로 확인하고 패스키 초기화", admin.getByRole("dialog", { name: "패스키 초기화 로그인 코드" }));
   const code = await takeCode(admin);
   const refused = exec.waitForResponse((r) => r.url().endsWith("/auth/token/refresh") && r.status() === 401, { timeout: 15_000 });
-  await form.getByRole("button", { name: "퇴직 보고 1명 반영", exact: true }).click();
+  await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
   expect((await (await refused).json()).error.code).toBe("session_passkey_reset");
   const recovery = exec.getByRole("dialog", { name: "다시 로그인" });
   await expect(recovery).toContainText("관리자가 패스키를 초기화했습니다");
@@ -185,7 +185,7 @@ test("S23 passkey reset and S25 deactivation deliver their actual server reasons
   await confirm.getByRole("button", { name: "패스키로 확인하고 계정 비활성화" }).click();
   expect((await disabled).ok()).toBe(true);
   const deactivated = again.waitForResponse((r) => r.url().endsWith("/auth/token/refresh") && r.status() === 401, { timeout: 15_000 });
-  await nextForm.getByRole("button", { name: "퇴직 보고 1명 반영", exact: true }).click();
+  await nextForm.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
   expect((await (await deactivated).json()).error.code).toBe("session_deactivated");
   const end = again.getByRole("dialog", { name: "다시 로그인" });
   await expect(end).toContainText("계정이 비활성화되었습니다");

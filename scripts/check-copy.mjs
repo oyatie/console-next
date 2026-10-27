@@ -22,23 +22,34 @@ const BASELINE = "scripts/copy-unused-baseline.json";
 const MATURITY_BASELINE = "scripts/copy-maturity-baseline.json";
 const escape = (s) => s.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
 
-// Governed org/lifecycle forms have one owner for commit and dismiss copy, including their page-sized variants.
+// Governed writes share commit and dismiss copy across every feature, including page-sized forms.
 export function checkComposer(file, text) {
-  if (!/^apps\/web\/src\/features\/(?:org|people)\/ui\/.*\.tsx$/.test(file)) return [];
-  const governed = /\b(?:Composer|LifecycleFrame|ApprovalCard|recordLifecycleEvent|correctEmployee|changeEmployeeNumber|useRegister|useBulkCommand|useLifecycleCommand|useExitCommand|changeCommands)\b/.test(text);
-  if (!governed && !/<Sheet\b/.test(text)) return [];
+  if (/^packages\/i18n\/src\/catalogs\/ko\//.test(file)) return copyEntries(file, text).flatMap((entry) =>
+    checkTerms([entry], [], COMPOSER_TERM_RULES).map((p) => `${file}: composer.verb: ${p} [${digest(entry.text)}]`));
+  if (!/^apps\/web\/src\/features\/[^/]+\/ui\/.*\.tsx$/.test(file)) return [];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let write = false, governedBody = false, sheet = false;
+  const classify = (node) => {
+    if (ts.isCallExpression(node) && /(?:\buse\w*Command|\buseMutation|\buseRegister|\.(?:mutate|POST|PUT|PATCH|DELETE))$/.test(node.expression.getText(source))) write = true;
+    if ((ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) && /^(?:effective[_A-Z]\w*|reason(?:_code|Code)?|approval(?:[_A-Z]\w*)?)$/.test(node.name.getText(source).replace(/["']/g, ""))) governedBody = true;
+    if (ts.isPropertyAssignment(node) && node.name.getText(source) === "method" && ts.isStringLiteral(node.initializer) && /^(POST|PUT|PATCH|DELETE)$/i.test(node.initializer.text)) write = true;
+    if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && node.tagName.getText(source) === "Sheet") sheet = true;
+    ts.forEachChild(node, classify);
+  };
+  classify(source);
+  const governed = /\b(?:Composer|LifecycleFrame|ApprovalCard|recordLifecycleEvent|correctEmployee|changeEmployeeNumber|useRegister|useBulkCommand|useLifecycleCommand|useExitCommand|changeCommands)\b/.test(text) || (write && (sheet || governedBody));
+  if (!governed) return [];
   const problems = [];
   const visit = (node) => {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = node.tagName.getText(source);
       const attributes = node.attributes.properties.filter(ts.isJsxAttribute);
       const attr = (name) => attributes.find((a) => a.name.getText(source) === name)?.initializer?.getText(source) ?? "";
-      const refuse = (why) => problems.push(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}: composer.verb: ${why}; use Composer's typed action and canonical dismiss`);
-      if (["LifecycleFrame", "ApprovalCard"].includes(tag) || (tag === "Sheet" && (governed || !attr("actions")))) refuse("parallel governed frame");
+      const refuse = (why) => problems.push(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}: composer.verb: ${why}; use Composer's typed action and canonical dismiss [${digest(node.getText(source))}]`);
+      if (["LifecycleFrame", "ApprovalCard", "Sheet"].includes(tag)) refuse("parallel governed frame");
       if (tag === "Composer" && attributes.some((a) => ["commit", "dismissLabel", "actions"].includes(a.name.getText(source)))) refuse("per-screen commit/dismiss label");
-      if (tag === "Button") {
-        if ((attr("type") === '"submit"' || (governed && /\.(?:mutate|submit)\(/.test(attr("onClick")))) && !node.parent.getText(source).includes("commitLabel(")) refuse("per-screen commit control");
+      if (tag === "Button" || tag === "button") {
+        if ((/^["']submit["']$/.test(attr("type")) || (governed && /\.(?:mutate|submit)\(/.test(attr("onClick")))) && !node.parent.getText(source).includes("commitLabel(")) refuse("per-screen commit control");
         if (governed && /\b(?:onClose|close)\b/.test(attr("onClick")) && ts.isJsxOpeningElement(node)) {
           const label = node.parent.children.map((c) => c.getText(source)).join("");
           if (!/^\{t\("composer.dismiss"\)\}$/.test(label)) refuse("noncanonical dismiss label");
@@ -49,6 +60,13 @@ export function checkComposer(file, text) {
   };
   visit(source);
   return problems;
+}
+
+const COMPOSER_ALLOW = "scripts/composer-allow.json";
+export function checkComposerAllow(findings, allow, ceiling = allow) {
+  const key = (p) => p.replace(/:\d+: composer\.verb:/, ": composer.verb:");
+  const counts = (items) => items.reduce((out, item) => { const id = key(item); out[id] = (out[id] ?? 0) + 1; return out; }, {});
+  return [...baselineGrowth(counts(allow), counts(ceiling)), ...ratchet(counts(findings), counts(allow))].map((p) => `${COMPOSER_ALLOW}: ${p}`);
 }
 
 // The quoted keys of a catalog file's object literal(s).
@@ -97,7 +115,12 @@ const MATURITY_RULES = [
   { rule: "prose.단계", re: /(?:합니다|됩니다|있습니다|없습니다|않습니다|남습니다|남깁니다|바뀝니다)/, when: ({ id }) => /\.phase\./.test(id), use: "a phase chip; put transition explanations in a dismissible receipt" },
   { rule: "prose.운영시제", re: /운영을 시작하면/, when: ({ id }) => /phase\.started\./.test(id), use: "the current operating phase" },
 ];
+const COMPOSER_TERM_RULES = [
+  { rule: "verb.반려", re: /거절/, when: ({ id }) => /\.(?:decline|DECLINED|reject)$/.test(id), use: "반려" },
+  { rule: "verb.회수", re: /철회/, when: ({ id }) => /\.(?:withdraw|WITHDRAWN)$/.test(id), use: "회수" },
+];
 export const TERM_RULES = [
+  ...COMPOSER_TERM_RULES,
   // Routing scope and the LEGAL-owned N-1 exit label are outside person placement.
   { rule: "term.personPlace", re: /지점/, when: ({ id }) => /^(?:person|people|roster|home)\.(?!field\.homeBranch$|scope\.)/.test(id), use: "사업장 · 근무지 · 미배치 (placement owns a person's place)" },
   { rule: "verb.수정", re: /(?<!새로 ?)고[치쳐칠친칩]/, use: "수정 (the recorded act of a dated fact says 변경 or 정정)" },
@@ -213,7 +236,7 @@ export function copyDebt(entries, allow = []) {
   const counts = {}, messages = {};
   for (const entry of entries) {
     const matchingAllow = allow.filter((a) => a.id.endsWith("*") ? entry.id.startsWith(a.id.slice(0, -1)) : a.id === entry.id);
-    for (const problem of checkTerms([entry], matchingAllow).filter((p) => !p.endsWith("no longer matches; remove it"))) {
+    for (const problem of checkTerms([entry], matchingAllow, TERM_RULES.filter((r) => !COMPOSER_TERM_RULES.includes(r))).filter((p) => !p.endsWith("no longer matches; remove it"))) {
       const rule = problem.split(": ")[1];
       const key = `${entry.where} ${entry.id} ${rule} ${digest(entry.text)}`;
       counts[key] = (counts[key] ?? 0) + 1;
@@ -227,11 +250,14 @@ const isCopyFile = (p) => /^packages\/i18n\/src\/(?:catalogs\/(?:ko\/.*|boot(?:-
   || p === "apps/web/public/chunk-guard.js" || /(?:^|\/)error_i18n(?:[^/]*\.rs|\/.*\.rs)$/.test(p);
 
 // The same rules read the merge base when seeding; regeneration can never bless newly introduced debt.
+function qualityBase() {
+  return process.env.QUALITY_BASE ?? (spawnSync("git", ["rev-parse", "--verify", "--quiet", "public/dev"]).status === 0 ? "public/dev" : "dev");
+}
+
 function debtCeiling() {
   const root = process.cwd();
   const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
-  const publicBase = spawnSync("git", ["rev-parse", "--verify", "--quiet", "public/dev"]).status === 0;
-  const base = git("merge-base", process.env.QUALITY_BASE ?? (publicBase ? "public/dev" : "dev"), "HEAD");
+  const base = git("merge-base", qualityBase(), "HEAD");
   const allow = JSON.parse(atBase(root, base, TERMS_ALLOW)).allow;
   const previous = atBase(root, base, MATURITY_BASELINE);
   if (previous !== undefined) return { counts: JSON.parse(previous), allow };
@@ -253,11 +279,12 @@ const isTest = (p) => /\.test\.tsx?$/.test(p);
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
   const problems = [];
+  const composerFindings = [];
   // schema.d.ts is generated from the backend's OpenAPI doc comments (`npm run gen:api`), never rendered.
   for (const p of ["apps/web/src", "packages/api/src"].flatMap((d) => walk(d))) {
     if (!/\.(tsx?|css)$/.test(p) || isTest(p) || p === "packages/api/src/schema.d.ts") continue;
     const source = readFileSync(p, "utf8");
-    problems.push(...checkComposer(p, source));
+    composerFindings.push(...checkComposer(p, source));
     source.split("\n").forEach((line, i) => {
       if (HANGUL.test(line)) problems.push(`${p}:${i + 1}: literal outside the i18n catalogs: ${line.trim().slice(0, 100)}`);
     });
@@ -273,6 +300,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // The gallery is dev-only but still copy; the crash screen's strings ship outside the catalogs by necessity.
   const copyFiles = [...walk("packages/i18n/src"), ...walk("apps/web/public"), ...(existsSync("backend") ? walk("backend") : [])].filter(isCopyFile);
   const entries = copyFiles.flatMap((f) => copyEntries(f, readFileSync(f, "utf8")));
+  composerFindings.push(...copyFiles.flatMap((f) => checkComposer(f, readFileSync(f, "utf8"))));
+  const composerAllow = JSON.parse(readFileSync(COMPOSER_ALLOW, "utf8")).allow;
+  const gitBase = spawnSync("git", ["merge-base", qualityBase(), "HEAD"], { encoding: "utf8" });
+  const previousComposer = gitBase.status === 0 ? atBase(process.cwd(), gitBase.stdout.trim(), COMPOSER_ALLOW) : undefined;
+  // First adoption seeds only findings already present at the merge base.
+  const composerCeiling = previousComposer ? JSON.parse(previousComposer).allow : [...new Set(composerAllow.map((entry) => entry.split(":")[0]))].flatMap((file) => {
+    if (gitBase.status !== 0) return [];
+    const before = atBase(process.cwd(), gitBase.stdout.trim(), file);
+    return before ? checkComposer(file, before) : [];
+  });
+  problems.push(...checkComposerAllow(composerFindings, composerAllow, composerCeiling));
   const allow = JSON.parse(readFileSync(TERMS_ALLOW, "utf8")).allow;
   const debt = copyDebt(entries, allow);
   const baseline = existsSync(MATURITY_BASELINE) ? JSON.parse(readFileSync(MATURITY_BASELINE, "utf8")) : {};

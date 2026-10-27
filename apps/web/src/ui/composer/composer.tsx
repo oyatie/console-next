@@ -8,6 +8,7 @@ import { Kbd } from "../kbd/kbd";
 import { PageHead } from "../page-head/page-head";
 import { Sheet } from "../sheet/sheet";
 import { commitLabel, type ActionDescription } from "./actions";
+import { RoutingPreview, type ComposerRouting } from "./routing";
 import s from "./composer.module.css";
 
 const PREVIEW_ORDER = ["preflight", "effects", "approvals", "documents", "deadlines", "tasks", "access", "payroll"] as const;
@@ -32,6 +33,7 @@ export function Composer(p: {
   locked?: boolean;
   notice?: ReactNode;
   sections?: PreviewSections;
+  routing?: ComposerRouting;
   consequence?: ReactNode;
   signoffs?: { items: readonly { id: string; label: string }[]; value: readonly string[]; onChange: (value: string[]) => void; missing: boolean };
   tone?: "primary" | "danger";
@@ -64,6 +66,7 @@ export function Composer(p: {
   }, [p.open, id]);
   if (p.open === false) return null;
   const sections = { ...p.sections, effects: p.sections?.effects ?? p.consequence };
+  if (p.routing) sections.approvals = p.routing.routed && <RoutingPreview routing={p.routing} />;
   const signoffs = p.signoffs && p.signoffs.items.length > 0 && (
     <Checks label={t("composer.signoffs")} items={p.signoffs.items} value={p.signoffs.value} onChange={p.signoffs.onChange} isDisabled={p.pending || p.locked} error={p.signoffs.missing ? t("composer.signoffs.missing") : undefined} />
   );
@@ -100,10 +103,11 @@ export function Composer(p: {
     {p.onSaveDraft && <Button variant={p.draftTone} disabled={p.pending || p.locked} title={p.localDraft ? t("composer.draftHint") : undefined} onClick={p.onSaveDraft}>{p.draftAction ? commitLabel(p.draftAction) : t("composer.saveDraft")}</Button>}
     {p.onClose && (p.layout === "page" || p.layout === "inline") && <Button variant="ghost" disabled={p.pending} onClick={p.onClose}>{t("composer.dismiss")}</Button>}
   </>}</div>;
-  if (p.layout !== "page" && p.layout !== "inline") return <Sheet open kicker={p.kicker} title={p.title} subtitle={p.subtitle} onClose={() => p.onClose?.()} pending={p.pending} loading={p.loading} locked={p.locked} size={p.size} notice={<>{p.notice}{escapeArmed && p.dirty && <p role="status">{t("composer.unsaved")}</p>}</>} consequence={null} actions={actions}>{body}</Sheet>;
+  const routing = p.routing?.routed === false && <RoutingPreview routing={p.routing} />;
+  if (p.layout !== "page" && p.layout !== "inline") return <Sheet open kicker={p.kicker} title={p.title} subtitle={p.subtitle} onClose={() => p.onClose?.()} pending={p.pending} loading={p.loading} locked={p.locked} size={p.size} notice={<>{p.notice}{escapeArmed && p.dirty && <p role="status">{t("composer.unsaved")}</p>}</>} consequence={routing} actions={actions}>{body}</Sheet>;
   return <section className={`${s.page} ${p.layout === "page" ? s.fullPage : ""}`} data-composer-root aria-labelledby={p.layout === "page" ? `${id}-title` : undefined}>
     {p.layout === "page" ? <PageHead band title={p.title} titleId={`${id}-title`} crumbs={p.kicker} sub={p.subtitle} tools={p.tools} /> : <header className={s.head}>{p.kicker}<Heading className={s.heading} id={`${id}-title`}>{p.title}</Heading>{p.subtitle != null && <div>{p.subtitle}</div>}</header>}
     <div inert={p.pending || p.locked || undefined}>{body}</div>
-    <footer className={p.layout === "inline" ? s.inlineFoot : s.foot}>{p.notice}{actions}</footer>
+    <footer className={p.layout === "inline" ? s.inlineFoot : s.foot}>{p.notice}{routing}{actions}</footer>
   </section>;
 }

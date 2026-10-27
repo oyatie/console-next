@@ -23,5 +23,5 @@ test.each([
   const c = { id: last, employee_id: "person", employee_name: "경계직원", effective_exit_date: last, protected_periods: [] } as unknown as ComponentProps<typeof ConfirmForm>["c"];
   const html = renderToStaticMarkup(<ConfirmForm c={c} hq={false} onDone={() => {}} />);
   expect(html).toContain(`${date}자로 퇴직 처리${scheduled ? "하도록 예약합니다" : "합니다"}`);
-  expect(html).toContain(scheduled ? "퇴직 1명 예약" : "퇴직 1명 반영");
+  expect(html).toContain(scheduled ? "퇴직 1명 예약" : "퇴직 1명 적용");
 });

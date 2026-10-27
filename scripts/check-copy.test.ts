@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, expect, test } from "vitest";
 import { EN_TERM_RULES, TERM_RULES, catalogIds, checkRuntimeOutput, checkTerms, checkUnused, copyEntries, checkComposer } from "./check-copy.mjs";
+import * as copyGate from "./check-copy.mjs";
 test("governed commit and dismiss labels must come from the verb table", () => {
   expect(checkComposer("apps/web/src/features/people/ui/lifecycle-sheet.tsx", '<Composer action={{ kind: "TRANSFER", mode: "apply" }} />')).toEqual([]);
   for (const text of ['<Composer commit={{ label: t("bad.commit") }} />', '<Composer dismissLabel={t("common.back")} />', '<Sheet actions={<Button type="submit">{t("bad.commit")}</Button>} />', '<Button onClick={() => run.mutate(undefined)}>{t("bad.commit")}</Button>', '<Button onClick={onClose}>{t("common.back")}</Button>']) {
@@ -14,10 +15,43 @@ test("governed commit and dismiss labels must come from the verb table", () => {
 
 test.each(["lifecycle-sheet", "exit-report", "fix-change", "register-sheet", "new-action-sheet"])("audits %s without a sheet skip list", (name) => {
   const file = `apps/web/src/features/people/ui/${name}.tsx`;
-  expect(checkComposer(file, '<Sheet />')).not.toEqual([]);
-  expect(checkComposer(file, '<Sheet actions={<Button type="submit">{t("bad.commit")}</Button>} />')).not.toEqual([]);
+  expect(checkComposer(file, 'const run = useCommand({}); <Sheet />')).not.toEqual([]);
+  expect(checkComposer(file, 'const run = useCommand({}); <Sheet actions={<Button type="submit">{t("bad.commit")}</Button>} />')).not.toEqual([]);
   expect(checkComposer(file, '<Composer commit={{ label: "planted" }} />')).not.toEqual([]);
   expect(checkComposer(file, 'import { recordLifecycleEvent } from "../api"; <Button type="submit">{t("empFix.change.commit.planned")}</Button>')).not.toEqual([]);
+});
+
+test.each(["entity", "attendance", "access", "org-bulk", "future-module"])("governed sheets in %s use the composer", (feature) => {
+  const problems = checkComposer(`apps/web/src/features/${feature}/ui/nested/x-sheet.tsx`, 'const run = useCommand({ run: () => save() }); <Sheet actions={<Button onClick={() => run.mutate(undefined)}>Save</Button>} />');
+  expect(problems.join("\n")).toContain("composer.verb");
+});
+
+test.each(["effective_from", "effectiveDate", "reason_code", "reasonCode", "approval_id"])("governed page writes carrying %s use the composer", (field) => {
+  expect(checkComposer("apps/web/src/features/entity/ui/edit-page.tsx", `const run = useCommand({ run: () => api.POST('/changes', { body: { ${field}: value } }) }); <Form><Button type="submit">Save</Button></Form>`).join("\n")).toContain("composer.verb");
+});
+
+test.each(["POST", "PUT", "PATCH", "DELETE"])("audits %s writes and shorthand governed fields", (method) => {
+  expect(checkComposer("apps/web/src/features/entity/ui/edit-page.tsx", `fetch('/changes', { method: '${method}', body: JSON.stringify({ reason_code }) }); <form><button type='submit'>Save</button></form>`).join("\n")).toContain("composer.verb");
+});
+
+test("read-only sheets and plain page forms stay outside the gate", () => {
+  expect(checkComposer("apps/web/src/features/entity/ui/history.tsx", '<Sheet actions={<Button onClick={onClose}>Close</Button>} />')).toEqual([]);
+  expect(checkComposer("apps/web/src/features/onboarding/ui/security-contact.tsx", 'const run = useCommand({ run: () => api.POST("/contact", { body: { email } }) }); <Form><Button type="submit">Save</Button></Form>')).toEqual([]);
+});
+
+test("composer debt only shrinks and a repaired control cannot borrow its old exception", () => {
+  const file = "apps/web/src/features/entity/ui/x-sheet.tsx";
+  const findings = checkComposer(file, 'useCommand({}); <Sheet />');
+  const allow = findings.map((p: string) => p.replace(/:\d+: composer\.verb:/, ": composer.verb:"));
+  expect(copyGate.checkComposerAllow(findings, allow, allow)).toEqual([]);
+  expect(copyGate.checkComposerAllow([], allow, allow).join("\n")).toContain("stale");
+  expect(copyGate.checkComposerAllow(findings, allow, []).join("\n")).toContain("only shrink");
+  expect(copyGate.checkComposerAllow(checkComposer(file, 'useCommand({}); <Sheet title="new bypass" />'), allow, allow)).not.toEqual([]);
+});
+
+test.each([["requests.status.DECLINED", "거절됨"], ["requests.status.WITHDRAWN", "철회됨"], ["x.decline", "거절"], ["x.reject", "거절"], ["x.withdraw", "철회"]])("canonical governed verb for %s", (id, text) => {
+  expect(checkTerms([{ id, where: "ko/test.ts", text }], [])).not.toEqual([]);
+  expect(checkComposer("packages/i18n/src/catalogs/ko/test.ts", `export const ko = {\n "${id}": "${text}",\n};`).join("\n")).toContain("composer.verb");
 });
 
 const src = [`t("org.title"); t(\`exit.action.\${k}\`); const id = \`org.change.event.\${e.action}\`;`];
@@ -239,6 +273,7 @@ function runtimeCli() {
     "scripts/copy-maturity-baseline.json": "{}",
     "scripts/copy-unused-baseline.json": '{"unused":[]}',
     "scripts/copy-terms-allow.json": '{"allow":[]}',
+    "scripts/composer-allow.json": '{"allow":[]}',
     "apps/web/public/chunk-guard.js": "",
     "output/clean.txt": "HK-0001을 등록했습니다",
     "output/nested/broken.txt": "HK-0001이(가) 있습니다\nABC을(를) 등록했습니다",
@@ -259,7 +294,7 @@ test("CLI refuses a planted commit in a newly added sheet without a path excepti
   writeFileSync(path.join(dir, folder, "fix-added-sheet.tsx"), '<Composer commit={{ label: "planted" }} />');
   const result = cli();
   expect(result.status, result.stderr).toBe(1);
-  expect(result.stderr).toContain("fix-added-sheet.tsx:1: composer.verb: per-screen commit/dismiss label");
+  expect(result.stderr).toMatch(/fix-added-sheet\.tsx(?::1)?: composer\.verb: per-screen commit\/dismiss label/);
 });
 
 test("CLI formats mixed text and numeric ICU slots correctly", () => {
@@ -373,6 +408,30 @@ function debtFixture() {
   git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test fixture");
   return { ...fixture, set, git, baseline: path.join(fixture.dir, "scripts/copy-maturity-baseline.json") };
 }
+
+test("CLI resolves seeded and stored composer debt against dev when public/dev is absent", () => {
+  const { dir, cli, git } = debtFixture();
+  const file = "apps/web/src/features/entity/ui/x-sheet.tsx";
+  const source = "useCommand({}); <Sheet />";
+  mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+  writeFileSync(path.join(dir, file), source);
+  rmSync(path.join(dir, "scripts/composer-allow.json"));
+  git("add", ".");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "existing governed sheet");
+  const allow = checkComposer(file, source).map((p: string) => p.replace(/:\d+: composer\.verb:/, ": composer.verb:"));
+  writeFileSync(path.join(dir, "scripts/composer-allow.json"), JSON.stringify({ allow }));
+  expect(cli("--write-baseline").status).toBe(0);
+  const env = { ...process.env };
+  delete env.QUALITY_BASE;
+  const unconfigured = () => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs")], { cwd: dir, encoding: "utf8", env });
+  expect(spawnSync("git", ["rev-parse", "--verify", "--quiet", "public/dev"], { cwd: dir }).status).not.toBe(0);
+  const seeded = unconfigured();
+  expect(seeded.status, seeded.stderr).toBe(0);
+  git("add", ".");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "stored composer debt");
+  const stored = unconfigured();
+  expect(stored.status, stored.stderr).toBe(0);
+});
 
 test("CLI generates exact debt and requires stale entries to shrink", () => {
   const { cli, set, baseline, git } = debtFixture();

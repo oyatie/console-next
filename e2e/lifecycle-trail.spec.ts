@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { commitLabel } from "../apps/web/src/ui/composer/actions";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
 import type { FilingPage, FilingTask } from "@console/api/pending";
@@ -190,7 +191,7 @@ test("a solo hire and exit share their filings and show every administrative leg
   const exitPanel = admin.getByRole("region", { name: "퇴직", exact: true });
   const heldTrail = await holdRead(admin, `**/api/v1/employees/${person}/lifecycle-cases`);
   try {
-    await report.getByRole("button", { name: /^퇴직 보고 1명 반영/ }).click();
+    await report.getByRole("button", { name: /^퇴직 보고 1명 적용/ }).click();
     await heldTrail.requested;
     await expect(report).toBeHidden();
     await expect(exitPanel.getByRole("status")).toContainText("퇴직을 보고했습니다");
@@ -199,7 +200,7 @@ test("a solo hire and exit share their filings and show every administrative leg
   }
   await exitPanel.getByRole("button", { name: "인사 확인하고 퇴직 처리", exact: true }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
-  await admin.getByRole("dialog").getByRole("button", { name: /^퇴직 1명 (반영|예약)/ }).click();
+  await admin.getByRole("dialog").getByRole("button", { name: /^퇴직 1명 (적용|예약)/ }).click();
   await expect(admin.getByRole("dialog")).toBeHidden();
   const exitHref = await exitPanel.getByRole("link", { name: "퇴직 건 열기", exact: true }).getAttribute("href");
   await go(admin, exitHref!);
@@ -255,7 +256,7 @@ test("one intercompany transfer shows two linked cases in one history entry and 
   const groupPreview = await transfer.locator("[data-trail-preview-item]").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-trail-preview-item")));
   await audit(admin, "intercompany composer trail preview");
   const response = admin.waitForResponse((answer) => answer.request().method() === "POST" && new URL(answer.url()).pathname === `/api/v1/employees/${person}/lifecycle-events`);
-  await transfer.getByRole("button", { name: "전적 1명 반영", exact: true }).click();
+  await transfer.getByRole("button", { name: commitLabel({ kind: "GROUP_TRANSFER", mode: "apply", count: 1 }), exact: true }).click();
   const recorded = await response;
   expect(recorded.status()).toBe(200);
   const event = await recorded.json() as Event;
@@ -357,7 +358,7 @@ test(`a workplace appointment ${released ? "records released filings and closes 
   }
   const preview = await transfer.locator("[data-trail-preview-item]").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-trail-preview-item")));
   await audit(admin, "workplace composer trail preview");
-  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
   await expect(transfer).toBeHidden();
   const cases = await read<Case[]>(`/api/v1/employees/${person}/lifecycle-cases`);
   const appointment = cases.find((value) => value.kind === "APPOINT")!;

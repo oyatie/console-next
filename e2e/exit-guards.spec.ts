@@ -30,7 +30,7 @@ test("solo HR: work-injury protection refuses dismissal, voluntary reporting sur
   await todayPreset(sheet).click();
   await reasonBox(sheet).fill("합성 요양 기록");
   await expect(sheet.getByRole("textbox", { name: /^복직 예정일/ })).toHaveValue("");
-  await sheet.getByRole("button", { name: /^휴직 1명 반영/ }).click();
+  await sheet.getByRole("button", { name: /^휴직 1명 적용/ }).click();
   await expect(sheet).toBeHidden();
   await go(admin, `/people/${injuryId}`);
   await admin.getByRole("button", { name: "퇴직 보고", exact: true }).click();
@@ -38,7 +38,7 @@ test("solo HR: work-injury protection refuses dismissal, voluntary reporting sur
   await fillDate(sheet, kstDate(0), "마지막 근무일");
   await pick(sheet, "징계해고");
   await sheet.getByRole("textbox", { name: /^퇴직 경위/ }).fill("합성 보고");
-  await sheet.getByRole("button", { name: /^퇴직 보고 1명 반영/ }).click();
+  await sheet.getByRole("button", { name: /^퇴직 보고 1명 적용/ }).click();
   const refusal = sheet.getByRole("alert");
   await expect(refusal).toContainText("exit_protected_period");
   await expect(refusal).not.toContainText("다른 계정");
@@ -51,7 +51,7 @@ test("solo HR: work-injury protection refuses dismissal, voluntary reporting sur
   expect(listed.items).toHaveLength(0);
   await expectAccessible(admin, "exit protected refusal with citation and support reference");
   await pick(sheet, "개인 사정");
-  await sheet.getByRole("button", { name: /^퇴직 보고 1명 반영/ }).click();
+  await sheet.getByRole("button", { name: /^퇴직 보고 1명 적용/ }).click();
   await expect(sheet).toBeHidden();
   expect((await (await api(`/hr/exit-cases?employee_id=${injuryId}`)).json()).items).toHaveLength(1);
 
@@ -61,7 +61,7 @@ test("solo HR: work-injury protection refuses dismissal, voluntary reporting sur
   await fillDate(sheet, kstDate(0), "마지막 근무일");
   await pick(sheet, "징계해고");
   await sheet.getByRole("textbox", { name: /^퇴직 경위/ }).fill("합성 보고");
-  await sheet.getByRole("button", { name: /^퇴직 보고 1명 반영/ }).click();
+  await sheet.getByRole("button", { name: /^퇴직 보고 1명 적용/ }).click();
   await expect(sheet).toBeHidden();
   const detailPath = /\/api\/v1\/hr\/exit-cases\/[^/?]+$/;
   let releaseDetail!: () => void;
@@ -71,14 +71,14 @@ test("solo HR: work-injury protection refuses dismissal, voluntary reporting sur
   sheet = admin.getByRole("dialog");
   try {
     await expect(sheet.getByRole("checkbox")).toHaveCount(0);
-    await expect(sheet.getByRole("button", { name: /^퇴직 1명 (반영|예약)/ })).toBeDisabled();
+    await expect(sheet.getByRole("button", { name: /^퇴직 1명 (적용|예약)/ })).toBeDisabled();
   } finally {
     releaseDetail();
   }
   await expect(sheet.getByRole("checkbox")).toHaveCount(4);
   await expect(sheet).toContainText("비자발적 퇴직");
   const notice = sheet.getByRole("group", { name: "해고 서면 통지 (근로기준법 제27조)" });
-  const submit = sheet.getByRole("button", { name: /^퇴직 1명 (반영|예약)/ });
+  const submit = sheet.getByRole("button", { name: /^퇴직 1명 (적용|예약)/ });
   await expect(submit).toHaveAttribute("aria-disabled", "true");
   await notice.getByRole("textbox", { name: /^해고사유/ }).fill("합성 서면 사유");
   await fillDate(notice, kstDate(0), "통지일");
@@ -99,19 +99,19 @@ test("solo HR: work-injury protection refuses dismissal, voluntary reporting sur
   await sheet.getByRole("radiogroup").getByText("산재 요양", { exact: true }).click();
   await todayPreset(sheet).click();
   await reasonBox(sheet).fill("합성 요양 기록");
-  await sheet.getByRole("button", { name: /^휴직 1명 반영/ }).click();
+  await sheet.getByRole("button", { name: /^휴직 1명 적용/ }).click();
   await expect(sheet).toBeHidden();
   await openCard(admin);
   await admin.getByRole("button", { name: "퇴직 보고", exact: true }).click();
   sheet = admin.getByRole("dialog");
   await fillDate(sheet, kstDate(0), "마지막 근무일");
   await sheet.getByRole("textbox", { name: /^퇴직 경위/ }).fill("사유 확인 전");
-  await sheet.getByRole("button", { name: /^퇴직 보고 1명 반영/ }).click();
+  await sheet.getByRole("button", { name: /^퇴직 보고 1명 적용/ }).click();
   await expect(sheet).toBeHidden();
   await admin.getByRole("button", { name: "인사 확인하고 퇴직 처리", exact: true }).click();
   sheet = admin.getByRole("dialog");
   await expect(sheet).toContainText("퇴직 사유를 선택하십시오");
-  await expect(sheet.getByRole("button", { name: /^퇴직 1명 (반영|예약)/ })).toHaveAttribute("aria-disabled", "true");
+  await expect(sheet.getByRole("button", { name: /^퇴직 1명 (적용|예약)/ })).toHaveAttribute("aria-disabled", "true");
   await pick(sheet, "징계해고");
   const protection = sheet.getByRole("note", { name: "해고 보호기간" });
   await expect(protection).toContainText("산재 요양");
