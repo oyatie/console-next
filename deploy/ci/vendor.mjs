@@ -21,11 +21,12 @@ async function digest(image) {
 mkdirSync('.tmp/platform', {recursive:true}); mkdirSync('deploy/schemas', {recursive:true});
 writeFileSync('deploy/base/platform/LICENSE-APACHE','SPDX-License-Identifier: Apache-2.0\n\n'+(await download(lock.sources['apache-license'])).toString());
 const inputs = {};
+const namespaces = {'policy-controller':'sigstore-system','external-secrets':'external-secrets','rollouts':'argo-rollouts'};
 inputs.flux = execFileSync('flux', ['install','--export','--components=source-controller,kustomize-controller,notification-controller'],{encoding:'utf8',maxBuffer:20*1024*1024});
 for (const name of ['rollouts','cnpg','cert-manager','barman']) inputs[name] = (await download(lock.sources[name])).toString();
 for (const name of ['policy-controller','external-secrets']) {
   const chart = `.tmp/platform/${name}.tgz`; writeFileSync(chart, await download(lock.sources[name]));
-  inputs[name] = execFileSync('helm', ['template', name, chart, '--namespace', name==='policy-controller'?'sigstore-system':'external-secrets', '--include-crds','--no-hooks', '-f', `deploy/ci/${name}-values.yaml`], {encoding:'utf8',maxBuffer:40*1024*1024});
+  inputs[name] = execFileSync('helm', ['template', name, chart, '--namespace', namespaces[name], '--include-crds','--no-hooks', '-f', `deploy/ci/${name}-values.yaml`], {encoding:'utf8',maxBuffer:40*1024*1024});
 }
 lock.platformImages ??= {};
 const core = new Set();
@@ -34,6 +35,22 @@ if(update) lock.platformImages[sidecar]=await digest(sidecar);
 assert.ok(lock.platformImages[sidecar]);
 for (const [name, text] of Object.entries(inputs)) {
   const docs = yaml.loadAll(text).filter(Boolean);
+  if (['rollouts', 'policy-controller'].includes(name)) {
+    // Upstream install YAML assumes kubectl -n; Flux requires explicit namespaces.
+    const directory = `.tmp/platform/${name}-namespaced`;
+    mkdirSync(directory, {recursive:true});
+    writeFileSync(`${directory}/upstream.yaml`, text);
+    writeFileSync(`${directory}/kustomization.yaml`, yaml.dump({
+      apiVersion:'kustomize.config.k8s.io/v1beta1', kind:'Kustomization',
+      namespace:namespaces[name], resources:['upstream.yaml'],
+    }));
+    const scoped = yaml.loadAll(execFileSync('kustomize', ['build', directory], {encoding:'utf8',maxBuffer:40*1024*1024})).filter(Boolean);
+    for (const doc of docs) {
+      const resource = scoped.find(item => item.kind === doc.kind && item.metadata.name === doc.metadata.name);
+      if (resource.metadata.namespace) doc.metadata.namespace = resource.metadata.namespace;
+      if (resource.subjects) doc.subjects = resource.subjects;
+    }
+  }
   for (const doc of docs) {
     if (doc.kind === 'Namespace') {
       doc.metadata.labels ??= {};
@@ -69,7 +86,7 @@ for (const [name, text] of Object.entries(inputs)) {
     } else if (['v1','apps/v1','batch/v1','policy/v1','rbac.authorization.k8s.io/v1','networking.k8s.io/v1','admissionregistration.k8s.io/v1'].includes(doc.apiVersion)) core.add(`${doc.kind.toLowerCase()}|${doc.apiVersion}`);
   }
   if (['policy-controller','external-secrets','rollouts'].includes(name)) {
-    const ns = {'policy-controller':'sigstore-system','external-secrets':'external-secrets','rollouts':'argo-rollouts'}[name];
+    const ns = namespaces[name];
     docs.unshift({apiVersion:'v1',kind:'Namespace',metadata:{name:ns,labels:{'policy.sigstore.dev/exclude':'true'}}});
   }
   writeFileSync(`deploy/base/platform/${name}.yaml`,header+docs.map(d=>yaml.dump(d,{lineWidth:-1,noRefs:true})).join('---\n').replace(/[ \t]+$/gm,''));

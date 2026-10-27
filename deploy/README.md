@@ -31,7 +31,11 @@ Each cluster verifies and freezes the signed artifact digest, bootstraps only Fl
 | Hand edit | Scale the synthetic worker to zero; request Flux reconciliation; assert that Flux restored the artifact's replica count. `drift.txt` records the edit, desired count and read-back. |
 | Workload admission | Server dry-run accepts the hardened Pod, waits until the first known-bad Pod is refused (bounded to 60 seconds), then refuses each of the eight `PLAT_*` mutations with its exact code. This runs on PRs as well as class B; CEL warnings fail the test. |
 
-`class-b-<arch>-<repetition>` evidence includes those controls, HTTP results, Rollout/AnalysisRun JSON, restore counts, source revision, events, controller logs, elapsed seconds and disk use. All operations are guarded to `kind-platform-*` contexts. No success is claimed from offline schema tests alone. kind's default CNI does not prove Cilium's traffic enforcement; that denied-flow test belongs to P1.
+`class-b-<arch>-<repetition>` evidence includes those controls, HTTP results, Rollout/AnalysisRun JSON, restore counts, source revision, reconciliation and workload states, events, elapsed seconds and disk use. All operations are guarded to `kind-platform-*` contexts. No success is claimed from offline schema tests alone. kind's default CNI does not prove Cilium's traffic enforcement; that denied-flow test belongs to P1.
+
+On failure, cleanup prints and saves `diagnostics.txt` before deleting the cluster: reconciliation conditions (including HelmReleases when installed), workload states, failing pods' state-only descriptions, the last 100 log lines per container (including restarted containers' previous logs), and events. Secret values are read only into memory for redaction; specs, environment values and annotations are omitted. If the Secret inventory is unavailable, free-text diagnostics are suppressed while state collection and cleanup continue. Diagnostic errors preserve the original failure status.
+
+Run 40331122022 failed before database reconciliation: its `platform` condition reported `ServiceAccount/argo-rollouts namespace not specified`. The generator now applies explicit namespaces to upstream manifests, including the policy-controller PDB. The database bootstrap also provisions the dormant, non-login `console_auth_cmd` required by migration 0232; no credential or membership activates it. Render tests cover both overlays and migration grantees.
 
 ## Local and verifier checks
 
@@ -64,4 +68,4 @@ These are build/generation/test glue, never production maintenance entrypoints. 
 | `vendor.mjs` | Render upstream chart/release inputs and derive pinned schemas | Keep as the reproducible asset generator; remove schema conversion when upstream publishes the recursive standalone CRD schema |
 | `render.mjs`, `sbom.mjs` | Bind the built digest/identity to the transport tree and combine native SPDX documents | Replace with promotion's native rendering/aggregate-SBOM support at P1 |
 | `validate.sh`, `image-smoke.sh` | Invoke the validators and the native executable's HTTP/exit contracts | Fold into the shared CI toolbox at P1 |
-| `exit-test.sh`, `admission.mjs`, `image-admission.mjs`, `synthetic.mjs`, `canary.mjs`, `restore.mjs` | Inject and assert disposable negative controls, synthetic data and recovery | Keep as class B tests; never install on a node |
+| `exit-test.sh`, `diagnostics.mjs`, `admission.mjs`, `image-admission.mjs`, `synthetic.mjs`, `canary.mjs`, `restore.mjs` | Inject and assert disposable negative controls, synthetic data and recovery; print redacted failure evidence before cleanup | Keep as class B tests; never install on a node |
