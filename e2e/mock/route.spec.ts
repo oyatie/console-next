@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { mockRoute } from "./route";
-import { facets } from "./fixtures";
+import { AT, facets, user } from "./fixtures";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
+import { readRequirement, routeReads } from "../../apps/web/src/routes/route-reads";
+import { accessRefusal } from "../../apps/web/src/reference/authz/domain/access";
+import type { AccessEffective } from "../../apps/web/src/reference/authz/api";
+import { accessScreens, mockAccessScreen } from "../states/access";
 
 test("contract routes match methods and path parameters, preserve queries, and fall back", async ({ page }) => {
   await page.route(url => url.pathname.startsWith("/api/"), route => route.fulfill({ status: 418, json: { fallback: true } }));
@@ -72,4 +76,52 @@ test("screen mocks preserve a Request's JSON body for commands", async ({ page }
     return (await fetch(request)).json();
   });
   expect(body).toEqual({ expected_version: 7 });
+});
+
+test("effective screen grants follow every generated route requirement without ops bypass", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[0], "empty");
+  await page.goto("/_gallery");
+  for (const path of Object.keys(routeReads) as (keyof typeof routeReads)[]) {
+    await test.step(path, async () => {
+      const access: AccessEffective = await page.evaluate(async path => (await fetch("/api/v1/access/me", {
+        referrer: new URL(`${path.replace(/\$[^/]+/g, "fixture-id")}?view=all`, location.href).href,
+      })).json(), path);
+      const need = readRequirement(path);
+      const requirements = "allOf" in need ? need.allOf : [need];
+      // An empty generated scope list is ops-only; the fixture must preserve that refusal.
+      const grantable = requirements.filter(need => need.scopes?.length !== 0);
+      expect(access.is_ops).toBe(false);
+      expect(accessRefusal(access, need), path).toBe(grantable.length === requirements.length ? null : "access_denied");
+      expect(access.entries.map(({ domain, level }) => ({ domain, level }))).toEqual(
+        [...new Map(grantable.map(({ domain, level }) => [`${domain}/${level}`, { domain, level }])).values()],
+      );
+      expect(access.entries.every(entry => entry.enforcement === "ENFORCED")).toBe(true);
+    });
+  }
+  const signedIn: AccessEffective = await page.evaluate(async () => (await fetch("/api/v1/access/me")).json());
+  expect(signedIn.entries).toEqual([]);
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("a per-screen effective-access override still refuses before the page reads", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[1], "populated");
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: {
+    account_id: user.id, is_ops: false, phase: "OPERATING", as_of: AT, entries: [],
+  } });
+  const reads: string[] = [];
+  page.on("request", request => { if (new URL(request.url()).pathname === screens[1].read) reads.push(request.url()); });
+  await page.goto(screens[1].path);
+  await expect(page.getByRole("main").getByRole("region", { name: "이 화면에 접근 권한이 없습니다" })).toBeVisible();
+  expect(reads).toEqual([]);
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("a refused access state reaches its 403 read and renders the refusal card", async ({ page }) => {
+  const screen = accessScreens[0];
+  const fixture = await mockAccessScreen(page, screen, "refused");
+  const response = page.waitForResponse(response => new URL(response.url()).pathname === screen.read);
+  await page.goto(screen.path);
+  expect((await response).status()).toBe(403);
+  await expect(page.getByRole("main").getByRole("region", { name: "이 화면에 접근 권한이 없습니다" })).toBeVisible();
+  expect(fixture.unexpected).toEqual([]);
 });
