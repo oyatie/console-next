@@ -21,5 +21,10 @@ test("built variable font faces cannot swap late and the boot font is preloaded"
     const html = readFileSync(resolve(dist, input.slice(resolve("apps/web").length + 1)), "utf8");
     expect(html).toMatch(/rel="preload"[^>]*as="font"/);
     expect(css).not.toContain("Pretendard Fallback");
+    for (const name of ["Console Latin Fallback", "Console Hangul Fallback"]) {
+      const face = [...css.matchAll(/@font-face\s*\{([^}]+)\}/g)].map(m => m[1]!).find(rule => rule.includes(name));
+      expect(face).toMatch(/src:local\(/);
+      for (const metric of ["size-adjust", "ascent-override", "descent-override"]) expect(face).toMatch(new RegExp(`${metric}:[\\d.]+%`));
+    }
   } finally { rmSync(temp, { recursive: true, force: true }); }
 }, 30_000);

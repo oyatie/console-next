@@ -60,10 +60,10 @@ test("a cold structure failure shares one reason for dependent actions", () => {
   for (const key of ["structure.import.label", "structure.export.open", "asof.compare"] as const) {
     expect(html).toMatch(new RegExp(`<button[^>]*aria-disabled="true"[^>]*aria-describedby="[^"]+"[^>]*>[\\s\\S]*?${t(key)}</button>`));
   }
-  expect(html.split(t("structure.readFailed"))).toHaveLength(2);
   const descriptions = [...html.matchAll(/<button[^>]*aria-disabled="true"[^>]*aria-describedby="([^"]+)"/g)].map(m => m[1]);
   expect(descriptions).toHaveLength(3);
   expect(new Set(descriptions).size).toBe(1);
+  expect(html.split(t("structure.readFailed"))).toHaveLength(2);
   expect(html).not.toContain('data-to="/org/history"');
 });
 

@@ -4,7 +4,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { TABS } from "../../apps/web/src/features/entity/domain/tabs";
 import { expectAxe, fits } from "../a11y";
 import { mockRoute } from "../mock/route";
-import { id } from "../mock/fixtures";
+import { checklist, id } from "../mock/fixtures";
 import { entityRecordPath, entityRecordStates, mockEntityRecord } from "./entity-record";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -144,4 +144,31 @@ test("late document and history counts preserve the tab positions @ui-state", as
     release();
     fixture.release();
   }
+});
+
+test("entity-record: late phase facts do not move record fields or controls @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockEntityRecord(page, "populated");
+  const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await held.promise;
+    return { status: 200, json: checklist };
+  });
+  fixture.entity.registrations[0]!.current = {
+    version: 1, effective_from: "2026-01-01", before_first_record: false,
+    trade_name: fixture.entity.current!.name!, business_types: [], tax_type: "01", status: "CONTINUING", change_mode: "SETUP",
+  };
+  try {
+    await page.goto(entityRecordPath);
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    await expect(main.getByRole("button", { name: "과세유형 수정", exact: true })).toHaveCount(0);
+    const fields = main.locator('[class*="_fact_"]');
+    const before = await fields.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
+    held.resolve();
+    await expect(main.getByRole("button", { name: "과세유형 수정", exact: true })).toBeVisible();
+    expect(await fields.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(before);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
 });

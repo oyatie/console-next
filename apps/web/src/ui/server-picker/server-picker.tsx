@@ -41,6 +41,8 @@ export function ServerPicker(p: {
   readOnly?: boolean;
   disabledReason?: string;
   error?: ReactNode;
+  /** Page search controls keep one feedback line; form fields keep their natural height. */
+  reserveError?: boolean;
 }) {
   const [pending, setPending] = useState<PickerOption>();
   const [suffix, setSuffix] = useState("");
@@ -112,7 +114,9 @@ export function ServerPicker(p: {
           <Input ref={input} className="field__input" />
         </div>
         {p.disabledReason && <Text slot="description" className={css.sub}>{p.disabledReason}</Text>}
-        <FieldError className={css.error}>{p.error}</FieldError>
+        {(p.reserveError || p.error != null) && <div className={css.feedback} data-reserved={p.reserveError || undefined}>
+          <FieldError className={css.error}>{p.error}</FieldError>
+        </div>}
         <Popover className={`popover ${css.pop}`}>
           <div className={css.group}>
             <span aria-hidden="true">{p.group}</span>

@@ -17,7 +17,7 @@ beforeAll(async () => {
 afterAll(async () => { await browser?.close(); });
 
 test.each(["fixed_term_limit", "fixed_term_basis_unconfirmed"] as const)("%s announces one refusal and keeps its reason, remedies and support reference", async (code) => {
-  const message = "요청한 계약 종료일은 기간제 근로 한도를 넘습니다.";
+  const message = "요청을 처리하지 못했습니다.";
   const supportRef = "00000000-0000-4000-8000-000000000001";
   const error = new ApiError(409, code, message, [], undefined, true, [], { supportRef });
   const noop = () => {};
@@ -27,7 +27,8 @@ test.each(["fixed_term_limit", "fixed_term_basis_unconfirmed"] as const)("%s ann
   const refusal = page.getByRole("alert");
   expect(await refusal.count()).toBe(1);
   expect(await refusal.getByRole("heading", { name: t("lifecycle.blocker.fixedTerm.title"), exact: true }).count()).toBe(1);
-  expect(await refusal.innerText()).toContain(code === "fixed_term_limit" ? message : t("exit.error.fixed_term_basis_unconfirmed"));
+  expect(await refusal.innerText()).toContain(t(code === "fixed_term_limit" ? "lifecycle.fixedTerm.limitExceeded" : "exit.error.fixed_term_basis_unconfirmed"));
+  expect(await refusal.innerText()).not.toContain(message);
   expect(await refusal.innerText()).toContain(t(code === "fixed_term_limit" ? "lifecycle.blocker.fixedTerm.body" : "lifecycle.fixedTerm.basisUnconfirmed"));
   for (const ground of FIXED_TERM_GROUNDS) expect(await refusal.innerText()).toContain(t(`lifecycle.fixedTerm.ground.${ground}`));
   expect(await refusal.innerText()).toContain(t("lifecycle.blocker.fixedTerm.exception"));

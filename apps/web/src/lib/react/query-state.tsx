@@ -56,7 +56,7 @@ export function QueryState<T>({ q, empty, children, own, loading, layout, back, 
   if (view === "not-found" && !lost) return <div className="page"><EmptyState title={t("common.read.notFound.title")} reason={q.data !== undefined && removed ? removed : e && own?.(e.code) || t("common.read.notFound.reason")} actions={<Link to={back?.to ?? "/"} className="btn">{back?.label ?? t("common.notFound.action")}</Link>} /></div>;
   if (view === "loading" && !retainedRefetch) return loading ?? (layout ? <ReadSkeleton layout={layout} /> : <Skeleton bones={["line"]} label={t("common.loading")} />);
   if ((view === "failed" && !retainedRefetch) || (offline && q.data === undefined && !retainedRefetch)) {
-    return (
+    const failure = (
       <EmptyState
         alert
         title={t(offline ? "common.read.offline" : "common.loadFailed.title")}
@@ -65,6 +65,10 @@ export function QueryState<T>({ q, empty, children, own, loading, layout, back, 
         meta={reference}
       />
     );
+    return layout ? <div className={s.reserved}>
+      <div className={s.placeholder} aria-hidden inert><ReadSkeleton layout={layout} /></div>
+      <div className={s.failure}>{failure}</div>
+    </div> : failure;
   }
   if (view === "ready" && !q.isPlaceholderData && (content == null || typeof content === "boolean")) return null;
   return (

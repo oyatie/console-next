@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeAll, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { session } from "@console/api";
+import { loadCatalog, t } from "@console/i18n";
 import { myAccessQuery } from "../reference/authz/api";
 import { activeSupportQuery } from "../reference/support-access/api";
+import { read } from "../lib/query";
 import { Shell } from "./shell";
 import { meQuery } from "../features/account/api";
 import { checklistQuery, SETUP_READS } from "../features/onboarding/api";
@@ -91,4 +93,32 @@ test("the shell withholds its outlet when the leaf read is refused", async () =>
     expect(html.match(/aria-label="이 화면에 접근 권한이 없습니다"/g)).toHaveLength(1);
     expect(html).not.toContain("private page");
   } finally { client.clear(); }
+});
+
+test("the top bar waits for the restored identity instead of painting a temporary name", () => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  const render = () => renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>);
+  try {
+    session.set(null);
+    const pending = render().match(/<header[\s\S]*?<\/header>/)![0];
+    expect(pending).toContain('aria-busy="true"');
+    expect(pending).not.toContain(t("shell.logout"));
+    expect(pending).not.toContain(t("account.name.unset"));
+    session.set({ access_token: `h.${Buffer.from(JSON.stringify({ sub: "operator", org: "tenant", name: "김담당", platform: true })).toString("base64url")}.s`, token_type: "Bearer", refresh_expires_at: "2099-01-01T00:00:00Z", requires_passkey_setup: false });
+    const ready = render().match(/<header[\s\S]*?<\/header>/)![0];
+    expect(ready).not.toContain('aria-busy="true"');
+    expect(ready).toContain("김담당");
+    expect(ready).toContain(t("shell.logout"));
+  } finally { session.set(null); client.clear(); }
+});
+
+test("a failed session restore keeps the navigation and device controls available", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+  try {
+    session.set(null);
+    await expect(client.fetchQuery(read("/api/v1/auth/token/refresh", () => Promise.reject(new Error("unavailable"))))).rejects.toThrow("unavailable");
+    const header = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).match(/<header[\s\S]*?<\/header>/)![0];
+    expect(header).not.toContain('aria-busy="true"');
+    for (const key of ["shell.menu", "shell.locale", "shell.theme.toDark", "shell.logout", "account.name.unset"] as const) expect(header).toContain(t(key));
+  } finally { session.set(null); client.clear(); }
 });
