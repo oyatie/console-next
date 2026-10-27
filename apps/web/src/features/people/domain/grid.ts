@@ -1,6 +1,7 @@
 // The bulk correction grid (spec E6-grid, MR-27): which fields it edits and how, how a typed or pasted cell reads,
 // and what each row amounts to. Pure.
 import type { components } from "@console/api/schema";
+import { readDelimited } from "../../../lib/pure/sheet-text";
 import { manualAddress } from "../../../lib/pure/address";
 
 type Preview = components["schemas"]["BulkEmployeeCorrectionPreview"];
@@ -81,7 +82,7 @@ export function shownText(f: GridField, raw: string | null | undefined, words: R
 }
 
 /** Tab-separated rows as a spreadsheet copy gives them (a trailing newline is not a row). */
-export const parseTsv = (text: string) => text.replace(/\r/g, "").replace(/\n$/, "").split("\n").map((l) => l.split("\t"));
+export const parseTsv = (text: string) => readDelimited(text, { delimiter: "\t" });
 
 export type RowState = { changed: number; errors: number };
 /** A row's status from its cells: how many differ from the record, how many are not values. */

@@ -74,36 +74,19 @@ export async function readXlsx(file: ArrayBuffer): Promise<Sheet[]> {
   return sheets;
 }
 
-/** CSV or TSV text (the delimiter is whichever the first line has more of), RFC 4180 quoting. */
-export function readDelimited(text: string): string[][] {
-  const first = text.split(/\r?\n/, 1)[0] ?? "";
-  const sep = (first.match(/\t/g)?.length ?? 0) >= (first.match(/,/g)?.length ?? 0) ? "\t" : ",";
-  const rows: string[][] = [];
-  let row: string[] = [], cell = "", quoted = false;
-  const endCell = () => {
-    row.push(cell);
-    cell = "";
-  };
-  const endRow = () => {
-    endCell();
-    rows.push(row);
-    row = [];
-  };
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') {
-        cell += '"';
-        i++;
-      } else if (ch === '"') quoted = false;
-      else cell += ch;
-    } else if (ch === '"' && cell === "") quoted = true;
-    else if (ch === sep) endCell();
-    else if (ch === "\n" || ch === "\r") {
-      if (ch === "\r" && text[i + 1] === "\n") i++;
-      endRow();
-    } else cell += ch;
+export { readDelimited } from "./pure/sheet-text";
+
+/** BOM-declared Unicode, otherwise strict UTF-8 then CP949 (the platform's euc-kr label). */
+export function decodeSheetText(bytes: Uint8Array | ArrayBuffer): { text: string; encoding: string } {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const bom = data[0] === 0xff && data[1] === 0xfe ? "utf-16le"
+    : data[0] === 0xfe && data[1] === 0xff ? "utf-16be"
+    : data[0] === 0xef && data[1] === 0xbb && data[2] === 0xbf ? "utf-8" : undefined;
+  const decode = (encoding: string) => ({ text: new TextDecoder(encoding, { fatal: true }).decode(data), encoding });
+  if (bom) return decode(bom);
+  try {
+    return decode("utf-8");
+  } catch {
+    return decode("euc-kr");
   }
-  if (cell !== "" || row.length) endRow();
-  return rows;
 }

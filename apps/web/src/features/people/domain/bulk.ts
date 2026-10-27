@@ -2,6 +2,7 @@
 // server's records, checked line by line and grouped into one all-or-nothing batch per target. The server still
 // decides each line at commit; the checks here only point at lines it would refuse or cannot read.
 import type { components } from "@console/api/schema";
+import { readDelimited } from "../../../lib/pure/sheet-text";
 
 type Employee = components["schemas"]["Employee"];
 export type Kind = "TRANSFER" | "PROMOTE";
@@ -12,7 +13,6 @@ export const MAX_LINES = 500;
 /** One pasted line, after duplicates of its employee number were merged into it (`merged` holds their line numbers). */
 export type PasteLine = { line: number; number: string; target: string; name: string; merged: number[]; issue?: "conflict" | "overLimit" };
 
-const cells = (raw: string) => (raw.includes("\t") ? raw.split("\t") : raw.split(",")).map((c) => c.trim());
 const same = (a: string, b: string) => a.replace(/\s+/g, "") === b.replace(/\s+/g, "");
 
 /**
@@ -24,9 +24,9 @@ export function parsePaste(text: string): PasteLine[] {
   const out: PasteLine[] = [];
   const seen = new Map<string, PasteLine>();
   let first = true;
-  text.split(/\r?\n/).forEach((raw, i) => {
-    if (!raw.trim()) return;
-    const [number = "", target = "", name = ""] = cells(raw);
+  readDelimited(text, { delimiter: "mixed" }).forEach((raw, i) => {
+    if (!raw.some((cell) => cell.trim())) return;
+    const [number = "", target = "", name = ""] = raw.map((cell) => cell.trim());
     if (first && (first = false, !/\d/.test(number))) return;
     const key = number.toUpperCase();
     const prev = seen.get(key);

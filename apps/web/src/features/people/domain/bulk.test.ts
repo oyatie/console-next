@@ -36,6 +36,31 @@ test("employee numbers past the batch limit are refused, not dropped", () => {
   expect(lines.filter((l) => l.issue === "overLimit").map((l) => l.number)).toEqual([`N-${MAX_LINES + 1}`, `N-${MAX_LINES + 2}`]);
 });
 
+test("quoted appointment cells keep tabs and newlines without shifting names or duplicate rows", () => {
+  const lines = parsePaste('사번\t새 조직\t이름\r\n001\t"HR\tlead\nPM"\t"Kim, Min"\r\n\r\n001,"HR\tlead\nPM","Kim, Min"\r\n002\tHR, payroll\tLee');
+  expect(lines).toEqual([
+    { line: 2, number: "001", target: "HR\tlead\nPM", name: "Kim, Min", merged: [4], issue: undefined },
+    { line: 5, number: "002", target: "HR, payroll", name: "Lee", merged: [], issue: undefined },
+  ]);
+});
+
+test.each(["\t", ","])("an unclosed appointment quote keeps all rows with delimiter %j", (separator) => {
+  const text = `001${separator}"인사부${separator}김\n002${separator}재무팀${separator}이\n003${separator}영업팀${separator}박`;
+  expect(parsePaste(text).map((l) => [l.line, l.number, l.target, l.name])).toEqual([
+    [1, "001", '"인사부', "김"], [2, "002", "재무팀", "이"], [3, "003", "영업팀", "박"],
+  ]);
+});
+
+test.each(['"A" 팀', '인사 "A" 팀', '"A""B" 팀'])("literal appointment quotes survive: %s", (value) => {
+  expect(parsePaste(`001\t${value}\t김`).map((l) => [l.number, l.target, l.name])).toEqual([["001", value, "김"]]);
+});
+
+test.each(["\t", ","])("an Excel-quoted appointment cell keeps tabs, newlines and escaped quotes (%j)", (separator) => {
+  expect(parsePaste(`001${separator}"""A"" 팀\t인사\n담당"${separator}김\r\n002\t재무팀\t이`).map((l) => [l.line, l.number, l.target, l.name])).toEqual([
+    [1, "001", '"A" 팀\t인사\n담당', "김"], [2, "002", "재무팀", "이"],
+  ]);
+});
+
 test("a unit matches by exact name, then exact path; never partly", () => {
   expect(matchUnit("채용팀", units).map((u) => u.id)).toEqual(["u-rec"]);
   expect(matchUnit("영업팀", units).map((u) => u.id)).toEqual(["u-sales-a", "u-sales-b"]);

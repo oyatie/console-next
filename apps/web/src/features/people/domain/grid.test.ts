@@ -21,6 +21,29 @@ test("a spreadsheet copy splits into rows and cells; a row counts its changes an
   expect(rowState([{ send: "FEMALE" }, { keep: true }, { bad: "date" }], ["남", "x", ""], ["여", "", "2026-13-01"])).toEqual({ changed: 1, errors: 1 });
 });
 
+test("a quoted spreadsheet cell keeps embedded tabs, newlines and commas", () => {
+  expect(parseTsv('"HR\tlead"\t"two\r\nlines"\r\n"HR, payroll"\t"a ""quote"""\r\n')).toEqual([
+    ["HR\tlead", "two\r\nlines"], ["HR, payroll", 'a "quote"'],
+  ]);
+  expect(parseTsv("HR, payroll")).toEqual([["HR, payroll"]]);
+});
+
+test.each(["\n", "\r\n"])("an unclosed quote stays literal and keeps following rows (%j)", (newline) => {
+  expect(parseTsv(`001\t"인사부\t김${newline}002\t재무팀\t이${newline}003\t영업팀\t박`)).toEqual([
+    ["001", '"인사부', "김"], ["002", "재무팀", "이"], ["003", "영업팀", "박"],
+  ]);
+});
+
+test.each(['"A" 팀', '인사 "A" 팀', '"A""B" 팀'])("quotes inside a literal cell survive: %s", (value) => {
+  expect(parseTsv(`001\t${value}\t김`)).toEqual([["001", value, "김"]]);
+});
+
+test("an Excel-quoted cell decodes escaped quotes, tabs and newlines together", () => {
+  expect(parseTsv('001\t"""A"" 팀\t인사\n담당"\t김\r\n002\t재무팀\t이')).toEqual([
+    ["001", '"A" 팀\t인사\n담당', "김"], ["002", "재무팀", "이"],
+  ]);
+});
+
 test("the check's values read as the grid shows them", () => {
   expect(shownText(f("address"), JSON.stringify({ road_addr_part1: "경기 평택시 고덕동 31", zip_no: null }), SEX)).toBe("경기 평택시 고덕동 31");
   expect(shownText(f("sex"), "FEMALE", SEX)).toBe(SEX.FEMALE);
