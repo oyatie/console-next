@@ -160,11 +160,7 @@ pub(crate) async fn dev_auth_session(
     )
     .await?;
 
-    Ok(token_pair_response(
-        tokens,
-        &headers,
-        services.cookie_secure,
-    ))
+    Ok(token_pair_response(tokens, &headers))
 }
 
 #[cfg(test)]

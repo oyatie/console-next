@@ -13,7 +13,7 @@ use std::sync::Arc;
 const SPA_EXCLUDED_PREFIXES: &[&str] = &["/api/", "/openapi/", "/internal/", "/.well-known/"];
 const SPA_EXCLUDED_PATHS: &[&str] = &["/api", "/healthz", "/readyz", "/metrics"];
 const SPA_CSP: &str = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; \
-    font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+    font-src 'self'; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'";
 
 pub(crate) fn spa_csp(storage: Option<&console_platform_storage::S3StorageConfig>) -> HeaderValue {
     let origin = storage.and_then(|storage| {
@@ -162,6 +162,15 @@ pub(crate) async fn serve_spa(
         header::CACHE_CONTROL,
         header::HeaderValue::from_static(cache),
     );
+    if headers
+        .get(header::CONTENT_TYPE)
+        .is_some_and(|value| value == "text/html")
+    {
+        headers.insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+    }
     headers.insert(header::CONTENT_SECURITY_POLICY, csp);
     headers.insert(
         header::X_CONTENT_TYPE_OPTIONS,

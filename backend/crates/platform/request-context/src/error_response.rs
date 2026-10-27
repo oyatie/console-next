@@ -190,7 +190,7 @@ mod tests {
         ] {
             let request = Request::builder()
                 .uri("/")
-                .header(header::COOKIE, "console_refresh=ambient-token")
+                .header(header::COOKIE, "__Host-console_refresh=ambient-token")
                 .body(Body::empty())
                 .unwrap();
             let response = app.oneshot(request).await.unwrap();

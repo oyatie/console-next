@@ -3,7 +3,7 @@ use serde::Serialize;
 use time::OffsetDateTime;
 
 /// A minted access/refresh pair. `refresh_token` is `null` in the cookie
-/// transport (web) — the refresh token rides in the HttpOnly `console_refresh`
+/// transport (web) — the refresh token rides in the HttpOnly `__Host-console_refresh`
 /// cookie instead — and `Some` in the body transport (mobile). The access token
 /// is ALWAYS in the body: it stays a short-lived in-memory bearer token, never a
 /// cookie. `requires_passkey_setup` is true only for an ordinary session whose
@@ -24,13 +24,13 @@ pub(crate) struct TokenPairResponse {
 }
 
 /// The refresh-token body is OPTIONAL: web (cookie transport) sends the token in
-/// the `console_refresh` cookie and an empty/absent body, while mobile sends it here.
+/// the `__Host-console_refresh` cookie and an empty/absent body, while mobile sends it here.
 #[derive(Debug, Deserialize, Default)]
 pub(crate) struct RefreshTokenRequest {
     pub(crate) refresh_token: Option<String>,
 }
 
-/// Logout accepts the refresh token from the `console_refresh` cookie (web) or from
+/// Logout accepts the refresh token from the `__Host-console_refresh` cookie (web) or from
 /// this body (mobile); the field is therefore optional.
 #[derive(Debug, Deserialize, Default)]
 pub(crate) struct LogoutRequest {

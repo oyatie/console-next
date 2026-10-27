@@ -185,7 +185,6 @@ pub(crate) async fn finish_login(
     Ok(crate::cookies::token_pair_response_with_profile(
         tokens,
         &headers,
-        services.cookie_secure,
         Some(profile),
     ))
 }

@@ -8,6 +8,7 @@ pub(crate) mod ops;
 pub(crate) mod overload;
 pub(crate) mod redact;
 pub(crate) mod release_toggles;
+pub(crate) mod security_headers;
 pub(crate) mod status;
 pub(crate) mod support_reference;
 pub(crate) mod trace;

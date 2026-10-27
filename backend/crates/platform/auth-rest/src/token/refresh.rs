@@ -116,7 +116,7 @@ pub(crate) async fn refresh_token(
     tx.commit().await.map_err(DbError::Sqlx)?;
     if cookie_mode {
         let max_age = (issue.expires_at - OffsetDateTime::now_utc()).whole_seconds();
-        let cookie = refresh_set_cookie(issue.token.as_str(), max_age, services.cookie_secure);
+        let cookie = refresh_set_cookie(issue.token.as_str(), max_age);
         let response = Json(TokenPairResponse {
             access_token,
             refresh_token: None,

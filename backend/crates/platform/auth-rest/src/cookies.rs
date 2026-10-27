@@ -16,11 +16,13 @@ pub(crate) const AUTH_TRANSPORT_HEADER: &str = "x-auth-transport";
 /// The single recognized value of [`AUTH_TRANSPORT_HEADER`].
 pub(crate) const AUTH_TRANSPORT_COOKIE: &str = "cookie";
 /// Name of the HttpOnly refresh-token cookie used by the web transport.
-pub(crate) const REFRESH_COOKIE_NAME: &str = "console_refresh";
-/// Path scope of the refresh cookie. Restricting it to the auth namespace means
-/// the browser never attaches the refresh token to ordinary API calls — only to
-/// the refresh/logout endpoints that need it.
-pub(crate) const REFRESH_COOKIE_PATH: &str = "/api/v1/auth";
+pub(crate) const REFRESH_COOKIE_NAME: &str = "__Host-console_refresh";
+/// The __Host- prefix requires Secure, Path=/ and no Domain attribute.
+pub(crate) const REFRESH_COOKIE_PATH: &str = "/";
+// shortcut: N-1 migration from 2026-10-27, remove legacy acceptance/clearing after one production release.
+const LEGACY_REFRESH_COOKIE_NAME: &str = "console_refresh";
+const LEGACY_REFRESH_CLEAR_COOKIE: &str =
+    "console_refresh=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=0; Secure";
 
 // ---------------------------------------------------------------------------
 // Dual-transport refresh token: web=HttpOnly cookie, mobile=JSON body.
@@ -52,21 +54,24 @@ pub(crate) fn select_refresh_credential(
     }
     let cookie_header = cookie_header.to_str().map_err(|_| refuse())?;
     let mut refresh = None;
+    let mut legacy = None;
     for pair in cookie_header.split(';') {
         let Some((name, value)) = pair.split_once('=') else {
-            if pair.trim() == REFRESH_COOKIE_NAME {
+            if [REFRESH_COOKIE_NAME, LEGACY_REFRESH_COOKIE_NAME].contains(&pair.trim()) {
                 return Err(refuse());
             }
             continue;
         };
-        if name.trim() == REFRESH_COOKIE_NAME {
-            if refresh.is_some() {
-                return Err(refuse());
-            }
-            refresh = Some(value.trim());
+        let credential = match name.trim() {
+            REFRESH_COOKIE_NAME => &mut refresh,
+            LEGACY_REFRESH_COOKIE_NAME => &mut legacy,
+            _ => continue,
+        };
+        if credential.replace(value.trim()).is_some() {
+            return Err(refuse());
         }
     }
-    let Some(refresh) = refresh else {
+    let Some(refresh) = refresh.or(legacy) else {
         return Ok(body_token);
     };
     if headers.contains_key(header::AUTHORIZATION)
@@ -89,25 +94,18 @@ fn has_exact_header(headers: &HeaderMap, name: &'static str, expected: &str) -> 
 ///
 /// Origin and Fetch Metadata are checked before consuming an ambient refresh
 /// credential; these cookie attributes provide independent browser safeguards.
-pub(crate) fn refresh_set_cookie(
-    token: &str,
-    max_age_secs: i64,
-    secure: bool,
-) -> Option<HeaderValue> {
+pub(crate) fn refresh_set_cookie(token: &str, max_age_secs: i64) -> Option<HeaderValue> {
     let max_age = max_age_secs.max(0);
-    let mut cookie = format!(
-        "{REFRESH_COOKIE_NAME}={token}; HttpOnly; SameSite=Strict; Path={REFRESH_COOKIE_PATH}; Max-Age={max_age}"
+    let cookie = format!(
+        "{REFRESH_COOKIE_NAME}={token}; HttpOnly; SameSite=Strict; Path={REFRESH_COOKIE_PATH}; Max-Age={max_age}; Secure"
     );
-    if secure {
-        cookie.push_str("; Secure");
-    }
     HeaderValue::from_str(&cookie).ok()
 }
 
 /// Build a `Set-Cookie` header that CLEARS the refresh cookie (logout): same
 /// name/path/attributes with `Max-Age=0` so the browser drops it immediately.
-pub(crate) fn refresh_clear_cookie(secure: bool) -> Option<HeaderValue> {
-    refresh_set_cookie("", 0, secure)
+pub(crate) fn refresh_clear_cookie() -> Option<HeaderValue> {
+    refresh_set_cookie("", 0)
 }
 
 /// Turn a minted token pair into a transport-appropriate response.
@@ -117,18 +115,13 @@ pub(crate) fn refresh_clear_cookie(secure: bool) -> Option<HeaderValue> {
 /// (mobile): leave the refresh token in the JSON body and set no cookie. The
 /// access token stays in the body in both cases.
 #[cfg(feature = "dev-auth")]
-pub(crate) fn token_pair_response(
-    tokens: IssuedTokenPair,
-    headers: &HeaderMap,
-    cookie_secure: bool,
-) -> Response {
-    token_pair_response_with_profile(tokens, headers, cookie_secure, None)
+pub(crate) fn token_pair_response(tokens: IssuedTokenPair, headers: &HeaderMap) -> Response {
+    token_pair_response_with_profile(tokens, headers, None)
 }
 
 pub(crate) fn token_pair_response_with_profile(
     tokens: IssuedTokenPair,
     headers: &HeaderMap,
-    cookie_secure: bool,
     profile: Option<crate::dto::token::PasskeyProfile>,
 ) -> Response {
     if wants_cookie_transport(headers) {
@@ -144,7 +137,7 @@ pub(crate) fn token_pair_response_with_profile(
         };
         with_refresh_cookie(
             Json(body).into_response(),
-            refresh_set_cookie(&tokens.refresh_token, max_age, cookie_secure),
+            refresh_set_cookie(&tokens.refresh_token, max_age),
         )
     } else {
         let mut body = tokens.into_response();
@@ -157,6 +150,10 @@ pub(crate) fn token_pair_response_with_profile(
 pub(crate) fn with_refresh_cookie(mut response: Response, cookie: Option<HeaderValue>) -> Response {
     if let Some(cookie) = cookie {
         response.headers_mut().append(header::SET_COOKIE, cookie);
+        response.headers_mut().append(
+            header::SET_COOKIE,
+            HeaderValue::from_static(LEGACY_REFRESH_CLEAR_COOKIE),
+        );
     }
     response
 }

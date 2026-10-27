@@ -116,7 +116,7 @@ pub(crate) async fn redeem_otp(
     // access token and passkey-setup flag are always in the body.
     if wants_cookie_transport(&headers) {
         let max_age = (tokens.refresh_expires_at - now).whole_seconds();
-        let cookie = refresh_set_cookie(&tokens.refresh_token, max_age, services.cookie_secure);
+        let cookie = refresh_set_cookie(&tokens.refresh_token, max_age);
         let response = Json(OtpRedeemResponse {
             access_token: tokens.access_token,
             refresh_token: None,

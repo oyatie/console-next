@@ -72,6 +72,9 @@ async fn spa_is_served_as_fallback_with_cache_and_security_headers() {
         let csp = headers[header::CONTENT_SECURITY_POLICY].to_str().unwrap();
         assert!(csp.contains("default-src 'self'") && csp.contains("frame-ancestors 'none'"));
         assert!(csp.contains("connect-src 'self';"));
+        assert!(csp.contains("object-src 'none';"));
+        assert!(csp.contains("base-uri 'none';"));
+        assert_eq!(headers[header::CONTENT_TYPE], "text/html; charset=utf-8");
         assert_eq!(headers[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
         assert_eq!(headers[header::REFERRER_POLICY], "same-origin");
         assert!(headers.contains_key(header::STRICT_TRANSPORT_SECURITY));
@@ -248,4 +251,23 @@ async fn index_validators_follow_content_not_mtime_across_builds() {
 
     std::fs::remove_dir_all(dir_a).unwrap();
     std::fs::remove_dir_all(dir_b).unwrap();
+}
+
+#[tokio::test]
+async fn api_security_headers_cover_errors_with_and_without_spa() {
+    let dir = dist();
+    for app in [router(None), router(Some(&dir))] {
+        for uri in ["/api", "/api/v1/does-not-exist"] {
+            let (status, headers, _) = get(&app, uri).await;
+            assert_eq!(status, StatusCode::NOT_FOUND);
+            assert_eq!(headers[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
+            assert_eq!(
+                headers[header::CONTENT_SECURITY_POLICY],
+                "frame-ancestors 'none'"
+            );
+        }
+        let (_, headers, _) = get(&app, "/healthz").await;
+        assert!(!headers.contains_key(header::CONTENT_SECURITY_POLICY));
+    }
+    std::fs::remove_dir_all(dir).unwrap();
 }
