@@ -40,7 +40,7 @@ export const koEntityOps = {
   "entityOps.info.product": "주생산품",
   "entityOps.info.fax": "팩스",
   "entityOps.info.mail": "우편물 받는 곳",
-  "entityOps.info.none": "적지 않음",
+  "entityOps.info.none": "—",
   "entityOps.info.openedHint": "정정만 합니다 · 처음 기록 {date}",
   "entityOps.info.openedIsCorrection": "개설일은 사업장을 연 날이라 바뀌지 않습니다. 잘못 입력했다면 사유를 「입력 오류 정정」으로 선택하십시오.",
   "entityOps.withholding.headSelf": "본점 · 법인의 원천징수를 이 사업장에서 신고",

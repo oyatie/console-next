@@ -24,6 +24,8 @@ for (const abstract of [false, true]) {
     expect(html).not.toContain("등록증 없음");
     expect(html).not.toContain("주소 입력 필요");
     expect(html).not.toContain("사업자등록 추가");
+    expect(html).not.toContain("적지 않음");
+    expect(html).toContain("—");
     if (abstract) expect(html).not.toContain("소재지 수정");
   });
 }

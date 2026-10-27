@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { Network } from "lucide-react";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { CommandError } from "../../../lib/react/command-error";
 import { Composer } from "../../../ui/composer/composer";
 import { Field, TextInput } from "../../../ui/field/field";
-import { Muted } from "../../../ui/muted/muted";
 import { depts, unitIdOf, type Place } from "../../../reference/org/domain/structure";
 import { createGovOp } from "../domain/structure-plans";
 import { GovernFields } from "./govern-fields";
@@ -46,8 +46,7 @@ export function DeptNameComposer({ mode, place, onClose }: { mode: "create" | "r
     notice={<CommandError error={submit.error} />}
     sections={{ approvals: gov.routed ? t("orgPropose.route") : null }}
     consequence={missing.length ? null : <>
-      <span>{creating ? t("orgUnit.gov.addConsequence", { name: value, date: gov.g.date }) : t("orgUnit.rename.consequence", { from: d.name, name: value, date: gov.g.date })}</span>
-      {creating && <Muted>{t("orgUnit.gov.setupWouldApply")}</Muted>}
+      <span>{creating ? t("orgUnit.gov.addConsequence", { name: value, date: fmtDate(gov.g.date) }) : t("orgUnit.rename.consequence", { from: d.name, name: value, date: fmtDate(gov.g.date) })}</span>
     </>}
   >
     <Field label={t(creating ? "orgUnit.gov.name" : "orgUnit.rename.newName")} required error={taken ? t("orgUnit.add.taken", { parent: parent.name }) : undefined}>

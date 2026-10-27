@@ -1,7 +1,9 @@
 import { getRouteApi } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { CornerDownRight, List, Trash2, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
+import { unitEndQuery } from "../../../reference/org/api";
 import type { Structure } from "../domain/model";
 import { collapseSelection, movable } from "../domain/rules";
 import type { Gestures } from "../present";
@@ -23,11 +25,12 @@ export function SelectionBar({ s, c, g }: {
   g: Pick<Gestures, "move" | "remove">;
 }) {
   const navigate = route.useNavigate();
-  if (c.sel.size < 2) return null;
   const { top, folded } = collapseSelection(s, c.sel);
   const depts = top.filter(movable);
   const people = top.reduce((n, x) => n + x.headcount, 0);
   const first = depts[0];
+  const end = useQuery({ ...unitEndQuery(first?.id ?? ""), enabled: c.sel.size > 1 && !!first }).data;
+  if (c.sel.size < 2) return null;
   // One workplace holds them all: it is named (where the move starts from).
   const sites = new Set(top.map((n) => n.siteId));
   const site = sites.size === 1 ? s.byId.get([...sites][0] ?? "") : undefined;
@@ -47,7 +50,7 @@ export function SelectionBar({ s, c, g }: {
         {first && depts.length === top.length && (
           <>
             <Button variant="primary" onClick={() => g.move(first)}><CornerDownRight size={16} aria-hidden />{t("structure.selection.move")}<kbd className={css.kbd}>{KEYS.move}</kbd></Button>
-            <Button onClick={() => g.remove(first)}><Trash2 size={16} aria-hidden />{t("structure.selection.delete")}</Button>
+            <Button onClick={() => g.remove(first)}><Trash2 size={16} aria-hidden />{t(!end ? "crud.unit.end" : end.delete.allowed ? "orgUnit.act.delete" : "orgUnit.act.dissolve")}</Button>
           </>
         )}
         <Button variant="ghost" onClick={() => void navigate({ search: (q) => ({ ...q, view: "list" }) })}><List size={16} aria-hidden />{t("structure.selection.inList")}</Button>

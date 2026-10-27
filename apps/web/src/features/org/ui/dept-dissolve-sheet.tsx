@@ -66,7 +66,6 @@ export function DeptDissolveSheet({ place, places, company, onClose }: { place: 
       wide
       kicker={<><Network size={14} aria-hidden />{[...place.path, d.name].join(" › ")}</>}
       title={title}
-      subtitle={t("orgUnit.dissolve.subtitle")}
       onClose={onClose}
       pending={submit.isPending}
       notice={<CommandError error={submit.error} />}
@@ -94,7 +93,6 @@ export function DeptDissolveSheet({ place, places, company, onClose }: { place: 
             place={place}
             groups={plan.groups}
             to={to}
-            defaultTo={defaultTo}
             onTo={setTo}
             overrides={overrides}
             onOverride={(m, id) => setOverrides((x) => { const n = new Map(x); const node = id ? places.get(id)?.node : undefined; if (node && node.id !== to.id) n.set(m.employeeId, node); else n.delete(m.employeeId); return n; })}
