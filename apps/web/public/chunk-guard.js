@@ -113,14 +113,18 @@
     },
     true,
   );
-  // Vite's preload helper reports every failed dynamic import of a build here, including ones nothing awaits.
-  // a hover preload (TanStack intent) of a gone chunk reloads too, as its click would; skip preloads if a
-  // draft is ever lost to it.
-  window.addEventListener("vite:preloadError", function () {
-    recover();
+  // Give an importing component's catch handler one turn to claim an error for its local boundary.
+  var preloadErrors = new WeakMap();
+  window.addEventListener("vite:preloadError", function (event) {
+    if (event.payload && typeof event.payload === "object") preloadErrors.set(event.payload, event);
+    setTimeout(function () { if (!event.defaultPrevented) recover(); }, 0);
   });
 
   window.consoleChunkGuard = {
+    handled: function (error) {
+      var event = preloadErrors.get(error);
+      if (event) event.preventDefault();
+    },
     recover: recover,
     reload: reload,
     loaded: loaded,

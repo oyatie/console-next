@@ -5,6 +5,7 @@ export const koUiDate = {
   "uiDate.placeholder": "YYYY. MM. DD.",
   "uiDate.calendar.open": "달력 열기",
   "uiDate.calendar.label": "날짜 선택",
+  "uiDate.calendar.failed": "달력을 불러오지 못했습니다. 날짜를 직접 입력하십시오.",
   "uiDate.calendar.previous": "이전 달",
   "uiDate.calendar.next": "다음 달",
   "uiDate.disabled": "선택할 수 없는 날짜입니다.",

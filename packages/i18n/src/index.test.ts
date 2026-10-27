@@ -23,6 +23,21 @@ test("boot copy and screen copy never share an id", () => {
   expect(Object.keys(bootKo).filter((id) => id in ko)).toEqual([]);
 });
 
+test("feature copy loads with screens while crash recovery copy stays in boot", () => {
+  const featureCopy = Object.keys({ ...bootKo, ...ko }).filter(id => /^common\.(failed\.code\.(filing_|exit_case_|parent_not_found|stale_revision|own_record_forbidden|employee_number_taken)|headcount|steps|page\.)/.test(id));
+  expect(featureCopy.length).toBeGreaterThan(0);
+  for (const id of featureCopy) {
+    expect(id in bootKo).toBe(false);
+    expect(id in bootEn).toBe(false);
+    expect(id in ko).toBe(true);
+    expect(id in en).toBe(true);
+  }
+  for (const id of ["common.crashed.title", "common.crashed.reason", "common.crashed.action"]) {
+    expect(id in bootKo).toBe(true);
+    expect(id in bootEn).toBe(true);
+  }
+});
+
 test("josa tokens keep user text literal", () => {
   expect(t("exit.hr.consequence", { name: "{윤}바다", date: "2026. 10. 01." })).toContain("{윤}바다를 2026. 10. 01.자로");
 });

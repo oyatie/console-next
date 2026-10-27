@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Screen-only refusal copy loads with the locale catalog, after sign-in.
+// Screen-only copy loads with the locale catalog, after sign-in.
 export const koCommon = {
+  "common.steps": "진행 단계",
+  "common.headcount": "{count, number}명",
+  "common.page.label": "페이지 이동",
+  "common.page.range": "{total, number}건 중 {from, number}–{to, number}",
+  "common.page.prev": "이전 페이지",
+  "common.page.next": "다음 페이지",
+  "common.failed.code.stale_revision": "다른 사람이 먼저 변경해 저장하지 않았습니다. 닫고 다시 열면 바뀐 내용에서 다시 적용할 수 있습니다.",
+  "common.failed.code.own_record_forbidden": "본인의 인사 기록은 직접 처리할 수 없습니다(플랫폼 규칙: 어떤 역할로도 자기 자신의 인사 기록은 변경할 수 없습니다). 범위 안의 다른 담당자나 운영 계정이 처리합니다.",
+  "common.failed.code.employee_number_taken": "다른 직원이 쓰고 있거나 예전 사번으로 묶여 있는 사번입니다. 다른 사번을 쓰거나, 비워 두면 다음 사번을 자동으로 부여합니다.",
+  "common.failed.code.parent_not_found": "그 상위 항목이 없습니다. 조직 구조를 다시 여십시오.",
+  "common.failed.code.filing_not_applicable_invalid": "선택한 미해당 사유가 보험의 법정 근거 또는 확인된 사실과 맞지 않아 저장하지 않았습니다. 사실과 해당 사유의 근거를 확인하십시오.",
+  "common.failed.code.filing_request_invalid": "요청을 저장하지 않았습니다. 해당 인사 기록에 맞는 요청일·근로월과 시행 중인 신고 종류를 선택하고 중복 요청 여부를 확인하십시오.",
+  "common.failed.code.filing_remuneration_required": "상실 신고의 보수총액을 입력하지 않아 저장하지 않았습니다. 실제 신고한 보수총액을 입력하십시오.",
+  "common.failed.code.filing_record_invalid": "완료 기록을 저장하지 않았습니다. 신고일은 적용일부터 오늘까지, 상실 코드는 해당 보험의 목록에서 선택하고 필요한 구체적 사유를 입력하십시오.",
+  "common.failed.code.filing_event_inactive": "신고의 인사 기록이 취소되었거나 접근 범위가 변경되어 저장하지 않았습니다. 최신 신고 목록을 확인하십시오.",
+  "common.failed.code.filing_stale": "다른 완료 기록이 먼저 저장되어 변경하지 않았습니다. 최신 증빙을 확인하고 다시 기록하십시오.",
+  "common.failed.code.exit_case_follows_group_transfer": "전적으로 열린 퇴직 정산은 따로 반려하거나 취소하지 않습니다. 전적 예약을 취소하거나 인사 이력에서 철회하면 함께 취소됩니다. 변경한 것은 없습니다.",
   "common.failed.code.passkey_label_invalid": "패스키 이름의 길이와 제어문자를 확인하십시오.",
   "common.failed.code.site_needs_workplace": "사업장은 조직 변경으로 추가하지 않습니다. 법인 화면에서 사업장을 추가하십시오.",
   "common.failed.code.region_branch_retired": "권역과 지점은 더 이상 따로 추가하거나 변경하지 않습니다. 사업장을 추가하면 그 지점이 함께 생깁니다.",

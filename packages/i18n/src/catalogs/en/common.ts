@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Screen-only refusal copy loads with the locale catalog, after sign-in.
+// Screen-only copy loads with the locale catalog, after sign-in.
 export const enCommon = {
+  "common.steps": "Progress",
+  "common.headcount": "{count, plural, one {# person} other {# people}}",
+  "common.page.label": "Pages",
+  "common.page.range": "{from, number}–{to, number} of {total, number}",
+  "common.page.prev": "Previous page",
+  "common.page.next": "Next page",
+  "common.failed.code.stale_revision": "Someone else changed this first, so it wasn’t saved. Close and reopen to apply your change on top of theirs.",
+  "common.failed.code.own_record_forbidden": "You can’t record HR changes on your own record (platform rule: no role can change your own HR record). Another holder in scope, or the ops account, records it.",
+  "common.failed.code.employee_number_taken": "Another person holds this employee number, or it is someone’s former number. Use another one, or leave it empty to get the next number automatically.",
+  "common.failed.code.parent_not_found": "That parent no longer exists. Reopen the org structure.",
+  "common.failed.code.filing_not_applicable_invalid": "Nothing was saved because the exclusion conflicts with this insurer's cited grounds or the known facts. Confirm the facts and the exclusion basis.",
+  "common.failed.code.filing_request_invalid": "Nothing was saved. Choose a request date or work month and an in-force filing kind matching the employment event, and check for an existing request.",
+  "common.failed.code.filing_remuneration_required": "Nothing was saved because the loss filing needs total remuneration. Enter the amount actually reported.",
+  "common.failed.code.filing_record_invalid": "Nothing was saved. Choose the actual filing date from the event date through today, select this insurer's loss code, and provide any required detail.",
+  "common.failed.code.filing_event_inactive": "Nothing was saved because the lifecycle event was withdrawn or access changed. Review the current filing list.",
+  "common.failed.code.filing_stale": "Another completion record was saved first. Nothing changed; compare the latest evidence before retrying.",
+  "common.failed.code.exit_case_follows_group_transfer": "An exit settlement opened by a group transfer is not rejected or cancelled on its own. Withdraw the group transfer or rescind it from the history and the settlement goes with it. Nothing was changed.",
   "common.failed.code.passkey_label_invalid": "Check the passkey name length and remove control characters.",
   "common.failed.code.site_needs_workplace": "A workplace is not added by an org change. Add it from its legal entity.",
   "common.failed.code.region_branch_retired": "Regions and branches are no longer added or changed on their own. Adding a workplace brings its branch.",

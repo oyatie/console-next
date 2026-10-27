@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useEffect, useId, useRef, useState, type FocusEventHandler, type KeyboardEventHandler, type Ref, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, useId, useRef, useState, type FocusEventHandler, type KeyboardEventHandler, type Ref, type ReactNode } from "react";
 import { i18n, t } from "@console/i18n";
 import { fmtDateInput } from "@console/i18n/format";
 import { CalendarDays } from "lucide-react";
 import { Button as AriaButton, Dialog, DialogTrigger, Popover } from "react-aria-components";
-import { chunk } from "../../lib/chunk-guard";
+import { localChunk } from "../../lib/chunk-guard";
 import { todayKst } from "../../lib/pure/today";
 import { TextInput } from "../field/field";
 import { Skeleton } from "../skeleton/skeleton";
@@ -12,8 +12,17 @@ import { inBounds, isDate, parseTyped } from "./days";
 import { typedProblem } from "./date-text";
 import s from "./date.module.css";
 
-const loadCalendar = () => chunk(import("./date-calendar"));
+let calendar: Promise<typeof import("./date-calendar")> | undefined;
+const loadCalendar = () => calendar ??= localChunk(import("./date-calendar"));
+// Speculative loads must not reload a form or reject outside its local boundary.
+const prefetchCalendar = () => { void loadCalendar().catch(() => undefined); };
 const DateCalendar = lazy(() => loadCalendar().then(m => ({ default: m.DateCalendar })));
+
+class CalendarBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() { return this.state.failed ? <div role="alert">{t("uiDate.calendar.failed")}</div> : this.props.children; }
+}
 
 /** The one keyboard-and-calendar date input used by DateField and fields that already own their label. */
 export function DateInput({ id, value, onChange, onDraftChange, onInvalid, required = false, today = todayKst(), min, minReason, max, maxReason, disabledDates = [], label, className, disabled, showErrors = true, "aria-describedby": describedBy, "aria-invalid": ariaInvalid, inputRef, onBlur, onKeyDown }: {
@@ -140,12 +149,12 @@ export function DateInput({ id, value, onChange, onDraftChange, onInvalid, requi
         }}
       />
       <DialogTrigger isOpen={open} onOpenChange={setOpen}>
-        <AriaButton type="button" className={s.calendarButton} aria-label={t("uiDate.calendar.open")} aria-describedby={describedBy} isDisabled={disabled} onHoverStart={() => { void loadCalendar(); }} onFocus={() => { void loadCalendar(); }}>
+        <AriaButton type="button" className={s.calendarButton} aria-label={t("uiDate.calendar.open")} aria-describedby={describedBy} isDisabled={disabled} onHoverStart={prefetchCalendar} onFocus={prefetchCalendar}>
           <CalendarDays size={18} aria-hidden />
         </AriaButton>
         <Popover className={s.popover} placement="bottom start">
           <Dialog aria-label={t("uiDate.calendar.label")} className={s.dialog}>
-            {open && <Suspense fallback={<Skeleton bones={["block"]} label={t("common.loading")} />}><DateCalendar value={selected} focused={selected ?? initial} min={minimum} max={maximum} blocked={blocked} onPick={pick} /></Suspense>}
+            {open && <CalendarBoundary><Suspense fallback={<Skeleton bones={["block"]} label={t("common.loading")} />}><DateCalendar value={selected} focused={selected ?? initial} min={minimum} max={maximum} blocked={blocked} onPick={pick} /></Suspense></CalendarBoundary>}
           </Dialog>
         </Popover>
       </DialogTrigger>

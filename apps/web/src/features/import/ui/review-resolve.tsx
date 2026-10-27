@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { lazy, Suspense } from "react";
+import { chunk } from "../../../lib/chunk-guard";
+import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { LEAVE_TYPE } from "../../../lib/labels";
 import { EnumCode } from "../../../ui/enum-value";
 import { t } from "@console/i18n";
@@ -7,8 +11,12 @@ import type { ImportDryRun, ReviewItem } from "../domain/contract";
 import { heldAnswer, placeOf, resolveKind, rowOf } from "../domain/review";
 import { withChoice, type Picks } from "../domain/steps";
 import { choiceLabel, fieldLabel, reviewReasonLabel, routeLabel } from "../present";
-import { ExcludeRow, Identity, NumberAnswer, ValuePick } from "./resolve-controls";
 import s from "./import.module.css";
+
+const Identity = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.Identity })));
+const ExcludeRow = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.ExcludeRow })));
+const NumberAnswer = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.NumberAnswer })));
+const ValuePick = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.ValuePick })));
 
 /**
  * One needs-review item, opened: what it is and where, then the one control that answers it. A served choice is one
@@ -50,12 +58,14 @@ export function ReviewResolve({ item, dry, picks, busy, onResolve, onSheets }: {
           ))}
         </div>
       )}
-      {kind === "identity" && res && row && <Identity item={item} row={row} picks={picks} busy={busy} onResolve={onResolve} />}
-      {kind === "exclude" && res && row && <ExcludeRow item={item} row={row} picks={picks} busy={busy} onResolve={onResolve} />}
-      {(kind === "company" || kind === "unit" || kind === "workplace" || kind === "type") && res && (
-        <ValuePick kind={kind} text={res.key} item={item} picks={picks} busy={busy} onResolve={onResolve} />
-      )}
-      {kind === "number" && res && row && <NumberAnswer sourceKey={res.key} name={row.name} picks={picks} busy={busy} onResolve={onResolve} />}
+      <Suspense fallback={<Skeleton bones={["block"]} label={t("common.loading")} />}>
+        {kind === "identity" && res && row && <Identity item={item} row={row} picks={picks} busy={busy} onResolve={onResolve} />}
+        {kind === "exclude" && res && row && <ExcludeRow item={item} row={row} picks={picks} busy={busy} onResolve={onResolve} />}
+        {(kind === "company" || kind === "unit" || kind === "workplace" || kind === "type") && res && (
+          <ValuePick kind={kind} text={res.key} item={item} picks={picks} busy={busy} onResolve={onResolve} />
+        )}
+        {kind === "number" && res && row && <NumberAnswer sourceKey={res.key} name={row.name} picks={picks} busy={busy} onResolve={onResolve} />}
+      </Suspense>
       {kind === "mapping" && (
         <>
           <Button variant="primary" onClick={onSheets}>{t("importReview.toSheets")}</Button>
