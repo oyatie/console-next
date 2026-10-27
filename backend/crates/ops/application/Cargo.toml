@@ -8,6 +8,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+console-ops-domain.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 time.workspace = true

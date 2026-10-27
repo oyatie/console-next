@@ -16,6 +16,8 @@ tokio.workspace = true
 
 [dev-dependencies]
 axum.workspace = true
+console-ops-domain.workspace = true
+time.workspace = true
 
 [lints]
 workspace = true

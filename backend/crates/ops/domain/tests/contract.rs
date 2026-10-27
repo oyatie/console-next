@@ -109,7 +109,6 @@ fn an_empty_roll_up_or_unverified_evidence_cannot_be_quiet() {
             &evidence.iter().map(|s| (*s, None)).collect::<Vec<_>>(),
         );
         assert!(!result.text.contains("All quiet"));
-        assert!(!result.text.contains("0 pages"));
         assert_eq!(result.worst, Health::Unknown);
     }
     assert!(
@@ -164,7 +163,7 @@ fn tickets_alone_are_quiet_and_counts_are_grammatical() {
     assert!(
         verdict(Health::Healthy, &[], &[(EvidenceState::Unknown, None)])
             .text
-            .contains("1 source not verified")
+            .contains("Unknown: 1 source not verified")
     );
 }
 
@@ -215,8 +214,38 @@ fn snapshot_verdicts_are_generated_by_the_domain_wording() {
             ]
         )
         .text,
-        "Needs a human now · Unknown: source down · 2 sources not verified"
+        "Needs a human now · 0 pages · Unknown: 2 sources not verified · Unknown: source down"
     );
+}
+
+#[test]
+fn unverified_sources_keep_work_counts_and_ignore_verified_reasons() {
+    assert_eq!(
+        verdict(
+            Health::Healthy,
+            &[
+                WorkKind::Page,
+                WorkKind::Page,
+                WorkKind::Page,
+                WorkKind::Overdue,
+                WorkKind::Due,
+                WorkKind::Ticket
+            ],
+            &[
+                (EvidenceState::Verified, Some("not the failure")),
+                (EvidenceState::Unknown, Some("source down"))
+            ]
+        )
+        .text,
+        "Needs a human now · 3 pages · 1 overdue · 1 due · 1 ticket · Unknown: 1 source not verified · Unknown: source down"
+    );
+    for (kind, text) in [(WorkKind::Due, "1 due"), (WorkKind::Overdue, "1 overdue")] {
+        assert!(
+            verdict(Health::Healthy, &[kind], &[(EvidenceState::Verified, None)])
+                .text
+                .contains(text)
+        );
+    }
 }
 
 #[test]

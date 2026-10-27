@@ -115,36 +115,48 @@ pub fn verdict(
     let evidence_text = if evidence.is_empty() {
         "Unknown: no sources checked".to_owned()
     } else if unknown {
-        let count = count_text(unverified, "source");
         let reason = evidence.iter().find_map(|(state, reason)| {
             (*state != EvidenceState::Verified)
                 .then_some(*reason)
                 .flatten()
         });
         match reason {
-            Some(reason) => format!("Unknown: {reason} · {count} not verified"),
-            None => format!("Unknown: {count} not verified"),
+            Some(reason) => {
+                format!(
+                    "Unknown: {} not verified · Unknown: {reason}",
+                    count_text(unverified, "source")
+                )
+            }
+            None => format!("Unknown: {} not verified", count_text(unverified, "source")),
         }
     } else {
-        let pages = work.iter().filter(|kind| **kind == WorkKind::Page).count();
-        let tickets = work
-            .iter()
-            .filter(|kind| **kind == WorkKind::Ticket)
-            .count();
-        let mut text = count_text(pages, "page");
-        if tickets > 0 {
-            text.push_str(&format!(" · {}", count_text(tickets, "ticket")));
-        }
-        format!("{text} · evidence fresh")
+        "evidence fresh".to_owned()
     };
+    let mut counts = Vec::new();
+    for (kind, noun) in [
+        (WorkKind::Page, "page"),
+        (WorkKind::Overdue, "overdue"),
+        (WorkKind::Due, "due"),
+        (WorkKind::Ticket, "ticket"),
+    ] {
+        let count = work.iter().filter(|value| **value == kind).count();
+        if count > 0 || kind == WorkKind::Page {
+            counts.push(if matches!(kind, WorkKind::Due | WorkKind::Overdue) {
+                format!("{count} {noun}")
+            } else {
+                count_text(count, noun)
+            });
+        }
+    }
     Verdict {
         text: format!(
-            "{} · {evidence_text}",
+            "{} · {} · {evidence_text}",
             if quiet {
                 "All quiet"
             } else {
                 "Needs a human now"
-            }
+            },
+            counts.join(" · ")
         ),
         worst,
     }

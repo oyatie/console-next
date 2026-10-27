@@ -2967,9 +2967,11 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "console-ops-application",
+ "console-ops-domain",
  "reqwest",
  "serde",
  "serde_json",
+ "time",
  "tokio",
 ]
 
@@ -2977,6 +2979,7 @@ dependencies = [
 name = "console-ops-application"
 version = "0.1.0"
 dependencies = [
+ "console-ops-domain",
  "serde",
  "thiserror 2.0.18",
  "time",

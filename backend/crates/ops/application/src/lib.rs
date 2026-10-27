@@ -4,6 +4,8 @@ use std::{collections::BTreeMap, future::Future, pin::Pin};
 use serde::Deserialize;
 use time::OffsetDateTime;
 
+pub mod evaluation;
+
 pub type SourceFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, SourceError>> + Send + 'a>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
