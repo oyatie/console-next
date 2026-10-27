@@ -1949,9 +1949,7 @@ impl ActionInboxWorkOrderPort for PgWorkOrderStore {
         Box::pin(async move {
             let limit = limit.clamp(1, 200);
             let mechanic_id = *mechanic.as_uuid();
-            let (after_created_at, after_id) = after.map_or((None, None), |position| {
-                (Some(position.created_at), Some(position.id))
-            });
+            let after = after.map(|position| (position.due, position.created_at, position.id));
             with_org_conn::<_, _, PgWorkOrderError>(&pool, org, move |tx| {
                 Box::pin(async move {
                     let branch_ids = match branch_scope {
@@ -1994,16 +1992,14 @@ impl ActionInboxWorkOrderPort for PgWorkOrderStore {
                     query.push_bind(mechanic_id);
                     query.push(")");
                     push_action_inbox_branch_scope(&mut query, branch_ids.as_deref());
-                    query.push(" AND (");
-                    query.push_bind(after_id.as_deref());
-                    query.push("::text IS NULL OR w.created_at > ");
-                    query.push_bind(after_created_at);
-                    query.push(" OR (w.created_at = ");
-                    query.push_bind(after_created_at);
-                    query.push(" AND ('work:' || w.id::text) > ");
-                    query.push_bind(after_id.as_deref());
-                    query.push(")) ORDER BY w.created_at ASC, ('work:' || w.id::text) ASC LIMIT ");
-                    query.push_bind(limit + 1);
+                    console_platform_db::inbox::push_page(
+                        &mut query,
+                        "w.target_due_at",
+                        "w.created_at",
+                        "('work:' || w.id::text)",
+                        after,
+                        limit,
+                    );
                     let rows = query.build().fetch_all(tx.as_mut()).await?;
                     let has_more = i64::try_from(rows.len()).unwrap_or(0) > limit;
                     let items = rows

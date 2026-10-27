@@ -15,7 +15,7 @@ const readFilter = (page: Page, filter: string) => page.waitForResponse((respons
   return response.request().method() === "GET" && url.pathname === INBOX && url.searchParams.get("filter") === filter;
 });
 
-test("one server queue supplies every Home filter and removes work resolved in another tab over SSE", { tag: ["@hr", "@live"] }, async ({ browser }, info) => {
+test("one server queue supplies every Home filter and holds remote resolutions until refresh", { tag: ["@hr", "@live"] }, async ({ browser }, info) => {
   test.setTimeout(240_000);
   const { admin } = await staffedTenant(browser, "inboxlive", "업무함실시간");
   const bearer = bearerOf(admin);
@@ -53,7 +53,8 @@ test("one server queue supplies every Home filter and removes work resolved in a
   expect(first.status()).toBe(200);
   const body = await first.json() as Inbox;
   expect(body.items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "org_change_draft", links: expect.arrayContaining([expect.objectContaining({ kind: "org_change", id: draft.id })]) })]));
-  const row = inbox(reader).getByRole("listitem").filter({ has: reader.locator(`a[href="/org/changes/${draft.id}"]`) });
+  const draftItem = body.items.find(item => item.links.some(link => link.kind === "org_change" && link.id === draft.id))!;
+  const row = inbox(reader).locator(`[data-id="${draftItem.id}"]`);
   await expect(row).toHaveCount(1);
   await expect(row.getByRole("link", { name: "초안 편집", exact: true })).toBeVisible();
   for (const item of body.items.filter((item) => !item.kind.startsWith("setup_")))
@@ -85,9 +86,18 @@ test("one server queue supplies every Home filter and removes work resolved in a
   let loads = 0;
   reader.on("load", () => { loads++; });
   const before = queueReads;
-  const refreshed = readFilter(reader, "turn");
+  const position = await row.boundingBox();
+  const held = reader.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
+  const heldBefore = await held.count() ? await held.textContent() : null;
   const cancelled = await api(`/org-changes/${draft.id}/cancel`, "POST", { reason: "다른 탭에서 업무 완료" });
   expect(cancelled.status(), await cancelled.text()).toBe(200);
+  await expect(held).toBeVisible();
+  await expect.poll(() => held.textContent()).not.toBe(heldBefore);
+  await expect(row).toHaveCount(1);
+  expect(await row.boundingBox(), "a remote resolution leaves the painted row in place").toEqual(position);
+  expect(queueReads, "held changes do not refetch the painted queue").toBe(before);
+  const refreshed = readFilter(reader, "turn");
+  await held.click();
   const updated = await refreshed;
   expect(updated.status()).toBe(200);
   expect((await updated.json() as Inbox).items.some((item) => item.links.some((link) => link.kind === "org_change" && link.id === draft.id))).toBe(false);

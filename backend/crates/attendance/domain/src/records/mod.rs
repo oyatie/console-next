@@ -177,8 +177,8 @@ pub fn resolve_value(
 }
 
 /// Recognition of a stored entry on its planned day. 외근 · 출장 count as the
-/// 소정 (근로기준법 §58①); 결근 and nothing recognise nothing. A 휴일 has no
-/// 소정 even when a 교대 runs through it: its work is recognised only by 승인.
+/// 소정 (근로기준법 §58①); 결근 and nothing recognise nothing. Holiday
+/// work retains the shift breaks, but has no regular scheduled minutes.
 #[must_use]
 pub fn evaluate(
     plan: &DayPlan,
@@ -186,10 +186,20 @@ pub fn evaluate(
     segments: &[Window],
     approved: &[Window],
 ) -> (Recorded, Recognition) {
-    let shift = plan.shift.as_ref().filter(|_| plan.kind == DayKind::Work);
+    let regular_day = plan.kind == DayKind::Work;
+    let shift = plan
+        .shift
+        .as_ref()
+        .filter(|_| regular_day || plan.holiday_work);
     match kind {
-        None | Some(EntryKind::Void) => (Recorded::Nothing, recognise(&[], shift, approved)),
-        Some(EntryKind::Absent) => (Recorded::Absent, recognise(&[], shift, approved)),
+        None | Some(EntryKind::Void) => (
+            Recorded::Nothing,
+            recognise(&[], shift, plan.kind, approved, &[], &[]),
+        ),
+        Some(EntryKind::Absent) => (
+            Recorded::Absent,
+            recognise(&[], shift, plan.kind, approved, &[], &[]),
+        ),
         Some(EntryKind::ClockInOnly) => (Recorded::ClockInOnly, Recognition::default()),
         Some(EntryKind::OutsideWork | EntryKind::BusinessTrip) => {
             let span = shift
@@ -200,9 +210,15 @@ pub fn evaluate(
                     }]
                 })
                 .unwrap_or_default();
-            (Recorded::Away, recognise(&span, shift, approved))
+            (
+                Recorded::Away,
+                recognise(&span, shift, plan.kind, approved, &[], &[]),
+            )
         }
-        Some(EntryKind::Times) => (Recorded::Times, recognise(segments, shift, approved)),
+        Some(EntryKind::Times) => (
+            Recorded::Times,
+            recognise(segments, shift, plan.kind, approved, &[], &[]),
+        ),
     }
 }
 
@@ -482,7 +498,7 @@ mod kind_tests {
             evaluate(&plan, Some(EntryKind::Times), &span, &[])
                 .1
                 .recognised,
-            0
+            540
         );
         assert_eq!(
             evaluate(&plan, Some(EntryKind::OutsideWork), &[], &[])

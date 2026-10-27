@@ -116,15 +116,7 @@ pub(crate) async fn page(
         });
     }
     let total = items.len();
-    items.retain(|i| {
-        query
-            .after
-            .as_ref()
-            .is_none_or(|p| (i.created_at, &i.id) > (p.created_at, &p.id))
-    });
-    items.sort_by(|a, b| (a.created_at, &a.id).cmp(&(b.created_at, &b.id)));
-    let has_more = items.len() > query.limit;
-    items.truncate(query.limit);
+    let (items, has_more) = console_action_inbox_application::page_source_items(items, &query);
     Ok(ActionInboxSourcePage {
         items,
         total,

@@ -34,12 +34,12 @@ export function InboxCommand({ id, command }: { id: string; command: "approve" |
   const disabled = !detail.isSuccess || detail.isPending || detail.isFetching || action.isPending;
   if (command === "approve") return <div className="row">
     {step && <Chip tone="info">{t("orgChange.turn", { role })}</Chip>}
-    <Button variant="primary" disabled={disabled || !step} onClick={() => action.mutate(undefined)}>{commitLabel({ kind: "orgChange", mode: "approve" })}</Button>
+    <Button size="sm" disabled={disabled || !step} onClick={() => action.mutate(undefined)}>{commitLabel({ kind: "orgChange", mode: "approve" })}</Button>
     <CommandError error={action.error} />
   </div>;
   return <div className="form">
     <QueryState q={detail}>{(d) => <EffectuateConsequence d={d} />}</QueryState>
-    <Button variant="primary" disabled={disabled} onClick={() => setOpen(true)}>{t("org.change.effectuate")}</Button>
+    <Button size="sm" disabled={disabled} onClick={() => setOpen(true)}>{t("org.change.effectuate")}</Button>
     <Dialog open={open} read title={t("org.change.effectuate")} onClose={() => setOpen(false)}>
       <QueryState q={detail}>{(d) => <EffectuateConsequence d={d} />}</QueryState>
       <CommandError error={action.error} />

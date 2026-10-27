@@ -80,17 +80,22 @@ async fn boundary(pool: PgPool, kind: &str, first: &str, holiday: &str, value: i
                     ..Default::default()
                 },
                 register,
+                None,
             )
             .with_subscriber(queries.clone())
             .await
             .unwrap();
         assert_eq!(
-            queries.scans(),
+            queries
+                .statements()
+                .iter()
+                .filter(|s| s.contains("array_agg(inbox_id)"))
+                .count(),
             1,
             "SQL must exclude pre-console candidates using the shared clock"
         );
         if visible {
-            assert!(!exact);
+            assert!(exact);
             assert_eq!(page.items.len(), 50);
             assert!(
                 page.items
@@ -132,7 +137,12 @@ async fn requested_acquisition_uses_its_register_clock_across_go_live(pool: PgPo
     let (page, _) = w
         .tenant
         .hr
-        .insurance_inbox_page(p.clone(), query.clone(), world::register_rules(&pool).await)
+        .insurance_inbox_page(
+            p.clone(),
+            query.clone(),
+            world::register_rules(&pool).await,
+            None,
+        )
         .await
         .unwrap();
     assert!(page.items.is_empty());
@@ -157,7 +167,7 @@ async fn requested_acquisition_uses_its_register_clock_across_go_live(pool: PgPo
     let (page, _) = w
         .tenant
         .hr
-        .insurance_inbox_page(p, query, register)
+        .insurance_inbox_page(p, query, register, None)
         .await
         .unwrap();
     assert_eq!(page.items.len(), 1);

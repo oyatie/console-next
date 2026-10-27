@@ -22,38 +22,34 @@ pub(crate) async fn page(
         state: Some("PENDING".into()),
         limit: Some(query.limit),
         inbox_as_of: Some(query.as_of),
-        inbox_after: query.after.map(|p| (p.created_at, p.id)),
         ..FilingQuery::default()
     };
-    let result = if query.require_exact_total {
-        service
-            .insurance_filings(principal.clone(), request, register)
-            .await
-            .map(|page| (page, true))
-    } else {
-        service
-            .insurance_inbox_page(principal.clone(), request, register)
-            .await
-    };
-    let (page, total_is_exact) = match result {
+    let (page, total_is_exact) = match service
+        .insurance_inbox_page(
+            principal.clone(),
+            request,
+            register,
+            query
+                .after
+                .clone()
+                .map(|position| (position.due, position.created_at, position.id)),
+        )
+        .await
+    {
         Ok(page) => page,
-        Err(error) if error.status.as_u16() == 403 => {
-            return Ok(ActionInboxSourcePage {
-                items: Vec::new(),
-                total: 0,
-                total_is_exact: true,
-                has_more: false,
-            });
-        }
+        Err(error) if error.status.as_u16() == 403 => return Ok(super::super::empty_source_page()),
         Err(_) => return Err(KernelError::internal("failed to load insurance filings")),
     };
     let has_more = page.next.is_some();
-    let items = page
-        .items
+    let total = usize::try_from(page.total).unwrap_or(0);
+    let items = page.items
         .into_iter()
-        .map(|task| ActionInboxSourceItem {
+        .map(|task| {
+            let metadata = serde_json::to_value(&task).map_err(|_| KernelError::internal("failed to project filing identity"))?;
+            Ok(ActionInboxSourceItem {
             context: Some(serde_json::json!({ "insurance": {
-                "insurer": task.insurer, "kind": task.kind, "effective_date": task.effective_date
+                "insurer": task.insurer, "kind": task.kind, "effective_date": task.effective_date,
+                "employee_id": task.employee_id, "case_id": task.lifecycle_case_id.unwrap_or(task.event_id), "group_id": metadata.get("group_id")
             }})),
             id: format!(
                 "insurance_filing_{}_{}:{}",
@@ -69,7 +65,7 @@ pub(crate) async fn page(
                 .as_deref()
                 .and_then(|d| console_hr_domain::text::parse_yyyy_mm_dd(d).ok())
                 .map(|d| {
-                    PrimitiveDateTime::new(d, Time::MAX)
+                    PrimitiveDateTime::new(d, Time::MAX - time::Duration::nanoseconds(999))
                         .assume_offset(UtcOffset::from_hms(9, 0, 0).unwrap_or(UtcOffset::UTC))
                 }),
             submitted: None,
@@ -80,10 +76,11 @@ pub(crate) async fn page(
                 label: None,
             }],
         })
-        .collect();
+        })
+        .collect::<Result<Vec<_>, KernelError>>()?;
     Ok(ActionInboxSourcePage {
         items,
-        total: usize::try_from(page.total).unwrap_or(0),
+        total,
         total_is_exact,
         has_more,
     })

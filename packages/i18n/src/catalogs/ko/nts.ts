@@ -28,7 +28,6 @@ export const koNts = {
   "nts.original.consequence": "원본을 증빙으로 보관합니다. 등록증의 발급일과 기록한 내용은 그대로 유지됩니다.",
   "nts.original.saved": "사업자등록증 원본을 첨부했습니다",
   "nts.inbox.review": "국세청 조회 결과 확인",
-  "nts.inbox.reason": "등록증과 국세청 조회 결과를 대조하고 현재 상태를 기록하십시오.",
   "nts.action.status": "다시 조회",
   "nts.action.validate": "진위 확인",
   "nts.action.noNumber": "사업자등록번호를 받은 후 조회할 수 있습니다",

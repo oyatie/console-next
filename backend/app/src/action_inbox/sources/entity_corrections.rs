@@ -92,19 +92,7 @@ pub(crate) async fn page(
                 });
             }
             let total = items.len();
-            items.sort_by(|a, b| {
-                a.created_at
-                    .cmp(&b.created_at)
-                    .then_with(|| a.id.cmp(&b.id))
-            });
-            if let Some(after) = query.after {
-                items.retain(|i| {
-                    i.created_at > after.created_at
-                        || i.created_at == after.created_at && i.id > after.id
-                });
-            }
-            let has_more = items.len() > query.limit;
-            items.truncate(query.limit);
+            let (items, has_more) = console_action_inbox_application::page_source_items(items, &query);
             Ok(ActionInboxSourcePage {
                 items,
                 total,

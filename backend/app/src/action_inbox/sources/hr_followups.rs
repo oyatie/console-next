@@ -13,10 +13,10 @@ use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_org_conn;
 use console_settings_adapter_postgres::resolve_in_tx;
 use console_settings_domain::{SettingKey, SettingValue};
-use time::{Date, Duration, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset};
+use time::{Duration, OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
-type Row = (Uuid, String, OffsetDateTime, Option<Date>);
+type Row = (Uuid, String, OffsetDateTime, Option<OffsetDateTime>);
 
 pub(crate) async fn page(
     pool: &sqlx::PgPool,
@@ -91,24 +91,29 @@ pub(crate) async fn page(
             let mut count = counted_employees("SELECT count(*)", &filters);
             boundary(&mut count);
             let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
-            let select = if contract {
-                "SELECT e.id, e.name, e.created_at, p.contract_end_date"
+            let due = if contract {
+                "((p.contract_end_date + TIME '23:59:59.999999') AT TIME ZONE 'Asia/Seoul')"
             } else {
-                "SELECT e.id, e.name, e.created_at, NULL::date"
+                "NULL::timestamptz"
             };
-            let mut sql = counted_employees(select, &filters);
+            let select = format!("SELECT e.id, e.name, e.created_at, {due}");
+            let mut sql = counted_employees(&select, &filters);
             boundary(&mut sql);
-            if let Some(after) = query.after {
-                sql.push(" AND (e.created_at, (")
-                    .push_bind(format!("{namespace}:"))
-                    .push(" || e.id::text)) > (")
-                    .push_bind(after.created_at)
-                    .push(", ")
-                    .push_bind(after.id)
-                    .push(")");
-            }
-            sql.push(" ORDER BY e.created_at, e.id LIMIT ")
-                .push_bind(i64::try_from(query.limit.saturating_add(1)).unwrap_or(201));
+            let id = match source {
+                ActionInboxSource::HrIdentity => "('hr_identity:' || e.id::text)",
+                ActionInboxSource::HrUnplaced => "('hr_unplaced:' || e.id::text)",
+                _ => "('hr_contract:' || e.id::text)",
+            };
+            console_platform_db::inbox::push_page(
+                &mut sql,
+                due,
+                "e.created_at",
+                id,
+                query
+                    .after
+                    .map(|after| (after.due, after.created_at, after.id)),
+                i64::try_from(query.limit).unwrap_or(200),
+            );
             let rows: Vec<Row> = sql.build_query_as().fetch_all(tx.as_mut()).await?;
             let has_more = rows.len() > query.limit;
             if source == ActionInboxSource::HrUnplaced {
@@ -126,9 +131,8 @@ pub(crate) async fn page(
                     title: name,
                     site: None,
                     who: None,
-                    due: due.map(|d| {
-                        PrimitiveDateTime::new(d, Time::MAX)
-                            .assume_offset(UtcOffset::from_hms(9, 0, 0).unwrap_or(UtcOffset::UTC))
+                    due: due.map(|at| {
+                        at.to_offset(UtcOffset::from_hms(9, 0, 0).unwrap_or(UtcOffset::UTC))
                     }),
                     submitted: None,
                     created_at,

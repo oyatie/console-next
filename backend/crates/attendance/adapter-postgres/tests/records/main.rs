@@ -9,6 +9,7 @@ mod detail;
 mod edits;
 mod grammar;
 mod long_spans;
+mod recognition_reads;
 mod save;
 mod security;
 mod security_support;

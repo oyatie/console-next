@@ -15,7 +15,6 @@ const NONE_PATH = [
   "home.inbox.empty.reason",
   "home.part.changes",
   "home.inbox.filter.turn",
-  "home.inbox.why.waiting",
   "enum.changeMode.GOVERNED",
   "enum.changeMode.SOLE_HOLDER",
   "tenants.next.setup",

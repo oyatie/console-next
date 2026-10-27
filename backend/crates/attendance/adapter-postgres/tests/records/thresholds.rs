@@ -60,7 +60,7 @@ async fn defaults_and_effective_registry_values_drive_preview_save_and_all_reads
     seed_override(&w, "attendance.excess.notice_minutes", None, 10, false).await;
     seed_override(&w, "attendance.late.grace_minutes", None, 5, false).await;
     let changed = preview(&w).await;
-    assert!(changed.marks.is_empty());
+    assert_eq!(changed.marks, vec![Mark::UnapprovedExcess]);
     assert_eq!(
         (
             changed.recognition.recognised,
@@ -78,7 +78,7 @@ async fn defaults_and_effective_registry_values_drive_preview_save_and_all_reads
         .save_entries(&w.hr(), &key(), save(vec![cell(&w, 0, TUE, "9:05-18:10")]))
         .await
         .unwrap();
-    assert_eq!(receipt.opens.decision, 0);
+    assert_eq!(receipt.opens.decision, 1);
     let board = w
         .store
         .day_board(
@@ -97,7 +97,7 @@ async fn defaults_and_effective_registry_values_drive_preview_save_and_all_reads
         .flat_map(|g| &g.rows)
         .find(|r| r.employee_id == w.people[0])
         .unwrap();
-    assert!(row.day.marks.is_empty());
+    assert_eq!(row.day.marks, vec![Mark::UnapprovedExcess]);
     let grid = w
         .store
         .month_grid(
@@ -115,27 +115,18 @@ async fn defaults_and_effective_registry_values_drive_preview_save_and_all_reads
         .iter()
         .find(|r| r.employee_id == w.people[0])
         .unwrap();
-    assert!(
-        row.cells
-            .iter()
-            .find(|c| c.date == TUE)
-            .unwrap()
-            .marks
-            .is_empty()
+    assert_eq!(
+        row.cells.iter().find(|c| c.date == TUE).unwrap().marks,
+        vec![Mark::UnapprovedExcess]
     );
     let month = w
         .store
         .person_month(&w.hr(), w.people[0], "2026-10".into())
         .await
         .unwrap();
-    assert!(
-        month
-            .days
-            .iter()
-            .find(|d| d.date == TUE)
-            .unwrap()
-            .marks
-            .is_empty()
+    assert_eq!(
+        month.days.iter().find(|d| d.date == TUE).unwrap().marks,
+        vec![Mark::UnapprovedExcess]
     );
     seed_override(
         &w,

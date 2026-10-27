@@ -42,14 +42,23 @@ async fn in_window_hydration_never_exceeds_the_keyset_page(pool: PgPool) {
                 ..Default::default()
             },
             world::register_rules(&pool).await,
+            None,
         )
         .with_subscriber(queries.clone())
         .await
         .unwrap();
     assert_eq!(page.items.len(), 50);
-    assert!(!exact);
+    assert!(exact);
+    assert_eq!(page.total, 8000);
     assert!(page.next.is_some());
-    assert_eq!(queries.scans(), 1);
+    assert_eq!(
+        queries
+            .statements()
+            .iter()
+            .filter(|s| s.contains("filtered AS"))
+            .count(),
+        2
+    );
     let records = queries.statements();
     let register_rows = records
         .iter()
@@ -74,7 +83,23 @@ async fn in_window_hydration_never_exceeds_the_keyset_page(pool: PgPool) {
         fetched < all_rules,
         "decode only the rule versions that overlap the source event dates: {fetched}/{all_rules}"
     );
-    let logged = records.iter().find(|s| s.contains("filtered AS")).unwrap();
+    let logged = records
+        .iter()
+        .find(|s| s.contains("WHERE inbox_id = ANY("))
+        .unwrap();
+    let hydrated: usize = logged
+        .split("rows_returned=")
+        .nth(1)
+        .unwrap()
+        .split_whitespace()
+        .next()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert_eq!(
+        hydrated, 51,
+        "hydrate only the page and its continuation sentinel"
+    );
     let sql: String = serde_json::from_str(
         logged
             .split("db.statement=")
@@ -106,7 +131,12 @@ async fn in_window_hydration_never_exceeds_the_keyset_page(pool: PgPool) {
     }
     let plan: Value = q
         .bind(vec!["DISPATCHED_IN", "OUTSOURCED_ON_SITE", "FREELANCE"])
-        .bind(51_i64)
+        .bind(
+            page.items
+                .iter()
+                .map(|item| item.inbox_id())
+                .collect::<Vec<_>>(),
+        )
         .bind(None::<time::OffsetDateTime>)
         .fetch_one(&mut *conn)
         .await

@@ -32967,6 +32967,9 @@ components:
       - lane
       - days_remaining
       properties:
+        fold_key:
+          type: string
+          description: Server identity of kind, subject and source case (insurance group when present); never derived from display text.
         id:
           type: string
           description: '"{kind}:{uuid}" — source-namespaced so ids never collide.'
@@ -33114,6 +33117,12 @@ components:
               type: object
               required: [insurer, kind, effective_date]
               properties:
+                employee_id:
+                  type: string
+                case_id:
+                  type: string
+                group_id:
+                  type: [string, 'null']
                 insurer:
                   type: string
                 kind:
@@ -34333,9 +34342,9 @@ components:
       properties: { employee_id: { $ref: '#/components/schemas/Uuid' }, employee_number: { type: string, nullable: true }, name: { type: string }, unit_name: { type: string, nullable: true }, own: { type: boolean }, cells: { type: array, items: { $ref: '#/components/schemas/AttendanceGridCell' } }, totals: { $ref: '#/components/schemas/AttendanceGridTotals' }, month_state: { $ref: '#/components/schemas/AttendanceMonthState' } }
     AttendanceGridTotals:
       type: object
-      description: 인정 합계 · 연장 가산 (승인으로 인정) · 미인정 · 미근로 · 미해결 ▲ / ◆
+      description: 인정 합계 · 소정 밖 근로 · 미승인 초과 (인정 포함) · 미근로 · 미해결 ▲ / ◆
       required: [recognised, approved, unrecognised, not_worked, blocking, decision]
-      properties: { recognised: { type: integer }, approved: { type: integer }, unrecognised: { type: integer }, not_worked: { type: integer }, blocking: { type: integer }, decision: { type: integer } }
+      properties: { recognised: { type: integer }, approved: { type: integer }, unrecognised: { type: integer }, not_worked: { type: integer }, blocking: { type: integer }, decision: { type: integer }, outside_scheduled: { type: integer } }
     AttendanceHistoryRow:
       type: object
       required: [date, entry]
@@ -34641,7 +34650,7 @@ components:
     AttendanceMark:
       type: string
       enum: [NO_RECORD, MISSING_OUT, NO_SCHEDULE, UNAPPROVED_EXCESS, WORK_ON_REST_DAY, LATE, EARLY_OUT, AWAY, ABSENT]
-      description: 'blocking (▲): NO_RECORD, MISSING_OUT, NO_SCHEDULE · decision (◆): UNAPPROVED_EXCESS, WORK_ON_REST_DAY · reference (●): the rest'
+      description: 'blocking (▲): NO_RECORD, MISSING_OUT, NO_SCHEDULE · decision (◆): UNAPPROVED_EXCESS, WORK_ON_REST_DAY · reference (●): the rest; approval never gates recognition, every early/late excess needs disposition before close'
     AttendanceMarkCounts:
       type: object
       required: [blocking, decision, info]
@@ -34701,9 +34710,9 @@ components:
       properties: { reason: { type: string, minLength: 1, maxLength: 500 } }
     AttendanceRecognition:
       type: object
-      description: 'minutes; 기록 (recorded) and 인정 (recognised) are never the same number by accident: 인정 = 기록 ∩ (소정 ∪ 승인)'
+      description: 'Minutes; recognised = recorded − scheduled breaks − confirmed not_work. Approval classifies work and never gates pay.'
       required: [recorded, recognised, regular, approved, early_unrecognised, late_unrecognised, late_in, early_out, away, approval_unused]
-      properties: { recorded: { type: integer }, recognised: { type: integer }, regular: { type: integer }, approved: { type: integer }, early_unrecognised: { type: integer }, late_unrecognised: { type: integer }, late_in: { type: integer }, early_out: { type: integer }, away: { type: integer }, approval_unused: { type: integer } }
+      properties: { recorded: { type: integer }, recognised: { type: integer }, regular: { type: integer }, approved: { type: integer, deprecated: true, description: N-1 alias for prior_approved + post_approved }, early_unrecognised: { type: integer, deprecated: true, description: Paid early open excess }, late_unrecognised: { type: integer, deprecated: true, description: Paid late open excess }, late_in: { type: integer }, early_out: { type: integer }, away: { type: integer }, approval_unused: { type: integer }, outside_scheduled: { type: integer }, prior_approved: { type: integer }, post_approved: { type: integer }, excess_open: { type: integer }, not_work: { type: integer }, over_cap: { type: boolean } }
     AttendanceRecordKind:
       type: string
       enum:

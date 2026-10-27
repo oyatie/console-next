@@ -73,7 +73,10 @@ async fn unconfirmed_long_span_refuses_the_whole_batch_confirmed_span_is_recorde
         .find(|d| d.date == TUE)
         .unwrap()
         .recognition;
-    assert_eq!((rec.recorded, rec.recognised, rec.approved), (1080, 480, 0));
+    assert_eq!(
+        (rec.recorded, rec.recognised, rec.approved),
+        (1080, 1020, 0)
+    );
     let snap: Value = sqlx::query_scalar(
         "SELECT after_snap FROM audit_events WHERE org_id=$1 AND action='attendance.entries.save'",
     )

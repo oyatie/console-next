@@ -90,7 +90,7 @@ function DayPanel({ day }: { day: Day }) {
           { key: "plan", label: t("attendanceRecords.day.plan"), value: day.plan.shift ? shiftText(day.plan.shift) : t(`attendance.dayKind.${day.plan.kind}`) },
           { key: "recorded", label: t("attendanceRecords.day.recorded"), value: day.entry ? entryText(day.entry.kind, day.entry.segments) : t("attendanceRecords.day.none") },
           { key: "recognised", label: t("attendanceRecords.day.recognised"), value: t("attendanceRecords.day.recognisedValue", { recognised: duration(r.recognised), regular: duration(r.regular) }) },
-          { key: "outside", label: t("attendanceRecords.day.outside"), value: t("attendanceRecords.day.outsideValue", { early: duration(r.early_unrecognised), late: duration(r.late_unrecognised) }) },
+          { key: "outside", label: t("attendanceRecords.day.outside"), value: t("attendanceRecords.day.outsideValue", { outside: duration(r.outside_scheduled ?? r.approved + r.early_unrecognised + r.late_unrecognised), open: duration(r.excess_open ?? r.early_unrecognised + r.late_unrecognised) }) },
           { key: "notWorked", label: t("attendanceRecords.day.notWorked"), value: t("attendanceRecords.day.notWorkedValue", { late: r.late_in, early: r.early_out, away: r.away }) },
         ]}
       />

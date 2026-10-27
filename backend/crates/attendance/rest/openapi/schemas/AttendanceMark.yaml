@@ -1,3 +1,3 @@
 type: string
 enum: [NO_RECORD, MISSING_OUT, NO_SCHEDULE, UNAPPROVED_EXCESS, WORK_ON_REST_DAY, LATE, EARLY_OUT, AWAY, ABSENT]
-description: 'blocking (▲): NO_RECORD, MISSING_OUT, NO_SCHEDULE · decision (◆): UNAPPROVED_EXCESS, WORK_ON_REST_DAY · reference (●): the rest'
+description: 'blocking (▲): NO_RECORD, MISSING_OUT, NO_SCHEDULE · decision (◆): UNAPPROVED_EXCESS, WORK_ON_REST_DAY · reference (●): the rest; approval never gates recognition, every early/late excess needs disposition before close'

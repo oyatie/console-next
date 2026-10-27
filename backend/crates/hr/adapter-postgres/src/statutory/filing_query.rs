@@ -55,13 +55,38 @@ const WHERE: &str = " WHERE l.state IN ('APPLIED','SCHEDULED') AND x.voided_at I
    AND NOT EXISTS (SELECT 1 FROM employee_lifecycle_events v \
      WHERE v.org_id = l.org_id AND v.voids_event_id = COALESCE(l.source_event_id,l.id) AND v.state = 'APPLIED')";
 
+// Group identical legal inputs before decoding; retain each task's own server identity.
+const ASSESSMENT_FIELDS: &str = "kind,insurer,effective_date,source_event_id,acquired_on,ended_on,requested_acquisition_on,applicability_facts,birth_date,employment_type,nationality,action,ei_action,recording_held";
+const ACQUIRED_ON: &str = "(SELECT max(h.effective_date::date)::text FROM employee_lifecycle_events h WHERE h.org_id=l.org_id AND h.employee_id=l.employee_id AND h.event_type IN ('ONBOARD','REHIRE','GROUP_TRANSFER') AND h.state='APPLIED' AND h.effective_date::date<=l.placement_date::date AND (l.source_type<>'GROUP_TRANSFER' OR l.kind NOT IN ('LOSE','SEPARATION_CERTIFICATE') OR h.effective_date::date<l.placement_date::date) AND NOT EXISTS(SELECT 1 FROM employee_lifecycle_events v WHERE v.org_id=h.org_id AND v.voids_event_id=h.id AND v.state='APPLIED'))";
+const ENDED_ON: &str = "(SELECT min(CASE WHEN h.event_type='GROUP_TRANSFER' THEN h.effective_date::date-1 ELSE h.effective_date::date END)::text FROM employee_lifecycle_events h WHERE h.org_id=l.org_id AND h.employee_id=l.employee_id AND h.event_type IN ('TERMINATE','OFFBOARD','GROUP_TRANSFER') AND h.state IN ('APPLIED','SCHEDULED') AND h.effective_date::date>l.source_on AND NOT EXISTS(SELECT 1 FROM employee_lifecycle_events v WHERE v.org_id=h.org_id AND v.voids_event_id=h.id AND v.state='APPLIED'))";
+const CASE_ID: &str = "(SELECT i.case_id FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id WHERE i.org_id=l.org_id AND c.employee_id=l.employee_id AND i.filing_obligation_id=f.id AND c.state<>'CANCELLED' ORDER BY c.opened_at DESC LIMIT 1)";
+const WORKPLACE_NAME: &str = "(SELECT w.name FROM workplace_revisions w WHERE w.org_id=l.org_id AND w.workplace_id=ea.workplace_id AND w.effective_from<=l.placement_date::date ORDER BY w.effective_from DESC,w.version DESC LIMIT 1)";
+const FILING_FACTS: &str = "(SELECT r.applicability_facts FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=l.insurer AND r.filing_kind=l.kind AND r.applicability_facts IS NOT NULL ORDER BY r.version DESC LIMIT 1)";
+const EI_ACTION: &str = "(SELECT r.action FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer='EI' AND r.filing_kind=l.kind ORDER BY r.version DESC LIMIT 1)";
+const REQUESTED_ON: &str = "(SELECT min(r.anchor_on)::text FROM insurance_filing_requests r WHERE r.org_id=l.org_id AND r.source_event_id=l.id AND r.filing_kind='ACQUIRE_REQUESTED')";
+
 pub(super) async fn rows(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     query: &FilingQuery,
     register: &console_compliance_domain::statutory::StatutoryRegister,
 ) -> Result<Vec<PgRow>, HrError> {
-    let bounds = super::filing_boundary::load(tx, *principal.org_id.as_uuid()).await?;
+    query_rows(tx, principal, query, register, false, None, None).await
+}
+
+pub(super) async fn query_rows(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: &Principal,
+    query: &FilingQuery,
+    register: &console_compliance_domain::statutory::StatutoryRegister,
+    lightweight: bool,
+    selected: Option<Vec<String>>,
+    bounds: Option<serde_json::Value>,
+) -> Result<Vec<PgRow>, HrError> {
+    let bounds = match bounds {
+        Some(bounds) => bounds,
+        None => super::filing_boundary::load(tx, *principal.org_id.as_uuid()).await?,
+    };
     let reach = hr_reach_in(principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
     let placement_filter = query.workplace_id.is_some()
         || query.legal_entity_id.is_some()
@@ -124,7 +149,7 @@ pub(super) async fn rows(
     // These candidates are absent under the shared assessment, including its stored-facts fallback.
     q.push(" AND (kind.k <> 'AGE60' OR (agency.insurer = 'NPS' \
       AND COALESCE(x.birth_date::text, assessment.applicability_facts->>'birth_date') IS NOT NULL))");
-    if query.inbox_scan_limit.is_some() && query.kind.as_deref() != Some("AGE60") {
+    if (query.inbox_scan_limit.is_some() || lightweight) && query.kind.as_deref() != Some("AGE60") {
         // Birthday tasks use their projected birthday key in the companion read.
         q.push(" AND kind.k <> 'AGE60'");
     }
@@ -166,42 +191,95 @@ pub(super) async fn rows(
             q.push(" AND ").push(column).push(" = ").push_bind(value);
         }
     }
-    super::filing_age::candidates(&mut q, query, register)?;
+    let needs_age = query.kind.as_deref() == Some("AGE60")
+        || (!lightweight
+            && selected.as_ref().is_none_or(|ids| {
+                ids.iter()
+                    .any(|id| id.starts_with("insurance_filing_AGE60_"))
+            }));
+    let candidate_query = FilingQuery {
+        inbox_scan_limit: if needs_age {
+            query.inbox_scan_limit
+        } else {
+            Some(0)
+        },
+        ..query.clone()
+    };
+    super::filing_age::candidates(&mut q, &candidate_query, register)?;
     q.push("), paged AS MATERIALIZED (SELECT * FROM candidates");
-    let order = push_page_order(&mut q, query);
+    let order = if lightweight {
+        ""
+    } else if let Some(selected) = selected {
+        q.push(" WHERE inbox_id = ANY(")
+            .push_bind(selected)
+            .push(")");
+        ""
+    } else {
+        push_page_order(&mut q, query)
+    };
     // Resolve each selected workplace once; unplaced legacy rows keep the employee fallback.
     q.push("), hydrated AS MATERIALIZED (SELECT l.*,");
     if !placement_filter {
         q.push("ea.legal_entity_id,ea.workplace_id,");
     }
-    q.push("l.placement_date::date AS placement_on,f.id AS filing_obligation_id,personal.nationality, \
-      (SELECT r.applicability_facts FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=l.insurer AND r.filing_kind=l.kind AND r.applicability_facts IS NOT NULL ORDER BY r.version DESC LIMIT 1) AS applicability_facts, \
-      (SELECT i.case_id FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id WHERE i.org_id=l.org_id AND c.employee_id=l.employee_id AND i.filing_obligation_id=f.id AND c.state<>'CANCELLED' ORDER BY c.opened_at DESC LIMIT 1) AS lifecycle_case_id, \
-      (SELECT w.name FROM workplace_revisions w WHERE w.org_id=l.org_id AND w.workplace_id=ea.workplace_id AND w.effective_from<=l.placement_date::date ORDER BY w.effective_from DESC,w.version DESC LIMIT 1) AS workplace_name, \
-      COALESCE(receipt.version,0) AS version,CASE WHEN receipt.action='COMPLETE' THEN receipt.completed_on::text END AS completed_on, \
-      receipt.receipt_number,receipt.loss_code,receipt.detail,receipt.action,receipt.not_applicable_reason,receipt.total_remuneration_won, \
-      (SELECT r.action FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer='EI' AND r.filing_kind=l.kind ORDER BY r.version DESC LIMIT 1) AS ei_action, \
-      (SELECT min(r.anchor_on)::text FROM insurance_filing_requests r WHERE r.org_id=l.org_id AND r.source_event_id=l.id AND r.filing_kind='ACQUIRE_REQUESTED') AS requested_acquisition_on, \
-      (SELECT max(h.effective_date::date)::text FROM employee_lifecycle_events h WHERE h.org_id=l.org_id AND h.employee_id=l.employee_id AND h.event_type IN ('ONBOARD','REHIRE','GROUP_TRANSFER') AND h.state='APPLIED' AND h.effective_date::date<=l.placement_date::date AND (l.source_type<>'GROUP_TRANSFER' OR l.kind NOT IN ('LOSE','SEPARATION_CERTIFICATE') OR h.effective_date::date<l.placement_date::date) AND NOT EXISTS(SELECT 1 FROM employee_lifecycle_events v WHERE v.org_id=h.org_id AND v.voids_event_id=h.id AND v.state='APPLIED')) AS acquired_on, \
-      (SELECT min(CASE WHEN h.event_type='GROUP_TRANSFER' THEN h.effective_date::date-1 ELSE h.effective_date::date END)::text FROM employee_lifecycle_events h WHERE h.org_id=l.org_id AND h.employee_id=l.employee_id AND h.event_type IN ('TERMINATE','OFFBOARD','GROUP_TRANSFER') AND h.state IN ('APPLIED','SCHEDULED') AND h.effective_date::date>l.source_on AND NOT EXISTS(SELECT 1 FROM employee_lifecycle_events v WHERE v.org_id=h.org_id AND v.voids_event_id=h.id AND v.state='APPLIED')) AS ended_on \
-      FROM paged l CROSS JOIN LATERAL (SELECT l.kind AS k) kind CROSS JOIN LATERAL (SELECT l.insurer) agency",
-    );
+    q.push("l.placement_date::date AS placement_on,personal.nationality, ")
+        .push(FILING_FACTS)
+        .push(" AS applicability_facts,receipt.action,")
+        .push(EI_ACTION)
+        .push(" AS ei_action,")
+        .push(REQUESTED_ON)
+        .push(" AS requested_acquisition_on,");
+    if lightweight {
+        // Acquisition owns its anchor; ended_on only affects birthday assessments.
+        q.push("CASE WHEN l.kind='ACQUIRE' THEN NULL::text ELSE ")
+            .push(ACQUIRED_ON)
+            .push(" END AS acquired_on,");
+        q.push(if query.kind.as_deref() == Some("AGE60") {
+            ENDED_ON
+        } else {
+            "NULL::text"
+        })
+        .push(" AS ended_on");
+    } else {
+        q.push(ACQUIRED_ON).push(" AS acquired_on,").push(ENDED_ON).push(" AS ended_on,")
+            .push("f.id AS filing_obligation_id,").push(CASE_ID).push(" AS lifecycle_case_id,")
+            .push(WORKPLACE_NAME).push(" AS workplace_name,")
+            .push("COALESCE(receipt.version,0) AS version,CASE WHEN receipt.action='COMPLETE' THEN receipt.completed_on::text END AS completed_on, \
+      receipt.receipt_number,receipt.loss_code,receipt.detail,receipt.not_applicable_reason,receipt.total_remuneration_won");
+    }
+    q.push(" FROM paged l CROSS JOIN LATERAL (SELECT l.kind AS k) kind CROSS JOIN LATERAL (SELECT l.insurer) agency");
     if placement_filter {
         q.push(" CROSS JOIN LATERAL (SELECT l.legal_entity_id,l.workplace_id) ea ");
     } else {
         q.push(PLACEMENT);
     }
-    q.push(FILING).push(
+    if !lightweight {
+        q.push(FILING);
+    }
+    q.push(
         " LEFT JOIN employee_personal_facts personal ON personal.org_id=l.org_id AND personal.employee_id=l.employee_id LEFT JOIN LATERAL (SELECT r.* FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=l.insurer AND r.filing_kind=l.kind ORDER BY r.version DESC LIMIT 1) receipt ON true \
       ), page_workplaces AS MATERIALIZED (SELECT DISTINCT workplace_id FROM hydrated WHERE workplace_id IS NOT NULL), \
       page_zones AS MATERIALIZED (SELECT w.id,lifecycle_time_zone(w.org_id,NULL,current_date,w.id) AS time_zone \
         FROM page_workplaces p JOIN workplaces w ON w.id=p.workplace_id AND w.org_id=(SELECT org_id FROM boundary) WHERE w.legal_entity_id IS NOT NULL), \
       zoned AS MATERIALIZED (SELECT paged.*,COALESCE(z.time_zone,lifecycle_time_zone((SELECT org_id FROM boundary),paged.employee_id,paged.placement_on,paged.workplace_id)) AS time_zone \
         FROM hydrated paged LEFT JOIN page_zones z ON z.id=paged.workplace_id) \
-      SELECT zoned.*, (COALESCE(")
-        .push_bind(query.inbox_as_of)
-        .push(",now()) AT TIME ZONE time_zone)::date AS today, ((SELECT go_live_at FROM boundary) AT TIME ZONE time_zone)::date AS go_live_on FROM zoned")
-        .push(order);
+      ");
+    q.push("SELECT ");
+    if lightweight {
+        q.push(ASSESSMENT_FIELDS)
+            .push(", array_agg(inbox_id) AS inbox_ids, array_agg(created_at) AS inbox_created, ");
+    } else {
+        q.push("zoned.*, ");
+    }
+    q.push("(COALESCE(").push_bind(query.inbox_as_of)
+        .push(",now()) AT TIME ZONE time_zone)::date AS today, ((SELECT go_live_at FROM boundary) AT TIME ZONE time_zone)::date AS go_live_on FROM zoned");
+    if lightweight {
+        q.push(" GROUP BY ")
+            .push(ASSESSMENT_FIELDS)
+            .push(", today, go_live_on");
+    } else {
+        q.push(order);
+    }
     Ok(q.build().fetch_all(tx.as_mut()).await?)
 }
 

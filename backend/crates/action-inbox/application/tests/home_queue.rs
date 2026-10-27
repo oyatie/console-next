@@ -116,6 +116,7 @@ fn every_statutory_filing_kind_has_a_round_trip_continuation() {
     ] {
         let position = ActionInboxPosition {
             created_at: now,
+            due: Some(now),
             id: format!("insurance_filing_{kind}_NPS:00000000-0000-0000-0000-000000000001"),
         };
         let cursor = parse_cursor(&encode_cursor(now, &position), now)
@@ -147,17 +148,8 @@ fn server_views_cross_nonmatching_pages_and_keep_the_admission_boundary() {
                     .cloned()
                     .collect();
                 let total = admitted.len();
-                let mut items: Vec<_> = admitted
-                    .into_iter()
-                    .filter(|i| {
-                        query
-                            .after
-                            .as_ref()
-                            .is_none_or(|p| (i.created_at, &i.id) > (p.created_at, &p.id))
-                    })
-                    .collect();
-                let has_more = items.len() > query.limit;
-                items.truncate(query.limit);
+                let (items, has_more) =
+                    console_action_inbox_application::page_source_items(admitted, &query);
                 Ok(ActionInboxSourcePage {
                     items,
                     total,
@@ -233,5 +225,65 @@ fn ready<T>(future: impl std::future::Future<Output = T>) -> T {
     match future.as_mut().poll(&mut context) {
         std::task::Poll::Ready(value) => value,
         std::task::Poll::Pending => panic!("fake source should be ready"),
+    }
+}
+
+#[test]
+fn deadline_ties_use_age_before_id_in_sources_and_merged_pages() {
+    use console_action_inbox_application::{
+        ActionInboxSourceQuery, InboxFilter, page_source_items,
+    };
+    let now = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
+    for due in [None, Some(now)] {
+        let items = [3, 2, 1]
+            .into_iter()
+            .enumerate()
+            .map(|(index, id)| ActionInboxSourceItem {
+                context: None,
+                id: format!("work:00000000-0000-0000-0000-{id:012}"),
+                kind: "work".into(),
+                ref_code: String::new(),
+                title: String::new(),
+                site: None,
+                who: None,
+                due,
+                submitted: None,
+                links: vec![],
+                created_at: now - Duration::seconds(3 - index as i64),
+            })
+            .collect::<Vec<_>>();
+        let expected = items.iter().map(|item| &item.id).collect::<Vec<_>>();
+        let (source, _) = page_source_items(
+            items.clone(),
+            &ActionInboxSourceQuery {
+                filter: InboxFilter::All,
+                require_exact_total: false,
+                now,
+                as_of: now,
+                after: None,
+                limit: 10,
+            },
+        );
+        assert_eq!(
+            source.iter().map(|item| &item.id).collect::<Vec<_>>(),
+            expected
+        );
+        let page = merge_pages(
+            vec![ActionInboxSourcePage {
+                items: items.clone(),
+                total: 3,
+                total_is_exact: true,
+                has_more: false,
+            }],
+            now,
+            now,
+            None,
+            10,
+            7,
+        );
+        assert_eq!(
+            page.items.iter().map(|item| &item.id).collect::<Vec<_>>(),
+            expected
+        );
     }
 }

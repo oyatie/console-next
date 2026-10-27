@@ -33,6 +33,7 @@ struct Change {
 macro_rules! eligible {
     () => {
         "WITH classified AS (SELECT r.id, r.code, r.target_label, r.effective_date, r.created_at, r.reason, \
+         ((r.effective_date + 1)::timestamp AT TIME ZONE 'Asia/Seoul') - interval '1 microsecond' AS inbox_due, \
          (SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = r.org_id AND u.id = r.drafted_by) AS drafted_by_name, \
          (SELECT e.command_id FROM audit_events e WHERE e.org_id = r.org_id \
           AND e.target_type = 'org_change_request' AND e.target_id = r.id::text \
@@ -121,9 +122,9 @@ pub(crate) async fn page(
                     .await?;
             let rows = sqlx::query_as::<_, Change>(concat!(
                 eligible!(),
-                "SELECT * FROM eligible WHERE ($10::timestamptz IS NULL \
-                 OR (created_at, ('org_change:' || id::text)) > ($10, $11)) \
-                 ORDER BY created_at, id LIMIT $12"
+                "SELECT * FROM eligible WHERE ($11::text IS NULL \
+                 OR inbox_due > $10 OR (inbox_due = $10 AND (created_at, ('org_change:' || id::text)) > ($12, $11))) \
+                 ORDER BY inbox_due ASC NULLS LAST, created_at, id LIMIT $13"
             ))
             .bind(org.as_uuid())
             .bind(principal.user_id.as_uuid())
@@ -134,8 +135,9 @@ pub(crate) async fn page(
             .bind(apply)
             .bind(apply_others)
             .bind(filter)
-            .bind(query.after.as_ref().map(|p| p.created_at))
+            .bind(query.after.as_ref().and_then(|p| p.due))
             .bind(query.after.as_ref().map(|p| p.id.clone()))
+            .bind(query.after.as_ref().map(|p| p.created_at))
             .bind(i64::try_from(query.limit.saturating_add(1)).unwrap_or(i64::MAX))
             .fetch_all(tx.as_mut())
             .await?;
@@ -158,7 +160,7 @@ pub(crate) async fn page(
                 site: None,
                 who: row.waiting_role,
                 due: Some(
-                    PrimitiveDateTime::new(row.effective_date, Time::MAX)
+                    PrimitiveDateTime::new(row.effective_date, Time::MAX - time::Duration::nanoseconds(999))
                         .assume_offset(offset!(+9)),
                 ),
                 submitted: None,

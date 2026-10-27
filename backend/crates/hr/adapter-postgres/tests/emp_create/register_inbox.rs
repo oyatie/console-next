@@ -61,16 +61,31 @@ async fn followups_share_directory_scope_and_page_past_other_sources(pool: PgPoo
         assert!(page.items.is_empty());
         assert_eq!(page.total, 0, "a denied scope exposes no count");
     }
-    let page =
-        f.hr.register_review_inbox_page(
-            &f.principal,
-            as_of,
-            Some((outside[0].created_at, format!("support:{}", outside[0].id))),
-            1,
-        )
-        .await
-        .unwrap();
-    assert_eq!(page.total, 3);
-    assert_eq!(page.items[0].0, outside[1].id);
-    assert!(!page.has_more);
+    let ids = [inside.id, outside[0].id, outside[1].id];
+    let middle_created: OffsetDateTime =
+        sqlx::query_scalar("SELECT created_at FROM employees WHERE id=$1")
+            .bind(ids[1])
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    for (cursor, expected, more) in [
+        (
+            (Some(as_of), as_of, format!("support:{}", outside[0].id)),
+            ids[0],
+            true,
+        ),
+        (
+            (None, middle_created, format!("hr_register:{}", ids[1])),
+            ids[2],
+            false,
+        ),
+    ] {
+        let page =
+            f.hr.register_review_inbox_page(&f.principal, as_of, Some(cursor), 1)
+                .await
+                .unwrap();
+        assert_eq!(page.total, 3);
+        assert_eq!(page.items[0].0, expected);
+        assert_eq!(page.has_more, more);
+    }
 }

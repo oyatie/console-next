@@ -11,7 +11,7 @@ type Item = components["schemas"]["ActionInboxItem"];
 type Action = (item: Item) => ReactNode;
 const state = vi.hoisted(() => ({
   settled: false,
-  inbox: { data: undefined as { pages: { setup?: Checklist }[] } | undefined, isPending: true, isError: false, isFetching: true, isFetchedAfterMount: false },
+  inbox: { data: undefined as { pages: { setup?: Checklist; items: Item[] }[] } | undefined, isPending: true, isError: false, isFetching: true, isFetchedAfterMount: false },
   entities: { isSuccess: false, isFetching: true, isError: false },
   units: { isSuccess: false, isFetching: true, isError: false },
   options: undefined as ReturnType<typeof cursorPages> | undefined,
@@ -28,17 +28,17 @@ vi.mock("@tanstack/react-query", async (original) => ({
     return path === "/api/v1/org-units" ? state.units : state.entities;
   },
 }));
-vi.mock("../lib/live/hold", () => ({ useLiveHold: (pending: boolean) => state.hold(pending) }));
+vi.mock("../lib/live/hold", () => ({ useLiveHold: (on: boolean, notice: boolean) => state.hold(on, notice) }));
 vi.mock("../features/home/Home", () => ({ Home: ({ setupPending, setup, action }: { setupPending?: boolean; setup: (c: Checklist) => ReactNode; action?: Action }) => {
   state.action = action;
   return createElement("div", { "data-pending": String(setupPending) }, !setupPending && setup({ total: 2 } as Checklist));
 } }));
 vi.mock("../features/onboarding/ui/setup-home", () => ({ SetupHome: ({ c }: { c: Checklist }) => createElement("div", { "data-testid": "setup" }, c.total) }));
 vi.mock("../features/org/ui/inbox-command", () => ({ InboxCommand: ({ id, command }: { id: string; command: string }) => createElement("div", { "data-command": command, "data-record": id }) }));
-vi.mock("../features/onboarding/ui/add-passkey", () => ({ AddPasskey: ({ count }: { count: number }) => createElement("div", { "data-passkeys": count }) }));
+vi.mock("../features/onboarding/ui/add-passkey", () => ({ AddPasskey: ({ count, primary }: { count: number; primary?: boolean }) => createElement("div", { "data-passkeys": count, className: primary ? "btn btn--primary" : "btn" }) }));
 const checklist = { total: 2 } as Checklist;
 const render = () => { state.reads = []; return renderToStaticMarkup(<HomeScreen />); };
-const landed = (setup?: Checklist) => { state.inbox = { data: { pages: [{ setup }] }, isPending: false, isError: false, isFetching: false, isFetchedAfterMount: true }; };
+const landed = (setup?: Checklist) => { state.inbox = { data: { pages: [{ setup, items: [] }] }, isPending: false, isError: false, isFetching: false, isFetchedAfterMount: true }; };
 beforeEach(() => {
   vi.clearAllMocks();
   state.settled = false; state.options = undefined; state.action = undefined;
@@ -49,7 +49,7 @@ beforeEach(() => {
 
 test("the first inbox and its setup references hold Home until its first complete paint", () => {
   expect(render()).toContain('data-pending="true"');
-  expect(state.hold).toHaveBeenLastCalledWith(true);
+  expect(state.hold).toHaveBeenLastCalledWith(false, true);
   expect(state.options && readIdentity(state.options)).toBe(readIdentity(cursorPages("/api/v1/me/action-inbox", { filter: "turn" })));
   expect(state.options).toMatchObject({ refetchOnMount: "always" });
   expect(state.reads.every((read) => !read.enabled)).toBe(true);
@@ -63,7 +63,7 @@ test("the first inbox and its setup references hold Home until its first complet
   const complete = render();
   expect(complete).toContain('data-pending="false"');
   expect(complete).toContain('data-testid="setup"');
-  expect(state.hold).toHaveBeenLastCalledWith(false);
+  expect(state.hold).toHaveBeenLastCalledWith(false, true);
 });
 
 test("an inbox without setup enables no setup references or live hold", () => {
@@ -71,7 +71,7 @@ test("an inbox without setup enables no setup references or live hold", () => {
   expect(render()).toContain('data-pending="false"');
   expect(state.reads).toHaveLength(2);
   expect(state.reads.every((read) => !read.enabled)).toBe(true);
-  expect(state.hold).toHaveBeenLastCalledWith(false);
+  expect(state.hold).toHaveBeenLastCalledWith(false, true);
 });
 
 test("a cached inbox mount refresh cannot settle setup's arrival before its current checklist", () => {
@@ -88,14 +88,14 @@ test("after the first paint, background inbox and reference refreshes keep Home 
   render();
   state.inbox.isFetching = true; state.entities.isFetching = true; state.units.isFetching = true;
   expect(render()).toContain('data-pending="false"');
-  expect(state.hold).toHaveBeenLastCalledWith(false);
+  expect(state.hold).toHaveBeenLastCalledWith(false, true);
 });
 
 test.each(["inbox", "entities", "units"] as const)("a first-read %s error releases the hold for the screen's error state", (source) => {
   landed(checklist);
   state[source].isError = true;
   expect(render()).toContain('data-pending="false"');
-  expect(state.hold).toHaveBeenLastCalledWith(false);
+  expect(state.hold).toHaveBeenLastCalledWith(false, true);
 });
 
 const item = (extra: Partial<Item> = {}): Item => ({ id: "inbox-item", kind: "org_change_approve", lane: "turn", title: "조직 변경", ref: "", urg: "now", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "org_change", id: "record" }], ...extra });
@@ -112,6 +112,7 @@ test("Home's account security verb registers the second passkey inline", () => {
   landed(); render();
   expect(state.action).toBeTypeOf("function");
   expect(renderToStaticMarkup(state.action!(item({ kind: "account_security", links: [{ kind: "account", id: "me" }] })))).toContain('data-passkeys="1"');
+  expect(renderToStaticMarkup(state.action!(item({ kind: "account_security", links: [{ kind: "account", id: "me" }] })))).not.toContain("btn--primary");
 });
 
 test("an inline command needs both the server verb and its registered record link", () => {
@@ -119,4 +120,11 @@ test("an inline command needs both the server verb and its registered record lin
   expect(state.action).toBeTypeOf("function");
   expect(renderToStaticMarkup(state.action!(item({ context: { command: "approve" }, links: [{ kind: "employee", id: "record" }] })))).toBe("");
   expect(renderToStaticMarkup(state.action!(item({ kind: "org_change_draft" })))).toBe("");
+});
+
+test("only painted queue rows need a live hold", () => {
+  landed();
+  state.inbox.data!.pages[0]!.items = [item()];
+  render();
+  expect(state.hold).toHaveBeenLastCalledWith(true, true);
 });

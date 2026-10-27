@@ -65,7 +65,7 @@ pub async fn scheduled(owner: PgPool) -> World {
 const TUE: time::Date = date!(2026 - 10 - 06);
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn a_stay_is_recorded_but_only_the_schedule_is_recognised(owner: PgPool) {
+async fn unapproved_early_and_late_work_is_paid_in_preview_and_reads(owner: PgPool) {
     let w = scheduled(owner).await;
     let preview = w
         .store
@@ -86,7 +86,7 @@ async fn a_stay_is_recorded_but_only_the_schedule_is_recognised(owner: PgPool) {
             after.recognition.early_unrecognised,
             after.recognition.late_unrecognised
         ),
-        (480, 8, 70)
+        (558, 8, 70)
     );
     assert_eq!(after.marks, vec![Mark::UnapprovedExcess]);
 
@@ -132,7 +132,7 @@ async fn a_stay_is_recorded_but_only_the_schedule_is_recognised(owner: PgPool) {
             row.totals.unrecognised,
             row.totals.decision
         ),
-        (480, 78, 1)
+        (558, 78, 1)
     );
     assert!(
         row.totals.blocking > 0,

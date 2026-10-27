@@ -18,7 +18,7 @@ test("J3 contract renewal from Home's queue, then the next one", { tag: "@hr" },
   await expect(admin.getByRole("region", { name: "재직·배치" }).getByText("D-20")).toBeVisible();
 
   await go(admin, "/");
-  const queue = admin.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "갑계약" }).filter({ has: admin.getByRole("link", { name: "계약 갱신", exact: true }) });
+  const queue = admin.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ hasText: "갑계약" }).filter({ has: admin.getByRole("link", { name: "계약 갱신", exact: true }) });
   await expect(queue).toContainText("갑계약");
   await expectAccessible(admin, "J3: Home renewal queue");
   await c.click(queue.getByRole("link", { name: "계약 갱신", exact: true }));

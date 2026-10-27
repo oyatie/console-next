@@ -58,6 +58,7 @@ mod tests {
         let rec = Recognition {
             late_in: 5,
             late_unrecognised: 10,
+            excess_open: 10,
             ..Default::default()
         };
         assert_eq!(
@@ -76,7 +77,7 @@ mod tests {
             .as_mut()
             .unwrap()
             .value = SettingValue::Int(5);
-        assert!(
+        assert_eq!(
             marks(
                 DayKind::Work,
                 false,
@@ -84,8 +85,8 @@ mod tests {
                 &rec,
                 true,
                 from_settings(&values).unwrap()
-            )
-            .is_empty()
+            ),
+            vec![Mark::UnapprovedExcess]
         );
         assert_eq!(
             (rec.late_in, rec.late_unrecognised),

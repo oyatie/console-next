@@ -22,7 +22,7 @@ test("the person-day dock offers exactly the three served tabs", () => {
   const html = render();
   expect(html.match(/role="tab"/g)).toHaveLength(3);
   for (const tab of ["day", "source", "history"] as const) expect(html).toContain(t(`attendanceRecords.day.tab.${tab}`));
-  for (const tab of ["week", "approval"] as const) expect(html).not.toContain(`>${t(`attendanceRecords.day.tab.${tab}`)}<`);
+  expect(html).not.toContain(`>${t("attendanceRecords.day.tab.week")}<`);
   expect(html).not.toContain("주 52시간 판정 · 승인 내역: 연동 예정");
   expect(html).toContain(t("attendanceRecords.day.rewrite"));
 });
@@ -45,4 +45,17 @@ test("a failed read keeps its retry state without tabs", () => {
   expect(html).toContain(t("common.loadFailed.title"));
   expect(html).toContain(t("common.retry"));
   expect(html).not.toContain('role="tab"');
+});
+
+
+test("paid excess is shown separately from regular time without using approval as the pay test", () => {
+  day.recognition = { ...day.recognition, recognised: 600, regular: 480,
+    outside_scheduled: 120, excess_open: 120, prior_approved: 0, post_approved: 0,
+    not_work: 0, over_cap: false, late_unrecognised: 999 };
+  day.marks = ["UNAPPROVED_EXCESS"];
+  const html = render();
+  expect(html).toContain("10:00 · 소정 안 8:00");
+  expect(html).toContain("2:00 · 미승인 초과 2:00");
+  expect(html).toContain("승인이 없어도 근로시간으로 인정 · 마감 전에 처리");
+  expect(html).not.toContain("인정하지 않은 체류");
 });

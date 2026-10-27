@@ -40,7 +40,7 @@ test("long records require per-cell confirmation, save evidence only, and confir
   await expect(admin.getByRole("status").filter({ hasText: "1칸을 저장했습니다" })).toBeVisible();
   const written = await history();
   expect(written.history).toHaveLength(1);
-  expect(written.days.find((d) => d.date === date)!.recognition).toMatchObject({ recorded: 1080, recognised: 480, approved: 0 });
+  expect(written.days.find((d) => d.date === date)!.recognition).toMatchObject({ recorded: 1080, recognised: 1020, approved: 0 });
 
   await cellOf(admin, "윤하준", date).click();
   await admin.keyboard.press("p");

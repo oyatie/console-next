@@ -40,7 +40,8 @@ export function onRecordChange(l: (c: RecordChange) => void) {
 let holds = 0;
 let noticeHolds = 0;
 let held = 0;
-let applyHeld: (() => void) | null = null;
+let applying = false;
+let applyHeld: (() => Promise<void>) | null = null;
 const heldListeners = new Set<() => void>();
 const emitHeld = () => heldListeners.forEach((l) => l());
 
@@ -53,11 +54,21 @@ export const liveHeld = {
   },
 };
 
+/** Whether the user-requested held refresh is replacing the dashboard's snapshot. */
+export const liveApplying = { get: () => applying, subscribe: liveHeld.subscribe };
+
 /** Re-reads every shown read a held change named (the notice's press, or the last sheet closing). */
-export function showHeld() {
+export async function showHeld() {
+  if (applying) return;
+  applying = true;
   held = 0;
   emitHeld();
-  applyHeld?.();
+  try {
+    await applyHeld?.();
+  } finally {
+    applying = false;
+    emitHeld();
+  }
 }
 
 /** Holds live re-reads until the returned release runs; `notice` (a dashboard) applies only on the notice's press. */
@@ -109,14 +120,11 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
         held += ms.length;
         emitHeld();
       }
-      if (holds) {
-        void invalidateWhere(qc, (path, params) => path === "/api/v1/me/action-inbox" && ms.some((x) => x(path, params)));
-      }
-      void invalidateWhere(qc, (path, params) => (!holds || path !== "/api/v1/me/action-inbox") && ms.some((x) => x(path, params)), !holds);
+      void invalidateWhere(qc, (path, params) => ms.some((x) => x(path, params)), !holds);
     }, INVALIDATE_DEBOUNCE_MS);
     pending.push(m);
   };
-  applyHeld = () => void qc.refetchQueries({ type: "active", predicate: (q) => q.state.isInvalidated });
+  applyHeld = () => qc.refetchQueries({ type: "active", predicate: (q) => q.state.isInvalidated });
 
   const onFrame = ({ event, data }: StreamFrame) => {
     if (event === "privacy_consent") {
@@ -133,7 +141,7 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
     // Imports keep running and recovery has other actors: a recent write cannot suppress their next step.
     if (d.type !== "import_run" && d.type !== "ops_recovery" && d.type !== "identifier_correction" && ownWrite(qc)) {
       const changed = matchChange(d.type, str(d.id));
-      queue((path, params) => path === "/api/v1/me/action-inbox" && changed(path, params));
+      void invalidateWhere(qc, (path, params) => path === "/api/v1/me/action-inbox" && changed(path, params), true);
       return;
     }
     const id = str(d.id);
@@ -186,6 +194,7 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
   stop = () => {
     applyHeld = null;
     held = 0;
+    applying = false;
     emitHeld();
     for (const type of NETWORK) globalThis.removeEventListener?.(type, kick);
     offSession();

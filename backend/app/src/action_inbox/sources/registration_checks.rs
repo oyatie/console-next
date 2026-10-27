@@ -15,7 +15,7 @@ pub(crate) async fn page(
     let rows =
         console_entity_rest::registration_check_inbox(&PgEntityStore::new(pool.clone()), principal)
             .await?;
-    let mut items: Vec<_> = rows
+    let items: Vec<_> = rows
         .into_iter()
         .filter(|row| row.created_at <= query.as_of)
         .map(|row| ActionInboxSourceItem {
@@ -37,14 +37,7 @@ pub(crate) async fn page(
         })
         .collect();
     let total = items.len();
-    if let Some(after) = query.after {
-        items.retain(|row| {
-            row.created_at > after.created_at
-                || row.created_at == after.created_at && row.id > after.id
-        });
-    }
-    let has_more = items.len() > query.limit;
-    items.truncate(query.limit);
+    let (items, has_more) = console_action_inbox_application::page_source_items(items, &query);
     Ok(ActionInboxSourcePage {
         items,
         total,
