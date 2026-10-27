@@ -32,6 +32,7 @@ async fn birthday_hydration_is_bounded_and_paging_preserves_panel_membership(poo
                     ..Default::default()
                 },
                 world::register_rules(&pool).await,
+                None,
             )
             .with_subscriber(queries.clone())
             .await
@@ -88,11 +89,11 @@ async fn birthday_hydration_is_bounded_and_paging_preserves_panel_membership(poo
                     kind: Some("AGE60".into()),
                     state: Some("PENDING".into()),
                     inbox_as_of: Some(time::OffsetDateTime::now_utc()),
-                    inbox_after: after,
                     limit: Some(2),
                     ..Default::default()
                 },
                 register.clone(),
+                after.clone(),
             )
             .await
             .unwrap();
@@ -106,7 +107,7 @@ async fn birthday_hydration_is_bounded_and_paging_preserves_panel_membership(poo
             break;
         }
         let last = page.items.last().expect("a continuation must advance");
-        after = Some((last.created_at, last.inbox_id()));
+        after = Some(world::inbox_position(last));
     }
     assert_eq!(seen, expected);
     calendar_keys(&pool).await;
@@ -131,6 +132,7 @@ async fn many_due_birthdays_do_not_add_a_statement_per_task(pool: PgPool) {
                     ..Default::default()
                 },
                 world::register_rules(&pool).await,
+                None,
             )
             .with_subscriber(queries.clone())
             .await
@@ -148,9 +150,10 @@ async fn many_due_birthdays_do_not_add_a_statement_per_task(pool: PgPool) {
         counts.push(statements.len());
         if size == 1999 {
             assert!(
-                !exact,
-                "a bounded birthday prefix cannot claim an exact total"
+                exact,
+                "all birthday deadlines are assessed before the bounded hydration"
             );
+            assert_eq!(page.total, i64::from(due));
             explain_age(&pool, w.tenant.org, &statements).await;
         }
     }
@@ -204,7 +207,7 @@ async fn calendar_keys(pool: &PgPool) {
         let (page, exact) = w
             .tenant
             .hr
-            .insurance_inbox_page(p.clone(), query, register.clone())
+            .insurance_inbox_page(p.clone(), query, register.clone(), None)
             .await
             .unwrap();
         assert_eq!(panel.total, expected);
@@ -219,7 +222,10 @@ async fn calendar_keys(pool: &PgPool) {
 }
 
 async fn explain_age(pool: &PgPool, org: uuid::Uuid, captured: &[String]) {
-    let logged = captured.iter().find(|s| s.contains("filtered AS")).unwrap();
+    let logged = captured
+        .iter()
+        .find(|s| s.contains("WHERE inbox_id = ANY("))
+        .unwrap();
     let sql: String = serde_json::from_str(
         logged
             .split("db.statement=")
@@ -257,7 +263,7 @@ async fn explain_age(pool: &PgPool, org: uuid::Uuid, captured: &[String]) {
         q = q
             .bind(rules)
             .bind(None::<time::OffsetDateTime>)
-            .bind(51_i64);
+            .bind(age_scale::inbox_ids(pool, org).await);
     }
     let plan: Value = q
         .bind(None::<time::OffsetDateTime>)

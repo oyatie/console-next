@@ -159,12 +159,9 @@ pub trait WorkOrderCreatedListener: Send + Sync {
     fn work_order_created(&self, event: WorkOrderCreatedEvent) -> WorkOrderCreatedFuture<'_>;
 }
 
-/// Immutable keyset position shared by action-inbox source adapters.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ActionInboxPosition {
-    pub created_at: Timestamp,
-    pub id: String,
-}
+/// Deadline/id keyset position shared by action-inbox source adapters.
+mod inbox;
+pub use inbox::ActionInboxPosition;
 
 /// Person-scoped work-order projection consumed by the action-inbox fan-in.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -188,7 +185,7 @@ pub type ActionInboxWorkOrderFuture<'a> = Pin<
 >;
 
 /// Typed application boundary for the work-order slice of the unified inbox.
-/// Implementations must preserve person scope and immutable `(created_at, id)`
+/// Implementations must preserve person scope and `(due NULLS LAST, id)`
 /// ordering; the composition root never reaches into work-order persistence.
 pub trait ActionInboxWorkOrderPort: Send + Sync {
     fn list_assigned_action_inbox_page(

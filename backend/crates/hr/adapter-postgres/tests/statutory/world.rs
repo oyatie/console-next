@@ -72,3 +72,20 @@ pub async fn register_rules(
         .await
         .unwrap()
 }
+
+/// The production inbox cursor ranks the statutory date before its server identity.
+pub fn inbox_position(
+    task: &console_hr_adapter_postgres::statutory::FilingTask,
+) -> (Option<time::OffsetDateTime>, time::OffsetDateTime, String) {
+    (
+        task.due_date.as_deref().map(|on| {
+            time::PrimitiveDateTime::new(
+                console_hr_domain::text::parse_yyyy_mm_dd(on).unwrap(),
+                time::macros::time!(23:59:59.999999),
+            )
+            .assume_offset(time::macros::offset!(+9))
+        }),
+        task.created_at,
+        task.inbox_id(),
+    )
+}

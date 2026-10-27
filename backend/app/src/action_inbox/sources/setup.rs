@@ -76,18 +76,7 @@ pub(crate) fn page(
         .filter(|i| i.created_at <= query.as_of)
         .collect();
     let total = items.len();
-    let mut visible: Vec<_> = items
-        .into_iter()
-        .filter(|item| {
-            query
-                .after
-                .as_ref()
-                .is_none_or(|p| (item.created_at, &item.id) > (p.created_at, &p.id))
-        })
-        .collect();
-    visible.sort_by(|a, b| (a.created_at, &a.id).cmp(&(b.created_at, &b.id)));
-    let has_more = visible.len() > query.limit;
-    visible.truncate(query.limit);
+    let (visible, has_more) = console_action_inbox_application::page_source_items(items, &query);
     ActionInboxSourcePage {
         items: visible,
         total,

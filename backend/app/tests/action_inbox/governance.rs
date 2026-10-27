@@ -21,7 +21,7 @@ async fn action_inbox_governance_source_enforces_requester_sod(pool: PgPool) {
         .collect();
     let expected_branch: BTreeSet<String> = [requester_employee, approver_employee]
         .into_iter()
-        .map(|id| format!("hr_branch:{id}"))
+        .map(|id| format!("hr_unplaced:{id}"))
         .collect();
     let expected_identity: BTreeSet<String> = [requester_employee, approver_employee]
         .into_iter()
@@ -98,7 +98,7 @@ async fn action_inbox_governance_source_enforces_requester_sod(pool: PgPool) {
         expected_register
     );
     assert_eq!(
-        source_ids(&requester_resp.json, "hr_branch:")
+        source_ids(&requester_resp.json, "hr_unplaced:")
             .into_iter()
             .collect::<BTreeSet<_>>(),
         expected_branch

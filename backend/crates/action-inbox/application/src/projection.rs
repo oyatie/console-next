@@ -9,6 +9,7 @@ pub(super) fn project_item(
 ) -> ActionInboxItem {
     let (urg, due_tone) = urgency(item.due, now, due_soon_days);
     ActionInboxItem {
+        fold_key: crate::fold::key(&item),
         context: item.context,
         lane: match item.kind.as_str() {
             "org_change_waiting" | "identifier_correction_waiting" => "waiting",

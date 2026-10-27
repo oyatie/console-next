@@ -14711,6 +14711,8 @@ export interface components {
         };
         /** @description One unified actionable item. Field names mirror the overview prototype's items[] shape. Source-partial fields (site/who/due/submitted) are absent when the originating source does not carry them. */
         ActionInboxItem: {
+            /** @description Server identity of kind, subject and source case (insurance group when present); never derived from display text. */
+            fold_key?: string;
             /** @description "{kind}:{uuid}" — source-namespaced so ids never collide. */
             id: string;
             kind: string;
@@ -14761,6 +14763,9 @@ export interface components {
                     } | null;
                 };
                 insurance?: {
+                    employee_id?: string;
+                    case_id?: string;
+                    group_id?: string | null;
                     insurer: string;
                     kind: string;
                     effective_date: string;

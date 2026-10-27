@@ -9,6 +9,7 @@
 //! offline query cache cannot be regenerated in this environment.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod inbox;
 mod node_commit;
 mod node_replay;
 
@@ -1281,95 +1282,6 @@ impl PgWorkflowRuntimeStore {
                             })
                         })
                         .collect()
-                })
-            },
-        )
-        .await
-        .map_err(KernelError::from)
-    }
-
-    /// Bounded global-order candidate page for the unified action inbox. This
-    /// retains the canonical personal-inbox SQL predicate; the composition root
-    /// still applies its policy guard to every returned row.
-    pub async fn list_waiting_tasks_action_page(
-        &self,
-        org: OrgId,
-        me: console_kernel_core::UserId,
-        filter: WaitingTaskListFilter,
-        as_of: time::OffsetDateTime,
-        after: Option<(time::OffsetDateTime, String)>,
-        limit: i64,
-    ) -> Result<(Vec<WaitingTaskListItem>, bool), KernelError> {
-        let limit = limit.clamp(1, 200);
-        let statuses = filter
-            .statuses
-            .iter()
-            .map(|status| status.as_db_str().to_owned())
-            .collect::<Vec<_>>();
-        let (after_created_at, after_id) = after.map_or((None, None), |(created_at, id)| {
-            (Some(created_at), Some(id))
-        });
-        with_org_conn::<_, (Vec<WaitingTaskListItem>, bool), PgWorkflowRuntimeError>(
-            &self.pool,
-            org,
-            move |tx| {
-                Box::pin(async move {
-                    let rows = sqlx::query(
-                        "SELECT t.id AS task_id, t.run_id, t.waiting_key, t.title, \
-                            t.assignee_role_key, t.required_policy, t.status, \
-                            t.claimed_by, t.due_at, t.created_at, t.form_payload, \
-                            r.object_type, r.object_id \
-                     FROM workflow_waiting_tasks t \
-                     JOIN workflow_runs r ON r.id = t.run_id AND r.org_id = t.org_id \
-                     WHERE t.status = ANY($1) \
-                       AND ($2::text IS NULL OR t.assignee_role_key = $2) \
-                       AND (NOT $3 OR t.claimed_by = $4 \
-                            OR (t.status = 'OPEN' \
-                                AND (t.assignee_role_key = ANY($5) \
-                                     OR (t.assignee_role_key = 'initiator' \
-                                         AND r.initiated_by = $4)))) \
-                       AND t.created_at <= $6 \
-                       AND ($8::text IS NULL OR t.created_at > $7 \
-                            OR (t.created_at = $7 AND ('approval:' || t.id::text) > $8)) \
-                     ORDER BY t.created_at ASC, ('approval:' || t.id::text) ASC \
-                     LIMIT $9",
-                    )
-                    .bind(&statuses)
-                    .bind(filter.role_key.as_deref())
-                    .bind(filter.assignee_me)
-                    .bind(*me.as_uuid())
-                    .bind(&filter.authority_role_keys)
-                    .bind(as_of)
-                    .bind(after_created_at)
-                    .bind(after_id.as_deref())
-                    .bind(limit + 1)
-                    .fetch_all(tx.as_mut())
-                    .await?;
-                    let has_more = i64::try_from(rows.len()).unwrap_or(0) > limit;
-                    let mut items = rows
-                        .iter()
-                        .take(usize::try_from(limit).unwrap_or(rows.len()))
-                        .map(|row| {
-                            let status: String = row.try_get("status")?;
-                            Ok(WaitingTaskListItem {
-                                task_id: row.try_get("task_id")?,
-                                run_id: row.try_get("run_id")?,
-                                waiting_key: row.try_get("waiting_key")?,
-                                title: row.try_get("title")?,
-                                assignee_role_key: row.try_get("assignee_role_key")?,
-                                required_policy: row.try_get("required_policy")?,
-                                object_type: row.try_get("object_type")?,
-                                object_id: row.try_get("object_id")?,
-                                status: WaitingTaskStatus::from_db_str(&status)?,
-                                claimed_by: row.try_get("claimed_by")?,
-                                due_at: row.try_get("due_at")?,
-                                created_at: row.try_get("created_at")?,
-                                form_payload: row.try_get("form_payload")?,
-                            })
-                        })
-                        .collect::<Result<Vec<_>, PgWorkflowRuntimeError>>()?;
-                    items.shrink_to_fit();
-                    Ok((items, has_more))
                 })
             },
         )

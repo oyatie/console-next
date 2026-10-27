@@ -47,8 +47,8 @@ async fn failed_events(pool: &PgPool) -> (OrgId, UserId, [Uuid; 3], OffsetDateTi
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn foreign_source_cursor_respects_timestamp_and_namespaced_ties(pool: PgPool) {
-    let (org, user, [_, tied, newer], now) = failed_events(&pool).await;
+async fn cursor_ranks_undated_failures_after_dated_items_then_creation_time(pool: PgPool) {
+    let (org, user, ids, now) = failed_events(&pool).await;
     let principal = Principal::new(
         user,
         org,
@@ -56,8 +56,31 @@ async fn foreign_source_cursor_respects_timestamp_and_namespaced_ties(pool: PgPo
         BranchScope::All,
     );
     let runtime = runtime_role_pool(&pool).await;
-    for (namespace, expected, more) in [("hr_register", newer, false), ("grant_notice", tied, true)]
-    {
+    for (due, created_at, cursor_id, expected, more) in [
+        (Some(now), now, "zzz:dated".to_owned(), Some(ids[0]), true),
+        (
+            None,
+            now - Duration::minutes(4),
+            "grant_notice:foreign".to_owned(),
+            Some(ids[0]),
+            true,
+        ),
+        (None, now, "hr_register:foreign".to_owned(), None, false),
+        (
+            None,
+            now - Duration::minutes(3),
+            format!("hr_lifecycle:{}", ids[0]),
+            Some(ids[1]),
+            true,
+        ),
+        (
+            None,
+            now - Duration::minutes(1),
+            format!("hr_lifecycle:{}", ids[2]),
+            None,
+            false,
+        ),
+    ] {
         let actual = page(
             &runtime,
             &principal,
@@ -67,8 +90,9 @@ async fn foreign_source_cursor_respects_timestamp_and_namespaced_ties(pool: PgPo
                 now,
                 as_of: now,
                 after: Some(ActionInboxPosition {
-                    created_at: now - Duration::minutes(2),
-                    id: format!("{namespace}:{}", Uuid::new_v4()),
+                    due,
+                    created_at,
+                    id: cursor_id,
                 }),
                 limit: 1,
             },
@@ -77,14 +101,25 @@ async fn foreign_source_cursor_respects_timestamp_and_namespaced_ties(pool: PgPo
         .unwrap();
         assert_eq!(actual.total, 3);
         assert!(actual.total_is_exact);
-        assert_eq!(actual.items.len(), 1);
-        assert_eq!(actual.items[0].id, format!("hr_lifecycle:{expected}"));
-        assert_eq!(actual.items[0].kind, "lifecycle_apply_failed");
-        assert!(actual.items[0].ref_code.is_empty());
         assert_eq!(
-            actual.items[0].context.as_ref().unwrap()["lifecycle"]["action_kind"],
-            "ONBOARD"
+            actual
+                .items
+                .iter()
+                .map(|item| item.id.clone())
+                .collect::<Vec<_>>(),
+            expected
+                .map(|id| format!("hr_lifecycle:{id}"))
+                .into_iter()
+                .collect::<Vec<_>>()
         );
+        if let Some(item) = actual.items.first() {
+            assert_eq!(item.kind, "lifecycle_apply_failed");
+            assert!(item.ref_code.is_empty());
+            assert_eq!(
+                item.context.as_ref().unwrap()["lifecycle"]["action_kind"],
+                "ONBOARD"
+            );
+        }
         assert_eq!(actual.has_more, more);
     }
 }

@@ -43,12 +43,9 @@ pub(crate) async fn page(
     let total: i64 = sqlx::query_scalar("SELECT count(*) FROM support_sessions WHERE org_id=$1 AND state='OPERATOR_APPROVED' AND tenant_approved_at IS NULL AND request_expires_at>$2 AND requested_at<=$3")
         .bind(principal.org_id.as_uuid()).bind(query.now).bind(query.as_of)
         .fetch_one(tx.as_mut()).await.map_err(failure)?;
-    let (after_at, after_id) = query
-        .after
-        .map(|p| (Some(p.created_at), p.id))
-        .unwrap_or_default();
-    let mut rows = sqlx::query_as::<_, Pending>("SELECT id,ticket_ref,reason,operator_label,request_expires_at,requested_at FROM support_sessions WHERE org_id=$1 AND state='OPERATOR_APPROVED' AND tenant_approved_at IS NULL AND request_expires_at>$2 AND requested_at<=$3 AND ($4::timestamptz IS NULL OR (requested_at,'support_access:'||id::text)>($4,$5)) ORDER BY requested_at,id LIMIT $6")
-        .bind(principal.org_id.as_uuid()).bind(query.now).bind(query.as_of).bind(after_at).bind(after_id)
+    let after = query.after;
+    let mut rows = sqlx::query_as::<_, Pending>("SELECT id,ticket_ref,reason,operator_label,request_expires_at,requested_at FROM support_sessions WHERE org_id=$1 AND state='OPERATOR_APPROVED' AND tenant_approved_at IS NULL AND request_expires_at>$2 AND requested_at<=$3 AND ($5::text IS NULL OR request_expires_at>$4 OR (request_expires_at=$4 AND (requested_at, ('support_access:'||id::text))>($6, $5))) ORDER BY request_expires_at ASC NULLS LAST,requested_at,id LIMIT $7")
+        .bind(principal.org_id.as_uuid()).bind(query.now).bind(query.as_of).bind(after.as_ref().and_then(|p| p.due)).bind(after.as_ref().map(|p| p.id.clone())).bind(after.as_ref().map(|p| p.created_at))
         .bind(i64::try_from(query.limit.saturating_add(1)).map_err(|_| KernelError::validation("invalid inbox limit"))?)
         .fetch_all(tx.as_mut()).await.map_err(failure)?;
     tx.commit().await.map_err(failure)?;
@@ -91,7 +88,7 @@ mod tests {
     use time::Duration;
 
     #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-    async fn snapshot_filters_both_support_rows_and_totals(pool: PgPool) {
+    async fn deadline_keyset_preserves_snapshot_rows_and_totals(pool: PgPool) {
         let org = OrgId::new();
         let user = seed_org_and_super_admin(&pool, *org.as_uuid(), "support-snapshot").await;
         sqlx::query("UPDATE users SET is_tenant_ops=true WHERE org_id=$1 AND id=$2")
@@ -105,10 +102,13 @@ mod tests {
             .await
             .unwrap();
         let mut ids = Vec::new();
-        for requested_at in [as_of - Duration::SECOND, as_of, as_of + Duration::SECOND] {
+        for (index, requested_at) in [as_of - Duration::SECOND, as_of, as_of + Duration::SECOND]
+            .into_iter()
+            .enumerate()
+        {
             let id = Uuid::new_v4();
             sqlx::query("INSERT INTO support_sessions(org_id,id,operator_ref,operator_label,ticket_ref,reason_code,reason,scope,requested_duration_seconds,state,requested_at,request_expires_at,request_assertion,operator_approver_ref,operator_approved_at,approval_assertion) VALUES($1,$2,gen_random_uuid(),'공급사 운영자','SNAPSHOT','DIAGNOSE','조회 확인',ARRAY['org'],60,'OPERATOR_APPROVED',$3,$4,gen_random_uuid(),gen_random_uuid(),$3,gen_random_uuid())")
-                .bind(org.as_uuid()).bind(id).bind(requested_at).bind(as_of + Duration::HOUR)
+                .bind(org.as_uuid()).bind(id).bind(requested_at).bind(as_of + Duration::HOUR - Duration::minutes(index as i64))
                 .execute(&pool).await.unwrap();
             ids.push(format!("support_access:{id}"));
         }
@@ -129,9 +129,10 @@ mod tests {
         assert_eq!(first.total, 2);
         assert!(first.total_is_exact);
         assert!(first.has_more);
-        assert_eq!(first.items[0].id, ids[0]);
+        assert_eq!(first.items[0].id, ids[1]);
         query.after = Some(ActionInboxPosition {
             created_at: first.items[0].created_at,
+            due: first.items[0].due,
             id: first.items[0].id.clone(),
         });
         let second = page(&pool, &principal, query.clone(), &permission)
@@ -140,7 +141,7 @@ mod tests {
         assert_eq!(second.total, 2);
         assert!(!second.has_more);
         assert_eq!(second.items.len(), 1);
-        assert_eq!(second.items[0].id, ids[1]);
+        assert_eq!(second.items[0].id, ids[0]);
         query.after = None;
         query.limit = 10;
         let all = page(&pool, &principal, query.clone(), &permission)
@@ -148,7 +149,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             all.items.iter().map(|item| &item.id).collect::<Vec<_>>(),
-            ids[..2].iter().collect::<Vec<_>>()
+            vec![&ids[1], &ids[0]]
         );
         query.as_of -= Duration::seconds(2);
         let empty = page(&pool, &principal, query, &permission).await.unwrap();

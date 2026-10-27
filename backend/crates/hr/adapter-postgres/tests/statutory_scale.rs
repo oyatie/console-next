@@ -47,12 +47,12 @@ async fn statutory_two_thousand_workers_have_exact_counts_and_untruncated_export
                 p.clone(),
                 console_hr_adapter_postgres::statutory::FilingQuery {
                     inbox_as_of: Some(as_of),
-                    inbox_after: after,
                     limit: Some(200),
                     state: Some("PENDING".into()),
                     ..list()
                 },
                 register_rules(&pool).await,
+                after,
             )
             .await
             .unwrap();
@@ -66,7 +66,7 @@ async fn statutory_two_thousand_workers_have_exact_counts_and_untruncated_export
             .items
             .last()
             .expect("a continuation must make progress");
-        after = Some((last.created_at, last.inbox_id()));
+        after = Some(world::inbox_position(last));
     }
     assert_eq!(seen.len(), 8004);
     let page = w
@@ -138,6 +138,7 @@ async fn resolved_statutory_history_does_not_hide_the_pending_tail(pool: PgPool)
                 ..list()
             },
             register_rules(&pool).await,
+            None,
         )
         .await
         .expect("completed history must not make the shared inbox unavailable");

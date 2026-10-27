@@ -2,6 +2,7 @@
 
 use console_action_inbox_application::{
     ActionInboxLink, ActionInboxSourceItem, ActionInboxSourcePage, ActionInboxSourceQuery,
+    page_source_items,
 };
 use console_hr_adapter_postgres::authz::{
     authorize_hr_case, authorize_hr_scoped, authorize_hr_scoped_write, exit_hq_second_person,
@@ -114,19 +115,10 @@ pub(crate) async fn page(
                 visible.push((row, kind));
             }
             let total = visible.len();
-            visible.retain(|(row, _)| query.after.as_ref().is_none_or(|after| {
-                (row.created_at, format!("hr_exit:{}", row.id)) > (after.created_at, after.id.clone())
-            }));
-            visible.truncate(query.limit.saturating_add(1));
             Ok((visible, total))
         })
     }).await.map_err(|error| super::super::source_failure("hr_exit", error.message))?;
-    let has_more = rows.len() > query.limit;
-    let register = if rows
-        .iter()
-        .take(query.limit)
-        .any(|(_, kind)| *kind == "hr_exit_settle")
-    {
+    let register = if rows.iter().any(|(_, kind)| *kind == "hr_exit_settle") {
         Some(
             console_compliance_adapter_postgres::PgComplianceStore::new(pool.clone())
                 .statutory_register()
@@ -138,7 +130,7 @@ pub(crate) async fn page(
     };
     let service = HrService::new(pool.clone());
     let mut items = Vec::new();
-    for (row, kind) in rows.into_iter().take(query.limit) {
+    for (row, kind) in rows {
         let due = if let Some(register) = register.as_ref().filter(|_| kind == "hr_exit_settle") {
             // The case read already owns both settlement windows and citations.
             let case = service
@@ -162,7 +154,10 @@ pub(crate) async fn page(
             title: row.name,
             site: row.site,
             who: None,
-            due: due.map(|date| PrimitiveDateTime::new(date, Time::MAX).assume_offset(offset!(+9))),
+            due: due.map(|date| {
+                PrimitiveDateTime::new(date, Time::MAX - time::Duration::nanoseconds(999))
+                    .assume_offset(offset!(+9))
+            }),
             submitted: None,
             links: vec![
                 ActionInboxLink {
@@ -179,6 +174,7 @@ pub(crate) async fn page(
             created_at: row.created_at,
         });
     }
+    let (items, has_more) = page_source_items(items, &query);
     Ok(ActionInboxSourcePage {
         items,
         total,

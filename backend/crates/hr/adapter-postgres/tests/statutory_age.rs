@@ -84,18 +84,12 @@ async fn pension_age_loss_has_one_task_and_exact_birth_dates_stay_tenant_scoped(
             p.clone(),
             FilingQuery {
                 inbox_as_of: Some(OffsetDateTime::now_utc()),
-                // The source is older than this cursor; its birthday task is newer.
-                inbox_after: Some((
-                    (today - Duration::days(10))
-                        .midnight()
-                        .assume_offset(UtcOffset::from_hms(9, 0, 0).unwrap()),
-                    format!("insurance_filing_ACQUIRE_NPS:{}", w.event),
-                )),
                 state: Some("PENDING".into()),
                 limit: Some(1),
-                ..list()
+                ..query()
             },
             rules.clone(),
+            None,
         )
         .await
         .unwrap();
@@ -112,6 +106,7 @@ async fn pension_age_loss_has_one_task_and_exact_birth_dates_stay_tenant_scoped(
                 ..list()
             },
             rules.clone(),
+            None,
         )
         .await
         .unwrap();
@@ -162,6 +157,18 @@ async fn pension_age_loss_has_one_task_and_exact_birth_dates_stay_tenant_scoped(
             .unwrap()
             .total,
         0
+    );
+    let (inbox, exact) = w
+        .tenant
+        .hr
+        .insurance_inbox_page(scoped.clone(), query(), rules.clone(), None)
+        .await
+        .unwrap();
+    assert!(exact);
+    assert_eq!(inbox.total, 0);
+    assert!(
+        inbox.items.is_empty(),
+        "a birthday deadline exposes the exact birth date"
     );
     let e = w
         .tenant

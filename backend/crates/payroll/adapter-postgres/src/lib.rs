@@ -21,7 +21,7 @@ use console_kernel_core::{ErrorKind, KernelError, UserId};
 use console_platform_db::{DbError, with_org_conn};
 use console_platform_request_context::current_org;
 use serde::Serialize;
-use sqlx::{PgPool, Postgres, Row, Transaction};
+use sqlx::{PgPool, Postgres, QueryBuilder, Row, Transaction};
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
@@ -334,15 +334,12 @@ impl PgPayrollStore {
         &self,
         caller: UserId,
         as_of: OffsetDateTime,
-        after: Option<(OffsetDateTime, String)>,
+        after: Option<(Option<OffsetDateTime>, OffsetDateTime, String)>,
         limit: i64,
     ) -> Result<(Vec<PayrollActionInboxItem>, i64, bool), PgPayrollError> {
         let limit = limit.clamp(1, 200);
         let org = current_org().map_err(KernelError::from)?;
         let caller_id = *caller.as_uuid();
-        let (after_created_at, after_id) = after.map_or((None, None), |(created_at, id)| {
-            (Some(created_at), Some(id))
-        });
         with_org_conn::<_, _, PgPayrollError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let total: i64 = sqlx::query_scalar(
@@ -357,26 +354,26 @@ impl PgPayrollStore {
                 .bind(as_of)
                 .fetch_one(tx.as_mut())
                 .await?;
-                let rows = sqlx::query(
+                let mut query = QueryBuilder::<Postgres>::new(
                     "SELECT id, source_label, submitted_at \
                      FROM payroll_draft_runs \
                      WHERE status = 'SUBMITTED' \
                        AND submitted_by IS NOT NULL \
-                       AND submitted_by <> $1 \
-                       AND submitted_at IS NOT NULL \
-                       AND submitted_at <= $2 \
-                       AND ($4::text IS NULL OR submitted_at > $3 \
-                         OR (submitted_at = $3 AND ('payroll:' || id::text) > $4)) \
-                     ORDER BY submitted_at ASC, ('payroll:' || id::text) ASC \
-                     LIMIT $5",
-                )
-                .bind(caller_id)
-                .bind(as_of)
-                .bind(after_created_at)
-                .bind(after_id.as_deref())
-                .bind(limit + 1)
-                .fetch_all(tx.as_mut())
-                .await?;
+                       AND submitted_by <> ",
+                );
+                query
+                    .push_bind(caller_id)
+                    .push(" AND submitted_at IS NOT NULL AND submitted_at <= ")
+                    .push_bind(as_of);
+                console_platform_db::inbox::push_page(
+                    &mut query,
+                    "NULL::timestamptz",
+                    "submitted_at",
+                    "('payroll:' || id::text)",
+                    after,
+                    limit,
+                );
+                let rows = query.build().fetch_all(tx.as_mut()).await?;
                 let has_more = i64::try_from(rows.len()).unwrap_or(0) > limit;
                 let items = rows
                     .iter()

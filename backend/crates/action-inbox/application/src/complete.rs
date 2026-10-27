@@ -5,12 +5,12 @@ use crate::{
 };
 use std::collections::HashSet;
 use time::OffsetDateTime;
-/// Traverses the public immutable cursor API until the action set is complete.
+/// Traverses the public snapshot cursor API until the action set is complete.
 ///
 /// This is intentionally separate from `list_action_inbox`: the public endpoint
-/// remains creation-order paginated, while consumers that apply a different
+/// uses bounded deadline pages, while consumers that apply a different
 /// deterministic ordering (such as Workbench urgency) must not rank only its
-/// first creation-order page. Every response must advertise the same exact
+/// first partial page. Every response must advertise the same exact
 /// total, and the traversal stops fail-closed at `MAX_COMPLETE_ITEMS`.
 pub async fn list_complete_action_inbox(
     port: &dyn ActionInboxSourcePort,

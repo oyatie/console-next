@@ -1,0 +1,11 @@
+# Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
+# Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
+app/src/workflow_studio.rs	7162
+app/tests/action_inbox_api.rs	1008
+app/tests/hr_lifecycle_stage_d.rs	1881
+crates/dispatch/adapter-postgres/src/lib.rs	2110
+crates/payroll/adapter-postgres/src/lib.rs	533
+crates/support/adapter-postgres/src/lib.rs	1764
+crates/workflow/adapter-postgres/src/lib.rs	2200
+crates/workorder/adapter-postgres/src/lib.rs	2564
+crates/workorder/application/src/lib.rs	548

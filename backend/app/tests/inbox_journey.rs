@@ -216,6 +216,14 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
             created["employee"]["id"].as_str().unwrap()
         ));
     }
+    let employee = expected
+        .first()
+        .unwrap()
+        .strip_prefix("hr_register:")
+        .unwrap();
+    let exit: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO employee_exit_cases (org_id,employee_id,status,effective_exit_date,site_manager_note,reported_by) VALUES ($1,$2,'REPORTED',(clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date,'업무함 기한 검증',$3) RETURNING id"
+    ).bind(org).bind(uuid::Uuid::parse_str(employee).unwrap()).bind(user.as_uuid()).fetch_one(&pool).await.unwrap();
     let mut elapsed = Vec::new();
     let mut peak = 0;
     probe.reset();
@@ -228,6 +236,12 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
         elapsed.push(started.elapsed());
         assert_eq!(status, StatusCode::OK, "{page}");
         assert_eq!(page["items"].as_array().unwrap().len(), 50);
+        assert_eq!(
+            page["items"][0]["id"],
+            format!("hr_exit:{exit}"),
+            "D-day must rank on page 1 beyond 2,000 undated items"
+        );
+        assert_eq!(page["items"][0]["days_remaining"], 0);
     }
     elapsed.sort();
     let p95 = elapsed[18];

@@ -27,6 +27,9 @@ use tower::ServiceExt;
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU16, Ordering};
 
+#[path = "action_inbox/ranking.rs"]
+mod ranking;
+
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 const PATH: &str = "/api/v1/me/action-inbox";
@@ -70,7 +73,7 @@ async fn action_inbox_snapshot_is_taken_on_the_database_clock(pool: PgPool) {
     assert_eq!(page.status, StatusCode::OK, "{:?}", page.json);
     assert_eq!(page.json["total"], 2, "{:?}", page.json);
     let cursor = page.json["next_cursor"].as_str().expect("second page");
-    let as_of_nanos: i128 = cursor.split('~').next().unwrap().parse().unwrap();
+    let as_of_nanos: i128 = cursor.split('~').nth(1).unwrap().parse().unwrap();
     let as_of = OffsetDateTime::from_unix_timestamp_nanos(as_of_nanos).unwrap();
     assert!(
         before <= as_of && as_of <= after,
@@ -282,131 +285,6 @@ async fn action_inbox_is_org_scoped(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn immutable_keyset_traverses_mixed_sources_despite_due_mutation(pool: PgPool) {
-    let keys = keys();
-    let branch = seed_branch(&pool, OrgId::one(), "혼합 리전", "혼합 지사").await;
-    let alice = UserId::new();
-    seed_user(&pool, OrgId::one(), alice, "MEMBER", branch).await;
-    let bob = UserId::new();
-    seed_user(&pool, OrgId::one(), bob, "MEMBER", branch).await;
-    let equipment = seed_equipment(&pool, OrgId::one(), branch, "mixed").await;
-    let base = OffsetDateTime::now_utc() - Duration::hours(1);
-
-    let work = seed_assigned_work_order(
-        &pool,
-        OrgId::one(),
-        branch,
-        equipment,
-        alice,
-        "20260704-101",
-    )
-    .await;
-    set_work_times(&pool, work, base, base + Duration::hours(4)).await;
-    let support = seed_assigned_support_ticket(&pool, OrgId::one(), branch, alice, base).await;
-    let hidden_workflow = seed_assigned_workflow_task(
-        &pool,
-        OrgId::one(),
-        alice,
-        base - Duration::seconds(1),
-        Some("unknown_policy"),
-    )
-    .await;
-    let workflow = seed_assigned_workflow_task(&pool, OrgId::one(), alice, base, None).await;
-    let dispatch_work =
-        seed_assigned_work_order(&pool, OrgId::one(), branch, equipment, bob, "20260704-102").await;
-    let dispatch =
-        seed_dispatch_offer(&pool, OrgId::one(), branch, dispatch_work, bob, alice, base).await;
-
-    let service =
-        build_router(app_state(runtime_role_pool(&pool).await, keys.public_pem.clone()).unwrap());
-    let token = bearer(&pool, &keys, OrgId::one(), alice, "MEMBER", branch).await;
-    let first = get(service.clone(), &format!("{PATH}?limit=2"), &token).await;
-    assert_eq!(first.status, StatusCode::OK, "{:?}", first.json);
-    assert_eq!(first.json["items"].as_array().map(Vec::len), Some(2));
-    assert_eq!(first.json["total"], 4);
-    assert_eq!(first.json["total_is_exact"], true);
-    let cursor = first.json["next_cursor"].as_str().expect("second page");
-
-    sqlx::query(
-        "UPDATE work_orders SET target_due_at = target_due_at + interval '30 days' WHERE id = $1",
-    )
-    .bind(*work.as_uuid())
-    .execute(&pool)
-    .await
-    .unwrap();
-    sqlx::query("UPDATE support_tickets SET due_at = now() - interval '30 days' WHERE id = $1")
-        .bind(*support.as_uuid())
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query(
-        "UPDATE workflow_waiting_tasks SET due_at = now() + interval '45 days' WHERE id = $1",
-    )
-    .bind(workflow)
-    .execute(&pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        "UPDATE p1_dispatches SET accept_window_ends_at = now() + interval '45 days' WHERE id = $1",
-    )
-    .bind(dispatch)
-    .execute(&pool)
-    .await
-    .unwrap();
-    let post_snapshot = seed_assigned_work_order(
-        &pool,
-        OrgId::one(),
-        branch,
-        equipment,
-        alice,
-        "20260704-103",
-    )
-    .await;
-    let after_as_of = OffsetDateTime::now_utc() + Duration::days(1);
-    set_work_times(&pool, post_snapshot, after_as_of, after_as_of).await;
-
-    let query = url::form_urlencoded::Serializer::new(String::new())
-        .append_pair("limit", "2")
-        .append_pair("cursor", cursor)
-        .finish();
-    let second = get(service, &format!("{PATH}?{query}"), &token).await;
-    assert_eq!(second.status, StatusCode::OK, "{:?}", second.json);
-    assert_eq!(second.json["items"].as_array().map(Vec::len), Some(2));
-    assert_eq!(second.json["total"], 4);
-    assert_eq!(second.json["total_is_exact"], true);
-    assert!(second.json["next_cursor"].is_null());
-    let ids = first.json["items"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .chain(second.json["items"].as_array().unwrap())
-        .map(|item| item["id"].as_str().unwrap().to_owned())
-        .collect::<Vec<_>>();
-    let unique = ids.iter().collect::<std::collections::HashSet<_>>();
-    assert_eq!(
-        ids.len(),
-        4,
-        "all pre-as_of mixed rows must traverse: {ids:?}"
-    );
-    assert_eq!(unique.len(), 4, "immutable keyset must not duplicate rows");
-    assert!(
-        !ids.contains(&format!("approval:{hidden_workflow}")),
-        "authorization-filtered workflow rows must not inflate totals or consume the page"
-    );
-    assert_eq!(
-        ids,
-        vec![
-            format!("approval:{workflow}"),
-            format!("dispatch:{dispatch}"),
-            format!("support:{support}"),
-            format!("work:{work}"),
-        ],
-        "equal-created-at rows must use the global namespaced-id tie break"
-    );
-    assert!(!ids.contains(&format!("work:{post_snapshot}")));
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn live_dispatch_expiry_can_disappear_between_pages(pool: PgPool) {
     let keys = keys();
     let branch = seed_branch(&pool, OrgId::one(), "라이브 리전", "라이브 지사").await;
@@ -512,7 +390,7 @@ async fn rejects_forged_and_future_cursors(pool: PgPool) {
     assert_eq!(forged.status, StatusCode::UNPROCESSABLE_ENTITY);
     let future = OffsetDateTime::now_utc() + Duration::days(1);
     let raw = format!(
-        "{}~{}~work:{}",
+        "v2~{}~{}~work:{}",
         future.unix_timestamp_nanos(),
         future.unix_timestamp_nanos(),
         uuid::Uuid::new_v4()
@@ -1061,6 +939,12 @@ async fn seed_approval_decision(
     requester: UserId,
     approver: UserId,
 ) {
+    let mut tx = pool.begin().await.unwrap();
+    // Historical decisions stay excluded even when the actors now have open identity reviews.
+    sqlx::query("SET LOCAL session_replication_role=replica")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
     sqlx::query(
         "INSERT INTO gov_approvals \
          (org_id, request_ref, kind, requested_by, approver_id, decision, decided_at) \
@@ -1070,9 +954,10 @@ async fn seed_approval_decision(
     .bind(request_ref)
     .bind(*requester.as_uuid())
     .bind(*approver.as_uuid())
-    .execute(pool)
+    .execute(tx.as_mut())
     .await
     .unwrap();
+    tx.commit().await.unwrap();
 }
 
 async fn seed_dispatch_offer(
