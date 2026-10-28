@@ -1,6 +1,7 @@
 // Unused-catalog and word halves of the copy gate; `npm run lint` runs the gate itself on the real tree.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, expect, test } from "vitest";
@@ -254,8 +255,9 @@ afterAll(() => cliDirs.forEach((dir) => rmSync(dir, { recursive: true, force: tr
 
 function runtimeCli() {
   const root = fileURLToPath(new URL("..", import.meta.url));
-  const dir = mkdtempSync(path.join(root, ".copy-cli-"));
+  const dir = realpathSync(mkdtempSync(path.join(tmpdir(), "copy-cli-")));
   cliDirs.push(dir);
+  symlinkSync(path.join(root, "node_modules"), path.join(dir, "node_modules"), "dir");
   for (const p of ["scripts/quality", "apps/web/src", "apps/web/public", "packages/api/src", "packages/i18n/src/catalogs/ko", "packages/i18n/src/catalogs/en", "output/nested"])
     mkdirSync(path.join(dir, p), { recursive: true });
   const catalogs = Object.fromEntries(["structure", "people"].map((name) => {
@@ -267,6 +269,7 @@ function runtimeCli() {
     "runtime.mixed": "mixed: {name|을를} · {note} · {total, number} · {count, plural, =2 {두 건} other {#건}}",
   }, null, 2)};`;
   for (const [file, text] of Object.entries({
+    ".gitignore": "node_modules/\n",
     "package.json": '{"type":"module"}',
     "scripts/check-copy.mjs": readFileSync(path.join(root, "scripts/check-copy.mjs"), "utf8"),
     "scripts/quality/ratchet.mjs": readFileSync(path.join(root, "scripts/quality/ratchet.mjs"), "utf8"),
@@ -283,8 +286,15 @@ function runtimeCli() {
   const josaFile = path.join(dir, "packages/i18n/src/josa.ts");
   const josaSource = readFileSync(path.join(root, "packages/i18n/src/josa.ts"), "utf8");
   writeFileSync(josaFile, josaSource);
+  const git = (...args: string[]) => {
+    const r = spawnSync("git", ["-C", dir, ...args], { encoding: "utf8" });
+    expect(r.status, r.stderr).toBe(0);
+  };
+  git("init", "--initial-branch=dev");
+  git("add", ".");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "runtime fixture");
   const cli = (...args: string[]) => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs"), ...args], { cwd: dir, encoding: "utf8", env: { ...process.env, QUALITY_BASE: "dev" } });
-  return { cli, dir, josaFile, josaSource };
+  return { cli, dir, josaFile, josaSource, git };
 }
 
 test("CLI refuses a planted commit in a newly added sheet without a path exception", () => {
@@ -399,11 +409,7 @@ function debtFixture() {
   rmSync(path.join(fixture.dir, "scripts/copy-maturity-baseline.json"));
   set("변경 사항은 이력에 남습니다.");
   writeFileSync(path.join(fixture.dir, "apps/web/src/debt.ts"), 't("org.footnote")');
-  const git = (...args: string[]) => {
-    const r = spawnSync("git", ["-C", fixture.dir, ...args], { encoding: "utf8" });
-    expect(r.status, r.stderr).toBe(0);
-  };
-  git("init", "--initial-branch=dev");
+  const { git } = fixture;
   git("add", ".");
   git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test fixture");
   return { ...fixture, set, git, baseline: path.join(fixture.dir, "scripts/copy-maturity-baseline.json") };
@@ -446,6 +452,28 @@ test("CLI generates exact debt and requires stale entries to shrink", () => {
   expect(cli("--write-baseline").status).toBe(0);
   expect(JSON.parse(readFileSync(baseline, "utf8"))).toEqual({});
   expect(cli().status).toBe(0);
+});
+
+test("dev advancing cannot turn inherited copy debt into baseline growth", () => {
+  const { cli, set, git, dir } = debtFixture();
+  const commit = (message: string) => {
+    git("add", ".");
+    git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", message);
+  };
+  expect(cli("--write-baseline").status).toBe(0);
+  commit("stored copy debt");
+  git("switch", "-c", "lane");
+  writeFileSync(path.join(dir, "lane.txt"), "lane work");
+  commit("lane work");
+  git("switch", "dev");
+  set("");
+  expect(cli("--write-baseline").status).toBe(0);
+  commit("dev clears debt");
+  git("switch", "lane");
+  const unchanged = cli();
+  expect(unchanged.status, unchanged.stderr).toBe(0);
+  set("지금 추가한 각주입니다.");
+  expect(cli("--write-baseline").stderr).toContain("baseline must only shrink");
 });
 
 test("CLI refuses new debt, changed debt and handwritten baseline growth", async () => {

@@ -3,8 +3,9 @@ import { readFileSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
-import { createServer, type ViteDevServer } from "vite";
+import { createServer, preprocessCSS, type ViteDevServer } from "vite";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { breakpoints } from "../../ui/breakpoints";
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -50,11 +51,12 @@ const open = async (hash = "") => {
   await element(page.getByRole("button", { name: "남궁가나다라마바사 전체 이름", exact: true })).toBeVisible();
 };
 
-test.each([1440, 390])("menu disclosure is responsive at %spx", async width => {
+test.each([1440, breakpoints.md, breakpoints.md - 1, 390])("menu disclosure is responsive at %spx", async width => {
   const css = readFileSync(resolve("packages/tokens/tokens.css"), "utf8") + readFileSync(resolve("apps/web/src/app.css"), "utf8").replace(/^@import .*;$/gm, "");
+  const compiled = await preprocessCSS(css, resolve("apps/web/src/app.css"), server.config);
   await page.setViewportSize({ width, height: 900 });
-  await page.setContent(`<style>${css}</style><header class="top"><button class="btn btn--ghost top__menu">메뉴</button></header>`);
-  await element(page.getByRole("button", { name: "메뉴" })).toBeVisible({ visible: width === 390 });
+  await page.setContent(`<style>${compiled.code}</style><header class="top"><button class="btn btn--ghost top__menu">메뉴</button></header>`);
+  await element(page.getByRole("button", { name: "메뉴" })).toBeVisible({ visible: width < breakpoints.md });
 });
 
 test.each([390, 640, 641, 1440])("account trigger is icon-only through 640px, retaining its full name at %spx", async width => {
