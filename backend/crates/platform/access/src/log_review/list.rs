@@ -5,7 +5,7 @@
 mod rules;
 
 use console_kernel_core::OrgId;
-use rules::Rules;
+pub(super) use rules::Rules;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -32,6 +32,14 @@ pub struct Prepared {
 }
 
 impl Prepared {
+    pub(super) async fn due(
+        &self,
+        conn: &mut PgConnection,
+        period: &str,
+    ) -> AccessResult<OffsetDateTime> {
+        self.rules.due(conn, period).await
+    }
+
     pub(super) fn flag_set_sha256(&self) -> AccessResult<String> {
         Ok(hex::encode(Sha256::digest(
             serde_json::to_vec(&self.flagged).map_err(AccessError::internal)?,

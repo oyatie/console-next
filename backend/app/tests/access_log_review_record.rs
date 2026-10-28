@@ -4,8 +4,14 @@
 mod chunks;
 #[path = "access_log_review_record/completion.rs"]
 mod completion;
+#[path = "access_log_review_record/completion_evidence.rs"]
+mod completion_evidence;
 #[path = "access_log_review_record/completion_guards.rs"]
 mod completion_guards;
+#[path = "access_log_review_record/completion_race.rs"]
+mod completion_race;
+#[path = "access_log_review_record/deadlines.rs"]
+mod deadlines;
 #[path = "access_log_review_record/guards.rs"]
 mod guards;
 #[path = "access_log_review_record/race.rs"]
@@ -73,7 +79,7 @@ async fn start_is_concurrent_idempotent_frozen_and_tenant_isolated(pool: PgPool)
     let started = a.unwrap();
     assert_eq!(started, b.unwrap());
     assert_eq!(started["flags_seen"]["flagged_total"], 1);
-    assert_eq!(started["state"], "open");
+    assert_eq!(started["state"], "overdue");
     assert_eq!(
         record::start(
             &service,
