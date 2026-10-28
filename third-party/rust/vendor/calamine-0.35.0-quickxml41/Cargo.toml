@@ -102,7 +102,7 @@ path = "benches/basic.rs"
 harness = false
 
 [dependencies.atoi_simd]
-version = "0.17"
+version = "0.18"
 
 [dependencies.byteorder]
 version = "1.5"
@@ -133,7 +133,7 @@ features = ["encoding"]
 version = "1.0"
 
 [dependencies.zip]
-version = "7.0"
+version = "9.1"
 features = ["deflate"]
 default-features = false
 

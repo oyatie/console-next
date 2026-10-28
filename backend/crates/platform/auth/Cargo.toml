@@ -24,7 +24,7 @@ webauthn-rs = { version = "0.5.5", features = [
 ] }
 # Proto enums (ResidentKeyRequirement) not re-exported by the webauthn-rs prelude.
 webauthn-rs-proto = "0.5.5"
-jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust_crypto", "use_pem"] }
+jsonwebtoken = { version = "11.1.0", default-features = false, features = ["rust_crypto", "use_pem"] }
 sha2 = "0.11.0"
 # Key ids (RFC 7638 thumbprints) and P-256 SPKI parsing. Both already resolve in
 # Cargo.lock (base64 0.22.1 workspace pin; p256 0.13.2 via jsonwebtoken): no new crate.

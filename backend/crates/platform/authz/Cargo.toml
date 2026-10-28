@@ -16,8 +16,8 @@ serde = { workspace = true }
 uuid = { workspace = true }
 # Default features only: the shadow-first Cedar boundary does not use
 # partial-eval/entity-manifest. Pinned exact for provable bundle equivalence.
-cedar-policy = "=4.11.2"
-stacker = "=0.1.24"
+cedar-policy = "=4.14.0"
+stacker = "=0.1.25"
 sha2 = { workspace = true }
 hex = { workspace = true }
 # Coexistence-map loader (cedar_pbac::map) parses the canonical map JSON at runtime.
