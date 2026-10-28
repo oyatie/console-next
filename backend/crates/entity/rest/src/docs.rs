@@ -177,12 +177,20 @@ pub(crate) async fn content(
     h: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Response> {
-    let (a, personal, gate) = read_gate(&s, &h, Need::Read, Target::Tenant).await?;
+    let (a, personal, gate) = match read_gate(&s, &h, Need::Read, Target::Tenant).await {
+        Ok(gate) => gate,
+        Err(error) => {
+            return Err(
+                crate::access_log::refused(&s, &h, "entity_document.read", id, error).await,
+            );
+        }
+    };
     if !personal {
-        return Err(RestError(Refusal::forbidden(
+        let refusal = RestError(Refusal::forbidden(
             "forbidden",
             "the original is restricted to entity administrators",
-        )));
+        ));
+        return Err(crate::access_log::refused(&s, &h, "entity_document.read", id, refusal).await);
     }
     let access = crate::access_log::event(
         &gate.principal,

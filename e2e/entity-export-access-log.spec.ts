@@ -23,11 +23,27 @@ test("entity evidence and both CSV layouts record their exact subject references
   const api = apiOf(admin, bearer);
   const entityResponse = await api("/legal-entities");
   expect(entityResponse.status()).toBe(200);
-  const entities = await entityResponse.json() as { items: { id: string; current: { version: number; representatives: string[] | null; directors: unknown[] | null } }[] };
+  const entities = await entityResponse.json() as { items: { id: string; current: { version: number; representatives: string[] | null; directors: unknown[] | null }; registrations: { id: string }[] }[] };
   const entity = entities.items[0]!;
+  const registration = entity.registrations[0]!;
+  const historySubjects = (sql: string) => JSON.parse(psql(slug, sql).split("\n").find(line => line.startsWith("["))!) as string[];
+  const entityHistorySubjects = historySubjects(`SELECT json_agg(ref ORDER BY ref) FROM (
+    SELECT 'legal_entity_representatives:${entity.id}:' || r.version || ':' || p.seq AS ref
+    FROM legal_entity_revisions r JOIN legal_entity_representatives p ON p.revision_id=r.id
+    WHERE r.legal_entity_id='${entity.id}'::uuid AND r.version=(SELECT min(version) FROM legal_entity_revisions WHERE legal_entity_id=r.legal_entity_id)
+    UNION SELECT 'users:' || actor_id FROM legal_entity_revisions WHERE legal_entity_id='${entity.id}'::uuid
+  ) subjects;`);
+  psql(slug, `INSERT INTO business_registration_co_owners(org_id,revision_id,seq,name)
+    SELECT org_id,id,1,'공동 사업자' FROM business_registration_revisions WHERE registration_id='${registration.id}'::uuid;`);
+  const registrationHistorySubjects = historySubjects(`SELECT json_agg(ref ORDER BY ref) FROM (
+    SELECT 'business_registration_co_owners:${registration.id}:' || r.version || ':' || p.seq AS ref
+    FROM business_registration_revisions r JOIN business_registration_co_owners p ON p.revision_id=r.id WHERE r.registration_id='${registration.id}'::uuid
+    UNION SELECT 'users:' || actor_id FROM business_registration_revisions WHERE registration_id='${registration.id}'::uuid
+  ) subjects;`);
   const refs = [
     ...(entity.current.representatives ?? []).map((_, i) => `legal_entity_representatives:${entity.id}:${entity.current.version}:${i + 1}`),
     ...(entity.current.directors ?? []).map((_, i) => `legal_entity_directors:${entity.id}:${entity.current.version}:${i + 1}`),
+    ...registrationHistorySubjects.filter(ref => ref.startsWith("business_registration_co_owners:")),
   ].sort();
   const upload = await admin.request.post("/api/v1/entity-documents", {
     headers: { Authorization: bearer() },
@@ -44,6 +60,8 @@ test("entity evidence and both CSV layouts record their exact subject references
   for (const [path, action, subjects] of [
     [`/legal-entities/${entity.id}`, "legal_entity.read", refs],
     ["/legal-entities", "legal_entity.list_read", refs],
+    [`/legal-entities/${entity.id}/revisions`, "legal_entity.history_read", entityHistorySubjects],
+    [`/business-registrations/${registration.id}/revisions`, "business_registration.history_read", registrationHistorySubjects],
     [`/legal-entities/${entity.id}/documents`, "entity_document.list_read", [`entity_documents:${doc.id}`]],
     [`/entity-documents/${doc.id}`, "entity_document.metadata_read", [`entity_documents:${doc.id}`]],
     [`/entity-documents/${doc.id}/content`, "entity_document.read", [`entity_documents:${doc.id}`]],
@@ -72,5 +90,14 @@ test("entity evidence and both CSV layouts record their exact subject references
     expect(rows).toHaveLength(before + 1);
     expect(rows.at(-1)!.after.subject_ids.sort()).toEqual(people.items.map(person => person.id).sort());
     expect(rows.at(-1)!.after.export_purpose).toBe("INTERNAL_REVIEW");
+  }
+  for (const [route, action] of [["legal-entities", "legal_entity.history_read"], ["business-registrations", "business_registration.history_read"]]) {
+    const before = records(action!).length;
+    const response = await api(`/${route}/00000000-0000-4000-8000-000000000001/revisions`);
+    expect(response.status(), await response.text()).toBe(404);
+    const rows = records(action!);
+    expect(rows).toHaveLength(before + 1);
+    expect(rows.at(-1)!.after.subject_ids).toEqual([]);
+    expect(rows.at(-1)!.after).toHaveProperty("refusal_code");
   }
 });

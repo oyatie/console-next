@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Entity people have revision/sequence keys, not employee identities. Documents are immutable sets.
 use console_entity_application::LegalEntityView;
-use console_kernel_core::AuditEvent;
+use console_kernel_core::{AuditCommandContext, AuditEvent, AuditOutcome};
 use console_platform_authz::Principal;
 use console_platform_db::with_audit;
 use console_platform_request_context::audit_context::access_log::{
@@ -58,6 +58,8 @@ pub(crate) fn event(
             action,
             target_type: if action.starts_with("entity_document.") {
                 "entity_document"
+            } else if action.starts_with("business_registration.") {
+                "business_registration"
             } else {
                 "legal_entity"
             },
@@ -77,4 +79,26 @@ pub(crate) async fn record(s: &EntityRestState, event: AuditEvent) -> Result<(),
     .await
     .map_err(console_entity_adapter_postgres::PgEntityError::from)?;
     Ok(())
+}
+
+/// A resolved caller's failed read logs no subjects, because none were returned.
+pub(crate) async fn refused(
+    s: &EntityRestState,
+    h: &axum::http::HeaderMap,
+    action: &'static str,
+    id: uuid::Uuid,
+    error: RestError,
+) -> RestError {
+    let Ok(principal) = crate::auth::principal(s, h).await else {
+        return error;
+    };
+    let result = async {
+        let mut access = event(&principal, action, id.to_string(), &[])?;
+        access.after.get_or_insert_with(|| json!({}))["refusal_code"] = json!(error.0.code);
+        let mut context = AuditCommandContext::for_actor(Some(principal.user_id));
+        context.outcome = AuditOutcome::Denied;
+        record(s, access.with_command_context(context)).await
+    }
+    .await;
+    result.err().unwrap_or(error)
 }

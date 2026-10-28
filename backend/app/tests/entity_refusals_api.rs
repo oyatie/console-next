@@ -166,12 +166,6 @@ async fn unknown_records_are_not_found_with_their_code(pool: PgPool) {
             "workplace_not_found",
         ),
         (
-            "GET",
-            format!("/api/v1/business-registrations/{nobody}/revisions"),
-            None,
-            "registration_not_found",
-        ),
-        (
             "POST",
             format!("/api/v1/org-structure/batches/{nobody}/undo"),
             None,
@@ -198,6 +192,19 @@ async fn unknown_records_are_not_found_with_their_code(pool: PgPool) {
     ] {
         refused(&pool, &ctx, method, &uri, body, StatusCode::NOT_FOUND, want).await;
     }
+    let before = count(&pool, "audit_events", ctx.org).await;
+    for _ in 0..2 {
+        let (status, body) = ctx
+            .call(
+                "GET",
+                &format!("/api/v1/business-registrations/{nobody}/revisions"),
+                None,
+            )
+            .await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+        assert_eq!(body["error"]["code"], "registration_not_found");
+    }
+    assert_eq!(count(&pool, "audit_events", ctx.org).await, before + 2);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
