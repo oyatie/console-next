@@ -34,7 +34,7 @@
     "@axe-core/playwright": "~4.13.0",
     "@playwright/test": "^1.63.0",
     "@stryker-mutator/core": "^10.0.0",
-    "@types/node": "^24.19.0",
+    "@types/node": "^26.6.5",
     "exceljs": "^4.4.0",
     "openapi-typescript": "^7.13.0",
     "oxlint": "^1.86.0",
