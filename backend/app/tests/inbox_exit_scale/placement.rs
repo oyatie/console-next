@@ -4,6 +4,9 @@ use console_hr_adapter_postgres::{
     authz::authorize_hr_case, directory::read_list::EmployeeListQuery,
 };
 
+#[path = "placement/incomplete.rs"]
+mod incomplete;
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn scoped_directory_home_and_exit_actions_share_the_current_node(pool: PgPool) {
     let runtime = runtime_role_pool(&pool).await;
