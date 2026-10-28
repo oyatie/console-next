@@ -2,6 +2,7 @@
 // sheet. Pure; the caller passes the words.
 import { descendants, pathTo, type ChartNode, type Kind, type Structure } from "./model";
 import { findHits } from "./search";
+import { csvCell } from "../../../lib/csv-cell";
 
 export type Level = "all" | Exclude<Kind, "tenant">;
 export type ListFilter = "vacant" | "todo";
@@ -36,15 +37,13 @@ export function registryRows(s: Structure, o: { level: Level; q: string; filters
   return out;
 }
 
-const cell = (v: string | number) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
-
 /**
  * The rows as an org sheet (CSV with a BOM, so a spreadsheet reads Hangul): legal entity, workplace, the department's
  * path below the workplace, code, head and people, one row per unit. The org sheet import reads the same columns.
  */
 export function registryCsv(s: Structure, rows: readonly ChartNode[], header: readonly string[], level: (n: ChartNode) => string): string {
-  const lines = rows.map((n) => registryCells(s, n, level).map(cell).join(","));
-  return `﻿${[header.map(cell).join(","), ...lines].join("\r\n")}\r\n`;
+  const lines = rows.map((n) => registryCells(s, n, level).map(csvCell).join(","));
+  return `﻿${[header.map(csvCell).join(","), ...lines].join("\r\n")}\r\n`;
 }
 
 /** The same visible cells drive the list export preview and its CSV. */

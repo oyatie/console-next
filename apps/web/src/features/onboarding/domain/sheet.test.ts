@@ -2,9 +2,25 @@ import { expect, test } from "vitest";
 import type { OrgStructureNode } from "@console/api/pending";
 import { readDelimited } from "../../../lib/sheet-file";
 import { SHEET_COLUMNS, setupSheet } from "./sheet";
+import { formulaCases } from "../../../../../../scripts/fixtures/spreadsheet-cases";
 
 const node = (kind: OrgStructureNode["kind"], name: string, children: OrgStructureNode[] = []): OrgStructureNode => ({
   kind, id: name, name, headcount: 2000, direct_headcount: 0, dispatched_headcount: 0, chips: [], children,
+});
+
+test("the setup sheet neutralizes hyperlink and DDE cells", () => {
+  const department = node("DEPARTMENT", "dept");
+  const site = { ...node("WORKPLACE", "site", [department]), name: "=cmd|' /C calc'!A0" };
+  const entity = { ...node("LEGAL_ENTITY", "entity", [site]), name: '=HYPERLINK("https://evil.example")' };
+  const csv = setupSheet({ tenant_name: "Account", phase: "SETUP", entities: [entity], unplaced: [] }, [], SHEET_COLUMNS, (n) => n.kind);
+  const rows = readDelimited(csv.slice(1));
+  expect(rows[1]![1]).toBe("'=HYPERLINK(\"https://evil.example\")");
+  expect(rows[2]![2]).toBe("'=cmd|' /C calc'!A0");
+});
+
+test.each(formulaCases)("the setup sheet neutralizes the cell prefix: $value", ({ value }) => {
+  const csv = setupSheet({ tenant_name: "Account", phase: "SETUP", entities: [node("LEGAL_ENTITY", value)], unplaced: [] }, [], SHEET_COLUMNS, (n) => n.kind);
+  expect(readDelimited(csv.slice(1))[1]![1]).toBe("'" + value);
 });
 
 test("the setup sheet keeps column order, hierarchy, labels, head and code at every depth", () => {
