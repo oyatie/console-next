@@ -4,6 +4,7 @@ import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { QueryState } from "../../../lib/react/query-state";
+import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
@@ -27,13 +28,16 @@ export function WeeklyView() {
     <Button size="sm" onClick={() => go(7)}>{t("attendance.week.next")}</Button>
   </>}>
     <QueryState q={q} layout="list" empty={d => d.items.length ? null : <EmptyState title={t("attendance.week.empty")} reason={t("attendance.week.empty.reason")} />}>
-      {d => <Table label={t("attendance.week.title")} rows={d.items} rowId={r => r.employee_id} columns={[
-        { header: t("attendance.week.person"), cell: r => r.name },
-        { header: t("attendance.week.hours"), cell: r => t("attendance.week.hours.value", { hours: r.current_hours }) },
-        { header: t("attendance.week.state"), cell: r => r.tone === "UNKNOWN"
-          ? <EmptyState title={t("attendance.week.UNKNOWN")} reason={t("attendance.week.unknown.reason")} />
-          : <Chip tone={r.tone === "DANGER" ? "danger" : r.tone === "WARN" ? "warn" : "ok"}>{t(`attendance.week.${r.tone}`)}</Chip> },
-      ]} />}
+      {d => <>
+        {d.items.some(r => r.tone === "UNKNOWN") && <Banner tone="info">{t("attendance.week.unknown.reason")}</Banner>}
+        <Table label={t("attendance.week.title")} rows={d.items} rowId={r => r.employee_id} columns={[
+          { header: t("attendance.week.person"), cell: r => r.name },
+          { header: t("attendance.week.hours"), cell: r => t("attendance.week.hours.value", { hours: r.current_hours }) },
+          { header: t("attendance.week.state"), cell: r => r.tone === "UNKNOWN"
+            ? <Chip tone="neutral">{t("attendance.week.UNKNOWN")}</Chip>
+            : <Chip tone={r.tone === "DANGER" ? "danger" : r.tone === "WARN" ? "warn" : "ok"}>{t(`attendance.week.${r.tone}`)}</Chip> },
+        ]} />
+      </>}
     </QueryState>
   </Card>;
 }

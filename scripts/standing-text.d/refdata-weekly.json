@@ -1,10 +1,10 @@
 {
   "baseline": {
-    "apps/web/src/features/attendance/ui/attendance-page.tsx#WeeklyPage": 14
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#WeeklyPage": 15
   },
   "newScreens": {
     "apps/web/src/features/attendance/ui/attendance-page.tsx#WeeklyPage": {
-      "FACT": 8,
+      "FACT": 9,
       "REFUSAL": 4,
       "EMPTY": 2,
       "LEGAL": 0,
