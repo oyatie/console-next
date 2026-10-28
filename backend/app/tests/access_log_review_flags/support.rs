@@ -45,7 +45,7 @@ pub async fn event(
 
 pub async fn performance(pool: PgPool, sparse: bool) {
     let org = OrgId::new();
-    seed_org_and_super_admin(&pool, *org.as_uuid(), "perf").await;
+    let user = seed_org_and_super_admin(&pool, *org.as_uuid(), "perf").await;
     sqlx::query("INSERT INTO users(id,org_id,display_name,roles) SELECT md5('actor-'||n)::uuid,$1,'Actor '||n,'{}' FROM generate_series(1,2000) n")
         .bind(org.as_uuid()).execute(&pool).await.unwrap();
     let small_org = OrgId::new();
@@ -186,6 +186,104 @@ pub async fn performance(pool: PgPool, sparse: bool) {
         std::fs::write(path, &rendered).unwrap();
     }
     eprintln!("EXPLAIN confirms Index Scan on idx_audit_events_org_seal_cursor");
+    tx.commit().await.unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE org_id=$1 AND id=$2")
+        .bind(org.as_uuid())
+        .bind(user.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let service = console_platform_access::AccessService::new(rt, None);
+    let principal = console_platform_authz::Principal::new(
+        user,
+        org,
+        Default::default(),
+        console_kernel_core::BranchScope::All,
+    );
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE org_id=$1 AND id=$2")
+        .bind(small_org.as_uuid())
+        .bind(small_user.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let small_principal = console_platform_authz::Principal::new(
+        small_user,
+        small_org,
+        Default::default(),
+        console_kernel_core::BranchScope::All,
+    );
+    console_platform_access::log_review::record::start(
+        &service,
+        small_principal.clone(),
+        "2026-09".into(),
+        "small-start-test-key".into(),
+    )
+    .await
+    .unwrap();
+    console_platform_access::log_review::record::start(
+        &service,
+        principal.clone(),
+        "2026-09".into(),
+        "dense-start-test-key".into(),
+    )
+    .await
+    .unwrap();
+    let (raw, stored): (i32, i32) = sqlx::query_as("SELECT octet_length(after_snap::text),pg_column_size(after_snap) FROM audit_events WHERE org_id=$1 AND action='access_log_review.start'")
+        .bind(org.as_uuid()).fetch_one(&pool).await.unwrap();
+    eprintln!("frozen evidence sparse={sparse}: raw={raw} TOAST={stored} bytes");
+    assert!(raw < 32 * 1024 * 1024, "dense JSON budget: {raw}");
+    assert!(stored < 8 * 1024 * 1024, "dense TOAST budget: {stored}");
+    let reads = Statements::default();
+    let dispatch = reads.dispatch();
+    console_platform_access::log_review::record::frozen_page(
+        &service,
+        small_principal,
+        "2026-09".into(),
+        None,
+        50,
+    )
+    .with_subscriber(dispatch.clone())
+    .await
+    .unwrap();
+    let small_count = reads.take().len();
+    console_platform_access::log_review::record::frozen_page(
+        &service,
+        principal.clone(),
+        "2026-09".into(),
+        None,
+        50,
+    )
+    .with_subscriber(dispatch)
+    .await
+    .unwrap();
+    let large_count = reads.take().len();
+    assert!(small_count > 0);
+    assert_eq!(small_count, large_count);
+    eprintln!("persisted statements/request={large_count} at 10 and 200000 rows");
+    let mut times = Vec::new();
+    for _ in 0..20 {
+        let start = Instant::now();
+        let page = console_platform_access::log_review::record::frozen_page(
+            &service,
+            principal.clone(),
+            "2026-09".into(),
+            None,
+            50,
+        )
+        .await
+        .unwrap();
+        assert_eq!(page.len(), if sparse { 2 } else { 50 });
+        times.push(start.elapsed().as_millis());
+    }
+    times.sort_unstable();
+    eprintln!(
+        "persisted frozen page sparse={sparse}: p95={}ms; samples={times:?}",
+        times[18]
+    );
+    assert!(
+        times[18] <= 300,
+        "persisted page p95 exceeds 300ms: {times:?}"
+    );
 }
 
 fn has_cursor_index_scan(value: &Value) -> bool {

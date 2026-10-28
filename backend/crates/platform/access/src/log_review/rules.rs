@@ -22,6 +22,7 @@ pub(super) struct Rules {
     denied_min: Option<i64>,
     downloads_per_day_min: Option<i64>,
     every_download: Option<bool>,
+    reason_due_business_days: Option<i64>,
     weekend_isodays: Vec<i16>,
     holidays: Vec<String>,
     calendar_edition: String,
@@ -40,6 +41,7 @@ impl Rules {
             AccessLogReviewDeniedMin,
             AccessLogReviewDownloadsPerDayMin,
             AccessLogReviewEveryDownload,
+            AccessLogReviewReasonDueBusinessDays,
         ];
         let as_of: OffsetDateTime = sqlx::query_scalar("SELECT now()")
             .fetch_one(&mut *conn)
