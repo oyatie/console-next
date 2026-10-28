@@ -23,6 +23,18 @@ const menu = (pathname = "/", phase = "OPERATING", setupTargets?: readonly strin
   tenantNav(held, tree, false, context(pathname, phase, setupTargets));
 const top = (groups: ReturnType<typeof tenantNav>) => groups.flatMap(g => g.links.map(l => l.to));
 
+test("server readiness hides unusable modules and keeps destination permissions authoritative", () => {
+  const modules: NonNullable<Parameters<typeof tenantNav>[3]>["modules"] = [{ key: "people", ready: false, unblock: "create_workplace" }, { key: "org", ready: true, unblock: null }];
+  for (const path of ["/people", "/attendance", "/statutory"]) expect(top(tenantNav(admin, routes, false, { ...context(), modules }))).not.toContain(path);
+  expect(top(tenantNav(admin, routes, false, { ...context(), modules }))).toContain("/org");
+  expect(top(tenantNav({ is_ops: false, entries: [] } as unknown as AccessEffective, routes, false, { ...context(), modules }))).toEqual(["/", "/people/requests"]);
+});
+
+test("an unavailable modules read retains S1 setup and operating behavior", () => {
+  expect(top(tenantNav(admin, routes, false, { ...context(), modules: undefined }))).toEqual(top(menu()));
+  expect(top(tenantNav(admin, routes, false, { ...context("/", "SETUP", ["/org", "/access"]), modules: undefined }))).toEqual(["/", "/org", "/access"]);
+});
+
 test("SETUP follows non-blocked checklist targets, with safe destinations on a refused read", () => {
   expect(top(menu("/", "SETUP", ["/org", "/people", "/access"]))).toEqual(["/", "/org", "/people", "/access"]);
   expect(top(menu("/", "SETUP", ["/org/entities/new", "/access/roles/new"]))).toEqual(["/", "/org", "/access"]);

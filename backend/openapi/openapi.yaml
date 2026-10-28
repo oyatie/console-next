@@ -20661,6 +20661,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/onboarding/modules:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+      - onboarding
+      operationId: getOnboardingModules
+      summary: Count-free module readiness for the signed-in tenant
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Readiness and checklist remedies, without counts or record permissions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingModules'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cedar refused the tenant read.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/onboarding/steps/{step}/skip:
     post:
       tags:
@@ -50385,6 +50409,23 @@ components:
     ObligationType:
       type: string
       enum: [LEGAL, REGULATORY, CONTRACTUAL, INTERNAL_POLICY, CONTROL_REQUIREMENT]
+    OnboardingModules:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [key, ready, unblock]
+        properties:
+          key:
+            type: string
+            enum: [home, org, access, people, exits, attendance, statutory]
+          ready:
+            type: boolean
+          unblock:
+            type: string
+            nullable: true
+            enum: [create_legal_entity, create_workplace, open_go_live_preview, register_employee, null]
     OntologyActionCommandReceipt:
       type: object
       description: Immutable replay receipt for an accepted instance_revision action command.

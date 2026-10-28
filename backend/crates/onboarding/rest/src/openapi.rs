@@ -29,6 +29,13 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
 
 const PATHS: &[PathItem] = &[
     PathItem {
+        path: "/api/v1/onboarding/modules",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__onboarding__modules.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/onboarding/checklist",
         operations: &[Operation {
             method: "get",
@@ -72,6 +79,10 @@ const PATHS: &[PathItem] = &[
 ];
 
 const SCHEMAS: &[NamedYaml] = &[
+    NamedYaml {
+        name: "OnboardingModules",
+        body: include_str!("../openapi/schemas/OnboardingModules.yaml"),
+    },
     NamedYaml {
         name: "GoLivePreview",
         body: include_str!("../openapi/schemas/GoLivePreview.yaml"),

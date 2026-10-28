@@ -8949,6 +8949,15 @@ const ONBOARDING_FRAGMENT_EXTERNAL: &[&str] = &[
 
 const ONBOARDING_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
+        path: "/api/v1/onboarding/modules",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../onboarding/rest/openapi/paths/api__v1__onboarding__modules.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/onboarding/checklist",
         operations: &[Operation {
             method: "get",
@@ -9004,6 +9013,10 @@ const ONBOARDING_FRAGMENT_PATHS: &[PathItem] = &[
 ];
 
 const ONBOARDING_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
+    NamedYaml {
+        name: "OnboardingModules",
+        body: include_str!("../../onboarding/rest/openapi/schemas/OnboardingModules.yaml"),
+    },
     NamedYaml {
         name: "GoLivePreview",
         body: include_str!("../../onboarding/rest/openapi/schemas/GoLivePreview.yaml"),

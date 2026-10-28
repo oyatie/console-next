@@ -7,7 +7,7 @@ import { checklist as operatingChecklist, token, user } from "../../../../e2e/mo
 import { recordShifts } from "../../../../e2e/stability";
 
 declare global {
-  interface Window { __refetchChecklist: () => Promise<void>; __navFacts: { phase?: string; state?: string } }
+  interface Window { __refetchChecklist: () => Promise<void>; refetchNavModules: () => Promise<void>; __navFacts: { phase?: string; state?: string } }
 }
 
 export async function navFixture() {
@@ -43,6 +43,7 @@ export async function navFixture() {
         const router=createRouter({routeTree:root.addChildren([...routes,createRoute({getParentRoute:()=>root,path:'/setup/go-live',staticData:{access:'signed-in'},component:GoLive})])});
         const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:Infinity}}});
         window.__refetchChecklist=async()=>{await invalidateWhere(client,path=>path===queryPath(checklistQuery));};
+        window.refetchNavModules=async()=>{await invalidateWhere(client,path=>path==='/api/v1/onboarding/modules');};
         createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client},React.createElement(RouterProvider,{router})));
       ` : undefined }],
   });
@@ -53,6 +54,7 @@ export async function navFixture() {
   page.on("pageerror", error => errors.push(error.message));
   await page.route(url => url.pathname.startsWith("/api/"), route => {
     const path = new URL(route.request().url()).pathname;
+    if (path === "/api/v1/onboarding/modules") return route.fulfill({ status: 503, json: { error: { code: "unavailable" } } });
     const json = path.endsWith("/token/refresh") ? token() : path === "/api/v1/users/me" ? user :
       path === "/api/v1/onboarding/checklist" ? operatingChecklist :
       path === "/api/v1/access/me" ? { is_ops: true, entries: [] } :

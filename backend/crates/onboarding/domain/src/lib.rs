@@ -6,11 +6,13 @@
 
 mod checklist;
 mod details;
+mod modules;
 mod preview;
 mod preview_digest;
 
 pub use checklist::{Checklist, Counts, Step, StepState, Summary, checklist};
 pub use details::{Account, Breakdown, PreviewDetails, RoleActivation, TermsVersion};
+pub use modules::{Module, readiness};
 pub use preview::{Item, Preview, Record, Records, backstop, preview};
 pub use preview_digest::{changed_codes, digest_lines};
 
@@ -122,3 +124,6 @@ impl SetupFacts {
 
 #[cfg(test)]
 mod first_run_tests;
+
+#[cfg(test)]
+mod modules_tests;
