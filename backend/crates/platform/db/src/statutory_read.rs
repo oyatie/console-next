@@ -2,8 +2,9 @@
 //! Shared read of the migration-owned statutory register on the caller's connection.
 use console_compliance_domain::statutory::{
     Citation, InsuranceLossCode, Insurer, LossReasonGroup, ReleaseDisposition, StatutoryRegister,
-    StatutoryRule, StatutoryUnit,
+    StatutoryRule,
 };
+pub use console_compliance_domain::statutory::{StatutoryUnit, codes};
 use console_kernel_core::KernelError;
 use sqlx::{PgConnection, Row, postgres::PgRow};
 

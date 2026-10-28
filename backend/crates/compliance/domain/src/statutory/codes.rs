@@ -48,8 +48,13 @@ pub const DISMISSAL_PROTECTION_TAIL_DAYS: &str = "DISMISSAL_PROTECTION_TAIL_DAYS
 /// 남녀고용평등법 §19③: protection ends with childcare leave.
 pub const CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS: &str = "CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS";
 
+/// 근로기준법 §50①: ordinary weekly working hours.
+pub const WEEKLY_STANDARD_HOURS: &str = "WEEKLY_STANDARD_HOURS";
+/// 근로기준법 §53①: agreed weekly overtime limit.
+pub const WEEKLY_OVERTIME_MAX_HOURS: &str = "WEEKLY_OVERTIME_MAX_HOURS";
+
 /// Every statutory rule code, in migration order.
-pub const ALL: [&str; 43] = [
+pub const ALL: [&str; 45] = [
     DISMISSAL_PROTECTION_TAIL_DAYS,
     CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS,
     FINAL_PAY_DUE_DAYS,
@@ -93,6 +98,8 @@ pub const ALL: [&str; 43] = [
     "ins.deadline.change.nhis",
     "ins.deadline.change.ei",
     "ins.deadline.change.iaci",
+    WEEKLY_STANDARD_HOURS,
+    WEEKLY_OVERTIME_MAX_HOURS,
 ];
 
 /// The statutory-filings deadline family (SF §3.1, `ins.deadline.<event>.<insurer>`)

@@ -10,6 +10,8 @@ use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 pub mod self_service;
+pub mod week52;
+pub use week52::{Week52Limits, Week52Tone, week52_tone};
 // --- lane: ATT-BUILD ---
 pub mod calendar;
 mod inputs;
@@ -240,6 +242,7 @@ pub struct Week52Read {
     pub week_start: Date,
     pub current_hours: f64,
     pub projected_hours: f64,
+    pub tone: Week52Tone,
     pub acknowledged_at: Option<OffsetDateTime>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -351,23 +354,6 @@ pub struct AttendancePage<T> {
     pub limit: i64,
     pub offset: i64,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Week52Tone {
-    Ok,
-    Warn,
-    Danger,
-}
-pub fn week52_tone(input: &Week52Input) -> Week52Tone {
-    if input.current_hours >= 52.0 || input.projected_hours >= 52.0 {
-        Week52Tone::Danger
-    } else if input.projected_hours >= 48.0 {
-        Week52Tone::Warn
-    } else {
-        Week52Tone::Ok
-    }
-}
-
 pub fn validate_week52_start(week_start: Date) -> Result<Date, AttendanceApplicationError> {
     if week_start.weekday() == time::Weekday::Monday {
         Ok(week_start)
@@ -476,17 +462,6 @@ mod tests {
             }
             .ready()
         );
-    }
-    #[test]
-    fn monitor_thresholds_are_server_policy() {
-        let i = Week52Input {
-            employee_id: Uuid::new_v4(),
-            week_start: Date::from_calendar_date(2026, Month::July, 6).unwrap(),
-            current_hours: 47.0,
-            projected_hours: 49.0,
-            acknowledged_at: None,
-        };
-        assert_eq!(week52_tone(&i), Week52Tone::Warn);
     }
     #[test]
     fn week52_start_must_be_an_iso_monday() {

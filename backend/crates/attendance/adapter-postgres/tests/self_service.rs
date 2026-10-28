@@ -259,3 +259,6 @@ async fn seed_exception(
     .await
     .unwrap();
 }
+
+#[path = "self_service/weekly.rs"]
+mod weekly;
