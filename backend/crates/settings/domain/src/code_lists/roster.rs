@@ -42,9 +42,13 @@ impl std::fmt::Display for UnknownDomain {
 impl std::error::Error for UnknownDomain {}
 
 macro_rules! reason_domains {
+    (@codes $codes:ident) => { $codes };
+    (@codes $codes:ident $closed:ident) => { $codes.split_at($codes.len() - 1).0 };
+    (@open) => { true };
+    (@open $closed:ident) => { false };
     (@flag) => { false };
     (@flag $value:literal) => { $value };
-    ($($variant:ident => $wire:literal [$($code:literal $(=> ($involuntary:literal, $notice_required:literal))?),* $(,)?];)+) => {
+    ($($variant:ident => $wire:literal [$($code:literal $(=> ($involuntary:literal, $notice_required:literal))?),* $(,)?] $($closed:ident)?;)+) => {
         /// A reason-code domain: the command family a reason belongs to.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
         pub enum ReasonDomain {
@@ -60,17 +64,26 @@ macro_rules! reason_domains {
                 match self { $(Self::$variant => $wire,)+ }
             }
 
-            /// The system codes, in display order; [`OTHER`] is last.
+            /// System codes in display order; open domains include [`OTHER`] last.
             #[must_use]
             pub const fn system_codes(self) -> &'static [SystemCode] {
                 match self {
                     $(Self::$variant => {
                         const CODES: &[SystemCode] = &[
-                            $(SystemCode { code: $code, requires_note: false, involuntary: reason_domains!(@flag $($involuntary)?), notice_required: reason_domains!(@flag $($notice_required)?) },)*
+                            $(SystemCode { code: $code, requires_note: matches!(ReasonDomain::$variant, ReasonDomain::PrivacyPostponeAccess), involuntary: reason_domains!(@flag $($involuntary)?), notice_required: reason_domains!(@flag $($notice_required)?) },)*
                             OTHER,
                         ];
-                        CODES
+                        reason_domains!(@codes CODES $($closed)?)
                     })+
+                }
+            }
+        }
+
+        impl ReasonDomain {
+            #[must_use]
+            pub const fn tenant_extensible(self) -> bool {
+                !matches!(self, Self::Exception) && match self {
+                    $(Self::$variant => reason_domains!(@open $($closed)?),)+
                 }
             }
         }
@@ -163,15 +176,11 @@ reason_domains! {
     // --- settings (BW-00) ---
     SettingsChange => "settings_change" ["POLICY_REVIEW"];
     BusinessRegistrationEnd => "business_registration_end" ["DUPLICATE", "TEST_ENTRY", "WRONG_DOCUMENT"];
-}
-
-impl ReasonDomain {
-    /// The domain accepts tenant codes (governance design S3, the roster
-    /// `tenant_extensible` flag). Governance domains are closed so a vague
-    /// tenant code cannot turn them back into free text; the other closed
-    /// domains of that list arrive with their roster entries.
-    #[must_use]
-    pub const fn tenant_extensible(self) -> bool {
-        !matches!(self, Self::Exception)
-    }
+    // PIPA §35④1–2, §36① proviso, §37②1·2·4/③ proviso; public-body grounds absent.
+    PrivacyRefusalAccess => "privacy_refusal_access" ["LAW_PROHIBITS", "HARM_TO_OTHERS"] closed;
+    PrivacyRefusalDeletion => "privacy_refusal_deletion" ["REQUIRED_BY_LAW"] closed;
+    PrivacyRefusalSuspension => "privacy_refusal_suspension" ["LAW_REQUIRES", "HARM_TO_OTHERS", "CONTRACT_PERFORMANCE"] closed;
+    // PIPA §35③; a justified postponement always records its cause.
+    PrivacyPostponeAccess => "privacy_postpone_access" ["JUSTIFIED_REASON"] closed;
+    PrivacyIdentityMethod => "privacy_identity_method" ["SIGNED_IN", "ID_DOCUMENT_SEEN", "KNOWN_CONTACT", "AGENT_MANDATE"] closed;
 }

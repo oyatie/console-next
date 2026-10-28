@@ -169,6 +169,8 @@ impl Feature {
             Self::SettingsManage
             | Self::ReasonCodeManage
             | Self::ExceptionDecide
+            | Self::PrivacyRequestFile
+            | Self::PrivacyRequestDecide
             | Self::ApprovalRouteManage
             | Self::ChangeRequestDecide
             | Self::JobTitleManage

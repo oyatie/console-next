@@ -77,7 +77,9 @@ pub fn validate_reason(
         .or_else(|| {
             tenant
                 .iter()
-                .find(|t| t.active && t.code == code && is_tenant_code(code))
+                .find(|t| {
+                    domain.tenant_extensible() && t.active && t.code == code && is_tenant_code(code)
+                })
                 .map(|t| (t.requires_note, t.involuntary, t.notice_required))
         })
         .ok_or_else(|| ReasonError::CodeInvalid {
