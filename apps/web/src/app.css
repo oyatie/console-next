@@ -3,27 +3,6 @@
 @property --trigger-width { syntax: "*"; inherits: true; }
 @property --tree-item-level { syntax: "*"; inherits: true; }
 
-/* Local fallback metrics match Pretendard's Latin and Hangul advances and vertical metrics. */
-@font-face {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- @font-face declares its name. */
-  font-family: "Console Latin Fallback";
-  src: local("Arial");
-  size-adjust: 100.09%;
-  ascent-override: 95.11%;
-  descent-override: 24.08%;
-  line-gap-override: 0%;
-  unicode-range: U+0000-024F;
-}
-@font-face {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- @font-face declares its name. */
-  font-family: "Console Hangul Fallback";
-  src: local("Apple SD Gothic Neo Regular"), local("Malgun Gothic");
-  size-adjust: 99.91%;
-  ascent-override: 95.29%;
-  descent-override: 24.12%;
-  line-gap-override: 0%;
-}
-
 /* Tokens only: no literal colours or sizes below this line. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -88,7 +67,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .rail__link[data-status="active"] { background: var(--primary-soft); color: var(--primary); }
 .rail__list { list-style: none; margin: 0; padding: 0; }
 .top { grid-area: top; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4); min-width: 0; }
-.top__name { --font-sans: "Pretendard Variable", "Console Latin Fallback", "Console Hangul Fallback", sans-serif; font-family: var(--font-sans); min-width: 0; max-inline-size: 25%; flex-shrink: 0; }
+.top__name { min-width: 0; max-inline-size: 25%; flex-shrink: 0; }
 /* Retain the base's compact minimum; longer names use their own advance width. */
 .top__name span { min-inline-size: calc(var(--space-6) * 2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top .top__menu { display: none; }

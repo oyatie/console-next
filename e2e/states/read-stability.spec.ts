@@ -165,39 +165,3 @@ for (const width of [1440, 390]) test(`shell: failed session restore keeps recov
     expect(fixture.unexpected).toEqual([]);
   } finally { held.resolve(); await page.close(); fixture.release(); }
 });
-
-for (const name of [user.display_name, "Kim"]) test(`shell: fallback stack and compact controls preserve ${name} through a forced font swap @ui-state`, async ({ page }) => {
-  const fixture = await mockScreen(page, screens[2], "populated");
-  const pair = token();
-  const [header, payload] = pair.access_token.split(".");
-  pair.access_token = `${header}.${Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(payload!, "base64url").toString()), name, platform: true })).toString("base64url")}.mock`;
-  await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: pair });
-  await mockRoute(page, "get", "/api/platform/orgs", { status: 503, json: failure("service_unavailable") });
-  await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
-  // optional never swaps after first paint; force swap to exercise the metric fallback independently.
-  await page.route("**/*.css", async route => {
-    const response = await route.fetch();
-    await route.fulfill({ response, body: (await response.text()).replaceAll("font-display:optional", "font-display:swap") });
-  });
-  const fonts = Promise.withResolvers<void>();
-  await page.route("**/*.woff2", async route => { await fonts.promise; await route.continue(); });
-  try {
-    await page.goto("/platform", { waitUntil: "domcontentloaded" });
-    // Isolate the name override; the other controls' optional font policy is covered above.
-    await page.addStyleTag({ content: "body { font-family: monospace; }" });
-    const label = page.locator(".top__name span");
-    await expect(label).toHaveText(name);
-    await expect(label).toHaveCSS("font-family", /Pretendard Variable.*Console Latin Fallback.*Console Hangul Fallback/);
-    const font = await label.evaluate(el => {
-      const style = getComputedStyle(el);
-      return `${style.fontWeight} ${style.fontSize} "Pretendard Variable"`;
-    });
-    const controls = page.locator(".top button, .top a, .top select");
-    const before = await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
-    expect(await page.evaluate(({ font, name }) => document.fonts.check(font, name), { font, name })).toBe(false);
-    fonts.resolve();
-    await page.evaluate(({ font, name }) => document.fonts.load(font, name).then(() => document.fonts.ready), { font, name });
-    expect(await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(before);
-    expect(fixture.unexpected).toEqual([]);
-  } finally { fonts.resolve(); await page.close(); fixture.release(); }
-});
