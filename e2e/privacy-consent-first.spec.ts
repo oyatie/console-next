@@ -60,6 +60,36 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   await expect(page.getByLabel(/생년월일/)).toHaveCount(0);
   await expect(page.getByLabel(/전화번호/)).toHaveCount(0);
 
+  // Direct entry into data-entry screens must stay behind consent, including during navigation.
+  const personalFields = 'input:not([type="checkbox"]):not([type="hidden"]), textarea, [contenteditable="true"]';
+  await page.evaluate((selector) => {
+    const exposed: string[] = [];
+    const inspect = () => {
+      exposed.push(...Array.from(document.querySelectorAll(selector), (el) => el.outerHTML));
+    };
+    inspect();
+    const observer = new MutationObserver(inspect);
+    observer.observe(document.body, { childList: true, subtree: true });
+    Object.assign(window, { consentProbe: { exposed, observer } });
+  }, personalFields);
+  for (const path of ["/people/new", "/people/import", "/account", "/org/entities/new"]) {
+    await go(page, path, true);
+    await expect(page).toHaveURL(/\/setup-passkey$/);
+    await expect(page.locator(personalFields)).toHaveCount(0);
+    await expect(privacyCheck).not.toBeChecked();
+    await expect(termsCheck).not.toBeChecked();
+  }
+  const exposed = await page.evaluate(() => {
+    const probe = (window as unknown as { consentProbe: { exposed: string[]; observer: MutationObserver } }).consentProbe;
+    probe.observer.disconnect();
+    return probe.exposed;
+  });
+  expect(exposed).toEqual([]);
+  await page.reload();
+  await expect(privacyCheck).toBeVisible();
+  await expect(page.locator(personalFields)).toHaveCount(0);
+  await expect(commit).toBeDisabled();
+
   // The disclosed texts match the versioned store, and opening them never changes checkbox names.
   expect(documents.privacy.body).not.toMatch(/게시 전|<a id=|【|privacy-policy-facts|console-next/);
   const disclosures = page.locator("details");

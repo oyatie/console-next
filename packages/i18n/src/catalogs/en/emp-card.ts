@@ -88,7 +88,7 @@ export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
   "empCard.none": "None",
   "empCard.missing": "Missing",
   "empCard.multi": "Correct several fields",
-  "empCard.personal.basis": "Basis: employment contract · personal email, emergency contacts and photo with consent",
+  "empCard.personal.basis": "Basis: employment contract · personal email and photo with consent · emergency contacts for emergency response (pending counsel · not consent-based)",
   "empCard.f.name": "Name",
   "empCard.f.nameAlt": "Name in Hanja · English",
   "empCard.f.nameEn": "English name",

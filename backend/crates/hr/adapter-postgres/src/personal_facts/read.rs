@@ -12,7 +12,6 @@ use sqlx::Row;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::ledger_value;
 use super::store::load_in_tx;
 use crate::authz::{authorize_hr_person, hr_reach};
 use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
@@ -98,6 +97,20 @@ impl HrService {
                     }
                     _ => None,
                 };
+                let contacts: Option<Value> = sqlx::query_scalar(
+                    "SELECT jsonb_agg(jsonb_build_object( \
+                     'name', c.name, 'relation', c.relation, 'phone', c.phone_e164, \
+                     'contact_notified', c.contact_notified, 'basis', c.basis, \
+                     'recorded_by', c.created_by, 'recorded_by_name', u.display_name, \
+                     'recorded_at', c.created_at) ORDER BY c.seq) \
+                     FROM employee_emergency_contacts c \
+                     LEFT JOIN person_accounts_current u ON u.org_id = c.org_id AND u.id = c.created_by \
+                     WHERE c.org_id = $1 AND c.employee_id = $2 AND c.voided_at IS NULL",
+                )
+                .bind(org_uuid)
+                .bind(employee_id)
+                .fetch_one(tx.as_mut())
+                .await?;
                 let me = actor_employee_id(tx, &principal).await?;
                 let event = access_event(
                     &principal,
@@ -113,10 +126,7 @@ impl HrService {
                     name_en: row.name_en,
                     nationality: row.nationality,
                     personal_email: row.personal_email,
-                    emergency_contacts: ledger_value(
-                        "emergency_contacts",
-                        row.emergency_contacts.as_deref(),
-                    ),
+                    emergency_contacts: contacts.unwrap_or(Value::Null),
                     photo,
                     group_service_start_date: row.group_service_start_date,
                 };

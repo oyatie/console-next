@@ -18722,6 +18722,16 @@ export interface components {
             relation: "SPOUSE" | "PARENT" | "CHILD" | "SIBLING" | "RELATIVE" | "OTHER";
             /** @description Sent in any common form; answered in E.164. */
             phone: string;
+            /** @description Employee confirmation that this contact was told. Required for new or changed contacts (422 emergency_contact_notice_unconfirmed otherwise). Unchanged or restored historical contacts retain their stored confirmation. */
+            contact_notified: boolean;
+            /** @description Server-recorded basis; null for historical unconfirmed contacts. */
+            readonly basis?: string | null;
+            /** Format: uuid */
+            readonly recorded_by?: string;
+            /** @description Display name of the recorder; null if unavailable. */
+            readonly recorded_by_name?: string | null;
+            /** Format: date-time */
+            readonly recorded_at?: string;
         };
         Employee: {
             /**

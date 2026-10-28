@@ -33,6 +33,10 @@ const MESSAGES: &[&[(&str, &str)]] = &[
 /// Per-code fallback when the exact message is not in [`MESSAGES`].
 const CODES: &[(&str, &str)] = &[
     (
+        "emergency_contact_notice_unconfirmed",
+        "비상연락처 당사자에게 등록 사실을 알렸는지 확인해야 저장할 수 있습니다. (검토 전)",
+    ),
+    (
         "contract_overlap",
         "기존 계약과 기간이 겹칩니다. 계약 내역에서 겹치는 계약을 정정하십시오.",
     ),
@@ -293,6 +297,25 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert(header::ACCEPT_LANGUAGE, value.parse().unwrap());
         headers
+    }
+
+    #[test]
+    fn emergency_contact_refusals_are_korean() {
+        assert_eq!(
+            korean_message("emergency_contact_notice_unconfirmed", "notice missing"),
+            "비상연락처 당사자에게 등록 사실을 알렸는지 확인해야 저장할 수 있습니다. (검토 전)"
+        );
+        assert_eq!(
+            korean_message(
+                "validation",
+                "changes.emergency_contacts must be a list of {name, relation, phone} (relation: SPOUSE, PARENT, CHILD, SIBLING, RELATIVE or OTHER)"
+            ),
+            personal::MESSAGES
+                .iter()
+                .find(|(key, _)| key.starts_with("changes.emergency_contacts must be a list"))
+                .unwrap()
+                .1
+        );
     }
 
     #[test]

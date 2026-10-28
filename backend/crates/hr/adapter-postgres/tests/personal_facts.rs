@@ -4,6 +4,12 @@
 //! bulk) and the 그룹 입사일's second person and hire bound, as the runtime
 //! role `console_rt`. The 사진 gate is proved in hr-rest `photo_http.rs`.
 
+#[path = "personal_facts/evidence.rs"]
+mod evidence;
+#[path = "personal_facts/notice.rs"]
+mod notice;
+#[path = "personal_facts/photo.rs"]
+mod photo;
 mod support;
 
 use console_hr_adapter_postgres::HrError;
@@ -17,7 +23,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
-use support::{SECOND, World, decide, world};
+use support::{SECOND, World, create, decide, world};
 
 async fn correct_on(
     pool: &PgPool,
@@ -55,8 +61,8 @@ async fn ledger(pool: &PgPool, employee: Uuid) -> Vec<(String, Option<Value>, Va
 async fn personal_items_are_corrected_through_the_ledger_and_read_back(pool: PgPool) {
     let w = world(&pool).await;
     let two = json!([
-        { "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678" },
-        { "name": "이두리", "relation": "PARENT", "phone": "+82 2 123 4567" },
+        { "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678", "contact_notified": true },
+        { "name": "이두리", "relation": "PARENT", "phone": "+82 2 123 4567", "contact_notified": true },
     ]);
     let done = correct_on(
         &pool,
@@ -77,7 +83,7 @@ async fn personal_items_are_corrected_through_the_ledger_and_read_back(pool: PgP
     assert_eq!(rows.len(), 5);
     assert!(rows.iter().all(|(_, old, _)| old.is_none()));
 
-    let one = json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "01012345678" }]);
+    let one = json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "01012345678", "contact_notified": true }]);
     correct_on(
         &pool,
         &w,
@@ -91,10 +97,22 @@ async fn personal_items_are_corrected_through_the_ledger_and_read_back(pool: PgP
     assert_eq!(facts.name_en.as_deref(), Some("KIM HANA"));
     assert_eq!(facts.nationality.as_deref(), Some("KR"));
     assert_eq!(facts.personal_email, None, "cleared back to 미입력");
-    assert_eq!(
-        facts.emergency_contacts,
-        json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "+821012345678" }])
-    );
+    assert_eq!(facts.emergency_contacts.as_array().unwrap().len(), 1);
+    let first = &facts.emergency_contacts[0];
+    assert_eq!(first["name"], "이하나");
+    assert_eq!(first["relation"], "SPOUSE");
+    assert_eq!(first["phone"], "+821012345678");
+    assert_eq!(first["basis"], "VITAL_INTEREST_PENDING_COUNSEL");
+    assert!(first.get("basis_label").is_none());
+    assert_eq!(first["recorded_by"], w.hr_one.to_string());
+    let recorder: String = sqlx::query_scalar("SELECT display_name FROM users WHERE id = $1")
+        .bind(w.hr_one)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(first["recorded_by_name"], recorder);
+    assert!(first["recorded_at"].as_str().is_some_and(|s| !s.is_empty()));
+    assert_eq!(first["contact_notified"], true);
     let voided: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM employee_emergency_contacts WHERE employee_id = $1 AND voided_at IS NOT NULL",
     )
@@ -102,7 +120,7 @@ async fn personal_items_are_corrected_through_the_ledger_and_read_back(pool: PgP
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert_eq!(voided, 2, "the replaced rows stay, voided");
+    assert_eq!(voided, 1, "only the removed contact is voided");
     let last = ledger(&pool, w.in_a).await;
     let contacts = last
         .iter()
@@ -202,7 +220,7 @@ async fn the_personal_profile_imports_in_bulk_and_takes_a_group_start_only_once(
     let w = world(&pool).await;
     let rows = json!([
         { "employee_id": w.in_a, "changes": { "name_en": "KIM HANA", "nationality": "VN",
-          "emergency_contacts": [{ "name": "이하나", "relation": "SIBLING", "phone": "010-2222-3333" }] } },
+          "emergency_contacts": [{ "name": "이하나", "relation": "SIBLING", "phone": "010-2222-3333", "contact_notified": true }] } },
         { "employee_id": w.in_b, "changes": { "group_service_start_date": "2015-06-01", "name_hanja": "朴" } },
     ]);
     let plan =
@@ -240,69 +258,4 @@ async fn the_personal_profile_imports_in_bulk_and_takes_a_group_start_only_once(
         plan.rows.iter().all(|row| row.error.is_some()),
         "a recorded 근속 기산일 and a 사진 are not bulk items"
     );
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn former_employee_cannot_issue_photo_upload(pool: PgPool) {
-    let w = world(&pool).await;
-    sqlx::query(
-        "UPDATE employees SET employment_status='EXITED', exit_date='2026-10-10' WHERE id=$1",
-    )
-    .bind(w.in_a)
-    .execute(&pool)
-    .await
-    .unwrap();
-    let request =
-        serde_json::from_value(json!({ "content_type": "image/jpeg", "byte_size": 1024 })).unwrap();
-    let error =
-        w.hr.issue_photo_upload(w.hr(w.hr_one), w.in_a, request)
-            .await
-            .unwrap_err();
-    assert_eq!(
-        (error.status.as_u16(), error.code),
-        (409, "employee_exited_read_only")
-    );
-    let count: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM employee_photo_uploads WHERE employee_id=$1")
-            .bind(w.in_a)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(count, 0);
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn former_employee_cannot_confirm_photo_upload_issued_while_active(pool: PgPool) {
-    let w = world(&pool).await;
-    let request =
-        serde_json::from_value(json!({ "content_type": "image/jpeg", "byte_size": 1024 })).unwrap();
-    let upload =
-        w.hr.issue_photo_upload(w.hr(w.hr_one), w.in_a, request)
-            .await
-            .unwrap();
-    assert!(!upload.confirmed);
-    let id = upload.upload_id;
-    sqlx::query(
-        "UPDATE employees SET employment_status='EXITED', exit_date='2026-10-10' WHERE id=$1",
-    )
-    .bind(w.in_a)
-    .execute(&pool)
-    .await
-    .unwrap();
-    let error =
-        w.hr.confirm_photo_upload(w.hr(w.hr_one), upload)
-            .await
-            .unwrap_err();
-    assert_eq!(
-        (error.status.as_u16(), error.code),
-        (409, "employee_exited_read_only")
-    );
-    let confirmed: bool = sqlx::query_scalar(
-        "SELECT confirmed_at IS NOT NULL FROM employee_photo_uploads WHERE id=$1",
-    )
-    .bind(id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert!(!confirmed);
 }

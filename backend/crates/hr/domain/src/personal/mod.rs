@@ -150,21 +150,25 @@ pub struct EmergencyContactInput {
     pub name: String,
     pub relation: ContactRelation,
     pub phone: String,
+    /// Employee confirmation that the contact was told about registration.
+    #[serde(default)]
+    pub contact_notified: Option<bool>,
 }
 
 /// A checked 비상연락처; the phone is normalized to E.164 by the adapter.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EmergencyContact {
     pub name: String,
     pub relation: ContactRelation,
     pub phone: String,
+    pub contact_notified: bool,
 }
 
 /// Checks the whole 비상연락처 list (an empty list clears it).
 ///
 /// # Errors
 /// Validation on too many rows, a blank or long name, or a blank phone.
-pub fn validate_emergency_contacts(
+pub fn normalize_emergency_contacts(
     rows: Vec<EmergencyContactInput>,
 ) -> Result<Vec<EmergencyContact>, KernelError> {
     if rows.len() > MAX_EMERGENCY_CONTACTS {
@@ -188,9 +192,32 @@ pub fn validate_emergency_contacts(
                 name,
                 relation: row.relation,
                 phone,
+                contact_notified: row.contact_notified.unwrap_or(false),
             })
         })
         .collect()
+}
+
+/// New or changed contacts need notice confirmation; stored rows can be kept or restored.
+///
+/// # Errors
+/// Typed validation when an unconfirmed contact has no matching stored evidence.
+pub fn validate_emergency_contacts(
+    rows: &[EmergencyContact],
+    recorded: &[EmergencyContact],
+) -> Result<(), KernelError> {
+    let mut available = recorded.to_vec();
+    for row in rows {
+        let existing = available.iter().position(|old| old == row);
+        if let Some(index) = existing {
+            available.swap_remove(index);
+        } else if !row.contact_notified {
+            return Err(KernelError::validation(
+                "emergency contact cannot be saved without the employee's confirmation that the contact was told (검토 전; conservative basis pending counsel, not consent)",
+            ).with_code("emergency_contact_notice_unconfirmed"));
+        }
+    }
+    Ok(())
 }
 
 /// A photo upload's declared type and size; returns the canonical type.

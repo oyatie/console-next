@@ -12,13 +12,21 @@
 //! request stores it and the decision re-normalizes it); `None` clears the
 //! item back to 미입력; the 비상연락처 list is its JSON.
 
+//! Every write must use the governed correction paths, with routing facts from the caller.
+//! A shortcut that supplied its own second-person routing must stay unavailable.
+//!
+//! ```compile_fail
+//! use console_hr_adapter_postgres::HrService;
+//! let _ = HrService::record_emergency_contacts;
+//! ```
+
 pub mod photo;
 pub mod read;
 pub(crate) mod store;
 
 use console_hr_domain::personal::{
-    EmergencyContactInput, PERSONAL_FIELDS, normalize_name_en, normalize_name_hanja,
-    normalize_nationality, validate_emergency_contacts,
+    EmergencyContactInput, PERSONAL_FIELDS, normalize_emergency_contacts, normalize_name_en,
+    normalize_name_hanja, normalize_nationality,
 };
 use console_hr_domain::profile::facts::normalize_email;
 use console_hr_domain::text::parse_yyyy_mm_dd;
@@ -86,7 +94,7 @@ fn emergency_contacts(value: &Value) -> Result<Option<String>, HrError> {
         other => other.clone(),
     };
     let rows: Vec<EmergencyContactInput> = serde_json::from_value(value).map_err(|_| shape())?;
-    let mut rows = validate_emergency_contacts(rows).map_err(HrError::from_kernel)?;
+    let mut rows = normalize_emergency_contacts(rows).map_err(HrError::from_kernel)?;
     if rows.is_empty() {
         return Ok(None);
     }
@@ -136,12 +144,12 @@ mod tests {
         );
         let contacts = norm(
             "emergency_contacts",
-            json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678" }]),
+            json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678", "contact_notified": true }]),
         )
         .unwrap();
         assert_eq!(
             ledger_value("emergency_contacts", Some(&contacts)),
-            json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "+821012345678" }])
+            json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "+821012345678", "contact_notified": true }])
         );
         assert_eq!(
             norm("emergency_contacts", Value::String(contacts.clone())),
@@ -150,6 +158,15 @@ mod tests {
         );
         assert_eq!(norm("emergency_contacts", json!([])), None);
         assert_eq!(norm("photo", Value::Null), None);
+    }
+
+    #[test]
+    fn malformed_contacts_keep_the_frozen_shape_message() {
+        let err = normalize("emergency_contacts", &json!({"name": "wrong shape"})).unwrap_err();
+        assert_eq!(
+            err.message,
+            "changes.emergency_contacts must be a list of {name, relation, phone} (relation: SPOUSE, PARENT, CHILD, SIBLING, RELATIVE or OTHER)"
+        );
     }
 
     #[test]
@@ -162,11 +179,11 @@ mod tests {
             ("group_service_start_date", json!("2019/01/02")),
             (
                 "emergency_contacts",
-                json!([{ "name": "이", "relation": "FRIEND", "phone": "010" }]),
+                json!([{ "name": "이", "relation": "FRIEND", "phone": "010", "contact_notified": true }]),
             ),
             (
                 "emergency_contacts",
-                json!([{ "name": "이", "relation": "OTHER", "phone": "abc" }]),
+                json!([{ "name": "이", "relation": "OTHER", "phone": "abc", "contact_notified": true }]),
             ),
         ] {
             assert!(normalize(field, &value).is_err(), "{field} {value}");

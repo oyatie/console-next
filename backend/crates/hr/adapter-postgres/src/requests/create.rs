@@ -139,6 +139,18 @@ pub async fn insert_change_request_in_tx(
             .map(|(field, value)| Ok((field.clone(), normalize_value(field, value)?)))
             .collect::<Result<Vec<_>, HrError>>()?;
         crate::corrections::catalog::check_in_tx(tx, new.org, &fields).await?;
+        if let Some((_, contacts)) = fields
+            .iter()
+            .find(|(field, _)| field == "emergency_contacts")
+        {
+            crate::personal_facts::store::contact_plan(
+                tx,
+                new.org,
+                new.subject_id,
+                contacts.as_deref(),
+            )
+            .await?;
+        }
     }
     let row = sqlx::query(concat!(
         "INSERT INTO change_requests (org_id, kind, subject_type, subject_id, payload, \

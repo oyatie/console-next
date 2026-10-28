@@ -169,6 +169,7 @@ rejecting an exit case requires an exit-case confirmation capability
 absence alert not found for employee
 employee or absence alert was not found in the requested branch
 [CODES]
+emergency_contact_notice_unconfirmed
 validation
 bad_request
 lifecycle_schedule_conflict

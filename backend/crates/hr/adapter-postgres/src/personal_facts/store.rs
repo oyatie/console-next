@@ -3,15 +3,22 @@
 //! record, and the write inside a correction's transaction after
 //! `corrections::lock_employee` locked the employee row.
 
-use console_hr_domain::personal::validate_group_service_start;
+use console_hr_domain::personal::{
+    EmergencyContact, validate_emergency_contacts, validate_group_service_start,
+};
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use http::StatusCode;
+use serde_json::{Value, json};
 use sqlx::{Postgres, Row, Transaction};
 use time::Date;
 use uuid::Uuid;
 
 use crate::HrError;
 use crate::corrections::refusal;
+
+/// Conservative legal basis for emergency contact processing pending counsel
+/// (`DECISIONS.md` §2026-10-20; never a consent checkbox).
+pub const EMERGENCY_CONTACT_BASIS: &str = "VITAL_INTEREST_PENDING_COUNSEL";
 
 /// The items of one employee in their stored text form (the form
 /// [`super::normalize`] returns).
@@ -45,7 +52,9 @@ impl PersonalRow {
 
 const LOAD: &str = "SELECT f.name_hanja, f.name_en, f.nationality, f.personal_email, \
      f.photo_upload_id::text AS photo, to_char(f.group_service_start_date, 'YYYY-MM-DD') AS group_start, \
-     (SELECT jsonb_agg(jsonb_build_object('name', c.name, 'relation', c.relation, 'phone', c.phone_e164) \
+     (SELECT jsonb_agg(jsonb_build_object( \
+        'name', c.name, 'relation', c.relation, 'phone', c.phone_e164, \
+        'contact_notified', c.contact_notified) \
         ORDER BY c.seq)::text \
       FROM employee_emergency_contacts c \
       WHERE c.org_id = f.org_id AND c.employee_id = f.employee_id AND c.voided_at IS NULL) AS contacts \
@@ -178,6 +187,51 @@ pub(crate) async fn write_in_tx(
     Ok(())
 }
 
+/// Match against server-owned history, never evidence supplied by the caller.
+/// Correction, bulk apply and request decision writers hold the employee lock.
+pub(crate) async fn contact_plan(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    employee_id: Uuid,
+    value: Option<&str>,
+) -> Result<Value, HrError> {
+    let contacts = super::normalize("emergency_contacts", &json!(value))?;
+    let rows: Vec<EmergencyContact> = serde_json::from_str(contacts.as_deref().unwrap_or("[]"))
+        .map_err(|_| HrError::validation("changes.emergency_contacts could not be stored"))?;
+    let mut recorded: Vec<(Uuid, sqlx::types::Json<EmergencyContact>)> = sqlx::query_as(
+        "SELECT id, jsonb_build_object('name', name, 'relation', relation, \
+         'phone', phone_e164, 'contact_notified', contact_notified) \
+         FROM employee_emergency_contacts WHERE org_id = $1 AND employee_id = $2 \
+         ORDER BY (voided_at IS NULL) DESC, voided_at DESC, seq, created_at DESC, id",
+    )
+    .bind(org)
+    .bind(employee_id)
+    .fetch_all(tx.as_mut())
+    .await?;
+    validate_emergency_contacts(
+        &rows,
+        &recorded
+            .iter()
+            .map(|(_, row)| row.0.clone())
+            .collect::<Vec<_>>(),
+    )
+    .map_err(|error| HrError {
+        code: error.code.unwrap_or("validation"),
+        ..HrError::from_kernel(error)
+    })?;
+    let plan: Vec<Value> = rows
+        .into_iter()
+        .map(|row| {
+            let id = recorded
+                .iter()
+                .position(|(_, old)| old.0 == row)
+                .map(|index| recorded.remove(index).0);
+            json!({"id": id, "contact": row})
+        })
+        .collect();
+    Ok(json!(plan))
+}
+
 async fn write_contacts(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
@@ -185,29 +239,44 @@ async fn write_contacts(
     actor: Uuid,
     json: Option<&str>,
 ) -> Result<(), HrError> {
-    // The live list is replaced: old rows are voided, never deleted.
+    let plan = contact_plan(tx, org, employee_id, json).await?;
+    // Free the unique live sequence slots before restoring matches in their requested order.
     sqlx::query(
-        "UPDATE employee_emergency_contacts SET voided_at = now() \
-         WHERE org_id = $1 AND employee_id = $2 AND voided_at IS NULL",
+        "UPDATE employee_emergency_contacts c SET voided_at = now() \
+         WHERE c.org_id = $1 AND c.employee_id = $2 AND c.voided_at IS NULL \
+         AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements($3::jsonb) WITH ORDINALITY AS r(v, n) \
+                         WHERE c.id = (r.v->>'id')::uuid AND c.seq = r.n)",
     )
     .bind(org)
     .bind(employee_id)
+    .bind(&plan)
     .execute(tx.as_mut())
     .await?;
-    if let Some(json) = json {
-        sqlx::query(
-            "INSERT INTO employee_emergency_contacts (org_id, employee_id, seq, name, relation, \
-             phone_e164, created_by) \
-             SELECT $1, $2, r.n, r.v->>'name', r.v->>'relation', r.v->>'phone', $4 \
-             FROM jsonb_array_elements($3::jsonb) WITH ORDINALITY AS r(v, n)",
-        )
-        .bind(org)
-        .bind(employee_id)
-        .bind(json)
-        .bind(actor)
-        .execute(tx.as_mut())
-        .await?;
-    }
+    sqlx::query(
+        "UPDATE employee_emergency_contacts c SET voided_at = NULL, seq = r.n::smallint \
+         FROM jsonb_array_elements($3::jsonb) WITH ORDINALITY AS r(v, n) \
+         WHERE c.org_id = $1 AND c.employee_id = $2 AND c.id = (r.v->>'id')::uuid",
+    )
+    .bind(org)
+    .bind(employee_id)
+    .bind(&plan)
+    .execute(tx.as_mut())
+    .await?;
+    sqlx::query(
+        "INSERT INTO employee_emergency_contacts (org_id, employee_id, seq, name, relation, \
+         phone_e164, created_by, basis, contact_notified) \
+         SELECT $1, $2, r.n, r.v->'contact'->>'name', r.v->'contact'->>'relation', \
+         r.v->'contact'->>'phone', $4, $5, true \
+         FROM jsonb_array_elements($3::jsonb) WITH ORDINALITY AS r(v, n) \
+         WHERE r.v->>'id' IS NULL",
+    )
+    .bind(org)
+    .bind(employee_id)
+    .bind(&plan)
+    .bind(actor)
+    .bind(EMERGENCY_CONTACT_BASIS)
+    .execute(tx.as_mut())
+    .await?;
     sqlx::query(
         "UPDATE employee_personal_facts SET updated_at = now() WHERE org_id = $1 AND employee_id = $2",
     )

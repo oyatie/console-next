@@ -67,6 +67,9 @@ pub(crate) async fn check_against_record(
         value_of(fields, "exit_reason").flatten(),
     )
     .await?;
+    if let Some(contacts) = value_of(fields, "emergency_contacts") {
+        personal_facts::store::contact_plan(tx, org, employee_id, contacts).await?;
+    }
     let hire = value_of(fields, "hire_date").map_or(day(head.hire_date.as_deref()), day);
     // Only when either date changes: a record that already disagrees must not
     // block an unrelated correction.

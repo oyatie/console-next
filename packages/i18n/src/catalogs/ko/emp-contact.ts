@@ -12,5 +12,13 @@ export const koEmpContact = {
   "empContact.need.name": "이름을 입력하십시오",
   "empContact.need.relation": "관계를 선택하십시오",
   "empContact.need.phone": "휴대전화 번호를 입력하십시오",
+  "empContact.basis.VITAL_INTEREST_PENDING_COUNSEL": "응급 상황 대비",
+  "empContact.basis.unknown": "처리 근거 확인 필요",
+  "empContact.basis.label": "검토 전",
+  "empContact.basis.notice": "처리 근거: 응급 상황 대비 (검토 전 · 동의 기반 아님)",
+  "empContact.notice.label": "연락처 당사자 안내 확인",
+  "empContact.notice.confirm": "직원이 이 비상연락처 대상자에게 등록 사실을 알렸음을 확인했습니다 (검토 전)",
+  "empContact.need.notice": "연락처 당사자에게 알렸는지 확인하십시오",
+  "empContact.recorded": "근거 {basis} ({label}) · 기록 {by} · {at}",
   "empContact.of": "비상연락처 {who}",
 } as const;
