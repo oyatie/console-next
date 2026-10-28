@@ -6,21 +6,28 @@ import { PageHead, type PageHeadProps } from "../page-head/page-head";
 import { PageHeadingLevel, PageScope } from "./page-scope";
 import s from "./page.module.css";
 
-type ReadProps<T> = Pick<ComponentProps<typeof QueryState<T>>, "q" | "children" | "empty" | "own" | "back" | "removed" | "layout">;
+export type PageReadProps<T> = Pick<ComponentProps<typeof QueryState<T>>, "q" | "children" | "empty" | "own" | "back" | "removed" | "layout">;
 type PageProps<T> = {
   floorplan: "list" | "record" | "form" | "dashboard" | "wizard" | "settings" | "canvas";
   head: PageHeadProps;
-} & (ReadProps<T> | { q?: never; children: ReactNode });
+  /** Query controls stay mounted during reads; the existing refusal boundary removes them. */
+  toolbar?: ReactNode;
+  sheet?: ReactNode;
+} & (PageReadProps<T> | { q?: never; children: ReactNode });
 
 /** Keep safe page chrome outside the read boundary. Nested pages and portal content use secondary headings. */
-export function Page<T>({ floorplan, head, ...content }: PageProps<T>) {
+export function Page<T>({ floorplan, head, toolbar, sheet, ...content }: PageProps<T>) {
   const scope = useContext(PageScope);
   const level = useContext(PageHeadingLevel);
   const secondary = scope.embedded || level === 2;
   const Root = scope.landmark || secondary ? "div" : "main";
-  const renderHead = (available: boolean) => <PageHeadingLevel value={secondary ? 2 : 1}>
-    <PageHead {...(available ? head : { title: head.title, titleId: head.titleId, crumbs: head.crumbs, band: head.band })} />
-  </PageHeadingLevel>;
+  const renderHead = (available: boolean) => <>
+    <PageHeadingLevel value={secondary ? 2 : 1}>
+      <PageHead {...(available ? head : { title: head.title, titleId: head.titleId, crumbs: head.crumbs, band: head.band })} />
+    </PageHeadingLevel>
+    {available && toolbar}
+    {available && sheet}
+  </>;
   const body = content.q === undefined ? <>{renderHead(true)}{content.children}</> : (
     <PageReadGate q={content.q} head={renderHead} own={content.own} back={content.back} removed={content.removed}>
       <QueryState layout="list" {...content} />

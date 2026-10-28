@@ -4,7 +4,8 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { atBase, baselineGrowth, digest, ratchet } from "./quality/ratchet.mjs";
+import { spawnSync } from "node:child_process";
+import { atBase, baselineGrowth, digest, qualityRef, ratchet } from "./quality/ratchet.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const BASELINE = "scripts/person-reads-baseline.json";
@@ -61,7 +62,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     writeFileSync(path.join(ROOT, BASELINE), `${JSON.stringify(found, null, 2)}\n`);
   } else {
     const baseline = JSON.parse(readFileSync(path.join(ROOT, BASELINE), "utf8"));
-    const previous = atBase(ROOT, process.env.QUALITY_BASE ?? "dev", BASELINE);
+    const ref = qualityRef(ROOT);
+    const merged = spawnSync("git", ["merge-base", "HEAD", ref], { cwd: ROOT, encoding: "utf8" });
+    if (merged.status !== 0) throw new Error(`cannot resolve quality merge-base between HEAD and ${ref}: ${merged.stderr.trim() || "no common ancestor"}`);
+    const base = merged.stdout.trim();
+    const previous = atBase(ROOT, base, BASELINE);
     const problems = [...ratchet(found, baseline), ...(previous ? baselineGrowth(baseline, JSON.parse(previous)) : [])];
     if (problems.length) { console.error(problems.join("\n")); process.exitCode = 1; }
     else console.log(`person-reads: ${Object.values(found).reduce((a, b) => a + b, 0)} inherited SQL readers; no new or stale entries`);

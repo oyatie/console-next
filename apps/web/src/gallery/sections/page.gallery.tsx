@@ -20,6 +20,7 @@ import { Sheet } from "../../ui/sheet/sheet";
 import { TabNav } from "../../ui/tabs/tabs";
 import { tabClass } from "../../ui/tabs/tab-class";
 import { Page } from "../../ui/page/page";
+import { ListPage } from "../../ui/templates/list-page";
 import { Section } from "../Section";
 
 export const order = 128;
@@ -32,7 +33,6 @@ export default function PageGallery() {
 
 function FrameDemo() {
   const [state, setState] = useState("populated");
-  const [limit, setLimit] = useState(50);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const states = { loading: t("common.loading"), empty: tg("empty.title"), failed: t("common.loadFailed.title"), refused: t("common.denied.title.plain"), populated: tg("pageHead.populated"), long: tg("sample.longName"), large: fmtNumber(2000) };
@@ -45,26 +45,26 @@ function FrameDemo() {
   };
   return <div data-page-gallery data-page-state={state}><Section title={tg("section.pageHead")}>
     <div className="row" role="group" aria-label={tg("section.states")}>
-      {Object.entries(states).map(([id, label]) => <ToggleButton key={id} pressed={state === id} onClick={() => { setState(id); setLimit(50); }}>{label}</ToggleButton>)}
+      {Object.entries(states).map(([id, label]) => <ToggleButton key={id} pressed={state === id} onClick={() => setState(id)}>{label}</ToggleButton>)}
     </div>
-    <Page floorplan="list" q={q} head={{
+    <ListPage q={q} head={{
       title: state === "long" ? tg("sample.longName").repeat(4) : tg("pageHead.list"),
       titleId: "gallery-page-title",
       crumbs: <Crumbs items={[<Link key="root" to="/_gallery" hash="main">{tg("pageHead.crumbRoot")}</Link>]} current={tg("pageHead.list")} />,
       meta: <><PhaseLine phase="operating">{tg("pageHead.operating")}</PhaseLine><span><Count n={state === "loading" || state === "failed" ? undefined : rows.length} failed={state === "failed" ? t("common.loadFailed.title") : undefined} /></span></>,
       primary: <Button variant="primary" onClick={() => setOpen(true)}>{tg("pageHead.add")}</Button>,
-      actions: <PageHeadActions label={t("uiRecordActions.more", { field: tg("pageHead.list") })} items={[{ id: "export", label: tg("pageHead.export"), onAction: () => setMessage(tg("pageHead.populated")) }]} />,
+      actions: <PageHeadActions label={t("uiRecordActions.more", { field: tg("pageHead.list") })} items={[{ id: "export", label: tg("pageHead.export"), onAction: () => setMessage(tg("pageHead.exported")) }]} />,
       asOf: <AsOf label={t("asof.label")} date={todayKst()} today={t("asof.today")} />,
       tabs: <TabNav label={tg("pageHead.list")}><Link to="/_gallery" hash="gallery-page-title" className={tabClass} aria-current="page">{tg("pageHead.facts")}</Link></TabNav>,
-    }} empty={items => items.length ? null : <EmptyState title={tg("empty.title")} reason={tg("empty.reason")} />}>
-      {items => <>
-        <LongTable label={tg("pageHead.list")} columns={[{ id: "name", header: tg("pageHead.list"), rowHeader: true, card: "title", cell: row => row.name }]} rows={items.slice(0, limit)} rowId={row => row.id} empty={null} hasMore={items.length > limit} onLoadMore={() => setLimit(n => n + 50)} />
-        <span role="status">{message}</span>
-        <Sheet open={open} title={tg("sheet.title")} onClose={() => setOpen(false)} consequence={tg("sheet.consequence")} actions={<Button onClick={() => setOpen(false)}>{t("common.cancel")}</Button>}>
+    }} empty={items => items.length ? null : <EmptyState title={tg("empty.title")} reason={tg("empty.reason")} />}
+      sheet={<Sheet open={open} title={tg("sheet.title")} onClose={() => setOpen(false)} consequence={tg("sheet.consequence")} actions={<Button onClick={() => setOpen(false)}>{t("common.cancel")}</Button>}>
           <PageHead title={tg("sheet.subtitle")} />
           <Page floorplan="form" head={{ title: tg("sheet.reason") }}>{tg("sheet.reasonHint")}</Page>
-        </Sheet>
+        </Sheet>}>
+      {items => <>
+        <LongTable label={tg("pageHead.list")} columns={[{ id: "name", header: tg("pageHead.list"), rowHeader: true, card: "title", cell: row => row.name }]} rows={items} rowId={row => row.id} empty={null} hasMore={false} onLoadMore={() => {}} />
+        <span role="status">{message}</span>
       </>}
-    </Page>
+    </ListPage>
   </Section></div>;
 }

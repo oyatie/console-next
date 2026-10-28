@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { IntlMessageFormat } from "intl-messageformat";
 import { applyJosa, resolveJosa } from "../packages/i18n/src/josa.ts";
 import ts from "typescript";
-import { atBase, baselineGrowth, digest, ratchet } from "./quality/ratchet.mjs";
+import { atBase, baselineGrowth, digest, qualityRef, ratchet } from "./quality/ratchet.mjs";
 
 const HANGUL = /[ㄱ-ㆎ가-힣]/;
 const CATALOGS = "packages/i18n/src/catalogs";
@@ -251,13 +251,16 @@ const isCopyFile = (p) => /^packages\/i18n\/src\/(?:catalogs\/(?:ko\/.*|boot(?:-
 
 // The same rules read the merge base when seeding; regeneration can never bless newly introduced debt.
 function qualityBase() {
-  return process.env.QUALITY_BASE ?? (spawnSync("git", ["rev-parse", "--verify", "--quiet", "public/dev"]).status === 0 ? "public/dev" : "dev");
+  const ref = qualityRef(process.cwd());
+  const merged = spawnSync("git", ["merge-base", "HEAD", ref], { encoding: "utf8" });
+  if (merged.status !== 0) throw new Error(`cannot resolve quality merge-base between HEAD and ${ref}: ${merged.stderr.trim() || "no common ancestor"}`);
+  return merged.stdout.trim();
 }
 
 function debtCeiling() {
   const root = process.cwd();
   const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
-  const base = git("merge-base", qualityBase(), "HEAD");
+  const base = qualityBase();
   const allow = JSON.parse(atBase(root, base, TERMS_ALLOW)).allow;
   const previous = atBase(root, base, MATURITY_BASELINE);
   if (previous !== undefined) return { counts: JSON.parse(previous), allow };
@@ -302,12 +305,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const entries = copyFiles.flatMap((f) => copyEntries(f, readFileSync(f, "utf8")));
   composerFindings.push(...copyFiles.flatMap((f) => checkComposer(f, readFileSync(f, "utf8"))));
   const composerAllow = JSON.parse(readFileSync(COMPOSER_ALLOW, "utf8")).allow;
-  const gitBase = spawnSync("git", ["merge-base", qualityBase(), "HEAD"], { encoding: "utf8" });
-  const previousComposer = gitBase.status === 0 ? atBase(process.cwd(), gitBase.stdout.trim(), COMPOSER_ALLOW) : undefined;
+  const gitBase = qualityBase();
+  const previousComposer = atBase(process.cwd(), gitBase, COMPOSER_ALLOW);
   // First adoption seeds only findings already present at the merge base.
   const composerCeiling = previousComposer ? JSON.parse(previousComposer).allow : [...new Set(composerAllow.map((entry) => entry.split(":")[0]))].flatMap((file) => {
-    if (gitBase.status !== 0) return [];
-    const before = atBase(process.cwd(), gitBase.stdout.trim(), file);
+    const before = atBase(process.cwd(), gitBase, file);
     return before ? checkComposer(file, before) : [];
   });
   problems.push(...checkComposerAllow(composerFindings, composerAllow, composerCeiling));

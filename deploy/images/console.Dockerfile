@@ -5,7 +5,7 @@ ARG RUST_IMAGE
 ARG RUNTIME_IMAGE
 FROM ${NODE_IMAGE} AS web
 WORKDIR /src
-COPY package.json package-lock.json tsconfig.json tsconfig.base.json ./
+COPY package.json package-lock.json tsconfig.json tsconfig.base.json postcss.config.mjs ./
 COPY packages ./packages
 COPY apps/web ./apps/web
 # Builds only the shipped web app; type-checking tests and e2e/ (outside this context) is CI's npm run check.
