@@ -1,8 +1,8 @@
 # ADR-0039 / DN-0005 P3: serial minority for cluster-global mutators.
 # Only these filters use max-threads = 1; the rest stay parallel.
 #
-# CI pin: cargo-nextest 0.9.138 (install via taiki-e/install-action tool=nextest@0.9.138).
-# Local: `cargo install cargo-nextest --locked --version 0.9.138` or newer compatible.
+# The CI release pin and checksum live in .github/workflows/ci.yml.
+# Local: install that cargo-nextest release with cargo install --locked, or a compatible newer release.
 
 [test-groups.cluster-global]
 max-threads = 1

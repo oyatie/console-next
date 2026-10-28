@@ -145,7 +145,7 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
   assert.ok(!workflow.jobs["backend-tests"], "nextest shares the existing backend build directory");
   assert.deepEqual(job.permissions, { contents: "read" });
   assert.equal(job.env.SQLX_OFFLINE, "true");
-  assert.equal(job.env.CARGO_NEXTEST_VERSION, "0.9.138");
+  assert.match(job.env.CARGO_NEXTEST_VERSION, /^\d+\.\d+\.\d+$/);
   assert.ok(!job["continue-on-error"] && !job.if);
   assert.ok(job.steps[0].uses.startsWith("step-security/harden-runner@"));
   for (const step of job.steps) {
@@ -158,7 +158,7 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
   const check = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts.check;
   assert.match(check, /node --test[^&]*scripts\/backend-tests\.test\.mjs/);
   const install = job.steps.find((s) => s.name === "Install pinned Rust test runner");
-  assert.ok(install.run.includes(`releases/download/cargo-nextest-${job.env.CARGO_NEXTEST_VERSION}/`));
+  assert.ok(install.run.includes("releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/"));
   assert.match(install.run, /[a-f0-9]{64}.*sha256sum -c -/);
   const artifact = job.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@"));
   assert.equal(artifact.if, "${{ !cancelled() }}");
@@ -169,4 +169,24 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
     const shell = command.replace(/\$\{\{ needs\.([\w-]+)\.result \}\}/g, (_, name) => name === "backend" ? status : "success");
     assert.equal(spawnSync("bash", ["-e", "-c", shell]).status, status === "success" ? 0 : 1);
   }
+});
+
+test("clippy and nextest reuse a Rust cache that only trusted dev pushes can save", () => {
+  const steps = workflow.jobs.backend.steps;
+  const restore = steps.find((s) => s.uses?.startsWith("actions/cache/restore@"));
+  const save = steps.find((s) => s.uses?.startsWith("actions/cache/save@"));
+  assert.ok(restore && save);
+  assert.match(restore.with.path, /backend\/target/);
+  assert.match(restore.with.path, /\.cargo\/registry/);
+  for (const input of ["backend/rust-toolchain.toml", "backend/Cargo.lock", "backend/**/Cargo.toml"])
+    assert.ok(restore.with.key.includes(input));
+  for (const input of ["runner.os", "runner.arch", "github.sha"])
+    assert.ok(restore.with.key.includes(input));
+  assert.equal(save.with.key, "${{ steps.rust-cache.outputs.cache-primary-key }}");
+  assert.equal(save.with.path, restore.with.path);
+  assert.equal(save.if, "github.event_name == 'push' && github.ref == 'refs/heads/dev'");
+  assert.ok(steps.indexOf(restore) < steps.findIndex((s) => s.run?.startsWith("cargo clippy ")));
+  assert.ok(steps.indexOf(save) > steps.findIndex((s) => s.run === "node ../scripts/backend-tests.mjs"));
+  const pins = steps.filter((s) => s.uses?.startsWith("actions/setup-node@")).map((s) => s.uses);
+  assert.deepEqual(pins, [workflow.jobs.web.steps.find((s) => s.uses?.startsWith("actions/setup-node@")).uses]);
 });
