@@ -17,7 +17,7 @@ test('exit-test receives only the workflow read token for private registry pulls
   assert.equal(step.env.REGISTRY_TOKEN, '${{ secrets.GITHUB_TOKEN }}');
 });
 
-for (const status of [0, 37]) test(`exit-test authenticates the runner and cluster, then removes credentials on exit ${status}`, () => {
+for (const {status, race} of [{status:0}, {status:37}, {status:0, race:true}]) test(`exit-test authenticates the runner and cluster, then removes credentials on exit ${status}${race ? ' during default service account creation' : ''}`, () => {
   const dir = mkdtempSync(join(tmpdir(), 'platform-registry-'));
   try {
     for (const folder of ['deploy/ci', 'deploy/source', 'runner', '.tmp/exit-bundle/platform', '.tmp/exit-bundle/namespace']) mkdirSync(join(dir, folder), {recursive:true});
@@ -42,7 +42,13 @@ if (command === 'docker') {
   const config = JSON.parse(fs.readFileSync(args.find(a => a.startsWith('--from-file=')).split('=').slice(2).join('='), 'utf8'));
   if (Buffer.from(config.auths['ghcr.io'].auth, 'base64').toString() !== process.env.GITHUB_ACTOR+':'+process.env.REGISTRY_TOKEN) process.exit(24);
   record({});
-} else if (command === 'kubectl' && args.at(-1) === '-') record({source:require('js-yaml').load(fs.readFileSync(0, 'utf8'))});
+} else if (command === 'kubectl' && args.at(-1) === '-') {
+  const source = require('js-yaml').load(fs.readFileSync(0, 'utf8'));
+  if (source.kind === 'ServiceAccount' && process.env.SERVICE_ACCOUNT_RACE && !args.includes('--server-side')) {
+    console.error('Error from server (AlreadyExists): serviceaccounts "default" already exists'); process.exit(1);
+  }
+  record({source});
+}
 else if (command === 'cosign') { record({}); console.log(JSON.stringify([{critical:{image:{'docker-manifest-digest':'sha256:'+'a'.repeat(64)}}}])); }
 else record({});
 `, {mode:0o755});
@@ -51,7 +57,7 @@ else record({});
     const result = spawnSync('bash', ['run.sh'], {cwd:dir,encoding:'utf8',env:{...process.env,
       PATH:`${dir}:${process.env.PATH}`, CALLS:join(dir, 'calls'), RUNNER_TEMP:join(dir, 'runner'),
       GITHUB_REPOSITORY:'example/console', GITHUB_ACTOR:'fixture-user', REGISTRY_TOKEN:token,
-      PLATFORM_WORKFLOW_IDENTITY:'https://github.com/example/console/.github/workflows/platform.yml@refs/heads/dev',
+      PLATFORM_WORKFLOW_IDENTITY:'https://github.com/example/console/.github/workflows/platform.yml@refs/heads/dev', SERVICE_ACCOUNT_RACE:race ? '1' : '',
     }});
     assert.equal(result.status, status, result.stderr);
     const calls = readFileSync(join(dir, 'calls'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
