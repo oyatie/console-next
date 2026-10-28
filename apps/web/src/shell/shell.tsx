@@ -12,7 +12,7 @@ import { ChangeNotice } from "../ui/live/change-notice";
 import { HeldNotice } from "../ui/live/held-notice";
 import { LiveStatus } from "../ui/live/live-status";
 import { focusSoon } from "../lib/react/announce";
-import { get } from "../lib/query";
+import { get, navigationRead } from "../lib/query";
 import { chunk } from "../lib/chunk-guard";
 import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
@@ -22,6 +22,10 @@ import { PhaseBand } from "./phase-band";
 import { SessionRecovery } from "./session-recovery";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
 import { PageMain } from "../ui/page/page-main";
+import { meQuery } from "../features/account/api";
+import { checklistQuery } from "../features/onboarding/api";
+import { fixFor } from "../features/onboarding/domain/rail";
+import type { NavHub } from "./nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
@@ -37,8 +41,27 @@ export function Shell() {
   const router = useRouter();
   const access = useQuery({ ...myAccessQuery, enabled: !platform && Boolean(session.token) });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && Boolean(session.token) });
-  const ready = !access.isPending && !support.isPending;
-  const menu = platform ? PLATFORM_NAV : tenantNav(ready ? access.data : undefined, router.routesByPath, ready && support.data?.can_approve);
+  const me = useQuery({ ...navigationRead(meQuery), enabled: !platform && Boolean(session.token) });
+  const phase = me.data?.tenant?.phase;
+  const checklist = useQuery({ ...checklistQuery, enabled: !platform && phase === "SETUP", retry: false });
+  const { refetch: refetchMe, isEnabled: meEnabled } = me;
+  const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
+  const previousPath = useRef(pathname);
+  useEffect(() => {
+    if (previousPath.current === pathname) return;
+    previousPath.current = pathname;
+    // Reuse a command's pending read so navigation cannot cancel and delay its rail update.
+    if (meEnabled) void refetchMe({ cancelRefetch: false });
+    if (checklistEnabled) void refetchChecklist({ cancelRefetch: false });
+  }, [pathname, meEnabled, refetchMe, checklistEnabled, refetchChecklist]);
+  const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending);
+  const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
+    .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
+  const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets }>();
+  // A late setup read can reveal entries on the next navigation, never between inputs.
+  if (ready && railTargets?.pathname !== pathname) setRailTargets({ pathname, value: setupTargets });
+  const menu: readonly NavHub[] = platform ? PLATFORM_NAV : tenantNav(ready ? access.data : undefined, router.routesByPath,
+    ready && support.data?.can_approve, { pathname, phase, setupTargets: railTargets?.value });
   // Phone widths hide the rail; the top bar's menu button discloses it.
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -72,8 +95,8 @@ export function Shell() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
-  // One entry lights up across every group: /org/entities is not also the org entry.
-  const current = activeLink(pathname, menu.flatMap((g): readonly { to: string }[] => g.links));
+  // Sub-views keep their module highlighted without changing the rail.
+  const current = activeLink(pathname, menu.flatMap(g => g.links));
   return (
     <div className="shell" data-menu={open ? "open" : undefined} data-console-scope={platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined)}>
       <a className="skip" href="#main">{t("shell.skip")}</a>
@@ -82,11 +105,14 @@ export function Shell() {
         {menu.map((g) => (
           <div key={g.hub}>
             <div className="rail__hub">{t(g.hub)}</div>
-            {g.links.map((l) => (
-              <Link key={l.to} to={l.to} className="rail__link" activeOptions={{ exact: l.to !== current }} onClick={() => setOpen(false)}>
-                <l.icon size={16} aria-hidden /> {t(l.label)}
-              </Link>
-            ))}
+            <ul className="rail__list">{g.links.map((l) => (
+              <li key={l.to}>
+                <Link to={l.to} className="rail__link" activeOptions={{ exact: l.to !== current }}
+                  aria-current={l.to === current ? "page" : undefined} data-status={l.to === current ? "active" : undefined} onClick={() => setOpen(false)}>
+                  <l.icon size={16} aria-hidden /> {t(l.label)}
+                </Link>
+              </li>
+            ))}</ul>
           </div>
         ))}
       </nav>

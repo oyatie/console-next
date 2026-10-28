@@ -22,6 +22,17 @@ export const get = <P extends Gettable>(path: P, init?: { params: Params<P> }) =
 /** A read the API client wraps (not a plain GET), keyed by its path all the same. */
 export const read = <T>(path: string, queryFn: () => Promise<T>, params?: unknown) => ({ queryKey: [path, params ?? null] as const, queryFn });
 
+/** Page reads stay live; a rail snapshot refreshes on navigation and successful command invalidation. */
+export const navigationRead = <T extends { queryKey: readonly unknown[] }>(descriptor: T) => ({
+  ...descriptor,
+  queryKey: [...descriptor.queryKey, "navigation"] as const,
+  meta: { navigation: true },
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  refetchOnMount: "always" as const,
+  retry: false,
+});
+
 /** Every path prefix of an API path ("/api/v1/employees" for "/api/v1/employees/{id}"). */
 type Prefix<S extends string> = S extends `${infer H}/${infer T}` ? H | `${H}/${Prefix<T>}` : S;
 /** "/api/v1" still type-checks (invalidates every read); narrow it if a command ever passes it. */
@@ -45,9 +56,10 @@ export const invalidatePaths = (qc: QueryClient, prefixes: readonly PathPrefix[]
 /**
  * Marks stale (and, unless `refetch` is false, refetches if shown) every query whose derived key passes `match`:
  * the live stream's invalidations (lib/live), which speak in `(path template, params)` and never touch the cache.
+ * Navigation snapshots wait for a successful command's invalidatePaths or the next navigation.
  */
 export const invalidateWhere = (qc: QueryClient, match: (path: string, params: unknown) => boolean, refetch = true) =>
-  qc.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && match(q.queryKey[0], q.queryKey[1]), refetchType: refetch ? "active" : "none" });
+  qc.invalidateQueries({ predicate: (q) => !q.meta?.navigation && typeof q.queryKey[0] === "string" && match(q.queryKey[0], q.queryKey[1]), refetchType: refetch ? "active" : "none" });
 
 /** Whether a read on screen now (an active query) has a derived key that passes `match`. */
 export const shownWhere = (qc: QueryClient, match: (path: string, params: unknown) => boolean) =>

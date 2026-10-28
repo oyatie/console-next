@@ -49,7 +49,7 @@ test("an HR admin imports a roster: preview → dry run → apply bound to it", 
   await admin.keyboard.press("Escape");
   await expect(menu).toBeFocused();
   await menu.click();
-  await admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "인사" }).click();
+  await admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "직원" }).click();
   await expect(admin.getByRole("rowheader", { name: "김하나", exact: true })).toBeVisible();
   await expect(admin.getByRole("navigation", { name: "주 메뉴" })).toBeHidden();
   await fits("people");

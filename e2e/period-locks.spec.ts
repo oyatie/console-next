@@ -17,11 +17,13 @@ test("period locks: month lock, overlap blocked with fixes, unlock with a reason
   const { admin } = await tenantWithExecutive(browser, "lockco", "마감주식회사");
   const c = clickCounter();
   const nav = admin.getByRole("navigation", { name: "주 메뉴" });
-  await c.click(nav.getByRole("link", { name: "기간 잠금" }));
+  await c.click(nav.getByRole("link", { name: "설정", exact: true }));
+  await c.click(admin.getByRole("main").getByRole("link", { name: "기간 잠금", exact: true }));
   await expect(admin.getByText("잠긴 기간이 없습니다")).toBeVisible();
-  // Only the deepest nav link lights up.
-  await expect(nav.getByRole("link", { name: "기간 잠금" })).toHaveAttribute("aria-current", "page");
-  await expect(nav.getByRole("link", { name: "인사" })).not.toHaveAttribute("aria-current", "page");
+  // Settings views keep 설정 current.
+  await expect(nav.getByRole("link", { name: "설정", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "기간 잠금" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "직원", exact: true })).not.toHaveAttribute("aria-current", "page");
   await expectAccessible(admin, "period locks (empty)");
 
   // Nothing is chosen: pressing the primary lists the errors and moves to the first.

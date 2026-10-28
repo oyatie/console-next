@@ -102,6 +102,7 @@ test("platform first paint shares one read and late fonts leave controls and hea
 
 test("the shell paints during a pending authz read and degrades on faults", async ({ browser }) => {
   const { admin } = await tenantBeforeSetup(browser, "firstpaint-authz", "첫 화면 권한 검증");
+  await go(admin, "/people?view=accounts");
   const pending = Promise.withResolvers<void>();
   let reads = 0;
   await admin.route("**/api/v1/me/authz", async route => {
@@ -122,7 +123,7 @@ test("the shell paints during a pending authz read and degrades on faults", asyn
     await admin.reload({ waitUntil: "domcontentloaded" });
     await expect(admin.getByRole("button", { name: "로그아웃" })).toBeVisible();
     await routeReady(admin);
-    await expect(admin.getByRole("link", { name: "인사", exact: true })).toBeVisible();
+    await expect(admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "조직 구조", exact: true })).toBeVisible();
     await expect(admin.getByText("화면을 표시하지 못했습니다", { exact: true })).toHaveCount(0);
     await admin.unroute("**/api/v1/me/authz");
   }

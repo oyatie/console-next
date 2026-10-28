@@ -85,7 +85,7 @@ test("two operators and the customer authorize support; every read arrives live 
   const readerList = nonApprover.waitForResponse((r) => new URL(r.url()).pathname === TENANT_SUPPORT && r.request().method() === "GET");
   await go(nonApprover, "/audit/support-access");
   expect((await readerList).status()).toBe(403);
-  await expect(nonApprover.getByRole("navigation").getByRole("link", { name: "지원 접근", exact: true })).toHaveCount(0);
+  await expect(nonApprover.getByRole("navigation").getByRole("link", { name: "감사 기록", exact: true })).toHaveCount(0);
   for (const name of ["지원 접근 승인", "지원 접근 거절", "지원 종료"]) await expect(nonApprover.getByRole("button", { name, exact: true })).toHaveCount(0);
   expect(readerBearer()).not.toBe("");
   await auditLayouts(nonApprover, "support access refusal");

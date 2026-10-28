@@ -1,48 +1,64 @@
-import { Building, Building2, Clock, Home, Inbox, KeyRound, Landmark, Lock, UserMinus, Users } from "lucide-react";
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { Building, Building2, Clock, FileText, Home, KeyRound, ListChecks, ScrollText, Settings, Users, type LucideIcon } from "lucide-react";
 import type { StaticDataRouteOption } from "@tanstack/react-router";
+import type { MessageId } from "@console/i18n";
 import type { AccessEffective } from "../reference/authz/api";
 import { accessRefusal } from "../reference/authz/domain/access";
+import { SETTINGS_VIEWS } from "./settings-views";
 
-// Five hubs (plan D3); a module is listed only once it is built. Labels are catalog ids,
-// resolved at render so a locale switch re-labels the menu. Visibility uses the destination route's requirement.
-const NAV = [
-  { hub: "shell.hub.work", links: [{ to: "/", label: "shell.link.home", icon: Home }, { to: "/requests", label: "requestOutcome.title", icon: Inbox }] },
-  {
-    hub: "shell.hub.people",
-    links: [
-      { to: "/org", label: "shell.link.org", icon: Building2 },
-      { to: "/org/entities", label: "shell.link.entities", icon: Landmark },
-      { to: "/people", label: "shell.link.people", icon: Users },
-      { to: "/statutory", label: "shell.link.statutory", icon: Landmark },
-      { to: "/attendance", label: "shell.link.attendance", icon: Clock },
-      // Change requests (BW-17): HR works them, any other reader follows the ones they filed.
-      { to: "/people/requests", label: "shell.link.requests", icon: Inbox },
-      { to: "/people/exits", label: "shell.link.exits", icon: UserMinus },
-      { to: "/people/period-locks", label: "shell.link.periodLocks", icon: Lock },
-    ],
-  },
-  { hub: "shell.hub.admin", links: [{to:"/audit/support-access",label:"supportAccess.title",icon:Lock, supportApproval: true},{ to: "/access", label: "shell.link.access", icon: KeyRound }] },
-] as const;
-export const PLATFORM_NAV = [{ hub: "shell.hub.platform", links: [{ to: "/platform", label: "shell.link.tenants", icon: Building }] }] as const;
+type NavLink = { to: string; label: MessageId; icon: LucideIcon; supportApproval?: boolean; views?: readonly { to: string }[] };
+export type NavHub = { hub: MessageId; links: readonly NavLink[] };
+type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
+type NavContext = { pathname: string; phase?: string; setupTargets?: readonly string[] };
 
-/** Navigation and the shell use the same server-checked entries and destination requirement. */
-export function tenantNav(access: AccessEffective | undefined, routes: Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>, supportApproval = false) {
-  // Only the first hub is stable before both decisions settle; later links must never be pushed down.
-  if (!access) return NAV.slice(0, 1);
-  const shown = (link: (typeof NAV)[number]["links"][number]) => {
-    if ("supportApproval" in link) return supportApproval;
+const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests", icon: ListChecks };
+// One entry table; future destinations appear only when their route is served.
+const NAV: readonly NavHub[] = [
+  { hub: "shell.hub.work", links: [
+    { to: "/", label: "shell.link.home", icon: Home },
+    // Keep own requests reachable until the inbox page includes the requester's tab.
+    REQUESTS,
+  ] },
+  { hub: "shell.hub.people", links: [
+    { to: "/org", label: "shell.link.org", icon: Building2 },
+    { to: "/people", label: "shell.link.people", icon: Users },
+    { to: "/attendance", label: "shell.link.attendance", icon: Clock },
+    { to: "/statutory", label: "shell.link.statutory", icon: ScrollText },
+  ] },
+  { hub: "shell.hub.admin", links: [
+    { to: "/access", label: "shell.link.access", icon: KeyRound },
+    { to: "/audit/support-access", label: "shell.link.audit", icon: FileText, supportApproval: true },
+    { to: "/settings", label: "shell.link.settings", icon: Settings, views: SETTINGS_VIEWS },
+  ] },
+];
+export const PLATFORM_NAV: readonly NavHub[] = [{ hub: "shell.hub.platform", links: [{ to: "/platform", label: "shell.link.tenants", icon: Building }] }];
+
+/** Served destinations use their own requirement; readiness remains a server fact. */
+export function tenantNav(access: AccessEffective | undefined, routes: Routes, supportApproval = false,
+  { phase, setupTargets }: NavContext = { pathname: "/" }) {
+  const shown = (link: NavLink) => {
+    if (!routes[link.to]) return false;
+    if (link.to === "/") return true;
+    if (!access) return false;
+    if (phase === "SETUP") {
+      // shortcut: safe setup destinations when the checklist is unavailable; replace with S2's module projection.
+      const targets = setupTargets ?? ["/org", "/people", "/access"];
+      if (!targets.some(to => to === link.to || to.startsWith(link.to + "/"))) return false;
+    }
+    if (link.supportApproval) return supportApproval;
     const need = routes[link.to]?.options.staticData?.access;
-    return need === "signed-in" || !!need && !!access && accessRefusal(access, need) === null;
+    return need === "signed-in" || !!need && accessRefusal(access, need) === null;
   };
-  return NAV.map((g) => ({ ...g, links: g.links.filter(shown) })).filter((g) => g.links.length);
+  return NAV.map(g => ({ ...g, links: g.links.filter(shown) })).filter(g => g.links.length);
 }
 
 /**
- * The one link to light up for `pathname`: the deepest link the path sits under, so /people/period-locks
- * lights only the period-locks link while /people/<id> still lights the people link. Every other link
- * then matches its own path exactly only.
+ * The one link to light up for `pathname`: the deepest link the path sits under.
+ * Views use their entry's destination even while their URLs remain under another module.
  */
-export function activeLink(pathname: string, links: readonly { to: string }[]): string | undefined {
+export function activeLink(pathname: string, links: readonly Pick<NavLink, "to" | "views">[]): string | undefined {
+  const owner = links.find(link => link.views?.some(view => pathname === view.to || pathname.startsWith(view.to + "/")));
+  if (owner) return owner.to;
   const under = links.filter((l) => l.to !== "/" && (pathname === l.to || pathname.startsWith(l.to + "/")));
   return under.sort((a, b) => b.to.length - a.to.length)[0]?.to;
 }
