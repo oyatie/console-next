@@ -7,7 +7,7 @@
     "apps/*"
   ],
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "scripts": {
     "gen:api": "node scripts/check-api-schema.mjs --write",

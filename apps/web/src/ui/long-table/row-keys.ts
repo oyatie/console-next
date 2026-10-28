@@ -13,8 +13,8 @@ export type RowKeyHandlers = {
   rows?: { grid: () => HTMLElement | null; onOpen?: (id: string) => void };
 };
 
-/** The row id (React Aria's `data-key`) of the row holding `el`, if any. */
-export const rowIdOf = (el: EventTarget | null) => (el instanceof Element ? el.closest("[role=row][data-key]")?.getAttribute("data-key") ?? null : null);
+/** The caller's row id of the row holding `el`, if any. */
+export const rowIdOf = (el: EventTarget | null) => (el instanceof Element ? el.closest("[role=row][data-row-id]")?.getAttribute("data-row-id") ?? null : null);
 
 /** Adds the region's shortcuts; returns the remover. */
 export function listenRowKeys(region: HTMLElement, h: RowKeyHandlers) {

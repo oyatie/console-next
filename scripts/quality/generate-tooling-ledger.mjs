@@ -8,6 +8,37 @@ import { inventory, render, renderArchitecture, renderOwnerSummary, reviewRows }
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (file) => readFileSync(resolve(root, file), "utf8");
 const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
+const tools = [
+  ["Rust", "rust-toolchain.toml", JSON.parse(read("rust-toolchain.toml").match(/^channel\s*=\s*("[^"]+")/m)[1]), "build/tooling"],
+  ["Node.js", "package.json", JSON.parse(read("package.json")).engines.node, "build/tooling"],
+  ["npm", ".github/workflows/ci.yml", "runner bundled; not pinned", "CI/supply chain"],
+  ["Chromium", ".github/workflows/ci.yml", "Playwright lock pin", "test"],
+].map(([name, file, pin, layer]) => ({ kind: "ci-tool", name, direct: true, uses: [{ file, user: file, pin, layer }], callsites: [], evidence: [] }));
+// Refresh an existing tool/image pin without reclassifying dependencies or requiring Cargo metadata.
+const pins = process.argv.find((arg) => arg.startsWith("--pins="))?.slice("--pins=".length);
+if (pins) {
+  const register = JSON.parse(read("docs/quality/dependency-register.json"));
+  const current = [...inventory(files, read), ...tools];
+  const selected = register.rows.filter((r) => ["container", "ci-tool"].includes(r.kind) && `${r.kind}:${r.name}` === pins);
+  if (selected.length !== 1) throw new Error(`unregistered tool/image: ${pins}; run full review`);
+  for (const row of selected) {
+    const observed = current.find((r) => r.kind === row.kind && r.name === row.name);
+    for (const use of row.uses) {
+      const matches = observed?.uses.filter((u) => u.file === use.file && u.user === use.user && u.layer === use.layer);
+      if (matches?.length !== 1) throw new Error(`tool/image use changed: ${row.name} in ${use.file}; run full review`);
+      use.pin = matches[0].pin;
+    }
+  }
+  for (const [file, body] of [
+    ["docs/quality/dependency-register.json", JSON.stringify(register, null, 2) + "\n"],
+    ["docs/quality/dependency-register.md", render(register.rows)],
+  ]) {
+    if (process.argv.includes("--write")) writeFileSync(resolve(root, file), body);
+    else if (read(file) !== body) throw new Error(`${file}: stale pins; regenerate with --pins=${pins} --write`);
+  }
+  console.log(`tooling ledger: ${pins} pins refreshed`);
+  process.exit(0);
+}
 const graphs = files.filter((f) => f.endsWith("Cargo.lock")).map(dirname).map((dir) => {
   // The fuzz lock is already stale on the base; declarations remain enumerable without resolving it.
   const args = ["metadata", "--offline", "--locked", "--format-version", "1", "--manifest-path", `${dir}/Cargo.toml`, ...(dir.endsWith("fuzz") ? ["--no-deps"] : [])];
@@ -16,13 +47,7 @@ const graphs = files.filter((f) => f.endsWith("Cargo.lock")).map(dirname).map((d
   return graph;
 });
 const rows = inventory(files, read, graphs);
-const tools = [
-  ["Rust", "rust-toolchain.toml", JSON.parse(read("rust-toolchain.toml").match(/^channel\s*=\s*("[^"]+")/m)[1]), "build/tooling"],
-  ["Node.js", "package.json", JSON.parse(read("package.json")).engines.node, "build/tooling"],
-  ["npm", ".github/workflows/ci.yml", "runner bundled; not pinned", "CI/supply chain"],
-  ["Chromium", ".github/workflows/ci.yml", "Playwright lock pin", "test"],
-];
-for (const [name, file, pin, layer] of tools) rows.push({ kind: "ci-tool", name, direct: true, uses: [{ file, user: file, pin, layer }], callsites: [], evidence: [] });
+rows.push(...tools);
 const reviews = JSON.parse(read("scripts/quality/tooling-reviews.json"));
 const sourcesPath = "scripts/quality/tooling-sources.json";
 const fetchJSON = async (url) => {

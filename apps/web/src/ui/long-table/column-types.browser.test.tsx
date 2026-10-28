@@ -176,7 +176,7 @@ test("keyset pages keep duplicate sort values, and hidden rows never enter total
     await visible(page.getByRole("grid")).toHaveAttribute("aria-rowcount", "5");
     const rows = page.locator('[role="row"][data-key]');
     await visible(rows).toHaveCount(4);
-    expect(await rows.evaluateAll(els => els.map(el => el.getAttribute("data-key")))).toEqual(["a", "b", "c", "d"]);
+    expect(await rows.evaluateAll(els => els.map(el => el.getAttribute("data-row-id")))).toEqual(["a", "b", "c", "d"]);
     expect(await rows.evaluateAll(els => els.map(el => el.getAttribute("aria-rowindex")))).toEqual(["2", "3", "4", "5"]);
     expect(requests).toEqual([{ cursor: null, limit: 2 }, { cursor: { value: "동명이인", id: "b" }, limit: 2 }]);
   } finally { await page.unroute("**/api/table-contract?*"); }

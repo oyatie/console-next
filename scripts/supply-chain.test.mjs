@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import yaml from "js-yaml";
+import { REQUIRED_SECURITY_JOBS } from "./check-workflow-hardening.mjs";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const workflow = yaml.load(read(".github/workflows/ci.yml"));
@@ -147,7 +148,11 @@ test("Dependabot keeps Node declarations on the runtime major and defers native 
   const manifest = JSON.parse(read("package.json"));
   const runtime = manifest.engines.node.match(/^>=(\d+)$/)?.[1];
   assert.ok(runtime, "Node runtime must have a major floor");
-  assert.match(manifest.devDependencies["@types/node"], new RegExp(`^\\^${runtime}\\.`));
+  assert.equal(Number(runtime), nodeMajor, "engines.node must match .node-version");
+  const node = JSON.parse(read("docs/quality/dependency-register.json")).rows.find((r) => r.kind === "ci-tool" && r.name === "Node.js");
+  assert.equal(node.uses[0].pin, manifest.engines.node);
+  const typesMajor = Number(manifest.devDependencies["@types/node"].match(/^\^(\d+)\./)?.[1]);
+  assert.ok(typesMajor <= nodeMajor, "Node declarations cannot exceed the runtime floor");
 });
 
 test("every CI Node setup uses the shared major pin and the build image records its upstream", () => {
@@ -164,4 +169,32 @@ test("every CI Node setup uses the shared major pin and the build image records 
   const versions = JSON.parse(read("deploy/versions.json"));
   assert.match(versions.images.node, /^docker\.io\/library\/node@sha256:[a-f0-9]{64}$/);
   assert.match(versions.upstreamImages.node, new RegExp(`^docker\\.io/library/node:${major}\\.\\d+\\.\\d+-bookworm-slim$`));
+});
+
+test("Node image digest stays paired with the reviewed upstream tag", () => {
+  const versions = JSON.parse(read("deploy/versions.json"));
+  // Registry index and linux/amd64 + linux/arm64 NODE_VERSION verified together.
+  assert.deepEqual([versions.upstreamImages.node, versions.images.node], [
+    "docker.io/library/node:26.12.1-bookworm-slim",
+    "docker.io/library/node@sha256:3041f464442defe6de36c20b6904b125a6178cfa0a7fc7cc99c0bb5120586f70",
+  ]);
+  const rows = JSON.parse(read("docs/quality/dependency-register.json")).rows;
+  const node = rows.find((r) => r.kind === "container" && r.name === "docker.io/library/node");
+  assert.equal(node.uses.find((u) => u.file === "deploy/versions.json").pin, versions.images.node);
+});
+
+test("security workflow templates use the shared Node major", () => {
+  const pins = Object.values(REQUIRED_SECURITY_JOBS).flatMap((job) => job.steps)
+    .filter((step) => step.uses?.startsWith("actions/setup-node@"))
+    .map((step) => step.with["node-version"]);
+  assert.equal(pins.length, 2);
+  assert.deepEqual(pins, [read(".node-version").trim(), read(".node-version").trim()]);
+});
+
+test("tool/image pin regeneration is current and refuses an unregistered image", () => {
+  for (const [pins, status] of [["container:docker.io/library/node", 0], ["ci-tool:Node.js", 0], ["container:unregistered/image", 1]]) {
+    const result = spawnSync(process.execPath, ["scripts/quality/generate-tooling-ledger.mjs", `--pins=${pins}`], { encoding: "utf8" });
+    assert.equal(result.status, status, result.stdout + result.stderr);
+    if (status) assert.match(result.stderr, /unregistered tool\/image: container:unregistered\/image/);
+  }
 });
