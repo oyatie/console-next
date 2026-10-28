@@ -69,7 +69,7 @@ export const enAttendanceHolidays: Partial<Record<keyof typeof koAttendanceHolid
   "attendanceHolidays.publicKind.NATIONAL": "Public holiday",
   "attendanceHolidays.publicKind.SUBSTITUTE": "Substitute holiday",
   "attendanceHolidays.publicKind.ELECTION": "Election day",
-  "attendanceHolidays.publicKind.LABOR_DAY": "Labor Day · no substitute",
+  "attendanceHolidays.publicKind.LABOR_DAY": "Labor Day",
   "attendanceHolidays.year": "{year}",
   "attendanceHolidays.year.prev": "Previous year",
   "attendanceHolidays.year.next": "Next year",

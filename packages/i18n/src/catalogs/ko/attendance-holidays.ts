@@ -71,7 +71,7 @@ export const koAttendanceHolidays = {
   "attendanceHolidays.publicKind.NATIONAL": "공휴일",
   "attendanceHolidays.publicKind.SUBSTITUTE": "대체공휴일",
   "attendanceHolidays.publicKind.ELECTION": "선거일",
-  "attendanceHolidays.publicKind.LABOR_DAY": "노동절 · 대체 없음",
+  "attendanceHolidays.publicKind.LABOR_DAY": "노동절",
   "attendanceHolidays.year": "{year}년",
   "attendanceHolidays.year.prev": "이전 연도",
   "attendanceHolidays.year.next": "다음 연도",
