@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Test tiers
 
-This is the canonical tier table. The public workflow currently runs web checks, mocked browser states,
-backend static gates and non-database Rust tests. Other rows describe the delivery contract.
+This is the canonical tier table. CI wiring belongs to CI-1; this table describes the delivery contract,
+not a claim that every tier is already wired in the public workflow.
 
 | Tier | Proof | Trigger / budget |
 | --- | --- | --- |

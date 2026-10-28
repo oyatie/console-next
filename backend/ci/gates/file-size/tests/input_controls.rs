@@ -37,3 +37,30 @@ fn a_file_in_place_of_a_source_directory_is_not_green() -> std::io::Result<()> {
     fs::remove_dir_all(root)?;
     Ok(())
 }
+
+#[test]
+fn a_planted_cfg_test_attribute_cannot_hide_integration_test_code() -> std::io::Result<()> {
+    let root = std::env::temp_dir().join(format!("file-size-integration-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    for dir in ROOTS {
+        fs::create_dir_all(root.join(dir))?;
+    }
+    let source = "#[test]\nfn probe() {\n    assert!(true);\n}\n";
+    for dir in ["app/tests", "crates/example/tests/nested", "ci/tests"] {
+        fs::create_dir_all(root.join(dir))?;
+        let relative = format!("{dir}/probe.rs");
+        let file = root.join(&relative);
+        fs::write(&file, source)?;
+        let before = measure(&root)?[&relative];
+        fs::write(&file, format!("#[cfg(test)]\n{source}"))?;
+        assert_eq!(measure(&root)?[&relative], before + 1, "{relative}");
+    }
+    fs::create_dir_all(root.join("app/src"))?;
+    fs::write(
+        root.join("app/src/lib.rs"),
+        format!("#[cfg(test)]\n{source}"),
+    )?;
+    assert_eq!(measure(&root)?["app/src/lib.rs"], 0);
+    fs::remove_dir_all(root)?;
+    Ok(())
+}
