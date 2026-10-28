@@ -97,6 +97,7 @@ jobs:
     env:
       SQLX_OFFLINE: "true"
       CARGO_TERM_COLOR: always
+      MIGRATION_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
     steps:
       - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
@@ -104,10 +105,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       # backend/rust-toolchain.toml pins the toolchain; rustup on the runner installs it on first use.
       # Workspace members only: --all would also format the vendored path dependencies in third-party/.
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --locked -p console-gate-migration-safety
       # Clippy fills the registry first so the release commands below can run offline.
       # Same discovery, build and no-argument execution as console-infra's code-gates image stage.
       - name: Backend code gates (release parity)
