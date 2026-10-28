@@ -1,2 +1,3 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Stage-0 operator API contract; HTTP handlers arrive in slice 3.
+//! Stage-0 operator API and server-loaded authorization facts.
+pub mod operators;

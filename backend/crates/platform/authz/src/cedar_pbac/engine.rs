@@ -21,8 +21,8 @@ use std::panic::AssertUnwindSafe;
 use std::str::FromStr;
 
 use cedar_policy::{
-    Authorizer, Context, Decision, Entities, Entity, EntityId, EntityTypeName, EntityUid,
-    PolicySet, Request, RestrictedExpression, Schema, ValidationMode, Validator,
+    Context, Entities, Entity, EntityId, EntityTypeName, EntityUid, PolicySet, Request,
+    RestrictedExpression, Schema, ValidationMode, Validator,
 };
 use console_kernel_core::{KernelError, OrgId};
 use sha2::{Digest, Sha256};
@@ -241,19 +241,23 @@ pub fn compile_bundle_from_sources(
 /// way so a Cedar bug can never propagate as an exception into a live path.
 #[must_use]
 pub fn evaluate(request: &AuthorizationRequest, bundle: &CompiledBundle) -> CedarEvaluation {
-    super::facts::evaluate_with_context(request, bundle, Vec::new())
+    evaluate_safely(bundle, || evaluate_inner(request, bundle, Vec::new()))
 }
+
+#[path = "engine_evaluation.rs"]
+mod evaluation;
+pub(super) use evaluation::evaluate_safely;
 
 #[path = "engine_entities.rs"]
 mod entity_evaluation;
 pub use entity_evaluation::evaluate_entities;
 
-/// The Cedar call itself; `facts::evaluate_with_context` wraps it panic-safe.
+/// Prepare tenant entities and request inside the shared panic-safe wrapper.
 pub(super) fn evaluate_inner(
     request: &AuthorizationRequest,
     bundle: &CompiledBundle,
     facts: Vec<(String, RestrictedExpression)>,
-) -> Result<CedarEvaluation, String> {
+) -> Result<(Request, Entities), String> {
     let principal = &request.subject.principal;
 
     // Subject entity — server-derived roles + freshness + clearance only.
@@ -359,26 +363,7 @@ pub(super) fn evaluate_inner(
     )
     .map_err(|err| format!("cedar request failed: {err}"))?;
 
-    let response = Authorizer::new().is_authorized(&cedar_request, &bundle.policies, &entities);
-    // BW-28 fail-closed: Cedar SKIPS an erroring policy, so a skipped `forbid`
-    // would yield Allow. Any evaluation error is an Error, whatever the decision.
-    let errors: Vec<String> = response
-        .diagnostics()
-        .errors()
-        .map(ToString::to_string)
-        .collect();
-    if !errors.is_empty() {
-        return Err(format!("cedar evaluation errors: {}", errors.join("; ")));
-    }
-    Ok(match response.decision() {
-        Decision::Allow => CedarEvaluation::Allow {
-            bundle_key: bundle.key.clone(),
-        },
-        Decision::Deny => CedarEvaluation::Deny {
-            bundle_key: bundle.key.clone(),
-            reason: super::enforce::denial_reason(&bundle.policies, &response),
-        },
-    })
+    Ok((cedar_request, entities))
 }
 
 fn entity_uid(type_name: &str, id: &str) -> Result<EntityUid, String> {
