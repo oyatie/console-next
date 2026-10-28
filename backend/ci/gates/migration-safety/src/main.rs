@@ -1,5 +1,7 @@
 //! CI entry point for the migration-safety gate.
 
+mod order;
+
 use std::path::Path;
 
 fn main() {
@@ -19,8 +21,12 @@ fn run_gate(workspace_dir: &Path) {
         workspace_dir.display()
     );
 
-    let result =
-        console_gate_migration_safety::check_workspace(workspace_dir).unwrap_or_else(|e| {
+    let result = console_gate_migration_safety::check_workspace(workspace_dir)
+        .and_then(|result| {
+            order::check(workspace_dir)?;
+            Ok(result)
+        })
+        .unwrap_or_else(|e| {
             eprintln!("ERROR: {e}");
             std::process::exit(1);
         });

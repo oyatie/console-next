@@ -42,7 +42,7 @@ pub(crate) fn check_migration_versions(files: &[PathBuf], result: &mut GateResul
                     detail: format!("migration version {version} is used more than once"),
                 });
             }
-            // Legacy history stays contiguous; timestamp history is additive and may land out of order.
+            // Historical timestamps may be unordered; the PR gate checks additions against its base.
             if version < 10_000 && version != 0 {
                 if version != expected {
                     result.violations.push(Violation {
