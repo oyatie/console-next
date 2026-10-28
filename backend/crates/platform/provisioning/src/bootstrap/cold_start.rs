@@ -79,7 +79,7 @@ impl BootstrapCredentialStore {
 /// environment that ran migration 0021 and then 0023, a REVOKED row with the
 /// fixed `coss0000` hash still exists; re-seeding the same OTP would collide. The
 /// insert is therefore an UPSERT that REVIVES a previously revoked-OR-expired,
-/// unconsumed row owned by this same admin (clearing `revoked_at`/`consumed_at`
+/// unredeemed, unconsumed row owned by this same admin (clearing `revoked_at`
 /// and refreshing the expiry) instead of inserting a duplicate. A conflicting row
 /// owned by a different user, one already consumed, or one still valid is left
 /// untouched and seeding is reported as skipped.
@@ -157,16 +157,17 @@ async fn seed_cold_start_if_needed_tx(
     let opened: Option<(Uuid, OffsetDateTime)> = sqlx::query_as(
         r#"
         INSERT INTO auth_bootstrap_credentials (
-            id, user_id, token_hash, issued_at, expires_at, org_id
-        ) VALUES ($1, $2, $3, $4, $5, $6)
+            id, user_id, token_hash, issued_at, expires_at, org_id, single_use
+        ) VALUES ($1, $2, $3, $4, $5, $6, true)
         ON CONFLICT (token_hash) DO UPDATE
             SET issued_at = EXCLUDED.issued_at,
                 expires_at = EXCLUDED.expires_at,
                 revoked_at = NULL,
                 revoked_reason = NULL,
-                consumed_at = NULL
+                single_use = true
             WHERE auth_bootstrap_credentials.user_id = EXCLUDED.user_id
               AND auth_bootstrap_credentials.consumed_at IS NULL
+              AND auth_bootstrap_credentials.redeemed_at IS NULL
               AND (auth_bootstrap_credentials.revoked_at IS NOT NULL
                    OR auth_bootstrap_credentials.expires_at <= EXCLUDED.issued_at)
         RETURNING id, issued_at
