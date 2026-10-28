@@ -15,7 +15,6 @@
     "scripts/check-access-ceiling.mjs": "Legacy design-tree gate needs migration to repository-owned inputs or removal with a replacement.",
     "scripts/check-adrs.mjs": "Legacy architecture-document gate needs its missing public-cutover inputs reconciled.",
     "scripts/check-audit-ignores.mjs": "Parser self-tests run, but the CLI must also compare the repository advisory ignore lists.",
-    "scripts/check-executed-tests-cfg.mjs": "Rust inventory helper is imported only by dormant gates; activate it with the Rust execution inventory.",
     "scripts/check-executed-tests.mjs": "Legacy Rust execution inventory needs the current Cargo CI topology and baseline.",
     "scripts/check-g004-identity-foundation.mjs": "Legacy maturity gate needs its missing public-cutover evidence inputs reconciled.",
     "scripts/check-g005-workflow-lifecycle.mjs": "Legacy maturity gate needs its missing public-cutover evidence inputs reconciled.",
