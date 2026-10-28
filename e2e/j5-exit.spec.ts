@@ -160,7 +160,8 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   expect(c.done("J5 settlement draft, review and submit")).toBeLessThanOrEqual(3);
 
   // Every case, at any step, is reachable from the exit list; the server filters it by status and counts it.
-  await c.click(exec.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "퇴직", exact: true }));
+  await c.click(exec.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "직원", exact: true }));
+  await c.click(exec.getByRole("main").getByRole("navigation", { name: "직원", exact: true }).getByRole("link", { name: "퇴직 진행", exact: true }));
   const list = exec.getByRole("grid", { name: "퇴직 관리" });
   const chips = exec.getByRole("group", { name: "상태" });
   await expect(list).toContainText("강퇴직");

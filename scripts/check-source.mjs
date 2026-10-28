@@ -3,7 +3,7 @@
 //   1. Imports: features never import other features; lib/ui/reference never import upward;
 //      nothing imports routes/ (main.tsx excepted); packages never import apps.
 //   2. Data layer: query keys are derived in lib/query.ts only (`queryKey`); no cache writes
-//      (`setQueryData` / `setQueriesData`).
+//      (`setQueryData` / `setQueriesData`), except go-live's server-confirmed phase.
 //   3. Placement: inside a slice only {api,present}.ts, api/*.ts, *.test.ts, domain/*.ts and ui/{*.tsx,use-*.ts,*.spec.ts,*.playwright.ts}.
 //   4. Freshness loops (scripts/check-loops.mjs): no setInterval, refetchInterval or focus refetch.
 //   5. Ratchet: every `max-lines` pin in oxlint.json equals the file's current count, so a shrink
@@ -23,6 +23,8 @@ import path from "node:path";
 import { LOOP_ALLOW, loopProblems } from "./check-loops.mjs";
 
 const APP = "apps/web/src";
+// Go-live's authoritative phase answer must update both profile reads inside the command window.
+const GO_LIVE = `${APP}/features/onboarding/ui/go-live.tsx`;
 const ROOTS = [APP, "packages/api/src", "packages/i18n/src"];
 const GENERATED = new Set(["packages/api/src/schema.d.ts"]);
 
@@ -107,7 +109,8 @@ const importRule = (from, to) => {
   // The identifiers screen shares the people privacy implementation (one RRN client and reveal UI).
   const privacy = (from === `${APP}/features/identifiers/api.ts` && to === `${APP}/features/people/api/record.ts`)
     || (from === `${APP}/features/identifiers/ui/rrn-card.tsx` && to === `${APP}/features/people/ui/rrn-value.tsx`);
-  if (a.startsWith("features/") && b.startsWith("features/") && a !== b && !privacy) return "features never import other features";
+  const phaseProfile = from === GO_LIVE && to === `${APP}/features/account/api.ts`;
+  if (a.startsWith("features/") && b.startsWith("features/") && a !== b && !privacy && !phaseProfile) return "features never import other features";
   if ((LOWER.has(a) || a.startsWith("reference/")) && UPPER(b)) return `${a} never imports upward`;
   return undefined;
 };
@@ -130,7 +133,7 @@ for (const f of files) {
   const fixture = f.endsWith(".gallery.tsx");
   const keys = fixture || f === `${APP}/lib/query.ts` ? 0 : count(src, /\bqueryKey\b/g);
   if (keys) seen.queryKey[f] = keys;
-  const writes = fixture ? 0 : count(src, /\.set(?:Query|Queries)Data\(/g);
+  const writes = fixture ? 0 : count(src, /\.set(?:Query|Queries)Data\(/g) - (f === GO_LIVE ? 1 : 0);
   if (writes) seen.cacheWrites[f] = writes;
   const loops = loopProblems(f, src);
   if (loops.length) seen.loops.add(f);

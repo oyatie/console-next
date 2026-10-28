@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { ApiError } from "@console/api";
 import { queryDefaults } from "./react/query-defaults";
-import { freshOnOpen, get, invalidatePaths, read, readIdentity, underPath } from "./query";
+import { freshOnOpen, get, invalidatePaths, invalidateWhere, navigationRead, queryPath, read, readIdentity, underPath } from "./query";
 
 test("a path prefix covers the path and everything under it, not a sibling that shares its text", () => {
   const employees = underPath("/api/v1/employees");
@@ -66,4 +66,22 @@ test("wrapped reads keep different run parameters in separate cache entries", as
   expect(await client.fetchQuery(at("first"))).toBe("first");
   expect(await client.fetchQuery(at("second"))).toBe("second");
   expect(readIdentity(at("first"))).not.toBe(readIdentity(at("second")));
+});
+
+test("background invalidation refreshes page facts while navigation facts wait for a successful command", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  let state = "blocked";
+  const descriptor = { ...get("/api/v1/onboarding/checklist"), queryFn: async () => state };
+  const page = new QueryObserver(client, descriptor);
+  const rail = new QueryObserver(client, navigationRead(descriptor));
+  const off = [page.subscribe(() => {}), rail.subscribe(() => {})];
+  try {
+    await vi.waitFor(() => expect(rail.getCurrentResult().data).toBe("blocked"));
+    state = "todo";
+    await invalidateWhere(client, path => path === queryPath(descriptor));
+    expect(page.getCurrentResult().data).toBe("todo");
+    expect(rail.getCurrentResult().data).toBe("blocked");
+    await Promise.all(invalidatePaths(client, ["/api/v1/onboarding"]));
+    expect(rail.getCurrentResult().data).toBe("todo");
+  } finally { off.forEach(unsubscribe => unsubscribe()); client.clear(); }
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, unwrap } from "@console/api";
-import { invalidatePaths, type PathPrefix } from "../query";
+import { invalidatePaths, invalidateWhere, underPath, type PathPrefix } from "../query";
 import { announce } from "./announce";
 
 /**
@@ -111,7 +111,7 @@ export function useCommand<I, O>(opts: {
         key.current = null;
         checking.current = undefined;
       }
-      if (readsAreStale(error)) void invalidatePaths(qc, opts.invalidates ?? []);
+      if (readsAreStale(error)) void invalidateWhere(qc, path => (opts.invalidates ?? []).some(prefix => underPath(prefix)([path])));
     },
   });
   // The hook-level onSuccess runs before the success state lands, so the reset waits for it.

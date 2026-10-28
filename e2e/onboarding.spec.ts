@@ -12,7 +12,7 @@ test("onboarding creates every account through the product", { tag: "@smoke" }, 
   // The menu follows the caller's /me/authz grants (executives read org changes and the directory).
   const menu = exec.getByRole("navigation", { name: "주 메뉴" });
   await expect(menu.getByRole("link", { name: "조직 구조" })).toBeVisible();
-  await expect(menu.getByRole("link", { name: "인사" })).toBeVisible();
+  await expect(menu.getByRole("link", { name: "직원" })).toBeVisible();
   // The tenant operates (its setup was finished by the admin): neither the setup list nor a getting-started card shows.
   await expect(exec.getByRole("region", { name: /운영 준비|^시작$/ })).toHaveCount(0);
   await expectAccessible(exec, "home");

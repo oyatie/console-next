@@ -21,7 +21,7 @@ vi.mock("react", async (original) => {
   const react = await original<typeof import("react")>();
   return { ...react, useState: (initial: unknown) => initial === false ? [true, vi.fn()] : react.useState(initial) };
 });
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: () => ({
   data: state.data, isPending: false, error: state.readError, refetch: vi.fn(),
   dataUpdatedAt: state.updated, isFetching: state.fetching, isFetchedAfterMount: state.fetched, isError: state.readError !== null,
 }) }));

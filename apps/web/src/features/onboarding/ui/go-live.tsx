@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+// eslint-disable-next-line no-restricted-imports -- Go-live synchronizes the server-confirmed phase before navigation.
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "../api";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
 import { freshOnOpen } from "../../../lib/query";
+import { meQuery } from "../../account/api";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
@@ -27,13 +30,20 @@ import { GoLiveDetails } from "./go-live-details";
  */
 export function GoLive() {
   const q = freshOnOpen(useQuery(goLivePreviewQuery));
+  const qc = useQueryClient();
   const nav = useNavigate();
   const [ack, setAck] = useState(false);
   const run = useCommand({
     run: (_: undefined, key: string) => goLive(q.data!.digest, ack, q.data!.line_digests, key),
     invalidates: SETUP_READS,
     announce: (r) => t("setup.golive.done", { at: fmtDateTime(r.go_live_at) }),
-    onSuccess: () => void nav({ to: "/" }),
+    onSuccess: (result) => {
+      // The command's answer updates the rail before a slower profile refetch can move its entries.
+      qc.setQueriesData(meQuery, (me: Awaited<ReturnType<typeof meQuery.queryFn>> | undefined) => me?.tenant ? {
+        ...me, tenant: { ...me.tenant, phase: result.phase, go_live_at: result.go_live_at },
+      } : me);
+      void nav({ to: "/" });
+    },
   });
   const changed = run.error instanceof ApiError && run.error.code === "preview_stale"
     ? (Array.isArray(run.error.details.changed_codes) ? run.error.details.changed_codes.filter((c): c is string => typeof c === "string") : []) : [];

@@ -51,6 +51,21 @@ test("component journeys and gallery cache fixtures preserve production source r
   expect(result.stderr).toContain(`${slice}misplaced.ts: a slice holds only`);
 });
 
+test("only go-live may synchronize its confirmed phase through the shared profile descriptor", () => {
+  const { write, git, run } = fixture();
+  const file = "apps/web/src/features/onboarding/ui/go-live.tsx";
+  const source = 'import { meQuery } from "../../account/api"; cache.setQueriesData(meQuery, confirmedPhase);';
+  write("apps/web/src/features/account/api.ts", "");
+  write(file, source);
+  git("add", ".");
+  expect(run().status).toBe(0);
+  write(file, source + " cache.setQueryData(other.queryKey, []);");
+  const result = run();
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain(`${file}: cacheWrites ×1`);
+  expect(result.stderr).toContain(`${file}: queryKey ×1`);
+});
+
 test.each(["relay/antigravity/reports/ATT-GRAMMAR.1.md", "lanes/proof.txt", "docs/lanes/lmg-depth-ent.md"])("refuses tracked delivery evidence: %s", (file) => {
   const { write, git, run } = fixture();
   write(file, "Delivery proof\n");
