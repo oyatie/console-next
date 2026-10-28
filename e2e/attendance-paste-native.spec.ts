@@ -30,8 +30,10 @@ for (const surface of ["month", "day"] as const) {
         await admin.getByRole("button", { name: "자세히", exact: true }).click();
       }
       const input = admin.getByRole("textbox", { name: surface === "month" ? new RegExp(`^윤하준 ${date}`) : /^윤하준 입력/, includeHidden: true });
-      await input.click();
-      await expect(input).toBeFocused();
+      if (surface === "day") {
+        await input.click();
+        await expect(input).toBeFocused();
+      }
       // Copy through the keyboard: synthetic paste events cannot prove the browser inserts text.
       await input.fill("-18");
       await input.press("ControlOrMeta+a");

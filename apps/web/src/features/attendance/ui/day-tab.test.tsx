@@ -3,11 +3,12 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
+import { Banner } from "../../../ui/banner/banner";
 import { fillSchedule, type Drafts } from "../domain/grid";
 import { DayTab } from "./day-tab";
 
 const stateQuery = vi.hoisted(() => vi.fn());
-const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"], people: 1, drafts: {} as Drafts, detail: false, placeholder: false, hidden: 0, load: "ready" as "ready" | "loading" | "error" }));
+const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"], people: 1, judged: true, ledgerGap: false, drafts: {} as Drafts, detail: false, placeholder: false, hidden: 0, load: "ready" as "ready" | "loading" | "error" }));
 vi.mock("@tanstack/react-router", () => ({
   getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06", detail: state.detail }), useNavigate: () => vi.fn() }),
   Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-href={to}>{children}</span>,
@@ -16,8 +17,8 @@ vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof i
   isPlaceholderData: state.placeholder,
   isPending: state.load === "loading", isSuccess: state.load === "ready", error: state.load === "error" ? new Error("unavailable") : null,
   data: state.load === "ready" ? {
-    date: "2026-10-06", judged: true, marks: { blocking: 1, decision: 0 },
-    ledger: { people: state.people, no_schedule: state.people, rest: 0, no_record: 0, missing_out: 0, absent: 0, outside: 0, trip: 0, late_or_early: 0, normal: 0, pending: 0 },
+    date: "2026-10-06", judged: state.judged, marks: { blocking: 1, decision: 0 },
+    ledger: { people: state.people, no_schedule: state.ledgerGap ? 0 : state.people, rest: 0, no_record: 0, missing_out: 0, absent: 0, outside: 0, trip: 0, late_or_early: 0, normal: 0, pending: 0 },
     groups: state.people ? [{ workplace_id: "site", unit_id: "team", name: "Team", people: state.people, normal: 0, no_schedule: state.people, hidden: state.hidden, marks: { blocking: 1, decision: 0 },
       rows: [{ employee_id: "person", name: "Person", month_state: { state: "OPEN" }, day: { recognition: { recognised: 0 }, marks: state.marks, plan: { kind: "NO_SCHEDULE" } } }],
     }] : [],
@@ -31,6 +32,8 @@ beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   state.marks = ["NO_SCHEDULE"];
   state.people = 1;
+  state.judged = true;
+  state.ledgerGap = false;
   state.drafts = {};
   state.load = "ready";
   state.detail = false;
@@ -62,6 +65,16 @@ test("the first draft exposes the save status and save command", () => {
   const html = renderToStaticMarkup(<DayTab />);
   expect(html).toContain(t("attendanceRecords.toolbar.unsaved", { count: 1, refused: 0 }));
   expect(html).toContain(`>${t("attendanceRecords.toolbar.save")}<`);
+});
+
+test.each([[false, false], [false, true], [true, false], [true, true]])("day notices retain their separate tones (judged=%s, ledgerGap=%s)", (judged, ledgerGap) => {
+  state.judged = judged;
+  state.ledgerGap = ledgerGap;
+  const html = renderToStaticMarkup(<DayTab />);
+  const info = renderToStaticMarkup(<Banner tone="info">{t("attendanceRecords.board.notJudged")}</Banner>);
+  const warning = renderToStaticMarkup(<Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>);
+  expect(html.includes(info)).toBe(!judged);
+  expect(html.includes(warning)).toBe(ledgerGap);
 });
 
 test.each(["loading", "error"] as const)("%s keeps its existing toolbar behavior", (load) => {
