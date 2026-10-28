@@ -39,6 +39,14 @@ pub async fn approval_routes_in_tx(
     ))
 }
 
+/// Resolved entries and the requested scope used for authorization.
+#[derive(Debug)]
+pub struct EffectiveSettings {
+    pub items: Vec<EffectiveSetting>,
+    /// The requested scope chain, independent of any key's governance or list order.
+    pub resource_entities: Vec<Uuid>,
+}
+
 /// One key as the settings screens and `reference/settings` read it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct EffectiveSetting {

@@ -10,6 +10,7 @@
 
 use std::collections::BTreeSet;
 
+use crate::access::NodeKind;
 use uuid::Uuid;
 
 use super::super::action_schema::{FactType, RequiredFact};
@@ -30,6 +31,21 @@ pub const RESOURCE_ENTITIES: RequiredFact = RequiredFact {
 
 /// The block, for actions that take it unchanged.
 pub const SCOPE_BLOCK: [RequiredFact; 3] = [SCOPE_TENANT, SCOPE_ENTITIES, RESOURCE_ENTITIES];
+
+/// Project loaded grants to scope facts: `None` means the whole tenant.
+/// Department grants never widen to their employer or workplace.
+#[must_use]
+pub fn granted_scope(nodes: impl IntoIterator<Item = (NodeKind, Uuid)>) -> Option<Vec<Uuid>> {
+    let mut ids = Vec::new();
+    for (kind, id) in nodes {
+        match kind {
+            NodeKind::Tenant => return None,
+            NodeKind::LegalEntity | NodeKind::Workplace => ids.push(id),
+            NodeKind::Department => {}
+        }
+    }
+    Some(ids)
+}
 
 fn ids(list: &[Uuid]) -> FactValue {
     FactValue::StringSet(

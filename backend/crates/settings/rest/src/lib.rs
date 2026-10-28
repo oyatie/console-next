@@ -34,9 +34,9 @@ use console_kernel_core::{KernelError, SettingVersionId, Timestamp};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::Principal;
 use console_platform_request_context::current_audit_context;
-use console_settings_adapter_postgres::PgSettingsStore;
+use console_settings_adapter_postgres::{EffectiveSettings, PgSettingsStore};
 use console_settings_application::{Actor, ChangeSetting};
-use console_settings_domain::{Direction, SettingKey};
+use console_settings_domain::SettingKey;
 use error::ApiError;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -99,32 +99,20 @@ async fn list(
     Extension(principal): Extension<Principal>,
     Query(query): Query<ListQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let items = state
+    let listed = state
         .store
         .list_effective(principal.org_id, query.entity)
         .await?;
-    let can_change = items.first().is_some_and(|entry| {
-        authorize_change(
-            &principal,
-            &console_settings_application::ChangeFacts {
-                resource_entities: entry
-                    .chain
-                    .iter()
-                    .filter_map(|layer| layer.source.scope_entity_id)
-                    .collect(),
-                key: entry.key,
-                direction: Direction::Neutral,
-                step_up: false,
-                step_up_assertion_id: None,
-                scope_entity_id: query.entity,
-            },
-        )
-        .is_ok()
-    });
-    Ok(Json(
-        serde_json::json!({ "items": items, "can_change": can_change }),
-    ))
+    Ok(list_response(&principal, listed))
 }
+
+fn list_response(principal: &Principal, listed: EffectiveSettings) -> Json<serde_json::Value> {
+    let can_change = authz::can_change(principal, &listed.resource_entities);
+    Json(serde_json::json!({ "items": listed.items, "can_change": can_change }))
+}
+
+#[cfg(test)]
+mod list_tests;
 
 async fn history(
     State(state): State<SettingsRestState>,

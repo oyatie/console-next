@@ -6,7 +6,8 @@
 
 use console_kernel_core::KernelError;
 
-use super::action_schema::compile_action_bundle;
+use super::action_schema::{action_schema, compile_action_bundle};
+use super::actions::deciding_reasons;
 use super::facts::{Facts, evaluate_with_facts};
 use super::{AuthorizationRequest, AuthorizationResource, CedarEvaluation};
 use crate::{Action, Feature, Principal};
@@ -15,7 +16,7 @@ use crate::{Action, Feature, Principal};
 ///
 /// # Errors
 /// `Forbidden` unless Cedar allows. The Cedar reason is never returned to the
-/// client; settings exposes only its stable refusal codes.
+/// client unless the action explicitly declares a stable refusal code.
 pub fn enforce_action(
     principal: &Principal,
     feature: Feature,
@@ -31,16 +32,12 @@ pub fn enforce_action(
         .with_subject_freshness(freshness);
     match evaluate_with_facts(&request, &bundle, facts) {
         CedarEvaluation::Allow { .. } => Ok(()),
-        CedarEvaluation::Deny { reason, .. } if feature == Feature::SettingsManage => {
-            let code = match reason.as_str() {
-                "out_of_scope" => Some("out_of_scope"),
-                "scope_tenant_wide_only" => Some("scope_tenant_wide_only"),
-                "step_up_required" => Some("step_up_required"),
-                _ => None,
-            };
+        CedarEvaluation::Deny { reason, .. } => {
+            let code = action_schema(feature).and_then(|schema| schema.denial_code(&reason));
             tracing::warn!(
                 code = code.unwrap_or("forbidden"),
-                "settings access refused"
+                action = feature.as_str(),
+                "access refused"
             );
             Err(code.map_or_else(denied, |code| denied().with_code(code)))
         }
@@ -53,12 +50,7 @@ pub(super) fn denial_reason(
     policies: &cedar_policy::PolicySet,
     response: &cedar_policy::Response,
 ) -> String {
-    let mut reasons: Vec<_> = response
-        .diagnostics()
-        .reason()
-        .filter_map(|id| policies.policy(id)?.annotation("reason").map(str::to_owned))
-        .collect();
-    reasons.sort();
+    let reasons = deciding_reasons(policies, response);
     if reasons.is_empty() {
         "cedar denied: no matching permit".to_owned()
     } else {

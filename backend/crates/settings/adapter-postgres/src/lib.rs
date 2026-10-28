@@ -13,8 +13,9 @@ mod reason_tx;
 mod tx;
 
 pub use read::{
-    EffectiveSetting, LegalBasis, OverrideRecord, ResolvedSettings, ScheduledValue,
-    approval_routes_in_tx, deadline_due_soon_days_in_tx, load_rows_in_tx, resolve_in_tx,
+    EffectiveSetting, EffectiveSettings, LegalBasis, OverrideRecord, ResolvedSettings,
+    ScheduledValue, approval_routes_in_tx, deadline_due_soon_days_in_tx, load_rows_in_tx,
+    resolve_in_tx,
 };
 pub use reason_codes::{CatalogEntry, validate_reason_in_tx};
 pub use reason_stats::{CodeCount, SourceStats};
@@ -154,7 +155,7 @@ impl PgSettingsStore {
         &self,
         org: OrgId,
         entity: Option<Uuid>,
-    ) -> Result<Vec<EffectiveSetting>, PgSettingsError> {
+    ) -> Result<EffectiveSettings, PgSettingsError> {
         with_org_conn(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let now: Timestamp = sqlx::query_scalar("SELECT now()")
@@ -163,7 +164,10 @@ impl PgSettingsStore {
                     .map_err(DbError::Sqlx)?;
                 let (chain, rows) =
                     load_rows_in_tx(tx.as_mut(), org, SettingKey::ALL, entity).await?;
-                Ok(read::effective_settings(&rows, &chain, now))
+                Ok(EffectiveSettings {
+                    items: read::effective_settings(&rows, &chain, now),
+                    resource_entities: chain.iter().map(|scope| scope.id).collect(),
+                })
             })
         })
         .await

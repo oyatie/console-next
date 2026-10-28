@@ -16,6 +16,7 @@ pub const DOMAIN_TENANT_EXTENSIBLE: RequiredFact = RequiredFact {
 };
 
 pub const SCHEMA: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::ReasonCodeManage,
     version: "2026-10-reason-code-manage-v2",
     facts: &[ACTOR_HOLDS_PERMISSION, DOMAIN_TENANT_EXTENSIBLE],

@@ -32,6 +32,7 @@ const FACTS: &[RequiredFact] = &[
 
 /// The D0.2 sole-holder shape: a second person is required whenever one exists.
 const SOD: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::RoleManage,
     version: "test-fail-closed-v1",
     facts: FACTS,
@@ -137,6 +138,7 @@ fn cedar_fail_closed_erroring_forbid_denies() {
 /// The decisions #7 sole-holder shape over the shared BW-29 block: a second
 /// person must decide whenever one exists, and `refuse` mode never falls back.
 const SOLE_HOLDER: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::RoleManage,
     version: "test-sole-holder-v1",
     facts: &SECOND_PERSON_BLOCK,

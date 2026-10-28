@@ -8,10 +8,10 @@ use console_entity_adapter_postgres::PgEntityStore;
 use console_entity_application::EntityScope;
 use console_kernel_core::{BranchScope, KernelError};
 use console_platform_authz::Principal;
-use console_platform_authz::access::{NodeKind, load_access_subject};
+use console_platform_authz::access::load_access_subject;
+use console_platform_authz::cedar_pbac::facts::scope::granted_scope;
 use console_platform_db::{DbError, with_org_conn};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 struct Load(String);
 
@@ -19,20 +19,6 @@ impl From<DbError> for Load {
     fn from(err: DbError) -> Self {
         Self(err.to_string())
     }
-}
-
-/// What the grants alone decide: the whole tenant, or the named nodes.
-fn granted(nodes: impl IntoIterator<Item = (NodeKind, Uuid)>) -> Option<Vec<Uuid>> {
-    let mut ids = Vec::new();
-    for (kind, id) in nodes {
-        match kind {
-            NodeKind::Tenant => return None,
-            NodeKind::LegalEntity | NodeKind::Workplace => ids.push(id),
-            // Never loaded in the pilot (load.rs); a 부서 never widens.
-            NodeKind::Department => {}
-        }
-    }
-    Some(ids)
 }
 
 /// # Errors
@@ -61,7 +47,7 @@ pub(crate) async fn reach(
         .iter()
         .filter_map(|g| g.scope.node())
         .map(|n| (n.kind, n.id));
-    let Some(mut ids) = granted(nodes) else {
+    let Some(mut ids) = granted_scope(nodes) else {
         return Ok(EntityScope::Tenant);
     };
     ids.extend(
@@ -73,27 +59,4 @@ pub(crate) async fn reach(
     ids.sort_unstable();
     ids.dedup();
     Ok(EntityScope::Only(ids))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_tenant_grant_reaches_everything_and_a_department_never_widens() {
-        let (le, wp, dept) = (Uuid::from_u128(1), Uuid::from_u128(2), Uuid::from_u128(3));
-        assert_eq!(
-            granted([(NodeKind::LegalEntity, le), (NodeKind::Tenant, Uuid::nil())]),
-            None
-        );
-        assert_eq!(
-            granted([
-                (NodeKind::LegalEntity, le),
-                (NodeKind::Workplace, wp),
-                (NodeKind::Department, dept)
-            ]),
-            Some(vec![le, wp])
-        );
-        assert_eq!(granted([]), Some(vec![]));
-    }
 }
