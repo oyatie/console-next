@@ -69,6 +69,35 @@ test("ignores unchanged lines and files, and detects a region overlapping an add
   expect(f.run(sarif(pathToFileURL(join(f.root, f.file)).href, "9.8", 3)).status).toBe(1);
 });
 
+test.each(["6.9", "7.0", "9.8"])("checks a new data-flow source with an unchanged sink at severity %s", (severity) => {
+  const f = fixture();
+  const document = sarif(encodeURI(f.file), severity, 1);
+  const run = document.runs[0];
+  const source = sarif(encodeURI(f.file), severity).runs[0].results[0].locations[0];
+  const result = f.run({ ...document, runs: [{ ...run, results: [{
+    ...run.results[0],
+    codeFlows: [{ threadFlows: [{ locations: [
+      { location: { message: { text: "sensitive flow value" } } },
+    ] }] }, { threadFlows: [{ locations: [{ location: source }] }] }],
+  }] }] });
+  expect(result.status, result.stderr).toBe(severity === "6.9" ? 0 : 1);
+  if (severity !== "6.9") expect(result.stderr).toContain(`${f.file}:2: js/planted`);
+  expect(result.stderr).not.toContain("sensitive flow value");
+});
+
+test("an entirely unchanged data flow does not fail the diff gate", () => {
+  const f = fixture();
+  const document = sarif(encodeURI(f.file), "9.8", 1);
+  const run = document.runs[0];
+  expect(f.run({ ...document, runs: [{ ...run, results: [{
+    ...run.results[0],
+    codeFlows: [{ threadFlows: [{ locations: [
+      { location: run.results[0].locations[0] },
+      { location: sarif("other.ts").runs[0].results[0].locations[0] },
+    ] }] }],
+  }] }] }).status).toBe(0);
+});
+
 test("uses the merge base, excluding unrelated target changes", () => {
   const f = fixture();
   f.git("checkout", "-qb", "target", f.base);
