@@ -92,14 +92,20 @@ expected="$(kubectl get deployment console-worker -n console -o jsonpath='{.spec
 kubectl scale deployment console-worker -n console --replicas=0
 flux reconcile kustomization console-app --timeout=180s
 actual="$(kubectl get deployment console-worker -n console -o jsonpath='{.spec.replicas}')"
-test "${actual}" = "${expected}"
 printf 'edited=0\nexpected=%s\nreconciled=%s\n' "${expected}" "${actual}" > .tmp/evidence/drift.txt
+if ! test "${actual}" = "${expected}"; then
+  printf 'FLUX_DRIFT: console-worker expected=%s reconciled=%s\n' "${expected}" "${actual}" >&2; exit 1
+fi
 # Real console HTTP contracts, against the CNPG-backed application (never the memory adapters).
 kubectl port-forward -n console service/console-api 18080:8080 > .tmp/port-forward.log 2>&1 &
 forward_pid=$!
 export PLATFORM_TEST_URL=http://localhost:18080
 curl --fail --silent --retry 20 --retry-connrefused --retry-delay 1 "${PLATFORM_TEST_URL}/readyz" > .tmp/evidence/ready.json
-node --test deploy/ci/stack.e2e.mjs > .tmp/evidence/e2e.txt
+if ! node --test deploy/ci/stack.e2e.mjs > .tmp/evidence/e2e.txt 2>&1; then
+  echo 'PLAT_STACK: console HTTP contract failed' >&2
+  cat .tmp/evidence/e2e.txt >&2
+  exit 1
+fi
 kill "${forward_pid}"
 node deploy/ci/canary.mjs
 node deploy/ci/restore.mjs
