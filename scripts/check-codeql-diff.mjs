@@ -41,7 +41,11 @@ for (const file of files) {
       // GitHub's security-severity scale defines high/critical as CVSS >= 7.0.
       if (severity < 7) continue;
       if (!result.locations?.length) throw new Error("Security SARIF result has no location");
-      for (const { physicalLocation: location } of result.locations) {
+      // A new source or flow step can introduce a vulnerability at an unchanged sink.
+      const flowLocations = (result.codeFlows ?? []).flatMap((flow) => flow.threadFlows ?? [])
+        .flatMap((thread) => thread.locations ?? []).map((step) => step.location)
+        .filter((location) => location?.physicalLocation);
+      for (const { physicalLocation: location } of [...result.locations, ...flowLocations]) {
         const uri = location?.artifactLocation?.uri;
         if (!uri) throw new Error("Security SARIF result has no file URI");
         const path = relative(process.cwd(), fileURLToPath(new URL(uri, pathToFileURL(process.cwd() + sep)))).split(sep).join("/");
