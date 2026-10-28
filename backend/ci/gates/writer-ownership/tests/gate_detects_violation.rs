@@ -2447,7 +2447,12 @@ fn marked_list(block: &str, marker: &str) -> Result<Vec<String>, Box<dyn std::er
 /// `ops/postgres-reconcile-topology.sh` carries the same table roster, because
 /// SQL cannot import a Rust constant. This binds the two: a seventh object key
 /// that never reaches the database half fails here.
+#[cfg(test)]
 #[test]
+#[cfg_attr(
+    not(feature = "test-postgres"),
+    ignore = "needs the DB-test tooling, added with the database-test slice"
+)]
 fn topology_script_table_roster_matches_the_registry() -> Result<(), Box<dyn std::error::Error>> {
     let in_script = marked_list(&canonical_block()?, "table roster")?;
     let registry: Vec<String> = ObjectKey::ALL
@@ -2467,7 +2472,12 @@ fn topology_script_table_roster_matches_the_registry() -> Result<(), Box<dyn std
 ///
 /// Both assertions are set EQUALITIES. An inequality (`contains`) cannot fail
 /// when a role is dropped from the check, which is the defect this replaces.
+#[cfg(test)]
 #[test]
+#[cfg_attr(
+    not(feature = "test-postgres"),
+    ignore = "needs the DB-test tooling, added with the database-test slice"
+)]
 fn topology_script_names_the_roles_that_lose_dml() -> Result<(), Box<dyn std::error::Error>> {
     let block = canonical_block()?;
 
