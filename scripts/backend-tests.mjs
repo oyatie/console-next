@@ -39,13 +39,16 @@ export function databaseTests(sources) {
 
 const matcher = (value) => `=${value.replace(/[\\),]/g, "\\$&")}`;
 export function classifyTests(list, byPackage) {
-  const selected = [], database = [], ignored = [], excluded = [];
+  const selected = [], database = [], ignored = [], excluded = [], featureGatedDatabase = [];
+  const listed = new Map();
   for (const suite of Object.values(list["rust-suites"])) {
     assert.equal(suite.status, "listed", `${suite["binary-id"]}: tests were not listed`);
     const names = byPackage.get(suite["package-id"]);
     assert.ok(names, `missing source inventory for ${suite["package-id"]}`);
     const cases = Object.entries(suite.testcases), db = [];
     for (const [name, info] of cases) {
+      if (!listed.has(suite["package-id"])) listed.set(suite["package-id"], new Set());
+      listed.get(suite["package-id"]).add(name.split("::").at(-1));
       const id = [suite["binary-id"], name];
       const requiresDatabase = names.has(name.split("::").at(-1));
       if (requiresDatabase) db.push(name);
@@ -55,8 +58,14 @@ export function classifyTests(list, byPackage) {
     const binary = `binary_id(${matcher(suite["binary-id"])})`;
     if (db.length) excluded.push(db.length === cases.length ? binary : `(${binary} & (${db.map((name) => `test(${matcher(name)})`).join(" | ")}))`);
   }
+  // Source declarations include SQLx tests compiled out by features such as test-postgres.
+  for (const [pkg, names] of byPackage) for (const name of names) {
+    if (!listed.get(pkg)?.has(name)) featureGatedDatabase.push([pkg, name]);
+  }
   assert.ok(selected.length, "zero non-database tests discovered");
-  return { selected, database, ignored, filter: excluded.length ? `not (${excluded.join(" | ")})` : "all()" };
+  const filter = excluded.length ? `not (${excluded.join(" | ")})` : "all()";
+  assert.ok(Buffer.byteLength(filter) < 128 * 1024, "nextest filter exceeds Linux's single-argument limit");
+  return { selected, database, ignored, featureGatedDatabase, filter };
 }
 
 const attributes = (tag) => Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(([, key, value]) => [key, value.replace(/&(amp|lt|gt|quot|apos);/g, (_, entity) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" })[entity])]));
@@ -103,7 +112,8 @@ function main() {
     console.log(text);
     if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, text + "\n");
   };
-  summary(`Rust tests discovered: ${inventory.selected.length} non-database; ${inventory.database.length} database tests deferred; ${inventory.ignored.length} explicitly ignored.`);
+  const deferred = inventory.database.length + inventory.ignored.length + inventory.featureGatedDatabase.length;
+  summary(`Rust tests discovered: ${inventory.selected.length} non-database; ${deferred} deferred (${inventory.database.length} listed database tests, ${inventory.ignored.length} explicitly ignored, ${inventory.featureGatedDatabase.length} feature-gated database source declarations, including test-postgres).`);
   for (const [binary, name] of inventory.ignored) summary(`- Ignored by source attribute: \`${binary} / ${name}\``);
   const started = performance.now();
   const result = spawnSync("cargo", ["nextest", "run", ...args, "--no-fail-fast", "--run-ignored", "default", "-E", inventory.filter], { ...options, stdio: "inherit" });

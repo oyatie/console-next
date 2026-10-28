@@ -533,10 +533,11 @@ fn run_env(
     env: &[(&str, &str)],
 ) -> Result<(bool, String), Box<dyn std::error::Error>> {
     let mut command = Command::new(program);
+    command.args(args);
     for (key, value) in env {
         command.env(key, value);
     }
-    let output = command.args(args).output()?;
+    let output = command.output()?;
     let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
     text.push_str(&String::from_utf8_lossy(&output.stderr));
     Ok((output.status.success(), text))
@@ -1188,7 +1189,12 @@ fn examined_set(log: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     Ok(names)
 }
 
+#[cfg(test)]
 #[test]
+#[cfg_attr(
+    not(feature = "test-postgres"),
+    ignore = "needs the DB-test tooling, added with the database-test slice"
+)]
 fn derived_required_tables_match_the_verbatim_roster() -> Fallible {
     let derived = required_tables_from_topology(&topology_script())?;
     assert_eq!(
@@ -2048,6 +2054,7 @@ $canonical$;
     Ok(())
 }
 
+#[cfg(test)]
 #[test]
 #[cfg_attr(not(feature = "test-postgres"), ignore = "Postgres")]
 fn census_binds_to_an_executed_database() -> Fallible {
@@ -2194,7 +2201,12 @@ fn census_binds_to_an_executed_database() -> Fallible {
 /// executed; the name of the script that would have produced it is not.
 const ENFORCED: &str = "canonical-enforce: enforced";
 
+#[cfg(test)]
 #[test]
+#[cfg_attr(
+    not(feature = "test-postgres"),
+    ignore = "needs the DB-test tooling, added with the database-test slice"
+)]
 fn pgtest_harness_executes_the_enforcement() -> Fallible {
     require_docker();
     let root = repo_root().display().to_string();
@@ -2215,7 +2227,12 @@ fn pgtest_harness_executes_the_enforcement() -> Fallible {
     Ok(())
 }
 
+#[cfg(test)]
 #[test]
+#[cfg_attr(
+    not(feature = "test-postgres"),
+    ignore = "needs the DB-test tooling, added with the database-test slice"
+)]
 fn cargo_needs_postgres_harness_executes_the_enforcement() -> Fallible {
     require_docker();
     let script = repo_root()
