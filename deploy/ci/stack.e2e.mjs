@@ -20,13 +20,18 @@ test('the release binary exposes no development identity endpoint',async()=>{
   assert.equal(response.status,404);
 });
 
-test('cold-start sign-in seeds a synthetic account and refuses replay',async()=>{
+test('cold-start sign-in seeds an enrollment session and refuses business access and replay',async()=>{
   const encoded=execFileSync('kubectl',['get','secret','console-api','-n','console','-o','jsonpath={.data.CONSOLE_COLDSTART_OTP}'],{encoding:'utf8'});
   const otp=Buffer.from(encoded,'base64').toString();
   const redeem=()=>fetch(`${origin}/api/v1/auth/otp/redeem`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({otp})});
-  const response=await redeem();assert.equal(response.status,200);
+  const response=await redeem();assert.equal(response.status,200,'PLAT_COLDSTART: one-time code must redeem');
   const session=await response.json();assert.equal(session.requires_passkey_setup,true);
-  const me=await fetch(`${origin}/api/v1/users/me`,{headers:{authorization:`Bearer ${session.access_token}`}});
-  assert.equal(me.status,200);
-  const replay=await redeem();assert.equal(replay.status,401);
+  const headers={authorization:`Bearer ${session.access_token}`};
+  const consent=await fetch(`${origin}/api/v1/auth/privacy-consent/status`,{method:'POST',headers});
+  assert.equal(consent.status,200,'PLAT_COLDSTART: enrollment session must reach the consent notice');
+  assert.equal((await consent.json()).accepted,false,'PLAT_COLDSTART: a fresh account has not accepted consent');
+  const me=await fetch(`${origin}/api/v1/users/me`,{headers});
+  assert.equal(me.status,403,'PLAT_COLDSTART: enrollment session must not read business APIs');
+  assert.equal((await me.json()).error?.code,'passkey_required','PLAT_COLDSTART: business access must require a passkey');
+  const replay=await redeem();assert.equal(replay.status,401,'PLAT_COLDSTART: one-time code replay must be refused');
 });
