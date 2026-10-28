@@ -54,7 +54,7 @@ jobs:
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
-      - name: Prune legacy image caches before native builds
+      - name: Prune legacy image caches
         id: prune
         continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
@@ -65,12 +65,11 @@ jobs:
             await core.summary.addRaw(`Removed ${result.deleted} legacy image cache entries (${result.bytes} bytes).\n`).write();
       - name: Warn when image cache cleanup fails
         if: >-
-          !cancelled() && steps.prune.outcome == 'failure'
+          !cancelled() && steps.prune.outcome != 'success'
         run: |
           echo '**Warning:** Image cache cleanup failed. Build and publish will continue; legacy caches may remain near the repository cache limit.' >> "$GITHUB_STEP_SUMMARY"
 
   build:
-    needs: [prune-image-cache]
     if: >-
       !cancelled() &&
       (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push')
