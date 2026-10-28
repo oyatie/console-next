@@ -46,6 +46,7 @@ async fn retention_years(
             ))
         })?;
     Ok(all
+        .items
         .into_iter()
         .find(|e| e.key == SettingKey::RetentionEntityRegistrationDocument)
         .and_then(|e| e.value)

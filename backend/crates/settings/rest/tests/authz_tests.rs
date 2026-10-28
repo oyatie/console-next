@@ -221,7 +221,7 @@ fn scoped_grant_writing_other_entity_returns_out_of_scope() {
         id: entity_a,
     }]);
 
-    let write_b = ChangeFacts {
+    let mut write_b = ChangeFacts {
         resource_entities: vec![entity_b],
         key: SettingKey::ALL[0],
         scope_entity_id: Some(entity_b),
@@ -229,9 +229,12 @@ fn scoped_grant_writing_other_entity_returns_out_of_scope() {
         step_up: false,
         step_up_assertion_id: None,
     };
-    let err = authorize_change(&user, &write_b).unwrap_err();
-    assert_eq!(err.kind, ErrorKind::Forbidden);
-    assert_eq!(err.code, Some("out_of_scope"));
+    for direction in [Direction::Tighten, Direction::Loosen] {
+        write_b.direction = direction;
+        let err = authorize_change(&user, &write_b).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::Forbidden);
+        assert_eq!(err.code, Some("out_of_scope"));
+    }
 }
 
 #[test]

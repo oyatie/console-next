@@ -12,6 +12,7 @@ use super::super::facts::scope::SCOPE_BLOCK;
 use crate::Feature;
 
 pub const SCHEMA: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::LegalEntityManage,
     version: "2026-10-pa-ent-legal-entity-manage-v1",
     facts: &SCOPE_BLOCK,

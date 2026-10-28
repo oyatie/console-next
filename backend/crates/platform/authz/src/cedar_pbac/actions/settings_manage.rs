@@ -24,6 +24,7 @@ pub const STEP_UP: RequiredFact = RequiredFact {
 };
 
 pub const SCHEMA: ActionSchema = ActionSchema {
+    denial_codes: &["out_of_scope", "scope_tenant_wide_only", "step_up_required"],
     feature: Feature::SettingsManage,
     version: "2026-10-settings-manage-v3",
     facts: &[

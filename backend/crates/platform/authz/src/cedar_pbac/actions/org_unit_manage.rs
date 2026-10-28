@@ -6,6 +6,7 @@ use super::super::facts::second_person::ACTOR_HOLDS_PERMISSION;
 use crate::Feature;
 
 pub const SCHEMA: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::OrgUnitManage,
     version: "2026-10-crud-org-unit-manage-v1",
     facts: &[ACTOR_HOLDS_PERMISSION],

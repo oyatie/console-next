@@ -56,7 +56,9 @@ export function featureAccess() {
 export function entityReadAccess() {
   const auth = readFileSync(new URL("backend/crates/entity/rest/src/auth.rs", root), "utf8");
   const feature = auth.match(/Need::Read => Feature::(\w+)/)?.[1];
-  const reach = readFileSync(new URL("backend/crates/entity/rest/src/reach.rs", root), "utf8").split("fn granted")[1]?.split("/// # Errors")[0];
+  const caller = source("entity/rest/src/reach.rs");
+  if (!caller.includes("granted_scope(nodes)")) throw new Error("Entity read reach no longer uses shared scope grants");
+  const reach = source("platform/authz/src/cedar_pbac/facts/scope.rs").split("fn granted_scope")[1]?.split("\nfn ids")[0];
   if (!featureAccess()[feature] || !reach) throw new Error("Entity read guard or reach not found");
   const scopes = [...reach.matchAll(/((?:NodeKind::\w+\s*(?:\|\s*)?)+)=>\s*(?:return None|ids\.push\(id\))/g)]
     .flatMap(([, kinds]) => [...kinds.matchAll(/NodeKind::(\w+)/g)].map(([, kind]) => kind.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase()));

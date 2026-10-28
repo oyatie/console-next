@@ -150,6 +150,7 @@ mod tests {
     ];
 
     const SOD: ActionSchema = ActionSchema {
+        denial_codes: &[],
         feature: Feature::RoleManage,
         version: "test-facts-v1",
         facts: FACTS,

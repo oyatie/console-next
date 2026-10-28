@@ -1,8 +1,8 @@
 //! Saved operation output uses its immutable audit action and current ownership.
 use console_kernel_core::{BranchId, BranchScope};
-use console_platform_authz::access::{NodeKind, load_access_subject};
+use console_platform_authz::access::load_access_subject;
 use console_platform_authz::cedar_pbac::action_schema::compile_action_bundle;
-use console_platform_authz::cedar_pbac::facts::scope::scope_facts;
+use console_platform_authz::cedar_pbac::facts::scope::{granted_scope, scope_facts};
 use console_platform_authz::cedar_pbac::facts::{Facts, evaluate_with_facts};
 use console_platform_authz::{
     Action, AuthorizationRequest, AuthorizationResource, CedarEvaluation, Feature, Principal,
@@ -117,14 +117,15 @@ async fn reach(
     )
     .await
     .map_err(|e| DbError::Sqlx(sqlx::Error::Protocol(e.to_string())))?;
-    let mut ids = Vec::new();
-    for node in subject.grants.iter().filter_map(|grant| grant.scope.node()) {
-        match node.kind {
-            NodeKind::Tenant => return Ok(None),
-            NodeKind::LegalEntity | NodeKind::Workplace => ids.push(node.id),
-            NodeKind::Department => {}
-        }
-    }
+    let Some(mut ids) = granted_scope(
+        subject
+            .grants
+            .iter()
+            .filter_map(|grant| grant.scope.node())
+            .map(|node| (node.kind, node.id)),
+    ) else {
+        return Ok(None);
+    };
     let branches: Vec<Uuid> = match &p.branch_scope {
         BranchScope::Branches(branches) => branches.iter().map(|b| *b.as_uuid()).collect(),
         BranchScope::All => Vec::new(),
