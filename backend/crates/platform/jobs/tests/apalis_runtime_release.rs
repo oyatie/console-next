@@ -8,7 +8,7 @@ use std::time::Duration;
 use console_platform_jobs::{connect_apalis_runtime_pool, migrate_and_reconcile_apalis_postgres};
 use sqlx::Connection as _;
 
-#[tokio::test]
+#[sqlx::test]
 async fn runtime_pool_closes_a_connection_released_in_an_untracked_transaction() {
     let owner_url = std::env::var("CONSOLE_APALIS_OWNER_DATABASE_URL")
         .expect("CONSOLE_APALIS_OWNER_DATABASE_URL is required");
