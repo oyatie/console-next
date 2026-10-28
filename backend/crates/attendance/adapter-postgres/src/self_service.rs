@@ -106,6 +106,7 @@ impl PgAttendanceStore {
                 let Some(employee_id) = linked_employee_id(tx, scope.user_id).await? else {
                     return Ok(None);
                 };
+                let limits = crate::week52::load_limits(tx.as_mut(), org, week_start).await?;
                 let rows = sqlx::query(
                     "SELECT id,employee_id,kind,occurred_at FROM employee_attendance_records \
                      WHERE employee_id=$1 ORDER BY occurred_at,id",
@@ -146,7 +147,9 @@ impl PgAttendanceStore {
                     week_start,
                     current_hours,
                     projected_hours: current_hours,
-                    tone: app::week52_tone(&input),
+                    tone: limits.map_or(app::Week52Tone::Unknown, |limits| {
+                        app::week52_tone(&input, limits)
+                    }),
                     acknowledged_at,
                 }))
             })

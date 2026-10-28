@@ -35,6 +35,11 @@ async fn every_rule_code_ships_hold_and_future_obligations_wait_for_enforcement(
                 code,
                 if future {
                     date!(2027 - 01 - 01)
+                } else if matches!(
+                    code,
+                    codes::WEEKLY_STANDARD_HOURS | codes::WEEKLY_OVERTIME_MAX_HOURS
+                ) {
+                    date!(2026 - 10 - 08)
                 } else {
                     date!(2026 - 10 - 02)
                 },

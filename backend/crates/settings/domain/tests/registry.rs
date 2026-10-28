@@ -13,7 +13,7 @@ use std::collections::HashSet;
 /// inbox settings, five NTS settings, the organization apply time, tenant erasure cooling period,
 /// two privacy reveal settings, the shared deadline display window, and eleven access-review keys.
 const EXPECTED_KEYS: usize =
-    34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 2 + 2 + 1 + 11;
+    34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 2 + 2 + 1 + 11 + 1;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {

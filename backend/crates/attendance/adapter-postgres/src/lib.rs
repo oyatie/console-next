@@ -25,6 +25,8 @@ use time::{Date, Duration, OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 mod self_service;
+mod week52;
+use week52::week52_inputs_for_active;
 // --- lane: ATT-BUILD ---
 mod keys;
 mod schedule;
@@ -631,6 +633,7 @@ impl PgAttendanceStore {
         let week_start_at = week52_boundary(week_start)?;
         let week_end_at = week52_boundary(end)?;
         with_org_conn::<_, _, AttendanceStoreError>(&self.pool, org, move |tx| Box::pin(async move {
+            let limits = week52::load_limits(tx.as_mut(), org, week_start).await?;
             let active_employees = sqlx::query_as::<_, (Uuid, String, Option<String>)>("SELECT id,name,org_unit FROM employees WHERE employment_status='ACTIVE' AND ($1::uuid IS NULL OR home_branch_id=$1) ORDER BY id")
                 .bind(branch_id).fetch_all(tx.as_mut()).await?;
             // Pair the complete employee timeline. Filtering by `work_date` (or by either
@@ -646,7 +649,7 @@ impl PgAttendanceStore {
             let hours = week52_hours(&events, week_start_at, week_end_at)?;
             let acknowledgements = sqlx::query("SELECT a.employee_id,a.acknowledged_at FROM attendance_week52_acknowledgements a JOIN employees e ON e.id=a.employee_id AND e.org_id=a.org_id WHERE a.week_start=$1 AND e.employment_status='ACTIVE' AND ($2::uuid IS NULL OR e.home_branch_id=$2)")
                 .bind(week_start).bind(branch_id).fetch_all(tx.as_mut()).await?.into_iter().map(|row| Ok((row.try_get::<Uuid,_>("employee_id")?, row.try_get::<OffsetDateTime,_>("acknowledged_at")?))).collect::<Result<BTreeMap<_,_>, AttendanceStoreError>>()?;
-            Ok(week52_inputs_for_active(active_employees, week_start, hours, acknowledgements))
+            Ok(week52_inputs_for_active(active_employees, week_start, hours, acknowledgements, limits))
         })).await
     }
 }
@@ -671,29 +674,6 @@ fn strict_duration_event_kind(kind: &str) -> StrictDurationEventKind {
         "CLOCK_OUT" => StrictDurationEventKind::ClockOut,
         _ => StrictDurationEventKind::Other,
     }
-}
-
-fn week52_inputs_for_active(
-    active_employees: impl IntoIterator<Item = (Uuid, String, Option<String>)>,
-    week_start: Date,
-    hours: BTreeMap<Uuid, f64>,
-    acknowledgements: BTreeMap<Uuid, OffsetDateTime>,
-) -> Vec<Week52Read> {
-    active_employees
-        .into_iter()
-        .map(|(employee_id, name, team)| {
-            let current_hours = hours.get(&employee_id).copied().unwrap_or(0.0);
-            Week52Read {
-                employee_id,
-                name,
-                team,
-                week_start,
-                current_hours,
-                projected_hours: current_hours,
-                acknowledged_at: acknowledgements.get(&employee_id).copied(),
-            }
-        })
-        .collect()
 }
 
 fn week52_boundary(date: Date) -> Result<OffsetDateTime, AttendanceStoreError> {
@@ -1347,6 +1327,7 @@ mod tests {
             Date::from_calendar_date(2026, Month::July, 6).unwrap(),
             BTreeMap::new(),
             BTreeMap::new(),
+            None,
         );
         assert_eq!(rows[0].name, "Kim");
         assert_eq!(rows[0].team.as_deref(), Some("Operations"));
@@ -1538,6 +1519,7 @@ mod tests {
             week_start,
             BTreeMap::new(),
             BTreeMap::from([(employee, acknowledged_at)]),
+            None,
         );
         assert_eq!(inputs.len(), 1);
         assert_eq!(inputs[0].employee_id, employee);
@@ -1551,6 +1533,7 @@ mod tests {
             week_start,
             BTreeMap::new(),
             BTreeMap::from([(employee, acknowledged_at)]),
+            None,
         );
         assert_eq!(replay[0].acknowledged_at, inputs[0].acknowledged_at);
     }

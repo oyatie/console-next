@@ -155,6 +155,7 @@ impl From<OwnWeek52Read> for OwnWeek52Dto {
                 Week52Tone::Ok => "OK",
                 Week52Tone::Warn => "WARN",
                 Week52Tone::Danger => "DANGER",
+                Week52Tone::Unknown => "UNKNOWN",
             }
             .to_owned(),
             acknowledged_at: value.acknowledged_at.map(rfc3339),

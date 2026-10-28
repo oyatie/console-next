@@ -16106,8 +16106,11 @@ export interface components {
             week_start: string;
             current_hours: number;
             projected_hours: number;
-            /** @enum {string} */
-            tone: "OK" | "WARN" | "DANGER";
+            /**
+             * @description UNKNOWN: 확인 불가 — 법정 근로시간 대장 미등록
+             * @enum {string}
+             */
+            tone: "OK" | "WARN" | "DANGER" | "UNKNOWN";
             acked: boolean;
             /** Format: date-time */
             acked_at?: string | null;
@@ -24688,8 +24691,11 @@ export interface components {
             week_start: string;
             current_hours: number;
             projected_hours: number;
-            /** @enum {string} */
-            tone: "OK" | "WARN" | "DANGER";
+            /**
+             * @description UNKNOWN: 확인 불가 — 법정 근로시간 대장 미등록
+             * @enum {string}
+             */
+            tone: "OK" | "WARN" | "DANGER" | "UNKNOWN";
             /** Format: date-time */
             acknowledged_at?: string | null;
         };

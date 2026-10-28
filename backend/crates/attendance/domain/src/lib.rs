@@ -88,6 +88,9 @@ pub fn strict_pair_seconds(
                 }
                 let clipped_start = start.max(window.start);
                 let clipped_end = event.occurred_at.min(window.end);
+                if clipped_end <= clipped_start {
+                    continue;
+                }
                 let clipped_seconds = strict_clipped_seconds(clipped_start, clipped_end)?;
                 if clipped_seconds > 0 {
                     let entry = seconds.entry(event.employee_id).or_default();
