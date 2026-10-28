@@ -40,6 +40,15 @@ pub(crate) async fn page(
     query: ActionInboxSourceQuery,
     register: &super::super::request_register::Register,
 ) -> Result<ActionInboxSourcePage, KernelError> {
+    // No node can permit directory disclosure without a projected Cedar grant or ops.
+    if principal
+        .scopes_for(Feature::EmployeeDirectoryRead)
+        .next()
+        .is_none()
+        && !principal.is_tenant_ops
+    {
+        return Ok(super::super::empty_source_page());
+    }
     let reader = principal.clone();
     let org = reader.org_id;
     let input = query.clone();
@@ -84,7 +93,13 @@ pub(crate) async fn page(
                     if !resources.readable(facts, org, row.employee_id)? {
                         continue;
                     }
-                    match resources.authorize(&reader, feature, row.branch_id, row.employee_id) {
+                    match resources.authorize(
+                        &reader,
+                        Some(facts),
+                        feature,
+                        row.branch_id,
+                        row.employee_id,
+                    ) {
                         Ok(()) => {}
                         Err(error) if matches!(error.status.as_u16(), 403 | 404) => continue,
                         Err(error) => return Err(error),
@@ -182,12 +197,7 @@ mod tests {
         let org = OrgId::new();
         let me = seed_org_and_super_admin(&pool, *org.as_uuid(), "inbox-exit").await;
         scale_tests::grant_exit(&pool, org, me).await;
-        let principal = Principal::new(
-            me,
-            org,
-            BTreeSet::from([Role::SuperAdmin]),
-            BranchScope::All,
-        );
+        let principal = scale_tests::principal(&pool, org, me, true).await;
         for status in [
             "REPORTED",
             "HR_CONFIRMED",
@@ -300,12 +310,7 @@ mod tests {
             after: None,
             limit: 20,
         };
-        let principal = Principal::new(
-            me,
-            org,
-            BTreeSet::from([Role::SuperAdmin]),
-            BranchScope::All,
-        );
+        let principal = scale_tests::principal(&pool, org, me, true).await;
         let runtime = runtime_role_pool(&pool).await;
         let denied = page(&runtime, &principal, query.clone(), &Default::default())
             .await
