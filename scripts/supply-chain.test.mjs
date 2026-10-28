@@ -15,6 +15,17 @@ const security = () => {
   return workflow.jobs["supply-chain"];
 };
 
+for (const workspace of ["backend", "backend/fuzz", "apps/desktop/src-tauri"]) {
+  test(`${workspace} resolves only patched zip versions`, () => {
+    const versions = [...read(`${workspace}/Cargo.lock`).matchAll(/^name = "zip"\nversion = "([^"]+)"/gm)];
+    assert.ok(versions.length, `${workspace} must retain its ZIP dependency`);
+    for (const [, version] of versions) {
+      const [major, minor, patch] = version.split(".").map(Number);
+      assert.ok(major > 9 || (major === 9 && (minor > 0 || patch >= 5)), `${workspace}: vulnerable zip ${version}`);
+    }
+  });
+}
+
 test("npm check runs the register gate and its regression tests", () => {
   const command = JSON.parse(read("package.json")).scripts.check;
   assert.match(command, /node scripts\/check-deps\.mjs\s*&&/);

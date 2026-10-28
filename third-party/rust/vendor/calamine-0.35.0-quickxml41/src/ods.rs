@@ -179,6 +179,7 @@ where
 
     fn new(reader: RS) -> Result<Self, OdsError> {
         let mut zip = ZipArchive::new(reader)?;
+        zip.validate_header_consistency()?;
 
         // check mimetype
         match zip.by_name("mimetype") {
@@ -874,7 +875,7 @@ fn read_pictures<RS: Read + Seek>(
     let mut pics = Vec::new();
     for i in 0..zip.len() {
         let mut zfile = zip.by_index(i)?;
-        let zname = zfile.name();
+        let zname = zfile.name()?;
         // no Thumbnails
         if zname.starts_with("Pictures") {
             if let Some(ext) = zname.split('.').next_back() {

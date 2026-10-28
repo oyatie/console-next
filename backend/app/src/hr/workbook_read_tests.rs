@@ -91,6 +91,23 @@ fn cells_arrive_typed_in_row_then_column_order() {
 }
 
 #[test]
+fn inconsistent_zip_local_filenames_are_refused() {
+    let original = xlsx(&[("명부", &[(0, 0, "성명"), (1, 0, "김가나")])]);
+    let caps = default_caps().unwrap();
+    assert_eq!(read_workbook(&original, &caps).unwrap()[0].rows.len(), 2);
+    for name in [b"xl/workbook.xml".as_slice(), b"xl/worksheets/sheet1.xml"] {
+        let mut book = original.clone();
+        let header = book
+            .windows(30 + name.len())
+            .position(|bytes| bytes.starts_with(b"PK\x03\x04") && &bytes[30..] == name)
+            .unwrap();
+        // GHSA-m665-v7pm-7grj: keep the central name and payload intact.
+        book[header + 30] = b'_';
+        assert_eq!(code(read_workbook(&book, &caps)), "workbook");
+    }
+}
+
+#[test]
 fn a1_plus_xfd1048576_is_refused_before_anything_is_allocated() {
     let book = xlsx(&[("s", &[(0, 0, "a"), (1_048_575, 16_383, "b")])]);
     assert_eq!(

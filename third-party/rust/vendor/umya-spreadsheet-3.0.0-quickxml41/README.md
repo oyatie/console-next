@@ -1,4 +1,7 @@
 # umya-spreadsheet
+
+Repository patch: quick-xml 0.41 compatibility and zip >=9.0.5 for
+GHSA-m665-v7pm-7grj; see [patch notes](../README.md).
 ![Result Image](./images/title.png)
 
 [![Crates.io](https://img.shields.io/crates/v/umya-spreadsheet)](https://crates.io/crates/umya-spreadsheet)
