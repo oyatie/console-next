@@ -47,7 +47,7 @@ export function Shell() {
   const modules = useQuery({ ...modulesQuery, enabled: !platform && Boolean(session.token) });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
   const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
-  const { refetch: refetchModules, isEnabled: modulesEnabled } = modules;
+  const { isEnabled: modulesEnabled } = modules;
   const previousPath = useRef(pathname);
   useEffect(() => {
     if (previousPath.current === pathname) return;
@@ -55,8 +55,7 @@ export function Shell() {
     // Reuse a command's pending read so navigation cannot cancel and delay its rail update.
     if (meEnabled) void refetchMe({ cancelRefetch: false });
     if (checklistEnabled) void refetchChecklist({ cancelRefetch: false });
-    if (modulesEnabled) void refetchModules({ cancelRefetch: false });
-  }, [pathname, meEnabled, refetchMe, checklistEnabled, refetchChecklist, modulesEnabled, refetchModules]);
+  }, [pathname, meEnabled, refetchMe, checklistEnabled, refetchChecklist]);
   const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
   const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });

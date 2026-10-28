@@ -6,7 +6,7 @@ import { get, type PathPrefix } from "../../lib/query";
 import { landed } from "../../lib/react/landed";
 
 export const checklistQuery = get("/api/v1/onboarding/checklist");
-export const modulesQuery = { ...get("/api/v1/onboarding/modules"), retry: false };
+export const modulesQuery = { ...get("/api/v1/onboarding/modules"), retry: false, staleTime: Infinity };
 /** Re-read whenever the preview opens: a fix made on a record's own screen shows here on return (company-53). */
 export const goLivePreviewQuery = { ...get("/api/v1/onboarding/go-live/preview"), refetchOnMount: "always" as const };
 /** Exact service terms, read only when the contracting administrator opens the text. */

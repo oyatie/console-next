@@ -3,13 +3,21 @@ import { expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { user } from "../../../../e2e/mock/fixtures";
 import { clearShifts } from "../../../../e2e/stability";
-import { navFixture } from "./nav.browser-fixture";
+import { navFixture, navModules } from "./nav.browser-fixture";
 
 test("go-live updates the rail with its answer despite a 1.5 s profile read, then keeps it on return to /people", async () => {
   const { server, browser, page, errors } = await navFixture();
   let phase = "SETUP", hold = false;
   let release!: () => void;
   const pending = new Promise<void>(done => { release = done; });
+  let releaseModules!: () => void;
+  const pendingModules = new Promise<void>(done => { releaseModules = done; });
+  let moduleReads = 0;
+  await page.route("**/api/v1/onboarding/modules", async route => {
+    moduleReads++;
+    if (phase === "OPERATING") await pendingModules;
+    await route.fulfill({ json: navModules(phase) });
+  });
   await page.route("**/api/v1/users/me", async route => {
     if (phase === "OPERATING") await new Promise(done => setTimeout(done, 1500));
     if (hold) await pending;
@@ -36,7 +44,16 @@ test("go-live updates the rail with its answer despite a 1.5 s profile read, the
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(clearShifts);
     const refetched = page.waitForResponse("**/api/v1/users/me");
+    const modulesRequested = page.waitForRequest("**/api/v1/onboarding/modules");
     await page.getByRole("button", { name: "운영 시작", exact: true }).click();
+    await modulesRequested;
+    await element(page.getByRole("button", { name: "운영 시작", exact: true })).toBeDisabled();
+    expect(new URL(page.url()).pathname).toBe("/setup/go-live");
+    expect(moduleReads).toBe(2);
+    releaseModules();
+    await element(page).toHaveURL(server.resolvedUrls!.local[0]!);
+    await element(rail.getByRole("link", { name: "근태", exact: true })).toBeVisible();
+    await element(rail.getByRole("link", { name: "법정 신고·서류", exact: true })).toBeVisible();
     await refetched;
     await element(rail.getByRole("link", { name: "근태", exact: true })).toBeVisible();
     await page.waitForTimeout(100);
@@ -59,8 +76,10 @@ test("go-live updates the rail with its answer despite a 1.5 s profile read, the
     release();
     await element.poll(() => page.evaluate(() => window.__navFacts.phase)).toBe("OPERATING");
     await element(rail.getByRole("link")).toHaveText(entries);
+    expect(moduleReads).toBe(2);
     expect(errors).toEqual([]);
   } finally {
+    releaseModules();
     release();
     await browser.close();
     await server.close();
