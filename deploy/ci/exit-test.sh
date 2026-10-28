@@ -78,11 +78,15 @@ source.metadata={name:'wrong-workflow',namespace:'flux-system'};delete source.st
 const [url,digest]=process.env.WRONG_ARTIFACT.split('@');source.spec.url=url;source.spec.ref={digest};
 execFileSync('kubectl',['apply','-f','-'],{input:JSON.stringify(source),stdio:['pipe','inherit','inherit']});
 JS
-if flux reconcile source oci wrong-workflow --timeout=120s > .tmp/evidence/wrong-workflow.txt 2>&1; then
-  echo 'PLAT_ARTIFACT_IDENTITY: wrong workflow was accepted' >&2; exit 1
+if ! kubectl wait --for=condition=Ready=False ocirepository/wrong-workflow -n flux-system --timeout=120s > .tmp/evidence/wrong-workflow.txt 2>&1; then
+  echo 'PLAT_ARTIFACT_IDENTITY: source did not report Ready=False before the deadline' >&2; exit 1
 fi
 kubectl get ocirepository wrong-workflow -n flux-system -o json > .tmp/evidence/wrong-workflow.json
-jq -e '.status.conditions | any(.type == "Ready" and .status == "False" and .reason == "SourceVerificationFailed")' .tmp/evidence/wrong-workflow.json
+if ! jq -e '.metadata.generation as $generation | (.status.conditions // []) |
+  any(.type == "Ready" and .status == "False" and .reason == "VerificationError" and .observedGeneration == $generation) and
+  any(.type == "SourceVerified" and .status == "False" and .reason == "VerificationError" and .observedGeneration == $generation)' .tmp/evidence/wrong-workflow.json; then
+  echo 'PLAT_ARTIFACT_IDENTITY: expected current Ready=False and SourceVerified=False with VerificationError' >&2; exit 1
+fi
 # Drift control: neither scale nor apply the expected value directly; Flux restores the artifact's desired count.
 expected="$(kubectl get deployment console-worker -n console -o jsonpath='{.spec.replicas}')"
 kubectl scale deployment console-worker -n console --replicas=0
