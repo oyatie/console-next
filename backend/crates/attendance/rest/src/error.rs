@@ -89,7 +89,9 @@ impl RestError {
                 "validation",
                 "close month is outside the supported date range",
             ),
-            AttendanceStoreError::Database(_) | AttendanceStoreError::Sql(_) => Self::new(
+            AttendanceStoreError::Database(_)
+            | AttendanceStoreError::Sql(_)
+            | AttendanceStoreError::WeeklyPolicyUnavailable => Self::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",
                 "internal server error",

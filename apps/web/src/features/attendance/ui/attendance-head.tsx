@@ -35,7 +35,7 @@ export function AttendanceHead({ tab }: { tab: Tab }) {
       sub={<ChainStepper label={t("attendance.chain.label")} steps={steps} />}
       tabs={
         <TabNav label={t("attendance.tabs")}>
-          {(["month", "day"] as const).map((k) => (
+          {(["month", "day", "week"] as const).map((k) => (
             <Link key={k} to="/attendance" search={{ tab: k }} className={tabClass} aria-current={tab === k ? "page" : undefined}>{t(`attendance.tab.${k}`)}</Link>
           ))}
           <span className={s.divider} aria-hidden />

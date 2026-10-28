@@ -33,6 +33,7 @@ export const crewsQuery = (workplace_id?: string, date?: string) => get("/api/v1
 /** People whose name or employee number matches (a few), for the person pickers. */
 export const peopleQuery = (search: string) => get("/api/v1/employees", { params: { query: { search, limit: 8 } } });
 export const holidaysQuery = (year: number) => get("/api/v1/attendance/holidays", { params: { query: { year } } });
+export const weeklyQuery = (week_start: string) => get("/api/v1/attendance/week52", { params: { query: { week_start } } });
 
 // Previews write nothing: they answer what a command would do, and the server re-checks it at commit.
 export const previewAssign = (body: AssignInput) => unwrap(api.POST("/api/v1/attendance/schedule/layers/preview", { body }));
