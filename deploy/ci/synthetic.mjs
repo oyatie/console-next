@@ -10,7 +10,7 @@ const url = role => `postgresql://${roles[role]}:${passwords[role]}@console-db-r
 const keys = generateKeyPairSync('ec',{namedCurve:'prime256v1',privateKeyEncoding:{type:'pkcs8',format:'pem'},publicKeyEncoding:{type:'spki',format:'pem'}});
 const secrets = Object.entries(roles).map(([key,username])=>({name:`${key}-role`,type:'kubernetes.io/basic-auth',values:{username,password:passwords[key]}}));
 secrets.push({name:'api',values:{DATABASE_URL:url('rt'),LEAVE_COMMAND_DATABASE_URL:url('leave'),ONTOLOGY_COMMAND_DATABASE_URL:url('ontology'),PLATFORM_FORCE_COMMAND_DATABASE_URL:url('force'),CONSOLE_JWT_PRIVATE_KEY_PEM:keys.privateKey,CONSOLE_JWT_PUBLIC_KEY_PEM:keys.publicKey,CONSOLE_COLDSTART_OTP:randomBytes(24).toString('hex')}});
-secrets.push({name:'worker',values:{DATABASE_URL:url('rt')}},{name:'migrate',values:{DATABASE_URL:url('app')}});
+secrets.push({name:'worker',values:{DATABASE_URL:url('rt'),PLATFORM_FORCE_COMMAND_DATABASE_URL:url('force')}},{name:'migrate',values:{DATABASE_URL:url('app')}});
 const access=randomBytes(16).toString('hex'), secret=randomBytes(32).toString('hex');
 secrets.push({name:'object-credentials',values:{ACCESS_KEY_ID:access,ACCESS_SECRET_KEY:secret}},{name:'object-auth',values:{'config.json':JSON.stringify({identities:[{name:'synthetic',credentials:[{accessKey:access,secretKey:secret}],actions:['Admin','Read','Write','List','Tagging']}]})}});
 for (const item of secrets) execFileSync('kubectl',['apply','-f','-'],{input:JSON.stringify({apiVersion:'v1',kind:'Secret',metadata:{name:`console-${item.name}`,namespace:'console',labels:{'cnpg.io/reload':'true'}},type:item.type??'Opaque',stringData:item.values}),stdio:['pipe','ignore','inherit']});

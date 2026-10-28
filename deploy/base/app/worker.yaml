@@ -27,6 +27,7 @@ spec:
           env:
             - {name: CONSOLE_APP_ROLE, value: worker}
             - {name: DATABASE_URL_FILE, value: /run/console/DATABASE_URL}
+            - {name: PLATFORM_FORCE_COMMAND_DATABASE_URL_FILE, value: /run/console/PLATFORM_FORCE_COMMAND_DATABASE_URL}
             - name: CONSOLE_POD_NAME
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
           ports: [{name: http, containerPort: 8080}]

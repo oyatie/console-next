@@ -57,7 +57,7 @@ node deploy/ci/admission.mjs
 # These secrets contain random synthetic credentials for this throwaway cluster only.
 kubectl apply -f .tmp/exit-bundle/namespace/resources.yaml
 kubectl create secret generic "${PLATFORM_PULL_SECRET}" -n console --type=kubernetes.io/dockerconfigjson --from-file=".dockerconfigjson=${DOCKER_CONFIG}/config.json"
-kubectl apply -f - <<JSON
+kubectl apply --server-side -f - <<JSON
 {"apiVersion":"v1","kind":"ServiceAccount","metadata":{"name":"default","namespace":"console"},"imagePullSecrets":[{"name":"${PLATFORM_PULL_SECRET}"}]}
 JSON
 node deploy/ci/synthetic.mjs
