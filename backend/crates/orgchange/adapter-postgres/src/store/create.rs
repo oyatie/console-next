@@ -59,9 +59,6 @@ impl PgOrgChangeStore {
                     return Err(KernelError::forbidden("org-change draft permission required")
                         .with_code("org_change.refuse.missing_grant").into());
                 }
-                if validate_legacy_targets {
-                    super::draft_admission::require_legacy(&access, org, actor, &command.proposal)?;
-                }
                 validate_proposal(&command.proposal)?;
                 if let Some(row) = sqlx::query(
                     "SELECT id, request_fingerprint FROM org_change_requests \

@@ -18,6 +18,8 @@ mod go_live;
 mod harness;
 #[path = "support/http.rs"]
 mod http;
+#[path = "action_inbox_items/legacy_draft.rs"]
+mod legacy_draft;
 #[path = "action_inbox_items/org_change.rs"]
 mod org_change;
 #[path = "../../test-support/org_change_fixtures.rs"]

@@ -48,39 +48,6 @@ pub(super) fn allows(
     ))
 }
 
-pub(super) fn require_legacy(
-    access: &DecisionFacts,
-    org: OrgId,
-    actor: UserId,
-    proposal: &[OrgProposalOp],
-) -> Result<(), PgOrgChangeError> {
-    for op in proposal {
-        let feature = match op {
-            OrgProposalOp::CreateRegion { .. }
-            | OrgProposalOp::RenameRegion { .. }
-            | OrgProposalOp::DeactivateRegion { .. } => Feature::RegionManage,
-            OrgProposalOp::CreateBranch { .. }
-            | OrgProposalOp::RenameBranch { .. }
-            | OrgProposalOp::DeactivateBranch { .. } => Feature::BranchManage,
-            _ => return Err(KernelError::validation("expected a legacy org operation").into()),
-        };
-        if !org_change_draft::allowed(
-            feature,
-            &actor.to_string(),
-            &org.to_string(),
-            access.roles(),
-            false,
-        ) {
-            return Err(
-                KernelError::forbidden("legacy org draft permission required")
-                    .with_code("org_change.refuse.missing_grant")
-                    .into(),
-            );
-        }
-    }
-    Ok(())
-}
-
 pub(super) fn require(
     access: &DecisionFacts,
     org: OrgId,

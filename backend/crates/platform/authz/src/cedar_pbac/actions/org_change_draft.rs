@@ -5,7 +5,7 @@ use crate::{Feature, cedar_pbac::engine::generate_policies};
 use std::sync::OnceLock;
 
 /// Preserve role compatibility in Cedar alongside the scoped grant decision.
-/// Only draft lifecycle and legacy convenience actions are enrolled; unknown actions deny.
+/// Only draft lifecycle actions are enrolled; unknown actions deny.
 pub fn allowed(
     feature: Feature,
     actor: &str,
@@ -15,13 +15,9 @@ pub fn allowed(
 ) -> bool {
     static DRAFT: OnceLock<Result<ActionBundle, String>> = OnceLock::new();
     static APPLY: OnceLock<Result<ActionBundle, String>> = OnceLock::new();
-    static REGION: OnceLock<Result<ActionBundle, String>> = OnceLock::new();
-    static BRANCH: OnceLock<Result<ActionBundle, String>> = OnceLock::new();
     let slot = match feature {
         Feature::OrgChangeDraft => &DRAFT,
         Feature::OrgChangeApply => &APPLY,
-        Feature::RegionManage => &REGION,
-        Feature::BranchManage => &BRANCH,
         _ => return false,
     };
     let action = feature.as_str();
@@ -60,12 +56,7 @@ mod tests {
 
     #[test]
     fn legacy_roles_and_scoped_grants_share_the_same_cedar_actions() {
-        for feature in [
-            Feature::OrgChangeDraft,
-            Feature::OrgChangeApply,
-            Feature::RegionManage,
-            Feature::BranchManage,
-        ] {
+        for feature in [Feature::OrgChangeDraft, Feature::OrgChangeApply] {
             for role in Role::ALL {
                 let roles = vec![role.as_str().to_owned()];
                 assert_eq!(
@@ -77,6 +68,12 @@ mod tests {
             assert!(!allowed(feature, "u", "o", &[], false));
             assert!(allowed(feature, "u", "o", &[], true));
         }
-        assert!(!allowed(Feature::OrgChangeRead, "u", "o", &[], true));
+        for feature in [
+            Feature::OrgChangeRead,
+            Feature::RegionManage,
+            Feature::BranchManage,
+        ] {
+            assert!(!allowed(feature, "u", "o", &[], true));
+        }
     }
 }

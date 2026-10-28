@@ -35,6 +35,10 @@ test("draft refusals distinguish invalid input and missing authority without cre
   for (const [path, body] of [
     ["/org-changes", { ...draft, target: { ...draft.target, ref: crypto.randomUUID() } }],
     ["/org-units", { kind: "DEPARTMENT", parentId: crypto.randomUUID(), name: "기안검증부" }],
+    ["/regions", { name: "권한 없는 지역" }],
+    ["/branches", { name: "권한 없는 지점", region_id: crypto.randomUUID() }],
+    ["/regions", { name: "가".repeat(121) }],
+    ["/branches", { name: "가".repeat(121), region_id: crypto.randomUUID() }],
   ] as const) {
     const denied = await viewerApi(path, "POST", body, { "Idempotency-Key": crypto.randomUUID() });
     expect([denied.status(), await codeOf(denied)]).toEqual([403, "org_change.refuse.missing_grant"]);

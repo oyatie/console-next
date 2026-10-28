@@ -4,7 +4,8 @@ operationId: createRegion
 summary: Propose creating a region
 description: Creates a governed DRAFT containing one CREATE_REGION proposal. The live regions table is unchanged
   until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns
-  the existing org-change request with 200.
+  the existing org-change request with 200. Cedar draft admission precedes proposal validation; a caller without
+  draft authority receives 403 (org_change.refuse.missing_grant), even for invalid proposal content, rather than 422.
 security:
 - bearerAuth: []
 parameters:
