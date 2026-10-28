@@ -37,6 +37,22 @@ test("an HR admin imports a roster: preview → dry run → apply bound to it", 
   for (const row of ["직무 · 직위", "기본급"]) await expect(peek.getByRole("term").filter({ hasText: row })).toBeVisible();
   await expectAccessible(admin, "people list + detail panel");
 
+  const row = admin.getByRole("grid", { name: "직원", exact: true }).getByRole("row").filter({ has: admin.getByRole("rowheader", { name: "김하나", exact: true }) });
+  await test.step("Escape from the panel returns focus to its roster row", async () => {
+    const openRecord = peek.getByRole("link", { name: /인사카드 열기/ });
+    await openRecord.focus();
+    await expect(openRecord).toBeFocused();
+    await admin.keyboard.press("Escape");
+    await expect(peek).toBeHidden();
+    await expect(row).toBeFocused();
+  });
+  await test.step("Back from the record returns focus to its roster row", async () => {
+    await row.press("o");
+    await expect(admin.getByRole("heading", { level: 1 })).toContainText("김하나");
+    await admin.goBack();
+    await expect(row).toBeFocused();
+  });
+
   // Phone width: the menu button discloses the navigation, and no screen scrolls sideways.
   await admin.setViewportSize({ width: 390, height: 844 });
   await forgetResize(admin);

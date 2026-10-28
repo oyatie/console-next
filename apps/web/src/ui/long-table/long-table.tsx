@@ -134,10 +134,9 @@ export function LongTable<R>(p: {
     const el = region.current;
     if (!el) return;
     // Focus landed in a body row: the row itself, or a cell or checkbox in it (a click focuses the cell, and the
-    // arrows then move cell to cell). The header row has no column cells of a body row.
+    // arrows then move cell to cell). Only body rows carry the caller's row id.
     const focus = (e: FocusEvent) => {
-      const row = (e.target as Element).closest?.("[role=row][data-key]");
-      const id = row && !row.querySelector("[role=columnheader]") ? rowIdOf(row) : null;
+      const id = rowIdOf(e.target);
       if (id) handlers.current.focus?.(id);
     };
     el.addEventListener("focusin", focus);

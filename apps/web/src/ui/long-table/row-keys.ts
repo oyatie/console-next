@@ -16,6 +16,9 @@ export type RowKeyHandlers = {
 /** The caller's row id of the row holding `el`, if any. */
 export const rowIdOf = (el: EventTarget | null) => (el instanceof Element ? el.closest("[role=row][data-row-id]")?.getAttribute("data-row-id") ?? null : null);
 
+/** Finds a rendered row by the caller's id, independent of React Aria's collection keys. */
+export const rowById = (grid: ParentNode | null, id: string) => grid?.querySelector<HTMLElement>(`[role=row][data-row-id="${CSS.escape(id)}"]`) ?? null;
+
 /** Adds the region's shortcuts; returns the remover. */
 export function listenRowKeys(region: HTMLElement, h: RowKeyHandlers) {
   const key = (e: KeyboardEvent) => {

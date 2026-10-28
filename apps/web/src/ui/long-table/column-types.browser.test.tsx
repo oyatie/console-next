@@ -84,7 +84,7 @@ for (const long of [false, true]) for (const theme of ["light", "dark"]) {
     for (const type of types) {
       const header = page.getByRole("columnheader", { name: type, exact: true });
       const index = types.indexOf(type);
-      const cell = long ? page.locator('[role="row"][data-key]').first().locator('[role="gridcell"], [role="rowheader"]').nth(index) : page.locator("tbody tr").first().locator("td, th").nth(index);
+      const cell = long ? page.locator('[role="row"][data-row-id]').first().locator('[role="gridcell"], [role="rowheader"]').nth(index) : page.locator("tbody tr").first().locator("td, th").nth(index);
       for (const element of [header, cell]) {
         const style = await element.evaluate(el => {
           const s = getComputedStyle(el);
@@ -138,11 +138,11 @@ test("server totals and positions describe the full result, including unknown to
   for (const [query, count] of [["total=2000", "2001"], ["", "-1"]]) {
     await open(`long&offset=100&${query}`);
     await visible(page.getByRole("grid")).toHaveAttribute("aria-rowcount", count!);
-    await visible(page.locator('[role="row"][data-key]').first()).toHaveAttribute("aria-rowindex", "102");
+    await visible(page.locator('[role="row"][data-row-id]').first()).toHaveAttribute("aria-rowindex", "102");
   }
   await open("long&total=0");
   await visible(page.getByRole("grid")).toHaveAttribute("aria-rowcount", "1");
-  await visible(page.locator('[role="row"][data-key]')).toHaveCount(0);
+  await visible(page.locator('[role="row"][data-row-id]')).toHaveCount(0);
 });
 
 test("omitted totals count all loaded rows only when paging is complete", async () => {
@@ -174,7 +174,7 @@ test("keyset pages keep duplicate sort values, and hidden rows never enter total
   try {
     await open("long&paged");
     await visible(page.getByRole("grid")).toHaveAttribute("aria-rowcount", "5");
-    const rows = page.locator('[role="row"][data-key]');
+    const rows = page.locator('[role="row"][data-row-id]');
     await visible(rows).toHaveCount(4);
     expect(await rows.evaluateAll(els => els.map(el => el.getAttribute("data-row-id")))).toEqual(["a", "b", "c", "d"]);
     expect(await rows.evaluateAll(els => els.map(el => el.getAttribute("aria-rowindex")))).toEqual(["2", "3", "4", "5"]);
@@ -192,7 +192,7 @@ for (const theme of ["light", "dark"]) test(`typed compact cards preserve row in
 
 test("typed compact virtual rows stay bounded at 2,000 rows", async () => {
   await open("long&large&density=compact");
-  const rows = page.locator('[role="row"][data-key]:visible');
+  const rows = page.locator('[role="row"][data-row-id]:visible');
   await visible(rows.first().locator('[role="gridcell"]')).toHaveCount(types.length - 1);
   await visible(rows.first().locator('[role="gridcell"]').first()).toHaveCSS("height", "32px");
   expect(await rows.count()).toBeLessThanOrEqual(40);

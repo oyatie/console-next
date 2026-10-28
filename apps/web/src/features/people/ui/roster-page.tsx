@@ -4,7 +4,7 @@ import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import { EmptyState } from "../../../ui/empty-state";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { editable } from "../../../ui/long-table/row-keys";
+import { editable, rowById } from "../../../ui/long-table/row-keys";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
 import { focusSoon } from "../../../lib/react/announce";
 import { usePrefetch } from "../../../lib/react/prefetch";
@@ -144,7 +144,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
     el.scrollTop = back.top;
     if (back.row) requestAnimationFrame(() => {
       // A delayed arrival read must not take focus from a search the user already started.
-      if (!editable(document.activeElement)) el.querySelector<HTMLElement>(`[data-key="${CSS.escape(back.row!)}"]`)?.focus();
+      if (!editable(document.activeElement)) rowById(el, back.row!)?.focus();
     });
   }, [back, rowCount]);
   const scrollRef = (el: HTMLElement | null) => {
@@ -162,7 +162,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
     const close = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || editable(e.target) || !split.current?.contains(e.target as Node)) return;
       void navigate({ search: (prev) => ({ ...prev, sel: undefined }), replace: true });
-      requestAnimationFrame(() => scroller.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(open)}"]`)?.focus());
+      requestAnimationFrame(() => rowById(scroller.current, open)?.focus());
     };
     document.addEventListener("keydown", close, true);
     return () => document.removeEventListener("keydown", close, true);
