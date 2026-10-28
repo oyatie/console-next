@@ -9,14 +9,22 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: npm
     directory: /
     target-branch: dev
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "@types/node"
+        versions: [">=27"]
+      # openapi-typescript requires the JavaScript compiler API missing from native TypeScript.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       npm:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: cargo
     directories:
       - /backend
@@ -28,3 +36,4 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
+        update-types: ["minor", "patch"]

@@ -8,6 +8,7 @@ import { load } from "js-yaml";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const securityWorkflowPath = ".github/workflows/security.yml";
+const NODE_MAJOR = readFileSync(resolve(root, ".node-version"), "utf8").trim();
 
 const CHECKOUT =
   "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0";
@@ -45,7 +46,7 @@ const REQUIRED_WORKFLOW_ENVELOPE = Object.freeze({
   },
 });
 
-const REQUIRED_SECURITY_JOBS = Object.freeze({
+export const REQUIRED_SECURITY_JOBS = Object.freeze({
   filesystem: {
     name: "Trivy — dependencies + secrets",
     "runs-on": "ubuntu-latest",
@@ -53,7 +54,7 @@ const REQUIRED_SECURITY_JOBS = Object.freeze({
     steps: [
       {
         uses: SETUP_NODE,
-        with: { "node-version": "24" },
+        with: { "node-version": NODE_MAJOR },
       },
       {
         name: "Install checksum-pinned Trivy before candidate checkout",
@@ -159,7 +160,7 @@ const REQUIRED_SECURITY_JOBS = Object.freeze({
       { uses: CHECKOUT },
       {
         uses: SETUP_NODE,
-        with: { "node-version": "24", cache: "npm" },
+        with: { "node-version": NODE_MAJOR, cache: "npm" },
       },
       { run: "npm ci --ignore-scripts" },
       {

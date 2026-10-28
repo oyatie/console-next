@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with: {node-version-file: package.json, cache: npm}
+        with: {node-version-file: .node-version, cache: npm}
       - name: Locked tools
         run: python3 deploy/ci/tools.py
       - name: Contracts and strict manifests
@@ -118,7 +118,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with: {node-version-file: package.json, cache: npm}
+        with: {node-version-file: .node-version, cache: npm}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with: {pattern: 'console-*', merge-multiple: true, path: '.tmp/images'}
       - name: Tools and registry login
@@ -236,7 +236,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false, ref: dev}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with: {node-version-file: package.json, cache: npm}
+        with: {node-version-file: .node-version, cache: npm}
       - name: Locked tools
         run: |
           python3 deploy/ci/tools.py kind kubectl flux cosign kustomize

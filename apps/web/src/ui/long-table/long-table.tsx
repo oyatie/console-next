@@ -24,6 +24,9 @@ const NONE = new Set<string>();
 export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; type?: ColumnType; allowsSorting?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
 
 const SELECT = "__select";
+// React Aria shares one collection key space between rows and columns.
+const rowKey = (id: string) => `row:${id}`;
+const rowId = (key: string | number) => String(key).slice("row:".length);
 // TableLayout needs pixel estimates; CSS measures each row so cards can wrap and desktop densities stay fixed.
 const LAYOUT = {
   regular: { estimatedRowHeight: 40, headingHeight: 40, loaderHeight: 40 },
@@ -131,10 +134,9 @@ export function LongTable<R>(p: {
     const el = region.current;
     if (!el) return;
     // Focus landed in a body row: the row itself, or a cell or checkbox in it (a click focuses the cell, and the
-    // arrows then move cell to cell). The header row has no column cells of a body row.
+    // arrows then move cell to cell). Only body rows carry the caller's row id.
     const focus = (e: FocusEvent) => {
-      const row = (e.target as Element).closest?.("[role=row][data-key]");
-      const id = row && !row.querySelector("[role=columnheader]") ? rowIdOf(row) : null;
+      const id = rowIdOf(e.target);
       if (id) handlers.current.focus?.(id);
     };
     el.addEventListener("focusin", focus);
@@ -152,6 +154,7 @@ export function LongTable<R>(p: {
   const loaded = p.rows.map(p.rowId);
   const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;
+  const selected = sel ? shownKeys(sel, loaded) : NONE;
   const titleId = (r: R) => `${captionId}-${encodeURIComponent(p.rowId(r))}-title`;
   const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, cell: (r) => <CardContent row={r} columns={p.columns} titleId={titleId(r)} /> }] : p.columns;
   const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...content] : content;
@@ -224,9 +227,9 @@ export function LongTable<R>(p: {
           selectionBehavior="toggle"
           // Always controlled (empty without a selection): a selection that arrives with the permissions would otherwise
           // switch React Aria from uncontrolled to controlled.
-          selectedKeys={sel ? shownKeys(sel, loaded) : NONE}
-          onSelectionChange={(keys) => sel && p.onSelectionChange?.(applyKeys(sel, keys as "all" | Set<string>, loaded))}
-          onRowAction={p.onRowAction && ((k) => p.onRowAction?.(String(k)))}
+          selectedKeys={selected === "all" ? selected : new Set([...selected].map(rowKey))}
+          onSelectionChange={(keys) => sel && p.onSelectionChange?.(applyKeys(sel, keys === "all" ? keys : new Set([...keys].map(rowId)), loaded))}
+          onRowAction={p.onRowAction && ((k) => p.onRowAction?.(rowId(k)))}
           // Esc never drops a selection that took many clicks to build; the caller's Esc (closing a panel) runs.
           {...({ escapeKeyBehavior: "none" } as object)}
         >
@@ -247,7 +250,7 @@ export function LongTable<R>(p: {
               {(r) => {
                 const id = p.rowId(r);
                 return (
-                  <Row id={id} columns={cols} className={css.row} render={props => <div {...props} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => p.onRowHover?.(id))}>
+                  <Row id={rowKey(id)} columns={cols} className={css.row} render={props => <div {...props} data-row-id={id} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => p.onRowHover?.(id))}>
                     {(c) => {
                       const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.

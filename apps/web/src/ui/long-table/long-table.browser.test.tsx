@@ -21,15 +21,22 @@ beforeAll(async () => {
         import React,{useState} from 'react'; import {createRoot} from 'react-dom/client';
         import {loadCatalog} from '@console/i18n';
         import {LongTable} from '/apps/web/src/ui/long-table/long-table.tsx';
+        import {NO_SELECTION} from '/apps/web/src/ui/long-table/selection.ts';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Fixture(){
           const [sort,setSort]=useState({column:'name',direction:'ascending'});
-          const rows=[{id:'a',name:'가상가',note:'첫째'},{id:'b',name:'가상나',note:'둘째'}];
+          const [selection,setSelection]=useState(NO_SELECTION);
+          const collision=location.search.startsWith('?collision');
+          const rows=collision ? ['name','__select','__card','row:name'].map((id,i)=>({id,name:'가상'+i,note:id}))
+            : [{id:'a',name:'가상가',note:'첫째'},{id:'b',name:'가상나',note:'둘째'}];
           return React.createElement(LongTable,{
             label:'정렬 검증',rows,rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
             caption:sort.column+':'+sort.direction,
             sortDescriptor:sort,onSortChange:location.search==='?readonly'?undefined:setSort,
+            ...(collision ? {...(location.search==='?collision' ? {selection,onSelectionChange:s=>{setSelection(s);document.body.dataset.selection=JSON.stringify(s.kind==='ids'?[...s.ids]:[...s.excluded]);}} : {}),
+              rowKeys:{},onRowAction:id=>document.body.dataset.action=id,
+              onRowFocus:id=>document.body.dataset.focus=id,onRowHover:id=>document.body.dataset.hover=id} : {}),
             columns:[{id:'name',header:'이름',card:location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,cell:r=>r.name},
               {id:'note',header:'메모',allowsSorting:true,cell:r=>r.note},
               {id:'fixed',header:'고정',cell:()=>'-'}]
@@ -115,4 +122,38 @@ test("a narrow table without card columns keeps header sorting", async () => {
   await name.click();
   await page.getByText("name:descending", { exact: true }).waitFor();
   expect(await page.getByRole("combobox", { name: "정렬", exact: true }).count()).toBe(0);
+});
+
+test.each([1440, 390])("row ids can match column ids while callbacks and selection keep raw ids at %s px", async width => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto(`http://127.0.0.1:${(server.httpServer!.address() as { port: number }).port}/long-table-test?collision`);
+  const rows = page.getByRole("row").filter({ has: page.getByRole("rowheader") });
+  await rows.nth(3).waitFor();
+  expect(await rows.count()).toBe(4);
+  for (const [i, id] of ["name", "__select", "__card", "row:name"].entries()) {
+    const row = rows.nth(i);
+    await row.hover();
+    expect(await page.locator("body").getAttribute("data-hover")).toBe(id);
+    await row.focus();
+    expect(await page.locator("body").getAttribute("data-focus")).toBe(id);
+    await row.press("o");
+    expect(await page.locator("body").getAttribute("data-action")).toBe(id);
+    await row.press("Space");
+    await page.waitForFunction(() => document.querySelector('[aria-selected="true"]'));
+    expect(await row.getAttribute("aria-selected")).toBe("true");
+    expect(JSON.parse((await page.locator("body").getAttribute("data-selection"))!)).toContain(id);
+  }
+  await rows.first().focus();
+  await rows.first().press("o");
+  await expect.poll(() => page.locator("body").getAttribute("data-action")).toBe("name");
+  await rows.first().press("Space");
+  await expect.poll(async () => JSON.parse((await page.locator("body").getAttribute("data-selection"))!)).toEqual(["__select", "__card", "row:name"]);
+});
+
+test("native row actions receive the caller's id", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`http://127.0.0.1:${(server.httpServer!.address() as { port: number }).port}/long-table-test?collision-action`);
+  const row = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "가상0", exact: true }) });
+  await row.click();
+  await expect.poll(() => page.locator("body").getAttribute("data-action")).toBe("name");
 });

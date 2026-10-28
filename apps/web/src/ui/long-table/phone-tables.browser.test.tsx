@@ -226,7 +226,7 @@ test("container boundary, virtualization and keyboard state survive card/row cha
   await row.press("Space");
   await visible(row).toHaveAttribute("aria-selected", "true");
   await visible(row).toBeFocused();
-  await visible(row).toHaveAttribute("data-key", "MOB-0");
+  await visible(row).toHaveAttribute("data-row-id", "MOB-0");
   await row.press("Enter");
   await visible(page.locator("#open")).toHaveText("MOB-0");
   expect(await long.getByRole("row").count()).toBeLessThan(30);

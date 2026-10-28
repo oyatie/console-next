@@ -49,7 +49,7 @@ jobs:
           sudo tar -xzf /tmp/gitleaks.tgz -C /usr/local/bin gitleaks
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: package.json
+          node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
       # Browser-backed unit tests (vitest + Playwright) need the pinned Chromium headless shell; caching is CI-1's.
@@ -79,7 +79,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: package.json
+          node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps --only-shell chromium
@@ -143,7 +143,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: {node-version-file: package.json}
+        with: {node-version-file: .node-version}
       # Reuse approved artifact actions for a cross-run binary cache; only dev writes it.
       - name: Find trusted tool cache
         id: cache
