@@ -231,6 +231,7 @@ impl PgEntityStore {
         &self,
         actor: &Actor,
         id: Uuid,
+        mut access: AuditEvent,
     ) -> Result<DocumentContent, PgEntityError> {
         let actor = actor.clone();
         with_audits(&self.pool, actor.org, move |tx| {
@@ -240,14 +241,13 @@ impl PgEntityStore {
                     .fetch_optional(tx.as_mut())
                     .await?
                     .ok_or_else(|| Refusal::not_found("document_not_found"))?;
-                let kind: String = row.try_get("kind")?;
-                let audit = event(&actor, "entity_document.read", id, json!({ "kind": kind }))?;
+                access.after.get_or_insert_with(|| json!({}))["kind"] = json!(row.try_get::<String, _>("kind")?);
                 let content = DocumentContent {
                     file_name: row.try_get("file_name")?,
                     content_type: row.try_get("content_type")?,
                     bytes: row.try_get("content")?,
                 };
-                Ok((content, vec![audit]))
+                Ok((content, vec![access]))
             })
         })
         .await

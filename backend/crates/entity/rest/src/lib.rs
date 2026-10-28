@@ -13,6 +13,7 @@
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
 
+mod access_log;
 mod asof;
 mod auth;
 // --- lane: UX-R2 ENDS ---

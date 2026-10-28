@@ -50,6 +50,13 @@ pub(crate) async fn list_entities(
         mark(&gate, e);
         crate::checks::mark_availability(&s, e);
     });
+    let access = crate::access_log::event(
+        &gate.principal,
+        "legal_entity.list_read",
+        "query".into(),
+        &crate::access_log::subjects(&items),
+    )?;
+    crate::access_log::record(&s, access).await?;
     Ok(Json(json!({ "items": items })).into_response())
 }
 
@@ -90,6 +97,13 @@ pub(crate) async fn get_entity(
         .await?;
     mark(&gate, &mut e);
     crate::checks::mark_availability(&s, &mut e);
+    let access = crate::access_log::event(
+        &gate.principal,
+        "legal_entity.read",
+        id.to_string(),
+        &crate::access_log::subjects(std::slice::from_ref(&e)),
+    )?;
+    crate::access_log::record(&s, access).await?;
     Ok(Json(e).into_response())
 }
 

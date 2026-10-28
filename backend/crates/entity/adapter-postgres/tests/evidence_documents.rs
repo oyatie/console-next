@@ -114,7 +114,19 @@ async fn a_certificate_is_kept_attached_and_superseded_by_the_next(owner: PgPool
     );
 
     // Reading the bytes back is audited; the bytes are what was uploaded.
-    let content = store.document_content(&actor, first.id).await.unwrap();
+    let access = console_kernel_core::AuditEvent::new(
+        Some(actor.user),
+        console_kernel_core::AuditAction::new("entity_document.read").unwrap(),
+        "entity_document",
+        first.id.to_string(),
+        actor.trace.clone(),
+        time::OffsetDateTime::now_utc(),
+    )
+    .with_org(actor.org);
+    let content = store
+        .document_content(&actor, first.id, access)
+        .await
+        .unwrap();
     assert_eq!(
         (content.bytes.as_slice(), content.content_type.as_str()),
         (b"%PDF-1.7 v1".as_slice(), "application/pdf")

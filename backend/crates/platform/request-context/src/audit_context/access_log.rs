@@ -55,6 +55,24 @@ pub fn access_event(
     principal: &Principal,
     record: AccessRecord<'_>,
 ) -> Result<AuditEvent, KernelError> {
+    build_access_event(principal, record, None)
+}
+
+/// Immutable row keys for subjects without account/employee identities (e.g. certificate evidence).
+/// These references identify the kept personal records, never names copied into the log.
+pub fn access_event_with_subject_refs(
+    principal: &Principal,
+    record: AccessRecord<'_>,
+    subject_refs: &[String],
+) -> Result<AuditEvent, KernelError> {
+    build_access_event(principal, record, Some(subject_refs))
+}
+
+fn build_access_event(
+    principal: &Principal,
+    record: AccessRecord<'_>,
+    subject_refs: Option<&[String]>,
+) -> Result<AuditEvent, KernelError> {
     let AccessRecord {
         action,
         target_type,
@@ -65,13 +83,14 @@ pub fn access_event(
     } = record;
     let users = details.get("user_subject_ids").and_then(Value::as_array);
     let reader = principal.user_id.to_string();
-    let self_read = (!subject_ids.is_empty() || users.is_some_and(|ids| !ids.is_empty()))
+    let self_read = subject_refs.is_none()
+        && (!subject_ids.is_empty() || users.is_some_and(|ids| !ids.is_empty()))
         && subject_ids.iter().all(|id| Some(*id) == reader_subject)
         && users.is_none_or(|ids| ids.iter().all(|id| id.as_str() == Some(reader.as_str())));
     let context = current_audit_context();
     let mut after = json!({
-        "subject_ids": subject_ids,
-        "subject_count": subject_ids.len(),
+        "subject_ids": subject_refs.map_or_else(|| json!(subject_ids), |refs| json!(refs)),
+        "subject_count": subject_refs.map_or(subject_ids.len(), <[String]>::len),
         "self_read": self_read,
         "principal_type": principal_type(principal),
         // GOV-AUD-1 promotes this and principal_type to audit_events columns.

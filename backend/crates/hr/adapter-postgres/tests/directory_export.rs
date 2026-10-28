@@ -98,6 +98,16 @@ async fn export_logs_first_then_streams_every_filtered_row_with_a_bom(pool: PgPo
     assert_eq!(rows[0].0, "employee.export");
     assert_eq!(rows[0].2["export_purpose"], "INTERNAL_REVIEW");
     assert_eq!(rows[0].2["row_count"], 10_001);
+    let mut expected: Vec<uuid::Uuid> = sqlx::query_scalar(
+        "SELECT id FROM employees WHERE org_id=$1 AND employment_status='ACTIVE' ORDER BY id",
+    )
+    .bind(t.org)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    expected.sort_unstable();
+    assert_eq!(rows[0].2["subject_ids"], json!(expected));
+    assert_eq!(rows[0].2["subject_count"], 10_001);
 
     let body = chunks
         .map(|chunk| chunk.unwrap())
@@ -110,6 +120,60 @@ async fn export_logs_first_then_streams_every_filtered_row_with_a_bom(pool: PgPo
     assert!(!body.contains("Gone"));
     // Spreadsheet formulas stay neutralised.
     assert!(lines[1].starts_with("Test,'=SUM(A1)"), "{}", lines[1]);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn both_export_layouts_record_exact_filtered_subjects_from_the_stream_snapshot(pool: PgPool) {
+    let t = tenant(&pool).await;
+    let included = employee(&pool, t.org, "Included", "IN-1", "ACTIVE").await;
+    let excluded = employee(&pool, t.org, "Excluded", "OUT-1", "EXITED").await;
+    let reader = user(&pool, t.org, None).await;
+    for layout in [None, Some("register")] {
+        sqlx::query("UPDATE employees SET name='Included',employment_status='ACTIVE' WHERE id=$1")
+            .bind(included)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE employees SET employment_status='EXITED' WHERE id=$1")
+            .bind(excluded)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let (_, chunks) =
+            t.hr.export_employees_csv(
+                principal(t.org, reader),
+                query(json!({"status":"ACTIVE"})),
+                ExportPurposeQuery {
+                    export_purpose: Some("INTERNAL_REVIEW".into()),
+                    layout: layout.map(str::to_owned),
+                },
+            )
+            .await
+            .unwrap();
+        // A concurrent change after admission must not change who leaves the system.
+        sqlx::query("UPDATE employees SET name='Changed',employment_status='EXITED' WHERE id=$1")
+            .bind(included)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE employees SET employment_status='ACTIVE' WHERE id=$1")
+            .bind(excluded)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let body = chunks
+            .map(|chunk| chunk.unwrap())
+            .collect::<Vec<_>>()
+            .await
+            .concat();
+        assert!(body.contains("Included"));
+        assert!(!body.contains("Excluded"));
+        let rows = access_rows(&pool, t.org).await;
+        let after = &rows.last().unwrap().2;
+        assert_eq!(after["subject_ids"], json!([included]));
+        assert_eq!(after["subject_count"], 1);
+        assert_eq!(after["export_purpose"], "INTERNAL_REVIEW");
+    }
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
