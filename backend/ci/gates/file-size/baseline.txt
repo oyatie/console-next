@@ -69,13 +69,13 @@ ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1364
 ci/gates/pii-no-logs/src/lib.rs	399
 ci/gates/tenant-isolation/src/lib.rs	779
 ci/gates/writer-ownership/src/lib.rs	748
-ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1640
-ci/gates/writer-ownership/tests/gate_detects_violation.rs	2262
+ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1753
+ci/gates/writer-ownership/tests/gate_detects_violation.rs	2104
 crates/attendance/adapter-postgres/src/lib.rs	1079
 crates/attendance/adapter-postgres/tests/cancel_substitution.rs	895
 crates/attendance/adapter-postgres/tests/concurrency.rs	483
 crates/attendance/application/src/lib.rs	424
-crates/attendance/rest/src/lib.rs	1146
+crates/attendance/rest/src/lib.rs	1236
 crates/benefit/adapter-postgres/src/lib.rs	1260
 crates/benefit/domain/src/lib.rs	307
 crates/benefit/rest/src/lib.rs	484
@@ -198,7 +198,7 @@ crates/payroll/adapter-postgres/src/lifecycle.rs	1144
 crates/payroll/adapter-postgres/src/pay_run.rs	525
 crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417
-crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	393
+crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	373
 crates/payroll/domain/src/lib.rs	1200
 crates/payroll/rest/src/lib.rs	390
 crates/payroll/rest/src/lifecycle.rs	611
