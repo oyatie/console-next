@@ -107,6 +107,11 @@ async fn list(
         authorize_change(
             &principal,
             &console_settings_application::ChangeFacts {
+                resource_entities: entry
+                    .chain
+                    .iter()
+                    .filter_map(|layer| layer.source.scope_entity_id)
+                    .collect(),
                 key: entry.key,
                 direction: Direction::Neutral,
                 step_up: false,

@@ -376,7 +376,7 @@ pub(super) fn evaluate_inner(
         },
         Decision::Deny => CedarEvaluation::Deny {
             bundle_key: bundle.key.clone(),
-            reason: "cedar denied: no matching permit".to_owned(),
+            reason: super::enforce::denial_reason(&bundle.policies, &response),
         },
     })
 }

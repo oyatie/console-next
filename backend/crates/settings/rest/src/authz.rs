@@ -4,7 +4,7 @@
 //! Evaluates `settings_manage` and `reason_code_manage` through Cedar PBAC.
 //! Supports:
 //! - Tenant ops authority comes from Cedar principal policy, independently of grants
-//! - Custom scope grants (`NodeKind::Tenant` for 전체, or `NodeKind::LegalEntity` for scoped writes)
+//! - Custom scope grants (`NodeKind::Tenant` for 전체, or 법인 or 사업장 for scoped writes)
 //! - Scoped grants writing tenant-wide return 403 `scope_tenant_wide_only`
 //! - Scoped grants writing outside their scope return 403 `out_of_scope`
 //! - Loosening without step-up returns 403 `step_up_required`
@@ -21,95 +21,43 @@ use console_platform_authz::{
 use console_settings_application::ChangeFacts;
 use console_settings_domain::Direction;
 use console_settings_domain::code_lists::ReasonDomain;
-use uuid::Uuid;
 
-/// Checks whether `principal` holds authority over settings at `target_scope`.
-///
-/// Returns `Ok(())` if authorized.
-/// Returns `Err` with a specific code (`scope_tenant_wide_only` or `out_of_scope`) if the account
-/// holds grants but they do not cover `target_scope`.
-/// Returns `Err` with a generic forbidden if no grant is held.
-pub fn holds_settings_manage(
-    principal: &Principal,
-    target_scope: Option<Uuid>,
-) -> Result<(), KernelError> {
-    let tenant_wide = authorize_org_wide(principal, Action::new(Feature::SettingsManage)).is_ok()
-        || principal
-            .scopes_for(Feature::SettingsManage)
-            .any(|g| g.kind == NodeKind::Tenant);
-
-    match target_scope {
-        None => {
-            if tenant_wide {
-                Ok(())
-            } else if principal
-                .scopes_for(Feature::SettingsManage)
-                .any(|g| g.kind == NodeKind::LegalEntity)
-            {
-                Err(KernelError::forbidden(
-                    "this works on the whole tenant; a grant over 전체 is needed",
-                )
-                .with_code("scope_tenant_wide_only"))
-            } else {
-                Err(KernelError::forbidden("settings_manage is not allowed"))
-            }
-        }
-        Some(target_id) => {
-            if tenant_wide
-                || principal
-                    .scopes_for(Feature::SettingsManage)
-                    .any(|g| g.kind == NodeKind::LegalEntity && g.id == target_id)
-            {
-                Ok(())
-            } else if principal
-                .scopes_for(Feature::SettingsManage)
-                .any(|g| g.kind == NodeKind::LegalEntity)
-            {
-                Err(
-                    KernelError::forbidden("this is outside the scope this account holds")
-                        .with_code("out_of_scope"),
-                )
-            } else {
-                Err(KernelError::forbidden("settings_manage is not allowed"))
-            }
-        }
-    }
+/// Build scope facts from the shared principal loader; Cedar alone decides reach.
+fn settings_facts(principal: &Principal, change: &ChangeFacts) -> Facts {
+    let grants: Vec<_> = principal.scopes_for(Feature::SettingsManage).collect();
+    let tenant = principal.is_tenant_ops || grants.iter().any(|g| g.kind == NodeKind::Tenant);
+    let entities: Vec<_> = grants
+        .iter()
+        .filter(|g| matches!(g.kind, NodeKind::LegalEntity | NodeKind::Workplace))
+        .map(|g| g.id)
+        .collect();
+    let facts = Facts::new()
+        .bool("actor_holds_permission", tenant || !entities.is_empty())
+        .string(
+            "direction",
+            match change.direction {
+                Direction::Tighten => "tighten",
+                Direction::Loosen => "loosen",
+                Direction::Neutral => "neutral",
+            },
+        )
+        .bool("step_up", change.step_up);
+    console_platform_authz::cedar_pbac::facts::scope::scope_facts(
+        facts,
+        if tenant { None } else { Some(&entities) },
+        &change.resource_entities,
+    )
 }
 
 /// Authorizes a setting change through Cedar `settings_manage`.
 pub fn authorize_change(principal: &Principal, facts: &ChangeFacts) -> Result<(), KernelError> {
-    let holds_res = holds_settings_manage(principal, facts.scope_entity_id);
-    match &holds_res {
-        Err(err)
-            if !principal.is_tenant_ops
-                && (err.code == Some("scope_tenant_wide_only")
-                    || err.code == Some("out_of_scope")) =>
-        {
-            return holds_res;
-        }
-        _ => {}
-    }
-    let holds = holds_res.is_ok();
-
-    if (holds || principal.is_tenant_ops) && facts.direction == Direction::Loosen && !facts.step_up
-    {
-        return Err(
-            KernelError::forbidden("loosening a setting requires passkey step-up")
-                .with_code("step_up_required"),
-        );
-    }
-
-    let direction = match facts.direction {
-        Direction::Tighten => "tighten",
-        Direction::Loosen => "loosen",
-        Direction::Neutral => "neutral",
-    };
-    let cedar_facts = Facts::new()
-        .bool("actor_holds_permission", holds)
-        .string("direction", direction)
-        .bool("step_up", facts.step_up);
     let resource = AuthorizationResource::org_wide(principal.org_id, "setting");
-    enforce_action(principal, Feature::SettingsManage, resource, &cedar_facts)
+    enforce_action(
+        principal,
+        Feature::SettingsManage,
+        resource,
+        &settings_facts(principal, facts),
+    )
 }
 
 /// Checks whether `principal` holds authority over reason-code catalog.

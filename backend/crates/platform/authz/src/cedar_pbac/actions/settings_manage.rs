@@ -9,6 +9,7 @@
 //! cannot change settings.
 
 use super::super::action_schema::{ActionSchema, FactType, RequiredFact};
+use super::super::facts::scope::SCOPE_BLOCK;
 use super::super::facts::second_person::ACTOR_HOLDS_PERMISSION;
 use crate::Feature;
 
@@ -24,17 +25,38 @@ pub const STEP_UP: RequiredFact = RequiredFact {
 
 pub const SCHEMA: ActionSchema = ActionSchema {
     feature: Feature::SettingsManage,
-    version: "2026-10-settings-manage-v2",
-    facts: &[ACTOR_HOLDS_PERMISSION, DIRECTION, STEP_UP],
-    policies: r#"@reason("step_up_required")
+    version: "2026-10-settings-manage-v3",
+    facts: &[
+        ACTOR_HOLDS_PERMISSION,
+        DIRECTION,
+        STEP_UP,
+        SCOPE_BLOCK[0],
+        SCOPE_BLOCK[1],
+        SCOPE_BLOCK[2],
+    ],
+    policies: r#"@reason("scope_tenant_wide_only")
 forbid(principal, action == Action::"settings_manage", resource)
 when {
+  context.actor_holds_permission && !context.scope_tenant && context.resource_entities.isEmpty()
+};
+@reason("out_of_scope")
+forbid(principal, action == Action::"settings_manage", resource)
+when {
+  context.actor_holds_permission && !context.scope_tenant && !context.resource_entities.isEmpty() &&
+  !context.scope_entities.containsAny(context.resource_entities)
+};
+@reason("step_up_required")
+forbid(principal, action == Action::"settings_manage", resource)
+when {
+  (principal.is_tenant_ops || context.actor_holds_permission) &&
+  (context.scope_tenant || context.scope_entities.containsAny(context.resource_entities)) &&
   context.direction == "loosen" && !context.step_up
 };
 permit(principal, action == Action::"settings_manage", resource)
 when {
   principal.org == resource.org &&
   (principal.is_tenant_ops || context.actor_holds_permission) &&
+  (context.scope_tenant || context.scope_entities.containsAny(context.resource_entities)) &&
   (context.direction != "loosen" || context.step_up)
 };
 "#,
@@ -72,7 +94,7 @@ mod tests {
     fn granted_holder_permits_tighten_and_neutral_without_step_up() {
         let org = OrgId::new();
         for dir in ["tighten", "neutral"] {
-            let facts = Facts::new()
+            let facts = crate::cedar_pbac::facts::scope::scope_facts(Facts::new(), None, &[])
                 .bool("actor_holds_permission", true)
                 .string("direction", dir)
                 .bool("step_up", false);
@@ -86,14 +108,14 @@ mod tests {
     #[test]
     fn loosening_requires_step_up() {
         let org = OrgId::new();
-        let without_step_up = Facts::new()
+        let without_step_up = crate::cedar_pbac::facts::scope::scope_facts(Facts::new(), None, &[])
             .bool("actor_holds_permission", true)
             .string("direction", "loosen")
             .bool("step_up", false);
         let res = decide(org, org, &without_step_up);
         assert!(matches!(res, CedarEvaluation::Deny { .. }));
 
-        let with_step_up = Facts::new()
+        let with_step_up = crate::cedar_pbac::facts::scope::scope_facts(Facts::new(), None, &[])
             .bool("actor_holds_permission", true)
             .string("direction", "loosen")
             .bool("step_up", true);
@@ -107,7 +129,7 @@ mod tests {
     fn missing_permission_or_other_tenant_denies() {
         let org = OrgId::new();
         let other = OrgId::new();
-        let facts = Facts::new()
+        let facts = crate::cedar_pbac::facts::scope::scope_facts(Facts::new(), None, &[])
             .bool("actor_holds_permission", false)
             .string("direction", "tighten")
             .bool("step_up", false);
@@ -116,7 +138,7 @@ mod tests {
             CedarEvaluation::Deny { .. }
         ));
 
-        let ok_facts = Facts::new()
+        let ok_facts = crate::cedar_pbac::facts::scope::scope_facts(Facts::new(), None, &[])
             .bool("actor_holds_permission", true)
             .string("direction", "tighten")
             .bool("step_up", false);
@@ -131,7 +153,7 @@ mod tests {
         let principal = Principal::new(UserId::new(), org, Default::default(), BranchScope::All)
             .with_tenant_ops(true);
         let bundle = compile_action_bundle(org, 1, Feature::SettingsManage).unwrap();
-        let facts = Facts::new()
+        let facts = crate::cedar_pbac::facts::scope::scope_facts(Facts::new(), None, &[])
             .bool("actor_holds_permission", false)
             .string("direction", "tighten")
             .bool("step_up", false);
@@ -146,6 +168,35 @@ mod tests {
                 matches!(result, CedarEvaluation::Allow { .. }),
                 allowed,
                 "{result:?}"
+            );
+        }
+    }
+    #[test]
+    fn cedar_scope_block_reaches_descendants_but_never_parents_or_other_entities() {
+        let org = OrgId::new();
+        let (entity, workplace, other) = (
+            uuid::Uuid::new_v4(),
+            uuid::Uuid::new_v4(),
+            uuid::Uuid::new_v4(),
+        );
+        for (granted, resource, allowed) in [
+            (vec![entity], vec![workplace, entity], true),
+            (vec![other], vec![workplace, entity], false),
+            (vec![workplace], vec![workplace, entity], true),
+            (vec![workplace], vec![entity], false),
+            (vec![workplace], vec![], false),
+        ] {
+            let facts = crate::cedar_pbac::facts::scope::scope_facts(
+                Facts::new(),
+                Some(&granted),
+                &resource,
+            )
+            .bool("actor_holds_permission", true)
+            .string("direction", "tighten")
+            .bool("step_up", false);
+            assert_eq!(
+                matches!(decide(org, org, &facts), CedarEvaluation::Allow { .. }),
+                allowed
             );
         }
     }

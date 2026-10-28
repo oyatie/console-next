@@ -200,9 +200,9 @@ pub async fn seed_role_and_grant(
     let grant_id = Uuid::new_v4();
     sqlx::query(
         "INSERT INTO access_grants (
-            org_id, id, account_id, role_id, scope_kind, legal_entity_id,
+            org_id, id, account_id, role_id, scope_kind, legal_entity_id, workplace_id,
             valid_from, effective_in_setup, change_mode, reason_code, granted_by
-         ) VALUES ($1, $2, $3, $4, $5, $6, now() - interval '1 minute', true, 'SETUP', 'TEST', $7)",
+         ) VALUES ($1, $2, $3, $4, $5, CASE WHEN $5='LEGAL_ENTITY' THEN $6 END, CASE WHEN $5='WORKPLACE' THEN $6 END, now() - interval '1 minute', true, 'SETUP', 'TEST', $7)",
     )
     .bind(org)
     .bind(grant_id)

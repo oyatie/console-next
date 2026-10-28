@@ -1463,7 +1463,7 @@
       "model": "matrix",
       "file": "backend/crates/settings/rest/src/authz.rs",
       "kind": "reference",
-      "count": 4
+      "count": 2
     },
     {
       "model": "matrix",

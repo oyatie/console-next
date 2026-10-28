@@ -110,11 +110,7 @@ async fn can_change_preserves_existing_scope_authority(pool: PgPool) {
     let manager = seed_user(&pool, org, "MEMBER").await;
     seed_role_and_grant(&pool, org, granter, manager, "LEGAL_ENTITY", Some(entity)).await;
     let bearer = token(&pool, &keys, org, manager, "MEMBER").await;
-    for (scope, expected) in [
-        (None, false),
-        (Some(entity), true),
-        (Some(workplace), false),
-    ] {
+    for (scope, expected) in [(None, false), (Some(entity), true), (Some(workplace), true)] {
         let query = scope.map_or(String::new(), |id| format!("?entity={id}"));
         let (status, body) = send(
             &service,
@@ -126,5 +122,68 @@ async fn can_change_preserves_existing_scope_authority(pool: PgPool) {
         .await;
         assert_eq!(status, StatusCode::OK, "{body}");
         assert_eq!(body["can_change"], expected);
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn scoped_settings_grants_follow_workplace_parent_only_downward(pool: PgPool) {
+    let (org, service, _, entity, workplace, keys) = fixture(&pool).await;
+    let granter = seed_user(&pool, org, "SUPER_ADMIN").await;
+    let other = seed_legal_entity(&pool, org, granter).await;
+    for (kind, granted, target, allowed) in [
+        ("LEGAL_ENTITY", other, Some(workplace), false),
+        ("LEGAL_ENTITY", entity, Some(workplace), true),
+        ("WORKPLACE", workplace, Some(workplace), true),
+        ("WORKPLACE", workplace, Some(entity), false),
+        ("WORKPLACE", workplace, None, false),
+    ] {
+        let manager = seed_user(&pool, org, "MEMBER").await;
+        seed_role_and_grant(&pool, org, granter, manager, kind, Some(granted)).await;
+        let bearer = token(&pool, &keys, org, manager, "MEMBER").await;
+        let query = target.map_or(String::new(), |id| format!("?entity={id}"));
+        let (_, list) = send(
+            &service,
+            "GET",
+            &format!("/api/v1/settings{query}"),
+            Some(&bearer),
+            None,
+        )
+        .await;
+        assert_eq!(list["can_change"], allowed, "{kind} {target:?}");
+        for query in ["?dry_run=true", ""] {
+            let (status, body) = send(
+                &service,
+                "POST",
+                &format!("/api/v1/settings/approval.delegation.max_days{query}"),
+                Some(&bearer),
+                Some(json!({
+                    "scope_entity_id": target, "value": 10, "reason_code": "POLICY_REVIEW"
+                })),
+            )
+            .await;
+            assert_eq!(
+                status,
+                if allowed {
+                    if query.is_empty() {
+                        StatusCode::CREATED
+                    } else {
+                        StatusCode::OK
+                    }
+                } else {
+                    StatusCode::FORBIDDEN
+                },
+                "{kind} {target:?}: {body}"
+            );
+            if !allowed {
+                assert_eq!(
+                    body["error"]["code"],
+                    if target.is_none() {
+                        "scope_tenant_wide_only"
+                    } else {
+                        "out_of_scope"
+                    }
+                );
+            }
+        }
     }
 }

@@ -33,5 +33,7 @@ responses:
                 $ref: '#/components/schemas/SettingEntry'
   '401':
     $ref: '#/components/responses/Unauthorized'
+  '422':
+    $ref: '#/components/responses/ValidationError'
   '503':
     $ref: '#/components/responses/ServiceUnavailable'

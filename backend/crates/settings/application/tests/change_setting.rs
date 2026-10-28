@@ -118,7 +118,7 @@ async fn run(
     change_setting(
         store,
         |facts: &ChangeFacts| {
-            *seen = Some(*facts);
+            *seen = Some(facts.clone());
             if allow {
                 Ok(())
             } else {
@@ -148,7 +148,7 @@ async fn a_tightening_is_authorized_with_its_direction_then_inserted_and_audited
     run(&mut store, cmd(json!(20), None), &mut seen, true)
         .await
         .unwrap();
-    assert_eq!(seen.unwrap().direction, Direction::Tighten);
+    assert_eq!(seen.as_ref().unwrap().direction, Direction::Tighten);
     assert_eq!(store.inserted.len(), 1);
     assert_eq!(
         store.inserted[0].effective_from, NOW,
@@ -206,7 +206,7 @@ async fn a_loosening_waits_the_delay_unless_the_tenant_is_onboarding() {
     run(&mut store, cmd(json!(40), Some(later)), &mut seen, true)
         .await
         .unwrap();
-    assert_eq!(seen.unwrap().direction, Direction::Loosen);
+    assert_eq!(seen.as_ref().unwrap().direction, Direction::Loosen);
 
     let mut onboarding = Fake {
         onboarding: true,

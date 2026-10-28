@@ -41,7 +41,10 @@ async fn workplace_loader_and_plan_inherit_parent_and_entity_callers_are_unchang
             let (chain, rows) = load_rows_in_tx(tx.as_mut(), actor.org, &[key], Some(workplace))
                 .await
                 .unwrap();
-            assert_eq!(chain, vec![workplace, entity]);
+            assert_eq!(
+                chain.iter().map(|scope| scope.id).collect::<Vec<_>>(),
+                vec![workplace, entity]
+            );
             assert_eq!(rows[&key][0].id, parent.id);
             let inherited = resolve_in_tx(tx.as_mut(), actor.org, &[key], Some(workplace), now)
                 .await
@@ -207,4 +210,49 @@ async fn closed_heads_are_not_live_even_with_a_future_recorded_date(pool: PgPool
             "{err:?}"
         );
     }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn trigger_prefers_older_workplace_value_over_newer_parent_value(pool: PgPool) {
+    let (actor, _) = tenant(&pool).await;
+    let (entity, workplace) = scopes(&pool, actor).await;
+    for (scope, value) in [(workplace, 10), (entity, 20)] {
+        sqlx::query("INSERT INTO tenant_setting_overrides(org_id,scope_entity_id,key,value,effective_from,set_by,reason_code) VALUES($1,$2,$3,$4,clock_timestamp(),$5,'X')")
+            .bind(actor.org.as_uuid()).bind(scope).bind(KEY).bind(json!(value)).bind(actor.user.as_uuid()).execute(&pool).await.unwrap();
+    }
+    hire_someone(&pool, actor.org).await;
+    let error = sqlx::query("INSERT INTO tenant_setting_overrides(org_id,scope_entity_id,key,value,effective_from,set_by,reason_code) VALUES($1,$2,$3,'15',clock_timestamp(),$4,'X')")
+        .bind(actor.org.as_uuid()).bind(workplace).bind(KEY).bind(actor.user.as_uuid()).execute(&pool).await.unwrap_err();
+    assert!(
+        matches!(error, sqlx::Error::Database(ref db) if db.message()=="setting_loosening_delay"),
+        "{error:?}"
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tenant_explain_has_one_deciding_layer_and_unknown_scope_is_not_a_legal_entity(
+    pool: PgPool,
+) {
+    let (actor, store) = tenant(&pool).await;
+    store
+        .change_setting(actor, change(json!(20), None), audit(), |_| Ok(()))
+        .await
+        .unwrap();
+    let items = store.list_effective(actor.org, None).await.unwrap();
+    let item = items.iter().find(|item| item.key.as_str() == KEY).unwrap();
+    let wire = serde_json::to_value(item).unwrap();
+    assert_eq!(wire["source"]["layer"], "tenant");
+    assert_eq!(
+        wire["chain"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| r["deciding"] == true)
+            .count(),
+        1
+    );
+    assert_eq!(
+        code(store.list_effective(actor.org, Some(Uuid::new_v4())).await),
+        "setting_scope_unknown"
+    );
 }
