@@ -20,6 +20,7 @@ function remember(value, key) {
   } else if (value && typeof value === 'object') Object.entries(value).forEach(([key, value]) => remember(value, key));
 }
 let redactionReady = false;
+remember(process.env.REGISTRY_TOKEN);
 if (secrets.status === 0) {
   try {
     for (const secret of JSON.parse(secrets.stdout).items) {

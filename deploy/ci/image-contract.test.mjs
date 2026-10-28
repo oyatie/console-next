@@ -51,7 +51,7 @@ test('the SBOM policy accepts the pinned attest v4.1.0 SPDX-2.3 statement shape'
   assert.match(statement.predicate.spdxVersion, /^SPDX-2\./);
 });
 
-test('image admission verifies the other signer and fails if its image is admitted', () => {
+function imageAdmission(extra = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'platform-image-'));
   try {
     const image = `example.invalid/console@sha256:${'a'.repeat(64)}`;
@@ -64,8 +64,9 @@ if (process.argv.includes('current-context')) { console.log('kind-platform-fixtu
 const pod = JSON.parse(fs.readFileSync(0,'utf8'));
 const image = pod.spec.containers[0].image;
 fs.appendFileSync(process.env.CALLS, image+'\\n');
+if (process.env.REQUIRE_PULL_SECRET && pod.spec.imagePullSecrets?.[0]?.name !== process.env.PLATFORM_PULL_SECRET) { console.error('policy.sigstore.dev: failed to verify: UNAUTHORIZED: authentication required'); process.exit(1); }
 if (image.includes('unsigned') && !process.env.ADMIT_UNSIGNED) { console.error('policy.sigstore.dev: '+(process.env.REGISTRY_FAILURE ? 'UNAUTHORIZED: authentication required' : 'no valid bundles exist in registry')); process.exit(1); }
-if (image.includes('wrong-identity') && !process.env.ADMIT_WRONG) { console.error('policy.sigstore.dev: no matching signatures: subject mismatch'); process.exit(1); }
+if (image.includes('wrong-identity') && !process.env.ADMIT_WRONG) { console.error('policy.sigstore.dev: '+(process.env.WRONG_FAILURE || 'failed to verify certificate identity: no matching CertificateIdentity found')); process.exit(1); }
 `, {mode:0o755});
     writeFileSync(join(dir, 'cosign'), `#!/usr/bin/env node
 require('node:fs').appendFileSync(process.env.CALLS, JSON.stringify(process.argv.slice(2))+'\\n');
@@ -73,21 +74,52 @@ if (process.env.BAD_SIGNATURE) process.exit(1);
 ` , {mode:0o755});
     execFileSync('mkdir', ['-p', join(dir,'.tmp/exit-bundle'), join(dir,'.tmp/evidence')]);
     writeFileSync(join(dir,'.tmp/exit-bundle/revision.json'), JSON.stringify({image,unsignedImage,wrongIdentityImage}));
-    const env = {...process.env, PATH:`${dir}:${process.env.PATH}`, CALLS:join(dir,'calls'), PLATFORM_WORKFLOW_IDENTITY:identity};
-    const run = extra => spawnSync(process.execPath,[join(root,'deploy/ci/image-admission.mjs')],{cwd:dir,env:{...env,...extra},encoding:'utf8'});
-    const refused = run({});
-    assert.equal(refused.status,0,refused.stderr);
-    assert.ok(readFileSync(env.CALLS,'utf8').includes(wrongIdentityImage), 'must exercise the wrong-identity image');
-    assert.ok(readFileSync(env.CALLS,'utf8').includes(identity.replace('platform.yml','platform-negative-signer.yml')), 'first verify its actual signing identity');
-    const admittedUnsigned = run({ADMIT_UNSIGNED:'1'});
-    assert.notEqual(admittedUnsigned.status,0, 'accepting unsigned bytes must fail the control');
-    assert.match(admittedUnsigned.stderr,/PLAT_UNSIGNED_IMAGE/);
-    assert.notEqual(run({REGISTRY_FAILURE:'1'}).status,0, 'registry authorization failures cannot count as signature refusals');
-    const admitted = run({ADMIT_WRONG:'1'});
-    assert.notEqual(admitted.status,0, 'accepting the wrong identity must fail the control');
-    assert.match(admitted.stderr,/PLAT_IMAGE_IDENTITY/);
-    writeFileSync(env.CALLS,'');
-    assert.notEqual(run({BAD_SIGNATURE:'1'}).status,0, 'an unverified signature cannot count as an identity refusal');
-    assert.ok(!readFileSync(env.CALLS,'utf8').split('\n').includes(wrongIdentityImage));
+    writeFileSync(join(dir, 'calls'), '');
+    const env = {...process.env, PATH:`${dir}:${process.env.PATH}`, CALLS:join(dir,'calls'), PLATFORM_WORKFLOW_IDENTITY:identity, PLATFORM_PULL_SECRET:'fixture-registry'};
+    const result = spawnSync(process.execPath,[join(root,'deploy/ci/image-admission.mjs')],{cwd:dir,env:{...env,...extra},encoding:'utf8'});
+    return {...result, calls:readFileSync(env.CALLS, 'utf8'), wrongIdentityImage, identity};
   } finally { rmSync(dir,{recursive:true,force:true}); }
+}
+
+test('image admission verifies the other signer and fails if its image is admitted', () => {
+  const refused = imageAdmission();
+  assert.equal(refused.status,0,refused.stderr);
+  assert.ok(refused.calls.includes(refused.wrongIdentityImage), 'must exercise the wrong-identity image');
+  assert.ok(refused.calls.includes(refused.identity.replace('platform.yml','platform-negative-signer.yml')), 'first verify its actual signing identity');
+  const admittedUnsigned = imageAdmission({ADMIT_UNSIGNED:'1'});
+  assert.notEqual(admittedUnsigned.status,0, 'accepting unsigned bytes must fail the control');
+  assert.match(admittedUnsigned.stderr,/PLAT_UNSIGNED_IMAGE/);
+  assert.notEqual(imageAdmission({REGISTRY_FAILURE:'1'}).status,0, 'registry authorization failures cannot count as signature refusals');
+  const admitted = imageAdmission({ADMIT_WRONG:'1'});
+  assert.notEqual(admitted.status,0, 'accepting the wrong identity must fail the control');
+  assert.match(admitted.stderr,/PLAT_IMAGE_IDENTITY/);
+  const bad = imageAdmission({BAD_SIGNATURE:'1'});
+  assert.notEqual(bad.status,0, 'an unverified signature cannot count as an identity refusal');
+  assert.ok(!bad.calls.split('\n').includes(bad.wrongIdentityImage));
+});
+
+test('all admission probes use the run-scoped pull secret', () => {
+  const result = imageAdmission({REQUIRE_PULL_SECRET:'1'});
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('missing run credentials cannot silently use anonymous registry access', () => {
+  const result = imageAdmission({PLATFORM_PULL_SECRET:''});
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /PLAT_REGISTRY/);
+});
+
+for (const failure of ['failed to verify: UNAUTHORIZED: authentication required', 'verification failed: DENIED: requested access is denied', 'failed to verify: dial tcp: no such host', 'failed to verify: context deadline exceeded', 'failed to verify certificate identity: no matching CertificateIdentity found; UNAUTHORIZED: authentication required']) {
+  test(`wrong-identity registry failure is fatal: ${failure}`, () => {
+    const result = imageAdmission({WRONG_FAILURE:failure});
+    assert.notEqual(result.status, 0, 'a wrong-identity registry failure must fail the control');
+    assert.match(result.stderr, /PLAT_IMAGE_REGISTRY/);
+    assert.ok(result.stderr.includes(failure), 'explain the registry failure');
+  });
+}
+
+test('wrong-identity missing bundles do not prove an identity refusal', () => {
+  const result = imageAdmission({WRONG_FAILURE:'failed to verify: no valid bundles exist in registry'});
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /PLAT_IMAGE_IDENTITY/);
 });
