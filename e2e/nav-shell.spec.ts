@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { expectAccessible, fits } from "./a11y";
-import { go, routeReady } from "./flows";
-import { setupCompany, startOperations, tenantBeforeSetup } from "./setup-flows";
+import { go, registerEmployee, routeReady } from "./flows";
+import { SETUP_DEPARTMENT, setupCompany, startOperations, tenantBeforeSetup } from "./setup-flows";
 import { forgetResize } from "./stability";
 
 const rail = (page: Page) => page.getByRole("navigation", { name: "주 메뉴" });
@@ -34,12 +34,18 @@ test("the rail grows from setup facts and keeps module navigation flat", async (
   await expect(topLinks(exec)).toHaveText(["홈"]);
   await captureRail(admin, info, "setup");
 
-  // A refused checklist must retain useful, permitted setup destinations.
+  // Readiness still hides unusable modules when the checklist is refused.
   await admin.route("**/api/v1/onboarding/checklist", route => route.fulfill({ status: 403, json: { error: { code: "forbidden", message: "권한이 없습니다" } } }));
+  await admin.reload();
+  await routeReady(admin, "/");
+  await expect(topLinks(admin)).toHaveText(["홈", "조직 구조", "권한"]);
+  // If both reads fail, preserve S1's useful, permitted fallback.
+  await admin.route("**/api/v1/onboarding/modules", route => route.fulfill({ status: 503, json: { error: { code: "unavailable" } } }));
   await admin.reload();
   await routeReady(admin, "/");
   await expect(topLinks(admin)).toHaveText(["홈", "조직 구조", "직원", "권한"]);
   await admin.unroute("**/api/v1/onboarding/checklist");
+  await admin.unroute("**/api/v1/onboarding/modules");
   await admin.reload();
   await routeReady(admin, "/");
   await expect(topLinks(admin)).toHaveText(["홈", "조직 구조", "권한"]);
@@ -48,7 +54,12 @@ test("the rail grows from setup facts and keeps module navigation flat", async (
   await go(admin, "/");
   await expect(topLinks(admin)).toHaveText(["홈", "조직 구조", "직원", "권한"]);
   await go(admin, "/people");
+  await registerEmployee(admin, { name: "메뉴직원", number: "NAV-001", unit: SETUP_DEPARTMENT });
+  const operatingModules = admin.waitForResponse(async response => response.url().endsWith("/api/v1/onboarding/modules") && response.ok() &&
+    (await response.json() as { key: string; ready: boolean }[]).some(module => module.key === "attendance" && module.ready));
   await startOperations(admin);
+  await operatingModules;
+  await go(admin, "/people");
   await expect(topLinks(admin)).toHaveText(["홈", "변경 요청", "조직 구조", "직원", "근태", "법정 신고·서류", "권한", "감사 기록", "설정"]);
   await go(admin, "/people");
   await expectAccessible(admin, "operating return to people");

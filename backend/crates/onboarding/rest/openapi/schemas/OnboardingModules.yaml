@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: array
+items:
+  type: object
+  additionalProperties: false
+  required: [key, ready, unblock]
+  properties:
+    key:
+      type: string
+      enum: [home, org, access, people, exits, attendance, statutory]
+    ready:
+      type: boolean
+    unblock:
+      type: string
+      nullable: true
+      enum: [create_legal_entity, create_workplace, open_go_live_preview, register_employee, null]

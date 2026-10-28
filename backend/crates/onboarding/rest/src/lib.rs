@@ -24,6 +24,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 pub const CHECKLIST_PATH: &str = "/api/v1/onboarding/checklist";
+pub const MODULES_PATH: &str = "/api/v1/onboarding/modules";
 pub const GO_LIVE_PREVIEW_PATH: &str = "/api/v1/onboarding/go-live/preview";
 pub const GO_LIVE_PATH: &str = "/api/v1/onboarding/go-live";
 pub const TERMS_PATH: &str = "/api/v1/onboarding/terms";
@@ -31,6 +32,7 @@ pub const STEP_SKIP_PATH: &str = "/api/v1/onboarding/steps/{step}/skip";
 
 pub const ONBOARDING_ROUTE_PATHS: &[&str] = &[
     CHECKLIST_PATH,
+    MODULES_PATH,
     GO_LIVE_PREVIEW_PATH,
     GO_LIVE_PATH,
     TERMS_PATH,
@@ -64,6 +66,7 @@ pub fn router(state: OnboardingRestState) -> Router {
     let pool = state.store.pool().clone();
     let router = Router::new()
         .route(CHECKLIST_PATH, get(checklist))
+        .route(MODULES_PATH, get(modules))
         .route(GO_LIVE_PREVIEW_PATH, get(go_live_preview))
         .route(GO_LIVE_PATH, post(go_live))
         .route(TERMS_PATH, post(accept_terms))
@@ -114,6 +117,14 @@ async fn checklist(
 ) -> Result<Response, RestError> {
     let a = actor(&s, &h).await?;
     Ok(Json(s.store.checklist(&a).await?).into_response())
+}
+
+async fn modules(
+    State(s): State<OnboardingRestState>,
+    h: HeaderMap,
+) -> Result<Response, RestError> {
+    let a = actor(&s, &h).await?;
+    Ok(Json(s.store.modules(&a).await?).into_response())
 }
 
 async fn go_live_preview(

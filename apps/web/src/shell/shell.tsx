@@ -23,7 +23,7 @@ import { SessionRecovery } from "./session-recovery";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
 import { PageMain } from "../ui/page/page-main";
 import { meQuery } from "../features/account/api";
-import { checklistQuery } from "../features/onboarding/api";
+import { checklistQuery, modulesQuery } from "../features/onboarding/api";
 import { fixFor } from "../features/onboarding/domain/rail";
 import type { NavHub } from "./nav";
 
@@ -44,8 +44,10 @@ export function Shell() {
   const me = useQuery({ ...navigationRead(meQuery), enabled: !platform && Boolean(session.token) });
   const phase = me.data?.tenant?.phase;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && phase === "SETUP", retry: false });
+  const modules = useQuery({ ...modulesQuery, enabled: !platform && Boolean(session.token) });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
   const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
+  const { refetch: refetchModules, isEnabled: modulesEnabled } = modules;
   const previousPath = useRef(pathname);
   useEffect(() => {
     if (previousPath.current === pathname) return;
@@ -53,15 +55,16 @@ export function Shell() {
     // Reuse a command's pending read so navigation cannot cancel and delay its rail update.
     if (meEnabled) void refetchMe({ cancelRefetch: false });
     if (checklistEnabled) void refetchChecklist({ cancelRefetch: false });
-  }, [pathname, meEnabled, refetchMe, checklistEnabled, refetchChecklist]);
-  const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending);
+    if (modulesEnabled) void refetchModules({ cancelRefetch: false });
+  }, [pathname, meEnabled, refetchMe, checklistEnabled, refetchChecklist, modulesEnabled, refetchModules]);
+  const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
   const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
-  const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets }>();
-  // A late setup read can reveal entries on the next navigation, never between inputs.
-  if (ready && railTargets?.pathname !== pathname) setRailTargets({ pathname, value: setupTargets });
+  const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data }>();
+  // Late readiness reads reveal entries on the next navigation, never between inputs.
+  if (ready && railTargets?.pathname !== pathname) setRailTargets({ pathname, value: setupTargets, modules: modules.data });
   const menu: readonly NavHub[] = platform ? PLATFORM_NAV : tenantNav(ready ? access.data : undefined, router.routesByPath,
-    ready && support.data?.can_approve, { pathname, phase, setupTargets: railTargets?.value });
+    ready && support.data?.can_approve, { pathname, phase, setupTargets: railTargets?.value, modules: railTargets?.modules });
   // Phone widths hide the rail; the top bar's menu button discloses it.
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
