@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Sensitive access actions covered by monthly 접속기록 점검.
+mod complete;
 pub mod list;
+mod projection;
 pub mod record;
 pub const MAX_PAGE_SIZE: i64 = 200;
 /// Stable wire codes, in the SQL predicate order.

@@ -2,7 +2,7 @@
 use super::*;
 use uuid::Uuid;
 
-async fn grant(
+pub(super) async fn grant(
     pool: &PgPool,
     org: OrgId,
     user: UserId,
@@ -114,6 +114,13 @@ async fn failed_audit_insert_returns_no_frozen_rows_or_start(pool: PgPool) {
     .unwrap();
     sqlx::raw_sql("CREATE FUNCTION reject_review_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action IN ('access_log.review_read','access_log_review.start') THEN RAISE EXCEPTION 'test write failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_review_audit BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION reject_review_audit()")
         .execute(&pool).await.unwrap();
+    assert_eq!(
+        record::get(&service, p.clone(), "2026-09".into())
+            .await
+            .unwrap_err()
+            .kind,
+        console_platform_access::Refusal::Internal
+    );
     assert_eq!(
         record::frozen_page(&service, p.clone(), "2026-09".into(), None, 50)
             .await

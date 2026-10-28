@@ -19,6 +19,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::list::{FlaggedEvent, Prepared, page_in_tx, prepare_in_tx};
+pub use super::{complete::complete, projection::get};
 use crate::{
     AccessError, AccessResult, AccessService,
     actor::{Actor, audit},
@@ -29,7 +30,7 @@ const OPERATION: &str = "access_log_review.start";
 // The list contract caps a page at 200; any page intersects at most two chunks.
 const CHUNK_EVENTS: usize = super::MAX_PAGE_SIZE as usize;
 
-async fn require(
+pub(super) async fn require(
     tx: &mut Transaction<'_, Postgres>,
     p: &Principal,
     level: Level,
@@ -52,7 +53,7 @@ async fn require(
     Err(AccessError::access_denied())
 }
 
-fn event(p: &Principal, period: &str, action: &'static str) -> AccessResult<AuditEvent> {
+pub(super) fn event(p: &Principal, period: &str, action: &'static str) -> AccessResult<AuditEvent> {
     let mut event = audit(p, action, "access_log_review", *p.org_id.as_uuid())?;
     event.target_id = format!("tenant:{period}");
     Ok(event)
@@ -74,7 +75,7 @@ async fn load(
     .await?)
 }
 
-fn summary(row: StartRow) -> AccessResult<Value> {
+pub(super) fn summary(row: StartRow) -> AccessResult<Value> {
     let (id, reviewer, at, mut snapshot) = row;
     let fields = snapshot
         .as_object_mut()
@@ -85,11 +86,43 @@ fn summary(row: StartRow) -> AccessResult<Value> {
     Ok(
         json!({"id":id,"period":snapshot["period"],"scope":"tenant","reviewer":reviewer,
         "started_at":at.format(&time::format_description::well_known::Rfc3339).map_err(AccessError::internal)?,
-        "reviewed_at":null,"flags_seen":snapshot,"findings":[],"state":"open"}),
+        "reviewed_at":null,"flags_seen":snapshot,"findings":[],"follow_up":{"open":0,"total":0},"state":"open"}),
     )
 }
 
-/// Start once per closed period, replaying the same outcome for the same key.
+pub(super) async fn lock(
+    tx: &mut Transaction<'_, Postgres>,
+    p: &Principal,
+    period: &str,
+) -> AccessResult<()> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))")
+        .bind(p.org_id.to_string())
+        .bind(format!("tenant:{period}"))
+        .execute(tx.as_mut())
+        .await?;
+    Ok(())
+}
+
+pub(super) async fn refusal<T>(
+    s: &AccessService,
+    p: &Principal,
+    period: &str,
+    result: AccessResult<T>,
+) -> AccessResult<T> {
+    if let Err(error) = &result
+        && error.is_refusal()
+    {
+        let audit = event(p, period, "access_log_review.refused")?
+            .with_snapshots(None, Some(json!({"code":error.code})));
+        with_audits::<_, _, AccessError>(&s.pool, p.org_id, move |_tx| {
+            Box::pin(async move { Ok(((), vec![audit])) })
+        })
+        .await?;
+    }
+    result
+}
+
+/// Start once per closed period; replays return that review's current projection.
 /// # Errors
 /// Tenant-wide Cedar refusal, invalid/open period, key reuse, or failed audit storage.
 pub async fn start(
@@ -105,24 +138,24 @@ pub async fn start(
         let key = idempotency::validate_idempotency_key(Some(&key))
             .map_err(|message| AccessError::invalid("validation", message))?;
         match idempotency::claim_idempotency_key(tx, OPERATION, &key, &json!({"period":period})).await? {
-            IdempotencyClaim::Replay(value) => return Ok((value, Vec::new())),
+            IdempotencyClaim::Replay(_) => return Ok((super::projection::in_tx(tx, &p, &period).await?, Vec::new())),
             IdempotencyClaim::Mismatch => return Err(console_kernel_core::KernelError::conflict(idempotency::IDEMPOTENCY_KEY_REUSED).into()),
             IdempotencyClaim::Fresh => {}
         }
-        sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))")
-            .bind(p.org_id.to_string()).bind(format!("tenant:{period}"))
-            .execute(tx.as_mut()).await?;
+        lock(tx, &p, &period).await?;
         let mut events = Vec::new();
-        let value = if let Some(row) = load(tx, &p, &period).await? {
-            summary(row)?
+        let value = if load(tx, &p, &period).await?.is_some() {
+            super::projection::in_tx(tx, &p, &period).await?
         } else {
             let prepared = prepare_in_tx(tx.as_mut(), p.org_id, &period).await?;
             let flag_hash = prepared.flag_set_sha256()?;
             let mut evidence = serde_json::to_value(prepared).map_err(AccessError::internal)?;
             let mut rules = serde_json::Map::new();
-            for key in console_settings_domain::SettingKey::ALL.iter().filter(|key| key.as_str().starts_with("access_log_review.flag.") || key.as_str().starts_with("access_log_review.off_hours.") || matches!(key, console_settings_domain::SettingKey::AccessLogReviewTimeZone | console_settings_domain::SettingKey::AccessLogReviewReasonDueBusinessDays)) {
-                if let Some(name) = key.as_str().rsplit('.').next() {
-                    rules.insert(key.as_str().into(), evidence["rules"][name].clone());
+            if let Some(versions) = evidence["rules"]["versions"].as_object() {
+                for key in versions.keys() {
+                    if let Some(name) = key.rsplit('.').next() {
+                        rules.insert(key.clone(), evidence["rules"][name].clone());
+                    }
                 }
             }
             let flags = evidence["flagged"].take();
@@ -145,17 +178,7 @@ pub async fn start(
         idempotency::complete_idempotency_key(tx, OPERATION, &key, &value).await?;
         Ok((value, events))
     })).await;
-    if let Err(error) = &result
-        && error.is_refusal()
-    {
-        let audit = event(&actor, &target, "access_log_review.refused")?
-            .with_snapshots(None, Some(json!({"code":error.code})));
-        with_audits::<_, _, AccessError>(&s.pool, actor.org_id, move |_tx| {
-            Box::pin(async move { Ok(((), vec![audit])) })
-        })
-        .await?;
-    }
-    result
+    refusal(s, &actor, &target, result).await
 }
 
 /// Page the persisted flagged set inside its owning tenant transaction.

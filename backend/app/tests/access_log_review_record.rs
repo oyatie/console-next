@@ -2,8 +2,16 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, dead_code)]
 #[path = "access_log_review_record/chunks.rs"]
 mod chunks;
+#[path = "access_log_review_record/completion.rs"]
+mod completion;
+#[path = "access_log_review_record/completion_guards.rs"]
+mod completion_guards;
 #[path = "access_log_review_record/guards.rs"]
 mod guards;
+#[path = "access_log_review_record/race.rs"]
+mod race;
+#[path = "access_log_review_record/state.rs"]
+mod state;
 #[path = "access_log_review_flags/statements.rs"]
 mod statements;
 #[path = "access_log_review_flags/support.rs"]
@@ -133,6 +141,25 @@ async fn start_is_concurrent_idempotent_frozen_and_tenant_isolated(pool: PgPool)
             .get("access_log_review.flag.every_download")
             .is_some()
     );
+    assert_eq!(
+        evidence["rules"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .collect::<std::collections::BTreeSet<_>>(),
+        evidence["evidence_header"]["rules"]["versions"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .collect::<std::collections::BTreeSet<_>>()
+    );
+    for key in evidence["evidence_header"]["rules"]["versions"]
+        .as_object()
+        .unwrap()
+        .keys()
+    {
+        assert!(versions.get(key).is_some());
+    }
     assert_eq!(evidence["flag_set_sha256"].as_str().unwrap().len(), 64);
     assert!(started["flags_seen"].get("evidence").is_none());
     assert_eq!(

@@ -26,6 +26,8 @@ pub struct AccessError {
     pub original_operation_id: Option<uuid::Uuid>,
     /// The input a validation refusal points at.
     pub field: Option<String>,
+    /// Structured refusal evidence, such as the events still needing a finding.
+    pub details: Option<Box<serde_json::Value>>,
 }
 
 pub type AccessResult<T> = Result<T, AccessError>;
@@ -39,6 +41,7 @@ impl AccessError {
             current_version: None,
             original_operation_id: None,
             field: None,
+            details: None,
         }
     }
 
