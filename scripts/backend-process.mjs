@@ -38,7 +38,10 @@ function orphan(port, pid, record) {
 
 function signal(pid, name) {
   try { process.kill(pid, name); }
-  catch (error) { if (error.code !== "ESRCH") throw error; }
+  catch (error) {
+    // macOS returns EPERM for a group whose exited leader and descendants are zombies.
+    if (error.code !== "ESRCH" && !(error.code === "EPERM" && pid < 0 && !owner(-pid))) throw error;
+  }
 }
 
 /** Inspect every listener before stopping only positively identified console-app orphans. */
