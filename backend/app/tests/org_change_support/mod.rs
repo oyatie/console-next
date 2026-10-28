@@ -93,3 +93,30 @@ pub(super) async fn approve_chain(
     }
     last
 }
+
+pub(super) async fn assert_lifecycle_audit_spine(pool: &PgPool) {
+    // Count every audit row, including list/detail access records. Preflight
+    // still appends neither a transition nor an access record.
+    let audited: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT action, count(*) FROM audit_events WHERE action LIKE 'org_change.%' \
+         GROUP BY action ORDER BY action",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        audited,
+        [
+            // Two proposal ops applied: DEACTIVATE_BRANCH and DEACTIVATE_REGION.
+            ("org_change.apply.op".to_owned(), 2),
+            ("org_change.create".to_owned(), 1),
+            ("org_change.draft.update".to_owned(), 1),
+            ("org_change.effectuate".to_owned(), 1),
+            ("org_change.list_read".to_owned(), 3),
+            ("org_change.read".to_owned(), 3),
+            ("org_change.step.decide".to_owned(), 4),
+            ("org_change.submit".to_owned(), 1),
+        ],
+        "exact audit spine and row counts; preflight is a READ and appends nothing"
+    );
+}

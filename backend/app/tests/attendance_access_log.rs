@@ -8,6 +8,9 @@ mod support;
 #[path = "access_log_reads/support.rs"]
 mod transport;
 
+#[path = "attendance_access_log/org.rs"]
+mod org;
+
 use http::StatusCode;
 use serde_json::{Value, json};
 use sqlx::{PgPool, Row};

@@ -73,11 +73,7 @@ async fn reads_covering_the_reader_and_other_people_are_not_self_reads(pool: PgP
         .execute(&pool)
         .await
         .unwrap();
-    for action in [
-        "attendance.schedule_tree_read",
-        "org_unit.read",
-        "org_unit.members_read",
-    ] {
+    for action in ["org_unit.read", "org_unit.members_read"] {
         let (path, _, expected) = cases.iter().find(|(_, task, _)| *task == action).unwrap();
         assert!(expected.contains(&reader.to_string()) && expected.len() > 1);
         let before = scopes::count(&pool, admin.org, action).await;

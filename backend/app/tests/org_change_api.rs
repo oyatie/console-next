@@ -748,30 +748,7 @@ async fn reorg_lifecycle_runs_draft_to_applied_with_ordered_sod(pool: PgPool) {
          no event: {detail}"
     );
 
-    // Audit spine readback, likewise counted. `#[sqlx::test]` gives this test
-    // its own database, so this is every audit row the run produced — a
-    // `count >= 1` loop over the actions we WANT would pass while preflight
-    // quietly persisted its verdict beside them, and so would a DISTINCT set.
-    let audited: Vec<(String, i64)> = sqlx::query_as(
-        "SELECT action, count(*) FROM audit_events WHERE action LIKE 'org_change.%' \
-         GROUP BY action ORDER BY action",
-    )
-    .fetch_all(&pool)
-    .await
-    .unwrap();
-    assert_eq!(
-        audited,
-        [
-            // Two proposal ops applied: DEACTIVATE_BRANCH and DEACTIVATE_REGION.
-            ("org_change.apply.op".to_owned(), 2),
-            ("org_change.create".to_owned(), 1),
-            ("org_change.draft.update".to_owned(), 1),
-            ("org_change.effectuate".to_owned(), 1),
-            ("org_change.step.decide".to_owned(), 4),
-            ("org_change.submit".to_owned(), 1),
-        ],
-        "exact audit spine and row counts; preflight is a READ and appends nothing"
-    );
+    org_change_support::assert_lifecycle_audit_spine(&pool).await;
     // Each SoD decision also passed through the gov_approvals second net.
     let gov: i64 =
         sqlx::query_scalar("SELECT count(*) FROM gov_approvals WHERE kind = 'org_change_step'")
