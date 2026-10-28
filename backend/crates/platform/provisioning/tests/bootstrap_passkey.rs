@@ -490,8 +490,8 @@ async fn otp_expiry_is_enforced_on_redeem(pool: PgPool) {
 /// the fixed "coss0000" seed, so right after migrations there is NO open
 /// cold-start credential. The OTP is now seeded at app boot via
 /// `seed_cold_start_credential`. Once seeded it signs the cold admin in; a redeem
-/// does not consume it (so a failed first-boot enrollment can't brick cold start);
-/// it is consumed — and dead — once the admin registers a passkey.
+/// claims it exactly once; its enrollment source remains open until the admin
+/// registers a passkey.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn cold_start_otp_seeded_at_boot_signs_in_then_dies_on_passkey_registration(pool: PgPool) {
     let store = BootstrapCredentialStore;
@@ -517,12 +517,12 @@ async fn cold_start_otp_seeded_at_boot_signs_in_then_dies_on_passkey_registratio
 
     let redemption = store.redeem_otp(&pool, "coss0000", now).await.unwrap();
     assert_eq!(redemption.user_id, admin_id);
-    assert!(redemption.requires_passkey_setup);
+    assert!(redemption.requires_passkey_setup && !redemption.reusable);
 
-    // Redeem does NOT consume — coss0000 stays usable until the admin enrolls a passkey.
+    // The enrollment source stays open, but the code cannot mint another session.
     assert!(
-        store.redeem_otp(&pool, "coss0000", now).await.is_ok(),
-        "coss0000 stays redeemable until the admin registers a passkey"
+        store.redeem_otp(&pool, "coss0000", now).await.is_err(),
+        "the cold-start code must reject replay before passkey registration"
     );
 
     // Passkey registration consumes it; afterwards it is dead.

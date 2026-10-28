@@ -20,13 +20,10 @@ impl BootstrapCredentialStore {
     /// authenticated initial settings.
     ///
     /// Security properties:
-    /// * Legacy version-0 redemption is VERIFY-ONLY: it does NOT consume the
-    ///   code. Single-use is enforced at passkey REGISTRATION by
-    ///   [`Self::consume_open_credentials_tx`], which burns the code atomically
-    ///   with the passkey insert (the harden-1 pattern). An incomplete or
-    ///   cancelled enrollment therefore never burns the code — the user can
-    ///   re-redeem until a passkey actually sticks; once a passkey exists the code
-    ///   is dead and can never mint another session.
+    /// * Single-use codes atomically claim `redeemed_at` before session issue.
+    ///   Legacy `consumed_at` stays open for that session's passkey enrollment.
+    ///   Reusable version-0 codes verify until passkey registration consumes
+    ///   them through [`Self::consume_open_credentials_tx`].
     /// * A WRONG guess never consumes or invalidates a credential — an unknown
     ///   token simply finds no row. There is deliberately no per-OTP attempt cap
     ///   (that would let an attacker burn a victim's OTP); brute-force is bounded
@@ -58,7 +55,7 @@ impl BootstrapCredentialStore {
     /// Verify and audit an OTP while its exact source row remains locked in the
     /// caller's transaction. A session owner can add its family, token and audit
     /// before committing; a failed later step rolls this verification back too.
-    /// Version 0 retains verify-only semantics. Version 1 requires the private
+    /// Reusable version 0 retains verify-only semantics. Version 1 requires the private
     /// never-enrolled generation and consumes its source once in this same
     /// transaction; the caller must also own family/admission completion.
     pub async fn redeem_otp_in_tx(
@@ -148,7 +145,7 @@ impl BootstrapCredentialStore {
             None
         };
         let source = sqlx::query(
-            "SELECT single_use, expires_at, issuance_version, issued_generation, issuance_purpose, source_operation_id FROM auth_bootstrap_credentials WHERE id=$1 AND user_id=$2 AND org_id=$3 AND token_hash=$4 AND consumed_at IS NULL AND revoked_at IS NULL AND (NOT single_use OR redeemed_at IS NULL) FOR UPDATE")
+            "SELECT single_use, expires_at, issuance_version, issued_generation, issuance_purpose, source_operation_id FROM auth_bootstrap_credentials WHERE id=$1 AND user_id=$2 AND org_id=$3 AND token_hash=$4 AND consumed_at IS NULL AND revoked_at IS NULL FOR UPDATE")
             .bind(credential_id).bind(user_id).bind(org_uuid).bind(&token_hash)
             .fetch_optional(tx.as_mut()).await?;
         let source = source.ok_or(ProvisioningError::InvalidBootstrapCredential)?;
@@ -165,11 +162,18 @@ impl BootstrapCredentialStore {
         }
 
         if single_use {
-            sqlx::query("UPDATE auth_bootstrap_credentials SET redeemed_at=$2 WHERE id=$1")
-                .bind(credential_id)
-                .bind(now)
-                .execute(tx.as_mut())
-                .await?;
+            let redeemed = sqlx::query(
+                "UPDATE auth_bootstrap_credentials SET redeemed_at=$2 WHERE id=$1 \
+                 AND redeemed_at IS NULL AND consumed_at IS NULL \
+                 AND revoked_at IS NULL AND expires_at>$2",
+            )
+            .bind(credential_id)
+            .bind(now)
+            .execute(tx.as_mut())
+            .await?;
+            if redeemed.rows_affected() != 1 {
+                return Err(ProvisioningError::InvalidBootstrapCredential);
+            }
         }
 
         if issuance_version == 1 {
