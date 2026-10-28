@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
-import { go } from "../flows";
 import { apiOf, bearerOf, codeOf } from "../helpers/api";
 import { peopleWorld, registerAt } from "../helpers/people-fixes";
 
@@ -26,21 +25,21 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
     expect(await read()).toEqual(before);
   }
   for (const [name, relation, phone] of [["이하나", "배우자", "01012345678"], ["이두리", "부모", "01098765432"]]) {
-    await go(admin, `/people/${worker.id}?act=contact.add`);
+    await admin.getByRole("button", { name: "비상연락처 추가", exact: true }).click();
     const sheet = admin.getByRole("dialog", { name: "비상연락처 추가" });
     await sheet.getByRole("textbox", { name: /^이름/ }).fill(name!);
     await sheet.getByLabel(/^관계/).selectOption({ label: relation! });
     await sheet.getByRole("textbox", { name: /^휴대전화/ }).fill(phone!);
-    await expect(sheet.getByRole("button", { name: "비상연락처 추가", exact: true })).toHaveAttribute("aria-disabled", "true");
+    await expect(sheet.getByRole("button", { name: /인사 정보 1명 정정/ })).toHaveAttribute("aria-disabled", "true");
     await sheet.getByRole("checkbox").check();
-    await sheet.getByRole("button", { name: "비상연락처 추가", exact: true }).click();
+    await sheet.getByRole("button", { name: /인사 정보 1명 정정/ }).click();
     await expect(sheet).toBeHidden();
   }
   const recorded = (await read()).emergency_contacts!;
   const contacts = admin.getByRole("list", { name: "비상연락처", exact: true });
   await expect(contacts).toContainText("응급 상황 대비 (검토 전)");
   await expect(contacts).toContainText(recorded[0]!.recorded_by_name);
-  await expect(contacts).toContainText("Asia/Seoul");
+  await expect(contacts).toContainText("KST");
   await expect(contacts).not.toContainText(recorded[0]!.basis);
   await expect(contacts).not.toContainText(recorded[0]!.recorded_at);
   await contacts.getByRole("button", { name: /배우자.*더보기/ }).click();

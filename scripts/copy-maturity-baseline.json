@@ -57,7 +57,6 @@
   "packages/i18n/src/catalogs/ko/crud.ts crud.unit.subtitle prose.부제 da00c6e69b56117ae91b": 1,
   "packages/i18n/src/catalogs/ko/emp-card.ts empCard.docs.unserved verb.label 36fc59c4676c1991ff8e": 1,
   "packages/i18n/src/catalogs/ko/emp-card.ts empCard.legend.first verb.입력 1fc21fcd9d4130b37650": 1,
-  "packages/i18n/src/catalogs/ko/emp-card.ts empCard.personal.basis verb.입력 4ffcac1ea7f4f7e0ccde": 1,
   "packages/i18n/src/catalogs/ko/emp-card.ts empCard.restricted.law verb.입력 a6d6b85022b8d953daa5": 1,
   "packages/i18n/src/catalogs/ko/emp-card.ts empCard.rrn.note verb.입력 e40314b57325b44dc913": 1,
   "packages/i18n/src/catalogs/ko/emp-doc.ts empDoc.void.employee.reason.OTHER.d verb.입력 e40314b57325b44dc913": 1,

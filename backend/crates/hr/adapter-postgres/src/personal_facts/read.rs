@@ -104,7 +104,7 @@ impl HrService {
                      'recorded_by', c.created_by, 'recorded_by_name', u.display_name, \
                      'recorded_at', c.created_at) ORDER BY c.seq) \
                      FROM employee_emergency_contacts c \
-                     LEFT JOIN users u ON u.org_id = c.org_id AND u.id = c.created_by \
+                     LEFT JOIN person_accounts_current u ON u.org_id = c.org_id AND u.id = c.created_by \
                      WHERE c.org_id = $1 AND c.employee_id = $2 AND c.voided_at IS NULL",
                 )
                 .bind(org_uuid)

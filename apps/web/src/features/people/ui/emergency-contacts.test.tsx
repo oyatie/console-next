@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { fmtStamp } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { loadCatalog, t } from "@console/i18n";
 import type { Card } from "./use-card";
 import type { Quick } from "./use-quick";
@@ -72,6 +72,8 @@ function makeCard(contacts: unknown[] = []): Card {
       updated_at: "2026-10-20T00:00:00Z",
     } as Card["e"],
     manage: true,
+    editable: true,
+    readable: true,
     request: false,
     users: false,
     events: { data: { items: [] } } as unknown as Card["events"],
@@ -206,7 +208,7 @@ describe("EmergencyContacts privacy basis and notification confirmation", () => 
     expect(html).not.toContain("00000000-0000-0000-0000-000000000099");
     expect(html).toContain("김인사");
     expect(html).not.toContain("2026-10-20T05:00:00Z");
-    expect(html).toContain(fmtStamp("2026-10-20T05:00:00Z"));
-    expect(html).toContain("Asia/Seoul");
+    expect(html).toContain(fmtDateTime("2026-10-20T05:00:00Z"));
+    expect(html).toContain("KST");
   });
 });
