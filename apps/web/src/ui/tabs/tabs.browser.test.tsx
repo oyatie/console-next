@@ -35,7 +35,8 @@ beforeAll(async () => {
   // A pending image must not hold up assertions about the rendered view or history.
   await page.route("**/tabs-history-pending.svg", () => {});
   await page.route(/\/tabs-test(?:\?.*)?$/, route => {
-    const pending = new URL(route.request().url()).searchParams.get("scope") === "previous" ? '<img src="/tabs-history-pending.svg" alt="">' : "";
+    const params = new URL(route.request().url()).searchParams;
+    const pending = params.get("scope") === "previous" || params.get("tab") === "outline" ? '<img src="/tabs-history-pending.svg" alt="">' : "";
     return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Tabs</title><main id="root"></main><script type="module" src="/tabs-test.js"></script>${pending}</html>` });
   });
 }, 60_000);
@@ -79,6 +80,7 @@ test("URL links replace history, restore deep links and preserve other filters",
   await element(page).toHaveURL(/scope=previous$/);
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
   await page.goForward({ waitUntil: "commit" });
+  await element(page).toHaveURL(/scope=workplace#record$/);
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
 });
 

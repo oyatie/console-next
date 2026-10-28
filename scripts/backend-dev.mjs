@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Local backend with the public E2E stack and a Cargo-built `console-app`.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -168,6 +168,9 @@ if (process.env.CONSOLE_DEV_ASYNC_COMMIT === "1")
   );
 // Which binary this backend runs, for E2E_REUSE's stale-binary guard (e2e/global-setup.ts).
 mkdirSync(CACHE, { recursive: true });
+// A launcher killed before rename can leave an unpublished record behind.
+for (const name of readdirSync(CACHE))
+  if (/^backend\.json\.\d+\.tmp$/.test(name)) rmSync(path.join(CACHE, name), { force: true });
 // No fixtures and no personas: the database holds only what the API itself creates.
 console.log(`backend: http://127.0.0.1:${PORT.backend}  platform cold-start code: coldstartOtp in ${DEV_SECRETS_FILE}`);
 // SIGUSR2 stops the API process and the next SIGUSR2 starts it again on the same database (a backend restart mid-flow,
