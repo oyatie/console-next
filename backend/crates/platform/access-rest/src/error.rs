@@ -1,4 +1,4 @@
-//! `{"error": {code, message, current_version?, errors?}}` — the shared `ErrorBody`.
+//! `{"error": {code, message, current_version?, errors?, details?}}` — the shared `ErrorBody`.
 
 use axum::Json;
 use axum::http::StatusCode;
@@ -42,6 +42,32 @@ impl IntoResponse for ApiError {
         if let Some(field) = e.field {
             error["errors"] = json!([{ "field": field, "code": e.code }]);
         }
+        if let Some(details) = e.details {
+            error["details"] = *details;
+        }
         (status(e.kind), Json(json!({ "error": error }))).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn incomplete_review_keeps_its_conflict_status_and_open_events() {
+        let mut error = AccessError::from(console_kernel_core::KernelError::conflict("incomplete"));
+        error.code = "review_incomplete";
+        error.details = Some(Box::new(json!({"open_event_ids":[uuid::Uuid::nil()]})));
+        let response = ApiError(error).into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["error"]["code"], "review_incomplete");
+        assert_eq!(
+            body["error"]["details"]["open_event_ids"],
+            json!([uuid::Uuid::nil()])
+        );
     }
 }

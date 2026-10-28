@@ -103,14 +103,7 @@ const AGGREGATE: &str = r#"
 )
 "#;
 
-/// Calculate the frozen evidence once; no review is created by this projection.
-/// # Errors
-/// Invalid/open periods, unresolved required settings, or a database failure.
-pub async fn prepare_in_tx(
-    conn: &mut PgConnection,
-    org: OrgId,
-    period: &str,
-) -> AccessResult<Prepared> {
+pub(super) fn period_day(period: &str) -> AccessResult<Date> {
     let invalid = || AccessError::invalid("period_invalid", "expected YYYY-MM");
     let (year, month) = period.split_once('-').ok_or_else(invalid)?;
     if year.len() != 4
@@ -122,12 +115,23 @@ pub async fn prepare_in_tx(
     {
         return Err(invalid());
     }
-    let day = Date::from_calendar_date(
+    Date::from_calendar_date(
         year.parse().map_err(|_| invalid())?,
         Month::try_from(month.parse::<u8>().map_err(|_| invalid())?).map_err(|_| invalid())?,
         1,
     )
-    .map_err(|_| invalid())?;
+    .map_err(|_| invalid())
+}
+
+/// Calculate the frozen evidence once; no review is created by this projection.
+/// # Errors
+/// Invalid/open periods, unresolved required settings, or a database failure.
+pub async fn prepare_in_tx(
+    conn: &mut PgConnection,
+    org: OrgId,
+    period: &str,
+) -> AccessResult<Prepared> {
+    let day = period_day(period)?;
     let rules = Rules::load(conn, org).await?;
     let (from,to,closed): (OffsetDateTime,OffsetDateTime,bool) = sqlx::query_as(
         "SELECT f,t,t<=now() FROM (SELECT $1::date::timestamp AT TIME ZONE $2 AS f,($1::date+interval '1 month') AT TIME ZONE $2 AS t) b")
@@ -184,7 +188,7 @@ pub async fn page_in_tx(
     if !(1..=super::MAX_PAGE_SIZE).contains(&limit) {
         return Err(AccessError::invalid(
             "limit_out_of_range",
-            "limit must be 1..200",
+            format!("limit must be 1..{}", super::MAX_PAGE_SIZE),
         ));
     }
     if flagged {
