@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -135,12 +135,33 @@ test("Dependabot groups only minor and patch updates weekly on dev, leaving majo
   assert.deepEqual(config.updates.find((u) => u["package-ecosystem"] === "cargo").directories.sort(), ["/apps/desktop/src-tauri", "/backend", "/backend/fuzz"]);
 });
 
-test("Dependabot keeps Node declarations on the runtime major while allowing other npm majors", () => {
+test("Dependabot keeps Node declarations on the runtime major and defers native TypeScript", () => {
   const config = yaml.load(read(".github/dependabot.yml"));
   const npm = config.updates.find((u) => u["package-ecosystem"] === "npm");
-  assert.deepEqual(npm.ignore, [{ "dependency-name": "@types/node", "update-types": ["version-update:semver-major"] }]);
+  const nodeMajor = Number(read(".node-version").trim());
+  assert.deepEqual(npm.ignore, [
+    { "dependency-name": "@types/node", versions: [`>=${nodeMajor + 1}`] },
+    { "dependency-name": "typescript", "update-types": ["version-update:semver-major"] },
+  ]);
+  assert.match(read(".github/dependabot.yml"), /#.*openapi-typescript.*JavaScript compiler API/);
   const manifest = JSON.parse(read("package.json"));
   const runtime = manifest.engines.node.match(/^>=(\d+)$/)?.[1];
   assert.ok(runtime, "Node runtime must have a major floor");
   assert.match(manifest.devDependencies["@types/node"], new RegExp(`^\\^${runtime}\\.`));
+});
+
+test("every CI Node setup uses the shared major pin and the build image records its upstream", () => {
+  const major = read(".node-version").trim();
+  assert.equal(major, "26");
+  for (const file of readdirSync(new URL("../.github/workflows/", import.meta.url)).filter((f) => /\.ya?ml$/.test(f))) {
+    const config = yaml.load(read(`.github/workflows/${file}`));
+    for (const [name, job] of Object.entries(config.jobs)) for (const step of job.steps ?? []) {
+      if (!step.uses?.startsWith("actions/setup-node@")) continue;
+      assert.equal(step.with?.["node-version-file"], ".node-version", `${file}: ${name}`);
+      assert.equal(step.with["node-version"], undefined, `${file}: ${name}`);
+    }
+  }
+  const versions = JSON.parse(read("deploy/versions.json"));
+  assert.match(versions.images.node, /^docker\.io\/library\/node@sha256:[a-f0-9]{64}$/);
+  assert.match(versions.upstreamImages.node, new RegExp(`^docker\\.io/library/node:${major}\\.\\d+\\.\\d+-bookworm-slim$`));
 });
