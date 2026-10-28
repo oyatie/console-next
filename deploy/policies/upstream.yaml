@@ -24,6 +24,10 @@ ghcr.io/cloudnative-pg/postgresql:
   reason: PostgreSQL operand; verify the published Sigstore bundle from the image build workflow.
   authority:
     signatureFormat: bundle
+    # Cosign v3 signs an in-toto statement; policy-controller verifies bundles through attestations.
+    attestations: &cosign-signature
+      - name: signature
+        predicateType: https://sigstore.dev/cosign/sign/v1
     keyless:
       url: *fulcio
       identities:
@@ -77,6 +81,7 @@ ghcr.io/cloudnative-pg/cloudnative-pg:
   reason: Database operator and bootstrap init container; verify the published release Sigstore bundle.
   authority:
     signatureFormat: bundle
+    attestations: *cosign-signature
     keyless:
       url: *fulcio
       identities:
