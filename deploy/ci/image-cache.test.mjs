@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { runInNewContext } from 'node:vm';
 import yaml from 'js-yaml';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
@@ -19,8 +20,11 @@ test('only default-branch pushes may export image caches or prune old caches', (
   assert.equal(prune.if, trustedPush);
   assert.equal(prune.permissions.actions, 'write');
   assert.ok(workflow.jobs.build.needs.includes('prune-image-cache'));
-  assert.match(workflow.jobs.build.if, /needs\['prune-image-cache'\]\.result == 'success'/);
-  assert.match(workflow.jobs.build.if, /needs\['prune-image-cache'\]\.result == 'skipped'/);
+  for (const result of ['success', 'skipped', 'failure']) {
+    assert.equal(runInNewContext(workflow.jobs.build.if, {
+      github: {event_name: 'push'}, needs: {'prune-image-cache': {result}}, cancelled: () => false,
+    }), true, `cleanup ${result} must not skip builds`);
+  }
   assert.match(workflow.jobs.build.if, /!cancelled\(\)/);
   assert.match(JSON.stringify(prune.steps), /prune-image-cache\.mjs/);
 });
@@ -54,6 +58,44 @@ const blob = {id: 1, key: `buildkit-blob-1-sha256:${'a'.repeat(64)}`, size_in_by
 const old = {id: 2, key: 'index-platform-amd64-1-5a70b200#87', size_in_bytes: 100};
 const npm = {id: 3, key: 'node-cache-Linux-x64-npm-lock', size_in_bytes: 200};
 const current = {id: 4, key: 'index-console-platform-arm64-1-5a70b200#1', size_in_bytes: 100};
+
+test('failed cache prune still allows build/publish and writes a visible summary warning', () => {
+  const steps = workflow.jobs['prune-image-cache'].steps;
+  const cleanup = steps.find(step => step.with?.script?.includes('pruneImageCache'));
+  const dir = mkdtempSync(join(tmpdir(), 'image-cache-failure-'));
+  try {
+    const failure = spawnSync(process.execPath, ['--input-type=module', '-e', `
+import assert from 'node:assert/strict';
+const github = {rest: {actions: {}}, paginate: async () => { throw new Error('cache API unavailable'); }};
+const context = ${JSON.stringify(context)};
+const core = {summary: {addRaw() { assert.fail('failed prune must not report success'); }}};
+await assert.rejects((async () => { ${cleanup.with.script} })(), /cache API unavailable/);
+`], {cwd: root, encoding: 'utf8', env: {...process.env, GITHUB_WORKSPACE: root}});
+    assert.equal(failure.status, 0, failure.stderr);
+    assert.equal(cleanup['continue-on-error'], true);
+    const warning = steps.find(step => step.if?.includes(`steps.${cleanup.id}.outcome`));
+    assert.ok(warning, 'a failed prune must have a summary warning step');
+    for (const outcome of ['failure', 'success', 'skipped']) {
+      assert.equal(runInNewContext(warning.if, {
+        steps: {[cleanup.id]: {outcome, conclusion: 'success'}}, cancelled: () => false,
+      }), outcome === 'failure');
+    }
+    const summary = join(dir, 'summary.md');
+    const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', warning.run], {
+      encoding: 'utf8', env: {...process.env, GITHUB_STEP_SUMMARY: summary},
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(readFileSync(summary, 'utf8'), /warning.*cache.*failed/i);
+    assert.match(readFileSync(summary, 'utf8'), /limit/i);
+    assert.equal(runInNewContext(workflow.jobs.build.if, {
+      github: {event_name: 'push'}, needs: {'prune-image-cache': {result: 'failure'}}, cancelled: () => false,
+    }), true);
+    assert.ok(workflow.jobs.publish.needs.includes('build'));
+    assert.equal(runInNewContext(workflow.jobs.publish.if, {
+      github: {event_name: 'push', ref: 'refs/heads/dev'},
+    }), true);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
 
 async function prune(caches, ctx = context, failure) {
   const {pruneImageCache} = await import(pathToFileURL(join(root, 'deploy/ci/prune-image-cache.mjs')));
