@@ -52,12 +52,34 @@ test("attendance contributes one recovery line per cell, including an offscreen 
   expect(recoveryDraftText()).not.toContain("9-18");
 });
 
-test("a legacy row migrates once only for its recorded owner", () => {
+test("a legacy row is deleted even when the current account matches the owner marker", () => {
   const store = storage(null);
   store.setItem(legacy, JSON.stringify(draft));
-  expect(readDrafts(scope).now).toEqual(draft);
+  expect(readDrafts(scope).now).toEqual({});
   expect(store.getItem(legacy)).toBeNull();
+  expect(store.getItem(key)).toBeNull();
+});
+
+test("account B cannot adopt account A's legacy row after signing in on the old bundle", () => {
+  const store = storage(null);
+  store.setItem(legacy, JSON.stringify(draft));
+  store.setItem("console.draft.principal", "account-b");
+  account.principal = "account-b";
+  expect(readDrafts(scope, "account-b").now).toEqual({});
+  expect(store.getItem(legacy)).toBeNull();
+  expect(store.getItem(draftKey("account-b", "attendance", scope, "grid"))).toBeNull();
+  expect(recoveryDraftText()).toBe("");
+});
+
+test("same-account sync purges every legacy scope before returning and preserves owned drafts", () => {
+  const store = storage(JSON.stringify(draft));
+  store.setItem(legacy, JSON.stringify(draft));
+  store.setItem("console.attendance.drafts:unopened", JSON.stringify(draft));
+  expect(syncDraftPrincipal("account-a")).toBeNull();
+  expect(store.getItem(legacy)).toBeNull();
+  expect(store.getItem("console.attendance.drafts:unopened")).toBeNull();
   expect(store.getItem(key)).toBe(JSON.stringify(draft));
+  expect(store.getItem("console.draft.principal")).toBe("account-a");
 });
 
 test.each(["account-b", null])("a legacy row with owner %s is deleted without disclosure", owner => {
@@ -77,7 +99,7 @@ test("legacy rows in scopes never opened are purged on account change", () => {
   expect(store.getItem(legacy)).toBeNull();
 });
 
-test("migration leaves a newer owned draft intact and removes its legacy duplicate", () => {
+test("legacy cleanup leaves an owned draft intact", () => {
   const store = storage(JSON.stringify(draft));
   store.setItem(legacy, JSON.stringify({ "other|2026-10-01": { value: "old", base: null } }));
   expect(readDrafts(scope).now).toEqual(draft);
@@ -85,13 +107,14 @@ test("migration leaves a newer owned draft intact and removes its legacy duplica
   expect(store.getItem(key)).toBe(JSON.stringify(draft));
 });
 
-test("a full store during migration preserves the original and keeps its cells available to copy", () => {
+test("legacy rows are deleted without adoption even when storage is full", () => {
   const store = storage(null);
   store.setItem(legacy, JSON.stringify(draft));
   store.setItem.mockImplementation(() => { throw new Error("quota"); });
-  expect(readDrafts(scope)).toEqual({ now: draft, readProblem: "unavailable" });
-  expect(store.getItem(legacy)).toBe(JSON.stringify(draft));
-  expect(recoveryDraftText()).toBe("2026-10-01 · 9-18");
+  expect(readDrafts(scope)).toEqual({ now: {}, readProblem: null });
+  expect(store.getItem(legacy)).toBeNull();
+  expect(store.setItem).toHaveBeenCalledTimes(1);
+  expect(recoveryDraftText()).toBe("");
 });
 
 test.each(["account-b", null])("delayed saves for account A cannot recreate purged drafts after owner becomes %s", principal => {

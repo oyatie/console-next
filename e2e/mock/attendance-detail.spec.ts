@@ -140,6 +140,23 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
   expect(fixture.unexpected).toEqual([]);
 });
 
+test("an upgraded tab never restores a previous account's owner-less attendance cells", async ({ page }) => {
+  const fixture = await setup(page, 5);
+  const claims = JSON.parse(Buffer.from(token().access_token.split(".")[1]!, "base64url").toString());
+  await page.addInitScript(({ principal, employee }) => {
+    // The old bundle changed accounts without purging this owner-less row.
+    sessionStorage.setItem("console.draft.principal", principal);
+    sessionStorage.setItem("console.attendance.drafts:day:2026-10-06", JSON.stringify({
+      [`${employee}|2026-10-06`]: { value: "9-18", base: null },
+    }));
+    sessionStorage.setItem("console.attendance.drafts:unopened", "{}");
+  }, { principal: JSON.stringify([claims.org, claims.sub]), employee: id(100) });
+  await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
+  await expect(page.getByRole("textbox", { name: /^근태직원 1 입력/ })).toHaveValue("");
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith("console.attendance.drafts:") || k.startsWith("console.draft:")))).toEqual([]);
+  expect(fixture.unexpected).toEqual([]);
+});
+
 test("attendance recovery copies both cells and sign-out purges them before another account signs in", async ({ page }) => {
   const fixture = await setup(page, 5);
   let ended = false;

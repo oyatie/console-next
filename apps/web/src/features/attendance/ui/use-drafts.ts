@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { session } from "../api";
-import { DRAFT_OWNER, LEGACY_ATTENDANCE_PREFIX, draftKey, registerDraft } from "../../../lib/react/draft-owner";
+import { LEGACY_ATTENDANCE_PREFIX, draftKey, registerDraft } from "../../../lib/react/draft-owner";
 import { splitKey, type Draft, type Drafts } from "../domain/grid";
 
 type People = readonly { employee_id: string; name: string }[];
@@ -78,19 +78,10 @@ function registerGrid(scope: string, drafts: Drafts, principal: string, people: 
 
 export function readDrafts(scope: string, principal = session.principal): Stored {
   let raw: string | null;
-  let readProblem: Problem = null;
   try {
     const legacy = LEGACY_ATTENDANCE_PREFIX + scope;
-    const old = sessionStorage.getItem(legacy);
+    if (sessionStorage.getItem(legacy) !== null) sessionStorage.removeItem(legacy);
     raw = principal ? sessionStorage.getItem(key(scope, principal)) : null;
-    if (old !== null) {
-      if (principal && sessionStorage.getItem(DRAFT_OWNER) === principal && raw === null) {
-        raw = old;
-        try { sessionStorage.setItem(key(scope, principal), old); }
-        catch { readProblem = "unavailable"; }
-      }
-      if (!readProblem) sessionStorage.removeItem(legacy);
-    }
   } catch {
     return { now: {}, readProblem: "unavailable" };
   }
@@ -101,7 +92,7 @@ export function readDrafts(scope: string, principal = session.principal): Stored
       d && typeof d === "object" && "value" in d && typeof d.value === "string" && "base" in d && (d.base === null || typeof d.base === "string"))) {
       const now = value as Drafts;
       if (principal) registerGrid(scope, now, principal);
-      return { now, readProblem };
+      return { now, readProblem: null };
     }
   } catch {
     return { now: {}, readProblem: "unreadable" };
