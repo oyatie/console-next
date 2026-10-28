@@ -15,6 +15,9 @@ path = "src/main.rs"
 name = "console_gate_writer_ownership"
 path = "src/lib.rs"
 
+[features]
+test-postgres = []
+
 [dependencies]
 # Path dep, not `workspace = true`: adding the `[workspace.dependencies]` entry
 # needs backend/Cargo.toml, which this lane may not write. See followUps.
