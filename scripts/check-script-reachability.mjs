@@ -74,7 +74,12 @@ export function inventory(files, read) {
   };
   const command = (text, caller) => {
     for (const invocation of shellCommands(text)) {
-      const parsed = invocation.match(/^(?:[A-Z_][A-Z_\d]*=(?:"[^"]*"|'[^']*'|[^\s]+)\s+)*(?:npx\s+)?(npm|node|vitest)\s+([\s\S]*)$/);
+      let executable = invocation;
+      // Consume one assignment at a time so ambiguous quoted values cannot multiply backtracking across prefixes.
+      for (let assignment; (assignment = executable.match(/^[A-Z_][A-Z_\d]*=(?:"[^"]*"|'[^']*'|[^\s]+)\s+/));) {
+        executable = executable.slice(assignment[0].length);
+      }
+      const parsed = executable.match(/^(?:npx\s+)?(npm|node|vitest)\s+([\s\S]*)$/);
       if (!parsed) continue;
       const [, bin, args] = parsed;
       if (bin === "npm") {

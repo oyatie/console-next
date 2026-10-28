@@ -54,6 +54,28 @@ test("printing a command and shell comments do not execute a check", () => {
   expect(rows.find(row => row.file === "scripts/check-dark.mjs")?.callers).toEqual([]);
 });
 
+test.each(["PLAIN=value", 'QUOTED="two words"', "QUOTED='two words'", 'EMPTY="" NEXT=value'])("leading environment assignments preserve callers: %s", assignment => {
+  const rows = scan({
+    "package.json": JSON.stringify({ scripts: { check: `${assignment} npx node scripts/check-dark.mjs` } }),
+  });
+  expect(rows.find(row => row.file === "scripts/check-dark.mjs")?.callers).toEqual(["package.json#check"]);
+});
+
+test("pathological quoted environment assignments finish within the subprocess deadline", () => {
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    import { readFileSync } from "node:fs";
+    import { inventory } from ${JSON.stringify(new URL("./check-script-reachability.mjs", import.meta.url).href)};
+    const sources = JSON.parse(readFileSync(0, "utf8"));
+    process.stdout.write(JSON.stringify(inventory(Object.keys(sources), file => sources[file])));
+  `], {
+    encoding: "utf8", timeout: 5_000,
+    input: JSON.stringify({ ...sources, "package.json": JSON.stringify({ scripts: { check: `${"ENV='value' ".repeat(1024)}echo ignored` } }) }),
+  });
+  expect(result.error).toBeUndefined();
+  expect(result.status, result.stdout + result.stderr).toBe(0);
+  expect(JSON.parse(result.stdout).every(row => row.callers.length === 0)).toBe(true);
+});
+
 test("reusable CI workflows and Node test globs reach their suites", () => {
   const rows = scan({
     ".github/workflows/ci.yml": "jobs:\n  commits:\n    uses: ./.github/workflows/commits.yml\n",
@@ -84,13 +106,14 @@ test("the inherited catalog cannot grow relative to dev", () => {
   ]);
 });
 
-test("the required check has no unexplained orphan and runs the lifecycle contract suite", () => {
+test("the required check has no unexplained orphan and runs the lifecycle and stack contract suites", () => {
   const root = path.resolve(import.meta.dirname, "..");
   const files = execFileSync("git", ["ls-files", "-co", "--exclude-standard"], { cwd: root, encoding: "utf8" }).trim().split("\n");
   const rows = inventory(files, file => readFileSync(path.join(root, file), "utf8"));
   const inherited = JSON.parse(readFileSync(path.join(root, "scripts/script-reachability-baseline.json"), "utf8")).orphans;
   expect(inventoryProblems(rows, inherited)).toEqual([]);
   expect(rows.find(row => row.file === "scripts/lifecycle-correction-contract.test.mjs")?.callers.length).toBeGreaterThan(0);
+  expect(rows.find(row => row.file === "deploy/ci/stack.test.mjs")?.callers).toContain("package.json#check");
 });
 
 test("CLI refuses a planted orphan in the candidate worktree", () => {
