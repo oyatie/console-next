@@ -60,6 +60,10 @@ pub fn enforce(
             )
             .with_code("org_change.refuse.not_drafter"))
         }
+        Ok((false, _)) if org == resource_org && facts.actor_is_drafter => Err(
+            KernelError::forbidden("org-change draft permission required")
+                .with_code("org_change.refuse.missing_grant"),
+        ),
         _ => Err(KernelError::not_found("org-change request was not found")
             .with_code("org_change.refuse.missing_grant")),
     }

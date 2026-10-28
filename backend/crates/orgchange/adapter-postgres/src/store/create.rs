@@ -28,7 +28,6 @@ impl PgOrgChangeStore {
         validate_legacy_targets: bool,
     ) -> Result<(OrgChangeDetail, bool), PgOrgChangeError> {
         command.target.validate()?;
-        validate_proposal(&command.proposal)?;
         bounded_text(&command.reason, "reason", 4000)?;
         let key = command.idempotency_key.trim();
         // Characters, not bytes — the DB CHECK is char_length(); a byte count
@@ -54,7 +53,16 @@ impl PgOrgChangeStore {
         with_audits(&self.pool, org, |tx| {
             Box::pin(async move {
                 let access = console_platform_authz::cedar_pbac::visible::load_facts(tx, org, *actor.as_uuid()).await?;
-                super::draft_admission::require(&access, org, actor, &command.target)?;
+                if !super::draft_admission::allows(
+                    &access, org, actor, console_platform_authz::Feature::OrgChangeDraft, &command.target,
+                )? {
+                    return Err(KernelError::forbidden("org-change draft permission required")
+                        .with_code("org_change.refuse.missing_grant").into());
+                }
+                if validate_legacy_targets {
+                    super::draft_admission::require_legacy(&access, org, actor, &command.proposal)?;
+                }
+                validate_proposal(&command.proposal)?;
                 if let Some(row) = sqlx::query(
                     "SELECT id, request_fingerprint FROM org_change_requests \
                      WHERE idempotency_key = $1",

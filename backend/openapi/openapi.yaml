@@ -21582,7 +21582,8 @@ paths:
         the same key returns the existing request with 200, a different body under the same key conflicts. A revision
         may supersede an existing request only when that request is REJECTED.
         Cedar checks draft authority at the target scope, including legacy-role compatibility.
-        Missing authority returns 404 org_change.refuse.missing_grant, matching edit, preflight, submit and cancel.
+        Missing create authority returns 403 org_change.refuse.missing_grant; malformed canonical target references return 422.
+        Existing inaccessible documents remain concealed as 404 on edit, preflight and submit.
       security:
       - bearerAuth: []
       parameters:
@@ -21800,7 +21801,8 @@ paths:
         (403 org_change.refuse.not_drafter for another caller with draft authority).
         Create, edit, preflight, submit and draft cancellation share the same scoped Cedar draft decision,
         retaining legacy-role compatibility. Missing draft authority returns 404 org_change.refuse.missing_grant
-        before any scheduled-lock refusal, with the same body as an unknown id.
+        before any scheduled-lock refusal, with the same body as an unknown id. A drafter who lacks live authority
+        to cancel their own draft receives 403 org_change.refuse.missing_grant, including after the target dissolves.
         Withdrawal preserves the stored chain and
         prior decisions; later decisions refuse with lifecycle.refuse.withdrawn.
       security:

@@ -91,9 +91,9 @@ fn names_are_required_and_at_most_120_characters() {
 }
 
 #[test]
-fn a_target_needs_a_ref_and_a_label_within_200_characters() {
+fn a_legacy_target_needs_a_ref_and_a_label_within_200_characters() {
     let target = |r: &str, l: &str| OrgChangeTarget {
-        kind: TargetKind::OrgUnit,
+        kind: TargetKind::Region,
         target_ref: r.into(),
         label: l.into(),
     };

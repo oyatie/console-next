@@ -68,7 +68,6 @@ pub(crate) async fn draft_create_org_unit(
     Json(b): Json<CreateOrgUnitRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_draft(&p)?;
     let name = b.name.trim().to_owned();
     draft_org_unit_change(
         &s,
@@ -97,7 +96,6 @@ pub(crate) async fn draft_update_org_unit(
     Json(b): Json<UpdateOrgUnitRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_draft(&p)?;
     let name = b.name.map(|name| name.trim().to_owned());
     let mut proposal = Vec::new();
     if let Some(name) = name.clone() {
@@ -139,7 +137,6 @@ pub(crate) async fn draft_dissolve_org_unit(
     Path(id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_draft(&p)?;
     draft_org_unit_change(
         &s,
         &h,
@@ -201,11 +198,6 @@ pub(crate) async fn draft_org_unit_change(
         StatusCode::CREATED
     };
     respond(&detail).map(|body| (status, body))
-}
-
-pub(crate) fn allow_legacy_draft(p: &Principal, feature: Feature) -> Result<(), RestError> {
-    allow_draft(p)?;
-    authorize_capability(p, Action::new(feature)).map_err(RestError::kernel)
 }
 
 pub(crate) fn conceal_out_of_scope_branch(p: &Principal, id: Uuid) -> Result<(), RestError> {

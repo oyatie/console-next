@@ -12,6 +12,13 @@ pub struct OrgChangeTarget {
 impl OrgChangeTarget {
     pub fn validate(&self) -> Result<(), KernelError> {
         bounded(&self.target_ref, "target.ref", 200)?;
+        if matches!(
+            self.kind,
+            TargetKind::OrgUnit | TargetKind::Site | TargetKind::Entity
+        ) {
+            Uuid::parse_str(&self.target_ref)
+                .map_err(|_| KernelError::validation("target.ref must be a UUID"))?;
+        }
         bounded(&self.label, "target.label", 200)
     }
 }
