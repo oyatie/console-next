@@ -244,6 +244,10 @@ pub fn evaluate(request: &AuthorizationRequest, bundle: &CompiledBundle) -> Ceda
     super::facts::evaluate_with_context(request, bundle, Vec::new())
 }
 
+#[path = "engine_entities.rs"]
+mod entity_evaluation;
+pub use entity_evaluation::evaluate_entities;
+
 /// The Cedar call itself; `facts::evaluate_with_context` wraps it panic-safe.
 pub(super) fn evaluate_inner(
     request: &AuthorizationRequest,

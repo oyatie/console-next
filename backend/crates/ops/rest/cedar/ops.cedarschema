@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+namespace Ops {
+    type Grant = { action: Action, from: Long, until: Long };
+    entity Operator = { grants: Set<Grant> };
+    entity Console;
+    action "read.me", "read.home", "read.alerts", "read.running", "read.sources"
+    appliesTo {
+        principal: [Operator],
+        resource: [Console],
+        context: { now: Long, grant: Grant }
+    };
+}
