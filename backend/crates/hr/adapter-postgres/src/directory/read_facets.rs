@@ -62,7 +62,7 @@ impl HrService {
     ) -> Result<EmployeeFacets, HrError> {
         let reach = hr_reach_in(&principal, Feature::EmployeeDirectoryRead, Tier::Branch)?;
         record_hr_read("employee_facets");
-        let filters =
+        let mut filters =
             EmployeeListFilters::from_query(&query, &principal.branch_scope)?.with_reach(reach);
         let window = filters.contract_ending_before;
         let today = today_kst();
@@ -70,6 +70,9 @@ impl HrService {
         // CAP-01: one scan instead of five. `f` carries each row's group
         // values and whether it passes each group's own filters; every count is
         // `count(*) FILTER` over the groups it keeps, per grouping set.
+        let rows = with_org_conn::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
+            Box::pin(async move {
+                filters.load_visibility(tx, &principal, Feature::EmployeeDirectoryRead).await?;
         let mut query = QueryBuilder::<Postgres>::new(concat!(
             "WITH f AS (SELECT entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS status, p.employment_type AS etype, \
              ea.legal_entity_id, ea.workplace_id, ",
@@ -117,10 +120,9 @@ impl HrService {
              workplace NULLS LAST",
         );
 
-        let rows = with_org_conn::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
-            Box::pin(async move { Ok(query.build().fetch_all(tx.as_mut()).await?) })
-        })
-        .await?;
+                Ok(query.build().fetch_all(tx.as_mut()).await?)
+            })
+        }).await?;
         let mut facets = EmployeeFacets {
             total: 0,
             status: Vec::new(),

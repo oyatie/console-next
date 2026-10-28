@@ -8,7 +8,7 @@ use console_platform_db::with_audits;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::authz::authorize_hr_scoped_write;
+use crate::authz::HrCaseFacts;
 use crate::exits::audit::exit_case_audit_event;
 use crate::exits::group_transfer_case::{GROUP_TRANSFER_EXIT_REASON, follows_group_transfer};
 use crate::exits::queries::load_exit_case_by_id;
@@ -39,8 +39,10 @@ impl HrService {
         let exit_case = with_audits::<_, _, HrError>(&self.pool, org, |tx| {
         Box::pin(async move {
             let context = load_exit_case_context(tx, org_uuid, case_id, true).await?;
-            let holds =
-                |feature| authorize_hr_scoped_write(&principal, feature, context.branch_id).is_ok();
+            let resources = HrCaseFacts::load(tx, *actor.as_uuid(), &[context.employee_id]).await?;
+            let access = console_platform_authz::cedar_pbac::visible::load_facts(tx, org, *actor.as_uuid())
+                .await.map_err(HrError::from_kernel)?;
+            let holds = |feature| resources.authorize(&principal, Some(&access), feature, context.branch_id, context.employee_id).is_ok();
             let (authorized, open_states): (bool, &[&str]) = if rejecting {
                 (
                     holds(Feature::ExitCaseHrConfirm) || holds(Feature::ExitCaseHqConfirm),

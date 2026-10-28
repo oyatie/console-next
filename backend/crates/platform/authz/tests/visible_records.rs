@@ -5,11 +5,10 @@
 mod world;
 
 use console_platform_authz::Feature;
-use console_platform_authz::access::{NodeKind, NodeRef};
-use console_platform_authz::cedar_pbac::residual::SqlValue;
-use console_platform_authz::cedar_pbac::visible::load_facts;
+use console_platform_authz::access::NodeKind;
+use console_platform_authz::cedar_pbac::visible::{EmployeePlacement, load_facts};
 use console_platform_test_support::runtime_role_pool;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 use world::{KINDS, World, arm};
 
@@ -61,37 +60,36 @@ async fn employee_list_and_count_equal_point_decision_for_every_seeded_record(po
             Feature::EmployeeDirectoryRead,
             Feature::EmployeeDirectoryManage,
         ] {
-            let filter = facts
-                .visible(action.as_str(), NodeKind::Department, "e.org_unit_id", 1)
+            let filter = facts.visible_employees(action.as_str()).unwrap();
+            let from = " FROM employees e LEFT JOIN employment_resolved_assignments ea ON ea.org_id=e.org_id AND ea.employee_id=e.id WHERE ";
+            let mut list = QueryBuilder::<Postgres>::new(format!("SELECT e.id{from}"));
+            filter.push(&mut list);
+            let visible: Vec<Uuid> = list
+                .build_query_scalar()
+                .fetch_all(tx.as_mut())
+                .await
                 .unwrap();
-            let from = format!("FROM employees e WHERE {}", filter.where_sql);
-            let list_sql = format!("SELECT e.id {from}");
-            let mut list = sqlx::query_scalar::<_, Uuid>(sqlx::AssertSqlSafe(list_sql.as_str()));
-            let count_sql = format!("SELECT count(*) {from}");
-            let mut count = sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(count_sql.as_str()));
-            for bind in &filter.binds {
-                let SqlValue::TextArray(values) = bind else {
-                    panic!("scope-node filter must bind a text array")
-                };
-                list = list.bind(values);
-                count = count.bind(values);
-            }
-            let visible = list.fetch_all(tx.as_mut()).await.unwrap();
-            let count = count.fetch_one(tx.as_mut()).await.unwrap();
+            let mut count = QueryBuilder::<Postgres>::new(format!("SELECT count(*){from}"));
+            filter.push(&mut count);
+            let count: i64 = count
+                .build_query_scalar()
+                .fetch_one(tx.as_mut())
+                .await
+                .unwrap();
             assert_eq!(count, visible.len() as i64);
             assert!(foreign_records.iter().all(|id| !visible.contains(id)));
             for (id, unit) in &all {
-                let allowed = unit.is_some_and(|id| {
-                    facts
-                        .authorize(
-                            action.as_str(),
-                            NodeRef {
-                                kind: NodeKind::Department,
-                                id,
-                            },
-                        )
-                        .unwrap()
-                });
+                let allowed = facts
+                    .authorize(
+                        action.as_str(),
+                        EmployeePlacement {
+                            org_unit_id: *unit,
+                            workplace_id: None,
+                            legal_entity_id: None,
+                        }
+                        .node(w.org),
+                    )
+                    .unwrap();
                 assert_eq!(
                     visible.contains(id),
                     allowed,

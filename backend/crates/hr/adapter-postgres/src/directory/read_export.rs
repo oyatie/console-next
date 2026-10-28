@@ -172,9 +172,10 @@ impl HrService {
             return Err(export_purpose_required());
         };
 
-        let logged = filters.clone();
-        with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
+        let mut logged = filters;
+        let filters = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                logged.load_visibility(tx, &principal, Feature::ExcelDownload).await?;
                 let rows: i64 = counted_employees("SELECT count(*)", &logged)
                     .build_query_scalar()
                     .fetch_one(tx.as_mut())
@@ -205,7 +206,7 @@ impl HrService {
                     me,
                     json!({ "export_purpose": purpose, "row_count": rows, "export_log_id": log_id }),
                 )?;
-                Ok(((), vec![event]))
+                Ok((logged, vec![event]))
             })
         })
         .await?;

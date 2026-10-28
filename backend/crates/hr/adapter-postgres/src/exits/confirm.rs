@@ -16,9 +16,7 @@ use sqlx::{Postgres, Transaction};
 use time::{Date, OffsetDateTime, macros::format_description};
 use uuid::Uuid;
 
-use crate::authz::{
-    HqSecondPerson, authorize_hr_case, authorize_hr_scoped_write, exit_hq_second_person,
-};
+use crate::authz::{HqSecondPerson, authorize_hr_case, exit_hq_second_person};
 use crate::corrections::refusal;
 use crate::digest::sha256_hex;
 use crate::exits::audit::exit_case_audit_event;
@@ -86,7 +84,7 @@ impl HrService {
             // `hq_confirmation` boolean only selects which tier is attempted; the
             // capability + stored-state + distinct-actor checks are the authority.
             let exit_lifecycle_event_id = if body.hq_confirmation {
-                authorize_hr_scoped_write(&principal, Feature::ExitCaseHqConfirm, context.branch_id)
+                authorize_hr_case(tx, &principal, Feature::ExitCaseHqConfirm, context.branch_id, context.employee_id).await
                     .map_err(|_| {
                         HrError::from_kernel(KernelError::forbidden(
                             "HQ confirmation requires the exit-case HQ confirmation capability",
