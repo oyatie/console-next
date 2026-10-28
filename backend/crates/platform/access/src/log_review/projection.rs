@@ -17,12 +17,15 @@ pub(super) async fn in_tx(
     p: &Principal,
     period: &str,
 ) -> AccessResult<Value> {
+    let now: OffsetDateTime = sqlx::query_scalar("SELECT now()")
+        .fetch_one(tx.as_mut())
+        .await?;
     let rows: Vec<(Uuid, Option<Uuid>, OffsetDateTime, String, Value)> = sqlx::query_as(
-        "SELECT DISTINCT ON (action,COALESCE(after_snap->>'event_id','')) id,actor,created_at,action,\
+        "SELECT DISTINCT ON (action,COALESCE(after_snap->>'event_id',after_snap->>'summary','')) id,actor,created_at,action,\
          after_snap - 'evidence' - 'evidence_header' - 'chunk_ends' FROM audit_events \
          WHERE org_id=$1 AND target_type='access_log_review' AND target_id=$2 \
          AND action IN ('access_log_review.start','access_log_review.finding','access_log_review.complete') \
-         ORDER BY action,COALESCE(after_snap->>'event_id',''),created_at DESC,id DESC")
+         ORDER BY action,COALESCE(after_snap->>'event_id',after_snap->>'summary',''),created_at DESC,id DESC")
         .bind(p.org_id.as_uuid()).bind(format!("tenant:{period}")).fetch_all(tx.as_mut()).await?;
     let mut start = None;
     let mut completed = None;
@@ -48,9 +51,8 @@ pub(super) async fn in_tx(
                     && snapshot["outcome"].is_null()
                     && let Some(due) = snapshot["reason_due"].as_str()
                 {
-                    overdue |= OffsetDateTime::parse(due, &Rfc3339)
-                        .map_err(AccessError::internal)?
-                        < OffsetDateTime::now_utc();
+                    overdue |=
+                        OffsetDateTime::parse(due, &Rfc3339).map_err(AccessError::internal)? < now;
                 }
                 snapshot["id"] = json!(id);
                 snapshot["decided_by"] = json!(actor);
@@ -59,20 +61,28 @@ pub(super) async fn in_tx(
             }
         }
     }
-    let Some(start) = start else {
-        return Ok(
-            json!({"period":period,"scope":"tenant","reviewer":null,"started_at":null,
-            "reviewed_at":null,"flags_seen":null,"findings":[],"follow_up":{"open":0,"total":0},"state":"not_started"}),
-        );
-    };
-    let mut value = summary(start)?;
-    value["state"] = json!(if completed.is_some() {
-        "complete"
-    } else if overdue {
-        "overdue"
+    let frozen_due = start.as_ref().and_then(|s| s.3["due"].as_str());
+    let due = if let Some(due) = frozen_due {
+        OffsetDateTime::parse(due, &Rfc3339).map_err(AccessError::internal)?
     } else {
-        "open"
-    });
+        super::list::Rules::load(tx.as_mut(), p.org_id)
+            .await?
+            .due(tx.as_mut(), period)
+            .await?
+    };
+    let mut value = if let Some(start) = start {
+        summary(start)?
+    } else {
+        json!({"period":period,"scope":"tenant","reviewer":null,"started_at":null,
+            "reviewed_at":null,"flags_seen":null,"findings":[],"follow_up":{"open":0,"total":0},"state":"not_started"})
+    };
+    apply_deadline(&mut value, due, now, overdue)?;
+    if value["started_at"].is_null() {
+        return Ok(value);
+    }
+    if completed.is_some() {
+        value["state"] = json!("complete");
+    }
     value["reviewed_at"] = json!(
         completed
             .map(|at| at.format(&Rfc3339))
@@ -82,6 +92,23 @@ pub(super) async fn in_tx(
     value["findings"] = json!(findings);
     value["follow_up"] = json!({"open":open,"total":total});
     Ok(value)
+}
+
+pub(super) fn apply_deadline(
+    value: &mut Value,
+    due: OffsetDateTime,
+    now: OffsetDateTime,
+    finding_overdue: bool,
+) -> AccessResult<()> {
+    value["due"] = json!(due.format(&Rfc3339).map_err(AccessError::internal)?);
+    value["state"] = json!(if finding_overdue || due < now {
+        "overdue"
+    } else if value["started_at"].is_null() {
+        "not_started"
+    } else {
+        "open"
+    });
+    Ok(())
 }
 
 /// Read the current review without exposing its frozen internal chunks.

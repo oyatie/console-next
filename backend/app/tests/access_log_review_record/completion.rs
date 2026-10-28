@@ -70,7 +70,7 @@ async fn projection_and_start_replays_show_latest_state_without_evidence_chunks(
     let open = record::get(&service, p.clone(), "2026-09".into())
         .await
         .unwrap();
-    assert_eq!(open["state"], "open");
+    assert_eq!(open["state"], "overdue");
     assert_eq!(open["findings"].as_array().unwrap().len(), 1);
     assert_eq!(open["findings"][0]["decided_by"], json!(user));
     append(
@@ -86,7 +86,7 @@ async fn projection_and_start_replays_show_latest_state_without_evidence_chunks(
         record::get(&service, p.clone(), "2026-09".into())
             .await
             .unwrap()["state"],
-        "open"
+        "overdue"
     );
     append(
         &pool,
@@ -115,7 +115,7 @@ async fn projection_and_start_replays_show_latest_state_without_evidence_chunks(
     );
     assert_eq!(
         record::get(&service, p, "2026-07".into()).await.unwrap()["state"],
-        "not_started"
+        "overdue"
     );
 }
 

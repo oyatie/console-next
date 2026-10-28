@@ -13,8 +13,10 @@ use super::super::FLAG_CODES;
 use crate::{AccessError, AccessResult};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(super) struct Rules {
+pub(in crate::log_review) struct Rules {
     pub time_zone: String,
+    #[serde(default)]
+    due_business_days: Option<i64>,
     start_hour: Option<i64>,
     end_hour: Option<i64>,
     off_hours_min: Option<i64>,
@@ -34,6 +36,7 @@ impl Rules {
         use SettingKey::*;
         let keys = [
             AccessLogReviewTimeZone,
+            AccessLogReviewDueBusinessDays,
             AccessLogReviewOffHoursStartHour,
             AccessLogReviewOffHoursEndHour,
             AccessLogReviewOffHoursMin,
@@ -82,6 +85,22 @@ impl Rules {
                 .clone(),
         );
         serde_json::from_value(Value::Object(values)).map_err(AccessError::internal)
+    }
+
+    pub async fn due(&self, conn: &mut PgConnection, period: &str) -> AccessResult<OffsetDateTime> {
+        let day = super::period_day(period)?;
+        let days = self
+            .due_business_days
+            .ok_or_else(|| AccessError::internal("missing review deadline setting"))?;
+        // Count business dates from the exclusive period end; the due date includes its whole local day.
+        Ok(sqlx::query_scalar(
+            "SELECT (d + 1)::timestamp AT TIME ZONE $2 FROM \
+             (SELECT ($1::date+interval '1 month')::date+n AS d FROM \
+               generate_series(0,($3::int+cardinality($5::text[]))*7) n) dates \
+             WHERE NOT extract(isodow FROM d)::smallint=ANY($4::smallint[]) AND NOT d=ANY($5::text[]::date[]) \
+             ORDER BY d OFFSET ($3::int-1) LIMIT 1")
+            .bind(day).bind(&self.time_zone).bind(i32::try_from(days).map_err(AccessError::internal)?).bind(&self.weekend_isodays).bind(&self.holidays)
+            .fetch_one(conn).await?)
     }
 
     pub fn disabled_flags(&self) -> Vec<&'static str> {

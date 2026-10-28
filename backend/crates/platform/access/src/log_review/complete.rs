@@ -39,34 +39,40 @@ pub async fn complete(
         super::list::period_day(&period)?;
         record::lock(tx, &p, &period).await?;
         let mut value = projection::in_tx(tx, &p, &period).await?;
-        if value["state"] == "not_started" {
+        if value["started_at"].is_null() {
             return Err(AccessError::not_found("review_not_started","review has not started"));
         }
         let mut events = Vec::new();
         if value["state"] != "complete" {
-            let flags: Vec<Uuid> = sqlx::query_scalar(
-                "SELECT (f->>'event_id')::uuid FROM audit_events a \
+            let targets: Vec<Value> = sqlx::query_scalar(
+                "SELECT jsonb_build_object('event_id',f->'event_id') FROM audit_events a \
                  CROSS JOIN LATERAL jsonb_array_elements(a.after_snap#>'{evidence,flagged}') c \
                  CROSS JOIN LATERAL jsonb_array_elements(c) f \
+                 WHERE a.org_id=$1 AND a.id=$2 \
+                 UNION ALL SELECT jsonb_build_object('summary',s - 'count') FROM audit_events a \
+                 CROSS JOIN LATERAL jsonb_array_elements(a.after_snap#>'{evidence,summaries}') s \
                  WHERE a.org_id=$1 AND a.id=$2")
                 .bind(p.org_id.as_uuid()).bind(serde_json::from_value::<Uuid>(value["id"].clone()).map_err(AccessError::internal)?)
                 .fetch_all(tx.as_mut()).await?;
-            let findings: BTreeMap<Uuid, &Value> = value["findings"].as_array().ok_or_else(|| AccessError::internal("invalid findings"))?
-                .iter().map(|f| Ok((serde_json::from_value(f["event_id"].clone()).map_err(AccessError::internal)?, f))).collect::<AccessResult<_>>()?;
+            let findings: BTreeMap<String, &Value> = value["findings"].as_array().ok_or_else(|| AccessError::internal("invalid findings"))?
+                .iter().map(|f| (target_key(f), f)).collect();
             let mut open = Vec::new();
+            let mut open_summaries = Vec::new();
             let mut outcomes = BTreeMap::<String, usize>::new();
-            for id in &flags {
-                if let Some(finding) = findings.get(id) {
-                    if !matches!(finding["disposition"].as_str(), Some("confirmed" | "action_required"))
-                        || (finding["disposition"] == "action_required" && finding["outcome"].is_null())
-                        || (finding["follow_up"]["kind"] != "none" && finding["follow_up"]["closed"] != true) {
-                        open.push(*id);
-                    }
-                    if let Some(outcome) = finding["outcome"].as_str() { *outcomes.entry(outcome.into()).or_default() += 1; }
-                } else { open.push(*id); }
+            for target in &targets {
+                let finding = findings.get(&target_key(target));
+                if finding.is_none_or(|f| !resolved(f)) {
+                    if target["event_id"].is_null() { open_summaries.push(target["summary"].clone()); }
+                    else { open.push(target["event_id"].clone()); }
+                }
+                if let Some(outcome) = finding.and_then(|f| f["outcome"].as_str()) {
+                    *outcomes.entry(outcome.into()).or_default() += 1;
+                }
             }
-            if !open.is_empty() {
-                return Err(AccessError { details:Some(Box::new(json!({"open_event_ids":open}))), ..AccessError::conflict("review_incomplete","flagged events or follow-ups remain open") });
+            if !open.is_empty() || !open_summaries.is_empty() {
+                let mut details = json!({"open_event_ids":open});
+                if !open_summaries.is_empty() { details["open_summaries"] = json!(open_summaries); }
+                return Err(AccessError { details:Some(Box::new(details)), ..AccessError::conflict("review_incomplete","flagged events or summaries remain open") });
             }
             verify_step_up(&state, &p, step_up).await.map_err(|mut e| {
                 if e.kind == Refusal::StepUpRequired { e.code = "step_up_required"; }
@@ -75,10 +81,26 @@ pub async fn complete(
             let at: OffsetDateTime = sqlx::query_scalar("SELECT now()").fetch_one(tx.as_mut()).await?;
             value["state"] = json!("complete");
             value["reviewed_at"] = json!(at.format(&Rfc3339).map_err(AccessError::internal)?);
-            events.push(record::event(&p, &period, OPERATION)?.with_snapshots(None, Some(json!({"findings_total":flags.len(),"by_outcome":outcomes,"follow_ups_open":0}))));
+            events.push(record::event(&p, &period, OPERATION)?.with_snapshots(None, Some(json!({"findings_total":targets.len(),"by_outcome":outcomes,"follow_ups_open":0}))));
         }
         idempotency::complete_idempotency_key(tx, OPERATION, &key, &value).await?;
         Ok((value, events))
     })).await;
     record::refusal(s, &actor, &target, result).await
+}
+
+fn target_key(value: &Value) -> String {
+    if value["event_id"].is_null() {
+        value["summary"].to_string()
+    } else {
+        value["event_id"].to_string()
+    }
+}
+
+fn resolved(finding: &Value) -> bool {
+    matches!(
+        finding["disposition"].as_str(),
+        Some("confirmed" | "action_required")
+    ) && (finding["disposition"] != "action_required" || !finding["outcome"].is_null())
+        && (finding["follow_up"]["kind"] == "none" || finding["follow_up"]["closed"] == true)
 }

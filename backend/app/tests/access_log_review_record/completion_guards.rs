@@ -74,7 +74,7 @@ async fn projection_and_completion_reload_cedar_and_keep_other_tenants_out(pool:
         record::get(&service, other_p.clone(), "2026-09".into())
             .await
             .unwrap()["state"],
-        "not_started"
+        "overdue"
     );
     assert_eq!(
         record::complete(
@@ -149,7 +149,7 @@ async fn projection_and_completion_reload_cedar_and_keep_other_tenants_out(pool:
         record::get(&service, p.clone(), "2026-09".into())
             .await
             .unwrap()["state"],
-        "open"
+        "overdue"
     );
     assert_eq!(
         record::complete(
@@ -234,7 +234,7 @@ async fn completion_refuses_expired_or_wrong_user_step_up_and_rolls_back_audit_f
         record::get(&service, p.clone(), "2026-09".into())
             .await
             .unwrap()["state"],
-        "open"
+        "overdue"
     );
     let reservations: i64 = sqlx::query_scalar("SELECT count(*) FROM api_idempotency_keys WHERE org_id=$1 AND operation='access_log_review.complete'").bind(org.as_uuid()).fetch_one(&pool).await.unwrap();
     assert_eq!(reservations, 0);

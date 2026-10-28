@@ -86,7 +86,7 @@ pub(super) fn summary(row: StartRow) -> AccessResult<Value> {
     Ok(
         json!({"id":id,"period":snapshot["period"],"scope":"tenant","reviewer":reviewer,
         "started_at":at.format(&time::format_description::well_known::Rfc3339).map_err(AccessError::internal)?,
-        "reviewed_at":null,"flags_seen":snapshot,"findings":[],"follow_up":{"open":0,"total":0},"state":"open"}),
+        "reviewed_at":null,"due":snapshot["due"],"flags_seen":snapshot,"findings":[],"follow_up":{"open":0,"total":0},"state":"open"}),
     )
 }
 
@@ -148,6 +148,7 @@ pub async fn start(
             super::projection::in_tx(tx, &p, &period).await?
         } else {
             let prepared = prepare_in_tx(tx.as_mut(), p.org_id, &period).await?;
+            let due = prepared.due(tx.as_mut(), &period).await?;
             let flag_hash = prepared.flag_set_sha256()?;
             let mut evidence = serde_json::to_value(prepared).map_err(AccessError::internal)?;
             let mut rules = serde_json::Map::new();
@@ -166,13 +167,15 @@ pub async fn start(
             evidence["flagged"] = json!([]);
             evidence["summaries"] = json!([]);
             let snapshot = json!({"scope":"tenant","period":{"from":evidence["from"],"to":evidence["to"],"time_zone":evidence["rules"]["time_zone"]},
-                "events_total":evidence["totals"]["events"],"flagged_total":evidence["totals"]["flagged"],
+                "due":due.format(&time::format_description::well_known::Rfc3339).map_err(AccessError::internal)?,"events_total":evidence["totals"]["events"],"flagged_total":evidence["totals"]["flagged"],
                 "by_flag":evidence["totals"]["by_flag"],"flag_set_sha256":flag_hash,"rules":rules,
                 "evidence_header":evidence,"chunk_ends":ends,"evidence":{"flagged":chunks,"summaries":summaries}});
             let audit = event(&p, &period, OPERATION)?.with_snapshots(None, Some(snapshot.clone()));
             let created_at = sqlx::query_scalar("SELECT now()").fetch_one(tx.as_mut()).await?;
             let value = summary((*audit.id.as_uuid(), Some(*p.user_id.as_uuid()), created_at, snapshot))?;
             events.push(audit);
+            let mut value = value;
+            super::projection::apply_deadline(&mut value, due, created_at, false)?;
             value
         };
         idempotency::complete_idempotency_key(tx, OPERATION, &key, &value).await?;
