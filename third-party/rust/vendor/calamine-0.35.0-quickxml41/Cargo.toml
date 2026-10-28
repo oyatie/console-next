@@ -133,7 +133,7 @@ features = ["encoding"]
 version = "1.0"
 
 [dependencies.zip]
-version = "7.0"
+version = "9.0"
 features = ["deflate"]
 default-features = false
 
