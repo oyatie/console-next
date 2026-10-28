@@ -53,6 +53,8 @@ impl PgOrgChangeStore {
 
         with_audits(&self.pool, org, |tx| {
             Box::pin(async move {
+                let access = console_platform_authz::cedar_pbac::visible::load_facts(tx, org, *actor.as_uuid()).await?;
+                super::draft_admission::require(&access, org, actor, &command.target)?;
                 if let Some(row) = sqlx::query(
                     "SELECT id, request_fingerprint FROM org_change_requests \
                      WHERE idempotency_key = $1",

@@ -13,6 +13,7 @@ fn allows_each_documented_transition() {
         (S::Prechecked, S::Approved),
         (S::InApproval, S::Approved),
         (S::InApproval, S::Rejected),
+        (S::InApproval, S::Cancelled),
         (S::Approved, S::Applied),
         // A legacy SETTLING 폐지 still archives (org-05: none opens now).
         (S::Settling, S::Archived),
@@ -32,7 +33,6 @@ fn rejects_illegal_terminal_and_skip_transitions() {
         // Preflight persists nothing: no caller may promote a DRAFT to
         // PRECHECKED. Re-introducing the write fails here, with no database.
         (S::Draft, S::Prechecked),
-        (S::InApproval, S::Cancelled),
         (S::Approved, S::Archived),
         (S::Applied, S::Draft),
         (S::Archived, S::Settling),

@@ -6,6 +6,8 @@ summary: Draft an org change (조직 개편 기안)
 description: Creates a DRAFT org-change request. Requires an Idempotency-Key; a replay of the same body under
   the same key returns the existing request with 200, a different body under the same key conflicts. A revision
   may supersede an existing request only when that request is REJECTED.
+  Cedar checks draft authority at the target scope, including legacy-role compatibility.
+  Missing authority returns 404 org_change.refuse.missing_grant, matching edit, preflight, submit and cancel.
 security:
 - bearerAuth: []
 parameters:

@@ -10006,7 +10006,7 @@ export interface paths {
         put?: never;
         /**
          * Draft an org change (조직 개편 기안)
-         * @description Creates a DRAFT org-change request. Requires an Idempotency-Key; a replay of the same body under the same key returns the existing request with 200, a different body under the same key conflicts. A revision may supersede an existing request only when that request is REJECTED.
+         * @description Creates a DRAFT org-change request. Requires an Idempotency-Key; a replay of the same body under the same key returns the existing request with 200, a different body under the same key conflicts. A revision may supersede an existing request only when that request is REJECTED. Cedar checks draft authority at the target scope, including legacy-role compatibility. Missing authority returns 404 org_change.refuse.missing_grant, matching edit, preflight, submit and cancel.
          */
         post: operations["createOrgChange"];
         delete?: never;
@@ -10089,8 +10089,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Cancel a draft or a scheduled change
-         * @description DRAFT or PRECHECKED, or APPROVED before its 시행일 (예약 취소). Under approval.policy.org_structure = route an approved change is cancelled only by a caller holding org_change_apply (403 org_change_scheduled_locked); a change in approval resolves through the chain, never a cancel.
+         * Cancel a draft, withdraw a submitted change, or cancel a scheduled change
+         * @description DRAFT or PRECHECKED, or APPROVED before its 시행일 (예약 취소). Under approval.policy.org_structure = route an approved change is cancelled only by a caller holding org_change_apply (403 org_change_scheduled_locked); IN_APPROVAL can be withdrawn only by its drafter, including after their grant ends (403 org_change.refuse.not_drafter for another caller with draft authority). Create, edit, preflight, submit and draft cancellation share the same scoped Cedar draft decision, retaining legacy-role compatibility. Missing draft authority returns 404 org_change.refuse.missing_grant before any scheduled-lock refusal, with the same body as an unknown id. Withdrawal preserves the stored chain and prior decisions; later decisions refuse with lifecycle.refuse.withdrawn.
          */
         post: operations["cancelOrgChange"];
         delete?: never;

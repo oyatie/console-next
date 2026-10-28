@@ -1,7 +1,7 @@
 //! Authenticated org-change routes (STORY-ORG-001).
 //!
-//! Deny-by-default authorization: every route checks an explicit role floor
-//! before touching the store, and RLS `org_isolation` conceals out-of-scope
+//! Draft creation, editing, preflight, submit and cancellation share Cedar
+//! authority inside the store transaction. RLS `org_isolation` conceals out-of-scope
 //! rows (absent and forbidden objects are both 404 — deny by omission).
 //!
 //! Feature floors: `org_change_read/draft/approve/apply` are

@@ -90,19 +90,17 @@ impl PgOrgChangeStore {
         actor: UserId,
         id: Uuid,
         reason: String,
-        holds_apply: bool,
     ) -> Result<OrgChangeDetail, PgOrgChangeError> {
         bounded_text(&reason, "reason", 4000)?;
         let org = current_org().map_err(KernelError::from)?;
-        let now = OffsetDateTime::now_utc();
         with_audits(&self.pool, org, |tx| {
             Box::pin(async move {
-                let request = lock_request(tx, id).await?;
+                let (request, access) = super::draft_admission::lock(tx, org, actor, id).await?;
+                super::cancel_admission::admit(tx, org, actor, &request, &access).await?;
                 request
                     .status
                     .can_transition_to(OrgChangeStatus::Cancelled)?;
-                // 예약 취소 (org-02): a scheduled change is cancelled before its date.
-                may_touch_scheduled(tx, org, &request, holds_apply).await?;
+                let now = OffsetDateTime::now_utc();
                 sqlx::query(
                     "UPDATE org_change_requests SET status = 'CANCELLED', updated_at = $2 \
                      WHERE id = $1",

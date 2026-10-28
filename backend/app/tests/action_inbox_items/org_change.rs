@@ -25,26 +25,12 @@ pub(super) async fn actor(pool: &PgPool, org: Uuid) -> UserId {
 }
 
 pub(super) async fn snapshot(pool: &PgPool, id: Uuid) -> Value {
-    sqlx::query_scalar("SELECT jsonb_build_array(to_jsonb(r), (SELECT jsonb_agg(to_jsonb(s) ORDER BY step_order) FROM org_change_approval_steps s WHERE request_id=r.id), (SELECT count(*) FROM gov_approvals), (SELECT count(*) FROM org_change_events), (SELECT count(*) FROM audit_events WHERE action='org_change.step.decide')) FROM org_change_requests r WHERE id=$1")
+    sqlx::query_scalar("SELECT jsonb_build_array(to_jsonb(r), (SELECT jsonb_agg(to_jsonb(s) ORDER BY step_order) FROM org_change_approval_steps s WHERE request_id=r.id), (SELECT count(*) FROM gov_approvals), (SELECT count(*) FROM org_change_events), (SELECT count(*) FROM audit_events WHERE action IN ('org_change.step.decide','org_change.cancel'))) FROM org_change_requests r WHERE id=$1")
         .bind(id).fetch_one(pool).await.unwrap()
 }
 
 pub(super) fn path(id: Uuid, step: Uuid) -> String {
     format!("/api/v1/org-changes/{id}/approval-steps/{step}/decision")
-}
-
-pub(super) fn assert_legacy_error(body: &Value) {
-    assert!(body.is_object(), "{body}");
-    for field in ["code", "message"] {
-        assert!(
-            body["error"][field].as_str().is_some_and(|s| !s.is_empty()),
-            "{body}"
-        );
-    }
-    assert!(
-        body["error"].get("current_version").is_none(),
-        "opaque versions belong in optional details: {body}"
-    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -87,7 +73,7 @@ async fn prior_decider_and_same_person_alias_cannot_decide_another_step(pool: Pg
                 )
                 .await;
             assert_eq!(status, StatusCode::CONFLICT, "{refused}");
-            assert_legacy_error(&refused);
+            super::contract::assert_decision_error(&refused);
             assert_eq!(refused["error"]["code"], "org_change_sod_violation");
             assert!(
                 refused["error"]["support_ref"]
@@ -137,7 +123,7 @@ async fn stale_merge_and_withdrawn_are_coded_without_writes(pool: PgPool) {
         let before = snapshot(&pool, id).await;
         let (status, refused) = ctx.call("POST", &path(id, steps[0]), Some(body)).await;
         assert_eq!(status, StatusCode::CONFLICT, "{refused}");
-        assert_legacy_error(&refused);
+        super::contract::assert_decision_error(&refused);
         assert_eq!(refused["error"]["code"], code);
         assert!(
             refused["error"]["support_ref"]
@@ -166,7 +152,7 @@ async fn stale_merge_and_withdrawn_are_coded_without_writes(pool: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT, "{refused}");
-    assert_legacy_error(&refused);
+    super::contract::assert_decision_error(&refused);
     assert_eq!(refused["error"]["code"], "lifecycle.refuse.withdrawn");
     assert_eq!(snapshot(&pool, id).await, before);
 }
