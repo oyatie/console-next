@@ -251,3 +251,8 @@ async fn view_as_access_events_keep_the_operator_tag_and_tenant_subjects(pool: P
 mod remaining;
 #[path = "attendance_access_log/view_as.rs"]
 mod view_as;
+
+#[path = "attendance_access_log/scopes.rs"]
+mod scopes;
+#[path = "attendance_access_log/subjects.rs"]
+mod subjects;

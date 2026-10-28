@@ -22,15 +22,15 @@ use crate::PgAttendanceStore;
 const READ_SQL: &str = "SELECT l.id, l.scope_kind, COALESCE(l.legal_entity_id, l.workplace_id, l.org_unit_id, l.crew_id, l.employee_id) AS scope_id, \
      l.pattern_id, p.name AS pattern_name, l.effective_from, l.effective_to, l.rotation_start, l.start_choice, l.reason, \
      l.evidence_ref, l.version, l.status, l.cancel_reason, l.created_at, COALESCE(cu.display_name, '') AS created_by_name, \
-     l.cancelled_at, xu.display_name AS cancelled_by_name, e.name AS person_name, \
+     cu.id AS created_by, xu.id AS cancelled_by, l.cancelled_at, xu.display_name AS cancelled_by_name, e.name AS person_name, \
      (SELECT min(n.effective_from) FROM attendance_schedule_layers n WHERE n.status = 'ACTIVE' AND n.effective_to IS NULL \
         AND n.scope_kind = l.scope_kind AND n.effective_from > l.effective_from \
         AND COALESCE(n.legal_entity_id, n.workplace_id, n.org_unit_id, n.crew_id, n.employee_id) \
           = COALESCE(l.legal_entity_id, l.workplace_id, l.org_unit_id, l.crew_id, l.employee_id)) AS next_from \
      FROM attendance_schedule_layers l JOIN attendance_work_patterns p ON p.id = l.pattern_id AND p.org_id = l.org_id \
-     LEFT JOIN users cu ON cu.id = l.created_by AND cu.org_id = l.org_id \
-     LEFT JOIN users xu ON xu.id = l.cancelled_by AND xu.org_id = l.org_id \
-     LEFT JOIN employees e ON e.id = l.employee_id AND e.org_id = l.org_id";
+     LEFT JOIN person_accounts_current cu ON cu.id = l.created_by AND cu.org_id = l.org_id \
+     LEFT JOIN person_accounts_current xu ON xu.id = l.cancelled_by AND xu.org_id = l.org_id \
+     LEFT JOIN person_employees_current e ON e.id = l.employee_id AND e.org_id = l.org_id";
 
 pub(crate) fn scope_name(u: &Universe, level: Level, id: Uuid, person: Option<String>) -> String {
     match level {
@@ -66,6 +66,13 @@ async fn reads(
             let from = r.try_get("effective_from")?;
             let to = r.try_get("effective_to")?;
             Ok(LayerRead {
+                access_subject_users: [
+                    r.try_get::<Option<Uuid>, _>("created_by")?,
+                    r.try_get("cancelled_by")?,
+                ]
+                .into_iter()
+                .flatten()
+                .collect(),
                 id: r.try_get("id")?,
                 scope_kind: level,
                 scope_id,

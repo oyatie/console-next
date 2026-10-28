@@ -11,7 +11,7 @@
 
 use console_kernel_core::{AccessScopeLevel, AuditAction, AuditEvent, KernelError, TraceContext};
 use console_platform_authz::Principal;
-use console_platform_db::{DbError, with_audit};
+use console_platform_db::{DbError, with_audit, with_org_conn};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use time::OffsetDateTime;
@@ -107,4 +107,61 @@ pub async fn record_access(
     let event = access_event(principal, record)
         .map_err(|error| DbError::Sqlx(sqlx::Error::Protocol(error.to_string())))?;
     with_audit(pool, event, |_tx| Box::pin(async { Ok(()) })).await
+}
+
+/// Resolve account subjects to employees in one tenant-scoped lookup. Mark
+/// `self_read` only when every person and user-only account shown is the reader.
+pub async fn record_person_access(
+    pool: &PgPool,
+    principal: &Principal,
+    record: AccessRecord<'_>,
+    user_subject_ids: &[Uuid],
+) -> Result<(), DbError> {
+    let users = user_subject_ids.to_vec();
+    let reader = *principal.user_id.as_uuid();
+    let org = principal.org_id;
+    let links: Vec<(Uuid, Option<Uuid>, bool, bool)> = with_org_conn(pool, org, |tx| {
+        Box::pin(async move {
+            sqlx::query_as("SELECT id,employee_id,id=$1,id=ANY($2) FROM users WHERE org_id=$3 AND (id=$1 OR id=ANY($2))")
+                .bind(reader).bind(users).bind(org.as_uuid()).fetch_all(tx.as_mut()).await.map_err(DbError::from)
+        })
+    }).await?;
+    let mut subjects = record.subject_ids.to_vec();
+    let mut user_only: std::collections::BTreeSet<_> = user_subject_ids.iter().copied().collect();
+    let mut own = None;
+    for (user, employee, is_reader, is_subject) in links {
+        if is_reader {
+            own = employee;
+        }
+        if is_subject {
+            subjects.extend(employee);
+            if employee.is_some() {
+                user_only.remove(&user);
+            }
+        }
+    }
+    subjects.sort_unstable();
+    subjects.dedup();
+    let mut details = record.details.as_object().cloned().unwrap_or_default();
+    details.insert("user_subject_ids".into(), json!(user_only));
+    // Account-only principals also participate in the self-read decision.
+    details.insert(
+        "self_read".into(),
+        json!(
+            (!subjects.is_empty() || !user_only.is_empty())
+                && subjects.iter().all(|id| Some(*id) == own)
+                && user_only.iter().all(|id| *id == reader)
+        ),
+    );
+    record_access(
+        pool,
+        principal,
+        AccessRecord {
+            subject_ids: &subjects,
+            reader_subject: own,
+            details: Value::Object(details),
+            ..record
+        },
+    )
+    .await
 }

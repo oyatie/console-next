@@ -5,7 +5,9 @@ use axum::http::{Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use console_platform_authz::Principal;
-use console_platform_request_context::audit_context::access_log::{AccessRecord, record_access};
+use console_platform_request_context::audit_context::access_log::{
+    AccessRecord, record_access, record_person_access,
+};
 use uuid::Uuid;
 
 pub(crate) async fn read(
@@ -32,13 +34,26 @@ pub(crate) async fn read(
         },
     )
     .await
-    .map_err(|_| {
-        RestError::new(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "unavailable",
-            "attendance access record could not be recorded",
-        )
-    })
+    .map_err(|_| access_unavailable())
+}
+
+pub(crate) async fn read_record(
+    state: &AttendanceRestState,
+    principal: &Principal,
+    record: AccessRecord<'_>,
+    user_subject_ids: &[Uuid],
+) -> Result<(), RestError> {
+    record_person_access(state.store.pool(), principal, record, user_subject_ids)
+        .await
+        .map_err(|_| access_unavailable())
+}
+
+fn access_unavailable() -> RestError {
+    RestError::new(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "unavailable",
+        "attendance access record could not be recorded",
+    )
 }
 
 pub(crate) async fn record(

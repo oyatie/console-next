@@ -103,7 +103,30 @@ pub(crate) async fn members(
     Path(id): Path<Uuid>,
     Query(q): Query<AsOfQuery>,
 ) -> Result<Response, RestError> {
-    let (a, _) = actor(&s, &h, Need::Read, Target::Tenant).await?;
+    let (a, _, gate) = crate::auth::read_gate(&s, &h, Need::Read, Target::Tenant).await?;
     let options = validated(&s, &a, q.parse()).await?;
-    Ok(Json(s.store.structure_members_at(&a, id, options).await?).into_response())
+    let members = s.store.structure_members_at(&a, id, options).await?;
+    let subjects: Vec<_> = members.items.iter().map(|m| m.employee_id).collect();
+    console_platform_request_context::audit_context::access_log::record_person_access(
+        s.store.pool(),
+        &gate.principal,
+        console_platform_request_context::audit_context::access_log::AccessRecord {
+            action: "org_unit.members_read",
+            target_type: "org_unit",
+            target_id: id.to_string(),
+            subject_ids: &subjects,
+            reader_subject: None,
+            details: json!({}),
+        },
+        &[],
+    )
+    .await
+    .map_err(|_| {
+        console_entity_domain::Refusal::new(
+            console_kernel_core::ErrorKind::Unavailable,
+            "unavailable",
+            "org unit access record could not be recorded",
+        )
+    })?;
+    Ok(Json(members).into_response())
 }

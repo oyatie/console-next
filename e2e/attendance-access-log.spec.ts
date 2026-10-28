@@ -27,11 +27,11 @@ test("attendance reads commit one access row naming the people returned", { tag:
   const records = () => {
     const output = psql(slug, `SELECT COALESCE(json_agg(json_build_object(
       'action', action, 'actor', actor, 'occurred_at', occurred_at, 'ip', ip,
-      'after', after_snap)), '[]'::json) FROM audit_events
-      WHERE org_id=current_setting('app.current_org')::uuid AND action LIKE 'attendance.%_read';`);
+      'after', after_snap) ORDER BY occurred_at, id), '[]'::json) FROM audit_events
+      WHERE org_id=current_setting('app.current_org')::uuid AND (action LIKE 'attendance.%_read' OR action IN ('org_unit.read','org_unit.members_read'));`);
     return JSON.parse(output.split("\n").find(line => line.startsWith("["))!) as {
       action: string; actor: string; occurred_at: string; ip: string;
-      after: { subject_ids: string[]; subject_count: number; session_id: string };
+      after: { subject_ids: string[]; subject_count: number; session_id: string; self_read: boolean; user_subject_ids?: string[] };
     }[];
   };
   const month = kstDate().slice(0, 7);
@@ -48,14 +48,30 @@ test("attendance reads commit one access row naming the people returned", { tag:
     expect(subjects).not.toHaveLength(0);
     const rows = records();
     expect(rows).toHaveLength(before + 1);
-    const row = rows.filter(row => row.action === action).at(-1)!;
+    const row = rows.slice(before)[0]!;
+    expect(row.action).toBe(action);
     expect(row.after.subject_ids.sort()).toEqual(subjects.sort());
     expect(row.after.subject_count).toBe(subjects.length);
+    expect(row.after).not.toHaveProperty("employee_subject_ids");
     expect(row.actor).toMatch(/^[0-9a-f-]{36}$/);
     expect(row.after.session_id).toMatch(/^[0-9a-f-]{36}$/);
     expect(row.ip).toBeTruthy();
     expect(Date.parse(row.occurred_at)).not.toBeNaN();
   }
+  const unitsResponse = await api("/org-units");
+  expect(unitsResponse.status(), await unitsResponse.text()).toBe(200);
+  const units = await unitsResponse.json() as { items: { id: string; kind: string }[] };
+  const company = units.items.find(unit => unit.kind === "COMPANY")!;
+  const department = units.items.find(unit => unit.kind === "DEPARTMENT")!;
+  const reader = records().at(-1)!.actor;
+  const ownPerson = people.items[0]!.id;
+  const seededClose = psql(slug, `UPDATE users SET employee_id='${ownPerson}'::uuid WHERE id='${reader}'::uuid;
+    INSERT INTO attendance_month_closes(org_id,month,checks,attested_by,branch_id)
+    VALUES(current_setting('app.current_org')::uuid,'${month}-01'::date,
+      '{"open_exceptions":0,"pending_leave":0,"already_closed":false}'::jsonb,'${reader}'::uuid,
+      (SELECT home_branch_id FROM employees WHERE id='${ownPerson}'::uuid))
+    RETURNING json_build_object('branch_id',branch_id);`);
+  const closeBranch = (JSON.parse(seededClose.split("\n").find(line => line.startsWith("{"))!) as { branch_id: string }).branch_id;
   const monday = new Date(`${kstDate()}T00:00:00Z`);
   monday.setUTCDate(monday.getUTCDate() - (monday.getUTCDay() + 6) % 7);
   for (const [path, action, subjects] of [
@@ -64,17 +80,27 @@ test("attendance reads commit one access row naming the people returned", { tag:
     [`/attendance/exceptions?month=${month}`, "attendance.exceptions_read", []],
     [`/attendance/substitutions?month=${month}`, "attendance.substitutions_read", []],
     ["/attendance/crews", "attendance.crews_read", []],
+    [`/attendance/schedule/layers?scope_kind=PERSON&scope_id=${people.items[0]!.id}`, "attendance.layers_read", []],
+    ["/attendance/schedule/tree", "attendance.schedule_tree_read", people.items.map(person => person.id)],
+    [`/attendance/closes?month=${month}&branch_id=${closeBranch}`, "attendance.closes_read", [ownPerson]],
+    [`/org-units/${company.id}`, "org_unit.read", people.items.map(person => person.id)],
+    [`/org-structure/units/${department.id}/members`, "org_unit.members_read", people.items.map(person => person.id)],
     [`/attendance/me/exceptions?month=${month}`, "attendance.own_exceptions_read", []],
-    [`/attendance/me/week52?week_start=${monday.toISOString().slice(0, 10)}`, "attendance.own_week52_read", []],
+    [`/attendance/me/week52?week_start=${monday.toISOString().slice(0, 10)}`, "attendance.own_week52_read", [ownPerson]],
   ] as const) {
     const before = records().length;
     const response = await api(path);
     expect(response.status(), await response.text()).toBe(200);
     const rows = records();
     expect(rows).toHaveLength(before + 1);
-    const row = rows.filter(row => row.action === action).at(-1)!;
-    expect(row.after.subject_ids.sort()).toEqual([...subjects].sort());
+    const row = rows.slice(before)[0]!;
+    expect(row.action).toBe(action);
+    expect(row.after.subject_ids.sort(), action).toEqual([...subjects].sort());
     expect(row.after.subject_count).toBe(subjects.length);
+    expect(row.after).not.toHaveProperty("employee_subject_ids");
+    if (["attendance.layers_read", "attendance.schedule_tree_read", "attendance.closes_read", "org_unit.read", "org_unit.members_read"].includes(action)) {
+      expect(row.after.self_read, action).toBe(subjects.length === 1 && subjects[0] === ownPerson);
+    }
     expect(row.after.session_id).toMatch(/^[0-9a-f-]{36}$/);
     expect(row.actor).toMatch(/^[0-9a-f-]{36}$/);
     expect(row.ip).toBeTruthy();
@@ -83,6 +109,25 @@ test("attendance reads commit one access row naming the people returned", { tag:
     expect(anonymous.status()).toBe(401);
     expect(records()).toHaveLength(rows.length);
   }
+  const amended = psql(slug, `WITH actor AS (
+      INSERT INTO users(display_name,roles,org_id,is_active)
+      VALUES('정정 담당자',ARRAY[]::text[],current_setting('app.current_org')::uuid,true) RETURNING id
+    ) INSERT INTO attendance_close_amendments(org_id,close_id,reason,detail,idempotency_key,request_fingerprint,actor_user_id)
+      SELECT c.org_id,c.id,'정정','접속기록 확인',gen_random_uuid()::text,repeat('a',64),actor.id
+      FROM attendance_month_closes c CROSS JOIN actor WHERE c.org_id=current_setting('app.current_org')::uuid
+      RETURNING json_build_object('actor',actor_user_id);`);
+  const amendmentActor = (JSON.parse(amended.split("\n").find(line => line.startsWith("{"))!) as { actor: string }).actor;
+  const beforeAmendmentRead = records().length;
+  const closeResponse = await api(`/attendance/closes?month=${month}&branch_id=${closeBranch}`);
+  expect(closeResponse.status(), await closeResponse.text()).toBe(200);
+  const amendedRows = records();
+  expect(amendedRows).toHaveLength(beforeAmendmentRead + 1);
+  const closeRead = amendedRows.at(-1)!;
+  expect(closeRead.after.subject_ids).toEqual([ownPerson]);
+  expect(closeRead.after.subject_count).toBe(1);
+  expect(closeRead.after.user_subject_ids).toEqual([amendmentActor]);
+  expect(closeRead.after.self_read).toBe(false);
+  expect(closeRead.after).not.toHaveProperty("employee_subject_ids");
   const before = records().length;
   const anonymous = await admin.request.get(`/api/v1/attendance/month?month=${month}`);
   expect(anonymous.status()).toBe(401);

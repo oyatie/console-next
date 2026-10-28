@@ -31,6 +31,7 @@ use uuid::Uuid;
 
 #[path = "records_audit.rs"]
 mod audit;
+mod closes_read;
 mod read_dto;
 mod self_service;
 use read_dto::{SubstitutionCandidateDto, Week52BoardDto, Week52RowDto};
@@ -171,7 +172,10 @@ pub fn router(state: AttendanceRestState) -> Router {
             ATTENDANCE_SUBSTITUTION_CANCEL_PATH,
             post(cancel_substitution),
         )
-        .route(ATTENDANCE_CLOSES_PATH, get(list_closes).post(close_month))
+        .route(
+            ATTENDANCE_CLOSES_PATH,
+            get(closes_read::list_closes).post(close_month),
+        )
         .route(ATTENDANCE_CLOSE_AMEND_PATH, post(amend_close))
         .route(ATTENDANCE_WEEK52_PATH, get(week52))
         .route(ATTENDANCE_WEEK52_ACK_PATH, post(acknowledge_week52))
@@ -1025,97 +1029,6 @@ async fn close_preflight(
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct CloseListQuery {
-    month: String,
-    branch_id: Option<Uuid>,
-}
-async fn list_closes(
-    State(state): State<AttendanceRestState>,
-    headers: HeaderMap,
-    AttendanceQuery(q): AttendanceQuery<CloseListQuery>,
-) -> Result<Json<MonthCloseBoardDto>, RestError> {
-    let p = principal(&state, &headers).await?;
-    require_for_branch(&p, READ, q.branch_id)?;
-    record_read("closes");
-    let month = AttendanceDateRange::selected_month_with_buffer(&q.month)
-        .map_err(|error| {
-            RestError::new(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "validation",
-                error.to_string(),
-            )
-        })?
-        .from;
-    let preflight = state
-        .store
-        .close_checks(
-            &scope(&p),
-            &CloseMonth {
-                month: q.month.clone(),
-                branch_scope: q.branch_id,
-                attest: false,
-            },
-        )
-        .await
-        .map_err(RestError::store)?;
-    let closes = state
-        .store
-        .list_closes(&scope(&p), q.branch_id, month)
-        .await
-        .map_err(RestError::store)?;
-    let open = |checks: &[console_attendance_application::CloseCheckRead],
-                key: &str|
-     -> Result<i64, RestError> {
-        checks
-            .iter()
-            .find(|check| check.key == key)
-            .and_then(|check| check.note.as_deref())
-            .and_then(|note| note.parse().ok())
-            .ok_or_else(|| {
-                RestError::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal",
-                    "close checks are invalid",
-                )
-            })
-    };
-    let items = if closes.is_empty() {
-        vec![MonthCloseItemDto {
-            branch_scope: q
-                .branch_id
-                .map(|id| id.to_string())
-                .unwrap_or_else(|| "org".into()),
-            closed: false,
-            close: None,
-            open_exceptions: open(&preflight.checks, "open_exceptions")?,
-            pending_leave: open(&preflight.checks, "pending_leave")?,
-        }]
-    } else {
-        closes
-            .into_iter()
-            .map(|close| {
-                let open_exceptions = open(&close.checks, "open_exceptions")?;
-                let pending_leave = open(&close.checks, "pending_leave")?;
-                Ok(MonthCloseItemDto {
-                    branch_scope: close
-                        .branch_id
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "org".into()),
-                    closed: true,
-                    close: Some(MonthCloseDto::from(close)),
-                    open_exceptions,
-                    pending_leave,
-                })
-            })
-            .collect::<Result<Vec<_>, RestError>>()?
-    };
-    Ok(Json(MonthCloseBoardDto {
-        month: q.month,
-        items,
-    }))
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct AmendCloseBody {
     reason: String,
     detail: String,
@@ -1405,7 +1318,9 @@ mod tests {
             "/api/v1/attendance/substitution-candidates?unexpected=true",
         );
         assert_invalid_query::<ListQuery>("/api/v1/attendance/exceptions?unexpected=true");
-        assert_invalid_query::<CloseListQuery>("/api/v1/attendance/closes?unexpected=true");
+        assert_invalid_query::<closes_read::CloseListQuery>(
+            "/api/v1/attendance/closes?unexpected=true",
+        );
         assert_invalid_query::<Week52Query>("/api/v1/attendance/week52?unexpected=true");
         assert_invalid_query::<self_service::OwnExceptionsQuery>(
             "/api/v1/attendance/me/exceptions?employee_id=00000000-0000-0000-0000-000000000001",

@@ -92,7 +92,7 @@ pub(crate) fn actor_of(principal: &Principal) -> Actor {
 /// Decides `legal_entity_manage` for one record after the read (the reader's
 /// verbs: worst-case-08 offers only what the grant allows).
 pub(crate) struct Gate {
-    principal: Principal,
+    pub(crate) principal: Principal,
     scope: EntityScope,
 }
 
