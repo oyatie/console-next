@@ -89,9 +89,14 @@ test("P1-2 blocking payroll documents keep their legal date and completion path 
 test("P1-3 header and countdown follow the tenant deadline window @ui-state", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
   await mockExitCase(page, "reported");
-  const settings = (days: number) => mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { items: [{
+  const settings = (days: number) => mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [{
     key: "display.deadline_due_soon_days", kind: { type: "int", unit: "days" }, default: days, value: days,
     looser_when: "neutral", governance: "read_only", legal_basis: null, version: "code_default", effective_from: null, scheduled: [],
+    source: { layer: "code_default", scope_entity_id: null },
+    chain: [
+      { layer: "tenant", scope_entity_id: null, value: null, effective_from: null, deciding: false },
+      { layer: "code_default", scope_entity_id: null, value: days, effective_from: null, deciding: true },
+    ],
   }] } });
   try {
     for (const days of [2, 12]) {

@@ -36,7 +36,7 @@ use console_platform_authz::Principal;
 use console_platform_request_context::current_audit_context;
 use console_settings_adapter_postgres::PgSettingsStore;
 use console_settings_application::{Actor, ChangeSetting};
-use console_settings_domain::SettingKey;
+use console_settings_domain::{Direction, SettingKey};
 use error::ApiError;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -103,7 +103,22 @@ async fn list(
         .store
         .list_effective(principal.org_id, query.entity)
         .await?;
-    Ok(Json(serde_json::json!({ "items": items })))
+    let can_change = items.first().is_some_and(|entry| {
+        authorize_change(
+            &principal,
+            &console_settings_application::ChangeFacts {
+                key: entry.key,
+                direction: Direction::Neutral,
+                step_up: false,
+                step_up_assertion_id: None,
+                scope_entity_id: query.entity,
+            },
+        )
+        .is_ok()
+    });
+    Ok(Json(
+        serde_json::json!({ "items": items, "can_change": can_change }),
+    ))
 }
 
 async fn history(

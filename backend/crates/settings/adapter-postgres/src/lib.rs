@@ -161,8 +161,9 @@ impl PgSettingsStore {
                     .fetch_one(tx.as_mut())
                     .await
                     .map_err(DbError::Sqlx)?;
-                let rows = load_rows_in_tx(tx.as_mut(), org, SettingKey::ALL, entity).await?;
-                Ok(read::effective_settings(&rows, entity, now))
+                let (chain, rows) =
+                    load_rows_in_tx(tx.as_mut(), org, SettingKey::ALL, entity).await?;
+                Ok(read::effective_settings(&rows, &chain, now))
             })
         })
         .await

@@ -3,7 +3,7 @@
 use crate::{Actor, ChangeFacts, ChangeSetting, NewOverride, SettingsStore};
 use console_kernel_core::{KernelError, SettingVersionId, Timestamp};
 use console_settings_domain::{
-    Direction, LOOSENING_DELAY, SettingError, SettingKey, SettingValue, check_change, resolve,
+    Direction, LOOSENING_DELAY, SettingError, SettingKey, SettingValue, check_change, resolve_chain,
 };
 use serde::Serialize;
 use uuid::Uuid;
@@ -94,8 +94,8 @@ where
         .await?;
     let facts = store.facts().await?;
     let effective_from = cmd.effective_from.unwrap_or(facts.now);
-    let rows = store.rows(key, cmd.scope_entity_id).await?;
-    let current = match resolve(key, &rows, cmd.scope_entity_id, facts.now) {
+    let (chain, rows) = store.rows(key, cmd.scope_entity_id).await?;
+    let current = match resolve_chain(key, &rows, &chain, facts.now) {
         Ok(resolved) => Some(resolved),
         Err(SettingError::FactUndeclared(_)) => None,
         Err(other) => return Err(other.into()),
@@ -109,7 +109,7 @@ where
             current_version,
         });
     }
-    let in_force = match resolve(key, &rows, cmd.scope_entity_id, effective_from) {
+    let in_force = match resolve_chain(key, &rows, &chain, effective_from) {
         Ok(resolved) => Some(resolved.value),
         Err(SettingError::FactUndeclared(_)) => None,
         Err(other) => return Err(other.into()),

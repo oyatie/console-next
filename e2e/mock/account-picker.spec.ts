@@ -17,9 +17,14 @@ const accounts: components["schemas"]["DirectoryPerson"][] = Array.from({ length
 
 async function fixture(page: Page, delay?: number) {
   const screen = await mockScreen(page, screens[1], "populated");
-  if (delay !== undefined) await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { items: [{
+  if (delay !== undefined) await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [{
     key: "display.search_debounce", kind: { type: "int" }, default: delay, value: delay,
     looser_when: "neutral", governance: "tenant", legal_basis: null, version: "code_default", effective_from: null, scheduled: [],
+    source: { layer: "code_default", scope_entity_id: null },
+    chain: [
+      { layer: "tenant", scope_entity_id: null, value: null, effective_from: null, deciding: false },
+      { layer: "code_default", scope_entity_id: null, value: delay, effective_from: null, deciding: true },
+    ],
   }] } });
   const searches: string[] = [];
   let failRefetch = false;
