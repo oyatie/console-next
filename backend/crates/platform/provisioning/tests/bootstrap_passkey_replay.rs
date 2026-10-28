@@ -1,10 +1,7 @@
 //! Regression test for atomic single-use OTP consumption.
 //!
-//! A redeem is verify-only and never consumes, so two concurrent redeems both
-//! succeed. The single-use invariant lives at CONSUMPTION (passkey registration):
-//! two concurrent `consume_open_credentials_tx` calls burn the code EXACTLY once —
-//! the harden-1 atomic `UPDATE ... WHERE consumed_at IS NULL RETURNING` makes the
-//! losing call match 0 rows, so the credential is consumed once and audited once.
+//! Exactly one concurrent redemption claims login proof; registration closes
+//! its enrollment source exactly once and audits that closure once.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::sync::Arc;
@@ -28,8 +25,7 @@ async fn seed_user(pool: &PgPool) -> uuid::Uuid {
     .unwrap()
 }
 
-/// Concurrent redeems both succeed (verify-only); concurrent registration-consumes
-/// burn the code EXACTLY once.
+/// Concurrent redemption and registration each have exactly one winner.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn concurrent_consume_burns_the_otp_exactly_once(pool: PgPool) {
     let user_id = seed_user(&pool).await;
@@ -48,7 +44,7 @@ async fn concurrent_consume_burns_the_otp_exactly_once(pool: PgPool) {
         .await
         .unwrap();
 
-    // Two concurrent redeems both succeed: a redeem verifies, it never consumes.
+    // Two concurrent redeems contend for the same persistent claim.
     let barrier = Arc::new(Barrier::new(2));
     let (store_a, store_b) = (store, store);
     let (pool_a, pool_b) = (pool.clone(), pool.clone());
@@ -65,9 +61,10 @@ async fn concurrent_consume_burns_the_otp_exactly_once(pool: PgPool) {
         barrier_b.wait().await;
         store_b.redeem_otp(&pool_b, &token_b, now).await
     });
-    assert!(
-        handle_a.await.unwrap().is_ok() && handle_b.await.unwrap().is_ok(),
-        "verify-only redeems must both succeed concurrently"
+    assert_eq!(
+        usize::from(handle_a.await.unwrap().is_ok()) + usize::from(handle_b.await.unwrap().is_ok()),
+        1,
+        "exactly one concurrent redeem must succeed"
     );
 
     let consumed_at: Option<OffsetDateTime> =

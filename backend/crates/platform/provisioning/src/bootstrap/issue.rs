@@ -27,16 +27,10 @@ impl BootstrapCredentialStore {
                 // arms `app.current_org` to that org, so the FORCE-RLS WITH CHECK on
                 // `auth_bootstrap_credentials` accepts the row for ANY tenant — not
                 // just tenant #1 — and the credential is stamped with the real org.
-                let issue = issue_bootstrap_if_needed_tx(
-                    tx,
-                    user_id,
-                    org,
-                    now,
-                    ttl,
-                    IssueMode::RejectIfPresent,
-                )
-                .await?
-                .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
+                let issue =
+                    issue_bootstrap_if_needed_tx(tx, user_id, org, now, ttl, IssueMode::Reissue)
+                        .await?
+                        .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
                 let event = AuditEvent::new(
                     actor,
                     AuditAction::new("auth.bootstrap.issue")?,
@@ -50,6 +44,7 @@ impl BootstrapCredentialStore {
                     None,
                     Some(serde_json::json!({
                         "user_id": user_id,
+                        "credential_id": issue.credential_id,
                         "expires_at": issue.expires_at,
                     })),
                 );

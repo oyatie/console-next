@@ -18,7 +18,7 @@ use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
 
-fn router(pool: PgPool) -> Router {
+pub(super) fn router(pool: PgPool) -> Router {
     let key = SigningKey::random(&mut OsRng);
     let mut pairs = super::app_pairs();
     pairs.extend([
@@ -83,7 +83,7 @@ async fn upgrade_legacy_seeds(pool: &PgPool) {
     tx.commit().await.unwrap();
 }
 
-async fn redeem(service: Router, otp: &str) -> (StatusCode, Value) {
+pub(super) async fn redeem(service: Router, otp: &str) -> (StatusCode, Value) {
     let response = service
         .oneshot(
             Request::post("/api/v1/auth/otp/redeem")

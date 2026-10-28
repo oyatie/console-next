@@ -7,6 +7,9 @@ use console_app::{AppConfig, AppRole};
 #[path = "coldstart_otp/single_use.rs"]
 mod single_use;
 
+#[path = "coldstart_otp/admin_issued.rs"]
+mod admin_issued;
+
 fn app_pairs() -> Vec<(&'static str, String)> {
     vec![
         ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),

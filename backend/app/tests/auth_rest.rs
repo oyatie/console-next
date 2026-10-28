@@ -1875,12 +1875,9 @@ async fn device_login_failures_preserve_proof_and_poll_permit(pool: PgPool) {
     assert_eq!(poll_replay.status(), StatusCode::UNAUTHORIZED);
 }
 
-/// The one-time code is consumed on PASSKEY REGISTRATION, not on redeem. A redeem
-/// only mints a session, so a failed/incomplete enrollment never burns the code —
-/// the user can re-redeem (within the TTL) until a passkey actually sticks. Once a
-/// passkey is registered the code is consumed atomically and can never be reused.
+/// Login proof is single-use before registration; the winning session can enroll.
 #[sqlx::test(migrator = "MIGRATOR")]
-async fn otp_is_consumed_on_passkey_registration_not_on_redeem(pool: PgPool) {
+async fn otp_redeems_once_and_winning_session_registers_passkey(pool: PgPool) {
     let signing_key = SigningKey::random(&mut OsRng);
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
@@ -1919,7 +1916,7 @@ async fn otp_is_consumed_on_passkey_registration_not_on_redeem(pool: PgPool) {
     )
     .await;
 
-    // First redeem -> session, code NOT consumed.
+    // First redeem claims login proof and leaves its enrollment source open.
     let first: OtpRedeemResponse = post_json(
         service.clone(),
         "/api/v1/auth/otp/redeem",
@@ -1930,25 +1927,20 @@ async fn otp_is_consumed_on_passkey_registration_not_on_redeem(pool: PgPool) {
     .await;
     assert!(first.requires_passkey_setup);
 
-    // Re-redeem BEFORE enrolling a passkey -> STILL succeeds (a failed enrollment
-    // must not lock the user out of their own code).
-    let second: OtpRedeemResponse = post_json(
+    // Replay is refused before enrollment has finished.
+    let replay = post_raw(
         service.clone(),
         "/api/v1/auth/otp/redeem",
         None,
         json!({ "otp": issued.otp }),
-        StatusCode::OK,
     )
     .await;
-    assert!(
-        second.requires_passkey_setup,
-        "the code must remain redeemable until a passkey is actually registered"
-    );
+    assert_eq!(replay.status(), StatusCode::UNAUTHORIZED);
 
     // Enroll a passkey from the session -> consumes the code atomically with the
     // passkey insert.
     let mut authenticator = WebauthnAuthenticator::new(SoftPasskey::new(true));
-    enroll_passkey(&service, &mut authenticator, &second.access_token).await;
+    enroll_passkey(&service, &mut authenticator, &first.access_token).await;
 
     // Now the code is dead: a further redeem is rejected.
     let after = post_raw(
@@ -2255,16 +2247,15 @@ async fn replaced_otp_family_cannot_create_business_work(pool: PgPool) {
         StatusCode::OK,
     )
     .await;
-    // A legacy client can retry the same verify-only code after losing a
-    // response. Replacement must fence every family proven by that source.
-    let retry: OtpRedeemResponse = post_json(
+    // Losing the response requires re-issue; replay cannot mint another family.
+    let retry = post_raw(
         service.clone(),
         "/api/v1/auth/otp/redeem",
         None,
         json!({ "otp": original.token.as_str() }),
-        StatusCode::OK,
     )
     .await;
+    assert_eq!(retry.status(), StatusCode::UNAUTHORIZED);
     accept_required_privacy_consent(&service, &enrollment.access_token).await;
     let rotated: TokenPairResponse = post_json(
         service.clone(),
@@ -2294,11 +2285,7 @@ async fn replaced_otp_family_cannot_create_business_work(pool: PgPool) {
     .unwrap();
     assert!(original_revoked.is_some(), "the old OTP must be superseded");
 
-    for access_token in [
-        &enrollment.access_token,
-        &rotated.access_token,
-        &retry.access_token,
-    ] {
+    for access_token in [&enrollment.access_token, &rotated.access_token] {
         let response = post_raw(
             service.clone(),
             "/api/work-orders",
@@ -2344,14 +2331,6 @@ async fn replaced_otp_family_cannot_create_business_work(pool: PgPool) {
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {}
         other => panic!("replaced OTP family refresh returned unexpected status {other}"),
     }
-    let retry_refresh = post_raw(
-        service.clone(),
-        "/api/v1/auth/token/refresh",
-        None,
-        json!({ "refresh_token": retry.refresh_token.as_ref().unwrap() }),
-    )
-    .await;
-    assert_eq!(retry_refresh.status(), StatusCode::UNAUTHORIZED);
     let work_orders: i64 =
         sqlx::query_scalar("SELECT count(*) FROM work_orders WHERE branch_id=$1")
             .bind(branch_id.as_uuid())
