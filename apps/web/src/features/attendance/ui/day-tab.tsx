@@ -85,11 +85,12 @@ export function DayTab({ head }: { head?: ReactNode }) {
               <div className={s.dayLayout}>
                 <div className={s.dayPage}>
                   <MonthStateBanner state={pageState(b.groups.flatMap((g) => g.rows.map((r) => r.month_state)))} month={date.slice(0, 7)} />
-                  {(!b.judged || !ledger.adds) && <Banner tone={!ledger.adds ? "warn" : "info"}>{[!b.judged && t("attendanceRecords.board.notJudged"), !ledger.adds && t("attendanceRecords.board.ledgerGap")].filter(Boolean).join(" · ")}</Banner>}
+                  {!b.judged && <Banner tone="info">{t("attendanceRecords.board.notJudged")}</Banner>}
                   <p className="num">
                     {t("attendanceRecords.board.ledgerHead", { people: b.ledger.people })}{" "}
                     {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
                   </p>
+                  {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
                   {!b.groups.length ? (
                     search.issues || search.unscheduled ? (
                       <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />

@@ -31,6 +31,7 @@ test("the attendance paste sheet shows destinations, ignored input, and an expli
   expect(html).toContain("근무일수 · 연장");
   expect(html).toContain("99999");
   expect(html).toContain("초안에 1칸 반영");
+  expect(html).not.toContain('role="alert"');
 });
 
 test("a refused paste explains the issue and exposes no accept action", () => {
