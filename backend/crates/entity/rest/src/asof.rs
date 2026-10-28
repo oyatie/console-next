@@ -21,12 +21,29 @@ pub(crate) async fn workplace(
     Path(id): Path<Uuid>,
     Query(q): Query<AsOfQuery>,
 ) -> Result<Response, RestError> {
-    let (a, personal, gate) = read_gate(&s, &h, Need::Read, Target::Workplace(id)).await?;
-    let mut w = s
-        .store
-        .get_workplace_at(&a, id, personal, validated(&s, &a, q.parse()).await?)
-        .await?;
+    let result: Result<_, RestError> = async {
+        let (a, personal, gate) = read_gate(&s, &h, Need::Read, Target::Workplace(id)).await?;
+        let w = s
+            .store
+            .get_workplace_at(&a, id, personal, validated(&s, &a, q.parse()).await?)
+            .await?;
+        Ok((w, gate))
+    }
+    .await;
+    let (mut w, gate) = match result {
+        Ok(value) => value,
+        Err(error) => {
+            return Err(crate::access_log::refused(&s, &h, "workplace.read", id, error).await);
+        }
+    };
     w.can_manage = !w.read.read_only && gate.may(&[w.legal_entity_id, w.id]);
+    let access = crate::access_log::event(
+        &gate.principal,
+        "workplace.read",
+        id.to_string(),
+        &crate::access_log::workplace_subjects(std::slice::from_ref(&w)),
+    )?;
+    crate::access_log::record(&s, access).await?;
     Ok(Json(w).into_response())
 }
 pub(crate) async fn workplaces(
@@ -43,8 +60,43 @@ pub(crate) async fn workplaces(
     for w in &mut e.workplaces {
         w.can_manage = !w.read.read_only && gate.may(&[e.id, w.id]);
     }
+    let access = crate::access_log::event(
+        &gate.principal,
+        "workplace.list_read",
+        id.to_string(),
+        &crate::access_log::workplace_subjects(&e.workplaces),
+    )?;
+    crate::access_log::record(&s, access).await?;
     Ok(Json(json!({"items":e.workplaces})).into_response())
 }
+pub(crate) async fn list_workplaces(
+    State(s): State<EntityRestState>,
+    h: HeaderMap,
+    Query(q): Query<AsOfQuery>,
+) -> Result<Response, RestError> {
+    let (a, personal, gate) = read_gate(&s, &h, Need::Read, Target::Tenant).await?;
+    let mut entities = s
+        .store
+        .list_entities_at(
+            &a,
+            personal,
+            crate::asof::validated(&s, &a, q.parse()).await?,
+        )
+        .await?;
+    entities
+        .iter_mut()
+        .for_each(|e| crate::handlers::mark(&gate, e));
+    let items: Vec<_> = entities.into_iter().flat_map(|e| e.workplaces).collect();
+    let access = crate::access_log::event(
+        &gate.principal,
+        "workplace.list_read",
+        "query".into(),
+        &crate::access_log::workplace_subjects(&items),
+    )?;
+    crate::access_log::record(&s, access).await?;
+    Ok(Json(json!({"items":items})).into_response())
+}
+
 pub(crate) async fn diff(
     State(s): State<EntityRestState>,
     h: HeaderMap,

@@ -160,12 +160,6 @@ async fn unknown_records_are_not_found_with_their_code(pool: PgPool) {
     let nobody = Uuid::new_v4();
     for (method, uri, body, want) in [
         (
-            "GET",
-            format!("/api/v1/workplaces/{nobody}/revisions"),
-            None,
-            "workplace_not_found",
-        ),
-        (
             "POST",
             format!("/api/v1/org-structure/batches/{nobody}/undo"),
             None,
@@ -193,18 +187,21 @@ async fn unknown_records_are_not_found_with_their_code(pool: PgPool) {
         refused(&pool, &ctx, method, &uri, body, StatusCode::NOT_FOUND, want).await;
     }
     let before = count(&pool, "audit_events", ctx.org).await;
-    for _ in 0..2 {
-        let (status, body) = ctx
-            .call(
-                "GET",
-                &format!("/api/v1/business-registrations/{nobody}/revisions"),
-                None,
-            )
-            .await;
-        assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
-        assert_eq!(body["error"]["code"], "registration_not_found");
+    let business = refusals::business_state(&pool, ctx.org).await;
+    for (route, code) in [
+        ("business-registrations", "registration_not_found"),
+        ("workplaces", "workplace_not_found"),
+    ] {
+        for _ in 0..2 {
+            let (status, body) = ctx
+                .call("GET", &format!("/api/v1/{route}/{nobody}/revisions"), None)
+                .await;
+            assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+            assert_eq!(body["error"]["code"], code);
+        }
     }
-    assert_eq!(count(&pool, "audit_events", ctx.org).await, before + 2);
+    assert_eq!(count(&pool, "audit_events", ctx.org).await, before + 4);
+    assert_eq!(refusals::business_state(&pool, ctx.org).await, business);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

@@ -226,7 +226,7 @@ pub fn router(state: EntityRestState) -> Router {
         )
         .route(REGISTRATION_PATH, put(docs::revise_registration))
         .route(REGISTRATION_VOID_PATH, post(h::void_registration))
-        .route(WORKPLACES_PATH, get(h::list_workplaces))
+        .route(WORKPLACES_PATH, get(asof::list_workplaces))
         .route(
             REGISTRATION_END_OPTIONS_PATH,
             get(ends::registration_end_options),

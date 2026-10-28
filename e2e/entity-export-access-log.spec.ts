@@ -23,9 +23,18 @@ test("entity evidence and both CSV layouts record their exact subject references
   const api = apiOf(admin, bearer);
   const entityResponse = await api("/legal-entities");
   expect(entityResponse.status()).toBe(200);
-  const entities = await entityResponse.json() as { items: { id: string; current: { version: number; representatives: string[] | null; directors: unknown[] | null }; registrations: { id: string }[] }[] };
+  const entities = await entityResponse.json() as { items: { id: string; current: { version: number; representatives: string[] | null; directors: unknown[] | null }; registrations: { id: string }[]; workplaces: { id: string; current: { version: number; opened_on: string } }[] }[] };
   const entity = entities.items[0]!;
   const registration = entity.registrations[0]!;
+  const workplace = entity.workplaces[0]!;
+  const revisedWorkplace = await api(`/workplaces/${workplace.id}`, "PUT", {
+    expected_version: workplace.current.version, effective_from: kstDate(), reason_code: "CORRECTION",
+    name: "본사", registration_id: registration.id, same_address_as_registration: true,
+    opened_on: workplace.current.opened_on, status: "CONTINUING", representative_name: "사업장 대표자",
+  }, { "Idempotency-Key": crypto.randomUUID() });
+  expect(revisedWorkplace.status(), await revisedWorkplace.text()).toBe(200);
+  workplace.current.version = ((await revisedWorkplace.json()) as { record: { current: { version: number } } }).record.current.version;
+  const workplaceSubjects = [`workplace_revisions:${workplace.id}:${workplace.current.version}`];
   const historySubjects = (sql: string) => JSON.parse(psql(slug, sql).split("\n").find(line => line.startsWith("["))!) as string[];
   const entityHistorySubjects = historySubjects(`SELECT json_agg(ref ORDER BY ref) FROM (
     SELECT 'legal_entity_representatives:${entity.id}:' || r.version || ':' || p.seq AS ref
@@ -40,7 +49,14 @@ test("entity evidence and both CSV layouts record their exact subject references
     FROM business_registration_revisions r JOIN business_registration_co_owners p ON p.revision_id=r.id WHERE r.registration_id='${registration.id}'::uuid
     UNION SELECT 'users:' || actor_id FROM business_registration_revisions WHERE registration_id='${registration.id}'::uuid
   ) subjects;`);
+  const workplaceHistorySubjects = historySubjects(`SELECT json_agg(ref ORDER BY ref) FROM (
+    SELECT 'workplace_revisions:${workplace.id}:' || version AS ref FROM workplace_revisions
+    WHERE workplace_id='${workplace.id}'::uuid AND representative_name IS NOT NULL
+    UNION SELECT 'users:' || actor_id FROM workplace_revisions WHERE workplace_id='${workplace.id}'::uuid
+    UNION SELECT 'users:' || actor_id FROM workplace_insurance_revisions WHERE workplace_id='${workplace.id}'::uuid
+  ) subjects;`);
   const refs = [
+    ...workplaceSubjects,
     ...(entity.current.representatives ?? []).map((_, i) => `legal_entity_representatives:${entity.id}:${entity.current.version}:${i + 1}`),
     ...(entity.current.directors ?? []).map((_, i) => `legal_entity_directors:${entity.id}:${entity.current.version}:${i + 1}`),
     ...registrationHistorySubjects.filter(ref => ref.startsWith("business_registration_co_owners:")),
@@ -60,6 +76,10 @@ test("entity evidence and both CSV layouts record their exact subject references
   for (const [path, action, subjects] of [
     [`/legal-entities/${entity.id}`, "legal_entity.read", refs],
     ["/legal-entities", "legal_entity.list_read", refs],
+    [`/workplaces/${workplace.id}`, "workplace.read", workplaceSubjects],
+    ["/workplaces", "workplace.list_read", workplaceSubjects],
+    [`/legal-entities/${entity.id}/workplaces`, "workplace.list_read", workplaceSubjects],
+    [`/workplaces/${workplace.id}/revisions`, "workplace.history_read", workplaceHistorySubjects],
     [`/legal-entities/${entity.id}/revisions`, "legal_entity.history_read", entityHistorySubjects],
     [`/business-registrations/${registration.id}/revisions`, "business_registration.history_read", registrationHistorySubjects],
     [`/legal-entities/${entity.id}/documents`, "entity_document.list_read", [`entity_documents:${doc.id}`]],
@@ -91,7 +111,7 @@ test("entity evidence and both CSV layouts record their exact subject references
     expect(rows.at(-1)!.after.subject_ids.sort()).toEqual(people.items.map(person => person.id).sort());
     expect(rows.at(-1)!.after.export_purpose).toBe("INTERNAL_REVIEW");
   }
-  for (const [route, action] of [["legal-entities", "legal_entity.history_read"], ["business-registrations", "business_registration.history_read"]]) {
+  for (const [route, action] of [["legal-entities", "legal_entity.history_read"], ["business-registrations", "business_registration.history_read"], ["workplaces", "workplace.history_read"]]) {
     const before = records(action!).length;
     const response = await api(`/${route}/00000000-0000-4000-8000-000000000001/revisions`);
     expect(response.status(), await response.text()).toBe(404);

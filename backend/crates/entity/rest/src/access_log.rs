@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Entity people have revision/sequence keys, not employee identities. Documents are immutable sets.
-use console_entity_application::LegalEntityView;
+use console_entity_application::{LegalEntityView, WorkplaceView};
 use console_kernel_core::{AuditCommandContext, AuditEvent, AuditOutcome};
 use console_platform_authz::Principal;
 use console_platform_db::with_audit;
@@ -40,7 +40,22 @@ pub(crate) fn subjects(entities: &[LegalEntityView]) -> Vec<String> {
                 }
             }
         }
+        subjects.extend(workplace_subjects(&entity.workplaces));
     }
+    subjects.sort_unstable();
+    subjects.dedup();
+    subjects
+}
+
+pub(crate) fn workplace_subjects(workplaces: &[WorkplaceView]) -> Vec<String> {
+    let mut subjects: Vec<_> = workplaces
+        .iter()
+        .filter_map(|w| {
+            let state = w.current.as_ref()?;
+            state.representative_name.as_ref()?;
+            Some(format!("workplace_revisions:{}:{}", w.id, state.version))
+        })
+        .collect();
     subjects.sort_unstable();
     subjects.dedup();
     subjects
@@ -60,6 +75,8 @@ pub(crate) fn event(
                 "entity_document"
             } else if action.starts_with("business_registration.") {
                 "business_registration"
+            } else if action.starts_with("workplace.") {
+                "workplace"
             } else {
                 "legal_entity"
             },

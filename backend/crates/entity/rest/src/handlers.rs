@@ -25,7 +25,7 @@ fn created<T: serde::Serialize>(value: T) -> Response {
 }
 
 /// Each record's verbs for this reader: the 법인 and each 사업장 it shows.
-fn mark(gate: &Gate, e: &mut LegalEntityView) {
+pub(crate) fn mark(gate: &Gate, e: &mut LegalEntityView) {
     e.can_manage = !e.read.read_only && gate.may(&[e.id]);
     for w in &mut e.workplaces {
         w.can_manage = !w.read.read_only && gate.may(&[e.id, w.id]);
@@ -58,25 +58,6 @@ pub(crate) async fn list_entities(
     )?;
     crate::access_log::record(&s, access).await?;
     Ok(Json(json!({ "items": items })).into_response())
-}
-
-pub(crate) async fn list_workplaces(
-    State(s): State<EntityRestState>,
-    h: HeaderMap,
-    Query(q): Query<AsOfQuery>,
-) -> Result<Response> {
-    let (a, personal, gate) = read_gate(&s, &h, Need::Read, Target::Tenant).await?;
-    let mut entities = s
-        .store
-        .list_entities_at(
-            &a,
-            personal,
-            crate::asof::validated(&s, &a, q.parse()).await?,
-        )
-        .await?;
-    entities.iter_mut().for_each(|e| mark(&gate, e));
-    let items: Vec<_> = entities.into_iter().flat_map(|e| e.workplaces).collect();
-    Ok(Json(json!({"items":items})).into_response())
 }
 
 pub(crate) async fn get_entity(

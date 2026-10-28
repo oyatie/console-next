@@ -9,7 +9,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::EntityRestState;
-use crate::auth::{Need, actor, manager, read_gate};
+use crate::auth::{Need, manager, read_gate};
 use crate::error::RestError;
 
 type Result<T> = std::result::Result<T, RestError>;
@@ -48,6 +48,7 @@ async fn history(
         let (a, personal, gate) = read_gate(s, h, Need::Read, target).await?;
         let items = match target {
             Target::Entity(_) => s.store.entity_history(&a, id, personal).await?,
+            Target::Workplace(_) => s.store.workplace_history(&a, id, personal).await?,
             _ => s.store.registration_history(&a, id, personal).await?,
         };
         Ok((items, gate))
@@ -76,11 +77,7 @@ pub(crate) async fn workplace_history(
     h: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Response> {
-    let (a, personal) = actor(&s, &h, Need::Read, Target::Workplace(id)).await?;
-    Ok(
-        Json(json!({ "items": s.store.workplace_history(&a, id, personal).await? }))
-            .into_response(),
-    )
+    history(&s, &h, id, Target::Workplace(id), "workplace.history_read").await
 }
 
 pub(crate) async fn revise_insurance(
