@@ -34,6 +34,9 @@ pub struct FilingAssessment {
     pub facts: FilingFacts,
     pub rule: Option<FilingRule>,
     pub dates: Option<FilingDates>,
+    pub due_in_days: Option<i64>,
+    pub opens_in_days: Option<i64>,
+    pub deadline_status: &'static str,
     pub applicability: Applicability,
     pub reason: Option<Reason>,
     pub state: &'static str,
@@ -144,11 +147,41 @@ pub fn assess(
     let covered =
         rule.is_some_and(|r| r.covered_by.as_deref() == Some("EI")) && input.employment_filed;
     let state = resolution::state(input.action.as_deref(), &applicable, covered);
+    let due = dates
+        .as_ref()
+        .and_then(|d| d.due_on.as_deref())
+        .map(parse_yyyy_mm_dd)
+        .transpose()?;
+    let policy_on = if matches!(input.kind, "LOSE" | "AGE60") {
+        rule.map(|r| r.loss_on(input.on))
+            .transpose()?
+            .unwrap_or(input.on)
+    } else {
+        input.on
+    };
+    let deadline_status = if due.is_none() {
+        "UNKNOWN"
+    } else if register
+        .rule(rule.map(|r| r.code.as_str()).unwrap_or_default(), policy_on)?
+        .disposition
+        .is_hold()
+    {
+        "HOLD"
+    } else {
+        "VERIFIED"
+    };
+    let opens_in_days = dates
+        .as_ref()
+        .map(|d| parse_yyyy_mm_dd(&d.opens_on).map(|on| (on - input.today).whole_days()))
+        .transpose()?;
     Ok(Some(FilingAssessment {
         on: input.on,
         facts: input.facts,
         rule: rule.cloned(),
         dates,
+        due_in_days: due.map(|on| (on - input.today).whole_days()),
+        opens_in_days,
+        deadline_status,
         applicability: applicable,
         reason,
         state,

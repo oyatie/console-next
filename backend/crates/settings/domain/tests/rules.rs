@@ -248,18 +248,15 @@ fn snapshot_is_keyed_by_wire_string_with_value_and_version() {
 }
 
 #[test]
-fn deadline_display_config_is_read_only_and_ignores_injected_rows() {
+fn deadline_display_config_is_platform_owned_and_ignores_tenant_rows() {
     let key = K::DeadlineDueSoonDays;
     assert_eq!(
         key.def().governance,
-        console_settings_domain::Governance::ReadOnly
+        console_settings_domain::Governance::PlatformOnly
     );
     let rows = [row(2, None, -1, V::Int(1))];
     let resolved = resolve(key, &rows, None, NOW).unwrap();
-    assert_eq!(
-        resolved.value,
-        V::Int(console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS)
-    );
+    assert_eq!(resolved.value, key.def().default.unwrap());
     assert_eq!(resolved.version, SettingVersionId::CodeDefault);
     assert_eq!(
         check_change(key, &json!(1), NOW, NOW, None, true),

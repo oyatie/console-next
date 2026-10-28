@@ -59,15 +59,15 @@ async fn setup_queue_and_home_agree_on_departments_and_future_first_placements(p
         .call("GET", "/api/v1/onboarding/go-live/preview", None)
         .await;
     assert_eq!(status, StatusCode::OK, "{preview}");
-    let warning = preview["warnings"]
+    let blocker = preview["blockers"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|w| w["code"] == "unresolved_departments")
-        .expect("unresolved departments have their own named remedy");
-    assert_eq!(warning["count"], 1);
-    assert_eq!(warning["remedy"], "assign_departments");
-    assert_eq!(warning["records"][0]["id"], department_gap.to_string());
+        .find(|b| b["code"] == "people_without_department")
+        .expect("setup department gaps have a named blocker");
+    assert_eq!(blocker["count"], 1);
+    assert_eq!(blocker["remedy"], "assign_department");
+    assert_eq!(blocker["records"][0]["id"], department_gap.to_string());
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

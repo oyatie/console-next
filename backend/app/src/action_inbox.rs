@@ -92,22 +92,30 @@ async fn list_action_inbox(
         .await
         .map_err(|error| source_failure("clock", error))?;
     let org = principal.org_id;
-    let created_at = console_platform_db::with_org_conn::<_, _, console_platform_db::DbError>(
-        &state.pool,
-        org,
-        move |tx| {
-            Box::pin(async move {
-                Ok(sqlx::query_scalar::<_, OffsetDateTime>(
-                    "SELECT created_at FROM organizations WHERE id = $1",
-                )
-                .bind(org.as_uuid())
-                .fetch_one(tx.as_mut())
-                .await?)
-            })
-        },
-    )
+    let (created_at, deadline_due_soon_days) = console_platform_db::with_org_conn::<
+        _,
+        _,
+        console_settings_adapter_postgres::PgSettingsError,
+    >(&state.pool, org, move |tx| {
+        Box::pin(async move {
+            let window = console_settings_adapter_postgres::deadline_due_soon_days_in_tx(
+                tx.as_mut(),
+                org,
+                now,
+            )
+            .await?;
+            let created = sqlx::query_scalar::<_, OffsetDateTime>(
+                "SELECT created_at FROM organizations WHERE id = $1",
+            )
+            .bind(org.as_uuid())
+            .fetch_one(tx.as_mut())
+            .await
+            .map_err(console_platform_db::DbError::from)?;
+            Ok((created, window))
+        })
+    })
     .await
-    .map_err(|e| source_failure("tenant", e))?;
+    .map_err(|e| source_failure("tenant", format!("{e:?}")))?;
     let sources = PgActionInboxSources {
         pool: state.pool,
         principal,
@@ -119,6 +127,7 @@ async fn list_action_inbox(
         support_can_approve: tokio::sync::OnceCell::new(),
         statutory_register: request_register::Register::default(),
         setup_created_at: created_at,
+        deadline_due_soon_days,
     };
     let page = run_action_inbox(
         &sources,
@@ -143,11 +152,16 @@ struct PgActionInboxSources {
     support_can_approve: tokio::sync::OnceCell<bool>,
     statutory_register: request_register::Register,
     setup_created_at: OffsetDateTime,
+    deadline_due_soon_days: i64,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     support_reference: String,
 }
 
 impl ActionInboxSourcePort for PgActionInboxSources {
+    fn deadline_due_soon_days(&self) -> Result<i64, KernelError> {
+        Ok(self.deadline_due_soon_days)
+    }
+
     fn list_source_page(
         &self,
         source: ActionInboxSource,

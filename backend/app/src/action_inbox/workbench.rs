@@ -20,6 +20,30 @@ pub(crate) async fn read_workbench_action_inbox(
     _limit: usize,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
 ) -> Result<WorkbenchActionInboxPage, WorkbenchSourceFailure> {
+    let org = principal.org_id;
+    let deadline_due_soon_days = console_platform_db::with_org_conn::<
+        _,
+        _,
+        console_settings_adapter_postgres::PgSettingsError,
+    >(pool, org, move |tx| {
+        Box::pin(async move {
+            Ok(
+                console_settings_adapter_postgres::deadline_due_soon_days_in_tx(
+                    tx.as_mut(),
+                    org,
+                    as_of,
+                )
+                .await?,
+            )
+        })
+    })
+    .await
+    .map_err(|error| {
+        tracing::warn!(%org, ?error, "workbench deadline display settings unavailable");
+        WorkbenchSourceFailure::Unavailable {
+            code: "action_inbox_unavailable",
+        }
+    })?;
     let sources = PgActionInboxSources {
         pool: pool.clone(),
         principal: principal.clone(),
@@ -27,6 +51,7 @@ pub(crate) async fn read_workbench_action_inbox(
         support_can_approve: tokio::sync::OnceCell::new(),
         statutory_register: request_register::Register::default(),
         setup_created_at: as_of,
+        deadline_due_soon_days,
         read_permits,
         support_reference: crate::telemetry::current_trace_context()
             .trace_id()

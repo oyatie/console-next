@@ -32,7 +32,16 @@ impl ActionInboxSourcePort for Source {
                     ("org_change_scheduled", Some(1)),
                     (
                         "org_change_draft",
-                        Some((console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS + 2) * 24),
+                        Some(
+                            (console_settings_domain::SettingKey::DeadlineDueSoonDays
+                                .def()
+                                .default
+                                .unwrap()
+                                .as_int()
+                                .unwrap()
+                                + 2)
+                                * 24,
+                        ),
                     ),
                     ("org_change_draft", None),
                 ]

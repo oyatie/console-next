@@ -14,7 +14,7 @@ mod tx;
 
 pub use read::{
     EffectiveSetting, LegalBasis, OverrideRecord, ResolvedSettings, ScheduledValue,
-    approval_routes_in_tx, load_rows_in_tx, resolve_in_tx,
+    approval_routes_in_tx, deadline_due_soon_days_in_tx, load_rows_in_tx, resolve_in_tx,
 };
 pub use reason_codes::{CatalogEntry, validate_reason_in_tx};
 pub use reason_stats::{CodeCount, SourceStats};

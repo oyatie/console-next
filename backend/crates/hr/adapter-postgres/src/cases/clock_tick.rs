@@ -21,14 +21,11 @@ use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext};
 use console_platform_db::with_audits;
 use serde_json::{Value, json};
 use sqlx::Row;
-use time::{Date, Duration, OffsetDateTime};
+use time::{Date, Duration, OffsetDateTime, Time, macros::offset};
 use uuid::Uuid;
 
 use super::register::Register;
 use crate::{HrError, HrService};
-
-/// Items entering the same display window as the inbox count as changed.
-const DUE_SOON_DAYS: i64 = console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS;
 
 impl HrService {
     /// Runs today's clock tick in every tenant. Returns how many cases changed.
@@ -97,6 +94,12 @@ impl HrService {
                 .await
                 .map(|last: Option<Date>| last.unwrap_or(today - Duration::days(1)))?;
 
+                let due_soon_days = console_settings_adapter_postgres::deadline_due_soon_days_in_tx(
+                    tx.as_mut(),
+                    org,
+                    today.with_time(Time::MIDNIGHT).assume_offset(offset!(+9)),
+                )
+                .await?;
                 let register = Register(register);
                 let mut touched: BTreeSet<Uuid> = BTreeSet::new();
                 let rows = sqlx::query(
@@ -166,7 +169,7 @@ impl HrService {
                 .bind(org_uuid)
                 .bind(since)
                 .bind(today)
-                .bind(i32::try_from(DUE_SOON_DAYS).map_err(|_| HrError::internal("invalid deadline display window"))?)
+                .bind(i32::try_from(due_soon_days).map_err(|_| HrError::internal("invalid deadline display window"))?)
                 .fetch_all(tx.as_mut())
                 .await?;
                 touched.extend(crossed);

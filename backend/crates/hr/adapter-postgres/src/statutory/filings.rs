@@ -55,7 +55,7 @@ pub(super) async fn load(
             )
         });
     }
-    let limit = query.limit.unwrap_or(50).clamp(1, 200);
+    let limit = query.page_limit();
     let more = items.len() > limit;
     items.truncate(limit);
     let next = items.last().filter(|_| more).map(|t| {
@@ -78,18 +78,8 @@ pub(super) async fn visible_tasks(
     register: &StatutoryRegister,
     rows: Vec<sqlx::postgres::PgRow>,
 ) -> Result<Vec<super::types::FilingTask>, HrError> {
-    use sqlx::Row;
     let mut items = Vec::new();
     for row in rows {
-        // Filter terminal receipts after LIMIT so their lateral lookup stays bounded.
-        if query.inbox_scan_limit.is_some()
-            && matches!(
-                row.try_get::<Option<String>, _>("action")?.as_deref(),
-                Some("COMPLETE" | "NOT_APPLICABLE")
-            )
-        {
-            continue;
-        }
         if let Some(task) = super::filing_read::task(row, register)? {
             items.push(task);
         }

@@ -24,6 +24,11 @@ pub struct FilingQuery {
     #[serde(skip)]
     pub inbox_scan_limit: Option<usize>,
 }
+impl FilingQuery {
+    pub(crate) fn page_limit(&self) -> usize {
+        self.limit.unwrap_or(50).clamp(1, 200)
+    }
+}
 #[derive(Debug, Serialize)]
 pub struct LossOption {
     pub code: String,

@@ -7,15 +7,20 @@ pub(super) fn project_item(
     now: OffsetDateTime,
     due_soon_days: i64,
 ) -> ActionInboxItem {
-    let (urg, due_tone) = urgency(item.due, now, due_soon_days);
+    let lane = match item.kind.as_str() {
+        "org_change_waiting" | "identifier_correction_waiting" => "waiting",
+        "org_change_scheduled" => "scheduled",
+        _ => "turn",
+    };
+    let (urg, due_tone) = if lane == "turn" {
+        urgency(item.due, now, due_soon_days)
+    } else {
+        ("wait", "neutral")
+    };
     ActionInboxItem {
         fold_key: crate::fold::key(&item),
         context: item.context,
-        lane: match item.kind.as_str() {
-            "org_change_waiting" | "identifier_correction_waiting" => "waiting",
-            "org_change_scheduled" => "scheduled",
-            _ => "turn",
-        },
+        lane,
         days_remaining: item.due.map(|due| {
             let zone = time::UtcOffset::from_hms(9, 0, 0).unwrap_or(time::UtcOffset::UTC);
             (due.to_offset(zone).date() - now.to_offset(zone).date()).whole_days()

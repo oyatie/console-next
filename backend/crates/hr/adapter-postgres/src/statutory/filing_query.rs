@@ -1,3 +1,7 @@
+#[path = "filing_query_page.rs"]
+mod page;
+use page::push_page_order;
+
 use super::FilingQuery;
 use crate::HrError;
 use crate::authz::{Tier, hr_reach_in, push_reach};
@@ -23,9 +27,10 @@ pub(super) fn non_employee_types() -> Vec<&'static str> {
         .map(EmploymentType::as_str)
         .collect()
 }
+// Keep employee and void lookups indexed before tenant statistics catch up.
 // Filter and order candidates before hydrating receipts, history and case links.
 const FROM: &str = " FROM sources l \
- JOIN person_employees_current x ON x.org_id = l.org_id AND x.id = l.employee_id \
+ JOIN LATERAL (SELECT * FROM person_employees_current WHERE org_id=l.org_id AND id=l.employee_id OFFSET 0) x ON true \
  LEFT JOIN LATERAL (SELECT a.workplace_id FROM employment_assignments a WHERE a.org_id=l.org_id AND a.employee_id=l.employee_id \
    AND a.superseded_at IS NULL AND a.valid_from<l.effective_date::date AND l.to_workplace_id IS NOT NULL ORDER BY a.valid_from DESC LIMIT 1) previous ON true \
  CROSS JOIN LATERAL (SELECT DISTINCT r.filing_kind AS k,r.insurer,r.recording_held, \
@@ -53,17 +58,17 @@ const WHERE: &str = " WHERE l.state IN ('APPLIED','SCHEDULED') AND x.voided_at I
    AND (rule.earliest_event_on IS NULL OR l.effective_date::date >= rule.earliest_event_on \
      OR (kind.k='ACQUIRE' AND agency.insurer='EI' AND EXISTS(SELECT 1 FROM insurance_filing_requests r WHERE r.org_id=l.org_id AND r.source_event_id=l.id AND r.filing_kind='ACQUIRE_REQUESTED'))) \
    AND NOT EXISTS (SELECT 1 FROM employee_lifecycle_events v \
-     WHERE v.org_id = l.org_id AND v.voids_event_id = COALESCE(l.source_event_id,l.id) AND v.state = 'APPLIED')";
+     WHERE v.org_id = l.org_id AND v.voids_event_id IS NOT NULL AND v.voids_event_id = l.voidable_event_id AND v.state = 'APPLIED')";
 
 // Group identical legal inputs before decoding; retain each task's own server identity.
 const ASSESSMENT_FIELDS: &str = "kind,insurer,effective_date,source_event_id,acquired_on,ended_on,requested_acquisition_on,applicability_facts,birth_date,employment_type,nationality,action,ei_action,recording_held";
 const ACQUIRED_ON: &str = "(SELECT max(h.effective_date::date)::text FROM employee_lifecycle_events h WHERE h.org_id=l.org_id AND h.employee_id=l.employee_id AND h.event_type IN ('ONBOARD','REHIRE','GROUP_TRANSFER') AND h.state='APPLIED' AND h.effective_date::date<=l.placement_date::date AND (l.source_type<>'GROUP_TRANSFER' OR l.kind NOT IN ('LOSE','SEPARATION_CERTIFICATE') OR h.effective_date::date<l.placement_date::date) AND NOT EXISTS(SELECT 1 FROM employee_lifecycle_events v WHERE v.org_id=h.org_id AND v.voids_event_id=h.id AND v.state='APPLIED'))";
-const ENDED_ON: &str = "(SELECT min(CASE WHEN h.event_type='GROUP_TRANSFER' THEN h.effective_date::date-1 ELSE h.effective_date::date END)::text FROM employee_lifecycle_events h WHERE h.org_id=l.org_id AND h.employee_id=l.employee_id AND h.event_type IN ('TERMINATE','OFFBOARD','GROUP_TRANSFER') AND h.state IN ('APPLIED','SCHEDULED') AND h.effective_date::date>l.source_on AND NOT EXISTS(SELECT 1 FROM employee_lifecycle_events v WHERE v.org_id=h.org_id AND v.voids_event_id=h.id AND v.state='APPLIED'))";
-const CASE_ID: &str = "(SELECT i.case_id FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id WHERE i.org_id=l.org_id AND c.employee_id=l.employee_id AND i.filing_obligation_id=f.id AND c.state<>'CANCELLED' ORDER BY c.opened_at DESC LIMIT 1)";
+const ENDED_ON: &str = "CASE WHEN (SELECT exits FROM presence) THEN (SELECT min(CASE WHEN h.event_type='GROUP_TRANSFER' THEN h.effective_date::date-1 ELSE h.effective_date::date END)::text FROM employee_lifecycle_events h WHERE h.org_id=l.org_id AND h.employee_id=l.employee_id AND h.event_type IN ('TERMINATE','OFFBOARD','GROUP_TRANSFER') AND h.state IN ('APPLIED','SCHEDULED') AND h.effective_date::date>l.source_on AND NOT EXISTS(SELECT 1 FROM employee_lifecycle_events v WHERE v.org_id=h.org_id AND v.voids_event_id=h.id AND v.state='APPLIED')) END";
+const CASE_ID: &str = "CASE WHEN f.id IS NOT NULL THEN (SELECT i.case_id FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id WHERE i.org_id=l.org_id AND c.employee_id=l.employee_id AND i.filing_obligation_id=f.id AND c.state<>'CANCELLED' ORDER BY c.opened_at DESC LIMIT 1) END";
 const WORKPLACE_NAME: &str = "(SELECT w.name FROM workplace_revisions w WHERE w.org_id=l.org_id AND w.workplace_id=ea.workplace_id AND w.effective_from<=l.placement_date::date ORDER BY w.effective_from DESC,w.version DESC LIMIT 1)";
-const FILING_FACTS: &str = "(SELECT r.applicability_facts FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=l.insurer AND r.filing_kind=l.kind AND r.applicability_facts IS NOT NULL ORDER BY r.version DESC LIMIT 1)";
-const EI_ACTION: &str = "(SELECT r.action FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer='EI' AND r.filing_kind=l.kind ORDER BY r.version DESC LIMIT 1)";
-const REQUESTED_ON: &str = "(SELECT min(r.anchor_on)::text FROM insurance_filing_requests r WHERE r.org_id=l.org_id AND r.source_event_id=l.id AND r.filing_kind='ACQUIRE_REQUESTED')";
+const FILING_FACTS: &str = "CASE WHEN (SELECT receipts FROM presence) THEN (SELECT r.applicability_facts FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=l.insurer AND r.filing_kind=l.kind AND r.applicability_facts IS NOT NULL ORDER BY r.version DESC LIMIT 1) END";
+const EI_ACTION: &str = "CASE WHEN (SELECT receipts FROM presence) THEN (SELECT r.action FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer='EI' AND r.filing_kind=l.kind ORDER BY r.version DESC LIMIT 1) END";
+const REQUESTED_ON: &str = "CASE WHEN (SELECT requests FROM presence) THEN (SELECT min(r.anchor_on)::text FROM insurance_filing_requests r WHERE r.org_id=l.org_id AND r.source_event_id=l.id AND r.filing_kind='ACQUIRE_REQUESTED') END";
 
 pub(super) async fn rows(
     tx: &mut Transaction<'_, Postgres>,
@@ -105,8 +110,12 @@ pub(super) async fn query_rows(
          age_facts AS MATERIALIZED (SELECT DISTINCT ON (COALESCE(event_id,request_id),insurer,filing_kind) COALESCE(event_id,request_id) AS source_id,insurer,filing_kind,applicability_facts \
            FROM insurance_filing_records WHERE org_id=(SELECT org_id FROM boundary) AND filing_kind='AGE60' AND applicability_facts IS NOT NULL \
            ORDER BY COALESCE(event_id,request_id),insurer,filing_kind,version DESC), \
-         sources AS (SELECT id,org_id,employee_id,event_type,state,effective_date,created_at,from_org_unit_id,to_org_unit_id,to_workplace_id,NULL::text AS request_kind,NULL::uuid AS source_event_id,effective_date AS placement_date,event_type AS source_type FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) UNION ALL \
-           SELECT r.id,r.org_id,r.employee_id,'STATUTORY_REQUEST',p.state,r.anchor_on::text,r.created_at,p.from_org_unit_id,p.to_org_unit_id,p.to_workplace_id,r.filing_kind,r.source_event_id,p.effective_date,p.event_type FROM insurance_filing_requests r JOIN employee_lifecycle_events p ON p.org_id=r.org_id AND p.id=r.source_event_id WHERE r.filing_kind<>'ACQUIRE_REQUESTED' AND r.org_id=(SELECT org_id FROM boundary)), \
+         presence AS MATERIALIZED (SELECT \
+           EXISTS(SELECT 1 FROM insurance_filing_records WHERE org_id=(SELECT org_id FROM boundary)) AS receipts, \
+           EXISTS(SELECT 1 FROM insurance_filing_requests WHERE org_id=(SELECT org_id FROM boundary)) AS requests, \
+           EXISTS(SELECT 1 FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) AND event_type IN ('TERMINATE','OFFBOARD','GROUP_TRANSFER') AND state IN ('APPLIED','SCHEDULED')) AS exits), \
+         sources AS (SELECT id,org_id,employee_id,event_type,state,effective_date,created_at,from_org_unit_id,to_org_unit_id,to_workplace_id,NULL::text AS request_kind,NULL::uuid AS source_event_id,effective_date AS placement_date,event_type AS source_type,id AS voidable_event_id FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) UNION ALL \
+           SELECT r.id,r.org_id,r.employee_id,'STATUTORY_REQUEST',p.state,r.anchor_on::text,r.created_at,p.from_org_unit_id,p.to_org_unit_id,p.to_workplace_id,r.filing_kind,r.source_event_id,p.effective_date,p.event_type,r.source_event_id FROM insurance_filing_requests r JOIN employee_lifecycle_events p ON p.org_id=r.org_id AND p.id=r.source_event_id WHERE r.filing_kind<>'ACQUIRE_REQUESTED' AND r.org_id=(SELECT org_id FROM boundary)), \
          source_bounds AS MATERIALIZED (SELECT min(effective_date::date) AS first_on,max(effective_date::date) AS last_on FROM sources), \
          rules AS MATERIALIZED (SELECT DISTINCT CASE WHEN r.filing_rule->>'age_trigger_years' IS NULL THEN r.effective_from END AS effective_from, \
            CASE WHEN r.filing_rule->>'age_trigger_years' IS NULL THEN r.effective_to_exclusive END AS effective_to_exclusive, \
@@ -257,7 +266,7 @@ pub(super) async fn query_rows(
         q.push(FILING);
     }
     q.push(
-        " LEFT JOIN employee_personal_facts personal ON personal.org_id=l.org_id AND personal.employee_id=l.employee_id LEFT JOIN LATERAL (SELECT r.* FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=l.insurer AND r.filing_kind=l.kind ORDER BY r.version DESC LIMIT 1) receipt ON true \
+        " LEFT JOIN employee_personal_facts personal ON personal.org_id=l.org_id AND personal.employee_id=l.employee_id LEFT JOIN LATERAL (SELECT r.* FROM insurance_filing_records r WHERE (SELECT receipts FROM presence) AND r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=l.insurer AND r.filing_kind=l.kind ORDER BY r.version DESC LIMIT 1) receipt ON true \
       ), page_workplaces AS MATERIALIZED (SELECT DISTINCT workplace_id FROM hydrated WHERE workplace_id IS NOT NULL), \
       page_zones AS MATERIALIZED (SELECT w.id,lifecycle_time_zone(w.org_id,NULL,current_date,w.id) AS time_zone \
         FROM page_workplaces p JOIN workplaces w ON w.id=p.workplace_id AND w.org_id=(SELECT org_id FROM boundary) WHERE w.legal_entity_id IS NOT NULL), \
@@ -283,69 +292,6 @@ pub(super) async fn query_rows(
     Ok(q.build().fetch_all(tx.as_mut()).await?)
 }
 
-fn push_page_order(q: &mut QueryBuilder<Postgres>, query: &FilingQuery) -> &'static str {
-    if let Some(limit) = query.inbox_scan_limit {
-        if let Some((created_at, id)) = &query.inbox_after {
-            q.push(" WHERE (created_at, inbox_id) > (")
-                .push_bind(*created_at)
-                .push(", ")
-                .push_bind(id.clone())
-                .push(")");
-        }
-        let order = " ORDER BY created_at, inbox_id";
-        q.push(order)
-            .push(" LIMIT ")
-            .push_bind(i64::try_from(limit).unwrap_or(i64::MAX));
-        order
-    } else {
-        let order = " ORDER BY effective_date,id,kind,insurer";
-        q.push(order);
-        order
-    }
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[allow(clippy::unwrap_used)]
-    fn only_internal_candidate_reads_bound_and_use_the_immutable_cursor() {
-        let after = Some((
-            time::OffsetDateTime::UNIX_EPOCH,
-            "insurance_filing_ACQUIRE_NPS:record".into(),
-        ));
-        let mut query = FilingQuery {
-            inbox_after: after,
-            limit: Some(1),
-            ..FilingQuery::default()
-        };
-        let mut ordinary = QueryBuilder::<Postgres>::new("SELECT * FROM filtered");
-        push_page_order(&mut ordinary, &query);
-        assert_eq!(
-            ordinary.sql(),
-            "SELECT * FROM filtered ORDER BY effective_date,id,kind,insurer"
-        );
-        query.inbox_scan_limit = Some(50);
-        let mut bounded = QueryBuilder::<Postgres>::new("SELECT * FROM filtered");
-        push_page_order(&mut bounded, &query);
-        assert_eq!(
-            bounded.sql(),
-            "SELECT * FROM filtered WHERE (created_at, inbox_id) > ($1, $2) ORDER BY created_at, inbox_id LIMIT $3"
-        );
-        let external: FilingQuery =
-            serde_json::from_value(serde_json::json!({"inbox_scan_limit": 50})).unwrap();
-        assert!(
-            external.inbox_scan_limit.is_none(),
-            "HTTP input cannot switch the read into a partial candidate scan"
-        );
-    }
-
-    #[test]
-    fn non_employee_types_derives_dispatched_outsourced_and_freelance_only() {
-        assert_eq!(
-            non_employee_types(),
-            vec!["DISPATCHED_IN", "OUTSOURCED_ON_SITE", "FREELANCE"]
-        );
-    }
-}
+#[path = "filing_query_tests.rs"]
+mod tests;
