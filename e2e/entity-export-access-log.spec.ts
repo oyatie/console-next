@@ -4,6 +4,7 @@ import { firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubm
 import { apiOf, bearerOf } from "./helpers/api";
 import { psql, settled } from "./idle-fixture";
 import { SETUP_DEPARTMENT, setupCompany } from "./setup-flows";
+import { inviteAccount } from "./access-flows";
 
 test("entity evidence and both CSV layouts record their exact subject references", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(300_000);
@@ -30,7 +31,8 @@ test("entity evidence and both CSV layouts record their exact subject references
   const revisedWorkplace = await api(`/workplaces/${workplace.id}`, "PUT", {
     expected_version: workplace.current.version, effective_from: kstDate(), reason_code: "CORRECTION",
     name: "본사", registration_id: registration.id, same_address_as_registration: true,
-    opened_on: workplace.current.opened_on, status: "CONTINUING", representative_name: "사업장 대표자",
+    opened_on: workplace.current.opened_on, status: "CONTINUING",
+    mobile: "010-1234-5678", email: "workplace@example.com",
   }, { "Idempotency-Key": crypto.randomUUID() });
   expect(revisedWorkplace.status(), await revisedWorkplace.text()).toBe(200);
   workplace.current.version = ((await revisedWorkplace.json()) as { record: { current: { version: number } } }).record.current.version;
@@ -51,7 +53,7 @@ test("entity evidence and both CSV layouts record their exact subject references
   ) subjects;`);
   const workplaceHistorySubjects = historySubjects(`SELECT json_agg(ref ORDER BY ref) FROM (
     SELECT 'workplace_revisions:${workplace.id}:' || version AS ref FROM workplace_revisions
-    WHERE workplace_id='${workplace.id}'::uuid AND representative_name IS NOT NULL
+    WHERE workplace_id='${workplace.id}'::uuid AND version=${workplace.current.version}
     UNION SELECT 'users:' || actor_id FROM workplace_revisions WHERE workplace_id='${workplace.id}'::uuid
     UNION SELECT 'users:' || actor_id FROM workplace_insurance_revisions WHERE workplace_id='${workplace.id}'::uuid
   ) subjects;`);
@@ -119,5 +121,23 @@ test("entity evidence and both CSV layouts record their exact subject references
     expect(rows).toHaveLength(before + 1);
     expect(rows.at(-1)!.after.subject_ids).toEqual([]);
     expect(rows.at(-1)!.after).toHaveProperty("refusal_code");
+  }
+  const reader = await firstSignIn(browser, await inviteAccount(admin, "접속기록 조회자", "oversight"));
+  const readerBearer = bearerOf(reader);
+  await go(reader, "/account");
+  await settled(reader);
+  const readerApi = apiOf(reader, readerBearer);
+  for (const path of [`/workplaces/${workplace.id}`, "/workplaces", `/legal-entities/${entity.id}/workplaces`, `/workplaces/${workplace.id}/revisions`]) {
+    const response = await readerApi(path);
+    expect(response.status(), await response.text()).toBe(200);
+    const body = await response.text();
+    expect(body).not.toContain("workplace@example.com");
+    expect(body).not.toContain("010-1234-5678");
+    expect(body).not.toContain("+821012345678");
+    if (path.endsWith("/revisions")) {
+      const history = JSON.parse(body) as { items: { changes: { field: string }[] }[] };
+      expect(history.items.flatMap(entry => entry.changes).map(change => change.field)).not.toContain("mobile");
+      expect(history.items.flatMap(entry => entry.changes).map(change => change.field)).not.toContain("email");
+    }
   }
 });

@@ -1,7 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Subject keys travel beside the history snapshot, never through its wire shape.
 use super::*;
-use console_entity_application::FieldChange;
+use console_entity_application::{FieldChange, WORKPLACE_PERSONAL_FIELDS};
+
+pub(super) fn workplace_fields() -> String {
+    format!(
+        "ARRAY[{}]::text[]",
+        WORKPLACE_PERSONAL_FIELDS
+            .iter()
+            .map(|field| format!("'{}'", field.name))
+            .collect::<Vec<_>>()
+            .join(",")
+    )
+}
 
 pub(super) fn query(record: Record) -> String {
     let fields = match record {
@@ -28,9 +39,14 @@ pub(super) fn query(record: Record) -> String {
         Record::Workplace => &[][..],
     };
     let fields = if matches!(record, Record::Workplace) {
-        "'representative_name',(SELECT jsonb_agg('workplace_revisions:' || $1::text || ':' || r.version) \
-         FROM workplace_revisions r WHERE r.workplace_id=$1 AND r.version=h.version \
-         AND h.chain='' AND r.representative_name IS NOT NULL)".to_owned()
+        return format!(
+            "SELECT h.*,CASE WHEN $2 AND h.chain='' THEN \
+             (SELECT COALESCE(jsonb_object_agg(k, jsonb_build_array('workplace_revisions:' || $1::text || ':' || h.version)), '{{}}'::jsonb) \
+              FROM jsonb_each(h.state) e(k,v) WHERE k=ANY({}) AND v<>'null'::jsonb) \
+             ELSE '{{}}'::jsonb END AS access_subjects FROM ({}) h ORDER BY h.created_at,h.version",
+            workplace_fields(),
+            sql(record)
+        );
     } else {
         fields.iter().map(|(field, table, revisions, key)| format!(
         "'{field}',(SELECT jsonb_agg('{table}:' || $1::text || ':' || r.version || ':' || p.seq ORDER BY p.seq) \

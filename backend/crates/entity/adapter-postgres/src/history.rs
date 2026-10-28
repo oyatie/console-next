@@ -58,8 +58,7 @@ fn sql(record: Record) -> String {
             "workplace_revisions",
             "workplace_id",
             format!(
-                "'address', {}, 'mail_address', {}, \
-                 'representative_name', CASE WHEN $2 THEN r.representative_name END",
+                "'address', {}, 'mail_address', {}",
                 addr("r.address_id"),
                 addr("r.mail_address_id")
             ),
@@ -75,6 +74,11 @@ fn sql(record: Record) -> String {
     let meta = if matches!(record, Record::Registration) {
         format!(
             "{META} || CASE WHEN (SELECT e.biz_kind FROM legal_entities e JOIN business_registrations b ON b.legal_entity_id=e.id WHERE b.id=r.registration_id) = 'INDIVIDUAL' THEN ARRAY[]::text[] ELSE ARRAY['trade_name'] END"
+        )
+    } else if matches!(record, Record::Workplace) {
+        format!(
+            "{META} || CASE WHEN $2 THEN ARRAY[]::text[] ELSE {} END",
+            subjects::workplace_fields()
         )
     } else {
         META.to_owned()

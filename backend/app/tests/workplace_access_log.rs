@@ -13,6 +13,9 @@ use support::{Ctx, add_user, ctx, structure, tenant};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+#[path = "workplace_access_log/contacts.rs"]
+mod contacts;
+
 async fn world(pool: &PgPool) -> (Ctx, String, String, i32) {
     let (org, user) = tenant(pool, &["SUPER_ADMIN"]).await;
     let admin = ctx(pool, org, user, &["SUPER_ADMIN"], None).await;
