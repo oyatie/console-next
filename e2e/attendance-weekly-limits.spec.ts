@@ -58,7 +58,7 @@ test("weekly reads use tenant warning hours and return UNKNOWN outside register 
   await go(admin, "/attendance?tab=week&date=2028-01-03");
   const unknown = admin.getByRole("row").filter({ hasText: "윤하준" });
   await expect(unknown).toContainText("확인 불가");
-  await expect(unknown).toContainText("이 주의 법정 근로시간 기준이나 설정된 주의 기준을 확인할 수 없습니다.");
+  await expect(admin.getByRole("region", { name: "주간 근로시간", exact: true }).getByText("이 주의 법정 근로시간 기준이나 설정된 주의 기준을 확인할 수 없습니다.", { exact: true })).toHaveCount(1);
   const refused = await api("/attendance/week52?week_start=2026-10-27");
   expect([refused.status(), await codeOf(refused)]).toEqual([422, "validation"]);
 });
