@@ -137,6 +137,10 @@ for (const environment of ['exit-test', 'template']) test(`${environment}: only 
       const own = policies.filter(p => p.spec.images.some(({glob}) => matches(glob, ref)));
       assert.deepEqual(own.map(p => p.metadata.name).sort(), ['console-attestations', 'console-signature']);
       for (const p of own) for (const a of p.spec.authorities) {
+        assert.equal(a.signatureFormat, 'bundle', 'the publisher stores Cosign v3 signatures and GitHub attestations as OCI bundles');
+        assert.deepEqual(a.attestations.map(({predicateType}) => predicateType).sort(), p.metadata.name === 'console-signature'
+          ? ['https://sigstore.dev/cosign/sign/v1']
+          : ['https://slsa.dev/provenance/v1', 'https://spdx.dev/Document/v2.3']);
         assert.equal(a.static, undefined);
         assert.equal(a.keyless.identities[0].issuer, 'https://token.actions.githubusercontent.com');
         assert.match(a.keyless.identities[0].subject, /\/platform\.yml@refs\/heads\/dev$/);

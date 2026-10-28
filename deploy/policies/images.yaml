@@ -11,6 +11,11 @@ spec:
         identities:
           - issuer: https://token.actions.githubusercontent.com
             subject: console-workflow-identity
+      signatureFormat: bundle
+      # Cosign v3 signing bundles use the controller's in-toto attestation verifier.
+      attestations:
+        - name: signature
+          predicateType: https://sigstore.dev/cosign/sign/v1
 ---
 apiVersion: policy.sigstore.dev/v1beta1
 kind: ClusterImagePolicy
@@ -23,6 +28,7 @@ spec:
         identities:
           - issuer: https://token.actions.githubusercontent.com
             subject: console-workflow-identity
+      signatureFormat: bundle
       attestations:
         - name: provenance
           predicateType: https://slsa.dev/provenance/v1

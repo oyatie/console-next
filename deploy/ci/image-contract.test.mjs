@@ -64,7 +64,7 @@ if (process.argv.includes('current-context')) { console.log('kind-platform-fixtu
 const pod = JSON.parse(fs.readFileSync(0,'utf8'));
 const image = pod.spec.containers[0].image;
 fs.appendFileSync(process.env.CALLS, image+'\\n');
-if (image.includes('unsigned')) { console.error('policy.sigstore.dev: no signatures found'); process.exit(1); }
+if (image.includes('unsigned') && !process.env.ADMIT_UNSIGNED) { console.error('policy.sigstore.dev: '+(process.env.REGISTRY_FAILURE ? 'UNAUTHORIZED: authentication required' : 'no valid bundles exist in registry')); process.exit(1); }
 if (image.includes('wrong-identity') && !process.env.ADMIT_WRONG) { console.error('policy.sigstore.dev: no matching signatures: subject mismatch'); process.exit(1); }
 `, {mode:0o755});
     writeFileSync(join(dir, 'cosign'), `#!/usr/bin/env node
@@ -79,6 +79,10 @@ if (process.env.BAD_SIGNATURE) process.exit(1);
     assert.equal(refused.status,0,refused.stderr);
     assert.ok(readFileSync(env.CALLS,'utf8').includes(wrongIdentityImage), 'must exercise the wrong-identity image');
     assert.ok(readFileSync(env.CALLS,'utf8').includes(identity.replace('platform.yml','platform-negative-signer.yml')), 'first verify its actual signing identity');
+    const admittedUnsigned = run({ADMIT_UNSIGNED:'1'});
+    assert.notEqual(admittedUnsigned.status,0, 'accepting unsigned bytes must fail the control');
+    assert.match(admittedUnsigned.stderr,/PLAT_UNSIGNED_IMAGE/);
+    assert.notEqual(run({REGISTRY_FAILURE:'1'}).status,0, 'registry authorization failures cannot count as signature refusals');
     const admitted = run({ADMIT_WRONG:'1'});
     assert.notEqual(admitted.status,0, 'accepting the wrong identity must fail the control');
     assert.match(admitted.stderr,/PLAT_IMAGE_IDENTITY/);

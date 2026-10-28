@@ -14,7 +14,7 @@ const positive=check(revision.image);assert.equal(positive.status,0,positive.std
 assert.match(revision.unsignedImage??'',/@sha256:[a-f0-9]{64}$/,'publisher must supply an actually unsigned image');
 const negative=check(revision.unsignedImage);assert.notEqual(negative.status,0,'PLAT_UNSIGNED_IMAGE: unsigned image was admitted');
 assert.match(negative.stderr,/policy\.sigstore\.dev/);
-assert.match(negative.stderr,/no matching signatures|failed to verify|no signatures found|verification failed/i);
+assert.match(negative.stderr,/no matching signatures|failed to verify|no signatures found|no valid bundles exist in registry|verification failed/i);
 writeFileSync('.tmp/evidence/unsigned-image.txt',negative.stderr);
 assert.match(revision.wrongIdentityImage??'',/@sha256:[a-f0-9]{64}$/,'publisher must supply an image signed by the other workflow');
 const identity=process.env.PLATFORM_WORKFLOW_IDENTITY;
