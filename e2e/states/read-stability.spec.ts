@@ -99,10 +99,15 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     if (state === "loading") await held.promise;
     return state === "failed" ? { status: 503, json: failure("service_unavailable") } : { status: 200, json: structure(3) };
   });
+  const geometry = () => page.locator(`.page__head, #structure-import, section[aria-label="${t("asof.label")}"], section[aria-label="${t("asof.compare")}"]`).evaluateAll(elements => elements.map(el => {
+    const r = el.getBoundingClientRect();
+    return [r.x, r.y, r.width, r.height].map(Math.round);
+  }));
   try {
     await page.goto("/org");
     await expect(page.getByRole("button", { name: t("structure.export.open"), exact: true })).toBeEnabled();
     await page.evaluate(() => document.fonts.ready);
+    const populated = await geometry();
     const head = page.locator('.page__head').last();
     const headBox = await head.boundingBox();
     const asof = await page.getByRole("region", { name: t("asof.label"), exact: true }).boundingBox();
@@ -126,11 +131,13 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     const phase = page.locator('[data-phase][data-loading]');
     await expect(phase).toHaveText(t("structure.phase.operating"));
     await expect(phase).toBeHidden();
+    expect(await geometry()).toEqual(populated);
     await expectStable(page, "org: loading head");
     state = "failed";
     held.resolve();
     await expect(page.getByRole("main").getByRole("alert")).toBeVisible({ timeout: 15_000 });
     await expect(head.getByText(t("structure.readFailed"), { exact: true })).toBeVisible();
+    expect(await geometry()).toEqual(populated);
     await expectStable(page, "org: failed head");
     await expect(page.getByRole("button", { name: t("structure.export.open"), exact: true })).toHaveAttribute("aria-disabled", "true");
     await expect(page.getByRole("button", { name: t("structure.export.open"), exact: true })).toHaveAccessibleDescription(t("structure.readFailed"));
