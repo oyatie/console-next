@@ -1,12 +1,7 @@
 import type { LegalEntity, OrgStructure, OrgStructureNode } from "@console/api/pending";
+import { csvCell } from "../../../lib/csv-cell";
 
 export const SHEET_COLUMNS = ["level", "entity", "site", "dept", "code", "head", "people"] as const;
-
-const cell = (value: string | number) => {
-  // Names from imported records must remain text when opened in a spreadsheet.
-  const text = typeof value === "string" && /^[\s]*[=+@-]/.test(value) ? `'${value}` : String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
 
 /** The setup download reads the server tree directly, in the org sheet's existing column order. */
 export function setupSheet(
@@ -26,5 +21,5 @@ export function setupSheet(
     node.children.forEach((child) => walk(child, entity, site, departments));
   };
   structure.entities.forEach((node) => walk(node, "", "", []));
-  return `\uFEFF${[header, ...rows].map((row) => row.map(cell).join(",")).join("\r\n")}\r\n`;
+  return `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
 }

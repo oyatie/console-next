@@ -21,6 +21,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { LOOP_ALLOW, loopProblems } from "./check-loops.mjs";
+import { checkCsvCells } from "./check-csv-cells.mjs";
 
 const APP = "apps/web/src";
 // Go-live's authoritative phase answer must update both profile reads inside the command window.
@@ -199,6 +200,8 @@ for (const f of e2e) {
   });
 }
 for (const [slug, sites] of slugSites) if (sites.length > 1) problems.push(`e2e tenant slug "${slug}" is written at ${sites.join(", ")}: give each its own slug (one database, one slug)`);
+
+problems.push(...checkCsvCells());
 
 if (problems.length) {
   console.error(`source: ${problems.length} problem(s):\n${problems.join("\n")}`);

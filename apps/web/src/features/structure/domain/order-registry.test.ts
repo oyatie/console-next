@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { OrgStructure, OrgStructureNode } from "@console/api/pending";
+import { readDelimited } from "../../../lib/sheet-file";
+import { formulaCases } from "../../../../../../scripts/fixtures/spreadsheet-cases";
 import { buildStructure } from "./model";
 import { orderStep, orderVerdicts, placeAfter, reorderedByDrag } from "./rules";
 import { registryCsv, registryRows } from "./registry";
@@ -92,5 +94,28 @@ describe("registry", () => {
     const dated = { ...s, asOf: "2026-09-01", knownAt: "2026-09-15T12:00:00+09:00" };
     const csv = registryCsv(dated, [at("d1")], ["level", "entity", "site", "dept", "code", "head", "people", "as_of", "known_at"], () => "부서");
     expect(csv).toBe("﻿level,entity,site,dept,code,head,people,as_of,known_at\r\n부서,e1,w1,d1,PT-1,Kim,1,2026-09-01,2026-09-15T12:00:00+09:00\r\n");
+  });
+
+  test("the org sheet neutralizes hyperlink and DDE cells", () => {
+    const hostile = buildStructure({
+      ...tree,
+      entities: [n("LEGAL_ENTITY", "e3", [n("WORKPLACE", "w3", [n("DEPARTMENT", "d3", [], {
+        code: "=cmd|' /C calc'!A0",
+        head: { employee_id: "head", name: '=HYPERLINK("https://evil.example")', since: null, concurrent: false } as never,
+      })])])],
+    });
+    const csv = registryCsv(hostile, [hostile.byId.get("d3")!], ["level", "entity", "site", "dept", "code", "head", "people"], () => "부서");
+    const row = readDelimited(csv.slice(1))[1]!;
+    expect(row[4]).toBe("'=cmd|' /C calc'!A0");
+    expect(row[5]).toBe("'=HYPERLINK(\"https://evil.example\")");
+  });
+
+  test.each(formulaCases)("the org sheet neutralizes the cell prefix: $value", ({ value }) => {
+    const hostile = buildStructure({
+      ...tree,
+      entities: [n("LEGAL_ENTITY", "e3", [n("WORKPLACE", "w3", [n("DEPARTMENT", "d3", [], { code: value })])])],
+    });
+    const csv = registryCsv(hostile, [hostile.byId.get("d3")!], ["level", "entity", "site", "dept", "code", "head", "people"], () => "부서");
+    expect(readDelimited(csv.slice(1))[1]![4]).toBe("'" + value);
   });
 });
