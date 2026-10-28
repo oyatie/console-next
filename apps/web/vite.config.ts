@@ -2,6 +2,7 @@ import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 import react from "@vitejs/plugin-react";
+import { fontPolicy } from "./font-policy.ts";
 import postcss from "../../postcss.config.mjs";
 
 // Same-origin: the backend has no CORS layer and the refresh cookie is SameSite=Strict,
@@ -12,7 +13,7 @@ const backend = process.env.CONSOLE_BACKEND ?? "http://127.0.0.1:8090";
 const deps = dirname(realpathSync(resolve(import.meta.dirname, "../../node_modules/pretendard")));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), fontPolicy()],
   css: { postcss },
   // The backend CSP allows fonts/images only from 'self' (no data: URIs), so never inline assets.
   build: {

@@ -1,14 +1,5 @@
 @import "@console/tokens/tokens.css";
-/* One optional face makes the first-paint font choice cover every glyph, including in CSS-only consumers. */
-@font-face {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- @font-face declares its name. */
-  font-family: "Pretendard Variable";
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- This is the font's variable weight range. */
-  font-weight: 45 920;
-  font-style: normal;
-  font-display: optional;
-  src: url("pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");
-}
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @property --trigger-width { syntax: "*"; inherits: true; }
 @property --tree-item-level { syntax: "*"; inherits: true; }
 
