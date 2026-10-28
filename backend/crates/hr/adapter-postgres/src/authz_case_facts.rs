@@ -70,7 +70,7 @@ impl HrCaseFacts {
             return Ok(false);
         };
         facts
-            .authorize(feature.as_str(), p.placement.node(org))
+            .authorize(feature.as_str(), p.placement.node(org, facts))
             .map_err(|e| HrError::internal(format!("exit scope facts unavailable: {e}")))
     }
 }

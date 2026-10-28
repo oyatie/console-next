@@ -182,7 +182,9 @@ impl EmployeeListFilters {
 
     /// Whether the reach reads the `ea` assignment.
     pub fn reach_reads_assignment(&self) -> bool {
-        self.visibility.is_some()
+        self.visibility
+            .as_ref()
+            .is_some_and(EmployeeVisibility::reads_assignment)
             || matches!(&self.reach, HrReach::Within { scope, .. } if !scope.is_empty())
     }
 
