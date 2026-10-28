@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { build } from "vite";
 import { expect, test } from "vitest";
 
-test.each([false, true])("one complete optional font keeps glyph geometry together (app config: %s)", async configured => {
+test.each([false, true])("one complete optional font without preloads keeps glyph geometry together (app config: %s)", async configured => {
   const temp = mkdtempSync(resolve("apps/web/.font-test-"));
   try {
     const input = resolve(temp, "index.html");
@@ -20,11 +20,7 @@ test.each([false, true])("one complete optional font keeps glyph geometry togeth
       expect(face).not.toContain("unicode-range");
     }
     const html = readFileSync(resolve(dist, input.slice(resolve("apps/web").length + 1)), "utf8");
-    expect([...html.matchAll(/rel="preload"[^>]*as="font"/g)]).toHaveLength(configured ? 1 : 0);
-    if (configured) for (const face of faces) {
-      const font = face.match(/url\(["']?([^"')]+)["']?\)/)![1]!;
-      expect(html).toContain(`href="${font}"`);
-    }
+    expect([...html.matchAll(/<link\b[^>]*>/g)].filter(([link]) => /\brel="preload"/.test(link) && /\bas="font"/.test(link))).toHaveLength(0);
     expect(css).not.toContain("Pretendard Fallback");
   } finally { rmSync(temp, { recursive: true, force: true }); }
 }, 30_000);
