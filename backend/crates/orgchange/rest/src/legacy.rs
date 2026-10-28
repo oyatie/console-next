@@ -10,7 +10,6 @@ pub(crate) async fn legacy_create_region(
     Json(b): Json<LegacyCreateRegionRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_legacy_draft(&p, Feature::RegionManage)?;
     let name = b.name.trim().to_owned();
     draft_legacy_org_proposal(
         &s,
@@ -35,7 +34,6 @@ pub(crate) async fn legacy_update_region(
     Json(b): Json<LegacyUpdateRegionRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_legacy_draft(&p, Feature::RegionManage)?;
     let name = b.name.trim().to_owned();
     draft_legacy_org_proposal(
         &s,
@@ -62,7 +60,6 @@ pub(crate) async fn legacy_deactivate_region(
     Path(id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_legacy_draft(&p, Feature::RegionManage)?;
     draft_legacy_org_proposal(
         &s,
         &h,
@@ -85,7 +82,6 @@ pub(crate) async fn legacy_create_branch(
     Json(b): Json<LegacyCreateBranchRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_legacy_draft(&p, Feature::BranchManage)?;
     let name = b.name.trim().to_owned();
     draft_legacy_org_proposal(
         &s,
@@ -113,7 +109,6 @@ pub(crate) async fn legacy_update_branch(
     Json(b): Json<LegacyUpdateBranchRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_legacy_draft(&p, Feature::BranchManage)?;
     conceal_out_of_scope_branch(&p, id)?;
     let name = b.name.map(|name| name.trim().to_owned());
     let label = name.clone().unwrap_or_else(|| format!("Branch {id}"));
@@ -143,7 +138,6 @@ pub(crate) async fn legacy_deactivate_branch(
     Path(id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_legacy_draft(&p, Feature::BranchManage)?;
     conceal_out_of_scope_branch(&p, id)?;
     draft_legacy_org_proposal(
         &s,

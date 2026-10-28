@@ -9,7 +9,8 @@ description: >-
   (403 org_change.refuse.not_drafter for another caller with draft authority).
   Create, edit, preflight, submit and draft cancellation share the same scoped Cedar draft decision,
   retaining legacy-role compatibility. Missing draft authority returns 404 org_change.refuse.missing_grant
-  before any scheduled-lock refusal, with the same body as an unknown id.
+  before any scheduled-lock refusal, with the same body as an unknown id. A drafter who lacks live authority
+  to cancel their own draft receives 403 org_change.refuse.missing_grant, including after the target dissolves.
   Withdrawal preserves the stored chain and
   prior decisions; later decisions refuse with lifecycle.refuse.withdrawn.
 security:

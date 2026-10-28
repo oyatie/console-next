@@ -1,8 +1,8 @@
 //! Authenticated org-change routes (STORY-ORG-001).
 //!
 //! Draft creation, editing, preflight, submit and cancellation share Cedar
-//! authority inside the store transaction. RLS `org_isolation` conceals out-of-scope
-//! rows (absent and forbidden objects are both 404 — deny by omission).
+//! authority inside the store transaction. Missing create authority is 403;
+//! inaccessible existing rows are concealed as 404 by the scoped decision and RLS.
 //!
 //! Feature floors: `org_change_read/draft/approve/apply` are
 //! `console_platform_authz::Feature` variants; each route checks the matrix row

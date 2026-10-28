@@ -2,6 +2,34 @@
 use super::*;
 
 #[test]
+fn a_drafter_knows_their_document_but_still_needs_live_authority_to_cancel_a_draft() {
+    let facts = Facts {
+        holds_permission: false,
+        actor_is_drafter: true,
+        in_approval: false,
+    };
+    let refusal = enforce("u", "o", "o", facts).unwrap_err();
+    assert_eq!(refusal.kind, console_kernel_core::ErrorKind::Forbidden);
+    assert_eq!(refusal.code, Some("org_change.refuse.missing_grant"));
+    assert_eq!(
+        enforce("u", "o", "foreign", facts).unwrap_err().kind,
+        console_kernel_core::ErrorKind::NotFound
+    );
+    assert!(
+        enforce(
+            "u",
+            "o",
+            "o",
+            Facts {
+                in_approval: true,
+                ..facts
+            }
+        )
+        .is_ok()
+    );
+}
+
+#[test]
 fn withdrawal_is_owned_by_the_drafter_and_other_cancels_need_live_authority() {
     for holds_permission in [false, true] {
         for actor_is_drafter in [false, true] {

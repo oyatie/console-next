@@ -224,7 +224,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/notices/rest/src/lib.rs | reference | 4 |
 | matrix | backend/crates/ontology/rest/src/lib.rs | reference | 3 |
 | matrix | backend/crates/orgchange/rest/src/access.rs | reference | 2 |
-| matrix | backend/crates/orgchange/rest/src/org_units.rs | reference | 2 |
 | matrix | backend/crates/payroll/rest/src/lib.rs | reference | 2 |
 | matrix | backend/crates/payroll/rest/src/lifecycle.rs | reference | 2 |
 | matrix | backend/crates/payroll/rest/src/payslip_draft.rs | reference | 2 |

@@ -5,7 +5,7 @@ use crate::{Feature, cedar_pbac::engine::generate_policies};
 use std::sync::OnceLock;
 
 /// Preserve role compatibility in Cedar alongside the scoped grant decision.
-/// Only these two lifecycle actions are enrolled here; unknown actions deny.
+/// Only draft lifecycle actions are enrolled; unknown actions deny.
 pub fn allowed(
     feature: Feature,
     actor: &str,
@@ -68,6 +68,12 @@ mod tests {
             assert!(!allowed(feature, "u", "o", &[], false));
             assert!(allowed(feature, "u", "o", &[], true));
         }
-        assert!(!allowed(Feature::OrgChangeRead, "u", "o", &[], true));
+        for feature in [
+            Feature::OrgChangeRead,
+            Feature::RegionManage,
+            Feature::BranchManage,
+        ] {
+            assert!(!allowed(feature, "u", "o", &[], true));
+        }
     }
 }

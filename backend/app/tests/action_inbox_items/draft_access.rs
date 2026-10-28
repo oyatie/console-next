@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-fn draft(unit: Uuid) -> Value {
+pub(super) fn draft(unit: Uuid) -> Value {
     json!({"kind":"REORG", "target":{"kind":"ORG_UNIT","ref":unit,"label":"부서"},
         "effectiveDate":f::day(7),"reason":"조직 개편",
         "proposal":[{"op":"RENAME_ORG_UNIT","orgUnitId":unit,"name":"개편 부서"}]})
@@ -19,12 +19,12 @@ fn normalized(mut body: Value) -> Value {
     body
 }
 
-async fn snapshot(t: &f::Tenant) -> Value {
-    sqlx::query_scalar("SELECT jsonb_build_array((SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM org_change_requests r WHERE org_id=$1),(SELECT jsonb_agg(to_jsonb(s) ORDER BY id) FROM org_change_approval_steps s WHERE org_id=$1),(SELECT count(*) FROM org_change_events WHERE org_id=$1),(SELECT count(*) FROM audit_events WHERE org_id=$1 AND action LIKE 'org_change.%' AND outcome='ALLOWED'))")
+pub(super) async fn snapshot(t: &f::Tenant) -> Value {
+    sqlx::query_scalar("SELECT jsonb_build_array((SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM org_change_requests r WHERE org_id=$1),(SELECT jsonb_agg(to_jsonb(s) ORDER BY id) FROM org_change_approval_steps s WHERE org_id=$1),(SELECT count(*) FROM org_change_events WHERE org_id=$1),(SELECT count(*) FROM audit_events WHERE org_id=$1 AND action LIKE 'org_change.%'))")
         .bind(t.org).fetch_one(&t.owner).await.unwrap()
 }
 
-async fn grant(t: &f::Tenant, user: UserId) {
+pub(super) async fn grant(t: &f::Tenant, user: UserId) {
     let role = Uuid::new_v4();
     sqlx::query("INSERT INTO access_roles(org_id,id,name_ko,status,version,created_by) VALUES($1,$2,'조직 초안','ACTIVE',1,$3)")
         .bind(t.org).bind(role).bind(t.actor).execute(&t.owner).await.unwrap();
@@ -72,10 +72,10 @@ async fn refused(t: &f::Tenant, ctx: &http::Ctx, unit: Uuid) {
         .await;
     let before = snapshot(t).await;
     let (status, body) = ctx.call("POST", f::CHANGES, Some(draft(unit))).await;
-    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
     assert_eq!(body["error"]["code"], "org_change.refuse.missing_grant");
     assert_eq!(snapshot(t).await, before);
-    let expected = normalized(body);
+    let mut expected = None;
     for state in ["DRAFT", "APPROVED", "IN_APPROVAL"] {
         sqlx::query("UPDATE org_change_requests SET status=$2 WHERE id=$1")
             .bind(Uuid::parse_str(&id).unwrap())
@@ -101,8 +101,8 @@ async fn refused(t: &f::Tenant, ctx: &http::Ctx, unit: Uuid) {
                         .is_some_and(|s| !s.is_empty())
                 );
                 assert_eq!(
-                    normalized(body),
-                    expected,
+                    normalized(body.clone()),
+                    expected.get_or_insert_with(|| normalized(body)).clone(),
                     "same refusal for missing, foreign and inaccessible documents"
                 );
                 assert_eq!(snapshot(t).await, before_state);

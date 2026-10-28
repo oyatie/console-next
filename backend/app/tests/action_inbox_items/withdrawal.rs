@@ -158,7 +158,7 @@ async fn withdrawal_does_not_grant_a_member_authority_to_cancel_drafts(pool: PgP
             Some(json!({"reason":"초안 취소"})),
         )
         .await;
-    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
     assert_eq!(body["error"]["code"], "org_change.refuse.missing_grant");
     assert_eq!(org_change::snapshot(&pool, id).await, before);
 }

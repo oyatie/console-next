@@ -9,6 +9,8 @@ mod draft_access;
 #[allow(dead_code)]
 #[path = "org_change_people/fixture.rs"]
 mod draft_fixture;
+#[path = "action_inbox_items/draft_refusals.rs"]
+mod draft_refusals;
 #[path = "support/go_live.rs"]
 mod go_live;
 #[allow(dead_code)]
@@ -16,6 +18,8 @@ mod go_live;
 mod harness;
 #[path = "support/http.rs"]
 mod http;
+#[path = "action_inbox_items/legacy_draft.rs"]
+mod legacy_draft;
 #[path = "action_inbox_items/org_change.rs"]
 mod org_change;
 #[path = "../../test-support/org_change_fixtures.rs"]

@@ -2882,7 +2882,7 @@ export interface paths {
         put?: never;
         /**
          * Propose creating a branch inside a region
-         * @description Creates a governed DRAFT containing one CREATE_BRANCH proposal. The live branches table is unchanged until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns the existing org-change request with 200.
+         * @description Creates a governed DRAFT containing one CREATE_BRANCH proposal. The live branches table is unchanged until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns the existing org-change request with 200. Cedar draft admission precedes proposal validation; a caller without draft authority receives 403 (org_change.refuse.missing_grant), even for invalid proposal content, rather than 422.
          */
         post: operations["createBranch"];
         delete?: never;
@@ -10006,7 +10006,7 @@ export interface paths {
         put?: never;
         /**
          * Draft an org change (조직 개편 기안)
-         * @description Creates a DRAFT org-change request. Requires an Idempotency-Key; a replay of the same body under the same key returns the existing request with 200, a different body under the same key conflicts. A revision may supersede an existing request only when that request is REJECTED. Cedar checks draft authority at the target scope, including legacy-role compatibility. Missing authority returns 404 org_change.refuse.missing_grant, matching edit, preflight, submit and cancel.
+         * @description Creates a DRAFT org-change request. Requires an Idempotency-Key; a replay of the same body under the same key returns the existing request with 200, a different body under the same key conflicts. A revision may supersede an existing request only when that request is REJECTED. Cedar checks draft authority at the target scope, including legacy-role compatibility. Missing create authority returns 403 org_change.refuse.missing_grant; malformed canonical target references return 422. Existing inaccessible documents remain concealed as 404 on edit, preflight and submit.
          */
         post: operations["createOrgChange"];
         delete?: never;
@@ -10090,7 +10090,7 @@ export interface paths {
         put?: never;
         /**
          * Cancel a draft, withdraw a submitted change, or cancel a scheduled change
-         * @description DRAFT or PRECHECKED, or APPROVED before its 시행일 (예약 취소). Under approval.policy.org_structure = route an approved change is cancelled only by a caller holding org_change_apply (403 org_change_scheduled_locked); IN_APPROVAL can be withdrawn only by its drafter, including after their grant ends (403 org_change.refuse.not_drafter for another caller with draft authority). Create, edit, preflight, submit and draft cancellation share the same scoped Cedar draft decision, retaining legacy-role compatibility. Missing draft authority returns 404 org_change.refuse.missing_grant before any scheduled-lock refusal, with the same body as an unknown id. Withdrawal preserves the stored chain and prior decisions; later decisions refuse with lifecycle.refuse.withdrawn.
+         * @description DRAFT or PRECHECKED, or APPROVED before its 시행일 (예약 취소). Under approval.policy.org_structure = route an approved change is cancelled only by a caller holding org_change_apply (403 org_change_scheduled_locked); IN_APPROVAL can be withdrawn only by its drafter, including after their grant ends (403 org_change.refuse.not_drafter for another caller with draft authority). Create, edit, preflight, submit and draft cancellation share the same scoped Cedar draft decision, retaining legacy-role compatibility. Missing draft authority returns 404 org_change.refuse.missing_grant before any scheduled-lock refusal, with the same body as an unknown id. A drafter who lacks live authority to cancel their own draft receives 403 org_change.refuse.missing_grant, including after the target dissolves. Withdrawal preserves the stored chain and prior decisions; later decisions refuse with lifecycle.refuse.withdrawn.
          */
         post: operations["cancelOrgChange"];
         delete?: never;
@@ -11991,7 +11991,7 @@ export interface paths {
         put?: never;
         /**
          * Propose creating a region
-         * @description Creates a governed DRAFT containing one CREATE_REGION proposal. The live regions table is unchanged until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns the existing org-change request with 200.
+         * @description Creates a governed DRAFT containing one CREATE_REGION proposal. The live regions table is unchanged until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns the existing org-change request with 200. Cedar draft admission precedes proposal validation; a caller without draft authority receives 403 (org_change.refuse.missing_grant), even for invalid proposal content, rather than 422.
          */
         post: operations["createRegion"];
         delete?: never;
