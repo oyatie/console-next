@@ -40,6 +40,9 @@ async function refusal(response: APIResponse, status: number, code: string) {
   const body = await response.json();
   expect(body.error).toMatchObject({ code, message: expect.any(String) });
   expect(validates(conflict, body)).toBe(true);
+  if (body.error.details?.current_version !== undefined) {
+    expect(body.error.details.current_version).toEqual(expect.any(String));
+  }
   return body;
 }
 
@@ -101,7 +104,7 @@ test("an org decision refuses missing grants, stale versions, merging, and a can
   await admin.getByRole("button", { name: "초안 취소", exact: true }).click();
   const cancel = admin.getByRole("dialog", { name: "초안 취소", exact: true });
   await cancel.getByLabel("취소 사유").fill("검증 완료");
-  await cancel.getByRole("button", { name: /취소$/, exact: false }).last().click();
+  await cancel.getByRole("button", { name: "조직 변경 취소", exact: true }).click();
   await expect.poll(async () => (await read()).status).toBe("CANCELLED");
   const cancelled = await read();
   expect(cancelled.version).not.toBe(before.version);

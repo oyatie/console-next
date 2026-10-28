@@ -28,9 +28,16 @@ use super::residual::{
 pub struct DecisionFacts {
     slice: AccessSlice,
     paths: BTreeMap<NodeRef, NodePath>,
+    roles: Vec<String>,
 }
 
 impl DecisionFacts {
+    /// Live role facts for Cedar actions retaining legacy-role compatibility.
+    #[must_use]
+    pub fn roles(&self) -> &[String] {
+        &self.roles
+    }
+
     /// Cedar point decision with the same facts the visible set consumes.
     /// Unknown, dissolved and foreign nodes deny; Cedar errors never allow.
     ///
@@ -119,19 +126,15 @@ pub async fn load_facts(
     if !armed {
         return Err(KernelError::forbidden("Cedar facts require tenant RLS"));
     }
-    let active: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM users WHERE org_id = $1 AND id = $2 AND is_active)",
-    )
-    .bind(org.as_uuid())
-    .bind(actor)
-    .fetch_one(tx.as_mut())
-    .await
-    .map_err(db)?;
-    if !active {
-        return Err(KernelError::forbidden(
-            "Cedar facts require an active account",
-        ));
-    }
+    let roles: Option<Vec<String>> =
+        sqlx::query_scalar("SELECT roles FROM users WHERE org_id = $1 AND id = $2 AND is_active")
+            .bind(org.as_uuid())
+            .bind(actor)
+            .fetch_optional(tx.as_mut())
+            .await
+            .map_err(db)?;
+    let roles =
+        roles.ok_or_else(|| KernelError::forbidden("Cedar facts require an active account"))?;
     let subject = load_access_subject(tx, org, actor, Timestamp::now_utc()).await?;
     let slice = AccessSlice::compile(&subject)
         .map_err(|e| KernelError::forbidden(format!("Cedar facts refused: {e}")))?;
@@ -196,5 +199,9 @@ pub async fn load_facts(
             path,
         );
     }
-    Ok(DecisionFacts { slice, paths })
+    Ok(DecisionFacts {
+        slice,
+        paths,
+        roles,
+    })
 }

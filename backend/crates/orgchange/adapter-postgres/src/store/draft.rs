@@ -6,7 +6,6 @@ impl PgOrgChangeStore {
         actor: UserId,
         id: Uuid,
         patch: DraftPatch,
-        holds_apply: bool,
     ) -> Result<OrgChangeDetail, PgOrgChangeError> {
         if let Some(reason) = &patch.reason {
             bounded_text(reason, "reason", 4000)?;
@@ -27,9 +26,17 @@ impl PgOrgChangeStore {
 
         with_audits(&self.pool, org, |tx| {
             Box::pin(async move {
-                let request = lock_request(tx, id).await?;
+                let (request, access) = super::draft_admission::lock(tx, org, actor, id).await?;
+                super::draft_admission::require(&access, org, actor, &request.target)?;
                 // 예약 수정 (org-02): a scheduled change moves its date or reason.
                 if request.status == OrgChangeStatus::Approved {
+                    let holds_apply = super::draft_admission::allows(
+                        &access,
+                        org,
+                        actor,
+                        console_platform_authz::Feature::OrgChangeApply,
+                        &request.target,
+                    )?;
                     may_touch_scheduled(tx, org, &request, holds_apply).await?;
                     let ports = (people.as_deref(), units.as_deref());
                     let audits = reschedule_in_tx(tx, (org, actor, now), id, &patch, ports).await?;

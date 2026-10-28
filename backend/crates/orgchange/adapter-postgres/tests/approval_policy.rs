@@ -11,6 +11,7 @@ use console_orgchange_adapter_postgres::{CreateOrgChange, PgOrgChangeStore};
 use console_orgchange_domain::{
     OrgChangeKind, OrgChangeStatus, OrgChangeTarget, OrgProposalOp, TargetKind,
 };
+use console_platform_test_support::runtime_role_pool;
 use serde_json::json;
 use sqlx::PgPool;
 use time::{Date, Duration, OffsetDateTime, macros::offset};
@@ -26,7 +27,7 @@ async fn none_applies_a_due_change_at_submit_without_steps(pool: PgPool) {
     console_platform_request_context::scope_org(org, async move {
         let branch = seed_branch(&pool, org).await;
         let actor = seed_user(&pool, org).await;
-        let store = PgOrgChangeStore::new(pool.clone());
+        let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
         let (created, _) = store
             .create(
                 actor,
@@ -58,7 +59,7 @@ async fn none_leaves_a_future_change_approved_for_its_drafter(pool: PgPool) {
     console_platform_request_context::scope_org(org, async move {
         let branch = seed_branch(&pool, org).await;
         let actor = seed_user(&pool, org).await;
-        let store = PgOrgChangeStore::new(pool.clone());
+        let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
         let later = today_kst() + Duration::days(3);
         let (future, _) = store
             .create(
@@ -99,7 +100,7 @@ async fn route_still_creates_the_ordered_steps(pool: PgPool) {
         .execute(&pool)
         .await
         .unwrap();
-        let store = PgOrgChangeStore::new(pool.clone());
+        let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
         let (created, _) = store
             .create(
                 actor,
@@ -204,7 +205,7 @@ async fn seed_user(pool: &PgPool, org: OrgId) -> UserId {
     let user = UserId::new();
     sqlx::query(
         "INSERT INTO users (id, display_name, roles, is_active, org_id) \
-         VALUES ($1, 'd26', ARRAY['MEMBER'], true, $2)",
+         VALUES ($1, 'd26', ARRAY['ADMIN'], true, $2)",
     )
     .bind(*user.as_uuid())
     .bind(*org.as_uuid())

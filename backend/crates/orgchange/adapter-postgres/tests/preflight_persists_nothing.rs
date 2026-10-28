@@ -22,6 +22,7 @@ use console_orgchange_adapter_postgres::{CreateOrgChange, PgOrgChangeStore};
 use console_orgchange_domain::{
     OrgChangeKind, OrgChangeStatus, OrgChangeTarget, OrgProposalOp, TargetKind,
 };
+use console_platform_test_support::runtime_role_pool;
 use serde_json::json;
 use sqlx::{PgPool, Row};
 use time::{Date, OffsetDateTime, macros::offset};
@@ -41,7 +42,7 @@ async fn preflight_persists_nothing_across_every_table(pool: PgPool) {
     console_platform_request_context::scope_org(org, async move {
         let region = seed_region(&pool, org, "리전-무기록").await;
         let drafter = seed_user(&pool, org, "EXECUTIVE").await;
-        let store = PgOrgChangeStore::new(pool.clone());
+        let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
 
         let (created, _) = store
             .create(drafter, clean_reorg(region, "preflight-zero-write-0001"))
@@ -62,9 +63,8 @@ async fn preflight_persists_nothing_across_every_table(pool: PgPool) {
 
         let detail = store.preflight(drafter, id).await.unwrap();
 
-        let after = db_fingerprint(&pool, org).await;
         assert_eq!(
-            diff(&before, &after),
+            diff(&before, &db_fingerprint(&pool, org).await),
             Vec::<String>::new(),
             "preflight must persist nothing"
         );
@@ -111,7 +111,7 @@ async fn preflight_persists_nothing_even_when_it_finds_blockers(pool: PgPool) {
         let drafter = seed_user(&pool, org, "EXECUTIVE").await;
         // An active resident user makes DEACTIVATE_BRANCH a REORG blocker.
         seed_user_in_branch(&pool, org, "MECHANIC", branch).await;
-        let store = PgOrgChangeStore::new(pool.clone());
+        let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
 
         let (created, _) = store
             .create(
@@ -158,7 +158,7 @@ async fn submit_accepts_a_pre_existing_draft_row_and_recomputes(pool: PgPool) {
     console_platform_request_context::scope_org(org, async move {
         let region = seed_region(&pool, org, "리전-초안").await;
         let drafter = seed_user(&pool, org, "EXECUTIVE").await;
-        let store = PgOrgChangeStore::new(pool.clone());
+        let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
 
         let (created, _) = store
             .create(drafter, clean_reorg(region, "submit-from-draft-0001"))
@@ -190,7 +190,7 @@ async fn submit_accepts_a_pre_existing_prechecked_row_and_recomputes(pool: PgPoo
     console_platform_request_context::scope_org(org, async move {
         let region = seed_region(&pool, org, "리전-기존").await;
         let drafter = seed_user(&pool, org, "EXECUTIVE").await;
-        let store = PgOrgChangeStore::new(pool.clone());
+        let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
 
         let (created, _) = store
             .create(drafter, clean_reorg(region, "submit-legacy-prechecked-01"))
@@ -228,7 +228,7 @@ async fn submit_refuses_a_pre_existing_prechecked_row_whose_stored_receipt_lies(
         let branch = seed_branch(&pool, org, region, "지점-거짓").await;
         let drafter = seed_user(&pool, org, "EXECUTIVE").await;
         seed_user_in_branch(&pool, org, "MECHANIC", branch).await;
-        let store = PgOrgChangeStore::new(pool.clone());
+        let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
 
         let (created, _) = store
             .create(

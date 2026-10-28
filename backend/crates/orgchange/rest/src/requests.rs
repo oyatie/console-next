@@ -6,7 +6,6 @@ pub(crate) async fn create(
     Json(b): Json<CreateOrgChangeRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), RestError> {
     let p = principal(&s, &h).await?;
-    allow_draft(&p)?;
     let key = idem_header(&h)?;
     let fingerprint_input = serde_json::to_value(&b)
         .map_err(|_| RestError::kernel(KernelError::validation("request body is not canonical")))?;
@@ -107,9 +106,6 @@ pub(crate) async fn update_draft(
     Json(b): Json<UpdateOrgChangeDraftRequest>,
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
-    allow_draft(&p)?;
-    // A scheduled change under routing is moved only by someone who may apply it.
-    let holds_apply = allow_apply(&p).is_ok();
     respond(
         &s.store
             .update_draft(
@@ -121,7 +117,6 @@ pub(crate) async fn update_draft(
                     reason: b.reason,
                     proposal: b.proposal,
                 },
-                holds_apply,
             )
             .await
             .map_err(RestError::store)?,
@@ -134,7 +129,6 @@ pub(crate) async fn preflight(
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
-    allow_draft(&p)?;
     respond(
         &s.store
             .preflight(p.user_id, id)
@@ -149,7 +143,6 @@ pub(crate) async fn submit(
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
-    allow_draft(&p)?;
     respond(
         &s.store
             .submit(p.user_id, id)
@@ -243,12 +236,9 @@ pub(crate) async fn cancel(
     Json(b): Json<CancelOrgChangeRequest>,
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
-    allow_draft(&p)?;
-    // A scheduled change under routing is cancelled only by someone who may apply it.
-    let holds_apply = allow_apply(&p).is_ok();
     respond(
         &s.store
-            .cancel(p.user_id, id, b.reason, holds_apply)
+            .cancel(p.user_id, id, b.reason)
             .await
             .map_err(RestError::store)?,
     )

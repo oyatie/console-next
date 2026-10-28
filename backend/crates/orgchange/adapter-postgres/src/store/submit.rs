@@ -21,7 +21,8 @@ impl PgOrgChangeStore {
         let org_unit_write = self.org_unit_write.clone();
         with_org_conn(&self.pool, org, |tx| {
             Box::pin(async move {
-                let request = lock_request(tx, id).await?;
+                let (request, access) = super::draft_admission::lock(tx, org, _actor, id).await?;
+                super::draft_admission::require(&access, org, _actor, &request.target)?;
                 if !request.status.is_draft_editable() {
                     return Err(KernelError::conflict(
                         "preflight runs only on a DRAFT or PRECHECKED request",
@@ -71,7 +72,8 @@ impl PgOrgChangeStore {
         let org_unit_write = self.org_unit_write.clone();
         let outcome = with_audits(&self.pool, org, move |tx| {
             Box::pin(async move {
-                let request = lock_request(tx, id).await?;
+                let (request, access) = super::draft_admission::lock(tx, org, actor, id).await?;
+                super::draft_admission::require(&access, org, actor, &request.target)?;
                 // Preflight persists nothing, so a request now reaches submit
                 // as DRAFT. Rows written before that change are PRECHECKED on
                 // disk and must keep working: both are accepted and the

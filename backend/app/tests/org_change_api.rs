@@ -1117,7 +1117,7 @@ async fn authorization_denies_without_leakage_and_conceals_other_tenants(pool: P
         Some("org-change-denied-0001"),
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "member draft: {denied}");
+    assert_eq!(status, StatusCode::NOT_FOUND, "member draft: {denied}");
 
     // Approve floor is higher than draft floor: ADMIN drafts but cannot decide.
     let (status, created) = send(

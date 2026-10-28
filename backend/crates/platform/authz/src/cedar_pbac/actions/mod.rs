@@ -10,6 +10,8 @@ pub mod legal_entity_manage;
 // --- lane: BE-EMP-UI ---
 pub mod job_title_manage;
 // --- lane: CRUD ---
+pub mod org_change_cancel;
+pub mod org_change_draft;
 pub mod org_change_step_decide;
 pub mod org_unit_manage;
 // --- lane: F7 ---

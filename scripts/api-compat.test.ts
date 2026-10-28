@@ -8,6 +8,7 @@ type Spec = { components: { schemas: Record<string, Schema> }; paths: Record<str
 const yaml = createRequire(import.meta.url)("js-yaml") as { load: (source: string) => Spec };
 const spec = yaml.load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
 const schemas = spec.components.schemas;
+
 const responseBinding = schemas.MobilePasskeyStepUpStartResponse!.properties!.binding!.properties ?? schemas.MobilePasskeyStepUpBinding!.properties!;
 
 test("schedule tree truth adds optional fields without changing the existing layer contract", () => {

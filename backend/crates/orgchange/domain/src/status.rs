@@ -88,7 +88,7 @@ impl OrgChangeStatus {
     }
 
     /// The draft-editable window: draft fields (kind, effective date, reason,
-    /// proposal) may only change here, and cancel is only legal here.
+    /// proposal) may only change here.
     #[must_use]
     pub const fn is_draft_editable(self) -> bool {
         matches!(self, Self::Draft | Self::Prechecked)
@@ -106,7 +106,7 @@ impl OrgChangeStatus {
                 // it keep every exit they had.
                 | (Self::Prechecked, Self::Draft)
                 | (Self::Prechecked, Self::InApproval)
-                | (Self::InApproval, Self::Approved | Self::Rejected)
+                | (Self::InApproval, Self::Approved | Self::Rejected | Self::Cancelled)
                 // approval.policy.org_structure = none (decisions #26): submit
                 // approves at once and creates no step.
                 | (Self::Draft | Self::Prechecked, Self::Approved)
