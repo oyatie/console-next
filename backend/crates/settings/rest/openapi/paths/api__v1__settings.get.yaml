@@ -22,8 +22,11 @@ responses:
         schema:
           type: object
           additionalProperties: false
-          required: [items]
+          required: [items, can_change]
           properties:
+            can_change:
+              type: boolean
+              description: Whether the caller can manage settings at the requested scope.
             items:
               type: array
               items:

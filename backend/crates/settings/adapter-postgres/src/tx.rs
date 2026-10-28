@@ -95,9 +95,31 @@ impl SettingsStore for PgSettingsTx<'_, '_> {
         &mut self,
         key: SettingKey,
         entity: Option<Uuid>,
-    ) -> Result<Vec<OverrideRow>, KernelError> {
-        let mut rows = load_rows_in_tx(self.tx.as_mut(), self.org, &[key], entity).await?;
-        Ok(rows.remove(&key).unwrap_or_default())
+    ) -> Result<(Vec<Uuid>, Vec<OverrideRow>), KernelError> {
+        if let Some(entity) = entity {
+            let live: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM legal_entities e WHERE e.org_id=$1 AND e.id=$2
+                   AND e.voided_at IS NULL AND e.closed_on IS NULL
+                 UNION ALL SELECT 1 FROM workplaces w JOIN legal_entities e
+                   ON e.org_id=w.org_id AND e.id=w.legal_entity_id
+                 WHERE w.org_id=$1 AND w.id=$2 AND w.voided_at IS NULL
+                   AND w.closed_on IS NULL
+                   AND e.voided_at IS NULL AND e.closed_on IS NULL)",
+            )
+            .bind(self.org.as_uuid())
+            .bind(entity)
+            .fetch_one(self.tx.as_mut())
+            .await
+            .map_err(db_error)?;
+            if !live {
+                tracing::warn!(code = "setting_scope_unknown", "settings scope refused");
+                return Err(KernelError::validation("unknown or inactive setting scope")
+                    .with_code("setting_scope_unknown")
+                    .with_field("scope_entity_id"));
+            }
+        }
+        let (chain, mut rows) = load_rows_in_tx(self.tx.as_mut(), self.org, &[key], entity).await?;
+        Ok((chain, rows.remove(&key).unwrap_or_default()))
     }
 
     async fn insert(&mut self, row: NewOverride) -> Result<InsertedOverride, ChangeError> {
@@ -156,6 +178,12 @@ impl SettingsStore for PgSettingsTx<'_, '_> {
 
 fn insert_error(row: &NewOverride, error: sqlx::Error) -> ChangeError {
     let key = row.key;
+    if matches!(&error, sqlx::Error::Database(db) if db.message() == "setting_scope_unknown") {
+        return KernelError::validation("unknown or inactive setting scope")
+            .with_code("setting_scope_unknown")
+            .with_field("scope_entity_id")
+            .into();
+    }
     if let sqlx::Error::Database(db) = &error {
         match db.code().as_deref() {
             Some("23514") => {

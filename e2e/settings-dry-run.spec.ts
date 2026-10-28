@@ -2,12 +2,11 @@
 import { expect, test } from "@playwright/test";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
-import { go } from "./flows";
 
 test("settings preview preserves values and leaves its idempotency key available for apply", async ({ browser }) => {
   const admin = await openTenant(browser, "settingplan", "설정미리보기");
   const bearer = bearerOf(admin);
-  await go(admin, "/");
+  await admin.reload();
   await expect.poll(bearer, { timeout: 15_000 }).not.toBe("");
   const api = apiOf(admin, bearer);
   const key = "approval.policy.org_structure";

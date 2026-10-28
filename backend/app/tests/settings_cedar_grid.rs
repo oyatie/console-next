@@ -87,7 +87,7 @@ async fn settings_cedar_scope_and_grant_grid(pool: PgPool) {
     }
 
     // (c) Another tenant: user in org2 attempts to modify settings for entity A in org1.
-    // Gets 403 out_of_scope, and 0 rows are written in org1.
+    // The foreign entity is unknown in org2 (422), and 0 rows are written in org1.
     let org2 = Uuid::new_v4();
     sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, 'Other Co')")
         .bind(org2)
@@ -122,8 +122,8 @@ async fn settings_cedar_scope_and_grant_grid(pool: PgPool) {
         Some(change_foreign),
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
-    assert_eq!(body["error"]["code"], "out_of_scope", "{body}");
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    assert_eq!(body["error"]["code"], "setting_scope_unknown", "{body}");
 
     for sql in [
         "SELECT count(*) FROM tenant_setting_overrides WHERE org_id = $1",

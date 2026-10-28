@@ -57,6 +57,24 @@ pub struct EffectiveSetting {
     pub effective_from: Option<Timestamp>,
     /// Rows that take effect later (a loosening waiting out its delay).
     pub scheduled: Vec<ScheduledValue>,
+    pub source: SettingSource,
+    pub chain: Vec<SettingLayer>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SettingSource {
+    pub layer: &'static str,
+    pub scope_entity_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SettingLayer {
+    #[serde(flatten)]
+    pub source: SettingSource,
+    pub value: Option<SettingValue>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub effective_from: Option<Timestamp>,
+    pub deciding: bool,
 }
 
 /// The citation behind a legal bound or fixed value.
@@ -79,14 +97,14 @@ pub struct ScheduledValue {
 /// Every key, resolved at `now`.
 pub(crate) fn effective_settings(
     rows: &BTreeMap<SettingKey, Vec<OverrideRow>>,
-    entity: Option<Uuid>,
+    chain: &[Uuid],
     now: Timestamp,
 ) -> Vec<EffectiveSetting> {
     SettingKey::ALL
         .iter()
         .map(|&key| {
             let rows = rows.get(&key).map_or(&[][..], Vec::as_slice);
-            let resolved = resolve_loaded(key, rows, entity, now).ok();
+            let resolved = resolve_loaded(key, rows, chain, now).ok();
             let effective_from = match resolved.map(|r| r.version) {
                 Some(SettingVersionId::Override(id)) => {
                     rows.iter().find(|r| r.id == id).map(|r| r.effective_from)
@@ -94,7 +112,60 @@ pub(crate) fn effective_settings(
                 _ => None,
             };
             let def = key.def();
+            let layers: Vec<_> = chain
+                .iter()
+                .enumerate()
+                .map(|(index, id)| {
+                    (
+                        if index + 1 == chain.len() {
+                            "legal_entity"
+                        } else {
+                            "workplace"
+                        },
+                        Some(*id),
+                    )
+                })
+                .chain([("tenant", None), ("code_default", None)])
+                .map(|(layer, scope)| {
+                    let row = rows
+                        .iter()
+                        .filter(|r| r.scope_entity_id == scope && r.effective_from <= now)
+                        .max_by_key(|r| r.effective_from);
+                    let deciding = resolved.is_some_and(|r| match r.version {
+                        SettingVersionId::CodeDefault => layer == "code_default",
+                        SettingVersionId::Override(id) => {
+                            layer != "code_default" && row.is_some_and(|r| r.id == id)
+                        }
+                    });
+                    SettingLayer {
+                        source: SettingSource {
+                            layer,
+                            scope_entity_id: scope,
+                        },
+                        value: if layer == "code_default" {
+                            def.default
+                        } else {
+                            row.map(|r| r.value)
+                        },
+                        effective_from: if layer == "code_default" {
+                            None
+                        } else {
+                            row.map(|r| r.effective_from)
+                        },
+                        deciding,
+                    }
+                })
+                .collect();
+            let source = layers.iter().find(|l| l.deciding).map_or(
+                SettingSource {
+                    layer: "code_default",
+                    scope_entity_id: None,
+                },
+                |l| l.source.clone(),
+            );
             EffectiveSetting {
+                source,
+                chain: layers,
                 key,
                 kind: def.kind,
                 default: def.default,

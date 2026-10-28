@@ -33,7 +33,7 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
     json: screenAccess(new URL(request.headers().referer ?? request.url()).pathname),
   }));
   await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
-  await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { items: [] } });
+  await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [] } });
   // route.fulfill buffers bodies; a browser stream keeps the shell healthy without fake reconnects.
   await page.addInitScript(() => {
     const fetch = window.fetch;

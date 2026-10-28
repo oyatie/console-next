@@ -77,12 +77,12 @@ pub trait SettingsStore {
         value: &SettingValue,
     ) -> impl Future<Output = Result<bool, KernelError>> + Send;
 
-    /// Every row of `key` at the tenant scope and, when given, at `entity`.
+    /// The most specific first chain, and every row of `key` at those scopes or tenant-wide.
     fn rows(
         &mut self,
         key: SettingKey,
         entity: Option<Uuid>,
-    ) -> impl Future<Output = Result<Vec<OverrideRow>, KernelError>> + Send;
+    ) -> impl Future<Output = Result<(Vec<Uuid>, Vec<OverrideRow>), KernelError>> + Send;
 
     /// Descendant scopes with an override in force at the proposed effective time.
     fn keeps_own_value(

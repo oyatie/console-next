@@ -3,7 +3,7 @@
 //! Every tenant policy value is a [`SettingKey`] with a code-defined
 //! [`SettingDef`]: default, bounds, which way is looser, and who may change
 //! it. Tenants override values with append-only, effective-dated rows; the
-//! resolution order is legal entity or 사업장 → tenant → code default.
+//! resolution order is 사업장 → legal entity → tenant → code default.
 //! Statutory numbers are not settings: they live in the statutory register
 //! (BW-30).
 //!
@@ -25,5 +25,5 @@ pub use change::{AcceptedChange, Direction, LOOSENING_DELAY, check_change, direc
 pub use definition::{Governance, LooserWhen, SettingDef, SettingKind, SettingValue, Unit};
 pub use error::SettingError;
 pub use keys::{SettingKey, UnknownKey};
-pub use resolve::{OverrideRow, resolve};
+pub use resolve::{OverrideRow, resolve, resolve_chain};
 pub use snapshot::{SettingsSnapshot, SnapshotEntry};

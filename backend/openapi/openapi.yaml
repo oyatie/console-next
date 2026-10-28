@@ -26909,8 +26909,11 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [items]
+                required: [items, can_change]
                 properties:
+                  can_change:
+                    type: boolean
+                    description: Whether the caller can manage settings at the requested scope.
                   items:
                     type: array
                     items:
@@ -58273,7 +58276,7 @@ components:
     SettingEntry:
       type: object
       additionalProperties: false
-      required: [key, kind, default, looser_when, governance, legal_basis, value, version, effective_from, scheduled]
+      required: [key, kind, default, looser_when, governance, legal_basis, value, version, effective_from, scheduled, source, chain]
       properties:
         key:
           type: string
@@ -58352,6 +58355,39 @@ components:
                 $ref: '#/components/schemas/SettingValue'
               effective_from:
                 $ref: '#/components/schemas/Timestamp'
+        source:
+          type: object
+          additionalProperties: false
+          required: [layer, scope_entity_id]
+          properties:
+            layer:
+              type: string
+              enum: [code_default, tenant, legal_entity, workplace]
+            scope_entity_id:
+              allOf: [{$ref: '#/components/schemas/Uuid'}]
+              nullable: true
+        chain:
+          type: array
+          description: Most specific scope first, followed by tenant and code default; only in-force values.
+          items:
+            type: object
+            additionalProperties: false
+            required: [layer, scope_entity_id, value, effective_from, deciding]
+            properties:
+              layer:
+                type: string
+                enum: [code_default, tenant, legal_entity, workplace]
+              scope_entity_id:
+                allOf: [{$ref: '#/components/schemas/Uuid'}]
+                nullable: true
+              value:
+                allOf: [{$ref: '#/components/schemas/SettingValue'}]
+                nullable: true
+              effective_from:
+                allOf: [{$ref: '#/components/schemas/Timestamp'}]
+                nullable: true
+              deciding:
+                type: boolean
     SettingOverrideRecord:
       type: object
       additionalProperties: false

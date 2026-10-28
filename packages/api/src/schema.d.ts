@@ -27603,6 +27603,20 @@ export interface components {
                 value: components["schemas"]["SettingValue"];
                 effective_from: components["schemas"]["Timestamp"];
             }[];
+            source: {
+                /** @enum {string} */
+                layer: "code_default" | "tenant" | "legal_entity" | "workplace";
+                scope_entity_id: components["schemas"]["Uuid"] | null;
+            };
+            /** @description Most specific scope first, followed by tenant and code default; only in-force values. */
+            chain: {
+                /** @enum {string} */
+                layer: "code_default" | "tenant" | "legal_entity" | "workplace";
+                scope_entity_id: components["schemas"]["Uuid"] | null;
+                value: components["schemas"]["SettingValue"] | null;
+                effective_from: components["schemas"]["Timestamp"] | null;
+                deciding: boolean;
+            }[];
         };
         SettingOverrideRecord: {
             actor_kind?: components["schemas"]["ActorKind"] | null;
@@ -55602,6 +55616,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description Whether the caller can manage settings at the requested scope. */
+                        can_change: boolean;
                         items: components["schemas"]["SettingEntry"][];
                     };
                 };

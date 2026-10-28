@@ -1,5 +1,5 @@
 //! Resolution: which value is in force for a key, at a scope, at a moment.
-//! The most specific scope wins (legal entity or 사업장 → tenant → code
+//! The most specific scope wins (사업장 → legal entity → tenant → code
 //! default); within a scope the latest row with `effective_from <= as_of`
 //! wins. A future row is not in force yet.
 
@@ -30,6 +30,18 @@ pub fn resolve(
     entity: Option<Uuid>,
     as_of: Timestamp,
 ) -> Result<Resolved<SettingValue>, SettingError> {
+    resolve_chain(key, rows, entity.as_slice(), as_of)
+}
+
+/// Resolve the most specific in-force layer in `chain`, then tenant and default.
+/// # Errors
+/// [`SettingError::FactUndeclared`] for a tenant fact with no row in force.
+pub fn resolve_chain(
+    key: SettingKey,
+    rows: &[OverrideRow],
+    chain: &[Uuid],
+    as_of: Timestamp,
+) -> Result<Resolved<SettingValue>, SettingError> {
     let def = key.def();
     let latest_at = |scope: Option<Uuid>| {
         rows.iter()
@@ -37,8 +49,9 @@ pub fn resolve(
             .max_by_key(|r| r.effective_from)
     };
     let row = if def.governance == Governance::Tenant {
-        entity
-            .and_then(|e| latest_at(Some(e)))
+        chain
+            .iter()
+            .find_map(|e| latest_at(Some(*e)))
             .or_else(|| latest_at(None))
     } else {
         None

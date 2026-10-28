@@ -51,8 +51,8 @@ impl SettingsStore for Fake {
         &mut self,
         _: SettingKey,
         _: Option<Uuid>,
-    ) -> Result<Vec<OverrideRow>, KernelError> {
-        Ok(self.rows.clone())
+    ) -> Result<(Vec<Uuid>, Vec<OverrideRow>), KernelError> {
+        Ok((Vec::new(), self.rows.clone()))
     }
     async fn keeps_own_value(
         &mut self,
