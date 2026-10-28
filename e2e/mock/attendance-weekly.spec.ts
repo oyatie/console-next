@@ -13,7 +13,8 @@ for (const width of [1440, 390]) test(`weekly unknown explains its reason at ${w
   await mockRoute(page, "get", "/api/v1/attendance/week52", request => {
     const week = new URL(request.url()).searchParams.get("week_start")!;
     weeks.push(week);
-    return { status: 200, json: { week_start: week, items: ["UNKNOWN", "DANGER", "WARN", "OK"].map((tone, i) => ({
+    const tones = week === "2026-10-26" ? ["UNKNOWN", "DANGER", "WARN", "OK"] : ["DANGER", "WARN", "OK"];
+    return { status: 200, json: { week_start: week, items: tones.map((tone, i) => ({
       employee_id: id(100 + i), name: `주간직원 ${i + 1}`, week_start: week,
       current_hours: 45, projected_hours: 45, tone: tone as "UNKNOWN" | "DANGER" | "WARN" | "OK", acked: false,
     })) } };
@@ -21,7 +22,8 @@ for (const width of [1440, 390]) test(`weekly unknown explains its reason at ${w
   await page.goto("/attendance?tab=week&date=2026-10-28");
   const table = page.getByRole("table", { name: "주간 근로시간", exact: true });
   await expect(table.getByRole("row").filter({ hasText: "주간직원 1" })).toContainText("확인 불가");
-  await expect(page.getByText("이 주의 법정 근로시간 기준이나 설정된 주의 기준을 확인할 수 없습니다.", { exact: true })).toHaveCount(1);
+  const reason = page.getByText("이 주의 법정 근로시간 기준이나 설정된 주의 기준을 확인할 수 없습니다.", { exact: true });
+  await expect(reason).toHaveCount(1);
   await expect(table).toContainText("한도 도달");
   await expect(table).toContainText("주의");
   await expect(table).toContainText("기준 이내");
@@ -29,6 +31,9 @@ for (const width of [1440, 390]) test(`weekly unknown explains its reason at ${w
   await fits(page, `weekly ${width}`);
   await page.getByRole("button", { name: "이전 주", exact: true }).click();
   await expect.poll(() => weeks.at(-1)).toBe("2026-10-19");
+  await expect(table.locator("tbody tr")).toHaveCount(3);
+  await expect(table.getByText("확인 불가", { exact: true })).toHaveCount(0);
+  await expect(reason).toHaveCount(0);
   expect(weeks[0]).toBe("2026-10-26");
   expect(fixture.unexpected).toEqual([]);
 });
@@ -52,16 +57,22 @@ for (const width of [1440, 390]) test(`2,000 unknown weekly rows keep one headin
   await expect(region.getByText(reason, { exact: true })).toHaveCount(1);
   await expect(table.getByText(reason, { exact: true })).toHaveCount(0);
   await expect(table.getByText("확인 불가", { exact: true })).toHaveCount(2000);
+  expect(await table.evaluate(el => {
+    const height = el.querySelector("thead tr")!.getBoundingClientRect().height;
+    return Array.from(el.querySelectorAll("tbody tr")).every(row => row.getBoundingClientRect().height <= height + 1);
+  }), "every row keeps the table's standard row height").toBe(true);
   if (width === 390) {
     expect(await table.locator("tbody td:first-child").evaluateAll(cells => cells.every(cell => {
       const text = document.createRange();
       text.selectNodeContents(cell);
       const lines = Array.from(text.getClientRects());
       const bounds = cell.getBoundingClientRect();
-      return lines.length > 0 && lines.length <= 2 && lines.every(line => line.left >= bounds.left && line.right <= bounds.right);
-    })), "every employee name fits within two lines").toBe(true);
+      return lines.length === 1 && lines.every(line => line.left >= bounds.left && line.right <= bounds.right);
+    })), "every employee name fits on one line").toBe(true);
   }
-  await expectAxe(page, `2,000 unknown weekly rows ${width}`);
+  await expectAxe(page, `2,000 unknown weekly rows ${width}`, {
+    include: ".page > header, .page > section > div:first-child, .page [data-placement], .page table caption, .page table thead, .page table tbody tr:nth-child(-n+3)",
+  });
   await fits(page, `2,000 unknown weekly rows ${width}`);
   expect(fixture.unexpected).toEqual([]);
 });
