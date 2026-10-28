@@ -19,14 +19,51 @@ test('only default-branch pushes may export image caches or prune old caches', (
   const prune = workflow.jobs['prune-image-cache'];
   assert.equal(prune.if, trustedPush);
   assert.equal(prune.permissions.actions, 'write');
-  assert.ok(workflow.jobs.build.needs.includes('prune-image-cache'));
-  for (const result of ['success', 'skipped', 'failure']) {
-    assert.equal(runInNewContext(workflow.jobs.build.if, {
-      github: {event_name: 'push'}, needs: {'prune-image-cache': {result}}, cancelled: () => false,
-    }), true, `cleanup ${result} must not skip builds`);
-  }
-  assert.match(workflow.jobs.build.if, /!cancelled\(\)/);
   assert.match(JSON.stringify(prune.steps), /prune-image-cache\.mjs/);
+});
+
+test('cache pruning runs alongside release jobs without bypassing failed release prerequisites', () => {
+  const dependencies = name => [workflow.jobs[name].needs ?? []].flat();
+  const ancestors = name => dependencies(name).flatMap(id => [id, ...ancestors(id)]);
+  const github = {event_name: 'push', ref: 'refs/heads/dev'};
+  const results = {'prune-image-cache': 'failure', validate: 'success', build: 'success', publish: 'success'};
+  const runs = (name, outcomes = results, event = github, isCancelled = false) => {
+    const expression = workflow.jobs[name].if ?? 'true';
+    const success = () => !isCancelled && ancestors(name).every(id => outcomes[id] === 'success');
+    // GitHub adds success() unless the condition explicitly calls a status function.
+    const condition = /\b(always|cancelled|failure|success)\s*\(/.test(expression) ? expression : `success() && (${expression})`;
+    return runInNewContext(condition, {
+      github: event,
+      needs: Object.fromEntries(dependencies(name).map(id => [id, {result: outcomes[id], outputs: {}}])),
+      success, cancelled: () => isCancelled, always: () => true,
+      failure: () => ancestors(name).some(id => outcomes[id] === 'failure'),
+    });
+  };
+  for (const name of ['build', 'publish', 'negative-signer']) {
+    for (const result of ['success', 'failure', 'skipped', 'cancelled']) {
+      assert.equal(runs(name, {...results, 'prune-image-cache': result}), true, `${name}: prune ${result}`);
+    }
+    assert.equal(runs(name, results, github, true), false, `${name}: cancelled workflow`);
+  }
+  for (const name of ['build', 'publish', 'negative-signer']) {
+    assert.ok(!ancestors(name).includes('prune-image-cache'), `${name} must not wait for cache cleanup`);
+  }
+  assert.deepEqual(dependencies('publish').sort(), ['build', 'validate']);
+  assert.deepEqual(dependencies('negative-signer'), ['publish']);
+  for (const name of ['validate', 'build', 'publish']) for (const result of ['failure', 'skipped', 'cancelled']) {
+    const outcomes = {...results, [name]: result};
+    if (name !== 'publish') {
+      assert.equal(runs('publish', outcomes), false, `publish: ${name} ${result}`);
+      outcomes.publish = 'skipped';
+    }
+    assert.equal(runs('negative-signer', outcomes), false, `negative-signer: ${name} ${result}`);
+  }
+  for (const name of ['publish', 'negative-signer']) {
+    for (const event_name of ['pull_request', 'merge_group', 'schedule', 'workflow_dispatch']) {
+      assert.equal(runs(name, results, {...github, event_name}), false, `${name}: ${event_name}`);
+    }
+    assert.equal(runs(name, results, {...github, ref: 'refs/heads/topic'}), false, `${name}: other branch`);
+  }
 });
 
 for (const arch of ['amd64', 'arm64']) for (const write of ['true', 'false', '']) {
@@ -59,7 +96,7 @@ const old = {id: 2, key: 'index-platform-amd64-1-5a70b200#87', size_in_bytes: 10
 const npm = {id: 3, key: 'node-cache-Linux-x64-npm-lock', size_in_bytes: 200};
 const current = {id: 4, key: 'index-console-platform-arm64-1-5a70b200#1', size_in_bytes: 100};
 
-test('failed cache prune still allows build/publish and writes a visible summary warning', () => {
+test('failed or skipped cache prune writes a visible summary warning', () => {
   const steps = workflow.jobs['prune-image-cache'].steps;
   const cleanup = steps.find(step => step.with?.script?.includes('pruneImageCache'));
   const dir = mkdtempSync(join(tmpdir(), 'image-cache-failure-'));
@@ -75,11 +112,14 @@ await assert.rejects((async () => { ${cleanup.with.script} })(), /cache API unav
     assert.equal(cleanup['continue-on-error'], true);
     const warning = steps.find(step => step.if?.includes(`steps.${cleanup.id}.outcome`));
     assert.ok(warning, 'a failed prune must have a summary warning step');
-    for (const outcome of ['failure', 'success', 'skipped']) {
+    for (const outcome of ['failure', 'success', 'skipped', 'cancelled']) {
       assert.equal(runInNewContext(warning.if, {
-        steps: {[cleanup.id]: {outcome, conclusion: 'success'}}, cancelled: () => false,
-      }), outcome === 'failure');
+        steps: {[cleanup.id]: {outcome, conclusion: outcome === 'failure' ? 'success' : outcome}}, cancelled: () => false,
+      }), outcome !== 'success', `prune ${outcome} must be visible, including skipped after checkout failure`);
     }
+    assert.equal(runInNewContext(warning.if, {
+      steps: {[cleanup.id]: {outcome: 'skipped'}}, cancelled: () => true,
+    }), false);
     const summary = join(dir, 'summary.md');
     const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', warning.run], {
       encoding: 'utf8', env: {...process.env, GITHUB_STEP_SUMMARY: summary},
@@ -87,13 +127,6 @@ await assert.rejects((async () => { ${cleanup.with.script} })(), /cache API unav
     assert.equal(result.status, 0, result.stderr);
     assert.match(readFileSync(summary, 'utf8'), /warning.*cache.*failed/i);
     assert.match(readFileSync(summary, 'utf8'), /limit/i);
-    assert.equal(runInNewContext(workflow.jobs.build.if, {
-      github: {event_name: 'push'}, needs: {'prune-image-cache': {result: 'failure'}}, cancelled: () => false,
-    }), true);
-    assert.ok(workflow.jobs.publish.needs.includes('build'));
-    assert.equal(runInNewContext(workflow.jobs.publish.if, {
-      github: {event_name: 'push', ref: 'refs/heads/dev'},
-    }), true);
   } finally { rmSync(dir, {recursive: true, force: true}); }
 });
 
