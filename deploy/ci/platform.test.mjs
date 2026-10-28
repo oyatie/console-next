@@ -188,7 +188,7 @@ test('PLAT_IMAGE_DIGEST and PLAT_OVERLAY: renderer refuses tags and unknown envi
 test('class B executes signature and identity controls, drift, real HTTP, canary and S3 recovery', () => {
   const script = read('deploy/ci/exit-test.sh');
   for (const name of ['image-admission.mjs','stack.e2e.mjs','canary.mjs','restore.mjs']) assert.ok(script.includes(name));
-  assert.match(script, /SourceVerificationFailed/);
+  assert.match(script, /VerificationError/);
   assert.match(script, /kubectl scale deployment console-worker/);
   assert.match(script, /flux reconcile kustomization console-app/);
   const signer = yaml.load(read('.github/workflows/platform-negative-signer.yml'));
