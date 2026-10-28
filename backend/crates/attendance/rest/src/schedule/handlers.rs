@@ -109,9 +109,9 @@ pub(super) async fn tree(
             action: "attendance.schedule_tree_read",
             target_type: "employee",
             target_id: "query".into(),
-            subject_ids: &tree.access_subject_employees,
+            subject_ids: &[],
             reader_subject: None,
-            details: serde_json::json!({}),
+            details: serde_json::json!({"row_count": tree.people_total}),
         },
         &[],
     )

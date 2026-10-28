@@ -3,6 +3,8 @@
 //! records the accounts shown. The adapter reads run on the pool, so the row is
 //! written right after the read and before the response; a failed write fails
 //! the read (nothing leaves unrecorded).
+//! 고시 제2025-9호 §8① covers personal-information system access, including
+//! a 취급자 reading their own data; the shared writer marks those `self_read`.
 
 use console_identity_application::{UserPage, UserSummary};
 use console_platform_authz::Principal;

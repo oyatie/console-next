@@ -232,13 +232,39 @@ pub(crate) async fn org_structure(
     h: HeaderMap,
     Query(q): Query<AsOfQuery>,
 ) -> Result<Response> {
-    let (a, _) = actor(&s, &h, Need::Read, Target::Tenant).await?;
-    Ok(Json(
-        s.store
-            .org_structure_at(&a, crate::asof::validated(&s, &a, q.parse()).await?)
-            .await?,
+    let (a, _, gate) = read_gate(&s, &h, Need::Read, Target::Tenant).await?;
+    let tree = s
+        .store
+        .org_structure_at(&a, crate::asof::validated(&s, &a, q.parse()).await?)
+        .await?;
+    let mut nodes: Vec<_> = tree.entities.iter().chain(&tree.unplaced).collect();
+    let mut subjects = Vec::new();
+    while let Some(node) = nodes.pop() {
+        subjects.extend(node.head.as_ref().map(|head| head.employee_id));
+        nodes.extend(&node.children);
+    }
+    console_platform_request_context::audit_context::access_log::record_person_access(
+        s.store.pool(),
+        &gate.principal,
+        console_platform_request_context::audit_context::access_log::AccessRecord {
+            action: "org_structure.read",
+            target_type: "org_structure",
+            target_id: "query".into(),
+            subject_ids: &subjects,
+            reader_subject: None,
+            details: json!({}),
+        },
+        &[],
     )
-    .into_response())
+    .await
+    .map_err(|_| {
+        console_entity_domain::Refusal::new(
+            console_kernel_core::ErrorKind::Unavailable,
+            "unavailable",
+            "org structure access record could not be recorded",
+        )
+    })?;
+    Ok(Json(tree).into_response())
 }
 
 pub(crate) async fn bind_assignment(

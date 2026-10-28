@@ -1,4 +1,5 @@
 use crate::*;
+use console_platform_request_context::audit_context::access_log::AccessRecord;
 
 pub(crate) async fn create(
     State(s): State<OrgChangeRestState>,
@@ -86,6 +87,21 @@ pub(crate) async fn list(
         })
         .await
         .map_err(RestError::store)?;
+    let users: Vec<_> = page.items.iter().map(|item| item.drafted_by).collect();
+    access_log::record(
+        &s,
+        &p,
+        AccessRecord {
+            action: "org_change.list_read",
+            target_type: "org_change",
+            target_id: "query".into(),
+            subject_ids: &[],
+            reader_subject: None,
+            details: json!({"row_count": page.items.len()}),
+        },
+        &users,
+    )
+    .await?;
     respond(&page)
 }
 
@@ -96,7 +112,9 @@ pub(crate) async fn detail(
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
     allow_read(&p)?;
-    respond(&s.store.get(id).await.map_err(RestError::store)?)
+    let detail = s.store.get(id).await.map_err(RestError::store)?;
+    access_log::detail(&s, &p, &detail).await?;
+    respond(&detail)
 }
 
 pub(crate) async fn update_draft(

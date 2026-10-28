@@ -68,7 +68,7 @@ pub(super) async fn cases(pool: &PgPool) -> (Ctx, Vec<(String, &'static str, Vec
             (
                 "/api/v1/attendance/schedule/tree?date=2026-10-06".into(),
                 "attendance.schedule_tree_read",
-                people.clone(),
+                vec![],
             ),
             (
                 format!("/api/v1/attendance/closes?month=2026-10&branch_id={branch}"),

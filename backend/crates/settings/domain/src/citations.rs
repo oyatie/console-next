@@ -48,8 +48,8 @@ pub const SAFETY_MEASURES_NOTICE_5: OfficialSource = source(
     "개인정보의 안전성 확보조치 기준 제5조제3항",
     "https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준",
 );
-/// The 2-year floor holds only under 단서 2호 (고유식별정보 is processed:
-/// RRN); the base rule is 1 year.
+/// 고시 제2025-9호 §8①: the base period is 1 year; 단서 2호 requires 2 years
+/// for 고유식별정보 or 민감정보. Production's floor rests on 민감정보 processing.
 pub const SAFETY_MEASURES_NOTICE_8: OfficialSource = source(
     PIPC,
     "개인정보의 안전성 확보조치 기준 제8조제1항제2호",

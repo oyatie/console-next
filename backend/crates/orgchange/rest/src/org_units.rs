@@ -1,4 +1,5 @@
 use crate::*;
+use console_platform_request_context::audit_context::access_log::AccessRecord;
 
 pub(crate) async fn list_org_units(
     State(s): State<OrgChangeRestState>,
@@ -6,7 +7,22 @@ pub(crate) async fn list_org_units(
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
     allow_read(&p)?;
-    respond(&s.store.list_org_units().await.map_err(RestError::store)?)
+    let units = s.store.list_org_units().await.map_err(RestError::store)?;
+    access_log::record(
+        &s,
+        &p,
+        AccessRecord {
+            action: "org_unit.list_read",
+            target_type: "org_unit",
+            target_id: "query".into(),
+            subject_ids: &[],
+            reader_subject: None,
+            details: json!({"row_count": units.items.len()}),
+        },
+        &[],
+    )
+    .await?;
+    respond(&units)
 }
 
 pub(crate) async fn get_org_unit(
@@ -29,10 +45,10 @@ pub(crate) async fn get_org_unit(
     let mut users: Vec<_> = unit.revisions.iter().map(|r| r.actor_id).collect();
     users.sort_unstable();
     users.dedup();
-    console_platform_request_context::audit_context::access_log::record_person_access(
-        s.store.pool(),
+    access_log::record(
+        &s,
         &p,
-        console_platform_request_context::audit_context::access_log::AccessRecord {
+        AccessRecord {
             action: "org_unit.read",
             target_type: "org_unit",
             target_id: id.to_string(),
@@ -42,14 +58,7 @@ pub(crate) async fn get_org_unit(
         },
         &users,
     )
-    .await
-    .map_err(|_| {
-        RestError::new(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "unavailable",
-            "org unit access record could not be recorded",
-        )
-    })?;
+    .await?;
     respond(&unit)
 }
 

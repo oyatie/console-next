@@ -27,9 +27,8 @@ pub struct AccessRecord<'a> {
     pub target_type: &'static str,
     /// The read object's id, or `query` for a list.
     pub target_id: String,
-    /// The 정보주체 shown, in one id space (employee ids or user ids). A
-    /// whole-population read (export, org chart) passes none and names its
-    /// row count in `details` instead.
+    /// The 정보주체 actually returned, in one id space (employee or user ids).
+    /// Counts alone pass no subjects; exports name the exact downloaded set.
     pub subject_ids: &'a [Uuid],
     /// The reader's own id in that same id space, if any (marks `self_read`).
     pub reader_subject: Option<Uuid>,
@@ -64,8 +63,11 @@ pub fn access_event(
         reader_subject,
         details,
     } = record;
-    let self_read = reader_subject
-        .is_some_and(|me| !subject_ids.is_empty() && subject_ids.iter().all(|id| *id == me));
+    let users = details.get("user_subject_ids").and_then(Value::as_array);
+    let reader = principal.user_id.to_string();
+    let self_read = (!subject_ids.is_empty() || users.is_some_and(|ids| !ids.is_empty()))
+        && subject_ids.iter().all(|id| Some(*id) == reader_subject)
+        && users.is_none_or(|ids| ids.iter().all(|id| id.as_str() == Some(reader.as_str())));
     let context = current_audit_context();
     let mut after = json!({
         "subject_ids": subject_ids,
@@ -76,7 +78,9 @@ pub fn access_event(
         "session_id": context.as_ref().and_then(|context| context.session_id),
     });
     if let (Some(after), Value::Object(extra)) = (after.as_object_mut(), details) {
-        after.extend(extra);
+        for (key, value) in extra {
+            after.entry(key).or_insert(value);
+        }
     }
     let trace = context
         .as_ref()
@@ -144,15 +148,6 @@ pub async fn record_person_access(
     subjects.dedup();
     let mut details = record.details.as_object().cloned().unwrap_or_default();
     details.insert("user_subject_ids".into(), json!(user_only));
-    // Account-only principals also participate in the self-read decision.
-    details.insert(
-        "self_read".into(),
-        json!(
-            (!subjects.is_empty() || !user_only.is_empty())
-                && subjects.iter().all(|id| Some(*id) == own)
-                && user_only.iter().all(|id| *id == reader)
-        ),
-    );
     record_access(
         pool,
         principal,

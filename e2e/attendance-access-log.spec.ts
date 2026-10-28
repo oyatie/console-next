@@ -2,8 +2,9 @@
 import { expect, test } from "@playwright/test";
 import { firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
+import { openUnit, sheet } from "./helpers/structure";
 import { psql, settled } from "./idle-fixture";
-import { SETUP_DEPARTMENT, setupCompany } from "./setup-flows";
+import { SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
 
 test("attendance reads commit one access row naming the people returned", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(300_000);
@@ -28,10 +29,10 @@ test("attendance reads commit one access row naming the people returned", { tag:
     const output = psql(slug, `SELECT COALESCE(json_agg(json_build_object(
       'action', action, 'actor', actor, 'occurred_at', occurred_at, 'ip', ip,
       'after', after_snap) ORDER BY occurred_at, id), '[]'::json) FROM audit_events
-      WHERE org_id=current_setting('app.current_org')::uuid AND (action LIKE 'attendance.%_read' OR action IN ('org_unit.read','org_unit.members_read'));`);
+      WHERE org_id=current_setting('app.current_org')::uuid AND (action LIKE 'attendance.%_read' OR action IN ('org_unit.read','org_unit.members_read','org_unit.list_read','org_structure.read','org_change.read','org_change.list_read'));`);
     return JSON.parse(output.split("\n").find(line => line.startsWith("["))!) as {
       action: string; actor: string; occurred_at: string; ip: string;
-      after: { subject_ids: string[]; subject_count: number; session_id: string; self_read: boolean; user_subject_ids?: string[] };
+      after: { subject_ids: string[]; subject_count: number; session_id: string; self_read: boolean; user_subject_ids?: string[]; row_count?: number };
     }[];
   };
   const month = kstDate().slice(0, 7);
@@ -81,7 +82,7 @@ test("attendance reads commit one access row naming the people returned", { tag:
     [`/attendance/substitutions?month=${month}`, "attendance.substitutions_read", []],
     ["/attendance/crews", "attendance.crews_read", []],
     [`/attendance/schedule/layers?scope_kind=PERSON&scope_id=${people.items[0]!.id}`, "attendance.layers_read", []],
-    ["/attendance/schedule/tree", "attendance.schedule_tree_read", people.items.map(person => person.id)],
+    ["/attendance/schedule/tree", "attendance.schedule_tree_read", []],
     [`/attendance/closes?month=${month}&branch_id=${closeBranch}`, "attendance.closes_read", [ownPerson]],
     [`/org-units/${company.id}`, "org_unit.read", people.items.map(person => person.id)],
     [`/org-structure/units/${department.id}/members`, "org_unit.members_read", people.items.map(person => person.id)],
@@ -96,6 +97,9 @@ test("attendance reads commit one access row naming the people returned", { tag:
     const row = rows.slice(before)[0]!;
     expect(row.action).toBe(action);
     expect(row.after.subject_ids.sort(), action).toEqual([...subjects].sort());
+    if (action === "attendance.schedule_tree_read") {
+      expect(row.after.row_count).toBe((await response.json() as { people_total: number }).people_total);
+    }
     expect(row.after.subject_count).toBe(subjects.length);
     expect(row.after).not.toHaveProperty("employee_subject_ids");
     if (["attendance.layers_read", "attendance.schedule_tree_read", "attendance.closes_read", "org_unit.read", "org_unit.members_read"].includes(action)) {
@@ -132,4 +136,49 @@ test("attendance reads commit one access row naming the people returned", { tag:
   const anonymous = await admin.request.get(`/api/v1/attendance/month?month=${month}`);
   expect(anonymous.status()).toBe(401);
   expect(records()).toHaveLength(before);
+
+  const departmentPanel = await openUnit(admin, SETUP_DEPARTMENT);
+  await departmentPanel.getByRole("button", { name: "부서장 지정", exact: true }).click();
+  const appoint = sheet(admin, "부서장 지정");
+  await appoint.getByRole("combobox", { name: "부서장", exact: true }).fill("윤하준");
+  await admin.getByRole("option", { name: /윤하준/ }).click();
+  await appoint.getByRole("button", { name: "부서장 지정", exact: true }).click();
+  await expect(appoint).toBeHidden();
+  await startOperations(admin);
+  const operatingPanel = await openUnit(admin, SETUP_DEPARTMENT);
+  await operatingPanel.getByRole("button", { name: "이름 변경" }).click();
+  const rename = sheet(admin, `${SETUP_DEPARTMENT} 이름 변경`);
+  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("접속기록 부서");
+  await rename.getByRole("textbox", { name: /^시행일/ }).fill(kstDate(3));
+  await rename.getByRole("textbox", { name: /^사유/ }).fill("접속기록 확인");
+  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
+  await expect(rename).toBeHidden();
+  await go(admin, "/account");
+  await settled(admin);
+  const changes = await (await api("/org-changes?limit=1")).json() as { items: { id: string }[] };
+  expect(changes.items).toHaveLength(1);
+  for (const [path, action, subjects] of [
+    ["/org-changes?limit=1", "org_change.list_read", [ownPerson]],
+    [`/org-changes/${changes.items[0]!.id}`, "org_change.read", [ownPerson]],
+    ["/org-structure", "org_structure.read", [ownPerson]],
+    ["/org-units", "org_unit.list_read", []],
+  ] as const) {
+    const prior = records().length;
+    const response = await api(path);
+    expect(response.status(), await response.text()).toBe(200);
+    const rows = records();
+    expect(rows).toHaveLength(prior + 1);
+    const row = rows.at(-1)!;
+    expect(row.action).toBe(action);
+    expect(row.actor).toBe(reader);
+    expect(row.after.subject_ids).toEqual(subjects);
+    expect(row.after.subject_count).toBe(subjects.length);
+    expect(row.after.user_subject_ids).toEqual([]);
+    expect(row.after.self_read).toBe(subjects.length === 1);
+    expect(row.ip).toBeTruthy();
+    expect(row.after.session_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(Date.parse(row.occurred_at)).not.toBeNaN();
+    expect((await admin.request.get(`/api/v1${path}`)).status()).toBe(401);
+    expect(records()).toHaveLength(rows.length);
+  }
 });
