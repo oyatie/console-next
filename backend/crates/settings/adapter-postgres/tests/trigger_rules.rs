@@ -55,11 +55,12 @@ async fn a_change_is_resolved_listed_audited_and_kept_in_history(pool: PgPool) {
     assert_eq!(view.direction, Direction::Tighten);
 
     let listed = store.list_effective(actor.org, None).await.unwrap();
-    assert_eq!(listed.len(), SettingKey::ALL.len());
-    let row = listed.iter().find(|s| s.key.as_str() == KEY).unwrap();
+    assert_eq!(listed.items.len(), SettingKey::ALL.len());
+    let row = listed.items.iter().find(|s| s.key.as_str() == KEY).unwrap();
     assert_eq!(row.value, Some(SettingValue::Int(20)));
     assert_eq!(row.version, Some(SettingVersionId::Override(view.id)));
     let untouched = listed
+        .items
         .iter()
         .find(|s| s.key.as_str() == "auth.idle_timeout_minutes")
         .unwrap();
@@ -116,7 +117,7 @@ async fn a_loosening_waits_a_day_once_the_tenant_has_an_employee(pool: PgPool) {
         .unwrap();
     assert!(!scheduled.onboarding_exempt);
     let listed = store.list_effective(actor.org, None).await.unwrap();
-    let row = listed.iter().find(|s| s.key.as_str() == KEY).unwrap();
+    let row = listed.items.iter().find(|s| s.key.as_str() == KEY).unwrap();
     assert_eq!(row.value, Some(SettingValue::Int(40)), "not in force yet");
     assert_eq!(row.scheduled.len(), 1);
     assert_eq!(row.scheduled[0].id, scheduled.id);
@@ -210,7 +211,7 @@ async fn rows_are_append_only_and_tenant_isolated(pool: PgPool) {
 
     let (other, other_store) = tenant(&pool).await;
     let listed = other_store.list_effective(other.org, None).await.unwrap();
-    let row = listed.iter().find(|s| s.key.as_str() == KEY).unwrap();
+    let row = listed.items.iter().find(|s| s.key.as_str() == KEY).unwrap();
     assert_eq!(row.version, Some(SettingVersionId::CodeDefault));
     // Armed as the other tenant, an unfiltered read sees none of its rows.
     let visible: i64 = with_org_conn(other_store.pool(), other.org, |tx| {

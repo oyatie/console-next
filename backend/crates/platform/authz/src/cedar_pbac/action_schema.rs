@@ -59,6 +59,8 @@ pub struct ActionSchema {
     /// The bundle declares only this action, so a rule naming another action, or
     /// `action in [...]`, fails strict validation and never activates.
     pub policies: &'static str,
+    /// Stable refusal annotations this action permits clients to receive.
+    pub denial_codes: &'static [&'static str],
 }
 
 /// The enrolled schema for `feature`, if it is a Cedar-only SoD action.
@@ -86,6 +88,15 @@ pub fn compile_action_bundle(
 }
 
 impl ActionSchema {
+    /// Return a declared public code only for a single deciding reason.
+    #[must_use]
+    pub fn denial_code(&self, reason: &str) -> Option<&'static str> {
+        self.denial_codes
+            .iter()
+            .copied()
+            .find(|code| *code == reason)
+    }
+
     /// The `.cedarschema` source: shared entities plus this action with every
     /// fact required. A duplicate fact, or one named like the envelope, makes
     /// the schema fail to parse, so it can never activate.
@@ -157,6 +168,7 @@ mod tests {
     ];
 
     const SOD: ActionSchema = ActionSchema {
+        denial_codes: &[],
         feature: Feature::RoleManage,
         version: "test-sod-v1",
         facts: FACTS,

@@ -30,6 +30,7 @@ pub const IS_APPLY: RequiredFact = RequiredFact {
 };
 
 pub const SCHEMA: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::ChangeRequestDecide,
     version: "2026-10-d26-change-request-decide-v2",
     facts: &[

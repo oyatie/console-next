@@ -24,6 +24,7 @@ pub const IS_APPROVAL: RequiredFact = RequiredFact {
 };
 
 pub const SCHEMA: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::ExceptionDecide,
     version: "2026-10-bw06-exception-decide-v1",
     facts: &[

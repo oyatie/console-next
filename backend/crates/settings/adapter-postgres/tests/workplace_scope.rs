@@ -104,8 +104,9 @@ async fn workplace_loader_and_plan_inherit_parent_and_entity_callers_are_unchang
         .list_effective(actor.org, Some(workplace))
         .await
         .unwrap();
+    assert_eq!(listed.resource_entities, vec![workplace, entity]);
     assert_eq!(
-        listed.iter().find(|r| r.key == key).unwrap().value,
+        listed.items.iter().find(|r| r.key == key).unwrap().value,
         Some(SettingValue::Int(20))
     );
 }
@@ -239,7 +240,11 @@ async fn tenant_explain_has_one_deciding_layer_and_unknown_scope_is_not_a_legal_
         .await
         .unwrap();
     let items = store.list_effective(actor.org, None).await.unwrap();
-    let item = items.iter().find(|item| item.key.as_str() == KEY).unwrap();
+    let item = items
+        .items
+        .iter()
+        .find(|item| item.key.as_str() == KEY)
+        .unwrap();
     let wire = serde_json::to_value(item).unwrap();
     assert_eq!(wire["source"]["layer"], "tenant");
     assert_eq!(

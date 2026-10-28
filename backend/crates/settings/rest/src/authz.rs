@@ -15,6 +15,7 @@ use console_kernel_core::KernelError;
 use console_platform_authz::access::NodeKind;
 use console_platform_authz::cedar_pbac::enforce::enforce_action;
 use console_platform_authz::cedar_pbac::facts::Facts;
+use console_platform_authz::cedar_pbac::facts::scope::{granted_scope, scope_facts};
 use console_platform_authz::{
     Action, AuthorizationResource, Feature, Principal, authorize_org_wide,
 };
@@ -23,40 +24,55 @@ use console_settings_domain::Direction;
 use console_settings_domain::code_lists::ReasonDomain;
 
 /// Build scope facts from the shared principal loader; Cedar alone decides reach.
-fn settings_facts(principal: &Principal, change: &ChangeFacts) -> Facts {
-    let grants: Vec<_> = principal.scopes_for(Feature::SettingsManage).collect();
-    let tenant = principal.is_tenant_ops || grants.iter().any(|g| g.kind == NodeKind::Tenant);
-    let entities: Vec<_> = grants
-        .iter()
-        .filter(|g| matches!(g.kind, NodeKind::LegalEntity | NodeKind::Workplace))
-        .map(|g| g.id)
-        .collect();
+fn authorize_settings(
+    principal: &Principal,
+    direction: Direction,
+    step_up: bool,
+    resource_entities: &[uuid::Uuid],
+) -> Result<(), KernelError> {
+    let granted = if principal.is_tenant_ops {
+        None
+    } else {
+        granted_scope(
+            principal
+                .scopes_for(Feature::SettingsManage)
+                .map(|g| (g.kind, g.id)),
+        )
+    };
     let facts = Facts::new()
-        .bool("actor_holds_permission", tenant || !entities.is_empty())
+        .bool(
+            "actor_holds_permission",
+            granted.as_ref().is_none_or(|ids| !ids.is_empty()),
+        )
         .string(
             "direction",
-            match change.direction {
+            match direction {
                 Direction::Tighten => "tighten",
                 Direction::Loosen => "loosen",
                 Direction::Neutral => "neutral",
             },
         )
-        .bool("step_up", change.step_up);
-    console_platform_authz::cedar_pbac::facts::scope::scope_facts(
-        facts,
-        if tenant { None } else { Some(&entities) },
-        &change.resource_entities,
+        .bool("step_up", step_up);
+    enforce_action(
+        principal,
+        Feature::SettingsManage,
+        AuthorizationResource::org_wide(principal.org_id, "setting"),
+        &scope_facts(facts, granted.as_deref(), resource_entities),
     )
+}
+
+/// Authority at the requested scope, independently of registry order or step-up freshness.
+pub fn can_change(principal: &Principal, resource_entities: &[uuid::Uuid]) -> bool {
+    authorize_settings(principal, Direction::Neutral, true, resource_entities).is_ok()
 }
 
 /// Authorizes a setting change through Cedar `settings_manage`.
 pub fn authorize_change(principal: &Principal, facts: &ChangeFacts) -> Result<(), KernelError> {
-    let resource = AuthorizationResource::org_wide(principal.org_id, "setting");
-    enforce_action(
+    authorize_settings(
         principal,
-        Feature::SettingsManage,
-        resource,
-        &settings_facts(principal, facts),
+        facts.direction,
+        facts.step_up,
+        &facts.resource_entities,
     )
 }
 

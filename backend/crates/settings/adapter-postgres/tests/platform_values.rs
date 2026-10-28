@@ -19,7 +19,7 @@ async fn effective_settings_show_the_same_platform_value_and_schedule_as_command
         .list_effective(OrgId::new(), None)
         .await
         .unwrap();
-    let value = settings.iter().find(|row| row.key == key).unwrap();
+    let value = settings.items.iter().find(|row| row.key == key).unwrap();
     assert_eq!(value.value, Some(SettingValue::Int(7)));
     let wire = serde_json::to_value(value).unwrap();
     assert_eq!(wire["source"]["layer"], "platform");
@@ -52,6 +52,7 @@ async fn deadline_display_window_is_available_without_a_stored_definition(pool: 
         .await
         .unwrap();
     let window = settings
+        .items
         .iter()
         .find(|row| row.key.as_str() == "display.deadline_due_soon_days")
         .expect("the shared display window must be in the settings registry");

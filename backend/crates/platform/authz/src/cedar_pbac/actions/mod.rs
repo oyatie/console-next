@@ -60,6 +60,20 @@ use cedar_policy::{
     PolicySet, Request, RestrictedExpression, Schema, ValidationMode, Validator,
 };
 
+/// Annotations on the policies that decided this response, in stable order.
+pub(super) fn deciding_reasons(
+    policies: &PolicySet,
+    response: &cedar_policy::Response,
+) -> Vec<String> {
+    let mut reasons: Vec<_> = response
+        .diagnostics()
+        .reason()
+        .filter_map(|id| policies.policy(id)?.annotation("reason").map(str::to_owned))
+        .collect();
+    reasons.sort();
+    reasons
+}
+
 /// One server-computed fact in a decision context.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fact {
@@ -193,17 +207,7 @@ impl ActionBundle {
             if !errors.is_empty() {
                 return Err(errors.join("; "));
             }
-            let mut reasons: Vec<String> = response
-                .diagnostics()
-                .reason()
-                .filter_map(|id| {
-                    self.policies
-                        .policy(id)?
-                        .annotation("reason")
-                        .map(str::to_owned)
-                })
-                .collect();
-            reasons.sort();
+            let reasons = deciding_reasons(&self.policies, &response);
             Ok((response.decision() == Decision::Allow, reasons))
         })
     }
