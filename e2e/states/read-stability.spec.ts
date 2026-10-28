@@ -5,7 +5,7 @@ import { expectAccessible } from "../a11y";
 import { AT, failure, structure, token, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
-import { recordShifts } from "../stability";
+import { expectStable, recordShifts } from "../stability";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -90,6 +90,7 @@ for (const name of [user.display_name, "u01234567@platform", user.display_name.r
 
 for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed heads share one action row at ${width}px @ui-state`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript(recordShifts);
   const fixture = await mockScreen(page, screens[2], "populated");
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
   const held = Promise.withResolvers<void>();
@@ -98,12 +99,10 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     if (state === "loading") await held.promise;
     return state === "failed" ? { status: 503, json: failure("service_unavailable") } : { status: 200, json: structure(3) };
   });
-  const geometry = () => page.locator('.page__head, #structure-import, section[aria-label="기준일"], section[aria-label="기준일 비교"]').evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
   try {
     await page.goto("/org");
     await expect(page.getByRole("button", { name: t("structure.export.open"), exact: true })).toBeEnabled();
     await page.evaluate(() => document.fonts.ready);
-    const populated = await geometry();
     const head = page.locator('.page__head').last();
     const headBox = await head.boundingBox();
     const asof = await page.getByRole("region", { name: t("asof.label"), exact: true }).boundingBox();
@@ -121,17 +120,18 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     }
     state = "loading";
     await page.reload();
+    await page.evaluate(() => document.fonts.ready);
     await expect(page.getByRole("group", { name: t("structure.views"), exact: true })).toBeVisible();
     await expect(page.getByRole("main").locator('[aria-busy="true"]').last()).toBeVisible();
     const phase = page.locator('[data-phase][data-loading]');
     await expect(phase).toHaveText(t("structure.phase.operating"));
     await expect(phase).toBeHidden();
-    expect(await geometry()).toEqual(populated);
+    await expectStable(page, "org: loading head");
     state = "failed";
     held.resolve();
     await expect(page.getByRole("main").getByRole("alert")).toBeVisible({ timeout: 15_000 });
     await expect(head.getByText(t("structure.readFailed"), { exact: true })).toBeVisible();
-    expect(await geometry()).toEqual(populated);
+    await expectStable(page, "org: failed head");
     await expect(page.getByRole("button", { name: t("structure.export.open"), exact: true })).toHaveAttribute("aria-disabled", "true");
     await expect(page.getByRole("button", { name: t("structure.export.open"), exact: true })).toHaveAccessibleDescription(t("structure.readFailed"));
     expect(fixture.unexpected).toEqual([]);
