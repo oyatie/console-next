@@ -1,24 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! One classification for workplace masking and access-record subjects.
 use crate::WorkplaceState;
+pub use console_kernel_core::personal_data::{WORKPLACE_PERSONAL_FIELDS, WorkplacePersonalField};
 
-pub struct WorkplacePersonalField {
-    pub name: &'static str,
-    pub is_present: fn(&WorkplaceState) -> bool,
+pub fn workplace_personal_field_is_present(
+    field: WorkplacePersonalField,
+    state: &WorkplaceState,
+) -> bool {
+    match field {
+        WorkplacePersonalField::RepresentativeName => state.representative_name.is_some(),
+        WorkplacePersonalField::Mobile => state.mobile.is_some(),
+        WorkplacePersonalField::Email => state.email.is_some(),
+    }
 }
-
-/// The restricted fields previously guarded individually by `personal` in workplace views.
-pub const WORKPLACE_PERSONAL_FIELDS: &[WorkplacePersonalField] = &[
-    WorkplacePersonalField {
-        name: "representative_name",
-        is_present: |state| state.representative_name.is_some(),
-    },
-    WorkplacePersonalField {
-        name: "mobile",
-        is_present: |state| state.mobile.is_some(),
-    },
-    WorkplacePersonalField {
-        name: "email",
-        is_present: |state| state.email.is_some(),
-    },
-];

@@ -74,7 +74,7 @@ pub(crate) async fn views_at(
     .bind(granted)
     .bind(point.known_at)
     .bind(personal)
-    .bind(WORKPLACE_PERSONAL_FIELDS.iter().map(|field| field.name).collect::<Vec<_>>())
+    .bind(WORKPLACE_PERSONAL_FIELDS.iter().map(|field| field.name()).collect::<Vec<_>>())
     .fetch_all(tx.as_mut())
     .await?;
     let represented = crate::asof::placements::represented(tx, point).await?;

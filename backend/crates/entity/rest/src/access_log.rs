@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Entity people have revision/sequence keys, not employee identities. Documents are immutable sets.
-use console_entity_application::{LegalEntityView, WORKPLACE_PERSONAL_FIELDS, WorkplaceView};
+use console_entity_application::{
+    LegalEntityView, WORKPLACE_PERSONAL_FIELDS, WorkplaceView, workplace_personal_field_is_present,
+};
 use console_kernel_core::{AuditCommandContext, AuditEvent, AuditOutcome};
 use console_platform_authz::Principal;
 use console_platform_db::with_audit;
@@ -54,7 +56,7 @@ pub(crate) fn workplace_subjects(workplaces: &[WorkplaceView]) -> Vec<String> {
             let state = w.current.as_ref()?;
             WORKPLACE_PERSONAL_FIELDS
                 .iter()
-                .any(|field| (field.is_present)(state))
+                .any(|field| workplace_personal_field_is_present(*field, state))
                 .then(|| format!("workplace_revisions:{}:{}", w.id, state.version))
         })
         .collect();

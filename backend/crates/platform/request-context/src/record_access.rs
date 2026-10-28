@@ -1,4 +1,5 @@
 //! Current record authority shared by outcome and conflict metadata readers.
+use console_kernel_core::personal_data::WORKPLACE_PERSONAL_FIELDS;
 use console_kernel_core::{BranchId, BranchScope};
 use console_platform_authz::access::model::union_branches;
 use console_platform_authz::access::{AccessSlice, NodeKind, load_access_subject, scope_path};
@@ -261,14 +262,10 @@ fn mask_entity_fields(
                 .map(|key| allowed.get(&key).copied().unwrap_or(false) && inherited.unwrap_or(true))
                 .or(inherited);
             if personal == Some(false) {
-                for key in [
-                    "representatives",
-                    "directors",
-                    "co_owners",
-                    "representative_name",
-                    "mobile",
-                    "email",
-                ] {
+                for key in ["representatives", "directors", "co_owners"]
+                    .into_iter()
+                    .chain(WORKPLACE_PERSONAL_FIELDS.iter().map(|field| field.name()))
+                {
                     if let Some(field) = fields.get_mut(key) {
                         *field = Value::Null;
                     }

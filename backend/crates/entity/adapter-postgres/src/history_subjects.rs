@@ -8,7 +8,7 @@ pub(super) fn workplace_fields() -> String {
         "ARRAY[{}]::text[]",
         WORKPLACE_PERSONAL_FIELDS
             .iter()
-            .map(|field| format!("'{}'", field.name))
+            .map(|field| format!("'{}'", field.name()))
             .collect::<Vec<_>>()
             .join(",")
     )

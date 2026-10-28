@@ -5,6 +5,7 @@ mod common;
 use common::{certificate, cmd, corporation, port, tenant, workplace_from};
 use console_entity_application::{
     LegalEntityRevision, WORKPLACE_PERSONAL_FIELDS, WorkplaceRevision,
+    workplace_personal_field_is_present,
 };
 use console_entity_domain::legal_entity::DirectorInput;
 use serde_json::json;
@@ -17,7 +18,7 @@ async fn workplace_classification_drives_masking_and_subjects_without_drift(pool
         .fetch_all(&pool).await.unwrap();
     let mut fields: Vec<_> = WORKPLACE_PERSONAL_FIELDS
         .iter()
-        .map(|field| field.name)
+        .map(|field| field.name())
         .collect();
     fields.sort();
     assert_eq!(
@@ -46,15 +47,15 @@ async fn workplace_classification_drives_masking_and_subjects_without_drift(pool
         .unwrap();
     let values = json!({"representative_name":"사업장 대표자", "mobile":"010-1234-5678", "email":"workplace@example.com"});
     for field in WORKPLACE_PERSONAL_FIELDS {
-        let mut input = workplace_from(registration, field.name);
+        let mut input = workplace_from(registration, field.name());
         input.input.status = Some("CONTINUING".into());
         let mut data = json!(input.input);
         assert!(
-            !values[field.name].is_null(),
+            !values[field.name()].is_null(),
             "add a discriminating fixture for {}",
-            field.name
+            field.name()
         );
-        data[field.name] = values[field.name].clone();
+        data[field.name()] = values[field.name()].clone();
         input.input = serde_json::from_value(data).unwrap();
         let workplace = store
             .create_workplace(&cmd(&actor), entity, input.clone(), port())
@@ -63,9 +64,9 @@ async fn workplace_classification_drives_masking_and_subjects_without_drift(pool
             .record;
         let state = workplace.current.as_ref().unwrap();
         assert!(
-            (field.is_present)(state),
+            workplace_personal_field_is_present(*field, state),
             "{} alone identifies a subject",
-            field.name
+            field.name()
         );
         let masked = store
             .get_entity(&actor, entity, false)
@@ -75,12 +76,10 @@ async fn workplace_classification_drives_masking_and_subjects_without_drift(pool
             .into_iter()
             .find(|item| item.id == workplace.id)
             .unwrap();
-        assert!(json!(masked.current)[field.name].is_null());
-        assert!(
-            WORKPLACE_PERSONAL_FIELDS
-                .iter()
-                .all(|field| !(field.is_present)(masked.current.as_ref().unwrap()))
-        );
+        assert!(json!(masked.current)[field.name()].is_null());
+        assert!(WORKPLACE_PERSONAL_FIELDS.iter().all(
+            |field| !workplace_personal_field_is_present(*field, masked.current.as_ref().unwrap())
+        ));
         let history = store
             .workplace_history(&actor, workplace.id, true)
             .await
@@ -101,7 +100,7 @@ async fn workplace_classification_drives_masking_and_subjects_without_drift(pool
                 .all(|change| !fields.contains(&change.field.as_str()))
         }));
         let mut removed = json!(input.input);
-        removed[field.name] = serde_json::Value::Null;
+        removed[field.name()] = serde_json::Value::Null;
         store
             .revise_workplace(
                 &cmd(&actor),
