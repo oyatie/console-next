@@ -41,7 +41,7 @@ const dialogOutside = (el: HTMLElement | null) =>
  * With no dialog this is two frames, as before. A target not in the page yet is waited for, up to MAX_FRAMES.
  * The user's next key or pointer action cancels a pending restore: it must not steal their new focus.
  */
-export const focusSoon = (...ids: string[]) => {
+const focusWhen = (allowed: () => boolean, ...ids: string[]) => {
   let quiet = 0;
   let frames = 0;
   let cancelled = false;
@@ -59,7 +59,8 @@ export const focusSoon = (...ids: string[]) => {
     // Nothing to focus yet (the view that holds it is still rendering, e.g. a tab a navigation is opening): keep waiting.
     if (quiet >= 2 && el) {
       stop();
-      return el.focus();
+      if (allowed()) el.focus();
+      return;
     }
     if (++frames < MAX_FRAMES) requestAnimationFrame(tick);
     else stop();
@@ -67,6 +68,8 @@ export const focusSoon = (...ids: string[]) => {
   requestAnimationFrame(tick);
   return stop;
 };
+
+export const focusSoon = (...ids: string[]) => focusWhen(() => true, ...ids);
 
 // The router remounts on locale changes; that must update the title without taking focus from the language picker.
 let presented: { pathname: string; title: string } | undefined;
@@ -89,7 +92,7 @@ export function useRoutePresentation(pathname: string, ready: boolean) {
         if (!interacted && !document.activeElement?.closest("[data-side-panel]")) {
           heading.id ||= "route-heading";
           heading.tabIndex = -1;
-          cancelFocus = focusSoon(heading.id);
+          cancelFocus = focusWhen(() => !document.activeElement?.closest("main"), heading.id);
         }
       }
       const scope = document.querySelector<HTMLElement>("[data-console-scope]")?.dataset.consoleScope;

@@ -1,14 +1,26 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible, fits as fitsOn } from "./a11y";
 import { forgetResize } from "./stability";
-import { go } from "./flows";
+import { go, routeReady } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
 import { rosterXlsx } from "./workbook";
 import { chooseWorkbook, payPeriod } from "./helpers/import";
 
 test("an HR admin imports a roster: preview → dry run → apply bound to it", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await tenantWithExecutive(browser, "peopleco", "사람주식회사");
-  await go(admin, "/people");
+  await test.step("a fresh navigation focuses the page heading", async () => {
+    await admin.goto("/people");
+    await expect(admin.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
+  });
+  await test.step("navigation with focus left on the nav link focuses the page heading", async () => {
+    await go(admin, "/org");
+    const people = admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "직원", exact: true });
+    await people.focus();
+    await expect(people).toBeFocused();
+    await people.press("Enter");
+    await routeReady(admin, "/people");
+    await expect(admin.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
+  });
   await admin.getByRole("link", { name: "가져오기" }).first().click();
 
   await expect(admin.getByRole("heading", { name: "직원 명부 가져오기", level: 1 })).toBeVisible();
@@ -38,18 +50,25 @@ test("an HR admin imports a roster: preview → dry run → apply bound to it", 
   await expectAccessible(admin, "people list + detail panel");
 
   const row = admin.getByRole("grid", { name: "직원", exact: true }).getByRole("row").filter({ has: admin.getByRole("rowheader", { name: "김하나", exact: true }) });
+  const focusSettled = async () => {
+    await routeReady(admin, "/people");
+    // Let the route's three-frame heading restore finish before asserting who kept focus.
+    await admin.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))));
+  };
   await test.step("Escape from the panel returns focus to its roster row", async () => {
     const openRecord = peek.getByRole("link", { name: /인사카드 열기/ });
     await openRecord.focus();
     await expect(openRecord).toBeFocused();
     await admin.keyboard.press("Escape");
     await expect(peek).toBeHidden();
+    await focusSettled();
     await expect(row).toBeFocused();
   });
   await test.step("Back from the record returns focus to its roster row", async () => {
     await row.press("o");
     await expect(admin.getByRole("heading", { level: 1 })).toContainText("김하나");
     await admin.goBack();
+    await focusSettled();
     await expect(row).toBeFocused();
   });
 

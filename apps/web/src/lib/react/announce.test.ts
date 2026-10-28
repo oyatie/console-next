@@ -1,18 +1,25 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { focusSoon } from "./announce";
+import { useEffect } from "react";
+import { focusSoon, useRoutePresentation } from "./announce";
+
+vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useEffect: vi.fn() }));
 
 // A page with a heading, an optional open dialog, and a frame clock; `focused` records who has focus.
 function page() {
   let queue: FrameRequestCallback[] = [];
-  const state = { focused: "", dialog: false };
+  const state = { focused: "", dialog: false, inMain: false };
   const input = new EventTarget();
-  const heading = { focus: () => (state.focused = "heading") };
+  const heading = { id: "history", textContent: "People", focus: () => (state.focused = "heading") };
   vi.stubGlobal("document", {
     addEventListener: input.addEventListener.bind(input),
     removeEventListener: input.removeEventListener.bind(input),
     getElementById: (id: string) => (id === "history" ? heading : null),
     querySelectorAll: () => (state.dialog ? [{ contains: () => false }] : []),
+    querySelector: (selector: string) => selector.includes("h1") ? heading : null,
+    activeElement: { closest: (selector: string) => selector === "main" && state.inMain ? {} : null },
   });
+  vi.stubGlobal("MutationObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => queue.push(cb));
   const frame = () => {
     const run = queue;
@@ -21,7 +28,59 @@ function page() {
   };
   return { state, frame, input, later: (cb: FrameRequestCallback) => queue.push(cb) };
 }
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });
+
+function present(pathname: string) {
+  useRoutePresentation(pathname, true);
+  return vi.mocked(useEffect).mock.calls.at(-1)![0]();
+}
+
+for (const restoreFrame of [0, 1, 2]) {
+  test(`route heading yields to focus restored inside main after ${restoreFrame} frames`, () => {
+    const { state, frame } = page();
+    const cleanup = present(`/restored-${restoreFrame}`);
+    for (let i = 0; i < restoreFrame; i++) frame();
+    state.focused = "row";
+    state.inMain = true;
+    for (let i = restoreFrame; i < 4; i++) frame();
+    expect(state.focused).toBe("row");
+    cleanup?.();
+  });
+}
+
+test.each(["body", "nav link"])("route heading takes focus when it was left on %s outside main", (focused) => {
+  const { state, frame } = page();
+  state.focused = focused;
+  const cleanup = present(`/outside-${focused}`);
+  frame();
+  frame();
+  frame();
+  expect(state.focused).toBe("heading");
+  cleanup?.();
+});
+
+test("route heading checks current focus again even when main held it at scheduling", () => {
+  const { state, frame } = page();
+  state.inMain = true;
+  const cleanup = present("/focus-left-main");
+  frame();
+  state.inMain = false;
+  state.focused = "nav link";
+  frame();
+  frame();
+  expect(state.focused).toBe("heading");
+  cleanup?.();
+});
+
+test("an explicit command landmark still takes focus from another element inside main", () => {
+  const { state, frame } = page();
+  state.focused = "trigger";
+  state.inMain = true;
+  focusSoon("history");
+  frame();
+  frame();
+  expect(state.focused).toBe("heading");
+});
 
 test("with no dialog the landmark gets focus on the second frame", () => {
   const { state, frame } = page();
