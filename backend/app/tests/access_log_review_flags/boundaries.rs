@@ -8,6 +8,48 @@ use serde_json::json;
 use sqlx::PgPool;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn all_rows_excludes_non_access_audit_rows_but_keeps_self_reads(pool: PgPool) {
+    let org = OrgId::new();
+    let user = seed_org_and_super_admin(&pool, *org.as_uuid(), "all-rows").await;
+    let access = event(
+        &pool,
+        org,
+        user,
+        "employee.read",
+        "2026-09-01T02:00:00Z",
+        json!({}),
+    )
+    .await;
+    let own = event(
+        &pool,
+        org,
+        user,
+        "employee.read",
+        "2026-09-01T02:00:00Z",
+        json!({"self_read":true}),
+    )
+    .await;
+    sqlx::query("INSERT INTO audit_events(org_id,actor,action,target_type,target_id,trace_id,span_id,occurred_at,created_at,after_snap) VALUES($1,$2,'access_log_review.start','access_log_review','tenant:2026-09',repeat('a',32),repeat('b',16),'2026-09-10T00:00:00Z','2026-09-10T00:00:00Z','{}')")
+        .bind(org.as_uuid()).bind(user.as_uuid()).execute(&pool).await.unwrap();
+    let rt = runtime_role_pool(&pool).await;
+    let mut tx = arm(&rt, org).await;
+    let prepared = prepare_in_tx(tx.as_mut(), org, "2026-09").await.unwrap();
+    let rows = page_in_tx(tx.as_mut(), &prepared, None, 200, false)
+        .await
+        .unwrap();
+    let ids: std::collections::BTreeSet<_> = rows.iter().map(|r| r.event_id).collect();
+    assert_eq!(ids, [access, own].into_iter().collect());
+    assert!(
+        rows.iter()
+            .find(|r| r.event_id == own)
+            .unwrap()
+            .flags
+            .is_empty()
+    );
+    assert_eq!(prepared.totals()["events"], 2);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn local_midnight_and_ingestion_boundaries_preserve_counts_and_minimisation(pool: PgPool) {
     let org = OrgId::new();
     let user = seed_org_and_super_admin(&pool, *org.as_uuid(), "boundaries").await;

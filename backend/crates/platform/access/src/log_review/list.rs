@@ -8,6 +8,7 @@ use console_kernel_core::OrgId;
 use rules::Rules;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use sqlx::{PgConnection, QueryBuilder, Row};
 use time::{Date, Month, OffsetDateTime};
 use uuid::Uuid;
@@ -31,6 +32,12 @@ pub struct Prepared {
 }
 
 impl Prepared {
+    pub(super) fn flag_set_sha256(&self) -> AccessResult<String> {
+        Ok(hex::encode(Sha256::digest(
+            serde_json::to_vec(&self.flagged).map_err(AccessError::internal)?,
+        )))
+    }
+
     #[must_use]
     pub const fn totals(&self) -> &Value {
         &self.totals
@@ -174,7 +181,7 @@ pub async fn page_in_tx(
     limit: i64,
     flagged: bool,
 ) -> AccessResult<Vec<FlaggedEvent>> {
-    if !(1..=200).contains(&limit) {
+    if !(1..=super::MAX_PAGE_SIZE).contains(&limit) {
         return Err(AccessError::invalid(
             "limit_out_of_range",
             "limit must be 1..200",
