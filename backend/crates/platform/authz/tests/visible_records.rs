@@ -61,9 +61,19 @@ async fn employee_list_and_count_equal_point_decision_for_every_seeded_record(po
             Feature::EmployeeDirectoryManage,
         ] {
             let filter = facts.visible_employees(action.as_str()).unwrap();
+            if ops || (scope == Some(NodeKind::Tenant) && action == Feature::EmployeeDirectoryRead)
+            {
+                assert!(
+                    !filter.reads_assignment(),
+                    "tenant permit must bypass node enumeration"
+                );
+            }
             let from = " FROM employees e LEFT JOIN employment_resolved_assignments ea ON ea.org_id=e.org_id AND ea.employee_id=e.id WHERE ";
             let mut list = QueryBuilder::<Postgres>::new(format!("SELECT e.id{from}"));
             filter.push(&mut list);
+            if !filter.reads_assignment() {
+                assert_eq!(list.sql(), format!("SELECT e.id{from} TRUE "));
+            }
             let visible: Vec<Uuid> = list
                 .build_query_scalar()
                 .fetch_all(tx.as_mut())
@@ -87,7 +97,7 @@ async fn employee_list_and_count_equal_point_decision_for_every_seeded_record(po
                             workplace_id: None,
                             legal_entity_id: None,
                         }
-                        .node(w.org),
+                        .node(w.org, &facts),
                     )
                     .unwrap();
                 assert_eq!(
