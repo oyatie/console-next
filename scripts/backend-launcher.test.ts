@@ -62,12 +62,14 @@ test.each(["0", "1"])("SIGUSR2 restarts only this launcher's group on the same p
   expect(await responds(port)).toEqual({ pid: second.pid });
 });
 
-test("the next start removes abandoned record publications and preserves unrelated files", async () => {
+test("the next start removes abandoned publications and preserves live publishers and unrelated files", async () => {
   const cache = mkdtempSync(path.join(dir, "abandoned-"));
-  const abandoned = ["backend.json.123.tmp", "backend.json.456.tmp"];
-  const unrelated = ["backend.json.backup.tmp", "backend.json.tmp", "other.json.123.tmp"];
+  const abandoned = [0, 1].map(() => `backend.json.${spawnSync(process.execPath, ["-e", ""]).pid}.tmp`);
+  const unrelated = [`backend.json.${process.pid}.tmp`, `backend.json.${Number.MAX_SAFE_INTEGER}.tmp`, "backend.json.0.tmp", "backend.json.backup.tmp", "backend.json.tmp", "other.json.123.tmp"];
   for (const name of [...abandoned, ...unrelated]) writeFileSync(path.join(cache, name), "{");
   const run = launchBackend(await freePort(), { E2E_CACHE_DIR: cache });
+  await eventually(() => existsSync(run.file) || run.child.exitCode !== null, Boolean);
+  expect(run.child.exitCode, run.output()).toBeNull();
   const api = await listener(run.file);
   expect(JSON.parse(readFileSync(path.join(cache, "backend.json"), "utf8"))).toMatchObject({ pid: run.child.pid, apiPid: api.pid });
   for (const name of abandoned) expect(existsSync(path.join(cache, name)), name).toBe(false);

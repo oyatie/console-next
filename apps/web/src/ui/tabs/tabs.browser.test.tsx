@@ -4,7 +4,7 @@ import { realpathSync } from "node:fs";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { browserTestOptimizeDeps, chromium, openBrowserTestPage, waitForBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -12,33 +12,56 @@ let page: Page;
 beforeAll(async () => {
   server = await createServer({
     configFile: false, cacheDir: ".cache/tabs-test", logLevel: "error",
-    optimizeDeps: browserTestOptimizeDeps, resolve: { dedupe: ["react", "react-dom"] },
+    // Reloads need one locale chunk, rather than the full graph of screen catalog sources.
+    optimizeDeps: { ...browserTestOptimizeDeps, include: [...browserTestOptimizeDeps.include!, "@console/i18n", "@console/i18n/format", "@console/i18n/gallery"] },
+    resolve: { dedupe: ["react", "react-dom"] },
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), dirname(realpathSync("node_modules/pretendard"))] } },
-    plugins: [{ name: "tabs-test", resolveId: id => id === "/tabs-test.js" ? "\0tabs-test" : undefined,
+    plugins: [{ name: "tabs-test",
+      configureServer(vite) {
+        // Serve fixtures here: Playwright routing disables the HTTP cache across every history restoration.
+        vite.middlewares.use((req, res, next) => {
+          if (req.url === "/tabs-history-pending.svg") return;
+          if (!/^\/tabs-(?:test|history)(?:\?.*)?$/.test(req.url ?? "")) return next();
+          const params = new URL(req.url!, vite.resolvedUrls!.local[0]).searchParams;
+          const pending = params.get("scope") === "previous" || params.get("tab") === "outline" ? '<img src="/tabs-history-pending.svg" alt="">' : "";
+          res.setHeader("Content-Type", "text/html");
+          res.end(`<html lang="ko"><title>Tabs</title><main id="root"></main><script type="module" src="/tabs-test.js"></script>${pending}</html>`);
+        });
+      },
+      resolveId: id => id === "/tabs-test.js" ? "\0tabs-test" : undefined,
       load: id => id === "\0tabs-test" ? `
         import React from 'react';
         import { createRoot } from 'react-dom/client';
         import { createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
         import { loadCatalog } from '@console/i18n';
+        import { tg } from '@console/i18n/gallery';
+        import { useTabSearch } from '/apps/web/src/lib/react/use-tab-search.ts';
+        import { PageTabs } from '/apps/web/src/ui/tabs/page-tabs.tsx';
         import TabsGallery from '/apps/web/src/ui/tabs/tabs.gallery.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
+        // History exercises one URL view, without rendering the gallery's unrelated examples on every document.
+        function HistoryTabs() {
+          const items = [
+            { id: 'chart', label: tg('tabs.chart') },
+            { id: 'list', label: tg('tabs.list'), count: 61 },
+            { id: 'outline', label: tg('tabs.outline') },
+          ];
+          const search = useTabSearch(items);
+          return React.createElement(PageTabs, { label: tg('tabs.label'), items, ...search }, () => null);
+        }
         const root = createRootRoute();
         const route = createRoute({ getParentRoute: () => root, path: '/tabs-test', component: TabsGallery });
-        const router = createRouter({ routeTree: root.addChildren([route]) });
+        const history = createRoute({ getParentRoute: () => root, path: '/tabs-history', component: HistoryTabs });
+        const router = createRouter({ routeTree: root.addChildren([route, history]) });
         createRoot(document.getElementById('root')).render(React.createElement(RouterProvider, { router }));
       ` : undefined }],
   });
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
-  // A pending image must not hold up assertions about the rendered view or history.
-  await page.route("**/tabs-history-pending.svg", () => {});
-  await page.route(/\/tabs-test(?:\?.*)?$/, route => {
-    const params = new URL(route.request().url()).searchParams;
-    const pending = params.get("scope") === "previous" || params.get("tab") === "outline" ? '<img src="/tabs-history-pending.svg" alt="">' : "";
-    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Tabs</title><main id="root"></main><script type="module" src="/tabs-test.js"></script>${pending}</html>` });
-  });
+  // Finish cold dependency/catalog/font setup before a case starts its assertions.
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}tabs-test`, page.getByRole("navigation", { name: "보기", exact: true }).locator('[aria-current="page"]'));
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
@@ -60,10 +83,11 @@ test.each([1440, 390, 320])("URL views are links and keep their content outside 
 
 test("URL links replace history, restore deep links and preserve other filters", async () => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${server.resolvedUrls!.local[0]}tabs-test?scope=previous`, { waitUntil: "commit" });
+  // Seed the preceding entry in the mounted app; the deep link and its restoration still load real documents.
+  await page.evaluate(url => history.replaceState(history.state, "", url), `${server.resolvedUrls!.local[0]}tabs-history?scope=previous`);
   const tabs = page.getByRole("navigation", { name: "보기", exact: true });
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
-  await page.goto(`${server.resolvedUrls!.local[0]}tabs-test?tab=list&scope=workplace#record`, { waitUntil: "commit" });
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}tabs-history?tab=list&scope=workplace#record`, tabs.locator('[aria-current="page"]'));
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("목록 61");
   const length = await page.evaluate(() => history.length);
   const outline = tabs.getByRole("link", { name: "아웃라인", exact: true });
@@ -71,6 +95,7 @@ test("URL links replace history, restore deep links and preserve other filters",
   await outline.click();
   await element(page).toHaveURL(/tab=outline.*scope=workplace#record$/);
   await page.reload({ waitUntil: "commit" });
+  await waitForBrowserTestPage(page, tabs.locator('[aria-current="page"]'));
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("아웃라인");
   expect(await page.evaluate(() => history.length)).toBe(length);
   await tabs.getByRole("link", { name: "조직도", exact: true }).click();
@@ -78,9 +103,11 @@ test("URL links replace history, restore deep links and preserve other filters",
   expect(new URL(page.url()).searchParams.has("tab")).toBe(false);
   await page.goBack({ waitUntil: "commit" });
   await element(page).toHaveURL(/scope=previous$/);
+  await waitForBrowserTestPage(page, tabs.locator('[aria-current="page"]'));
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
   await page.goForward({ waitUntil: "commit" });
   await element(page).toHaveURL(/scope=workplace#record$/);
+  await waitForBrowserTestPage(page, tabs.locator('[aria-current="page"]'));
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
 });
 

@@ -9,6 +9,13 @@ import { reapOrphanListener, stopBackend } from "./backend-process.mjs";
 vi.mock("node:child_process", () => ({ spawn: vi.fn(), spawnSync: vi.fn() }));
 afterEach(() => vi.restoreAllMocks());
 
+test("importing backend helpers does not install process cleanup handlers", async () => {
+  vi.resetModules();
+  const on = vi.spyOn(process, "on");
+  await import("./backend-process.mjs");
+  expect(on.mock.calls.filter(([event]) => ["exit", "SIGINT", "SIGTERM"].includes(String(event)))).toEqual([]);
+});
+
 test.each(["exited", "zombie"])("an %s group leader tolerates macOS EPERM", state => {
   vi.mocked(spawnSync).mockReturnValue({
     status: state === "exited" ? 1 : 0, stdout: state === "exited" ? "" : "1 Z console-app", stderr: "",

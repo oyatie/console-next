@@ -77,9 +77,13 @@ export async function reapOrphanListener(port, file) {
 }
 
 const groups = new Set();
-process.on("exit", () => { for (const pid of groups) signal(-pid, "SIGKILL"); });
-process.on("SIGINT", () => process.exit(130));
-process.on("SIGTERM", () => process.exit(143));
+
+/** The launcher owns process-wide cleanup; importing helpers must not change a test worker. */
+export function installBackendCleanup() {
+  process.on("exit", () => { for (const pid of groups) signal(-pid, "SIGKILL"); });
+  process.on("SIGINT", () => process.exit(130));
+  process.on("SIGTERM", () => process.exit(143));
+}
 
 export function stopBackend(child, name = "SIGTERM") {
   if (child.pid) signal(-child.pid, name);

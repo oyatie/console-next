@@ -9,8 +9,12 @@ export const browserTestOptimizeDeps: DepOptimizationOptions = {
 };
 
 export async function openBrowserTestPage(page: Page, url: string, ready: Locator) {
-  // The enclosing Vitest hook/test owns the budget; unrelated resources are not a render signal.
   await page.goto(url, { waitUntil: "commit", timeout: 0 });
+  await waitForBrowserTestPage(page, ready);
+}
+
+export async function waitForBrowserTestPage(page: Page, ready: Locator) {
+  // The enclosing Vitest hook/test owns the budget; unrelated resources are not a render signal.
   await ready.waitFor({ timeout: 0 });
   await page.evaluate(() => document.fonts.ready);
 }
