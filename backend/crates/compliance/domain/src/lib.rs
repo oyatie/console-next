@@ -4,12 +4,12 @@
 //! transactions, and audit persistence live in outer crates.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod rights;
 pub mod statutory;
 use console_kernel_core::{
     BranchId, ConsentId, KernelError, LocationPingId, Timestamp, Transition, TransitionError,
     UserId,
 };
-use time::Duration;
 
 /// Location-consent FSM states.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -360,8 +360,8 @@ pub struct PingVolumeBound {
 impl PingVolumeBound {
     pub fn new(
         user_count: u64,
-        on_duty_window: Duration,
-        min_ping_interval: Duration,
+        on_duty_window: time::Duration,
+        min_ping_interval: time::Duration,
     ) -> Result<Self, KernelError> {
         let window_seconds = positive_seconds(on_duty_window, "on_duty_window")?;
         let interval_seconds = positive_seconds(min_ping_interval, "min_ping_interval")?;
@@ -392,7 +392,7 @@ impl PingVolumeBound {
     }
 }
 
-fn positive_seconds(duration: Duration, field: &str) -> Result<u64, KernelError> {
+fn positive_seconds(duration: time::Duration, field: &str) -> Result<u64, KernelError> {
     let seconds = duration.whole_seconds();
     if seconds <= 0 {
         return Err(KernelError::validation(format!(

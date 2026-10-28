@@ -53,8 +53,13 @@ pub const WEEKLY_STANDARD_HOURS: &str = "WEEKLY_STANDARD_HOURS";
 /// 근로기준법 §53①: agreed weekly overtime limit.
 pub const WEEKLY_OVERTIME_MAX_HOURS: &str = "WEEKLY_OVERTIME_MAX_HOURS";
 
+/// 개인정보 보호법 시행령 §41④⑤: access response clock.
+pub const PIPA_ACCESS_RESPONSE_DAYS: &str = "PIPA_ACCESS_RESPONSE_DAYS";
+pub const PIPA_CORRECTION_RESPONSE_DAYS: &str = "PIPA_CORRECTION_RESPONSE_DAYS";
+pub const PIPA_SUSPENSION_RESPONSE_DAYS: &str = "PIPA_SUSPENSION_RESPONSE_DAYS";
+
 /// Every statutory rule code, in migration order.
-pub const ALL: [&str; 45] = [
+pub const ALL: [&str; 48] = [
     DISMISSAL_PROTECTION_TAIL_DAYS,
     CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS,
     FINAL_PAY_DUE_DAYS,
@@ -100,6 +105,9 @@ pub const ALL: [&str; 45] = [
     "ins.deadline.change.iaci",
     WEEKLY_STANDARD_HOURS,
     WEEKLY_OVERTIME_MAX_HOURS,
+    PIPA_ACCESS_RESPONSE_DAYS,
+    PIPA_CORRECTION_RESPONSE_DAYS,
+    PIPA_SUSPENSION_RESPONSE_DAYS,
 ];
 
 /// The statutory-filings deadline family (SF §3.1, `ins.deadline.<event>.<insurer>`)

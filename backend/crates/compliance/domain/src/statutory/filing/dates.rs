@@ -25,15 +25,7 @@ pub fn dates(
         .ok_or_else(|| {
             KernelError::validation("filing opening anchor missing or outside calendar")
         })?;
-    let calculate = |c: &Calculation| -> Result<Option<Date>, KernelError> {
-        let Some(on) = anchors.get(c.anchor) else {
-            return Err(KernelError::validation("filing deadline anchor missing"));
-        };
-        let nominal = nominal(c, on)?;
-        nominal
-            .map(|d| roll(d, rule.holiday_roll, holidays))
-            .transpose()
-    };
+    let calculate = |c: &Calculation| calculation_date(c, anchors, rule.holiday_roll, holidays);
     let due = calculate(&rule.deadline)?;
     let candidate = rule
         .candidate
@@ -50,6 +42,21 @@ pub fn dates(
         without_delay: rule.deadline.kind == FilingRuleKind::WithoutDelay,
         holiday_roll_unverified: rule.holiday_roll == HolidayRoll::Unverified,
     })
+}
+/// Calculate a register clock without insurance-specific filing metadata.
+pub fn calculation_date(
+    c: &Calculation,
+    anchors: &FilingAnchors,
+    holiday_roll: HolidayRoll,
+    holidays: &[Date],
+) -> Result<Option<Date>, KernelError> {
+    c.validate()?;
+    let on = anchors
+        .get(c.anchor)
+        .ok_or_else(|| KernelError::validation("filing deadline anchor missing"))?;
+    nominal(c, on)?
+        .map(|d| roll(d, holiday_roll, holidays))
+        .transpose()
 }
 fn nominal(c: &Calculation, on: Date) -> Result<Option<Date>, KernelError> {
     let out_of_range = || KernelError::validation("filing deadline outside calendar");
