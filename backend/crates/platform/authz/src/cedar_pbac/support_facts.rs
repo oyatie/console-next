@@ -34,7 +34,8 @@ impl SupportPrincipal {
             self.facts(Some(domain), Some(class)),
         )
     }
-    pub(crate) fn feature_facts(&self, feature: Feature) -> Facts {
+    /// Facts for the catalog's domain, shared by the feature gate and row reach.
+    pub fn feature_facts(&self, feature: Feature) -> Facts {
         self.facts(
             access::tag(feature).map(|(domain, _)| domain.as_str()),
             None,

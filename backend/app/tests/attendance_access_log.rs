@@ -200,7 +200,8 @@ async fn unresolved_actor_is_refused_and_authenticated_failed_reads_keep_refusal
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn view_as_access_events_keep_the_operator_tag_and_tenant_subjects(pool: PgPool) {
     use console_kernel_core::{BranchScope, OrgId};
-    use console_platform_authz::{Principal, SupportPrincipal};
+    use console_platform_authz::Principal;
+    use console_platform_authz::cedar_pbac::visible::load_support_session;
     use console_platform_request_context::audit_context::access_log::{
         AccessRecord, record_access,
     };
@@ -211,16 +212,19 @@ async fn view_as_access_events_keep_the_operator_tag_and_tenant_subjects(pool: P
         operator,
         OrgId::from_uuid(org),
         Default::default(),
-        BranchScope::All,
+        BranchScope::none(),
     );
-    principal.support = Some(SupportPrincipal {
-        operator_approved: true,
-        tenant_approved: true,
-        session_id: Uuid::new_v4(),
-        operator_label: "지원 담당자".to_owned(),
-        scope: vec!["hr_basic".to_owned()],
-        reveal_classes: vec![],
-    });
+    let session = Uuid::new_v4();
+    sqlx::query("INSERT INTO support_sessions(org_id,id,operator_ref,operator_label,ticket_ref,reason_code,reason,scope,requested_duration_seconds,approved_duration_seconds,state,request_expires_at,request_assertion,operator_approver_ref,operator_approved_at,approval_assertion,tenant_approver_ref,tenant_approved_at,started_at,expires_at) VALUES($1,$2,$3,'지원 담당자','ACCESS-TEST','DIAGNOSE','접속기록 확인',ARRAY['hr_basic'],300,300,'ACTIVE',now()+interval '5 minutes',gen_random_uuid(),gen_random_uuid(),now(),gen_random_uuid(),$4,now(),now(),now()+interval '5 minutes')")
+        .bind(org).bind(session).bind(operator.as_uuid()).bind(subject.as_uuid()).execute(&pool).await.unwrap();
+    let runtime = transport::runtime_pool(&pool).await;
+    let mut tx = runtime.begin().await.unwrap();
+    principal.support = Some(
+        load_support_session(&mut tx, principal.org_id, session)
+            .await
+            .unwrap(),
+    );
+    tx.commit().await.unwrap();
     record_access(
         &transport::runtime_pool(&pool).await,
         &principal,
