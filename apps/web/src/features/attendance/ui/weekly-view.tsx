@@ -31,9 +31,9 @@ export function WeeklyView() {
       {d => <>
         {d.items.some(r => r.tone === "UNKNOWN") && <Banner tone="info">{t("attendance.week.unknown.reason")}</Banner>}
         <Table label={t("attendance.week.title")} rows={d.items} rowId={r => r.employee_id} columns={[
-          { header: t("attendance.week.person"), cell: r => r.name },
-          { header: t("attendance.week.hours"), cell: r => t("attendance.week.hours.value", { hours: r.current_hours }) },
-          { header: t("attendance.week.state"), cell: r => r.tone === "UNKNOWN"
+          { header: t("attendance.week.person"), type: "text", cell: r => r.name },
+          { header: t("attendance.week.hours"), type: "duration", cell: r => t("attendance.week.hours.value", { hours: r.current_hours }) },
+          { header: t("attendance.week.state"), type: "status", cell: r => r.tone === "UNKNOWN"
             ? <Chip tone="neutral">{t("attendance.week.UNKNOWN")}</Chip>
             : <Chip tone={r.tone === "DANGER" ? "danger" : r.tone === "WARN" ? "warn" : "ok"}>{t(`attendance.week.${r.tone}`)}</Chip> },
         ]} />

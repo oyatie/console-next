@@ -38,17 +38,19 @@ for (const width of [1440, 390]) test(`weekly unknown explains its reason at ${w
   expect(fixture.unexpected).toEqual([]);
 });
 
-for (const width of [1440, 390]) test(`2,000 unknown weekly rows keep one heading and readable names at ${width}px`, async ({ page }) => {
+for (const width of [1440, 390]) for (const font of ["default", "serif"]) test(`2,000 unknown weekly rows keep one heading and readable names at ${width}px (${font})`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screens[0], "populated");
   const week = "2026-10-26";
   await mockRoute(page, "get", "/api/v1/attendance/week52", { status: 200, json: {
     week_start: week, items: Array.from({ length: 2000 }, (_, i) => ({
-      employee_id: id(100 + i), name: `주간직원 ${i + 1}`, week_start: week,
+      employee_id: id(100 + i), name: i === 1999 ? "박하늘별님구름햇님보다사랑스러우리" : `주간직원 ${i + 1}`, week_start: week,
       current_hours: 45, projected_hours: 45, tone: "UNKNOWN" as const, acked: false,
     })),
   } });
   await page.goto(`/attendance?tab=week&date=${week}`);
+  if (font === "serif") await page.addStyleTag({ content: "table { font-family: serif; }" });
+  await page.evaluate(() => document.fonts.ready);
   const region = page.getByRole("region", { name: "주간 근로시간", exact: true });
   const table = region.getByRole("table", { name: "주간 근로시간", exact: true });
   await expect(table.locator("tbody tr")).toHaveCount(2000);
@@ -64,12 +66,25 @@ for (const width of [1440, 390]) test(`2,000 unknown weekly rows keep one headin
   if (width === 390) {
     expect(await table.locator("tbody td:first-child").evaluateAll(cells => cells.every(cell => {
       const text = document.createRange();
-      text.selectNodeContents(cell);
-      const lines = Array.from(text.getClientRects());
+      text.selectNodeContents(cell.firstElementChild ?? cell);
+      const name = text.getBoundingClientRect();
       const bounds = cell.getBoundingClientRect();
-      return lines.length === 1 && lines.every(line => line.left >= bounds.left && line.right <= bounds.right);
+      const style = getComputedStyle(cell);
+      return name.height <= parseFloat(style.lineHeight) && name.top >= bounds.top && name.bottom <= bounds.bottom && style.whiteSpace === "nowrap"
+        && style.overflow === "hidden" && style.textOverflow === "ellipsis";
     })), "every employee name fits on one line").toBe(true);
   }
+  const fullName = "박하늘별님구름햇님보다사랑스러우리";
+  const nameCell = table.getByRole("cell", { name: fullName, exact: true });
+  await expect(nameCell).toHaveAccessibleName(fullName);
+  if (font === "serif") expect(await nameCell.evaluate(el => getComputedStyle(el).fontFamily)).toBe("serif");
+  await nameCell.hover();
+  await expect(nameCell).toHaveAttribute("title", fullName);
+  await nameCell.focus();
+  await expect(nameCell).toBeFocused();
+  await expect(nameCell).toHaveText(fullName);
+  await expect(nameCell).toHaveAttribute("title", fullName);
+  if (width === 390) expect(await nameCell.evaluate(el => el.scrollWidth > el.clientWidth), "the long name exercises truncation").toBe(true);
   await expectAxe(page, `2,000 unknown weekly rows ${width}`, {
     include: ".page > header, .page > section > div:first-child, .page [data-placement], .page table caption, .page table thead, .page table tbody tr:nth-child(-n+3)",
   });

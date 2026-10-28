@@ -68,7 +68,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
       >
         {columns.map((c, i) => {
           const value = c.cell(r);
-          return <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-type={c.type} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined} title={typeof value === "string" ? value : undefined}>{value}</td>;
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Truncated text stays keyboard reachable, like LongTable cells.
+          return <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-type={c.type} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined} tabIndex={!onSelect && c.type === "text" && typeof value === "string" ? 0 : undefined} title={typeof value === "string" ? value : undefined}>{value}</td>;
         })}
       </tr>
       {more != null && more !== false && (
