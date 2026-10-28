@@ -121,7 +121,7 @@ test("ci-ok fails on any failed, cancelled or skipped required job", () => {
   }
 });
 
-test("Dependabot proposes weekly groups for Actions, npm and all Cargo workspaces on dev", () => {
+test("Dependabot groups only minor and patch updates weekly on dev, leaving majors individual", () => {
   const config = yaml.load(read(".github/dependabot.yml"));
   assert.equal(config.version, 2);
   assert.deepEqual(config.updates.map((u) => u["package-ecosystem"]).sort(), ["cargo", "github-actions", "npm"]);
@@ -129,6 +129,18 @@ test("Dependabot proposes weekly groups for Actions, npm and all Cargo workspace
     assert.equal(update.schedule.interval, "weekly");
     assert.equal(update["target-branch"], "dev");
     assert.deepEqual(Object.values(update.groups).map((g) => g.patterns), [["*"]]);
+    for (const group of Object.values(update.groups)) assert.deepEqual(group["update-types"], ["minor", "patch"]);
+    if (update["package-ecosystem"] !== "npm") assert.equal(update.ignore, undefined);
   }
   assert.deepEqual(config.updates.find((u) => u["package-ecosystem"] === "cargo").directories.sort(), ["/apps/desktop/src-tauri", "/backend", "/backend/fuzz"]);
+});
+
+test("Dependabot keeps Node declarations on the runtime major while allowing other npm majors", () => {
+  const config = yaml.load(read(".github/dependabot.yml"));
+  const npm = config.updates.find((u) => u["package-ecosystem"] === "npm");
+  assert.deepEqual(npm.ignore, [{ "dependency-name": "@types/node", "update-types": ["version-update:semver-major"] }]);
+  const manifest = JSON.parse(read("package.json"));
+  const runtime = manifest.engines.node.match(/^>=(\d+)$/)?.[1];
+  assert.ok(runtime, "Node runtime must have a major floor");
+  assert.match(manifest.devDependencies["@types/node"], new RegExp(`^\\^${runtime}\\.`));
 });
