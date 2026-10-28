@@ -6,6 +6,7 @@ mkdir -p .tmp/evidence .tmp/exit-bundle
 started="${SECONDS}"
 cluster="platform-exit-${REPETITION:-1}"
 export KUBECONFIG="${RUNNER_TEMP:?}/platform-exit-${REPETITION:-1}.kubeconfig"
+registry_config=''
 cleanup() {
   result=$?
   set +e
@@ -16,9 +17,14 @@ cleanup() {
   df -h > .tmp/evidence/disk.txt
   printf 'exit=%s\nduration_seconds=%s\narch=%s\n' "${result}" "$((SECONDS-started))" "$(uname -m)" > .tmp/evidence/result.txt
   kind delete cluster --name "${cluster}"
+  if [[ -n "${registry_config}" ]]; then rm -rf -- "${registry_config}"; fi
   exit "${result}"
 }
 trap cleanup EXIT
+# This login is shared with the disposable cluster, never the artifact or uploaded evidence.
+registry_config="$(mktemp -d "${RUNNER_TEMP}/platform-registry.XXXXXX")"
+export DOCKER_CONFIG="${registry_config}" PLATFORM_PULL_SECRET=console-exit-registry
+printf '%s' "${REGISTRY_TOKEN:?}" | docker login ghcr.io --username "${GITHUB_ACTOR:?}" --password-stdin > /dev/null
 repository="ghcr.io/${GITHUB_REPOSITORY,,}/console-deploy"
 artifact="${ARTIFACT:-oci://${repository}:shadow}"
 wrong="${WRONG_ARTIFACT:-oci://${repository}:shadow-wrong-identity}"
@@ -34,10 +40,12 @@ kubectl apply --server-side --field-manager=kustomize-controller -f .tmp/exit-bu
 kubectl rollout status -n flux-system deployment/source-controller --timeout=180s
 kubectl rollout status -n flux-system deployment/kustomize-controller --timeout=180s
 kubectl label namespace kube-system kube-public kube-node-lease default local-path-storage policy.sigstore.dev/exclude=true --overwrite
+kubectl create secret generic "${PLATFORM_PULL_SECRET}" -n flux-system --type=kubernetes.io/dockerconfigjson --from-file=".dockerconfigjson=${DOCKER_CONFIG}/config.json"
 ARTIFACT="${artifact}" node --input-type=module - <<'JS'
 import fs from 'node:fs'; import yaml from 'js-yaml'; import {execFileSync} from 'node:child_process';
 const source=yaml.load(fs.readFileSync('deploy/source/oci.yaml','utf8'));
 const [url,digest]=process.env.ARTIFACT.split('@'); source.spec.url=url; source.spec.ref={digest};
+source.spec.secretRef={name:process.env.PLATFORM_PULL_SECRET};
 const escape=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 source.spec.verify.matchOIDCIdentity[0].subject=`^${escape(process.env.PLATFORM_WORKFLOW_IDENTITY)}$`;
 execFileSync('kubectl',['apply','-f','-'],{input:yaml.dump(source),stdio:['pipe','inherit','inherit']});
@@ -48,6 +56,10 @@ flux reconcile kustomization platform --timeout=10m
 node deploy/ci/admission.mjs
 # These secrets contain random synthetic credentials for this throwaway cluster only.
 kubectl apply -f .tmp/exit-bundle/namespace/resources.yaml
+kubectl create secret generic "${PLATFORM_PULL_SECRET}" -n console --type=kubernetes.io/dockerconfigjson --from-file=".dockerconfigjson=${DOCKER_CONFIG}/config.json"
+kubectl apply -f - <<JSON
+{"apiVersion":"v1","kind":"ServiceAccount","metadata":{"name":"default","namespace":"console"},"imagePullSecrets":[{"name":"${PLATFORM_PULL_SECRET}"}]}
+JSON
 node deploy/ci/synthetic.mjs
 flux create kustomization console-root --source=OCIRepository/console-deploy --path=./reconcile --prune --wait --interval=1m --timeout=20m
 flux reconcile kustomization console-root --timeout=22m

@@ -229,6 +229,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
         with: {egress-policy: audit}
@@ -242,6 +243,7 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
       - name: Class B reconciliation and negative controls
         env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPETITION: ${{ matrix.repetition }}
           PLATFORM_WORKFLOW_IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/platform.yml@refs/heads/dev
           ARTIFACT: ${{ needs.publish.outputs.artifact }}

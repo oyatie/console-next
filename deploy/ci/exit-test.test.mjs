@@ -67,7 +67,7 @@ test('auth command custody stays dormant and unprivileged in bootstrap and manag
   assert.ok(!spec.managed.roles.some(role => role.inRoles?.includes('console_auth_cmd')));
 });
 
-function diagnostics(data, message) {
+function diagnostics(data, message, env = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'platform-diagnostics-'));
   try {
     writeFileSync(join(dir, 'kubectl'), `#!/usr/bin/env node
@@ -80,11 +80,20 @@ else console.log(JSON.stringify({items:[]}));
     const result = spawnSync(process.execPath, ['deploy/ci/diagnostics.mjs'], {cwd:root,encoding:'utf8',env:{...process.env,
       PATH:`${dir}:${process.env.PATH}`,FIXTURE_MESSAGE:message,
       FIXTURE_SECRETS:JSON.stringify(Object.fromEntries(Object.entries(data).map(([key, value]) => [key, Buffer.from(value).toString('base64')]))),
+      ...env,
     }});
     assert.equal(result.status, 0, result.stderr);
     return result.stdout;
   } finally { rmSync(dir, {recursive:true,force:true}); }
 }
+
+test('diagnostics redact the run token as well as encoded Docker authorization', () => {
+  const token = 'fixture-github-run-token';
+  const auth = Buffer.from(`fixture-user:${token}`).toString('base64');
+  const output = diagnostics({'.dockerconfigjson':JSON.stringify({auths:{'ghcr.io':{auth}}})}, `Ready ${token} ${auth}`, {REGISTRY_TOKEN:token});
+  assert.match(output, /Ready \[REDACTED\] \[REDACTED\]/);
+  assert.ok(!output.includes(token) && !output.includes(auth));
+});
 
 test('diagnostics preserve readiness and usernames while redacting long passwords', () => {
   const output = diagnostics({
@@ -148,6 +157,7 @@ test('failure diagnostics precede deletion, redact secrets, and preserve the ori
       if (existsSync(join(root, 'deploy/ci', file))) writeFileSync(join(dir, 'deploy/ci', file), read(`deploy/ci/${file}`));
     }
     writeFileSync(join(dir, 'cosign'), '#!/usr/bin/env bash\nexit 42\n', {mode:0o755});
+    writeFileSync(join(dir, 'docker'), '#!/usr/bin/env bash\ncat >/dev/null\n', {mode:0o755});
     writeFileSync(join(dir, 'kind'), '#!/usr/bin/env bash\necho "kind $*" >> "$CALLS"\nexit 19\n', {mode:0o755});
     writeFileSync(join(dir, 'kubectl'), `#!/usr/bin/env node
 const fs = require('node:fs');
@@ -162,7 +172,7 @@ if (args[0] === 'describe') {console.log('Name: fixture\\nStatus: Failed\\n    E
 const status = {phase:'Failed',conditions:[{type:'Ready',status:'False',reason:'ReconciliationFailed',message:'namespace not specified sensitive-fixture-value'}],containerStatuses:[{name:'migrate',ready:false,restartCount:1,state:{terminated:{exitCode:1,reason:'Error'}}}]};
 console.log(JSON.stringify({items:[{kind:args[1],metadata:{name:'fixture',namespace:'console'},status,spec:{containers:[{name:'migrate',env:[{name:'PASSWORD',value:'sensitive-fixture-value'}]}]}}]}));
 `, {mode:0o755});
-    const env = {...process.env,PATH:`${dir}:${process.env.PATH}`,CALLS:join(dir,'calls'),RUNNER_TEMP:dir,GITHUB_REPOSITORY:'example/console',PLATFORM_WORKFLOW_IDENTITY:'fixture'};
+    const env = {...process.env,PATH:`${dir}:${process.env.PATH}`,CALLS:join(dir,'calls'),RUNNER_TEMP:dir,GITHUB_REPOSITORY:'example/console',PLATFORM_WORKFLOW_IDENTITY:'fixture',REGISTRY_TOKEN:'fixture-token',GITHUB_ACTOR:'fixture'};
     const run = extra => spawnSync('bash', ['deploy/ci/exit-test.sh'], {cwd:dir,env:{...env,...extra},encoding:'utf8'});
     const result = run({});
     assert.equal(result.status, 42, result.stderr);

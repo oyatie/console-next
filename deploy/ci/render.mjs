@@ -37,7 +37,9 @@ for (const doc of docs) {
   const group = doc.metadata.name.startsWith('console-object') && doc.kind!=='ExternalSecret' ? 'objects' : ['Namespace', 'NetworkPolicy'].includes(doc.kind) ? 'namespace' : ['Cluster','ObjectStore'].includes(doc.kind) ? 'database' : doc.kind === 'Job' ? 'migrate' : doc.kind === 'ExternalSecret' ? 'secrets' : 'app';
   groups[group].push(doc);
 }
-for (const doc of yaml.loadAll(readFileSync('deploy/policies/images.yaml', 'utf8'))) {
+const imagePolicies = yaml.loadAll(readFileSync('deploy/policies/images.yaml', 'utf8'));
+const signature = imagePolicies.find(doc => doc.metadata.name === 'console-signature').spec.authorities[0].attestations;
+for (const doc of imagePolicies) {
   doc.spec.images[0].glob = `${repository}**`;
   doc.spec.authorities[0].keyless.identities[0].subject = identity;
   groups.policies.push(doc);
@@ -56,6 +58,7 @@ for (const ref of new Set([...Object.values(lock.images), ...Object.values(lock.
   const pinned = ref.replace(/:[^/:@]+(?=@)/, '');
   const {source, reason, authority} = upstream[pinned.split('@')[0]] ?? {};
   assert.ok(source && reason && authority, `PLAT_IMAGE_AUTHORITY: missing upstream authority for ${ref}`);
+  if (authority.signatureFormat === 'bundle') authority.attestations ??= signature;
   if (!renderedReferences.has(ref)) continue;
   const name = `console-upstream-${ref.split(':').at(-1)}`;
   // go-containerregistry drops tags from digest references and canonicalizes Docker Hub before matching.

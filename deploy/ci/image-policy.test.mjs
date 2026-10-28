@@ -42,6 +42,23 @@ function checkSubjectTags(versions, catalog) {
   }
 }
 
+test('console and upstream Cosign bundles share the signature predicate from images.yaml', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'platform-signature-predicate-'));
+  try {
+    cpSync(join(root, 'deploy'), join(dir, 'deploy'), {recursive:true});
+    symlinkSync(resolve('node_modules'), join(dir, 'node_modules'));
+    const policies = yaml.loadAll(readFileSync(join(dir, 'deploy/policies/images.yaml'), 'utf8'));
+    const predicate = 'https://example.invalid/signature/v1';
+    policies.find(p => p.metadata.name === 'console-signature').spec.authorities[0].attestations[0].predicateType = predicate;
+    writeFileSync(join(dir, 'deploy/policies/images.yaml'), policies.map(p => yaml.dump(p)).join('---\n'));
+    execFileSync(process.execPath, ['deploy/ci/render.mjs', 'exit-test', image, 'bundle'], {cwd:dir});
+    const rendered = yaml.loadAll(readFileSync(join(dir, 'bundle/policies/resources.yaml'), 'utf8'));
+    const signatures = rendered.filter(p => p.kind === 'ClusterImagePolicy').flatMap(p => p.spec.authorities.flatMap(a => a.attestations ?? [])).filter(a => a.name === 'signature');
+    assert.ok(signatures.length >= 3, 'exercise console and both CNPG bundle authorities');
+    for (const signature of signatures) assert.equal(signature.predicateType, predicate);
+  } finally { rmSync(dir, {recursive:true,force:true}); }
+});
+
 test('every keyless subject tag matches versions.json and stale tags are detected', () => {
   const catalog = yaml.load(readFileSync(join(root, 'deploy/policies/upstream.yaml'), 'utf8'));
   checkSubjectTags(lock, catalog);
