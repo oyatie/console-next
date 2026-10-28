@@ -27611,13 +27611,13 @@ export interface components {
             }[];
             source: {
                 /** @enum {string} */
-                layer: "code_default" | "tenant" | "legal_entity" | "workplace";
+                layer: "code_default" | "platform" | "tenant" | "legal_entity" | "workplace";
                 scope_entity_id: components["schemas"]["Uuid"] | null;
             };
             /** @description Most specific scope first, followed by tenant and code default; only in-force values. */
             chain: {
                 /** @enum {string} */
-                layer: "code_default" | "tenant" | "legal_entity" | "workplace";
+                layer: "code_default" | "platform" | "tenant" | "legal_entity" | "workplace";
                 scope_entity_id: components["schemas"]["Uuid"] | null;
                 value: components["schemas"]["SettingValue"] | null;
                 effective_from: components["schemas"]["Timestamp"] | null;
@@ -55629,6 +55629,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
         };
     };

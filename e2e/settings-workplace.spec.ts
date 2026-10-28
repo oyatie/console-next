@@ -23,6 +23,16 @@ test("workplace settings inherit the legal entity and explain the deciding layer
     expect(body.can_change).toBe(true);
     return body.items.find((item: { key: string }) => item.key === key);
   };
+  const tenant = await api(`/settings/${key}`, "POST", {
+    value: 25, reason_code: "POLICY_REVIEW",
+  });
+  expect(tenant.status()).toBe(201);
+  const tenantEntry = await read();
+  expect(tenantEntry.source.layer).toBe("tenant");
+  expect(tenantEntry.chain.filter((layer: { deciding: boolean }) => layer.deciding)).toHaveLength(1);
+  const orphanRead = await api(`/settings?entity=${crypto.randomUUID()}`);
+  expect(orphanRead.status()).toBe(422);
+  expect(await codeOf(orphanRead)).toBe("setting_scope_unknown");
   const inherited = await api(`/settings/${key}`, "POST", {
     scope_entity_id: entity.id, value: 20, reason_code: "POLICY_REVIEW",
   });
@@ -37,7 +47,7 @@ test("workplace settings inherit the legal entity and explain the deciding layer
   expect(entry.chain).toEqual([
     expect.objectContaining({ layer: "workplace", value: 10, deciding: true }),
     expect.objectContaining({ layer: "legal_entity", value: 20, deciding: false }),
-    expect.objectContaining({ layer: "tenant", value: null, deciding: false }),
+    expect.objectContaining({ layer: "tenant", value: 25, deciding: false }),
     expect.objectContaining({ layer: "code_default", value: 30, deciding: false }),
   ]);
   for (const query of ["?dry_run=true", ""]) {

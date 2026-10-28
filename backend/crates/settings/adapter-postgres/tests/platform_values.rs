@@ -21,6 +21,24 @@ async fn effective_settings_show_the_same_platform_value_and_schedule_as_command
         .unwrap();
     let value = settings.iter().find(|row| row.key == key).unwrap();
     assert_eq!(value.value, Some(SettingValue::Int(7)));
+    let wire = serde_json::to_value(value).unwrap();
+    assert_eq!(wire["source"]["layer"], "platform");
+    assert_eq!(
+        wire["chain"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| r["deciding"] == true)
+            .count(),
+        1
+    );
+    assert!(
+        !wire["chain"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["layer"] == "tenant")
+    );
     assert!(value.effective_from.is_some());
     assert_eq!(value.scheduled.len(), 1);
     assert_eq!(value.scheduled[0].value, SettingValue::Int(3));

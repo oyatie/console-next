@@ -119,7 +119,10 @@ impl SettingsStore for PgSettingsTx<'_, '_> {
             }
         }
         let (chain, mut rows) = load_rows_in_tx(self.tx.as_mut(), self.org, &[key], entity).await?;
-        Ok((chain, rows.remove(&key).unwrap_or_default()))
+        Ok((
+            chain.into_iter().map(|scope| scope.id).collect(),
+            rows.remove(&key).unwrap_or_default(),
+        ))
     }
 
     async fn insert(&mut self, row: NewOverride) -> Result<InsertedOverride, ChangeError> {
@@ -216,4 +219,48 @@ fn insert_error(row: &NewOverride, error: sqlx::Error) -> ChangeError {
         }
     }
     db_error(error).into()
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+    use super::*;
+
+    #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+    async fn insert_maps_scope_closed_after_planning_to_validation(pool: sqlx::PgPool) {
+        let org = OrgId::new();
+        let user = console_platform_test_support::seed_org_and_super_admin(
+            &pool,
+            *org.as_uuid(),
+            "insert",
+        )
+        .await;
+        let entity = Uuid::new_v4();
+        sqlx::query("INSERT INTO legal_entities(org_id,id,biz_kind,created_change_mode,created_by,closed_on,close_reason_code) VALUES($1,$2,'INDIVIDUAL','SETUP',$3,CURRENT_DATE,'BUSINESS_CLOSED')")
+            .bind(org.as_uuid()).bind(entity).bind(user.as_uuid()).execute(&pool).await.unwrap();
+        let mut tx = pool.begin().await.unwrap();
+        let now = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap();
+        let error = PgSettingsTx { tx: &mut tx, org }
+            .insert(NewOverride {
+                key: "approval.delegation.max_days".parse().unwrap(),
+                scope_entity_id: Some(entity),
+                value: SettingValue::Int(10),
+                effective_from: now,
+                set_by: user,
+                reason_code: "POLICY_REVIEW".into(),
+                reason_note: None,
+                step_up_assertion_id: None,
+                now,
+            })
+            .await
+            .unwrap_err();
+        let ChangeError::Refused(error) = error else {
+            panic!("{error:?}")
+        };
+        assert_eq!(error.kind, console_kernel_core::ErrorKind::Validation);
+        assert_eq!(error.code, Some("setting_scope_unknown"));
+    }
 }

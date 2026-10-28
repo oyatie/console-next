@@ -32,6 +32,7 @@ fn ops_policy_overrides_scope_grants_but_keeps_step_up_and_closed_domains() {
     ]);
     for scope_entity_id in [None, Some(Uuid::new_v4())] {
         let mut facts = ChangeFacts {
+            resource_entities: vec![],
             key: SettingKey::ALL[0],
             scope_entity_id,
             direction: Direction::Tighten,

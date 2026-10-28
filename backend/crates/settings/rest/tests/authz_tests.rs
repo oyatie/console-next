@@ -23,6 +23,7 @@ fn a_member_is_refused_on_every_swapped_route() {
         BranchScope::All,
     );
     let change = ChangeFacts {
+        resource_entities: vec![],
         key: SettingKey::ALL[0],
         scope_entity_id: None,
         direction: Direction::Loosen,
@@ -61,6 +62,7 @@ fn an_admin_with_grant_is_permitted_for_settings_and_reason_codes() {
         },
     ]);
     let tighten = ChangeFacts {
+        resource_entities: vec![],
         key: SettingKey::ALL[0],
         scope_entity_id: None,
         direction: Direction::Tighten,
@@ -86,6 +88,7 @@ fn loosening_without_step_up_returns_step_up_required() {
         id: *OrgId::one().as_uuid(),
     }]);
     let loosen = ChangeFacts {
+        resource_entities: vec![],
         key: SettingKey::ALL[0],
         scope_entity_id: None,
         direction: Direction::Loosen,
@@ -114,6 +117,7 @@ fn moving_the_org_apply_clock_later_is_authorized_without_step_up() {
     let key: SettingKey = "orgchange.apply_time".parse().unwrap();
     let value = console_settings_domain::SettingValue::Int;
     let change = ChangeFacts {
+        resource_entities: vec![],
         key,
         direction: console_settings_domain::direction(key, Some(value(5)), value(60)),
         scope_entity_id: None,
@@ -137,6 +141,7 @@ fn unverified_step_up_returns_step_up_required() {
         id: *OrgId::one().as_uuid(),
     }]);
     let loosen = ChangeFacts {
+        resource_entities: vec![],
         key: SettingKey::ALL[0],
         scope_entity_id: None,
         direction: Direction::Loosen,
@@ -162,6 +167,7 @@ fn verified_step_up_is_permitted_for_loosening() {
         id: *OrgId::one().as_uuid(),
     }]);
     let loosen = ChangeFacts {
+        resource_entities: vec![],
         key: SettingKey::ALL[0],
         scope_entity_id: None,
         direction: Direction::Loosen,
@@ -187,6 +193,7 @@ fn scoped_grant_writing_tenant_wide_returns_scope_tenant_wide_only() {
     }]);
 
     let tenant_wide = ChangeFacts {
+        resource_entities: vec![],
         key: SettingKey::ALL[0],
         scope_entity_id: None,
         direction: Direction::Tighten,
@@ -215,6 +222,7 @@ fn scoped_grant_writing_other_entity_returns_out_of_scope() {
     }]);
 
     let write_b = ChangeFacts {
+        resource_entities: vec![entity_b],
         key: SettingKey::ALL[0],
         scope_entity_id: Some(entity_b),
         direction: Direction::Tighten,
@@ -242,6 +250,7 @@ fn scoped_grant_writing_matching_entity_is_permitted() {
     }]);
 
     let write_a = ChangeFacts {
+        resource_entities: vec![entity_a],
         key: SettingKey::ALL[0],
         scope_entity_id: Some(entity_a),
         direction: Direction::Tighten,

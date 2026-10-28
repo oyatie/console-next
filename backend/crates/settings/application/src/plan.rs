@@ -135,6 +135,7 @@ where
             )
             .await?;
     authorize_change(&ChangeFacts {
+        resource_entities: chain,
         key,
         direction: accepted.direction,
         step_up,

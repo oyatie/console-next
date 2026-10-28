@@ -2,7 +2,7 @@
 //! for `GET /api/v1/settings`, and one key's history.
 
 use console_kernel_core::{KernelError, OrgId, Resolved, SettingVersionId, Timestamp};
-use console_platform_db::settings_read::resolve_loaded;
+use console_platform_db::settings_read::{SettingLayerKind, SettingScope, resolve_loaded};
 use console_settings_domain::{
     Direction, Governance, LooserWhen, OverrideRow, SettingKey, SettingKind, SettingValue,
 };
@@ -63,7 +63,7 @@ pub struct EffectiveSetting {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SettingSource {
-    pub layer: &'static str,
+    pub layer: SettingLayerKind,
     pub scope_entity_id: Option<Uuid>,
 }
 
@@ -97,7 +97,7 @@ pub struct ScheduledValue {
 /// Every key, resolved at `now`.
 pub(crate) fn effective_settings(
     rows: &BTreeMap<SettingKey, Vec<OverrideRow>>,
-    chain: &[Uuid],
+    chain: &[SettingScope],
     now: Timestamp,
 ) -> Vec<EffectiveSetting> {
     SettingKey::ALL
@@ -112,29 +112,28 @@ pub(crate) fn effective_settings(
                 _ => None,
             };
             let def = key.def();
-            let layers: Vec<_> = chain
-                .iter()
-                .enumerate()
-                .map(|(index, id)| {
-                    (
-                        if index + 1 == chain.len() {
-                            "legal_entity"
-                        } else {
-                            "workplace"
-                        },
-                        Some(*id),
-                    )
-                })
-                .chain([("tenant", None), ("code_default", None)])
+            let scopes: Vec<_> = if def.governance == Governance::PlatformOnly {
+                vec![(SettingLayerKind::Platform, None)]
+            } else {
+                chain
+                    .iter()
+                    .map(|scope| (scope.layer, Some(scope.id)))
+                    .chain([(SettingLayerKind::Tenant, None)])
+                    .collect()
+            };
+            let layers: Vec<_> = scopes
+                .into_iter()
+                .chain([(SettingLayerKind::CodeDefault, None)])
                 .map(|(layer, scope)| {
                     let row = rows
                         .iter()
                         .filter(|r| r.scope_entity_id == scope && r.effective_from <= now)
                         .max_by_key(|r| r.effective_from);
                     let deciding = resolved.is_some_and(|r| match r.version {
-                        SettingVersionId::CodeDefault => layer == "code_default",
+                        SettingVersionId::CodeDefault => layer == SettingLayerKind::CodeDefault,
                         SettingVersionId::Override(id) => {
-                            layer != "code_default" && row.is_some_and(|r| r.id == id)
+                            layer != SettingLayerKind::CodeDefault
+                                && row.is_some_and(|r| r.id == id)
                         }
                     });
                     SettingLayer {
@@ -142,12 +141,12 @@ pub(crate) fn effective_settings(
                             layer,
                             scope_entity_id: scope,
                         },
-                        value: if layer == "code_default" {
+                        value: if layer == SettingLayerKind::CodeDefault {
                             def.default
                         } else {
                             row.map(|r| r.value)
                         },
-                        effective_from: if layer == "code_default" {
+                        effective_from: if layer == SettingLayerKind::CodeDefault {
                             None
                         } else {
                             row.map(|r| r.effective_from)
@@ -158,7 +157,7 @@ pub(crate) fn effective_settings(
                 .collect();
             let source = layers.iter().find(|l| l.deciding).map_or(
                 SettingSource {
-                    layer: "code_default",
+                    layer: SettingLayerKind::CodeDefault,
                     scope_entity_id: None,
                 },
                 |l| l.source.clone(),

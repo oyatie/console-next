@@ -86,7 +86,7 @@ properties:
     properties:
       layer:
         type: string
-        enum: [code_default, tenant, legal_entity, workplace]
+        enum: [code_default, platform, tenant, legal_entity, workplace]
       scope_entity_id:
         allOf: [{$ref: '#/components/schemas/Uuid'}]
         nullable: true
@@ -100,7 +100,7 @@ properties:
       properties:
         layer:
           type: string
-          enum: [code_default, tenant, legal_entity, workplace]
+          enum: [code_default, platform, tenant, legal_entity, workplace]
         scope_entity_id:
           allOf: [{$ref: '#/components/schemas/Uuid'}]
           nullable: true

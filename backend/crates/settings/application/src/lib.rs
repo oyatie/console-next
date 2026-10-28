@@ -122,8 +122,9 @@ pub struct Actor {
 
 /// The facts the authorizer (Cedar `settings_change`) decides on. Loosening
 /// requires a fresh step-up; that is Cedar's rule, not this crate's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChangeFacts {
+    pub resource_entities: Vec<Uuid>,
     pub key: SettingKey,
     pub direction: Direction,
     pub step_up: bool,
