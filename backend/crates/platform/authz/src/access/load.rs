@@ -164,7 +164,12 @@ pub async fn dept_path(
     Ok(dept_paths(tx, org, Some(unit))
         .await?
         .remove(&unit)
-        .unwrap_or_else(|| NodePath(Vec::new())))
+        .map_or_else(|| NodePath(Vec::new()), |department| department.current))
+}
+
+pub(crate) struct DepartmentPath {
+    pub current: NodePath,
+    pub placement: Option<NodePath>,
 }
 
 /// The same canonical chains in one query; `None` loads every department.
@@ -172,7 +177,7 @@ pub(crate) async fn dept_paths(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     unit: Option<Uuid>,
-) -> Result<BTreeMap<Uuid, NodePath>, KernelError> {
+) -> Result<BTreeMap<Uuid, DepartmentPath>, KernelError> {
     let rows = sqlx::query(
         "WITH RECURSIVE heads AS (SELECT DISTINCT ON (org_unit_id) org_unit_id, attributes \
             FROM org_unit_revisions WHERE org_id = $1 ORDER BY org_unit_id, version DESC), \
@@ -204,17 +209,19 @@ pub(crate) async fn dept_paths(
         .collect()
 }
 
-fn path_from_rows(rows: &[PgRow], org: OrgId) -> Result<NodePath, KernelError> {
+fn path_from_rows(rows: &[PgRow], org: OrgId) -> Result<DepartmentPath, KernelError> {
     let mut path = Vec::new();
+    let mut dissolved_root = None;
+    let mut placement = None;
     for (i, row) in rows.iter().enumerate() {
         let id: Uuid = row.try_get("org_unit_id").map_err(db)?;
         let dissolved: Option<bool> = row.try_get("dissolved").map_err(db)?;
         if i == 0 && dissolved == Some(true) {
-            // The node alone: the grant compiles, its decisions are refused.
-            return Ok(NodePath(vec![NodeRef {
+            // Keep the placement for employees without reviving this department's grants.
+            dissolved_root = Some(NodeRef {
                 kind: NodeKind::Department,
                 id,
-            }]));
+            });
         }
         let wp: Option<Uuid> = row.try_get("workplace_id").map_err(db)?;
         let le: Option<Uuid> = row.try_get("legal_entity_id").map_err(db)?;
@@ -226,12 +233,16 @@ fn path_from_rows(rows: &[PgRow], org: OrgId) -> Result<NodePath, KernelError> {
             });
         }
         if let (Some(wp), Some(le)) = (wp, le) {
-            path.extend(scope_path(org, NodeKind::Workplace, Some(wp), Some(le)).0);
-            return Ok(NodePath(path));
+            let resolved = scope_path(org, NodeKind::Workplace, Some(wp), Some(le));
+            path.extend(resolved.0.iter().copied());
+            placement = Some(resolved);
+            break;
         }
     }
-    // No 사업장 above: the chain stops short of the tenant (refused).
-    Ok(NodePath(path))
+    Ok(DepartmentPath {
+        current: dissolved_root.map_or(NodePath(path), |node| NodePath(vec![node])),
+        placement,
+    })
 }
 
 async fn attach_lines(
