@@ -86,6 +86,30 @@ fn ops_each_read_requires_its_own_live_grant() {
 }
 
 #[test]
+fn ops_denial_preserves_deciding_policy_reason_annotations() {
+    for (annotation, expected) in [
+        ("@reason(\"ops_read_forbidden\")", "ops_read_forbidden"),
+        ("", "cedar denied: no matching permit"),
+    ] {
+        let bundle = bundle(&format!(
+            "{POLICY}\n{annotation}\nforbid(principal, action, resource);"
+        ));
+        let selected = grant("read.home", 100, 200);
+        let result = decide(
+            &bundle,
+            "read.home",
+            json!([selected]),
+            selected.clone(),
+            150,
+        );
+        assert!(
+            matches!(result, CedarEvaluation::Deny { ref reason, .. } if reason == expected),
+            "{result:?}"
+        );
+    }
+}
+
+#[test]
 fn ops_grant_dates_are_start_inclusive_end_exclusive() {
     let bundle = bundle(POLICY);
     for (now, allowed) in [
@@ -215,6 +239,26 @@ fn ops_invalid_entities_and_uids_fail_closed() {
             CedarEvaluation::Error { .. }
         ));
     }
+}
+
+#[test]
+fn ops_entities_schema_rejects_an_unused_undeclared_attribute() {
+    let bundle = bundle(POLICY);
+    let selected = grant("read.home", 100, 200);
+    let mut facts = entities(json!([selected]));
+    facts[0]["attrs"]["undeclared"] = json!(true);
+    let result = evaluate_entities(
+        &bundle,
+        OPERATOR,
+        "Ops::Action::\"read.home\"",
+        CONSOLE,
+        facts,
+        json!({"now": 150, "grant": selected}),
+    );
+    assert!(
+        matches!(result, CedarEvaluation::Error { .. }),
+        "{result:?}"
+    );
 }
 
 #[test]

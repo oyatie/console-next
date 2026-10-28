@@ -2999,6 +2999,16 @@ dependencies = [
 [[package]]
 name = "console-ops-rest"
 version = "0.1.0"
+dependencies = [
+ "console-kernel-core",
+ "console-platform-authz",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "time",
+ "uuid",
+]
 
 [[package]]
 name = "console-orgchange-adapter-postgres"

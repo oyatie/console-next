@@ -8,11 +8,10 @@
 //! [`CedarEvaluation::Error`], which every caller treats as a deny.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::panic::AssertUnwindSafe;
 
 use cedar_policy::RestrictedExpression;
 
-use super::engine::{CompiledBundle, evaluate_inner};
+use super::engine::{CompiledBundle, evaluate_inner, evaluate_safely};
 
 /// The scope-grant fact block (ED §3.11, decisions #15).
 pub mod scope;
@@ -112,15 +111,7 @@ pub(super) fn evaluate_with_context(
     bundle: &CompiledBundle,
     facts: Vec<(String, RestrictedExpression)>,
 ) -> CedarEvaluation {
-    match std::panic::catch_unwind(AssertUnwindSafe(|| {
-        crate::cedar_stack::with_cedar_stack(|| evaluate_inner(request, bundle, facts))
-    })) {
-        Ok(Ok(evaluation)) => evaluation,
-        Ok(Err(reason)) => CedarEvaluation::Error { reason },
-        Err(_) => CedarEvaluation::Error {
-            reason: "cedar evaluation panicked".to_owned(),
-        },
-    }
+    evaluate_safely(bundle, || evaluate_inner(request, bundle, facts))
 }
 
 #[cfg(test)]
