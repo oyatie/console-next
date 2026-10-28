@@ -22,21 +22,3 @@ When unsure, widen the checks. Record a skipped suite as **not affected**, with 
 
 See [E2E strategy, measurement protocol and current evidence](e2e.md) for browser selection, tagging,
 flake accounting and the distinction between current behaviour and the target.
-
-Run `node scripts/backend-tests.mjs` for the same non-database selection as CI. It builds with
-`cargo nextest list --workspace --locked`, derives database cases from existing `#[sqlx::test]`
-attributes within each Cargo package and runs the remaining tests, including ordinary tests in mixed
-binaries, including cases emitted by SQLx test macros. The `test-postgres` features stay disabled;
-the container-backed census opts in through `console-gate-writer-ownership/test-postgres`.
-Ambiguous names or unsupported test macro signatures fail classification.
-Database connection environment variables are removed for this run: a missing database failure is a
-classification defect, not a reason to add an exclusion. The filter and complete identity inventory are
-published beside JUnit in the `backend-test-results` artifact. No baseline test list is checked in.
-
-The job summary reports selected, database-deferred and explicitly ignored cases, naming each existing
-`#[ignore]` case. Those declared ignores remain visible debt; they are not counted as passing tests.
-JUnit must contain every selected identity exactly once, without skips, failures or errors, and nextest
-must exit successfully. Any discrepancy fails `backend-tests` and the required `ci-ok` aggregate.
-The runner uses the existing [CI JUnit profile](../../.config/nextest.toml), with no retries and no early
-exit after the first failure. Database test execution and its Postgres role topology are the next step;
-no database tests are claimed as executed by this tier.

@@ -5,7 +5,7 @@
 # web runs `npm run check`: the client-contract check against backend/openapi, typecheck, lint, unit tests, build,
 # bundle budget, gitleaks over the whole history and the build, licence headers on added files, fixture ids
 # (checksum-valid RRNs, whole or Excel-stripped) and the npm licence gate.
-# backend-tests runs non-database Rust tests with nextest and reconciles JUnit with a fresh test inventory.
+# backend also runs non-database Rust tests with nextest and reconciles JUnit with a fresh test inventory.
 # Database tests and real-backend browser E2E are not wired here yet; mocked browser states run in states.
 name: ci
 on:
@@ -96,6 +96,7 @@ jobs:
     env:
       SQLX_OFFLINE: "true"
       CARGO_TERM_COLOR: always
+      CARGO_NEXTEST_VERSION: 0.9.138
     steps:
       - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
@@ -124,22 +125,6 @@ jobs:
           echo "Backend code gates: ${SECONDS}s"
           exit "$failed"
 
-  backend-tests:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    env:
-      SQLX_OFFLINE: "true"
-      CARGO_TERM_COLOR: always
-      CARGO_NEXTEST_VERSION: 0.9.138
-    steps:
-      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
-        with:
-          egress-policy: audit
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: package.json
@@ -150,7 +135,7 @@ jobs:
           echo "e1c85dbe02dcf5b963803b3f96f4f561757f5c37cab68c932411dea20d57284e  ${RUNNER_TEMP}/nextest.tar.gz" | sha256sum -c -
           tar -xzf "${RUNNER_TEMP}/nextest.tar.gz" -C "${RUNNER_TEMP}" cargo-nextest
           echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
-      - run: node scripts/backend-tests.mjs
+      - run: node ../scripts/backend-tests.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() }}
         with:
@@ -225,7 +210,7 @@ jobs:
 
   ci-ok:
     if: ${{ always() }}
-    needs: [commits, web, states, backend, backend-tests, supply-chain]
+    needs: [commits, web, states, backend, supply-chain]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -235,5 +220,4 @@ jobs:
           test "${{ needs.web.result }}" = success
           test "${{ needs.states.result }}" = success
           test "${{ needs.backend.result }}" = success
-          test "${{ needs.backend-tests.result }}" = success
           test "${{ needs.supply-chain.result }}" = success
