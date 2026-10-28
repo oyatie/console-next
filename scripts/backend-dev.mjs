@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Local backend with the public E2E stack and a Cargo-built `console-app`.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -179,7 +179,9 @@ let up = true;
 const startApi = () => {
   const child = startBackend(BIN, { cwd: CONSOLE, env: { ...appEnv("api"), ...(supportLogFixture ? { CONSOLE_SUPPORT_LOG_QUERY_URL: supportLogFixture.url } : {}) }, stdio: supportLogFixture ? ["inherit", "pipe", "inherit"] : "inherit" });
   // `pid` is the restart signal target; `apiPid` ties orphan cleanup to this slot's launcher.
-  writeFileSync(RECORD, JSON.stringify({ bin: BIN, binMtimeMs: statSync(BIN).mtimeMs, pid: process.pid, apiPid: child.pid }));
+  const temporary = `${RECORD}.${process.pid}.tmp`;
+  writeFileSync(temporary, JSON.stringify({ bin: BIN, binMtimeMs: statSync(BIN).mtimeMs, pid: process.pid, apiPid: child.pid }));
+  renameSync(temporary, RECORD);
   if (supportLogFixture) {
     child.stdout.pipe(process.stdout);
     supportLogFixture.observe(child.stdout);

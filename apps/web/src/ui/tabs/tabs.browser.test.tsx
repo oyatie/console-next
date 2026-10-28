@@ -32,7 +32,12 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
-  await page.route(/\/tabs-test(?:\?.*)?$/, route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Tabs</title><main id="root"></main><script type="module" src="/tabs-test.js"></script></html>' }));
+  // A pending image must not hold up assertions about the rendered view or history.
+  await page.route("**/tabs-history-pending.svg", () => {});
+  await page.route(/\/tabs-test(?:\?.*)?$/, route => {
+    const pending = new URL(route.request().url()).searchParams.get("scope") === "previous" ? '<img src="/tabs-history-pending.svg" alt="">' : "";
+    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Tabs</title><main id="root"></main><script type="module" src="/tabs-test.js"></script>${pending}</html>` });
+  });
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
@@ -54,24 +59,26 @@ test.each([1440, 390, 320])("URL views are links and keep their content outside 
 
 test("URL links replace history, restore deep links and preserve other filters", async () => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${server.resolvedUrls!.local[0]}tabs-test?scope=previous`);
-  await page.goto(`${server.resolvedUrls!.local[0]}tabs-test?tab=list&scope=workplace#record`);
+  await page.goto(`${server.resolvedUrls!.local[0]}tabs-test?scope=previous`, { waitUntil: "commit" });
   const tabs = page.getByRole("navigation", { name: "보기", exact: true });
+  await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
+  await page.goto(`${server.resolvedUrls!.local[0]}tabs-test?tab=list&scope=workplace#record`, { waitUntil: "commit" });
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("목록 61");
   const length = await page.evaluate(() => history.length);
   const outline = tabs.getByRole("link", { name: "아웃라인", exact: true });
   expect(new URL((await outline.getAttribute("href"))!, page.url()).searchParams.get("tab")).toBe("outline");
   await outline.click();
   await element(page).toHaveURL(/tab=outline.*scope=workplace#record$/);
-  await page.reload();
+  await page.reload({ waitUntil: "commit" });
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("아웃라인");
   expect(await page.evaluate(() => history.length)).toBe(length);
   await tabs.getByRole("link", { name: "조직도", exact: true }).click();
   await element(page).toHaveURL(/scope=workplace#record$/);
   expect(new URL(page.url()).searchParams.has("tab")).toBe(false);
-  await page.goBack();
+  await page.goBack({ waitUntil: "commit" });
   await element(page).toHaveURL(/scope=previous$/);
-  await page.goForward();
+  await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
+  await page.goForward({ waitUntil: "commit" });
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
 });
 

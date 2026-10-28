@@ -38,22 +38,39 @@ beforeAll(() => {
     process.exit(result.status ?? 1);
   `, { mode: 0o700 });
   writeFileSync(fixture, `
+    const fs = require('node:fs');
+    if (process.env.RECORD_WRITE_PROBE === '1') {
+      const record = require('node:path').join(process.env.E2E_CACHE_DIR, 'backend.json');
+      const write = fs.writeFileSync;
+      // Inspect publication while the output file is open, without a scheduling race.
+      fs.writeFileSync = (file, data, options) => {
+        if (!String(file).startsWith(record)) return write(file, data, options);
+        const fd = fs.openSync(file, 'w');
+        try {
+          console.log('record-while-open: ' + JSON.stringify(fs.existsSync(record) ? fs.readFileSync(record, 'utf8') : null));
+          return write(fd, data, options);
+        } finally { fs.closeSync(fd); }
+      };
+    }
     if (process.env.CONSOLE_APP_ROLE === 'migrate') process.exit(0);
     if (process.env.CONSOLE_APP_ROLE === 'api') {
       process.title = require('node:path').basename(process.execPath);
       if (process.env.IGNORE_TERM === '1') process.on('SIGTERM', () => {});
-      const child = require('node:child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
-        stdio: 'ignore', env: { ...process.env, CONSOLE_APP_ROLE: 'child' }
+      const child = require('node:child_process').spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); process.send('ready'); setInterval(() => {}, 1000)"], {
+        stdio: ['ignore', 'ignore', 'ignore', 'ipc'], env: { ...process.env, CONSOLE_APP_ROLE: 'child' }
       });
       const server = require('node:http').createServer((req, res) => {
         res.end(JSON.stringify({ pid: process.pid }));
         if (req.url === '/exit') setImmediate(() => process.exit(7));
       });
-      server.listen(Number(process.env.CONSOLE_DEV_BACKEND_PORT || 0), '127.0.0.1', () => {
-        require('node:fs').writeFileSync(process.env.LISTENER_RECORD, JSON.stringify({
+      // Keep a live descendant for group cleanup, even after SIGTERM stops the API.
+      child.once('message', () => server.listen(Number(process.env.CONSOLE_DEV_BACKEND_PORT || 0), '127.0.0.1', () => {
+        const temporary = process.env.LISTENER_RECORD + '.' + process.pid + '.tmp';
+        fs.writeFileSync(temporary, JSON.stringify({
           pid: process.pid, child: child.pid, port: server.address().port
         }));
-      });
+        fs.renameSync(temporary, process.env.LISTENER_RECORD);
+      }));
     }
   `);
 });
@@ -283,14 +300,19 @@ test("Playwright starts the launcher even when a recorded orphan answers readyz"
 
 test("SIGUSR2 restarts only this launcher's group on the same port", async () => {
   const port = await freePort();
-  const run = launchBackend(port);
+  const cache = mkdtempSync(path.join(dir, "publication-"));
+  const run = launchBackend(port, { RECORD_WRITE_PROBE: "1", E2E_CACHE_DIR: cache });
   const first = await listener(run.file);
+  await eventually(run.output, (output) => output.includes("record-while-open:"));
+  expect(run.output()).toContain("record-while-open: null");
+  const previous = readFileSync(path.join(cache, "backend.json"), "utf8");
   run.child.kill("SIGUSR2");
   await eventually(() => [alive(first.pid), alive(first.child)], (values) => values.every((value) => !value));
   expect(run.child.exitCode).toBeNull();
   run.child.kill("SIGUSR2");
   await eventually(() => JSON.parse(readFileSync(run.file, "utf8")) as Listener, (value) => value.pid !== first.pid);
   const second = await listener(run.file);
+  await eventually(run.output, (output) => output.includes(`record-while-open: ${JSON.stringify(previous)}`));
   expect(await responds(port)).toEqual({ pid: second.pid });
 });
 
