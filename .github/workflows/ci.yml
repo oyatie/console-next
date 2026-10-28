@@ -144,7 +144,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: package.json
+          node-version-file: .node-version
       - name: Install pinned Rust test runner
         run: |
           curl --fail --silent --show-error --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
@@ -152,7 +152,8 @@ jobs:
           echo "e1c85dbe02dcf5b963803b3f96f4f561757f5c37cab68c932411dea20d57284e  ${RUNNER_TEMP}/nextest.tar.gz" | sha256sum -c -
           tar -xzf "${RUNNER_TEMP}/nextest.tar.gz" -C "${RUNNER_TEMP}" cargo-nextest
           echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
-      - run: node ../scripts/backend-tests.mjs
+      - run: node scripts/backend-tests.mjs
+        working-directory: .
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         with:

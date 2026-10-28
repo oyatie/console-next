@@ -152,8 +152,9 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
     if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
     assert.ok(!step["continue-on-error"]);
   }
-  const run = job.steps.find((s) => s.run === "node ../scripts/backend-tests.mjs");
+  const run = job.steps.find((s) => s.run === "node scripts/backend-tests.mjs");
   assert.ok(run && !run.if);
+  assert.equal(run["working-directory"], ".");
   assert.ok(job.steps.indexOf(run) > job.steps.findIndex((s) => s.run?.startsWith("cargo clippy ")));
   const check = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts.check;
   assert.match(check, /node --test[^&]*scripts\/backend-tests\.test\.mjs/);
@@ -186,7 +187,7 @@ test("clippy and nextest reuse a Rust cache that only trusted dev pushes can sav
   assert.equal(save.with.path, restore.with.path);
   assert.equal(save.if, "github.event_name == 'push' && github.ref == 'refs/heads/dev'");
   assert.ok(steps.indexOf(restore) < steps.findIndex((s) => s.run?.startsWith("cargo clippy ")));
-  assert.ok(steps.indexOf(save) > steps.findIndex((s) => s.run === "node ../scripts/backend-tests.mjs"));
+  assert.ok(steps.indexOf(save) > steps.findIndex((s) => s.run === "node scripts/backend-tests.mjs"));
   const pins = steps.filter((s) => s.uses?.startsWith("actions/setup-node@")).map((s) => s.uses);
   assert.deepEqual(pins, [workflow.jobs.web.steps.find((s) => s.uses?.startsWith("actions/setup-node@")).uses]);
 });
