@@ -1,11 +1,9 @@
   title: Console API
   version: 0.1.0
-  x-contract-of: 89cf5eeb08c2
+  x-contract-of: 884cb634fc30
   x-contract-evidence: >-
-    REL-API-COMPAT-2 accepts only ErrorBody.error.support_ref losing format uuid.
-    git grep -n -i support_ref 89cf5eeb08c2 -- apps/web packages finds only
-    packages/api/src/schema.d.ts (generated types); no runtime reader or validator.
-    N-1 packages/api/src/client.ts and session.ts deserialize JSON without a schema validator.
-    Consent request references are optional with typed terms_text_changed for unmappable legacy text;
-    ChangeRequest response enums are extensible and the released translator renders unknown keys.
-    See docs/ops/release-api-compat-2.md for reproduction and the one-release contract follow-up.
+    Accepts only response-property-enum-value-added for the week-52 projection tone (UNKNOWN when the
+    statutory hours register has no row) on GET /api/v1/attendance/me/week52, GET /api/v1/attendance/week52
+    and POST /api/v1/attendance/week52/acks. git grep -n -E 'attendance/(me/)?week52' 884cb634fc30 -- apps packages
+    finds only generated packages/api/src/schema.d.ts declarations; the released web has no runtime caller.
+    The marker names this one released base; replace or remove it for the next one. It must never hide another error class.
