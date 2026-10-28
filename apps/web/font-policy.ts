@@ -1,27 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import type { CSSOptions, Plugin } from "vite";
+import type { Plugin } from "vite";
 
-/** Optional subsets must be preloaded to avoid a fallback layout during their short block period. */
+/** One preloaded optional face keeps Latin and Hangul on the same first-paint font choice. */
 export function fontPolicy(): Plugin {
-  const file = resolve(import.meta.dirname, "../../node_modules/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css");
+  const file = resolve(import.meta.dirname, "../../node_modules/pretendard/dist/web/variable/pretendardvariable.css");
   const fonts = [...readFileSync(file, "utf8").matchAll(/@font-face\s*\{([^}]+)\}/g)]
-    .map(([, face]) => resolve(dirname(file), face!.match(/url\(([^)]+)\)/)![1]!));
-  const postcss: CSSOptions["postcss"] = { plugins: [{
-    postcssPlugin: "optional-pretendard",
-    AtRule: {
-      "font-face": face => {
-        let pretendard = false;
-        face.walkDecls("font-family", d => { pretendard = d.value.includes("Pretendard Variable"); });
-        if (pretendard) face.walkDecls("font-display", d => { d.value = "optional"; });
-      },
-    },
-  }] };
+    .map(([, face]) => resolve(dirname(file), face!.match(/url\(['"]?([^'")]+)['"]?\)/)![1]!));
   let building = false;
   return {
     name: "console-font-policy",
-    config: () => ({ css: { postcss } }),
     configResolved: config => { building = config.command === "build"; },
     buildStart() {
       if (building) for (const font of fonts) this.emitFile({ type: "asset", name: font.split("/").at(-1)!, source: readFileSync(font) });
