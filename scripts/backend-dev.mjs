@@ -9,7 +9,9 @@ import { fileURLToPath } from "node:url";
 import { supportLogs } from "./e2e-support-logs.mjs";
 import { CACHE_DIR, COMPOSE_PROJECT, PORTS } from "../e2e/slot.ts";
 import { DEV_SECRETS_FILE, ensureDevSecrets } from "./dev-secrets.ts";
-import { backendReady, reapOrphanListener, startBackend, stopBackend } from "./backend-process.mjs";
+import { backendReady, installBackendCleanup, reapOrphanListener, startBackend, stopBackend } from "./backend-process.mjs";
+
+installBackendCleanup();
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CONSOLE = path.resolve(process.env.CONSOLE_REPO ?? ROOT);
@@ -169,8 +171,16 @@ if (process.env.CONSOLE_DEV_ASYNC_COMMIT === "1")
 // Which binary this backend runs, for E2E_REUSE's stale-binary guard (e2e/global-setup.ts).
 mkdirSync(CACHE, { recursive: true });
 // A launcher killed before rename can leave an unpublished record behind.
-for (const name of readdirSync(CACHE))
-  if (/^backend\.json\.\d+\.tmp$/.test(name)) rmSync(path.join(CACHE, name), { force: true });
+for (const name of readdirSync(CACHE)) {
+  const match = name.match(/^backend\.json\.(\d+)\.tmp$/);
+  if (!match || !Number.isSafeInteger(Number(match[1])) || Number(match[1]) < 1) continue;
+  try { process.kill(Number(match[1]), 0); }
+  catch (error) {
+    if (error.code === "ESRCH") rmSync(path.join(CACHE, name), { force: true });
+    // Node also rejects numeric PIDs outside its platform range with ERR_INVALID_ARG_TYPE.
+    else if (error.code !== "EPERM" && error.code !== "ERR_INVALID_ARG_TYPE") throw error;
+  }
+}
 // No fixtures and no personas: the database holds only what the API itself creates.
 console.log(`backend: http://127.0.0.1:${PORT.backend}  platform cold-start code: coldstartOtp in ${DEV_SECRETS_FILE}`);
 // SIGUSR2 stops the API process and the next SIGUSR2 starts it again on the same database (a backend restart mid-flow,
