@@ -21,7 +21,7 @@ pub struct EmployeePlacement {
 }
 
 impl EmployeePlacement {
-    /// Most specific current placement; a wholly unplaced person belongs to the tenant.
+    /// Current department, then assignment/department-chain workplace and entity, then tenant.
     #[must_use]
     pub fn node(&self, org: OrgId, facts: &DecisionFacts) -> NodeRef {
         for (kind, _) in PLACEMENT {
@@ -31,10 +31,15 @@ impl EmployeePlacement {
                 NodeKind::LegalEntity => self.legal_entity_id,
                 NodeKind::Tenant => None,
             };
-            if let Some(id) =
-                id.filter(|id| facts.current_employee_placement(NodeRef { kind, id: *id }))
-            {
-                return NodeRef { kind, id };
+            let inherited = self
+                .org_unit_id
+                .and_then(|unit| facts.department_placements.get(&unit))
+                .and_then(|path| path.0.iter().find(|node| node.kind == kind))
+                .map(|node| node.id);
+            for id in [id, inherited].into_iter().flatten() {
+                if facts.current_employee_placement(NodeRef { kind, id }) {
+                    return NodeRef { kind, id };
+                }
             }
         }
         NodeRef {
@@ -49,6 +54,7 @@ impl EmployeePlacement {
 pub struct EmployeeVisibility {
     permitted: Option<Vec<String>>,
     current: Vec<NodeRef>,
+    inherited: Vec<(Uuid, NodeRef)>,
 }
 
 impl EmployeeVisibility {
@@ -74,6 +80,21 @@ impl EmployeeVisibility {
             query.push(format!(" WHEN {column} = ANY("));
             query.push_bind(current);
             query.push(format!(") THEN '{}:' || {column}::text", kind.as_str()));
+            let (units, nodes): (Vec<_>, Vec<_>) = self
+                .inherited
+                .iter()
+                .filter(|(_, node)| node.kind == kind)
+                .map(|(unit, node)| (*unit, node.id))
+                .unzip();
+            if !units.is_empty() {
+                query.push(" WHEN e.org_unit_id = ANY(");
+                query.push_bind(units.clone());
+                query.push(format!(") THEN '{}:' || (", kind.as_str()));
+                query.push_bind(nodes);
+                query.push("::uuid[])[array_position(");
+                query.push_bind(units);
+                query.push(", e.org_unit_id)]::text");
+            }
         }
         query.push(" ELSE 'TENANT:' || e.org_id::text END = ANY(");
         query.push_bind(permitted.clone());
@@ -100,6 +121,7 @@ impl DecisionFacts {
             return Ok(EmployeeVisibility {
                 permitted: None,
                 current: Vec::new(),
+                inherited: Vec::new(),
             });
         }
         let mut nodes = Vec::new();
@@ -115,6 +137,15 @@ impl DecisionFacts {
                 .keys()
                 .copied()
                 .filter(|n| self.current_employee_placement(*n))
+                .collect(),
+            inherited: self
+                .department_placements
+                .iter()
+                .flat_map(|(unit, path)| path.0.iter().map(move |node| (*unit, *node)))
+                .filter(|(_, node)| {
+                    matches!(node.kind, NodeKind::Workplace | NodeKind::LegalEntity)
+                        && self.current_employee_placement(*node)
+                })
                 .collect(),
         })
     }
@@ -158,6 +189,7 @@ mod tests {
             })
             .collect(),
             roles: Vec::new(),
+            department_placements: Default::default(),
         };
         for (unit, site, company, kind, id) in [
             (
@@ -225,5 +257,47 @@ mod tests {
             id: entity,
         });
         assert_eq!(placement.node(org, &facts), tenant);
+
+        let workplace_node = NodeRef {
+            kind: NodeKind::Workplace,
+            id: workplace,
+        };
+        let entity_node = NodeRef {
+            kind: NodeKind::LegalEntity,
+            id: entity,
+        };
+        let chain = NodePath(vec![workplace_node, entity_node, tenant]);
+        facts.paths.insert(workplace_node, chain.clone());
+        facts
+            .paths
+            .insert(entity_node, NodePath(vec![entity_node, tenant]));
+        facts.department_placements.insert(department, chain);
+        let unassigned = EmployeePlacement {
+            org_unit_id: Some(department),
+            workplace_id: None,
+            legal_entity_id: None,
+        };
+        assert_eq!(unassigned.node(org, &facts), workplace_node);
+        let assigned = Uuid::new_v4();
+        let assigned_node = NodeRef {
+            kind: NodeKind::Workplace,
+            id: assigned,
+        };
+        facts.paths.insert(
+            assigned_node,
+            NodePath(vec![assigned_node, entity_node, tenant]),
+        );
+        assert_eq!(
+            EmployeePlacement {
+                workplace_id: Some(assigned),
+                ..unassigned
+            }
+            .node(org, &facts),
+            assigned_node
+        );
+        facts.paths.remove(&workplace_node);
+        assert_eq!(unassigned.node(org, &facts), entity_node);
+        facts.paths.remove(&entity_node);
+        assert_eq!(unassigned.node(org, &facts), tenant);
     }
 }
