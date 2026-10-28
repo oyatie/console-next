@@ -41,7 +41,15 @@ const print = value => console.log(typeof value === 'string' ? redact(value) : J
 function get(resource) {
   const result = kubectl(['get', resource, '-A', '-o', 'json']);
   if (result.status === 0) {
-    try { return JSON.parse(result.stdout).items ?? []; } catch { /* Continue with other resource types. */ }
+    try {
+      const items = JSON.parse(result.stdout).items ?? [];
+      print(`${resource}: ${items.length} found`);
+      if (['jobs', 'events'].includes(resource)) for (const namespace of ['console', 'cnpg-system']) {
+        const scoped = items.filter(item => item.metadata.namespace === namespace);
+        print(`${resource} ${namespace}: ${scoped.length} found${resource === 'events' ? `, ${scoped.filter(event => event.reason === 'FailedCreate').length} FailedCreate` : ''}`);
+      }
+      return items;
+    } catch { /* Continue with other resource types. */ }
   }
   print(`${resource}: unavailable (exit ${result.status ?? 'timeout'})`);
   return [];
@@ -61,7 +69,8 @@ for (const pod of get('pods')) {
     conditions:(pod.status?.conditions ?? []).map(condition => pick(condition, conditionFields)),
     containers:containers.map(container => ({...pick(container, ['name', 'ready', 'restartCount']),
       state:Object.fromEntries(Object.entries(container.state ?? {}).map(([state, value]) => [state,pick(value, ['reason', 'exitCode', ...(redactionReady ? ['message'] : [])])]))}))});
-  if (pod.status?.phase === 'Succeeded' || (pod.status?.phase === 'Running' && containers.length && containers.every(c => c.ready))) continue;
+  // A ready operator can repeatedly fail to create a Job without a Pod or event ever existing.
+  if (namespace !== 'cnpg-system' && (pod.status?.phase === 'Succeeded' || (pod.status?.phase === 'Running' && containers.length && containers.every(c => c.ready)))) continue;
   if (!redactionReady) continue;
   const described = kubectl(['describe', 'pod', name, '-n', namespace]);
   print(`describe pod ${namespace}/${name} (names and states):`);

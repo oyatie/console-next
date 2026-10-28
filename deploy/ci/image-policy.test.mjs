@@ -120,7 +120,11 @@ for (const environment of ['exit-test', 'template']) test(`${environment}: only 
       if (unsigned) assert.deepEqual(policy.spec.authorities, [{static:{action:'pass'}}]);
       else {
         assert.ok(policy.spec.authorities.every(a => (a.keyless || a.key) && !a.static), `published signatures must be required: ${ref}`);
-        if (/cloudnative-pg\/(?:cloudnative-pg|postgresql)(?::[^/@]+)?@/.test(ref)) assert.equal(policy.spec.authorities[0].signatureFormat, 'bundle');
+        if (/cloudnative-pg\/(?:cloudnative-pg|postgresql)(?::[^/@]+)?@/.test(ref)) {
+          assert.equal(policy.spec.authorities[0].signatureFormat, 'bundle');
+          assert.deepEqual(policy.spec.authorities[0].attestations, [{name:'signature',predicateType:'https://sigstore.dev/cosign/sign/v1'}],
+            'CNPG signing bundles are in-toto statements; the pinned controller supports them through its attestation verifier');
+        }
         if (/jetstack\//.test(ref)) assert.equal(policy.spec.authorities[0].key.hashAlgorithm, 'sha512');
       }
       const resources = readFileSync(join(dir, 'policies/resources.yaml'), 'utf8');
