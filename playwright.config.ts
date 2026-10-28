@@ -95,6 +95,6 @@ export default defineConfig({
     },
     ...(served
       ? []
-      : [{ command: "npm run dev", url: origin, reuseExistingServer: !AGENT, env: { CONSOLE_WEB_PORT: String(PORTS.web), CONSOLE_BACKEND: `http://127.0.0.1:${PORTS.backend}` } }]),
+      : [{ command: "node scripts/e2e-web.mjs", url: origin, gracefulShutdown: { signal: "SIGTERM" as const, timeout: 5_000 }, reuseExistingServer: !AGENT, env: { CONSOLE_WEB_PORT: String(PORTS.web), CONSOLE_BACKEND: `http://127.0.0.1:${PORTS.backend}` } }]),
   ],
 });
