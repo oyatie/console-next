@@ -4,6 +4,9 @@ import { apiAs, soloTenant } from "./chaos";
 import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, routeReady, stepUp, takeCode } from "./flows";
 import { setupCompany, startOperations, tenantInSetup } from "./setup-flows";
 import { expectAccessible } from "./a11y";
+import { authenticatorOf } from "./auth";
+import { apiOf, bearerOf } from "./helpers/api";
+import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
 
 const REFRESH = "**/api/v1/auth/token/refresh";
 const REPORT = "**/api/v1/hr/exit-cases";
@@ -132,7 +135,7 @@ test("exit-report draft survives close/reload, discards explicitly, and never cr
   await go(admin, record);
   await admin.getByRole("button", { name: "퇴직 보고", exact: true }).click();
   await expect(form.getByRole("textbox", { name: /^퇴직 경위/ })).toHaveValue(note);
-  await form.getByRole("button", { name: "버리기" }).click();
+  await form.getByRole("button", { name: "폐기" }).click();
   await expect(form.getByRole("textbox", { name: /^퇴직 경위/ })).toHaveValue("");
   await expect.poll(() => drafts(admin)).toHaveLength(0);
   await form.getByRole("textbox", { name: /^퇴직 경위/ }).fill(note);
@@ -149,6 +152,38 @@ test("exit-report draft survives close/reload, discards explicitly, and never cr
   await expect(admin.getByText(note)).toHaveCount(0);
   await sibling.getByRole("button", { name: "퇴직 보고", exact: true }).click();
   await expect(sibling.getByRole("textbox", { name: /^퇴직 경위/ })).toHaveValue("");
+});
+
+test("attendance drafts never cross accounts after same-tab sign-out and passkey sign-in", async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { admin, exec } = await tenantInSetup(browser, "recattendance", "근태초안상사", false, "본점", "full");
+  const bearer = bearerOf(admin);
+  await startOperations(admin);
+  await registerEmployee(admin, { name: "김근태초안", number: "REC-0004", hired: kstDate(-60), unit: "본점" });
+  const employee = new URL(admin.url()).pathname.split("/").pop()!;
+  await officeSchedule(admin);
+  const { month, date, other } = await pastWorkDay(apiOf(admin, bearer), employee);
+  await openMonth(admin, month);
+  const record = new URL(admin.url()).pathname + new URL(admin.url()).search;
+  for (const [day, value] of [[date, "9-18"], [other, "9-17"]] as const) {
+    await cellOf(admin, "김근태초안", day).click();
+    await admin.keyboard.type(value);
+    await admin.keyboard.press("Enter");
+  }
+  const stored = () => admin.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith("console.draft:") || k.startsWith("console.attendance.drafts:")));
+  await expect.poll(stored).toHaveLength(1);
+  await expect.poll(() => admin.evaluate(() => Object.values(sessionStorage).some(value => value.includes("9-18") && value.includes("9-17")))).toBe(true);
+  await admin.getByRole("button", { name: "로그아웃", exact: true }).click();
+  await expect(admin).toHaveURL(/\/login/);
+  expect(await stored()).toEqual([]);
+  const authn = authenticatorOf(admin);
+  await authn.clear();
+  await authn.import(await authenticatorOf(exec).export());
+  await passkeyLogin(admin);
+  await go(admin, record);
+  await expect(cellOf(admin, "김근태초안", date)).not.toContainText("9-18");
+  await expect(cellOf(admin, "김근태초안", other)).not.toContainText("9-17");
+  expect(await stored()).toEqual([]);
 });
 
 test("S23 passkey reset and S25 deactivation deliver their actual server reasons and keep copy usable", async ({ browser }) => {

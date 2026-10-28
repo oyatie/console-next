@@ -3,13 +3,11 @@ import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "reac
 import { session } from "@console/api";
 // The draft owner and live-draft registry sit in draft-owner.ts so the shell's session watcher
 // (auth/idle.ts, on the initial load) does not pull the draft hook into the entry bundle.
-import { DRAFT_PREFIX as PREFIX, activeDrafts as active } from "./draft-owner";
-export { syncDraftPrincipal } from "./draft-owner";
+import { draftKey, registerDraft, activeDrafts as active } from "./draft-owner";
+export { draftKey, syncDraftPrincipal } from "./draft-owner";
 
 type Fields = Record<string, string | null>;
 type Problem = "unreadable" | "unavailable" | null;
-
-export const draftKey = (principal: string, route: string, record: string, form: string) => PREFIX + JSON.stringify([principal, route, record, form]);
 
 export function readDraft<T extends Fields>(key: string, initial: T): { base: T; yours: T; restored: boolean; problem: Problem } {
   const empty = { base: initial, yours: initial, restored: false };
@@ -30,7 +28,7 @@ export function readDraft<T extends Fields>(key: string, initial: T): { base: T;
   }
 }
 
-/** Only mounted forms owned by the current account can contribute to the recovery clipboard. */
+/** Only drafts owned by the current account can contribute to the recovery clipboard. */
 export function recoveryDraftText() {
   return [...active.values()].filter((d) => d.principal === session.principal).map((d) => d.text()).filter(Boolean).join("\n\n");
 }
@@ -45,8 +43,7 @@ export function useDraft<T extends Fields>(opts: { route: string; record: string
   const [writeProblem, setWriteProblem] = useState<Problem>(null);
   useLayoutEffect(() => {
     if (!principal) return;
-    active.set(key, { principal, text: () => format(state.yours) });
-    return () => { active.delete(key); };
+    return registerDraft(key, { principal, text: () => format(state.yours) });
   }, [key, principal, format, state.yours]);
   useEffect(() => {
     let live = true;

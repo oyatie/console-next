@@ -6,7 +6,7 @@ import { expectAxe, fits } from "../a11y";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
-import { id } from "./fixtures";
+import { failure, id, token, user } from "./fixtures";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -137,5 +137,63 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
   const paper = page.getByRole("table", { name: "일별 · 자세히", exact: true });
   await expect(paper.locator("tbody tr[data-id]")).toHaveCount(2000);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("an upgraded tab never restores a previous account's owner-less attendance cells", async ({ page }) => {
+  const fixture = await setup(page, 5);
+  const claims = JSON.parse(Buffer.from(token().access_token.split(".")[1]!, "base64url").toString());
+  await page.addInitScript(({ principal, employee }) => {
+    // The old bundle changed accounts without purging this owner-less row.
+    sessionStorage.setItem("console.draft.principal", principal);
+    sessionStorage.setItem("console.attendance.drafts:day:2026-10-06", JSON.stringify({
+      [`${employee}|2026-10-06`]: { value: "9-18", base: null },
+    }));
+    sessionStorage.setItem("console.attendance.drafts:unopened", "{}");
+  }, { principal: JSON.stringify([claims.org, claims.sub]), employee: id(100) });
+  await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
+  await expect(page.getByRole("textbox", { name: /^근태직원 1 입력/ })).toHaveValue("");
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith("console.attendance.drafts:") || k.startsWith("console.draft:")))).toEqual([]);
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("attendance recovery copies both cells and sign-out purges them before another account signs in", async ({ page }) => {
+  const fixture = await setup(page, 5);
+  let ended = false;
+  await mockRoute(page, "post", "/api/v1/attendance/entries/preview", () => ({ status: ended ? 401 : 503, json: failure(ended ? "unauthorized" : "service_unavailable") }));
+  await page.route("**/api/v1/auth/logout", route => route.fulfill({ status: 204 }));
+  await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
+  const first = page.getByRole("textbox", { name: /^근태직원 1 입력/ });
+  const second = page.getByRole("textbox", { name: /^근태직원 2 입력/ });
+  await first.fill("9-18");
+  await second.fill("9-17");
+  await expect.poll(() => page.evaluate(() => Object.values(sessionStorage).some(v => v.includes("9-18") && v.includes("9-17")))).toBe(true);
+  await page.reload();
+  await expect(first).toHaveValue("9-18");
+  await expect(second).toHaveValue("9-17");
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+    writeText: async (text: string) => { (window as unknown as { copied: string }).copied = text; },
+  } }));
+  ended = true;
+  await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 401, json: failure("session_passkey_reset") });
+  await second.fill("9-16");
+  const recovery = page.getByRole("dialog", { name: "다시 로그인" });
+  await recovery.getByRole("button", { name: "입력 내용 복사" }).click();
+  expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe("2026-10-06 · 근태직원 1 · 9-18\n2026-10-06 · 근태직원 2 · 9-16");
+  await recovery.getByRole("button", { name: "저장하지 않고 로그아웃" }).click();
+  await expect(page).toHaveURL(/\/login/);
+  const storedDrafts = () => page.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith("console.draft:") || k.startsWith("console.attendance.drafts:")));
+  expect(await storedDrafts()).toEqual([]);
+  const pair = token();
+  const claims = JSON.parse(Buffer.from(pair.access_token.split(".")[1]!, "base64url").toString());
+  claims.sub = id(9);
+  pair.access_token = `${pair.access_token.split(".")[0]}.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.mock`;
+  await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: pair });
+  await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: { ...user, id: id(9) } });
+  ended = false;
+  await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
+  await expect(first).toHaveValue("");
+  await expect(second).toHaveValue("");
+  expect(await storedDrafts()).toEqual([]);
   expect(fixture.unexpected).toEqual([]);
 });

@@ -44,7 +44,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const board = useQuery({ ...dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined), placeholderData: keepPreviousData });
   const rows = useMemo(() => board.data?.groups.flatMap(g => g.rows) ?? [], [board.data]);
   const kindOf = usePlanKinds(rows, date);
-  const store = useDrafts(`day:${date}`);
+  const store = useDrafts(`day:${date}`, rows);
   const online = useOnline();
   const [save, setSave] = useState(false);
   const [open, setOpen] = useState<{ id: string; own: boolean } | null>(null);
