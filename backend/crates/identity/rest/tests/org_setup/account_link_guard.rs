@@ -110,6 +110,82 @@ async fn unchanged_link_and_profile_edits_need_no_step_up(pool: PgPool) {
     assert_eq!(body["display_name"], "새 이름");
 }
 
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn step_up_proof_requires_the_actors_key_and_a_single_use_ceremony(pool: PgPool) {
+    let (h, actor, target, _) = fixture(&pool).await;
+    let assertion = fresh_step_up_assertion(&h.pool, actor, "Link manager").await;
+    let ceremony = serde_json::from_value(assertion["ceremony_id"].clone()).unwrap();
+    let credential = serde_json::from_value(assertion["credential"].clone()).unwrap();
+    let service = passkey_service();
+    assert!(
+        service
+            .verify_step_up_proof_for_user(&h.pool, ceremony, credential, *target.as_uuid())
+            .await
+            .is_err()
+    );
+    let credential = serde_json::from_value(assertion["credential"].clone()).unwrap();
+    let proof = service
+        .verify_step_up_proof_for_user(&h.pool, ceremony, credential, *actor.as_uuid())
+        .await
+        .unwrap();
+    assert_eq!(proof.into_user_id(), *actor.as_uuid());
+    let credential = serde_json::from_value(assertion["credential"].clone()).unwrap();
+    assert!(
+        service
+            .verify_step_up_proof_for_user(&h.pool, ceremony, credential, *actor.as_uuid())
+            .await
+            .is_err()
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn adapter_link_request_uses_the_verified_actor_instead_of_the_command_actor(pool: PgPool) {
+    let (h, actor, target, employee) = fixture(&pool).await;
+    let assertion = fresh_step_up_assertion(&h.pool, actor, "Link manager").await;
+    let proof = passkey_service()
+        .verify_step_up_proof_for_user(
+            &h.pool,
+            serde_json::from_value(assertion["ceremony_id"].clone()).unwrap(),
+            serde_json::from_value(assertion["credential"].clone()).unwrap(),
+            *actor.as_uuid(),
+        )
+        .await
+        .unwrap();
+    let outcome = scope_org(OrgId::one(), async {
+        PgOrgStore::new(h.pool.clone())
+            .change_account_link(
+                console_identity_application::UpdateUserCommand {
+                    actor: target,
+                    user_id: target,
+                    employee_id: Some(None),
+                    display_name: None,
+                    phone: None,
+                    team: None,
+                    roles: None,
+                    branch_ids: None,
+                    preview_receipt_id: None,
+                    trace: TraceContext::generate(),
+                    occurred_at: OffsetDateTime::now_utc(),
+                },
+                None,
+                proof,
+            )
+            .await
+            .unwrap()
+    })
+    .await;
+    assert_eq!(outcome.account_link.unwrap().requested_by, actor);
+    assert_eq!(employee_link(&pool, target).await, Some(employee));
+    let audited_actor: uuid::Uuid = sqlx::query_scalar(
+        "SELECT actor FROM audit_events WHERE action='account_link.requested' AND target_id=$1",
+    )
+    .bind(target.to_string())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(audited_actor, *actor.as_uuid());
+}
+
 async fn request_unlink(
     h: &Harness,
     actor: UserId,

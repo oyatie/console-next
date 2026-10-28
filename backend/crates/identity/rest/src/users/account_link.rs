@@ -33,7 +33,7 @@ pub(super) async fn change_account_link(
     if body.employee_id.is_none() {
         return Err(RestError::validation("employee_id is required"));
     }
-    crate::policy::step_up::verify_step_up(
+    let step_up = crate::policy::step_up::verify_step_up(
         state,
         principal,
         body.step_up,
@@ -68,6 +68,7 @@ pub(super) async fn change_account_link(
                 occurred_at: OffsetDateTime::now_utc(),
             },
             body.account_link_request_id,
+            step_up,
         )
         .await
         .map_err(RestError::from_store)?;

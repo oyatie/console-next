@@ -12,6 +12,7 @@ mod jwt_keys;
 mod refresh;
 mod refresh_audit;
 mod sign_in_id;
+mod verified_step_up;
 mod webauthn;
 mod well_known;
 
@@ -28,6 +29,7 @@ pub use sign_in_id::{
     SIGN_IN_ALIAS_DAYS, current_sign_in_id, normalize_company_domain, normalize_login,
     normalize_sign_in_id,
 };
+pub use verified_step_up::VerifiedStepUp;
 pub use webauthn::{
     AuthenticationCeremony, AuthenticationOutcome, MobilePasskeyStepUpAssertion,
     MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobilePasskeyStepUpVerificationError,
