@@ -35,7 +35,9 @@ export function GoLive() {
   const [ack, setAck] = useState(false);
   const run = useCommand({
     run: (_: undefined, key: string) => goLive(q.data!.digest, ack, q.data!.line_digests, key),
-    invalidates: SETUP_READS,
+    // Freeze the destination rail only after its server readiness includes this command.
+    invalidates: ["/api/v1/onboarding/modules", ...SETUP_READS],
+    awaitFirstRead: true,
     announce: (r) => t("setup.golive.done", { at: fmtDateTime(r.go_live_at) }),
     onSuccess: (result) => {
       // The command's answer updates the rail before a slower profile refetch can move its entries.

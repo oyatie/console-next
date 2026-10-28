@@ -5,6 +5,12 @@ import { createServer } from "vite";
 import { browserTestOptimizeDeps, chromium } from "../lib/browser-test";
 import { checklist as operatingChecklist, token, user } from "../../../../e2e/mock/fixtures";
 import { recordShifts } from "../../../../e2e/stability";
+import type { components } from "@console/api";
+
+export const navModules = (phase: string): components["schemas"]["OnboardingModules"] => [
+  ...(["home", "org", "access", "people"] as const).map(key => ({ key, ready: true, unblock: null })),
+  ...(["attendance", "statutory", "exits"] as const).map(key => ({ key, ready: phase === "OPERATING", unblock: phase === "OPERATING" ? null : "open_go_live_preview" as const })),
+];
 
 declare global {
   interface Window { __refetchChecklist: () => Promise<void>; refetchNavModules: () => Promise<void>; __navFacts: { phase?: string; state?: string } }
@@ -54,7 +60,7 @@ export async function navFixture() {
   page.on("pageerror", error => errors.push(error.message));
   await page.route(url => url.pathname.startsWith("/api/"), route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === "/api/v1/onboarding/modules") return route.fulfill({ status: 503, json: { error: { code: "unavailable" } } });
+    if (path === "/api/v1/onboarding/modules") return route.fulfill({ json: navModules(user.tenant!.phase) });
     const json = path.endsWith("/token/refresh") ? token() : path === "/api/v1/users/me" ? user :
       path === "/api/v1/onboarding/checklist" ? operatingChecklist :
       path === "/api/v1/access/me" ? { is_ops: true, entries: [] } :

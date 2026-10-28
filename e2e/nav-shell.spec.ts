@@ -55,11 +55,7 @@ test("the rail grows from setup facts and keeps module navigation flat", async (
   await expect(topLinks(admin)).toHaveText(["홈", "조직 구조", "직원", "권한"]);
   await go(admin, "/people");
   await registerEmployee(admin, { name: "메뉴직원", number: "NAV-001", unit: SETUP_DEPARTMENT });
-  const operatingModules = admin.waitForResponse(async response => response.url().endsWith("/api/v1/onboarding/modules") && response.ok() &&
-    (await response.json() as { key: string; ready: boolean }[]).some(module => module.key === "attendance" && module.ready));
   await startOperations(admin);
-  await operatingModules;
-  await go(admin, "/people");
   await expect(topLinks(admin)).toHaveText(["홈", "변경 요청", "조직 구조", "직원", "근태", "법정 신고·서류", "권한", "감사 기록", "설정"]);
   await go(admin, "/people");
   await expectAccessible(admin, "operating return to people");
