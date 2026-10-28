@@ -1,4 +1,26 @@
-use super::RouteSource;
+use super::{
+    PLATFORM_ROUTE_OPERATIONS, PlatformRouteOperation, RouteSource,
+    SUPPORT_REFERENCE_ROUTE_OPERATIONS,
+};
+
+// Identity mounts the operator profile outside the platform REST crate.
+const IDENTITY_PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
+    PlatformRouteOperation {
+        method: "GET",
+        path: console_identity_rest::PLATFORM_ME_PATH,
+    },
+    PlatformRouteOperation {
+        method: "PATCH",
+        path: console_identity_rest::PLATFORM_ME_PATH,
+    },
+];
+
+pub(super) fn platform_route_operations() -> impl Iterator<Item = &'static PlatformRouteOperation> {
+    PLATFORM_ROUTE_OPERATIONS
+        .iter()
+        .chain(SUPPORT_REFERENCE_ROUTE_OPERATIONS)
+        .chain(IDENTITY_PLATFORM_ROUTE_OPERATIONS)
+}
 
 pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
     RouteSource {
@@ -82,13 +104,19 @@ pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
     RouteSource {
         name: "registry REST router",
         surface: "registry",
-        source: include_str!("../../../crates/registry/rest/src/lib.rs"),
+        source: concat!(
+            include_str!("../../../crates/registry/rest/src/lib.rs"),
+            include_str!("../../../crates/registry/rest/src/routes.rs"),
+        ),
         ignored_route_refs: &[],
     },
     RouteSource {
         name: "HR app router",
         surface: "hr",
-        source: include_str!("../../src/hr.rs"),
+        source: concat!(
+            include_str!("../../src/hr.rs"),
+            include_str!("../../src/hr/lane_routes.rs"),
+        ),
         ignored_route_refs: &[],
     },
     RouteSource {

@@ -23,7 +23,7 @@ pub(super) struct WalkedSource {
     /// Path relative to `backend/`.
     pub(super) name: &'static str,
     pub(super) source: &'static str,
-    /// Byte-identical to a source the parent already embeds.
+    /// Included in a source the parent already checks, possibly with its constants.
     pub(super) embedded: bool,
 }
 
@@ -59,7 +59,7 @@ pub(super) fn walked_router_sources() -> Vec<WalkedSource> {
                 .display()
                 .to_string();
             WalkedSource {
-                embedded: embedded.contains(&text.as_str()),
+                embedded: embedded.iter().any(|source| source.contains(text.as_str())),
                 name: Box::leak(name.into_boxed_str()),
                 source: Box::leak(text.into_boxed_str()),
             }
@@ -98,7 +98,12 @@ fn under_rest_src(path: &Path) -> bool {
 #[test]
 fn router_source_walk_recognizes_the_embedded_sources() {
     let walked = walked_router_sources();
-    for known in ["app/src/lib.rs", "crates/identity/rest/src/lib.rs"] {
+    for known in [
+        "app/src/lib.rs",
+        "crates/identity/rest/src/lib.rs",
+        "app/src/hr/lane_routes.rs",
+        "crates/registry/rest/src/routes.rs",
+    ] {
         let found = walked
             .iter()
             .find(|source| source.name.ends_with(known))
@@ -113,17 +118,53 @@ fn router_source_walk_recognizes_the_embedded_sources() {
 
 #[test]
 fn unembedded_router_routes_are_in_a_configured_surface() {
+    assert_routes_in_configured_surfaces(walked_router_sources());
+}
+
+#[test]
+#[should_panic(
+    expected = "unresolvable fixture has unresolved route argument crate::UNRESOLVED_PATH"
+)]
+fn unresolvable_route_path_is_rejected() {
+    assert_routes_in_configured_surfaces([WalkedSource {
+        name: "unresolvable fixture",
+        source: r#"
+            #[test]
+            fn fixture() { Router::new().route("/test-only", get(handler)); }
+            fn router() { Router::new().route(crate::UNRESOLVED_PATH, get(handler)); }
+        "#,
+        embedded: false,
+    }]);
+}
+
+#[test]
+fn test_functions_do_not_contribute_production_routes() {
+    assert_routes_in_configured_surfaces([WalkedSource {
+        name: "test function fixture",
+        source: r#"
+            #[tokio::test]
+            async fn async_fixture() { Router::new().route("/test-only", get(handler)); }
+            #[test]
+            fn sync_fixture() { Router::new().route("/also-test-only", get(handler)); }
+            fn router() { Router::new().route("/api/platform/users/me", get(handler)); }
+        "#,
+        embedded: false,
+    }]);
+}
+
+fn assert_routes_in_configured_surfaces(sources: impl IntoIterator<Item = WalkedSource>) {
     let inventory: BTreeSet<String> = CONFIGURED_ROUTE_SURFACES
         .iter()
         .flat_map(|surface| surface.paths.iter())
         .map(|path| normalize_path_parameters(path))
         .collect();
     let mut problems = Vec::new();
-    for walked in walked_router_sources()
-        .into_iter()
-        .filter(|walked| !walked.embedded)
-    {
-        let stripped: &'static str = Box::leak(strip_cfg_test(walked.source).into_boxed_str());
+    for walked in sources.into_iter().filter(|walked| !walked.embedded) {
+        let source = walked
+            .source
+            .replace("#[tokio::test]", "#[cfg(test)]")
+            .replace("#[test]", "#[cfg(test)]");
+        let stripped: &'static str = Box::leak(strip_cfg_test(&source).into_boxed_str());
         for route in route_calls(stripped, &[]) {
             match route.path {
                 None => problems.push(format!(
