@@ -30,6 +30,7 @@ fn skewed_clock_drives_schedule_after() {
     assert_eq!(scheduled, time::macros::datetime!(2026-06-12 09:00:01 UTC));
 }
 
+// SQLx marks this custom-role test as requiring PostgreSQL for test discovery.
 #[sqlx::test]
 async fn apalis_adapter_dedupes_repeated_idempotency_keys() {
     let owner_database_url = std::env::var("CONSOLE_APALIS_OWNER_DATABASE_URL")
