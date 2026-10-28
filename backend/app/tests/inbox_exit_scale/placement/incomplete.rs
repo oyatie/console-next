@@ -64,9 +64,16 @@ impl Fixture {
         }
         let mut people = Vec::new();
         let mut cases = Vec::new();
-        for (i, unit) in [Some(units[0]), Some(units[1]), Some(units[2]), None, None]
-            .into_iter()
-            .enumerate()
+        for (i, unit) in [
+            Some(units[0]),
+            Some(units[1]),
+            Some(units[2]),
+            None,
+            None,
+            Some(units[2]),
+        ]
+        .into_iter()
+        .enumerate()
         {
             let employee: Uuid = sqlx::query_scalar("INSERT INTO employees (org_id,company,name,employee_number,source_filename,source_sheet,source_row,source_key,org_unit_id,hire_date) VALUES ($1,'회사',$2,$2,'console','console',1,$2,$3,'2020-01-01') RETURNING id")
                 .bind(w.org.as_uuid()).bind(format!("placement-{i}")).bind(unit).fetch_one(pool).await.unwrap();
@@ -88,7 +95,7 @@ impl Fixture {
             (
                 "workplace",
                 principal(pool, w.org, scoped, false).await,
-                people[..4].to_vec(),
+                people[..4].iter().chain(&people[5..]).copied().collect(),
             ),
             (
                 "ops",
@@ -112,7 +119,7 @@ impl Fixture {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn incomplete_placements_keep_list_count_facets_and_export_visible(pool: PgPool) {
+async fn incomplete_placements_keep_list_point_count_facets_and_export_visible(pool: PgPool) {
     let f = Fixture::seed(&pool).await;
     let hr = HrService::new(runtime_role_pool(&pool).await);
     for (label, reader, expected) in f.readers {
@@ -137,6 +144,10 @@ async fn incomplete_placements_keep_list_count_facets_and_export_visible(pool: P
             facets.total,
             "status facets: {label}"
         );
+        for person in &expected {
+            let point = hr.employee_detail(reader.clone(), *person).await.unwrap();
+            assert_eq!(point.employee.id, *person, "point: {label}");
+        }
         let (_, chunks) = hr
             .export_employees_csv(
                 reader,
