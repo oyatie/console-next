@@ -3,15 +3,10 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { CSSOptions, Plugin } from "vite";
 
-/** Keep a slow font from moving controls; preload only the wordmark's subsets, derived from the shipped catalog. */
+/** Optional subsets must be preloaded to avoid a fallback layout during their short block period. */
 export function fontPolicy(): Plugin {
   const file = resolve(import.meta.dirname, "../../node_modules/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css");
-  const boot = readFileSync(resolve(import.meta.dirname, "../../packages/i18n/src/catalogs/boot.ts"), "utf8");
-  const text = [...boot.matchAll(/"app.name": "([^"\n]+)"/g)].map(m => m[1]).join("");
-  if (!text) throw new Error("font policy: boot wordmark missing");
   const fonts = [...readFileSync(file, "utf8").matchAll(/@font-face\s*\{([^}]+)\}/g)]
-    .filter(([, face]) => [...face!.matchAll(/U\+([\da-f]+)(?:-([\da-f]+))?/gi)].some(([, lo, hi]) =>
-      [...text].some(c => c.codePointAt(0)! >= parseInt(lo!, 16) && c.codePointAt(0)! <= parseInt(hi ?? lo!, 16))))
     .map(([, face]) => resolve(dirname(file), face!.match(/url\(([^)]+)\)/)![1]!));
   const postcss: CSSOptions["postcss"] = { plugins: [{
     postcssPlugin: "optional-pretendard",

@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { build } from "vite";
 import { expect, test } from "vitest";
 
-test("built variable font faces cannot swap late and the boot font is preloaded", async () => {
+test("built variable font faces cannot swap late and every optional subset is preloaded", async () => {
   const temp = mkdtempSync(resolve("apps/web/.font-test-"));
   try {
     const input = resolve(temp, "index.html");
@@ -20,6 +20,10 @@ test("built variable font faces cannot swap late and the boot font is preloaded"
     }
     const html = readFileSync(resolve(dist, input.slice(resolve("apps/web").length + 1)), "utf8");
     expect(html).toMatch(/rel="preload"[^>]*as="font"/);
+    for (const face of faces) {
+      const font = face.match(/url\(["']?([^"')]+)["']?\)/)![1]!;
+      expect(html).toContain(`href="${font}"`);
+    }
     expect(css).not.toContain("Pretendard Fallback");
   } finally { rmSync(temp, { recursive: true, force: true }); }
 }, 30_000);

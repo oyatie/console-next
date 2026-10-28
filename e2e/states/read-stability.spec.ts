@@ -40,6 +40,36 @@ for (const path of ["/people?view=accounts", ...["wp-create", "wp-edit", "wp-clo
   });
 }
 
+test("org: late fonts preserve loading and failed controls @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(recordShifts);
+  const fixture = await mockScreen(page, screens[2], "populated");
+  const fonts = Promise.withResolvers<void>();
+  const read = Promise.withResolvers<void>();
+  await page.route("**/*.woff2", async route => { await fonts.promise; await route.continue(); });
+  await mockRoute(page, "get", "/api/v1/org-structure", async () => {
+    await read.promise;
+    return { status: 503, json: failure("service_unavailable") };
+  });
+  try {
+    await page.goto("/org?act=wp-move", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("region", { name: t("asof.label"), exact: true })).toBeVisible();
+    const main = page.getByRole("main");
+    await expect(main.getByRole("status")).toHaveText(t("structure.loading"));
+    const controls = main.locator("h1, input, .page__head button, section[aria-label] button");
+    const loading = await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
+    fonts.resolve();
+    await page.evaluate(() => document.fonts.ready);
+    expect(await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(loading);
+    await expectStable(page, "org: late fonts during loading");
+    read.resolve();
+    await expect(main.getByRole("alert")).toContainText(t("common.loadFailed.title"), { timeout: 15_000 });
+    expect(await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(loading);
+    await expectAccessible(page, "org: late fonts loading to failed");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fonts.resolve(); read.resolve(); await page.close(); fixture.release(); }
+});
+
 for (const name of [user.display_name, "u01234567@platform", user.display_name.repeat(16)]) for (const path of ["/platform", "/org"]) for (const width of [1440, 1024, 800, 390]) test(`${path}: late fonts preserve ${name} and shell controls at ${width}px @ui-state`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(recordShifts);

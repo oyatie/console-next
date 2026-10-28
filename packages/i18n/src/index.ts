@@ -51,9 +51,6 @@ export function loadCatalog(l: Locale = locale): Promise<void> {
   return p;
 }
 
-/** Every message a locale's loaded catalogs hold, as one string (what the UI can draw, e.g. to load its glyphs). */
-export const catalogText = (l: Locale = locale): string => [...Object.values(boot[l]), ...Object.values(screens[l] ?? {})].join("");
-
 function format(source: string, values?: Values): string {
   const text = values ? applyJosa(source, values) : source;
   if (!values && !text.includes("{")) return text;

@@ -92,6 +92,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .shell { grid-template: "top" var(--topbar-h) "main" 1fr / 1fr; }
   .rail { display: none; }
   .top { gap: var(--space-2); padding: 0 var(--space-2); }
+  .top .btn { padding-inline: var(--space-2); }
   .top .top__menu { display: inline-flex; }
   .shell[data-menu="open"] .rail { display: flex; position: fixed; top: var(--topbar-h); bottom: 0; left: 0; width: var(--rail-w); z-index: var(--z-rail); box-shadow: var(--shadow-pop); }
 }
