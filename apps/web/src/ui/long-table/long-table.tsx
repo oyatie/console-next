@@ -71,7 +71,7 @@ export function LongTable<R>(p: {
   loading?: boolean;
   empty: ReactNode;
   density?: "regular" | "compact";
-  /** Editing rows grow with validation messages; Tab visits controls and arrows keep editing text. */
+  /** Editing rows grow with validation messages. */
   editable?: boolean;
   onRowAction?: (id: string) => void;
   /** Prefetch hooks: the pointer entered a row, or a row took focus. */
@@ -218,7 +218,8 @@ export function LongTable<R>(p: {
           data-layout={cardLayout ? "cards" : "rows"}
           data-editable={p.editable || undefined}
           data-total={p.total}
-          keyboardNavigationBehavior={p.editable ? "tab" : "arrow"}
+          // RAC's tab mode keeps typing and caret keys in cell controls, including tables without editable row sizing.
+          keyboardNavigationBehavior="tab"
           sortDescriptor={p.sortDescriptor}
           onSortChange={p.onSortChange}
           // An empty virtualized body is as tall as the viewport, so give the empty and loading states a height.

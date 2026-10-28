@@ -3,6 +3,7 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
+import { expect as dom, firefox } from "@playwright/test";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
 
 let server: ViteDevServer;
@@ -20,25 +21,29 @@ beforeAll(async () => {
       load: id => id === "\0long-table-test" ? `
         import React,{useState} from 'react'; import {createRoot} from 'react-dom/client';
         import {loadCatalog} from '@console/i18n';
-        import {LongTable} from '/apps/web/src/ui/long-table/long-table.tsx';
+        import {LongTable,TableControl} from '/apps/web/src/ui/long-table/long-table.tsx';
+        import {TextInput} from '/apps/web/src/ui/field/field.tsx';
         import {NO_SELECTION} from '/apps/web/src/ui/long-table/selection.ts';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Fixture(){
+          const editing=location.search.startsWith('?typing');
+          const [values,setValues]=useState({});
           const [sort,setSort]=useState({column:'name',direction:'ascending'});
           const [selection,setSelection]=useState(NO_SELECTION);
           const collision=location.search.startsWith('?collision');
-          const rows=collision ? ['name','__select','__card','row:name'].map((id,i)=>({id,name:'가상'+i,note:id}))
+          const rows=editing ? [{id:'a',name:'Alpha'},{id:'b',name:'Beta'},{id:'ko',name:'ㄱ가상'}] : collision ? ['name','__select','__card','row:name'].map((id,i)=>({id,name:'가상'+i,note:id}))
             : [{id:'a',name:'가상가',note:'첫째'},{id:'b',name:'가상나',note:'둘째'}];
           return React.createElement(LongTable,{
             label:'정렬 검증',rows,rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
+            editable:location.search==='?typing-editable',
             caption:sort.column+':'+sort.direction,
             sortDescriptor:sort,onSortChange:location.search==='?readonly'?undefined:setSort,
             ...(collision ? {...(location.search==='?collision' ? {selection,onSelectionChange:s=>{setSelection(s);document.body.dataset.selection=JSON.stringify(s.kind==='ids'?[...s.ids]:[...s.excluded]);}} : {}),
               rowKeys:{},onRowAction:id=>document.body.dataset.action=id,
               onRowFocus:id=>document.body.dataset.focus=id,onRowHover:id=>document.body.dataset.hover=id} : {}),
-            columns:[{id:'name',header:'이름',card:location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,cell:r=>r.name},
-              {id:'note',header:'메모',allowsSorting:true,cell:r=>r.note},
+            columns:[{id:'name',header:'이름',card:editing||location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,cell:r=>r.name},
+              {id:'note',header:'메모',allowsSorting:true,cell:r=>editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
               {id:'fixed',header:'고정',cell:()=>'-'}]
           });
         }
@@ -52,10 +57,68 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  browser = await chromium.launch();
+  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
   page = await browser.newPage();
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
+
+for (const editable of [false, true]) {
+  test(`cell typing keeps letters, spaces, Korean and input focus (editable=${editable})`, async () => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?typing${editable ? "-editable" : ""}`);
+    const input = page.getByRole("textbox", { name: "Beta 메모" });
+    await input.click();
+    await page.keyboard.type("a ");
+    await dom(input).toHaveValue("a ");
+    await dom(input).toBeFocused();
+    await page.keyboard.type("ㄱ");
+    await dom(input).toHaveValue("a ㄱ");
+    await dom(input).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.type("b");
+    await dom(input).toHaveValue("a bㄱ");
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("ArrowDown");
+    await dom(input).toBeFocused();
+  });
+
+  test(`Korean composition stays in its cell (editable=${editable})`, async () => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?typing${editable ? "-editable" : ""}`);
+    const input = page.getByRole("textbox", { name: "Beta 메모" });
+    await input.click();
+    await input.dispatchEvent("compositionstart", { data: "" });
+    for (const [key, text] of [["ㄱ", "ㄱ"], ["가", "가"]]) {
+      await input.dispatchEvent("keydown", { key, code: "KeyR", keyCode: 229, isComposing: true });
+      await input.dispatchEvent("compositionupdate", { data: text });
+      await page.keyboard.insertText(text!);
+      await dom(input).toBeFocused();
+      await input.press("Shift+ArrowLeft");
+    }
+    await input.dispatchEvent("compositionend", { data: "가" });
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.type(" a ");
+    await dom(input).toHaveValue("가 a ");
+    await dom(input).toBeFocused();
+  });
+
+  test(`row and cell arrows and typeahead still navigate (editable=${editable})`, async () => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?typing${editable ? "-editable" : ""}`);
+    const rows = page.getByRole("row").filter({ has: page.getByRole("rowheader") });
+    await rows.first().focus();
+    await page.keyboard.press("ArrowDown");
+    await dom(rows.nth(1)).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await dom(rows.first()).toBeFocused();
+    await page.keyboard.type("b");
+    await dom(rows.nth(1)).toBeFocused();
+    const name = rows.first().getByRole("rowheader");
+    await name.focus();
+    await page.keyboard.press("ArrowDown");
+    await dom(rows.nth(1).getByRole("rowheader")).toBeFocused();
+  });
+}
 
 test.each([1440].flatMap(width => ["light", "dark"].map(theme => ({ width, theme }))))(
   "headers expose and change the controlled order at $width px in $theme", async ({ width, theme }) => {

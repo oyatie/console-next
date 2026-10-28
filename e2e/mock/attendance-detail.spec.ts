@@ -80,7 +80,7 @@ for (const width of [1440, 390]) test(`detail population, group headers and comp
   if (width === 390) await grids.first().evaluate(el => { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; });
   const input = grids.first().getByRole("textbox", { name: /^근태직원 1 입력/ });
   await input.click();
-  await input.fill("+2");
+  await page.keyboard.type("+2");
   await expect(input).toBeFocused();
   await expect(input).toHaveAttribute("aria-invalid", "true");
   await expect(input).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
@@ -129,7 +129,7 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
   const last = grids.nth(1).getByRole("textbox", { name: /^근태직원 2000 입력/ });
   await expect(grids.nth(1)).toHaveAttribute("aria-rowcount", "2");
   await last.click();
-  await last.fill("+2");
+  await page.keyboard.type("+2");
   await expect(last).toBeFocused();
   await expect(last).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
   await find.clear();
@@ -165,8 +165,10 @@ test("attendance recovery copies both cells and sign-out purges them before anot
   await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
   const first = page.getByRole("textbox", { name: /^근태직원 1 입력/ });
   const second = page.getByRole("textbox", { name: /^근태직원 2 입력/ });
-  await first.fill("9-18");
-  await second.fill("9-17");
+  await first.click();
+  await page.keyboard.type("9-18");
+  await second.click();
+  await page.keyboard.type("9-17");
   await expect.poll(() => page.evaluate(() => Object.values(sessionStorage).some(v => v.includes("9-18") && v.includes("9-17")))).toBe(true);
   await page.reload();
   await expect(first).toHaveValue("9-18");
@@ -176,7 +178,9 @@ test("attendance recovery copies both cells and sign-out purges them before anot
   } }));
   ended = true;
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 401, json: failure("session_passkey_reset") });
-  await second.fill("9-16");
+  await second.click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type("9-16");
   const recovery = page.getByRole("dialog", { name: "다시 로그인" });
   await recovery.getByRole("button", { name: "입력 내용 복사" }).click();
   expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe("2026-10-06 · 근태직원 1 · 9-18\n2026-10-06 · 근태직원 2 · 9-16");
