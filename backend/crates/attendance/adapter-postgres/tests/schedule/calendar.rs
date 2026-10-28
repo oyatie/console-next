@@ -161,8 +161,8 @@ async fn crews_and_contractual_holidays_reach_their_people(owner: PgPool) {
     let preview = w.store.preview_holiday(&w.hr(), input()).await.unwrap();
     assert_eq!(
         (preview.people, preview.overlaps_public.len()),
-        (2, 1),
-        "10/9 is 한글날 in 2026"
+        (2, 2),
+        "10/9 is 한글날 in both loaded editions, 2026 and 2027"
     );
     let (h, _) = w
         .store
