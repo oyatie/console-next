@@ -9,7 +9,7 @@
   },
   "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": {
     "FACT": 56,
-    "REFUSAL": 18,
+    "REFUSAL": 19,
     "EMPTY": 4,
     "LEGAL": 0,
     "RECEIPT": 17,
