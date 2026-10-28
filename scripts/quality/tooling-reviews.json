@@ -10698,17 +10698,21 @@
     "group": "CI and platform tools",
     "job": "Reuse the shared backend registry and build artifacts across trusted CI runs",
     "verdict": "keep",
-    "convention": "owner approved",
+    "convention": "STANDARD under delegated ruling",
     "class": "STANDARD",
     "approval": {
-      "by": "owner",
+      "by": "orchestrator",
       "on": "2026-10-28",
-      "ruling": "Reuse actions/cache for the shared backend build."
+      "authority": "Delegated under owner ruling 2026-10-26",
+      "ruling": "Owner delegation (2026-10-26): 「if any of them are industry standards that are clearly best practice and modern golden standard, you can approve those」"
     },
     "alternatives": "Cold builds; existing artifact actions with manual cache lookup.",
-    "reason": "Share clippy and nextest artifacts without caching unmerged code for other runs.",
+    "reason": "Owner caching directive (2026-10-28): 「caching should work following best practices both in github and locally」. Share clippy and nextest artifacts without caching unmerged code for other runs.",
     "evidence": [
-      "https://github.com/actions/cache"
+      "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+      "https://github.com/actions/cache",
+      "https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE",
+      "https://github.com/actions/cache/releases/tag/v6.1.0"
     ],
     "allowedLayers": [
       "CI/supply chain"
@@ -10727,23 +10731,55 @@
     "exitPlan": "Remove the cache steps; all checks continue with cold builds.",
     "license": "MIT",
     "securityProcess": "Pinned commit; only successful pushes to dev save artifacts.",
-    "ruleMapping": "Cache misses rebuild; cache hits never skip checks or tests."
+    "ruleMapping": "Cache misses rebuild; cache hits never skip checks or tests.",
+    "review_pending_owner": true,
+    "standardTest": {
+      "a": {
+        "result": "pass",
+        "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+        "reason": "GitHub's first-party action, documented as the dependency caching mechanism."
+      },
+      "b": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE",
+        "reason": "MIT license at the pinned commit."
+      },
+      "c": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache/releases/tag/v6.1.0",
+        "reason": "Maintained by GitHub; current release v6.1.0, published 2026-06-26."
+      },
+      "d": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache",
+        "reason": "Lightweight CI action for restoring and saving build artifacts; no application runtime dependency."
+      },
+      "e": {
+        "result": "pass",
+        "source": "docs/architecture/rust-testing.md",
+        "reason": "CI/supply chain only, used by .github/workflows/ci.yml; remove the cache steps and the build stays correct without them."
+      }
+    }
   },
   "action:actions/cache/save": {
     "group": "CI and platform tools",
     "job": "Reuse the shared backend registry and build artifacts across trusted CI runs",
     "verdict": "keep",
-    "convention": "owner approved",
+    "convention": "STANDARD under delegated ruling",
     "class": "STANDARD",
     "approval": {
-      "by": "owner",
+      "by": "orchestrator",
       "on": "2026-10-28",
-      "ruling": "Reuse actions/cache for the shared backend build."
+      "authority": "Delegated under owner ruling 2026-10-26",
+      "ruling": "Owner delegation (2026-10-26): 「if any of them are industry standards that are clearly best practice and modern golden standard, you can approve those」"
     },
     "alternatives": "Cold builds; existing artifact actions with manual cache lookup.",
-    "reason": "Share clippy and nextest artifacts without caching unmerged code for other runs.",
+    "reason": "Owner caching directive (2026-10-28): 「caching should work following best practices both in github and locally」. Share clippy and nextest artifacts without caching unmerged code for other runs.",
     "evidence": [
-      "https://github.com/actions/cache"
+      "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+      "https://github.com/actions/cache",
+      "https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE",
+      "https://github.com/actions/cache/releases/tag/v6.1.0"
     ],
     "allowedLayers": [
       "CI/supply chain"
@@ -10762,6 +10798,34 @@
     "exitPlan": "Remove the cache steps; all checks continue with cold builds.",
     "license": "MIT",
     "securityProcess": "Pinned commit; only successful pushes to dev save artifacts.",
-    "ruleMapping": "Cache misses rebuild; cache hits never skip checks or tests."
+    "ruleMapping": "Cache misses rebuild; cache hits never skip checks or tests.",
+    "review_pending_owner": true,
+    "standardTest": {
+      "a": {
+        "result": "pass",
+        "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+        "reason": "GitHub's first-party action, documented as the dependency caching mechanism."
+      },
+      "b": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE",
+        "reason": "MIT license at the pinned commit."
+      },
+      "c": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache/releases/tag/v6.1.0",
+        "reason": "Maintained by GitHub; current release v6.1.0, published 2026-06-26."
+      },
+      "d": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache",
+        "reason": "Lightweight CI action for restoring and saving build artifacts; no application runtime dependency."
+      },
+      "e": {
+        "result": "pass",
+        "source": "docs/architecture/rust-testing.md",
+        "reason": "CI/supply chain only, used by .github/workflows/ci.yml; remove the cache steps and the build stays correct without them."
+      }
+    }
   }
 }

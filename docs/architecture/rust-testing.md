@@ -7,7 +7,21 @@ with the same local invocation for reproducible proofs. It does not enter the ap
 | Tool | Layer | User | Approval | Exit plan |
 | --- | --- | --- | --- | --- |
 | `ci-tool:nextest` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-28: cargo-nextest approved as Rust tooling | Replace only with test discovery, isolation, failure propagation and JUnit parity. |
-| `actions/cache/restore`, `actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-28: reuse actions/cache for the shared backend build | Remove the cache steps; all checks still run on a cold build. |
+| `actions/cache/restore`, `actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | 2026-10-28: orchestrator-approved under owner delegation (owner ruling 2026-10-26); `approval.by = orchestrator`; `review_pending_owner: true` | Remove the cache steps; all checks still run on a cold build. |
+
+The owner's 2026-10-26 delegation was:
+
+> 「if any of them are industry standards that are clearly best practice and modern golden standard, you can approve those」
+
+The orchestrator approved the cache actions under that delegation, following the owner's 2026-10-28
+directive: 「caching should work following best practices both in github and locally」.
+The five STANDARD criteria are: (a) GitHub's first-party action and
+[documented caching mechanism](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching);
+(b) [MIT licensed](https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE);
+(c) maintained by GitHub, with [v6.1.0 released on 2026-06-26](https://github.com/actions/cache/releases/tag/v6.1.0);
+(d) a lightweight [CI action](https://github.com/actions/cache) with no application runtime dependency;
+(e) confined to the CI/supply chain layer and the workflow above, removable without affecting build correctness.
+Both actions are pinned to commit `55cc8345863c7cc4c66a329aec7e433d2d1c52a9` (`v6.1.0`).
 
 The workflow pins the upstream release and verifies its archive's SHA-256 before execution. Nextest is
 MIT OR Apache-2.0 licensed. The [canonical test tiers](../testing/README.md) own test selection and budgets;
