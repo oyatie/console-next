@@ -15,6 +15,7 @@ mod trail_queries;
 
 mod bounded;
 mod parity;
+pub(super) use parity::principal;
 
 pub(super) async fn grant_exit(pool: &PgPool, org: OrgId, actor: console_kernel_core::UserId) {
     let role = Uuid::new_v4();
@@ -57,12 +58,7 @@ async fn exit_source_statement_count_is_flat_at_two_twenty_and_two_thousand_empl
         let org = OrgId::new();
         let actor = seed_org_and_super_admin(&pool, *org.as_uuid(), "exit-scale").await;
         grant_exit(&pool, org, actor).await;
-        let principal = Principal::new(
-            actor,
-            org,
-            BTreeSet::from([Role::SuperAdmin]),
-            BranchScope::All,
-        );
+        let principal = principal(&pool, org, actor, true).await;
         sqlx::query(
             "WITH people AS (INSERT INTO employees \
                (org_id, company, name, source_filename, source_sheet, source_row, source_key) \

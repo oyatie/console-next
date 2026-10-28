@@ -106,11 +106,12 @@ impl HrService {
             RosterPaging::Offset(offset) => offset,
             RosterPaging::Keyset { .. } => 0,
         };
-        let filters =
+        let mut filters =
             EmployeeListFilters::from_query(&query, &principal.branch_scope)?.with_reach(reach);
 
         let (items, total, next_cursor) = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
         Box::pin(async move {
+            filters.load_visibility(tx, &principal, Feature::EmployeeDirectoryRead).await?;
             let total: i64 = counted_employees("SELECT count(*)", &filters)
                 .build_query_scalar()
                 .fetch_one(tx.as_mut())

@@ -10,7 +10,7 @@ use console_kernel_core::{Timestamp, UserId};
 use console_platform_authz::access::{NodeKind, load_access_subject, project};
 use serde_json::json;
 
-async fn principal(pool: &PgPool, org: OrgId, actor: UserId, legacy: bool) -> Principal {
+pub(crate) async fn principal(pool: &PgPool, org: OrgId, actor: UserId, legacy: bool) -> Principal {
     let mut tx = pool.begin().await.unwrap();
     world::arm(&mut tx, org).await;
     let subject = load_access_subject(&mut tx, org, *actor.as_uuid(), Timestamp::now_utc())
@@ -68,36 +68,36 @@ async fn home_matches_confirm_and_preflight_for_every_placement_and_legacy_role(
             true,
         ),
         (
-            "assigned workplace despite other department placement",
+            "assignment cannot override department workplace",
             Some(NodeKind::Workplace),
             0,
-            Some(2),
-            Some((0, Some(0))),
-            true,
-        ),
-        (
-            "department placement cannot override assignment",
-            Some(NodeKind::Workplace),
-            1,
             Some(2),
             Some((0, Some(0))),
             false,
         ),
         (
-            "assigned legal entity despite other department placement",
-            Some(NodeKind::LegalEntity),
-            0,
+            "department workplace overrides assignment",
+            Some(NodeKind::Workplace),
+            1,
             Some(2),
             Some((0, Some(0))),
             true,
         ),
         (
-            "other legal entity",
+            "assignment cannot override department entity",
+            Some(NodeKind::LegalEntity),
+            0,
+            Some(2),
+            Some((0, Some(0))),
+            false,
+        ),
+        (
+            "department entity overrides assignment",
             Some(NodeKind::LegalEntity),
             1,
             Some(2),
             Some((0, Some(0))),
-            false,
+            true,
         ),
         (
             "department subtree despite other assignment",
@@ -273,3 +273,6 @@ async fn deadlines_follow_the_configured_workplace_time_zone(pool: PgPool) {
 
 #[path = "identity.rs"]
 mod identity;
+
+#[path = "placement.rs"]
+mod placement;

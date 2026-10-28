@@ -10,6 +10,10 @@ use console_kernel_core::{KernelError, OrgId, Timestamp};
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
+#[path = "visible_employee.rs"]
+mod employee;
+pub use employee::{EmployeePlacement, EmployeeVisibility};
+
 use crate::access::{
     AccessEngineError, AccessSlice, NodeKind, NodePath, NodeRef, load_access_subject, scope_path,
 };
