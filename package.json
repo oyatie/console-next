@@ -31,7 +31,7 @@
     "check:request-body-contract": "node --test scripts/check-request-body-contract.test.mjs scripts/check-openapi-refs.test.mjs scripts/check-prototype-chain-lookups.test.mjs && node scripts/check-request-body-contract.mjs && node scripts/check-openapi-refs.mjs && node scripts/check-prototype-chain-lookups.mjs"
   },
   "devDependencies": {
-    "@axe-core/playwright": "~4.13.0",
+    "@axe-core/playwright": "~4.14.0",
     "@playwright/test": "^1.63.0",
     "@stryker-mutator/core": "^10.0.0",
     "@types/node": "^24.19.0",
