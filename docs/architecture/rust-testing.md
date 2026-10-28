@@ -7,6 +7,7 @@ with the same local invocation for reproducible proofs. It does not enter the ap
 | Tool | Layer | User | Approval | Exit plan |
 | --- | --- | --- | --- | --- |
 | `ci-tool:nextest` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-28: cargo-nextest approved as Rust tooling | Replace only with test discovery, isolation, failure propagation and JUnit parity. |
+| `actions/cache/restore`, `actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-28: reuse actions/cache for the shared backend build | Remove the cache steps; all checks still run on a cold build. |
 
 The workflow pins the upstream release and verifies its archive's SHA-256 before execution. Nextest is
 MIT OR Apache-2.0 licensed. The [canonical test tiers](../testing/README.md) own test selection and budgets;
@@ -23,6 +24,11 @@ classification defect, not a reason to add an exclusion. The filter and complete
 published beside JUnit in the `backend-test-results` artifact. No baseline test list is checked in.
 
 Nextest runs after clippy in the backend job, sharing its registry and target directory.
+The Rust cache covers both builds, keyed by runner OS/architecture, toolchain, manifests, lockfile and
+commit. Only successful pushes to dev save it; pull requests and merge groups only restore it.
+Incremental compilation is disabled to limit cache size. A warm hosted run targets ten minutes including
+restore and upload; the first run or a changed dependency key builds cold and can exceed that target.
+Hosted summaries must establish the actual timing; the local cold proof took about seventeen minutes.
 The job summary reports selected and deferred cases, naming each existing
 `#[ignore]` case. Deferred totals include listed database tests, explicitly ignored cases, and SQLx
 source declarations absent from the default-feature inventory (including `test-postgres`-only tests).

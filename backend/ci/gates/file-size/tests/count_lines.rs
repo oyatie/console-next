@@ -1,6 +1,8 @@
 //! What counts as a code line.
 
-use console_gate_file_size::count::code_lines;
+fn code_lines(text: &str) -> usize {
+    console_gate_file_size::count::code_lines("src/lib.rs", text)
+}
 
 #[test]
 fn blank_lines_and_every_comment_form_are_not_code() {

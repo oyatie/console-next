@@ -10776,5 +10776,75 @@
     "license": "MIT OR Apache-2.0",
     "securityProcess": "Pinned upstream release archive verified against its SHA-256 before execution.",
     "ruleMapping": "Every selected test must execute; nextest failure or incomplete JUnit fails ci-ok."
+  },
+  "action:actions/cache/restore": {
+    "group": "CI and platform tools",
+    "job": "Reuse the shared backend registry and build artifacts across trusted CI runs",
+    "verdict": "keep",
+    "convention": "owner approved",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-28",
+      "ruling": "Reuse actions/cache for the shared backend build."
+    },
+    "alternatives": "Cold builds; existing artifact actions with manual cache lookup.",
+    "reason": "Share clippy and nextest artifacts without caching unmerged code for other runs.",
+    "evidence": [
+      "https://github.com/actions/cache"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/ci.yml"
+    ],
+    "approvedUses": [
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
+      }
+    ],
+    "architectureRecord": "docs/architecture/rust-testing.md",
+    "exitPlan": "Remove the cache steps; all checks continue with cold builds.",
+    "license": "MIT",
+    "securityProcess": "Pinned commit; only successful pushes to dev save artifacts.",
+    "ruleMapping": "Cache misses rebuild; cache hits never skip checks or tests."
+  },
+  "action:actions/cache/save": {
+    "group": "CI and platform tools",
+    "job": "Reuse the shared backend registry and build artifacts across trusted CI runs",
+    "verdict": "keep",
+    "convention": "owner approved",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-28",
+      "ruling": "Reuse actions/cache for the shared backend build."
+    },
+    "alternatives": "Cold builds; existing artifact actions with manual cache lookup.",
+    "reason": "Share clippy and nextest artifacts without caching unmerged code for other runs.",
+    "evidence": [
+      "https://github.com/actions/cache"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/ci.yml"
+    ],
+    "approvedUses": [
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
+      }
+    ],
+    "architectureRecord": "docs/architecture/rust-testing.md",
+    "exitPlan": "Remove the cache steps; all checks continue with cold builds.",
+    "license": "MIT",
+    "securityProcess": "Pinned commit; only successful pushes to dev save artifacts.",
+    "ruleMapping": "Cache misses rebuild; cache hits never skip checks or tests."
   }
 }

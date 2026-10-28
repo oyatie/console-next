@@ -94,6 +94,7 @@ function sources(directory) {
 }
 
 function main() {
+  const started = performance.now();
   const root = path.resolve(import.meta.dirname, "..");
   const env = { ...process.env, SQLX_OFFLINE: "true" };
   for (const key of Object.keys(env)) if (key.endsWith("DATABASE_URL") || /^PG(HOST|PORT|USER|PASSWORD|DATABASE|SERVICE)/.test(key)) delete env[key];
@@ -115,7 +116,6 @@ function main() {
   const deferred = inventory.database.length + inventory.ignored.length + inventory.featureGatedDatabase.length;
   summary(`Rust tests discovered: ${inventory.selected.length} non-database; ${deferred} deferred (${inventory.database.length} listed database tests, ${inventory.ignored.length} explicitly ignored, ${inventory.featureGatedDatabase.length} feature-gated database source declarations, including test-postgres).`);
   for (const [binary, name] of inventory.ignored) summary(`- Ignored by source attribute: \`${binary} / ${name}\``);
-  const started = performance.now();
   const result = spawnSync("cargo", ["nextest", "run", ...args, "--no-fail-fast", "--run-ignored", "default", "-E", inventory.filter], { ...options, stdio: "inherit" });
   assert.ifError(result.error);
   const xml = readFileSync(path.join(report, "junit.xml"), "utf8");
@@ -123,7 +123,7 @@ function main() {
   summary(`JUnit results: ${counts.tests ?? "missing"} executed, ${counts.failures ?? "missing"} failures, ${counts.errors ?? "missing"} errors.`);
   const executed = verifyJUnit(xml, inventory.selected);
   assert.equal(result.status, 0, `cargo nextest failed (${result.status ?? result.signal})`);
-  summary(`JUnit verified: ${executed}/${inventory.selected.length} non-database tests passed in ${((performance.now() - started) / 1000).toFixed(1)}s; no selected tests skipped.`);
+  summary(`JUnit verified: ${executed}/${inventory.selected.length} non-database tests passed in ${((performance.now() - started) / 1000).toFixed(1)}s including discovery and build; no selected tests skipped.`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
