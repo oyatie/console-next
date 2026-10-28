@@ -533,11 +533,10 @@ fn run_env(
     env: &[(&str, &str)],
 ) -> Result<(bool, String), Box<dyn std::error::Error>> {
     let mut command = Command::new(program);
-    command.args(args);
     for (key, value) in env {
         command.env(key, value);
     }
-    let output = command.output()?;
+    let output = command.args(args).output()?;
     let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
     text.push_str(&String::from_utf8_lossy(&output.stderr));
     Ok((output.status.success(), text))
@@ -2050,6 +2049,7 @@ $canonical$;
 }
 
 #[test]
+#[cfg_attr(not(feature = "test-postgres"), ignore = "Postgres")]
 fn census_binds_to_an_executed_database() -> Fallible {
     require_docker();
     let harness = boot()?;
