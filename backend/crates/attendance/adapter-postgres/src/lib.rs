@@ -18,7 +18,7 @@ use console_attendance_domain::{
     StrictDurationEventKind, StrictDurationWindow, strict_pair_seconds,
 };
 use console_kernel_core::{AuditEvent, OrgId};
-use console_platform_db::{DbError, issue_code, with_audits, with_org_conn};
+use console_platform_db::{issue_code, with_audits, with_org_conn};
 use serde_json::{Value, json};
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use time::{Date, Duration, OffsetDateTime, UtcOffset};
@@ -68,23 +68,8 @@ const EXCEPTION_BY_ID_SQL: &str = "\
 const SUBSTITUTION_ELIGIBILITY_LOCK_SQL: &str =
     "SELECT public.console_employee_day_eligibility_lock($1,$2,$3)";
 
-#[derive(Debug, thiserror::Error)]
-pub enum AttendanceStoreError {
-    #[error(transparent)]
-    Application(#[from] app::AttendanceApplicationError),
-    #[error(transparent)]
-    Database(#[from] DbError),
-    #[error(transparent)]
-    Sql(#[from] sqlx::Error),
-    #[error("not found")]
-    NotFound,
-    #[error("conflict")]
-    Conflict,
-    #[error("close is blocked")]
-    CloseBlocked,
-    #[error("invalid close month")]
-    InvalidCloseMonth,
-}
+mod error;
+pub use error::AttendanceStoreError;
 
 #[derive(Debug, Clone)]
 pub struct PgAttendanceStore {

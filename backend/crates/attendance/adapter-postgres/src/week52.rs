@@ -23,7 +23,7 @@ pub(crate) async fn load_limits(
 ) -> Result<Option<Week52Limits>, AttendanceStoreError> {
     let register = load_statutory_register(conn)
         .await
-        .map_err(|_| AttendanceStoreError::Conflict)?;
+        .map_err(|_| AttendanceStoreError::WeeklyPolicyUnavailable)?;
     let (Ok(standard), Ok(overtime)) = (
         register.rule(codes::WEEKLY_STANDARD_HOURS, on),
         register.rule(codes::WEEKLY_OVERTIME_MAX_HOURS, on),
@@ -32,33 +32,33 @@ pub(crate) async fn load_limits(
     };
     let standard = standard
         .whole(StatutoryUnit::HoursPerWeek)
-        .map_err(|_| AttendanceStoreError::Conflict)?;
+        .map_err(|_| AttendanceStoreError::WeeklyPolicyUnavailable)?;
     let overtime = overtime
         .whole(StatutoryUnit::HoursPerWeek)
-        .map_err(|_| AttendanceStoreError::Conflict)?;
+        .map_err(|_| AttendanceStoreError::WeeklyPolicyUnavailable)?;
     let settings = resolve_in_tx(
         conn,
         org,
         &[WARN_HOURS_KEY],
         None,
-        OffsetDateTime::now_utc(),
+        crate::week52_boundary(on)?,
     )
     .await
-    .map_err(|_| AttendanceStoreError::Conflict)?;
+    .map_err(|_| AttendanceStoreError::WeeklyPolicyUnavailable)?;
     let warn = settings
         .get(&WARN_HOURS_KEY)
         .and_then(|value| value.as_ref().ok())
         .and_then(|value| value.value.as_int())
-        .ok_or(AttendanceStoreError::Conflict)?;
+        .ok_or(AttendanceStoreError::WeeklyPolicyUnavailable)?;
     let danger = standard
         .checked_add(overtime)
-        .ok_or(AttendanceStoreError::Conflict)?;
-    if standard <= 0 || warn < standard || warn >= danger {
+        .ok_or(AttendanceStoreError::WeeklyPolicyUnavailable)?;
+    if standard <= 0 {
         return Ok(None);
     }
     Ok(Some(Week52Limits {
         danger_hours: danger as f64,
-        warn_hours: warn as f64,
+        warn_hours: (warn >= standard && warn < danger).then_some(warn as f64),
     }))
 }
 

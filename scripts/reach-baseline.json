@@ -429,11 +429,6 @@
    "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
    "when": "post-mvp"
   },
-  "GET /api/v1/attendance/week52": {
-   "lane": "MAT-PARITY",
-   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-   "when": "post-mvp"
-  },
   "GET /api/v1/audit-streams/ceo-covert/access-events": {
    "lane": "K4",
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",

@@ -204,7 +204,7 @@ async fn linked_member_reads_only_own_attendance_console_data(pool: PgPool) {
                 "week_start": "2026-07-20",
                 "current_hours": 0.0,
                 "projected_hours": 0.0,
-                "tone": "OK"
+                "tone": "UNKNOWN"
             }
         })
     );
@@ -249,6 +249,9 @@ async fn linked_member_reads_only_own_attendance_console_data(pool: PgPool) {
 
 #[path = "hr_attendance_self_read/account_link.rs"]
 mod account_link;
+#[cfg(test)]
+#[path = "hr_attendance_self_read/weekly_refusals.rs"]
+mod weekly_refusals;
 use account_link::seed_employee;
 
 async fn seed_user(pool: &PgPool, user_id: UserId, role: &str) {
