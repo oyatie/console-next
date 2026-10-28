@@ -17,6 +17,10 @@
 .missing { flex-basis: 100%; font-size: var(--text-sm); color: var(--steel); }
 .empty { padding: var(--space-3); font-size: var(--text-sm); color: var(--steel); }
 .error { font-size: var(--text-sm); color: var(--danger-tx); }
+/* Feedback cannot widen its field; only a page search reserves a single line. */
+.feedback { contain: inline-size; font-size: var(--text-sm); }
+.feedback[data-reserved] { min-block-size: 1lh; }
+.feedback[data-reserved] .error { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .foot { padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); background: var(--canvas); font-size: var(--text-xs); color: var(--steel); }
 .homonym { padding: var(--space-3); border-radius: var(--radius); background: var(--warn-bg); border: 1px solid var(--warn-bd); }
 .suffix { max-width: calc(var(--panel-w) / 2); font-family: var(--font-mono); }

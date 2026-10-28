@@ -28,17 +28,19 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   const rosterRead = Promise.withResolvers<void>();
   const rosterRoute = "**/api/v1/employees?**";
   await admin.route(rosterRoute, async (route) => {
-    if (new URL(admin.url()).pathname === "/people/bulk") await rosterRead.promise;
+    // c77a524ef: the bulk action also opens the appointments tab of /people.
+    const at = new URL(admin.url());
+    if (at.pathname === "/people/bulk" || (at.pathname === "/people" && at.searchParams.get("tab") === "appointments")) await rosterRead.promise;
     await route.continue();
   });
   await pickBulk(admin, "PC-0001");
-  const where = admin.getByRole("region", { name: "어디로", exact: true });
+  // 3b6934435: the selected-person read gates the whole form until its rows settle.
   const promotion = admin.getByRole("group", { name: "무엇을" }).getByRole("button", { name: "승진" });
-  await expect(promotion).toBeDisabled();
-  const loadingHeight = (await where.boundingBox())!.height;
+  await expect(admin.getByRole("main").locator('[aria-busy="true"]')).toBeVisible();
+  await expect(admin.getByRole("main").locator('[data-read-layout="form"]')).toBeVisible();
+  await expect(admin.getByRole("group", { name: "무엇을" })).toHaveCount(0);
   rosterRead.resolve();
   await expect(promotion).toBeEnabled();
-  expect((await where.boundingBox())!.height, "the filtered location tree retains its reserved space").toBeGreaterThanOrEqual(loadingHeight);
   await admin.unroute(rosterRoute);
   await admin.getByRole("group", { name: "무엇을" }).getByRole("button", { name: "승진" }).click();
   await admin.getByRole("combobox", { name: "승진인의 새 직위" }).selectOption({ label: "선임" });

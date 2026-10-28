@@ -6,13 +6,13 @@ import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } fro
 import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Search, Sun, UserRound } from "lucide-react";
-import { logout, session } from "@console/api";
+import { logout, refresh, session } from "@console/api";
 import { i18n, LOCALES, t, type Locale } from "@console/i18n";
 import { ChangeNotice } from "../ui/live/change-notice";
 import { HeldNotice } from "../ui/live/held-notice";
 import { LiveStatus } from "../ui/live/live-status";
 import { focusSoon } from "../lib/react/announce";
-import { get, navigationRead } from "../lib/query";
+import { get, navigationRead, read } from "../lib/query";
 import { chunk } from "../lib/chunk-guard";
 import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
@@ -36,6 +36,8 @@ export function Shell() {
   const { pathname } = useLocation();
   const [theme, toggle] = useTheme();
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
+  const restore = useQuery({ ...read("/api/v1/auth/token/refresh", refresh), enabled: false });
+  const restoring = !claims && restore.isPending;
   const platform = !!claims?.platform;
   const identity = useQuery({ ...identityQuery, enabled: !platform && Boolean(session.token) });
   const router = useRouter();
@@ -116,7 +118,8 @@ export function Shell() {
           </div>
         ))}
       </nav>
-      <header className="top">
+      <header className="top" aria-busy={restoring || undefined}>
+        {!restoring && <>
         <button ref={menuButton} className="btn btn--ghost top__menu" aria-expanded={open} aria-controls="rail" onClick={() => (open ? close() : setOpen(true))}>
           <Menu size={16} aria-hidden /> {t("shell.menu")}
         </button>
@@ -139,6 +142,7 @@ export function Shell() {
         <button className="btn btn--ghost" onClick={async () => (await logout(), nav({ to: "/login" }))}>
           <LogOut size={16} aria-hidden /> {t("shell.logout")}
         </button>
+        </>}
       </header>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
       <PageMain className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>

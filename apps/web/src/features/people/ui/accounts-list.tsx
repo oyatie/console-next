@@ -85,7 +85,7 @@ export function Accounts({ sel, head }: { sel?: string; head?: (available: boole
   const stale = waiting || list.isPlaceholderData || list.isError;
   const options = stale ? [] : rows;
   const search = <div onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)}><ServerPicker
-    label={t("accounts.search.label")} group={t("accounts.title")}
+    reserveError label={t("accounts.search.label")} group={t("accounts.title")}
     query={q} onQueryChange={setQ} value={sel ?? null} onChange={select}
     options={options.map((p) => personOption(p, options))}
     total={stale ? undefined : total}

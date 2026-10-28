@@ -3,12 +3,16 @@
 .page { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--space-3); padding-bottom: var(--space-4); }
 .head :global(.page__title) { white-space: nowrap; }
 .head { flex-wrap: nowrap; flex-shrink: 0; gap: var(--space-4); min-height: 48px; }
+.phase[data-loading] { visibility: hidden; }
+/* The failure shares the normal phase's footprint, including its wrapped height. */
+.phase[data-failed] > [aria-hidden] { visibility: hidden; }
+.phaseError { position: absolute; inset-inline: 0; }
 .scheduled { flex: none; height: var(--target); white-space: nowrap; }
 .compareResults { padding: var(--space-5); }
 .views { display: flex; align-self: stretch; gap: var(--space-1); }
 .viewTab { border-radius: 0; min-height: 44px; }
 .viewTab[aria-pressed="true"] { color: var(--primary); --shadow-x: inset 0 -2px 0 var(--primary); box-shadow: var(--shadow-x); }
-.phase { display: inline-flex; align-items: center; gap: var(--space-1); margin: 0; font-size: var(--text-xs); color: var(--steel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.phase { position: relative; display: inline-flex; align-items: center; gap: var(--space-1); margin: 0; font-size: var(--text-xs); color: var(--steel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dot { flex: none; width: 8px; height: 8px; border-radius: calc(999 * 1px); background: var(--ok-solid); }
 .phase[data-phase="operating"] .dot { background: var(--primary); }
 .asof { display: inline-flex; align-items: center; gap: var(--space-2); height: 36px; margin: 0; padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); font-size: var(--text-sm); white-space: nowrap; }

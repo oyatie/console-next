@@ -288,6 +288,7 @@ export const koLifecycle = {
   "lifecycle.correct.groupTransfer": "전적은 정정할 수 없습니다. 철회한 뒤 다시 기록하십시오.",
   "lifecycle.convert.dateLocked": "종료일을 변경하는 전환은 철회한 뒤 다시 기록하십시오.",
   "lifecycle.leave.dateLocked": "복직 예정일이 필요한 휴직은 철회한 뒤 다시 기록하십시오.",
+  "lifecycle.fixedTerm.limitExceeded": "요청한 계약 종료일이 기간제 근로 한도를 넘습니다. 한도 안의 종료일로 변경하거나, 근거가 있는 예외를 선택하십시오.",
   "lifecycle.fixedTerm.basisUnconfirmed": "계약 이력이 없어 기간제 한도를 확인할 수 없습니다. 계약 이력을 기록하거나 증빙이 있는 예외를 선택하십시오.",
   "lifecycle.fixedTerm.convert": "무기계약 전환",
   "lifecycle.fixedTerm.noRenewal": "갱신 안 함",

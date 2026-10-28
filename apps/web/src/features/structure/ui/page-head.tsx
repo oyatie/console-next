@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState, type MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Download, List, ListTree, Network, Upload } from "lucide-react";
@@ -6,11 +6,11 @@ import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { ActionMenu } from "../../../ui/menu/action-menu";
 import type { Structure } from "../domain/model";
 import { get } from "../../../lib/query";
 import { authzApplies, authzQuery, granted, type Feature } from "../../../reference/authz/api";
+import { checklistRef } from "../../../reference/entity/api";
 import { usePolicyRouted } from "../../../reference/settings/ui/use-policy-routed";
 import { AsOfControl } from "../../../ui/asof-control/asof-control";
 import { CompareControl } from "./compare-control";
@@ -35,6 +35,8 @@ const VIEWS: { id: View; icon: typeof Network }[] = [
 export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed = false }: {
   s?: Structure; view: View; cmd: Commands; changeDates?: readonly string[]; loadingDates?: boolean; readFailed?: boolean;
 }) {
+  const reasonId = useId();
+  const unavailable = readFailed ? { "aria-disabled": true as const, "aria-describedby": reasonId, onClick: (e: MouseEvent) => e.preventDefault() } : undefined;
   const nav = route.useNavigate();
   const navigate = useNavigate();
   const q = route.useSearch();
@@ -44,7 +46,8 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
   const selected = s?.byId.get(q.sel ?? "");
   const parent = selected?.kind === "site" ? selected : selected?.siteId ? s?.byId.get(selected.siteId) : s?.root.children[0]?.children[0];
   const [exporting, setExporting] = useState(false);
-  const phase = s?.phase === "OPERATING" ? "operating" : "setup";
+  const checklist = useQuery(checklistRef);
+  const phase = (s?.phase ?? checklist.data?.phase) === "OPERATING" ? "operating" : "setup";
   const routed = usePolicyRouted("org_structure");
   const authz = useQuery({ ...authzQuery, enabled: authzApplies() });
   // Until the grants land every verb is drawn (as before), so a holder's head never moves when they arrive; a reader's
@@ -74,26 +77,25 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
           </Button>
         ))}
       </div>
-      {s && <p className={css.phase} data-phase={phase}><span className={css.dot} aria-hidden />{t(phase === "operating" && routed ? "structure.phase.operatingRouted" : `structure.phase.${phase}`)}</p>}
+      <p id={reasonId} className={css.phase} aria-hidden={!s && !readFailed || undefined} data-loading={!s && !readFailed || undefined} data-phase={phase} data-failed={readFailed || undefined}>
+        <span className={css.dot} aria-hidden />
+        <span aria-hidden={readFailed || undefined}>{t(phase === "operating" && routed ? "structure.phase.operatingRouted" : `structure.phase.${phase}`)}</span>
+        {readFailed && <span className={css.phaseError}>{t("structure.readFailed")}</span>}
+      </p>
       {!readOnly && orgEdit && selected?.kind === "entity" && <AddUnit n={selected} primary />}
       <span className="grow" />
       {scheduled > 0 && <Link to="/org" search={{ tab: "changes", filter: "ready" }} className={buttonClass("ghost", { size: "sm", className: css.scheduled })} id="org-scheduled">{t("orgChange.chip.scheduled", { count: scheduled })}</Link>}
-      {readFailed ? <DisabledReason reason={t("structure.readFailed")} control={(p) => <span className="row">
-        {imports.length > 0 && <Button variant="ghost" {...p}><Upload size={16} aria-hidden />{t("structure.import.label")}</Button>}
-        <Button {...p}><Download size={16} aria-hidden />{t("structure.export.open")}</Button>
-        <Button {...p}>{t("asof.compare")}</Button>
-      </span>} /> : <>
-      <div id="structure-import" tabIndex={-1} className={css.importEntry} data-hidden={readOnly || imports.length === 0 || undefined} inert={readOnly || imports.length === 0 || undefined}>
-        <ActionMenu label={t("structure.import.label")} trigger={<><Upload size={16} aria-hidden />{t("structure.import.label")}</>} actions={imports} />
+      <div id="structure-import" tabIndex={-1} className={css.importEntry} data-hidden={imports.length === 0 || (!readFailed && readOnly) || undefined} inert={!readFailed && (readOnly || imports.length === 0) || undefined}>
+        {readFailed ? <Button variant="ghost" {...unavailable}><Upload size={16} aria-hidden />{t("structure.import.label")}</Button>
+          : <ActionMenu label={t("structure.import.label")} trigger={<><Upload size={16} aria-hidden />{t("structure.import.label")}</>} actions={imports} />}
       </div>
-      <Button onClick={() => setExporting(true)} disabled={!s || s.root.children.length === 0}><Download size={16} aria-hidden />{t("structure.export.open")}</Button>
-      </>}
+      <Button onClick={() => setExporting(true)} disabled={!readFailed && (!s || s.root.children.length === 0)} {...unavailable}><Download size={16} aria-hidden />{t("structure.export.open")}</Button>
       {exporting && s && <ExportDialog s={s} onClose={() => setExporting(false)} />}
       {cmd.pending && <span className="sr-only" role="status">{t("structure.saving")}</span>}
     </div>
     <AsOfControl today={today} value={value} knownAt={q.known_at} onChange={(date, known_at) => void nav({ search: (search) => ({ ...search, as_of: date === today ? undefined : date, known_at, compare_a: undefined, compare_b: undefined, act: undefined }) })} changeDates={changeDates} loadingDates={loadingDates} />
     {value > today && !q.known_at && !q.compare_a && parent?.unitId && <Button onClick={() => void nav({ search: (search) => ({ ...search, act: "create", sel: parent.unitId, kind: "DEPARTMENT" }) })}>{t("asof.create")}</Button>}
-    {!readFailed && <CompareControl />}
+    <CompareControl unavailable={unavailable} />
     </>
   );
 }
