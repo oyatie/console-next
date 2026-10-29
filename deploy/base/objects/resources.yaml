@@ -63,7 +63,8 @@ spec:
             - '-ip=console-objects'
             - '-ip.bind=0.0.0.0'
             - '-dir=/data'
-            - '-volume.max=2'
+            # Size the volume count from available storage rather than capping the PVC at two volumes.
+            - '-volume.max=0'
             - '-master.volumeSizeLimitMB=64'
             - '-s3'
             - '-s3.config=/run/s3/config.json'

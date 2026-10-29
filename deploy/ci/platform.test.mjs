@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, cpSync, existsSync, mkdtempSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { test } from 'node:test';
 import yaml from 'js-yaml';
 import { pod, refusals } from './fixtures.mjs';
@@ -321,4 +322,80 @@ for (const environment of ['exit-test','template']) test(`${environment}: render
     }
     assert.ok(deployment.spec.template.spec.containers[0].args.includes('--server-key=/server/tls.key'));
   } finally { rmSync(dir, {recursive:true,force:true}); }
+});
+
+test('rendered object storage archives and restores WAL beyond the former two-volume ceiling', {timeout:180_000}, () => {
+  mkdirSync('.tmp', {recursive:true});
+  const dir = mkdtempSync(join(resolve('.tmp'), 'backup-capacity-'));
+  const name = `platform-backup-${randomBytes(6).toString('hex')}`;
+  const docker = args => execFileSync('docker', args, {encoding:'utf8',timeout:120_000,stdio:['pipe','pipe','pipe']});
+  let networkCreated = false, containerCreated = false;
+  try {
+    execFileSync(process.execPath, ['deploy/ci/render.mjs', 'exit-test', `example.invalid/console@sha256:${'a'.repeat(64)}`, dir], {cwd:root});
+    const docs = yaml.loadAll(readFileSync(join(dir, 'objects/resources.yaml'), 'utf8'));
+    const deployment = docs.find(doc => doc.kind === 'Deployment');
+    const container = deployment.spec.template.spec.containers[0];
+    const job = docs.find(doc => doc.kind === 'Job').spec.template.spec.containers[0];
+    const settings = docs.find(doc => doc.kind === 'ConfigMap').data;
+    const store = yaml.loadAll(readFileSync(join(dir, 'database/resources.yaml'), 'utf8')).find(doc => doc.kind === 'ObjectStore');
+    const endpoint = new URL(store.spec.configuration.endpointURL);
+    assert.equal(new URL(store.spec.configuration.destinationPath).hostname, settings.bucket);
+    const reconcile = yaml.loadAll(read('deploy/reconcile/kustomizations.yaml'));
+    for (const [consumer, dependency] of [['console-objects','console-secrets'], ['console-database','console-objects']]) {
+      assert.ok(reconcile.find(doc => doc.metadata.name === consumer).spec.dependsOn.some(ref => ref.name === dependency));
+      assert.equal(reconcile.find(doc => doc.metadata.name === dependency).spec.wait, true);
+    }
+    const access = randomBytes(16).toString('hex'), secret = randomBytes(32).toString('hex');
+    const auth = {identities:[{name:'fixture',credentials:[{accessKey:access,secretKey:secret}],actions:['Admin','Read','Write','List','Tagging']}]};
+    mkdirSync(join(dir, 'auth'));
+    writeFileSync(join(dir, 'auth/config.json'), JSON.stringify(auth));
+    const capacity = docs.find(doc => doc.kind === 'PersistentVolumeClaim').spec.resources.requests.storage;
+    assert.match(capacity, /^\d+Gi$/);
+    docker(['network','create',name]); networkCreated = true;
+    docker(['run','-d','--name',name,'--network',name,'--network-alias',endpoint.hostname,
+      '--user',`${deployment.spec.template.spec.securityContext.runAsUser}`,'--read-only',
+      '--tmpfs',`/data:uid=${deployment.spec.template.spec.securityContext.runAsUser},size=${capacity.replace('Gi','g')}`,
+      '--tmpfs','/tmp','-w',container.workingDir,'-v',`${dir}/auth:/run/s3:ro`,
+      '--entrypoint',container.command[0],container.image,...container.args]); containerCreated = true;
+    // Run the rendered bootstrap command with the Job's retry budget; its first attempt can precede the filer.
+    let bootstrap;
+    for (let attempt = 0; attempt <= docs.find(doc => doc.kind === 'Job').spec.backoffLimit; attempt++) {
+      bootstrap = spawnSync('docker', ['exec','-e',`BUCKET=${settings.bucket}`,name,...job.command,...job.args], {encoding:'utf8',timeout:15_000});
+      if (bootstrap.status === 0) break;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+    }
+    assert.equal(bootstrap.status, 0, bootstrap.stdout + bootstrap.stderr);
+    const lock = JSON.parse(read('deploy/versions.json'));
+    const sidecar = Object.entries(lock.platformImages).find(([ref]) => ref.includes('/plugin-barman-cloud-sidecar:'))[1];
+    const env = {AWS_ACCESS_KEY_ID:access,AWS_SECRET_ACCESS_KEY:secret,
+      BACKUP_ENDPOINT:store.spec.configuration.endpointURL,BACKUP_DESTINATION:store.spec.configuration.destinationPath,
+      BACKUP_COMPRESSION:store.spec.configuration.wal.compression};
+    for (const item of store.spec.instanceSidecarConfiguration.env ?? []) env[item.name] = item.value;
+    const result = spawnSync('docker', ['run','--rm','-i','--name',`${name}-client`,'--network',name,
+      ...Object.entries(env).flatMap(([key,value]) => ['-e',`${key}=${value}`]),'--entrypoint','python3',sidecar,'-'], {
+      encoding:'utf8',timeout:120_000,input:`import hashlib, os, pathlib, subprocess
+payload = os.urandom(16 * 1024 * 1024)
+digest = hashlib.sha256(payload).digest()
+destination = os.environ['BACKUP_DESTINATION']
+endpoint = ['--endpoint-url', os.environ['BACKUP_ENDPOINT']]
+for index in range(1, 13):
+    wal = pathlib.Path('/tmp/0000000100000000%08X' % index)
+    wal.write_bytes(payload)
+    subprocess.run(['barman-cloud-wal-archive', '--' + os.environ['BACKUP_COMPRESSION'], *endpoint, destination, 'console-db', str(wal)], check=True)
+    wal.unlink()
+    subprocess.run(['barman-cloud-wal-restore', *endpoint, destination, 'console-db', wal.name, str(wal)], check=True)
+    assert hashlib.sha256(wal.read_bytes()).digest() == digest, 'restored WAL differs'
+    wal.unlink()
+    print('restored WAL', index, flush=True)
+`,
+    });
+    const logs = spawnSync('docker', ['logs',name], {encoding:'utf8',timeout:10_000});
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}\n${logs.stdout}\n${logs.stderr}`);
+    assert.equal(result.stdout.trim().split('\n').length, 12, 'every archived WAL must be restored and compared');
+  } finally {
+    spawnSync('docker', ['rm','-f',`${name}-client`], {stdio:'ignore',timeout:10_000});
+    if (containerCreated) spawnSync('docker', ['rm','-f',name], {stdio:'ignore',timeout:10_000});
+    if (networkCreated) spawnSync('docker', ['network','rm',name], {stdio:'ignore',timeout:10_000});
+    rmSync(dir, {recursive:true,force:true});
+  }
 });
