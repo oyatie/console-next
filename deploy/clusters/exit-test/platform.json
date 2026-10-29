@@ -2,7 +2,7 @@
   "workflowIdentity": "https://github.com/EXAMPLE/REPOSITORY/.github/workflows/platform.yml@refs/heads/dev",
   "storageClass": "standard",
   "apiReplicas": 2,
-  "rolloutProgressDeadlineSeconds": 60,
+  "rolloutProgressDeadlineMarginSeconds": 0,
   "workerReplicas": 1,
   "secretStore": "replace-openbao-store",
   "externalSecretPrefix": "replace-environment",

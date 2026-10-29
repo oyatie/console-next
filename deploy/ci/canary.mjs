@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { rolloutAnalysisDurationSeconds } from './rollout-deadline.mjs';
 const run=(...args)=>execFileSync('kubectl',args,{encoding:'utf8'});
 assert.match(run('config','current-context'),/^kind-platform-/);
 const revision=JSON.parse(readFileSync('.tmp/exit-bundle/revision.json'));
@@ -9,6 +10,11 @@ assert.ok(revision.previousImage === null || (typeof revision.previousImage === 
   'PLAT_PREVIOUS_RELEASE: record a distinct N-1 image or explicit null when none exists');
 const get=(kind,name)=>JSON.parse(run('get',kind,name,'-n','console','-o','json'));
 const rollout=get('rollout','console-api');
+const analysisNames=new Set((rollout.spec.strategy.canary.steps ?? []).flatMap(step=>step.analysis?.templates?.map(ref=>ref.templateName) ?? []));
+const analysisSeconds=rolloutAnalysisDurationSeconds(rollout,[...analysisNames].map(name=>get('analysistemplate',name)));
+// Allow 30 s for controller reconciliation and kubectl observation beyond the deadline and inline analysis.
+const abortObservationMarginSeconds=30;
+const abortTimeout=`--timeout=${Math.ceil(rollout.spec.progressDeadlineSeconds+analysisSeconds+abortObservationMarginSeconds)}s`;
 const workload=rollout.spec.workloadRef;
 assert.equal(workload.apiVersion,'apps/v1');assert.equal(workload.kind,'Deployment');
 const deployment=()=>get('deployment',workload.name);
@@ -60,8 +66,8 @@ try {
   for (const pod of pods) assert.ok(pod.status.conditions.some(c=>c.type==='Ready' && c.status==='False'),'candidate must be unready');
   writeFileSync('.tmp/evidence/canary-fault.json',JSON.stringify({generation,candidate,stable,workload:workload.name,container:container.name,image:actual.image,
     probe:actual.readinessProbe.httpGet,pods:pods.map(p=>({name:p.metadata.name,ready:p.status.conditions.find(c=>c.type==='Ready').status}))},null,2));
-  run('wait','--for=jsonpath={.status.abort}=true','rollout/console-api','-n','console','--timeout=180s');
-  run('wait','--for=jsonpath={.status.phase}=Degraded','rollout/console-api','-n','console','--timeout=180s');
+  run('wait','--for=jsonpath={.status.abort}=true','rollout/console-api','-n','console',abortTimeout);
+  run('wait','--for=jsonpath={.status.phase}=Degraded','rollout/console-api','-n','console',abortTimeout);
   const aborted=get('rollout','console-api');
   assert.equal(aborted.status.abort,true);
   assert.equal(aborted.status.phase,'Degraded');
