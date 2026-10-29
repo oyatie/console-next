@@ -12,6 +12,8 @@
 
 #[path = "fixtures/pay_view.rs"]
 mod pay_view;
+#[path = "support/payslip_privacy.rs"]
+mod payslip_privacy;
 
 use axum::body::{Body, to_bytes};
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};

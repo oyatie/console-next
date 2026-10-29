@@ -61,6 +61,8 @@ const AUDIENCE: &str = "console-api";
 const SHA256_FIXTURE: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 include!("file_size_splits/run_lifecycle_journey.inc.rs");
+#[path = "support/issue_revocation.rs"]
+mod issue_revocation;
 #[path = "support/pay_action_access.rs"]
 mod pay_action_access;
 // ---------------------------------------------------------------------------

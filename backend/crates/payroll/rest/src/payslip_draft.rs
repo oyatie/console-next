@@ -228,7 +228,7 @@ async fn get_payslip_draft(
     let ((period_start, period_end, pay_date), name, wage, attendance, citations) =
         with_audits::<_, Loaded, RestError>(&pool, org, move |tx| {
             Box::pin(async move {
-                require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await?;
+                require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
                 let (period_start, period_end) = parse_period(&params.period)?;
                 let pay_date = match params.pay_date.as_deref() {
                     Some(value) => parse_date(value, "pay_date")?,

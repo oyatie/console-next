@@ -23276,7 +23276,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/employees/{employeeId}/payslip-draft:
     get:
-      x-console-authz: {"permission": "pay:view", "scope": "tenant"}
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: getEmployeePayslipDraft

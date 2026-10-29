@@ -5,5 +5,5 @@ crates/payroll/rest/src/lib.rs	361
 crates/payroll/rest/src/lifecycle.rs	610
 crates/payroll/rest/src/payslip_draft.rs	370
 crates/payroll/rest/tests/api.rs	770
-crates/payroll/rest/tests/payslip_draft_api.rs	1301
-crates/payroll/rest/tests/run_lifecycle_api.rs	840
+crates/payroll/rest/tests/payslip_draft_api.rs	1303
+crates/payroll/rest/tests/run_lifecycle_api.rs	842

@@ -41,7 +41,7 @@ test("only levels with an operation are offered, and screenless domains are not 
   const org = d("org", ["view", "edit", "approve", "export"], ["view", "edit", "approve"]);
   expect(liveLevels(hr)).toEqual(["view", "edit"]);
   expect(liveLevels(attendance)).toEqual(["view", "edit"]);
-  expect([hr, pay, bank, org].filter((x) => sellable(x)).map((x) => x.domain)).toEqual(["hr_basic", "pay", "org"]);
+  expect([hr, pay, bank, org].filter((x) => sellable(x)).map((x) => x.domain)).toEqual(["hr_basic", "org"]);
   expect(liveColumns([hr, pay, bank])).toEqual(["view", "edit"]);
   expect(liveColumns([hr, org])).toEqual(["view", "edit", "approve"]);
 });
@@ -67,7 +67,7 @@ test("조직's approve is offered once org changes route; 퇴직 확인 and 예�
 test("export is a column once an operation carries it; screenless domains move to not yet", () => {
   const hr = op("hr_basic", ["view", "edit", "export"]);
   expect(liveColumns([hr], new Set())).toEqual(["view", "edit", "export"]);
-  expect(["evaluation", "notice"].map((d) => sellable(op(d, ["view", "edit"]), new Set()))).toEqual([false, false]);
+  expect(["pay", "evaluation", "notice"].map((d) => sellable(op(d, ["view", "edit"]), new Set()))).toEqual([false, false, false]);
   for (const domain of ["audit", "settings", "retention"]) {
     expect(sellable(op(domain, ["view"]), new Set())).toBe(true);
     expect(liveLevels(op(domain, ["view"]), new Set())).toEqual(["view"]);
@@ -80,11 +80,4 @@ test("ROL-M2: a held role's edit names what each domain gains and loses", () => 
     { domain: "org", added: [], removed: ["view"] },
     { domain: "hr_basic", added: ["export"], removed: [] },
   ]);
-});
-
-test("payroll view and edit can be granted from the role grid", () => {
-  const pay = op("pay", ["view", "edit"]);
-  expect(sellable(pay)).toBe(true);
-  expect(liveLevels(pay)).toEqual(["view", "edit"]);
-  expect(toLines(toggle({}, "pay", "edit"), ["pay"])).toEqual([{ domain: "pay", levels: ["view", "edit"] }]);
 });
