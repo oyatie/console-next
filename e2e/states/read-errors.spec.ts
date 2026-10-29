@@ -4,7 +4,7 @@ import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { accountReads } from "../mock/account";
-import { AT, failure, id, user } from "../mock/fixtures";
+import { AT, failure, id, modules, user } from "../mock/fixtures";
 import { mockPeopleImport } from "../mock/people-import";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
@@ -28,6 +28,40 @@ const certificate = (n: number): components["schemas"]["CertificatePage"]["items
 });
 
 test.beforeAll(() => loadCatalog("ko"));
+
+for (const fault of ["503", "network"] as const) test(`cold modules ${fault}: independent rail links and retry recover without reload @ui-state`, async ({ page }) => {
+  const fixture = await mockScreen(page, screens[2], "populated");
+  let failing = true, attempts = 0, navigations = 0;
+  await page.route("**/api/v1/onboarding/modules", route => {
+    attempts++;
+    return failing ? fault === "network" ? route.abort("failed") : route.fulfill({ status: 503, json: failure("service_unavailable") })
+      : route.fulfill({ json: modules.ready });
+  });
+  page.on("framenavigated", frame => { if (frame === page.mainFrame()) navigations++; });
+  try {
+    await page.goto("/org");
+    const rail = page.getByRole("navigation", { name: t("shell.nav"), includeHidden: true });
+    await expect(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests")]);
+    await expect(page.getByRole("alert")).toHaveCount(1);
+    await expect(rail.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
+    await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+    await expectAxe(page, `cold-modules/${fault}`);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
+      await fits(page, `cold-modules/${fault}/${width}`);
+    }
+    const before = attempts, loads = navigations;
+    failing = false;
+    await rail.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await expect(rail.getByRole("link", { name: t("shell.link.org"), exact: true })).toBeVisible();
+    await expect(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toHaveCount(0);
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    expect(attempts).toBe(before + 1);
+    expect(navigations).toBe(loads);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
 
 const outageRoutes = ["/org", "/org/entities", `/org/entities/${id(10)}`, `/org/changes/${id(3000)}`, "/org/move",
   "/statutory", "/people", `/people/${id(100)}`, "/people/bulk", "/access/roles", "/attendance"];

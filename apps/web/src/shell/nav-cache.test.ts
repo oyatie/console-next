@@ -5,9 +5,9 @@ import { rememberedRail } from "./nav";
 
 afterEach(() => vi.unstubAllGlobals());
 
-test("the last rail facts are read only from this principal's storage key", () => {
+test.each([{ readiness: modules.ready }, { readiness: null }])("the last rail facts are read only from this principal's storage key: $readiness", ({ readiness }) => {
   const answer = { access: screenAccess("/org"), supportApproval: false,
-    context: { pathname: "/org", phase: "OPERATING", modules: modules.ready, setupTargets: ["/org"] } };
+    context: { pathname: "/org", phase: "OPERATING", modules: readiness, setupTargets: ["/org"] } };
   const getItem = vi.fn((key: string) => key === "console.nav.viewer" ? JSON.stringify(answer) : null);
   vi.stubGlobal("localStorage", { getItem });
   expect(rememberedRail("console.nav.viewer")).toEqual(answer);
