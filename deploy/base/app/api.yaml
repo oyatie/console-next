@@ -109,6 +109,8 @@ metadata:
 spec:
   replicas: 2
   revisionHistoryLimit: 2
+  # The renderer supplies progressDeadlineSeconds from the environment's platform.json.
+  progressDeadlineAbort: true
   selector:
     matchLabels:
       app: console-api

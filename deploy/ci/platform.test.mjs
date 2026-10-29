@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdirSync, mkdtempSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -161,16 +161,36 @@ test('CNPG image validation accepts version tags and refuses digest-only, latest
   }
 });
 
-for (const environment of ['exit-test', 'template']) test(`${environment}: rendered database and restore images pass CNPG imageName validation`, () => {
+for (const environment of ['exit-test', 'template']) test(`${environment}: rendered images pass CNPG validation and Rollout ships its configured abort deadline`, () => {
   const dir = mkdtempSync(join(tmpdir(), 'platform-cnpg-'));
   try {
     execFileSync(process.execPath, ['deploy/ci/render.mjs', environment, `example.invalid/console@sha256:${'a'.repeat(64)}`, dir], {cwd:root});
+    const rollout = yaml.loadAll(readFileSync(join(dir, 'app/resources.yaml'), 'utf8')).find(doc => doc.kind === 'Rollout');
+    const config = JSON.parse(read(`deploy/clusters/${environment}/platform.json`));
+    assert.equal(rollout.spec.progressDeadlineAbort, true);
+    assert.equal(rollout.spec.progressDeadlineSeconds, config.rolloutProgressDeadlineSeconds);
+    assert.ok(rollout.spec.progressDeadlineSeconds > 0);
+    if (environment === 'exit-test') assert.ok(rollout.spec.progressDeadlineSeconds < 180, 'abort must fit the existing exit-test wait');
     const groups = environment === 'exit-test' ? ['database', 'tests/restore'] : ['database'];
     for (const group of groups) {
       const clusters = yaml.loadAll(readFileSync(join(dir, group, 'resources.yaml'), 'utf8')).filter(doc => doc.kind === 'Cluster');
       assert.equal(clusters.length, 1);
       assert.equal(clusters[0].spec.imageName, JSON.parse(read('deploy/versions.json')).images.postgres);
       cnpgVersion(clusters[0].spec.imageName);
+    }
+  } finally { rmSync(dir, {recursive:true,force:true}); }
+});
+
+test('PLAT_ROLLOUT_DEADLINE: renderer refuses missing, non-integer and non-positive abort deadlines', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'platform-deadline-'));
+  try {
+    for (const path of ['deploy/ci', 'deploy/clusters/exit-test']) mkdirSync(join(dir, path), {recursive:true});
+    symlinkSync(join(root, 'node_modules'), join(dir, 'node_modules'));
+    writeFileSync(join(dir, 'deploy/ci/render.mjs'), read('deploy/ci/render.mjs'));
+    for (const deadline of [undefined, null, 0, -1, 1.5, '60']) {
+      writeFileSync(join(dir, 'deploy/clusters/exit-test/platform.json'), JSON.stringify({rolloutProgressDeadlineSeconds:deadline}));
+      assert.throws(() => execFileSync(process.execPath, ['deploy/ci/render.mjs', 'exit-test', `example.invalid/console@sha256:${'a'.repeat(64)}`, 'out'], {cwd:dir,stdio:'pipe'}),
+        error => error.status === 1 && error.stderr.toString().includes('PLAT_ROLLOUT_DEADLINE'));
     }
   } finally { rmSync(dir, {recursive:true,force:true}); }
 });

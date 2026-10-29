@@ -12,6 +12,8 @@ assert.ok(['exit-test', 'template'].includes(environment), 'PLAT_OVERLAY: select
 assert.match(image ?? '', /^([^/@]+\/)*[^/:@]+@sha256:[a-f0-9]{64}$/, 'PLAT_IMAGE_DIGEST');
 const directory = resolve(output);
 const config = JSON.parse(readFileSync(`deploy/clusters/${environment}/platform.json`));
+assert.ok(Number.isSafeInteger(config.rolloutProgressDeadlineSeconds) && config.rolloutProgressDeadlineSeconds > 0,
+  'PLAT_ROLLOUT_DEADLINE: configure a positive integer rolloutProgressDeadlineSeconds');
 const lock = JSON.parse(readFileSync('deploy/versions.json'));
 const identity = process.env.PLATFORM_WORKFLOW_IDENTITY ?? config.workflowIdentity;
 const repository = image.split('@')[0];
@@ -24,7 +26,10 @@ for (const doc of docs) {
     doc.spec.imageName = lock.images.postgres;
     doc.spec.storage.storageClass = config.storageClass;
   }
-  if (doc.kind === 'Rollout') doc.spec.replicas = config.apiReplicas;
+  if (doc.kind === 'Rollout') {
+    doc.spec.replicas = config.apiReplicas;
+    doc.spec.progressDeadlineSeconds = config.rolloutProgressDeadlineSeconds;
+  }
   if (doc.kind === 'Deployment' && doc.metadata.name === 'console-worker') doc.spec.replicas = config.workerReplicas;
   if (doc.kind === 'ExternalSecret') {
     doc.spec.secretStoreRef.name = config.secretStore;
