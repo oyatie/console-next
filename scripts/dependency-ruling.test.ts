@@ -11,13 +11,13 @@ const approved = [
   "action:actions/checkout", "action:actions/setup-node", "action:actions/upload-artifact", "action:actions/download-artifact",
   ...["tokio", "bytes", "http", "futures", "serde", "serde_json", "uuid", "url", "tracing", "tracing-subscriber", "stacker", "base64", "zeroize", "rustls", "tokio-rustls"].map((name) => `cargo:${name}`),
 ];
-const ownerApproved = ["container:docker.io/chrislusf/seaweedfs", "ci-tool:cargo-deny", "ci-tool:cargo-audit"];
+const ownerApproved = ["container:docker.io/chrislusf/seaweedfs", "ci-tool:cargo-deny", "ci-tool:cargo-audit", "ci-tool:fontTools/pyftsubset", "ci-tool:brotli"];
 const kinds = new Set(["npm", "cargo", "action", "container", "ci-tool"]);
 
 describe("2026-10-26 delegated dependency ruling", () => {
   test("preserves the delegated ruling and includes subsequent explicit owner approvals", () => {
     const rows = register().filter((r) => kinds.has(r.kind));
-    expect(rows).toHaveLength(149);
+    expect(rows).toHaveLength(151);
     expect(rows.filter((r) => r.class === "STANDARD").map((r) => `${r.kind}:${r.name}`).sort()).toEqual([...approved, ...ownerApproved].sort());
     expect(rows.filter((r) => r.class === "NEEDS-OWNER")).toHaveLength(117);
     for (const name of ["opentelemetry", "opentelemetry_sdk", "opentelemetry-otlp", "tracing-opentelemetry"]) {
@@ -32,6 +32,14 @@ describe("2026-10-26 delegated dependency ruling", () => {
       expect(row.approval.ruling).toContain("2026-10-26");
       for (const criterion of ["a", "b", "c", "d", "e"]) expect(row.standardTest[criterion]).toMatchObject({ result: "pass", source: expect.any(String), reason: expect.any(String) });
     }
+  });
+
+  test("Brotli 1.2.0 has its own owner-approved build tooling record for fontTools WOFF2 compression", () => {
+    expect(register().find(r => r.kind === "ci-tool" && r.name === "brotli")).toMatchObject({
+      class: "STANDARD", approved_by: "owner", approval: { by: "owner", on: "2026-10-29" },
+      job: "WOFF2 compression for fontTools subsets", layer: "build/tooling", allowedLayers: ["build/tooling"],
+      uses: [{ file: "apps/web/font-subsets.requirements.txt", user: "scripts/font-subsets.mjs", pin: "brotli==1.2.0", layer: "build/tooling" }],
+    });
   });
 
   test("transitive inventory carries no independent approval, verdict or owner classification", () => {

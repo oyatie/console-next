@@ -104,7 +104,7 @@ export function LifecycleRefusal({ error, kind, onLeave, target, onCancelEvent, 
           {FIXED_TERM_GROUNDS.map((g) => <li key={g}>{t(`lifecycle.fixedTerm.ground.${g}`)}</li>)}
         </ul>
         <p className={s.blockerText}>{t("lifecycle.blocker.fixedTerm.exception")}</p>
-        {failureText(error, peopleRefusal)}
+        {r.code === "fixed_term_limit" ? t("lifecycle.fixedTerm.limitExceeded") : failureText(error, peopleRefusal)}
       </BlockedPanel>
     );
   if (r && (SPECIFIC as Set<string>).has(r.code))

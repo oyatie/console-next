@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ButtonHTMLAttributes } from "react";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -13,7 +13,7 @@ import css from "./chart.module.css";
 
 const route = getRouteApi("/app/org");
 const MARKS = ["new", "moved", "renamed", "gone"] as const;
-export function CompareControl() {
+export function CompareControl({ unavailable }: { unavailable?: ButtonHTMLAttributes<HTMLButtonElement> }) {
   const q = route.useSearch();
   const nav = route.useNavigate();
   const today = todayKst();
@@ -31,7 +31,7 @@ export function CompareControl() {
     if (isDate(from) && isDate(to) && from <= to) void nav({ search: (search) => ({ ...search, compare_a: from, compare_b: to, act: undefined }) });
   };
   return <section aria-label={t("asof.compare")}>
-    <ToggleButton pressed={active} onClick={() => active
+    <ToggleButton {...unavailable} pressed={active} onClick={(event) => unavailable ? unavailable.onClick?.(event) : active
       ? void nav({ search: (search) => ({ ...search, compare_a: undefined, compare_b: undefined }) }) : apply(a, b)}>{t("asof.compare")}</ToggleButton>
     {active && <>
       <div className="row">

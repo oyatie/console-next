@@ -1,11 +1,13 @@
 @import "@console/tokens/tokens.css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+@import "./generated/fonts/catalog.css";
 @property --trigger-width { syntax: "*"; inherits: true; }
 @property --tree-item-level { syntax: "*"; inherits: true; }
 
 /* Tokens only: no literal colours or sizes below this line. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
+:root[data-font-fallback] { --font-sans: var(--font-system); }
 body {
   background: var(--canvas);
   color: var(--ink);
@@ -67,8 +69,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .rail__link[data-status="active"] { background: var(--primary-soft); color: var(--primary); }
 .rail__list { list-style: none; margin: 0; padding: 0; }
 .top { grid-area: top; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4); min-width: 0; }
-.top__name { min-width: 0; flex-shrink: 0; }
-/* Reserve the name slot through the fallback-to-web-font swap so adjacent controls keep their position. */
+.top__name { min-width: 0; max-inline-size: 25%; flex-shrink: 0; }
+/* Retain the base's compact minimum; longer names use their own advance width. */
 .top__name span { min-inline-size: calc(var(--space-6) * 2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top .top__menu { display: none; }
 .top__spacer { flex: 1; }
@@ -81,7 +83,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (--small) {
   .top .top__jump { display: none; }
   .top__name { flex-shrink: 1; }
-  /* The slot reserve is a desktop guarantee; on a phone the name yields to the sign-out button. */
   .top__name span { min-inline-size: 0; }
 }
 .top__kbd { padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-family: var(--font-mono); font-size: var(--text-xs); }
@@ -93,6 +94,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .shell { grid-template: "top" var(--topbar-h) "main" 1fr / 1fr; }
   .rail { display: none; }
   .top { gap: var(--space-2); padding: 0 var(--space-2); }
+  .top .btn { padding-inline: var(--space-2); }
   .top .top__menu { display: inline-flex; }
   .shell[data-menu="open"] .rail { display: flex; position: fixed; top: var(--topbar-h); bottom: 0; left: 0; width: var(--rail-w); z-index: var(--z-rail); box-shadow: var(--shadow-pop); }
 }

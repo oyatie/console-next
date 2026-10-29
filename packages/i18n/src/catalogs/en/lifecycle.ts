@@ -284,6 +284,7 @@ export const enLifecycle = {
   "lifecycle.correct.groupTransfer": "A group transfer must be rescinded and recorded again.",
   "lifecycle.convert.dateLocked": "Rescind and record again to change the contract end.",
   "lifecycle.leave.dateLocked": "Rescind and record again to add a required return date.",
+  "lifecycle.fixedTerm.limitExceeded": "The requested contract end date exceeds the fixed-term employment limit. Choose an end date within the limit or an evidenced exception.",
   "lifecycle.fixedTerm.basisUnconfirmed": "Contract history is missing. Record it or choose an evidenced exception.",
   "lifecycle.fixedTerm.convert": "Convert to open-ended employment",
   "lifecycle.fixedTerm.noRenewal": "Do not renew",

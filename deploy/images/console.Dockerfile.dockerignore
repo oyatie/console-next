@@ -5,6 +5,7 @@
 !tsconfig.json
 !tsconfig.base.json
 !postcss.config.mjs
+!scripts/font-subsets.mjs
 !rustfmt.toml
 !packages/**
 !apps/web/**

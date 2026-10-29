@@ -18,6 +18,7 @@ import { IDLE_EXPIRED, watchSession } from "./auth/idle";
 import { pauseAutofill } from "./auth/sign-in-id";
 import { routeTree } from "./routes/tree";
 import "./app.css";
+import { prepareFonts } from "./lib/fonts";
 
 // Every static import is in: from here a failed chunk is a lazy one (public/chunk-guard.js).
 started();
@@ -125,7 +126,7 @@ void Promise.all([resolved, loadCatalog()]).then(loaded, () => undefined);
 
 // An error no boundary caught unmounts the whole tree (e.g. the re-auth dialog's chunk, beside the router): the
 // static error screen instead of a blank page.
-createRoot(document.getElementById("root")!, {
+void prepareFonts().then(() => createRoot(document.getElementById("root")!, {
   onUncaughtError: (error) => {
     reportError(error);
     crashed();
@@ -134,4 +135,4 @@ createRoot(document.getElementById("root")!, {
   <StrictMode>
     <Root />
   </StrictMode>,
-);
+));

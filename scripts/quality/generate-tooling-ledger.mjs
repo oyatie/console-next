@@ -9,16 +9,27 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (file) => readFileSync(resolve(root, file), "utf8");
 const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
 const tools = [
+  ["fontTools/pyftsubset", "apps/web/font-subsets.requirements.txt", read("apps/web/font-subsets.requirements.txt").match(/^fonttools==\S+/m)[0], "build/tooling"],
+  ["brotli", "apps/web/font-subsets.requirements.txt", read("apps/web/font-subsets.requirements.txt").match(/^brotli==\S+/m)[0], "build/tooling"],
   ["Rust", "rust-toolchain.toml", JSON.parse(read("rust-toolchain.toml").match(/^channel\s*=\s*("[^"]+")/m)[1]), "build/tooling"],
   ["Node.js", "package.json", JSON.parse(read("package.json")).engines.node, "build/tooling"],
   ["npm", ".github/workflows/ci.yml", "runner bundled; not pinned", "CI/supply chain"],
   ["Chromium", ".github/workflows/ci.yml", "Playwright lock pin", "test"],
-].map(([name, file, pin, layer]) => ({ kind: "ci-tool", name, direct: true, uses: [{ file, user: file, pin, layer }], callsites: [], evidence: [] }));
+].map(([name, file, pin, layer]) => ({ kind: "ci-tool", name, direct: true, uses: [{ file, user: file === "apps/web/font-subsets.requirements.txt" ? "scripts/font-subsets.mjs" : file, pin, layer }], callsites: [], evidence: [] }));
 // Refresh an existing dependency/tool/image pin without reclassifying it or requiring Cargo metadata.
-const pins = process.argv.find((arg) => arg.startsWith("--pins="))?.slice("--pins=".length);
+const approvedTool = process.argv.find((arg) => arg.startsWith("--approved-tool="))?.split("=")[1];
+const pins = approvedTool ?? process.argv.find((arg) => arg.startsWith("--pins="))?.slice("--pins=".length);
 if (pins) {
   const register = JSON.parse(read("docs/quality/dependency-register.json"));
   const current = [...inventory(files, read), ...tools];
+  if (approvedTool) {
+    const tool = tools.find(row => `ci-tool:${row.name}` === approvedTool);
+    const review = JSON.parse(read("scripts/quality/tooling-reviews.json"))[approvedTool];
+    if (!tool || review?.approval?.by !== "owner") throw new Error("explicit owner-approved build tool required");
+    const [row] = reviewRows([tool], { [approvedTool]: review });
+    Object.assign(row, { allowedUsers: review.approvedUsers, observedLayers: review.allowedLayers, layerFindings: [] });
+    register.rows = [...register.rows.filter(r => `${r.kind}:${r.name}` !== approvedTool), row].sort((a, b) => `${a.kind}:${a.name}`.localeCompare(`${b.kind}:${b.name}`));
+  }
   const selected = register.rows.filter((r) => ["container", "ci-tool", "npm"].includes(r.kind) && `${r.kind}:${r.name}` === pins);
   if (selected.length !== 1) throw new Error(`unregistered tool/image: ${pins}; run full review`);
   for (const row of selected) {
@@ -34,6 +45,7 @@ if (pins) {
   for (const [file, body] of [
     ["docs/quality/dependency-register.json", JSON.stringify(register, null, 2) + "\n"],
     ["docs/quality/dependency-register.md", render(register.rows)],
+    ...(approvedTool ? [["docs/architecture/frontend-module-map.md", renderArchitecture(register.rows, "docs/architecture/frontend-module-map.md", "Frontend")]] : []),
   ]) {
     if (process.argv.includes("--write")) writeFileSync(resolve(root, file), body);
     else if (read(file) !== body) throw new Error(`${file}: stale pins; regenerate with --pins=${pins} --write`);

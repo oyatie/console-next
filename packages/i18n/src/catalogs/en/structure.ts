@@ -25,7 +25,7 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.readFailed": "Organization information could not be loaded.",
   "structure.saving": "Saving",
   "structure.side": "Change proposal",
-  "structure.loading": "Loading the chart · the boxes keep their places while they fill in",
+  "structure.loading": "Loading the chart",
   "structure.cancel": "Cancel",
   "structure.stale.title": "Nothing changed · someone else changed it first",
   "structure.stale.where": "{name} is now under {where} · the chart has been redrawn",

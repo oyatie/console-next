@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import type { CSSOptions, Plugin } from "vite";
 
-/** Keep a slow font from moving controls; preload only the wordmark's subsets, derived from the shipped catalog. */
+/** Catalog glyphs share one optional face; retain upstream subsets for other text. */
 export function fontPolicy(): Plugin {
-  const file = resolve(import.meta.dirname, "../../node_modules/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css");
-  const boot = readFileSync(resolve(import.meta.dirname, "../../packages/i18n/src/catalogs/boot.ts"), "utf8");
-  const text = [...boot.matchAll(/"app.name": "([^"\n]+)"/g)].map(m => m[1]).join("");
-  if (!text) throw new Error("font policy: boot wordmark missing");
-  const fonts = [...readFileSync(file, "utf8").matchAll(/@font-face\s*\{([^}]+)\}/g)]
-    .filter(([, face]) => [...face!.matchAll(/U\+([\da-f]+)(?:-([\da-f]+))?/gi)].some(([, lo, hi]) =>
-      [...text].some(c => c.codePointAt(0)! >= parseInt(lo!, 16) && c.codePointAt(0)! <= parseInt(hi ?? lo!, 16))))
-    .map(([, face]) => resolve(dirname(file), face!.match(/url\(([^)]+)\)/)![1]!));
+  const fonts = [resolve(import.meta.dirname, "src/generated/fonts/catalog.woff2")];
+  const { family } = JSON.parse(readFileSync(resolve(import.meta.dirname, "src/generated/fonts/manifest.json"), "utf8"));
   const postcss: CSSOptions["postcss"] = { plugins: [{
     postcssPlugin: "optional-pretendard",
     AtRule: {
@@ -32,7 +26,7 @@ export function fontPolicy(): Plugin {
       if (building) for (const font of fonts) this.emitFile({ type: "asset", name: font.split("/").at(-1)!, source: readFileSync(font) });
     },
     transformIndexHtml(_html, ctx) {
-      return fonts.map(font => ({ tag: "link", attrs: { rel: "preload", as: "font", type: "font/woff2", crossorigin: "anonymous", href: building ? `/${Object.values(ctx.bundle!).find(asset => asset.type === "asset" && asset.names.includes(font.split("/").at(-1)!))!.fileName}` : `/@fs${font}` }, injectTo: "head" }));
+      return fonts.map(font => ({ tag: "link", attrs: { rel: "preload", as: "font", type: "font/woff2", crossorigin: "anonymous", "data-ui-font": family, href: building ? `/${Object.values(ctx.bundle!).find(asset => asset.type === "asset" && asset.names.includes(font.split("/").at(-1)!))!.fileName}` : `/@fs${font}` }, injectTo: "head" }));
     },
   };
 }

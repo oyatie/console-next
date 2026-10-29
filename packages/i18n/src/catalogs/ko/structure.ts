@@ -25,7 +25,7 @@ export const koStructure = {
   "structure.readFailed": "조직 정보를 불러오지 못했습니다.",
   "structure.saving": "저장하는 중입니다",
   "structure.side": "조직 변경 작성",
-  "structure.loading": "조직도를 불러오는 중입니다 · 상자 자리는 그대로이고 내용만 채워집니다",
+  "structure.loading": "조직도를 불러오는 중입니다",
   "structure.cancel": "취소",
   "structure.stale.title": "변경하지 않았습니다 · 다른 담당자가 먼저 변경했습니다",
   "structure.stale.where": "{name|은는} 지금 {where} 아래에 있습니다 · 조직도를 새로 그렸습니다",

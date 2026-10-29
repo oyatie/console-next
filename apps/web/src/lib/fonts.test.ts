@@ -1,40 +1,39 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, loadCatalog } from "@console/i18n";
-import { glyphs } from "./fonts";
+import { prepareFonts, screen } from "./fonts";
 
-describe("screen font wait (JRN-FIRSTPAINT / J-HP-2)", () => {
-  beforeAll(async () => {
-    await loadCatalog(i18n.locale);
-  });
+beforeAll(() => loadCatalog(i18n.locale));
+afterEach(() => vi.unstubAllGlobals());
 
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
+test("a screen renders without forcing optional fonts to load during its first paint", async () => {
+  const load = vi.fn(() => new Promise(() => {}));
+  vi.stubGlobal("document", { fonts: { load } });
+  const module = { screen: true };
+  await expect(screen(() => Promise.resolve(module))()).resolves.toBe(module);
+  expect(load).not.toHaveBeenCalled();
+});
 
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-  });
+test("a screen import still reports its chunk failure", async () => {
+  const error = new Error("screen unavailable");
+  await expect(screen(() => Promise.reject(error))()).rejects.toBe(error);
+});
 
-  it("glyphs() initiates background loading and caches promise by key", async () => {
-    const fontLoadSpy = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("document", { fonts: { load: fontLoadSpy } });
-
-    const p1 = glyphs("test-key", () => "Sample text");
-    const p2 = glyphs("test-key", () => "Sample text again");
-
-    expect(p1).toBe(p2); // cached by key
-    expect(fontLoadSpy).toHaveBeenCalledTimes(1);
-    expect(fontLoadSpy).toHaveBeenCalledWith('1em "Pretendard Variable"', "Sample text");
-
-    await p1;
-  });
-
-  it("glyphs() returns resolved promise when document or document.fonts is undefined", async () => {
-    vi.stubGlobal("document", undefined);
-    const p = glyphs("ssr", () => "text");
-    await expect(p).resolves.toBeUndefined();
-  });
+test.each(["pending", "failed", "ready"])("the boot font is %s: choose its metrics once before rendering", async state => {
+  const held = Promise.withResolvers<void>();
+  const load = vi.fn(() => held.promise);
+  const dataset: Record<string, string> = {};
+  vi.stubGlobal("document", { querySelector: () => ({ href: "/catalog.woff2", dataset: { uiFont: "Pretendard Variable Catalog" } }), fonts: { load }, documentElement: { dataset } });
+  vi.stubGlobal("performance", { getEntriesByName: () => state === "pending" ? [] : [{ entryType: "resource", responseEnd: 1 }] });
+  let painted = false;
+  const boot = prepareFonts().then(() => { painted = true; });
+  await Promise.resolve();
+  if (state !== "pending") {
+    expect(painted).toBe(false);
+    expect(load).toHaveBeenCalledExactlyOnceWith('1em "Pretendard Variable Catalog"');
+  } else expect(load).not.toHaveBeenCalled();
+  if (state === "failed") held.reject(new Error("invalid font")); else held.resolve();
+  await boot;
+  expect(painted).toBe(true);
+  expect(dataset).toEqual(state === "ready" ? {} : { fontFallback: "" });
 });

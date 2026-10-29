@@ -1,3 +1,8 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 /* Announce retained answers without introducing a layout box around existing grids and panels. */
 .region { display: contents; }
+/* A failed first read occupies the same region as its loading shape. */
+.reserved { display: grid; }
+.reserved > * { grid-area: 1 / 1; min-width: 0; }
+.placeholder { visibility: hidden; }
+.failure { align-self: start; }
