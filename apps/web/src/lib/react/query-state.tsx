@@ -1,4 +1,4 @@
-import { useContext, useState, type ReactNode } from "react";
+import { useContext, useEffect, useState, type ReactNode } from "react";
 import s from "./query-state.module.css";
 import { useOnline } from "./use-online";
 import { ApiError } from "@console/api";
@@ -12,6 +12,7 @@ import { Denied, type ReadBack } from "./denied";
 import { ReadSkeleton, Skeleton, type ReadLayout } from "../../ui/skeleton/skeleton";
 import { queryView, type ReadState } from "./query-view";
 import { ReadReference } from "./read-reference";
+import { ReadFailureContext } from "./read-failure-context";
 import type { AccessRequirement } from "../../reference/authz/domain/access";
 import { SidePanelReadContext } from "../../ui/side-panel/read-context";
 
@@ -20,9 +21,10 @@ import { SidePanelReadContext } from "../../ui/side-panel/read-context";
  * Refetches keep rendered content and focus; only a first load may show a layout placeholder.
  * Filter/date/search reads use keepPreviousData; the retained region is busy until the answer lands.
  */
-export function QueryState<T>({ q, empty, children, own, loading, layout, back, removed, inline, keepOnLoss, need }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement }) {
+export function QueryState<T>({ q, empty, children, own, loading, layout, back, removed, inline, keepOnLoss, need, failedTitle }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement; failedTitle?: string }) {
   const online = useOnline();
   const panel = useContext(SidePanelReadContext);
+  const recovery = useContext(ReadFailureContext);
   const answer = queryView(online ? q : { ...q, fetchStatus: "paused" });
   const error = q.error instanceof ApiError ? q.error : null;
   const [refusal, setRefusal] = useState<ApiError | null>(null);
@@ -32,7 +34,7 @@ export function QueryState<T>({ q, empty, children, own, loading, layout, back, 
   const suppressed = q.isPlaceholderData && refusal !== null;
   const view = q.isPlaceholderData && refusal ? refusal.status === 403 ? "denied" : "not-found" : answer;
   const e = suppressed ? refusal : error;
-  const retry = <Button onClick={() => q.refetch()}>{t("common.retry")}</Button>;
+  const retry = <Button onClick={() => { void q.refetch(); recovery?.retry(); }}>{t("common.retry")}</Button>;
   const offline = view === "offline";
   const lost = !suppressed && keepOnLoss && q.data !== undefined && (view === "denied" || view === "not-found");
   const reference = <ReadReference error={q.error} />;
@@ -42,6 +44,11 @@ export function QueryState<T>({ q, empty, children, own, loading, layout, back, 
   const waiting = view === "failed" || view === "loading" || (offline && q.data === undefined);
   if ((!q.isPlaceholderData || suppressed) && !waiting && retained.data !== undefined) setRetained({ data: undefined, content: null });
   const retainedRefetch = retained.content !== null && waiting;
+  const fullFailure = !inline && !retainedRefetch && (view === "failed" || offline && q.data === undefined);
+  const registerFailure = recovery?.register;
+  useEffect(() => {
+    if (fullFailure) return registerFailure?.();
+  }, [fullFailure, registerFailure]);
   const notice = <Banner tone="warn" live="polite" actions={lost ? undefined : retry}>
     {lost ? t(view === "not-found" ? "live.notice.gone" : "live.notice.no_access") : <>
       {inline ? own?.(e?.code ?? "") ?? readFailureText(q.error) : t(offline ? "common.read.offline" : "common.read.stale")}
@@ -59,7 +66,7 @@ export function QueryState<T>({ q, empty, children, own, loading, layout, back, 
     const failure = (
       <EmptyState
         alert
-        title={t(offline ? "common.read.offline" : "common.loadFailed.title")}
+        title={offline ? t("common.read.offline") : failedTitle ?? t("common.loadFailed.title")}
         reason={readFailureText(q.error, own)}
         actions={retry}
         meta={reference}

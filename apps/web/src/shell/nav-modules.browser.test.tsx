@@ -106,7 +106,7 @@ for (const engine of [chromium, firefox]) test.each(["503", "network"])(`a cold 
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
     await element(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests"), t("shell.link.settings")]);
     await element(rail.getByRole("alert")).toHaveCount(1);
-    await element(rail.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
+    await element(rail.getByRole("alert").getByRole("heading")).toHaveText(t("shell.nav.failed"));
     await page.reload();
     await element(rail.getByRole("alert")).toHaveCount(1);
     const url = page.url();

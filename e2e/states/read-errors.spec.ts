@@ -43,7 +43,7 @@ for (const fault of ["503", "network"] as const) test(`cold modules ${fault}: in
     const rail = page.getByRole("navigation", { name: t("shell.nav"), includeHidden: true });
     await expect(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests")]);
     await expect(page.getByRole("alert")).toHaveCount(1);
-    await expect(rail.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
+    await expect(rail.getByRole("alert").getByRole("heading")).toHaveText(t("shell.nav.failed"));
     await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
     await expectAxe(page, `cold-modules/${fault}`);
     for (const width of [1440, 390]) {
@@ -59,6 +59,47 @@ for (const fault of ["503", "network"] as const) test(`cold modules ${fault}: in
     await expect(page.getByRole("alert")).toHaveCount(0);
     expect(attempts).toBe(before + 1);
     expect(navigations).toBe(loads);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+for (const fault of ["503", "network"] as const) for (const reference of [false, true]) test(`cold page and modules ${fault}: one recovery with ${reference ? "a reference" : "no reference"} @ui-state`, async ({ page }) => {
+  const fixture = await mockScreen(page, screens[2], "populated");
+  let failing = true;
+  const attempts = { page: 0, modules: 0 };
+  await page.route(url => ["/api/v1/org-structure", "/api/v1/onboarding/modules"].includes(url.pathname), route => {
+    attempts[new URL(route.request().url()).pathname.endsWith("modules") ? "modules" : "page"]++;
+    return !failing ? route.fallback() : fault === "network" ? route.abort("failed") : route.fulfill({ status: 503,
+      json: { error: { code: "service_unavailable", ...(reference ? { support_ref: id(98), support_ref_at: AT } : {}) } } });
+  });
+  try {
+    await page.goto("/org");
+    const rail = page.getByRole("navigation", { name: t("shell.nav"), includeHidden: true });
+    const main = page.getByRole("main");
+    await expect(main.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"), { timeout: 20_000 });
+    await expect(page.getByRole("alert", { includeHidden: true })).toHaveCount(1);
+    await expect(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests")]);
+    await expect(rail.getByRole("status")).toHaveText(t("shell.nav.failed"));
+    await expect(rail.getByRole("button", { name: t("common.retry"), includeHidden: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: t("common.retry"), includeHidden: true })).toHaveCount(1);
+    await expect(main.locator("[data-support-reference]")).toHaveCount(fault === "503" && reference ? 1 : 0);
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      await expectAxe(page, `cold-page-modules/${fault}/${theme}`);
+    }
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await fits(page, `cold-page-modules/${fault}/${width}`);
+    }
+    const before = { ...attempts }, url = page.url();
+    failing = false;
+    await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await expect(main.getByRole("alert")).toHaveCount(0);
+    await expect(rail.getByRole("link", { name: t("shell.link.org"), exact: true, includeHidden: true })).toHaveCount(1);
+    await expect(rail.getByRole("alert", { includeHidden: true })).toHaveCount(0);
+    await expect(rail.getByRole("status", { includeHidden: true })).toHaveCount(0);
+    expect(attempts).toEqual({ page: before.page + 1, modules: before.modules + 1 });
+    expect(page.url()).toBe(url);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

@@ -15,6 +15,7 @@ import { focusSoon } from "../lib/react/announce";
 import { get, navigationRead, read } from "../lib/query";
 import { isAnswer } from "../lib/react/query-defaults";
 import { QueryState } from "../lib/react/query-state";
+import { ReadFailureContext } from "../lib/react/read-failure-context";
 import { chunk } from "../lib/chunk-guard";
 import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
@@ -70,6 +71,15 @@ export function Shell() {
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
   const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data | null }>();
   const modulesFault = modules.isError && !isAnswer(modules.error);
+  const [pageFailures, setPageFailures] = useState(0);
+  const registerFailure = useMemo(() => () => {
+    setPageFailures(count => count + 1);
+    return () => setPageFailures(count => count - 1);
+  }, []);
+  const { refetch: refetchModules } = modules;
+  const recovery = useMemo(() => ({ register: registerFailure, retry: () => {
+    if (modulesFault) void refetchModules({ cancelRefetch: false });
+  } }), [registerFailure, modulesFault, refetchModules]);
   const answered = ready && access.isSuccess && [support, me].every(q => !(q.isError && !isAnswer(q.error)));
   // Late readiness reads reveal entries on the next navigation, never between inputs.
   // A cold fault has no readiness snapshot; its first answer can recover immediately after retry.
@@ -147,7 +157,9 @@ export function Shell() {
             ))}</ul>
           </div>
         ))}
-        {!platform && answered && modulesFault && <QueryState q={modules} loading={null}>{() => null}</QueryState>}
+        {!platform && answered && modulesFault && (pageFailures > 0
+          ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
+          : <QueryState q={modules} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState>)}
       </nav>
       <header className="top" aria-busy={restoring || undefined}>
         {!restoring && <>
@@ -177,12 +189,14 @@ export function Shell() {
       </header>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
       <PageMain className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
+        <ReadFailureContext.Provider value={recovery}>
         <SessionRecovery>
         <ChangeNotice key={pathname} />
         <HeldNotice />
         {!platform && <DomainNotice />}{!platform && !(access.isError && support.isError && !support.data) && <ActiveSupportBanner />}
         <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Outlet /></PhaseBand>}</RouteGuard>
         </SessionRecovery>
+        </ReadFailureContext.Provider>
       </PageMain>
       {jump && (
         <Suspense fallback={null}>
