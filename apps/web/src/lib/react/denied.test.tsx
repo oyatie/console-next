@@ -19,3 +19,9 @@ test("refusal metadata stays visible, without a duplicate access link or empty r
   expect(markup).not.toMatch(/<span[^>]*><\/span>|<p><\/p>/);
   expect(markup).not.toContain("internal basis");
 });
+
+test("a local route refusal never invents a server error code", () => {
+  const markup = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><Denied /></QueryClientProvider>);
+  expect(markup).not.toContain("access_denied");
+  expect(markup).not.toContain("<code>");
+});

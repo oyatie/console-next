@@ -82,7 +82,7 @@ export type ReadBack = { to: LinkProps["to"]; label: string };
 export function Denied({ screen, error, title, reason, back, need }: { screen?: string; error?: unknown; title?: string; reason?: string; back?: ReadBack; need?: AccessRequirement }) {
   const mineId = useId();
   const granters = useQuery(grantersQuery);
-  const code = error instanceof ApiError ? error.code : "access_denied";
+  const code = error instanceof ApiError ? error.code : undefined;
   const why = code === "out_of_scope" ? "common.denied.scope" : code === "scope_tenant_wide_only" ? "common.denied.tenantWide" : "common.denied.reason";
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
   return (
@@ -102,7 +102,7 @@ export function Denied({ screen, error, title, reason, back, need }: { screen?: 
         <summary>{t("common.denied.why")}</summary>
         <p>{reason ?? t(why)}</p>
       </details>
-      <div className="muted"><code>{code}</code><ReadReference error={error} /></div>
+      {error != null && <div className="muted">{code && <code>{code}</code>}<ReadReference error={error} /></div>}
       </div>
     </Card></div>
   );
