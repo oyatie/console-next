@@ -41262,7 +41262,7 @@
         {
           "file": "apps/web/font-subsets.requirements.txt",
           "user": "scripts/font-subsets.mjs",
-          "pin": "brotli==1.2.0",
+          "pin": "brotli==1.2.1",
           "layer": "build/tooling"
         }
       ],
@@ -41302,7 +41302,7 @@
       "architectureRecord": "docs/architecture/frontend-module-map.md",
       "exitPlan": "Retain generated fonts until an approved replacement proves glyph, weight, layout and transfer parity.",
       "license": "MIT",
-      "lastRelease": "Pinned Brotli 1.2.0",
+      "lastRelease": "Pinned Brotli 1.2.1",
       "maintainers": "google/brotli upstream project",
       "footprint": "Build-time only; executable tooling excluded from the browser bundle",
       "securityProcess": "SHA-256 pinned binary-only wheels; no transitive dependency installation; offline input/output verification in builds",
