@@ -10672,10 +10672,50 @@
       "source": "docs/quality/dependency-ruling-2026-10-29.md"
     },
     "alternatives": "Existing dynamic font subsets; repository-native OpenType/WOFF2 subsetter (substantially larger and riskier)",
-    "reason": "approved_by owner 2026-10-29; allowed use: generating web font subsets from the UI catalogs; build-time only; includes the MIT Brotli WOFF2 codec",
+    "reason": "approved_by owner 2026-10-29; allowed use: generating web font subsets from the UI catalogs; build-time only",
     "evidence": [
       "https://github.com/fonttools/fonttools",
       "https://fonttools.readthedocs.io/en/latest/subset/",
+      "docs/quality/dependency-ruling-2026-10-29.md",
+      "apps/web/font-subsets.requirements.txt"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "approvedUsers": [
+      "scripts/font-subsets.mjs"
+    ],
+    "approvedUses": [
+      {
+        "user": "scripts/font-subsets.mjs",
+        "layer": "build/tooling"
+      }
+    ],
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "exitPlan": "Retain generated fonts until an approved replacement proves glyph, weight, layout and transfer parity.",
+    "license": "MIT",
+    "lastRelease": "Pinned fontTools 4.67.0",
+    "maintainers": "fonttools upstream project",
+    "footprint": "Build-time only; executable tooling excluded from the browser bundle",
+    "securityProcess": "SHA-256 pinned binary-only wheels; no transitive dependency installation; offline input/output verification in builds"
+  },
+  "ci-tool:brotli": {
+    "group": "CI and platform tools",
+    "job": "WOFF2 compression for fontTools subsets",
+    "verdict": "keep",
+    "convention": "Explicit owner approval",
+    "class": "STANDARD",
+    "approved_by": "owner",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-29",
+      "ruling": "Owner-approved Brotli 1.2.0 for fontTools WOFF2 compression",
+      "source": "docs/quality/dependency-ruling-2026-10-29.md"
+    },
+    "alternatives": "Existing dynamic font subsets; repository-native OpenType/WOFF2 subsetter (substantially larger and riskier)",
+    "reason": "approved_by owner 2026-10-29; allowed use: WOFF2 compression for fontTools subsets; build/tooling only",
+    "evidence": [
       "https://github.com/google/brotli",
       "docs/quality/dependency-ruling-2026-10-29.md",
       "apps/web/font-subsets.requirements.txt"
@@ -10695,9 +10735,9 @@
     ],
     "architectureRecord": "docs/architecture/frontend-module-map.md",
     "exitPlan": "Retain generated fonts until an approved replacement proves glyph, weight, layout and transfer parity.",
-    "license": "MIT (fontTools and Brotli codec)",
-    "lastRelease": "Pinned fontTools 4.67.0; Brotli 1.2.0",
-    "maintainers": "fonttools and google/brotli upstream projects",
+    "license": "MIT",
+    "lastRelease": "Pinned Brotli 1.2.0",
+    "maintainers": "google/brotli upstream project",
     "footprint": "Build-time only; executable tooling excluded from the browser bundle",
     "securityProcess": "SHA-256 pinned binary-only wheels; no transitive dependency installation; offline input/output verification in builds"
   }

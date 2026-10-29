@@ -9,12 +9,13 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (file) => readFileSync(resolve(root, file), "utf8");
 const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
 const tools = [
-  ["fontTools/pyftsubset", "apps/web/font-subsets.requirements.txt", read("apps/web/font-subsets.requirements.txt").split("\n").filter(line => /^\w+==/.test(line)).map(line => line.split(/\s/)[0]).join("; "), "build/tooling"],
+  ["fontTools/pyftsubset", "apps/web/font-subsets.requirements.txt", read("apps/web/font-subsets.requirements.txt").match(/^fonttools==\S+/m)[0], "build/tooling"],
+  ["brotli", "apps/web/font-subsets.requirements.txt", read("apps/web/font-subsets.requirements.txt").match(/^brotli==\S+/m)[0], "build/tooling"],
   ["Rust", "rust-toolchain.toml", JSON.parse(read("rust-toolchain.toml").match(/^channel\s*=\s*("[^"]+")/m)[1]), "build/tooling"],
   ["Node.js", "package.json", JSON.parse(read("package.json")).engines.node, "build/tooling"],
   ["npm", ".github/workflows/ci.yml", "runner bundled; not pinned", "CI/supply chain"],
   ["Chromium", ".github/workflows/ci.yml", "Playwright lock pin", "test"],
-].map(([name, file, pin, layer]) => ({ kind: "ci-tool", name, direct: true, uses: [{ file, user: name === "fontTools/pyftsubset" ? "scripts/font-subsets.mjs" : file, pin, layer }], callsites: [], evidence: [] }));
+].map(([name, file, pin, layer]) => ({ kind: "ci-tool", name, direct: true, uses: [{ file, user: file === "apps/web/font-subsets.requirements.txt" ? "scripts/font-subsets.mjs" : file, pin, layer }], callsites: [], evidence: [] }));
 // Refresh an existing dependency/tool/image pin without reclassifying it or requiring Cargo metadata.
 const approvedTool = process.argv.find((arg) => arg.startsWith("--approved-tool="))?.split("=")[1];
 const pins = approvedTool ?? process.argv.find((arg) => arg.startsWith("--pins="))?.slice("--pins=".length);

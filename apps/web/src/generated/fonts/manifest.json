@@ -1,23 +1,10 @@
 {
   "inputs": {
-    "scripts/font-subsets.mjs": "82f18baf7c660241603ae037dce21f9fb652b5f332d4a0200e40a037258ed4b9",
+    "scripts/font-subsets.mjs": "f836f9dbf20d71f23eb00584fb305cba36ebddf047df7fcfe3217960d89d7f2c",
     "apps/web/font-subsets.requirements.txt": "02df7bb6cfa022898f2e02e8af0ba1a94e2747d34c92207feac13b3e5606be40",
     "node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2": "9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4",
     "node_modules/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css": "2973bcae80262dcb630cfb793fbf6af29bd986c769ee54953fb3e5b3e32323ca",
-    "packages/i18n/src/catalogs/boot-consent.ts": "4d5786cef34b8e695e3cc6387d3ea21775603c7864a3d16068a3a9ceb50930f4",
-    "packages/i18n/src/catalogs/boot-idle.ts": "e682c902e8c77150c46a673563032d03e64e2c60adb9c8d9c9b257804452aca9",
-    "packages/i18n/src/catalogs/boot-support.ts": "730284e54f7745f8f6ca5fa40b07416b7cd3f282cdf92a52223595041d46613c",
-    "packages/i18n/src/catalogs/boot.ts": "e8c249d9e41bf1a09aaca55ceb0ac6e46cca64560a53082a4293aff670264d9d",
-    "packages/i18n/src/catalogs/en/asof.ts": "0b5657a9ff28114dc89da9bdea5fc7bf63bd2d544de84685f711e8919769cc8e",
-    "packages/i18n/src/catalogs/en/structure-chart.ts": "32a7f3fb5f8eca8a783c08ce18b626db2fa60a7ab41aa87f2e900bb33e169d97",
-    "packages/i18n/src/catalogs/en/structure.ts": "c415a3cc726a9038580ef11d3a7b8a174bd51b35314d2bcca14b28787eef2b73",
-    "packages/i18n/src/catalogs/en/ui-date.ts": "256a7dd75a97f58aa875c94cf9160e5a73d7107531e9259fc896f565107f977c",
-    "packages/i18n/src/catalogs/en/ui-org-canvas.ts": "4ad4aa7a4f249a9112fff69411ad56ca89ee8833696797ff1e879b94a3fd3826",
-    "packages/i18n/src/catalogs/ko/asof.ts": "e1d96feb44e4fd9d2d75f76cb50528be980d53db91fb4301e147d005fc451d7b",
-    "packages/i18n/src/catalogs/ko/structure-chart.ts": "08e00de5992d8a5f2e1151ba70f104cffe1fadad1e31a98acb5b2995eadf799d",
-    "packages/i18n/src/catalogs/ko/structure.ts": "6ea468aaabf685d58a97f3e4fcbb94df6b026fd30939e33b87e7eabe5247852b",
-    "packages/i18n/src/catalogs/ko/ui-date.ts": "26790a2b34f94691c443d89831a71dff032f014131003509c8d2c5de33ae2366",
-    "packages/i18n/src/catalogs/ko/ui-org-canvas.ts": "8200d8fc7adede5e5dcc245997e1dee31acbb1537b8a676332493ec03b5dbe45"
+    "catalogCharacters": "6b51e62f50aaa68599ca32791d27def7bf34330268c371bee13bb46e18106a3a"
   },
   "outputs": {
     "catalog.woff2": "a4ef733ea0bd2b13cbdbfef5a08edfb24612e4903eb2ed1b413aefd1b727a927",
