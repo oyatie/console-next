@@ -63,7 +63,9 @@ test("person labels and deliberate namesake selection work in all five adopted p
   await revealUnit(admin, SETUP_DEPARTMENT);
   await admin.locator("#act-dept-head").click();
   await pickNamesake(admin, "부서장");
-  await expect(admin.getByRole("complementary", { name: SETUP_DEPARTMENT, exact: true }).getByRole("link", { name: /선택동명.*PK-0002/ })).toBeVisible();
+  const head = admin.getByRole("dialog", { name: "부서장 지정", exact: true });
+  await expect(head.getByRole("link", { name: /선택동명.*PK-0002/ })).toBeVisible();
+  await head.getByRole("button", { name: "닫기", exact: true }).click();
 
   // Inspect the existing identity sheet without committing an irreversible merge.
   await go(admin, `${first}?act=identity`);
@@ -71,7 +73,7 @@ test("person labels and deliberate namesake selection work in all five adopted p
   await chooseRadio(identity, /같은 사람입니다/);
   await pickNamesake(admin, "남길 기록", 2);
   await expect(identity.getByRole("link", { name: /선택동명.*PK-0002/ })).toBeVisible();
-  await identity.getByRole("button", { name: "취소", exact: true }).click();
+  await identity.getByRole("button", { name: "닫기", exact: true }).click();
 
   await officeSchedule(admin);
   const api = apiOf(admin, bearer);
