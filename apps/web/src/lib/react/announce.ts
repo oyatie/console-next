@@ -36,22 +36,28 @@ const dialogOutside = (el: HTMLElement | null) =>
  * Moves focus to a stable landmark (a heading with tabIndex -1) after a command changed the page
  * under the user: the control they used, or the dialog trigger React Aria restores to, may be gone.
  * The first id present in the page wins. It waits until no dialog outside the target is mounted, then
- * one more frame, because React Aria restores focus to the trigger in the frame after the dialog
- * unmounts; focusing earlier loses that race (the unmount can land after any fixed frame count).
+ * one more frame. An explicit return owns React Aria's cancelable restoration event, so a virtualized
+ * collection cannot enqueue another focus move to a recycled trigger after the return has completed.
  * With no dialog this is two frames, as before. A target not in the page yet is waited for, up to MAX_FRAMES.
  * The user's next key or pointer action cancels a pending restore: it must not steal their new focus.
  */
-const focusWhen = (allowed: () => boolean, ...ids: string[]) => {
+const focusWhen = (allowed: () => boolean, ownsRestore: boolean, ...ids: string[]) => {
   let quiet = 0;
   let frames = 0;
   let cancelled = false;
+  const ownRestore = (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
   const stop = () => {
     cancelled = true;
     document.removeEventListener("pointerdown", stop, true);
     document.removeEventListener("keydown", stop, true);
+    document.removeEventListener("react-aria-focus-scope-restore", ownRestore, true);
   };
   document.addEventListener("pointerdown", stop, true);
   document.addEventListener("keydown", stop, true);
+  if (ownsRestore) document.addEventListener("react-aria-focus-scope-restore", ownRestore, true);
   const tick = () => {
     if (cancelled) return;
     const el = ids.map((id) => document.getElementById(id)).find((e) => e !== null) ?? null;
@@ -69,7 +75,7 @@ const focusWhen = (allowed: () => boolean, ...ids: string[]) => {
   return stop;
 };
 
-export const focusSoon = (...ids: string[]) => focusWhen(() => true, ...ids);
+export const focusSoon = (...ids: string[]) => focusWhen(() => true, true, ...ids);
 
 // The router remounts on locale changes; that must update the title without taking focus from the language picker.
 let presented: { pathname: string; title: string } | undefined;
@@ -92,7 +98,7 @@ export function useRoutePresentation(pathname: string, ready: boolean) {
         if (!interacted && !document.activeElement?.closest("[data-side-panel]")) {
           heading.id ||= "route-heading";
           heading.tabIndex = -1;
-          cancelFocus = focusWhen(() => !document.activeElement?.closest("main"), heading.id);
+          cancelFocus = focusWhen(() => !document.activeElement?.closest("main"), false, heading.id);
         }
       }
       const scope = document.querySelector<HTMLElement>("[data-console-scope]")?.dataset.consoleScope;

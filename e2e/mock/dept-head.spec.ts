@@ -63,13 +63,23 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   await expect(page).toHaveURL(/view=list.*act=dept-head/);
   await picker.press("ArrowDown");
   await page.getByRole("option", { name: /김부서장/ }).click();
+  await page.evaluate(() => {
+    const filter = document.getElementById("registry-vacant")!;
+    filter.dataset.focusReturns = "0";
+    filter.addEventListener("focus", () => { filter.dataset.focusReturns = String(Number(filter.dataset.focusReturns) + 1); });
+  });
   await sheet.getByRole("button", { name: "부서장 지정", exact: true }).click();
   await expect(sheet).toBeHidden();
   await expect(page.getByRole("button", { name: "선택 해제", exact: true })).toHaveCount(0);
   expect(saved).toBe(true);
   const remaining = page.getByRole("button", { name: "부서장 없음 1", exact: true });
   await expect(remaining).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("grid")).toHaveAttribute("aria-rowcount", "4");
   await expect(remaining).toBeFocused();
+  // A transient focus hit must not pass before the grid's pending focus effect runs.
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(remaining).toBeFocused();
+  await expect(remaining).toHaveAttribute("data-focus-returns", "1");
   await remaining.click();
   await expect(page.getByRole("grid")).toContainText("김부서장");
   for (const width of [1440, 390]) {
