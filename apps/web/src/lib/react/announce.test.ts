@@ -12,7 +12,8 @@ function page() {
   const heading = { id: "history", textContent: "People", focus: () => (state.focused = "heading") };
   vi.stubGlobal("document", {
     addEventListener: input.addEventListener.bind(input),
-    removeEventListener: input.removeEventListener.bind(input),
+    // Node's EventTarget requires the options object to remove capture listeners like a browser.
+    removeEventListener: (type: string, listener: EventListener, capture = false) => input.removeEventListener(type, listener, { capture }),
     getElementById: (id: string) => (id === "history" ? heading : null),
     querySelectorAll: () => (state.dialog ? [{ contains: () => false }] : []),
     querySelector: (selector: string) => selector.includes("h1") ? heading : null,
@@ -107,12 +108,46 @@ test("a dialog that unmounts late does not win: its focus restore runs first, th
   expect(state.focused).toBe("heading");
 });
 
+test("an explicit return owns the dialog restore before a virtualized table can queue another focus move", () => {
+  const { state, frame, input, later } = page();
+  state.dialog = true;
+  focusSoon("history");
+  frame();
+  state.dialog = false;
+  const restore = new Event("react-aria-focus-scope-restore", { cancelable: true, bubbles: true });
+  const stopPropagation = vi.spyOn(restore, "stopPropagation");
+  input.dispatchEvent(restore);
+  // React Aria's table intercepts this event and schedules a collection focus effect after the return.
+  if (!stopPropagation.mock.calls.length) later(() => later(() => { state.focused = "other-row"; }));
+  frame();
+  frame();
+  expect(restore.defaultPrevented).toBe(true);
+  expect(state.focused).toBe("heading");
+  expect(stopPropagation).toHaveBeenCalledOnce();
+  const next = new Event("react-aria-focus-scope-restore", { cancelable: true });
+  input.dispatchEvent(next);
+  expect(next.defaultPrevented).toBe(false);
+});
+
+test("route presentation leaves React Aria in charge of its dialog restore", () => {
+  const { frame, input } = page();
+  const cleanup = present("/dialog-owns-return");
+  frame();
+  const restore = new Event("react-aria-focus-scope-restore", { cancelable: true });
+  input.dispatchEvent(restore);
+  expect(restore.defaultPrevented).toBe(false);
+  cleanup?.();
+});
+
 test("a dialog that stays open keeps focus inside it: the call gives up", () => {
-  const { state, frame } = page();
+  const { state, frame, input } = page();
   state.dialog = true;
   focusSoon("history");
   for (let i = 0; i < 100; i++) frame();
   expect(state.focused).toBe("");
+  const restore = new Event("react-aria-focus-scope-restore", { cancelable: true });
+  input.dispatchEvent(restore);
+  expect(restore.defaultPrevented).toBe(false);
 });
 
 test("a target still rendering is waited for (a tab a navigation opens), not given up after two quiet frames", () => {
@@ -148,6 +183,9 @@ for (const type of ["pointerdown", "keydown"]) {
     state.dialog = false;
     frame();
     input.dispatchEvent(new Event(type));
+    const restore = new Event("react-aria-focus-scope-restore", { cancelable: true });
+    input.dispatchEvent(restore);
+    expect(restore.defaultPrevented).toBe(false);
     state.focused = "chosen-box";
     frame();
     expect(state.focused).toBe("chosen-box");
