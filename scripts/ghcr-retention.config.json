@@ -1,0 +1,7 @@
+{
+  "repository": "oyatie/console-next",
+  "packages": ["console-next/console", "console-next/console-deploy", "console-next/console-unsigned"],
+  "lastDevBuilds": 10,
+  "inventoryConcurrency": 8,
+  "requiredSources": { "production": 1, "canary": 1, "staging": 1, "rollback": 5, "exit-test": 1, "in-flight": 0 }
+}
