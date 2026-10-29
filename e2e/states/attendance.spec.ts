@@ -257,7 +257,15 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     if (detail && width === 390) await page.getByRole("grid").evaluate(el => { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; });
     const inputs = detail ? page.getByRole("textbox", { name: /^근태직원 \d+ 입력/ }) : input;
     await expect(inputs.first()).toBeVisible();
-    for (const control of await inputs.all()) await expect(control).toHaveAccessibleDescription(t("attendanceRecords.grammar.hint"));
+    for (const control of await inputs.all()) {
+      await expect(control).toHaveAccessibleDescription(t("attendanceRecords.grammar.hint"));
+      const target = await control.evaluate((el: HTMLInputElement) => {
+        const { width, height } = el.labels![0]!.getBoundingClientRect();
+        return { width, height };
+      });
+      expect(target.width, "the input label is a pointer target").toBeGreaterThanOrEqual(24);
+      expect(target.height, "the input label is a pointer target").toBeGreaterThanOrEqual(24);
+    }
     const editable = inputs.last();
     await editable.click();
     await page.keyboard.type("+2");
