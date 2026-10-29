@@ -7,6 +7,7 @@ use axum::response::IntoResponse;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 use std::sync::Arc;
+use tower::ServiceExt;
 
 /// Paths the SPA must never answer: unknown backend URLs stay JSON 404s
 /// instead of silently becoming `index.html`.
@@ -107,7 +108,7 @@ pub(crate) async fn serve_spa(
     // index.html, which would then be cached as immutable JS).
     let immutable = path.starts_with("/assets/");
     // Everything else is revalidated against `etag` alone. ServeDir judges
-    // these conditionals by mtime inside `try_call` (a 304 or 412 before we
+    // these conditionals by mtime inside the service (a 304 or 412 before we
     // see the response), so they never reach it; If-Modified-Since is
     // ignored as Last-Modified is never sent (RFC 9110 §13.1.3).
     let mut not_modified = false;
@@ -125,20 +126,19 @@ pub(crate) async fn serve_spa(
             conditionals.remove(name);
         }
     }
+    // Use the service's expected-I/O-to-404 mapping; try_call propagates those
+    // errors since 0.7.1: https://github.com/tower-rs/tower-http/pull/718.
     let served = if immutable {
-        ServeDir::new(&*dist).try_call(request).await
+        ServeDir::new(&*dist).oneshot(request).await
     } else {
         ServeDir::new(&*dist)
             .fallback(ServeFile::new(dist.join("index.html")))
-            .try_call(request)
+            .oneshot(request)
             .await
     };
     let mut response = match served {
         Ok(response) => response.map(Body::new),
-        Err(err) => {
-            tracing::error!(error = %err, "serving SPA file failed");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
+        Err(err) => match err {},
     };
     if !immutable {
         let found = response.status() == StatusCode::OK;
