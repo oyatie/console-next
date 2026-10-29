@@ -49992,7 +49992,7 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "6.16.0",
+          "requirement": "6.16.1",
           "layer": "build/tooling",
           "override": "typed-rest-client > qs"
         }
@@ -50011,10 +50011,10 @@
       "pins": [
         {
           "location": "node_modules/qs",
-          "version": "6.16.0",
+          "version": "6.16.1",
           "license": "BSD-3-Clause",
-          "integrity": "sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==",
-          "source": "https://registry.npmjs.org/qs/-/qs-6.16.0.tgz"
+          "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
+          "source": "https://registry.npmjs.org/qs/-/qs-6.16.1.tgz"
         }
       ],
       "resolvedParents": [

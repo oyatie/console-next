@@ -14,20 +14,22 @@ const tools = [
   ["npm", ".github/workflows/ci.yml", "runner bundled; not pinned", "CI/supply chain"],
   ["Chromium", ".github/workflows/ci.yml", "Playwright lock pin", "test"],
 ].map(([name, file, pin, layer]) => ({ kind: "ci-tool", name, direct: true, uses: [{ file, user: file, pin, layer }], callsites: [], evidence: [] }));
-// Refresh an existing tool/image pin without reclassifying dependencies or requiring Cargo metadata.
+// Refresh an existing dependency/tool/image pin without reclassifying it or requiring Cargo metadata.
 const pins = process.argv.find((arg) => arg.startsWith("--pins="))?.slice("--pins=".length);
 if (pins) {
   const register = JSON.parse(read("docs/quality/dependency-register.json"));
   const current = [...inventory(files, read), ...tools];
-  const selected = register.rows.filter((r) => ["container", "ci-tool"].includes(r.kind) && `${r.kind}:${r.name}` === pins);
+  const selected = register.rows.filter((r) => ["container", "ci-tool", "npm"].includes(r.kind) && `${r.kind}:${r.name}` === pins);
   if (selected.length !== 1) throw new Error(`unregistered tool/image: ${pins}; run full review`);
   for (const row of selected) {
     const observed = current.find((r) => r.kind === row.kind && r.name === row.name);
     for (const use of row.uses) {
-      const matches = observed?.uses.filter((u) => u.file === use.file && u.user === use.user && u.layer === use.layer);
+      const matches = observed?.uses.filter((u) => u.file === use.file && u.user === use.user && u.layer === use.layer && u.override === use.override);
       if (matches?.length !== 1) throw new Error(`tool/image use changed: ${row.name} in ${use.file}; run full review`);
-      use.pin = matches[0].pin;
+      const field = row.kind === "npm" ? "requirement" : "pin";
+      use[field] = matches[0][field];
     }
+    if (row.kind === "npm") row.pins = observed.pins;
   }
   for (const [file, body] of [
     ["docs/quality/dependency-register.json", JSON.stringify(register, null, 2) + "\n"],

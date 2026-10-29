@@ -202,8 +202,8 @@ test("security workflow templates use the shared Node major", () => {
   assert.deepEqual(pins, [read(".node-version").trim(), read(".node-version").trim()]);
 });
 
-test("tool/image pin regeneration is current and refuses an unregistered image", () => {
-  for (const [pins, status] of [["container:docker.io/library/node", 0], ["ci-tool:Node.js", 0], ["container:unregistered/image", 1]]) {
+test("dependency/tool/image pin regeneration is current and refuses an unregistered image", () => {
+  for (const [pins, status] of [["container:docker.io/library/node", 0], ["ci-tool:Node.js", 0], ["npm:qs", 0], ["container:unregistered/image", 1]]) {
     const result = spawnSync(process.execPath, ["scripts/quality/generate-tooling-ledger.mjs", `--pins=${pins}`], { encoding: "utf8" });
     assert.equal(result.status, status, result.stdout + result.stderr);
     if (status) assert.match(result.stderr, /unregistered tool\/image: container:unregistered\/image/);
