@@ -10667,7 +10667,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List payroll draft runs (admin; EXECUTIVE/SUPER_ADMIN only, audited read) */
+        /** List payroll draft runs (tenant pay:view, audited read) */
         get: operations["listPayrollRuns"];
         put?: never;
         post?: never;
@@ -10684,7 +10684,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one payroll draft run and its per-employee readiness lines (admin) */
+        /** Get one payroll draft run and its per-employee readiness lines (tenant pay:view) */
         get: operations["getPayrollRun"];
         put?: never;
         post?: never;

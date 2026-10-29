@@ -12,8 +12,8 @@
 //!    reads an empty page (200), never a 403; a linked employee reads ONLY
 //!    their own draft lines, never a coworker's, including when a foreign
 //!    `employee_id` query param is supplied;
-//!  * `GET /api/v1/payroll/runs` / `/runs/{id}` are EXECUTIVE/SUPER_ADMIN-only
-//!    admin reads — MEMBER and a branch-scoped ADMIN are 403;
+//!  * `GET /api/v1/payroll/runs` / `/runs/{id}` require tenant pay:view in Cedar;
+//!    legacy titles and narrower grants alone cannot read tenant totals;
 //!  * another org's runs are invisible to a SUPER_ADMIN of THIS org (RLS).
 //!  * empty-tenant admin listing sits on a run minted by `payroll.create_run`
 //!    after Company → OrgUnit → JobPosition → Person → hr.appoint.
@@ -56,6 +56,13 @@ use time::macros::date;
 use time::{Duration, OffsetDateTime, Time};
 use tower::ServiceExt;
 use uuid::Uuid;
+
+#[path = "fixtures/pay_view.rs"]
+mod pay_view;
+
+#[path = "support/run_read_access.rs"]
+mod run_read_access;
+use run_read_access::get_unauthenticated;
 
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
@@ -151,15 +158,6 @@ async fn get(service: axum::Router, uri: &str, token: &str) -> JsonResponse {
     let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let json = serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({}));
     JsonResponse { status, json }
-}
-
-async fn get_unauthenticated(service: axum::Router, uri: &str) -> StatusCode {
-    let request = Request::builder()
-        .uri(uri)
-        .method("GET")
-        .body(Body::empty())
-        .unwrap();
-    service.oneshot(request).await.unwrap().status()
 }
 
 fn test_audit_event(
@@ -627,7 +625,7 @@ async fn payslips_me_is_self_scoped_never_a_coworkers(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn runs_admin_read_is_executive_and_super_admin_only(pool: PgPool) {
+async fn runs_admin_read_requires_pay_view(pool: PgPool) {
     let keys = keys();
     let org = OrgId::one();
     let super_admin = UserId::new();
@@ -660,6 +658,7 @@ async fn runs_admin_read_is_executive_and_super_admin_only(pool: PgPool) {
     .await;
     assert_eq!(admin_read.status, StatusCode::FORBIDDEN);
 
+    pay_view::grant_view(&pool, org, super_admin, None).await;
     let super_admin_read = get(
         service,
         PAYROLL_RUNS_PATH,
@@ -690,6 +689,7 @@ async fn runs_are_org_isolated_over_http(pool: PgPool) {
     seed_run(&pool, other_org, other_actor).await;
 
     let service = app(runtime_role_pool(&pool).await, &keys);
+    pay_view::grant_view(&pool, org, super_admin, None).await;
     let read = get(
         service,
         PAYROLL_RUNS_PATH,
@@ -710,6 +710,7 @@ async fn empty_tenant_runs_list_sits_on_canonical_org_tree(owner_pool: PgPool) {
     let tree = provision_empty_tenant_appointed_run(&owner_pool).await;
     let keys = keys();
     let service = app(runtime_role_pool(&owner_pool).await, &keys);
+    pay_view::grant_view(&owner_pool, tree.org, tree.actor, None).await;
     let token = bearer(&owner_pool, &keys, tree.actor, tree.org, "SUPER_ADMIN").await;
 
     let listed = get(service.clone(), PAYROLL_RUNS_PATH, &token).await;

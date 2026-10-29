@@ -48,8 +48,7 @@ use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::rand_core::OsRng;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
-use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::collections::BTreeMap;
 use time::format_description::well_known::Rfc3339;
 use time::macros::date;
@@ -102,6 +101,7 @@ async fn lifecycle_writes_deny_without_leakage_and_cross_tenant_is_invisible(poo
     // An org-B EXECUTIVE: org A's run is indistinguishable from a missing one
     // on both the read and the write path (RLS deny-by-omission).
     let outsider = seed_user(&pool, org_b, "EXECUTIVE", None).await;
+    pay_view::grant_view(&pool, org_b, outsider, None).await;
     let outsider_token = keys.token(&pool, outsider, org_b, "EXECUTIVE").await;
     for (method, uri) in [
         ("GET", format!("/api/v1/payroll/runs/{run}")),

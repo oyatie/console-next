@@ -15,6 +15,7 @@ async fn close_preflight_persists_no_verdict_only_its_read_audit(pool: PgPool) {
     seed_period_lock(&pool, org).await;
 
     // Warm session activity before the all-table snapshot so it cannot mask a preflight write.
+    pay_view::grant_view(&pool, org, executive, None).await;
     let token = keys.token(&pool, executive, org, "EXECUTIVE").await;
     let (status, body) = send(
         &rt,

@@ -14,7 +14,14 @@
 //! won amounts. Issued 명세서 live in the statutory-notice vault
 //! (`GET /api/v1/me/inbox-docs?filter=kind:payslip`, `console-inbox-rest`).
 //!
-//! # Branch scoping
+//! # Access
+//!
+//! Run list and detail reads use Cedar `pay:view` at the tenant node, with live
+//! facts loaded inside the audited transaction. Runs do not yet carry a legal
+//! entity, so narrower grants cannot read these tenant-wide rows or totals.
+//! Other lifecycle endpoints retain their existing gate until the next slice.
+//!
+//! # Legacy lifecycle scoping
 //!
 //! `payroll_draft_runs`/`payroll_draft_lines` have an `org_id` column only —
 //! no `branch_id`. Admin reads are therefore gated org-wide
@@ -37,6 +44,7 @@
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
 
+mod access;
 mod lifecycle;
 mod payslip_draft;
 
@@ -219,13 +227,12 @@ async fn list_runs_page(
     params: PageParams,
 ) -> Result<PayrollRunPage, RestError> {
     let principal = principal_from_headers(state, headers).await?;
-    require_run_read(&principal)?;
 
-    let org = principal.org_id;
-    let actor = principal.user_id;
+    let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     with_audits::<_, PayrollRunPage, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            access::require_run_read_in_tx(tx, org, actor).await?;
             let page = list_runs_in_tx(tx, params.limit, params.offset)
                 .await
                 .map_err(RestError::from_store)?;
@@ -260,13 +267,13 @@ async fn get_run(
     Query(params): Query<PageParams>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_read(&principal)?;
 
     let org = principal.org_id;
     let actor = principal.user_id;
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, Option<PayrollRunDetail>, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            access::require_run_read_in_tx(tx, org, actor).await?;
             let detail = get_run_in_tx(tx, run_id, params.limit, params.offset)
                 .await
                 .map_err(RestError::from_store)?;

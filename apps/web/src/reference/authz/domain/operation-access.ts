@@ -222,6 +222,22 @@ export const operationAccess = {
       "WORKPLACE"
     ]
   },
+  "GET /api/v1/payroll/runs": {
+    "domain": "pay",
+    "level": "view",
+    "tenant": true,
+    "scopes": [
+      "TENANT"
+    ]
+  },
+  "GET /api/v1/payroll/runs/{id}": {
+    "domain": "pay",
+    "level": "view",
+    "tenant": true,
+    "scopes": [
+      "TENANT"
+    ]
+  },
   "GET /api/v1/period-locks": {
     "domain": "exceptions",
     "level": "edit",

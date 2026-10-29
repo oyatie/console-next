@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "pay:view", "scope": "tenant"}
 tags:
 - payroll
 operationId: listPayrollRuns
-summary: List payroll draft runs (admin; EXECUTIVE/SUPER_ADMIN only, audited read)
+summary: List payroll draft runs (tenant pay:view, audited read)
 security:
 - bearerAuth: []
 parameters:

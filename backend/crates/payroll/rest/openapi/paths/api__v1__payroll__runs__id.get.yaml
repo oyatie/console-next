@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "pay:view", "scope": "tenant"}
 tags:
 - payroll
 operationId: getPayrollRun
-summary: Get one payroll draft run and its per-employee readiness lines (admin)
+summary: Get one payroll draft run and its per-employee readiness lines (tenant pay:view)
 security:
 - bearerAuth: []
 parameters:
