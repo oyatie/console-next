@@ -83,7 +83,7 @@ for (const width of [1440, 390]) test(`detail population, group headers and comp
   await page.keyboard.type("+2");
   await expect(input).toBeFocused();
   await expect(input).toHaveAttribute("aria-invalid", "true");
-  await expect(input).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
+  await expect(input).toHaveAccessibleDescription(`${t("attendanceRecords.grammar.hint")} ${t("attendanceRecords.refusal.overtime_typed")}`);
   expect(fixture.reads.some(q => q.includes("rows=all") && q.includes("no_schedule_only=true"))).toBe(true);
   expect(fixture.unexpected).toEqual([]);
 });
@@ -131,7 +131,7 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
   await last.click();
   await page.keyboard.type("+2");
   await expect(last).toBeFocused();
-  await expect(last).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
+  await expect(last).toHaveAccessibleDescription(`${t("attendanceRecords.grammar.hint")} ${t("attendanceRecords.refusal.overtime_typed")}`);
   await find.clear();
   await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
   const paper = page.getByRole("table", { name: "일별 · 자세히", exact: true });

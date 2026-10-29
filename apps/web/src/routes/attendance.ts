@@ -11,7 +11,6 @@ const load = () => import("../features/attendance/ui/attendance-page");
 const Schedule = lazyRouteComponent(screen(load), "AttendancePage");
 const Month = lazyRouteComponent(screen(load), "MonthPage");
 const Day = lazyRouteComponent(screen(load), "DayPage");
-const Week = lazyRouteComponent(screen(load), "WeeklyPage");
 const Person = lazyRouteComponent(screen(load), "PersonPage");
 const Issues = lazyRouteComponent(screen(load), "IssuesPage");
 const Close = lazyRouteComponent(screen(load), "ClosePage");
@@ -39,7 +38,7 @@ const attendance = createRoute({
   }),
   component: () => {
     const search = attendance.useSearch();
-    return createElement(search.person ? Person : search.tab === "issues" ? Issues : search.tab === "close" ? Close : search.tab === "overtime" ? Overtime : search.tab === "schedule" ? Schedule : search.tab === "day" ? Day : search.tab === "week" ? Week : Month);
+    return createElement(search.person ? Person : search.tab === "issues" ? Issues : search.tab === "close" ? Close : (search.tab === "overtime" || search.tab === "week") ? Overtime : search.tab === "schedule" ? Schedule : search.tab === "day" ? Day : Month);
   },
 });
 

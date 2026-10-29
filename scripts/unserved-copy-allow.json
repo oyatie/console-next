@@ -7,12 +7,6 @@
   },
   {
     "locale": "ko",
-    "id": "attendance.chain.planned",
-    "lane": "LMG-DEPTH-ATT",
-    "gap": "1635"
-  },
-  {
-    "locale": "ko",
     "id": "attendance.refusal.regime_not_supported_yet",
     "lane": "LMG-DEPTH-ATT",
     "gap": "DEPTH:att"
@@ -64,12 +58,6 @@
     "id": "attendanceSchedule.preview.nightHint",
     "lane": "LMG-DEPTH-ATT",
     "gap": "DEPTH:att"
-  },
-  {
-    "locale": "en",
-    "id": "attendance.chain.planned",
-    "lane": "LMG-DEPTH-ATT",
-    "gap": "1635"
   },
   {
     "locale": "en",

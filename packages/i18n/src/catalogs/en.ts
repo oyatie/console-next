@@ -1,4 +1,5 @@
 import { enPayroll } from "./en/payroll";
+import { enUiShiftBar } from "./en/ui-shift-bar";
 import { enNts } from "./en/nts";
 import { enSupport } from "./en/support";
 import { enSupportAccess } from "./en/support-access";
@@ -119,6 +120,7 @@ import { enPeopleJump } from "./en/people-jump";
 
 // Partial: missing ids fall back to Korean (index.test.ts fails on any).
 export const en: Partial<Record<ScreenMessageId, string>> = {
+  ...enUiShiftBar,
   ...enStatutory,
   ...enFormat,
   ...enAsof,

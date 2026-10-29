@@ -31,7 +31,7 @@ test.each([
   expect(enums.labeled).toHaveBeenCalledWith(enums.ATTENDANCE_MARK, mark);
   expect(chip).toContain(`chip--${tone}`);
   expect(chip).toContain(`${glyph}</span> ${enums.label(enums.ATTENDANCE_MARK, mark)}`);
-  expect(html(<MarkGlyph mark={mark} />)).toContain(`class="sr-only">${enums.label(enums.ATTENDANCE_MARK, mark)}`);
+  expect(html(<MarkGlyph mark={mark} />)).toContain(`<span>${enums.label(enums.ATTENDANCE_MARK, mark)}</span>`);
 });
 
 test("future attendance marks stay readable and do not enter known category totals", () => {

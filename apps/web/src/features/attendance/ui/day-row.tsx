@@ -32,11 +32,11 @@ export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRo
         {row.own && <span className="muted"> {t("attendanceRecords.grid.ownTag")}</span>}
       </span>
       <DayBar day={row.day} />
-      <span>{mark && <span className="sr-only">{t(`attendanceRecords.mark.${mark}`)} </span>}{problemText(row)}</span>
+      <span>{mark && <strong>{t(`attendanceRecords.mark.${mark}`)} </strong>}{problemText(row)}</span>
       {row.day.plan.kind === "NO_SCHEDULE" ? (
         <Button size="sm" onClick={onAssign}>{t("attendanceRecords.unscheduled.assign")}</Button>
       ) : inline ? (
-        <Field label={t(start !== undefined ? "attendanceRecords.board.out" : "attendanceRecords.board.record", { name: row.name })} required={false} error={state && !state.ok ? refusalText(state.code) : undefined}>
+        <Field label={t(start !== undefined ? "attendanceRecords.board.out" : "attendanceRecords.board.record", { name: row.name })} required={false} hint={t("attendanceRecords.grammar.hint")} error={state && !state.ok ? refusalText(state.code) : undefined}>
           {(p) => (
             <TextInput
               {...p}

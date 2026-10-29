@@ -1,3 +1,4 @@
+import { EmptyState } from "../../../ui/empty-state";
 import { Banner } from "../../../ui/banner/banner";
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -51,13 +52,14 @@ function DayCell({ d, common }: { d?: ScheduleDay; common?: string }) {
  * data and company holiday), and the layer stack with the one primary, "Assign a schedule to this scope". `[` `]` step the month
  * while focus is in the calendar (never in a text field).
  */
-export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCancel }: {
+export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCancel, onAddPattern }: {
   tree: ScheduleTree;
   search: AttendanceSearch;
   onScope: (kind: ScopeKind, id: string) => void;
   onMonth: (month: string) => void;
   onAssign: (targets: AssignTarget[]) => void;
   onCancel: (l: Layer) => void;
+  onAddPattern: () => void;
 }) {
   const fallback = tree.nodes.find((n) => n.kind === "WORKPLACE") ?? tree.nodes[0];
   const scope = search.kind && search.id ? { kind: search.kind, id: search.id } : fallback && { kind: fallback.kind, id: fallback.id };
@@ -69,9 +71,9 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
     onMonth(shiftMonth(month, e.key === "[" ? -1 : 1));
     return true;
   });
-  if (!scope) return null;
+  if (!scope) return <EmptyState title={t("attendanceSchedule.calendar.empty")} reason={t("attendanceSchedule.calendar.empty.reason")} actions={<Button variant="primary" onClick={onAddPattern}>{t("attendancePatterns.types.add")}</Button>} />;
   return (
-    <div ref={keys} className={s.calendarLayout}>
+    <QueryState q={cal} layout="grid">{c => <div ref={keys} className={s.calendarLayout}>
       <ScopeTree tree={tree} selected={scope.id} onSelect={(n: TreeNode) => onScope(n.kind, n.id)} onPerson={(id) => onScope("PERSON", id)} />
       <div className={s.centerCol}>
         <div className={s.toolbar}>
@@ -79,23 +81,17 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
           <strong className={s.monthText}>{monthText(month)}</strong>
           <IconButton label={t("attendanceSchedule.month.next")} onClick={() => onMonth(shiftMonth(month, 1))}><ChevronRight size={16} aria-hidden /></IconButton>
         </div>
-        <QueryState q={cal} layout="grid">{(c) => <Month c={c} month={month} weeks={weeks} />}</QueryState>
+        <Month c={c} month={month} weeks={weeks} />
         <LayerHistory kind={scope.kind} id={scope.id} onCancel={onCancel} />
       </div>
       <aside className={s.sideCol} aria-label={t("attendanceSchedule.side.label")}>
-        <QueryState q={cal}>
-          {(c) => (
-            <>
-              <LayerStack calendar={c} />
-              <Button variant="primary" onClick={() => onAssign([{ kind: c.scope_kind, id: c.scope_id, name: c.scope_name }])}>
+        <LayerStack calendar={c} />
+        <Button variant="primary" onClick={() => onAssign([{ kind: c.scope_kind, id: c.scope_id, name: c.scope_name }])}>
                 <Plus size={16} aria-hidden /> {t("attendanceSchedule.assign.open")}
               </Button>
-              <MonthHolidays c={c} />
-            </>
-          )}
-        </QueryState>
+        <MonthHolidays c={c} />
       </aside>
-    </div>
+    </div>}</QueryState>
   );
 }
 

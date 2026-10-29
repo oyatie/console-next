@@ -27,7 +27,7 @@ export function PatternsView({ onAdd, onRetired }: { onAdd: () => void; onRetire
         title={t("attendancePatterns.types.title")}
         meta={t("attendancePatterns.types.meta")}
         flush
-        tools={
+        tools={!q.error &&
           <>
             <ToggleButton size="sm" pressed={retired} onClick={() => setRetired(!retired)}>{t("attendancePatterns.types.showRetired")}</ToggleButton>
             <Button size="sm" variant="primary" onClick={onAdd}><Plus size={16} aria-hidden /> {t("attendancePatterns.types.add")}</Button>
