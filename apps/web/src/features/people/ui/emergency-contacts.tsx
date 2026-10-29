@@ -12,7 +12,7 @@ import { Chip } from "../../../ui/chip";
 import { Field, TextInput } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
-import { FieldRow } from "../../../ui/record/field-row";
+import { SubHead } from "../../../ui/record/record-section";
 import { ListAdd, PathNote, RowActions } from "../../../ui/record-actions/record-actions";
 import { Composer } from "../../../ui/composer/composer";
 import { correctEmployee } from "../api";
@@ -75,12 +75,10 @@ export function EmergencyContacts({ c, quick }: { c: Card; quick: Quick }) {
   const full = list.length >= MAX ? t("empContact.full", { max: MAX }) : undefined;
   return (
     <>
-      <FieldRow
-        id="f-emergency"
-        label={label}
-        sub={t("empCard.emergency.count", { count: list.length })}
-        mark={c.editable && <ListAdd object={label} onAdd={() => setOpen({ at: null })} why={full} />}
-      >
+      <div id="f-emergency" className={s.contactField}>
+        <SubHead tools={c.editable && <ListAdd object={label} onAdd={() => setOpen({ at: null })} why={full} />}>
+          {label} · {t("empCard.emergency.count", { count: list.length })}
+        </SubHead>
         {list.length ? (
           <ul className={s.contacts} aria-label={label}>
             {list.map((x, i) => (
@@ -99,7 +97,7 @@ export function EmergencyContacts({ c, quick }: { c: Card; quick: Quick }) {
         ) : (
           <Muted>{t("empCard.none")}</Muted>
         )}
-      </FieldRow>
+      </div>
       {open && <ContactSheet c={c} list={list} at={open.at} onClose={close} />}
     </>
   );
