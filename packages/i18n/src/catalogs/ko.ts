@@ -1,3 +1,4 @@
+import { koPayroll } from "./ko/payroll";
 import { koNts } from "./ko/nts";
 import { koSupport } from "./ko/support";
 import { koSupportAccess } from "./ko/support-access";
@@ -234,7 +235,7 @@ export const ko = {
   ...koEmpDoc,
   ...koPeopleJump,
   ...koOpsRecovery,
-  ...koNts,
+  ...koNts, ...koPayroll,
   ...koCommon,
   ...koSupport,
   ...koSupportAccess,
