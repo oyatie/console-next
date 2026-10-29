@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { startBackend } from "./backend-process.mjs";
+import { installBackendCleanup, startBackend } from "./backend-process.mjs";
 
+installBackendCleanup();
 const web = startBackend("npm run dev", { shell: true, stdio: "inherit" });
+web.once("spawn", () => console.log(`[web] process group ${web.pid} ready`));
 web.once("exit", code => process.exit(code ?? 1));
 // Playwright owns this pipe: EOF also stops Vite if the runner is killed.
 process.stdin.on("end", () => process.exit(1));
