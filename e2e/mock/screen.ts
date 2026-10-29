@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { Page } from "@playwright/test";
 import { mockRoute } from "./route";
-import { authz, checklist, employees, facets, failure, id, inbox, screenAccess, structure, token, user } from "./fixtures";
+import { authz, checklist, employees, facets, failure, id, inbox, modules, screenAccess, structure, token, user } from "./fixtures";
 import { orgChange, orgChanges } from "./org-changes";
 import { mockOrgChangeCounts } from "./org-changes-web";
 import type { OrgChangeState, Screen, State } from "../states/registry";
 import { mockLifecycleSheets } from "./lifecycle-sheets";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
-export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState) {
+export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState, modulesState: keyof typeof modules | "refused" = "ready") {
   if (process.env.E2E_CPU_THROTTLE) {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.E2E_CPU_THROTTLE) });
@@ -23,6 +23,8 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
   await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: checklist });
+  await mockRoute(page, "get", "/api/v1/onboarding/modules", modulesState === "refused"
+    ? { status: 403, json: failure("forbidden") } : { status: 200, json: modules[modulesState] });
   await mockRoute(page, "get", "/api/v1/legal-entities", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/org-units", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/regions", { status: 200, json: [] });

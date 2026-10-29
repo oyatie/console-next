@@ -155,6 +155,42 @@ impl PgOnboardingStore {
         &self.pool
     }
 
+    /// Count-free readiness for any signed-in tenant account.
+    ///
+    /// # Errors
+    /// Database faults or a denied Cedar read.
+    pub async fn modules(
+        &self,
+        actor: &OnboardingActor,
+    ) -> Result<Vec<console_onboarding_domain::Module>, PgOnboardingError> {
+        let actor = actor.clone();
+        with_org_conn(&self.pool, actor.org, move |tx| {
+            Box::pin(async move {
+                let subject = console_platform_authz::access::load_access_subject(
+                    tx,
+                    actor.org,
+                    *actor.user.as_uuid(),
+                    time::OffsetDateTime::now_utc(),
+                )
+                .await?;
+                if console_platform_authz::cedar_pbac::actions::onboarding_modules::decide(
+                    &subject, actor.org,
+                ) != Ok(true)
+                {
+                    return Err(refused(ErrorKind::Forbidden, "forbidden", None));
+                }
+                let (facts, _, _) = facts::setup_facts(
+                    tx,
+                    (actor.org, subject.account),
+                    subject.phase == TenantPhase::Setup,
+                )
+                .await?;
+                Ok(console_onboarding_domain::readiness(&facts, subject.phase))
+            })
+        })
+        .await
+    }
+
     /// The setup rail.
     ///
     /// # Errors

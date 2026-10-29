@@ -35,6 +35,7 @@ pub const ACTION_SCHEMAS: &[ActionSchema] = &[
 // Self-contained single-action bundles (`ActionBundle`) for actions whose
 // principal/resource shape is not a `Feature` (tenant_go_live): strict
 // validation, every fact required, any evaluation error denies.
+pub mod onboarding_modules;
 pub mod tenant_go_live;
 // --- lane: EMP-RECORD ---
 pub mod employee_pii;

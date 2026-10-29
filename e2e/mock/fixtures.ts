@@ -44,6 +44,15 @@ export const checklist: S["SetupChecklist"] = {
   phase: "OPERATING", steps: [], done: 0, total: 0, go_live_at: "2026-01-01T00:00:00Z",
   summary: { people: 0, placed: 0, unplaced: 0, entity_unknown: 0, progress: 100 },
 };
+export const modules: Record<"ready" | "not-ready", S["OnboardingModules"]> = {
+  ready: (["home", "org", "access", "people", "exits", "attendance", "statutory"] as const)
+    .map(key => ({ key, ready: true, unblock: null })),
+  "not-ready": [
+    ...(["home", "org", "access"] as const).map(key => ({ key, ready: true, unblock: null })),
+    { key: "people", ready: false, unblock: "create_legal_entity" },
+    ...(["exits", "attendance", "statutory"] as const).map(key => ({ key, ready: false, unblock: "open_go_live_preview" as const })),
+  ],
+};
 export function token(): S["TokenPairResponse"] {
   const claims = { sub: user.id, org: authz.org_id, name: user.display_name, exp: Math.floor(Date.now() / 1000) + 3600 };
   return { access_token: `${Buffer.from('{"alg":"none"}').toString("base64url")}.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.mock`, token_type: "Bearer", refresh_expires_at: "2099-01-01T00:00:00Z", requires_passkey_setup: false, privacy_consent_accepted: true };

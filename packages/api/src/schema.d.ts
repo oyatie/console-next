@@ -9637,6 +9637,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/onboarding/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Count-free module readiness for the signed-in tenant */
+        get: operations["getOnboardingModules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/onboarding/steps/{step}/skip": {
         parameters: {
             query?: never;
@@ -23949,6 +23966,13 @@ export interface components {
         ObligationStatus: "DRAFT" | "ACTIVE" | "WAIVED" | "SUPERSEDED" | "ARCHIVED";
         /** @enum {string} */
         ObligationType: "LEGAL" | "REGULATORY" | "CONTRACTUAL" | "INTERNAL_POLICY" | "CONTROL_REQUIREMENT";
+        OnboardingModules: {
+            /** @enum {string} */
+            key: "home" | "org" | "access" | "people" | "exits" | "attendance" | "statutory";
+            ready: boolean;
+            /** @enum {string|null} */
+            unblock: "create_legal_entity" | "create_workplace" | "open_go_live_preview" | "register_employee" | null;
+        }[];
         /** @description Immutable replay receipt for an accepted instance_revision action command. */
         OntologyActionCommandReceipt: {
             command_id: components["schemas"]["Uuid"];
@@ -49956,6 +49980,36 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             /** @description Not permitted. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getOnboardingModules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Readiness and checklist remedies, without counts or record permissions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingModules"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Cedar refused the tenant read. */
             403: {
                 headers: {
                     [name: string]: unknown;

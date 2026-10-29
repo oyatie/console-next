@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- onboarding
+operationId: getOnboardingModules
+summary: Count-free module readiness for the signed-in tenant
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Readiness and checklist remedies, without counts or record permissions.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OnboardingModules'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Cedar refused the tenant read.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

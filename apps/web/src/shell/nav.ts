@@ -2,14 +2,16 @@
 import { Building, Building2, Clock, FileText, Home, KeyRound, ListChecks, ScrollText, Settings, Users, type LucideIcon } from "lucide-react";
 import type { StaticDataRouteOption } from "@tanstack/react-router";
 import type { MessageId } from "@console/i18n";
+import type { components } from "@console/api";
 import type { AccessEffective } from "../reference/authz/api";
 import { accessRefusal } from "../reference/authz/domain/access";
 import { SETTINGS_VIEWS } from "./settings-views";
 
-type NavLink = { to: string; label: MessageId; icon: LucideIcon; supportApproval?: boolean; views?: readonly { to: string }[] };
+type Modules = components["schemas"]["OnboardingModules"];
+type NavLink = { to: string; label: MessageId; icon: LucideIcon; module?: Modules[number]["key"]; supportApproval?: boolean; views?: readonly { to: string }[] };
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
-type NavContext = { pathname: string; phase?: string; setupTargets?: readonly string[] };
+type NavContext = { pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules };
 
 const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests", icon: ListChecks };
 // One entry table; future destinations appear only when their route is served.
@@ -20,13 +22,13 @@ const NAV: readonly NavHub[] = [
     REQUESTS,
   ] },
   { hub: "shell.hub.people", links: [
-    { to: "/org", label: "shell.link.org", icon: Building2 },
-    { to: "/people", label: "shell.link.people", icon: Users },
-    { to: "/attendance", label: "shell.link.attendance", icon: Clock },
-    { to: "/statutory", label: "shell.link.statutory", icon: ScrollText },
+    { to: "/org", label: "shell.link.org", icon: Building2, module: "org" },
+    { to: "/people", label: "shell.link.people", icon: Users, module: "people" },
+    { to: "/attendance", label: "shell.link.attendance", icon: Clock, module: "attendance" },
+    { to: "/statutory", label: "shell.link.statutory", icon: ScrollText, module: "statutory" },
   ] },
   { hub: "shell.hub.admin", links: [
-    { to: "/access", label: "shell.link.access", icon: KeyRound },
+    { to: "/access", label: "shell.link.access", icon: KeyRound, module: "access" },
     { to: "/audit/support-access", label: "shell.link.audit", icon: FileText, supportApproval: true },
     { to: "/settings", label: "shell.link.settings", icon: Settings, views: SETTINGS_VIEWS },
   ] },
@@ -35,13 +37,14 @@ export const PLATFORM_NAV: readonly NavHub[] = [{ hub: "shell.hub.platform", lin
 
 /** Served destinations use their own requirement; readiness remains a server fact. */
 export function tenantNav(access: AccessEffective | undefined, routes: Routes, supportApproval = false,
-  { phase, setupTargets }: NavContext = { pathname: "/" }) {
+  { phase, setupTargets, modules }: NavContext = { pathname: "/" }) {
   const shown = (link: NavLink) => {
     if (!routes[link.to]) return false;
     if (link.to === "/") return true;
     if (!access) return false;
+    if (modules && link.module && !modules.some(m => m.key === link.module && m.ready)) return false;
     if (phase === "SETUP") {
-      // shortcut: safe setup destinations when the checklist is unavailable; replace with S2's module projection.
+      // Keep S1's safe destinations if the checklist is unavailable; readiness can narrow them further.
       const targets = setupTargets ?? ["/org", "/people", "/access"];
       if (!targets.some(to => to === link.to || to.startsWith(link.to + "/"))) return false;
     }
