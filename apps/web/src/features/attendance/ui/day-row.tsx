@@ -17,7 +17,7 @@ import s from "./records.module.css";
  * one verb. A missing clock-out or a missing day is typed in place: the draft waits for the save, which asks for the
  * evidence once for every row. The own row and a closed month's row are read-only.
  */
-export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRow; draft?: Draft; onDraft: (value: string | null) => void; onOpen: () => void; onAssign: () => void }) {
+export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }: { row: BoardRow; draft?: Draft; grammarHintId: string; onDraft: (value: string | null) => void; onOpen: () => void; onAssign: () => void }) {
   const mark = row.day.marks[0];
   const tone = mark ? labeled(ATTENDANCE_MARK, mark).tone : undefined;
   const start = row.day.entry?.kind === "CLOCK_IN_ONLY" ? row.day.entry.segments[0]?.start : undefined;
@@ -36,10 +36,11 @@ export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRo
       {row.day.plan.kind === "NO_SCHEDULE" ? (
         <Button size="sm" onClick={onAssign}>{t("attendanceRecords.unscheduled.assign")}</Button>
       ) : inline ? (
-        <Field label={t(start !== undefined ? "attendanceRecords.board.out" : "attendanceRecords.board.record", { name: row.name })} required={false} hint={t("attendanceRecords.grammar.hint")} error={state && !state.ok ? refusalText(state.code) : undefined}>
+        <Field label={t(start !== undefined ? "attendanceRecords.board.out" : "attendanceRecords.board.record", { name: row.name })} required={false} error={state && !state.ok ? refusalText(state.code) : undefined}>
           {(p) => (
             <TextInput
               {...p}
+              aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")}
               value={typed}
               maxLength={40}
               placeholder={undefined}
