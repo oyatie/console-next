@@ -10,7 +10,8 @@ test("the emitted cmap covers catalog text supported by Pretendard, including nu
   const manifest = check();
   const requested = catalogCharacters();
   expect(manifest.codepoints.length).toBeGreaterThan(400);
-  expect(manifest.codepoints.every((c: number) => requested.includes(c))).toBe(true);
+  expect(manifest.codepoints.every((c: number) => manifest.requested.includes(c))).toBe(true);
+  expect(requested.every((c: number) => manifest.requested.includes(c))).toBe(true);
   const upstream = readFileSync("node_modules/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css", "utf8");
   const ranges = [...upstream.matchAll(/U\+([\da-f]+)(?:-([\da-f]+))?/gi)].map(([, lo, hi]) => [parseInt(lo!, 16), parseInt(hi ?? lo!, 16)]);
   for (const c of requested.filter((c: number) => ranges.some(([lo, hi]) => c >= lo! && c <= hi!))) expect(manifest.codepoints).toContain(c);
@@ -29,7 +30,7 @@ test("checks-wired: normal CI check and container web builds verify catalog font
   execFileSync("node", ["scripts/font-subsets.mjs", "--check"], { env: { ...process.env, PYTHON: "/unavailable" } });
 });
 
-test("the offline font check accepts copy edits with the same glyphs and refuses uncovered syllables or drift", () => {
+test.each(["reordered", "deleted"])("the offline font check accepts %s copy and refuses uncovered syllables or drift", (edit) => {
   const root = mkdtempSync(resolve(tmpdir(), "font-catalog-"));
   try {
     const manifest = check();
@@ -49,22 +50,30 @@ test("the offline font check accepts copy edits with the same glyphs and refuses
       import { readFileSync, writeFileSync } from "node:fs";
       import { catalogCharacters, check } from "./scripts/font-subsets.mjs";
       check();
-      const catalog = "packages/i18n/src/catalogs/ko/asof.ts";
+      const edit = ${JSON.stringify(edit)};
+      const catalog = edit === "deleted" ? "packages/i18n/src/catalogs/boot-consent.ts" : "packages/i18n/src/catalogs/ko/asof.ts";
       const original = readFileSync(catalog, "utf8");
       const requested = catalogCharacters();
-      const edited = original.replace('"기준일"', '"일준기"');
+      const edited = edit === "deleted" ? original.replace("토", "") : original.replace('"기준일"', '"일준기"');
       assert.notEqual(edited, original);
       writeFileSync(catalog, edited);
-      assert.deepEqual(catalogCharacters(), requested);
+      if (edit === "deleted") {
+        assert.ok(requested.includes("토".codePointAt(0)));
+        assert.ok(!catalogCharacters().includes("토".codePointAt(0)));
+      } else assert.deepEqual(catalogCharacters(), requested);
       check();
       const assets = check().outputs;
+      const coverage = check().requested;
       execFileSync(process.execPath, ["scripts/font-subsets.mjs", "--refresh-inputs"], { env: { ...process.env, PYTHON: "/unavailable" } });
       assert.deepEqual(check().outputs, assets);
+      assert.deepEqual(check().requested, coverage);
+      writeFileSync(catalog, original);
+      check();
       const uncovered = Array.from({ length: 0xd7a4 - 0xac00 }, (_, i) => 0xac00 + i).find(c => !requested.includes(c));
       assert.ok(uncovered);
-      writeFileSync(catalog, original.replace('"기준일"', JSON.stringify("기준일" + String.fromCodePoint(uncovered))));
+      writeFileSync(catalog, original + "\\nexport const fontTest = { uncovered: " + JSON.stringify(String.fromCodePoint(uncovered)) + " };\\n");
       assert.throws(check, { message: "Font catalog inputs changed; run npm run fonts:generate -w @console/web" });
-      assert.throws(() => execFileSync(process.execPath, ["scripts/font-subsets.mjs", "--refresh-inputs"], { stdio: "pipe" }));
+      assert.throws(() => execFileSync(process.execPath, ["scripts/font-subsets.mjs", "--refresh-inputs"], { stdio: "pipe" }), /run npm run fonts:generate -w/);
       writeFileSync(catalog, original);
       const cases = ${JSON.stringify(cases)};
       for (const file of cases) {
