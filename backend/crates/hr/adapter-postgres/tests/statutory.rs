@@ -258,6 +258,7 @@ async fn statutory_register_is_dated_nonblocking_and_exports_all_rows_safely(poo
     let sheet = book.sheet(0).unwrap();
     assert_eq!(sheet.cell("A3").unwrap().value(), "=1+1");
     assert!(sheet.cell("A3").unwrap().formula().is_empty());
+    assert_eq!(sheet.cell("D3").unwrap().value(), "1990-01-01");
     let printed: serde_json::Value =
         serde_json::from_slice(&export("pdf", "AUDIT_RESPONSE").await.unwrap().bytes).unwrap();
     assert_eq!(printed["items"][0]["cells"][1], "<Kim>&");

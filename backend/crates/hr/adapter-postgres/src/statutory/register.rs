@@ -153,7 +153,7 @@ impl HrService {
             let more = !all && rows.len() > limit;
             let mut items = Vec::new();
             for row in rows.into_iter().take(if all {usize::MAX} else {limit}) {
-                let mut cells = register_cells(&row)?;
+                let mut cells = register_cells(&row, !all)?;
                 if cells[13].is_empty() { cells[14].clear(); }
                 items.push(RegisterRow { employee_id: row.try_get("employee_id")?, missing: gaps(&cells), cells });
             }
