@@ -6,6 +6,7 @@ import { orgChange, orgChanges } from "./org-changes";
 import { mockOrgChangeCounts } from "./org-changes-web";
 import type { OrgChangeState, Screen, State } from "../states/registry";
 import { mockLifecycleSheets } from "./lifecycle-sheets";
+import { numberingReads } from "./numbering";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
 export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState, modulesState: keyof typeof modules | "refused" = "ready") {
@@ -92,5 +93,5 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "post", "/api/v1/org-changes/{id}/preflight", { status: 200, json: record });
   await mockLifecycleSheets(page, screen);
   const counts = await mockOrgChangeCounts(page, screen.key === "org-changes" && (state === "loading" || state === "failed") ? state : "populated", changes);
-  return { unexpected, release: () => { release(); counts.release(); }, count, operationId: id(99) };
+  return { unexpected, release: () => { release(); counts.release(); }, count, operationId: id(99), ...(screen.key === "numbering" ? await numberingReads(page, "operating") : {}) };
 }

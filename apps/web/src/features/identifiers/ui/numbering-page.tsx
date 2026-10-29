@@ -26,7 +26,7 @@ export function NumberingPage() {
 function NumberingWorkspace() {
   const entities = useQuery(entitiesRef);
   const rules = useQuery(rulesQuery);
-  const phase = useQuery({ ...checklistRef, retry: false }).data?.phase;
+  const phase = useQuery({ ...checklistRef, retry: false });
   // Read with the page so the renumber form opens whole.
   useQuery(reasonCodesQuery("employee_number_change"));
   const list: Scope[] = scopes(
@@ -44,9 +44,10 @@ function NumberingWorkspace() {
         title={t("identifiers.numbering.title")}
         crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} />}
       />
-<QueryState q={readGroup([entities, rules])} layout="form">{() => <>      <RulesCard scopes={list} />
-      <RenumberCard scopes={list} setup={phase === "SETUP"} />
-    </>}</QueryState>
+      <QueryState q={readGroup([entities, rules, phase])} layout="form">{() => <>
+        <RulesCard scopes={list} />
+        <RenumberCard scopes={list} phase={phase.data!.phase} />
+      </>}</QueryState>
     </div>
   );
 }

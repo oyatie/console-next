@@ -82,7 +82,6 @@ export const koIdentifiers = {
   "identifiers.renumber.conflicts": "다른 직원이 쓰거나 썼던 번호가 {count, number}건 있습니다. 앞자리나 자릿수를 변경해 다시 미리 보십시오",
   "identifiers.renumber.empty": "바뀔 직원이 없습니다",
   "identifiers.renumber.apply": "{count, number}명 사번 재부여",
-  "identifiers.renumber.notSetup": "운영을 시작한 뒤에는 일괄 재부여와 되돌리기를 할 수 없습니다",
   "identifiers.renumber.done": "{count, number}명의 사번을 다시 부여했습니다",
   "identifiers.renumber.undo": "재부여 되돌리기",
   "identifiers.renumber.undone": "{count, number}명의 사번을 예전으로 되돌렸습니다",

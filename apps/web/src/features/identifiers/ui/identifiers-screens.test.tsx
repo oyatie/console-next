@@ -19,6 +19,6 @@ test("a person without a number reads 사번 미부여 and is offered one, never
 
 test("after go-live renumbering says why it is closed", () => {
   const scopes = [{ kind: "TENANT" as const, label: "회사 전체" }];
-  expect(html(<RenumberCard scopes={scopes} setup={false} />)).toContain("운영을 시작한 뒤에는 일괄 재부여를 할 수 없습니다");
-  expect(html(<RenumberCard scopes={scopes} setup />)).toContain("설정 단계에서는 한 번에 되돌릴 수 있습니다");
+  expect(html(<RenumberCard scopes={scopes} phase="OPERATING" />)).toContain("운영을 시작한 뒤에는 일괄 재부여를 할 수 없습니다");
+  expect(html(<RenumberCard scopes={scopes} phase="SETUP" />)).toContain("설정 단계에서는 한 번에 되돌릴 수 있습니다");
 });

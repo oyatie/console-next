@@ -2,6 +2,7 @@
 import { id } from "../mock/fixtures";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
 import type { accountScreens } from "./account";
+import type { numberingScreens } from "./numbering";
 // Executable state matrix, keyed to the central screen registry route records.
 const states = {
   empty: "Return zero items and totals (first run / no work).",
@@ -30,5 +31,5 @@ export const orgChangeScreens = [
     ...Object.fromEntries(Object.entries(recordStatuses).map(([state, status]) => [state, `Return a ${status} record with its preflight, approval or settlement facts.`])),
   }, registry: "org-changes-id--approval-chain", live: "e2e/orgchange-r2.spec.ts" },
 ] as const;
-export type Screen = (typeof screens)[number] | (typeof orgChangeScreens)[number] | (typeof lifecycleSheetScreens)[number] | (typeof accountScreens)[number];
+export type Screen = (typeof screens)[number] | (typeof orgChangeScreens)[number] | (typeof lifecycleSheetScreens)[number] | (typeof accountScreens)[number] | (typeof numberingScreens)[number];
 export type OrgChangeState = Exclude<State, "empty"> | keyof typeof recordStatuses | "missing";

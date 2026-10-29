@@ -21,7 +21,14 @@ import { RenumberForm } from "./renumber-form";
  * conflict marked, an apply bound to that list's digest, and an undo of the whole job while still in SETUP. Every old
  * number stays its person's alias.
  */
-export function RenumberCard({ scopes, setup }: { scopes: readonly Scope[]; setup: boolean }) {
+export function RenumberCard({ scopes, phase }: { scopes: readonly Scope[]; phase: "SETUP" | "OPERATING" }) {
+  return <Card title={t("identifiers.renumber.title")}>
+    <p className="muted">{t(phase === "SETUP" ? "identifiers.renumber.why" : "identifiers.renumber.whyAfter")}</p>
+    {phase === "SETUP" && <SetupRenumber scopes={scopes} />}
+  </Card>;
+}
+
+function SetupRenumber({ scopes }: { scopes: readonly Scope[] }) {
   const [shown, setShown] = useState<{ req: RenumberRequest; preview: RenumberPreview } | null>(null);
   const [done, setDone] = useState<RenumberResult | null>(null);
   const [undone, setUndone] = useState<number | null>(null);
@@ -48,10 +55,9 @@ export function RenumberCard({ scopes, setup }: { scopes: readonly Scope[]; setu
     { id: "conflict", header: t("identifiers.renumber.col.conflict"), cell: (l) => (l.conflict ? <Chip tone="danger">{t("identifiers.renumber.conflict")}</Chip> : null), width: 160 },
   ];
   const go = t("identifiers.renumber.apply", { count: p?.lines.length ?? 0 });
-  const blocked = !setup ? t("identifiers.renumber.notSetup") : p && p.conflicts > 0 ? t("identifiers.renumber.conflicts", { count: p.conflicts }) : null;
+  const blocked = p && p.conflicts > 0 ? t("identifiers.renumber.conflicts", { count: p.conflicts }) : null;
   return (
-    <Card title={t("identifiers.renumber.title")}>
-      <p className="muted">{t(setup ? "identifiers.renumber.why" : "identifiers.renumber.whyAfter")}</p>
+    <>
       <RenumberForm scopes={scopes} today={todayKst()} busy={preview.isPending} onPreview={(req) => preview.mutate(req)} onEdit={() => setShown(null)} />
       <CommandError error={preview.error ?? apply.error ?? undo.error} own={identifiersError} />
       {p && (
@@ -84,15 +90,11 @@ export function RenumberCard({ scopes, setup }: { scopes: readonly Scope[]; setu
           state="recorded"
           message={t("identifiers.renumber.done", { count: done.changed })}
           actions={
-            setup ? (
-              <Button disabled={undo.isPending} onClick={() => undo.mutate(undefined)}>{t("identifiers.renumber.undo")}</Button>
-            ) : (
-              <DisabledReason control={(x) => <Button {...x}>{t("identifiers.renumber.undo")}</Button>} reason={t("identifiers.renumber.notSetup")} />
-            )
+            <Button disabled={undo.isPending} onClick={() => undo.mutate(undefined)}>{t("identifiers.renumber.undo")}</Button>
           }
         />
       )}
       {undone != null && <p role="status">{t("identifiers.renumber.undone", { count: undone })}</p>}
-    </Card>
+    </>
   );
 }
