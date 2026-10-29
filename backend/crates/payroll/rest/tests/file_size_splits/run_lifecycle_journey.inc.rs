@@ -10,8 +10,8 @@ async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
 
     let submitter = seed_user(&pool, org, "EXECUTIVE", None).await;
     let decider = seed_user(&pool, org, "EXECUTIVE", None).await;
-    pay_view::grant_view(&pool, org, submitter, None).await;
-    pay_view::grant_view(&pool, org, decider, None).await;
+    pay_view::grant_manage(&pool, org, submitter, None).await;
+    pay_view::grant_manage(&pool, org, decider, None).await;
     let submitter_token = keys.token(&pool, submitter, org, "EXECUTIVE").await;
     let decider_token = keys.token(&pool, decider, org, "EXECUTIVE").await;
 
@@ -323,6 +323,7 @@ async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
         .await
         .unwrap();
     let outsider = seed_user(&pool, org_b, "EXECUTIVE", None).await;
+    pay_view::grant_manage(&pool, org_b, outsider, None).await;
     let outsider_token = keys.token(&pool, outsider, org_b, "EXECUTIVE").await;
     let (status, omitted) = send(
         &rt,

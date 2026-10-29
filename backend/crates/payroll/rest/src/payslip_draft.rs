@@ -43,13 +43,14 @@ use console_payroll_adapter_postgres::payslip_draft::{
 use console_payroll_domain::{
     Instrument, StatutoryComponent, StatutoryInsuranceInput, build_statutory_insurance_draft,
 };
-use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
+use console_platform_authz::Feature;
 use console_platform_db::with_audits;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use time::{Date, Month};
 use uuid::Uuid;
 
+use crate::access::require_pay_action_in_tx;
 use crate::{PayrollRestState, RestError, principal_from_headers};
 
 pub const PAYROLL_EMPLOYEE_PAYSLIP_DRAFT_PATH_TEMPLATE: &str =
@@ -89,11 +90,6 @@ pub(crate) struct CreateContractWageRequest {
     monthly_standard_hours: i32,
     #[serde(default)]
     source_note: String,
-}
-
-fn require_payroll_manage(principal: &Principal) -> Result<(), RestError> {
-    authorize_org_wide(principal, Action::new(Feature::PayrollRunManage))
-        .map_err(RestError::from_kernel)
 }
 
 fn parse_date(value: &str, field: &str) -> Result<Date, RestError> {
@@ -148,36 +144,36 @@ async fn create_contract_wage(
     Json(body): Json<CreateContractWageRequest>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_payroll_manage(&principal)?;
-
-    if !matches!(body.wage_kind.as_str(), "MONTHLY" | "HOURLY") {
-        return Err(RestError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation",
-            "wage_kind must be MONTHLY or HOURLY",
-        ));
-    }
-    if body.amount_won <= 0 {
-        return Err(RestError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation",
-            "amount_won must be positive",
-        ));
-    }
-    if body.monthly_standard_hours <= 0 {
-        return Err(RestError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation",
-            "monthly_standard_hours must be positive",
-        ));
-    }
-    let effective_from = parse_date(&body.effective_from, "effective_from")?;
 
     let org = principal.org_id;
     let actor = principal.user_id;
     let pool = state.store.pool().clone();
     let id = with_audits::<_, Uuid, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            if !matches!(body.wage_kind.as_str(), "MONTHLY" | "HOURLY") {
+                return Err(RestError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "validation",
+                    "wage_kind must be MONTHLY or HOURLY",
+                ));
+            }
+            if body.amount_won <= 0 {
+                return Err(RestError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "validation",
+                    "amount_won must be positive",
+                ));
+            }
+            if body.monthly_standard_hours <= 0 {
+                return Err(RestError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "validation",
+                    "monthly_standard_hours must be positive",
+                ));
+            }
+            let effective_from = parse_date(&body.effective_from, "effective_from")?;
+
             let id = insert_contract_wage_in_tx(
                 tx,
                 &NewContractWage {
@@ -217,27 +213,28 @@ async fn get_payslip_draft(
     Query(params): Query<PayslipDraftParams>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_payroll_manage(&principal)?;
-
-    let (period_start, period_end) = parse_period(&params.period)?;
-    let pay_date = match params.pay_date.as_deref() {
-        Some(value) => parse_date(value, "pay_date")?,
-        None => period_end,
-    };
 
     let org = principal.org_id;
     let actor = principal.user_id;
     let pool = state.store.pool().clone();
 
     type Loaded = (
+        (Date, Date, Date),
         Option<String>,
         Option<ContractWage>,
         AttendanceSummary,
         Vec<StatutoryCitation>,
     );
-    let (name, wage, attendance, citations) =
+    let ((period_start, period_end, pay_date), name, wage, attendance, citations) =
         with_audits::<_, Loaded, RestError>(&pool, org, move |tx| {
             Box::pin(async move {
+                require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await?;
+                let (period_start, period_end) = parse_period(&params.period)?;
+                let pay_date = match params.pay_date.as_deref() {
+                    Some(value) => parse_date(value, "pay_date")?,
+                    None => period_end,
+                };
+
                 let name = employee_display_name_in_tx(tx, employee_id)
                     .await
                     .map_err(RestError::from_store)?;
@@ -268,7 +265,8 @@ async fn get_payslip_draft(
                 } else {
                     Vec::new()
                 };
-                Ok(((name, wage, attendance, citations), events))
+                let period = (period_start, period_end, pay_date);
+                Ok(((period, name, wage, attendance, citations), events))
             })
         })
         .await?;

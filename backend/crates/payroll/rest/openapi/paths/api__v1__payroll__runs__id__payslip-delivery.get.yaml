@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "pay:view", "scope": "tenant"}
 tags:
 - payroll
 operationId: getPayrollPayslipDelivery

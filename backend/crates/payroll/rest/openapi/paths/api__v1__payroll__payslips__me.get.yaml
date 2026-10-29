@@ -1,7 +1,8 @@
+x-console-authz: {"permission": "pay:view", "scope": "tenant"}
 tags:
 - payroll
 operationId: listMyPayrollLines
-summary: List the signed-in employee's own payroll draft-line (readiness) rows
+summary: List the signed-in employee's own payroll draft-line readiness rows (tenant pay:view)
 security:
 - bearerAuth: []
 parameters:

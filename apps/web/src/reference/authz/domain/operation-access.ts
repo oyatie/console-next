@@ -3,257 +3,56 @@
 import type { Requirement } from "./access";
 
 export const operationAccess = {
-  "GET /api/v1/access/accounts/{accountId}/effective": {
-    "domain": "access",
-    "level": "view"
-  },
-  "GET /api/v1/access/grants": {
-    "domain": "access",
-    "level": "view"
-  },
-  "POST /api/v1/access/grants/preview": {
-    "domain": "access",
-    "level": "edit"
-  },
-  "GET /api/v1/access/roles": {
-    "domain": "access",
-    "level": "view"
-  },
-  "POST /api/v1/access/roles": {
-    "domain": "access",
-    "level": "edit",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "GET /api/v1/access/roles/{roleId}": {
-    "domain": "access",
-    "level": "view"
-  },
-  "GET /api/v1/appointment-notices": {
-    "domain": "hr_basic",
-    "level": "view"
-  },
-  "GET /api/v1/appointment-notices/candidates": {
-    "domain": "hr_basic",
-    "level": "edit",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "GET /api/v1/attendance/days": {
-    "domain": "hr_basic",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/attendance/month": {
-    "domain": "hr_basic",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/attendance/schedule/tree": {
-    "domain": "hr_basic",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/directory/people": {
-    "domain": "hr_basic",
-    "level": "view"
-  },
-  "GET /api/v1/employee-number-rules": {
-    "domain": "hr_basic",
-    "level": "edit"
-  },
-  "PUT /api/v1/employee-number-rules": {
-    "domain": "hr_basic",
-    "level": "edit",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "GET /api/v1/employees": {
-    "domain": "hr_basic",
-    "level": "view"
-  },
-  "POST /api/v1/employees": {
-    "domain": "hr_basic",
-    "level": "edit"
-  },
-  "GET /api/v1/employees/import/unplaced": {
-    "domain": "hr_basic",
-    "level": "edit",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "POST /api/v1/employees/lifecycle-events/bulk/preview": {
-    "domain": "appointment",
-    "level": "edit",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "GET /api/v1/entity-setup/batches": {
-    "domain": "org",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/hr/certificates": {
-    "domain": "hr_basic",
-    "level": "edit"
-  },
-  "GET /api/v1/hr/exit-cases": {
-    "domain": "hr_basic",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/job-titles": {
-    "domain": "hr_basic",
-    "level": "view"
-  },
-  "GET /api/v1/legal-entities": {
-    "domain": "org",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "POST /api/v1/legal-entities": {
-    "domain": "org",
-    "level": "edit",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "GET /api/v1/legal-entities/{entityId}": {
-    "domain": "org",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/onboarding/go-live/preview": {
-    "domain": "tenant",
-    "level": "approve",
-    "tenant": true,
-    "scopes": []
-  },
-  "GET /api/v1/org-changes": {
-    "domain": "org",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "POST /api/v1/org-changes": {
-    "domain": "org",
-    "level": "edit",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/org-structure": {
-    "domain": "org",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/org-structure/batches": {
-    "domain": "org",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "POST /api/v1/org-structure/batches": {
-    "domain": "org",
-    "level": "edit",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/org-units": {
-    "domain": "org",
-    "level": "view",
-    "scopes": [
-      "TENANT",
-      "LEGAL_ENTITY",
-      "WORKPLACE"
-    ]
-  },
-  "GET /api/v1/payroll/runs": {
-    "domain": "pay",
-    "level": "view",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "GET /api/v1/payroll/runs/{id}": {
-    "domain": "pay",
-    "level": "view",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "GET /api/v1/period-locks": {
-    "domain": "exceptions",
-    "level": "edit",
-    "tenant": true,
-    "scopes": [
-      "TENANT"
-    ]
-  },
-  "GET /api/v1/statutory/workplaces": {
-    "domain": "hr_basic",
-    "level": "edit"
-  },
-  "GET /api/v1/tenant/company-domain/request": {
-    "domain": "tenant",
-    "level": "edit",
-    "tenant": true,
-    "scopes": []
-  }
+  "GET /api/v1/access/accounts/{accountId}/effective": {"domain":"access","level":"view"},
+  "GET /api/v1/access/grants": {"domain":"access","level":"view"},
+  "POST /api/v1/access/grants/preview": {"domain":"access","level":"edit"},
+  "GET /api/v1/access/roles": {"domain":"access","level":"view"},
+  "POST /api/v1/access/roles": {"domain":"access","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/access/roles/{roleId}": {"domain":"access","level":"view"},
+  "GET /api/v1/appointment-notices": {"domain":"hr_basic","level":"view"},
+  "GET /api/v1/appointment-notices/candidates": {"domain":"hr_basic","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/attendance/days": {"domain":"hr_basic","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/attendance/month": {"domain":"hr_basic","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/attendance/schedule/tree": {"domain":"hr_basic","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/directory/people": {"domain":"hr_basic","level":"view"},
+  "GET /api/v1/employee-number-rules": {"domain":"hr_basic","level":"edit"},
+  "PUT /api/v1/employee-number-rules": {"domain":"hr_basic","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/employees": {"domain":"hr_basic","level":"view"},
+  "POST /api/v1/employees": {"domain":"hr_basic","level":"edit"},
+  "GET /api/v1/employees/import/unplaced": {"domain":"hr_basic","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/employees/lifecycle-events/bulk/preview": {"domain":"appointment","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/entity-setup/batches": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/hr/certificates": {"domain":"hr_basic","level":"edit"},
+  "GET /api/v1/hr/exit-cases": {"domain":"hr_basic","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/job-titles": {"domain":"hr_basic","level":"view"},
+  "GET /api/v1/legal-entities": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "POST /api/v1/legal-entities": {"domain":"org","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/legal-entities/{entityId}": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/onboarding/go-live/preview": {"domain":"tenant","level":"approve","tenant":true,"scopes":[]},
+  "GET /api/v1/org-changes": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "POST /api/v1/org-changes": {"domain":"org","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/org-structure": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/org-structure/batches": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "POST /api/v1/org-structure/batches": {"domain":"org","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/org-units": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "POST /api/v1/payroll/employees/{employeeId}/contract-wages": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/payroll/employees/{employeeId}/payslip-draft": {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/payroll/payslips/me": {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/payroll/runs": {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/payroll/runs/{id}": {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/calculate": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/close-attendance": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/payroll/runs/{id}/close-preflight": {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/decision": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/disbursement/attest": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/payroll/runs/{id}/exceptions": {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/exceptions/{exceptionId}/resolve": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/issue-payslips": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/payroll/runs/{id}/payslip-delivery": {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/schedule-disbursement": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/submit": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/payroll/runs/{id}/withdraw": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/period-locks": {"domain":"exceptions","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/statutory/workplaces": {"domain":"hr_basic","level":"edit"},
+  "GET /api/v1/tenant/company-domain/request": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
 } as const satisfies Record<string, Requirement>;

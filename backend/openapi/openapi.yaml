@@ -23208,6 +23208,7 @@ paths:
           $ref: '#/components/responses/Conflict'
   /api/v1/payroll/employees/{employeeId}/contract-wages:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: createEmployeeContractWage
@@ -23275,6 +23276,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/employees/{employeeId}/payslip-draft:
     get:
+      x-console-authz: {"permission": "pay:view", "scope": "tenant"}
       tags:
       - payroll
       operationId: getEmployeePayslipDraft
@@ -23357,10 +23359,11 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/payslips/me:
     get:
+      x-console-authz: {"permission": "pay:view", "scope": "tenant"}
       tags:
       - payroll
       operationId: listMyPayrollLines
-      summary: List the signed-in employee's own payroll draft-line (readiness) rows
+      summary: List the signed-in employee's own payroll draft-line readiness rows (tenant pay:view)
       security:
       - bearerAuth: []
       parameters:
@@ -23471,6 +23474,7 @@ paths:
           $ref: '#/components/responses/NotFound'
   /api/v1/payroll/runs/{id}/calculate:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: calculatePayrollRun
@@ -23500,6 +23504,7 @@ paths:
           $ref: '#/components/responses/Conflict'
   /api/v1/payroll/runs/{id}/close-attendance:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: closePayrollRunAttendance
@@ -23537,10 +23542,11 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/runs/{id}/close-preflight:
     get:
+      x-console-authz: {"permission": "pay:view", "scope": "tenant"}
       tags:
       - payroll
       operationId: getPayrollRunClosePreflight
-      summary: Attendance-close preflight for a payroll run (audited read; EXECUTIVE/SUPER_ADMIN org-wide)
+      summary: Attendance-close preflight for a payroll run (audited read; tenant pay:view)
       security:
       - bearerAuth: []
       parameters:
@@ -23564,6 +23570,7 @@ paths:
           $ref: '#/components/responses/NotFound'
   /api/v1/payroll/runs/{id}/decision:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: decidePayrollRun
@@ -23601,6 +23608,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/runs/{id}/disbursement/attest:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: attestPayrollDisbursement
@@ -23638,6 +23646,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/runs/{id}/exceptions:
     get:
+      x-console-authz: {"permission": "pay:view", "scope": "tenant"}
       tags:
       - payroll
       operationId: listPayrollRunExceptions
@@ -23680,6 +23689,7 @@ paths:
           $ref: '#/components/responses/NotFound'
   /api/v1/payroll/runs/{id}/exceptions/{exceptionId}/resolve:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: resolvePayrollRunException
@@ -23722,6 +23732,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/runs/{id}/issue-payslips:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: issuePayrollPayslips
@@ -23753,6 +23764,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/runs/{id}/payslip-delivery:
     get:
+      x-console-authz: {"permission": "pay:view", "scope": "tenant"}
       tags:
       - payroll
       operationId: getPayrollPayslipDelivery
@@ -23795,6 +23807,7 @@ paths:
           $ref: '#/components/responses/NotFound'
   /api/v1/payroll/runs/{id}/schedule-disbursement:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: schedulePayrollDisbursement
@@ -23832,6 +23845,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/runs/{id}/submit:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: submitPayrollRun
@@ -23861,6 +23875,7 @@ paths:
           $ref: '#/components/responses/Conflict'
   /api/v1/payroll/runs/{id}/withdraw:
     post:
+      x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
       tags:
       - payroll
       operationId: withdrawPayrollRun

@@ -1,7 +1,8 @@
+x-console-authz: {"permission": "pay:view", "scope": "tenant"}
 tags:
 - payroll
 operationId: getPayrollRunClosePreflight
-summary: Attendance-close preflight for a payroll run (audited read; EXECUTIVE/SUPER_ADMIN org-wide)
+summary: Attendance-close preflight for a payroll run (audited read; tenant pay:view)
 security:
 - bearerAuth: []
 parameters:

@@ -137,7 +137,7 @@ pub async fn load_facts(
         roles.ok_or_else(|| KernelError::forbidden("Cedar facts require an active account"))?;
     let subject = load_access_subject(tx, org, actor, Timestamp::now_utc()).await?;
     let slice = AccessSlice::compile(&subject)
-        .map_err(|e| KernelError::forbidden(format!("Cedar facts refused: {e}")))?;
+        .map_err(|e| KernelError::internal(format!("Cedar facts unavailable: {e}")))?;
     let tenant = NodePath::tenant(org);
     let mut paths = BTreeMap::from([(
         NodeRef {

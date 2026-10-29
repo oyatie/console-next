@@ -2,10 +2,8 @@
 //! close-attendance → calculate → exception review → SoD approval →
 //! operator-attested disbursement → release-gated payslip issuance.
 //!
-//! Authorization: reads reuse `Feature::PayrollRunRead`; every mutation
-//! requires the write tier `Feature::PayrollRunManage` — the SAME org-wide
-//! gate (`authorize_org_wide`): built-in EXECUTIVE/SUPER_ADMIN only, ADMIN
-//! solely via a custom org-wide PBAC grant, branch-scoped callers 403.
+//! Authorization: Cedar pay:view admits reads; pay:edit admits commands.
+//! Canonical facts and the data operation share the tenant transaction.
 //!
 //! Every mutation runs inside `with_audits` (mutation + audit event atomic);
 //! admin reads of run-scoped data are themselves audited the same way. The
@@ -30,7 +28,7 @@ use console_payroll_adapter_postgres::lifecycle::{
     self, ClosePreflight, Disbursement, ExceptionPage, PayrollException, PayslipDeliverySummary,
 };
 use console_payroll_adapter_postgres::{PayrollRunDetail, get_run_in_tx};
-use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
+use console_platform_authz::Feature;
 use console_platform_db::{with_audit, with_audits, with_org_conn};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -38,13 +36,8 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
-use crate::{PageParams, PayrollRestState, RestError, principal_from_headers, require_run_read};
-
-/// Org-wide payroll lifecycle write gate; see module docs.
-pub(crate) fn require_run_manage(principal: &Principal) -> Result<(), RestError> {
-    authorize_org_wide(principal, Action::new(Feature::PayrollRunManage))
-        .map_err(RestError::from_kernel)
-}
+use crate::access::require_pay_action_in_tx;
+use crate::{PageParams, PayrollRestState, RestError, principal_from_headers};
 
 impl RestError {
     fn from_lifecycle(err: lifecycle::LifecycleError) -> Self {
@@ -146,7 +139,6 @@ pub(crate) async fn get_close_preflight(
     Path(run_id): Path<Uuid>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_read(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     // The verdict is computed in a read-only transaction, so no path here can
@@ -155,6 +147,7 @@ pub(crate) async fn get_close_preflight(
     // its own transaction below, before the blocking refs are disclosed.
     let preflight = with_org_conn::<_, Option<ClosePreflight>, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await?;
             lifecycle::close_preflight_in_tx(tx, run_id)
                 .await
                 .map_err(RestError::from_lifecycle)
@@ -190,18 +183,19 @@ pub(crate) async fn close_attendance(
     Json(body): Json<CloseAttendanceBody>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
-    if !body.attest {
-        return Err(RestError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation",
-            "attest: true is required to close attendance",
-        ));
-    }
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            if !body.attest {
+                return Err(RestError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "validation",
+                    "attest: true is required to close attendance",
+                ));
+            }
+
             let receipt = lifecycle::close_attendance_in_tx(
                 tx,
                 run_id,
@@ -236,11 +230,11 @@ pub(crate) async fn calculate_run(
     Path(run_id): Path<Uuid>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             let outcome = lifecycle::calculate_run_in_tx(tx, run_id)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -276,11 +270,11 @@ pub(crate) async fn list_exceptions(
     Query(params): Query<PageParams>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_read(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let page = with_audits::<_, Option<ExceptionPage>, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await?;
             let page = lifecycle::list_exceptions_in_tx(tx, run_id, params.limit, params.offset)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -318,11 +312,11 @@ pub(crate) async fn resolve_exception(
     Json(body): Json<ResolveExceptionBody>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let exception = with_audits::<_, PayrollException, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             let exception = lifecycle::resolve_exception_in_tx(
                 tx,
                 run_id,
@@ -363,11 +357,11 @@ pub(crate) async fn submit_run(
     Path(run_id): Path<Uuid>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             lifecycle::submit_run_in_tx(tx, run_id, *actor.as_uuid())
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -400,11 +394,11 @@ pub(crate) async fn decide_run(
     Json(body): Json<DecisionBody>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             lifecycle::decide_run_in_tx(
                 tx,
                 run_id,
@@ -436,11 +430,11 @@ pub(crate) async fn withdraw_run(
     Path(run_id): Path<Uuid>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             lifecycle::withdraw_run_in_tx(tx, run_id)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -476,25 +470,27 @@ pub(crate) async fn schedule_disbursement(
     Json(body): Json<ScheduleDisbursementBody>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
-    let scheduled_at = OffsetDateTime::parse(&body.scheduled_at, &Rfc3339).map_err(|err| {
-        RestError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation",
-            format!("scheduled_at must be an RFC 3339 timestamp: {err}"),
-        )
-    })?;
-    if scheduled_at <= OffsetDateTime::now_utc() {
-        return Err(RestError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation",
-            "scheduled_at must be in the future",
-        ));
-    }
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let disbursement = with_audits::<_, Disbursement, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            let scheduled_at =
+                OffsetDateTime::parse(&body.scheduled_at, &Rfc3339).map_err(|err| {
+                    RestError::new(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        "validation",
+                        format!("scheduled_at must be an RFC 3339 timestamp: {err}"),
+                    )
+                })?;
+            if scheduled_at <= OffsetDateTime::now_utc() {
+                return Err(RestError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "validation",
+                    "scheduled_at must be in the future",
+                ));
+            }
+
             let disbursement = lifecycle::schedule_disbursement_in_tx(tx, run_id, scheduled_at)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -526,11 +522,11 @@ pub(crate) async fn attest_disbursement(
     Json(body): Json<AttestDisbursementBody>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let disbursement = with_audits::<_, Disbursement, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             let disbursement = lifecycle::attest_disbursement_in_tx(
                 tx,
                 run_id,
@@ -569,13 +565,13 @@ pub(crate) async fn issue_payslips(
     Path(run_id): Path<Uuid>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_manage(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
 
     // 1. Guard state + release gate and load the deliverable lines.
     let (run, lines) = with_org_conn::<_, _, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             lifecycle::load_payslip_issuance_in_tx(tx, run_id)
                 .await
                 .map_err(RestError::from_lifecycle)
@@ -632,6 +628,7 @@ pub(crate) async fn issue_payslips(
     //    atomic transaction.
     let summary = with_audits::<_, PayslipDeliverySummary, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             lifecycle::record_payslip_deliveries_in_tx(tx, run_id, &deliveries)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -663,12 +660,12 @@ pub(crate) async fn get_payslip_delivery(
     Query(params): Query<PageParams>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_run_read(&principal)?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let summary =
         with_audits::<_, Option<PayslipDeliverySummary>, RestError>(&pool, org, move |tx| {
             Box::pin(async move {
+                require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await?;
                 let summary =
                     lifecycle::payslip_delivery_in_tx(tx, run_id, params.limit, params.offset)
                         .await
@@ -692,45 +689,4 @@ pub(crate) async fn get_payslip_delivery(
     let summary = summary
         .ok_or_else(|| RestError::new(StatusCode::NOT_FOUND, "not_found", "run not found"))?;
     Ok(Json(summary).into_response())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use console_platform_authz::Role;
-    use std::collections::BTreeSet;
-
-    fn principal(role: Role, scope: console_kernel_core::BranchScope) -> Principal {
-        Principal::new(
-            console_kernel_core::UserId::new(),
-            console_kernel_core::OrgId::one(),
-            BTreeSet::from([role]),
-            scope,
-        )
-    }
-
-    #[test]
-    fn manage_gate_mirrors_read_gate_exactly() {
-        // Denied: MEMBER, built-in ADMIN (any scope), branch-scoped ADMIN.
-        for p in [
-            principal(Role::Member, console_kernel_core::BranchScope::All),
-            principal(Role::Admin, console_kernel_core::BranchScope::All),
-            principal(
-                Role::Admin,
-                console_kernel_core::BranchScope::Branches(BTreeSet::from([
-                    console_kernel_core::BranchId::new(),
-                ])),
-            ),
-        ] {
-            assert_eq!(
-                require_run_manage(&p).unwrap_err().status,
-                StatusCode::FORBIDDEN
-            );
-        }
-        // Allowed: EXECUTIVE + SUPER_ADMIN org-wide.
-        for role in [Role::Executive, Role::SuperAdmin] {
-            let p = principal(role, console_kernel_core::BranchScope::All);
-            assert!(require_run_manage(&p).is_ok(), "{role:?} must manage runs");
-        }
-    }
 }
