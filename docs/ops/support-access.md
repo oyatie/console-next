@@ -21,6 +21,8 @@ Operators use the current platform surface. Tenant sessions opening `/platform*`
 
 ## Read scope and masking
 
+The authz loader `cedar_pbac::visible::load_support_session` reads the current session under tenant RLS. The read boundary and downstream feature checks use that snapshot for scope, approval, expiry and reveal facts. Cedar refuses mutation methods with `support.refuse.read_only`, and scope is checked again after the handler. Support principals carry an empty legacy branch scope.
+
 Only reviewed rows in `support_read_surfaces` permit content reads. Unknown routes, write methods and ungranted field classes fail closed. Reviewed API-field classifications follow the personal-data registry rather than matching database column names. Personal fields are masked by default; a tenant can explicitly grant the personal class. Sensitive and unknown fields remain masked.
 
 | Surface | Readable within the granted domain | Protected without a personal grant |

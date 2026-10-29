@@ -170,9 +170,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | finding | backend/crates/attendance/rest/src/lib.rs | branch-required-for-scoped-holder | 1 |
 | finding | backend/crates/hr/adapter-postgres/src/import/rollback.rs | all-boolean-facts-hardcoded-true | 1 |
 | finding | backend/crates/hr/adapter-postgres/src/requests/cedar.rs | all-boolean-facts-hardcoded-true | 1 |
-| finding | backend/crates/platform/authz/src/decide.rs | all-boolean-facts-hardcoded-true | 1 |
 | finding | backend/crates/platform/platform-rest/src/support_tenant.rs | all-boolean-facts-hardcoded-true | 2 |
-| finding | backend/crates/platform/request-context/src/support.rs | all-boolean-facts-hardcoded-true | 1 |
 | matrix | backend/app/src/action_inbox/legacy.rs | reference | 4 |
 | matrix | backend/app/src/action_inbox/response.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 4 |

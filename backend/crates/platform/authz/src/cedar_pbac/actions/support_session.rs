@@ -20,10 +20,11 @@ pub enum Action {
     End,
     Read,
     FieldRead,
+    Write,
 }
 
 impl Action {
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 8] = [
         Self::Request,
         Self::OperatorApprove,
         Self::TenantApprove,
@@ -31,6 +32,7 @@ impl Action {
         Self::End,
         Self::Read,
         Self::FieldRead,
+        Self::Write,
     ];
 
     const fn name(self) -> &'static str {
@@ -42,6 +44,7 @@ impl Action {
             Self::End => "support_end",
             Self::Read => "support_read",
             Self::FieldRead => "support_field_read",
+            Self::Write => "support_write",
         }
     }
 }
@@ -83,7 +86,10 @@ const CONTEXT: &str = r#" appliesTo {
     "reveal_granted": Bool }
 };
 "#;
-const POLICIES: &str = r#"permit(principal is Subject, action == Action::"support_request", resource)
+const POLICIES: &str = r#"@reason("support.refuse.read_only")
+forbid(principal is SupportPrincipal, action, resource)
+unless { action == Action::"support_read" || action == Action::"support_field_read" };
+permit(principal is Subject, action == Action::"support_request", resource)
 when { context.active && context.vendor && context.step_up
   && context.actor_holds_permission && context.other_eligible_holders > 0 };
 permit(principal is Subject, action == Action::"support_operator_approve", resource)
@@ -130,12 +136,6 @@ fn compile() -> Result<Bundle, String> {
     }
     policies.push_str(&read_policy(Action::Read.name(), false));
     policies.push_str(&read_policy(Action::FieldRead.name(), true));
-    for feature in Feature::ALL {
-        schema.push_str(&format!("action \"{}\"{CONTEXT}", feature.as_str()));
-        if matches!(access::tag(feature), Some((_, access::Level::View))) {
-            policies.push_str(&read_policy(feature.as_str(), false));
-        }
-    }
     let schema = Schema::from_str(&schema).map_err(|e| e.to_string())?;
     let policies = PolicySet::from_str(&policies).map_err(|e| e.to_string())?;
     let validation = Validator::new(schema.clone()).validate(&policies, ValidationMode::Strict);
@@ -157,10 +157,10 @@ fn evaluate(
     actor_org: &str,
     target_org: &str,
     f: Facts,
-) -> Result<bool, String> {
+) -> Result<Result<(), &'static str>, String> {
     if (kind == PrincipalKind::Tenant && f.vendor) || (kind == PrincipalKind::Operator && !f.vendor)
     {
-        return Ok(false);
+        return Ok(Err("forbidden"));
     }
     static BUNDLE: OnceLock<Result<Bundle, String>> = OnceLock::new();
     let bundle = BUNDLE.get_or_init(compile).as_ref().map_err(Clone::clone)?;
@@ -230,7 +230,27 @@ fn evaluate(
     )
     .map_err(|e| e.to_string())?;
     let response = Authorizer::new().is_authorized(&request, &bundle.policies, &entities);
-    Ok(response.decision() == Decision::Allow && response.diagnostics().errors().next().is_none())
+    if response.decision() == Decision::Allow && response.diagnostics().errors().next().is_none() {
+        return Ok(Ok(()));
+    }
+    let reason = response
+        .diagnostics()
+        .reason()
+        .filter_map(|id| bundle.policies.policy(id))
+        .filter_map(|policy| policy.annotation("reason"))
+        .find_map(|reason| match reason {
+            "support.refuse.read_only" => Some("support.refuse.read_only"),
+            "support.refuse.requester_cannot_approve" => {
+                Some("support.refuse.requester_cannot_approve")
+            }
+            _ => None,
+        })
+        .unwrap_or(if kind == PrincipalKind::Support {
+            "support.refuse.out_of_scope"
+        } else {
+            "forbidden"
+        });
+    Ok(Err(reason))
 }
 
 /// Compile, validation and evaluation failures all deny the action.
@@ -244,24 +264,53 @@ pub fn decide(
     facts: Facts,
 ) -> bool {
     crate::cedar_stack::with_cedar_stack(|| {
-        evaluate(action.name(), kind, actor, actor_org, target_org, facts).unwrap_or(false)
+        evaluate(action.name(), kind, actor, actor_org, target_org, facts).is_ok_and(|r| r.is_ok())
     })
 }
 
 /// The catalog owns read classification; unclassified and write actions default-deny.
 #[must_use]
 pub fn decide_feature(feature: Feature, session: &str, org: &str, facts: Facts) -> bool {
+    require_feature(feature, session, org, facts).is_ok()
+}
+
+fn feature_action(feature: Feature) -> Action {
+    if matches!(access::tag(feature), Some((_, access::Level::View))) {
+        Action::Read
+    } else {
+        Action::Write
+    }
+}
+
+/// Refusal reasons come from Cedar's determining forbid policies.
+pub fn require(
+    action: Action,
+    kind: PrincipalKind,
+    actor: &str,
+    actor_org: &str,
+    target_org: &str,
+    facts: Facts,
+) -> Result<(), &'static str> {
     crate::cedar_stack::with_cedar_stack(|| {
-        evaluate(
-            feature.as_str(),
-            PrincipalKind::Support,
-            session,
-            org,
-            org,
-            facts,
-        )
-        .unwrap_or(false)
+        evaluate(action.name(), kind, actor, actor_org, target_org, facts)
+            .unwrap_or(Err("forbidden"))
     })
+}
+
+pub fn require_feature(
+    feature: Feature,
+    session: &str,
+    org: &str,
+    facts: Facts,
+) -> Result<(), &'static str> {
+    require(
+        feature_action(feature),
+        PrincipalKind::Support,
+        session,
+        org,
+        org,
+        facts,
+    )
 }
 
 /// The caller resolves the field class against the tenant's session grant.

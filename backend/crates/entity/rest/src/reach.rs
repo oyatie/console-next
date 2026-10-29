@@ -7,9 +7,10 @@
 use console_entity_adapter_postgres::PgEntityStore;
 use console_entity_application::EntityScope;
 use console_kernel_core::{BranchScope, KernelError};
-use console_platform_authz::Principal;
 use console_platform_authz::access::load_access_subject;
+use console_platform_authz::cedar_pbac::actions::support_session;
 use console_platform_authz::cedar_pbac::facts::scope::granted_scope;
+use console_platform_authz::{Feature, Principal};
 use console_platform_db::{DbError, with_org_conn};
 use time::OffsetDateTime;
 
@@ -27,6 +28,23 @@ pub(crate) async fn reach(
     store: &PgEntityStore,
     p: &Principal,
 ) -> Result<EntityScope, KernelError> {
+    if let Some(support) = &p.support {
+        let feature = Feature::OrgChangeRead;
+        return Ok(
+            if support_session::require_feature(
+                feature,
+                &support.session_id.to_string(),
+                &p.org_id.to_string(),
+                support.feature_facts(feature),
+            )
+            .is_ok()
+            {
+                EntityScope::Tenant
+            } else {
+                EntityScope::Only(Vec::new())
+            },
+        );
+    }
     let branches = match &p.branch_scope {
         _ if p.is_tenant_ops => return Ok(EntityScope::Tenant),
         BranchScope::All => return Ok(EntityScope::Tenant),

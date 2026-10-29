@@ -169,6 +169,16 @@ test("two operators and the customer authorize support; every read arrives live 
   await expect(records.getByRole("row")).toHaveCount(2);
   expect(documentLoads, "the access record appeared without reloading").toBe(0);
   await auditLayouts(tenant, "active support access records", "active");
+  for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+    const refused = await operator.request.fetch("/api/v1/org-structure", {
+      method, headers: { authorization: `Bearer ${token}` }, data: {},
+    });
+    expect(refused.status()).toBe(403);
+    expect(await codeOf(refused)).toBe("support.refuse.read_only");
+  }
+  const outsideScope = await operator.request.get("/api/v1/settings", { headers: { authorization: `Bearer ${token}` } });
+  expect(outsideScope.status()).toBe(403);
+  expect(await codeOf(outsideScope)).toBe("support.refuse.out_of_scope");
   const read = async (path: string) => {
     const response = await operator.request.get(path, { headers: { authorization: `Bearer ${token}` } });
     expect(response.status(), await response.text()).toBe(200);

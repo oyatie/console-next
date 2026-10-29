@@ -6,14 +6,16 @@ use crate::access::ScopeGrant;
 use crate::{DatedFeatureGrant, EffectiveFeatureGrant, Feature, Role, SubjectFreshness};
 
 /// Live session authority; no tenant roles or account grants are attached.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
 pub struct SupportPrincipal {
-    pub operator_approved: bool,
-    pub tenant_approved: bool,
+    pub(crate) active: bool,
+    pub(crate) org_id: uuid::Uuid,
+    pub(crate) operator_approved: bool,
+    pub(crate) tenant_approved: bool,
     pub session_id: uuid::Uuid,
     pub operator_label: String,
-    pub scope: Vec<String>,
-    pub reveal_classes: Vec<String>,
+    pub(crate) scope: Vec<String>,
+    pub(crate) reveal_classes: Vec<String>,
 }
 
 /// Authenticated principal plus its already-resolved branch scope.
