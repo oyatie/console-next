@@ -262,3 +262,5 @@ async fn seed_exception(
 
 #[path = "self_service/weekly.rs"]
 mod weekly;
+#[path = "self_service/weekly_history.rs"]
+mod weekly_history;

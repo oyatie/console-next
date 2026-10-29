@@ -10,7 +10,7 @@ pub const WARN_HOURS_KEY: console_settings_domain::SettingKey =
 #[derive(Debug, Clone, Copy)]
 pub struct Week52Limits {
     pub danger_hours: f64,
-    pub warn_hours: f64,
+    pub warn_hours: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -25,9 +25,11 @@ pub enum Week52Tone {
 pub fn week52_tone(input: &Week52Input, limits: Week52Limits) -> Week52Tone {
     if input.current_hours >= limits.danger_hours || input.projected_hours >= limits.danger_hours {
         Week52Tone::Danger
-    } else if input.projected_hours >= limits.warn_hours {
-        Week52Tone::Warn
     } else {
-        Week52Tone::Ok
+        match limits.warn_hours {
+            Some(warn) if input.projected_hours >= warn => Week52Tone::Warn,
+            Some(_) => Week52Tone::Ok,
+            None => Week52Tone::Unknown,
+        }
     }
 }

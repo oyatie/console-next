@@ -3712,6 +3712,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { description: Weekly policy read unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
   /api/v1/attendance/month:
     get:
       x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
@@ -3956,6 +3957,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { description: Weekly policy read unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
   /api/v1/attendance/week52/acks:
     post:
       tags: [attendance]

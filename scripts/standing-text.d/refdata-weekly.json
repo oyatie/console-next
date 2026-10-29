@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#WeeklyPage": 15
+  },
+  "newScreens": {
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#WeeklyPage": {
+      "FACT": 9,
+      "REFUSAL": 4,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

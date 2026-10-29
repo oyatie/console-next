@@ -21,9 +21,10 @@ import { HolidaysView } from "./holidays-view";
 import { PatternSheet } from "./pattern-sheet";
 import { PatternsView } from "./patterns-view";
 import { PublicHolidaysView } from "./public-holidays-view";
+import { WeeklyView } from "./weekly-view";
 
 export type View = "calendar" | "types" | "crews" | "holidays" | "public";
-export type Tab = "month" | "day" | "schedule";
+export type Tab = "month" | "day" | "week" | "schedule";
 export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean; unscheduled?: boolean };
 
 const route = getRouteApi("/app/attendance");
@@ -41,6 +42,10 @@ export function MonthPage() {
 
 export function DayPage() {
   return <AttendanceLayout>{head => <DayTab head={head} />}</AttendanceLayout>;
+}
+
+export function WeeklyPage() {
+  return <AttendanceLayout>{() => <WeeklyView />}</AttendanceLayout>;
 }
 
 export function PersonPage() {

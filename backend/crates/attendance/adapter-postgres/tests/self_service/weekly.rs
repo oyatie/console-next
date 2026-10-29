@@ -30,7 +30,7 @@ async fn weekly_limits_drive_both_projections_and_missing_rows_are_unknown(owner
             if let Some(warn) = warn {
                 let mut tx = owner.begin().await.unwrap();
                 sqlx::query("SET LOCAL session_replication_role=replica").execute(&mut *tx).await.unwrap();
-                sqlx::query("INSERT INTO tenant_setting_overrides(org_id,key,value,effective_from,set_by,reason_code,direction) VALUES($1,'attendance.week52.warn_hours',$2,now(),$3,'X','tighten')")
+                sqlx::query("INSERT INTO tenant_setting_overrides(org_id,key,value,effective_from,set_by,reason_code,direction) VALUES($1,'attendance.week52.warn_hours',$2,'2026-10-25T15:00:00Z',$3,'X','tighten')")
                     .bind(caller.org_id).bind(serde_json::json!(warn)).bind(caller.user_id).execute(&mut *tx).await.unwrap();
                 tx.commit().await.unwrap();
             }
@@ -57,13 +57,13 @@ async fn weekly_limits_drive_both_projections_and_missing_rows_are_unknown(owner
         let projection = store.read_own_week52(own, ReadOwnWeek52::new(after_coverage).unwrap()).await.unwrap().unwrap();
         assert_eq!(projection.current_hours, 0.0);
         assert_eq!(serde_json::to_value(projection.tone).unwrap(), "UNKNOWN");
-        for (code, value, restore) in [("WEEKLY_STANDARD_HOURS", 0_i64, 40_i64), ("WEEKLY_OVERTIME_MAX_HOURS", 4, 12)] {
+        for (code, value, restore, expected) in [("WEEKLY_STANDARD_HOURS", 0_i64, 40_i64, "UNKNOWN"), ("WEEKLY_OVERTIME_MAX_HOURS", 4, 12, "DANGER")] {
             sqlx::query("UPDATE statutory_rules SET value_num=$2 WHERE code=$1 AND effective_from='2026-10-08'")
                 .bind(code).bind(value).execute(&owner).await.unwrap();
             let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid())).await.unwrap();
-            assert_eq!(serde_json::to_value(manager[0].tone).unwrap(), "UNKNOWN");
+            assert_eq!(serde_json::to_value(manager[0].tone).unwrap(), expected);
             let projection = store.read_own_week52(own, ReadOwnWeek52::new(monday).unwrap()).await.unwrap().unwrap();
-            assert_eq!(serde_json::to_value(projection.tone).unwrap(), "UNKNOWN");
+            assert_eq!(serde_json::to_value(projection.tone).unwrap(), expected);
             sqlx::query("UPDATE statutory_rules SET value_num=$2 WHERE code=$1 AND effective_from='2026-10-08'")
                 .bind(code).bind(restore).execute(&owner).await.unwrap();
         }

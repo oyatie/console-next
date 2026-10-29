@@ -10,3 +10,4 @@ responses:
   '401': { $ref: '#/components/responses/Unauthorized' }
   '403': { $ref: '#/components/responses/Forbidden' }
   '422': { $ref: '#/components/responses/ValidationError' }
+  '500': { description: Weekly policy read unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
