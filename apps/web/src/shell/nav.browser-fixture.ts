@@ -16,7 +16,7 @@ declare global {
   interface Window { __refetchChecklist: () => Promise<void>; refetchNavModules: () => Promise<void>; __navFacts: { phase?: string; state?: string } }
 }
 
-export async function navFixture() {
+export async function navFixture(engine = chromium) {
   const errors: string[] = [];
   const server = await createServer({ configFile: false, cacheDir: ".cache/nav-shell-test", logLevel: "error", define: { "process.env.VIRT_ON": "true" },
     optimizeDeps: browserTestOptimizeDeps, resolve: { dedupe: ["react", "react-dom"] },
@@ -54,7 +54,7 @@ export async function navFixture() {
       ` : undefined }],
   });
   await server.listen();
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const page = await browser.newPage();
   await page.addInitScript(recordShifts);
   page.on("pageerror", error => errors.push(error.message));
