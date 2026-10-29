@@ -27,7 +27,7 @@ app/tests/evaluation_cycle_api.rs	1301
 app/tests/facilities_pilot_story.rs	652
 app/tests/field_visit_api.rs	804
 app/tests/hr_attendance_manager_scope.rs	367
-app/tests/hr_attendance_self_read.rs	333
+app/tests/hr_attendance_self_read.rs	317
 app/tests/hr_lifecycle_stage_d.rs	1881
 app/tests/hr_people_create_api.rs	1144
 app/tests/logistics_pilot_story.rs	593
