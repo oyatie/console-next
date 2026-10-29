@@ -106,9 +106,7 @@ jobs:
         run: |
           mkdir -p .cache
           npx playwright test --config e2e/mock/playwright.config.ts --list --reporter=json > .cache/states-list.json
-          timings=e2e/mock/timings.json
-          if [[ -f .cache/states-timings/timings.json ]]; then timings=.cache/states-timings/timings.json; fi
-          node scripts/states-shards.mjs plan .cache/states-list.json "$timings" .cache/states-plan/plan.json
+          node scripts/states-shards.mjs plan .cache/states-list.json e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-timings/timings.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: states-plan
@@ -177,14 +175,13 @@ jobs:
         with:
           name: states-plan
           path: .cache/states-plan
-      - name: Refresh committed timing snapshot from complete CI results
-        run: |
-          cp .cache/states-plan/timings.json e2e/mock/timings.json
-          node scripts/states-shards.mjs refresh e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-reports/*.json
+      - name: Refresh measurements from complete CI results
+        run: node scripts/states-shards.mjs refresh e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-timings/timings.json .cache/states-reports/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: states-timings
-          path: e2e/mock/timings.json
+          path: .cache/states-timings/timings.json
+          include-hidden-files: true
           retention-days: 90
           if-no-files-found: error
 

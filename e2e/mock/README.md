@@ -21,13 +21,13 @@ matrix job downloads that exact plan and runs its file list; `ci-ok` requires th
 planner and every shard. Added tests in measured files get the conservative default
 until measured. Run the planner regressions with `node --test scripts/states-shards.test.mjs`.
 
-Successful dev pushes refresh the committed timing snapshot's format from every
-shard's JSON report and publish `states-timings`. Subsequent plans use the latest
-same-repository dev artifact, falling back to the committed snapshot when none is
-available. Partial, failed, duplicate or mismatched reports cannot replace it.
-CI keeps repository access read-only; to commit a newer snapshot, download that
-artifact over `e2e/mock/timings.json`. Local measurements must not overwrite CI's
-trusted artifact. The bootstrap snapshot records 22 fully completed specs (242
+Successful dev pushes publish per-spec wall durations and the measurement's worker
+count as `states-timings`. Plans take settings only from committed `timings.json`
+and overlay the latest same-repository dev artifact's spec durations only when its
+worker count matches. Otherwise the committed snapshot and conservative defaults
+apply. Partial, failed, duplicate or mismatched reports cannot refresh measurements.
+CI never overwrites the committed configuration. Local measurements must not
+overwrite CI's trusted artifact. The bootstrap snapshot records 22 fully completed specs (242
 cases) from a local Chromium measurement on 2026-10-30; remaining specs use the
 conservative default until the first successful dev refresh.
 

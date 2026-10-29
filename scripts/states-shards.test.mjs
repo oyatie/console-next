@@ -81,7 +81,7 @@ test("complete JSON results refresh per-spec timings using the configured worker
   const plan = planStates(observed, settings);
   const refreshed = refreshTimings(settings, plan, [observed]);
   assert.deepEqual(refreshed.specs, { "mock/a.spec.ts": { seconds: 8, tests: 4 } });
-  assert.equal(refreshed.budgetSeconds, settings.budgetSeconds);
+  assert.equal(refreshed.budgetSeconds, undefined);
   assert.equal(refreshed.workers, settings.workers);
 });
 
@@ -94,6 +94,64 @@ test("incomplete, failed, duplicate and unplanned results cannot poison trusted 
   for (const results of [[], [report({ "mock/a.spec.ts": 3 })], [failed], [observed, observed], [report({ "mock/extra.spec.ts": 4 })]]) {
     assert.throws(() => refreshTimings(settings, plan, results), /STATES_INCOMPLETE_RESULTS/);
   }
+});
+
+test("refresh refuses report errors and worker mismatches even with complete passing results", async () => {
+  const { planStates, refreshTimings } = await load();
+  const observed = report({ "mock/a.spec.ts": 4 });
+  const plan = planStates(observed, settings);
+  for (const patch of [{ errors: [{ message: "worker crashed" }] }, { config: { workers: 1 } }, { config: { workers: 0 } }]) {
+    assert.throws(() => refreshTimings(settings, plan, [{ ...observed, ...patch }]), /STATES_INCOMPLETE_RESULTS/);
+  }
+});
+
+test("a repeated file is rejected even when shard IDs and budgets are valid", async () => {
+  const { planStates, filesForShard, refreshTimings } = await load();
+  const observed = report({ "mock/a.spec.ts": 1 });
+  const plan = planStates(observed, settings);
+  const repeated = { ...plan, shards: [plan.shards[0], { ...plan.shards[0], id: 2 }] };
+  assert.throws(() => filesForShard(repeated, 1), /STATES_INVALID_PLAN.*repeated spec/);
+  assert.throws(() => refreshTimings(settings, repeated, [observed]), /STATES_INVALID_PLAN.*repeated spec/);
+});
+
+test("CI uses committed settings, takes only compatible artifact durations, and refreshes without overwriting settings", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "states-settings-"));
+  const committed = { budgetSeconds: 60, startupSeconds: 5, workers: 4, defaultTestSeconds: 20,
+    specs: { "mock/a.spec.ts": { seconds: 2, tests: 1 } } };
+  const observed = { ...report({ "mock/a.spec.ts": 3, "states/new.spec.ts": 2 }), config: { workers: committed.workers } };
+  try {
+    for (const folder of ["bin", "scripts", "e2e/mock", ".cache/states-timings", ".cache/states-reports"]) mkdirSync(path.join(dir, folder), { recursive: true });
+    for (const file of ["states-shards.mjs", "e2e-timings.mjs"]) writeFileSync(path.join(dir, "scripts", file), readFileSync(new URL(file, import.meta.url)));
+    writeFileSync(path.join(dir, "bin/npx"), '#!/bin/sh\nprintf "%s" "$TEST_REPORT"\n', { mode: 0o755 });
+    writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf "%s" "$TEST_REPORT" > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
+    const configFile = path.join(dir, "e2e/mock/timings.json");
+    const original = JSON.stringify(committed);
+    writeFileSync(configFile, original);
+    const env = { ...process.env, PATH: `${dir}/bin:${process.env.PATH}`, TEST_REPORT: JSON.stringify(observed),
+      PLAYWRIGHT_JSON_OUTPUT_FILE: path.join(dir, ".cache/states-reports/one.json") };
+    const step = workflow.jobs["states-plan"].steps.find(s => s.id === "plan");
+    const refresh = workflow.jobs["states-timings"].steps.find(s => s.run?.includes("states-shards.mjs refresh"));
+    for (const workers of [committed.workers, 2]) {
+      writeFileSync(path.join(dir, ".cache/states-timings/timings.json"), JSON.stringify({
+        budgetSeconds: 900, startupSeconds: 80, defaultTestSeconds: 1000, workers,
+        specs: { "mock/a.spec.ts": { seconds: 9, tests: 1 } },
+      }));
+      const planned = spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], { cwd: dir, env, encoding: "utf8" });
+      assert.equal(planned.status, 0, planned.stderr);
+      const plan = JSON.parse(readFileSync(path.join(dir, ".cache/states-plan/plan.json"), "utf8"));
+      assert.equal(plan.budgetSeconds, committed.budgetSeconds);
+      assert.equal(plan.shards[0].seconds, workers === committed.workers ? 34 : 27);
+      const ran = spawnSync(process.execPath, ["scripts/states-shards.mjs", "run", ".cache/states-plan/plan.json", "1"], { cwd: dir, env, encoding: "utf8" });
+      assert.equal(ran.status, 0, ran.stderr);
+      const refreshed = spawnSync("bash", ["-e", "-o", "pipefail", "-c", refresh.run], { cwd: dir, env, encoding: "utf8" });
+      assert.equal(refreshed.status, 0, refreshed.stderr);
+      assert.equal(readFileSync(configFile, "utf8"), original);
+      const upload = workflow.jobs["states-timings"].steps.find(s => s.with?.name === "states-timings");
+      const measured = JSON.parse(readFileSync(path.join(dir, upload.with.path), "utf8"));
+      assert.equal(measured.workers, committed.workers);
+      assert.deepEqual(measured.specs["mock/a.spec.ts"], { seconds: 3, tests: 3 });
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("CLI emits exactly its dynamic matrix and rejects a shard outside it before npm executes", async () => {
@@ -140,7 +198,8 @@ test("a successful Playwright exit with an empty selection cannot pass a shard",
     writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf \'{"suites":[],"errors":[]}\' > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
     const planFile = path.join(dir, "plan.json");
     writeFileSync(planFile, JSON.stringify(planStates(report({ "mock/a.spec.ts": 1 }), settings)));
-    writeFileSync(path.join(dir, "timings.json"), JSON.stringify(settings));
+    mkdirSync(path.join(dir, "e2e/mock"), { recursive: true });
+    writeFileSync(path.join(dir, "e2e/mock/timings.json"), JSON.stringify(settings));
     const result = spawnSync(process.execPath, [path.resolve("scripts/states-shards.mjs"), "run", planFile, "1"], {
       cwd: dir, encoding: "utf8", env: { ...process.env, PATH: `${dir}/bin:${process.env.PATH}`, PLAYWRIGHT_JSON_OUTPUT_FILE: path.join(dir, "report.json") },
     });

@@ -55,8 +55,9 @@ export function listedTests(report) {
  * Splits the listed tests into jobs of at most `target` seconds each: per project, ceil(estimate / budget) shards,
  * whole files packed longest-first into the lightest shard. A job's estimate is `boot` plus its seconds over the
  * project's workers ("clock" runs one at a time). Returns [] when the whole run fits in one job.
+ * `strict` always emits jobs, refuses oversized files and adds bins until every job fits the target.
  */
-export function plan(tests, timings, { target = 300, workers = 4, boot = 40 } = {}) {
+export function plan(tests, timings, { target = 300, workers = 4, boot = 40, strict = false } = {}) {
   const known = tests.map((t) => timings[t.key]?.s).filter((s) => s !== undefined).sort((a, b) => a - b);
   const median = known.length ? known[known.length >> 1] : FALLBACK_S;
   const projects = new Map();
@@ -67,16 +68,24 @@ export function plan(tests, timings, { target = 300, workers = 4, boot = 40 } = 
   const width = (project) => (project === "clock" ? 1 : workers);
   const sum = (files) => [...files.values()].reduce((a, b) => a + b, 0);
   const whole = boot + [...projects].reduce((acc, [p, files]) => acc + sum(files) / width(p), 0);
-  if (whole <= target) return [];
-  const budget = Math.max(target - boot, 30);
+  if (whole <= target && !strict) return [];
+  const budget = strict ? target - boot : Math.max(target - boot, 30);
   return [...projects].flatMap(([project, files]) => {
-    const bins = Array.from({ length: Math.ceil(sum(files) / width(project) / budget) }, () => ({ project, files: [], s: 0 }));
-    for (const [file, s] of [...files].sort((a, b) => b[1] - a[1])) {
-      const bin = bins.reduce((a, b) => (b.s < a.s ? b : a));
-      bin.files.push(file);
-      bin.s += s;
+    const sorted = [...files].sort((a, b) => b[1] - a[1] || (strict ? a[0].localeCompare(b[0]) : 0));
+    if (strict) for (const [file, seconds] of sorted) {
+      if (boot + seconds / width(project) > target)
+        throw new Error(`E2E_SPEC_OVER_BUDGET: ${file}: ${boot + seconds / width(project)}s exceeds ${target}s; split this spec`);
     }
-    return bins.filter((b) => b.files.length).map((b) => ({ project, files: b.files, est: Math.round(boot + b.s / width(project)) }));
+    for (let count = Math.ceil(sum(files) / width(project) / budget); ; count++) {
+      const bins = Array.from({ length: count }, () => ({ project, files: [], s: 0 }));
+      for (const [file, s] of sorted) {
+        const bin = bins.reduce((a, b) => (b.s < a.s ? b : a));
+        bin.files.push(file);
+        bin.s += s;
+      }
+      if (!strict || bins.every(b => boot + b.s / width(project) <= target))
+        return bins.filter((b) => b.files.length).map((b) => ({ project, files: b.files, est: strict ? boot + b.s / width(project) : Math.round(boot + b.s / width(project)) }));
+    }
   });
 }
 
