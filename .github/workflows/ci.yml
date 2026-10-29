@@ -61,17 +61,70 @@ jobs:
       - name: Spreadsheet paste browser regression
         run: npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table-paste.spec.ts
 
-  # Contract-typed screen states (Vite preview + route mocks): sharded across jobs so the suite stays inside
-  # e2e:states' 10-minute budget as it grows (https://playwright.dev/docs/test-sharding). Add a shard when one nears it.
+  # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
+  states-plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version, cache: npm}
+      - run: npm ci --no-audit --no-fund
+      - run: node --test scripts/states-shards.test.mjs
+      - name: Find latest trusted dev timings
+        id: timings
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --silent --show-error --get \
+            -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' \
+            --data-urlencode 'name=states-timings' --data-urlencode 'per_page=100' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/artifacts" > "${RUNNER_TEMP}/states-timings.json"
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const { artifacts } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/states-timings.json`, 'utf8'));
+          const cached = artifacts.find(a => !a.expired && a.workflow_run?.head_branch === 'dev' && a.workflow_run.head_repository_id === Number(process.env.GITHUB_REPOSITORY_ID) && a.workflow_run.repository_id === Number(process.env.GITHUB_REPOSITORY_ID));
+          if (cached) appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${cached.workflow_run.id}\n`);
+          JS
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: steps.timings.outputs.run-id != ''
+        with:
+          name: states-timings
+          run-id: ${{ steps.timings.outputs.run-id }}
+          github-token: ${{ github.token }}
+          path: .cache/states-timings
+      - name: Plan every state spec
+        id: plan
+        run: |
+          mkdir -p .cache
+          npx playwright test --config e2e/mock/playwright.config.ts --list --reporter=json > .cache/states-list.json
+          timings=e2e/mock/timings.json
+          if [[ -f .cache/states-timings/timings.json ]]; then timings=.cache/states-timings/timings.json; fi
+          node scripts/states-shards.mjs plan .cache/states-list.json "$timings" .cache/states-plan/plan.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: states-plan
+          path: .cache/states-plan
+          include-hidden-files: true
+          if-no-files-found: error
+
   states:
+    needs: states-plan
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
+      matrix: ${{ fromJSON(needs['states-plan'].outputs.matrix) }}
     steps:
       - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
@@ -85,8 +138,55 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps --only-shell chromium
-      # Workers stay at the config default (2 = half of the runner's 4 vCPUs); go wider with shards, not workers.
-      - run: npm run e2e:states -- --shard=${{ matrix.shard }}/3
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: states-plan
+          path: .cache/states-plan
+      # Workers stay at the timing configuration's default; go wider with shards, not workers.
+      - run: node scripts/states-shards.mjs run .cache/states-plan/plan.json "${{ matrix.shard }}"
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/states-report-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: states-report-${{ matrix.shard }}
+          path: .cache/states-report-${{ matrix.shard }}.json
+          include-hidden-files: true
+          if-no-files-found: error
+
+  states-timings:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: [states-plan, states]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: states-report-*
+          merge-multiple: true
+          path: .cache/states-reports
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: states-plan
+          path: .cache/states-plan
+      - name: Refresh committed timing snapshot from complete CI results
+        run: |
+          cp .cache/states-plan/timings.json e2e/mock/timings.json
+          node scripts/states-shards.mjs refresh e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-reports/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: states-timings
+          path: e2e/mock/timings.json
+          retention-days: 90
+          if-no-files-found: error
 
   backend:
     runs-on: ubuntu-24.04-arm
@@ -197,7 +297,7 @@ jobs:
 
   ci-ok:
     if: ${{ always() }}
-    needs: [commits, web, states, backend, supply-chain]
+    needs: [commits, web, states-plan, states, states-timings, backend, supply-chain]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -205,6 +305,8 @@ jobs:
         run: |
           test "${{ needs.commits.result }}" = success
           test "${{ needs.web.result }}" = success
+          test "${{ needs['states-plan'].result }}" = success
           test "${{ needs.states.result }}" = success
+          test "${{ needs['states-timings'].result }}" = success || test "${{ needs['states-timings'].result }}" = skipped
           test "${{ needs.backend.result }}" = success
           test "${{ needs.supply-chain.result }}" = success
