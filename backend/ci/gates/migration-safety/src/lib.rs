@@ -1,17 +1,22 @@
 //! Migration-safety gate.
 
+mod class;
+mod config;
+pub use class::summary;
+pub mod order;
 mod privileges;
 mod versions;
 use privileges::{
     check_audit_events_grants, check_audit_events_trigger, check_table_owner_revokes,
 };
-use versions::check_migration_versions;
 
 use std::path::{Path, PathBuf};
 use std::{collections::HashSet, fs};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ViolationKind {
+    MigrationClassHeader,
+    MigrationClassMismatch,
     InvalidMigrationVersion,
     DuplicateMigrationVersion,
     NonContiguousMigrationVersion,
@@ -94,14 +99,14 @@ pub fn check_migrations_root(root: &Path) -> GateResult {
 }
 
 fn check_files(files: Vec<PathBuf>) -> GateResult {
-    let mut audited_tables: HashSet<String> = built_in_audited_tables()
-        .iter()
+    let mut audited_tables: HashSet<String> = "audit_events regions branches users user_branches"
+        .split_whitespace()
         .map(|name| name.to_string())
         .collect();
     let mut readable_files = Vec::new();
     let mut result = GateResult::default();
 
-    check_migration_versions(&files, &mut result);
+    versions::check_migration_versions(&files, &mut result);
 
     for file in files {
         match fs::read_to_string(&file) {
@@ -122,16 +127,6 @@ fn check_files(files: Vec<PathBuf>) -> GateResult {
     }
 
     result
-}
-
-fn built_in_audited_tables() -> &'static [&'static str] {
-    &[
-        "audit_events",
-        "regions",
-        "branches",
-        "users",
-        "user_branches",
-    ]
 }
 
 fn discover_audited_tables(content: &str, audited_tables: &mut HashSet<String>) {
@@ -155,6 +150,7 @@ fn check_migration_file(
     audited_tables: &HashSet<String>,
     result: &mut GateResult,
 ) {
+    class::check(file, content, result);
     let sanitized = sanitize_sql(content);
     let statements = sanitized
         .split(';')
@@ -386,6 +382,9 @@ fn sanitize_sql(content: &str) -> String {
         }
     }
 
+    if in_single_quote || in_double_quote || in_block_comment {
+        output.push_str(" __unparsed_sql__");
+    }
     output
 }
 
