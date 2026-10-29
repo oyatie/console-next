@@ -7,14 +7,10 @@ with the same local invocation for reproducible proofs. It does not enter the ap
 | Tool | Layer | User | Approval | Exit plan |
 | --- | --- | --- | --- | --- |
 | `ci-tool:nextest` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-28: cargo-nextest approved as Rust tooling | Replace only with test discovery, isolation, failure propagation and JUnit parity. |
-| `actions/cache/restore`, `actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | 2026-10-28: orchestrator-approved under owner delegation (owner ruling 2026-10-26); `approval.by = orchestrator`; `review_pending_owner: true` | Remove the cache steps; all checks still run on a cold build. |
+| `actions/cache/restore`, `actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-29: cache actions approved; `approval.by = owner`; `authority = Owner` | Remove the cache steps; all checks still run on a cold build. |
 
-The owner's 2026-10-26 delegation was:
-
-> 「if any of them are industry standards that are clearly best practice and modern golden standard, you can approve those」
-
-The orchestrator approved the cache actions under that delegation, following the owner's 2026-10-28
-directive: 「caching should work following best practices both in github and locally」.
+The owner approved the cache actions on 2026-10-29, following the 2026-10-28 directive:
+「caching should work following best practices both in github and locally」.
 The five STANDARD criteria are: (a) GitHub's first-party action and
 [documented caching mechanism](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching);
 (b) [MIT licensed](https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE);
