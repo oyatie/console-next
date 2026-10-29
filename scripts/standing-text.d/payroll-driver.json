@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "apps/web/src/features/payroll/ui/payroll-home.tsx#PayrollHome": 16,
+    "apps/web/src/features/payroll/ui/reference-page.tsx#PayrollReference": 13
+  },
+  "newScreens": {
+    "apps/web/src/features/payroll/ui/payroll-home.tsx#PayrollHome": {
+      "FACT": 12,
+      "REFUSAL": 3,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/payroll/ui/reference-page.tsx#PayrollReference": {
+      "FACT": 9,
+      "REFUSAL": 3,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

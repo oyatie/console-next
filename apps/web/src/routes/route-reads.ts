@@ -2,7 +2,9 @@
 import { operationAccess } from "../reference/authz/domain/operation-access";
 import type { Requirement } from "../reference/authz/domain/access";
 
-type Operation = keyof typeof operationAccess;
+import { pendingPayrollReads } from "./pending-payroll-reads";
+const readAccess = { ...operationAccess, ...pendingPayrollReads };
+type Operation = keyof typeof readAccess;
 type Reads = { reads: readonly Operation[]; command?: Operation };
 const structure = "GET /api/v1/org-structure";
 const entities = "GET /api/v1/legal-entities";
@@ -54,12 +56,14 @@ export const routeReads = {
   "/people/certificates": { reads: ["GET /api/v1/hr/certificates"] },
   "/people/exits": { reads: ["GET /api/v1/hr/exit-cases"] },
   "/people/period-locks": { reads: ["GET /api/v1/period-locks"] },
+  "/payroll": { reads: ["GET /api/v1/payroll/pay-groups", "GET /api/v1/payroll/runs"] },
+  "/payroll/reference": { reads: ["GET /api/v1/payroll/pay-groups", "GET /api/v1/payroll/reference/rates"] },
   "/statutory": { reads: ["GET /api/v1/statutory/workplaces"] },
 } as const satisfies Record<string, Reads>;
 
 export function readRequirement(path: keyof typeof routeReads): Requirement | { allOf: readonly Requirement[] } {
   const { reads, command } = routeReads[path] as Reads;
-  const needs: Requirement[] = [...reads, ...(command ? [command] : [])].map(op => operationAccess[op]);
+  const needs: Requirement[] = [...reads, ...(command ? [command] : [])].map(op => readAccess[op]);
   const allOf = needs.filter((need, i) => needs.findIndex(other => JSON.stringify(other) === JSON.stringify(need)) === i);
   return allOf.length === 1 ? allOf[0]! : { allOf };
 }

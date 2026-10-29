@@ -4,12 +4,13 @@ import { mockRoute } from "./route";
 import { authz, checklist, employees, facets, failure, id, inbox, modules, screenAccess, structure, token, user } from "./fixtures";
 import { orgChange, orgChanges } from "./org-changes";
 import { mockOrgChangeCounts } from "./org-changes-web";
-import type { OrgChangeState, Screen, State } from "../states/registry";
+import { mockPayroll } from "./payroll";
+import type { PayrollState, OrgChangeState, Screen, State } from "../states/registry";
 import { mockLifecycleSheets } from "./lifecycle-sheets";
 import { numberingReads } from "./numbering";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
-export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState, modulesState: keyof typeof modules | "refused" = "ready") {
+export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState | PayrollState, modulesState: keyof typeof modules | "refused" = "ready") {
   if (process.env.E2E_CPU_THROTTLE) {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.E2E_CPU_THROTTLE) });
@@ -88,10 +89,11 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
     const offset = Number(query.get("offset") ?? 0), limit = Number(query.get("limit") ?? 50);
     return failed ?? { status: 200, json: { items: filtered.slice(offset, offset + limit), total: filtered.length } };
   });
-  const record = orgChange(state === "empty" ? "populated" : state);
+  const record = orgChange(state === "empty" || state === "held" || state === "unsupported" ? "populated" : state);
   await mockRoute(page, "get", "/api/v1/org-changes/{id}", async () => (await beforeReply("/api/v1/org-changes/{id}")) ?? (state === "missing" ? { status: 404, json: failure("not_found") } : { status: 200, json: record }));
   await mockRoute(page, "post", "/api/v1/org-changes/{id}/preflight", { status: 200, json: record });
   await mockLifecycleSheets(page, screen);
   const counts = await mockOrgChangeCounts(page, screen.key === "org-changes" && (state === "loading" || state === "failed") ? state : "populated", changes);
+  await mockPayroll(page, screen, state, held);
   return { unexpected, release: () => { release(); counts.release(); }, count, operationId: id(99), ...(screen.key === "numbering" ? await numberingReads(page, "operating") : {}) };
 }

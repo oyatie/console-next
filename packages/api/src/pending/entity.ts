@@ -5,6 +5,8 @@
 // reads and commands no backend branch serves yet (the security contact). Each is a backend ask; the screens that
 // use one degrade where it is not served. Remove an entry once its path is generated, and a type that then fails to
 // match is a contract bug to raise, not to paper over.
+import type { PayrollPaths, PayrollModule } from "./payroll";
+export type { PayGroup, PayGroups, PayrollRate, PayrollRates, PayrollRun } from "./payroll";
 import type { StatutoryPaths } from "./statutory";
 export type { FilingTask, FilingPage, RegisterPage, RecordFiling, FilingFacts, FilingReason, FilingCitation } from "./statutory";
 import type { components, paths } from "../schema";
@@ -87,7 +89,8 @@ type Requested = {
 };
 
 /** The generated paths with the requested ones laid over them. */
-export type AllPaths = Omit<paths, keyof Requested | keyof StatutoryPaths> & Requested & StatutoryPaths;
+type PayrollModulesPath = { "/api/v1/onboarding/modules": { get: { parameters: Record<string, never>; responses: { 200: { content: { "application/json": (S["OnboardingModules"][number] | PayrollModule)[] } } } } } };
+export type AllPaths = Omit<paths, keyof Requested | keyof StatutoryPaths | keyof PayrollPaths | keyof PayrollModulesPath> & Requested & StatutoryPaths & PayrollPaths & PayrollModulesPath;
 
 // --- lane: CS-BULK (fe/cs-bulk-history): setup batches (MR-12 org-structure, MR-29 entity-setup), named from the
 // generated schema. The structure node and tree are the ones ./structure names (kept under their old names here).

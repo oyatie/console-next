@@ -60,6 +60,8 @@ const paths = [
   "/people/requests",
   "/people/run",
   "/people/unplaced",
+  "/payroll",
+  "/payroll/reference",
   "/platform",
   "/requests",
   "/requests/$id",
