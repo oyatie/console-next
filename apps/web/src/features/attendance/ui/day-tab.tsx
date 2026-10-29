@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
@@ -41,7 +41,8 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
-  const board = useQuery({ ...dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined), placeholderData: keepPreviousData });
+  // A different date has different notices above the ledger; reserve its grid instead of drawing the previous date's answer.
+  const board = useQuery({ ...dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined), placeholderData: previous => previous?.date === date ? previous : undefined });
   const rows = useMemo(() => board.data?.groups.flatMap(g => g.rows) ?? [], [board.data]);
   const kindOf = usePlanKinds(rows, date);
   const store = useDrafts(`day:${date}`, rows);

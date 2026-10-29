@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, expect, test, vi } from "vitest";
 import { ApiError } from "@console/api";
-import { dayBoardQuery } from "./api";
+import { closesQuery, exceptionsQuery, week52Query, dayBoardQuery } from "./api";
 
 const request = vi.hoisted(() => vi.fn());
 vi.mock("@console/api", async original => ({ ...await original<typeof import("@console/api")>(), api: { GET: request } }));
@@ -31,4 +31,29 @@ test("a compact query failure is not retried", async () => {
   request.mockRejectedValue(error);
   await expect(dayBoardQuery("bad date").queryFn()).rejects.toBe(error);
   expect(request).toHaveBeenCalledTimes(1);
+});
+
+test.each(["2026-10-04", "2026-09-28", "2026-10-01"])("week52 uses the containing Monday across month boundaries: %s", async date => {
+  request.mockResolvedValue({ data: { items: [] }, response: new Response() });
+  await week52Query(date, "place").queryFn();
+  expect(request).toHaveBeenCalledWith("/api/v1/attendance/week52", { params: { query: { week_start: "2026-09-28", branch_id: "place" } } });
+});
+test("close and exception reads carry month and workplace; OPEN pages use response offsets", async () => {
+  request.mockResolvedValue({ data: { items: [] }, response: new Response() });
+  await closesQuery("2026-10", "place").queryFn();
+  expect(request).toHaveBeenCalledWith("/api/v1/attendance/closes", { params: { query: { month: "2026-10", branch_id: "place" } } });
+  const query = exceptionsQuery("2026-10", "place");
+  request.mockResolvedValue({ data: { items: [], total: 0, offset: 2, limit: 2 }, response: new Response() });
+  await query.queryFn({ pageParam: 2 });
+  expect(request).toHaveBeenCalledWith("/api/v1/attendance/exceptions", { params: { query: { month: "2026-10", branch_id: "place", status: "OPEN", offset: 2 } } });
+  expect(query.getNextPageParam({ offset: 0, limit: 2, total: 3, items: [{}, {}] } as never)).toBe(2);
+  expect(query.getNextPageParam({ offset: 2, limit: 2, total: 3, items: [{}] } as never)).toBeUndefined();
+  expect(query.getNextPageParam({ offset: 0, limit: 2, total: 3, items: [] })).toBeUndefined();
+});
+
+test("an impossible URL date reaches server validation without normalization", async () => {
+  const error = new ApiError(422, "invalid_date", "invalid date");
+  request.mockRejectedValue(error);
+  await expect(week52Query("2026-02-30").queryFn()).rejects.toBe(error);
+  expect(request).toHaveBeenCalledWith("/api/v1/attendance/week52", { params: { query: { week_start: "2026-02-30", branch_id: undefined } } });
 });

@@ -5,6 +5,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { QueryState } from "../../../lib/react/query-state";
 import { BindingEvidence } from "./binding-evidence";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Field, TextInput } from "../../../ui/field/field";
@@ -12,7 +13,7 @@ import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { personOption } from "../../../reference/person/ui/person-option";
 import { personLabel } from "../../../reference/person/present";
-import { resolveIdentity, samePersonQuery, type Resolution } from "../api";
+import { personBindingReviewsQuery, resolveIdentity, samePersonQuery, type Resolution } from "../api";
 import { Composer } from "../../../ui/composer/composer";
 import s from "./lifecycle.module.css";
 
@@ -26,6 +27,7 @@ const REASON_MAX = 100;
  */
 export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () => void; onDone: (out: Resolution) => void }) {
   const e = d.employee;
+  const evidence = useQuery(personBindingReviewsQuery(e.id));
   const [verdict, setVerdict] = useState<"SAME" | "DIFFERENT" | null>(null);
   const [query, setQuery] = useState(e.name);
   const [keep, setKeep] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
         run.mutate(undefined);
       }}
     >
+      {evidence.isPending ? <QueryState q={evidence} layout="form">{() => null}</QueryState> : <>
       <p>{t("identity.fact")}</p>
       <BindingEvidence subjectId={e.id} employeeId={e.id} />
       <ChoiceField
@@ -93,6 +96,7 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
       <Field label={t("profile.reason")} required hint={t("lifecycle.reason.count", { count: reason.length, max: REASON_MAX })} error={tried && missing.reason ? t("lifecycle.reason.missing") : undefined}>
         {(p) => <TextInput {...p} value={reason} maxLength={REASON_MAX} onChange={(x) => (run.reset(), setReason(x.target.value))} />}
       </Field>
+      </>}
     </Composer>
   );
 }

@@ -389,16 +389,6 @@
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/attendance/closes": {
-   "lane": "A6",
-   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/attendance/exceptions": {
-   "lane": "A5",
-   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/attendance/exceptions/{exception_id}": {
    "lane": "A5",
    "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",

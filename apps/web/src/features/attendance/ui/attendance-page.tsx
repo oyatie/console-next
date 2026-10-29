@@ -22,9 +22,12 @@ import { PatternSheet } from "./pattern-sheet";
 import { PatternsView } from "./patterns-view";
 import { PublicHolidaysView } from "./public-holidays-view";
 import { WeeklyView } from "./weekly-view";
+import { IssuesTab } from "./issues-tab";
+import { CloseTab } from "./close-tab";
+import { OvertimeTab } from "./overtime-tab";
 
 export type View = "calendar" | "types" | "crews" | "holidays" | "public";
-export type Tab = "month" | "day" | "week" | "schedule";
+export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close";
 export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean; unscheduled?: boolean };
 
 const route = getRouteApi("/app/attendance");
@@ -46,6 +49,18 @@ export function DayPage() {
 
 export function WeeklyPage() {
   return <AttendanceLayout>{() => <WeeklyView />}</AttendanceLayout>;
+}
+
+export function IssuesPage() {
+  return <AttendanceLayout>{() => <IssuesTab />}</AttendanceLayout>;
+}
+
+export function ClosePage() {
+  return <AttendanceLayout>{() => <CloseTab />}</AttendanceLayout>;
+}
+
+export function OvertimePage() {
+  return <AttendanceLayout>{() => <OvertimeTab />}</AttendanceLayout>;
 }
 
 export function PersonPage() {

@@ -8,7 +8,6 @@ import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabNav } from "../../../ui/tabs/tabs";
 import type { Tab } from "./attendance-page";
-import s from "./attendance.module.css";
 
 // The close → payroll chain (golden §4): every step stays drawn, each with its owner and an honest state. Until a
 // step's slice lands it reads "coming later", never a made-up count (TR-67 / FE-25 restored: ② leave posting is leave's).
@@ -35,11 +34,9 @@ export function AttendanceHead({ tab }: { tab: Tab }) {
       sub={<ChainStepper label={t("attendance.chain.label")} steps={steps} />}
       tabs={
         <TabNav label={t("attendance.tabs")}>
-          {(["month", "day", "week"] as const).map((k) => (
-            <Link key={k} to="/attendance" search={{ tab: k }} className={tabClass} aria-current={tab === k ? "page" : undefined}>{t(`attendance.tab.${k}`)}</Link>
+          {(["day", "month", "week", "overtime", "schedule", "issues", "close"] as const).map((k) => (
+            <Link key={k} from="/attendance" to="/attendance" search={search => ({ ...search, tab: k, person: undefined })} className={tabClass} aria-current={tab === k ? "page" : undefined}>{t(`attendance.tab.${k}`)}</Link>
           ))}
-          <span className={s.divider} aria-hidden />
-          <Link to="/attendance" search={{ tab: "schedule" }} className={tabClass} aria-current={tab === "schedule" ? "page" : undefined}>{t("attendance.tab.schedule")}</Link>
         </TabNav>
       }
     />
