@@ -13,7 +13,7 @@ export const navModules = (phase: string): components["schemas"]["OnboardingModu
 ];
 
 declare global {
-  interface Window { __refetchChecklist: () => Promise<void>; refetchNavModules: () => Promise<void>; __navFacts: { phase?: string; state?: string } }
+  interface Window { __refetchChecklist: () => Promise<void>; refetchNavModules: () => Promise<void>; refetchNavDecisions: () => Promise<void>; __navFacts: { phase?: string; state?: string } }
 }
 
 export async function navFixture(engine = chromium) {
@@ -50,6 +50,7 @@ export async function navFixture(engine = chromium) {
         const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:Infinity}}});
         window.__refetchChecklist=async()=>{await invalidateWhere(client,path=>path===queryPath(checklistQuery));};
         window.refetchNavModules=async()=>{await invalidateWhere(client,path=>path==='/api/v1/onboarding/modules');};
+        window.refetchNavDecisions=async()=>{await invalidateWhere(client,path=>path==='/api/v1/access/me'||path==='/api/v1/support-sessions/active');};
         createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client},React.createElement(RouterProvider,{router})));
       ` : undefined }],
   });

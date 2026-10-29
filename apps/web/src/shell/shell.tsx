@@ -13,6 +13,7 @@ import { HeldNotice } from "../ui/live/held-notice";
 import { LiveStatus } from "../ui/live/live-status";
 import { focusSoon } from "../lib/react/announce";
 import { get, navigationRead, read } from "../lib/query";
+import { isAnswer } from "../lib/react/query-defaults";
 import { chunk } from "../lib/chunk-guard";
 import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
@@ -49,7 +50,7 @@ export function Shell() {
   const access = useQuery({ ...myAccessQuery, enabled: !platform && Boolean(session.token) });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && Boolean(session.token) });
   const me = useQuery({ ...navigationRead(meQuery), enabled: !platform && Boolean(session.token) });
-  const phase = me.data?.tenant?.phase;
+  const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && phase === "SETUP", retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && Boolean(session.token) });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
@@ -67,12 +68,12 @@ export function Shell() {
   const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
   const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data }>();
-  const answered = ready && access.isSuccess && support.isSuccess && me.isSuccess && modules.isSuccess;
+  const answered = ready && access.isSuccess && [support, me, modules].every(q => !(q.isError && !isAnswer(q.error)));
   // Late readiness reads reveal entries on the next navigation, never between inputs.
-  if (answered && railTargets?.pathname !== pathname) setRailTargets({ pathname, value: setupTargets, modules: modules.data });
-  const answer = useMemo(() => answered && access.data ? { access: access.data, supportApproval: !!support.data?.can_approve,
-    context: { pathname, phase, setupTargets: railTargets?.value, modules: railTargets?.modules } } : undefined,
-  [answered, access.data, support.data?.can_approve, pathname, phase, railTargets]);
+  if (answered && railTargets?.pathname !== pathname) setRailTargets({ pathname, value: setupTargets, modules: modules.isSuccess ? modules.data : undefined });
+  const answer = useMemo(() => answered && access.data ? { access: access.data, supportApproval: support.isSuccess && !!support.data?.can_approve,
+    context: { pathname, phase, setupTargets: railTargets?.value, modules: modules.isSuccess ? railTargets?.modules : undefined } } : undefined,
+  [answered, access.data, support.isSuccess, support.data?.can_approve, pathname, phase, railTargets, modules.isSuccess]);
   if (answer && savedRail.answer !== answer) setSavedRail({ key: railKey, answer });
   useEffect(() => {
     if (!railKey || !answer) return;
@@ -173,7 +174,7 @@ export function Shell() {
         <SessionRecovery>
         <ChangeNotice key={pathname} />
         <HeldNotice />
-        {!platform && <DomainNotice />}{!platform && !(access.isError && support.isError) && <ActiveSupportBanner />}
+        {!platform && <DomainNotice />}{!platform && !(access.isError && support.isError && !support.data) && <ActiveSupportBanner />}
         <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Outlet /></PhaseBand>}</RouteGuard>
         </SessionRecovery>
       </PageMain>
