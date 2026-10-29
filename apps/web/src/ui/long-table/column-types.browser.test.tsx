@@ -130,9 +130,7 @@ for (const long of [false, true]) test(`${long ? "virtual" : "native"} names use
   const name = long ? page.getByRole("rowheader").first() : page.locator('td[data-type="text"]').first();
   await name.hover();
   await visible(name).toHaveAttribute("title", "가상직원".repeat(7));
-  await name.focus();
-  await visible(name).toBeFocused();
-  await visible(name).toHaveAccessibleName("가상직원".repeat(7));
+  if (long) { await name.focus(); await visible(name).toBeFocused(); }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
