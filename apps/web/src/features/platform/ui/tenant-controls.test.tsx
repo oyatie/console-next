@@ -36,7 +36,7 @@ test("code dialog labels the sign-in ID and code with valid roles and copy contr
   const html = renderToStaticMarkup(<CodeDialog issued={{ org: "Example", otp: "ABCDE-FGHJK", expiresAt: "2026-10-26T00:00:00Z", signInId: "admin@example" } as Parameters<typeof CodeDialog>[0]["issued"]} onClose={noop} />);
   expect(html).toContain("admin@example");
   expect(html).toMatch(/role="group"[^>]*aria-label="일회용 코드"/);
-  expect(html).toContain("패스키를 등록하거나");
+  expect(html).toMatch(/코드는 한 번만 쓸 수 있으며 .+에 만료됩니다\./);
 });
 test("domain change starts with the current company domain and says Cancel", () => {
   const html = renderToStaticMarkup(<DomainDialog org={org} onClose={noop} onDone={noop} />);
