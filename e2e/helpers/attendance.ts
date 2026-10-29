@@ -2,10 +2,9 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { chooseRadio, go } from "../flows";
 import { sheet } from "../sheet";
 
-/** 근태 › 근무 일정 through the main menu, as a person finds it. */
+/** Setup tenants have a limited main menu; attendance journeys use the stable URL entry. */
 export async function openAttendance(admin: Page) {
-  await go(admin, "/");
-  await admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "근태" }).click();
+  await go(admin, "/attendance");
   await expect(admin.getByRole("heading", { level: 1, name: "근태" })).toBeVisible();
 }
 
