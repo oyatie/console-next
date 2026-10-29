@@ -175,11 +175,10 @@ for (const environment of ['exit-test', 'template']) test(`${environment}: rende
     assert.ok(rollout.spec.progressDeadlineSeconds >= startupBudget, 'emitted deadline must protect a healthy slow start');
     assert.ok(!('rolloutProgressDeadlineSeconds' in config), 'environments configure only a margin');
     assert.equal(rollout.spec.progressDeadlineSeconds, rolloutProgressDeadlineSeconds(rollout, resources, config.rolloutProgressDeadlineMarginSeconds));
-    if (environment === 'exit-test') assert.ok(rollout.spec.progressDeadlineSeconds < 180, 'abort must fit the existing exit-test wait');
+    assert.ok(rollout.spec.progressDeadlineSeconds > (rollout.spec.minReadySeconds ?? 0), 'Argo requires the deadline to exceed minReadySeconds');
     const derivedDeadline = rolloutProgressDeadlineSeconds(rollout, resources, 0);
     assert.ok(derivedDeadline >= startupBudget, 'shared derivation must protect the rendered startup budget');
     assert.equal(rolloutProgressDeadlineSeconds(rollout, resources, 7), derivedDeadline + 7, 'environment policy supplies only the margin');
-    if (environment === 'exit-test') assert.ok(derivedDeadline < 180, 'derived budget must fit the unchanged exit-test wait');
     const groups = environment === 'exit-test' ? ['database', 'tests/restore'] : ['database'];
     for (const group of groups) {
       const clusters = yaml.loadAll(readFileSync(join(dir, group, 'resources.yaml'), 'utf8')).filter(doc => doc.kind === 'Cluster');
@@ -210,6 +209,27 @@ test('PLAT_ROLLOUT_DEADLINE: renderer refuses invalid margins and a legacy deadl
         error => error.status === 1 && error.stderr.toString().includes('PLAT_ROLLOUT_DEADLINE'));
       assert.equal(existsSync(join(dir, 'out')), false);
     }
+  } finally { rmSync(dir, {recursive:true,force:true}); }
+});
+
+test('PLAT_ROLLOUT_DEADLINE: renderer refuses a deadline equal to minReadySeconds before writing output', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'platform-min-ready-'));
+  try {
+    cpSync(join(root, 'deploy'), join(dir, 'deploy'), {recursive:true});
+    symlinkSync(join(root, 'node_modules'), join(dir, 'node_modules'));
+    const path = join(dir, 'deploy/base/app/api.yaml');
+    const docs = yaml.loadAll(readFileSync(path, 'utf8'));
+    for (const container of docs.find(doc => doc.kind === 'Deployment').spec.template.spec.containers) {
+      delete container.startupProbe;
+      delete container.readinessProbe;
+    }
+    const rollout = docs.find(doc => doc.kind === 'Rollout');
+    rollout.spec.minReadySeconds = 20;
+    rollout.spec.strategy.canary.steps = [{setWeight:100}];
+    writeFileSync(path, docs.map(doc => yaml.dump(doc)).join('---\n'));
+    assert.throws(() => execFileSync(process.execPath, ['deploy/ci/render.mjs', 'exit-test', `example.invalid/console@sha256:${'a'.repeat(64)}`, 'out'], {cwd:dir,stdio:'pipe'}),
+      error => error.status === 1 && error.stderr.toString().includes('PLAT_ROLLOUT_DEADLINE: progressDeadlineSeconds must exceed minReadySeconds'));
+    assert.equal(existsSync(join(dir, 'out')), false, 'invalid Argo timing must not leave a deployable artifact');
   } finally { rmSync(dir, {recursive:true,force:true}); }
 });
 

@@ -29,16 +29,7 @@ function uniqueResource(resources, rollout, kind, name, apiVersion) {
   return matches[0];
 }
 
-export function rolloutProgressDeadlineSeconds(rollout, resources, marginSeconds) {
-  integer(marginSeconds, 'margin');
-  const ref = rollout.spec.workloadRef;
-  assert.ok(ref?.kind === 'Deployment' && ref.apiVersion === 'apps/v1', refuse('expected an apps/v1 Deployment workloadRef'));
-  const deployment = uniqueResource(resources, rollout, ref.kind, ref.name, ref.apiVersion);
-  const containers = deployment.spec.template.spec.containers;
-  assert.ok(containers?.length, refuse('workload must contain containers'));
-  const startupSeconds = Math.max(...containers.map(c => probeBudget(c.startupProbe, 'failureThreshold')));
-  const readySeconds = Math.max(...containers.map(c => probeBudget(c.startupProbe, 'failureThreshold') + probeBudget(c.readinessProbe, 'successThreshold')))
-    + integer(rollout.spec.minReadySeconds === undefined ? 0 : rollout.spec.minReadySeconds, 'minReadySeconds');
+export function rolloutAnalysisDurationSeconds(rollout, resources) {
   const canary = rollout.spec.strategy?.canary;
   assert.ok(canary && !canary.analysis, refuse('expected finite inline canary analysis'));
   let analysisSeconds = 0;
@@ -60,6 +51,20 @@ export function rolloutProgressDeadlineSeconds(rollout, resources, marginSeconds
     });
     analysisSeconds += Math.max(...budgets);
   }
+  return analysisSeconds;
+}
+
+export function rolloutProgressDeadlineSeconds(rollout, resources, marginSeconds) {
+  integer(marginSeconds, 'margin');
+  const ref = rollout.spec.workloadRef;
+  assert.ok(ref?.kind === 'Deployment' && ref.apiVersion === 'apps/v1', refuse('expected an apps/v1 Deployment workloadRef'));
+  const deployment = uniqueResource(resources, rollout, ref.kind, ref.name, ref.apiVersion);
+  const containers = deployment.spec.template.spec.containers;
+  assert.ok(containers?.length, refuse('workload must contain containers'));
+  const startupSeconds = Math.max(...containers.map(c => probeBudget(c.startupProbe, 'failureThreshold')));
+  const readySeconds = Math.max(...containers.map(c => probeBudget(c.startupProbe, 'failureThreshold') + probeBudget(c.readinessProbe, 'successThreshold')))
+    + integer(rollout.spec.minReadySeconds === undefined ? 0 : rollout.spec.minReadySeconds, 'minReadySeconds');
+  const analysisSeconds = rolloutAnalysisDurationSeconds(rollout, resources);
   const deadline = integer(Math.ceil(readySeconds + analysisSeconds + marginSeconds), 'derived deadline', 1);
   assert.ok(deadline >= startupSeconds, refuse('derived deadline is below the startup budget'));
   return deadline;

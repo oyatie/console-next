@@ -30,6 +30,8 @@ for (const doc of docs) {
   if (doc.kind === 'Rollout') {
     doc.spec.replicas = config.apiReplicas;
     doc.spec.progressDeadlineSeconds = rolloutProgressDeadlineSeconds(doc, docs, config.rolloutProgressDeadlineMarginSeconds);
+    assert.ok(doc.spec.progressDeadlineSeconds > (doc.spec.minReadySeconds ?? 0),
+      'PLAT_ROLLOUT_DEADLINE: progressDeadlineSeconds must exceed minReadySeconds');
   }
   if (doc.kind === 'Deployment' && doc.metadata.name === 'console-worker') doc.spec.replicas = config.workerReplicas;
   if (doc.kind === 'ExternalSecret') {
