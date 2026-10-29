@@ -11,6 +11,9 @@ pub(crate) use crate::history_diff::diff;
 use crate::history_diff::{Recorded, predecessor};
 use crate::{PgEntityError, PgEntityStore, Tx};
 
+#[path = "history_subjects.rs"]
+mod subjects;
+
 /// Bookkeeping columns: never listed as a change.
 const META: &str = "ARRAY['org_id','id','legal_entity_id','registration_id','workplace_id','insurer','version',\
     'command_id','effective_from','change_mode','reason_code','actor_id','payload_digest','settings_snapshot',\
@@ -55,8 +58,7 @@ fn sql(record: Record) -> String {
             "workplace_revisions",
             "workplace_id",
             format!(
-                "'address', {}, 'mail_address', {}, \
-                 'representative_name', CASE WHEN $2 THEN r.representative_name END",
+                "'address', {}, 'mail_address', {}",
                 addr("r.address_id"),
                 addr("r.mail_address_id")
             ),
@@ -72,6 +74,11 @@ fn sql(record: Record) -> String {
     let meta = if matches!(record, Record::Registration) {
         format!(
             "{META} || CASE WHEN (SELECT e.biz_kind FROM legal_entities e JOIN business_registrations b ON b.legal_entity_id=e.id WHERE b.id=r.registration_id) = 'INDIVIDUAL' THEN ARRAY[]::text[] ELSE ARRAY['trade_name'] END"
+        )
+    } else if matches!(record, Record::Workplace) {
+        format!(
+            "{META} || CASE WHEN $2 THEN ARRAY[]::text[] ELSE {} END",
+            subjects::workplace_fields()
         )
     } else {
         META.to_owned()
@@ -213,13 +220,14 @@ async fn history(
         return Err(Refusal::not_found(missing).into());
     }
     // Audited: `sql` composes only this module's constants (no input reaches it).
-    let rows = sqlx::query(sqlx::AssertSqlSafe(sql(record)))
+    let rows = sqlx::query(sqlx::AssertSqlSafe(subjects::query(record)))
         .bind(id)
         .bind(personal)
         .fetch_all(tx.as_mut())
         .await?;
     // Per chain, every state recorded so far with the date it holds from.
     let mut seen: std::collections::HashMap<String, Recorded> = Default::default();
+    let mut seen_subjects: std::collections::HashMap<String, Recorded> = Default::default();
     let mut out = Vec::with_capacity(rows.len());
     let mut cited = std::collections::HashSet::new();
     for r in &rows {
@@ -232,14 +240,25 @@ async fn history(
         // Shown where a certificate was recorded, never on a later copy of
         // that row (the N-1 binary's rename copy carries the column forward).
         let evidence_document_id = evidence(&mut state).filter(|d| cited.insert(*d));
-        let earlier = seen.entry(chain).or_default();
+        let earlier = seen.entry(chain.clone()).or_default();
+        let earlier_subjects = seen_subjects.entry(chain).or_default();
+        let current_subjects = r
+            .try_get::<Value, _>("access_subjects")?
+            .as_object()
+            .cloned()
+            .unwrap_or_default();
+        let before_subjects = predecessor(earlier_subjects, effective_from)
+            .cloned()
+            .unwrap_or_default();
         let before = match r.try_get::<Option<Value>, _>("before_state")? {
             Some(Value::Object(m)) => m,
             _ => predecessor(earlier, effective_from)
                 .cloned()
                 .unwrap_or_default(),
         };
+        let changes = diff(&before, &state);
         out.push(RevisionEntry {
+            subject_refs: subjects::collect(r, &changes, &before_subjects, &current_subjects)?,
             version: r.try_get("version")?,
             effective_from,
             recorded_at: r.try_get("created_at")?,
@@ -248,10 +267,11 @@ async fn history(
             command_id: r.try_get("command_id")?,
             change_mode: r.try_get("change_mode")?,
             reason_code: r.try_get("reason_code")?,
-            changes: diff(&before, &state),
+            changes,
             evidence_document_id,
         });
         earlier.push((effective_from, state));
+        earlier_subjects.push((effective_from, current_subjects));
     }
     out.reverse();
     Ok(out)

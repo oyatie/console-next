@@ -70,6 +70,9 @@ pub struct FieldChange {
 /// One dated revision of a record, newest first in a history.
 #[derive(Debug, Clone, Serialize)]
 pub struct RevisionEntry {
+    /// Internal immutable subject keys for the fields actually displayed in this delta.
+    #[serde(skip)]
+    pub subject_refs: Vec<String>,
     pub version: i32,
     #[serde(with = "crate::iso_date")]
     pub effective_from: time::Date,

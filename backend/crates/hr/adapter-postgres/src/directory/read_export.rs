@@ -5,9 +5,9 @@
 
 use console_kernel_core::BranchScope;
 use console_platform_authz::{Feature, Principal};
-use console_platform_db::{with_audits, with_org_conn};
-use futures::channel::mpsc;
-use futures::{SinkExt, TryStreamExt};
+use console_platform_db::{with_audits, with_org_snapshot};
+use futures::channel::{mpsc, oneshot};
+use futures::{SinkExt, StreamExt, TryStreamExt};
 use http::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
@@ -134,7 +134,7 @@ pub(crate) fn push_csv_row(csv: &mut String, row: &sqlx::postgres::PgRow) -> Res
 
 impl HrService {
     /// Validates the 용도, commits the `excel_export_logs` row and its
-    /// 접속기록 event, then streams the CSV from a second read transaction.
+    /// 접속기록 event, then streams the CSV from the same immutable read snapshot.
     /// A missing or unknown 용도 is refused, and the refusal is logged too.
     pub async fn export_employees_csv(
         &self,
@@ -172,14 +172,46 @@ impl HrService {
             return Err(export_purpose_required());
         };
 
+        let (sender, mut receiver) = mpsc::channel(4);
         let logged = filters.clone();
+        let (selected_subjects, selection) = oneshot::channel();
+        let (ready, admitted) = oneshot::channel();
+        let pool = self.pool.clone();
+        tokio::spawn(async move {
+            let mut failed = sender.clone();
+            let streamed = with_org_snapshot::<_, _, HrError>(&pool, org, move |snapshot| {
+                Box::pin(async move {
+                    let mut selected = counted_employees("SELECT e.id", &filters);
+                    selected.push(" ORDER BY e.id");
+                    let subjects: Vec<Uuid> = selected
+                        .build_query_scalar()
+                        .fetch_all(snapshot.as_mut())
+                        .await?;
+                    if selected_subjects.send(subjects).is_err() || admitted.await.is_err() {
+                        return Ok(());
+                    }
+                    stream_rows(snapshot, &filters, layout, sender).await
+                })
+            })
+            .await;
+            if let Err(error) = streamed {
+                let _ = failed.send(Err(error)).await;
+            }
+        });
+        let subjects = match selection.await {
+            Ok(subjects) => subjects,
+            Err(_) => {
+                return Err(receiver
+                    .next()
+                    .await
+                    .and_then(Result::err)
+                    .unwrap_or_else(|| HrError::internal("export preparation failed")));
+            }
+        };
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                let rows: i64 = counted_employees("SELECT count(*)", &logged)
-                    .build_query_scalar()
-                    .fetch_one(tx.as_mut())
-                    .await?;
                 let log_id = Uuid::new_v4();
+                let rows = subjects.len();
                 sqlx::query(
                     "INSERT INTO excel_export_logs (id, org_id, actor, scope_key, export_kind, \
                      export_date, file_name, source_notes, export_purpose) \
@@ -193,35 +225,17 @@ impl HrService {
                 .bind(json!([{ "row_count": rows }]))
                 .bind(*purpose)
                 .bind(scope_key(&logged.reach))
-                .execute(tx.as_mut())
-                .await?;
+                .execute(tx.as_mut()).await?;
                 let me = actor_employee_id(tx, &principal).await?;
-                // a download names its row count, not every subject
-                // id (unbounded); GOV S7 shows downloads by 용도 and count.
                 let event = access_event(
-                    &principal,
-                    DirectoryAccess::Download,
-                    &[],
-                    me,
+                    &principal, DirectoryAccess::Download, &subjects, me,
                     json!({ "export_purpose": purpose, "row_count": rows, "export_log_id": log_id }),
                 )?;
                 Ok(((), vec![event]))
             })
-        })
-        .await?;
-
-        let (sender, receiver) = mpsc::channel(4);
-        let pool = self.pool.clone();
-        tokio::spawn(async move {
-            let mut failed = sender.clone();
-            let streamed = with_org_conn::<_, _, HrError>(&pool, org, move |tx| {
-                Box::pin(async move { stream_rows(tx, &filters, layout, sender).await })
-            })
-            .await;
-            if let Err(error) = streamed {
-                let _ = failed.send(Err(error)).await;
-            }
-        });
+        }).await?;
+        // Commit the request-context audit before releasing this snapshot's bytes.
+        let _ = ready.send(());
         Ok((layout.file_name(), receiver))
     }
 }

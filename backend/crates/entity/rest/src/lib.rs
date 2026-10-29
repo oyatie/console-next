@@ -13,6 +13,7 @@
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
 
+mod access_log;
 mod asof;
 mod auth;
 // --- lane: UX-R2 ENDS ---
@@ -225,7 +226,7 @@ pub fn router(state: EntityRestState) -> Router {
         )
         .route(REGISTRATION_PATH, put(docs::revise_registration))
         .route(REGISTRATION_VOID_PATH, post(h::void_registration))
-        .route(WORKPLACES_PATH, get(h::list_workplaces))
+        .route(WORKPLACES_PATH, get(asof::list_workplaces))
         .route(
             REGISTRATION_END_OPTIONS_PATH,
             get(ends::registration_end_options),

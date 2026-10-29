@@ -260,3 +260,29 @@ fn scoped_manage_grant_does_not_unmask_org_wide_history() {
     mask_result(&manager, &mut result);
     assert!(result["items"][0]["wrapper"].get("leave_type").is_none());
 }
+
+#[test]
+fn saved_workplace_masking_uses_the_shared_personal_fields() {
+    let id = Uuid::new_v4();
+    let mut result = json!({"workplace":{
+        "id":id,"legal_entity_id":Uuid::new_v4(),"default_branch_id":null,
+        "current":{"name":"Public"},"can_manage":true
+    },"unrelated":{"email":"Public"}});
+    for field in WORKPLACE_PERSONAL_FIELDS {
+        result["workplace"]["current"][field.name()] = json!("Private");
+    }
+    let original = result.clone();
+    super::mask_entity_fields(
+        &mut result,
+        &std::collections::BTreeMap::from([(("workplace", id), true)]),
+        None,
+    );
+    assert_eq!(result, original);
+    super::mask_entity_fields(&mut result, &std::collections::BTreeMap::new(), None);
+    for field in WORKPLACE_PERSONAL_FIELDS {
+        assert_eq!(result["workplace"]["current"][field.name()], Value::Null);
+    }
+    assert_eq!(result["workplace"]["can_manage"], false);
+    assert_eq!(result["workplace"]["current"]["name"], "Public");
+    assert_eq!(result["unrelated"]["email"], "Public");
+}

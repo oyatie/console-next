@@ -12,6 +12,7 @@ pub mod clock;
 pub mod error;
 pub mod ids;
 pub mod kr;
+pub mod personal_data;
 pub mod policy_value;
 pub mod price_intel;
 pub mod redact;

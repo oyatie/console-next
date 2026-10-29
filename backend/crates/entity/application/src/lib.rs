@@ -14,6 +14,7 @@ mod org_setup;
 mod structure;
 mod views;
 mod workplace_kind;
+mod workplace_personal;
 
 // The workspace `time` build has no `serde-human-readable`: dates go on the
 // wire as ISO `YYYY-MM-DD` (KST calendar dates) through this module.
@@ -25,6 +26,7 @@ pub use org_setup::*;
 pub use structure::*;
 pub use views::*;
 pub use workplace_kind::*;
+pub use workplace_personal::*;
 
 use console_entity_domain::legal_entity::LegalEntityInput;
 use console_entity_domain::registration::RegistrationInput;

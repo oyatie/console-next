@@ -19,7 +19,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::EntityRestState;
-use crate::auth::{Need, actor, manager};
+use crate::auth::{Need, actor, manager, read_gate};
 use crate::error::RestError;
 use crate::handlers::ReviseRegistrationBody;
 
@@ -125,8 +125,18 @@ pub(crate) async fn get(
     h: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Response> {
-    let (a, _) = actor(&s, &h, Need::Read, Target::Tenant).await?;
+    let (a, _, gate) = read_gate(&s, &h, Need::Read, Target::Tenant).await?;
     let doc = s.store.get_document(&a, id).await?;
+    crate::access_log::record(
+        &s,
+        crate::access_log::event(
+            &gate.principal,
+            "entity_document.metadata_read",
+            id.to_string(),
+            &[format!("entity_documents:{id}")],
+        )?,
+    )
+    .await?;
     Ok(Json(with_retention(&s, &a, doc).await?).into_response())
 }
 
@@ -135,8 +145,22 @@ pub(crate) async fn list(
     h: HeaderMap,
     Path(entity): Path<Uuid>,
 ) -> Result<Response> {
-    let (a, _) = actor(&s, &h, Need::Read, Target::Entity(entity)).await?;
+    let (a, _, gate) = read_gate(&s, &h, Need::Read, Target::Entity(entity)).await?;
     let docs = s.store.list_documents(&a, entity).await?;
+    let subjects = docs
+        .iter()
+        .map(|doc| format!("entity_documents:{}", doc.id))
+        .collect::<Vec<_>>();
+    crate::access_log::record(
+        &s,
+        crate::access_log::event(
+            &gate.principal,
+            "entity_document.list_read",
+            entity.to_string(),
+            &subjects,
+        )?,
+    )
+    .await?;
     let years = if docs.iter().any(|d| d.superseded_at.is_some()) {
         retention_years(&s, &a, Some(entity)).await?
     } else {
@@ -153,14 +177,28 @@ pub(crate) async fn content(
     h: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Response> {
-    let (a, personal) = actor(&s, &h, Need::Read, Target::Tenant).await?;
+    let (a, personal, gate) = match read_gate(&s, &h, Need::Read, Target::Tenant).await {
+        Ok(gate) => gate,
+        Err(error) => {
+            return Err(
+                crate::access_log::refused(&s, &h, "entity_document.read", id, error).await,
+            );
+        }
+    };
     if !personal {
-        return Err(RestError(Refusal::forbidden(
+        let refusal = RestError(Refusal::forbidden(
             "forbidden",
             "the original is restricted to entity administrators",
-        )));
+        ));
+        return Err(crate::access_log::refused(&s, &h, "entity_document.read", id, refusal).await);
     }
-    let doc = s.store.document_content(&a, id).await?;
+    let access = crate::access_log::event(
+        &gate.principal,
+        "entity_document.read",
+        id.to_string(),
+        &[format!("entity_documents:{id}")],
+    )?;
+    let doc = s.store.document_content(&a, id, access).await?;
     let mut response = Response::new(Body::from(doc.bytes));
     let headers = response.headers_mut();
     headers.insert(

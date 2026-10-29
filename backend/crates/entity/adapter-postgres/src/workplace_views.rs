@@ -4,7 +4,8 @@
 use std::collections::HashMap;
 
 use console_entity_application::{
-    Formatted, InsuranceView, ReadOptions, ReadPoint, RegularWorkers, WorkplaceState, WorkplaceView,
+    Formatted, InsuranceView, ReadOptions, ReadPoint, RegularWorkers, WORKPLACE_PERSONAL_FIELDS,
+    WorkplaceState, WorkplaceView,
 };
 use console_entity_domain::codes::{
     BizKind, InsuranceStatus, InsuranceUnitMode, Insurer, OperatingStatus, WithholdingMode,
@@ -59,7 +60,9 @@ pub(crate) async fn views_at(
                 0::bigint AS headcount \
          FROM (SELECT (jsonb_populate_record(NULL::workplaces, entity_known_row(to_jsonb(b), $4))).* FROM workplaces b) w \
          JOIN (SELECT (jsonb_populate_record(NULL::legal_entities, entity_known_row(to_jsonb(b), $4))).* FROM legal_entities b) e ON e.id = w.legal_entity_id \
-         LEFT JOIN LATERAL (SELECT * FROM workplace_revisions x WHERE x.workplace_id = w.id \
+         LEFT JOIN LATERAL (SELECT (jsonb_populate_record(NULL::workplace_revisions, \
+                            to_jsonb(x) - CASE WHEN $5 THEN ARRAY[]::text[] ELSE $6 END)).* \
+                            FROM workplace_revisions x WHERE x.workplace_id = w.id \
                             AND ($4::timestamptz IS NULL OR x.created_at <= $4) \
                             ORDER BY x.effective_from > $2, abs(x.effective_from - $2), x.version DESC LIMIT 1) r ON true \
          WHERE w.legal_entity_id = ANY($1) AND (w.voided_at IS NULL OR w.voided_at > $4) \
@@ -70,6 +73,8 @@ pub(crate) async fn views_at(
     .bind(point.as_of)
     .bind(granted)
     .bind(point.known_at)
+    .bind(personal)
+    .bind(WORKPLACE_PERSONAL_FIELDS.iter().map(|field| field.name()).collect::<Vec<_>>())
     .fetch_all(tx.as_mut())
     .await?;
     let represented = crate::asof::placements::represented(tx, point).await?;
@@ -150,20 +155,12 @@ pub(crate) async fn views_at(
                     address: address.and_then(|a| addresses.get(&a).cloned()),
                     mail_address: mail.and_then(|a| addresses.get(&a).cloned()),
                     opened_on: r.try_get("opened_on")?,
-                    representative_name: if personal {
-                        r.try_get("representative_name")?
-                    } else {
-                        None
-                    },
+                    representative_name: r.try_get("representative_name")?,
                     main_product: r.try_get("main_product")?,
                     phone: fmt_phone(r.try_get("phone")?),
                     fax: fmt_phone(r.try_get("fax")?),
-                    mobile: if personal {
-                        fmt_phone(r.try_get("mobile")?)
-                    } else {
-                        None
-                    },
-                    email: if personal { r.try_get("email")? } else { None },
+                    mobile: fmt_phone(r.try_get("mobile")?),
+                    email: r.try_get("email")?,
                     is_construction_site: r.try_get("is_construction_site")?,
                     is_abstract: rev_is_abstract,
                     not_registered_reason: rev_reason,
