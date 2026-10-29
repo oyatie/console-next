@@ -111,6 +111,41 @@ async fn spa_is_served_as_fallback_with_cache_and_security_headers() {
 }
 
 #[tokio::test]
+async fn missing_assets_are_uncacheable_404s_for_get_and_head() {
+    let dir = dist();
+    let app = router(Some(&dir));
+    for uri in ["/assets/missing.js", "/assets/x.js/missing.js"] {
+        for method in [http::Method::GET, http::Method::HEAD] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method(method.clone())
+                        .uri(uri)
+                        .header(header::IF_NONE_MATCH, "*")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::NOT_FOUND, "{method} {uri}");
+            let headers = response.headers();
+            assert_eq!(headers[header::CACHE_CONTROL], "no-cache");
+            assert_eq!(headers[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
+            assert!(headers.contains_key(header::CONTENT_SECURITY_POLICY));
+            assert!(!headers.contains_key(header::ETAG));
+            assert!(
+                to_bytes(response.into_body(), usize::MAX)
+                    .await
+                    .unwrap()
+                    .is_empty()
+            );
+        }
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[tokio::test]
 async fn spa_csp_allows_only_the_configured_object_store_origin() {
     let dir = dist();
     let app = router_with_storage(
