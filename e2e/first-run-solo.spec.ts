@@ -4,7 +4,7 @@ import { resolveFilingNotApplicable } from "./helpers/statutory";
 import { expectAccessible } from "./a11y";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
 import { clickCounter } from "./clicks";
-import { tenantOnboardSubmit, tenantSlugField, chooseRadio, firstSignIn, go, kstDate, routeReady, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, chooseRadio, firstSignIn, go, kstDate, routeReady, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { cellOf, officeSchedule, openMonth } from "./helpers/attendance-records";
 import { homeRail, registerBranch, registerEntity, registerWorkplace, startOperations, REGISTRATION_FIXTURES, brnDisplay } from "./setup-flows";
 import { addDepartments, box, findBox, findPressable } from "./structure-flows";
@@ -29,7 +29,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await c.click(tenantOnboardSubmit(v));
   const code = await takeCode(v);
   expect(c.done("vendor: open the tenant and hand over the code")).toBeLessThanOrEqual(4);
-  // A cancelled enrollment preserves the issued code until its served expiry.
+  // Cancelling enrollment spends the code; the vendor issues a new one.
   const cancelled = await (await browser.newContext()).newPage();
   await cancelled.goto("/login");
   await cancelled.locator("summary").filter({ hasText: "처음이면 일회용 코드" }).click();
@@ -37,9 +37,14 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await cancelled.getByRole("button", { name: "코드로 로그인" }).click();
   await cancelled.getByRole("button", { name: "로그인 취소" }).click();
   await expect(cancelled).toHaveURL(/cancelled=1/);
-  await expect(cancelled.getByText(/등록을 취소했습니다/)).toBeVisible();
+  await expect(cancelled.getByRole("status").filter({ hasText: "등록을 취소했습니다" })).toHaveText("등록을 취소했습니다 · 코드는 한 번만 쓸 수 있습니다 · 관리자에게 새 코드를 요청하십시오");
   await cancelled.context().close();
-  const admin = await firstSignIn(browser, code);
+  const replacement = await vendorStepUp(async () => {
+    await c.click(v.getByRole("complementary", { name: "가나솔루션", exact: true }).getByRole("button", { name: "패스키로 확인하고 관리자 코드 재발급", exact: true }));
+    return takeCode(v);
+  });
+  expect(c.done("vendor: reissue after cancelled enrollment")).toBeLessThanOrEqual(2);
+  const admin = await firstSignIn(browser, replacement);
   await routeReady(admin);
   await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
   await go(admin, "/setup/company-names", true);

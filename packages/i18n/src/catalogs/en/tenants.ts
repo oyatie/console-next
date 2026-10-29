@@ -88,7 +88,7 @@ export const enTenants: Partial<Record<keyof typeof koTenants, string>> = {
   "tenants.remove.force.typeSlug": "Type the company domain exactly to confirm · {slug}",
   "tenants.next.title": "Next steps",
   "tenants.next.recovery": "This recovery code can be used once until {at}. If it was already redeemed, a new recovery code is required.",
-  "tenants.next.deliver": "Deliver the sign-in ID and code to the first admin. The code can be reused until a passkey is registered or it expires at {at}, whichever comes first.",
+  "tenants.next.deliver": "Deliver the sign-in ID and code to the first admin. The code works once and expires at {at}.",
   "tenants.next.signIn": "The admin opens “First time? Use a one-time code” on the sign-in screen and registers a passkey on their device. They then sign in with their ID and passkey.",
   "tenants.next.lost": "If the code is lost or expires, issue a new one with “Confirm with a passkey and reissue the admin code” in this customer account’s panel, until the administrator enrolls a passkey.",
   "tenants.next.setup": "Once signed in, the setup list on Home walks them through each step, from registering the legal entity (business registration certificate) to workplaces, the organisation, employees and “Start operations”. They can finish it alone.",

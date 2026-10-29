@@ -3,7 +3,7 @@ import { josa } from "@console/i18n";
 import { atPhoneWidth, expectAccessible } from "./a11y";
 import { OTP_LENGTH } from "@console/api";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
-import { tenantOnboardSubmit, acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { forgetResize } from "./stability";
 
 // AUTH-ID (decisions #33; docs/design/sign-in-identifier.md): the sign-in ID 아이디@도메인. It is handed over with the
@@ -194,7 +194,7 @@ test("sign-in ID: a security key without a resident credential enrols, signs in 
   await invite(page, "정초대", "jung.invited");
 });
 
-test("sign-in ID leads, first-time codes open on demand, and cancelled enrollment keeps the code usable", async ({ browser }) => {
+test("sign-in ID leads, first-time codes open on demand, and cancelled enrollment needs a new code", async ({ browser }) => {
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설", exact: true }).click();
@@ -229,9 +229,13 @@ test("sign-in ID leads, first-time codes open on demand, and cancelled enrollmen
   await expect(page).toHaveURL(/\/setup-passkey$/);
   await page.getByRole("button", { name: "로그인 취소", exact: true }).click();
   await expect(page).toHaveURL(/\/login\?cancelled=1$/);
-  await expect(page.getByRole("status").filter({ hasText: "등록을 취소했습니다" })).toHaveText(/등록을 취소했습니다 · 코드는 .+까지 다시 쓸 수 있습니다/);
+  await expect(page.getByRole("status").filter({ hasText: "등록을 취소했습니다" })).toHaveText("등록을 취소했습니다 · 코드는 한 번만 쓸 수 있습니다 · 관리자에게 새 코드를 요청하십시오");
+  const replacement = await vendorStepUp(async () => {
+    await vendor.getByRole("complementary").getByRole("button", { name: "패스키로 확인하고 관리자 코드 재발급", exact: true }).click();
+    return takeCode(vendor);
+  });
   await disclosure.click();
-  await page.getByLabel("일회용 코드").fill(code);
+  await page.getByLabel("일회용 코드").fill(replacement);
   await page.getByRole("button", { name: "코드로 로그인", exact: true }).click();
   await acceptConsent(page);
   await page.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/, disabled: false }).click();
@@ -239,7 +243,7 @@ test("sign-in ID leads, first-time codes open on demand, and cancelled enrollmen
   await signOut(page);
   await disclosure.click();
   const refused = page.waitForResponse(r => r.url().endsWith("/api/v1/auth/otp/redeem"));
-  await page.getByLabel("일회용 코드").fill(code);
+  await page.getByLabel("일회용 코드").fill(replacement);
   await page.getByRole("button", { name: "코드로 로그인", exact: true }).click();
   expect((await refused).status()).toBe(401);
   await expect(page.getByRole("alert")).toBeVisible();

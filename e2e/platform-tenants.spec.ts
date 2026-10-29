@@ -38,8 +38,7 @@ test("tenant facts drive lifecycle, account counts and disabled deletion; first-
   await expect(dialog.getByRole("button", { name: "아이디 복사" })).toBeVisible();
   const code = dialog.getByRole("group", { name: "일회용 코드", exact: true });
   await expect(code).toHaveText(new RegExp(OTP_PATTERN));
-  await expect(dialog).toContainText("패스키를 등록하거나");
-  await expect(dialog).toContainText("만료될 때까지 다시 쓸 수 있습니다");
+  await expect(dialog).toContainText(/코드는 한 번만 쓸 수 있으며 .+에 만료됩니다\./);
   await expectAccessible(vendor, "platform code handover at 1440px");
   await atPhoneWidth(vendor, async () => {
     await expect(code).toBeVisible();

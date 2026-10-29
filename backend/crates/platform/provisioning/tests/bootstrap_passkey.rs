@@ -1,8 +1,8 @@
 //! OTP first-sign-in (bootstrap credential) redemption tests.
 //!
 //! The OTP belongs to a pre-provisioned user (or cold-start admin). Redemption
-//! Legacy version-0 redemption verifies without consumption; successful passkey
-//! registration consumes it. The dormant version-1 owner path consumes proof
+//! Redemption claims the code once; successful passkey registration closes its
+//! enrollment source. The dormant version-1 owner path consumes proof
 //! in its caller's family/admission transaction. There is no per-OTP attempt
 //! cap, which would enable targeted lockout; expiry and REST rate limits bound
 //! guessing.
@@ -298,12 +298,9 @@ async fn issued_otp_uses_post_lock_database_time(pool: PgPool) {
     );
 }
 
-/// A redeem VERIFIES the code and resolves the user but does NOT consume it, so a
-/// failed enrollment can't lock the user out — the code stays usable until a passkey
-/// is actually registered. consume_open_credentials_tx (driven by passkey
-/// registration) is the single point of consumption; after it the code is dead.
+/// Redemption claims login proof once while leaving its enrollment source open.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn redeem_verifies_without_consuming_then_registration_consumes(pool: PgPool) {
+async fn redeem_claims_once_then_registration_consumes_source(pool: PgPool) {
     let user_id = seed_user(&pool).await;
     let store = BootstrapCredentialStore;
     let now = OffsetDateTime::now_utc();
@@ -338,13 +335,13 @@ async fn redeem_verifies_without_consuming_then_registration_consumes(pool: PgPo
             .unwrap();
     assert!(consumed_at.is_none(), "a redeem must NOT consume the code");
 
-    // A second redeem before registration STILL succeeds (no lockout).
+    // A second redeem is refused even before registration.
     assert!(
         store
             .redeem_otp(&pool, issue.token.as_str(), now)
             .await
-            .is_ok(),
-        "the code stays redeemable until a passkey is registered"
+            .is_err(),
+        "the code must redeem exactly once"
     );
 
     // Registration consumes it atomically (here exercised directly).

@@ -44,7 +44,7 @@ async fn issued_otp_is_ten_crockford_symbols_grouped_five_five(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn legacy_codes_keep_redeeming_and_new_codes_accept_case_and_grouping(pool: PgPool) {
+async fn legacy_codes_and_new_codes_accept_their_formats_once(pool: PgPool) {
     let user_id = seed_user(&pool).await;
     let now = OffsetDateTime::now_utc();
     let store = BootstrapCredentialStore;
@@ -60,18 +60,24 @@ async fn legacy_codes_keep_redeeming_and_new_codes_accept_case_and_grouping(pool
             vec!["abcde-fghjk", "abcdefghjk", " abcde fghjk\n"],
         ),
     ] {
-        sqlx::query("UPDATE auth_bootstrap_credentials SET token_hash=$1 WHERE id=$2")
+        for input in inputs {
+            sqlx::query(
+                "UPDATE auth_bootstrap_credentials SET token_hash=$1,redeemed_at=NULL WHERE id=$2",
+            )
             .bind(Sha256::digest(stored.as_bytes()).to_vec())
             .bind(issue.credential_id)
             .execute(&pool)
             .await
             .unwrap();
-        for input in inputs {
             let redeemed = store.redeem_otp(&pool, input, now).await.unwrap();
             assert_eq!(redeemed.user_id, user_id);
             assert!(redeemed.requires_passkey_setup);
-            assert!(redeemed.reusable);
+            assert!(!redeemed.reusable);
             assert_eq!(redeemed.expires_at, issue.expires_at);
+            assert!(matches!(
+                store.redeem_otp(&pool, input, now).await,
+                Err(ProvisioningError::InvalidBootstrapCredential)
+            ));
         }
         let expired = store.redeem_otp(&pool, stored, issue.expires_at).await;
         assert!(matches!(
@@ -85,7 +91,10 @@ async fn legacy_codes_keep_redeeming_and_new_codes_accept_case_and_grouping(pool
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(consumed, None, "cancelled setup leaves the code reusable");
+    assert_eq!(
+        consumed, None,
+        "the winning session retains its enrollment source"
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
