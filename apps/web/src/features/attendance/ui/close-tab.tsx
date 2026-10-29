@@ -23,7 +23,6 @@ export function CloseTab() {
         { id: "place", header: t("attendance.col.workplace"), card: "title", rowHeader: true, cell: row => places.find(place => place.id === row.branch_scope)?.name ?? t("attendance.close.unavailable") },
         { id: "state", header: t("attendance.col.state"), card: "status", cell: row => <Chip tone={row.closed ? "ok" : "neutral"}>{t(row.closed ? "attendance.close.closed" : "attendance.close.open")}</Chip> },
         { id: "issues", header: t("attendance.tab.issues"), card: "fact", cell: row => t("attendance.count", { count: row.open_exceptions }) },
-        { id: "leave", header: t("attendance.close.pendingLeave"), card: "fact", cell: row => t("attendance.count", { count: row.pending_leave }) },
       ]} />
   </>}</QueryState>}</QueryState></>;
 }

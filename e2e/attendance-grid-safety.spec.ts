@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { apiOf, bearerOf } from "./helpers/api";
 import { expectDrafts, cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
 import { chooseRadio, kstDate, newContext, passkeyLogin, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const nextMonth = (m: string) => new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 1)).toISOString().slice(0, 7);
 
@@ -106,13 +109,13 @@ test("regression: back-navigation while typing keeps the value as a draft of the
   await expectDrafts(admin, 1);
 
   // Forward while typing onto another tab (the month timesheet goes away altogether): still this month's draft.
-  await admin.getByRole("link", { name: "일별" }).click();
+  await admin.getByRole("link", { name: t("attendance.tab.day"), exact: true }).click();
   await admin.goBack();
   await cellOf(admin, "윤하준", other).click();
   await admin.keyboard.type("8-17");
   await expect(admin.getByRole("textbox", { name: new RegExp(`^윤하준 ${other}`) })).toHaveValue("8-17");
   await admin.goForward();
-  await expect(admin.getByRole("link", { name: "일별" })).toHaveAttribute("aria-current", "page");
+  await expect(admin.getByRole("link", { name: t("attendance.tab.day"), exact: true })).toHaveAttribute("aria-current", "page");
   await admin.goBack();
   await expect(cellOf(admin, "윤하준", other)).toHaveAccessibleName(/초안 8-17/);
   await expect(cellOf(admin, "윤하준", date)).toHaveAccessibleName(/초안 9-18/);

@@ -32,7 +32,6 @@ export const enAttendance: Partial<Record<keyof typeof koAttendance, string>> = 
   "attendance.close.unavailable": "Workplace name unavailable",
   "attendance.close.closed": "Closed",
   "attendance.close.open": "Open",
-  "attendance.close.pendingLeave": "Pending leave",
   "attendance.overtime.heading": "Week starting {date} · 52-hour limit",
   "attendance.overtime.empty": "No working hours recorded this week",
   "attendance.overtime.recognized": "Recognized",

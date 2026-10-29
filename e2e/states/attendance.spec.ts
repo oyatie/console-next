@@ -39,6 +39,7 @@ for (const screen of attendanceScreens) for (const state of Object.keys(screen.s
       await expect(table).toBeVisible();
       if (state === "empty") await expect(table.getByText(t(`attendance.${screen.tab}.empty`), { exact: true })).toBeVisible();
       else if (screen.key === "attendance-close") {
+        if (width === 1440) await expect(table.getByRole("columnheader")).toHaveText([t("attendance.col.workplace"), t("attendance.col.state"), t("attendance.tab.issues")]);
         await expect(table.getByText("본사", { exact: true })).toBeVisible();
         await expect(table.getByText(t("attendance.count", { count: 7 }), { exact: true })).toBeVisible();
         await expect(table.getByText(t("attendance.close.closed"), { exact: true })).toBeVisible();

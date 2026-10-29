@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { apiOf } from "./api";
 import { draftWeekly, openSchedule } from "./attendance";
 import { chooseRadio, kstDate } from "../flows";
@@ -36,7 +37,8 @@ export async function pastWorkDay(api: ReturnType<typeof apiOf>, employeeId: str
 
 /** The month timesheet of `month`, with focus in the grid. */
 export async function openMonth(admin: Page, month: string) {
-  await admin.getByRole("navigation", { name: "근태 화면" }).getByRole("link", { name: "월간 근무표" }).click();
+  await loadCatalog("ko");
+  await admin.getByRole("navigation", { name: t("attendance.tabs"), exact: true }).getByRole("link", { name: t("attendance.tab.month"), exact: true }).click();
   const grid = admin.getByRole("grid", { name: "월간 근무표" });
   while (!(await admin.getByText(new RegExp(`${Number(month.slice(0, 4))}년 ${Number(month.slice(5))}월`)).first().isVisible())) {
     await admin.getByRole("button", { name: "이전 달" }).click();

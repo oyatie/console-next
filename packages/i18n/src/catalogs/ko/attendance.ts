@@ -32,7 +32,6 @@ export const koAttendance = {
   "attendance.close.unavailable": "사업장 이름 확인 불가",
   "attendance.close.closed": "마감됨",
   "attendance.close.open": "미마감",
-  "attendance.close.pendingLeave": "미결 휴가",
   "attendance.overtime.heading": "{date} 시작 주 · 주 52시간",
   "attendance.overtime.empty": "이 주의 근로시간 기록이 없습니다",
   "attendance.overtime.recognized": "인정",
