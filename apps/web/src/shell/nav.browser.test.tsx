@@ -1,17 +1,25 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { expect as element, type Browser, type Page } from "@playwright/test";
+import { chromium, expect as element, firefox, type Browser, type Page } from "@playwright/test";
 import { user } from "../../../../e2e/mock/fixtures";
 import { clearShifts } from "../../../../e2e/stability";
+import { waitForBrowserTestPage } from "../lib/browser-test";
 import { navFixture } from "./nav.browser-fixture";
 
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 let errors: string[];
-beforeAll(async () => { ({ server, browser, page, errors } = await navFixture()); }, 60_000);
+beforeAll(async () => { ({ server, browser, page, errors } = await navFixture(process.env.E2E_XBROWSER === "1" ? firefox : chromium)); }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
+
+async function controlBounds() {
+  await waitForBrowserTestPage(page, page.getByRole("button", { name: "Complete setup" }));
+  // Font readiness precedes the paint and the delivery of its layout-shift entries.
+  await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+  return page.locator("#rail a, main button").evaluateAll(controls => controls.map(control => control.getBoundingClientRect().toJSON()));
+}
 
 test("a pending tenant phase never flashes the operating rail", async () => {
   let release!: () => void;
@@ -54,8 +62,7 @@ test("a failed idle checklist refetch keeps the last good setup rail without a s
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
     const entries = ["홈", "조직 구조", "권한"];
     await element(rail.getByRole("link")).toHaveText(entries);
-    await page.evaluate(() => document.fonts.ready);
-    await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+    const bounds = await controlBounds();
     await page.evaluate(clearShifts);
     const before = reads;
     unavailable = true;
@@ -67,7 +74,8 @@ test("a failed idle checklist refetch keeps the last good setup rail without a s
     expect(reads).toBe(before + 1);
     expect(new URL(page.url()).pathname).toBe("/");
     await element(rail.getByRole("link")).toHaveText(entries);
-    expect(await page.evaluate(() => window.__shifts)).toEqual([]);
+    expect(await controlBounds()).toEqual(bounds);
+    expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
   } finally {
     await page.unroute("**/api/v1/users/me");
     await page.unroute("**/api/v1/onboarding/checklist");
@@ -92,7 +100,7 @@ test.each(["success", "conflict"])("a setup mutation's %s controls when the rail
     await page.goto(server.resolvedUrls!.local[0]!);
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
     await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "권한"]);
-    await page.evaluate(() => document.fonts.ready);
+    const bounds = await controlBounds();
     await page.evaluate(clearShifts);
     const refreshed = page.waitForResponse("**/api/v1/onboarding/checklist");
     await page.getByRole("button", { name: "Complete setup" }).click();
@@ -108,7 +116,8 @@ test.each(["success", "conflict"])("a setup mutation's %s controls when the rail
     await refreshed;
     await page.evaluate(() => new Promise(done => setTimeout(done, 600)));
     await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "권한"]);
-    expect(await page.evaluate(() => window.__shifts)).toEqual([]);
+    expect(await controlBounds()).toEqual(bounds);
+    expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
     if (outcome === "success") {
       await rail.getByRole("link", { name: "홈", exact: true }).click();
       await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
@@ -137,7 +146,7 @@ test("a setup save with a 1.5 s checklist read reveals its entry only on the nex
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
     const entries = ["홈", "조직 구조", "권한"];
     await element(rail.getByRole("link")).toHaveText(entries);
-    await page.evaluate(() => document.fonts.ready);
+    const bounds = await controlBounds();
     await page.evaluate(clearShifts);
     const saved = page.waitForResponse("**/api/v1/onboarding/steps/org/skip");
     const refreshed = page.waitForResponse("**/api/v1/onboarding/checklist");
@@ -148,7 +157,8 @@ test("a setup save with a 1.5 s checklist read reveals its entry only on the nex
     await element(rail.getByRole("link")).toHaveText(entries);
     await refreshed;
     await page.waitForTimeout(600);
-    expect(await page.evaluate(() => window.__shifts)).toEqual([]);
+    expect(await controlBounds()).toEqual(bounds);
+    expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
     await element(rail.getByRole("link")).toHaveText(entries);
     await rail.getByRole("link", { name: "조직 구조", exact: true }).click();
     await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "직원", "권한"]);
@@ -170,13 +180,14 @@ test("a changed idle checklist cannot change the rail until navigation", async (
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
     const entries = ["홈", "조직 구조", "권한"];
     await element(rail.getByRole("link")).toHaveText(entries);
-    await page.evaluate(() => document.fonts.ready);
+    const bounds = await controlBounds();
     await page.evaluate(clearShifts);
     unblocked = true;
     await page.evaluate(() => window.__refetchChecklist());
     await page.evaluate(() => new Promise(done => setTimeout(done, 600)));
     await element(rail.getByRole("link")).toHaveText(entries);
-    expect(await page.evaluate(() => window.__shifts)).toEqual([]);
+    expect(await controlBounds()).toEqual(bounds);
+    expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
     await rail.getByRole("link", { name: "조직 구조", exact: true }).click();
     await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
   } finally {
@@ -233,22 +244,24 @@ test.each([1440, 390])("the shared shell keeps flat module links and one current
   expect(errors).toEqual([]);
 }, 30_000);
 
-test("unattended navigation keeps the rail stable and an unexpected shift is still counted", async () => {
+test("unattended navigation keeps controls stable and detects unexpected movement", async () => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${server.resolvedUrls!.local[0]}people/exits`);
   const rail = page.getByRole("navigation", { name: "주 메뉴" });
   await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
-  await page.evaluate(() => new Promise(done => setTimeout(done, 600)));
+  const bounds = await controlBounds();
   await page.evaluate(clearShifts);
   const entries = await rail.getByRole("link").allTextContents();
   await page.evaluate(() => history.pushState({ ...history.state, __TSR_key: "flat-proof" }, "", "/org/entities"));
   await element(rail.getByRole("link", { name: "조직 구조", exact: true })).toHaveAttribute("aria-current", "page");
   await element(rail.getByRole("link")).toHaveText(entries);
   await page.evaluate(() => new Promise(done => setTimeout(done, 600)));
-  expect(await page.evaluate(() => window.__shifts)).toEqual([]);
+  expect(await controlBounds()).toEqual(bounds);
+  expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
   await page.evaluate(() => { document.querySelector<HTMLElement>('#rail a[href="/org"]')!.style.marginTop = "40px"; });
-  await element.poll(() => page.evaluate(() => window.__shifts?.some(s => s.control))).toBe(true);
+  expect(await controlBounds()).not.toEqual(bounds);
+  // Firefox has no layout-shift entries; the bounds contract above runs in both engines.
+  if (browser.browserType().name() === "chromium") await element.poll(() => page.evaluate(() => window.__shifts?.some(s => s.control))).toBe(true);
 });
 
 test.each([1440, 390])("period locks reached from settings keeps settings current at %spx", async width => {
