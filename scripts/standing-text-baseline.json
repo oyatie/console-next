@@ -13,6 +13,7 @@
   "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": 95,
   "apps/web/src/features/attendance/ui/attendance-page.tsx#MonthPage": 101,
   "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 55,
+  "apps/web/src/features/attendance/ui/paste-preview.tsx#PastePreviewSheet": 5,
   "apps/web/src/features/entity/ui/entity-routes.tsx#EntitiesScreen": 127,
   "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 276,
   "apps/web/src/features/entity/ui/entity-routes.tsx#NewEntityScreen": 107,

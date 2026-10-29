@@ -104,7 +104,17 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   await paste(page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }), text);
   await visible(page.getByText(/붙여넣은/)).toHaveCount(0);
   await paste(input, text);
+  const preview = page.getByRole("dialog", { name: "붙여넣기 미리보기" });
+  await visible(preview).toBeVisible();
+  await visible(page.getByRole("textbox", { name: /^1-2 입력/ })).toHaveValue("");
+  await preview.getByRole("button", { name: "초안에 2칸 반영" }).click();
   await visible(page.getByRole("status")).toContainText(/붙여넣은 2행.*일치 2/);
+  await visible(page.getByRole("textbox", { name: /^1-2 입력/ })).toHaveValue("+2");
+  const anchor = page.getByRole("textbox", { name: /^1-1 입력/ });
+  await paste(grids.nth(1).getByRole("gridcell").filter({ has: anchor }), "9-17");
+  await visible(preview).toBeVisible();
+  await preview.getByRole("button", { name: "초안에 1칸 반영" }).click();
+  await visible(anchor).toHaveValue("9-17");
   await visible(page.getByRole("textbox", { name: /^1-2 입력/ })).toHaveValue("+2");
   await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
   const paper = page.getByRole("table", { name: "일별 · 자세히" });

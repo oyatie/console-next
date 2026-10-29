@@ -72,7 +72,7 @@ test("populated boards keep navigation without zero-draft save controls", () => 
 test("the first draft exposes save status and command", () => {
   state.drafts = { "person|2026-10-06": { value: "=", base: null } };
   const html = render();
-  expect(html).toContain(t("attendanceRecords.toolbar.unsaved", { count: 1, refused: 0 }));
+  expect(html).toContain(`<span role="status">${t("attendanceRecords.toolbar.unsaved", { count: 1, refused: 0 })}</span><button`);
   expect(html).toContain(`>${t("attendanceRecords.toolbar.save")} `);
 });
 

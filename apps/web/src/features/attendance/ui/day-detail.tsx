@@ -5,16 +5,21 @@ import { Button } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Card } from "../../../ui/card/card";
 import { LongTable, TableControl, type LongColumn } from "../../../ui/long-table/long-table";
+import { rowIdOf } from "../../../ui/long-table/row-keys";
 import { Table } from "../../../ui/table";
 import { previewEntries, type BoardRow, type DayBoard } from "../api";
-import { baseOf, cellKey, draftState, readPaste, splitKey } from "../domain/grid";
+import { baseOf, cellKey, draftState, readPaste, splitKey, type PasteResult } from "../domain/grid";
+import { closed } from "../domain/month-state";
 import { duration } from "../domain/minutes";
 import { entryText, refusalText, shiftText } from "../present";
 import css from "./records.module.css";
 import { MarkChip } from "./mark-chip";
+import { PastePreviewSheet, type PastePerson } from "./paste-preview";
 import type { useDrafts } from "./use-drafts";
 import { usePreview } from "./use-preview";
 import { usePlanKinds } from "./use-plan-kinds";
+
+type PendingPaste = { scope: string; date: string; people: PastePerson[]; plan: PasteResult; bases: (string | null)[] };
 
 /**
  * Day · detailed (A3-entry): one row per person with the input in place. A paste of several rows matches them by
@@ -33,6 +38,7 @@ export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard;
     window.addEventListener("afterprint", after);
     return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
   }, []);
+  const [pasting, setPasting] = useState<PendingPaste | null>(null);
   const kindOf = usePlanKinds(rows, date);
   const cells = Object.entries(store.drafts).filter(([k, d]) => draftState(d, kindOf(k)).ok).map(([k, d]) => ({ ...splitKey(k), value: d.value, base_entry_id: d.base ?? undefined }));
   const preview = usePreview(cells.length ? cells : null, previewEntries);
@@ -67,24 +73,53 @@ export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard;
     { id: "result", width: 160, header: t("attendanceRecords.detail.result"), cell: (r) => r.day.marks.filter(m => m !== "NO_SCHEDULE").map((m) => <MarkChip key={m} mark={m} />) },
     { id: "source", width: 160, header: t("attendanceRecords.detail.source"), cell: (r) => (r.day.entry ? t(`attendanceRecords.source.${r.day.entry.source}`) : "–") },
   ];
+  const acceptPaste = () => {
+    if (!pasting) return;
+    if (pasting.scope !== store.scope || pasting.date !== date || pasting.plan.cells.some((cell) => {
+      const person = pasting.people[cell.r];
+      const row = person && rows.find((candidate) => candidate.employee_id === person.employee_id);
+      return cell.date !== date || !row || row.own !== person.own || closed(row.month_state) !== person.closed;
+    })) {
+      setPasting(null);
+      onNote(t("attendanceRecords.paste.preview.stale"));
+      return;
+    }
+    const currentRows = new Map(rows.map((row) => [row.employee_id, row] as const));
+    const next = { ...store.drafts };
+    let locked = 0;
+    for (const [i, cell] of pasting.plan.cells.entries()) {
+      const person = pasting.people[cell.r]!;
+      const row = currentRows.get(person.employee_id)!;
+      if (row.own || closed(row.month_state)) {
+        locked += 1;
+        continue;
+      }
+      const key = cellKey(person.employee_id, date);
+      next[key] = { value: cell.value, base: baseOf(store.drafts, key, pasting.bases[i] === undefined ? row.day.entry?.id ?? null : pasting.bases[i]!) };
+    }
+    store.set(next);
+    setPasting(null);
+    onNote(t("attendanceRecords.paste.matched", { rows: pasting.plan.matched + pasting.plan.missing.length, matched: pasting.plan.matched, missing: pasting.plan.missing.length, locked }));
+  };
   return (
     <div
       className={css.detail}
       onPaste={(e) => {
         if (!(e.target instanceof HTMLElement) || !e.target.closest('[role="grid"], table')) return;
         const text = e.clipboardData.getData("text/plain");
-        if (!text.includes("\n")) return;
+        if (!text) return;
+        if (e.target instanceof HTMLElement && e.target.matches("input, textarea") && !/[\t\n]/.test(text)) return;
         e.preventDefault();
-        const p = readPaste(text, rows.map((r) => r.employee_number ?? null), { r: 0, c: 0 });
-        const next = { ...store.drafts };
-        let locked = 0;
-        for (const c of p.cells.filter((x) => x.c === 0)) {
-          const row = rows[c.r]!;
-          if (row.own) locked += 1;
-          else next[cellKey(row.employee_id, date)] = { value: c.value, base: baseOf(store.drafts, cellKey(row.employee_id, date), row.day.entry?.id ?? null) };
-        }
-        store.set(next);
-        onNote(t("attendanceRecords.paste.matched", { rows: p.matched + p.missing.length, matched: p.matched, missing: p.missing.length, locked }));
+        const rowId = e.target.closest<HTMLElement>("tr[data-id]")?.dataset.id ?? rowIdOf(e.target);
+        const anchorRow = rows.findIndex((row) => row.employee_id === rowId);
+        const plan = readPaste(text, rows.map((r) => r.employee_number ?? null), [date], { r: Math.max(0, anchorRow), c: 0 });
+        const people = rows.map((row) => ({ employee_id: row.employee_id, employee_number: row.employee_number ?? null, name: row.name, own: row.own, closed: closed(row.month_state) }));
+        const bases = plan.cells.map((cell) => {
+          const row = rows[cell.r]!;
+          const key = cellKey(row.employee_id, date);
+          return baseOf(store.drafts, key, row.day.entry?.id ?? null);
+        });
+        setPasting({ scope: store.scope, date, people, plan, bases });
       }}
     >
       {printing ? <Table<BoardRow>
@@ -100,6 +135,7 @@ export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard;
         {board.groups.map(g => <DetailGroup key={`${board.date}-${g.workplace_id}-${g.unit_id}`} group={g} columns={columns} query={query} meta={groupMeta(g)} />)}
       </>}
 
+      {pasting && <PastePreviewSheet plan={pasting.plan} people={pasting.people} month={pasting.date.slice(0, 7)} onClose={() => setPasting(null)} onAccept={acceptPaste} />}
     </div>
   );
 }
