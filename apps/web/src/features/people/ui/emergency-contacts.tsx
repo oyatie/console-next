@@ -84,7 +84,7 @@ export function EmergencyContacts({ c, quick }: { c: Card; quick: Quick }) {
           <ul className={s.contacts} aria-label={label}>
             {list.map((x, i) => (
               <li key={`${x.relation}-${x.phone}-${i}`} className={s.contact}>
-                <span>{who(x)} · {maskedPhone(x.phone)}{x.basis && x.recorded_by && x.recorded_at ? ` · ${t("empContact.recorded", { basis: basisLabel(x.basis), label: t("empContact.basis.label"), by: actor(x.recorded_by_name), at: fmtDateTime(x.recorded_at) })}` : ""}</span>
+                <span>{who(x)} · {maskedPhone(x.phone)}{!x.contact_notified ? ` · ${t("empContact.need.notice")}` : ""}{x.basis && x.recorded_by && x.recorded_at ? ` · ${t("empContact.recorded", { basis: basisLabel(x.basis), label: t("empContact.basis.label"), by: actor(x.recorded_by_name), at: fmtDateTime(x.recorded_at) })}` : ""}</span>
                 {c.editable && (
                   <RowActions
                     field={t("empContact.of", { who: who(x) })}

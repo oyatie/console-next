@@ -241,7 +241,19 @@ pub(crate) async fn apply_fields_in_tx(
     ) {
         resolve_number_conflict(tx, org, old, meta.corrected_by).await?;
     }
+    let stored_contacts = if value_of(fields, "emergency_contacts").is_some() {
+        personal_facts::store::load_in_tx(tx, org, employee_id)
+            .await?
+            .emergency_contacts
+    } else {
+        None
+    };
     for (field, value) in fields {
+        let value = if field == "emergency_contacts" {
+            stored_contacts.as_deref()
+        } else {
+            value.as_deref()
+        };
         sqlx::query(
             "INSERT INTO employee_corrections (org_id, employee_id, field, old_value, new_value, \
              reason_code, note, corrected_by, change_request_id, review_required, batch_id, import_run_id) \
@@ -251,7 +263,7 @@ pub(crate) async fn apply_fields_in_tx(
         .bind(employee_id)
         .bind(field)
         .bind(ledger_old(head, field))
-        .bind(ledger_value(field, value.as_deref()))
+        .bind(ledger_value(field, value))
         .bind(meta.reason_code)
         .bind(meta.note)
         .bind(meta.corrected_by)

@@ -17451,7 +17451,15 @@ export interface components {
                 /** @description 개인 메일. */
                 personal_email?: string | null;
                 /** @description 비상연락처, the whole list (at most 3); [] or null clears it. */
-                emergency_contacts?: components["schemas"]["EmergencyContact"][] | null;
+                emergency_contacts?: {
+                    name: string;
+                    /** @enum {string} */
+                    relation: "SPOUSE" | "PARENT" | "CHILD" | "SIBLING" | "RELATIVE" | "OTHER";
+                    /** @description Sent in any common form; answered in E.164. */
+                    phone: string;
+                    /** @description Employee confirmation that this contact was told. Omission by a released client preserves a matching stored contact; a new contact stays unconfirmed with no basis. Explicit false is refused for new or changed contacts (422 emergency_contact_notice_unconfirmed). Contract step: require this field only once no released web omits it. */
+                    contact_notified?: boolean;
+                }[] | null;
                 /** @description The upload_id of a confirmed photo upload of this employee; null clears it. */
                 photo?: components["schemas"]["Uuid"] | null;
                 /**

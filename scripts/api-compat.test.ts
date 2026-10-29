@@ -3,13 +3,26 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { expect, test } from "vitest";
 
-type Schema = { type?: string; enum?: string[]; "x-extensible-enum"?: string[]; required?: string[]; properties?: Record<string, Schema>; $ref?: string };
+type Schema = { type?: string; enum?: string[]; "x-extensible-enum"?: string[]; required?: string[]; properties?: Record<string, Schema>; items?: Schema; $ref?: string };
 type Spec = { components: { schemas: Record<string, Schema> }; paths: Record<string, { post: { responses: Record<string, { content: { "application/json": { schema: Schema } } }> } }> };
 const yaml = createRequire(import.meta.url)("js-yaml") as { load: (source: string) => Spec };
 const spec = yaml.load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
 const schemas = spec.components.schemas;
 
 const responseBinding = schemas.MobilePasskeyStepUpStartResponse!.properties!.binding!.properties ?? schemas.MobilePasskeyStepUpBinding!.properties!;
+
+test("emergency contact PATCH accepts released clients without weakening notice responses", () => {
+  const items = schemas.CorrectEmployeeRequest!.properties!.changes!.properties!.emergency_contacts!.items!;
+  const input = items.$ref ? schemas[items.$ref.split("/").pop()!]! : items;
+  const output = schemas.EmergencyContact!;
+  expect(input.required).not.toContain("contact_notified");
+  expect(input.properties!.contact_notified!.type).toBe("boolean");
+  expect(output.required).toContain("contact_notified");
+  for (const field of ["name", "relation", "phone"]) {
+    expect(input.required).toContain(field);
+    expect(input.properties![field]).toEqual(output.properties![field]);
+  }
+});
 
 test("schedule tree truth adds optional fields without changing the existing layer contract", () => {
   const node = schemas.AttendanceScheduleTreeNode!;
