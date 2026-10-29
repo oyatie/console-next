@@ -23344,10 +23344,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/payroll/runs:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:view", "scope": "tenant"}
       tags:
       - payroll
       operationId: listPayrollRuns
-      summary: List payroll draft runs (admin; EXECUTIVE/SUPER_ADMIN only, audited read)
+      summary: List payroll draft runs (tenant pay:view, audited read)
       security:
       - bearerAuth: []
       parameters:
@@ -23379,10 +23381,12 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/payroll/runs/{id}:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:view", "scope": "tenant"}
       tags:
       - payroll
       operationId: getPayrollRun
-      summary: Get one payroll draft run and its per-employee readiness lines (admin)
+      summary: Get one payroll draft run and its per-employee readiness lines (tenant pay:view)
       security:
       - bearerAuth: []
       parameters:

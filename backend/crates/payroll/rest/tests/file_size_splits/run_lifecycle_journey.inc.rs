@@ -1,3 +1,6 @@
+#[path = "../fixtures/pay_view.rs"]
+mod pay_view;
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
     let keys = Keys::generate();
@@ -7,6 +10,8 @@ async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
 
     let submitter = seed_user(&pool, org, "EXECUTIVE", None).await;
     let decider = seed_user(&pool, org, "EXECUTIVE", None).await;
+    pay_view::grant_view(&pool, org, submitter, None).await;
+    pay_view::grant_view(&pool, org, decider, None).await;
     let submitter_token = keys.token(&pool, submitter, org, "EXECUTIVE").await;
     let decider_token = keys.token(&pool, decider, org, "EXECUTIVE").await;
 
