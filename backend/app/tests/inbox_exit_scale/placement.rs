@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 use console_hr_adapter_postgres::{
-    authz::authorize_hr_case, directory::read_list::EmployeeListQuery,
+    authz::authorize_hr_case,
+    directory::{read_export::ExportPurposeQuery, read_list::EmployeeListQuery},
 };
+use futures::StreamExt;
 
 #[path = "placement/incomplete.rs"]
 mod incomplete;
@@ -33,6 +35,7 @@ async fn scoped_directory_home_and_exit_actions_share_the_current_node(pool: PgP
         sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,id,1,'exit',ARRAY['edit','approve'] FROM access_roles WHERE org_id=$1")
             .bind(w.org.as_uuid()).execute(&pool).await.unwrap();
         let actor = UserId::from_uuid(w.holder(&pool, Some(kind), false, choice).await);
+        grant_export(&pool, w.org).await;
         let nodes = |kind| {
             w.nodes
                 .iter()
@@ -84,6 +87,23 @@ async fn scoped_directory_home_and_exit_actions_share_the_current_node(pool: PgP
             .await
             .unwrap();
         assert_eq!(facets.total, i64::from(allowed), "facets: {label}");
+        let (_, chunks) = hr
+            .export_employees_csv(
+                p.clone(),
+                EmployeeListQuery::default(),
+                ExportPurposeQuery {
+                    export_purpose: Some("INTERNAL_REVIEW".into()),
+                    layout: None,
+                },
+            )
+            .await
+            .unwrap();
+        let csv = chunks
+            .map(|c| c.unwrap())
+            .collect::<Vec<_>>()
+            .await
+            .concat();
+        assert_eq!(csv.contains("검증 직원"), allowed, "export: {label}");
         let now = sqlx::query_scalar("SELECT clock_timestamp()")
             .fetch_one(&pool)
             .await

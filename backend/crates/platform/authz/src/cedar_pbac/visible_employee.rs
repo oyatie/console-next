@@ -161,6 +161,7 @@ mod tests {
         use console_kernel_core::TenantPhase;
 
         let org = OrgId::new();
+        let actor = Uuid::new_v4();
         let department = Uuid::new_v4();
         let workplace = Uuid::new_v4();
         let entity = Uuid::new_v4();
@@ -171,7 +172,7 @@ mod tests {
         let mut facts = DecisionFacts {
             slice: AccessSlice::compile(&AccessSubject {
                 org,
-                account: Uuid::new_v4(),
+                account: actor,
                 is_ops: false,
                 phase: TenantPhase::Operating,
                 grants: Vec::new(),
@@ -190,6 +191,9 @@ mod tests {
             .collect(),
             roles: Vec::new(),
             department_placements: Default::default(),
+            org,
+            actor,
+            employee_id: None,
         };
         for (unit, site, company, kind, id) in [
             (

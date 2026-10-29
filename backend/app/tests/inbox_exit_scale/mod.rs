@@ -36,6 +36,18 @@ pub(super) async fn grant_exit(pool: &PgPool, org: OrgId, actor: console_kernel_
         .bind(org.as_uuid()).bind(actor.as_uuid()).bind(role).bind(maker.as_uuid()).execute(pool).await.unwrap();
 }
 
+pub(super) async fn grant_export(pool: &PgPool, org: OrgId) {
+    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,id,2,name_ko,status,'SETUP',created_by FROM access_roles WHERE org_id=$1")
+        .bind(org.as_uuid()).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,id,2,'hr_basic',ARRAY['view','export'] FROM access_roles WHERE org_id=$1 UNION ALL SELECT org_id,id,2,'exit',ARRAY['edit','approve'] FROM access_roles WHERE org_id=$1")
+        .bind(org.as_uuid()).execute(pool).await.unwrap();
+    sqlx::query("UPDATE access_roles SET version=2 WHERE org_id=$1")
+        .bind(org.as_uuid())
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn exit_source_statement_count_is_flat_at_two_twenty_and_two_thousand_employees(
     pool: PgPool,

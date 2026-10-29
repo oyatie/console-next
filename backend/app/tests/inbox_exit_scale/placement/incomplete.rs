@@ -14,15 +14,7 @@ impl Fixture {
     async fn seed(pool: &PgPool) -> Self {
         let w = world::World::seed(pool, &[vec![1]]).await;
         // Export and every exit step use the same placement as directory read.
-        sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,id,2,name_ko,status,'SETUP',created_by FROM access_roles WHERE org_id=$1")
-            .bind(w.org.as_uuid()).execute(pool).await.unwrap();
-        sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,id,2,'hr_basic',ARRAY['view','export'] FROM access_roles WHERE org_id=$1 UNION ALL SELECT org_id,id,2,'exit',ARRAY['edit','approve'] FROM access_roles WHERE org_id=$1")
-            .bind(w.org.as_uuid()).execute(pool).await.unwrap();
-        sqlx::query("UPDATE access_roles SET version=2 WHERE org_id=$1")
-            .bind(w.org.as_uuid())
-            .execute(pool)
-            .await
-            .unwrap();
+        grant_export(pool, w.org).await;
         let tenant = UserId::from_uuid(w.holder(pool, Some(NodeKind::Tenant), false, 0).await);
         let scoped = UserId::from_uuid(w.holder(pool, Some(NodeKind::Workplace), false, 0).await);
         let ops = UserId::from_uuid(w.holder(pool, None, true, 0).await);
