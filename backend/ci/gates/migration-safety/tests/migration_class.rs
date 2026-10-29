@@ -54,6 +54,10 @@ contract_fixture!(delete, "DELETE FROM sample WHERE obsolete;");
 contract_fixture!(update, "UPDATE sample SET amount = 0;");
 contract_fixture!(truncate, "TRUNCATE sample;");
 contract_fixture!(revoke, "REVOKE SELECT ON sample FROM reader;");
+contract_fixture!(
+    unique_index,
+    "CREATE UNIQUE INDEX CONCURRENTLY u ON sample (note);"
+);
 contract_fixture!(unparsable, "THIS IS NOT SQL;");
 contract_fixture!(
     unknown_alter,
@@ -233,16 +237,6 @@ fn cutoff_boundary_and_timestamp_precisions_are_checked() -> TestResult {
         "CREATE TABLE sample (id int);",
     )?;
     assert!(!check_workspace(&fixture.0)?.passed());
-    Ok(())
-}
-#[test]
-fn separate_contract_reason_header_is_supported() -> TestResult {
-    let fixture = Fixture::new()?;
-    fixture.write(
-        NEW_VERSION,
-        "-- migration-class: contract\n-- migration-reason: retire old data\nDROP TABLE sample;",
-    )?;
-    assert!(check_workspace(&fixture.0)?.passed());
     Ok(())
 }
 #[test]

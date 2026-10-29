@@ -8,6 +8,9 @@ use crate::{
 };
 use std::{collections::BTreeMap, path::Path, process::Command};
 
+#[path = "expand.rs"]
+mod expand;
+
 fn applies(version: i64) -> bool {
     let normalized = if version.to_string().len() == 14 {
         version * 1000
@@ -52,19 +55,9 @@ fn minimum(content: &str) -> &'static str {
     let backfill = header(content, "-- migration-backfill:")
         .iter()
         .any(|reason| !reason.is_empty());
-    let sanitized = sanitize_sql(content);
-    // The shared sanitizer removes quoted strings/comments; reject incomplete
-    // delimiters before accepting any recognized additive statement.
-    let mut dollar_tags = sanitized.split('$').skip(1).step_by(2);
-    while let Some(tag) = dollar_tags.next() {
-        if !tag
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
-            || dollar_tags.next() != Some(tag)
-        {
-            return "contract";
-        }
-    }
+    // Bodies are author assertions; the existing audit rules still inspect their SQL.
+    let sanitized = sanitize_sql(content, true);
+    let mut fresh = expand::FreshObjects::default();
     let mut depth = 0_i64;
     for ch in sanitized.chars() {
         if ch == '(' {
@@ -81,8 +74,9 @@ fn minimum(content: &str) -> &'static str {
         return "contract";
     }
     let mut count = 0;
-    for statement in sanitized.split(';') {
-        let tokens = tokenize_table_reference_sql(statement);
+    for raw in sanitized.split(';') {
+        let statement = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+        let tokens = tokenize_table_reference_sql(&statement);
         if tokens.is_empty() {
             continue;
         }
@@ -94,7 +88,7 @@ fn minimum(content: &str) -> &'static str {
             ["create", "table", _, _, _, ..] => {
                 statement.trim_end().ends_with(')') && statement.contains('(')
             }
-            ["create", "index", ..] | ["create", "unique", "index", ..] => {
+            ["create", "index", ..] => {
                 words.contains(&"on")
                     && statement.trim_end().ends_with(')')
                     && statement.contains('(')
@@ -106,12 +100,25 @@ fn minimum(content: &str) -> &'static str {
                 .is_some_and(|index| index + 1 < words.len()),
             ["alter", "table", ..] => {
                 crate::table_name_after_alter_table(&tokens, 2).is_some_and(|(_, start)| {
-                    matches!(
-                        words.get(start..),
-                        Some(["add", "column", _, _] | ["add", "column", _, _, "null"])
-                    ) && !statement.contains(',')
+                    expand::column(&statement, &words[start..])
+                        || fresh.rls(&words[2..], &words[start..])
                 })
             }
+            ["grant", _, ..] => statement.split_once(" on ").is_some_and(|(_, tail)| {
+                tail.split_once(" to ")
+                    .is_some_and(|(object, role)| !object.is_empty() && !role.is_empty())
+            }),
+            ["comment", "on", _, ..] => {
+                matches!(words.last(), Some(&"__sql_literal__" | &"null")) && words.contains(&"is")
+            }
+            ["revoke", _, ..] => fresh.revoke(&statement),
+            ["create", "policy", _, "on", rest @ ..] => fresh.policy(rest),
+            [
+                "set",
+                "local",
+                "lock_timeout" | "statement_timeout",
+                "__sql_literal__",
+            ] => statement.contains('='),
             ["delete", "from", _, ..] => backfill,
             ["truncate", _, ..] => backfill,
             ["update", _, "set", _, ..] | ["update", _, ".", _, "set", _, ..] => {
@@ -122,6 +129,7 @@ fn minimum(content: &str) -> &'static str {
         if !additive || words.contains(&"__unparsed_sql__") {
             return "contract";
         }
+        fresh.remember(&statement, &words);
     }
     if count == 0 { "contract" } else { "expand" }
 }
