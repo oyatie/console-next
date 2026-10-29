@@ -19,6 +19,7 @@ export const enEmpContact: Partial<Record<keyof typeof koEmpContact, string>> = 
   "empContact.basis.label": "검토 전",
   "empContact.basis.notice": "Basis: emergency response (검토 전 · pending counsel, not consent)",
   "empContact.notice.label": "Contact notice confirmation",
+  "empContact.notice.unconfirmed": "Contact notice unconfirmed",
   "empContact.notice.confirm": "Confirmed that the employee told this contact person that their details are recorded (검토 전)",
   "empContact.need.notice": "Confirm that the contact person was told",
   "empContact.recorded": "Basis {basis} ({label}) · Recorded by {by} · {at}",

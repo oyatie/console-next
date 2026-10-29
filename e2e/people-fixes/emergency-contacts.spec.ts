@@ -61,7 +61,10 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
   expect((await patch(legacy)).status()).toBe(200);
   expect((await read()).emergency_contacts).toEqual(withLegacy);
   await admin.reload();
-  await expect(contacts).toContainText("연락처 당사자에게 알렸는지 확인하십시오");
+  const unconfirmed = contacts.getByRole("listitem").filter({ hasText: "형제자매" });
+  await expect(unconfirmed.locator(".chip--warn")).toHaveText("당사자 안내 미확인");
+  await expect(contacts.locator(".chip--warn")).toHaveCount(1);
+  await expect(contacts).not.toContainText("연락처 당사자에게 알렸는지 확인하십시오");
   await contacts.getByRole("button", { name: /형제자매.*수정/ }).click();
   const edit = admin.getByRole("dialog", { name: "비상연락처 수정" });
   await expect(edit.getByRole("checkbox")).not.toBeChecked();
@@ -70,5 +73,6 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
   await edit.getByRole("button", { name: /인사 정보 1명 정정/ }).click();
   await expect(edit).toBeHidden();
   expect((await read()).emergency_contacts![2]).toMatchObject({ contact_notified: true, basis: recorded[0]!.basis });
+  await expect(contacts.getByText("당사자 안내 미확인", { exact: true })).toHaveCount(0);
   await expectAccessible(admin, "people: emergency contact evidence and undo");
 });
