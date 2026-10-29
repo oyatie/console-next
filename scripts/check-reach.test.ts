@@ -189,7 +189,8 @@ test("operations: the CLI rejects a removed release-operation allowance against 
     const clean = run();
     expect(clean.status, clean.stderr).toBe(0);
     const data = JSON.parse(readFileSync(path.join(root, "scripts/reach-baseline.json"), "utf8"));
-    const op = "GET /api/v1/attendance/me/week52";
+    const op = Object.keys(data.operations).find(op => data.operations[op].when === "mvp")!;
+    expect(op).toBeDefined();
     delete data.operations[op];
     writeFileSync(path.join(root, "scripts/reach-baseline.json"), JSON.stringify(data));
     const planted = run();

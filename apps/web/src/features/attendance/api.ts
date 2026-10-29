@@ -1,5 +1,6 @@
 import { ApiError, api, unwrap, type components } from "@console/api";
 import { cursorPages, get } from "../../lib/query";
+import { addDays, isDate, nextMonday } from "../../ui/date/days";
 export { session } from "@console/api";
 
 type S = components["schemas"];
@@ -34,6 +35,18 @@ export const crewsQuery = (workplace_id?: string, date?: string) => get("/api/v1
 export const peopleQuery = (search: string) => get("/api/v1/employees", { params: { query: { search, limit: 8 } } });
 export const holidaysQuery = (year: number) => get("/api/v1/attendance/holidays", { params: { query: { year } } });
 export const weeklyQuery = (week_start: string) => get("/api/v1/attendance/week52", { params: { query: { week_start } } });
+
+/** OPEN exceptions use the endpoint's offset contract, not the month grid's cursor contract. */
+export const exceptionsQuery = (month: string, branch_id?: string) => ({
+  ...get("/api/v1/attendance/exceptions", { params: { query: { month, branch_id, status: "OPEN" } } }),
+  queryFn: ({ pageParam }: { pageParam: number }) => get("/api/v1/attendance/exceptions", { params: { query: { month, branch_id, status: "OPEN", offset: pageParam } } }).queryFn(),
+  initialPageParam: 0,
+  getNextPageParam: (page: S["AttendanceExceptionPage"]) => page.items.length > 0 && page.offset + page.items.length < page.total ? page.offset + page.items.length : undefined,
+});
+export const closesQuery = (month: string, branch_id?: string) => get("/api/v1/attendance/closes", { params: { query: { month, branch_id } } });
+export const week52Query = (date: string, branch_id?: string) => get("/api/v1/attendance/week52", { params: { query: { week_start: isDate(date) ? addDays(nextMonday(date), -7) : date, branch_id } } });
+// NEEDS-BACKEND: week52 must report these ledger totals; missing values stay unknown, never inferred from projections.
+export type Week52Row = S["AttendanceWeek52Row"] & { recognized_hours?: number; overtime_hours?: number };
 
 // Previews write nothing: they answer what a command would do, and the server re-checks it at commit.
 export const previewAssign = (body: AssignInput) => unwrap(api.POST("/api/v1/attendance/schedule/layers/preview", { body }));
