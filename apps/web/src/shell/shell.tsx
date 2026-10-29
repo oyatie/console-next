@@ -14,6 +14,7 @@ import { LiveStatus } from "../ui/live/live-status";
 import { focusSoon } from "../lib/react/announce";
 import { get, navigationRead, read } from "../lib/query";
 import { isAnswer } from "../lib/react/query-defaults";
+import { QueryState } from "../lib/react/query-state";
 import { chunk } from "../lib/chunk-guard";
 import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
@@ -67,13 +68,17 @@ export function Shell() {
   const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
   const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
-  const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data }>();
-  const answered = ready && access.isSuccess && [support, me, modules].every(q => !(q.isError && !isAnswer(q.error)));
+  const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data | null }>();
+  const modulesFault = modules.isError && !isAnswer(modules.error);
+  const answered = ready && access.isSuccess && [support, me].every(q => !(q.isError && !isAnswer(q.error)));
   // Late readiness reads reveal entries on the next navigation, never between inputs.
-  if (answered && railTargets?.pathname !== pathname) setRailTargets({ pathname, value: setupTargets, modules: modules.isSuccess ? modules.data : undefined });
+  // A cold fault has no readiness snapshot; its first answer can recover immediately after retry.
+  if (answered && (railTargets?.pathname !== pathname || modules.isSuccess && railTargets.modules == null)) setRailTargets({ pathname, value: setupTargets,
+    modules: modules.isSuccess ? modules.data : modulesFault && savedRail.key === railKey ? savedRail.answer?.context.modules : undefined });
   const answer = useMemo(() => answered && access.data ? { access: access.data, supportApproval: support.isSuccess && !!support.data?.can_approve,
-    context: { pathname, phase, setupTargets: railTargets?.value, modules: modules.isSuccess ? railTargets?.modules : undefined } } : undefined,
-  [answered, access.data, support.isSuccess, support.data?.can_approve, pathname, phase, railTargets, modules.isSuccess]);
+    context: { pathname, phase, setupTargets: railTargets?.value,
+      modules: modules.isSuccess ? railTargets?.modules : modulesFault ? railTargets?.modules ?? null : undefined } } : undefined,
+  [answered, access.data, support.isSuccess, support.data?.can_approve, pathname, phase, railTargets, modules.isSuccess, modulesFault]);
   if (answer && savedRail.answer !== answer) setSavedRail({ key: railKey, answer });
   useEffect(() => {
     if (!railKey || !answer) return;
@@ -142,6 +147,7 @@ export function Shell() {
             ))}</ul>
           </div>
         ))}
+        {!platform && answered && modulesFault && <QueryState q={modules} loading={null}>{() => null}</QueryState>}
       </nav>
       <header className="top" aria-busy={restoring || undefined}>
         {!restoring && <>

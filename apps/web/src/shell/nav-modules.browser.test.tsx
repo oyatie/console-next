@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
-import { expect as element } from "@playwright/test";
+import { chromium, firefox, expect as element } from "@playwright/test";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { AT, id } from "../../../../e2e/mock/fixtures";
@@ -94,26 +94,37 @@ test("a readiness command refreshes the shared modules cache once without a navi
   } finally { await browser.close(); await server.close(); }
 }, 60_000);
 
-test("a cold modules 503 shows skeleton hubs and a failed refresh keeps last good readiness", async () => {
-  const { server, browser, page, errors } = await navFixture();
+for (const engine of [chromium, firefox]) test.each(["503", "network"])(`a cold modules %s keeps independent links and retry restores readiness without navigation in ${engine.name()}`, async fault => {
+  await loadCatalog("ko");
+  const { server, browser, page, errors } = await navFixture(engine);
   let unavailable = true;
   await page.route("**/api/v1/onboarding/modules", route => unavailable
-    ? route.fulfill({ status: 503, json: { error: { code: "unavailable" } } })
+    ? fault === "network" ? route.abort("failed") : route.fulfill({ status: 503, json: { error: { code: "unavailable" } } })
     : route.fulfill({ json: [{ key: "people", ready: true, unblock: null }] satisfies components["schemas"]["OnboardingModules"] }));
   try {
     await page.goto(server.resolvedUrls!.local[0]!);
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    await element(rail.getByRole("status")).toBeVisible();
-    await element(rail.getByRole("link")).toHaveCount(0);
+    await element(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests"), t("shell.link.settings")]);
+    await element(rail.getByRole("alert")).toHaveCount(1);
+    await element(rail.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
+    await page.reload();
+    await element(rail.getByRole("alert")).toHaveCount(1);
+    const url = page.url();
     unavailable = false;
-    await page.evaluate(() => window.refetchNavModules());
-    await rail.getByRole("link", { name: "직원", exact: true }).click();
+    await rail.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
+    await element(rail.getByRole("alert")).toHaveCount(0);
+    expect(page.url()).toBe(url);
     await element(rail.getByRole("link", { name: "근태", exact: true })).toHaveCount(0);
     unavailable = true;
     await page.evaluate(() => window.refetchNavModules());
-    await rail.getByRole("link", { name: "홈", exact: true }).click();
     await element(rail.getByRole("link", { name: "근태", exact: true })).toHaveCount(0);
     await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
+    await rail.getByRole("link", { name: "직원", exact: true }).click();
+    await element(rail.getByRole("link", { name: "근태", exact: true })).toHaveCount(0);
+    await page.reload();
+    await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
+    await element(rail.getByRole("link", { name: "근태", exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally { await browser.close(); await server.close(); }
 }, 60_000);

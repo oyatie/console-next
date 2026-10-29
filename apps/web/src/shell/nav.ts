@@ -11,7 +11,8 @@ type Modules = AllPaths["/api/v1/onboarding/modules"]["get"]["responses"][200]["
 type NavLink = { to: string; label: MessageId; icon: LucideIcon; module?: Modules[number]["key"]; supportApproval?: boolean; views?: readonly { to: string }[] };
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
-type NavContext = { pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules };
+// null preserves an unanswered modules read across reloads without treating it as ready.
+type NavContext = { pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules | null };
 
 const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests", icon: ListChecks };
 // One entry table; future destinations appear only when their route is served.
@@ -44,7 +45,7 @@ export function tenantNav(access: AccessEffective | undefined, routes: Routes, s
     if (link.to === "/") return true;
     if (!access) return false;
     if (link.module === "payroll" && !modules?.some(m => m.key === "payroll" && m.ready)) return false;
-    if (modules && link.module && !modules.some(m => m.key === link.module && m.ready)) return false;
+    if (modules !== undefined && link.module && !modules?.some(m => m.key === link.module && m.ready)) return false;
     if (phase === "SETUP") {
       // Keep S1's safe destinations if the checklist is unavailable; readiness can narrow them further.
       const targets = setupTargets ?? ["/org", "/people", "/access"];
@@ -67,7 +68,7 @@ export function rememberedRail(key: string | null): RailAnswer | undefined {
       data.access.entries.every(e => e && typeof e.domain === "string" && typeof e.level === "string" && typeof e.scope?.kind === "string") &&
       typeof data.supportApproval === "boolean" && data.context && typeof data.context.pathname === "string" &&
       (data.context.setupTargets === undefined || Array.isArray(data.context.setupTargets) && data.context.setupTargets.every(to => typeof to === "string")) &&
-      (data.context.modules === undefined || Array.isArray(data.context.modules) && data.context.modules.every(m => m && typeof m.key === "string" && typeof m.ready === "boolean")) ? data : undefined;
+      (data.context.modules == null || Array.isArray(data.context.modules) && data.context.modules.every(m => m && typeof m.key === "string" && typeof m.ready === "boolean")) ? data : undefined;
   } catch { return undefined; }
 }
 

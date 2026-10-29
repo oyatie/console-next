@@ -146,7 +146,7 @@ for (const secondary of ["modules", "support", "me"] as const) for (const cached
   });
 }
 
-for (const secondary of ["modules", "support", "me"] as const) for (const fault of [new ApiError(503, "unavailable", "", []), new TypeError("Failed to fetch")]) {
+for (const secondary of ["support", "me"] as const) for (const fault of [new ApiError(503, "unavailable", "", []), new TypeError("Failed to fetch")]) {
   test(`${secondary} ${fault.name} fault keeps a cold rail unresolved`, async () => {
     const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
     try {
@@ -154,7 +154,7 @@ for (const secondary of ["modules", "support", "me"] as const) for (const fault 
       await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
       await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: true }) });
       await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: "OPERATING" } }) });
-      const query = secondary === "modules" ? modulesQuery : secondary === "support" ? activeSupportQuery : navigationRead(meQuery);
+      const query = secondary === "support" ? activeSupportQuery : navigationRead(meQuery);
       await expect(client.fetchQuery({ ...query, staleTime: 0, queryFn: async () => { throw fault; } })).rejects.toBe(fault);
       const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
       expect(rail).toContain('aria-busy="true"');
@@ -162,3 +162,18 @@ for (const secondary of ["modules", "support", "me"] as const) for (const fault 
     } finally { client.clear(); }
   });
 }
+
+test.each([new ApiError(503, "unavailable", "", []), new TypeError("Failed to fetch")])("a cold modules %s leaves independent, authorized rail links and one retry", async fault => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+  try {
+    await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
+    await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: false }) });
+    await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: "OPERATING" } }) });
+    await expect(client.fetchQuery({ ...modulesQuery, queryFn: async () => { throw fault; } })).rejects.toBe(fault);
+    const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
+    expect([...rail.matchAll(/href="([^"]+)"/g)].map(([, path]) => path).filter(path => path !== "#main")).toEqual(["/", "/people/requests"]);
+    expect(rail.match(/role="alert"/g)).toHaveLength(1);
+    expect(rail).toContain(t("common.retry"));
+    expect(rail).not.toContain('aria-busy="true"');
+  } finally { client.clear(); }
+});
