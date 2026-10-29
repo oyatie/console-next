@@ -68,12 +68,11 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
     await page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }).click();
     await page.keyboard.press("Tab");
     await visible(grids.first().getByRole("row").nth(1)).toBeFocused();
-    for (const column of ["number", "name", "plan", "input"]) {
+    for (const column of ["number", "name", "plan"]) {
       await page.keyboard.press("ArrowRight");
       await visible(grids.first().locator(`[data-key="row:0-0:${column}"]`)).toBeFocused();
     }
-    await visible(grids.first().getByRole("gridcell").filter({ has: input })).toBeFocused();
-    await page.keyboard.press("Tab");
+    await page.keyboard.press("ArrowRight");
   }
   await visible(input).toBeFocused();
   const original = await input.evaluateHandle(el => {

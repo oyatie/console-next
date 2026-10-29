@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type ColumnProps, type SortDescriptor } from "react-aria-components";
+import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@console/i18n";
 import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
@@ -21,7 +21,7 @@ export { Focusable as TableControl } from "react-aria-components";
 const NONE = new Set<string>();
 
 /** `width` is a React Aria column size: "1fr" (default), "2fr", a percentage, or px for codes and dates. */
-export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; type?: ColumnType; allowsSorting?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
+export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; type?: ColumnType; focusMode?: CellProps["focusMode"]; allowsSorting?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
 
 const SELECT = "__select";
 // React Aria shares one collection key space between rows and columns.
@@ -256,7 +256,7 @@ export function LongTable<R>(p: {
                       const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.
                       const value = p.editable && !c.rowHeader ? render : render();
-                      return <Cell data-type={c.type} className={css.td} render={props => <div {...props} title={typeof value === "string" ? value : undefined} aria-labelledby={cardLayout && c.id === "__card" ? titleId(r) : props["aria-labelledby"]} />}>{value}</Cell>;
+                      return <Cell data-type={c.type} focusMode={c.focusMode} className={css.td} render={props => <div {...props} title={typeof value === "string" ? value : undefined} aria-labelledby={cardLayout && c.id === "__card" ? titleId(r) : props["aria-labelledby"]} />}>{value}</Cell>;
                     }}
                   </Row>
                 );
