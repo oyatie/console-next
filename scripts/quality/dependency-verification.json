@@ -21,12 +21,12 @@
     "note": "docs/quality/dependencies/zod.md"
   },
   "package.json:overrides:typed-rest-client:qs": {
-    "requirement": "6.16.0",
-    "version": "6.16.0",
-    "registry": "https://registry.npmjs.org/qs/6.16.0",
-    "checked": "2026-10-26",
+    "requirement": "6.16.1",
+    "version": "6.16.1",
+    "registry": "https://registry.npmjs.org/qs/6.16.1",
+    "checked": "2026-10-29",
     "note": "docs/quality/dependencies/typed-rest-client-qs.md",
-    "reason": "typed-rest-client pins qs exactly; Dependabot cannot move its child to a patched release. The originally proposed 6.15.2 still has two moderate advisories; 6.16.0 fixes all three current qs advisories.",
+    "reason": "typed-rest-client pins qs exactly; Dependabot cannot move its child to a patched release. 6.16.1 first fixes GHSA-6pq8-jhm2-2vcw while retaining the three earlier qs advisory fixes.",
     "removalCondition": "Remove when the typed-rest-client version selected by Stryker declares a qs range admitting a patched release, and a regenerated lockfile and compatibility tests remain clean without the override."
   },
   "package.json:overrides:exceljs:uuid": {

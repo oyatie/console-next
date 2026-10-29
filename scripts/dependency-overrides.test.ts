@@ -61,6 +61,19 @@ test("typed-rest-client comma queries tolerate null array entries (GHSA-q8mj-m7c
   expect(url.searchParams.get("id")).toBe(",b");
 });
 
+test("scoped qs resolves to at least 6.16.1", () => {
+  const load = createRequire(require.resolve("typed-rest-client/package.json"));
+  const [major, minor, patch] = load("qs/package.json").version.split(".").map(Number);
+  expect(major > 6 || (major === 6 && (minor > 16 || (minor === 16 && patch >= 1)))).toBe(true);
+});
+
+test.each([false, true])("scoped qs comma queries tolerate non-callable toString with encodeValuesOnly=%s (GHSA-6pq8-jhm2-2vcw)", (encodeValuesOnly) => {
+  const load = createRequire(require.resolve("typed-rest-client/package.json"));
+  const qs = load("qs");
+  const query = qs.stringify({ id: [{ toString: "x" }, "b"] }, { arrayFormat: "comma", encodeValuesOnly });
+  expect(new URLSearchParams(query).get("id")).toBe("[object Object],b");
+});
+
 test("scoped qs preserves array limits (GHSA-x5fp-wj9c-mxmx)", () => {
   const load = createRequire(require.resolve("typed-rest-client/package.json"));
   const qs = load("qs");
