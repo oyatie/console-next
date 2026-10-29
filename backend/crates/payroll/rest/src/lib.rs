@@ -16,21 +16,10 @@
 //!
 //! # Access
 //!
-//! Run list and detail reads use Cedar `pay:view` at the tenant node, with live
-//! facts loaded inside the audited transaction. Runs do not yet carry a legal
-//! entity, so narrower grants cannot read these tenant-wide rows or totals.
-//! Other lifecycle endpoints retain their existing gate until the next slice.
-//!
-//! # Legacy lifecycle scoping
-//!
-//! `payroll_draft_runs`/`payroll_draft_lines` have an `org_id` column only —
-//! no `branch_id`. Admin reads are therefore gated org-wide
-//! (`authorize_org_wide`): built-in access is EXECUTIVE/SUPER_ADMIN only —
-//! `authorize_org_wide`'s built-in path never grants ADMIN, all-branch-scoped
-//! or not (same as `EmployeeDirectoryRead`/`OrgWideQueueTriage` today; an
-//! ADMIN's only path in is a custom org-wide PBAC grant). A branch-scoped
-//! caller is denied (403) rather than silently granted org-wide visibility
-//! mislabeled as "their branch".
+//! Run reads and commands use Cedar pay:view or pay:edit at the tenant
+//! node, with live facts from the canonical loader. Runs do not yet carry a
+//! legal entity, so narrower grants cannot read tenant-wide rows or totals.
+//! Own readiness uses Cedar employee_self_read on the caller's linked record.
 //!
 //! # Audit
 //!
@@ -47,6 +36,7 @@ pub use openapi::OPENAPI_FRAGMENT;
 mod access;
 mod lifecycle;
 mod payslip_draft;
+mod self_service;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -55,11 +45,11 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_payroll_adapter_postgres::{
-    MyPayrollLinePage, PayrollRunDetail, PayrollRunPage, PayrollRunSummary, PgPayrollError,
-    PgPayrollStore, get_run_in_tx, list_runs_in_tx,
+    PayrollRunDetail, PayrollRunPage, PayrollRunSummary, PgPayrollError, PgPayrollStore,
+    get_run_in_tx, list_runs_in_tx,
 };
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
+use console_platform_authz::Principal;
 use console_platform_db::{DbError, with_audits};
 use console_platform_request_context::RequestContextError;
 use serde::{Deserialize, Serialize};
@@ -161,7 +151,7 @@ pub fn router(state: PayrollRestState) -> Router {
     let router = Router::new()
         .route(PAYROLL_RUNS_PATH, get(list_runs))
         .route(PAYROLL_RUN_PATH_TEMPLATE, get(get_run))
-        .route(PAYROLL_MY_PAYSLIPS_PATH, get(list_my_lines))
+        .route(PAYROLL_MY_PAYSLIPS_PATH, get(self_service::list_my_lines))
         .route(
             PAYROLL_RUN_CLOSE_PREFLIGHT_PATH_TEMPLATE,
             get(lifecycle::get_close_preflight),
@@ -305,46 +295,6 @@ async fn get_run(
     Ok(Json(detail).into_response())
 }
 
-async fn list_my_lines(
-    State(state): State<PayrollRestState>,
-    headers: HeaderMap,
-    Query(params): Query<PageParams>,
-) -> Result<Response, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    // Self-scoped readiness, not issued 명세서. Do not attach
-    // `require_run_read`: MEMBER has no PayrollRunRead and must still read
-    // own draft lines. Mirrors `GET /api/v1/hr/attendance-records/me`: an
-    // account with no linked employee (ADMIN/system) reads an empty page,
-    // never a 403, and this read is never audited (own-data self-service).
-    let page = match state
-        .store
-        .linked_employee_id(principal.user_id)
-        .await
-        .map_err(RestError::from_store)?
-    {
-        Some(employee_id) => state
-            .store
-            .list_my_lines(employee_id, params.limit, params.offset)
-            .await
-            .map_err(RestError::from_store)?,
-        None => MyPayrollLinePage {
-            items: Vec::new(),
-            total: 0,
-            limit: params.limit.unwrap_or(100),
-            offset: params.offset.unwrap_or(0),
-        },
-    };
-    Ok(Json(page).into_response())
-}
-
-/// Admin-tier run/lines read. Org-wide only (`authorize_org_wide`): the
-/// underlying tables have no `branch_id`, so a branch-scoped ADMIN is denied
-/// rather than silently widened to the whole org (see module docs).
-pub(crate) fn require_run_read(principal: &Principal) -> Result<(), RestError> {
-    authorize_org_wide(principal, Action::new(Feature::PayrollRunRead))
-        .map_err(RestError::from_kernel)
-}
-
 #[derive(Debug, Serialize)]
 struct ErrorBody {
     error: ErrorPayload,
@@ -474,73 +424,6 @@ fn rest_error_from_request_context(err: RequestContextError) -> RestError {
         RequestContextError::InvalidToken => RestError::unauthorized("invalid bearer token"),
         RequestContextError::InvalidClaim(message) => {
             RestError::unauthorized(format!("token claim is invalid: {message}"))
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use console_platform_authz::Role;
-    use std::collections::BTreeSet;
-
-    fn principal(role: Role, scope: console_kernel_core::BranchScope) -> Principal {
-        Principal::new(
-            console_kernel_core::UserId::new(),
-            console_kernel_core::OrgId::one(),
-            BTreeSet::from([role]),
-            scope,
-        )
-    }
-
-    #[test]
-    fn member_is_denied_run_read() {
-        let p = principal(Role::Member, console_kernel_core::BranchScope::All);
-        assert_eq!(
-            require_run_read(&p).unwrap_err().status,
-            StatusCode::FORBIDDEN
-        );
-    }
-
-    #[test]
-    fn built_in_admin_is_denied_run_read_even_with_all_branch_scope() {
-        // `authorize_org_wide`'s built-in path only ever considers
-        // SuperAdmin/Executive (`console_platform_authz::authorize_org_wide`) — an
-        // ADMIN role never satisfies it, All-branch-scope or not. This matches
-        // the existing `EmployeeDirectoryRead`/`OrgWideQueueTriage` behavior
-        // exactly, so it is not a payroll-specific gap: an ADMIN's only path
-        // to these endpoints is a custom org-wide PBAC grant.
-        let p = principal(Role::Admin, console_kernel_core::BranchScope::All);
-        assert_eq!(
-            require_run_read(&p).unwrap_err().status,
-            StatusCode::FORBIDDEN
-        );
-    }
-
-    #[test]
-    fn branch_scoped_admin_is_denied_run_read() {
-        // No branch_id on payroll_draft_runs/lines: a branch-scoped ADMIN must
-        // be denied rather than silently widened to org-wide visibility.
-        let p = principal(
-            Role::Admin,
-            console_kernel_core::BranchScope::Branches(BTreeSet::from([
-                console_kernel_core::BranchId::new(),
-            ])),
-        );
-        assert_eq!(
-            require_run_read(&p).unwrap_err().status,
-            StatusCode::FORBIDDEN
-        );
-    }
-
-    #[test]
-    fn executive_and_super_admin_can_read_runs() {
-        for role in [Role::Executive, Role::SuperAdmin] {
-            let p = principal(role, console_kernel_core::BranchScope::All);
-            assert!(
-                require_run_read(&p).is_ok(),
-                "{role:?} must be able to read payroll runs"
-            );
         }
     }
 }

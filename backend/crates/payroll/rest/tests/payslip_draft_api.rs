@@ -10,6 +10,11 @@
 //! emit a zero for a deduction it did not compute, and its stored citations
 //! must not drift from the arithmetic they claim to justify.
 
+#[path = "fixtures/pay_view.rs"]
+mod pay_view;
+#[path = "support/payslip_privacy.rs"]
+mod payslip_privacy;
+
 use axum::body::{Body, to_bytes};
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
 use console_ontology_canonical_adapter_postgres::company::{
@@ -199,30 +204,9 @@ async fn seed_org(owner_pool: &PgPool, org: Uuid) {
     .unwrap();
 }
 
-async fn seed_user(owner_pool: &PgPool, user_id: UserId, org: Uuid, role: &str) {
-    let role = role.to_owned();
-    with_audit(
-        owner_pool,
-        seed_event("test.seed_user", "user", *user_id.as_uuid(), org),
-        |tx| {
-            Box::pin(async move {
-                sqlx::query(
-                    "INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)",
-                )
-                .bind(*user_id.as_uuid())
-                .bind(format!("user-{role}-{}", user_id.as_uuid()))
-                .bind(vec![role])
-                .bind(org)
-                .execute(tx.as_mut())
-                .await
-                .map_err(DbError::Sqlx)?;
-                Ok::<(), DbError>(())
-            })
-        },
-    )
-    .await
-    .unwrap();
-}
+#[path = "support/payslip_seed_user.rs"]
+mod payslip_seed_user;
+use payslip_seed_user::seed_user;
 
 async fn seed_employee(owner_pool: &PgPool, org: Uuid, name: &str) -> Uuid {
     let id = Uuid::new_v4();
@@ -357,6 +341,7 @@ async fn golden_case_gc_2026_07_kr_monthly_a_over_http_matches_the_hand_calculat
 
     seed_org(&owner_pool, *org.as_uuid()).await;
     seed_user(&owner_pool, actor, *org.as_uuid(), "EXECUTIVE").await;
+    pay_view::grant_manage(&owner_pool, org, actor, None).await;
     let employee = seed_employee(&owner_pool, *org.as_uuid(), "김근로").await;
     let worked_days =
         seed_july_2026_timesheet(&owner_pool, *org.as_uuid(), employee, actor, 23).await;
@@ -507,6 +492,7 @@ async fn withholding_is_explicitly_deferred_and_never_a_silent_zero(owner_pool: 
 
     seed_org(&owner_pool, *org.as_uuid()).await;
     seed_user(&owner_pool, actor, *org.as_uuid(), "EXECUTIVE").await;
+    pay_view::grant_manage(&owner_pool, org, actor, None).await;
     let employee = seed_employee(&owner_pool, *org.as_uuid(), "김근로").await;
     let token = bearer(&owner_pool, &keys, actor, org, "EXECUTIVE").await;
 
@@ -762,6 +748,7 @@ async fn draft_is_gated_org_wide_and_blocks_rather_than_inventing_a_wage(owner_p
     // No contract wage in force: a BLOCKER, not a zero payslip and not a 404.
     let executive = UserId::new();
     seed_user(&owner_pool, executive, *org.as_uuid(), "EXECUTIVE").await;
+    pay_view::grant_manage(&owner_pool, org, executive, None).await;
     let token = bearer(&owner_pool, &keys, executive, org, "EXECUTIVE").await;
     let body = get(
         app(pool.clone(), &keys),
@@ -958,6 +945,7 @@ async fn a_period_with_no_attendance_records_blocks_instead_of_paying_a_full_mon
 
     seed_org(&owner_pool, *org.as_uuid()).await;
     seed_user(&owner_pool, actor, *org.as_uuid(), "EXECUTIVE").await;
+    pay_view::grant_manage(&owner_pool, org, actor, None).await;
     let token = bearer(&owner_pool, &keys, actor, org, "EXECUTIVE").await;
 
     // Two employees, the SAME contract. Only the timesheet differs.
@@ -1065,6 +1053,7 @@ async fn a_partial_but_balanced_timesheet_blocks_although_every_punch_is_paired(
 
     seed_org(&owner_pool, *org.as_uuid()).await;
     seed_user(&owner_pool, actor, *org.as_uuid(), "EXECUTIVE").await;
+    pay_view::grant_manage(&owner_pool, org, actor, None).await;
     let token = bearer(&owner_pool, &keys, actor, org, "EXECUTIVE").await;
 
     // Same contract, same month. Only the number of recorded days differs, and
@@ -1217,6 +1206,7 @@ async fn empty_tenant_payslip_draft_sits_on_canonical_org_tree(owner_pool: PgPoo
     let tree = provision_empty_tenant_appointed_employee(&owner_pool).await;
     let pool = runtime_role_pool(&owner_pool).await;
     let keys = keys();
+    pay_view::grant_manage(&owner_pool, tree.org, tree.actor, None).await;
     let token = bearer(&owner_pool, &keys, tree.actor, tree.org, "SUPER_ADMIN").await;
     let employee = tree.employee_id;
 

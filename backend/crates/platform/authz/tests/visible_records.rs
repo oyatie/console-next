@@ -107,3 +107,6 @@ async fn employee_list_and_count_equal_point_decision_for_every_seeded_record(po
         tx.rollback().await.unwrap();
     }
 }
+
+#[path = "visible_records/self_read.rs"]
+mod self_read;

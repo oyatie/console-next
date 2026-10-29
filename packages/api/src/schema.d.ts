@@ -10650,7 +10650,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the signed-in employee's own payroll draft-line (readiness) rows */
+        /** List the signed-in employee's own payroll draft-line readiness rows (Cedar employee_self_read; no tenant pay grant) */
         get: operations["listMyPayrollLines"];
         put?: never;
         post?: never;
@@ -10735,7 +10735,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Attendance-close preflight for a payroll run (audited read; EXECUTIVE/SUPER_ADMIN org-wide) */
+        /** Attendance-close preflight for a payroll run (audited read; tenant pay:view) */
         get: operations["getPayrollRunClosePreflight"];
         put?: never;
         post?: never;

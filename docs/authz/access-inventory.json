@@ -1239,24 +1239,6 @@
     },
     {
       "model": "matrix",
-      "file": "backend/crates/payroll/rest/src/lib.rs",
-      "kind": "reference",
-      "count": 2
-    },
-    {
-      "model": "matrix",
-      "file": "backend/crates/payroll/rest/src/lifecycle.rs",
-      "kind": "reference",
-      "count": 2
-    },
-    {
-      "model": "matrix",
-      "file": "backend/crates/payroll/rest/src/payslip_draft.rs",
-      "kind": "reference",
-      "count": 2
-    },
-    {
-      "model": "matrix",
       "file": "backend/crates/platform/auth-rest/src/admin.rs",
       "kind": "reference",
       "count": 6

@@ -230,3 +230,5 @@ pub mod tenant_erase;
 
 #[cfg(test)]
 mod privacy_requests_tests;
+
+pub mod employee_self_read;

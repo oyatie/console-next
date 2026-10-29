@@ -61,83 +61,10 @@ const AUDIENCE: &str = "console-api";
 const SHA256_FIXTURE: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 include!("file_size_splits/run_lifecycle_journey.inc.rs");
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn lifecycle_writes_deny_without_leakage_and_cross_tenant_is_invisible(pool: PgPool) {
-    let keys = Keys::generate();
-    let rt = runtime_role_pool(&pool).await;
-    let org_a = OrgId::one();
-    seed_org(&pool, org_a).await;
-    let org_b = OrgId::from_uuid(Uuid::new_v4());
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, 'org-b', 'Org B')")
-        .bind(*org_b.as_uuid())
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    let stager = seed_user(&pool, org_a, "EXECUTIVE", None).await;
-    let run = seed_run(&pool, org_a, stager).await;
-
-    // MEMBER and built-in ADMIN (the write tier is EXECUTIVE/SUPER_ADMIN or a
-    // custom org-wide PBAC grant): 403, and the same 403 whether or not the
-    // run exists — no existence oracle.
-    for role in ["MEMBER", "ADMIN"] {
-        let user = seed_user(&pool, org_a, role, None).await;
-        let token = keys.token(&pool, user, org_a, role).await;
-        for target in [run, Uuid::new_v4()] {
-            let (status, denied) = send(
-                &rt,
-                &keys,
-                "POST",
-                &format!("/api/v1/payroll/runs/{target}/calculate"),
-                &token,
-                None,
-            )
-            .await;
-            assert_eq!(status, StatusCode::FORBIDDEN, "{role}: {denied}");
-            assert_eq!(denied["error"]["code"], "forbidden");
-        }
-    }
-
-    // An org-B EXECUTIVE: org A's run is indistinguishable from a missing one
-    // on both the read and the write path (RLS deny-by-omission).
-    let outsider = seed_user(&pool, org_b, "EXECUTIVE", None).await;
-    pay_view::grant_view(&pool, org_b, outsider, None).await;
-    let outsider_token = keys.token(&pool, outsider, org_b, "EXECUTIVE").await;
-    for (method, uri) in [
-        ("GET", format!("/api/v1/payroll/runs/{run}")),
-        ("GET", format!("/api/v1/payroll/runs/{run}/close-preflight")),
-        ("GET", format!("/api/v1/payroll/runs/{run}/exceptions")),
-        ("POST", format!("/api/v1/payroll/runs/{run}/calculate")),
-        ("POST", format!("/api/v1/payroll/runs/{run}/submit")),
-    ] {
-        let (status, body) = send(&rt, &keys, method, &uri, &outsider_token, None).await;
-        assert_eq!(status, StatusCode::NOT_FOUND, "{method} {uri}: {body}");
-        assert_eq!(body["error"]["code"], "not_found");
-    }
-
-    // The denied probes must not have advanced the run.
-    let status: String = sqlx::query_scalar("SELECT status FROM payroll_draft_runs WHERE id = $1")
-        .bind(run)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(
-        status, "BLOCKED_LEGAL_GATE",
-        "denied probes must not advance the create_run status"
-    );
-    let probe_audits: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM audit_events WHERE action LIKE 'payroll_run.%' AND target_id = $1",
-    )
-    .bind(run.to_string())
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert_eq!(
-        probe_audits, 0,
-        "denied probes must not commit audit events"
-    );
-}
-
+#[path = "support/issue_revocation.rs"]
+mod issue_revocation;
+#[path = "support/pay_action_access.rs"]
+mod pay_action_access;
 // ---------------------------------------------------------------------------
 // Close preflight is a TRUE read; close recomputes it (TOCTOU)
 // ---------------------------------------------------------------------------
@@ -161,6 +88,7 @@ async fn close_preflight_persists_no_verdict_only_its_read_audit(pool: PgPool) {
     let org = OrgId::one();
     seed_org(&pool, org).await;
     let executive = seed_user(&pool, org, "EXECUTIVE", None).await;
+    pay_view::grant_manage(&pool, org, executive, None).await;
     let token = keys.token(&pool, executive, org, "EXECUTIVE").await;
     let employee = seed_employee(&pool, org, "Alice").await;
     let run = seed_run(&pool, org, executive).await;
@@ -343,6 +271,7 @@ async fn close_recomputes_the_preflight_after_the_read_verdict_goes_stale(pool: 
     let org = OrgId::one();
     seed_org(&pool, org).await;
     let executive = seed_user(&pool, org, "EXECUTIVE", None).await;
+    pay_view::grant_manage(&pool, org, executive, None).await;
     let token = keys.token(&pool, executive, org, "EXECUTIVE").await;
     let employee = seed_employee(&pool, org, "Alice").await;
     let run = seed_run(&pool, org, executive).await;
@@ -408,6 +337,7 @@ async fn empty_tenant_run_close_preflight_sits_on_canonical_org_tree(owner_pool:
     let keys = Keys::generate();
     let rt = runtime_role_pool(&owner_pool).await;
     let executive = seed_user(&owner_pool, tree.org, "EXECUTIVE", None).await;
+    pay_view::grant_manage(&owner_pool, tree.org, executive, None).await;
     let token = keys
         .token(&owner_pool, executive, tree.org, "EXECUTIVE")
         .await;

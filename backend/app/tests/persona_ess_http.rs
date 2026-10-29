@@ -13,7 +13,7 @@
 //!     not manager `AttendanceExceptionManage`;
 //!   * `GET /api/v1/attendance/me/week52` → 200, never 403 — self-scoped;
 //!     unlinked MEMBER is `status=not_available` with `projection` omitted;
-//!   * `GET /api/v1/payroll/runs` → 403 — `authorize_org_wide(PayrollRunRead)`.
+//!   * `GET /api/v1/payroll/runs` → 403 — tenant Cedar pay:view.
 //!
 //! Status lock only: does not emit a payslip (see inbox-rest filter=payslip
 //! coverage) and does not seed exceptions. Drives `console_rt` (RLS on).
