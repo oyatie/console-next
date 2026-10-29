@@ -16,6 +16,7 @@ test("check-source: imports, derived keys, slice placement, max-lines pins", () 
 test("check-toolchain-pins: stable pins match the root and fuzz stays on nightly", () => run("node", ["scripts/check-toolchain-pins.mjs", "--check"]));
 test("check-toolchain-pins rejects planted mismatches", () => run("node", ["--test", "scripts/check-toolchain-pins.test.mjs"]));
 test("backend CI runs every release code gate and propagates failures", () => run("node", ["--test", "scripts/backend-code-gates.test.mjs"]));
+test("release predicates refuse incomplete merge-commit evidence under the host rule", () => run("node", ["--test", "deploy/ci/gates.test.mjs"]));
 // Measured at 19 s locally; 120 s allows about 6x headroom for runner contention.
 test("canary Service resolution, distinct N-1, deadline budgets and readiness diagnostics", () => run("node", ["--test", "deploy/ci/canary.test.mjs", "deploy/ci/previous-release.test.mjs", "deploy/ci/rollout-deadline.test.mjs", "deploy/ci/diagnostics.test.mjs"]), 120000);
 test("check-ds: no new raw controls, hand-written DS classes, control restyles or literal sizes (ratchet)", () => run("node", ["scripts/check-ds.mjs"]));
