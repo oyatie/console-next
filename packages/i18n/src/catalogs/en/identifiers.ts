@@ -82,7 +82,6 @@ export const enIdentifiers: Partial<Record<keyof typeof koIdentifiers, string>> 
   "identifiers.renumber.conflicts": "{count, number} new numbers are held or were held by someone else. Change the prefix or digits and preview again",
   "identifiers.renumber.empty": "Nobody to renumber",
   "identifiers.renumber.apply": "Renumber {count, number} people",
-  "identifiers.renumber.notSetup": "After go-live, renumbering and its undo are closed",
   "identifiers.renumber.done": "Renumbered {count, number} people",
   "identifiers.renumber.undo": "Undo the renumbering",
   "identifiers.renumber.undone": "Restored {count, number} earlier numbers",
