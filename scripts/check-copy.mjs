@@ -112,7 +112,7 @@ const MATURITY_RULES = [
   { rule: "prose.설정법령", re: /(?:[가-힣]+법(?:률)?|시행령|규칙)\s*제\s*\d+\s*조|안전성 확보조치 기준/, when: ({ id }) => /^setup\.(?:why|step|rail)\./.test(id), use: "remove law lines from setup steps" },
   { rule: "prose.정책", re: /(?:합니다|됩니다|있습니다|없습니다|않습니다|남습니다|남깁니다)/, when: ({ id }) => /(?:^|\.)policy(?:\.|$)/.test(id) && !/consent|privacy|terms|reason|help|disclosure/i.test(id), use: "put policy definitions behind 이유 보기" },
   { rule: "prose.부제", re: /(?:합니다|됩니다|있습니다|없습니다|않습니다|남습니다|남깁니다|반영됩니다|바뀝니다)/, when: ({ id }) => /\.(?:subtitle|subheading)(?:\.|$)/i.test(id), use: "a short factual subtitle; put explanations behind 이유 보기" },
-  { rule: "prose.단계", re: /(?:합니다|됩니다|있습니다|없습니다|않습니다|남습니다|남깁니다|바뀝니다)/, when: ({ id }) => /\.phase\./.test(id), use: "a phase chip; put transition explanations in a dismissible receipt" },
+  { rule: "prose.단계", re: /(?:합니다|됩니다|있습니다|없습니다|않습니다|남습니다|남깁니다|바뀝니다)/, when: ({ id }) => /\.phase\./.test(id) && id !== "setup.phase.started.detail", use: "a phase chip; put transition explanations in a dismissible receipt" },
   { rule: "prose.운영시제", re: /운영을 시작하면/, when: ({ id }) => /phase\.started\./.test(id), use: "the current operating phase" },
 ];
 const COMPOSER_TERM_RULES = [

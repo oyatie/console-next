@@ -10,7 +10,8 @@ import { activeSupportQuery } from "../reference/support-access/api";
 import { read } from "../lib/query";
 import { Shell } from "./shell";
 import { meQuery } from "../features/account/api";
-import { checklistQuery, SETUP_READS } from "../features/onboarding/api";
+import { checklistQuery, modulesQuery, SETUP_READS } from "../features/onboarding/api";
+import { modules } from "../../../../e2e/mock/fixtures";
 import { invalidatePaths, navigationRead } from "../lib/query";
 
 const child = vi.hoisted(() => vi.fn(() => "private page"));
@@ -50,18 +51,20 @@ test("go-live invalidates the cached tenant phase used by the shell", async () =
 
 test.each(["neither", "access", "support", "both"])("navigation waits for both decisions: %s ready", async ready => {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
   await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: "OPERATING" } }) });
   if (ready === "access" || ready === "both") await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
   if (ready === "support" || ready === "both") await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: true }) });
   try {
     const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
     const links = [...rail.matchAll(/href="([^"]+)"/g)].map(([, path]) => path).filter(path => path !== "#main");
-    expect(links).toEqual(ready === "both" ? ["/", "/people/requests", "/people", "/audit/support-access"] : ["/"]);
+    expect(links).toEqual(ready === "both" ? ["/", "/people/requests", "/people", "/audit/support-access"] : []);
   } finally { client.clear(); }
 });
 
 test.each(["blocked", "todo"])("the shell projects the server's %s employees step", async state => {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
   await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: "SETUP" } }) });
   await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
   await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: false }) });
@@ -80,7 +83,7 @@ test("SETUP keeps the loading rail while the checklist is pending", async () => 
   await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: true }) });
   try {
     const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
-    expect([...rail.matchAll(/href="([^"]+)"/g)].map(([, path]) => path).filter(path => path !== "#main")).toEqual(["/"]);
+    expect([...rail.matchAll(/href="([^"]+)"/g)].map(([, path]) => path).filter(path => path !== "#main")).toEqual([]);
   } finally { client.clear(); }
 });
 

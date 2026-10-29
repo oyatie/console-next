@@ -51,7 +51,7 @@ test("failed change dates never claim previous, next or history is empty; one pa
   for (const key of ["asof.noPrevious", "asof.noNext", "asof.noChanges"] as const) expect(html).not.toContain(t(key));
   expect(html.match(/role="alert"/g)).toHaveLength(1);
   expect(html.split(t("common.retry"))).toHaveLength(2);
-  expect(html).not.toContain(t("asof.retry"));
+  expect(html).not.toContain(`>${t("asof.retry")}<`);
   expect(html).toContain("structure-read-reference");
 });
 

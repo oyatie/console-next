@@ -70,7 +70,7 @@ test("a readiness command refreshes the shared modules cache once without a navi
   } finally { await browser.close(); await server.close(); }
 }, 60_000);
 
-test("a modules 503 preserves S1 behavior and a failed refresh keeps last good readiness", async () => {
+test("a cold modules 503 shows skeleton hubs and a failed refresh keeps last good readiness", async () => {
   const { server, browser, page, errors } = await navFixture();
   let unavailable = true;
   await page.route("**/api/v1/onboarding/modules", route => unavailable
@@ -79,7 +79,8 @@ test("a modules 503 preserves S1 behavior and a failed refresh keeps last good r
   try {
     await page.goto(server.resolvedUrls!.local[0]!);
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    await element(rail.getByRole("link", { name: "근태", exact: true })).toBeVisible();
+    await element(rail.getByRole("status")).toBeVisible();
+    await element(rail.getByRole("link")).toHaveCount(0);
     unavailable = false;
     await page.evaluate(() => window.refetchNavModules());
     await rail.getByRole("link", { name: "직원", exact: true }).click();
