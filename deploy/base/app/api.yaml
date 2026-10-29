@@ -121,6 +121,11 @@ spec:
       steps:
         - setWeight: 25
         - analysis:
+            args:
+              - name: namespace
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.namespace
             templates:
               - templateName: console-ready
         - setWeight: 100

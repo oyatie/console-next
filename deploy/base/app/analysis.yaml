@@ -3,6 +3,8 @@ apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata: {name: console-ready}
 spec:
+  args:
+    - name: namespace
   metrics:
     - name: canary-ready
       count: 3
@@ -11,5 +13,5 @@ spec:
       successCondition: result == 'ready'
       provider:
         web:
-          url: http://console-api-canary:8080/readyz
+          url: http://console-api-canary.{{args.namespace}}.svc:8080/readyz
           jsonPath: '{$.status}'

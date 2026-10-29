@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Best-effort failure evidence for disposable clusters; never dump specs or Secret objects.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const kubectl = args => spawnSync('kubectl', [...args, '--request-timeout=10s'], {encoding:'utf8',timeout:15_000,maxBuffer:16*1024*1024});
 const context = kubectl(['config', 'current-context']);
@@ -57,9 +57,54 @@ function get(resource) {
 }
 const pick = (value, fields) => Object.fromEntries(fields.filter(key => value?.[key] !== undefined).map(key => [key, value[key]]));
 const conditionFields = ['type', 'status', 'reason', ...(redactionReady ? ['message'] : [])];
+function metricResults(status) {
+  if (redactionReady) return status?.metricResults ?? [];
+  return (status?.metricResults ?? []).map(metric => ({
+    ...pick(metric, ['name', 'phase', 'count', 'successful', 'failed', 'error', 'inconclusive']),
+    measurements:(metric.measurements ?? []).map(measurement => pick(measurement,
+      ['phase', 'startedAt', 'finishedAt'])),
+  }));
+}
+async function readyz(pod) {
+  const {name, namespace} = pod.metadata;
+  const container = pod.spec?.containers?.find(container => container.readinessProbe?.httpGet);
+  const probe = container?.readinessProbe.httpGet;
+  const port = typeof probe?.port === 'string' ? container.ports?.find(port => port.name === probe.port)?.containerPort : probe?.port;
+  if (!probe || !port) { print({resource:'readyz',namespace,name,error:'HTTP readiness probe unavailable'}); return; }
+  // The runtime image has no shell or curl. Forward directly to every pod, including unready ones.
+  const forward = spawn('kubectl', ['port-forward', '-n', namespace, `pod/${name}`, `:${port}`, '--address=127.0.0.1', '--pod-running-timeout=10s'], {stdio:['ignore','pipe','ignore']});
+  try {
+    const localPort = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('PortForwardTimeout')), 15_000);
+      const fail = () => { clearTimeout(timer); reject(new Error('PortForwardUnavailable')); };
+      forward.once('error', fail);
+      forward.once('exit', fail);
+      let output = '';
+      forward.stdout.on('data', data => {
+        output = (output + data).slice(-1024);
+        const match = output.match(/Forwarding from 127\.0\.0\.1:(\d+)/);
+        if (match) { clearTimeout(timer); resolve(match[1]); }
+      });
+    });
+    const response = await fetch(`http://127.0.0.1:${localPort}${probe.path}`, {signal:AbortSignal.timeout(10_000)});
+    const body = await response.json();
+    // Only the readiness contract's enums bypass redaction, even if a secret equals a status label.
+    const labels = {};
+    for (const field of ['status', 'database', 'leave_command_database', 'ontology_command_database', 'platform_force_command_database']) {
+      if (['ready', 'not_ready', 'draining', 'unreachable', 'not_configured'].includes(body[field])) labels[field] = body[field];
+    }
+    if (['api', 'worker', 'migrate'].includes(body.role)) labels.role = body.role;
+    if (typeof body.write_ready === 'boolean') labels.write_ready = body.write_ready;
+    if (redactionReady && typeof body.service === 'string') labels.service = redact(body.service);
+    console.log(JSON.stringify({resource:'readyz',namespace,name,httpStatus:response.status,body:labels}));
+  } catch (error) {
+    print({resource:'readyz',namespace,name,error:error.name === 'Error' ? error.message : error.name});
+  } finally { forward.kill(); }
+}
 for (const resource of ['kustomizations', 'helmreleases', 'ocirepositories', 'jobs', 'rollouts', 'analysisruns', 'clusters']) {
   for (const item of get(resource)) print({resource,namespace:item.metadata.namespace,name:item.metadata.name,
     ...pick(item.status, ['phase', 'replicas', 'readyReplicas', 'active', 'failed', 'succeeded']),
+    ...(resource === 'analysisruns' ? {metricResults:metricResults(item.status)} : {}),
     conditions:(item.status?.conditions ?? []).map(condition => pick(condition, conditionFields))});
 }
 if (!redactionReady) print('Secret redaction unavailable: free-text messages, describe and logs suppressed');
@@ -70,6 +115,7 @@ for (const pod of get('pods')) {
     conditions:(pod.status?.conditions ?? []).map(condition => pick(condition, conditionFields)),
     containers:containers.map(container => ({...pick(container, ['name', 'ready', 'restartCount']),
       state:Object.fromEntries(Object.entries(container.state ?? {}).map(([state, value]) => [state,pick(value, ['reason', 'exitCode', ...(redactionReady ? ['message'] : [])])]))}))});
+  if (pod.metadata.labels?.app === 'console-api') await readyz(pod);
   // A ready operator can repeatedly fail to create a Job without a Pod or event ever existing.
   if (namespace !== 'cnpg-system' && (pod.status?.phase === 'Succeeded' || (pod.status?.phase === 'Running' && containers.length && containers.every(c => c.ready)))) continue;
   if (!redactionReady) continue;
