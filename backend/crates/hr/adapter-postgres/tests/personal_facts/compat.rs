@@ -1,6 +1,55 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+async fn assert_legacy_change_stays_unconfirmed(pool: PgPool, field: &str, value: &str) {
+    let w = world(&pool).await;
+    let old = json!({"name": "이하나", "relation": "SPOUSE", "phone": "+821012345678"});
+    let mut confirmed = old.clone();
+    confirmed["contact_notified"] = json!(true);
+    correct_on(
+        &pool,
+        &w,
+        w.in_a,
+        json!({"emergency_contacts": [confirmed]}),
+    )
+    .await
+    .unwrap();
+    let before =
+        w.hr.personal_facts(w.hr(w.hr_one), w.in_a)
+            .await
+            .unwrap()
+            .emergency_contacts;
+    let mut changed = old.clone();
+    changed[field] = json!(value);
+    correct_on(
+        &pool,
+        &w,
+        w.in_a,
+        json!({"emergency_contacts": [changed, old]}),
+    )
+    .await
+    .unwrap();
+    let contacts =
+        w.hr.personal_facts(w.hr(w.hr_one), w.in_a)
+            .await
+            .unwrap()
+            .emergency_contacts;
+    assert_eq!(contacts[0][field], value);
+    assert_eq!(contacts[0]["contact_notified"], false);
+    assert!(contacts[0]["basis"].is_null());
+    assert_eq!(contacts[1], before[0]);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn legacy_matching_requires_phone(pool: PgPool) {
+    assert_legacy_change_stays_unconfirmed(pool, "phone", "+821099998888").await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn legacy_matching_requires_relation(pool: PgPool) {
+    assert_legacy_change_stays_unconfirmed(pool, "relation", "PARENT").await;
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn released_client_resends_preserve_evidence_and_additions_stay_unconfirmed(pool: PgPool) {
     let w = world(&pool).await;

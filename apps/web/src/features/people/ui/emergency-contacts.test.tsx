@@ -107,12 +107,22 @@ const quickStub: Quick = {
 } as unknown as Quick;
 
 describe("EmergencyContacts privacy basis and notification confirmation", () => {
-  test("labels an unconfirmed contact on the card", () => {
+  test.each([false, undefined])("labels an unconfirmed contact with a warning chip (%s)", (contact_notified) => {
     searchState.act = undefined;
     const html = renderToStaticMarkup(<EmergencyContacts c={makeCard([
-      { name: "이두리", relation: "PARENT", phone: "+8221234567", contact_notified: false, basis: null },
+      { name: "이두리", relation: "PARENT", phone: "+8221234567", contact_notified, basis: null },
     ])} quick={quickStub} />);
-    expect(html).toContain(t("empContact.need.notice"));
+    expect(html).toContain('<span class="chip chip--warn">당사자 안내 미확인</span>');
+    expect(html).not.toContain(t("empContact.need.notice"));
+  });
+
+  test("does not warn for a confirmed contact", () => {
+    searchState.act = undefined;
+    const html = renderToStaticMarkup(<EmergencyContacts c={makeCard([
+      { name: "이두리", relation: "PARENT", phone: "+8221234567", contact_notified: true, basis: null },
+    ])} quick={quickStub} />);
+    expect(html).not.toContain("당사자 안내 미확인");
+    expect(html).not.toContain(t("empContact.need.notice"));
   });
 
   test("the personal card describes emergency response without asking for contact consent", () => {
