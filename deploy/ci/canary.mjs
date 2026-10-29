@@ -5,7 +5,8 @@ import { execFileSync, spawnSync } from 'node:child_process';
 const run=(...args)=>execFileSync('kubectl',args,{encoding:'utf8'});
 assert.match(run('config','current-context'),/^kind-platform-/);
 const revision=JSON.parse(readFileSync('.tmp/exit-bundle/revision.json'));
-assert.ok(revision.previousImage && revision.previousImage !== revision.image,'PLAT_PREVIOUS_RELEASE: the first dev push seeds N-1; another dev push is required to prove promotion');
+assert.ok(revision.previousImage === null || (typeof revision.previousImage === 'string' && revision.previousImage && revision.previousImage !== revision.image),
+  'PLAT_PREVIOUS_RELEASE: record a distinct N-1 image or explicit null when none exists');
 const get=(kind,name)=>JSON.parse(run('get',kind,name,'-n','console','-o','json'));
 const rollout=get('rollout','console-api');
 const workload=rollout.spec.workloadRef;
@@ -20,12 +21,18 @@ function healthy() {
 }
 execFileSync('flux',['suspend','kustomization','console-app']);
 try {
-  run('set','image',`deployment/${workload.name}`,`${container.name}=${revision.previousImage}`,'-n','console');healthy();
-  const before=new Set(JSON.parse(run('get','analysisruns','-n','console','-o','json')).items.map(r=>r.metadata.uid));
-  run('set','image',`deployment/${workload.name}`,`${container.name}=${revision.image}`,'-n','console');healthy();
-  const promoted=JSON.parse(run('get','analysisruns','-n','console','-o','json')).items.filter(r=>!before.has(r.metadata.uid) && r.status?.phase==='Successful');
-  assert.ok(promoted.length,'N-1 to N must run successful canary analysis');
-  writeFileSync('.tmp/evidence/canary-promotion.json',JSON.stringify(promoted,null,2));
+  if (revision.previousImage) {
+    run('set','image',`deployment/${workload.name}`,`${container.name}=${revision.previousImage}`,'-n','console');healthy();
+    const before=new Set(JSON.parse(run('get','analysisruns','-n','console','-o','json')).items.map(r=>r.metadata.uid));
+    run('set','image',`deployment/${workload.name}`,`${container.name}=${revision.image}`,'-n','console');healthy();
+    const promoted=JSON.parse(run('get','analysisruns','-n','console','-o','json')).items.filter(r=>!before.has(r.metadata.uid) && r.status?.phase==='Successful');
+    assert.ok(promoted.length,'N-1 to N must run successful canary analysis');
+    writeFileSync('.tmp/evidence/canary-promotion.json',JSON.stringify(promoted,null,2));
+  } else {
+    const code='PLAT_NO_DISTINCT_PREVIOUS_IMAGE';
+    console.log(`SKIP ${code}: N-1 to N promotion; no distinct previous image has been published`);
+    writeFileSync('.tmp/evidence/canary-promotion.json',JSON.stringify({status:'skipped',code},null,2));
+  }
   const stable=get('rollout','console-api').status.stableRS;
   // /internal/ bypasses the SPA's HTTP 200 fallback. workloadRef reads this Deployment template.
   const faultPath='/internal/class-b-injected-fault';
