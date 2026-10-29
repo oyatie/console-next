@@ -7,6 +7,7 @@ import { bootSupportEn, bootSupportKo } from "./boot-support";
 
 export const bootKo = {
   ...bootConsentKo,
+  "shell.link.payroll": "급여",
   "shell.link.statutory": "법정 신고·서류",
   "requestOutcome.title": "요청 결과",
   "requestOutcome.other": "다른 계정",
@@ -147,6 +148,7 @@ export type BootMessageId = keyof typeof bootKo;
 
 export const bootEn: Record<BootMessageId, string> = {
   ...bootConsentEn,
+  "shell.link.payroll": "Payroll",
   "shell.link.statutory": "Statutory filings and records",
   "requestOutcome.title": "Request outcome",
   "requestOutcome.other": "Another account",

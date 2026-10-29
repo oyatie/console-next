@@ -7,6 +7,7 @@ import { routeTree } from "./tree";
 import { routeReads, readRequirement } from "./route-reads";
 import { accessRefusal, type Requirement } from "../reference/authz/domain/access";
 import type { AccessEffective } from "../reference/authz/api";
+import { pendingPayrollReads } from "./pending-payroll-reads";
 import { operationAccess } from "../reference/authz/domain/operation-access";
 
 const router = createRouter({ routeTree });
@@ -37,7 +38,7 @@ for (const [path, contract] of Object.entries(routeReads)) {
   });
   for (const kind of [...scopeKinds, null]) {
     test(`${path} × ${kind ?? "no grant"}: route admits iff required first reads and form door admit`, () => {
-      const requirements: Requirement[] = ops.map(op => operationAccess[op]);
+      const requirements: Requirement[] = ops.map(op => ({ ...operationAccess, ...pendingPayrollReads })[op]);
       const held = { is_ops: false, entries: kind ? requirements.map((need, i) => ({ ...need, grant_id: String(i), enforcement: "ENFORCED", scope: { kind } })) : [] } as unknown as AccessEffective;
       // Independent evaluator: never call the UI decision to calculate the expected server verdict.
       const readAdmits = (need: Requirement) => held.entries.some(entry => entry.domain === need.domain &&
@@ -72,4 +73,8 @@ test("org reads use entity reach or the branch-less capability floor; neither wi
   for (const op of ["GET /api/v1/legal-entities", "GET /api/v1/org-structure", "GET /api/v1/org-changes", "GET /api/v1/org-structure/batches"] as const) {
     expect(operationAccess[op]).toEqual({ domain: "org", level: "view", scopes: ["TENANT", "LEGAL_ENTITY", "WORKPLACE"] });
   }
+});
+
+test("payroll read allow-list expires as soon as S1a generates its Cedar metadata", () => {
+  for (const op of Object.keys(pendingPayrollReads)) expect(operationAccess).not.toHaveProperty(op);
 });
