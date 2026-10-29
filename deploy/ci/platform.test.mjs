@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
-import { readFileSync, mkdirSync, mkdtempSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
+import { readFileSync, cpSync, existsSync, mkdtempSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -162,7 +162,7 @@ test('CNPG image validation accepts version tags and refuses digest-only, latest
   }
 });
 
-for (const environment of ['exit-test', 'template']) test(`${environment}: rendered images pass CNPG validation and Rollout ships its configured abort deadline`, () => {
+for (const environment of ['exit-test', 'template']) test(`${environment}: rendered images pass CNPG validation and Rollout derives its abort deadline`, () => {
   const dir = mkdtempSync(join(tmpdir(), 'platform-cnpg-'));
   try {
     execFileSync(process.execPath, ['deploy/ci/render.mjs', environment, `example.invalid/console@sha256:${'a'.repeat(64)}`, dir], {cwd:root});
@@ -170,11 +170,12 @@ for (const environment of ['exit-test', 'template']) test(`${environment}: rende
     const rollout = resources.find(doc => doc.kind === 'Rollout');
     const config = JSON.parse(read(`deploy/clusters/${environment}/platform.json`));
     assert.equal(rollout.spec.progressDeadlineAbort, true);
-    assert.equal(rollout.spec.progressDeadlineSeconds, config.rolloutProgressDeadlineSeconds);
-    assert.ok(rollout.spec.progressDeadlineSeconds > 0);
-    if (environment === 'exit-test') assert.ok(rollout.spec.progressDeadlineSeconds < 180, 'abort must fit the existing exit-test wait');
     const deployment = resources.find(doc => doc.kind === rollout.spec.workloadRef.kind && doc.metadata.name === rollout.spec.workloadRef.name);
     const startupBudget = Math.max(...deployment.spec.template.spec.containers.map(c => c.startupProbe.failureThreshold * c.startupProbe.periodSeconds));
+    assert.ok(rollout.spec.progressDeadlineSeconds >= startupBudget, 'emitted deadline must protect a healthy slow start');
+    assert.ok(!('rolloutProgressDeadlineSeconds' in config), 'environments configure only a margin');
+    assert.equal(rollout.spec.progressDeadlineSeconds, rolloutProgressDeadlineSeconds(rollout, resources, config.rolloutProgressDeadlineMarginSeconds));
+    if (environment === 'exit-test') assert.ok(rollout.spec.progressDeadlineSeconds < 180, 'abort must fit the existing exit-test wait');
     const derivedDeadline = rolloutProgressDeadlineSeconds(rollout, resources, 0);
     assert.ok(derivedDeadline >= startupBudget, 'shared derivation must protect the rendered startup budget');
     assert.equal(rolloutProgressDeadlineSeconds(rollout, resources, 7), derivedDeadline + 7, 'environment policy supplies only the margin');
@@ -189,17 +190,49 @@ for (const environment of ['exit-test', 'template']) test(`${environment}: rende
   } finally { rmSync(dir, {recursive:true,force:true}); }
 });
 
-test('PLAT_ROLLOUT_DEADLINE: renderer refuses missing, non-integer and non-positive abort deadlines', () => {
+test('PLAT_ROLLOUT_DEADLINE: renderer refuses invalid margins and a legacy deadline below startup before writing output', () => {
   const dir = mkdtempSync(join(tmpdir(), 'platform-deadline-'));
   try {
-    for (const path of ['deploy/ci', 'deploy/clusters/exit-test']) mkdirSync(join(dir, path), {recursive:true});
+    cpSync(join(root, 'deploy'), join(dir, 'deploy'), {recursive:true});
     symlinkSync(join(root, 'node_modules'), join(dir, 'node_modules'));
-    writeFileSync(join(dir, 'deploy/ci/render.mjs'), read('deploy/ci/render.mjs'));
-    for (const deadline of [undefined, null, 0, -1, 1.5, '60']) {
-      writeFileSync(join(dir, 'deploy/clusters/exit-test/platform.json'), JSON.stringify({rolloutProgressDeadlineSeconds:deadline}));
+    const config = JSON.parse(read('deploy/clusters/exit-test/platform.json'));
+    delete config.rolloutProgressDeadlineSeconds;
+    for (const margin of [undefined, null, -1, -200, 1.5, '5', Number.MAX_SAFE_INTEGER]) {
+      writeFileSync(join(dir, 'deploy/clusters/exit-test/platform.json'), JSON.stringify({...config, rolloutProgressDeadlineMarginSeconds:margin}));
       assert.throws(() => execFileSync(process.execPath, ['deploy/ci/render.mjs', 'exit-test', `example.invalid/console@sha256:${'a'.repeat(64)}`, 'out'], {cwd:dir,stdio:'pipe'}),
         error => error.status === 1 && error.stderr.toString().includes('PLAT_ROLLOUT_DEADLINE'));
+      assert.equal(existsSync(join(dir, 'out')), false, 'invalid budgets must not leave a deployable artifact');
     }
+    delete config.rolloutProgressDeadlineMarginSeconds;
+    for (const margin of [undefined, 0]) {
+      writeFileSync(join(dir, 'deploy/clusters/exit-test/platform.json'), JSON.stringify({...config, rolloutProgressDeadlineSeconds:60, rolloutProgressDeadlineMarginSeconds:margin}));
+      assert.throws(() => execFileSync(process.execPath, ['deploy/ci/render.mjs', 'exit-test', `example.invalid/console@sha256:${'a'.repeat(64)}`, 'out'], {cwd:dir,stdio:'pipe'}),
+        error => error.status === 1 && error.stderr.toString().includes('PLAT_ROLLOUT_DEADLINE'));
+      assert.equal(existsSync(join(dir, 'out')), false);
+    }
+  } finally { rmSync(dir, {recursive:true,force:true}); }
+});
+
+test('renderer derives the deadline from changed manifest probes and the environment margin', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'platform-probe-budget-'));
+  try {
+    cpSync(join(root, 'deploy'), join(dir, 'deploy'), {recursive:true});
+    symlinkSync(join(root, 'node_modules'), join(dir, 'node_modules'));
+    const path = join(dir, 'deploy/base/app/api.yaml');
+    const docs = yaml.loadAll(readFileSync(path, 'utf8'));
+    const container = docs.find(doc => doc.kind === 'Deployment').spec.template.spec.containers[0];
+    container.startupProbe.failureThreshold *= 2;
+    container.readinessProbe.successThreshold = 3;
+    writeFileSync(path, docs.map(doc => yaml.dump(doc)).join('---\n'));
+    const config = JSON.parse(read('deploy/clusters/template/platform.json'));
+    delete config.rolloutProgressDeadlineSeconds;
+    config.rolloutProgressDeadlineMarginSeconds = 13;
+    writeFileSync(join(dir, 'deploy/clusters/template/platform.json'), JSON.stringify(config));
+    execFileSync(process.execPath, ['deploy/ci/render.mjs', 'template', `example.invalid/console@sha256:${'a'.repeat(64)}`, 'out'], {cwd:dir});
+    const rendered = yaml.loadAll(readFileSync(join(dir, 'out/app/resources.yaml'), 'utf8'));
+    const rollout = rendered.find(doc => doc.kind === 'Rollout');
+    assert.equal(rollout.spec.progressDeadlineSeconds, rolloutProgressDeadlineSeconds(rollout, rendered, config.rolloutProgressDeadlineMarginSeconds));
+    assert.ok(rollout.spec.progressDeadlineSeconds >= container.startupProbe.failureThreshold * container.startupProbe.periodSeconds);
   } finally { rmSync(dir, {recursive:true,force:true}); }
 });
 
