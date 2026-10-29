@@ -101,9 +101,12 @@ async function readyz(pod) {
     print({resource:'readyz',namespace,name,error:error.name === 'Error' ? error.message : error.name});
   } finally { forward.kill(); }
 }
-for (const resource of ['kustomizations', 'helmreleases', 'ocirepositories', 'jobs', 'rollouts', 'analysisruns', 'clusters']) {
+for (const resource of ['kustomizations', 'helmreleases', 'ocirepositories', 'jobs', 'rollouts', 'analysisruns', 'clusters',
+  'backups.postgresql.cnpg.io', 'certificates.cert-manager.io', 'issuers.cert-manager.io']) {
   for (const item of get(resource)) print({resource,namespace:item.metadata.namespace,name:item.metadata.name,
     ...pick(item.status, ['phase', 'replicas', 'readyReplicas', 'active', 'failed', 'succeeded']),
+    ...(resource === 'backups.postgresql.cnpg.io' ? pick(item.status,
+      ['backupId', 'startedAt', 'stoppedAt', ...(redactionReady ? ['error', 'commandError'] : [])]) : {}),
     ...(resource === 'analysisruns' ? {metricResults:metricResults(item.status)} : {}),
     conditions:(item.status?.conditions ?? []).map(condition => pick(condition, conditionFields))});
 }
@@ -116,8 +119,9 @@ for (const pod of get('pods')) {
     containers:containers.map(container => ({...pick(container, ['name', 'ready', 'restartCount']),
       state:Object.fromEntries(Object.entries(container.state ?? {}).map(([state, value]) => [state,pick(value, ['reason', 'exitCode', ...(redactionReady ? ['message'] : [])])]))}))});
   if (pod.metadata.labels?.app === 'console-api') await readyz(pod);
-  // A ready operator can repeatedly fail to create a Job without a Pod or event ever existing.
-  if (namespace !== 'cnpg-system' && (pod.status?.phase === 'Succeeded' || (pod.status?.phase === 'Running' && containers.length && containers.every(c => c.ready)))) continue;
+  // Pod readiness does not prove WAL archiving or backups work; the Barman instance runs as a database sidecar.
+  const backupPod = namespace === 'cnpg-system' || pod.metadata.labels?.['cnpg.io/cluster'] || pod.metadata.labels?.app === 'console-objects';
+  if (!backupPod && (pod.status?.phase === 'Succeeded' || (pod.status?.phase === 'Running' && containers.length && containers.every(c => c.ready)))) continue;
   if (!redactionReady) continue;
   const described = kubectl(['describe', 'pod', name, '-n', namespace]);
   print(`describe pod ${namespace}/${name} (names and states):`);
