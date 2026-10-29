@@ -113,7 +113,7 @@ pub(crate) fn zip_by_name<'a, R: io::Read + io::Seek>(
     let normalized = name.replace('\\', "/").to_ascii_lowercase();
     for i in 0..arv.len() {
         let entry_name = match arv.by_index(i) {
-            Ok(f) => f.name().to_owned(),
+            Ok(f) => f.name()?.into_owned(),
             Err(_) => continue,
         };
         let entry_normalized = entry_name.replace('\\', "/").to_ascii_lowercase();

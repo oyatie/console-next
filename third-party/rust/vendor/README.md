@@ -19,3 +19,17 @@ The local patches are:
 - `quick-xml-0.41.0-compat`: published `quick-xml 0.41.0` plus a small `BytesText::unescape` compatibility shim for `umya-spreadsheet`'s pre-0.41 API usage.
 
 Remove these patches once upstream crates.io releases allow the workspace to resolve `quick-xml >=0.41.0` without local shims.
+
+## zip dual-header security fix
+
+Both spreadsheet patches require `zip >=9.0.5` (within major 9) for
+[GHSA-m665-v7pm-7grj](https://github.com/zip-rs/zip2/security/advisories/GHSA-m665-v7pm-7grj).
+The backend and fuzz lockfiles resolve 9.1.3. Import and template round-trip
+regressions change a local ZIP filename while preserving its central-directory
+name and payload; the readers must refuse these inconsistent archives.
+Zip 9 makes decoded filenames fallible: the patches propagate decoding errors
+from path-cache construction and picture/entry lookup, preserving error handling.
+Its header checks are opt-in: each reader validates the complete archive before
+reading spreadsheet parts, including local filenames and compression methods.
+The desktop workspace uses upstream `tauri-plugin-updater 2.14.1`, which also
+accepts zip 9. Existing ZIP advisory exceptions are removed from both scanners.

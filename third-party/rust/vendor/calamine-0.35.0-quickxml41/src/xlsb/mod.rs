@@ -461,7 +461,7 @@ impl<RS: Read + Seek> Xlsb<RS> {
         let mut pics = Vec::new();
         for i in 0..self.zip.len() {
             let mut zfile = self.zip.by_index(i)?;
-            let zname = zfile.name();
+            let zname = zfile.name()?;
             if zname.starts_with("xl/media") {
                 if let Some(ext) = zname.split('.').next_back() {
                     if [
@@ -491,8 +491,9 @@ impl<RS: Read + Seek> Reader<RS> for Xlsb<RS> {
     fn new(mut reader: RS) -> Result<Self, XlsbError> {
         check_for_password_protected(&mut reader)?;
 
-        let zip = ZipArchive::new(reader)?;
-        let zip_path_cache = build_zip_path_cache(&zip);
+        let mut zip = ZipArchive::new(reader)?;
+        zip.validate_header_consistency()?;
+        let zip_path_cache = build_zip_path_cache(&zip)?;
         let mut xlsb = Xlsb {
             zip,
             sheets: Vec::new(),

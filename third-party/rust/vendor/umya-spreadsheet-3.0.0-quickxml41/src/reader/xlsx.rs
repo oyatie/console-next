@@ -68,6 +68,7 @@ fn read_reader_with_source<R: io::Read + io::Seek>(
     source_file: Option<&Path>,
 ) -> Result<Workbook, XlsxError> {
     let mut arv = zip::read::ZipArchive::new(reader)?;
+    arv.validate_header_consistency()?;
 
     let mut book = workbook::read(&mut arv)?;
     doc_props_app::read(&mut arv, &mut book)?;

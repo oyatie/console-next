@@ -117,7 +117,7 @@ version = "0.10.8"
 version = "0.2.0"
 
 [dependencies.zip]
-version = "8.6.0"
+version = "9.0.5"
 features = ["deflate"]
 default-features = false
 
