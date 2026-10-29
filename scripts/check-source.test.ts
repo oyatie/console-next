@@ -127,10 +127,10 @@ test("refuses stale local-path fixture exemptions", () => {
 test("identifiers reuses only the canonical people privacy client and component", () => {
   const { write, git, run } = fixture();
   write("apps/web/src/features/people/api/record.ts", "");
-  write("apps/web/src/features/people/ui/rrn-value.tsx", "");
+  write("apps/web/src/features/people/ui/rrn-field.tsx", "");
   write("apps/web/src/features/people/ui/other.tsx", "");
   write("apps/web/src/features/identifiers/api.ts", 'export { rrnStatusQuery } from "../people/api/record";');
-  write("apps/web/src/features/identifiers/ui/rrn-card.tsx", 'import { RrnValue } from "../../people/ui/rrn-value";');
+  write("apps/web/src/features/identifiers/ui/rrn-card.tsx", 'import { RrnField } from "../../people/ui/rrn-field";');
   git("add", ".");
   expect(run().status).toBe(0);
   write("apps/web/src/features/identifiers/ui/rrn-card.tsx", 'import { Other } from "../../people/ui/other";');

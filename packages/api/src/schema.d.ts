@@ -39999,6 +39999,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description rrn_record_rate_limited; this actor reached the configured rolling-hour recording limit. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description rrn_vault_unavailable. */
             503: {
                 headers: {

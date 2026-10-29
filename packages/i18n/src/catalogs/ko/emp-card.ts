@@ -55,6 +55,7 @@ export const koEmpCard = {
   "empCard.rrn.error.rrn_invalid": "번호를 확인하고 다시 입력하십시오.",
   "empCard.rrn.error.rrn_already_recorded": "이미 기록된 번호가 있습니다 · 다시 불러와 확인하십시오.",
   "empCard.rrn.error.rrn_in_use": "이 번호는 이미 기록되어 있습니다 · 번호를 확인하십시오.",
+  "empCard.rrn.error.rrn_record_rate_limited": "최근 1시간의 기록 한도에 도달했습니다 · 가장 이른 기록으로부터 1시간이 지난 뒤 다시 시도하십시오.",
   "empCard.rrn.error.rrn_vault_unavailable": "암호화 키를 사용할 수 없어 기록하지 않았습니다.",
   "empCard.rrn.error.step_up_required": "패스키로 본인임을 확인한 뒤 다시 기록하십시오.",
   "empCard.rrn.error.passkey_step_up_failed": "본인 확인에 실패했습니다 · 기록하지 않았습니다.",

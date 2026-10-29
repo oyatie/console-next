@@ -39,5 +39,7 @@ responses:
     description: rrn_already_recorded or rrn_in_use; no other employee identity is returned.
   '422':
     description: rrn_invalid.
+  '429':
+    description: rrn_record_rate_limited; this actor reached the configured rolling-hour recording limit.
   '503':
     description: rrn_vault_unavailable.

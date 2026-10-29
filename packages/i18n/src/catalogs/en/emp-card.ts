@@ -57,6 +57,7 @@ export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
   "empCard.rrn.error.rrn_invalid": "Check the number and enter it again.",
   "empCard.rrn.error.rrn_already_recorded": "A number is already recorded. Reload to check it.",
   "empCard.rrn.error.rrn_in_use": "This number is already recorded. Check the number.",
+  "empCard.rrn.error.rrn_record_rate_limited": "The hourly recording limit was reached. Try again one hour after the earliest record.",
   "empCard.rrn.error.rrn_vault_unavailable": "The encryption key is unavailable. The number was not recorded.",
   "empCard.rrn.error.step_up_required": "Verify with your passkey before recording.",
   "empCard.rrn.error.passkey_step_up_failed": "Identity verification failed. The number was not recorded.",

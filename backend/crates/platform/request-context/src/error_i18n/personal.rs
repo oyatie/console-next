@@ -4,6 +4,10 @@
 /// Exact English message → Korean (합니다체).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     (
+        "retry after the oldest record leaves the rolling one-hour window",
+        "최근 1시간의 기록 한도에 도달했습니다. 가장 이른 기록으로부터 1시간이 지난 뒤 다시 시도해 주십시오.",
+    ),
+    (
         "resident registration number is invalid",
         "주민등록번호 형식을 확인해 주십시오.",
     ),

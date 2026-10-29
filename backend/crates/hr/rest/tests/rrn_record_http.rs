@@ -28,6 +28,9 @@ use std::{
 use tower::ServiceExt;
 use uuid::Uuid;
 
+#[path = "rrn_record_http/governance.rs"]
+mod governance;
+
 #[derive(Default)]
 struct Vault(AtomicUsize);
 impl RrnVault for Vault {
@@ -258,18 +261,6 @@ async fn failed_audit_never_seals_or_writes(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(count, 0);
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn concurrent_record_commands_cannot_claim_the_same_number(pool: PgPool) {
-    let mut f = fixture(&pool).await;
-    let [id, other] = f.ids;
-    let one = body(&pool, &mut f, id).await;
-    let two = body(&pool, &mut f, other).await;
-    let (a, b) = tokio::join!(put(app(&f, true), id, one), put(app(&f, true), other, two));
-    let mut statuses = [a.0.as_u16(), b.0.as_u16()];
-    statuses.sort();
-    assert_eq!(statuses, [201, 409]);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

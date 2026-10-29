@@ -45,6 +45,28 @@ pub(crate) fn refused(status: http::StatusCode, code: &'static str, message: &st
     }
 }
 
+pub(super) async fn within_rate(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: &Principal,
+    actions: &[&str],
+) -> Result<bool, HrError> {
+    // Keep the count and its committed access event serial across this actor's requests.
+    sqlx::query("SELECT id FROM users WHERE org_id=$1 AND id=$2 FOR UPDATE")
+        .bind(principal.org_id.as_uuid())
+        .bind(principal.user_id.as_uuid())
+        .execute(tx.as_mut())
+        .await?;
+    let key = SettingKey::PrivacyRevealRatePerHour;
+    let settings = settings_in_tx(tx, *principal.org_id.as_uuid(), &[key]).await?;
+    let limit = settings
+        .get(&key)
+        .and_then(|v| v.as_int())
+        .ok_or_else(|| HrError::internal("reveal policy did not resolve"))?;
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE org_id=$1 AND actor=$2 AND action=ANY($3) AND created_at > now() - interval '1 hour'")
+        .bind(principal.org_id.as_uuid()).bind(principal.user_id.as_uuid()).bind(actions).fetch_one(tx.as_mut()).await?;
+    Ok(count < limit)
+}
+
 pub(super) async fn authorize(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
@@ -78,16 +100,13 @@ pub(super) async fn authorize(
         Err(error) if error.status.is_server_error() => return Err(error),
         result => result,
     };
-    // Serialize this actor across subjects and field classes so concurrent requests cannot exceed the ceiling.
-    sqlx::query("SELECT id FROM users WHERE org_id=$1 AND id=$2 FOR UPDATE")
-        .bind(principal.org_id.as_uuid())
-        .bind(principal.user_id.as_uuid())
-        .execute(tx.as_mut())
-        .await?;
-    let keys = [
-        SettingKey::PrivacyRevealDisplaySeconds,
-        SettingKey::PrivacyRevealRatePerHour,
-    ];
+    let within_rate = within_rate(
+        tx,
+        principal,
+        &["employee.rrn_reveal", "employee.field_reveal"],
+    )
+    .await?;
+    let keys = [SettingKey::PrivacyRevealDisplaySeconds];
     let settings = settings_in_tx(tx, *principal.org_id.as_uuid(), &keys).await?;
     let int = |key| {
         settings
@@ -95,9 +114,6 @@ pub(super) async fn authorize(
             .and_then(|v| v.as_int())
             .ok_or_else(|| HrError::internal("reveal policy did not resolve"))
     };
-    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE org_id=$1 AND actor=$2 AND action IN ('employee.rrn_reveal','employee.field_reveal') AND created_at > now() - interval '1 hour'")
-        .bind(principal.org_id.as_uuid()).bind(principal.user_id.as_uuid()).fetch_one(tx.as_mut()).await?;
-    let within_rate = count < int(SettingKey::PrivacyRevealRatePerHour)?;
     let proof_missing = request.step_up.is_none() || passkeys.is_none();
     let step_up = match (request.step_up, passkeys) {
         (Some(proof), Some(passkeys)) => {

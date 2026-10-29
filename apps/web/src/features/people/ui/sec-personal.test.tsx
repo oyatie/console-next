@@ -18,9 +18,9 @@ vi.mock("./photo-row", () => ({ PhotoRow: () => null }));
 vi.mock("./emergency-contacts", () => ({ EmergencyContacts: () => null }));
 beforeAll(() => loadCatalog("ko"));
 
-function card(readable: boolean, editable = false, recorded = false) {
+function card(readable: boolean, editable = false, recorded = false, status = "ACTIVE") {
   rrnRead.recorded = recorded;
-  const c = { e: { id: "person", name: "한기록", employee_number: "1001" },
+  const c = { e: { id: "person", name: "한기록", employee_number: "1001", status },
     d: { employment: { phone_e164: "+821012345821" } }, readable, editable,
     personal: { data: { personal_email: "personal@example.com" } },
     register: { data: { address: { si_nm: "경기도", sgg_nm: "평택시" } } },
@@ -40,6 +40,13 @@ test("all four personal fields offer a separate governed reveal even on a read-o
   expect(html).not.toContain("1965");
   expect(html).not.toContain("personal@example.com");
   expect(html).not.toContain("12345821");
+});
+
+test("the RRN row keeps its empty state separate from the shared first-entry mark", () => {
+  const html = card(true, true);
+  expect(html).not.toContain("</span> · ");
+  expect(html).toContain('data-acts="true"');
+  expect(card(true, false, false, "EXITED")).not.toContain(">기록</button>");
 });
 
 test("a reader without the reveal right has no reveal control", () => {

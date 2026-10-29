@@ -81,6 +81,7 @@ impl HrService {
         let vault_available = vault.is_some();
         let rrn = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                let within_rate = govern::within_rate(tx, &authorized, &["employee.rrn_record"]).await?;
                 let manages = directory(tx, &authorized).await?;
                 let step_up = match (request.step_up, passkeys.as_ref()) {
                     (Some(proof), Some(service)) => {
@@ -109,13 +110,21 @@ impl HrService {
                         subject_in_scope: manages,
                         purpose_given: false,
                         step_up_verified: step_up.is_ok(),
-                        within_rate: true,
+                        within_rate,
                     },
                 )
                 .map_err(HrError::internal)?;
                 if !allowed {
                     if manages {
                         step_up?;
+                        if !within_rate {
+                            metrics::counter!("hr_employee_pii_total", "operation" => "record", "outcome" => "rrn_record_rate_limited").increment(1);
+                            return Err(govern::refused(
+                                http::StatusCode::TOO_MANY_REQUESTS,
+                                "rrn_record_rate_limited",
+                                "retry after the oldest record leaves the rolling one-hour window",
+                            ));
+                        }
                     }
                     return Err(govern::refused(
                         http::StatusCode::FORBIDDEN,

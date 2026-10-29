@@ -109,7 +109,7 @@ const importRule = (from, to) => {
   if (b === "routes" && a !== "routes" && a !== "main.tsx" && !to.endsWith("route-tree.gen.ts")) return "nothing imports routes/";
   // The identifiers screen shares the people privacy implementation (one RRN client, reveal and entry UI).
   const privacy = (from === `${APP}/features/identifiers/api.ts` && to === `${APP}/features/people/api/record.ts`)
-    || (from === `${APP}/features/identifiers/ui/rrn-card.tsx` && ["rrn-value", "rrn-entry"].some(name => to === `${APP}/features/people/ui/${name}.tsx`));
+    || (from === `${APP}/features/identifiers/ui/rrn-card.tsx` && to === `${APP}/features/people/ui/rrn-field.tsx`);
   const phaseProfile = from === GO_LIVE && to === `${APP}/features/account/api.ts`;
   if (a.startsWith("features/") && b.startsWith("features/") && a !== b && !privacy && !phaseProfile) return "features never import other features";
   if ((LOWER.has(a) || a.startsWith("reference/")) && UPPER(b)) return `${a} never imports upward`;
