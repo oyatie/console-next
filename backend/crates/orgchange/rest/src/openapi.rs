@@ -717,10 +717,16 @@ const PATHS: &[PathItem] = &[
     },
     PathItem {
         path: "/api/v1/employees/{id}/rrn",
-        operations: &[Operation {
-            method: "get",
-            body: include_str!("../openapi/paths/api__v1__employees__id__rrn.get.yaml"),
-        }],
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__employees__id__rrn.get.yaml"),
+            },
+            Operation {
+                method: "put",
+                body: include_str!("../openapi/paths/api__v1__employees__id__rrn.put.yaml"),
+            },
+        ],
     },
     PathItem {
         path: "/api/v1/employees/{id}/rrn/reveal",
@@ -1598,6 +1604,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "EmployeeRenumberResult",
         body: include_str!("../openapi/schemas/EmployeeRenumberResult.yaml"),
+    },
+    NamedYaml {
+        name: "EmployeeRrnRecordRequest",
+        body: include_str!("../openapi/schemas/EmployeeRrnRecordRequest.yaml"),
     },
     NamedYaml {
         name: "EmployeeRrnRevealRequest",

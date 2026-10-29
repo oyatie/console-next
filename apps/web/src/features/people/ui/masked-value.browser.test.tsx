@@ -35,7 +35,7 @@ beforeAll(async () => {
         window.privacyClient=new QueryClient({defaultOptions:{queries:{retry:false}}});
         const router=createRouter({routeTree:createRootRoute(),history:createMemoryHistory({initialEntries:['/']})});
         createRoot(document.getElementById('root')).render(createElement(QueryClientProvider,{client:window.privacyClient},
-          createElement(RouterContextProvider,{router},createElement(card?RrnCard:entry?RrnEntry:fieldCode?FieldValue:RrnValue,{employeeId:'person',who:'한기록',masked:fieldCode==='BIRTH_DATE'?maskedBirth():fieldCode?'가림':'••••••-•••••••',fieldCode,field:'생년월일',allowed:true}))));
+          createElement(RouterContextProvider,{router},createElement(card?RrnCard:entry?RrnEntry:fieldCode?FieldValue:RrnValue,{employeeId:'person',employeeStatus:'ACTIVE',who:'한기록',masked:fieldCode==='BIRTH_DATE'?maskedBirth():fieldCode?'가림':'••••••-•••••••',fieldCode,field:'생년월일',allowed:true}))));
       ` : undefined,
       configureServer: (vite) => { vite.middlewares.use((req, res, next) => {
         if (req.url?.split("?")[0] !== "/privacy-test") return next();
@@ -229,6 +229,7 @@ test.each([
   [409, "rrn_already_recorded", "이미 기록된 번호"],
   [409, "rrn_in_use", "이 번호는 이미 기록"],
   [422, "rrn_invalid", "번호를 확인"],
+  [429, "rrn_record_rate_limited", "기록 한도"],
   [503, "rrn_vault_unavailable", "암호화 키"],
 ])("record refusal %s %s clears the number and explains recovery", async (status, code, copy) => {
   await page.route("**/api/v1/employees/person/rrn", route => route.fulfill({ status: Number(status), json: { error: { code, message: code === "forbidden" ? "권한이 없습니다." : "요청을 처리하지 못했습니다." } } }));
@@ -285,11 +286,41 @@ test("390px birth-date mask stays whole in a narrow card cell", async () => {
   expect(lines).toBeLessThan(2);
 });
 
-test("identifiers keeps the unserved record command absent", async () => {
-  await page.route("**/api/v1/employees/person/rrn", route => route.fulfill({
-    json: { employee_id: "person", recorded: false, masked: null, source: null },
-  }));
+test("identifiers records through the shared sheet and refreshes its masked status", async () => {
+  let recorded = false;
+  await page.route("**/api/v1/employees/person/rrn", route => {
+    const writing = route.request().method() === "PUT";
+    if (writing) recorded = true;
+    return route.fulfill({ status: writing ? 201 : 200, json: {
+      employee_id: "person", recorded, can_record: !recorded, masked: recorded ? "••••••-•••••••" : null, source: recorded ? "FORM" : null,
+    } });
+  });
   await page.goto(`${server.resolvedUrls!.local[0]}privacy-test?card`);
-  await page.getByText("기록 없음", { exact: true }).waitFor();
+  await page.getByText("기록 없음").waitFor();
+  await page.getByRole("button", { name: "기록", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "주민등록번호 기록" });
+  await sheet.getByRole("textbox", { name: /^주민등록번호/ }).fill(secret);
+  await sheet.getByRole("button", { name: "기록", exact: true }).click();
+  await page.getByText("••••••-•••••••", { exact: true }).waitFor();
   expect(await page.getByRole("button", { name: "기록", exact: true }).count()).toBe(0);
+  expect(await page.getByRole("dialog").count()).toBe(0);
+});
+
+test.each([1440, 390])("%spx identifiers keeps the empty state and first-entry action on one field row", async width => {
+  await page.setViewportSize({ width, height: 844 });
+  await page.route("**/api/v1/employees/person/rrn", route => route.fulfill({ json: { employee_id: "person", recorded: false, can_record: true, masked: null } }));
+  await page.goto(`${server.resolvedUrls!.local[0]}privacy-test?card`);
+  const empty = page.getByText("기록 없음", { exact: true });
+  const action = page.getByRole("button", { name: "기록", exact: true });
+  await action.waitFor();
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((el, chosen) => { el.dataset.theme = chosen; }, theme);
+    await action.focus();
+    const stateBox = await empty.evaluate(el => { const range = document.createRange(); range.selectNodeContents(el); const box = range.getBoundingClientRect(); return { y: box.y, height: box.height }; }), actionBox = await action.boundingBox();
+    expect(actionBox!.y).toBeLessThan(stateBox!.y + stateBox!.height);
+    expect(stateBox!.y).toBeLessThan(actionBox!.y + actionBox!.height);
+    expect(actionBox!.width).toBeLessThan(100);
+    expect(await page.locator("#root").innerText()).not.toContain("기록 없음 ·");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
 });

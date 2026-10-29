@@ -82,14 +82,6 @@ export type OrgChangeCounts = Record<"open" | "mine" | "approval" | "ready" | "d
 type Requested = {
   /** Pending grouped read; the web count query falls back on older backends. */
   "/api/v1/org-changes/counts": Path<{ get: Op<OrgChangeCounts, never, { effective_from?: string; effective_to?: string }> }>;
-  /** PEOPLE-P1 slice 4: pending server record command; GET remains the generated contract. */
-  "/api/v1/employees/{id}/rrn": Omit<paths["/api/v1/employees/{id}/rrn"], "put"> & {
-    put: {
-      parameters: { path: { id: string } };
-      requestBody: { content: { "application/json": { rrn: string; step_up: S["MobilePasskeyStepUpEnvelope"] } } };
-      responses: { 201: { content: { "application/json": S["EmployeeRrnStatus"] } } };
-    };
-  };
   /** The out-of-band security contact (decision #7); recorded only, no mail is sent (decisions #16). */
   "/api/v1/onboarding/security-contact": Path<{ post: Op<Record<string, never>, { role: "REPRESENTATIVE" | "CPO" | "SELF"; name: string; email: string }> }>;
 };

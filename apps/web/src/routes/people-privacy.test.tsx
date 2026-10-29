@@ -24,7 +24,7 @@ test("the card and identifiers render the same server mask through one reveal co
   await client.prefetchQuery({ ...rrnStatusQuery(c.e.id), queryFn: async () => ({ employee_id: c.e.id, recorded: true, masked, source: "IMPORT" }) });
   const render = (child: React.ReactNode) => renderToStaticMarkup(<QueryClientProvider client={client}>{child}</QueryClientProvider>);
   shared.mockClear();
-  for (const view of [<RrnValue key="card" employeeId={c.e.id} who={c.e.name} masked={masked} />, <RrnCard key="identifiers" employeeId={c.e.id} who={c.e.name} />]) {
+  for (const view of [<RrnValue key="card" employeeId={c.e.id} who={c.e.name} masked={masked} />, <RrnCard key="identifiers" employeeId={c.e.id} employeeStatus={c.e.status} who={c.e.name} />]) {
     const out = render(view);
     expect(out).toContain(masked);
     expect(out).not.toMatch(/[●*]|\d{6}-\d/);

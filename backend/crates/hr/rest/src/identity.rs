@@ -20,7 +20,7 @@ use console_hr_adapter_postgres::employee_number::renumber_apply::{
 };
 use console_hr_adapter_postgres::employee_number::rules::{NumberRuleRequest, NumberRuleView};
 use console_hr_adapter_postgres::rrn::{
-    FieldRevealRequest, FieldRevealed, RrnRevealRequest, RrnRevealed, RrnStatus,
+    FieldRevealRequest, FieldRevealed, RrnRecordRequest, RrnRevealRequest, RrnRevealed, RrnStatus,
 };
 use console_hr_adapter_postgres::{HrError, HrService};
 use console_hr_domain::import::rrn_value::RrnVault;
@@ -68,7 +68,7 @@ pub fn router(
     passkeys: Option<PasskeyService>,
 ) -> Router {
     Router::new()
-        .route(RRN_PATH, get(rrn_status))
+        .route(RRN_PATH, get(rrn_status).put(rrn_record))
         .route(RRN_REVEAL_PATH, post(rrn_reveal))
         .route(FIELD_REVEAL_PATH, post(field_reveal))
         .route(EMPLOYEE_NUMBER_PATH, post(change_number))
@@ -90,6 +90,29 @@ pub fn router(
 }
 
 type Reply<T> = Result<Json<T>, HrApiError>;
+
+async fn rrn_record(
+    State(s): State<IdentityState>,
+    Extension(principal): Extension<Principal>,
+    Path(id): Path<Uuid>,
+    body: Result<Json<RrnRecordRequest>, axum::extract::rejection::JsonRejection>,
+) -> Result<impl axum::response::IntoResponse, HrApiError> {
+    // JSON type errors can echo a numeric RRN; never return the framework's raw rejection.
+    let Json(body) = body.map_err(|_| {
+        HrError::from_kernel(
+            console_kernel_core::KernelError::validation("resident registration number is invalid")
+                .with_code("rrn_invalid"),
+        )
+    })?;
+    let status =
+        s.hr.record_rrn(principal, id, body, s.vault.as_deref(), s.passkeys.as_ref())
+            .await?;
+    Ok((
+        StatusCode::CREATED,
+        [(axum::http::header::CACHE_CONTROL, "private, no-store")],
+        Json(status),
+    ))
+}
 
 async fn rrn_status(
     State(s): State<IdentityState>,

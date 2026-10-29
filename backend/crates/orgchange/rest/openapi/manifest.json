@@ -228,7 +228,8 @@
       "post"
     ],
     "/api/v1/employees/{id}/rrn": [
-      "get"
+      "get",
+      "put"
     ],
     "/api/v1/employees/{id}/rrn/reveal": [
       "post"
@@ -497,6 +498,7 @@
     "EmployeeRenumberPreview",
     "EmployeeRenumberRequest",
     "EmployeeRenumberResult",
+    "EmployeeRrnRecordRequest",
     "EmployeeRrnRevealRequest",
     "EmployeeRrnRevealed",
     "EmployeeRrnStatus",

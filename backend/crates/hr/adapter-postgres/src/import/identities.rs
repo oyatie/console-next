@@ -135,8 +135,22 @@ pub async fn record(
     run: Uuid,
     people: &BTreeMap<String, Uuid>,
 ) -> Result<usize, HrError> {
+    lock_recording(tx, org).await?;
     let keys: Vec<&String> = people.keys().collect();
     let employees: Vec<Uuid> = people.values().copied().collect();
+    let conflict: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM unnest($3::text[], $4::uuid[]) p(source_key,employee) \
+         JOIN data_import_row_identities s ON s.org_id=$1 AND s.run_id=$2 AND s.source_key=p.source_key \
+         JOIN employee_rrn r ON r.org_id=s.org_id AND r.rrn_hmac=s.rrn_hmac AND r.employee_id<>p.employee)",
+    ).bind(org).bind(run).bind(&keys).bind(&employees).fetch_one(tx.as_mut()).await?;
+    if conflict {
+        return Err(HrError::from_kernel(
+            console_kernel_core::KernelError::conflict(
+                "resident registration number is already in use",
+            )
+            .with_code("rrn_in_use"),
+        ));
+    }
     let count: i64 = sqlx::query_scalar(
         "WITH recorded AS ( \
          INSERT INTO employee_rrn (org_id, employee_id, rrn_hmac, hmac_key_version, ciphertext, \
@@ -170,6 +184,59 @@ pub async fn record(
     .execute(tx.as_mut())
     .await?;
     Ok(recorded)
+}
+
+/// The form command uses the import identity writer and its tenant-wide claim lock.
+pub(crate) async fn record_form(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org: Uuid,
+    actor: Uuid,
+    employee: Uuid,
+    sealed: SealedRrn,
+) -> Result<time::OffsetDateTime, HrError> {
+    use crate::rrn::govern;
+    let hmac = &sealed.hmac;
+    lock_recording(tx, org).await?;
+    let (recorded, in_use): (bool, bool) = sqlx::query_as(
+        "SELECT EXISTS(SELECT 1 FROM employee_rrn WHERE org_id=$1 AND employee_id=$2), \
+         EXISTS(SELECT 1 FROM employee_rrn WHERE org_id=$1 AND rrn_hmac=$3)",
+    )
+    .bind(org)
+    .bind(employee)
+    .bind(hmac)
+    .fetch_one(tx.as_mut())
+    .await?;
+    if recorded || in_use {
+        let (code, message) = if recorded {
+            (
+                "rrn_already_recorded",
+                "resident registration number is already recorded",
+            )
+        } else {
+            (
+                "rrn_in_use",
+                "resident registration number is already in use",
+            )
+        };
+        return Err(govern::refused(http::StatusCode::CONFLICT, code, message));
+    }
+    let recorded_at = sqlx::query_scalar("INSERT INTO employee_rrn(org_id,employee_id,rrn_hmac,hmac_key_version,ciphertext,nonce,dek_wrapped,dek_nonce,key_version,masked,source,recorded_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'FORM',$11) RETURNING recorded_at")
+                .bind(org).bind(employee).bind(hmac).bind(sealed.hmac_key_version).bind(sealed.ciphertext)
+                .bind(sealed.nonce).bind(sealed.dek_wrapped).bind(sealed.dek_nonce).bind(sealed.key_version).bind(sealed.masked).bind(actor)
+                .fetch_one(tx.as_mut()).await?;
+    Ok(recorded_at)
+}
+
+/// Serialize form and import writers: the legacy blind-index index is not unique.
+pub(crate) async fn lock_recording(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org: Uuid,
+) -> Result<(), HrError> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+        .bind(format!("employee_rrn:{org}"))
+        .execute(tx.as_mut())
+        .await?;
+    Ok(())
 }
 
 /// Drops what is left of the run's staged identities (rows the run left out),

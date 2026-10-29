@@ -30,7 +30,7 @@ export function IdentifiersPage() {
     <QueryState q={person} back={{ to: "/people", label: t("peopleJump.keys.group.roster") }} layout="record">{d => <>
       <>
             <NumberCard employee={d.employee} />
-            <RrnCard employeeId={d.employee.id} who={[d.employee.name, d.employee.employee_number].filter(Boolean).join(" ")} />
+            <RrnCard employeeId={d.employee.id} employeeStatus={d.employee.status} who={[d.employee.name, d.employee.employee_number].filter(Boolean).join(" ")} />
       </>
     </>}</QueryState>
     </PageReadGate></div>

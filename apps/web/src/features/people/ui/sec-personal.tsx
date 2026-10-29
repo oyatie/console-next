@@ -1,4 +1,3 @@
-import { QueryState } from "../../../lib/react/query-state";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -14,7 +13,7 @@ import { FieldValue } from "./field-value";
 import type { Card } from "./use-card";
 import type { Quick } from "./use-quick";
 import s from "./card.module.css";
-import { RrnValue } from "./rrn-value";
+import { RrnField } from "./rrn-field";
 import { EmergencyContacts } from "./emergency-contacts";
 import { PhotoRow } from "./photo-row";
 import { Muted } from "../../../ui/muted/muted";
@@ -27,7 +26,6 @@ const SEX = { MALE: "empCard.sex.MALE", FEMALE: "empCard.sex.FEMALE" } as const;
  */
 export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix: (field: string) => void }) {
   const rrnRead = useQuery({ ...rrnStatusQuery(c.e.id), enabled: c.readable, retry: false });
-  const rrn = rrnRead.data;
   const { e, d } = c;
   const p = c.personal.data;
   const r = c.register.data;
@@ -64,10 +62,9 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
       <FieldRow id="f-birth_date" no="3" label={t("empCard.f.birth")}  mark={c.editable && <FieldMark kind="corTwo" field={t("empCard.f.birth")} onPress={() => onFix("birth_date")} />}>
         {f?.birth_date ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="BIRTH_DATE" masked={maskedBirth()} field={t("empCard.f.birth")} who={who} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
-      <FieldRow wide label={t("empCard.f.rrn")} >
-        {c.readable ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <RrnValue employeeId={e.id} who={who} masked={rrn.masked ?? ""} /> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
+      <RrnField employeeId={e.id} employeeStatus={e.status} who={who} q={rrnRead} readable={c.readable} editable={c.editable}>
         {c.readable && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
-      </FieldRow>
+      </RrnField>
       <FieldRow id="f-address" no="4" label={t("empCard.f.address")} mark={c.editable && <FieldMark kind="rc" field={t("empCard.f.address")} onPress={() => onFix("address")} />}>
         {r?.address ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="ADDRESS" masked={maskedAddress(r.address)} field={t("empCard.f.address")} who={who} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>

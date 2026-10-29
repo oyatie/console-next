@@ -10,7 +10,6 @@ import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { recordRrn } from "../api/record";
 
-// shortcut: gallery only while PUT /rrn is unserved; mount on both record surfaces when its generated contract ships.
 export function RrnEntry({ employeeId, who }: { employeeId: string; who: string }) {
   const [open, setOpen] = useState(false);
   return <>

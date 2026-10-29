@@ -4,6 +4,26 @@
 /// Exact English message → Korean (합니다체).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     (
+        "retry after the oldest record leaves the rolling one-hour window",
+        "최근 1시간의 기록 한도에 도달했습니다. 가장 이른 기록으로부터 1시간이 지난 뒤 다시 시도해 주십시오.",
+    ),
+    (
+        "resident registration number is invalid",
+        "주민등록번호 형식을 확인해 주십시오.",
+    ),
+    (
+        "resident registration number is already recorded",
+        "주민등록번호가 이미 기록되어 있습니다.",
+    ),
+    (
+        "resident registration number is already in use",
+        "이미 기록된 주민등록번호입니다.",
+    ),
+    (
+        "personal-field recording denied",
+        "주민등록번호를 기록할 권한이 없습니다.",
+    ),
+    (
         "this employee requires a Person binding review before record changes",
         "사람 연결을 먼저 확인한 뒤 인사기록을 변경할 수 있습니다.",
     ),

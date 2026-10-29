@@ -5,6 +5,9 @@ properties:
     $ref: '#/components/schemas/Uuid'
   recorded:
     type: boolean
+  can_record:
+    type: boolean
+    description: Cedar permits org-wide recording; false when a number already exists.
   masked:
     type: [string, 'null']
     description: Policy-controlled display mask; fully masked by default.
