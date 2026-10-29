@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeAll, expect, test, vi } from "vitest";
-import { session } from "@console/api";
+import { ApiError, session } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { myAccessQuery } from "../reference/authz/api";
 import { activeSupportQuery } from "../reference/support-access/api";
@@ -125,3 +125,40 @@ test("a failed session restore keeps the navigation and device controls availabl
     for (const key of ["shell.menu", "shell.locale", "shell.theme.toDark", "shell.logout", "account.name.unset"] as const) expect(header).toContain(t(key));
   } finally { session.set(null); client.clear(); }
 });
+
+for (const secondary of ["modules", "support", "me"] as const) for (const cached of [false, true]) {
+  test(`${secondary} 403 gives a fresh rail with ${cached ? "cached" : "no previous"} secondary data`, async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+    try {
+      await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
+      if (cached || secondary !== "modules") await client.fetchQuery({ ...modulesQuery, queryFn: async () => secondary === "modules" ? modules["not-ready"] : modules.ready });
+      if (cached || secondary !== "support") await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: true }) });
+      if (cached || secondary !== "me") await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: cached && secondary === "me" ? "SETUP" : "OPERATING" } }) });
+      await client.fetchQuery({ ...checklistQuery, queryFn: async () => ({ steps: [] }) });
+      const query = secondary === "modules" ? modulesQuery : secondary === "support" ? activeSupportQuery : navigationRead(meQuery);
+      const refusal = new ApiError(403, "forbidden", "", []);
+      await expect(client.fetchQuery({ ...query, staleTime: 0, queryFn: async () => { throw refusal; } })).rejects.toBe(refusal);
+      const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
+      expect(rail).toContain('href="/people"');
+      expect(rail.includes('href="/audit/support-access"')).toBe(secondary !== "support");
+      expect(rail).not.toContain('aria-busy="true"');
+    } finally { client.clear(); }
+  });
+}
+
+for (const secondary of ["modules", "support", "me"] as const) for (const fault of [new ApiError(503, "unavailable", "", []), new TypeError("Failed to fetch")]) {
+  test(`${secondary} ${fault.name} fault keeps a cold rail unresolved`, async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+    try {
+      await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
+      await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
+      await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: true }) });
+      await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: "OPERATING" } }) });
+      const query = secondary === "modules" ? modulesQuery : secondary === "support" ? activeSupportQuery : navigationRead(meQuery);
+      await expect(client.fetchQuery({ ...query, staleTime: 0, queryFn: async () => { throw fault; } })).rejects.toBe(fault);
+      const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
+      expect(rail).toContain('aria-busy="true"');
+      expect(rail).not.toContain('href="/people"');
+    } finally { client.clear(); }
+  });
+}

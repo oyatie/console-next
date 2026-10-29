@@ -2,8 +2,32 @@
 import { expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import type { components } from "@console/api";
+import { loadCatalog, t } from "@console/i18n";
+import { AT, id } from "../../../../e2e/mock/fixtures";
 import { clearShifts } from "../../../../e2e/stability";
 import { navFixture, navModules } from "./nav.browser-fixture";
+
+test("cached active support session stays visible when access and support refetches both fail", async () => {
+  await loadCatalog("ko");
+  const { server, browser, page, errors } = await navFixture();
+  let failing = false;
+  await page.route("**/api/v1/access/me", route => failing
+    ? route.fulfill({ status: 503, json: { error: { code: "unavailable" } } }) : route.fallback());
+  await page.route("**/api/v1/support-sessions/active", route => failing
+    ? route.fulfill({ status: 503, json: { error: { code: "unavailable" } } })
+    : route.fulfill({ json: { sessions: [{ id: id(1), operator_label: "검증 운영자", expires_at: AT }],
+      pending_count: 0, pending_approvals: [], can_approve: false } satisfies components["schemas"]["ActiveSupportSessions"] }));
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    const banner = page.getByText(t("supportAccess.banner"), { exact: true });
+    await element(banner).toBeVisible();
+    failing = true;
+    await page.evaluate(() => window.refetchNavDecisions());
+    await element(banner).toBeVisible();
+    await element(page.getByText(t("common.read.stale"), { exact: false })).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally { await browser.close(); await server.close(); }
+}, 60_000);
 
 test("late module readiness stays cached until navigation, including return to an earlier page", async () => {
   const { server, browser, page, errors } = await navFixture();

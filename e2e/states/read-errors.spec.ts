@@ -78,7 +78,8 @@ for (const path of outageRoutes.filter(path => path.startsWith("/org"))) {
       await page.goto(path);
       const main = page.getByRole("main");
       await expect(main.getByRole("alert")).toHaveCount(1, { timeout: 20_000 });
-      await expect(main.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 20_000 });
+      // Failed reads reserve their layout with a hidden skeleton; only visible loading must settle.
+      await expect(main.locator('[aria-busy="true"]').filter({ visible: true })).toHaveCount(0, { timeout: 20_000 });
       await expect(main.getByRole("alert")).toHaveCount(1);
       await expect(main.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
       expect(fixture.unexpected).toEqual([]);
