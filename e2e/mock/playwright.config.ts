@@ -13,6 +13,6 @@ export default defineConfig({
   workers: Number(process.env.E2E_WORKERS ?? 2),
   timeout: 60_000,
   retries: 0,
-  use: { browserName: "chromium", baseURL: `http://localhost:${PORTS.web}`, locale: "ko-KR", timezoneId: "Asia/Seoul", serviceWorkers: "block", trace: "retain-on-failure" },
+  use: { browserName: process.env.E2E_XBROWSER === "1" ? "firefox" : "chromium", baseURL: `http://localhost:${PORTS.web}`, locale: "ko-KR", timezoneId: "Asia/Seoul", serviceWorkers: "block", trace: "retain-on-failure" },
   webServer: { command: `npm run build -w @console/web -- --mode test --outDir ${dist} --emptyOutDir && npm run preview -w @console/web -- --outDir ${dist} --port ${PORTS.web} --strictPort`, url: `http://localhost:${PORTS.web}`, reuseExistingServer: false },
 });

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { Page } from "@playwright/test";
+import { attendanceBoardReads } from "./attendance-board";
+import { attendanceBoardScreens } from "../states/attendance";
 import { mockRoute } from "./route";
 import { authz, checklist, employees, facets, failure, id, inbox, modules, screenAccess, structure, token, user } from "./fixtures";
 import { orgChange, orgChanges } from "./org-changes";
@@ -93,5 +95,7 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "post", "/api/v1/org-changes/{id}/preflight", { status: 200, json: record });
   await mockLifecycleSheets(page, screen);
   const counts = await mockOrgChangeCounts(page, screen.key === "org-changes" && (state === "loading" || state === "failed") ? state : "populated", changes);
-  return { unexpected, release: () => { release(); counts.release(); }, count, operationId: id(99), ...(screen.key === "numbering" ? await numberingReads(page, "operating") : {}) };
+  const boardScreen = attendanceBoardScreens.find(candidate => candidate.key === screen.key);
+  const board = boardScreen ? await attendanceBoardReads(page, boardScreen, state as "populated" | "empty" | "failed" | "refused" | "loading") : null;
+  return { unexpected, release: () => { release(); counts.release(); board?.release(); }, count, operationId: id(99), ...(screen.key === "numbering" ? await numberingReads(page, "operating") : {}) };
 }

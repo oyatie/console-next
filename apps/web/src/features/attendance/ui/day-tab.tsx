@@ -19,6 +19,7 @@ import { closed, pageState } from "../domain/month-state";
 import { dateText, refusalText } from "../present";
 import { DayDetail } from "./day-detail";
 import { DayDock } from "./day-dock";
+import { DayBars } from "./day-bar";
 import { DayRow } from "./day-row";
 import { MonthStateBanner } from "./month-state-banner";
 import { SaveDock } from "./save-dock";
@@ -73,7 +74,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
         <ToggleButton size="sm" pressed={!!search.unscheduled} onClick={() => go({ unscheduled: search.unscheduled ? undefined : true })}>{t("attendanceRecords.unscheduled.only")}</ToggleButton>
         <ToggleButton size="sm" pressed={!search.detail} onClick={() => go({ detail: undefined })}>{t("attendanceRecords.board.simple")}</ToggleButton>
         <ToggleButton size="sm" pressed={!!search.detail} onClick={() => go({ detail: true })}>{t("attendanceRecords.board.detail")}</ToggleButton>
-        {drafts > 0 && <>
+        {drafts > 0 && !board.error && <>
           {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
         </>}
       </div>}
@@ -101,7 +102,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                   ) : search.detail ? (
                     <DayDetail board={b} store={store} onNote={setNote} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : (
-                    b.groups.map((g) => (
+                    <DayBars days={rows.map(r => r.day)} labels={rows.map(r => `${r.name} ${r.employee_number ?? ""}`)}>{b.groups.map((g) => (
                       <Card
                         key={`${g.workplace_id}-${g.unit_id}`}
                         title={g.name}
@@ -112,7 +113,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                           <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null) } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} onAssign={() => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                         ))}
                       </Card>
-                    ))
+                    ))}</DayBars>
                   )}
                 </div>
                 <Card title={t("attendanceRecords.rail.title")}>

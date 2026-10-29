@@ -1,3 +1,4 @@
+import { koUiShiftBar } from "./ko/ui-shift-bar";
 import { koNts } from "./ko/nts";
 import { koSupport } from "./ko/support";
 import { koSupportAccess } from "./ko/support-access";
@@ -122,6 +123,7 @@ import { koEmpDoc } from "./ko/emp-doc";
 import { koPeopleJump } from "./ko/people-jump";
 
 export const ko = {
+  ...koUiShiftBar,
   ...koStatutory,
   ...koFormat,
   ...koAsof,

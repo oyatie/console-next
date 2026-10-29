@@ -62,7 +62,7 @@ export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard;
         const s = d ? draftState(d, r.day.plan.kind) : null;
         if (r.own) return t("attendanceRecords.grid.ownRow");
         return (
-          <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} error={s && !s.ok ? refusalText(s.code) : undefined}>
+          <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} hint={t("attendanceRecords.grammar.hint")} error={s && !s.ok ? refusalText(s.code) : undefined}>
             {(p) => <TableControl><TextInput {...p} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} /></TableControl>}
           </Field>
         );
