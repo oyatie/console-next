@@ -95,6 +95,7 @@ async fn objection_review_clock_resolves_the_operational_setting(pool: PgPool) {
     let store = PgSettingsStore::new(runtime_role_pool(&pool).await);
     let settings = store.list_effective(OrgId::new(), None).await.unwrap();
     let key = settings
+        .items
         .iter()
         .find(|row| row.key.as_str() == "privacy.rights.objection_review_days")
         .expect("operational review clock must exist");

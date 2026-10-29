@@ -132,7 +132,11 @@ impl RightsRequest {
             .into_iter()
             .map(|kind| {
                 let due = if let Some((original, review_days)) = original {
-                    if !original.kinds.get(&kind).is_some_and(KindState::is_final) {
+                    if !original
+                        .kinds
+                        .get(&kind)
+                        .is_some_and(|s| !s.decisions.is_empty())
+                    {
                         return Err(KernelError::validation("objection_before_result"));
                     }
                     // review_days is resolved from privacy.rights.objection_review_days.

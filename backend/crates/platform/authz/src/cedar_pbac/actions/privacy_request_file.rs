@@ -5,6 +5,7 @@ use super::super::facts::second_person::ACTOR_IS_REQUESTER;
 use crate::Feature;
 
 pub const SCHEMA: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::PrivacyRequestFile,
     version: "2026-10-privacy-request-file-v1",
     facts: &[

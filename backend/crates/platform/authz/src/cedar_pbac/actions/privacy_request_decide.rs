@@ -8,6 +8,7 @@ use super::super::facts::second_person::{
 use crate::Feature;
 
 pub const SCHEMA: ActionSchema = ActionSchema {
+    denial_codes: &[],
     feature: Feature::PrivacyRequestDecide,
     version: "2026-10-privacy-request-decide-v1",
     facts: &[
