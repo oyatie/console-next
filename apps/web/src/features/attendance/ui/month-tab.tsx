@@ -105,10 +105,10 @@ export function MonthTab({ head }: { head?: ReactNode }) {
           <IconButton size="sm" label={t("attendanceRecords.toolbar.nextMonth")} onClick={() => go({ month: stepMonth(month, 1) })}><ChevronRight size={16} aria-hidden /></IconButton>
         </div>
         {drafts.length > 0 && <>
+          <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts.length, refused: bad.length })}</span>
           {saveWhy ? <DisabledReason reason={saveWhy} control={() => saveButton} /> : saveButton}
         </>}
       </div>}
-      {(drafts.length > 0 || feedback) && <p className="muted" role="status">{[drafts.length > 0 ? t("attendanceRecords.toolbar.unsaved", { count: drafts.length, refused: bad.length }) : null, feedback].filter(Boolean).join(" · ")}</p>}
       <QueryState q={grid} own={refusalText} layout="grid">{() => <>
       {!online && <Banner tone="warn">{t("attendanceRecords.offline")}</Banner>}
       <MonthStateBanner state={monthState} month={month} />
@@ -117,6 +117,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
           {t("attendanceRecords.status.refused", { value: focusDraft.value })} {refusalText(focusState.code)}
         </Banner>
       )}
+      {feedback && <p className="muted" role="status">{feedback}</p>}
       {size.cells > 1 && (
         <p className={s.selection} role="status">
           {t(size.cells > CAP ? "attendanceRecords.selection.over" : "attendanceRecords.selection.count", { people: size.people, days: size.days, cells: size.cells })}
