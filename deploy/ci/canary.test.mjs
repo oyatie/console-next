@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -37,7 +37,7 @@ test('canary analysis resolves its Service from the controller namespace without
   }
 });
 
-function canary(scenario = '') {
+function canary(scenario = '', previousImage = `example.invalid/console@sha256:${'b'.repeat(64)}`) {
   const dir = mkdtempSync(join(tmpdir(), 'canary-abort-'));
   try {
     mkdirSync(join(dir, '.tmp/evidence'), {recursive:true});
@@ -45,7 +45,7 @@ function canary(scenario = '') {
     mkdirSync(join(dir, 'deploy/ci'), {recursive:true});
     writeFileSync(join(dir, 'deploy/ci/diagnostics.mjs'), 'console.log("fault diagnostics");');
     const image = `example.invalid/console@sha256:${'a'.repeat(64)}`;
-    writeFileSync(join(dir, '.tmp/exit-bundle/revision.json'), JSON.stringify({image, previousImage:`example.invalid/console@sha256:${'b'.repeat(64)}`}));
+    writeFileSync(join(dir, '.tmp/exit-bundle/revision.json'), JSON.stringify({image, previousImage}));
     const docs = yaml.loadAll(read('deploy/base/app/api.yaml'));
     const deployment = docs.find(doc => doc.kind === 'Deployment');
     deployment.spec.template.spec.containers[0].image = image;
@@ -77,7 +77,7 @@ else if (a[0] === 'set') {
   assert.equal(a[2], 'deployment/'+state.deployment.metadata.name);
   app().image = a[3].split('=').slice(1).join('=');
   state.deployment.metadata.generation++;
-  if (app().image === state.image) state.analyses.push({metadata:{uid:'promotion'},status:{phase:'Successful'}});
+  if (app().image === state.image && state.scenario !== 'no-promotion') state.analyses.push({metadata:{uid:'promotion'},status:{phase:'Successful'}});
 } else if (a[0] === 'patch') {
   assert.equal(a[1], 'deployment', 'exit-test must use the shipped Rollout and analysis unchanged');
   assert.equal(a[2], state.deployment.metadata.name);
@@ -124,7 +124,9 @@ if (process.argv[2] === 'resume') state.diagnosticsBeforeResume = fs.existsSync(
 fs.writeFileSync('state.json', JSON.stringify(state));
 `, {mode:0o755});
     const result = spawnSync(process.execPath, [join(root, 'deploy/ci/canary.mjs')], {cwd:dir, encoding:'utf8', timeout:15000, env:{...process.env, PATH:`${dir}:${process.env.PATH}`}});
-    return {...result, state:JSON.parse(readFileSync(join(dir, 'state.json')))};
+    const evidence = join(dir, '.tmp/evidence/canary-promotion.json');
+    return {...result, state:JSON.parse(readFileSync(join(dir, 'state.json'))),
+      promotion:existsSync(evidence) ? JSON.parse(readFileSync(evidence)) : null};
   } finally { rmSync(dir, {recursive:true,force:true}); }
 }
 
@@ -147,7 +149,34 @@ test('fault follows workloadRef and application identity with a sidecar at conta
   assert.equal(result.status, 0, result.stderr);
 });
 
+test('first publish names the promotion skip and still proves the faulted-candidate abort', () => {
+  const result = canary('', null);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /SKIP PLAT_NO_DISTINCT_PREVIOUS_IMAGE/);
+  assert.equal(result.promotion.status, 'skipped');
+  assert.equal(result.promotion.code, 'PLAT_NO_DISTINCT_PREVIOUS_IMAGE');
+  assert.ok(!result.state.calls.some(call => call[0] === 'set'));
+  assert.ok(result.state.calls.some(call => call[0] === 'patch'));
+  assert.equal(result.state.rollout.status.abort, true);
+  assert.equal(result.state.diagnosticsBeforeResume, true);
+});
+
+test('an identical previous image is invalid publisher evidence, never a promotion skip', () => {
+  const result = canary('', `example.invalid/console@sha256:${'a'.repeat(64)}`);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /PLAT_PREVIOUS_RELEASE/);
+  assert.doesNotMatch(result.stdout, /SKIP/);
+});
+
+test('an empty previous image is invalid publisher evidence, never a promotion skip', () => {
+  const result = canary('', '');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /PLAT_PREVIOUS_RELEASE/);
+  assert.doesNotMatch(result.stdout, /SKIP/);
+});
+
 for (const [scenario, message] of [
+  ['no-promotion', /N-1 to N must run successful canary analysis/],
   ['no-abort', /rollout abort timed out/],
   ['image-drift', /verified image changed before fault injection/],
   ['reused-hash', /fault must produce a new candidate hash/],

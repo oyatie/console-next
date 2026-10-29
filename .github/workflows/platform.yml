@@ -191,12 +191,14 @@ jobs:
         env:
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
           PLATFORM_WORKFLOW_IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/platform.yml@refs/heads/dev
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node deploy/ci/render.mjs exit-test "${IMAGE}@${IMAGE_DIGEST}" .tmp/bundle
           unsigned_digest="$(buildx imagetools inspect "${IMAGE}-unsigned:${GITHUB_SHA}" --format '{{json .Manifest}}' | jq -er .digest)"
-          jq --arg unsigned "${IMAGE}-unsigned@${unsigned_digest}" --arg wrong "${IMAGE}-wrong-identity@${unsigned_digest}" --slurpfile previous .tmp/previous-revision.json \
-            '. + {unsignedImage: $unsigned, wrongIdentityImage: $wrong, previousImage: ($previous[0].image // null)}' .tmp/bundle/revision.json > .tmp/revision.json
+          jq --arg unsigned "${IMAGE}-unsigned@${unsigned_digest}" --arg wrong "${IMAGE}-wrong-identity@${unsigned_digest}" \
+            '. + {unsignedImage: $unsigned, wrongIdentityImage: $wrong}' .tmp/bundle/revision.json > .tmp/revision.json
           mv .tmp/revision.json .tmp/bundle/revision.json
+          node deploy/ci/previous-release.mjs .tmp/bundle/revision.json .tmp/previous-revision.json
           cp .tmp/sbom.json .tmp/bundle/image-sbom.json
           bash deploy/ci/validate.sh .tmp/bundle
           flux push artifact "oci://${DEPLOY}:shadow" --path=.tmp/bundle \
