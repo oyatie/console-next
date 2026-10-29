@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
-import { chromium, firefox, expect as element } from "@playwright/test";
+import { firefox, expect as element } from "@playwright/test";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { AT, id } from "../../../../e2e/mock/fixtures";
 import { clearShifts } from "../../../../e2e/stability";
+import { chromium } from "../lib/browser-test";
 import { navFixture, navModules } from "./nav.browser-fixture";
 
 test("cached active support session stays visible when access and support refetches both fail", async () => {
@@ -94,7 +95,7 @@ test("a readiness command refreshes the shared modules cache once without a navi
   } finally { await browser.close(); await server.close(); }
 }, 60_000);
 
-for (const engine of [chromium, firefox]) test.each(["503", "network"])(`a cold modules %s keeps independent links and retry restores readiness without navigation in ${engine.name()}`, async fault => {
+for (const engine of [chromium, ...(process.env.E2E_XBROWSER === "1" ? [firefox] : [])]) test.each(["503", "network"])(`a cold modules %s keeps independent links and retry restores readiness without navigation in ${engine.name()}`, async fault => {
   await loadCatalog("ko");
   const { server, browser, page, errors } = await navFixture(engine);
   let unavailable = true;
