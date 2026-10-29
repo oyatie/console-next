@@ -4,8 +4,7 @@
 /// Admin-issued OTP length and alphabet.
 ///
 /// Ten Crockford base32 symbols provide 32^10 = 2^50 possibilities (50 bits).
-/// First-sign-in codes remain usable until passkey registration or expiry;
-/// recovery codes are single-use. Rate limits and the configured TTL also apply.
+/// Every code redeems once. Rate limits and the configured TTL also apply.
 pub const OTP_LEN: usize = 10;
 pub const OTP_GROUP_LEN: usize = OTP_LEN / 2;
 pub const OTP_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
