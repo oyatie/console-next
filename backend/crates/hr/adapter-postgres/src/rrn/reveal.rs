@@ -8,6 +8,7 @@ use crate::{
     import::identities::sealed_from_row,
 };
 use console_hr_domain::import::rrn_value::{RrnVault, SealedRrn};
+pub use console_hr_domain::profile::mask::RevealField;
 use console_kernel_core::KernelError;
 use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
 use console_platform_authz::{Feature, Principal};
@@ -16,27 +17,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum RevealField {
-    Rrn,
-    BirthDate,
-    Address,
-    Phone,
-    PersonalEmail,
-}
-impl RevealField {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Rrn => "RRN",
-            Self::BirthDate => "BIRTH_DATE",
-            Self::Address => "ADDRESS",
-            Self::Phone => "PHONE",
-            Self::PersonalEmail => "PERSONAL_EMAIL",
-        }
-    }
-}
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]

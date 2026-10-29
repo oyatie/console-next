@@ -20,6 +20,7 @@ use time::Duration;
 use crate::HrError;
 use crate::directory::read_export::{csv_field, optional_row_text, push_csv_row};
 use crate::register_facts::exit_reason::exit_reason_code_sql;
+use console_hr_domain::profile::mask::RevealField;
 use console_hr_domain::register::{CAREER_NONE, exit_reason_label, sex_label};
 use console_hr_domain::text::parse_yyyy_mm_dd;
 
@@ -158,7 +159,7 @@ impl ExportLayout {
         if self == Self::Standard {
             return push_csv_row(csv, row);
         }
-        for (index, value) in register_cells(row)?.iter().enumerate() {
+        for (index, value) in register_cells(row, false)?.iter().enumerate() {
             if index > 0 {
                 csv.push(',');
             }
@@ -170,7 +171,10 @@ impl ExportLayout {
 }
 
 /// Canonical register cells shared by CSV, the screen, XLSX and PDF.
-pub(crate) fn register_cells(row: &sqlx::postgres::PgRow) -> Result<Vec<String>, HrError> {
+pub(crate) fn register_cells(
+    row: &sqlx::postgres::PgRow,
+    masked: bool,
+) -> Result<Vec<String>, HrError> {
     REGISTER_COLUMNS
         .iter()
         .map(|column| {
@@ -193,7 +197,10 @@ pub(crate) fn register_cells(row: &sqlx::postgres::PgRow) -> Result<Vec<String>,
                 },
                 Some(key) => optional_row_text(row, key)?,
             };
-            Ok(value)
+            Ok(match column.and_then(RevealField::from_column) {
+                Some(field) if masked => field.masked(&value),
+                _ => value,
+            })
         })
         .collect()
 }
