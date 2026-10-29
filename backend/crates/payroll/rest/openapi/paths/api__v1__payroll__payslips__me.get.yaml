@@ -1,8 +1,7 @@
-x-console-authz: {"permission": "pay:view", "scope": "tenant"}
 tags:
 - payroll
 operationId: listMyPayrollLines
-summary: List the signed-in employee's own payroll draft-line readiness rows (tenant pay:view)
+summary: List the signed-in employee's own payroll draft-line readiness rows (Cedar employee_self_read; no tenant pay grant)
 security:
 - bearerAuth: []
 parameters:

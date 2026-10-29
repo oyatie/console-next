@@ -16,9 +16,10 @@
 //!
 //! # Access
 //!
-//! Every payroll read and command uses Cedar pay:view or pay:edit at the tenant
+//! Run reads and commands use Cedar pay:view or pay:edit at the tenant
 //! node, with live facts from the canonical loader. Runs do not yet carry a
 //! legal entity, so narrower grants cannot read tenant-wide rows or totals.
+//! Own readiness uses Cedar employee_self_read on the caller's linked record.
 //!
 //! # Audit
 //!
@@ -35,6 +36,7 @@ pub use openapi::OPENAPI_FRAGMENT;
 mod access;
 mod lifecycle;
 mod payslip_draft;
+mod self_service;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -43,8 +45,8 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_payroll_adapter_postgres::{
-    MyPayrollLinePage, PayrollRunDetail, PayrollRunPage, PayrollRunSummary, PgPayrollError,
-    PgPayrollStore, get_run_in_tx, list_runs_in_tx,
+    PayrollRunDetail, PayrollRunPage, PayrollRunSummary, PgPayrollError, PgPayrollStore,
+    get_run_in_tx, list_runs_in_tx,
 };
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::Principal;
@@ -149,7 +151,7 @@ pub fn router(state: PayrollRestState) -> Router {
     let router = Router::new()
         .route(PAYROLL_RUNS_PATH, get(list_runs))
         .route(PAYROLL_RUN_PATH_TEMPLATE, get(get_run))
-        .route(PAYROLL_MY_PAYSLIPS_PATH, get(list_my_lines))
+        .route(PAYROLL_MY_PAYSLIPS_PATH, get(self_service::list_my_lines))
         .route(
             PAYROLL_RUN_CLOSE_PREFLIGHT_PATH_TEMPLATE,
             get(lifecycle::get_close_preflight),
@@ -291,35 +293,6 @@ async fn get_run(
     let detail = detail
         .ok_or_else(|| RestError::new(StatusCode::NOT_FOUND, "not_found", "run not found"))?;
     Ok(Json(detail).into_response())
-}
-
-async fn list_my_lines(
-    State(state): State<PayrollRestState>,
-    headers: HeaderMap,
-    Query(params): Query<PageParams>,
-) -> Result<Response, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    // Readiness stays self-scoped after Cedar admits the payroll read.
-    access::require_run_read(state.store.pool(), principal.org_id, principal.user_id).await?;
-    let page = match state
-        .store
-        .linked_employee_id(principal.user_id)
-        .await
-        .map_err(RestError::from_store)?
-    {
-        Some(employee_id) => state
-            .store
-            .list_my_lines(employee_id, params.limit, params.offset)
-            .await
-            .map_err(RestError::from_store)?,
-        None => MyPayrollLinePage {
-            items: Vec::new(),
-            total: 0,
-            limit: params.limit.unwrap_or(100),
-            offset: params.offset.unwrap_or(0),
-        },
-    };
-    Ok(Json(page).into_response())
 }
 
 #[derive(Debug, Serialize)]

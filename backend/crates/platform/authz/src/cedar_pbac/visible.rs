@@ -29,9 +29,30 @@ pub struct DecisionFacts {
     slice: AccessSlice,
     paths: BTreeMap<NodeRef, NodePath>,
     roles: Vec<String>,
+    org: OrgId,
+    actor: Uuid,
+    employee_id: Option<Uuid>,
 }
 
 impl DecisionFacts {
+    /// The caller's employee link, resolved under the same tenant RLS snapshot.
+    #[must_use]
+    pub fn linked_employee_id(&self) -> Option<Uuid> {
+        self.employee_id
+    }
+
+    /// Cedar self-service admission; pay grants never widen this record boundary.
+    ///
+    /// # Errors
+    /// A Cedar compilation or evaluation failure.
+    pub fn authorize_employee_self_read(&self, employee: Uuid) -> Result<bool, String> {
+        super::actions::employee_self_read::decide(
+            &self.actor.to_string(),
+            &self.org.to_string(),
+            self.employee_id == Some(employee),
+        )
+    }
+
     /// Live role facts for Cedar actions retaining legacy-role compatibility.
     #[must_use]
     pub fn roles(&self) -> &[String] {
@@ -117,7 +138,7 @@ pub async fn load_facts(
         "SELECT COALESCE(current_setting('app.current_org', true) = $1, false)
             AND row_security_active('access_grants') AND row_security_active('users')
             AND row_security_active('legal_entities') AND row_security_active('workplaces')
-            AND row_security_active('org_units')",
+            AND row_security_active('org_units') AND row_security_active('employees')",
     )
     .bind(org.to_string())
     .fetch_one(tx.as_mut())
@@ -126,15 +147,18 @@ pub async fn load_facts(
     if !armed {
         return Err(KernelError::forbidden("Cedar facts require tenant RLS"));
     }
-    let roles: Option<Vec<String>> =
-        sqlx::query_scalar("SELECT roles FROM users WHERE org_id = $1 AND id = $2 AND is_active")
-            .bind(org.as_uuid())
-            .bind(actor)
-            .fetch_optional(tx.as_mut())
-            .await
-            .map_err(db)?;
-    let roles =
-        roles.ok_or_else(|| KernelError::forbidden("Cedar facts require an active account"))?;
+    let account: Option<(Vec<String>, Option<Uuid>)> = sqlx::query_as(
+        "SELECT u.roles, e.id FROM users u
+         LEFT JOIN employees e ON e.org_id = u.org_id AND e.id = u.employee_id
+         WHERE u.org_id = $1 AND u.id = $2 AND u.is_active",
+    )
+    .bind(org.as_uuid())
+    .bind(actor)
+    .fetch_optional(tx.as_mut())
+    .await
+    .map_err(db)?;
+    let (roles, employee_id) =
+        account.ok_or_else(|| KernelError::forbidden("Cedar facts require an active account"))?;
     let subject = load_access_subject(tx, org, actor, Timestamp::now_utc()).await?;
     let slice = AccessSlice::compile(&subject)
         .map_err(|e| KernelError::internal(format!("Cedar facts unavailable: {e}")))?;
@@ -203,6 +227,9 @@ pub async fn load_facts(
         slice,
         paths,
         roles,
+        org,
+        actor,
+        employee_id,
     })
 }
 

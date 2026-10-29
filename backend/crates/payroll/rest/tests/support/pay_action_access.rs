@@ -88,7 +88,9 @@ async fn pay_actions_refuse_legacy_roles_on_existing_and_missing_runs(pool: PgPo
             None,
         )
         .await;
-        assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+        assert_eq!(status, StatusCode::OK, "{body}");
+        assert_eq!(body["items"], json!([]));
+        assert_eq!(body["total"], 0);
         for (method, uri, body) in [
             (
                 "GET",

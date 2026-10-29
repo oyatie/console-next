@@ -6,12 +6,14 @@
 //! must be forbidden on org-wide payroll run list:
 //!   * `GET /api/v1/me/inbox-docs?filter=payslip` → 200 (empty or own docs),
 //!     never 403 — ESS vault, not payroll REST `/payslips/me`;
-//!   * `GET /api/v1/payroll/payslips/me` → 403 without Cedar pay:view;
+//!   * `GET /api/v1/payroll/payslips/me` → 200, never 403 — self-scoped
+//!     readiness (hours / `*_source_present`), never a won amount, never
+//!     `PayrollRunRead`; unlinked MEMBER is an empty page;
 //!   * `GET /api/v1/attendance/me/exceptions` → 200, never 403 — self-scoped,
 //!     not manager `AttendanceExceptionManage`;
 //!   * `GET /api/v1/attendance/me/week52` → 200, never 403 — self-scoped;
 //!     unlinked MEMBER is `status=not_available` with `projection` omitted;
-//!   * `GET /api/v1/payroll/runs` → 403 — Cedar pay:view.
+//!   * `GET /api/v1/payroll/runs` → 403 — tenant Cedar pay:view.
 //!
 //! Status lock only: does not emit a payslip (see inbox-rest filter=payslip
 //! coverage) and does not seed exceptions. Drives `console_rt` (RLS on).
@@ -116,12 +118,20 @@ async fn member_login_only_ess_is_200_and_payroll_runs_are_403(pool: PgPool) {
     let payslips = get(service.clone(), MY_PAYSLIPS_PATH, &token).await;
     assert_eq!(
         payslips.status,
-        StatusCode::FORBIDDEN,
-        "{:?}",
+        StatusCode::OK,
+        "MEMBER Login-only own payslip readiness must be 200, not 403: {:?}",
         payslips.json
     );
-    assert_eq!(payslips.json["error"]["code"], "forbidden");
-    assert!(payslips.json.get("items").is_none());
+    let payslip_items = payslips.json["items"]
+        .as_array()
+        .expect("payslips/me items");
+    for item in payslip_items {
+        let won = keys_containing_won(item);
+        assert!(
+            won.is_empty(),
+            "payslips/me items are readiness (hours / *_source_present), never won: {won:?} in {item}"
+        );
+    }
 
     let week52 = get(service.clone(), MY_WEEK52_PATH, &token).await;
     assert_eq!(
@@ -173,6 +183,31 @@ async fn get(service: axum::Router, uri: &str, token: &str) -> JsonResponse {
     let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let json = serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({}));
     JsonResponse { status, json }
+}
+
+fn keys_containing_won(value: &Value) -> Vec<String> {
+    let mut found = Vec::new();
+    collect_keys_containing_won(value, &mut found);
+    found
+}
+
+fn collect_keys_containing_won(value: &Value, found: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            for (key, nested) in map {
+                if key.to_ascii_lowercase().contains("won") {
+                    found.push(key.clone());
+                }
+                collect_keys_containing_won(nested, found);
+            }
+        }
+        Value::Array(items) => {
+            for nested in items {
+                collect_keys_containing_won(nested, found);
+            }
+        }
+        _ => {}
+    }
 }
 
 fn keys() -> Keys {

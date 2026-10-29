@@ -16,7 +16,12 @@ test("payroll reads and commands require pay access granted through the role edi
   const api = apiOf(reader, token);
   const missing = `/payroll/runs/${randomUUID()}`;
   try {
-    for (const path of ["/payroll/runs", missing, `${missing}/close-preflight`, `${missing}/exceptions`, `${missing}/payslip-delivery`, "/payroll/payslips/me"]) {
+    const readiness = await api("/payroll/payslips/me");
+    expect(readiness.status()).toBe(200);
+    const page = await readiness.json();
+    expect(page).toMatchObject({ items: [], total: 0 });
+    expect(JSON.stringify(page)).not.toMatch(/won/i);
+    for (const path of ["/payroll/runs", missing, `${missing}/close-preflight`, `${missing}/exceptions`, `${missing}/payslip-delivery`]) {
       const refused = await api(path);
       expect(refused.status()).toBe(403);
       expect(await codeOf(refused)).toBe("forbidden");

@@ -231,6 +231,7 @@ async fn loader_refuses_each_unprotected_fact_table(pool: PgPool) {
         "ALTER TABLE legal_entities DISABLE ROW LEVEL SECURITY",
         "ALTER TABLE workplaces DISABLE ROW LEVEL SECURITY",
         "ALTER TABLE org_units DISABLE ROW LEVEL SECURITY",
+        "ALTER TABLE employees DISABLE ROW LEVEL SECURITY",
     ] {
         let mut tx = pool.begin().await.unwrap();
         sqlx::query(sqlx::AssertSqlSafe(statement))

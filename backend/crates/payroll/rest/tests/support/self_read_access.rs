@@ -28,7 +28,7 @@ async fn payslips_me_is_self_scoped_never_a_coworkers(pool: PgPool) {
     let anon = get_unauthenticated(service.clone(), PAYROLL_MY_PAYSLIPS_PATH).await;
     assert_eq!(anon, StatusCode::UNAUTHORIZED);
 
-    // No pay grant means neither tenant runs nor own readiness can be read.
+    // Own readiness needs no tenant pay grant; run totals still do.
     let member_runs = get(service.clone(), PAYROLL_RUNS_PATH, &alice_token).await;
     assert_eq!(
         member_runs.status,
@@ -38,11 +38,6 @@ async fn payslips_me_is_self_scoped_never_a_coworkers(pool: PgPool) {
     );
     assert_eq!(member_runs.json["error"]["code"], "forbidden");
 
-    let denied_self = get(service.clone(), PAYROLL_MY_PAYSLIPS_PATH, &alice_token).await;
-    assert_eq!(denied_self.status, StatusCode::FORBIDDEN);
-    for user in [alice_user, bob_user, admin_no_link] {
-        pay_view::grant_view(&pool, org, user, None).await;
-    }
     let alice_read = get(service.clone(), PAYROLL_MY_PAYSLIPS_PATH, &alice_token).await;
     assert_eq!(alice_read.status, StatusCode::OK, "{:?}", alice_read.json);
     assert_payslips_me_is_own_readiness(

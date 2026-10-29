@@ -10650,7 +10650,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the signed-in employee's own payroll draft-line readiness rows (tenant pay:view) */
+        /** List the signed-in employee's own payroll draft-line readiness rows (Cedar employee_self_read; no tenant pay grant) */
         get: operations["listMyPayrollLines"];
         put?: never;
         post?: never;

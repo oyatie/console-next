@@ -8,17 +8,6 @@ use sqlx::{Postgres, Transaction};
 
 use crate::RestError;
 
-pub(crate) async fn require_run_read(
-    pool: &sqlx::PgPool,
-    org: OrgId,
-    actor: UserId,
-) -> Result<(), RestError> {
-    console_platform_db::with_org_conn(pool, org, move |tx| {
-        Box::pin(require_run_read_in_tx(tx, org, actor))
-    })
-    .await
-}
-
 pub(crate) async fn require_run_read_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
