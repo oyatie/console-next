@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
-/// Revoke after the first transaction, while the recipient's document is emitted.
+/// Revoke while the recipient's document is emitted, before issuance commits.
 /// A DB trigger makes the interleaving deterministic without a production hook.
 pub(super) async fn assert_second_gate(
     pool: &PgPool,
@@ -54,6 +54,7 @@ pub(super) async fn assert_second_gate(
         "revocation must prevent the ISSUED transition"
     );
     for query in [
+        "SELECT count(*) FROM inbox_docs WHERE source_id=$1::text AND kind='payslip'",
         "SELECT count(*) FROM payroll_payslip_deliveries WHERE run_id=$1",
         "SELECT count(*) FROM audit_events WHERE target_id=$1::text AND action='payroll_run.payslip_issue'",
     ] {
@@ -64,16 +65,18 @@ pub(super) async fn assert_second_gate(
             .unwrap();
         assert_eq!(
             count, 0,
-            "refused finalization cannot write delivery links or audit"
+            "refused issuance cannot expose payslips, delivery links or audit"
         );
     }
-    let docs: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM inbox_docs WHERE source_id=$1 AND kind='payslip'")
-            .bind(run.to_string())
+    let emits: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE action='inbox_doc.emit'")
             .fetch_one(pool)
             .await
             .unwrap();
-    assert_eq!(docs, 1, "the trigger must run between the two gates");
+    assert_eq!(
+        emits, 0,
+        "inbox audits must roll back with refused issuance"
+    );
     sqlx::raw_sql(
         "DROP TRIGGER revoke_pay_on_payslip ON inbox_docs; DROP FUNCTION revoke_pay_on_payslip();",
     )

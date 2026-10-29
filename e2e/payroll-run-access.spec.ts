@@ -32,11 +32,17 @@ test("payroll reads and commands require tenant pay access", { tag: ["@hr", "@ne
       ["schedule-disbursement", { scheduled_at: new Date(Date.now() + 86_400_000).toISOString() }],
       ["disbursement/attest", { status: "SUCCEEDED" }], ["issue-payslips", undefined],
     ];
+    const inboxBefore = await api("/me/inbox-docs?filter=payslip");
+    expect(inboxBefore.status()).toBe(200);
+    const before = await inboxBefore.json();
     for (const [suffix, body] of commands) {
       const refused = await api(`${missing}/${suffix}`, "POST", body);
       expect(refused.status()).toBe(403);
       expect(await codeOf(refused)).toBe("forbidden");
     }
+    const inboxAfter = await api("/me/inbox-docs?filter=payslip");
+    expect(inboxAfter.status()).toBe(200);
+    expect(await inboxAfter.json()).toEqual(before);
     // The bootstrap owner holds tenant pay access; payroll is not offered in the MVP role grid.
     const opsApi = apiOf(admin, opsToken);
     expect((await opsApi("/payroll/runs")).status()).toBe(200);

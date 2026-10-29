@@ -2,6 +2,55 @@
 use super::*;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn employee_self_read_can_deny_a_different_employee(pool: PgPool) {
+    use console_platform_authz::cedar_pbac::visible::load_facts;
+    let org = OrgId::one();
+    let employee = seed_employee(&pool, *org.as_uuid(), "Alice").await;
+    let coworker = seed_employee(&pool, *org.as_uuid(), "Bob").await;
+    let actor = UserId::new();
+    seed_user_linked_to_employee(&pool, actor, *org.as_uuid(), employee).await;
+    pay_view::grant_manage(&pool, org, actor, None).await;
+    let rt = runtime_role_pool(&pool).await;
+    let mut tx = rt.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org', $1, true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let facts = load_facts(&mut tx, org, *actor.as_uuid()).await.unwrap();
+    assert!(facts.authorize_employee_self_read(employee).unwrap());
+    assert!(!facts.authorize_employee_self_read(coworker).unwrap());
+    tx.rollback().await.unwrap();
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn fact_loader_failure_is_internal_never_an_empty_page_or_denial(pool: PgPool) {
+    let org = OrgId::one();
+    let keys = keys();
+    let actor = UserId::new();
+    seed_user(&pool, actor, *org.as_uuid(), "MEMBER").await;
+    pay_view::grant_view(&pool, org, actor, None).await;
+    let token = bearer(&pool, &keys, actor, org, "MEMBER").await;
+    let service = app(runtime_role_pool(&pool).await, &keys);
+    // Break a table read used by the fact loader, after authentication succeeds.
+    sqlx::query("REVOKE SELECT ON legal_entities FROM console_rt")
+        .execute(&pool)
+        .await
+        .unwrap();
+    for path in [PAYROLL_RUNS_PATH, PAYROLL_MY_PAYSLIPS_PATH] {
+        let response = get(service.clone(), path, &token).await;
+        assert_eq!(
+            response.status,
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "{}",
+            response.json
+        );
+        assert_eq!(response.json["error"]["code"], "internal");
+        assert!(response.json.get("items").is_none());
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn payslips_me_is_self_scoped_never_a_coworkers(pool: PgPool) {
     let keys = keys();
     let org = OrgId::one();
