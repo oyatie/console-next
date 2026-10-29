@@ -50,7 +50,7 @@ export async function attendanceReads(page: Page, screen: typeof attendanceScree
       const empty = state === "empty";
       const offset = Number(url.searchParams.get("offset") ?? 0), limit = 2;
       const json = path === paths[0] ? { items: empty ? [] : exceptions.slice(offset, offset + limit), total: empty ? 0 : exceptions.length, offset, limit } satisfies S["AttendanceExceptionPage"]
-        : path === paths[1] ? { month: url.searchParams.get("month")!, items: empty ? [] : closeItems } satisfies S["AttendanceCloseBoard"]
+        : path === paths[1] ? { month: url.searchParams.get("month")!, items: empty ? [] : url.searchParams.has("branch_id") ? closeItems : [{ branch_scope: "org", closed: false, open_exceptions: 0, pending_leave: 0 }] } satisfies S["AttendanceCloseBoard"]
         : { week_start: url.searchParams.get("week_start")!, items: empty ? [] : weekRows } satisfies S["AttendanceWeek52Board"];
       if (!page.isClosed()) await route.fulfill({ status: 200, json });
     });

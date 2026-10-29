@@ -61,7 +61,7 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
         run.mutate(undefined);
       }}
     >
-      <QueryState q={evidence} layout="form">{() => <>
+      {evidence.isPending ? <QueryState q={evidence} layout="form">{() => null}</QueryState> : <>
       <p>{t("identity.fact")}</p>
       <BindingEvidence subjectId={e.id} employeeId={e.id} />
       <ChoiceField
@@ -96,7 +96,7 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
       <Field label={t("profile.reason")} required hint={t("lifecycle.reason.count", { count: reason.length, max: REASON_MAX })} error={tried && missing.reason ? t("lifecycle.reason.missing") : undefined}>
         {(p) => <TextInput {...p} value={reason} maxLength={REASON_MAX} onChange={(x) => (run.reset(), setReason(x.target.value))} />}
       </Field>
-      </>}</QueryState>
+      </>}
     </Composer>
   );
 }

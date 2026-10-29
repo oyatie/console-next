@@ -20,7 +20,7 @@ export function CloseTab() {
     <h2>{t("attendance.close.heading", { month: monthText(data.month) })}</h2>
     <LongTable label={t("attendance.tab.close")} rows={data.items} rowId={row => row.branch_scope} hasMore={false} onLoadMore={() => {}}
       empty={t("attendance.close.empty")} columns={[
-        { id: "place", header: t("attendance.col.workplace"), card: "title", rowHeader: true, cell: row => places.find(place => place.id === row.branch_scope)?.name ?? t("attendance.close.unavailable") },
+        { id: "place", header: t("attendance.col.workplace"), card: "title", rowHeader: true, cell: row => search.wp ? places.find(place => place.id === row.branch_scope)?.name ?? t("attendance.close.unavailable") : t("attendanceRecords.scope.all", { count: places.length }) },
         { id: "state", header: t("attendance.col.state"), card: "status", cell: row => <Chip tone={row.closed ? "ok" : "neutral"}>{t(row.closed ? "attendance.close.closed" : "attendance.close.open")}</Chip> },
         { id: "issues", header: t("attendance.tab.issues"), card: "fact", cell: row => t("attendance.count", { count: row.open_exceptions }) },
       ]} />
