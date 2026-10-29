@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "fonts:generate": "node ../../scripts/font-subsets.mjs --write",
+    "prebuild": "node ../../scripts/font-subsets.mjs --check",
     "dev": "vite --configLoader native",
     "build": "vite build --configLoader native",
     "preview": "vite preview --configLoader native"

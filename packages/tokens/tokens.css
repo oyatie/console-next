@@ -24,7 +24,9 @@
   --grid-chg: var(--warn-solid); --grid-err: var(--danger-solid); --grid-rng: var(--primary);
   --selected-bar: inset 3px 0 0 var(--primary); --tab-selected: inset 0 -2px 0 var(--primary);
 
-  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --font-system: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --font-catalog: "Pretendard Variable";
+  --font-sans: var(--font-catalog), Pretendard, var(--font-system);
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
   --text-xs: 12px; --text-sm: 13px; --text-body: 14px; --text-lg: 16px; --text-xl: 20px; --text-2xl: 24px;
   --fw-body: 400; --fw-medium: 600; --fw-strong: 700;

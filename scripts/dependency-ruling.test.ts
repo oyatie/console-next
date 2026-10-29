@@ -11,13 +11,13 @@ const approved = [
   "action:actions/checkout", "action:actions/setup-node", "action:actions/upload-artifact", "action:actions/download-artifact",
   ...["tokio", "bytes", "http", "futures", "serde", "serde_json", "uuid", "url", "tracing", "tracing-subscriber", "stacker", "base64", "zeroize", "rustls", "tokio-rustls"].map((name) => `cargo:${name}`),
 ];
-const ownerApproved = ["container:docker.io/chrislusf/seaweedfs", "ci-tool:cargo-deny", "ci-tool:cargo-audit"];
+const ownerApproved = ["container:docker.io/chrislusf/seaweedfs", "ci-tool:cargo-deny", "ci-tool:cargo-audit", "ci-tool:fontTools/pyftsubset"];
 const kinds = new Set(["npm", "cargo", "action", "container", "ci-tool"]);
 
 describe("2026-10-26 delegated dependency ruling", () => {
   test("preserves the delegated ruling and includes subsequent explicit owner approvals", () => {
     const rows = register().filter((r) => kinds.has(r.kind));
-    expect(rows).toHaveLength(149);
+    expect(rows).toHaveLength(150);
     expect(rows.filter((r) => r.class === "STANDARD").map((r) => `${r.kind}:${r.name}`).sort()).toEqual([...approved, ...ownerApproved].sort());
     expect(rows.filter((r) => r.class === "NEEDS-OWNER")).toHaveLength(117);
     for (const name of ["opentelemetry", "opentelemetry_sdk", "opentelemetry-otlp", "tracing-opentelemetry"]) {

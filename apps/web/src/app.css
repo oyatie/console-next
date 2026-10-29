@@ -1,11 +1,13 @@
 @import "@console/tokens/tokens.css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+@import "./generated/fonts/catalog.css";
 @property --trigger-width { syntax: "*"; inherits: true; }
 @property --tree-item-level { syntax: "*"; inherits: true; }
 
 /* Tokens only: no literal colours or sizes below this line. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
+:root[data-font-fallback] { --font-sans: var(--font-system); }
 body {
   background: var(--canvas);
   color: var(--ink);

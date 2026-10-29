@@ -10657,5 +10657,48 @@
     "lastRelease": "repository snapshot 2026-10-26",
     "maintainers": "repository maintainers",
     "footprint": "existing gate; runtime delta unmeasured"
+  },
+  "ci-tool:fontTools/pyftsubset": {
+    "group": "CI and platform tools",
+    "job": "Generating web font subsets from the UI catalogs",
+    "verdict": "keep",
+    "convention": "Explicit owner approval",
+    "class": "STANDARD",
+    "approved_by": "owner",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-29",
+      "ruling": "Owner-approved catalog font subsetting",
+      "source": "docs/quality/dependency-ruling-2026-10-29.md"
+    },
+    "alternatives": "Existing dynamic font subsets; repository-native OpenType/WOFF2 subsetter (substantially larger and riskier)",
+    "reason": "approved_by owner 2026-10-29; allowed use: generating web font subsets from the UI catalogs; build-time only; includes the MIT Brotli WOFF2 codec",
+    "evidence": [
+      "https://github.com/fonttools/fonttools",
+      "https://fonttools.readthedocs.io/en/latest/subset/",
+      "https://github.com/google/brotli",
+      "docs/quality/dependency-ruling-2026-10-29.md",
+      "apps/web/font-subsets.requirements.txt"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "approvedUsers": [
+      "scripts/font-subsets.mjs"
+    ],
+    "approvedUses": [
+      {
+        "user": "scripts/font-subsets.mjs",
+        "layer": "build/tooling"
+      }
+    ],
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "exitPlan": "Retain generated fonts until an approved replacement proves glyph, weight, layout and transfer parity.",
+    "license": "MIT (fontTools and Brotli codec)",
+    "lastRelease": "Pinned fontTools 4.67.0; Brotli 1.2.0",
+    "maintainers": "fonttools and google/brotli upstream projects",
+    "footprint": "Build-time only; executable tooling excluded from the browser bundle",
+    "securityProcess": "SHA-256 pinned binary-only wheels; no transitive dependency installation; offline input/output verification in builds"
   }
 }

@@ -202,3 +202,36 @@ for (const width of [1440, 390]) test(`shell: failed session restore keeps recov
     expect(fixture.unexpected).toEqual([]);
   } finally { held.resolve(); await page.close(); fixture.release(); }
 });
+
+for (const width of [1440, 1024, 390]) test(`org: normal fonts never move painted controls at ${width}px @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript(() => {
+    const previous = new WeakMap<Element, { text: string | null; x: number; y: number }>();
+    const moves: string[] = [];
+    Object.assign(window, { fontControlMoves: moves });
+    const sample = () => {
+      for (const el of document.querySelectorAll(".top button, .top a, .top select, main .page__head button, main section[aria-label] input, main section[aria-label] button")) {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) continue;
+        const before = previous.get(el);
+        const now = { text: el.textContent, x: r.x, y: r.y };
+        if (before && before.text === now.text && (Math.abs(now.x - before.x) > 0.5 || Math.abs(now.y - before.y) > 0.5)) moves.push(`${now.text}: ${before.x},${before.y} → ${now.x},${now.y}`);
+        previous.set(el, now);
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.addInitScript(recordShifts);
+  const fixture = await mockScreen(page, screens[2], "populated");
+  try {
+    // Natural font requests: the late-font cases below intentionally hold them.
+    await page.goto("/org");
+    await expect(page.getByRole("tree")).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    await expectAccessible(page, `org: normal fonts at ${width}px`);
+    await page.evaluate(() => new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+    expect(await page.evaluate(() => (window as unknown as { fontControlMoves: string[] }).fontControlMoves)).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
