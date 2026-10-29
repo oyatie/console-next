@@ -4,7 +4,7 @@ import { ApiError } from "@console/api";
  * A refusal (4xx: not signed in, no permission, not found, refused by a rule) is the server's answer, not a fault:
  * it is shown once and never asked again on its own. Only a person's retry (refetch) asks again.
  */
-export const isAnswer = (e: unknown) => e instanceof ApiError && e.status >= 400 && e.status < 500;
+const isAnswer = (e: unknown) => e instanceof ApiError && e.status >= 400 && e.status < 500;
 
 /**
  * The app's query defaults for refusals and faults. A fault (5xx, network) is retried twice, after the server's

@@ -1,6 +1,6 @@
 import { beforeAll, afterEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { PhaseBand } from "../../../shell/phase-band";
 
 // Model the timestamp captured by the mounted setup shell, before its go-live response arrives.
@@ -21,7 +21,7 @@ test("an already mounted setup shell shows the reminder when a later go-live res
   vi.setSystemTime(times.mounted + 2000);
   const content = "route content";
   const html = renderToStaticMarkup(<PhaseBand><span>{content}</span></PhaseBand>);
-  expect(html).toContain("운영 시작 · 되돌리기 → 정정");
+  expect(html).toContain(t("setup.phase.started.title"));
   expect(html).toContain("route content");
 });
 
@@ -31,6 +31,6 @@ test("the operating reminder stays present when the server clock is ahead of the
   vi.setSystemTime(times.mounted + 500);
   const content = "route content";
   const html = renderToStaticMarkup(<PhaseBand><span>{content}</span></PhaseBand>);
-  expect(html).toContain("운영 시작 · 되돌리기 → 정정");
+  expect(html).toContain(t("setup.phase.started.title"));
   expect(html).toContain(content);
 });

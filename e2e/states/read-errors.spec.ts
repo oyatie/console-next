@@ -29,6 +29,63 @@ const certificate = (n: number): components["schemas"]["CertificatePage"]["items
 
 test.beforeAll(() => loadCatalog("ko"));
 
+const outageRoutes = ["/org", "/org/entities", `/org/entities/${id(10)}`, `/org/changes/${id(3000)}`, "/org/move",
+  "/statutory", "/people", `/people/${id(100)}`, "/people/bulk", "/access/roles", "/attendance"];
+for (const path of outageRoutes) for (const reference of [false, true]) {
+  test(`${path}: one outage with ${reference ? "a server reference" : "no reference"} @ui-state`, async ({ page }) => {
+    const fixture = await mockScreen(page, screens[2], "populated");
+    await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
+    try {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/org");
+      const rail = page.getByRole("navigation", { name: t("shell.nav"), includeHidden: true });
+      await expect(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
+      const links = await rail.getByRole("link").allTextContents();
+      await page.route(url => url.pathname.startsWith("/api/"), route => route.request().method() !== "GET" ? route.fallback()
+        : route.fulfill({ status: 503, headers: reference ? { support_reference: id(98) } : {}, json: {
+          error: { code: "service_unavailable", message: "raw upstream detail", ...(reference ? { support_ref: id(98), support_ref_at: AT } : {}) },
+        } }));
+      await page.goto(path);
+      const main = page.getByRole("main");
+      const failed = main.getByRole("alert").filter({ has: page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true }) });
+      // Other page owners remove their own duplicate cards; this slice asserts the shell on those routes.
+      if (path.startsWith("/org")) {
+        await expect(failed).toHaveCount(1, { timeout: 20_000 });
+        await expect(main.getByRole("alert")).toHaveCount(1);
+        await expect(main.locator("[data-support-reference]")).toHaveCount(reference ? 1 : 0);
+      } else await expect(main.getByRole("alert").first()).toBeVisible({ timeout: 20_000 });
+      await expect(rail.getByRole("link")).toHaveText(links);
+      await expect(main.locator('[data-placement="page"]')).toHaveCount(0);
+      await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
+      await expectAxe(page, `${path}/outage`);
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        await fits(page, `${path}/outage/${width}`);
+      }
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
+for (const path of outageRoutes.filter(path => path.startsWith("/org"))) {
+  test(`${path}: the owning page shows one card when its reads and checklist fail @ui-state`, async ({ page }) => {
+    const fixture = await mockScreen(page, screens[2], "populated");
+    const shellReads = ["/api/v1/access/me", "/api/v1/users/me", "/api/v1/me/authz", "/api/v1/onboarding/modules", "/api/v1/support-sessions/active"];
+    await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
+    await page.route(url => url.pathname.startsWith("/api/"), route => route.request().method() !== "GET" || shellReads.includes(new URL(route.request().url()).pathname)
+      ? route.fallback() : route.fulfill({ status: 503, json: { error: { code: "service_unavailable" } } }));
+    try {
+      await page.goto(path);
+      const main = page.getByRole("main");
+      await expect(main.getByRole("alert")).toHaveCount(1, { timeout: 20_000 });
+      await expect(main.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 20_000 });
+      await expect(main.getByRole("alert")).toHaveCount(1);
+      await expect(main.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
 for (const screen of ["support", "certificates", "rollback-reasons", "passkey-policy", "notice-candidates"] as const) {
   for (const status of [503, 403] as const) test(`${screen}: ${status} uses the shared read state @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });

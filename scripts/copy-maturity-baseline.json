@@ -110,8 +110,6 @@
   "packages/i18n/src/catalogs/ko/register.ts register.rehire.foot prose.각주 97de8fc14f9b86f1a637": 1,
   "packages/i18n/src/catalogs/ko/register.ts register.rehire.profile verb.입력 f8f39bcd92654259af70": 1,
   "packages/i18n/src/catalogs/ko/setup.ts setup.phase.setup.detail prose.단계 87f3be8f765501946785": 1,
-  "packages/i18n/src/catalogs/ko/setup.ts setup.phase.started.detail prose.단계 be1f38c2fab544ccd985": 1,
-  "packages/i18n/src/catalogs/ko/setup.ts setup.phase.started.detail prose.운영시제 be1f38c2fab544ccd985": 1,
   "packages/i18n/src/catalogs/ko/setup.ts setup.why.approval prose.설정법령 1e0da28320b6fcf8edc5": 1,
   "packages/i18n/src/catalogs/ko/setup.ts setup.why.employees prose.설정법령 9774123f631234ba87b0": 1,
   "packages/i18n/src/catalogs/ko/setup.ts setup.why.entity prose.설정법령 f4dead8908f689394ebf": 1,

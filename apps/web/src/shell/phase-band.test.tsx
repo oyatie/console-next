@@ -6,19 +6,29 @@ import type { Checklist } from "@console/api/pending";
 import { loadCatalog, t } from "@console/i18n";
 import { PhaseBand } from "./phase-band";
 
-const state = vi.hoisted(() => ({ error: null as unknown, pending: false }));
+const state = vi.hoisted(() => ({ error: null as unknown, pending: false, data: undefined as Checklist | undefined }));
 const routeContent = "route";
 vi.mock("../features/onboarding/ui/use-setup", () => ({ useSetupChecklist: (placeholderData?: Checklist) => {
-  const q = { data: placeholderData, dataUpdatedAt: 0, isPending: state.pending && !placeholderData, isError: true, error: state.error };
+  const q = { data: state.data ?? placeholderData, dataUpdatedAt: 0, isPending: state.pending && !placeholderData, isError: !!state.error, error: state.error };
   return { q, phaseQ: q };
 } }));
 beforeAll(() => loadCatalog("ko"));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); state.pending = false; state.error = null; });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); state.pending = false; state.error = null; state.data = undefined; });
 
-test("a failed shell read shows the shared failure card, manual retry and support reference beside its route", () => {
+test("a failed shell checklist adds no failure card beside its route", () => {
   state.error = new ApiError(503, "service_unavailable", "busy", [], "read-outage", true);
   const html = renderToStaticMarkup(<PhaseBand><p>{t("home.title")}</p></PhaseBand>);
-  for (const text of [t("common.loadFailed.title"), t("common.retry"), "read-outage", t("home.title")]) expect(html).toContain(text);
+  expect(html).toBe(`<p>${t("home.title")}</p>`);
+});
+
+test("the first successful operating receipt is past tense and precedes the page", () => {
+  state.data = { phase: "OPERATING", go_live_at: new Date().toISOString() } as Checklist;
+  const html = renderToStaticMarkup(<PhaseBand><p>{routeContent}</p></PhaseBand>);
+  expect(t("setup.phase.started.title")).toBe("운영을 시작했습니다");
+  expect(t("setup.phase.started.detail")).toBe("설정 단계의 되돌리기는 이제 정정으로 기록합니다.");
+  expect(html).not.toContain("→");
+  expect(html.indexOf(t("setup.phase.started.title"))).toBeLessThan(html.indexOf("<p>route</p>"));
+  expect(html).not.toContain("sticky");
 });
 
 test.each([
@@ -56,6 +66,16 @@ test("blocked storage does not prevent the route from mounting", () => {
 test("a refused shell read keeps its existing presentation", () => {
   state.error = new ApiError(403, "forbidden", "refused");
   expect(renderToStaticMarkup(<PhaseBand><p>{t("home.title")}</p></PhaseBand>)).toBe(`<p>${t("home.title")}</p>`);
+});
+
+test("a failed checklist keeps the remembered receipt without another alert or reference", () => {
+  vi.spyOn(session, "principal", "get").mockReturnValue('["tenant","viewer"]');
+  vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ phase: "OPERATING", go_live_at: new Date().toISOString() }) });
+  state.error = new ApiError(503, "service_unavailable", "busy", [], "read-outage");
+  const html = renderToStaticMarkup(<PhaseBand><p>{routeContent}</p></PhaseBand>);
+  expect(html).toContain(t("setup.phase.started.title"));
+  expect(html).not.toContain('role="alert"');
+  expect(html).not.toContain("read-outage");
 });
 
 test("a held phase read keeps the route without guessing an above-route banner height", () => {

@@ -21,6 +21,7 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
     await route.fulfill({ status: 501, json: failure("unmocked_request") });
   });
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: token() });
+  await page.route("**/api/v1/client-errors", route => route.fulfill({ status: 204 }));
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: user });
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
   await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } });

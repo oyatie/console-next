@@ -84,6 +84,13 @@ test("baselined unused ids pass; the baseline fails once an entry is used or rem
 
 const entry = (id: string, text: string) => ({ id, where: "ko/test.ts", text });
 
+test("a dismissible operating receipt may explain the recorded transition, while phase chips stay terse", () => {
+  const detail = "설정 단계의 되돌리기는 이제 정정으로 기록합니다.";
+  expect(checkTerms([entry("setup.phase.started.detail", detail)], [])).toEqual([]);
+  expect(checkTerms([entry("org.phase.operating", detail)], []).join("\n")).toContain("prose.단계");
+  expect(checkTerms([entry("setup.phase.started.detail", "운영을 시작하면 정정으로 바뀝니다.")], []).join("\n")).toContain("prose.운영시제");
+});
+
 test.each([
   ["term.이력", "org.tab.history", "변경 내역", "변경 이력"],
   ["term.미배치", "people.status", "소속 지점 미지정", "미배치"],
