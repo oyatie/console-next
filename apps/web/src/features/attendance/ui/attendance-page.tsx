@@ -7,7 +7,7 @@ import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Tabs } from "../../../ui/tabs/tabs";
-import { crewsQuery, patternsQuery, treeQuery, type Layer, type ScopeKind } from "../api";
+import { patternsQuery, treeQuery, type Layer, type ScopeKind } from "../api";
 import { AttendanceHead } from "./attendance-head";
 import { AssignSheet, type AssignTarget } from "./assign-sheet";
 import { CalendarView } from "./calendar-view";
@@ -21,7 +21,6 @@ import { HolidaysView } from "./holidays-view";
 import { PatternSheet } from "./pattern-sheet";
 import { PatternsView } from "./patterns-view";
 import { PublicHolidaysView } from "./public-holidays-view";
-import { WeeklyView } from "./weekly-view";
 import { IssuesTab } from "./issues-tab";
 import { CloseTab } from "./close-tab";
 import { OvertimeTab } from "./overtime-tab";
@@ -45,10 +44,6 @@ export function MonthPage() {
 
 export function DayPage() {
   return <AttendanceLayout>{head => <DayTab head={head} />}</AttendanceLayout>;
-}
-
-export function WeeklyPage() {
-  return <AttendanceLayout>{() => <WeeklyView />}</AttendanceLayout>;
 }
 
 export function IssuesPage() {
@@ -83,15 +78,14 @@ function ScheduleTab({ head }: { head: ReactNode }) {
   const view = search.view ?? "calendar";
   const tree = useQuery(treeQuery());
   const patterns = useQuery(patternsQuery());
-  const crews = useQuery(crewsQuery());
   const [open, setOpen] = useState<Open>(null);
   const [receipt, setReceipt] = useState<{ message: string; layer?: Layer } | null>(null);
   const go = (patch: Partial<AttendanceSearch>) => void navigate({ search: (s) => ({ ...s, ...patch }) });
 
   const items = [
     { id: "calendar", label: t("attendance.view.calendar") },
-    { id: "types", label: t("attendance.view.types"), count: patterns.data?.items.length ?? "" },
-    { id: "crews", label: t("attendance.view.crews"), count: crews.data?.items.length ?? "" },
+    { id: "types", label: t("attendance.view.types") },
+    { id: "crews", label: t("attendance.view.crews") },
     { id: "holidays", label: t("attendance.view.holidays") },
     { id: "public", label: t("attendance.view.public") },
   ];
@@ -125,7 +119,7 @@ function ScheduleTab({ head }: { head: ReactNode }) {
               <FirstRun patterns={patterns.data?.items.length ?? 0} people={tr.people_total} onSchedule={() => (patterns.data?.items.length ? go({ view: "calendar" }) : setOpen({ pattern: true }))} />
             ) : null}
                 {id === "calendar" ? (
-                  <CalendarView tree={tr} search={search} onScope={(kind, scopeId) => go({ kind, id: scopeId })} onMonth={(month) => go({ month })} onAssign={assign} onCancel={(layer) => setOpen({ cancel: layer })} />
+                  <CalendarView tree={tr} search={search} onScope={(kind, scopeId) => go({ kind, id: scopeId })} onMonth={(month) => go({ month })} onAddPattern={() => setOpen({ pattern: true })} onAssign={assign} onCancel={(layer) => setOpen({ cancel: layer })} />
                 ) : id === "types" ? (
                   <PatternsView onAdd={() => setOpen({ pattern: true })} onRetired={(name) => setReceipt({ message: t("attendancePatterns.pattern.retired", { name }) })} />
                 ) : id === "crews" ? (

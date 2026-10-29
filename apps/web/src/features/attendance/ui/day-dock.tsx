@@ -13,7 +13,7 @@ import { personMonthQuery, type Day, type Entry } from "../api";
 import { duration } from "../domain/minutes";
 import { closed } from "../domain/month-state";
 import { dateText, entryText, shiftText, refusalText } from "../present";
-import { DayBar } from "./day-bar";
+import { DayBar, DayBars } from "./day-bar";
 import { EntryForm } from "./entry-form";
 import { MarkChip } from "./mark-chip";
 import s from "./records.module.css";
@@ -84,7 +84,7 @@ function DayPanel({ day }: { day: Day }) {
   const r = day.recognition;
   return (
     <>
-      <DayBar day={day} />
+      <DayBars days={[day]} labels={[dateText(day.date)]}><DayBar day={day} /></DayBars>
       <KeyValue
         items={[
           { key: "plan", label: t("attendanceRecords.day.plan"), value: day.plan.shift ? shiftText(day.plan.shift) : t(`attendance.dayKind.${day.plan.kind}`) },

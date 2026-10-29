@@ -44,7 +44,7 @@ export function EvidenceField({ value, onChange, disabled }: { value: EvidenceDr
       )}
       {value.kind === "SUPERVISOR_CONFIRM" && value.confirmer && <PersonLabel person={{ ...people.find((p) => p.id === value.confirmer!.id), ...value.confirmer, employee_id: value.confirmer.id }} peers={people} />}
       {value.kind && (
-        <Field label={t("attendanceRecords.evidence.note")} required={value.kind === "OTHER"}>
+        <Field label={t("attendanceRecords.evidence.note")} hint={t("attendanceRecords.evidence.note.hint")} required={value.kind === "OTHER"}>
           {(p) => <TextInput {...p} value={value.note} maxLength={500} onChange={(e) => onChange({ ...value, note: e.target.value })} />}
         </Field>
       )}

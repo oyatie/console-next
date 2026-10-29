@@ -84,7 +84,7 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   await input.fill("+2");
   await visible(input).toBeFocused();
   await visible(input).toHaveAttribute("aria-invalid", "true");
-  await visible(input).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
+  await visible(input).toHaveAccessibleDescription(`${t("attendanceRecords.grammar.hint")} ${t("attendanceRecords.refusal.overtime_typed")}`);
   await input.clear();
   await visible(input).not.toHaveAttribute("aria-invalid");
   await visible(input).toBeFocused();

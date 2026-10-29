@@ -15,7 +15,7 @@ import { personMonthQuery, type Day } from "../api";
 import { duration } from "../domain/minutes";
 import { pageState, type PageState } from "../domain/month-state";
 import { dateText, entryText, monthStateText, monthText, shiftText } from "../present";
-import { DayBar } from "./day-bar";
+import { DayBar, DayBars } from "./day-bar";
 import { MarkChip } from "./mark-chip";
 import s from "./records.module.css";
 
@@ -56,7 +56,7 @@ export function PersonCard({ id, month, head }: { id: string; month?: string; he
               ]}
             />
             <Card title={t("attendanceRecords.card.daysTitle")} flush>
-              <ItemList label={t("attendanceRecords.card.daysTitle")} items={p.days.map((d) => ({ key: d.date, text: <DayLine day={d} /> }))} />
+              <DayBars days={p.days} labels={p.days.map(d => dateText(d.date))}><ItemList label={t("attendanceRecords.card.daysTitle")} items={p.days.map((d) => ({ key: d.date, text: <DayLine day={d} /> }))} /></DayBars>
             </Card>
             <Card title={t("attendanceRecords.card.historyTitle")}>
               {p.history.length ? (

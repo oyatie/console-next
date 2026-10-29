@@ -9,8 +9,8 @@ export function MarkChip({ mark }: { mark: Mark }) {
   return <Chip tone={tone}><span aria-hidden>{tone && GLYPH[tone]}</span> {label}</Chip>;
 }
 
-/** The glyph alone with its word for a screen reader, for a dense cell. */
+/** Dense cells keep the status word visible alongside its redundant glyph. */
 export function MarkGlyph({ mark }: { mark: Mark }) {
   const { tone, label } = labeled(ATTENDANCE_MARK, mark);
-  return <span title={label}><span aria-hidden>{tone && GLYPH[tone]}</span><span className="sr-only">{label}</span></span>;
+  return <span title={label}><span aria-hidden>{tone && GLYPH[tone]}</span><span>{label}</span></span>;
 }

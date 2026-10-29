@@ -1,6 +1,8 @@
 import type { koAttendanceSchedule } from "../ko/attendance-schedule";
 
 export const enAttendanceSchedule: Partial<Record<keyof typeof koAttendanceSchedule, string>> = {
+  "attendanceSchedule.calendar.empty": "No work schedules",
+  "attendanceSchedule.calendar.empty.reason": "Add a work pattern to assign schedules to workplaces and employees.",
   "attendanceSchedule.tree.inherited": "{pattern} · from {from}",
   "attendanceSchedule.tree.noSchedule": "No schedule",
   "attendanceSchedule.tree.missing": "No schedule for {count, number} people",

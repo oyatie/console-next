@@ -104,7 +104,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
           <span className={s.stepText}>{monthText(month)}</span>
           <IconButton size="sm" label={t("attendanceRecords.toolbar.nextMonth")} onClick={() => go({ month: stepMonth(month, 1) })}><ChevronRight size={16} aria-hidden /></IconButton>
         </div>
-        {drafts.length > 0 && <>
+        {drafts.length > 0 && !grid.error && <>
           <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts.length, refused: bad.length })}</span>
           {saveWhy ? <DisabledReason reason={saveWhy} control={() => saveButton} /> : saveButton}
         </>}

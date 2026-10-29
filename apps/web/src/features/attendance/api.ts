@@ -34,7 +34,6 @@ export const crewsQuery = (workplace_id?: string, date?: string) => get("/api/v1
 /** People whose name or employee number matches (a few), for the person pickers. */
 export const peopleQuery = (search: string) => get("/api/v1/employees", { params: { query: { search, limit: 8 } } });
 export const holidaysQuery = (year: number) => get("/api/v1/attendance/holidays", { params: { query: { year } } });
-export const weeklyQuery = (week_start: string) => get("/api/v1/attendance/week52", { params: { query: { week_start } } });
 
 /** OPEN exceptions use the endpoint's offset contract, not the month grid's cursor contract. */
 export const exceptionsQuery = (month: string, branch_id?: string) => ({
