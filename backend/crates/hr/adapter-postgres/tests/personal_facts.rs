@@ -4,6 +4,8 @@
 //! bulk) and the 그룹 입사일's second person and hire bound, as the runtime
 //! role `console_rt`. The 사진 gate is proved in hr-rest `photo_http.rs`.
 
+#[path = "personal_facts/compat.rs"]
+mod compat;
 #[path = "personal_facts/evidence.rs"]
 mod evidence;
 #[path = "personal_facts/notice.rs"]

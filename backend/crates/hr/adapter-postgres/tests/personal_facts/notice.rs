@@ -2,9 +2,7 @@
 use super::*;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn production_corrections_refuse_missing_or_false_confirmation_even_in_a_ui_note(
-    pool: PgPool,
-) {
+async fn production_corrections_refuse_false_confirmation_even_in_a_ui_note(pool: PgPool) {
     let w = world(&pool).await;
     let at: OffsetDateTime = sqlx::query_scalar("SELECT updated_at FROM employees WHERE id = $1")
         .bind(w.in_a)
@@ -24,7 +22,7 @@ async fn production_corrections_refuse_missing_or_false_confirmation_even_in_a_u
     ] {
         let body = serde_json::from_value(json!({
             "expected_updated_at": at.format(&Rfc3339).unwrap(),
-            "changes": { "emergency_contacts": [{ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678" }] },
+            "changes": { "emergency_contacts": [{ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678", "contact_notified": false }] },
             "reason_code": "QUICK_EDIT", "note": note,
         })).unwrap();
         let err =
@@ -79,11 +77,9 @@ async fn historical_contacts_do_not_gain_confirmation_or_basis_on_read(pool: PgP
 async fn bulk_and_requests_cannot_bypass_notice_confirmation(pool: PgPool) {
     let w = world(&pool).await;
     let contact = json!({ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678" });
-    for confirmation in [None, Some(false)] {
+    {
         let mut contact = contact.clone();
-        if let Some(confirmation) = confirmation {
-            contact["contact_notified"] = json!(confirmation);
-        }
+        contact["contact_notified"] = json!(false);
         let changes = json!({"emergency_contacts": [contact]});
         let rows = json!([{ "employee_id": w.in_a, "changes": changes }]);
         let plan =

@@ -107,6 +107,14 @@ const quickStub: Quick = {
 } as unknown as Quick;
 
 describe("EmergencyContacts privacy basis and notification confirmation", () => {
+  test("labels an unconfirmed contact on the card", () => {
+    searchState.act = undefined;
+    const html = renderToStaticMarkup(<EmergencyContacts c={makeCard([
+      { name: "이두리", relation: "PARENT", phone: "+8221234567", contact_notified: false, basis: null },
+    ])} quick={quickStub} />);
+    expect(html).toContain(t("empContact.need.notice"));
+  });
+
   test("the personal card describes emergency response without asking for contact consent", () => {
     const basis = t("empCard.personal.basis");
     expect(basis).toContain("비상연락처는 응급 상황 대비로 기록합니다");

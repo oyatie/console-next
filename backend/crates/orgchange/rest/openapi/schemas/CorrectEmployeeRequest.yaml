@@ -129,7 +129,22 @@ properties:
         type: [array, 'null']
         maxItems: 3
         items:
-          $ref: '#/components/schemas/EmergencyContact'
+          type: object
+          additionalProperties: false
+          required: [name, relation, phone]
+          properties:
+            name:
+              type: string
+              maxLength: 50
+            relation:
+              type: string
+              enum: [SPOUSE, PARENT, CHILD, SIBLING, RELATIVE, OTHER]
+            phone:
+              type: string
+              description: Sent in any common form; answered in E.164.
+            contact_notified:
+              type: boolean
+              description: 'Employee confirmation that this contact was told. Omission by a released client preserves a matching stored contact; a new contact stays unconfirmed with no basis. Explicit false is refused for new or changed contacts (422 emergency_contact_notice_unconfirmed). Contract step: require this field only once no released web omits it.'
       photo:
         description: The upload_id of a confirmed photo upload of this employee; null clears it.
         oneOf:
