@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
 import yaml from 'js-yaml';
 import { pod, refusals } from './fixtures.mjs';
+import { rolloutProgressDeadlineSeconds } from './rollout-deadline.mjs';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const read = path => readFileSync(join(root, path), 'utf8');
@@ -165,12 +166,19 @@ for (const environment of ['exit-test', 'template']) test(`${environment}: rende
   const dir = mkdtempSync(join(tmpdir(), 'platform-cnpg-'));
   try {
     execFileSync(process.execPath, ['deploy/ci/render.mjs', environment, `example.invalid/console@sha256:${'a'.repeat(64)}`, dir], {cwd:root});
-    const rollout = yaml.loadAll(readFileSync(join(dir, 'app/resources.yaml'), 'utf8')).find(doc => doc.kind === 'Rollout');
+    const resources = yaml.loadAll(readFileSync(join(dir, 'app/resources.yaml'), 'utf8'));
+    const rollout = resources.find(doc => doc.kind === 'Rollout');
     const config = JSON.parse(read(`deploy/clusters/${environment}/platform.json`));
     assert.equal(rollout.spec.progressDeadlineAbort, true);
     assert.equal(rollout.spec.progressDeadlineSeconds, config.rolloutProgressDeadlineSeconds);
     assert.ok(rollout.spec.progressDeadlineSeconds > 0);
     if (environment === 'exit-test') assert.ok(rollout.spec.progressDeadlineSeconds < 180, 'abort must fit the existing exit-test wait');
+    const deployment = resources.find(doc => doc.kind === rollout.spec.workloadRef.kind && doc.metadata.name === rollout.spec.workloadRef.name);
+    const startupBudget = Math.max(...deployment.spec.template.spec.containers.map(c => c.startupProbe.failureThreshold * c.startupProbe.periodSeconds));
+    const derivedDeadline = rolloutProgressDeadlineSeconds(rollout, resources, 0);
+    assert.ok(derivedDeadline >= startupBudget, 'shared derivation must protect the rendered startup budget');
+    assert.equal(rolloutProgressDeadlineSeconds(rollout, resources, 7), derivedDeadline + 7, 'environment policy supplies only the margin');
+    if (environment === 'exit-test') assert.ok(derivedDeadline < 180, 'derived budget must fit the unchanged exit-test wait');
     const groups = environment === 'exit-test' ? ['database', 'tests/restore'] : ['database'];
     for (const group of groups) {
       const clusters = yaml.loadAll(readFileSync(join(dir, group, 'resources.yaml'), 'utf8')).filter(doc => doc.kind === 'Cluster');
