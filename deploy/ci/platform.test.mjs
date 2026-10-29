@@ -302,3 +302,23 @@ test('a failed previous-artifact pull is printed and is bootstrap only for a mis
   assert.match(pull, /\[\[ "\$\{code\}" == 404 \]\] \|\| \{ echo .+ exit 1; \}/);
 });
 
+for (const environment of ['exit-test','template']) test(`${environment}: rendered Barman mTLS secrets have certificate issuers and match the plugin contract`, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'backup-render-'));
+  try {
+    execFileSync(process.execPath, ['deploy/ci/render.mjs', environment, `example.invalid/console@sha256:${'a'.repeat(64)}`, dir], {cwd:root});
+    const docs = yaml.loadAll(execFileSync('kustomize', ['build', join(dir,'platform')], {encoding:'utf8',maxBuffer:40*1024*1024})).filter(Boolean);
+    const service = docs.find(doc=>doc.kind==='Service' && doc.metadata.name==='barman-cloud');
+    const deployment = docs.find(doc=>doc.kind==='Deployment' && doc.metadata.name===service.metadata.name);
+    for (const [role,usage] of [['Client','client auth'],['Server','server auth']]) {
+      const secret = service.metadata.annotations[`cnpg.io/plugin${role}Secret`];
+      const certificate = docs.find(doc=>doc.kind==='Certificate' && doc.metadata.namespace===service.metadata.namespace && doc.spec.secretName===secret);
+      assert.ok(certificate, `${role} TLS Secret must be issued declaratively`);
+      assert.ok(certificate.spec.usages.includes(usage));
+      const issuer = docs.find(doc=>doc.kind===certificate.spec.issuerRef.kind && doc.metadata.name===certificate.spec.issuerRef.name && doc.metadata.namespace===certificate.metadata.namespace);
+      assert.deepEqual(issuer?.spec.selfSigned, {});
+      assert.ok(deployment.spec.template.spec.volumes.some(volume=>volume.secret?.secretName===secret));
+      if (role==='Server') assert.ok(certificate.spec.dnsNames.includes(service.metadata.name));
+    }
+    assert.ok(deployment.spec.template.spec.containers[0].args.includes('--server-key=/server/tls.key'));
+  } finally { rmSync(dir, {recursive:true,force:true}); }
+});
