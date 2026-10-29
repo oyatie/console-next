@@ -180,7 +180,7 @@ test("attendance recovery copies both cells and sign-out purges them before anot
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 401, json: failure("session_passkey_reset") });
   await second.click();
   await page.keyboard.press("ControlOrMeta+a");
-  await page.keyboard.type("9-16");
+  await page.keyboard.insertText("9-16");
   const recovery = page.getByRole("dialog", { name: "다시 로그인" });
   await recovery.getByRole("button", { name: "입력 내용 복사" }).click();
   expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe("2026-10-06 · 근태직원 1 · 9-18\n2026-10-06 · 근태직원 2 · 9-16");
