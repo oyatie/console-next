@@ -3,7 +3,7 @@
   "newScreens": {
     "apps/web/src/features/attendance/ui/person-schedule-sheet.tsx#PersonScheduleSheet": {
       "FACT": 40,
-      "REFUSAL": 21,
+      "REFUSAL": 20,
       "EMPTY": 2,
       "LEGAL": 0,
       "RECEIPT": 0,

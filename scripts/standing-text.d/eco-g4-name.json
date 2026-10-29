@@ -3,7 +3,7 @@
   "newScreens": {
     "apps/web/src/features/people/ui/company-mappings.tsx#CompanyMappings": {
       "FACT": 23,
-      "REFUSAL": 22,
+      "REFUSAL": 21,
       "EMPTY": 0,
       "LEGAL": 0,
       "RECEIPT": 4,

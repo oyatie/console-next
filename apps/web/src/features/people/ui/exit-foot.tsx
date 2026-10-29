@@ -141,7 +141,6 @@ function Refusal({ error, employeeId }: { error: unknown; employeeId: string }) 
   if (p && ["exit_protected_period", "dismissal_notice_short", "notice_evidence_missing", "exit_reason_required", "exit_case_required", "reason_class_invalid"].includes(p.code)) {
     return (
       <CommandError error={error} own={own}>
-        <code>{p.code}</code>
         <details>
           <summary>{t("exit.refusal.details")}</summary>
           {p.code === "exit_protected_period" ? <ProtectedPeriods periods={(p.refusals ?? []) as unknown as ProtectedPeriod[]} disclose={false} /> : (

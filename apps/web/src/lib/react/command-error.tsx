@@ -17,11 +17,12 @@ type FieldRefusal = {
   code: string;
 };
 
-function CommandReference({ requestKey, operationId }: { requestKey?: string; operationId?: string }) {
+function CommandReference({ requestKey, api }: { requestKey?: string; api?: ApiError }) {
   return (
     <>
       {requestKey && <p><OutcomeLink id={requestKey} /></p>}
-      {operationId && <div className="muted">{t("common.operationId")} <span className="code">{operationId}</span></div>}
+      {api && <div className="muted"><code>{api.code}</code></div>}
+      <SupportReference reference={api?.supportRef ?? api?.operationId} at={api?.supportRefAt} compact={Boolean(api?.supportRef)} />
     </>
   );
 }
@@ -71,7 +72,8 @@ export function CommandError({
   const readFailure = read || (uncertain && !api?.requestKey);
   const checking = !readFailure && uncertain;
   const finish = checking && recover ? recoveryOf(error) : undefined;
-  const key = readFailure ? undefined : api?.originalOperationId ?? api?.operationId ?? api?.requestKey;
+  // An authentication refusal happens before the operation and has no command outcome to inspect.
+  const key = readFailure || api?.status === 401 ? undefined : api?.originalOperationId ?? api?.operationId ?? api?.requestKey;
   const change = api?.status === 409 && api.code === "stale_revision" && !checking ? api.lastChange : undefined;
   const fields = change?.fields.map(field => fieldLabel?.(field));
   const knownFields = fields?.filter((label): label is string => Boolean(label)) ?? [];
@@ -106,7 +108,7 @@ export function CommandError({
         onFocusField={onFocusField}
       >
         {children}
-        <CommandReference requestKey={key} operationId={api?.operationId} />
+        <CommandReference requestKey={key} api={api} />
       </ErrorSummary>
     );
   }
@@ -124,9 +126,8 @@ export function CommandError({
         {change.fields.length > 0 && <p>{t("requestOutcome.fields", { fields: labels.join(", ") })}</p>}
         {historyHref && change.audit_id && <p><Link to={historyHref as "/"}>{t("requestOutcome.history")}</Link></p>}
       </>)}
-      <SupportReference reference={api?.supportRef} at={api?.supportRefAt} />
       {children}
-      <CommandReference requestKey={key} operationId={api?.operationId} />
+      <CommandReference requestKey={key} api={api} />
     </Banner>
   );
 }

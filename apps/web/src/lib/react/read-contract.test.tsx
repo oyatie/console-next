@@ -37,12 +37,12 @@ test.each(["forbidden", "out_of_scope", "scope_tenant_wide_only", "access_denied
   expect(html).not.toContain("private record");
   expect(html).not.toContain("submit record");
   expect(html).not.toContain("untranslated server message");
-  expect(html).toContain(t("common.denied.myAccess"));
+  expect(html).not.toContain("내 권한 보기");
   expect(html).toContain(t("common.denied.mine.none"));
-  expect(html).toContain('href="/account"');
+  expect(html).not.toContain('href="/account"');
   expect(html).toContain('href="/org/entities"');
   expect(html).toMatch(/class="page"/);
-  expect(html.slice(0, html.indexOf("<details>"))).not.toContain(`<code>${code}</code>`);
+  expect(html.replace(/<details>[\s\S]*?<\/details>/g, "")).toContain(`<code>${code}</code>`);
 });
 
 test("a failed read uses catalog copy instead of raw server text", async () => {
@@ -73,7 +73,7 @@ test.each(["list", "record", "form", "grid"] as const)("%s loading reserves the 
 
 test("a network failure offers retry without an invented support reference", async () => {
   const html = await markup(new TypeError("Failed to fetch"));
-  expect(html).not.toContain(t("common.operationId"));
+  expect(html).not.toContain(t("common.supportReference"));
   expect(html).toContain(t("common.retry"));
   expect(html).not.toContain("Failed to fetch");
 });

@@ -276,10 +276,10 @@ export const koEmpCard = {
   "empCard.f.registerNote": "근로자 명부 비고",
   "empCard.f.registerNote.hint": "명부 9호 기타 · 비워 두면 기록하지 않습니다",
   "empCard.leave.expectedBack": "복직 예정 {date}",
-  "empCard.reveal.error.step_up_required": "패스키로 본인임을 확인한 뒤 다시 보기 합니다.",
-  "empCard.reveal.error.passkey_step_up_failed": "본인 확인에 실패했습니다 · 보기 하지 않았습니다.",
+  "empCard.reveal.error.step_up_required": "패스키로 본인 확인을 마치면 볼 수 있습니다.",
+  "empCard.reveal.error.passkey_step_up_failed": "본인 확인에 실패해 표시하지 않았습니다.",
   "empCard.reveal.error.reveal_rate_limited": "최근 1시간의 보기 한도에 도달했습니다 · 가장 이른 보기로부터 1시간이 지난 뒤 다시 시도하십시오.",
-  "empCard.reveal.error.rrn_vault_unavailable": "암호화 키를 사용할 수 없어 보기 하지 않았습니다.",
+  "empCard.reveal.error.rrn_vault_unavailable": "암호화 키를 사용할 수 없어 표시하지 않았습니다.",
   "empCard.reveal.shown": "{field} 값을 {seconds}초 동안 보여 줍니다.",
   "empCard.reveal.remasked": "{field} 값을 다시 가렸습니다.",
 } as const;

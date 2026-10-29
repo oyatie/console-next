@@ -1,13 +1,13 @@
 {
   "baseline": {
-    "apps/web/src/features/people/ui/lifecycle-trail.tsx#LifecycleTrail": 25,
-    "apps/web/src/features/people/ui/lifecycle-trail-attest.tsx#AttestSheet": 53,
+    "apps/web/src/features/people/ui/lifecycle-trail.tsx#LifecycleTrail": 24,
+    "apps/web/src/features/people/ui/lifecycle-trail-attest.tsx#AttestSheet": 52,
     "apps/web/src/features/people/ui/lifecycle-trail-preview.tsx#useTrailPreview": 1
   },
   "newScreens": {
     "apps/web/src/features/people/ui/lifecycle-trail.tsx#LifecycleTrail": {
       "FACT": 18,
-      "REFUSAL": 1,
+      "REFUSAL": 0,
       "EMPTY": 1,
       "LEGAL": 3,
       "RECEIPT": 2,
@@ -15,7 +15,7 @@
     },
     "apps/web/src/features/people/ui/lifecycle-trail-attest.tsx#AttestSheet": {
       "FACT": 30,
-      "REFUSAL": 3,
+      "REFUSAL": 2,
       "EMPTY": 0,
       "LEGAL": 10,
       "RECEIPT": 10,

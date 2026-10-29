@@ -90,7 +90,6 @@ export function Denied({ screen, error, title, reason, back, need }: { screen?: 
       <EmptyState title={title ?? (screen ? t("common.denied.title", { screen }) : t("common.denied.title.plain"))} reason={need ? requirementText(need) : null} />
       <div className={css.body}>
       <div className={css.row}>
-        <Link to="/account" className={buttonClass("ghost")}>{t("common.denied.myAccess")}</Link>
         <Link to={back?.to ?? "/"} className={buttonClass("ghost")}>{back?.label ?? t("common.denied.back")}</Link>
       </div>
       <section className={css.mine} aria-labelledby={mineId}>
@@ -102,9 +101,8 @@ export function Denied({ screen, error, title, reason, back, need }: { screen?: 
       <details>
         <summary>{t("common.denied.why")}</summary>
         <p>{reason ?? t(why)}</p>
-        <ReadReference error={error} />
-        {error instanceof ApiError && <code>{code}</code>}
       </details>
+      <div className="muted"><code>{code}</code><ReadReference error={error} /></div>
       </div>
     </Card></div>
   );

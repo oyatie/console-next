@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { loadCatalog, t } from "@console/i18n";
+import type { components } from "@console/api";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { mockScreen } from "../mock/screen";
-import { failure } from "../mock/fixtures";
+import { AT, id, failure } from "../mock/fixtures";
 import { moveDetail, unplacedTarget } from "../mock/lifecycle-sheets";
 import { mockRoute } from "../mock/route";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
@@ -149,6 +151,66 @@ for (const width of [1440, 390]) {
     await expect(relocate).toContainText("전근은 휴직 중에는 할 수 없습니다.");
     await fits(page, `move-menu/${width}`);
     await expectAxe(page, `move-menu/${width}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+}
+
+// Refusal contract: a direct URL must explain why the recorded action cannot open.
+test.beforeAll(() => loadCatalog("ko"));
+const appliedTransfer: components["schemas"]["EmployeeLifecycleEvent"] = {
+  id: id(4050), employee_id: id(4000), event_type: "TRANSFER", state: "APPLIED", to_status: "ACTIVE",
+  effective_date: "2026-10-20", comment: "", signoffs: { privacy_notice_ack: true, korean_labor_law_ack: true, payroll_cutoff_ack: false, retirement_settlement_ack: false }, created_by: id(1), created_by_name: "김담당", created_at: AT,
+};
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  for (const verb of ["again", "cancel", "edit"]) test(`applied transfer refuses ${verb} ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    await mockRoute(page, "get", "/api/v1/employees/{id}/lifecycle-events", { status: 200, json: { items: [appliedTransfer], head_version: 1, next_cursor: null } });
+    await page.goto(`/people/${id(4000)}?act=${verb}:${appliedTransfer.id}`);
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    const notice = page.getByRole("status").filter({ hasText: t("person.act.unavailable") });
+    await expect(notice).toContainText(t("person.act.unavailable.invalid_transition"));
+    await expect(notice.getByText("invalid_transition", { exact: true })).toBeVisible();
+    await fits(page, `applied-${verb}/${width}/${theme}`);
+    await expectAxe(page, `applied-${verb}/${width}/${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  test(`certificate settings refusal ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    await mockRoute(page, "post", "/api/v1/hr/certificates", { status: 422, json: failure("certificate_settings_required") });
+    await page.goto(`/people/${id(4000)}?act=cert`);
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });
+    await sheet.getByRole("radio", { name: t("empDoc.cert.kind.EMPLOYMENT"), exact: true }).press("Space");
+    await sheet.getByRole("checkbox", { name: t("empDoc.cert.item.period"), exact: true }).press("Space");
+    await sheet.getByRole("textbox", { name: t("empDoc.certificate.purpose") }).fill("재직 확인");
+    await sheet.getByRole("button", { name: t("empDoc.cert.commit"), exact: true }).click();
+    const refusal = sheet.getByRole("alert");
+    await expect(refusal).toContainText(t("empDoc.certificate.error.certificate_settings_required"));
+    await expect(sheet.getByRole("link", { name: t("empDoc.certificate.settings"), exact: true })).toHaveAttribute("href", `/people/certificates?employee=${id(4000)}#certificate-settings`);
+    await fits(page, `certificate-refusal/${width}/${theme}`);
+    await expectAxe(page, `certificate-refusal/${width}/${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  test(`reveal verification refusal ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    await mockRoute(page, "get", "/api/v1/employees/{id}/rrn", { status: 200, json: { employee_id: id(4000), recorded: true } });
+    await mockRoute(page, "get", "/api/v1/reason-codes", request => ({ status: 200, json: { domain: new URL(request.url()).searchParams.get("domain")!, items: [{ code: "IDENTITY_VERIFICATION", label_ko: "본인 확인", label_en: "Identity verification", requires_note: false, system: true, active: true, involuntary: false, notice_required: false }] } }));
+    await mockRoute(page, "post", "/api/v1/auth/passkey/step-up/start", { status: 401, json: failure("passkey_step_up_failed") });
+    await page.goto(`/people/${id(4000)}`);
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await page.getByRole("button", { name: t("empCard.reveal.open", { field: t("empCard.f.rrn") }), exact: true }).click();
+    const popover = page.getByRole("dialog");
+    await popover.getByRole("radio", { name: t("reason.rrn_reveal.IDENTITY_VERIFICATION"), exact: true }).press("Space");
+    await popover.getByRole("button", { name: t("empCard.reveal.primary"), exact: true }).click();
+    await expect(popover.getByRole("alert")).toContainText(t("empCard.reveal.error.passkey_step_up_failed"));
+    await expect(popover.getByRole("link", { name: t("requestOutcome.open") })).toHaveCount(0);
+    await fits(page, `reveal-refusal/${width}/${theme}`);
+    await expectAxe(page, `reveal-refusal/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);
   });
 }

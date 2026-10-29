@@ -110,3 +110,28 @@ test("P1-3 header and countdown follow the tenant deadline window @ui-state", as
     }
   } finally { await page.close(); fixture.release(); }
 });
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`close refusal opens blocking item ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const fixture = await mockScreen(page, screens[1], "populated");
+    await mockExitCase(page, "reported");
+    const problem: import("@console/api").components["schemas"]["LifecycleProblem"] = {
+      type: "about:blank", title: "Conflict", status: 409, error: { code: "lifecycle.refuse.close_blocked", message: "internal basis" },
+    };
+    await page.route(url => url.pathname === `/api/v1/lifecycle-cases/${exitTrail().id}/close`, route => route.fulfill({ status: 409, contentType: "application/problem+json", json: problem }));
+    await page.goto(exitCaseScreen.path);
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await page.getByRole("button", { name: t("lifecycle.trail.close"), exact: true }).click();
+    const refusal = page.getByRole("alert");
+    await expect(refusal).toContainText(t("lifecycle.refuse.close_blocked"));
+    await expect(refusal.getByText("lifecycle.refuse.close_blocked", { exact: true })).toBeVisible();
+    const link = refusal.getByRole("link", { name: t("lifecycle.trail.openBlocking"), exact: true });
+    await expect(link).toHaveAttribute("href", `${exitCaseScreen.path}#item-${exitTrail().items[0]!.id}`);
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(`#item-${exitTrail().items[0]!.id}$`));
+    await fits(page, `close-refusal/${width}/${theme}`);
+    await expectAxe(page, `close-refusal/${width}/${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+}

@@ -45,6 +45,7 @@ export const enLifecycleTrail = {
   "lifecycle.refuse.self_completion": "You cannot complete items for your own case.",
   "lifecycle.refuse.owner_line": "The item owner permission is required.",
   "lifecycle.refuse.evidence_required": "Provide evidence or a governed exception linked to this item.",
+  "lifecycle.trail.openBlocking": "View open item",
   "lifecycle.refuse.close_blocked": "Complete all blocking items before closing.",
   "lifecycle.refuse.deadline_unknown": "Deadlines come from the register. An unknown deadline cannot be entered as a date.",
   "lifecycle.trail.documents.hire": "Hiring documents and employment contract",
