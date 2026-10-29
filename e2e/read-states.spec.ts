@@ -259,9 +259,9 @@ test.describe("one state contract across console routes", () => {
     await expect(main.getByRole("region", { name: "이 화면에 접근 권한이 없습니다" })).toBeVisible();
     await expect(main.locator("form")).toHaveCount(0);
     await expect(main.getByRole("tablist")).toHaveCount(0);
-    await expect(main.getByText("forbidden", { exact: true })).not.toBeVisible();
+    await expect(main.getByText("forbidden", { exact: true })).toBeVisible();
     await expect(main.getByText("이유 보기", { exact: true })).toBeVisible();
-    await expect(main.getByRole("link", { name: "내 권한 보기", exact: true })).toBeVisible();
+    await expect(main.getByRole("link", { name: "내 권한 보기", exact: true })).toHaveCount(0);
     await main.getByText("이유 보기", { exact: true }).click();
     await expect(main.getByText("forbidden", { exact: true })).toBeVisible();
     await expect(main.getByText(reference, { exact: true })).toBeVisible();
