@@ -11,9 +11,9 @@ use std::collections::HashSet;
 /// `approval.policy.*` + IMPORT-2's nine `import.*` + BE-MIG's
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`, support-session ceilings,
 /// inbox settings, five NTS settings, the organization apply time, tenant erasure cooling period,
-/// two privacy reveal settings, the shared deadline display window, and eleven access-review keys.
+/// two privacy reveal settings, the shared deadline display window, eleven access-review keys, and the operational objection-review clock.
 const EXPECTED_KEYS: usize =
-    34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 2 + 2 + 1 + 11 + 1;
+    34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 2 + 2 + 1 + 11 + 1 + 1;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {

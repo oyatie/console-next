@@ -7,6 +7,8 @@ pub mod certificates;
 pub mod change_request_decide;
 pub mod exception_decide;
 pub mod legal_entity_manage;
+pub mod privacy_request_decide;
+pub mod privacy_request_file;
 // --- lane: BE-EMP-UI ---
 pub mod job_title_manage;
 // --- lane: CRUD ---
@@ -24,6 +26,8 @@ use super::action_schema::ActionSchema;
 /// Every enrolled per-action schema (BW-28; decisions D0.1 §3).
 pub const ACTION_SCHEMAS: &[ActionSchema] = &[
     exception_decide::SCHEMA,
+    privacy_request_file::SCHEMA,
+    privacy_request_decide::SCHEMA,
     legal_entity_manage::SCHEMA,
     change_request_decide::SCHEMA,
     job_title_manage::SCHEMA,
@@ -223,3 +227,6 @@ pub mod ops_recovery_decide;
 pub mod support_reference;
 
 pub mod tenant_erase;
+
+#[cfg(test)]
+mod privacy_requests_tests;

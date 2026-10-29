@@ -5,18 +5,20 @@ use super::*;
 fn granted_result_rejects_every_refusal_or_postponement_reason_without_writing() {
     let mut request = request(&[Kind::Access]);
     for reason in [
-        Reason::LawProhibits,
-        Reason::HarmToOthers,
-        Reason::RequiredByLaw,
-        Reason::LawRequires,
-        Reason::ContractPerformance,
-        Reason::JustifiedReason,
+        Ground::LawProhibits,
+        Ground::HarmToOthers,
+        Ground::RequiredByLaw,
+        Ground::LawRequires,
+        Ground::ContractPerformance,
+        Ground::JustifiedReason,
     ] {
         assert_refusal(
             request.decide(
                 Kind::Access,
                 decision(Outcome::Granted, Some(reason)),
                 date!(2026 - 10 - 27),
+                date!(2026 - 11 - 07),
+                &reason_codes(),
             ),
             "reason_code_invalid",
         );
@@ -28,6 +30,8 @@ fn granted_result_rejects_every_refusal_or_postponement_reason_without_writing()
             Kind::Access,
             decision(Outcome::Granted, None),
             date!(2026 - 10 - 27),
+            date!(2026 - 11 - 07),
+            &reason_codes(),
         )
         .unwrap();
     assert_eq!(request.status(), Status::Decided);

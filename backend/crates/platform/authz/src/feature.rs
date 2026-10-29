@@ -292,6 +292,10 @@ pub enum Feature {
     ReasonCodeManage,
     /// Decide a governed exception as the second person (BW-06; S5).
     ExceptionDecide,
+    /// File a privacy request about oneself (Cedar-only).
+    PrivacyRequestFile,
+    /// Intake and decide privacy requests in the subject scope (Cedar-only).
+    PrivacyRequestDecide,
     /// Change approval routes, approver groups and delegation rules (BW-01; S4).
     ApprovalRouteManage,
     /// Decide a change request filed by someone else (BW-17; S10).
@@ -311,7 +315,7 @@ pub enum Feature {
 }
 
 impl Feature {
-    pub const ALL: [Self; 110] = [
+    pub const ALL: [Self; 112] = [
         Self::Login,
         Self::WorkOrderCreate,
         Self::WorkOrderEditIntake,
@@ -415,6 +419,8 @@ impl Feature {
         Self::SettingsManage,
         Self::ReasonCodeManage,
         Self::ExceptionDecide,
+        Self::PrivacyRequestFile,
+        Self::PrivacyRequestDecide,
         Self::ApprovalRouteManage,
         Self::ChangeRequestDecide,
         Self::JobTitleManage,

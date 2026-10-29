@@ -3,7 +3,7 @@
 
 use console_platform_authz::{Feature, PermissionLevel};
 
-pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 110] {
+pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 112] {
     use Feature::{
         AiAssist, ApprovalFinalize, ApprovalRouteManage, AssigneeManage, AuditLogRead,
         AuditStreamAccessLogRead, AuditStreamRead, BenefitCatalogManage, BenefitCatalogRead,
@@ -24,12 +24,12 @@ pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 110] {
         MailAccountManage, MailUse, MasterListImport, NoticeManage, OpsDashboardRead,
         OrgChangeApply, OrgChangeApprove, OrgChangeDraft, OrgChangeRead, OrgUnitManage,
         OrgWideQueueTriage, PayrollRunManage, PayrollRunRead, PeriodLockManage, PriorityManage,
-        ProductionSourceIngest, PurchaseExecute, PurchaseFinalApprove, PurchaseRequestApprove,
-        PurchaseRequestCreate, PurchaseRequestRead, ReasonCodeManage, RecruitingManage,
-        RecruitingRead, RegionManage, RentalQuoteManage, RetainedRecordsRead, RoleManage,
-        SalesManage, SettingsManage, SubordinateUserCreate, TargetManage, TenantOffboard,
-        UserManage, WorkOrderCreate, WorkOrderEditIntake, WorkOrderReadAll, WorkOrderStart,
-        WorkReportSubmit,
+        PrivacyRequestDecide, PrivacyRequestFile, ProductionSourceIngest, PurchaseExecute,
+        PurchaseFinalApprove, PurchaseRequestApprove, PurchaseRequestCreate, PurchaseRequestRead,
+        ReasonCodeManage, RecruitingManage, RecruitingRead, RegionManage, RentalQuoteManage,
+        RetainedRecordsRead, RoleManage, SalesManage, SettingsManage, SubordinateUserCreate,
+        TargetManage, TenantOffboard, UserManage, WorkOrderCreate, WorkOrderEditIntake,
+        WorkOrderReadAll, WorkOrderStart, WorkReportSubmit,
     };
     use PermissionLevel::{Allow as A, Deny as D, Limited as L, RequestOnly as R};
 
@@ -174,6 +174,8 @@ pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 110] {
         (SettingsManage, [D, D, D, D, D, D]),
         (ReasonCodeManage, [D, D, D, D, D, D]),
         (ExceptionDecide, [D, D, D, D, D, D]),
+        (PrivacyRequestFile, [D, D, D, D, D, D]),
+        (PrivacyRequestDecide, [D, D, D, D, D, D]),
         (ApprovalRouteManage, [D, D, D, D, D, D]),
         (ChangeRequestDecide, [D, D, D, D, D, D]),
         (JobTitleManage, [D, D, D, D, D, D]),
