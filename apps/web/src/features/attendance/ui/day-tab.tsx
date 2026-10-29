@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
@@ -39,6 +39,7 @@ const route = getRouteApi("/app/attendance");
  * only after it ends. Drafts typed here are saved through the same save sheet as the month grid.
  */
 export function DayTab({ head }: { head?: ReactNode }) {
+  const grammarHintId = useId();
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
@@ -93,6 +94,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                     {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
                   </p>
                   {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
+                  {b.groups.length > 0 && <p id={grammarHintId} className="muted">{t("attendanceRecords.grammar.hint")}</p>}
                   {!b.groups.length ? (
                     search.issues || search.unscheduled ? (
                       <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
@@ -100,7 +102,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                       <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
                     )
                   ) : search.detail ? (
-                    <DayDetail board={b} store={store} onNote={setNote} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
+                    <DayDetail board={b} store={store} grammarHintId={grammarHintId} onNote={setNote} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : (
                     <DayBars days={rows.map(r => r.day)} labels={rows.map(r => `${r.name} ${r.employee_number ?? ""}`)}>{b.groups.map((g) => (
                       <Card
@@ -110,7 +112,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                         tools={g.hidden > 0 && g.unit_id ? <Button size="sm" variant="ghost" onClick={() => go({ unit: g.unit_id })}>{t("attendanceRecords.board.expand", { count: g.hidden })}</Button> : undefined}
                       >
                         {g.rows.map((r) => (
-                          <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null) } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} onAssign={() => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
+                          <DayRow key={r.employee_id} row={r} grammarHintId={grammarHintId} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null) } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} onAssign={() => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                         ))}
                       </Card>
                     ))}</DayBars>

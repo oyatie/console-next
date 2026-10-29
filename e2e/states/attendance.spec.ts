@@ -215,6 +215,61 @@ for (const screen of attendanceBoardScreens) for (const state of Object.keys(scr
   });
 }
 
+for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) test(`day board status and entry fields stay readable at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme });
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockScreen(page, attendanceBoardScreens[1], "populated");
+  await page.goto(attendanceBoardScreens[1].path);
+  const input = page.getByRole("textbox", { name: /^근태직원 2 기록/ });
+  await expect(input).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const name = page.getByRole("link", { name: "근태직원 2", exact: true });
+  expect((await input.boundingBox())!.width).toBeGreaterThan((await name.boundingBox())!.width);
+  const status = page.getByText(t("attendanceRecords.mark.NO_RECORD"), { exact: true }).locator("..");
+  // Sideways-scroll checks cannot detect text wrapping inside a collapsed column or overlapping fields.
+  const layout = await status.evaluate(el => {
+    const field = el.nextElementSibling!.getBoundingClientRect();
+    const text = document.createRange();
+    text.selectNodeContents(el);
+    const overlaps = Array.from(text.getClientRects()).some(box => box.left < field.right && box.right > field.left && box.top < field.bottom && box.bottom > field.top);
+    const brokenWords: string[] = [];
+    for (const element of [el, el.nextElementSibling!.querySelector("label")!]) {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        for (const word of node.textContent!.matchAll(/\S+/g)) {
+          const range = document.createRange();
+          range.setStart(node, word.index!);
+          range.setEnd(node, word.index! + word[0].length);
+          if (range.getClientRects().length > 1) brokenWords.push(word[0]);
+        }
+      }
+    }
+    return { brokenWords, overlaps };
+  });
+  expect(layout).toEqual({ brokenWords: [], overlaps: false });
+  await testInfo.attach("day-board", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+  for (const detail of [false, true]) {
+    if (detail) await page.getByRole("button", { name: t("attendanceRecords.board.detail"), exact: true }).click();
+    const hint = page.getByText(t("attendanceRecords.grammar.hint"), { exact: true });
+    await expect(hint).toHaveCount(1);
+    await expect(hint).toBeVisible();
+    if (detail && width === 390) await page.getByRole("grid").evaluate(el => { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; });
+    const inputs = detail ? page.getByRole("textbox", { name: /^근태직원 \d+ 입력/ }) : input;
+    await expect(inputs.first()).toBeVisible();
+    for (const control of await inputs.all()) await expect(control).toHaveAccessibleDescription(t("attendanceRecords.grammar.hint"));
+    const editable = inputs.last();
+    await editable.click();
+    await page.keyboard.type("+2");
+    await expect(editable).toHaveValue("+2");
+    await expect(editable).toHaveAccessibleDescription(`${t("attendanceRecords.grammar.hint")} ${t("attendanceRecords.refusal.overtime_typed")}`);
+    await editable.clear();
+    await fits(page, `entry-hint/${detail}/${width}/${colorScheme}`);
+    await expectAxe(page, `entry-hint/${detail}/${width}/${colorScheme}`);
+  }
+  expect(fixture.unexpected).toEqual([]);
+});
+
 for (const width of [1440, 390]) test(`day drawer retains readable board rows at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, attendanceBoardScreens[1], "populated");
@@ -222,6 +277,8 @@ for (const width of [1440, 390]) test(`day drawer retains readable board rows at
   await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
   await expect(page.getByRole(width === 1440 ? "complementary" : "dialog")).toBeVisible();
   const name = page.getByRole("link", { name: "근태직원 1", exact: true });
+  const input = page.getByRole("textbox", { name: /^근태직원 2 기록/ });
+  expect((await input.boundingBox())!.width).toBeGreaterThan((await name.boundingBox())!.width);
   expect(await name.evaluate(el => {
     const range = document.createRange();
     range.selectNodeContents(el);
@@ -281,7 +338,9 @@ for (const sheet of ["cancel", "undo"] as const) for (const state of ["populated
       await page.getByRole("button", { name: t("attendanceRecords.toolbar.save"), exact: true }).click();
       const save = page.getByRole(width === 1440 ? "complementary" : "dialog");
       await chooseRadio(save, /출근부 \(종이\)/);
-      await expect(save.getByRole("textbox", { name: /^메모/ })).toHaveAttribute("maxlength", "500");
+      const memo = save.getByRole("textbox", { name: /^메모/ });
+      await expect(memo).toHaveAttribute("maxlength", "500");
+      await expect(memo).toHaveAccessibleDescription(t("attendanceRecords.evidence.note.hint", { limit: Number(await memo.getAttribute("maxlength")) }));
       await save.getByRole("button", { name: t("attendanceRecords.save.commit", { count: 1 }), exact: true }).click();
       await page.getByRole("button", { name: t("attendanceRecords.receipt.undo"), exact: true }).click();
     }

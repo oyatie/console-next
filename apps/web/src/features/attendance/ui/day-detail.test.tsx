@@ -24,7 +24,7 @@ beforeAll(async () => {
   server = await pickerTestServer("day-detail", `
     import { createElement as h, useState } from 'react';
     import { createRoot } from 'react-dom/client';
-    import { loadCatalog } from '@console/i18n';
+    import { loadCatalog, t } from '@console/i18n';
     import { DayDetail } from '/apps/web/src/features/attendance/ui/day-detail.tsx';
     import { useDrafts } from '/apps/web/src/features/attendance/ui/use-drafts.ts';
     import '/apps/web/src/app.css';
@@ -32,7 +32,7 @@ beforeAll(async () => {
     function Fixture() {
       const store = useDrafts('day-detail-test');
       const [note, setNote] = useState(null);
-      return h('main', null, h('h1', null, 'Day detail'), note && h('p', {role: 'status'}, note), h(DayDetail, {board: ${JSON.stringify(board)}, store, onAssign() {}, onNote: setNote}));
+      return h('main', null, h('h1', null, 'Day detail'), h('p', {id: 'board-grammar'}, t('attendanceRecords.grammar.hint')), note && h('p', {role: 'status'}, note), h(DayDetail, {board: ${JSON.stringify(board)}, store, grammarHintId: 'board-grammar', onAssign() {}, onNote: setNote}));
     }
     createRoot(document.getElementById('root')).render(h(Fixture));
   `);

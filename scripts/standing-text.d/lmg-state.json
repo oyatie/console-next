@@ -9,7 +9,7 @@
     "apps/web/src/features/access/ui/access-routes.tsx#RolesScreen": 51,
     "apps/web/src/features/account/Account.tsx#Account": 44,
     "apps/web/src/features/attendance/ui/attendance-page.tsx#AttendancePage": 119,
-    "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": 81,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": 80,
     "apps/web/src/features/attendance/ui/attendance-page.tsx#MonthPage": 86,
     "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 23,
     "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 22,

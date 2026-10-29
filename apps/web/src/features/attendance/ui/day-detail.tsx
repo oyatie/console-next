@@ -26,7 +26,7 @@ type PendingPaste = { scope: string; date: string; people: PastePerson[]; plan: 
  * employee number (never by name) and says how many matched. The recognition column is the server's preview of the
  * drafts, "computing recognition" while it is on its way, never a guessed number.
  */
-export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard; store: ReturnType<typeof useDrafts>; onAssign: (row: BoardRow) => void; onNote: (message: string) => void }) {
+export function DayDetail({ board, store, grammarHintId, onAssign, onNote }: { board: DayBoard; store: ReturnType<typeof useDrafts>; grammarHintId: string; onAssign: (row: BoardRow) => void; onNote: (message: string) => void }) {
   const rows = useMemo(() => board.groups.flatMap((g) => g.rows), [board.groups]);
   const date = board.date;
   const [query, setQuery] = useState("");
@@ -62,8 +62,8 @@ export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard;
         const s = d ? draftState(d, r.day.plan.kind) : null;
         if (r.own) return t("attendanceRecords.grid.ownRow");
         return (
-          <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} hint={t("attendanceRecords.grammar.hint")} error={s && !s.ok ? refusalText(s.code) : undefined}>
-            {(p) => <TableControl><TextInput {...p} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} /></TableControl>}
+          <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} error={s && !s.ok ? refusalText(s.code) : undefined}>
+            {(p) => <TableControl><TextInput {...p} aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} /></TableControl>}
           </Field>
         );
       },
