@@ -1,11 +1,11 @@
 {
   "baseline": {
-    "apps/web/src/features/people/ui/exit-board.tsx#ExitBoard": 27
+    "apps/web/src/features/people/ui/exit-board.tsx#ExitBoard": 26
   },
   "newScreens": {
     "apps/web/src/features/people/ui/exit-board.tsx#ExitBoard": {
       "FACT": 20,
-      "REFUSAL": 1,
+      "REFUSAL": 0,
       "EMPTY": 1,
       "LEGAL": 3,
       "RECEIPT": 2,

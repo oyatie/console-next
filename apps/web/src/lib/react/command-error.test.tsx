@@ -94,7 +94,7 @@ test.each(["command_processing", "command_applied"])("%s remains checking and us
   expect(banner).toContain(t("requestOutcome.remedy"));
   expect(banner).toContain(`href="/requests/${operation}"`);
   expect(banner).not.toContain(`href="/requests/${key}"`);
-  expect(banner).toContain(t("common.operationId"));
+  expect(banner).toContain(t("common.supportReference"));
   expect(banner).toContain(operation);
 });
 
@@ -147,7 +147,8 @@ test.each([
   expect(banner).not.toContain("server fallback");
   expect(banner).not.toContain(t("requestOutcome.checking"));
   expect(banner).toContain(`href="/requests/${operation}"`);
-  expect(banner).not.toContain("<button");
+  expect(banner.match(/<button/g)).toHaveLength(1);
+  expect(banner).toContain(t("common.supportReference.copy"));
 });
 
 
@@ -205,7 +206,7 @@ test("boundary validation refusal lists every named field and keeps the support 
   expect(markup).toContain("사업장");
   expect(markup).toContain('href="#manager_name"');
   expect(markup).toContain("담당자 이름");
-  expect(markup).toContain(t("common.operationId"));
+  expect(markup).toContain(t("common.supportReference"));
   expect(markup).toContain(operation);
   expect(markup).toContain(`href="/requests/${operation}"`);
   expect(markup).toContain(callerRemedy);
@@ -244,7 +245,7 @@ test("409 field details remain a Banner with change facts and support reference"
   const markup = await html(error, { children: <span>{callerRemedy}</span> });
   expect(markup).not.toContain('data-component="error-summary"');
   expect(markup).toContain(t("requestOutcome.changed", { actor: latest.actor_name, at: fmtDateTime(recordedAt) }));
-  expect(markup).toContain(t("common.operationId"));
+  expect(markup).toContain(t("common.supportReference"));
   expect(markup).toContain(operation);
   expect(markup).toContain(callerRemedy);
 });
@@ -255,7 +256,7 @@ test("bulk refusals remain a Banner with their support reference", async () => {
   ]);
   const markup = await html(error);
   expect(markup).not.toContain('data-component="error-summary"');
-  expect(markup).toContain(t("common.operationId"));
+  expect(markup).toContain(t("common.supportReference"));
   expect(markup).toContain(operation);
 });
 
@@ -267,7 +268,7 @@ test("503 field-shaped details remain a Banner with retry guidance", async () =>
   const markup = await html(error);
   expect(markup).not.toContain('data-component="error-summary"');
   expect(markup).toContain(t("common.failed.retryAfter", { seconds: "2" }));
-  expect(markup).toContain(t("common.operationId"));
+  expect(markup).toContain(t("common.supportReference"));
   expect(markup).toContain(operation);
 });
 
@@ -278,4 +279,40 @@ test("a non-stale 409 never displays supplied last-change facts", async () => {
   const markup = await html(error);
   expect(markup).not.toContain(latest.actor_name);
   expect(markup).not.toContain(t("requestOutcome.changed", { actor: latest.actor_name, at: fmtDateTime(recordedAt) }));
+});
+
+// A refusal has one quotable identifier; the outcome link remains an action.
+test.each([false, true])("one support identifier (server reference: %s)", async supported => {
+  const reference = "abcdef0123456789";
+  const error = new ApiError(409, "invalid_transition", "diagnostic", [], operation, true, [], {
+    requestKey: key, ...(supported ? { supportRef: reference, supportRefAt: "2026-10-22T04:50:18.769Z" } : {}),
+  });
+  const markup = await html(error);
+  expect(markup.match(/<data /g)).toHaveLength(1);
+  expect(markup).toContain(`data-support-reference="${supported ? reference : operation}"`);
+  expect(markup).not.toContain("문의 번호");
+  expect(markup).toContain(`href="/requests/${operation}"`);
+  if (!supported) expect(markup).toContain(`>${operation}</code>`);
+  if (supported) {
+    expect(markup).toContain("KST</time>");
+    expect(markup.match(/<time[^>]*>([^<]+)<\/time>/)?.[1]).not.toMatch(/UTC|\dT\d/);
+    expect(markup).not.toContain(`>${operation}<`);
+  }
+});
+
+test("field validation uses the same single support identifier", async () => {
+  const markup = await html(new ApiError(422, "validation", "diagnostic", [], operation, true, [], {
+    supportRef: "validation-support", errors: [{ field: "name", code: "required" }],
+  }));
+  expect(markup).toContain('data-support-reference="validation-support"');
+  expect(markup).not.toContain(`>${operation}<`);
+});
+
+test("failed passkey verification cannot offer a command outcome", async () => {
+  const markup = await html(new ApiError(401, "passkey_step_up_failed", "diagnostic", [], operation, true, [], { requestKey: key }), {
+    own: code => code === "passkey_step_up_failed" ? t("empCard.reveal.error.passkey_step_up_failed") : undefined,
+  });
+  expect(markup).toContain("본인 확인에 실패해 표시하지 않았습니다.");
+  expect(markup).not.toContain(t("requestOutcome.open"));
+  expect(markup).not.toContain("/requests/");
 });

@@ -45,6 +45,7 @@ export const koLifecycleTrail = {
   "lifecycle.refuse.self_completion": "본인 사건의 처리 항목은 직접 완료할 수 없습니다.",
   "lifecycle.refuse.owner_line": "이 항목의 담당 권한이 필요합니다.",
   "lifecycle.refuse.evidence_required": "이 항목에 연결된 증빙 또는 예외 처리 기록이 필요합니다.",
+  "lifecycle.trail.openBlocking": "미완료 항목 보기",
   "lifecycle.refuse.close_blocked": "필수 항목을 모두 처리한 뒤 종료하십시오.",
   "lifecycle.refuse.deadline_unknown": "기한은 법정 기준에서만 정합니다. 미확인 기한을 날짜로 입력할 수 없습니다.",
   "lifecycle.trail.documents.hire": "입사 서류 · 근로계약 확인",

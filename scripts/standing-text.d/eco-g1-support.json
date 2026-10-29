@@ -1,11 +1,11 @@
 {
   "baseline": {
-    "apps/web/src/features/support-access/ui/support-access.tsx#SupportAccess": 28
+    "apps/web/src/features/support-access/ui/support-access.tsx#SupportAccess": 27
   },
   "newScreens": {
     "apps/web/src/features/support-access/ui/support-access.tsx#SupportAccess": {
       "FACT": 10,
-      "REFUSAL": 22,
+      "REFUSAL": 21,
       "EMPTY": 2,
       "LEGAL": 0,
       "RECEIPT": 2,

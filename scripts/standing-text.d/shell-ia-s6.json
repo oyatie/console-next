@@ -1,11 +1,11 @@
 {
   "baseline": {
-    "apps/web/src/routes/inbox-screen.tsx#InboxScreen": 26
+    "apps/web/src/routes/inbox-screen.tsx#InboxScreen": 25
   },
   "newScreens": {
     "apps/web/src/routes/inbox-screen.tsx#InboxScreen": {
       "FACT": 10,
-      "REFUSAL": 15,
+      "REFUSAL": 14,
       "EMPTY": 1,
       "LEGAL": 0,
       "RECEIPT": 0,

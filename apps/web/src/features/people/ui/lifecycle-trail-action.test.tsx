@@ -36,7 +36,7 @@ test.each(["close", "attest"])("%s refreshes the case, case lists and inbox with
     return { fetch, unsubscribe: observer.subscribe(() => {}) };
   });
   try {
-    renderToStaticMarkup(<QueryClientProvider client={client}>{kind === "close" ? <CaseCloseAction id="case" /> : <AttestSheet caseId="case" item={{ id: "item" } as CaseItem} onClose={() => {}} />}</QueryClientProvider>);
+    renderToStaticMarkup(<QueryClientProvider client={client}>{kind === "close" ? <CaseCloseAction id="case" items={[]} /> : <AttestSheet caseId="case" item={{ id: "item" } as CaseItem} onClose={() => {}} />}</QueryClientProvider>);
     command.send!();
     await vi.waitFor(() => { for (const read of reads.slice(0, changed.length)) expect(read.fetch).toHaveBeenCalledOnce(); });
     for (const read of reads.slice(changed.length)) expect(read.fetch).not.toHaveBeenCalled();

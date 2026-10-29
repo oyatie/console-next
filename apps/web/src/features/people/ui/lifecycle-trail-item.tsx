@@ -16,7 +16,7 @@ import s from "./lifecycle-trail.module.css";
 export function TrailCaseEnd({ value }: { value: LifecycleCase }) {
   return <>
     {value.cancellation_reason && <p>{value.cancellation_reason}</p>}
-    {value.state === "OPEN" && <CaseCloseAction id={value.id} />}
+    {value.state === "OPEN" && <CaseCloseAction id={value.id} items={value.items} />}
   </>;
 }
 

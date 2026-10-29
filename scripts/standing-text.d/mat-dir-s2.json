@@ -4,16 +4,36 @@
   },
   "newScreens": {
     "apps/web/src/ui/tabs/page-tabs.tsx#PageTabs": {
-      "FACT": 8, "REFUSAL": 0, "EMPTY": 0, "LEGAL": 0, "RECEIPT": 0, "EXPLANATION": 0
+      "FACT": 8,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
     },
     "apps/web/src/features/people/ui/bulk-page.tsx#BulkPage": {
-      "FACT": 44, "REFUSAL": 18, "EMPTY": 4, "LEGAL": 0, "RECEIPT": 11, "EXPLANATION": 0
+      "FACT": 44,
+      "REFUSAL": 17,
+      "EMPTY": 4,
+      "LEGAL": 0,
+      "RECEIPT": 11,
+      "EXPLANATION": 0
     },
     "apps/web/src/features/people/ui/exit-list.tsx#ExitCaseList": {
-      "FACT": 10, "REFUSAL": 15, "EMPTY": 3, "LEGAL": 0, "RECEIPT": 0, "EXPLANATION": 0
+      "FACT": 10,
+      "REFUSAL": 15,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
     },
     "apps/web/src/features/people/ui/notice-list-page.tsx#NoticeListPage": {
-      "FACT": 3, "REFUSAL": 0, "EMPTY": 3, "LEGAL": 0, "RECEIPT": 0, "EXPLANATION": 0
+      "FACT": 3,
+      "REFUSAL": 0,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
     }
   }
 }

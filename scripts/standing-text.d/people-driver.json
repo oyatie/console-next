@@ -1,0 +1,41 @@
+{
+  "baseline": {
+    "apps/web/src/features/identifiers/ui/numbering-page.tsx#NumberingPage": 71,
+    "apps/web/src/features/people/ui/notice-new-page.tsx#NoticeNewPage": 24,
+    "apps/web/src/features/people/ui/renew-page.tsx#RenewPage": 46
+  },
+  "newScreens": {
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": {
+      "FACT": 56,
+      "REFUSAL": 17,
+      "EMPTY": 4,
+      "LEGAL": 0,
+      "RECEIPT": 17,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#MonthPage": {
+      "FACT": 51,
+      "REFUSAL": 18,
+      "EMPTY": 4,
+      "LEGAL": 0,
+      "RECEIPT": 27,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/statutory/ui/statutory-page.tsx#StatutoryPage": {
+      "FACT": 24,
+      "REFUSAL": 14,
+      "EMPTY": 1,
+      "LEGAL": 1,
+      "RECEIPT": 11,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/company-domain/ui/domain-page.tsx#default": {
+      "FACT": 15,
+      "REFUSAL": 14,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    }
+  }
+}
