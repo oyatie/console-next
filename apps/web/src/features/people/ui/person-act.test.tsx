@@ -14,10 +14,22 @@ const detail = { employee: { id: "person", name: "김직원", status: "ACTIVE", 
 test.each(["again:event", "cancel:event", "edit:event", "correct:missing", "rescind:missing", "PROMOTE"])("%s always explains the unavailable action", act => {
   const markup = renderToStaticMarkup(<ActHost d={detail} act={act} events={{ data: { items: [event], head_version: 1 }, isFetching: false } as unknown as Props["events"]} onClose={() => {}} onOpen={() => {}} onRecorded={() => {}} />);
   expect(markup).toContain(t("person.act.unavailable"));
-  expect(markup).toMatch(/<code[^>]*>(invalid_transition|not_found)<\/code>/);
+  expect(markup).not.toContain("<code");
   expect(markup).toContain(act.endsWith(":missing") ? "기록을 찾을 수 없습니다" : "상태");
 });
 
+test("fallback wording uses the personnel history glossary", () => {
+  expect(t("person.act.unavailable.state")).toContain("인사 이력");
+  expect(t("person.act.unavailable.state")).not.toContain("발령 이력");
+});
+
+
+test.each(["correct", "rescind"])("%s displays an unfamiliar server refusal code with a catalog fallback", verb => {
+  const items = [{ ...event, action_refusals: { [verb]: "lifecycle_rule_changed" } }];
+  const markup = renderToStaticMarkup(<ActHost d={detail} act={`${verb}:event`} events={{ data: { items, head_version: 1 }, isFetching: false } as unknown as Props["events"]} onClose={() => {}} onOpen={() => {}} onRecorded={() => {}} />);
+  expect(markup).toContain("lifecycle_rule_changed");
+  expect(markup).toContain(t("person.act.unavailable.state"));
+});
 
 test.each([
   ["SCHEDULED", "TRANSFER", undefined, "lifecycle_void_not_applied"],

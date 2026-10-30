@@ -73,10 +73,10 @@ function resolve(d: Detail, act: string, events: LifecycleEvent[] | undefined): 
     const key = `person.act.unavailable.${code}`;
     return { kind: "unavailable", code, why: reason ?? (isMessageId(key) ? t(key) : t("person.act.unavailable.state")) };
   };
-  if (verb && id && !x) return unavailable("not_found");
+  if (verb && id && !x) return unavailable(undefined, t("person.act.unavailable.not_found"));
   const refusal = verb === "correct" || verb === "rescind" ? x?.action_refusals?.[verb] : undefined;
   if (refusal) return unavailable(refusal);
-  if (verb === "cancel") return x && cancellable(x) ? { kind: "cancel", x } : unavailable("invalid_transition");
+  if (verb === "cancel") return x && cancellable(x) ? { kind: "cancel", x } : unavailable();
   if (verb === "rescind") return x && voidable(x, events) ? { kind: "rescind", x } : unavailable();
   if (verb === "correct") {
     // A group transfer is rescinded and recorded again, never corrected in place.
@@ -84,11 +84,11 @@ function resolve(d: Detail, act: string, events: LifecycleEvent[] | undefined): 
     const signoffs = listed?.required_signoffs ?? CORRECTION_SIGNOFFS[x.event_type] ?? BASE_SIGNOFFS;
     return { kind: "form", offer: { event_type: type, required_signoffs: signoffs } as Offer, seed: { from: x, mode: "correct" } };
   }
-  if (!listed || !state?.enabled) return unavailable("invalid_transition", why);
+  if (!listed || !state?.enabled) return unavailable(undefined, why);
   const offer = { ...listed, event_type: type, min: state.min, max: state.max, after: state.after, before: state.before } as Offer;
   if (verb === null || act === "APPOINT:job" || act === "TRANSFER:relocate") return { kind: "form", offer };
-  if (verb === "edit") return x && cancellable(x) ? { kind: "form", offer: { ...listed, event_type: type } as Offer, seed: { from: x, mode: "edit" } } : unavailable("invalid_transition");
-  return x && x.state !== "APPLIED" ? { kind: "form", offer, seed: { from: x, mode: "again" } } : unavailable("invalid_transition");
+  if (verb === "edit") return x && cancellable(x) ? { kind: "form", offer: { ...listed, event_type: type } as Offer, seed: { from: x, mode: "edit" } } : unavailable();
+  return x && x.state !== "APPLIED" ? { kind: "form", offer, seed: { from: x, mode: "again" } } : unavailable();
 }
 
 /**
