@@ -458,6 +458,18 @@ async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
     .await
     .unwrap();
     assert_eq!(docs, 1);
+    let emits: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM audit_events a JOIN inbox_docs d ON a.target_id=d.id::text
+         WHERE a.action='inbox_doc.emit' AND d.kind='payslip' AND d.source_id=$1",
+    )
+    .bind(run.to_string())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        emits, 1,
+        "successful issuance emits exactly one document audit; refusal and replay emit none"
+    );
 
     let (status, delivery) = send(
         &rt,

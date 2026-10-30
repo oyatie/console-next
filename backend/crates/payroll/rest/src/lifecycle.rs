@@ -604,7 +604,6 @@ pub(crate) async fn issue_payslips(
                     payload,
                 )
                 .map_err(RestError::from_kernel)?;
-                require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
                 let (summary, emit_events) = emit_inbox_doc_in_tx(
                     tx,
                     org,
