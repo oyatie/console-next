@@ -10,6 +10,10 @@ use console_kernel_core::{KernelError, OrgId, Timestamp};
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
+#[path = "visible_employee.rs"]
+mod employee;
+pub use employee::{EmployeePlacement, EmployeeVisibility};
+
 use crate::access::{
     AccessEngineError, AccessSlice, NodeKind, NodePath, NodeRef, load_access_subject, scope_path,
 };
@@ -28,6 +32,7 @@ use super::residual::{
 pub struct DecisionFacts {
     slice: AccessSlice,
     paths: BTreeMap<NodeRef, NodePath>,
+    department_placements: BTreeMap<Uuid, NodePath>,
     roles: Vec<String>,
     org: OrgId,
     actor: Uuid,
@@ -207,7 +212,9 @@ pub async fn load_facts(
             scope_path(org, NodeKind::Workplace, Some(id), Some(le)),
         );
     }
-    for (id, path) in dept_paths(tx, org, None).await? {
+    let mut department_placements = BTreeMap::new();
+    for (id, department) in dept_paths(tx, org, None).await? {
+        let path = department.current;
         if path
             .0
             .iter()
@@ -222,10 +229,14 @@ pub async fn load_facts(
             },
             path,
         );
+        if let Some(placement) = department.placement {
+            department_placements.insert(id, placement);
+        }
     }
     Ok(DecisionFacts {
         slice,
         paths,
+        department_placements,
         roles,
         org,
         actor,

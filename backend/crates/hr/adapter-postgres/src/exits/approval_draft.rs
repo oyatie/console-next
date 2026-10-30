@@ -10,7 +10,7 @@ use sqlx::Row;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::authz::authorize_hr_scoped_write;
+use crate::authz::authorize_hr_case;
 use crate::exits::payloads::build_exit_approval_payload;
 use crate::exits::queries::load_exit_case_by_id;
 use crate::exits::settlement::with_ordinary_wage_basis;
@@ -59,11 +59,9 @@ impl HrService {
         let exit_case = with_audit::<_, _, HrError>(&self.pool, event, |tx| {
         Box::pin(async move {
             let context = load_exit_case_context(tx, org_uuid, case_id, true).await?;
-            authorize_hr_scoped_write(
-                &principal,
-                Feature::ExitSettlementManage,
-                context.branch_id,
-            )?;
+            authorize_hr_case(
+                tx, &principal, Feature::ExitSettlementManage, context.branch_id, context.employee_id,
+            ).await?;
             own_record_guard(tx, org, actor, context.employee_id, Feature::ExitSettlementManage).await?;
             if !matches!(
                 context.status.as_str(),

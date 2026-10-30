@@ -56,6 +56,9 @@ pub async fn authorize_hr_person_in(
     employee_id: Uuid,
     tier: Tier,
 ) -> Result<(), HrError> {
+    if feature == Feature::EmployeeDirectoryRead && holds_scoped(principal, feature) {
+        return authorize_hr_case(tx, principal, feature, None, employee_id).await;
+    }
     let reach = hr_reach_in(principal, feature, tier)?;
     if person_in_reach(tx, &reach, employee_id).await? {
         Ok(())
@@ -105,10 +108,47 @@ pub async fn authorize_hr_case(
     branch_id: Option<Uuid>,
     employee_id: Uuid,
 ) -> Result<(), HrError> {
-    if holds_scoped(principal, feature) {
-        return authorize_hr_person(tx, principal, feature, employee_id).await;
+    let facts = if holds_scoped(principal, feature) {
+        super::HrCaseFacts::load(tx, *principal.user_id.as_uuid(), &[employee_id]).await?
+    } else {
+        super::HrCaseFacts::default()
+    };
+    let access = if holds_scoped(principal, feature) {
+        Some(
+            console_platform_authz::cedar_pbac::visible::load_facts(
+                tx,
+                principal.org_id,
+                *principal.user_id.as_uuid(),
+            )
+            .await
+            .map_err(HrError::from_kernel)?,
+        )
+    } else {
+        None
+    };
+    facts.authorize(principal, access.as_ref(), feature, branch_id, employee_id)
+}
+
+impl super::HrCaseFacts {
+    /// The same exit decision for point actions and a page whose resource facts are already loaded.
+    pub fn authorize(
+        &self,
+        principal: &Principal,
+        access: Option<&console_platform_authz::cedar_pbac::visible::DecisionFacts>,
+        feature: Feature,
+        branch_id: Option<Uuid>,
+        employee_id: Uuid,
+    ) -> Result<(), HrError> {
+        if !holds_scoped(principal, feature) {
+            return authorize_hr_scoped_write(principal, feature, branch_id);
+        }
+        let access = access.ok_or_else(|| HrError::internal("exit scope facts unavailable"))?;
+        if self.permits(access, principal.org_id, employee_id, feature)? {
+            Ok(())
+        } else {
+            Err(out_of_scope(principal, feature))
+        }
     }
-    authorize_hr_scoped_write(principal, feature, branch_id)
 }
 
 /// The keys a 발령 (a lifecycle event) passes on: 발령 등록·수정, or — as
