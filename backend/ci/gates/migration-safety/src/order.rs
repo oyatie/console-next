@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub(super) fn check(workspace_dir: &Path) -> Result<(), String> {
+pub fn check(workspace_dir: &Path) -> Result<(), String> {
     let Some(base) = std::env::var_os("MIGRATION_BASE").filter(|base| !base.is_empty()) else {
         return Ok(());
     };
@@ -47,9 +47,21 @@ pub(super) fn check(workspace_dir: &Path) -> Result<(), String> {
     }
 }
 
-fn migration_versions(root: &Path, revision: &str) -> Result<BTreeMap<PathBuf, i64>, String> {
+pub(crate) fn migration_versions(
+    root: &Path,
+    revision: &str,
+) -> Result<BTreeMap<PathBuf, i64>, String> {
     let output = Command::new("git")
-        .args(["ls-tree", "-r", "--name-only", "-z", revision, "--", "."])
+        .args([
+            "ls-tree",
+            "-r",
+            "--full-name",
+            "--name-only",
+            "-z",
+            revision,
+            "--",
+            ".",
+        ])
         .current_dir(root)
         .output()
         .map_err(|error| format!("cannot read migration history at {revision}: {error}"))?;
