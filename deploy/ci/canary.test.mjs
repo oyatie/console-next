@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import yaml from 'js-yaml';
+import { rolloutProgressDeadlineSeconds } from './rollout-deadline.mjs';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const read = path => readFileSync(resolve(root, path), 'utf8');
@@ -33,7 +34,7 @@ test('canary analysis resolves its Service from the controller namespace without
   assert.equal(rollout.spec.progressDeadlineAbort, true, 'shipped Rollout must abort stalled candidates');
   for (const environment of ['exit-test', 'template']) {
     const config = JSON.parse(read(`deploy/clusters/${environment}/platform.json`));
-    assert.ok(Number.isSafeInteger(config.rolloutProgressDeadlineSeconds) && config.rolloutProgressDeadlineSeconds > 0);
+    assert.ok(Number.isSafeInteger(config.rolloutProgressDeadlineMarginSeconds) && config.rolloutProgressDeadlineMarginSeconds >= 0);
   }
 });
 
@@ -53,10 +54,14 @@ function canary(scenario = '', previousImage = `example.invalid/console@sha256:$
     if (scenario === 'sidecar') deployment.spec.template.spec.containers.unshift({name:'sidecar', image:'existing-sidecar'});
     const rollout = docs.find(doc => doc.kind === 'Rollout');
     rollout.spec.workloadRef.name = deployment.metadata.name;
-    rollout.spec.progressDeadlineSeconds = JSON.parse(read('deploy/clusters/exit-test/platform.json')).rolloutProgressDeadlineSeconds;
     rollout.metadata = {name:'console-api', namespace:'console', uid:'rollout-uid'};
     rollout.status = {phase:'Healthy', stableRS:'stable', currentPodHash:'stable', workloadObservedGeneration:1};
     const template = yaml.load(read('deploy/base/app/analysis.yaml'));
+    template.metadata.namespace = rollout.metadata.namespace;
+    if (scenario === 'longer-analysis') Object.assign(template.spec.metrics[0], {count:4, interval:'10s', initialDelay:'5s'});
+    rollout.spec.progressDeadlineSeconds = rolloutProgressDeadlineSeconds(rollout, [deployment, rollout, {...template, metadata:{...template.metadata, namespace:'console'}}],
+      JSON.parse(read('deploy/clusters/exit-test/platform.json')).rolloutProgressDeadlineMarginSeconds);
+    if (scenario === 'larger-deadline') rollout.spec.progressDeadlineSeconds *= 2;
     writeFileSync(join(dir, 'state.json'), JSON.stringify({deployment, rollout, template, originalTemplate:template, image, analyses:[], calls:[], scenario}));
     writeFileSync(join(dir, 'kubectl'), `#!/usr/bin/env node
 const fs = require('node:fs'), assert = require('node:assert/strict');
@@ -94,7 +99,10 @@ else if (a[0] === 'set') {
   state.rollout.status.currentPodHash = state.scenario === 'reused-hash' ? 'stable' : 'fault';
 } else if (a[0] === 'wait') {
   if (a.some(arg => arg.includes('status.abort'))) {
-    if (faulted() && state.rollout.spec.progressDeadlineAbort && state.rollout.spec.progressDeadlineSeconds > 0 && state.scenario !== 'no-abort') {
+    const waitSeconds = Number(a.find(arg => arg.startsWith('--timeout=')).match(/=([0-9]+)s$/)[1]);
+    const metric = state.template.spec.metrics[0];
+    const requiredWait = state.rollout.spec.progressDeadlineSeconds + metric.count * parseFloat(metric.interval) + parseFloat(metric.initialDelay ?? '0s') + 30;
+    if (faulted() && state.rollout.spec.progressDeadlineAbort && state.rollout.spec.progressDeadlineSeconds > 0 && requiredWait <= waitSeconds && state.scenario !== 'no-abort') {
       state.rollout.status.abort = true;
       state.rollout.status.phase = 'Degraded';
       state.rollout.status.conditions = [{type:'Progressing',status:'False',reason:'RolloutAborted',message:'Rollout aborted update to revision 5: ReplicaSet "api-fault" has timed out progressing.'}];
@@ -141,8 +149,19 @@ test('fault reaches the referenced Deployment and named container; shipped deadl
   assert.equal(patches[0][1], 'deployment');
   const patch = JSON.parse(patches[0][patches[0].indexOf('-p') + 1]);
   assert.deepEqual(patch[0], {op:'test',path:'/spec/template/spec/containers/0/image',value:result.state.image});
-  assert.ok(result.state.calls.some(call => call.includes('--for=jsonpath={.status.abort}=true') && call.includes('--timeout=180s')));
+  assert.ok(result.state.calls.some(call => call.includes('--for=jsonpath={.status.abort}=true') && call.includes('--timeout=215s')));
 });
+
+for (const [scenario, waitSeconds] of [['larger-deadline', 385], ['longer-analysis', 275]]) {
+  test(`abort wait follows the rendered ${scenario} plus analysis and 30 s observation margin`, () => {
+    const result = canary(scenario);
+    assert.equal(result.status, 0, result.stderr);
+    for (const field of ['abort', 'phase']) {
+      assert.ok(result.state.calls.some(call => call[0] === 'wait' && call.some(arg => arg.includes(`status.${field}`))
+        && call.includes(`--timeout=${waitSeconds}s`)), `${field} observation must use the derived wait`);
+    }
+  });
+}
 
 test('fault follows workloadRef and application identity with a sidecar at container zero', () => {
   const result = canary('sidecar');

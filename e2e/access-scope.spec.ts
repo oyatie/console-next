@@ -61,6 +61,7 @@ for (const { key, scope } of [
     await addDepartments(admin, "본점", ["인사부"]);
     await role(admin, "부서 인사", ["인사기본 등록·수정", "조직 조회"]);
     await go(admin, "/access/grants");
+    await admin.getByRole("button", { name: ko["access.grant.title"], exact: true }).click();
     await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("이임원");
     await admin.getByRole("option", { name: /이임원/ }).first().click();
     const sheet = admin.getByRole("dialog", { name: "권한 부여" });
@@ -99,8 +100,9 @@ for (const { key, scope } of [
       await routeReady(hr);
       await expect(denied(hr)).toHaveCount(0);
     }
-    for (const path of ["/org", "/org/entities"]) await expect(hr.locator(`.rail__link[href='${path}']`)).toHaveCount(key === "department" ? 0 : 1);
-    await expect(hr.locator(".rail__link[href='/attendance']")).toHaveCount(key === "department" ? 0 : 1);
+    await expect(hr.locator(".rail__link[href='/org']")).toHaveCount(key === "department" ? 0 : 1);
+    await expect(hr.locator(".rail__link[href='/org/entities']")).toHaveCount(0);
+    await expect(hr.locator(".rail__link[href='/attendance']")).toHaveCount(0);
     for (const read of ["/org-structure", "/legal-entities", "/org-units", "/org-changes", "/org-structure/batches"]) expect((await readAsHr(read)).status()).toBe(key === "department" ? 403 : 200);
     expect((await readAsHr("/hr/exit-cases")).status()).toBe(key === "department" ? 403 : 200);
     for (const [tab, read] of [
@@ -139,6 +141,7 @@ for (const { key, name, cell, admitted, paths } of [
   try {
     await role(admin, name, [cell]);
     await go(admin, "/access/grants");
+    await admin.getByRole("button", { name: ko["access.grant.title"], exact: true }).click();
     await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("이임원");
     await admin.getByRole("option", { name: /이임원/ }).first().click();
     const sheet = admin.getByRole("dialog", { name: "권한 부여" });
@@ -204,7 +207,7 @@ test("an HR worker granted 인사 실무 over one 법인 works inside it and is 
   await expect(denied(hr)).toBeVisible();
   await expect(denied(hr)).toContainText("부여된 권한이 없습니다 · 지금은 내 계정만 쓸 수 있습니다");
   await expect(denied(hr)).toContainText("권한을 부여할 수 있는 담당자");
-  await expect(denied(hr).getByRole("link", { name: "내 권한 보기" })).toBeVisible();
+  await expect(denied(hr).getByRole("link", { name: "내 권한 보기" })).toHaveCount(0);
   await denied(hr).getByRole("button", { name: "권한 요청" }).click();
   await denied(hr).getByRole("button", { name: "권한 요청" }).click();
   await expect(denied(hr).getByText("요청하는 까닭을 선택하십시오")).toBeVisible();

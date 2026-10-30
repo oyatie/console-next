@@ -13,9 +13,9 @@ test.each(["terms_not_accepted", "already_operating"])("%s stays hidden until th
   const html = renderToStaticMarkup(<BlockedPanel domain="onboarding" supportRef="00000000-0000-4000-8000-000000000001" title="운영 시작을 확인해 주세요" code={code} unblockers={[{ name: "김관리자" }]} actions={<button>{action}</button>}>{body}</BlockedPanel>);
   await page.setContent(`<main>${html}</main>`);
   expect(await page.locator("body").innerText()).not.toContain(code);
-  expect(await page.locator("body").innerText()).not.toContain("ref 00000000");
+  expect(await page.locator("body").innerText()).not.toContain("00000000");
   await page.getByText("이유 보기", { exact: true }).click();
   expect(await page.locator("details").innerText()).toContain(`onboarding.refuse.${code}`);
-  expect(await page.locator("details").innerText()).toContain("ref 00000000");
+  expect(await page.locator("details").innerText()).toContain("00000000");
   expect(await page.locator("body").innerText()).toContain("문서 내용을 확인해 주세요");
 });

@@ -10,9 +10,26 @@ npm run e2e:states
 npm run e2e:states -- --grep 'people: loading at 390'
 ```
 
-The web CI job runs this suite as its own step after `npm run check`, using its
-installed Chromium headless shell (kept out of `npm run check` so local checks never bind a fixed port). Two workers, no retries and a five-minute
-global timeout keep the mock gate within the PR budget; it never starts a backend.
+CI plans duration-balanced shards before running this suite with Chromium headless
+shell. `timings.json` owns the five-minute shard budget, startup headroom, worker
+count and conservative default for unmeasured tests. The ten-minute global timeout
+and zero retries remain a final guard. A spec exceeding the planning budget fails
+with `STATES_SPEC_OVER_BUDGET` and its path; split that spec before rerunning.
+
+`states-plan` lists the runnable specs and packs whole files longest first. Every
+matrix job downloads that exact plan and runs its file list; `ci-ok` requires the
+planner and every shard. Added tests in measured files get the conservative default
+until measured. Run the planner regressions with `node --test scripts/states-shards.test.mjs`.
+
+Successful dev pushes publish per-spec wall durations and the measurement's worker
+count as `states-timings`. Plans take settings only from committed `timings.json`
+and overlay the latest same-repository dev artifact's spec durations only when its
+worker count matches. Otherwise the committed snapshot and conservative defaults
+apply. Partial, failed, duplicate or mismatched reports cannot refresh measurements.
+CI never overwrites the committed configuration. Local measurements must not
+overwrite CI's trusted artifact. The bootstrap snapshot records 22 fully completed specs (242
+cases) from a local Chromium measurement on 2026-10-30; remaining specs use the
+conservative default until the first successful dev refresh.
 
 Use the existing `E2E_SLOT` / `CONSOLE_WEB_PORT` environment variables to isolate
 concurrent runs. The config builds the web app once, then starts Vite preview on

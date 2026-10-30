@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
+import { problemOf } from "../api";
+import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import { useCommand } from "../../../lib/react/command";
@@ -17,7 +19,10 @@ export function CaseItemAction({ caseId, item }: { caseId: string; item: CaseIte
 }
 
 
-export function CaseCloseAction({ id }: { id: string }) {
+export function CaseCloseAction({ id, items }: { id: string; items: readonly CaseItem[] }) {
   const command = useCommand({ run: () => closeLifecycleCase(id), invalidates: LIFECYCLE_CASE_READS });
-  return <><CommandError error={command.error} own={lifecycleTrailError} /><Button aria-disabled={command.isPending} onClick={() => { if (!command.isPending) command.mutate(); }}>{t("lifecycle.trail.close")}</Button></>;
+  const first = items.find(item => item.blocks_close && ["OPEN", "BLOCKED", "PENDING_TRIGGER"].includes(item.status));
+  return <><CommandError error={command.error} own={lifecycleTrailError}>
+    {problemOf(command.error)?.code === "lifecycle.refuse.close_blocked" && first && <Link to="." hash={`item-${first.id}`}>{t("lifecycle.trail.openBlocking")}</Link>}
+  </CommandError><Button aria-disabled={command.isPending} onClick={() => { if (!command.isPending) command.mutate(); }}>{t("lifecycle.trail.close")}</Button></>;
 }

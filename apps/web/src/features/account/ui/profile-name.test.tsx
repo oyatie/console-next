@@ -107,7 +107,7 @@ test.each([500, 403, 0])("a changed name keeps status %s in the dialog with the 
       await browserExpect(submit).toBeDisabled();
       expect(reads).toBe(1);
     }
-    if (status === 500) await browserExpect(banner.getByText(`ref ${reference.slice(0, 8)}`, { exact: true })).toBeVisible();
+    if (status === 500) await browserExpect(banner.getByText(reference.slice(0, 8), { exact: true })).toBeVisible();
     await browserExpect(dialog.getByRole("textbox")).toHaveValue(changed);
     expect(writes).toBe(1);
     expect(await announcements(page)).toEqual([]);

@@ -62,7 +62,7 @@ test("an embedded held read is one announced line without a page layout", async 
 test("a failed read offers retry and its server support reference", async () => {
   const html = await markup({ isPending: false, error: new ApiError(503, "service_unavailable", "unavailable", [], "read-reference"), data: undefined, refetch: () => {} });
   expect(html).toContain(t("common.retry"));
-  expect(html).toContain(t("common.operationId"));
+  expect(html).toContain(t("common.supportReference"));
   expect(html).toContain("read-reference");
 });
 

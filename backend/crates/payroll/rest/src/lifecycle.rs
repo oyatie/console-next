@@ -20,7 +20,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use console_inbox_adapter_postgres::{PgInboxError, PgInboxStore};
+use console_inbox_adapter_postgres::{PgInboxError, emit_inbox_doc_in_tx};
 use console_inbox_application::EmitInboxDocCommand;
 use console_inbox_domain::{InboxDocKind, NewInboxDoc};
 use console_kernel_core::{AuditAction, AuditEvent, TraceContext, UserId};
@@ -568,66 +568,61 @@ pub(crate) async fn issue_payslips(
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
 
-    // 1. Guard state + release gate and load the deliverable lines.
-    let (run, lines) = with_org_conn::<_, _, RestError>(&pool, org, move |tx| {
-        Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
-            lifecycle::load_payslip_issuance_in_tx(tx, run_id)
-                .await
-                .map_err(RestError::from_lifecycle)
-        })
-    })
-    .await?;
-
-    // 2. Deliver one payslip document per line into the recipient's vault.
-    //    Deduped by (recipient, payroll-run:line) so an interrupted issuance
-    //    re-driven from step 1 never double-delivers.
-    let inbox = PgInboxStore::new(pool.clone());
-    let mut deliveries: Vec<(Uuid, Uuid, Uuid)> = Vec::with_capacity(lines.len());
-    for line in &lines {
-        let payload = json!({
-            "run_id": run_id,
-            "line_id": line.line_id,
-            "period_start": run.period_start.to_string(),
-            "period_end": run.period_end.to_string(),
-            "gross_won": line.gross_won,
-            "deductions": line.deductions,
-            "total_deductions_won": line.total_deductions_won,
-            "net_won": line.net_won,
-            "tax_table_version": line.tax_table_version,
-            "calculation_version": line.version,
-        });
-        let doc = NewInboxDoc::new(
-            InboxDocKind::Payslip,
-            &format!(
-                "급여명세서 {} ~ {} · {}",
-                run.period_start, run.period_end, line.employee_display_name
-            ),
-            None,
-            None,
-            Some("payroll_run"),
-            Some(&run_id.to_string()),
-            payload,
-        )
-        .map_err(RestError::from_kernel)?;
-        let summary = inbox
-            .emit_inbox_doc(EmitInboxDocCommand {
-                actor: Some(actor),
-                recipient: UserId::from_uuid(line.recipient_user_id),
-                doc,
-                dedup_key: Some(format!("payroll-run:{run_id}:line:{}", line.line_id)),
-                trace: TraceContext::generate(),
-                occurred_at: OffsetDateTime::now_utc(),
-            })
-            .await
-            .map_err(RestError::from_inbox)?;
-        deliveries.push((line.line_id, line.employee_id, *summary.id.as_uuid()));
-    }
-
-    // 3. Record the delivery links, flip the run to ISSUED, and audit — one
-    //    atomic transaction.
+    // Delivery and final authorization share one commit: refusals expose no payslip.
     let summary = with_audits::<_, PayslipDeliverySummary, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
+            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            let (run, lines) = lifecycle::load_payslip_issuance_in_tx(tx, run_id)
+                .await
+                .map_err(RestError::from_lifecycle)?;
+            let mut events = Vec::new();
+            // Stable recipient/line keys preserve deduplication on retries.
+            let mut deliveries: Vec<(Uuid, Uuid, Uuid)> = Vec::with_capacity(lines.len());
+            for line in &lines {
+                let payload = json!({
+                    "run_id": run_id,
+                    "line_id": line.line_id,
+                    "period_start": run.period_start.to_string(),
+                    "period_end": run.period_end.to_string(),
+                    "gross_won": line.gross_won,
+                    "deductions": line.deductions,
+                    "total_deductions_won": line.total_deductions_won,
+                    "net_won": line.net_won,
+                    "tax_table_version": line.tax_table_version,
+                    "calculation_version": line.version,
+                });
+                let doc = NewInboxDoc::new(
+                    InboxDocKind::Payslip,
+                    &format!(
+                        "급여명세서 {} ~ {} · {}",
+                        run.period_start, run.period_end, line.employee_display_name
+                    ),
+                    None,
+                    None,
+                    Some("payroll_run"),
+                    Some(&run_id.to_string()),
+                    payload,
+                )
+                .map_err(RestError::from_kernel)?;
+                require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+                let (summary, emit_events) = emit_inbox_doc_in_tx(
+                    tx,
+                    org,
+                    EmitInboxDocCommand {
+                        actor: Some(actor),
+                        recipient: UserId::from_uuid(line.recipient_user_id),
+                        doc,
+                        dedup_key: Some(format!("payroll-run:{run_id}:line:{}", line.line_id)),
+                        trace: TraceContext::generate(),
+                        occurred_at: OffsetDateTime::now_utc(),
+                    },
+                )
+                .await
+                .map_err(RestError::from_inbox)?;
+                events.extend(emit_events);
+                deliveries.push((line.line_id, line.employee_id, *summary.id.as_uuid()));
+            }
+
             require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
             lifecycle::record_payslip_deliveries_in_tx(tx, run_id, &deliveries)
                 .await
@@ -638,15 +633,15 @@ pub(crate) async fn issue_payslips(
                 .ok_or_else(|| {
                     RestError::new(StatusCode::NOT_FOUND, "not_found", "run not found")
                 })?;
-            let event = audit_event(
+            events.push(audit_event(
                 actor,
                 org,
                 "payroll_run.payslip_issue",
                 "payroll_draft_run",
                 run_id,
                 Some(json!({ "issued": summary.issued })),
-            )?;
-            Ok((summary, vec![event]))
+            )?);
+            Ok((summary, events))
         })
     })
     .await?;

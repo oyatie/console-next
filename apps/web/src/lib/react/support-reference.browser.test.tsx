@@ -104,8 +104,8 @@ test("shared load, background, denied and mutation rows copy full ids and pass a
   for (const name of ["load", "background", "denied", "mutation"]) {
     const state = page.locator(`[data-case="${name}"]`);
     expect(await state.locator("[data-support-reference]").count()).toBe(1);
-    expect(await state.locator("code").first().textContent()).toBe(`ref ${reference.slice(0, 8)}`);
-    expect(await state.locator("time").textContent()).toBe("2026-10-22 04:50:18 UTC");
+    expect(await state.locator("[data-support-reference] code").textContent()).toBe(reference.slice(0, 8));
+    expect(await state.locator("time").textContent()).toBe("2026. 10. 22. 13:50 KST");
   }
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1200 });
@@ -121,7 +121,7 @@ test("shared load, background, denied and mutation rows copy full ids and pass a
   expect(await page.evaluate(() => (window as Window & { copied?: string }).copied)).toBe(`ref ${reference}`);
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined }));
   await page.locator('[data-case="load"]').getByRole("button", { name: "지원 참조 번호 복사" }).click();
-  await page.getByText(`ref ${reference}`, { exact: true }).waitFor();
+  await page.getByText(reference, { exact: true }).waitFor();
 }, 30_000);
 
 

@@ -17,10 +17,12 @@ const error = (status: number) => ApiError.fromBody(new Response(null, { status 
 const row = (html: string) => {
   expect(html.match(/data-support-reference=/g)).toHaveLength(1);
   const ref = html.slice(html.indexOf('data-support-reference=')).split("</div>")[0];
-  expect(ref).toContain("ref 01234567");
+  expect(ref).toContain(">01234567</code>");
+  expect(ref).not.toContain("ref ");
   expect(ref).not.toMatch(/<span|<p|class="form"/);
   expect(ref).toContain("지원 참조 번호 복사");
-  expect(ref).toContain("UTC");
+  expect(ref).toContain("2026. 10. 22. 13:50 KST");
+  expect(ref).not.toContain("UTC");
   expect(ref).not.toContain(".769Z</time>");
 };
 test("reference is compact and uses the server timestamp, not trace-id digits", () => {

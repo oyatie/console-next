@@ -36,7 +36,7 @@ export function CertificatesPage() {
   });
   return <div className="page">
     <PageHead title={t("empDoc.certificate.register")} crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} />}
-      tools={can("org_change_apply", "all") && <Button onClick={() => setConfigure(!configure)}>{t("empDoc.certificate.settings")}</Button>} />
+      tools={can("org_change_apply", "all") && <Button id="certificate-settings" onClick={() => setConfigure(!configure)}>{t("empDoc.certificate.settings")}</Button>} />
     {employee && <p><Link to="/people/$id" params={{ id: employee }} search={{}}>{t("empDoc.certificate.employee")}</Link> · <Link to="/people/certificates" search={{}}>{t("empDoc.certificate.all")}</Link></p>}
     {configure && <Settings onClose={() => setConfigure(false)} />}
     <Card label={t("empDoc.certificate.register")} flush>

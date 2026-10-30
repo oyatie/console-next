@@ -147,6 +147,12 @@ pub struct StatutoryRegister {
 }
 
 impl StatutoryRegister {
+    /// Validated rule periods, for batched projections of the register's clocks.
+    #[must_use]
+    pub fn rules(&self) -> &[StatutoryRule] {
+        &self.rules
+    }
+
     pub fn new(
         rules: Vec<StatutoryRule>,
         loss_codes: Vec<InsuranceLossCode>,

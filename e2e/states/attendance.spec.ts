@@ -32,7 +32,7 @@ for (const screen of attendanceScreens) for (const state of Object.keys(screen.s
     if (state === "failed" || state === "refused") {
       await expect(page.getByText(t(state === "failed" ? "common.loadFailed.title" : "common.denied.title.plain"), { exact: true })).toBeVisible({ timeout: 15_000 });
       if (state === "refused") await page.getByText(t("common.denied.why"), { exact: true }).click();
-      await expect(page.getByText(`ref ${attendanceReference.slice(0, 8)}`, { exact: true })).toBeVisible();
+      await expect(page.getByText(attendanceReference.slice(0, 8), { exact: true })).toBeVisible();
       await expect(table).toHaveCount(0);
     } else if (state === "loading") {
       await expect(page.getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();

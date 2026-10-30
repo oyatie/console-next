@@ -168,14 +168,22 @@ impl AccessSlice {
                         .map_err(compile_err)?;
                 }
             }
-            let result = Validator::new(schema.clone()).validate(&policies, ValidationMode::Strict);
-            if !result.validation_passed_without_warnings() {
-                let detail: Vec<String> = result
-                    .validation_errors()
-                    .map(ToString::to_string)
-                    .chain(result.validation_warnings().map(ToString::to_string))
-                    .collect();
-                return Err(AccessEngineError::Compile(detail.join("; ")));
+            // Only the source-defined platform policy set can reuse validation.
+            static PLATFORM_VALIDATED: OnceLock<()> = OnceLock::new();
+            if !subject.grants.is_empty() || PLATFORM_VALIDATED.get().is_none() {
+                let result =
+                    Validator::new(schema.clone()).validate(&policies, ValidationMode::Strict);
+                if !result.validation_passed_without_warnings() {
+                    let detail: Vec<String> = result
+                        .validation_errors()
+                        .map(ToString::to_string)
+                        .chain(result.validation_warnings().map(ToString::to_string))
+                        .collect();
+                    return Err(AccessEngineError::Compile(detail.join("; ")));
+                }
+                if subject.grants.is_empty() {
+                    let _ = PLATFORM_VALIDATED.set(());
+                }
             }
             let org = subject.org.as_uuid().to_string();
             let principal = uid("Account", &subject.account.to_string())?;

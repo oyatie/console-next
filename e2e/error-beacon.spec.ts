@@ -1,3 +1,4 @@
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, vendorPage, unique, tenantSlugField } from "./flows";
 import { expect, test, type Page } from "@playwright/test";
@@ -7,6 +8,7 @@ import { expect, test, type Page } from "@playwright/test";
 // route pattern and the error's constructor name: never its message, the query string or the hash.
 // The entry is matched in both shapes: Vite dev serves sources, a build serves hashed assets.
 const ENTRY = /^\/(src\/main\.tsx|assets\/index-[\w-]+\.js)$/;
+test.beforeAll(() => loadCatalog("ko"));
 const served = process.env.E2E_SERVED === "1";
 type Beacon = { kind: string; release: string; build: string; route: string; name?: string };
 
@@ -93,15 +95,15 @@ test("a mutation 500 displays the same server reference that ops resolves to the
     await expect(panel).toContainText("지원 참조 번호");
     expect(envelope?.support_ref).toMatch(/^[0-9a-f]{32}$/);
     await expect(panel.locator("[data-support-reference]")).toHaveAttribute("data-support-reference", envelope!.support_ref);
-    await expect(panel.getByText(`ref ${envelope!.support_ref.slice(0, 8)}`, { exact: true })).toBeVisible();
+    await expect(panel.getByText(envelope!.support_ref.slice(0, 8), { exact: true })).toBeVisible();
     await expectAccessible(page, "mutation 500 with support reference");
     await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: (value: string) => { (window as Window & { copiedReference?: string }).copiedReference = value; return Promise.resolve(); } } }));
     await panel.getByRole("button", { name: "지원 참조 번호 복사" }).click();
     expect(await page.evaluate(() => (window as Window & { copiedReference?: string }).copiedReference)).toBe(`ref ${envelope!.support_ref}`);
     await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined }));
     await panel.getByRole("button", { name: "지원 참조 번호 복사" }).click();
-    await expect(panel.getByText(`ref ${envelope!.support_ref}`, { exact: true })).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "돌아가기", exact: true }).click();
+    await expect(panel.getByText(envelope!.support_ref, { exact: true })).toBeVisible();
+    await page.getByRole("dialog").getByRole("button", { name: t("common.cancel"), exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByText("지원 참조 번호 조회", { exact: true }).click();
     await page.getByLabel("전체 지원 참조 번호").fill(`ref ${envelope!.support_ref.slice(0, 8)}`);

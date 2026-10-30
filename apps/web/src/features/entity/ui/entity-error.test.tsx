@@ -30,7 +30,7 @@ test("entity validation explains the field in Korean and encloses its reference 
   const markup = renderToStaticMarkup(createElement(RouterProvider, { router }));
   expect(markup).toContain(renderToStaticMarkup(createElement(Fragment, null, t("entity.refusal.english_name_not_latin"))));
   expect(markup).not.toContain("english_name_not_latin");
-  expect(markup).toContain(t("common.operationId"));
+  expect(markup).toContain(t("common.supportReference"));
   expect(markup).toContain('href="/requests/entity-refusal"');
-  expect(markup).toMatch(/data-component="error-summary"[^]*href="\/requests\/entity-refusal"[^]*entity-refusal<\/span><\/div><\/div><\/div>$/);
+  expect(markup).toContain('data-support-reference="entity-refusal"');
 });

@@ -44,7 +44,7 @@ for (const screen of accountScreens) for (const state of Object.keys(screen.stat
         await expect(banner.getByRole("button", { name: t("requestOutcome.check"), exact: true })).toBeEnabled();
         await expect(submit).toBeDisabled();
       }
-      if (state === "save-500") await expect(banner.getByText(`ref ${accountReference.slice(0, 8)}`, { exact: true })).toBeVisible();
+      if (state === "save-500") await expect(banner.getByText(accountReference.slice(0, 8), { exact: true })).toBeVisible();
       await expect(dialog.getByRole("textbox")).toHaveValue(name);
       expect(fixture.writes).toEqual([{ display_name: name }]);
     }

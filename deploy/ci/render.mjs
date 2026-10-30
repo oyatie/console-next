@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import yaml from 'js-yaml';
+import { rolloutProgressDeadlineSeconds } from './rollout-deadline.mjs';
 
 const header = '# SPDX-License-Identifier: LicenseRef-Proprietary\n';
 const [environment, image, output] = process.argv.slice(2);
@@ -12,8 +13,8 @@ assert.ok(['exit-test', 'template'].includes(environment), 'PLAT_OVERLAY: select
 assert.match(image ?? '', /^([^/@]+\/)*[^/:@]+@sha256:[a-f0-9]{64}$/, 'PLAT_IMAGE_DIGEST');
 const directory = resolve(output);
 const config = JSON.parse(readFileSync(`deploy/clusters/${environment}/platform.json`));
-assert.ok(Number.isSafeInteger(config.rolloutProgressDeadlineSeconds) && config.rolloutProgressDeadlineSeconds > 0,
-  'PLAT_ROLLOUT_DEADLINE: configure a positive integer rolloutProgressDeadlineSeconds');
+assert.ok(!Object.hasOwn(config, 'rolloutProgressDeadlineSeconds'),
+  'PLAT_ROLLOUT_DEADLINE: configure only rolloutProgressDeadlineMarginSeconds; the deadline is manifest-derived');
 const lock = JSON.parse(readFileSync('deploy/versions.json'));
 const identity = process.env.PLATFORM_WORKFLOW_IDENTITY ?? config.workflowIdentity;
 const repository = image.split('@')[0];
@@ -28,7 +29,9 @@ for (const doc of docs) {
   }
   if (doc.kind === 'Rollout') {
     doc.spec.replicas = config.apiReplicas;
-    doc.spec.progressDeadlineSeconds = config.rolloutProgressDeadlineSeconds;
+    doc.spec.progressDeadlineSeconds = rolloutProgressDeadlineSeconds(doc, docs, config.rolloutProgressDeadlineMarginSeconds);
+    assert.ok(doc.spec.progressDeadlineSeconds > (doc.spec.minReadySeconds ?? 0),
+      'PLAT_ROLLOUT_DEADLINE: progressDeadlineSeconds must exceed minReadySeconds');
   }
   if (doc.kind === 'Deployment' && doc.metadata.name === 'console-worker') doc.spec.replicas = config.workerReplicas;
   if (doc.kind === 'ExternalSecret') {

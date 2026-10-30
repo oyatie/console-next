@@ -278,10 +278,10 @@ export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
   "empCard.f.registerNote": "Register note",
   "empCard.f.registerNote.hint": "Register item 9 · clear it to remove",
   "empCard.leave.expectedBack": "Expected first day back {date}",
-  "empCard.reveal.error.step_up_required": "Verify with your passkey before viewing.",
-  "empCard.reveal.error.passkey_step_up_failed": "Identity verification failed. The value remains hidden.",
+  "empCard.reveal.error.step_up_required": "You can view the value after verifying your identity with a passkey.",
+  "empCard.reveal.error.passkey_step_up_failed": "Identity verification failed. The value was not displayed.",
   "empCard.reveal.error.reveal_rate_limited": "The hourly viewing limit was reached. Try again one hour after the earliest view.",
-  "empCard.reveal.error.rrn_vault_unavailable": "The encryption key is unavailable. The value remains hidden.",
+  "empCard.reveal.error.rrn_vault_unavailable": "The encryption key is unavailable. The value was not displayed.",
   "empCard.reveal.shown": "Showing {field} for {seconds} seconds.",
   "empCard.reveal.remasked": "{field} is masked again.",
 };
