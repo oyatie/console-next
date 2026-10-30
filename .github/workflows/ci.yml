@@ -265,9 +265,6 @@ jobs:
           path: test-results
           if-no-files-found: error
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
       - name: Install pinned Rust test runner
         run: |
           curl --fail --silent --show-error --location -o "${RUNNER_TEMP}/nextest.tar.gz" \

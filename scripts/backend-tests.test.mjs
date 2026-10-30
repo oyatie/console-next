@@ -161,13 +161,13 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
   const install = job.steps.find((s) => s.name === "Install pinned Rust test runner");
   assert.ok(install.run.includes("releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/"));
   assert.match(install.run, /[a-f0-9]{64}.*sha256sum -c -/);
-  const artifact = job.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@"));
+  const artifact = job.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@") && s.with?.name === "backend-test-results");
   assert.equal(artifact.if, "${{ !cancelled() }}");
   assert.equal(artifact.with["if-no-files-found"], "error");
   assert.ok(workflow.jobs["ci-ok"].needs.includes("backend"));
   const command = workflow.jobs["ci-ok"].steps.map((s) => s.run ?? "").join("\n");
   for (const status of ["success", "failure", "cancelled", "skipped"]) {
-    const shell = command.replace(/\$\{\{ needs\.([\w-]+)\.result \}\}/g, (_, name) => name === "backend" ? status : "success");
+    const shell = command.replace(/\$\{\{ needs(?:\.([\w-]+)|\['([\w-]+)'\])\.result \}\}/g, (_, dotted, quoted) => (dotted ?? quoted) === "backend" ? status : "success");
     assert.equal(spawnSync("bash", ["-e", "-c", shell]).status, status === "success" ? 0 : 1);
   }
 });
