@@ -174,7 +174,6 @@
   "unused-export:apps/web/src/features/people/domain/grid.ts:RowState": 1,
   "unused-export:apps/web/src/features/people/domain/keys.ts:KeyEntry": 1,
   "unused-export:apps/web/src/features/people/domain/leave.ts:RETURN_REQUIRED": 1,
-  "unused-export:apps/web/src/features/people/domain/lifecycle.ts:latestInForce": 1,
   "unused-export:apps/web/src/features/people/domain/notice.ts:Section": 1,
   "unused-export:apps/web/src/features/people/domain/presets.ts:contractEndAfter": 1,
   "unused-export:apps/web/src/features/people/domain/presets.ts:Preset": 1,

@@ -8,6 +8,10 @@ use uuid::Uuid;
 
 #[derive(Debug, Serialize)]
 pub struct EmployeeLifecycleEventResponse {
+    /// GET history only: absent verb means Cedar permits opening its composer.
+    /// Command payload, concurrency and period guards still run at commit.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action_refusals: Option<std::collections::BTreeMap<&'static str, &'static str>>,
     pub id: Uuid,
     pub employee_id: Uuid,
     pub event_type: String,

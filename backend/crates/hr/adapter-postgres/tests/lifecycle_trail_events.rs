@@ -5,6 +5,8 @@
 #[allow(dead_code)]
 #[path = "emp_create/fixture.rs"]
 mod fixture;
+#[path = "support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 
 use console_hr_adapter_postgres::cases::LifecycleCase;
 use console_hr_adapter_postgres::clock::today_kst;
@@ -144,7 +146,13 @@ async fn scheduled_cancel_keeps_its_case_and_withdrawal_reason(pool: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn rescission_cancels_the_original_trail_without_creating_another_case(pool: PgPool) {
-    let (f, employee) = hire(pool, "REGULAR").await;
+    let (f, employee) = hire(pool.clone(), "REGULAR").await;
+    lifecycle_grant::grant(
+        &pool,
+        *f.principal.org_id.as_uuid(),
+        *f.principal.user_id.as_uuid(),
+    )
+    .await;
     let recorded =
         f.hr.record_lifecycle_event(
             f.principal.clone(),

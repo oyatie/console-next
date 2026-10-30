@@ -162,13 +162,32 @@ const appliedTransfer: components["schemas"]["EmployeeLifecycleEvent"] = {
   effective_date: "2026-10-20", comment: "", signoffs: { privacy_notice_ack: true, korean_labor_law_ack: true, payroll_cutoff_ack: false, retirement_settlement_ack: false }, created_by: id(1), created_by_name: "김담당", created_at: AT,
 };
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`history obeys server refusals ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    const event = { ...appliedTransfer, action_refusals: { correct: "forbidden", rescind: "forbidden" } };
+    await mockRoute(page, "get", "/api/v1/employees/{id}/lifecycle-events", { status: 200, json: { items: [event], head_version: 1, next_cursor: null } });
+    await page.goto(`/people/${id(4000)}?tab=events`);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await expect(page.getByRole("heading", { name: /배치직원/, level: 1 })).toBeVisible();
+    const history = page.getByRole("region", { name: t("people.employee.history"), exact: true });
+    await expect(history).toContainText(t("person.history.past"));
+    await expect(history.getByRole("button", { name: t("person.history.correct"), exact: true })).toHaveCount(0);
+    await expect(history.getByRole("button", { name: t("person.history.rescind"), exact: true })).toHaveCount(0);
+    await fits(page, `history-decisions/${width}/${theme}`);
+    await expectAxe(page, `history-decisions/${width}/${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
   for (const [verb, code] of [["correct", "lifecycle_void_not_latest"], ["rescind", "lifecycle_event_voided"]] as const) test(`server refuses ${verb} ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     const event = { ...appliedTransfer, action_refusals: { [verb]: code } };
     await mockRoute(page, "get", "/api/v1/employees/{id}/lifecycle-events", { status: 200, json: { items: [event], head_version: 1, next_cursor: null } });
     await page.goto(`/people/${id(4000)}?act=${verb}:${event.id}`);
-    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     const notice = page.getByRole("status").filter({ hasText: t("person.act.unavailable") });
     await expect(notice).toContainText(t(`person.act.unavailable.${code}`));
     await expect(notice.getByText(code, { exact: true })).toBeVisible();
@@ -179,12 +198,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
   for (const verb of ["again", "cancel", "edit"]) test(`applied transfer refuses ${verb} ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "get", "/api/v1/employees/{id}/lifecycle-events", { status: 200, json: { items: [appliedTransfer], head_version: 1, next_cursor: null } });
     await page.goto(`/people/${id(4000)}?act=${verb}:${appliedTransfer.id}`);
-    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     const notice = page.getByRole("status").filter({ hasText: t("person.act.unavailable") });
-    await expect(notice).toContainText(t("person.act.unavailable.state"));
+    await expect(notice).toContainText(t("person.act.unavailable.invalid_transition"));
     await expect(notice.locator("code")).toHaveCount(0);
     await fits(page, `applied-${verb}/${width}/${theme}`);
     await expectAxe(page, `applied-${verb}/${width}/${theme}`);
@@ -193,12 +213,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
   for (const allowed of [true, false, undefined]) test(`certificate settings refusal ${allowed} ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "post", "/api/v1/hr/certificates", { status: 422, json: failure("certificate_settings_required") });
     const settings = { settings: [], seal_max_bytes: 100000, can_manage: allowed };
     await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: settings });
     await page.goto(`/people/${id(4000)}?act=cert`);
-    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });
     await sheet.getByRole("radio", { name: t("empDoc.cert.kind.EMPLOYMENT"), exact: true }).press("Space");
     await sheet.getByRole("checkbox", { name: t("empDoc.cert.item.period"), exact: true }).press("Space");
@@ -216,12 +237,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
   test(`reveal verification refusal ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "get", "/api/v1/employees/{id}/rrn", { status: 200, json: { employee_id: id(4000), recorded: true } });
     await mockRoute(page, "get", "/api/v1/reason-codes", request => ({ status: 200, json: { domain: new URL(request.url()).searchParams.get("domain")!, items: [{ code: "IDENTITY_VERIFICATION", label_ko: "본인 확인", label_en: "Identity verification", requires_note: false, system: true, active: true, involuntary: false, notice_required: false }] } }));
     await mockRoute(page, "post", "/api/v1/auth/passkey/step-up/start", { status: 401, json: failure("passkey_step_up_failed") });
     await page.goto(`/people/${id(4000)}`);
-    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await page.getByRole("button", { name: t("empCard.reveal.open", { field: t("empCard.f.rrn") }), exact: true }).click();
     const popover = page.getByRole("dialog");
     await popover.getByRole("radio", { name: t("reason.rrn_reveal.IDENTITY_VERIFICATION"), exact: true }).press("Space");
@@ -233,3 +255,18 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 }
+
+
+test("the states theme choice changes application tokens @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => localStorage.setItem("console.theme", "light"));
+  const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+  await page.goto(`/people/${id(4000)}`);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  const canvas = () => page.locator("html").evaluate(el => getComputedStyle(el).getPropertyValue("--canvas"));
+  const light = await canvas();
+  await page.getByRole("button", { name: t("shell.theme.toDark"), exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect.poll(canvas).not.toBe(light);
+  expect(fixture.unexpected).toEqual([]);
+});

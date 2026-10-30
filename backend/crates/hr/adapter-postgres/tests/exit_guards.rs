@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Legal exit refusals run through the real runtime-role service.
+#[path = "support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 mod support;
 use console_hr_adapter_postgres::{HrError, exits::types::ReportEmployeeExitCaseRequest};
 use console_kernel_core::OrgId;
@@ -14,6 +16,7 @@ use uuid::Uuid;
 
 async fn live(pool: &PgPool) -> World {
     let w = world(pool).await;
+    lifecycle_grant::grant(pool, w.org, w.hr_one).await;
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org', $1, true)")
         .bind(w.org.to_string())

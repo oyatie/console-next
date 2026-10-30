@@ -23,6 +23,7 @@ const refusedEvent: components["schemas"]["EmployeeLifecycleEvent"] & { action_r
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`lifecycle dates use the shared display format ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "get", "/api/v1/employees/{id}", { status: 200, json: {
       ...moveDetail, employee: { ...moveDetail.employee, status: "ON_LEAVE", hire_date: "2020-03-02" },
@@ -34,7 +35,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       signoffs: { privacy_notice_ack: true, korean_labor_law_ack: true, payroll_cutoff_ack: false, retirement_settlement_ack: false },
     }], head_version: 1, next_cursor: null } });
     await page.goto(`/people/${id(4000)}?act=RETURN_FROM_LEAVE`);
-    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     const sheet = page.getByRole("dialog", { name: t("lifecycle.title.RETURN_FROM_LEAVE"), exact: true });
     await expect(sheet).toContainText(t("lifecycle.nowSince", { where: `본사 › ${t("lifecycle.changes.siteDirect")}`, date: fmtDate("2020-03-02") }));
     await expect(sheet).toContainText(fmtDate("2026-03-01"));
@@ -47,10 +48,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
   test(`server correction refusal is authoritative ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "get", "/api/v1/employees/{id}/lifecycle-events", { status: 200, json: { items: [refusedEvent], head_version: 1, next_cursor: null } });
     await page.goto(`/people/${id(4000)}?act=correct:${id(4052)}`);
-    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     const notice = page.getByRole("status").filter({ hasText: t("person.act.unavailable") });
     await expect(notice).toContainText(t("person.act.unavailable.lifecycle_void_exit_owned"));
     await expect(notice.getByText("lifecycle_void_exit_owned", { exact: true })).toBeVisible();

@@ -62,7 +62,7 @@ export const koEmpCard = {
   "empCard.rrn.open": "사번·주민등록번호 ›",
   "empCard.tabs": "인사카드 탭",
   "empCard.tab.card": "인사카드",
-  "empCard.tab.events": "발령 이력",
+  "empCard.tab.events": "인사 이력",
   "empCard.tab.docs": "문서",
   "empCard.tab.ledger": "변경 이력",
   "empCard.tab.access": "권한",

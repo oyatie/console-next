@@ -1,7 +1,7 @@
 // Korean source for `peopleJump.` ids (features/people/ui/people-jump: ⌘K and the key map, E1-jump/E1-keys).
 export const koPeopleJump = {
   "peopleJump.do": "{name} {no}에게 할 일",
-  "peopleJump.do.events": "발령 이력 보기",
+  "peopleJump.do.events": "인사 이력 보기",
   "peopleJump.do.events.d": "전보·승진·휴직 기록과 예약",
   "peopleJump.do.fix": "칸 수정 · 여러 칸 정정",
   "peopleJump.do.fix.d": "칸마다 바로·확인 대기·발령으로 나뉩니다",

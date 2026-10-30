@@ -16,7 +16,7 @@ test("conversion correction shows its preserved end instead of an editable date"
 });
 
 test("group-transfer history disables correction with its remedy and retains rescission", () => {
-  const record = { id: "g", event_type: "GROUP_TRANSFER", state: "APPLIED", created_at: "2026-10-12T01:00:00Z", effective_date: "2026-10-12" } as LifecycleEvent;
+  const record = { action_refusals: { correct: "lifecycle_void_unsupported" }, id: "g", event_type: "GROUP_TRANSFER", state: "APPLIED", created_at: "2026-10-12T01:00:00Z", effective_date: "2026-10-12" } as LifecycleEvent;
   const html = renderToStaticMarkup(rowVerbs(record, { employee: {} as never, all: [record], offered: () => true, onAct: () => {} }));
   expect(html).toContain('aria-disabled="true"');
   expect(html).toContain("전적은 정정할 수 없습니다");

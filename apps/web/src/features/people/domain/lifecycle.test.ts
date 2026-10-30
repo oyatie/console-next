@@ -117,24 +117,12 @@ test("a record's unit is carried only when exactly one active unit has its name"
   expect(unitByName(null, units)).toBeNull();
 });
 
-test("only the latest change in force can be corrected or rescinded, and never an exit, registration or rescission", () => {
-  const onboard = event({ id: "a", event_type: "ONBOARD", created_at: "2026-01-01T00:00:00Z" });
-  const transfer = event({ id: "b", created_at: "2026-02-01T00:00:00Z" });
-  const promote = event({ id: "c", event_type: "PROMOTE", created_at: "2026-03-01T00:00:00Z" });
-  const scheduled = event({ id: "d", state: "SCHEDULED", created_at: "2026-04-01T00:00:00Z" });
-  const all = [onboard, transfer, promote, scheduled];
-  expect(all.map((x) => voidable(x, all))).toEqual([false, false, true, false]);
-  // Rescinding the promotion leaves the transfer as the latest change in force.
-  const voided = { ...promote, voided_by: "r" };
-  const rescind = event({ id: "r", event_type: "RESCIND", created_at: "2026-05-01T00:00:00Z", voids_event_id: "c" });
-  const after = [onboard, transfer, voided, scheduled, rescind];
-  expect(after.map((x) => voidable(x, after))).toEqual([false, true, false, false, false]);
-  const exit = [transfer, event({ id: "t", event_type: "TERMINATE", created_at: "2026-06-01T00:00:00Z" })];
-  expect(exit.map((x) => voidable(x, exit))).toEqual([false, false]);
-});
-
-test("a group transfer can be rescinded but never corrected", () => {
-  const group = { id: "group", event_type: "GROUP_TRANSFER", state: "APPLIED", created_at: "2026-10-12T01:00:00Z" } as never;
-  expect(voidable(group, [group])).toBe(true);
-  expect(correctable(group, [group])).toBe(false);
+test("server decisions alone offer correction and rescission, even without the rest of the history", () => {
+  const allowed = event({ state: "SCHEDULED", action_refusals: {} });
+  const denied = event({ action_refusals: { correct: "forbidden", rescind: "forbidden" } });
+  expect(correctable(allowed)).toBe(true);
+  expect(voidable(allowed)).toBe(true);
+  expect(correctable(denied)).toBe(false);
+  expect(voidable(denied)).toBe(false);
+  expect(correctable(event({}))).toBe(false);
 });

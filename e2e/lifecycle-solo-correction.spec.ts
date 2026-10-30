@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { loadCatalog } from "@console/i18n";
+import { commitLabel } from "../apps/web/src/ui/composer/actions";
 import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { kstDate, registerEmployee } from "./flows";
@@ -6,10 +8,12 @@ import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { hrAct } from "./record";
 import { setupCompany, startOperations } from "./setup-flows";
-import { reasonBox, sheet, todayPreset } from "./sheet";
+import { reasonBox, sheet, signOff, todayPreset } from "./sheet";
 
 // Create the tenant, employee and original event through the product. The new correction
 // contract is exercised directly because the personnel screen belongs to another active lane.
+test.beforeAll(() => loadCatalog("ko"));
+
 test("a sole recorder corrects a lifecycle date only with its bound passkey", { tag: ["@hr", "@regression", "@negative"] }, async ({ browser }) => {
   const admin = await openTenant(browser, "solocorrection", "정정상사");
   const api = apiOf(admin, bearerOf(admin));
@@ -22,8 +26,9 @@ test("a sole recorder corrects a lifecycle date only with its bound passkey", { 
   await leave.getByText("개인 사유", { exact: true }).click();
   await todayPreset(leave).click();
   await reasonBox(leave).fill("개인 사정");
+  await signOff(leave);
   const recorded = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === `/api/v1/employees/${employee}/lifecycle-events`);
-  await leave.getByRole("button", { name: "오늘 휴직 처리", exact: true }).click();
+  await leave.getByRole("button", { name: commitLabel({ kind: "LEAVE_OF_ABSENCE", mode: "apply", count: 1 }), exact: true }).click();
   const original = await (await recorded).json() as { id: string; effective_date: string };
   await expect(leave).toBeHidden();
   // Keys are recursively sorted, exactly as the published signing contract requires.

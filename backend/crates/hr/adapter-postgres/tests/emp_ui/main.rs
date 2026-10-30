@@ -8,6 +8,8 @@
 
 mod bulk;
 mod catalog;
+#[path = "../support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 // --- lane: CRUD ---
 mod crud_ends;
 mod exit_reason;
@@ -54,6 +56,7 @@ pub async fn fixture(pool: PgPool, operating: bool) -> Fixture {
         .execute(&pool)
         .await
         .unwrap();
+    lifecycle_grant::grant(&pool, *org.as_uuid(), *user.as_uuid()).await;
     let options = pool.connect_options().as_ref().clone();
     let rt = PgPoolOptions::new()
         .max_connections(2)

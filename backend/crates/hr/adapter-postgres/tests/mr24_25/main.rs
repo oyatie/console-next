@@ -9,6 +9,8 @@ mod change_sets;
 mod employment;
 #[path = "../support/go_live.rs"]
 mod go_live;
+#[path = "../support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 use std::collections::BTreeSet;
 
 use console_hr_adapter_postgres::HrService;
@@ -48,6 +50,7 @@ pub async fn fixture(pool: PgPool) -> Fixture {
         .execute(&pool)
         .await
         .unwrap();
+    lifecycle_grant::grant(&pool, *org.as_uuid(), *user.as_uuid()).await;
     let options = pool.connect_options().as_ref().clone();
     let rt = PgPoolOptions::new()
         .max_connections(2)

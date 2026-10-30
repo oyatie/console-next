@@ -22,9 +22,7 @@ use super::void::{
     RescindLifecycleEventRequest, RescindOutcome, check_void_reason, load_voidable, rescind_tx,
     restore_head,
 };
-use crate::authz::{
-    APPOINTMENT_KEYS, authorize_hr_org_wide, authorize_hr_person_any, hr_reach_any,
-};
+use crate::authz::authorize_hr_org_wide;
 use crate::clock::today_kst;
 use crate::exits::group_transfer_case::withdraw_settlement_case;
 use crate::{HrError, HrService};
@@ -73,14 +71,22 @@ impl HrService {
         event_id: Uuid,
         request: RescindLifecycleEventRequest,
     ) -> Result<RescindOutcome, HrError> {
-        hr_reach_any(&principal, &APPOINTMENT_KEYS)?;
         let (org, actor) = (principal.org_id, principal.user_id);
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                authorize_hr_person_any(tx, &principal, &APPOINTMENT_KEYS, employee_id).await?;
+                let holds_permission =
+                    super::action_refusals::require_permission(tx, &principal, employee_id).await?;
                 check_void_reason(tx, org, &request.reason_code, request.note.as_deref()).await?;
-                let outcome =
-                    rescind_tx(tx, org, actor, employee_id, event_id, &request, None).await?;
+                let outcome = rescind_tx(
+                    tx,
+                    org,
+                    (actor, holds_permission),
+                    employee_id,
+                    event_id,
+                    &request,
+                    None,
+                )
+                .await?;
                 let audits = match &outcome.rescinded {
                     Some(row) => {
                         // A rescinded 전적 takes its open settlement case with it.
@@ -146,7 +152,19 @@ impl HrService {
                         withdraw_scheduled(tx, (org, actor), *employee, *event, &request).await
                     } else {
                         let batch = Some(rescind_batch);
-                        rescind_tx(tx, org, actor, *employee, *event, &request, batch).await
+                        let holds_permission =
+                            super::action_refusals::require_permission(tx, &principal, *employee)
+                                .await?;
+                        rescind_tx(
+                            tx,
+                            org,
+                            (actor, holds_permission),
+                            *employee,
+                            *event,
+                            &request,
+                            batch,
+                        )
+                        .await
                     };
                     match undone {
                         Ok(outcome) => outcomes.push(outcome),
@@ -187,7 +205,6 @@ impl HrService {
         request: CorrectLifecycleEventRequest,
         passkeys: Option<&PasskeyService>,
     ) -> Result<EmployeeLifecycleEventResponse, HrError> {
-        hr_reach_any(&principal, &APPOINTMENT_KEYS)?;
         let binding = lifecycle_correction_binding(employee_id, event_id, &request);
         let replacement = serde_json::from_value(request.replacement)
             .map_err(|error| HrError::validation(error.to_string()))?;
@@ -198,9 +215,9 @@ impl HrService {
         let today = today_kst();
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                authorize_hr_person_any(tx, &principal, &APPOINTMENT_KEYS, employee_id).await?;
+                let holds_permission = super::action_refusals::require_permission(tx, &principal, employee_id).await?;
                 check_void_reason(tx, org, &request.reason_code, request.note.as_deref()).await?;
-                let original = load_voidable(tx, org_uuid, employee_id, event_id).await?;
+                let original = load_voidable(tx, org_uuid, employee_id, event_id, actor, holds_permission).await?;
                 if original.event_type == "GROUP_TRANSFER" {
                     return Err(coded(
                         KernelError::invalid_transition(

@@ -36,16 +36,9 @@ export const CONTRACT_SOON_DAYS = 60;
  */
 export const cancellable = (x: LifecycleEvent) => x.state === "SCHEDULED" && x.event_type !== "TERMINATE";
 
-/** Kinds never corrected or rescinded here: an exit goes back through its exit case; a registration, rehire or rescission is not undone. */
-const KEPT = new Set<LifecycleEvent["event_type"]>(["TERMINATE", "OFFBOARD", "EXIT_REVERSAL", "ONBOARD", "REHIRE", "RESCIND"]);
-/** BW-11: the change in force recorded last (applied, not a rescission, not voided); the server corrects or rescinds only it. */
-export const latestInForce = (items: readonly LifecycleEvent[]) =>
-  items
-    .filter((x) => x.state === "APPLIED" && x.event_type !== "RESCIND" && !x.voided_by)
-    .reduce<LifecycleEvent | undefined>((a, x) => (!a || x.created_at > a.created_at || (x.created_at === a.created_at && x.id > a.id) ? x : a), undefined);
-/** Whether this record can be corrected  or rescinded : the latest change in force, of a kind the server undoes. */
-export const voidable = (x: LifecycleEvent, items: readonly LifecycleEvent[]) => !KEPT.has(x.event_type) && latestInForce(items)?.id === x.id;
-export const correctable = (x: LifecycleEvent, items: readonly LifecycleEvent[]) => voidable(x, items) && x.event_type !== "GROUP_TRANSFER";
+/** The server projects Cedar decisions across the complete history; missing decisions fail closed. */
+export const voidable = (x: LifecycleEvent) => x.action_refusals !== undefined && !x.action_refusals.rescind;
+export const correctable = (x: LifecycleEvent) => x.action_refusals !== undefined && !x.action_refusals.correct;
 
 /** History by effective date, newest first; records of one date by when they were recorded. A back-dated record sits at its date. */
 export const byEffective = (items: readonly LifecycleEvent[]) =>
