@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { PagePhase } from "../page/page-scope";
 import s from "./page-head.module.css";
 
 /**
@@ -7,6 +8,9 @@ import s from "./page-head.module.css";
  * apply on their effective date). The words carry the phase; the dot only repeats it.
  */
 export function PhaseLine({ phase, children }: { phase: "setup" | "operating"; children: ReactNode }) {
+  // The shell supplies the authoritative phase in the primary head slot.
+  const pagePhase = useContext(PagePhase);
+  if (pagePhase) return null;
   return (
     <span className={s.phase} data-phase={phase}>
       <span className={s.dot} aria-hidden />

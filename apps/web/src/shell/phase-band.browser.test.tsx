@@ -7,19 +7,19 @@ import { navFixture } from "./nav.browser-fixture";
 
 beforeAll(() => loadCatalog("ko"));
 
-test("the receipt stays above the page, dismisses across reloads, and stays out of print with the skip link", async () => {
+test("the receipt stays in the page head, dismisses across reloads, and stays out of print with the skip link", async () => {
   const { server, browser, page } = await navFixture();
   const goLiveAt = new Date().toISOString();
   await page.route("**/api/v1/me/authz", route => route.fulfill({ json: authz }));
   await page.route("**/api/v1/onboarding/checklist", route => route.fulfill({ json: { ...checklist, go_live_at: goLiveAt } }));
   try {
     await page.goto(server.resolvedUrls!.local[0]!);
-    const receipt = page.locator('[data-placement="page"]').filter({ hasText: t("setup.phase.started.title") });
+    const receipt = page.locator('header [data-phase-band]').filter({ hasText: t("setup.phase.started.title") });
     const assertPlacement = async () => {
       await element(receipt).toHaveCount(1);
       const band = await receipt.boundingBox();
       const head = await page.getByRole("heading", { name: "Setup", exact: true }).boundingBox();
-      expect(band!.y + band!.height).toBeLessThanOrEqual(head!.y);
+      expect(band!.y).toBeGreaterThanOrEqual(head!.y + head!.height);
     };
     await assertPlacement();
     await page.reload();
@@ -30,9 +30,11 @@ test("the receipt stays above the page, dismisses across reloads, and stays out 
     await page.emulateMedia({ media: "screen" });
     await page.getByRole("button", { name: t("setup.phase.dismiss"), exact: true }).click();
     await element(receipt).toHaveCount(0);
+    await element(page.locator("header [data-phase-band]")).toContainText(t("entityRecord.phase.operating"));
     await page.reload();
     await element(page.getByRole("heading", { name: "Setup", exact: true })).toBeVisible();
     await element(receipt).toHaveCount(0);
+    await element(page.locator("header [data-phase-band]")).toContainText(t("entityRecord.phase.operating"));
     await page.evaluate(() => {
       for (const key of Object.keys(localStorage)) if (key.startsWith("console.phase.dismissed.")) {
         localStorage.setItem(`${key}.other`, localStorage.getItem(key)!);

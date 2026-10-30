@@ -29,6 +29,7 @@ export async function navFixture(engine = chromium) {
         import {configure,refresh,session} from '@console/api'; import {webPlatform} from '@console/api/web';
         import {loadCatalog} from '@console/i18n';
         import {Shell} from '/apps/web/src/shell/shell.tsx';
+        import {PageHead} from '/apps/web/src/ui/page-head/page-head.tsx';
         import {GoLive} from '/apps/web/src/features/onboarding/ui/go-live.tsx';
         import {meQuery} from '/apps/web/src/features/account/api.ts';
         import {checklistQuery,SETUP_READS,skipStep} from '/apps/web/src/features/onboarding/api.ts';
@@ -43,7 +44,7 @@ export async function navFixture(engine = chromium) {
           const me=useQuery(navigationRead(meQuery));
           window.__navFacts={phase:me.data?.tenant?.phase};
           const complete=useCommand({run:()=>skipStep('org'),invalidates:SETUP_READS});
-          return React.createElement(React.Fragment,null,React.createElement('h1',null,'Setup'),React.createElement(Link,{to:'/setup/go-live'},'Start operations'),React.createElement(Link,{to:'/people/period-locks'},'Period locks'),React.createElement('button',{onClick:()=>complete.mutate()},'Complete setup'));
+          return React.createElement(React.Fragment,null,React.createElement(PageHead,{title:'Setup'}),React.createElement(Link,{to:'/setup/go-live'},'Start operations'),React.createElement(Link,{to:'/people/period-locks'},'Period locks'),React.createElement('button',{onClick:()=>complete.mutate()},'Complete setup'));
         }
         const routes=paths.map(path=>createRoute({getParentRoute:()=>root,path,staticData:{access:'signed-in'},component:Fixture}));
         const router=createRouter({routeTree:root.addChildren([...routes,createRoute({getParentRoute:()=>root,path:'/setup/go-live',staticData:{access:'signed-in'},component:GoLive})])});

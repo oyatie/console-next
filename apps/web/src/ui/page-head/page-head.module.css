@@ -1,5 +1,6 @@
 /* ui/page-head: the page head and its crumbs (design-language §4.3, kit .ph / .crumbs). Tokens only. */
 .head { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.head:has(> [data-phase-band]) { gap: var(--space-1); }
 .head[data-band] { padding: var(--space-3) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
 /* Tabs sit on the band's bottom rule. */
 .head[data-band][data-tabs] { padding-bottom: 0; }
