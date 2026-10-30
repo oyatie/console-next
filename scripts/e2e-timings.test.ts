@@ -32,6 +32,20 @@ test("record folds runs by EWMA and drops entries no run refreshed in 30 days", 
   expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ a: { s: 15, at: 31 * 86_400_000 } });
 });
 
+test("strict plans emit even one job and add bins until every whole file fits", () => {
+  const files = ["a.spec.ts", "b.spec.ts", "c.spec.ts"].map(file => t("parallel", file));
+  const timings = timed(files.map(file => [file, 300]));
+  const options = { target: 300, workers: 2, boot: 40, strict: true };
+  expect(plan(files.slice(0, 1), timings, options)).toEqual([{ project: "parallel", files: ["a.spec.ts"], est: 190 }]);
+  expect(plan(files, timings, options)).toEqual(files.map(file => ({ project: "parallel", files: [file.file], est: 190 })));
+});
+
+test("strict planning names a file exceeding its budget after worker scaling and startup", () => {
+  const file = t("parallel", "too-long.spec.ts");
+  expect(() => plan([file], timed([[file, 522]]), { target: 300, workers: 2, boot: 40, strict: true }))
+    .toThrow(/E2E_SPEC_OVER_BUDGET.*too-long\.spec\.ts.*301.*300/);
+});
+
 test("listedTests skips fixme tests and keys nested describes", () => {
   const report = {
     suites: [

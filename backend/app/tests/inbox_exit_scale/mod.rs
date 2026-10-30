@@ -13,6 +13,41 @@ use tracing::instrument::WithSubscriber;
 #[allow(dead_code)]
 mod trail_queries;
 
+mod bounded;
+mod parity;
+pub(super) use parity::principal;
+
+pub(super) async fn grant_exit(pool: &PgPool, org: OrgId, actor: console_kernel_core::UserId) {
+    let role = Uuid::new_v4();
+    let maker = console_platform_test_support::seed_active_user(
+        pool,
+        *org.as_uuid(),
+        "MEMBER",
+        "grant-maker",
+    )
+    .await;
+    sqlx::query("INSERT INTO access_roles (org_id,id,name_ko,status,version,created_by) VALUES ($1,$2,'퇴직 담당','ACTIVE',1,$3)")
+        .bind(org.as_uuid()).bind(role).bind(actor.as_uuid()).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES ($1,$2,1,'퇴직 담당','ACTIVE','SETUP',$3)")
+        .bind(org.as_uuid()).bind(role).bind(actor.as_uuid()).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) VALUES ($1,$2,1,'hr_basic',ARRAY['view']),($1,$2,1,'exit',ARRAY['edit','approve'])")
+        .bind(org.as_uuid()).bind(role).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO access_grants (org_id,account_id,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by) VALUES ($1,$2,$3,'TENANT',now()-interval '1 day',true,'SETUP','TEST',$4)")
+        .bind(org.as_uuid()).bind(actor.as_uuid()).bind(role).bind(maker.as_uuid()).execute(pool).await.unwrap();
+}
+
+pub(super) async fn grant_export(pool: &PgPool, org: OrgId) {
+    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,id,2,name_ko,status,'SETUP',created_by FROM access_roles WHERE org_id=$1")
+        .bind(org.as_uuid()).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,id,2,'hr_basic',ARRAY['view','export'] FROM access_roles WHERE org_id=$1 UNION ALL SELECT org_id,id,2,'exit',ARRAY['edit','approve'] FROM access_roles WHERE org_id=$1")
+        .bind(org.as_uuid()).execute(pool).await.unwrap();
+    sqlx::query("UPDATE access_roles SET version=2 WHERE org_id=$1")
+        .bind(org.as_uuid())
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn exit_source_statement_count_is_flat_at_two_twenty_and_two_thousand_employees(
     pool: PgPool,
@@ -34,12 +69,8 @@ async fn exit_source_statement_count_is_flat_at_two_twenty_and_two_thousand_empl
     for employees in [2_i32, 20, 2_000] {
         let org = OrgId::new();
         let actor = seed_org_and_super_admin(&pool, *org.as_uuid(), "exit-scale").await;
-        let principal = Principal::new(
-            actor,
-            org,
-            BTreeSet::from([Role::SuperAdmin]),
-            BranchScope::All,
-        );
+        grant_exit(&pool, org, actor).await;
+        let principal = principal(&pool, org, actor, true).await;
         sqlx::query(
             "WITH people AS (INSERT INTO employees \
                (org_id, company, name, source_filename, source_sheet, source_row, source_key) \
@@ -121,8 +152,8 @@ async fn exit_source_statement_count_is_flat_at_two_twenty_and_two_thousand_empl
             "hr_exit employees={employees} statements={}",
             statements.len()
         );
-        assert_eq!(actual.total, employees as usize);
-        assert!(actual.total_is_exact);
+        assert_eq!(actual.total, (employees as usize).min(21));
+        assert_eq!(actual.total_is_exact, employees <= 20);
         assert_eq!(actual.items.len(), (employees as usize).min(20));
         assert_eq!(actual.has_more, employees > 20);
         if employees <= 20 {
