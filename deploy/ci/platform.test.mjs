@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
-import { readFileSync, cpSync, existsSync, mkdtempSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
+import { readFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -325,8 +325,9 @@ for (const environment of ['exit-test','template']) test(`${environment}: render
 });
 
 test('rendered object storage archives and restores WAL beyond the former two-volume ceiling', {timeout:180_000}, () => {
-  mkdirSync('.tmp', {recursive:true});
-  const dir = mkdtempSync(join(resolve('.tmp'), 'backup-capacity-'));
+  // Docker must see the bind-mounted credentials, so keep the fixture under the checkout.
+  mkdirSync(join(root, '.tmp'), {recursive:true});
+  const dir = mkdtempSync(join(root, '.tmp', 'backup-capacity-'));
   const name = `platform-backup-${randomBytes(6).toString('hex')}`;
   const docker = args => execFileSync('docker', args, {encoding:'utf8',timeout:120_000,stdio:['pipe','pipe','pipe']});
   let networkCreated = false, containerCreated = false;
