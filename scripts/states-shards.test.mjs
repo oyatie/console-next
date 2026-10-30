@@ -180,13 +180,16 @@ test("the actual Chromium config discovers the suite and Playwright selects exac
     assert.equal(result.status, 0, result.stderr);
     return JSON.parse(result.stdout);
   };
-  const files = list([]).suites.slice(0, 2).map(s => s.file);
-  assert.equal(files.length, 2);
+  const discovered = list([]).suites;
+  const selections = [discovered.slice(0, 2), ...discovered.filter(s => s.file.startsWith("states/attendance-")).map(s => [s])];
+  assert.equal(selections[0].length, 2);
   const dir = mkdtempSync(path.join(tmpdir(), "states-selection-"));
   try {
     const file = path.join(dir, "selection.txt");
-    writeFileSync(file, files.join("\n"));
-    assert.deepEqual(list([`--test-list=${file}`]).suites.map(s => s.file).sort(), [...files].sort());
+    for (const suites of selections) {
+      writeFileSync(file, suites.map(s => s.file).join("\n"));
+      assert.deepEqual(list([`--test-list=${file}`]).suites, suites);
+    }
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

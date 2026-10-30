@@ -88,9 +88,33 @@
       "seconds": 8.1,
       "tests": 8
     },
-    "states/attendance.spec.ts": {
-      "seconds": 65.2,
-      "tests": 36
+    "states/attendance-close.spec.ts": {
+      "seconds": 15.2,
+      "tests": 14
+    },
+    "states/attendance-day.spec.ts": {
+      "seconds": 21.3,
+      "tests": 17
+    },
+    "states/attendance-issues.spec.ts": {
+      "seconds": 12.6,
+      "tests": 11
+    },
+    "states/attendance-month.spec.ts": {
+      "seconds": 32.8,
+      "tests": 30
+    },
+    "states/attendance-overtime.spec.ts": {
+      "seconds": 11.5,
+      "tests": 10
+    },
+    "states/attendance-schedule.spec.ts": {
+      "seconds": 19.6,
+      "tests": 20
+    },
+    "states/attendance-shared.spec.ts": {
+      "seconds": 1.7,
+      "tests": 2
     }
   }
 }
