@@ -6,6 +6,7 @@
 //! by licensed 노무사/세무사 validation artifacts.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 pub mod minimum_wage;
+pub mod pay_groups;
 mod premium_bands;
 mod statutory_component;
 mod statutory_rates;
@@ -16,8 +17,7 @@ pub mod severance_window;
 pub use minimum_wage::*;
 
 use console_kernel_core::KernelError;
-use time::Date;
-use time::macros::date;
+use time::{Date, macros::date};
 
 pub use console_kernel_core::{EffectivePeriod, OfficialSource};
 

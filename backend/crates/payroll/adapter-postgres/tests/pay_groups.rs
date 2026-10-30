@@ -19,15 +19,14 @@ async fn entity(pool: &PgPool, org: OrgId) -> Uuid {
 }
 
 fn input(entity: Uuid) -> CreatePayGroup {
-    CreatePayGroup {
-        legal_entity_id: entity,
-        name: "모의상사 월급".into(),
-        pay_date_rule: "근로계약 제4조: 매월 말일".into(),
-        base_period: "당월 1일~말일".into(),
-        variable_period: "전월 1일~말일".into(),
-        proration: "근로계약 제4조: 해당 월 역일 기준".into(),
-        channel: "근로자 지정 계좌".into(),
-    }
+    serde_json::from_value(json!({
+        "legal_entity_id":entity, "name":"모의상사 월급",
+        "pay_date_rule":{"day":"LAST_DAY","month_offset":0,"non_business_day":"PREVIOUS"},
+        "base_period":{"start_day":"FIRST","month_offset":0},
+        "variable_period":{"start_day":16,"month_offset":-1},
+        "proration":"CALENDAR_DAYS", "channel":"ATTESTATION_ONLY"
+    }))
+    .unwrap()
 }
 
 async fn audit_count(pool: &PgPool, actor: UserId) -> i64 {
@@ -149,34 +148,77 @@ async fn pay_groups_refuse_legacy_titles_and_report_invalid_fields_without_persi
         ErrorKind::Forbidden
     );
     pay_access::grant_manage(&pool, org, actor, None).await;
-    for field in [
-        "name",
-        "pay_date_rule",
-        "base_period",
-        "variable_period",
-        "proration",
-        "channel",
+    for (field, value) in [
+        ("name", json!(" ")),
+        ("name", json!("가".repeat(41))),
+        ("name", json!(format!(" {} ", "가".repeat(40)))),
+        (
+            "pay_date_rule",
+            json!({"day":0,"month_offset":0,"non_business_day":"PREVIOUS"}),
+        ),
+        (
+            "pay_date_rule",
+            json!({"day":32,"month_offset":1,"non_business_day":"NEXT"}),
+        ),
+        (
+            "pay_date_rule",
+            json!({"day":1,"month_offset":2,"non_business_day":"NEXT"}),
+        ),
+        ("base_period", json!({"start_day":0,"month_offset":0})),
+        ("base_period", json!({"start_day":29,"month_offset":0})),
+        (
+            "variable_period",
+            json!({"start_day":"FIRST","month_offset":-2}),
+        ),
+        ("variable_period", json!({"start_day":28,"month_offset":1})),
     ] {
-        for value in [" ".to_owned(), "가".repeat(201)] {
-            let mut invalid = serde_json::to_value(input(entity)).unwrap();
-            invalid[field] = json!(value);
-            let error = store
-                .create_pay_group(org, actor, serde_json::from_value(invalid).unwrap())
-                .await
-                .unwrap_err();
-            assert_eq!(error.kind(), ErrorKind::Validation);
-            let console_payroll_adapter_postgres::PgPayrollError::Domain(error) = error else {
-                panic!("expected domain error")
-            };
-            assert_eq!(error.field.as_deref(), Some(field));
-        }
-        let mut missing = serde_json::to_value(input(entity)).unwrap();
-        missing.as_object_mut().unwrap().remove(field);
-        assert!(
-            serde_json::from_value::<CreatePayGroup>(missing).is_err(),
-            "{field} cannot default"
-        );
+        let mut invalid = serde_json::to_value(input(entity)).unwrap();
+        invalid[field] = value;
+        let error = store
+            .create_pay_group(org, actor, serde_json::from_value(invalid).unwrap())
+            .await
+            .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::Validation);
+        let console_payroll_adapter_postgres::PgPayrollError::Domain(error) = error else {
+            panic!("expected domain error");
+        };
+        assert_eq!(error.field.as_deref(), Some(field));
     }
     assert_eq!(audit_count(&pool, actor).await, 0);
     assert!(store.list_pay_groups(org, actor).await.unwrap().is_empty());
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn pay_group_typed_choices_round_trip_without_invented_defaults(pool: PgPool) {
+    let org = OrgId::from_uuid(Uuid::new_v4());
+    let actor = seed_org_and_super_admin(&pool, *org.as_uuid(), "pay-rule-roundtrip").await;
+    let entity = entity(&pool, org).await;
+    pay_access::grant_manage(&pool, org, actor, None).await;
+    let store = PgPayrollStore::new(runtime_role_pool(&pool).await);
+    for day in [json!(1), json!(31), json!("LAST_DAY")] {
+        for direction in ["PREVIOUS", "NEXT"] {
+            let mut value = serde_json::to_value(input(entity)).unwrap();
+            value["pay_date_rule"] =
+                json!({"day":day,"month_offset":1,"non_business_day":direction});
+            value["base_period"] = json!({"start_day":28,"month_offset":-1});
+            value["variable_period"] = json!({"start_day":1,"month_offset":0});
+            value["proration"] = json!("SCHEDULED_WORKDAYS");
+            value["channel"] = json!("FILE_GENERIC");
+            let group = store
+                .create_pay_group(org, actor, serde_json::from_value(value.clone()).unwrap())
+                .await
+                .unwrap();
+            let mut actual = serde_json::to_value(group).unwrap();
+            actual.as_object_mut().unwrap().remove("id");
+            assert_eq!(actual, value);
+        }
+    }
+    let groups = store.list_pay_groups(org, actor).await.unwrap();
+    assert_eq!(groups.len(), 6);
+    for group in groups {
+        assert_eq!(
+            serde_json::to_value(group).unwrap()["channel"],
+            "FILE_GENERIC"
+        );
+    }
 }
