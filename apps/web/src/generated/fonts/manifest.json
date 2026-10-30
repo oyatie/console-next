@@ -1,7 +1,7 @@
 {
   "inputs": {
     "scripts/font-subsets.mjs": "2ff1a58ca0d411e8774ca3d5feab244e0bb00673d041263dbda329986c1d106a",
-    "apps/web/font-subsets.requirements.txt": "02df7bb6cfa022898f2e02e8af0ba1a94e2747d34c92207feac13b3e5606be40",
+    "apps/web/font-subsets.requirements.txt": "99ab51dd72b2b9bf58e563871aeaf9aa0acdbe13354ffed39887e2dc25c46f1e",
     "node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2": "9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4",
     "node_modules/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css": "2973bcae80262dcb630cfb793fbf6af29bd986c769ee54953fb3e5b3e32323ca"
   },

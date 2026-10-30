@@ -34,11 +34,11 @@ describe("2026-10-26 delegated dependency ruling", () => {
     }
   });
 
-  test("Brotli 1.2.0 has its own owner-approved build tooling record for fontTools WOFF2 compression", () => {
+  test("Brotli 1.2.1 has its own owner-approved build tooling record for fontTools WOFF2 compression", () => {
     expect(register().find(r => r.kind === "ci-tool" && r.name === "brotli")).toMatchObject({
       class: "STANDARD", approved_by: "owner", approval: { by: "owner", on: "2026-10-29" },
       job: "WOFF2 compression for fontTools subsets", layer: "build/tooling", allowedLayers: ["build/tooling"],
-      uses: [{ file: "apps/web/font-subsets.requirements.txt", user: "scripts/font-subsets.mjs", pin: "brotli==1.2.0", layer: "build/tooling" }],
+      uses: [{ file: "apps/web/font-subsets.requirements.txt", user: "scripts/font-subsets.mjs", pin: "brotli==1.2.1", layer: "build/tooling" }],
     });
   });
 
