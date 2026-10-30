@@ -19,6 +19,7 @@
 .body { display: flex; flex: 1; min-height: 0; gap: var(--space-3); }
 .side { width: var(--panel-w); flex: none; overflow: auto; }
 .skeleton, .chartWrap { min-height: calc(var(--row-h) * 12); }
+.page .skeleton, .page .chartWrap { min-height: 0; }
 .skeleton { flex: 1; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--canvas); }
 
 .chartWrap { position: relative; display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-2); }
@@ -122,6 +123,7 @@
 
 /* Below the 1280 desktop the page stacks rather than scrolling sideways (the chart itself pans). */
 @media (max-width: 960px) {
+  .page .skeleton, .page .chartWrap { min-height: calc(var(--row-h) * 12); }
   .head { flex-wrap: wrap; }
   .phase { flex-basis: 100%; white-space: normal; overflow: visible; }
   .body { flex-direction: column; }

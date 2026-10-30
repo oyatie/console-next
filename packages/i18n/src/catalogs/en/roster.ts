@@ -63,8 +63,6 @@ export const enRoster = {
   "roster.export.done": "Downloaded {count, number} people",
   "roster.export.file": "employee-roster-{date}.csv",
   "roster.head.title": "People",
-  "roster.head.setup": "Setup",
-  "roster.head.op": "Operating",
   "roster.head.asof": "As of",
   "roster.head.today": "Today",
   "roster.head.register": "Employee register",

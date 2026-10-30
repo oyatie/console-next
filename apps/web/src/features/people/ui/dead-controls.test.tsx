@@ -73,4 +73,5 @@ test("the roster head delegates one export and shows its date as a fact", () => 
   expect(html).not.toContain(t("roster.head.register"));
   expect(html).not.toContain('aria-disabled="true"');
   expect(html).not.toContain("아직 열지 않았");
+  expect(html).not.toContain('data-phase=');
 });

@@ -47,18 +47,31 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const phaseFailed = access.isError && !isAnswer(access.error);
   const fault = phaseFailed ? access : failed ? q : null;
   const failureText = `${t(phaseFailed ? "setup.phase.failed" : "setup.phase.checklistFailed")} ${t("common.read.failedReason")}`;
-  const slot = <div className={s.band} data-phase-band={loading ? "loading" : fault ? "failed" : "ready"}>
+  const slot = <PhaseSlot loading={loading} phase={access.data && phase} text={text}
+    fault={fault ? { text: failureText, retry: () => { void fault.refetch(); } } : undefined}
+    dismiss={band === "started" && dismissed !== receipt ? dismiss : undefined} />;
+  return <PagePhase value={slot}>{children}</PagePhase>;
+}
+
+/** Shared rendering for the live page head and its gallery states. */
+export function PhaseSlot({ loading, phase, text, fault, dismiss }: {
+  loading: boolean;
+  phase?: "setup" | "operating";
+  text?: string;
+  fault?: { text: string; retry: () => void };
+  dismiss?: () => void;
+}) {
+  return <div className={s.band} data-phase-band={loading ? "loading" : fault ? "failed" : "ready"}>
     {loading ? <Skeleton bones={["short"]} label={t("common.loading")} /> : <>
-        {access.data && <PhaseLine phase={phase}><span className={s.text} title={text}>{text}</span></PhaseLine>}
+        {phase && <PhaseLine phase={phase}>{text}</PhaseLine>}
         {fault && <>
-          <span className={s.text} title={failureText}>{failureText}</span>
-          <Button variant="ghost" size="sm" onClick={() => { void fault.refetch(); }}>{t("common.retry")}</Button>
+          <span className={s.text} title={fault.text}>{fault.text}</span>
+          <Button variant="ghost" size="sm" onClick={fault.retry}>{t("common.retry")}</Button>
         </>}
-        {band === "started" && dismissed !== receipt && <>
-          <span className={s.text} title={t("setup.phase.started.detail")}>{t("setup.phase.started.title")}</span>
+        {dismiss && <>
+          <span title={t("setup.phase.started.detail")}>{t("setup.phase.started.title")}</span>
           <Button variant="ghost" size="sm" onClick={dismiss}>{t("setup.phase.dismiss")}</Button>
         </>}
       </>}
   </div>;
-  return <PagePhase value={slot}>{children}</PagePhase>;
 }

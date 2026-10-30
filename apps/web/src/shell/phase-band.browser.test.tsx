@@ -2,10 +2,23 @@
 import { beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { authz, checklist } from "../../../../e2e/mock/fixtures";
+import { authz, checklist, failure } from "../../../../e2e/mock/fixtures";
 import { navFixture } from "./nav.browser-fixture";
 
 beforeAll(() => loadCatalog("ko"));
+
+test("a refused access read leaves the phase slot quiet", async () => {
+  const { server, browser, page } = await navFixture();
+  await page.route("**/api/v1/access/me", route => route.fulfill({ status: 403, json: failure("forbidden") }));
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    await element(page.getByRole("heading", { name: "Setup", exact: true })).toBeVisible();
+    const slot = page.locator("header [data-phase-band]");
+    await element(slot).toHaveAttribute("data-phase-band", "ready");
+    await element(slot.locator("[data-phase], button, [role=alert], [aria-busy=true]")).toHaveCount(0);
+    await element(slot).toHaveText("");
+  } finally { await browser.close(); await server.close(); }
+}, 60_000);
 
 test("the receipt stays in the page head, dismisses across reloads, and stays out of print with the skip link", async () => {
   const { server, browser, page } = await navFixture();

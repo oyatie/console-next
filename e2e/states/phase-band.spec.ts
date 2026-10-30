@@ -14,6 +14,41 @@ import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
 
+for (const width of [1440, 390]) {
+  test(`phase slot gallery: loading, failure, receipt at ${width} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/_gallery?entry=phase-band");
+    const examples = page.locator("[data-phase-example]");
+    await expect(examples).toHaveCount(3);
+    await expect(page.locator('[data-phase-example="loading"] [data-phase-band]')).toHaveAttribute("data-phase-band", "loading");
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      for (const example of await examples.all()) {
+        const slot = example.locator("[data-phase-band]");
+        await expect(slot).toBeVisible();
+        const bounds = await slot.boundingBox();
+        for (const button of await slot.getByRole("button").all()) {
+          const box = await button.boundingBox();
+          expect(box!.x).toBeGreaterThanOrEqual(bounds!.x);
+          expect(box!.y).toBeGreaterThanOrEqual(bounds!.y);
+          expect(box!.x + box!.width).toBeLessThanOrEqual(bounds!.x + bounds!.width);
+          expect(box!.y + box!.height).toBeLessThanOrEqual(bounds!.y + bounds!.height);
+        }
+      }
+      expect(await page.getByRole("main").evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
+      expect(await page.evaluate(() => document.scrollingElement!.scrollWidth - innerWidth)).toBe(0);
+      await expectAxe(page, `phase gallery/${width}/${theme}`);
+    }
+    const failed = page.locator('[data-phase-example="failed"]');
+    await failed.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await expect(failed.locator("[data-phase-band]")).toHaveAttribute("data-phase-band", "ready");
+    const receipt = page.locator('[data-phase-example="receipt"]');
+    await receipt.getByRole("button", { name: t("setup.phase.dismiss"), exact: true }).click();
+    await expect(receipt.getByRole("button")).toHaveCount(0);
+    await expect(receipt.locator("[data-phase-band]")).toHaveText(t("setup.phase.operating"));
+  });
+}
+
 for (const width of [1440, 390]) for (const phase of ["SETUP", "OPERATING", "failed"] as const) {
   test(`first visit: late checklist ${phase} keeps its page-head slot at ${width} @ui-state`, async ({ page }) => {
     const fixture = await mockScreen(page, screens[1], "populated");
@@ -37,7 +72,7 @@ for (const width of [1440, 390]) for (const phase of ["SETUP", "OPERATING", "fai
       const head = page.getByRole("main").locator("header").first();
       const slot = head.locator("[data-phase-band]");
       await expect(slot).toHaveAttribute("data-phase-band", "ready");
-      await expect(slot).toContainText(t(phase === "SETUP" ? "shell.phase.setup" : "entityRecord.phase.operating"));
+      await expect(slot).toContainText(t(phase === "SETUP" ? "shell.phase.setup" : "setup.phase.operating"));
       await expect(head.getByRole("heading", { level: 1 })).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
       const before = await head.boundingBox();
@@ -45,8 +80,7 @@ for (const width of [1440, 390]) for (const phase of ["SETUP", "OPERATING", "fai
       await page.evaluate(clearShifts);
       release();
       await expect(slot).toHaveAttribute("data-phase-band", phase === "failed" ? "failed" : "ready");
-      await expect(slot).toContainText(t(phase === "failed" ? "common.read.failedReason" : phase === "SETUP" ? "shell.phase.setup" : "entityRecord.phase.operating"));
-      await expect(head.locator("[data-phase]")).toHaveCount(1);
+      await expect(slot).toContainText(t(phase === "failed" ? "common.read.failedReason" : phase === "SETUP" ? "shell.phase.setup" : "setup.phase.operating"));
       if (phase === "SETUP") await expect(slot).toContainText(t("setup.step.entity"));
       expect(await slot.boundingBox()).toEqual(slotBefore);
       expect(await head.boundingBox()).toEqual(before);
@@ -54,8 +88,20 @@ for (const width of [1440, 390]) for (const phase of ["SETUP", "OPERATING", "fai
       await fits(page, `late phase ${phase}/${width}`);
       for (const theme of ["light", "dark"]) {
         await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+        if (phase === "failed") {
+          const retry = slot.getByRole("button", { name: t("common.retry"), exact: true });
+          const bounds = await slot.boundingBox(), button = await retry.boundingBox();
+          expect(button!.x).toBeGreaterThanOrEqual(bounds!.x);
+          expect(button!.y).toBeGreaterThanOrEqual(bounds!.y);
+          expect(button!.x + button!.width).toBeLessThanOrEqual(bounds!.x + bounds!.width);
+          expect(button!.y + button!.height).toBeLessThanOrEqual(bounds!.y + bounds!.height);
+          expect(await retry.evaluate(el => getComputedStyle(el).whiteSpace)).toBe("nowrap");
+          const phaseText = slot.locator("[data-phase]");
+          expect(await phaseText.evaluate(el => [...el.querySelectorAll("span"), el].every(node => node.scrollWidth === node.clientWidth))).toBe(true);
+        }
         await expectAxe(page, `late phase ${phase}/${width}/${theme}`);
       }
+      await expect(page.getByRole("main").locator("[data-phase]")).toHaveCount(1);
       expect(fixture.unexpected).toEqual([]);
     } finally { release(); await page.close(); fixture.release(); }
   });

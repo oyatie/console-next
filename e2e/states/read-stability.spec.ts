@@ -144,7 +144,8 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     const gap = await head.evaluate(el => parseFloat(getComputedStyle(el.parentElement!).rowGap));
     expect(asof!.y).toBe(headBox!.y + headBox!.height + gap);
     if (width === 1440) {
-      const chart = await page.getByRole("tree").boundingBox();
+      const chart = await page.getByRole("region", { name: t("structure.chart.label"), exact: true }).boundingBox();
+      expect(chart!.height).toBeGreaterThan(0);
       expect(chart!.y + chart!.height).toBeLessThanOrEqual(900);
     }
     if (width > 960) {

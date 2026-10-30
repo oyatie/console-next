@@ -63,6 +63,18 @@ test("the accessible phase owns the loading skeleton and a phase fault names its
   expect(html).not.toContain('data-phase="operating"');
 });
 
+test("a refused access read stays quiet without inventing a phase or offering retry", () => {
+  state.phase = undefined;
+  state.accessError = new ApiError(403, "forbidden", "refused");
+  const html = render();
+  expect(html).toContain('data-phase-band="ready"');
+  expect(html).not.toContain('data-phase=');
+  expect(html).not.toContain(t("setup.phase.failed"));
+  expect(html).not.toContain(t("common.read.failedReason"));
+  expect(html).not.toContain(t("common.retry"));
+  expect(html).not.toContain('role="alert"');
+});
+
 test("the first successful operating receipt is past tense inside the page head", () => {
   state.data = { ...checklist, go_live_at: new Date().toISOString() };
   const html = render();
