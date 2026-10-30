@@ -1,15 +1,17 @@
 //! Postgres adapter for the payroll draft-run staging tables (migration
 //! 0074: `payroll_draft_runs`, `payroll_draft_lines`).
 //!
-//! Read-only. These tables are *pre-calculation* readiness/staging data —
+//! Draft-run reads are *pre-calculation* readiness/staging data —
 //! `payroll_draft_lines` stores work-day/hour counts and `*_source_present`
 //! booleans, never a computed won amount. The real per-employee deduction
 //! math lives in `console_payroll_domain::build_employee_payroll_draft`, which is
 //! a pure in-memory function with no persistence anywhere in this schema.
-//! Callers must not present anything read here as an issued payslip.
+//! Callers must not present draft readiness as an issued payslip.
+//! Pay groups separately persist explicit legal-entity pay rules, without defaults.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 pub mod lifecycle;
+pub mod pay_groups;
 /// `ObjectKey::PayRun`'s canonical write port, plus the one
 /// `payroll_draft_runs` statement that used to live in
 /// `console-workflow-runtime-adapter-postgres`.
@@ -17,8 +19,8 @@ pub mod pay_run;
 pub mod payslip_draft;
 pub mod roster;
 
-use console_kernel_core::{ErrorKind, KernelError, UserId};
-use console_platform_db::{DbError, with_org_conn};
+use console_kernel_core::{KernelError, UserId};
+use console_platform_db::with_org_conn;
 use console_platform_request_context::current_org;
 use serde::Serialize;
 use sqlx::{PgPool, Postgres, QueryBuilder, Row, Transaction};
@@ -26,59 +28,14 @@ use sqlx::{PgPool, Postgres, QueryBuilder, Row, Transaction};
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
+mod error;
+pub use error::PgPayrollError;
+
 mod my_lines;
 pub use my_lines::list_my_lines_in_tx;
 
 const DEFAULT_LIMIT: i64 = 100;
 const MAX_LIMIT: i64 = 500;
-
-#[derive(Debug, thiserror::Error)]
-pub enum PgPayrollError {
-    #[error(transparent)]
-    Db(#[from] DbError),
-
-    #[error(transparent)]
-    Domain(#[from] KernelError),
-}
-
-impl PgPayrollError {
-    #[must_use]
-    pub fn kind(&self) -> ErrorKind {
-        match self {
-            Self::Domain(err) => err.kind,
-            Self::Db(error) => error.kind(),
-        }
-    }
-}
-
-impl From<sqlx::Error> for PgPayrollError {
-    fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::from(value))
-    }
-}
-
-impl From<pay_run::StageDraftError> for PgPayrollError {
-    fn from(err: pay_run::StageDraftError) -> Self {
-        match err {
-            pay_run::StageDraftError::Db(db) => Self::Db(DbError::Sqlx(db)),
-            pay_run::StageDraftError::ProvenanceMismatch => Self::Domain(KernelError::conflict(
-                "a payroll draft for this run and period already exists with different provenance",
-            )),
-            pay_run::StageDraftError::PeriodLocked => Self::Domain(KernelError::conflict(
-                "payroll period is locked; draft not staged",
-            )),
-        }
-    }
-}
-
-impl From<PgPayrollError> for KernelError {
-    fn from(value: PgPayrollError) -> Self {
-        match value {
-            PgPayrollError::Domain(err) => err,
-            PgPayrollError::Db(err) => KernelError::internal(err.to_string()),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PayrollRunSummary {
