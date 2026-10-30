@@ -1,17 +1,24 @@
 //! Migration-safety gate.
 
+mod class;
+mod config;
+pub use class::summary;
+pub mod order;
 mod privileges;
+mod sanitize;
+use sanitize::sanitize_sql;
 mod versions;
 use privileges::{
     check_audit_events_grants, check_audit_events_trigger, check_table_owner_revokes,
 };
-use versions::check_migration_versions;
 
 use std::path::{Path, PathBuf};
 use std::{collections::HashSet, fs};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ViolationKind {
+    MigrationClassHeader,
+    MigrationClassMismatch,
     InvalidMigrationVersion,
     DuplicateMigrationVersion,
     NonContiguousMigrationVersion,
@@ -94,14 +101,14 @@ pub fn check_migrations_root(root: &Path) -> GateResult {
 }
 
 fn check_files(files: Vec<PathBuf>) -> GateResult {
-    let mut audited_tables: HashSet<String> = built_in_audited_tables()
-        .iter()
+    let mut audited_tables: HashSet<String> = "audit_events regions branches users user_branches"
+        .split_whitespace()
         .map(|name| name.to_string())
         .collect();
     let mut readable_files = Vec::new();
     let mut result = GateResult::default();
 
-    check_migration_versions(&files, &mut result);
+    versions::check_migration_versions(&files, &mut result);
 
     for file in files {
         match fs::read_to_string(&file) {
@@ -122,16 +129,6 @@ fn check_files(files: Vec<PathBuf>) -> GateResult {
     }
 
     result
-}
-
-fn built_in_audited_tables() -> &'static [&'static str] {
-    &[
-        "audit_events",
-        "regions",
-        "branches",
-        "users",
-        "user_branches",
-    ]
 }
 
 fn discover_audited_tables(content: &str, audited_tables: &mut HashSet<String>) {
@@ -155,7 +152,8 @@ fn check_migration_file(
     audited_tables: &HashSet<String>,
     result: &mut GateResult,
 ) {
-    let sanitized = sanitize_sql(content);
+    class::check(file, content, result);
+    let sanitized = sanitize_sql(content, false);
     let statements = sanitized
         .split(';')
         .filter_map(|statement| {
@@ -303,90 +301,6 @@ fn table_name_after_alter_table(tokens: &[String], start: usize) -> Option<(&str
     }
 
     Some((table, index))
-}
-
-fn sanitize_sql(content: &str) -> String {
-    let bytes = content.as_bytes();
-    let mut output = String::with_capacity(content.len());
-    let mut index = 0usize;
-    let mut in_line_comment = false;
-    let mut in_block_comment = false;
-    let mut in_single_quote = false;
-    let mut in_double_quote = false;
-
-    while index < bytes.len() {
-        let b = bytes[index];
-        let next = bytes.get(index + 1).copied();
-
-        if in_line_comment {
-            if b == b'\n' {
-                in_line_comment = false;
-                output.push('\n');
-            } else {
-                output.push(' ');
-            }
-            index += 1;
-            continue;
-        }
-        if in_block_comment {
-            if b == b'*' && next == Some(b'/') {
-                in_block_comment = false;
-                output.push_str("  ");
-                index += 2;
-            } else {
-                output.push(if b == b'\n' { '\n' } else { ' ' });
-                index += 1;
-            }
-            continue;
-        }
-        if in_single_quote {
-            if b == b'\'' && next == Some(b'\'') {
-                output.push_str("  ");
-                index += 2;
-            } else if b == b'\'' {
-                in_single_quote = false;
-                output.push(' ');
-                index += 1;
-            } else {
-                output.push(if b == b'\n' { '\n' } else { ' ' });
-                index += 1;
-            }
-            continue;
-        }
-        if in_double_quote {
-            if b == b'"' {
-                in_double_quote = false;
-                output.push(' ');
-            } else {
-                output.push((b as char).to_ascii_lowercase());
-            }
-            index += 1;
-            continue;
-        }
-
-        if b == b'-' && next == Some(b'-') {
-            in_line_comment = true;
-            output.push_str("  ");
-            index += 2;
-        } else if b == b'/' && next == Some(b'*') {
-            in_block_comment = true;
-            output.push_str("  ");
-            index += 2;
-        } else if b == b'\'' {
-            in_single_quote = true;
-            output.push(' ');
-            index += 1;
-        } else if b == b'"' {
-            in_double_quote = true;
-            output.push(' ');
-            index += 1;
-        } else {
-            output.push((b as char).to_ascii_lowercase());
-            index += 1;
-        }
-    }
-
-    output
 }
 
 fn tokenize_sql(statement: &str) -> Vec<String> {

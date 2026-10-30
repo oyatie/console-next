@@ -53,6 +53,7 @@ async function seedCard(w: World) {
   await sheet.getByRole("textbox", { name: /^이름/ }).fill("홍길순");
   await sheet.getByRole("combobox", { name: /^관계/ }).selectOption({ label: "배우자" });
   await sheet.getByRole("textbox", { name: /^휴대전화/ }).fill("01022223333");
+  await sheet.getByRole("checkbox").check();
   await andReread(admin, "/personal-facts", () => sheet.getByRole("button", { name: "인사 정보 1명 정정" }).click());
   await expect(personal.getByText(NAMES.contact)).toBeVisible();
   const records = admin.getByRole("region", { name: "이력" });

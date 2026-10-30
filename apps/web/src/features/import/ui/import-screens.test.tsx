@@ -113,7 +113,7 @@ test("row detail: a deferred change names its flow, a refusal its field and why,
     .toContain("부서: HR → Sales · 발령으로 처리합니다");
   expect(html(<RowDetail r={row({ outcome: "refused", refusal_code: "leave_return_required", refusal_field: "leave_return_date" })} />)).toContain("복직 예정일: 육아휴직");
   const leave = html(<RowDetail r={row({ outcome: "insert", new_person: { status: "ON_LEAVE", hire_date: "2020-01-01", migrated_former: false, employee_number: null, leave: { start_date: "2026-03-01", leave_type: "CHILDCARE", expected_return_date: "2027-02-28" } } })} />);
-  expect(leave).toContain("육아휴직 휴직으로 들어옵니다: 2026-03-01부터, 복직 예정 2027-02-28");
+  expect(leave).toContain("육아휴직 휴직으로 들어옵니다: 2026. 03. 01.부터, 복직 예정 2027. 02. 28.");
   expect(leave).toContain("사번 없이 등록합니다");
 });
 

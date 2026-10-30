@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
-import { t } from "@console/i18n";
+import { isMessageId, t } from "@console/i18n";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
 import { unitsQuery } from "../../../reference/org/api";
@@ -43,7 +43,7 @@ type Resolved =
   | { kind: "form"; offer: Offer; seed?: Seed }
   | { kind: "cancel"; x: LifecycleEvent }
   | { kind: "rescind"; x: LifecycleEvent }
-  | { kind: "unavailable"; code: string; why: string };
+  | { kind: "unavailable"; code?: string; why: string };
 
 /** The lifecycle acts this page opens; any other `act` (an exit step) belongs to the exit card. */
 const LIFECYCLE_ACT = /^(?:[A-Z_]+(?::(?:job|relocate))?|rehire|menu|(?:cancel|edit|again|correct|rescind):.+)$/;
@@ -69,18 +69,18 @@ function resolve(d: Detail, act: string, events: LifecycleEvent[] | undefined): 
   const state = states.find((v) => v.verb === type);
   const listed = d.allowed_events.find((a) => a.event_type === type) ?? d.allowed_scheduled_events.find((a) => a.event_type === type);
   const why = state && !state.enabled ? whyText(state.why, [label(LIFECYCLE_EVENT, type)]) : undefined;
-  const unavailable = (code: "not_found" | "invalid_transition" | "lifecycle_void_not_applied" | "lifecycle_void_not_latest" | "lifecycle_void_exit_owned" | "lifecycle_void_unsupported" | "lifecycle_event_voided", reason?: string): Resolved => ({ kind: "unavailable", code, why: reason ?? t(`person.act.unavailable.${code}`) });
+  const unavailable = (code?: string, reason?: string): Resolved => {
+    const key = `person.act.unavailable.${code}`;
+    return { kind: "unavailable", code, why: reason ?? (isMessageId(key) ? t(key) : t("person.act.unavailable.state")) };
+  };
   if (verb && id && !x) return unavailable("not_found");
-  const voidCode = x?.state !== "APPLIED" ? "lifecycle_void_not_applied"
-    : ["TERMINATE", "OFFBOARD", "EXIT_REVERSAL"].includes(x.event_type) ? "lifecycle_void_exit_owned"
-    : ["ONBOARD", "REHIRE", "RESCIND"].includes(x.event_type) ? "lifecycle_void_unsupported"
-    : x.voided_by ? "lifecycle_event_voided"
-    : verb === "correct" && x.event_type === "GROUP_TRANSFER" && voidable(x, events) ? "lifecycle_void_unsupported" : "lifecycle_void_not_latest";
+  const refusal = verb === "correct" || verb === "rescind" ? x?.action_refusals?.[verb] : undefined;
+  if (refusal) return unavailable(refusal);
   if (verb === "cancel") return x && cancellable(x) ? { kind: "cancel", x } : unavailable("invalid_transition");
-  if (verb === "rescind") return x && voidable(x, events) ? { kind: "rescind", x } : unavailable(voidCode);
+  if (verb === "rescind") return x && voidable(x, events) ? { kind: "rescind", x } : unavailable();
   if (verb === "correct") {
     // A group transfer is rescinded and recorded again, never corrected in place.
-    if (!x || !correctable(x, events)) return unavailable(voidCode);
+    if (!x || !correctable(x, events)) return unavailable();
     const signoffs = listed?.required_signoffs ?? CORRECTION_SIGNOFFS[x.event_type] ?? BASE_SIGNOFFS;
     return { kind: "form", offer: { event_type: type, required_signoffs: signoffs } as Offer, seed: { from: x, mode: "correct" } };
   }
@@ -150,7 +150,7 @@ export function ActHost({ d, act, back, events, onClose, onOpen, onRecorded }: {
       <div className={s.notice} role="status">
         <strong>{t("person.act.unavailable")}</strong>
         <span>{r.why}</span>
-        <code className="muted">{r.code}</code>
+        {r.code && <code className="muted">{r.code}</code>}
         <Button variant="ghost" onClick={onClose}>{t("person.act.close")}</Button>
       </div>
     );

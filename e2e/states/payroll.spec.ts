@@ -32,11 +32,12 @@ for (const screen of payrollScreens) for (const state of Object.keys(screen.stat
       } else if (reference) {
         if (state === "unsupported" || state === "empty") {
           await expect(main.getByText(t(state === "unsupported" ? "payroll.reference.noPack" : "payroll.reference.empty"), { exact: true })).toBeVisible();
+          await expect(main.getByText(state === "unsupported" ? t("payroll.reference.noPackReason", { country: "US" }) : t("payroll.reference.emptyReason"), { exact: true })).toBeVisible();
           await expect(main.getByText(rate.value, { exact: true })).toHaveCount(0);
         } else if (state === "held") {
           await expect(main.getByText(t("payroll.reference.held"), { exact: true }).first()).toBeVisible();
           await expect(main.getByText(rate.value, { exact: true })).toHaveCount(0);
-          await expect(main.getByRole("link", { name: /모의 고시/ })).toHaveCount(0);
+          await expect(main.getByRole("link").and(page.locator(`[href="${rate.source_url}"]`))).toHaveCount(0);
         } else {
           await expect(main.getByText(rate.value, { exact: true })).toBeVisible();
           await expect(main.getByRole("link", { name: `${rate.instrument_ko} · ${rate.article_ko} · ${rate.promulgation_ko}`, exact: true })).toHaveAttribute("href", rate.source_url);
@@ -46,7 +47,14 @@ for (const screen of payrollScreens) for (const state of Object.keys(screen.stat
         await expect(main.getByRole("region", { name: t("payroll.setup.title") })).toBeVisible();
         await expect(main.getByRole("region", { name: t("payroll.deadlines") })).toHaveCount(0);
       } else {
-        for (const group of payGroups.items) await expect(main.getByRole("region", { name: group.name, exact: true })).toBeVisible();
+        for (const group of payGroups.items) {
+          const card = main.getByRole("region", { name: group.name, exact: true });
+          await expect(card).toBeVisible();
+          for (const field of ["basePeriod", "variablePeriod", "payDateRule", "proration", "channel"] as const)
+            await expect(card.getByText(t(`payroll.${field}`), { exact: true })).toBeVisible();
+          await expect(card.getByText(group.proration, { exact: true })).toBeVisible();
+          await expect(card.getByText(group.channel, { exact: true })).toBeVisible();
+        }
         const overseas = main.getByRole("region", { name: payGroups.items[2]!.name, exact: true });
         await expect(overseas).toContainText("모의상사 해외법인");
         await expect(overseas).toContainText(t("payroll.run.VOID"));
@@ -84,4 +92,29 @@ test("reference selection keeps unsupported entities separate and payroll readin
   await expect(main.getByText(t("payroll.reference.noPack"), { exact: true })).toBeVisible();
   await expect(rail.getByRole("link", { name: t("payroll.title"), exact: true })).toHaveCount(0);
   expect(fixture.unexpected).toEqual([]);
+});
+
+test("an unknown reference entity makes no rates request and can be replaced with an available entity", async ({ page }) => {
+  const screen = payrollScreens[1];
+  const fixture = await mockScreen(page, screen, "populated");
+  const reads: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname === screen.read) reads.push(url.searchParams.get("legal_entity_id")!);
+  });
+  try {
+    await page.goto(`${screen.path}?entity=${id(899)}`);
+    const main = page.getByRole("main");
+    await expect(main.getByText(t("payroll.reference.pickReason"), { exact: true })).toBeVisible();
+    const picker = main.getByRole("button", { name: t("payroll.entity"), exact: false });
+    await expect(picker).toContainText(t("payroll.reference.pick"));
+    await expect(main.getByText(rate.value, { exact: true })).toHaveCount(0);
+    expect(reads).toEqual([]);
+    await picker.click();
+    await page.getByRole("option", { name: payGroups.legal_entities[0]!.name, exact: true }).click();
+    await expect(main.getByText(rate.value, { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(`${new URL(screen.path, page.url())}?entity=${id(800)}`);
+    expect(reads).toEqual([id(800)]);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
 });

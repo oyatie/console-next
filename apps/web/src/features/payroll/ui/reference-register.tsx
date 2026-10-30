@@ -10,7 +10,7 @@ import { cited, rateValue, referenceStatus } from "../present";
 export function ReferenceRegister({ data }: { data: PayrollRates }) {
   const status = referenceStatus(data);
   // Content-sized rows keep the full citation visible even though this register is read-only.
-  return status ? <EmptyState title={status} reason={t("payroll.reference.noPackReason", { country: data.country_code })} /> :
+  return status ? <EmptyState title={status} reason={data.adopted ? t("payroll.reference.emptyReason") : t("payroll.reference.noPackReason", { country: data.country_code })} /> :
     <LongTable editable label={t("payroll.reference.title")} empty={null} rows={data.items} rowId={rate => rate.code} hasMore={false} onLoadMore={() => {}} columns={[
       { id: "name", header: t("payroll.reference.item"), rowHeader: true, card: "title", cell: rate => <>{rate.name} <Chip>{t(`payroll.reference.${cited(rate) ? rate.status : "HELD"}`)}</Chip></> },
       { id: "value", card: "fact", header: t("payroll.reference.value"), cell: rateValue },

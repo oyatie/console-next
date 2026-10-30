@@ -7,7 +7,10 @@ import { canonical } from "./domain/canonical";
 import { employeeRecord, pinned, versionToSend } from "../../lib/record-versions";
 import type { PatchOp } from "./domain/facts";
 
-export type LifecycleEvent = components["schemas"]["EmployeeLifecycleEvent"];
+// Additive read contract pending backend projection of its correction/rescission command guards.
+export type LifecycleEvent = components["schemas"]["EmployeeLifecycleEvent"] & {
+  action_refusals?: Partial<Record<"correct" | "rescind", string>>;
+};
 type Case = components["schemas"]["EmployeeExitCase"];
 type Status = Case["status"];
 

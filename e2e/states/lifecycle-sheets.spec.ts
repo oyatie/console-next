@@ -176,10 +176,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 
-  test(`certificate settings refusal ${width} ${theme} @ui-state`, async ({ page }) => {
+  for (const allowed of [true, false]) test(`certificate settings refusal ${allowed} ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "post", "/api/v1/hr/certificates", { status: 422, json: failure("certificate_settings_required") });
+    await mockRoute(page, "get", "/api/v1/hr/certificate-settings", allowed
+      ? { status: 200, json: { settings: [], seal_max_bytes: 100000 } }
+      : { status: 403, json: failure("certificate_forbidden") });
     await page.goto(`/people/${id(4000)}?act=cert`);
     await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
     const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });
@@ -189,7 +192,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await sheet.getByRole("button", { name: t("empDoc.cert.commit"), exact: true }).click();
     const refusal = sheet.getByRole("alert");
     await expect(refusal).toContainText(t("empDoc.certificate.error.certificate_settings_required"));
-    await expect(sheet.getByRole("link", { name: t("empDoc.certificate.settings"), exact: true })).toHaveAttribute("href", `/people/certificates?employee=${id(4000)}#certificate-settings`);
+    const remedy = sheet.getByRole("link", { name: t("empDoc.certificate.settings"), exact: true });
+    if (allowed) await expect(remedy).toHaveAttribute("href", `/people/certificates?employee=${id(4000)}#certificate-settings`);
+    else await expect(remedy).toHaveCount(0);
     await fits(page, `certificate-refusal/${width}/${theme}`);
     await expectAxe(page, `certificate-refusal/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);

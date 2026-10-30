@@ -18,6 +18,7 @@ async function addContact(admin: Page, name: string, relation: string, phone: st
   await sheet.getByRole("textbox", { name: /^이름/ }).fill(name);
   await sheet.getByRole("combobox", { name: /^관계/ }).selectOption({ label: relation });
   await sheet.getByRole("textbox", { name: /^휴대전화/ }).fill(phone);
+  await sheet.getByRole("checkbox").check();
   return sheet;
 }
 
@@ -88,6 +89,7 @@ test("setup phase: contacts, photo, entries and careers are added, edited, trace
   const edit = admin.getByRole("dialog", { name: "비상연락처 수정" });
   await expect(edit.getByRole("textbox", { name: /^이름/ })).toHaveValue("홍길순");
   await edit.getByRole("combobox", { name: /^관계/ }).selectOption({ label: "형제자매" });
+  await edit.getByRole("checkbox").check();
   await edit.getByRole("button", { name: "인사 정보 1명 정정" }).click();
   await expect(personal.getByText("형제자매 홍••")).toBeVisible();
   // Regression (photo 409 against the user's own write): the card's re-read is held until the photo is recorded, so 사진 추가

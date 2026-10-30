@@ -1,11 +1,11 @@
 {
   "baseline": {
-    "apps/web/src/features/payroll/ui/payroll-home.tsx#PayrollHome": 16,
+    "apps/web/src/features/payroll/ui/payroll-home.tsx#PayrollHome": 15,
     "apps/web/src/features/payroll/ui/reference-page.tsx#PayrollReference": 13
   },
   "newScreens": {
     "apps/web/src/features/payroll/ui/payroll-home.tsx#PayrollHome": {
-      "FACT": 12,
+      "FACT": 11,
       "REFUSAL": 3,
       "EMPTY": 1,
       "LEGAL": 0,

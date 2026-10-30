@@ -248,7 +248,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       onSaveDraft={onClose}
       kicker={<><User size={12} aria-hidden />{t("lifecycle.kicker", { name: e.name, number: e.employee_number ?? "—", where: [here?.split(" › ").slice(-2).join(" › ") ?? e.org_unit, e.position].filter(Boolean).join(" · ") })}</>}
       title={!actionKind ? action : correcting ? t("lifecycle.title.correct", { name: e.name, action }) : locked ? t("lifecycle.title.change", { name: e.name, action }) : kind === "APPOINT" && appointMode === "job" ? action : t(`lifecycle.title.${actionKind}`)}
-      subtitle={here ? t("lifecycle.nowSince", { where: here, date: since }) : t("lifecycle.now", { where: whoLine(e) })}
+      subtitle={here ? t("lifecycle.nowSince", { where: here, date: fmtDayShort(since) }) : t("lifecycle.now", { where: whoLine(e) })}
       onClose={onClose}
       pending={run.isSending}
       loading={titles.isPending || (coded && reasons.isPending) || (kind === "LEAVE_OF_ABSENCE" && leaveRules.isPending)}
