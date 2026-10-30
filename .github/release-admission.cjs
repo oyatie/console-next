@@ -3,6 +3,12 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const policy = require('./release-admission-policy.json');
 
+async function readCheckRuns(github, ref) {
+  const [owner, repo] = policy.repository.split('/');
+  return github.paginate('GET /repos/{owner}/{repo}/commits/{ref}/check-runs',
+    { owner, repo, ref, per_page: 100, filter: 'all' });
+}
+
 function plan(from, to) {
   if (![from, to].every(sha => /^[a-f0-9]{40}$/.test(sha) && !/^0+$/.test(sha))) {
     throw new Error('Admission needs full nonzero base and candidate SHAs; use owner admission for the history root');
@@ -51,7 +57,7 @@ async function collect(github, merge) {
     required.some(check => check.context === expected.context && check.integration_id === expected.integration_id))) {
     throw new Error('Required checks were weakened; update the admission policy with CI changes');
   }
-  const runs = (await list('GET /repos/{owner}/{repo}/commits/{ref}/check-runs', { ref: head, filter: 'all' }))
+  const runs = (await readCheckRuns(github, head))
     .filter(run => Date.parse(run.started_at) < mergedAt).sort((a, b) => b.id - a.id);
   const checks = required.map(check => runs.find(run => run.name === check.context &&
     run.app.id === check.integration_id));
@@ -74,4 +80,4 @@ function write(record) {
   fs.writeFileSync('pr-admission.json', JSON.stringify(record));
 }
 
-module.exports = { plan, collect, write };
+module.exports = { plan, collect, write, readCheckRuns };
