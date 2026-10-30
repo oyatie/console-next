@@ -43,6 +43,7 @@ afterAll(async () => { await browser?.close(); await server?.close(); });
 test("register hides uncited and unadopted figures in the browser", async () => {
     await dom(page.getByText("근거 확인 필요", { exact: true }).first()).toBeVisible();
     await dom(page.getByText("0.123456%", { exact: true })).toHaveCount(0);
+    await dom(page.getByRole("link")).toHaveCount(0);
     await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("cited"));
     await dom(page.getByText("0.123456%", { exact: true })).toBeVisible();
     await dom(page.getByRole("link")).toHaveAttribute("href", "https://example.com/payroll-source");

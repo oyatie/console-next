@@ -8,7 +8,7 @@ import { accessRefusal } from "../reference/authz/domain/access";
 import { SETTINGS_VIEWS } from "./settings-views";
 
 type Modules = AllPaths["/api/v1/onboarding/modules"]["get"]["responses"][200]["content"]["application/json"];
-type NavLink = { to: string; label: MessageId; icon: LucideIcon; module?: Modules[number]["key"]; supportApproval?: boolean; views?: readonly { to: string }[] };
+type NavLink = { to: string; label: MessageId; icon: LucideIcon; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
 type NavContext = { pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules };
@@ -25,7 +25,7 @@ const NAV: readonly NavHub[] = [
     { to: "/org", label: "shell.link.org", icon: Building2, module: "org" },
     { to: "/people", label: "shell.link.people", icon: Users, module: "people" },
     { to: "/attendance", label: "shell.link.attendance", icon: Clock, module: "attendance" },
-    { to: "/payroll", label: "shell.link.payroll", icon: FileText, module: "payroll" },
+    { to: "/payroll", label: "shell.link.payroll", icon: FileText, module: "payroll", requireReadiness: true },
     { to: "/statutory", label: "shell.link.statutory", icon: ScrollText, module: "statutory" },
   ] },
   { hub: "shell.hub.admin", links: [
@@ -43,7 +43,7 @@ export function tenantNav(access: AccessEffective | undefined, routes: Routes, s
     if (!routes[link.to]) return false;
     if (link.to === "/") return true;
     if (!access) return false;
-    if (link.module === "payroll" && !modules?.some(m => m.key === "payroll" && m.ready)) return false;
+    if (link.requireReadiness && !modules) return false;
     if (modules && link.module && !modules.some(m => m.key === link.module && m.ready)) return false;
     if (phase === "SETUP") {
       // Keep S1's safe destinations if the checklist is unavailable; readiness can narrow them further.
