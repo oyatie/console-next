@@ -4,9 +4,11 @@ import { loadCatalog, t } from "@console/i18n";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { PhaseBand } from "../../../shell/phase-band";
 
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { phase: "OPERATING" }, isPending: false, isError: false }) }));
+
 // Model the timestamp captured by the mounted setup shell, before its go-live response arrives.
 const times = vi.hoisted(() => ({ mounted: Date.parse("2026-10-09T00:00:00Z"), updatedAfter: 2000 }));
-vi.mock("./use-setup", () => ({ useSetupChecklist: () => ({ phaseQ: {
+vi.mock("./use-setup", () => ({ useSetupChecklist: () => ({ q: {
   data: { phase: "OPERATING", go_live_at: "2026-10-09T00:00:01Z" },
   dataUpdatedAt: times.mounted + times.updatedAfter, isPending: false,
 } }) }));

@@ -149,6 +149,8 @@ export const koSetup = {
   "setup.phase.started.detail": "설정 단계의 되돌리기는 이제 정정으로 기록합니다.",
   "setup.phase.operating": "운영 중",
   "setup.phase.dismiss": "안내 닫기",
+  "setup.phase.failed": "운영 단계를 확인하지 못했습니다.",
+  "setup.phase.checklistFailed": "설정 정보를 확인하지 못했습니다.",
   "setup.fix.register_legal_entity": "법인 등록",
   "setup.fix.assign_department": "부서 지정",
   "setup.remedy.assign_department": "부서 없는 직원 {count, number}명",

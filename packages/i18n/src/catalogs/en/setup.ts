@@ -150,6 +150,8 @@ export const enSetup: Record<keyof typeof koSetup, string> = {
   "setup.phase.started.detail": "Setup history now records corrections in place of undo.",
   "setup.phase.operating": "Operating",
   "setup.phase.dismiss": "Dismiss notice",
+  "setup.phase.failed": "The operating phase could not be checked.",
+  "setup.phase.checklistFailed": "Setup information could not be checked.",
   "setup.fix.register_legal_entity": "Register a legal entity",
   "setup.fix.assign_department": "Assign department",
   "setup.remedy.assign_department": "{count, plural, one {# employee without a department} other {# employees without a department}}",

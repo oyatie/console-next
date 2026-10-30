@@ -69,7 +69,7 @@ export async function navFixture(engine = chromium) {
     if (path === "/api/v1/onboarding/modules") return route.fulfill({ json: navModules(user.tenant!.phase) });
     const json = path.endsWith("/token/refresh") ? token() : path === "/api/v1/users/me" ? user :
       path === "/api/v1/onboarding/checklist" ? operatingChecklist :
-      path === "/api/v1/access/me" ? { is_ops: true, entries: [] } :
+      path === "/api/v1/access/me" ? { account_id: user.id, is_ops: true, phase: user.tenant!.phase, as_of: user.created_at, entries: [] } :
       path === "/api/v1/me/authz" ? { capabilities: [] } :
       path === "/api/v1/support-sessions/active" ? { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } : {};
     return route.fulfill({ json });
