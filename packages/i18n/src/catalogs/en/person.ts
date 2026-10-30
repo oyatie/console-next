@@ -8,7 +8,7 @@ export const enPerson = {
   "person.verb.why.noEmployment": "{verbs}: there is no employment record.",
   "person.verb.why.generic": "{verbs}: not available in the current state.",
   "person.act.unavailable": "This action is not available right now.",
-  "person.act.unavailable.state": "This action is unavailable in the record's current state. Check its status in appointment history.",
+  "person.act.unavailable.state": "This action is unavailable in the record's current state. Check its status in personnel history.",
   "person.act.unavailable.invalid_transition": "This record cannot be rescheduled, edited or cancelled in its current state. Check its status in personnel history.",
   "person.act.unavailable.not_found": "This personnel event could not be found. Refresh personnel history.",
   "person.act.unavailable.lifecycle_void_not_applied": "Only applied events can be corrected or rescinded. Check the status in personnel history.",

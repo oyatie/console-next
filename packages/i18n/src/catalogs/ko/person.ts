@@ -9,7 +9,7 @@ export const koPerson = {
   "person.verb.why.noEmployment": "{verbs|은는} 고용 정보가 없어 할 수 없습니다.",
   "person.verb.why.generic": "{verbs|은는} 지금 상태에서는 할 수 없습니다.",
   "person.act.unavailable": "이 조치는 지금 할 수 없습니다.",
-  "person.act.unavailable.state": "이 기록의 현재 상태에서는 이 조치를 할 수 없습니다. 발령 이력에서 상태를 확인하십시오.",
+  "person.act.unavailable.state": "이 기록의 현재 상태에서는 이 조치를 할 수 없습니다. 인사 이력에서 상태를 확인하십시오.",
   "person.act.unavailable.invalid_transition": "이 기록의 현재 상태에서는 다시 예약하거나 예약을 변경·취소할 수 없습니다. 인사 이력에서 상태를 확인하십시오.",
   "person.act.unavailable.not_found": "해당 발령 기록을 찾을 수 없습니다. 인사 이력을 새로 확인하십시오.",
   "person.act.unavailable.lifecycle_void_not_applied": "반영된 발령만 정정하거나 철회할 수 있습니다. 인사 이력에서 상태를 확인하십시오.",

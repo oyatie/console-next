@@ -162,6 +162,21 @@ const appliedTransfer: components["schemas"]["EmployeeLifecycleEvent"] = {
   effective_date: "2026-10-20", comment: "", signoffs: { privacy_notice_ack: true, korean_labor_law_ack: true, payroll_cutoff_ack: false, retirement_settlement_ack: false }, created_by: id(1), created_by_name: "김담당", created_at: AT,
 };
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  for (const [verb, code] of [["correct", "lifecycle_void_not_latest"], ["rescind", "lifecycle_event_voided"]] as const) test(`server refuses ${verb} ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    const event = { ...appliedTransfer, action_refusals: { [verb]: code } };
+    await mockRoute(page, "get", "/api/v1/employees/{id}/lifecycle-events", { status: 200, json: { items: [event], head_version: 1, next_cursor: null } });
+    await page.goto(`/people/${id(4000)}?act=${verb}:${event.id}`);
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    const notice = page.getByRole("status").filter({ hasText: t("person.act.unavailable") });
+    await expect(notice).toContainText(t(`person.act.unavailable.${code}`));
+    await expect(notice.getByText(code, { exact: true })).toBeVisible();
+    await fits(page, `server-${verb}/${width}/${theme}`);
+    await expectAxe(page, `server-${verb}/${width}/${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
   for (const verb of ["again", "cancel", "edit"]) test(`applied transfer refuses ${verb} ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
@@ -169,20 +184,19 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.goto(`/people/${id(4000)}?act=${verb}:${appliedTransfer.id}`);
     await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
     const notice = page.getByRole("status").filter({ hasText: t("person.act.unavailable") });
-    await expect(notice).toContainText(t("person.act.unavailable.invalid_transition"));
-    await expect(notice.getByText("invalid_transition", { exact: true })).toBeVisible();
+    await expect(notice).toContainText(t("person.act.unavailable.state"));
+    await expect(notice.locator("code")).toHaveCount(0);
     await fits(page, `applied-${verb}/${width}/${theme}`);
     await expectAxe(page, `applied-${verb}/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);
   });
 
-  for (const allowed of [true, false]) test(`certificate settings refusal ${allowed} ${width} ${theme} @ui-state`, async ({ page }) => {
+  for (const allowed of [true, false, undefined]) test(`certificate settings refusal ${allowed} ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "post", "/api/v1/hr/certificates", { status: 422, json: failure("certificate_settings_required") });
-    await mockRoute(page, "get", "/api/v1/hr/certificate-settings", allowed
-      ? { status: 200, json: { settings: [], seal_max_bytes: 100000 } }
-      : { status: 403, json: failure("certificate_forbidden") });
+    const settings = { settings: [], seal_max_bytes: 100000, can_manage: allowed };
+    await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: settings });
     await page.goto(`/people/${id(4000)}?act=cert`);
     await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
     const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });

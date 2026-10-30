@@ -34,7 +34,7 @@ export function CertificateSheet({ c, onClose }: { c: Card; onClose: () => void 
     notice={<CommandError error={issue.error} own={certificateError} />}
     consequence={<><b>{kind ? t("empDoc.cert.cons", { kind: t(`empDoc.cert.kind.${kind}`), count: items.length }) : t("empDoc.cert.pick")}</b><span>{t("empDoc.certificate.issueEffect")}</span></>}
     actions={<><Button variant="primary" aria-disabled={!ready || issue.isPending} onClick={() => { if (kind && ready && !issue.isPending) issue.mutate({ employee_id: c.e.id, kind, items, purpose: purpose.trim() }); }}>{t("empDoc.cert.commit")}</Button></>}>
-    {needsSettings && settings.isSuccess && settings.isFetchedAfterMount && <Link to="/people/certificates" search={{ employee: c.e.id }} hash="certificate-settings">{t("empDoc.certificate.settings")}</Link>}
+    {needsSettings && settings.isSuccess && settings.isFetchedAfterMount && settings.data.can_manage === true && <Link to="/people/certificates" search={{ employee: c.e.id }} hash="certificate-settings">{t("empDoc.certificate.settings")}</Link>}
     <ChipChoice label={t("empDoc.cert.kind")} options={(["EMPLOYMENT", "CAREER", "EXIT"] as const).map((k) => ({ value: k, label: t(`empDoc.cert.kind.${k}`), disabled: k === "EXIT" ? c.e.status !== "EXITED" : k === "EMPLOYMENT" && c.e.status === "EXITED" }))} value={kind} onChange={(v) => { if (v === "EMPLOYMENT" || v === "CAREER" || v === "EXIT") setKind(v); }} />
     <p>{t("empDoc.cert.request")}</p>
     <Checks label={t("empDoc.cert.items")} items={ITEMS.map((k) => ({ id: k, label: t(`empDoc.cert.item.${k}`) }))} value={items} onChange={(v) => setItems(v.filter((x): x is typeof ITEMS[number] => ITEMS.some((i) => i === x)))} />
