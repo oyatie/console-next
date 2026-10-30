@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [items, legal_entities]
+properties:
+  items:
+    type: array
+    items: {$ref: '#/components/schemas/PayGroup'}
+  legal_entities:
+    type: array
+    items:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: [string, 'null']}

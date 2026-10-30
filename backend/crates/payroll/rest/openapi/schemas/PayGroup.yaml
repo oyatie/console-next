@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+allOf:
+- {$ref: '#/components/schemas/PayGroupDefinition'}
+- type: object
+  required: [id]
+  properties:
+    id: {type: string, format: uuid}
+unevaluatedProperties: false

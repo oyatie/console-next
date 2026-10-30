@@ -35,9 +35,11 @@ pub use openapi::OPENAPI_FRAGMENT;
 
 mod access;
 mod lifecycle;
+mod pay_groups;
 mod payslip_draft;
 mod self_service;
 
+pub(crate) use access::principal_from_headers;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -49,7 +51,6 @@ use console_payroll_adapter_postgres::{
     get_run_in_tx, list_runs_in_tx,
 };
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::Principal;
 use console_platform_db::{DbError, with_audits};
 use console_platform_request_context::RequestContextError;
 use serde::{Deserialize, Serialize};
@@ -78,11 +79,13 @@ pub const PAYROLL_RUN_ISSUE_PAYSLIPS_PATH_TEMPLATE: &str =
 pub const PAYROLL_RUN_PAYSLIP_DELIVERY_PATH_TEMPLATE: &str =
     "/api/v1/payroll/runs/{id}/payslip-delivery";
 
+pub use pay_groups::PAYROLL_PAY_GROUPS_PATH;
 pub use payslip_draft::{
     PAYROLL_EMPLOYEE_CONTRACT_WAGES_PATH_TEMPLATE, PAYROLL_EMPLOYEE_PAYSLIP_DRAFT_PATH_TEMPLATE,
 };
 
 pub const PAYROLL_ROUTE_PATHS: &[&str] = &[
+    PAYROLL_PAY_GROUPS_PATH,
     PAYROLL_RUNS_PATH,
     PAYROLL_RUN_PATH_TEMPLATE,
     PAYROLL_MY_PAYSLIPS_PATH,
@@ -149,6 +152,7 @@ pub fn router(state: PayrollRestState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.store.pool().clone();
     let router = Router::new()
+        .merge(pay_groups::router())
         .route(PAYROLL_RUNS_PATH, get(list_runs))
         .route(PAYROLL_RUN_PATH_TEMPLATE, get(get_run))
         .route(PAYROLL_MY_PAYSLIPS_PATH, get(self_service::list_my_lines))
@@ -388,18 +392,6 @@ impl IntoResponse for RestError {
         )
             .into_response()
     }
-}
-
-pub(crate) async fn principal_from_headers(
-    state: &PayrollRestState,
-    headers: &HeaderMap,
-) -> Result<Principal, RestError> {
-    let verifier = state.jwt_verifier.as_ref().ok_or_else(|| {
-        RestError::unavailable("JWT verification is not configured for the payroll API")
-    })?;
-    console_platform_request_context::resolve_principal(verifier, state.store.pool(), headers)
-        .await
-        .map_err(rest_error_from_request_context)
 }
 
 fn rest_error_from_request_context(err: RequestContextError) -> RestError {

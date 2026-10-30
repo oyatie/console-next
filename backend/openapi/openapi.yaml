@@ -23357,6 +23357,50 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/payroll/pay-groups:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:view", "scope": "entity"}
+      tags: [payroll]
+      operationId: listPayGroups
+      summary: List permitted entity pay groups
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Pay groups and legal-entity choices from the same Cedar-visible set, including entities with no groups.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayGroupPage'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503':
+          description: Cedar facts or policy evaluation unavailable; no access is granted.
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+      tags: [payroll]
+      operationId: createPayGroup
+      summary: Create an explicit entity pay group
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreatePayGroup'}
+      responses:
+        '201':
+          description: Explicit pay group created for the permitted legal entity.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayGroup'}
+        '422':
+          description: Missing, malformed or invalid required choices; nothing is written (validation).
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503':
+          description: Cedar facts or policy evaluation unavailable; no access is granted.
   /api/v1/payroll/payslips/me:
     get:
       tags:
@@ -38498,6 +38542,11 @@ components:
           minLength: 1
           maxLength: 1000
           description: Business/legal reason for the transfer.
+    CreatePayGroup:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf:
+      - {$ref: '#/components/schemas/PayGroupDefinition'}
+      unevaluatedProperties: false
     CreatePeriodLockRequest:
       type: object
       required:
@@ -52471,6 +52520,71 @@ components:
           minLength: 1
           maxLength: 80
           description: Optional account-selected display name; null uses the numbered default.
+    PayGroup:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf:
+      - {$ref: '#/components/schemas/PayGroupDefinition'}
+      - type: object
+        required: [id]
+        properties:
+          id: {type: string, format: uuid}
+      unevaluatedProperties: false
+    PayGroupDefinition:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [legal_entity_id, name, pay_date_rule, base_period, variable_period, proration, channel, sensitive, pay_basis_allowed]
+      properties:
+        legal_entity_id: {type: string, format: uuid}
+        name: {type: string, minLength: 1, maxLength: 40}
+        pay_date_rule:
+          type: object
+          additionalProperties: false
+          required: [day, month_offset, non_business_day]
+          properties:
+            day:
+              oneOf:
+              - {type: integer, minimum: 1, maximum: 31}
+              - {type: string, enum: [LAST_DAY]}
+            month_offset: {type: integer, enum: [0, 1]}
+            non_business_day: {type: string, enum: [PREVIOUS, NEXT]}
+        base_period: {$ref: '#/components/schemas/PayGroupPeriodRule'}
+        variable_period: {$ref: '#/components/schemas/PayGroupPeriodRule'}
+        proration: {type: string, enum: [CALENDAR_DAYS, SCHEDULED_WORKDAYS]}
+        channel: {type: string, enum: [ATTESTATION_ONLY, FILE_GENERIC]}
+        sensitive: {type: boolean}
+        pay_basis_allowed:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items: {type: string, enum: [MONTHLY, HOURLY]}
+    PayGroupPage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [items, legal_entities]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/PayGroup'}
+        legal_entities:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: {type: string, format: uuid}
+              name: {type: [string, 'null']}
+    PayGroupPeriodRule:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [start_day, month_offset]
+      properties:
+        start_day:
+          oneOf:
+          - {type: integer, minimum: 1, maximum: 28}
+          - {type: string, enum: [FIRST]}
+        month_offset: {type: integer, enum: [-1, 0]}
     PayrollClosePreflight:
       type: object
       required:

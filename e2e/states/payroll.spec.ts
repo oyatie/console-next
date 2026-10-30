@@ -45,15 +45,14 @@ for (const screen of payrollScreens) for (const state of Object.keys(screen.stat
         }
       } else if (state === "empty") {
         await expect(main.getByRole("region", { name: t("payroll.setup.title") })).toBeVisible();
-        await expect(main.getByRole("region", { name: t("payroll.deadlines") })).toHaveCount(0);
       } else {
         for (const group of payGroups.items) {
           const card = main.getByRole("region", { name: group.name, exact: true });
           await expect(card).toBeVisible();
           for (const field of ["basePeriod", "variablePeriod", "payDateRule", "proration", "channel"] as const)
             await expect(card.getByText(t(`payroll.${field}`), { exact: true })).toBeVisible();
-          await expect(card.getByText(group.proration, { exact: true })).toBeVisible();
-          await expect(card.getByText(group.channel, { exact: true })).toBeVisible();
+          await expect(card.getByText(t(`payroll.rule.${group.proration}`), { exact: true })).toBeVisible();
+          await expect(card.getByText(t(`payroll.rule.${group.channel}`), { exact: true })).toBeVisible();
         }
         const overseas = main.getByRole("region", { name: payGroups.items[2]!.name, exact: true });
         await expect(overseas).toContainText("모의상사 해외법인");
@@ -111,7 +110,7 @@ test("an unknown reference entity makes no rates request and can be replaced wit
     await expect(main.getByText(rate.value, { exact: true })).toHaveCount(0);
     expect(reads).toEqual([]);
     await picker.click();
-    await page.getByRole("option", { name: payGroups.legal_entities[0]!.name, exact: true }).click();
+    await page.getByRole("option", { name: payGroups.legal_entities[0]!.name!, exact: true }).click();
     await expect(main.getByText(rate.value, { exact: true })).toBeVisible();
     await expect(page).toHaveURL(`${new URL(screen.path, page.url())}?entity=${id(800)}`);
     expect(reads).toEqual([id(800)]);

@@ -18,7 +18,7 @@ export function PayrollReference() {
     <QueryState q={groups} layout="list">{data => {
       const selected = data.legal_entities.find(row => row.id === entity);
       return <div className="form">
-        <div className={s.entity}><SelectField label={t("payroll.entity")} placeholder={t("payroll.reference.pick")} value={selected?.id ?? null} options={data.legal_entities.map(row => ({ id: row.id, label: row.name }))} onChange={id => void navigate({ search: { entity: id }, replace: true })} /></div>
+        <div className={s.entity}><SelectField label={t("payroll.entity")} placeholder={t("payroll.reference.pick")} value={selected?.id ?? null} options={data.legal_entities.map(row => ({ id: row.id, label: row.name ?? t("payroll.entityUnnamed") }))} onChange={id => void navigate({ search: { entity: id }, replace: true })} /></div>
         {selected ? <Rates key={selected.id} entity={selected.id} /> : <EmptyState title={t("payroll.reference.pick")} reason={t("payroll.reference.pickReason")} />}
       </div>;
     }}</QueryState>

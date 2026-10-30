@@ -57,12 +57,14 @@ use time::{Duration, OffsetDateTime, Time};
 use tower::ServiceExt;
 use uuid::Uuid;
 
+#[path = "support/pay_groups_api.rs"]
+mod pay_groups_api;
 #[path = "fixtures/pay_view.rs"]
 mod pay_view;
 
 #[path = "support/run_read_access.rs"]
 mod run_read_access;
-use run_read_access::get_unauthenticated;
+use run_read_access::{get, get_unauthenticated};
 
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
@@ -144,20 +146,6 @@ fn app(pool: PgPool, keys: &Keys) -> axum::Router {
     .unwrap();
     let store = PgPayrollStore::new(pool);
     router(PayrollRestState::new(store, Some(verifier)))
-}
-
-async fn get(service: axum::Router, uri: &str, token: &str) -> JsonResponse {
-    let request = Request::builder()
-        .uri(uri)
-        .method("GET")
-        .header(header::AUTHORIZATION, format!("Bearer {token}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = service.oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    let json = serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({}));
-    JsonResponse { status, json }
 }
 
 fn test_audit_event(

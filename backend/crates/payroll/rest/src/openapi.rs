@@ -38,6 +38,19 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/payroll/pay-groups",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__payroll__pay-groups.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__v1__payroll__pay-groups.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/payroll/payslips/me",
         operations: &[Operation {
             method: "get",
@@ -168,6 +181,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/ClosePayrollAttendanceRequest.yaml"),
     },
     NamedYaml {
+        name: "CreatePayGroup",
+        body: include_str!("../openapi/schemas/CreatePayGroup.yaml"),
+    },
+    NamedYaml {
         name: "DecidePayrollRunRequest",
         body: include_str!("../openapi/schemas/DecidePayrollRunRequest.yaml"),
     },
@@ -178,6 +195,22 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "MyPayrollLinePage",
         body: include_str!("../openapi/schemas/MyPayrollLinePage.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroup",
+        body: include_str!("../openapi/schemas/PayGroup.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroupDefinition",
+        body: include_str!("../openapi/schemas/PayGroupDefinition.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroupPage",
+        body: include_str!("../openapi/schemas/PayGroupPage.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroupPeriodRule",
+        body: include_str!("../openapi/schemas/PayGroupPeriodRule.yaml"),
     },
     NamedYaml {
         name: "PayrollClosePreflight",

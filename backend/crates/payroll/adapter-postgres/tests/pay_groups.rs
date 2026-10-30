@@ -24,7 +24,7 @@ fn input(entity: Uuid) -> CreatePayGroup {
         "pay_date_rule":{"day":"LAST_DAY","month_offset":0,"non_business_day":"PREVIOUS"},
         "base_period":{"start_day":"FIRST","month_offset":0},
         "variable_period":{"start_day":16,"month_offset":-1},
-        "proration":"CALENDAR_DAYS", "channel":"ATTESTATION_ONLY"
+        "proration":"CALENDAR_DAYS", "channel":"ATTESTATION_ONLY", "sensitive":false,"pay_basis_allowed":["MONTHLY"]
     }))
     .unwrap()
 }
@@ -58,11 +58,17 @@ async fn pay_groups_preserve_explicit_rules_and_cedar_entity_visibility(pool: Pg
         actual.as_object_mut().unwrap().remove("id");
         assert_eq!(actual, serde_json::to_value(expected).unwrap());
     }
-    assert_eq!(store.list_pay_groups(org, admin).await.unwrap().len(), 2);
+    assert_eq!(
+        store.list_pay_groups(org, admin).await.unwrap().items.len(),
+        2
+    );
     assert_eq!(audit_count(&pool, admin).await, 3);
     let reader = seed_active_user(&pool, *org.as_uuid(), "MEMBER", "entity-pay-reader").await;
     let grant = pay_access::grant_view(&pool, org, reader, Some(a)).await;
-    let groups = store.list_pay_groups(org, reader).await.unwrap();
+    let page = store.list_pay_groups(org, reader).await.unwrap();
+    assert_eq!(page.legal_entities.len(), 1);
+    assert_eq!(page.legal_entities[0].id, a);
+    let groups = page.items;
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].legal_entity_id, a);
     let denied = store
@@ -112,7 +118,7 @@ async fn pay_group_creation_refuses_wrong_scope_unknown_entity_and_foreign_entit
         .await
         .unwrap();
     assert_eq!(
-        store.list_pay_groups(a, actor).await.unwrap()[0].id,
+        store.list_pay_groups(a, actor).await.unwrap().items[0].id,
         group.id
     );
     let tenant_reader = seed_active_user(&pool, *b.as_uuid(), "MEMBER", "foreign-pay-reader").await;
@@ -122,6 +128,7 @@ async fn pay_group_creation_refuses_wrong_scope_unknown_entity_and_foreign_entit
             .list_pay_groups(b, tenant_reader)
             .await
             .unwrap()
+            .items
             .is_empty()
     );
     assert_eq!(audit_count(&pool, actor).await, 2);
@@ -185,7 +192,14 @@ async fn pay_groups_refuse_legacy_titles_and_report_invalid_fields_without_persi
         assert_eq!(error.field.as_deref(), Some(field));
     }
     assert_eq!(audit_count(&pool, actor).await, 0);
-    assert!(store.list_pay_groups(org, actor).await.unwrap().is_empty());
+    assert!(
+        store
+            .list_pay_groups(org, actor)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -213,7 +227,7 @@ async fn pay_group_typed_choices_round_trip_without_invented_defaults(pool: PgPo
             assert_eq!(actual, value);
         }
     }
-    let groups = store.list_pay_groups(org, actor).await.unwrap();
+    let groups = store.list_pay_groups(org, actor).await.unwrap().items;
     assert_eq!(groups.len(), 6);
     for group in groups {
         assert_eq!(

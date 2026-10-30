@@ -8,7 +8,8 @@ for (const path of ["/payroll", "/payroll/reference"]) test(`${path} declares pa
   const router = createRouter({ routeTree });
   const route = Object.values(router.routesById).find(candidate => candidate.fullPath === path);
   const pending = { domain: "pay", level: "view" };
+  const groups = operationAccess["GET /api/v1/payroll/pay-groups"];
   expect(route?.options.staticData?.access).toEqual(path === "/payroll"
-    ? { allOf: [pending, operationAccess["GET /api/v1/payroll/runs"]] }
-    : pending);
+    ? { allOf: [groups, operationAccess["GET /api/v1/payroll/runs"]] }
+    : { allOf: [groups, pending] });
 });

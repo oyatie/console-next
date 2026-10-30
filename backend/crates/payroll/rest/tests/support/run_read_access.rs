@@ -12,6 +12,20 @@ pub(super) async fn get_unauthenticated(service: axum::Router, uri: &str) -> Sta
     service.oneshot(request).await.unwrap().status()
 }
 
+pub(super) async fn get(service: axum::Router, uri: &str, token: &str) -> JsonResponse {
+    let request = Request::builder()
+        .uri(uri)
+        .method("GET")
+        .header(header::AUTHORIZATION, format!("Bearer {token}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = service.oneshot(request).await.unwrap();
+    let status = response.status();
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let json = serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({}));
+    JsonResponse { status, json }
+}
+
 async fn assert_refused(service: &axum::Router, token: &str, run: Uuid) {
     for path in [
         PAYROLL_RUNS_PATH.to_owned(),

@@ -10,7 +10,7 @@ fn rules() -> Value {
     json!({"name":"모의 급여", "pay_date_rule":{"day":"LAST_DAY","month_offset":0,"non_business_day":"PREVIOUS"},
         "base_period":{"start_day":"FIRST","month_offset":0},
         "variable_period":{"start_day":16,"month_offset":-1},
-        "proration":"CALENDAR_DAYS","channel":"ATTESTATION_ONLY"})
+        "proration":"CALENDAR_DAYS","channel":"ATTESTATION_ONLY", "sensitive":false,"pay_basis_allowed":["MONTHLY"]})
 }
 
 async fn insert(tx: &mut Transaction<'_, Postgres>, value: Value) -> Result<(), sqlx::Error> {
@@ -89,6 +89,10 @@ async fn database_refuses_invalid_rule_types_and_missing_choices(pool: PgPool) {
         ("name", json!(" ")),
         ("proration", json!("OTHER")),
         ("channel", json!("BANK_TRANSFER")),
+        ("pay_basis_allowed", json!([])),
+        ("pay_basis_allowed", json!(["OTHER"])),
+        ("pay_basis_allowed", json!([null])),
+        ("pay_basis_allowed", json!(["MONTHLY", "MONTHLY"])),
     ];
     for (field, value) in invalid.into_iter().chain(
         [
@@ -140,6 +144,8 @@ fn wire_refuses_free_text_unknown_enums_and_absent_fields() {
         "variable_period",
         "proration",
         "channel",
+        "sensitive",
+        "pay_basis_allowed",
     ] {
         let mut missing = valid.clone();
         missing.as_object_mut().unwrap().remove(field);
@@ -154,6 +160,8 @@ fn wire_refuses_free_text_unknown_enums_and_absent_fields() {
         "variable_period",
         "proration",
         "channel",
+        "sensitive",
+        "pay_basis_allowed",
     ] {
         let mut invalid = valid.clone();
         invalid[field] = json!("arbitrary");

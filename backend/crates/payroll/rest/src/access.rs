@@ -6,7 +6,10 @@ use console_platform_authz::access::{NodeKind, NodeRef};
 use console_platform_authz::cedar_pbac::visible::load_facts;
 use sqlx::{Postgres, Transaction};
 
-use crate::RestError;
+use axum::http::HeaderMap;
+use console_platform_authz::Principal;
+
+use crate::{PayrollRestState, RestError};
 
 pub(crate) async fn require_run_read_in_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -48,6 +51,18 @@ pub(crate) async fn require_pay_action_in_tx(
 fn cedar_error(error: console_platform_authz::access::AccessEngineError) -> RestError {
     tracing::error!(%error, "payroll Cedar decision failed");
     RestError::unavailable("payroll access decision is unavailable")
+}
+
+pub(crate) async fn principal_from_headers(
+    state: &PayrollRestState,
+    headers: &HeaderMap,
+) -> Result<Principal, RestError> {
+    let verifier = state.jwt_verifier.as_ref().ok_or_else(|| {
+        RestError::unavailable("JWT verification is not configured for the payroll API")
+    })?;
+    console_platform_request_context::resolve_principal(verifier, state.store.pool(), headers)
+        .await
+        .map_err(crate::rest_error_from_request_context)
 }
 
 #[cfg(test)]
