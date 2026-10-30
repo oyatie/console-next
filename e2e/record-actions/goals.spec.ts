@@ -46,7 +46,7 @@ const GOALS = (w: { entityId: string; personId: string }): Goal[] => [
   {
     goal: "비상연락처를 추가해 보세요",
     start: (p) => go(p, `/people/${w.personId}`),
-    value: (p) => p.getByRole("region", { name: "인적사항" }).getByText("비상연락처", { exact: true }),
+    value: (p) => p.getByRole("region", { name: "인적사항" }).getByText(/^비상연락처(?: · |$)/),
     steps: (p) => [p.getByRole("button", { name: "비상연락처 추가", exact: true })],
   },
   {

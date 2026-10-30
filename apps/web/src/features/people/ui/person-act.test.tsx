@@ -28,10 +28,24 @@ test.each([
   ["APPLIED", "TRANSFER", undefined, "lifecycle_void_not_latest"],
 ])("%s %s uses its catalog refusal %s %s", (state, event_type, voided_by, code) => {
   const events = [
-    { ...event, state, event_type, voided_by },
+    { ...event, state, event_type, voided_by, action_refusals: { correct: code } },
     ...(event_type === "GROUP_TRANSFER" ? [] : [{ ...event, id: "later", created_at: "2026-10-21T00:00:00Z" }]),
   ];
   const markup = renderToStaticMarkup(<ActHost d={detail} act="correct:event" events={{ data: { items: events, head_version: 1 }, isFetching: false } as unknown as Props["events"]} onClose={() => {}} onOpen={() => {}} onRecorded={() => {}} />);
   expect(markup).toContain(code);
   expect(markup).toContain(t(`person.act.unavailable.${code}` as Parameters<typeof t>[0]));
+});
+
+test("the server owns correction refusal codes, even when local state suggests another rule", () => {
+  const items = [{ ...event, state: "SCHEDULED", action_refusals: { correct: "lifecycle_void_exit_owned" } }];
+  const markup = renderToStaticMarkup(<ActHost d={detail} act="correct:event" events={{ data: { items, head_version: 1 }, isFetching: false } as unknown as Props["events"]} onClose={() => {}} onOpen={() => {}} onRecorded={() => {}} />);
+  expect(markup).toContain("lifecycle_void_exit_owned");
+  expect(markup).not.toContain("lifecycle_void_not_applied");
+});
+
+test("an older event response explains unavailability without making up a server refusal code", () => {
+  const items = [{ ...event, state: "SCHEDULED" }];
+  const markup = renderToStaticMarkup(<ActHost d={detail} act="correct:event" events={{ data: { items, head_version: 1 }, isFetching: false } as unknown as Props["events"]} onClose={() => {}} onOpen={() => {}} onRecorded={() => {}} />);
+  expect(markup).toContain(t("person.act.unavailable.state"));
+  expect(markup).not.toContain("<code");
 });

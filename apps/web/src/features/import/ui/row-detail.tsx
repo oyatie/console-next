@@ -1,6 +1,7 @@
 import { LEAVE_TYPE } from "../../../lib/labels";
 import { EnumCode } from "../../../ui/enum-value";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import type { ImportRow } from "../domain/contract";
 import { employmentTypeLabel, fieldLabel, leaveTypeLabel, outcomeLabel, refusalLabel, routeLabel, shown } from "../present";
 import s from "./import.module.css";
@@ -31,7 +32,7 @@ export function RowDetail({ r }: { r: ImportRow }) {
         </ul>
       )}
       {leave && (
-        <p>{t(leave.expected_return_date ? "import.rows.leave" : "import.rows.leaveOpen", { type: leaveTypeLabel(leave.leave_type), start: leave.start_date, end: leave.expected_return_date ?? "" })} <EnumCode e={LEAVE_TYPE} value={leave.leave_type} /></p>
+        <p>{t(leave.expected_return_date ? "import.rows.leave" : "import.rows.leaveOpen", { type: leaveTypeLabel(leave.leave_type), start: fmtDate(leave.start_date), end: fmtDate(leave.expected_return_date) })} <EnumCode e={LEAVE_TYPE} value={leave.leave_type} /></p>
       )}
       {r.new_person && r.new_person.employee_number == null && <p className={s.held}>{t("import.rows.unnumbered")}</p>}
       {r.unit_name && <p className={s.held}>{t("import.rows.unitName", { name: r.unit_name })}</p>}
