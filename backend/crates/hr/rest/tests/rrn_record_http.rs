@@ -28,6 +28,8 @@ use std::{
 use tower::ServiceExt;
 use uuid::Uuid;
 
+#[path = "rrn_record_http/emergency_contacts.rs"]
+mod emergency_contacts;
 #[path = "rrn_record_http/governance.rs"]
 mod governance;
 

@@ -2,7 +2,7 @@
   "baseline": {
     "apps/web/src/features/org/OrgChange.tsx#OrgChange": 114,
     "apps/web/src/features/people/ui/bulk-page.tsx#BulkPage": 76,
-    "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 409,
+    "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 408,
     "apps/web/src/features/people/ui/exit-page.tsx#ExitCasePage": 84,
     "apps/web/src/features/people/ui/people-route.tsx#PeopleRoute": 198,
     "apps/web/src/routes/home-screen.tsx#HomeScreen": 49,

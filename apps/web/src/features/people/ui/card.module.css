@@ -106,6 +106,7 @@
 .stackRow { display: flex; flex-direction: column; gap: var(--space-1); }
 .logText { composes: t-xs t-ink from global; margin: 0; }
 .scrollBox { max-height: 50dvh; overflow: auto; }
+.contactField { grid-column: 1 / -1; }
 .contacts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .contact { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .photoCell { display: inline-flex; align-items: center; gap: var(--space-2); }

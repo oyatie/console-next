@@ -4,7 +4,8 @@
 //! `corrections::lock_employee` locked the employee row.
 
 use console_hr_domain::personal::{
-    EmergencyContact, validate_emergency_contacts, validate_group_service_start,
+    EmergencyContact, EmergencyContactInput, normalize_emergency_contacts,
+    validate_emergency_contacts, validate_group_service_start,
 };
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use http::StatusCode;
@@ -196,8 +197,10 @@ pub(crate) async fn contact_plan(
     value: Option<&str>,
 ) -> Result<Value, HrError> {
     let contacts = super::normalize("emergency_contacts", &json!(value))?;
-    let rows: Vec<EmergencyContact> = serde_json::from_str(contacts.as_deref().unwrap_or("[]"))
-        .map_err(|_| HrError::validation("changes.emergency_contacts could not be stored"))?;
+    let inputs: Vec<EmergencyContactInput> =
+        serde_json::from_str(contacts.as_deref().unwrap_or("[]"))
+            .map_err(|_| HrError::validation("changes.emergency_contacts could not be stored"))?;
+    let rows = normalize_emergency_contacts(inputs.clone()).map_err(HrError::from_kernel)?;
     let mut recorded: Vec<(Uuid, sqlx::types::Json<EmergencyContact>)> = sqlx::query_as(
         "SELECT id, jsonb_build_object('name', name, 'relation', relation, \
          'phone', phone_e164, 'contact_notified', contact_notified) \
@@ -208,27 +211,33 @@ pub(crate) async fn contact_plan(
     .bind(employee_id)
     .fetch_all(tx.as_mut())
     .await?;
-    validate_emergency_contacts(
-        &rows,
-        &recorded
-            .iter()
-            .map(|(_, row)| row.0.clone())
-            .collect::<Vec<_>>(),
-    )
-    .map_err(|error| HrError {
-        code: error.code.unwrap_or("validation"),
-        ..HrError::from_kernel(error)
-    })?;
-    let plan: Vec<Value> = rows
-        .into_iter()
-        .map(|row| {
-            let id = recorded
-                .iter()
-                .position(|(_, old)| old.0 == row)
-                .map(|index| recorded.remove(index).0);
-            json!({"id": id, "contact": row})
-        })
-        .collect();
+    let mut plan = Vec::with_capacity(rows.len());
+    for (mut row, input) in rows.into_iter().zip(inputs) {
+        let legacy = input.contact_notified.is_none();
+        let existing = recorded.iter().position(|(_, old)| {
+            if legacy {
+                old.name == row.name && old.relation == row.relation && old.phone == row.phone
+            } else {
+                old.0 == row
+            }
+        });
+        let id = if let Some(index) = existing {
+            let (id, old) = recorded.remove(index);
+            row = old.0;
+            Some(id)
+        } else {
+            if !legacy {
+                validate_emergency_contacts(std::slice::from_ref(&row), &[]).map_err(|error| {
+                    HrError {
+                        code: error.code.unwrap_or("validation"),
+                        ..HrError::from_kernel(error)
+                    }
+                })?;
+            }
+            None
+        };
+        plan.push(json!({"id": id, "contact": row}));
+    }
     Ok(json!(plan))
 }
 
@@ -266,7 +275,9 @@ async fn write_contacts(
         "INSERT INTO employee_emergency_contacts (org_id, employee_id, seq, name, relation, \
          phone_e164, created_by, basis, contact_notified) \
          SELECT $1, $2, r.n, r.v->'contact'->>'name', r.v->'contact'->>'relation', \
-         r.v->'contact'->>'phone', $4, $5, true \
+         r.v->'contact'->>'phone', $4, \
+         CASE WHEN (r.v->'contact'->>'contact_notified')::boolean THEN $5 END, \
+         (r.v->'contact'->>'contact_notified')::boolean \
          FROM jsonb_array_elements($3::jsonb) WITH ORDINALITY AS r(v, n) \
          WHERE r.v->>'id' IS NULL",
     )

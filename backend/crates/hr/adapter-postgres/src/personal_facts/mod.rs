@@ -93,7 +93,8 @@ fn emergency_contacts(value: &Value) -> Result<Option<String>, HrError> {
         Value::String(text) => serde_json::from_str(text).map_err(|_| shape())?,
         other => other.clone(),
     };
-    let rows: Vec<EmergencyContactInput> = serde_json::from_value(value).map_err(|_| shape())?;
+    let rows: Vec<EmergencyContactInput> =
+        serde_json::from_value(value.clone()).map_err(|_| shape())?;
     let mut rows = normalize_emergency_contacts(rows).map_err(HrError::from_kernel)?;
     if rows.is_empty() {
         return Ok(None);
@@ -101,6 +102,19 @@ fn emergency_contacts(value: &Value) -> Result<Option<String>, HrError> {
     for row in &mut rows {
         row.phone = normalize_phone_e164(std::mem::take(&mut row.phone))?;
     }
+    // Preserve omission until the locked write can resolve the released client's evidence.
+    let rows: Vec<Value> = rows
+        .into_iter()
+        .enumerate()
+        .map(|(index, row)| {
+            let mut contact =
+                serde_json::json!({"name": row.name, "relation": row.relation, "phone": row.phone});
+            if value[index].get("contact_notified").is_some() {
+                contact["contact_notified"] = serde_json::json!(row.contact_notified);
+            }
+            contact
+        })
+        .collect();
     serde_json::to_string(&rows)
         .map(Some)
         .map_err(|_| HrError::validation("changes.emergency_contacts could not be stored"))
