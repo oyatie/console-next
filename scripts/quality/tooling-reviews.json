@@ -10740,5 +10740,173 @@
     "maintainers": "google/brotli upstream project",
     "footprint": "Build-time only; executable tooling excluded from the browser bundle",
     "securityProcess": "SHA-256 pinned binary-only wheels; no transitive dependency installation; offline input/output verification in builds"
+  },
+  "ci-tool:nextest": {
+    "group": "CI/supply-chain tools",
+    "job": "Execute backend Rust tests and emit JUnit in required CI",
+    "verdict": "keep",
+    "convention": "owner approved",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-28",
+      "ruling": "cargo-nextest approved as Rust tooling."
+    },
+    "alternatives": "cargo test with a separate JUnit adapter; own scheduling and report code.",
+    "reason": "Owner-approved Rust tooling; reuse the existing pinned runner and JUnit profile.",
+    "evidence": [
+      "https://nexte.st/docs/machine-readable/junit/",
+      "https://github.com/nextest-rs/nextest"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/ci.yml"
+    ],
+    "approvedUses": [
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
+      }
+    ],
+    "architectureRecord": "docs/architecture/rust-testing.md",
+    "exitPlan": "Replace only with test discovery, isolation, failure propagation and JUnit parity.",
+    "license": "MIT OR Apache-2.0",
+    "securityProcess": "Pinned upstream release archive verified against its SHA-256 before execution.",
+    "ruleMapping": "Every selected test must execute; nextest failure or incomplete JUnit fails ci-ok."
+  },
+  "action:actions/cache/restore": {
+    "group": "CI and platform tools",
+    "job": "Reuse the shared backend registry and build artifacts across trusted CI runs",
+    "verdict": "keep",
+    "convention": "Explicit owner approval",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-29",
+      "authority": "Owner",
+      "ruling": "Owner approved actions/cache/restore and actions/cache/save for CI backend build caching."
+    },
+    "alternatives": "Cold builds; existing artifact actions with manual cache lookup.",
+    "reason": "Owner caching directive (2026-10-28): 「caching should work following best practices both in github and locally」. Share clippy and nextest artifacts without caching unmerged code for other runs.",
+    "evidence": [
+      "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+      "https://github.com/actions/cache",
+      "https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE",
+      "https://github.com/actions/cache/releases/tag/v6.1.0"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/ci.yml"
+    ],
+    "approvedUses": [
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
+      }
+    ],
+    "architectureRecord": "docs/architecture/rust-testing.md",
+    "exitPlan": "Remove the cache steps; all checks continue with cold builds.",
+    "license": "MIT",
+    "securityProcess": "Pinned commit; only successful pushes to dev save artifacts.",
+    "ruleMapping": "Cache misses rebuild; cache hits never skip checks or tests.",
+    "standardTest": {
+      "a": {
+        "result": "pass",
+        "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+        "reason": "GitHub's first-party action, documented as the dependency caching mechanism."
+      },
+      "b": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE",
+        "reason": "MIT license at the pinned commit."
+      },
+      "c": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache/releases/tag/v6.1.0",
+        "reason": "Maintained by GitHub; current release v6.1.0, published 2026-06-26."
+      },
+      "d": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache",
+        "reason": "Lightweight CI action for restoring and saving build artifacts; no application runtime dependency."
+      },
+      "e": {
+        "result": "pass",
+        "source": "docs/architecture/rust-testing.md",
+        "reason": "CI/supply chain only, used by .github/workflows/ci.yml; remove the cache steps and the build stays correct without them."
+      }
+    }
+  },
+  "action:actions/cache/save": {
+    "group": "CI and platform tools",
+    "job": "Reuse the shared backend registry and build artifacts across trusted CI runs",
+    "verdict": "keep",
+    "convention": "Explicit owner approval",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-29",
+      "authority": "Owner",
+      "ruling": "Owner approved actions/cache/restore and actions/cache/save for CI backend build caching."
+    },
+    "alternatives": "Cold builds; existing artifact actions with manual cache lookup.",
+    "reason": "Owner caching directive (2026-10-28): 「caching should work following best practices both in github and locally」. Share clippy and nextest artifacts without caching unmerged code for other runs.",
+    "evidence": [
+      "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+      "https://github.com/actions/cache",
+      "https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE",
+      "https://github.com/actions/cache/releases/tag/v6.1.0"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/ci.yml"
+    ],
+    "approvedUses": [
+      {
+        "layer": "CI/supply chain",
+        "user": ".github/workflows/ci.yml"
+      }
+    ],
+    "architectureRecord": "docs/architecture/rust-testing.md",
+    "exitPlan": "Remove the cache steps; all checks continue with cold builds.",
+    "license": "MIT",
+    "securityProcess": "Pinned commit; only successful pushes to dev save artifacts.",
+    "ruleMapping": "Cache misses rebuild; cache hits never skip checks or tests.",
+    "standardTest": {
+      "a": {
+        "result": "pass",
+        "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+        "reason": "GitHub's first-party action, documented as the dependency caching mechanism."
+      },
+      "b": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/LICENSE",
+        "reason": "MIT license at the pinned commit."
+      },
+      "c": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache/releases/tag/v6.1.0",
+        "reason": "Maintained by GitHub; current release v6.1.0, published 2026-06-26."
+      },
+      "d": {
+        "result": "pass",
+        "source": "https://github.com/actions/cache",
+        "reason": "Lightweight CI action for restoring and saving build artifacts; no application runtime dependency."
+      },
+      "e": {
+        "result": "pass",
+        "source": "docs/architecture/rust-testing.md",
+        "reason": "CI/supply chain only, used by .github/workflows/ci.yml; remove the cache steps and the build stays correct without them."
+      }
+    }
   }
 }

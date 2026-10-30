@@ -249,10 +249,9 @@ async fn linked_member_reads_only_own_attendance_console_data(pool: PgPool) {
 
 #[path = "hr_attendance_self_read/account_link.rs"]
 mod account_link;
-#[cfg(test)]
 #[path = "hr_attendance_self_read/weekly_refusals.rs"]
 mod weekly_refusals;
-use account_link::seed_employee;
+use account_link::seed_linked_employee;
 
 async fn seed_user(pool: &PgPool, user_id: UserId, role: &str) {
     sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
@@ -263,23 +262,6 @@ async fn seed_user(pool: &PgPool, user_id: UserId, role: &str) {
         .execute(pool)
         .await
         .unwrap();
-}
-
-/// Insert an employee and link `user_id` to it, so `GET /me` resolves a record.
-async fn seed_linked_employee(pool: &PgPool, user_id: UserId, role: &str, name: &str) -> Uuid {
-    let employee_id = seed_employee(pool, name).await;
-    sqlx::query(
-        "INSERT INTO users (id, display_name, roles, org_id, employee_id) VALUES ($1, $2, $3, $4, $5)",
-    )
-    .bind(*user_id.as_uuid())
-    .bind(name)
-    .bind(vec![role])
-    .bind(*OrgId::one().as_uuid())
-    .bind(employee_id)
-    .execute(pool)
-    .await
-    .unwrap();
-    employee_id
 }
 
 async fn post(service: axum::Router, uri: &str, token: &str, body: Value) -> JsonResponse {

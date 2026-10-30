@@ -1,5 +1,5 @@
 //! Code-line counting: the lines that carry code, minus the lines of items
-//! compiled only under `cfg(test)`.
+//! compiled only under `cfg(test)`, except in integration-test source files.
 //!
 //! A small textual lexer drops comments (doc comments included) and blank
 //! lines; every line of a multi-line literal is code. A `#[cfg(…)]` attribute
@@ -21,12 +21,12 @@ use syn::parse::Parser;
 /// unbalanced delimiters) counts every non-blank line, and a file that lexes
 /// but does not parse keeps its test items in the count.
 #[must_use]
-pub fn code_lines(text: &str) -> usize {
+pub fn code_lines(path: &str, text: &str) -> usize {
     let Some(toks) = lex(text) else {
         return text.lines().filter(|line| !line.trim().is_empty()).count();
     };
     let mut lines: BTreeSet<usize> = toks.iter().flat_map(|t| t.line..=t.end_line).collect();
-    if syn::parse_file(text).is_ok() {
+    if !path.split('/').any(|part| part == "tests") && syn::parse_file(text).is_ok() {
         let mut k = 0;
         while k < toks.len() {
             if let Some(end) = test_item_end(text, &toks, k) {

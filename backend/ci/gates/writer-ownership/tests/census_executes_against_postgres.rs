@@ -16,7 +16,7 @@ const IMAGE: &str =
 /// exact set the census must examine. This list is a VERBATIM PIN, not a second
 /// source: the census scope is DERIVED from the `required_tables` array in
 /// `ops/postgres-reconcile-topology.sh` by [`required_tables_from_topology`],
-/// and [`derived_required_tables_match_the_verbatim_roster`] fails the run when
+/// and [`harness_scripts::derived_required_tables_match_the_verbatim_roster`] fails the run when
 /// the derived set and this pin diverge. A lane that lands a new canonical
 /// table edits the shell array and this pin — two edits in two files, instead
 /// of a fixed-arity const plus two shared arrays that four port lanes had to
@@ -1189,19 +1189,6 @@ fn examined_set(log: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     Ok(names)
 }
 
-#[test]
-fn derived_required_tables_match_the_verbatim_roster() -> Fallible {
-    let derived = required_tables_from_topology(&topology_script())?;
-    assert_eq!(
-        derived,
-        EXPECTED_REQUIRED_TABLES.map(str::to_string).to_vec(),
-        "the shell `required_tables` array and the verbatim pin must stay the same \
-         set; a new canonical table edits BOTH (shell first, then this pin), and \
-         this test is the ratchet that refuses a drift"
-    );
-    Ok(())
-}
-
 /// A decoy `required_tables CONSTANT TEXT[] := ARRAY[` plus BEGIN/END markers
 /// earlier in the shell script must not win. The production declaration lives
 /// inside `DO $canonical$`; parsing the whole file (or the first ARRAY[
@@ -2050,6 +2037,7 @@ $canonical$;
 }
 
 #[test]
+#[cfg_attr(not(feature = "test-postgres"), ignore = "Postgres")]
 fn census_binds_to_an_executed_database() -> Fallible {
     require_docker();
     let harness = boot()?;
@@ -2186,56 +2174,4 @@ fn census_binds_to_an_executed_database() -> Fallible {
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// The wiring, proven by RUNNING each harness
-// ---------------------------------------------------------------------------
-
-/// The enforcement's own output line. Its presence is proof the enforcement
-/// executed; the name of the script that would have produced it is not.
-const ENFORCED: &str = "canonical-enforce: enforced";
-
-#[test]
-fn pgtest_harness_executes_the_enforcement() -> Fallible {
-    require_docker();
-    let root = repo_root().display().to_string();
-    let script = repo_root()
-        .join("tools/lanes/pgtest.sh")
-        .display()
-        .to_string();
-    // `true` as the command under test: the harness still boots PostgreSQL,
-    // reconciles and enforces, and nothing is compiled.
-    let (ok, log) = run("bash", &[&script, &root, "true"])?;
-    assert!(ok, "tools/lanes/pgtest.sh did not complete:\n{log}");
-    assert!(
-        log.contains(ENFORCED),
-        "tools/lanes/pgtest.sh must EXECUTE the canonical enforcement. Commenting \
-         the invocation out leaves the literal `canonical-enforce.sh` in the file, \
-         so only its output proves it ran:\n{log}"
-    );
-    Ok(())
-}
-
-#[test]
-fn cargo_needs_postgres_harness_executes_the_enforcement() -> Fallible {
-    require_docker();
-    let script = repo_root()
-        .join("tools/ci/cargo_needs_postgres.sh")
-        .display()
-        .to_string();
-    // A `--only` name no map entry carries: the harness boots, reconciles and
-    // enforces, then exits on an empty selection without building anything.
-    let (ok, log) = run(
-        "bash",
-        &[&script, "--only", "console-canonical-wiring-probe"],
-    )?;
-    assert!(
-        log.contains(ENFORCED),
-        "tools/ci/cargo_needs_postgres.sh must EXECUTE the canonical enforcement \
-         before it selects targets:\n{log}"
-    );
-    assert!(
-        !ok && log.contains("no map entries selected"),
-        "the probe selection is expected to end the run, and did not:\n{log}"
-    );
-    Ok(())
-}
+mod harness_scripts;

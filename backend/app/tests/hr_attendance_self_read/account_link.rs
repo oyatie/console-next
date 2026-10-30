@@ -91,3 +91,25 @@ pub(super) async fn seed_employee(pool: &PgPool, name: &str) -> Uuid {
     .unwrap();
     employee_id
 }
+
+/// Insert an employee and link `user_id` to it, so `GET /me` resolves a record.
+pub(super) async fn seed_linked_employee(
+    pool: &PgPool,
+    user_id: UserId,
+    role: &str,
+    name: &str,
+) -> Uuid {
+    let employee_id = seed_employee(pool, name).await;
+    sqlx::query(
+        "INSERT INTO users (id, display_name, roles, org_id, employee_id) VALUES ($1, $2, $3, $4, $5)",
+    )
+    .bind(*user_id.as_uuid())
+    .bind(name)
+    .bind(vec![role])
+    .bind(*OrgId::one().as_uuid())
+    .bind(employee_id)
+    .execute(pool)
+    .await
+    .unwrap();
+    employee_id
+}

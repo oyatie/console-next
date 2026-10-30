@@ -117,6 +117,8 @@ async fn oversized_content_length_is_rejected_before_reading_a_stalled_body() {
         let mut sockets = Vec::new();
         for _ in 0..3 {
             let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            assert!(socket.read(&mut request).await.unwrap() > 0);
             socket
                 .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1025\r\n\r\n")
                 .await
@@ -144,6 +146,8 @@ async fn configured_fractional_deadline_covers_a_body_that_never_finishes() {
         let mut sockets = Vec::new();
         for _ in 0..3 {
             let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            assert!(socket.read(&mut request).await.unwrap() > 0);
             socket
                 .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n[")
                 .await

@@ -53,7 +53,8 @@ fn walk(root: &Path, dir: &Path, counts: &mut Counts) -> std::io::Result<()> {
             .iter()
             .any(|(pattern, _)| exempt_matches(pattern, &key))
         {
-            counts.insert(key, count::code_lines(&std::fs::read_to_string(&path)?));
+            let lines = count::code_lines(&key, &std::fs::read_to_string(&path)?);
+            counts.insert(key, lines);
         }
     }
     Ok(())

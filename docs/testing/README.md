@@ -8,6 +8,7 @@ not a claim that every tier is already wired in the public workflow.
 | --- | --- | --- |
 | Docs only | Documentation checks; no builds | Documentation-only changes |
 | Fast | Types, lint, affected unit/component tests, contract and ratchet gates; affected API/DB binaries | PRs and fix rounds; affected only |
+| Rust non-database | Every default-feature workspace test without a database; nextest JUnit reconciled against a fresh inventory | Every PR, push to dev and merge result; target ≤ 10 min wall, shard by measured duration above 5 min execution |
 | PR browser | Affected critical journeys and first-run-solo smoke, Chromium and Firefox | Every PR; ≤ 8 min wall including stack startup |
 | Queue browser | Affected checks, journey smoke, solo first-run gate, route smoke and a no-new-reds sweep | Landing / merge result; browser smoke within the PR budget |
 | Full widening | Full suite for migrations, contracts, Cedar, auth/tenancy and tooling changes | When the change affects these shared boundaries |

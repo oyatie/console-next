@@ -32,7 +32,8 @@ struct LedgerRow {
     execution_time: i64,
 }
 
-#[tokio::test]
+// SQLx marks this custom-role test as requiring PostgreSQL for test discovery.
+#[sqlx::test]
 async fn owner_and_runtime_apalis_schema_contract_is_fail_closed() {
     let owner_url = required_url("CONSOLE_APALIS_OWNER_DATABASE_URL");
     let runtime_url = required_url("CONSOLE_APALIS_RUNTIME_DATABASE_URL");
