@@ -3,6 +3,10 @@
 
 use console_hr_domain::text::{normalize_enum_text, parse_yyyy_mm_dd};
 use console_kernel_core::BranchScope;
+use console_platform_authz::{
+    Feature, Principal,
+    cedar_pbac::visible::{EmployeeVisibility, load_facts},
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 use time::Date;
@@ -79,6 +83,7 @@ pub struct EmployeeListFilters {
     /// Who the reader may see (AX-5: the grant set; a legacy branch role, the
     /// people homed in its branches), in every read built on these filters.
     pub reach: HrReach,
+    visibility: Option<EmployeeVisibility>,
 }
 
 impl EmployeeListFilters {
@@ -144,6 +149,7 @@ impl EmployeeListFilters {
                 .transpose()?,
             lifecycle_apply_failed: query.lifecycle_apply_failed,
             reach: HrReach::from(scope),
+            visibility: None,
         })
     }
 
@@ -154,9 +160,32 @@ impl EmployeeListFilters {
         self
     }
 
+    /// Scoped readers use the same Cedar node as Home and exit commands.
+    pub(crate) async fn load_visibility(
+        &mut self,
+        tx: &mut sqlx::Transaction<'_, Postgres>,
+        principal: &Principal,
+        feature: Feature,
+    ) -> Result<(), HrError> {
+        if principal.is_tenant_ops || principal.scopes_for(feature).next().is_some() {
+            let facts = load_facts(tx, principal.org_id, *principal.user_id.as_uuid())
+                .await
+                .map_err(HrError::from_kernel)?;
+            self.visibility = Some(
+                facts
+                    .visible_employees(feature.as_str())
+                    .map_err(|e| HrError::internal(e.to_string()))?,
+            );
+        }
+        Ok(())
+    }
+
     /// Whether the reach reads the `ea` assignment.
     pub fn reach_reads_assignment(&self) -> bool {
-        matches!(&self.reach, HrReach::Within { scope, .. } if !scope.is_empty())
+        self.visibility
+            .as_ref()
+            .is_some_and(EmployeeVisibility::reads_assignment)
+            || matches!(&self.reach, HrReach::Within { scope, .. } if !scope.is_empty())
     }
 
     /// Appends ` AND …` clauses; the builder's query must alias `employees e`,
@@ -174,7 +203,11 @@ impl EmployeeListFilters {
     /// company, search, 조직 and 사번 (every read applies them).
     pub(crate) fn push_base(&self, builder: &mut QueryBuilder<Postgres>) {
         builder.push(" AND ");
-        push_reach(builder, &self.reach);
+        if let Some(visibility) = &self.visibility {
+            visibility.push(builder);
+        } else {
+            push_reach(builder, &self.reach);
+        }
         if let Some(company) = self.company.as_deref() {
             builder.push(" AND e.company = ");
             builder.push_bind(company.to_owned());

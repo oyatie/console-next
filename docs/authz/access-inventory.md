@@ -174,7 +174,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/app/src/action_inbox/legacy.rs | reference | 4 |
 | matrix | backend/app/src/action_inbox/response.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 4 |
-| matrix | backend/app/src/action_inbox/sources/hr_exit.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/sources/hr_lifecycle.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/sources/org_change.rs | reference | 2 |
 | matrix | backend/app/src/audit_api.rs | reference | 4 |
