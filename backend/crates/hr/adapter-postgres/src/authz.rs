@@ -8,8 +8,11 @@ use uuid::Uuid;
 
 use crate::HrError;
 
+#[path = "authz_case_facts.rs"]
+mod case_facts;
 #[path = "authz_person.rs"]
 mod person;
+pub use case_facts::HrCaseFacts;
 #[path = "authz_reach.rs"]
 mod reach;
 pub use person::{

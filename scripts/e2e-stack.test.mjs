@@ -34,3 +34,13 @@ test("the launcher and Playwright resolve the backend from the public checkout",
   assert.doesNotMatch(source, /backend-mvp|ops\/compose/);
   assert.doesNotMatch(readFileSync(path.join(root, "playwright.config.ts"), "utf8"), /backend-mvp/);
 });
+
+test("backend CI runs the served Home scale probe and retains its measurements", () => {
+  const ci = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
+  const backend = ci.split("  backend:")[1].split("  supply-chain:")[0];
+  assert.match(backend, /cargo build .*--release.*e2e-test-support/);
+  assert.match(backend, /E2E_SERVED: "1"/);
+  assert.match(backend, /home-inbox\.spec\.ts/);
+  assert.match(backend, /actions\/upload-artifact@/);
+  assert.match(backend, /test-results/);
+});

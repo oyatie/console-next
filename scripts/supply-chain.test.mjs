@@ -125,11 +125,12 @@ test("ci-ok fails on any failed, cancelled or skipped required job", () => {
   const job = workflow.jobs["ci-ok"];
   assert.ok(job, "required ci-ok aggregate is missing");
   assert.equal(job.if, "${{ always() }}");
-  assert.deepEqual([...job.needs].sort(), ["backend", "commits", "states", "supply-chain", "web"]);
+  assert.deepEqual([...job.needs].sort(), ["backend", "commits", "states", "states-plan", "states-timings", "supply-chain", "web"]);
   const command = job.steps.map((s) => s.run ?? "").join("\n");
   for (const required of job.needs) for (const status of ["success", "failure", "cancelled", "skipped"]) {
-    const run = command.replace(/\$\{\{ needs\.([\w-]+)\.result \}\}/g, (_, name) => name === required ? status : "success");
-    assert.equal(spawnSync("bash", ["-e", "-c", run]).status, status === "success" ? 0 : 1);
+    const run = command.replace(/\$\{\{ needs(?:\.([\w-]+)|\['([\w-]+)'\])\.result \}\}/g, (_, dotted, quoted) => (dotted ?? quoted) === required ? status : "success");
+    const allowed = status === "success" || required === "states-timings" && status === "skipped";
+    assert.equal(spawnSync("bash", ["-e", "-c", run]).status, allowed ? 0 : 1);
   }
 });
 

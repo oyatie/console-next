@@ -174,6 +174,8 @@ impl HrService {
 
         let (sender, mut receiver) = mpsc::channel(4);
         let logged = filters.clone();
+        let snapshot_principal = principal.clone();
+        let mut filters = filters;
         let (selected_subjects, selection) = oneshot::channel();
         let (ready, admitted) = oneshot::channel();
         let pool = self.pool.clone();
@@ -181,6 +183,9 @@ impl HrService {
             let mut failed = sender.clone();
             let streamed = with_org_snapshot::<_, _, HrError>(&pool, org, move |snapshot| {
                 Box::pin(async move {
+                    filters
+                        .load_visibility(snapshot, &snapshot_principal, Feature::ExcelDownload)
+                        .await?;
                     let mut selected = counted_employees("SELECT e.id", &filters);
                     selected.push(" ORDER BY e.id");
                     let subjects: Vec<Uuid> = selected

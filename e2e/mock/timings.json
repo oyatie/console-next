@@ -1,0 +1,96 @@
+{
+  "budgetSeconds": 300,
+  "startupSeconds": 40,
+  "workers": 2,
+  "defaultTestSeconds": 10,
+  "specs": {
+    "layout/layout.spec.ts": {
+      "seconds": 10.5,
+      "tests": 8
+    },
+    "mock/account-picker.spec.ts": {
+      "seconds": 10.1,
+      "tests": 6
+    },
+    "mock/attendance-weekly.spec.ts": {
+      "seconds": 14.3,
+      "tests": 8
+    },
+    "mock/composer.spec.ts": {
+      "seconds": 9.5,
+      "tests": 8
+    },
+    "mock/csv-exports.spec.ts": {
+      "seconds": 1.3,
+      "tests": 2
+    },
+    "mock/date-calendar-build.spec.ts": {
+      "seconds": 3.8,
+      "tests": 5
+    },
+    "mock/date-calendar.spec.ts": {
+      "seconds": 8.1,
+      "tests": 5
+    },
+    "mock/dept-head.spec.ts": {
+      "seconds": 13.8,
+      "tests": 2
+    },
+    "mock/inbox-page.spec.ts": {
+      "seconds": 27.7,
+      "tests": 29
+    },
+    "mock/nav-modules.spec.ts": {
+      "seconds": 1.2,
+      "tests": 3
+    },
+    "mock/outcome-gallery.spec.ts": {
+      "seconds": 2.7,
+      "tests": 2
+    },
+    "mock/page-frame.spec.ts": {
+      "seconds": 30.3,
+      "tests": 8
+    },
+    "mock/people-rrn-gallery.spec.ts": {
+      "seconds": 6.1,
+      "tests": 2
+    },
+    "mock/people-tabs.spec.ts": {
+      "seconds": 52.2,
+      "tests": 15
+    },
+    "mock/route-focus-title.spec.ts": {
+      "seconds": 5.1,
+      "tests": 4
+    },
+    "mock/route.spec.ts": {
+      "seconds": 3.7,
+      "tests": 8
+    },
+    "mock/settings-hub.spec.ts": {
+      "seconds": 7.8,
+      "tests": 8
+    },
+    "mock/side-panel.spec.ts": {
+      "seconds": 28.6,
+      "tests": 9
+    },
+    "mock/tabs-gallery.spec.ts": {
+      "seconds": 13.8,
+      "tests": 6
+    },
+    "states/access.spec.ts": {
+      "seconds": 65.1,
+      "tests": 60
+    },
+    "states/account.spec.ts": {
+      "seconds": 8.1,
+      "tests": 8
+    },
+    "states/attendance.spec.ts": {
+      "seconds": 65.2,
+      "tests": 36
+    }
+  }
+}
