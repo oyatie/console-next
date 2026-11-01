@@ -162,6 +162,27 @@ const appliedTransfer: components["schemas"]["EmployeeLifecycleEvent"] = {
   effective_date: "2026-10-20", comment: "", signoffs: { privacy_notice_ack: true, korean_labor_law_ack: true, payroll_cutoff_ack: false, retirement_settlement_ack: false }, created_by: id(1), created_by_name: "김담당", created_at: AT,
 };
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`group transfer allows rescission and refuses correction ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    const code = "lifecycle_void_unsupported";
+    const event: components["schemas"]["EmployeeLifecycleEvent"] = { ...appliedTransfer, event_type: "GROUP_TRANSFER", action_refusals: { correct: code } };
+    await mockRoute(page, "get", "/api/v1/employees/{id}/lifecycle-events", { status: 200, json: { items: [event], head_version: 1, next_cursor: null } });
+    await page.goto(`/people/${id(4000)}?tab=events`);
+    const history = page.getByRole("region", { name: t("people.employee.history"), exact: true });
+    await expect(history.getByRole("button", { name: t("person.history.correct"), exact: true })).toHaveCount(0);
+    await expect(history.getByRole("button", { name: t("person.history.rescind"), exact: true })).toHaveCount(1);
+    await page.goto(`/people/${id(4000)}?act=correct:${event.id}`);
+    const notice = page.getByRole("status").filter({ hasText: t("person.act.unavailable") });
+    await expect(notice).toContainText(t(`person.act.unavailable.${code}`));
+    await expect(notice.getByText(code, { exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await fits(page, `group-correction/${width}/${theme}`);
+    await expectAxe(page, `group-correction/${width}/${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
   test(`history obeys server refusals ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);

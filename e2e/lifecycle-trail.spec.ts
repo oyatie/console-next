@@ -9,6 +9,7 @@ import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { apiAs, soloTenant } from "./chaos";
 import { chooseRadio, go, kstDate, registerEmployee, routeReady, stepUp, takeCode } from "./flows";
 import { firstWorkplace, registerAt } from "./helpers/entity";
+import { apiOf, bearerOf } from "./helpers/api";
 import { fillRegister, openRegistered, pressRegister, registerSheet } from "./helpers/register";
 import { hrAct, openCard, openHistory } from "./record";
 import { SETUP_DEPARTMENT, SECOND, REGISTRATION_FIXTURES, registerBranch, registerEntity, setupCompany, startOperations } from "./setup-flows";
@@ -231,6 +232,7 @@ test("a solo hire and exit share their filings and show every administrative leg
 test("one intercompany transfer shows two linked cases in one history entry and receipt", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(300_000);
   const admin = await soloTenant(browser, "trail-transfer", "사건그룹");
+  const api = apiOf(admin, bearerOf(admin));
   await admin.setViewportSize({ width: 1440, height: 1000 });
   await setupCompany(admin, "사건그룹", "본사");
   await go(admin, "/org/entities/new");
@@ -261,6 +263,16 @@ test("one intercompany transfer shows two linked cases in one history entry and 
   expect(recorded.status()).toBe(200);
   const event = await recorded.json() as Event;
   await expect(transfer).toBeHidden();
+  const eventPath = `/employees/${person}/lifecycle-events/${event.id}`;
+  const refused = await api(`${eventPath}/correct`, "POST", {
+    replacement: { event_type: event.event_type, effective_date: event.effective_date, to_workplace_id: event.to_workplace_id, comment: "전적 정정 검증" },
+    reason_code: "INPUT_ERROR",
+  });
+  expect(refused.status()).toBe(409);
+  expect((await refused.json()).error).toMatchObject({ code: "lifecycle_void_unsupported", message: "this event cannot be corrected or rescinded" });
+  const preview = await api(`${eventPath}/rescind`, "POST", { reason_code: "INPUT_ERROR" });
+  expect(preview.status()).toBe(200);
+  expect(await preview.json()).toMatchObject({ rescinded: null });
   const cases = await read<Case[]>(`/api/v1/employees/${person}/lifecycle-cases`);
   const receiving = cases.filter((value) => value.kind === "HIRE" && value.trigger_id === event.id);
   expect(receiving).toHaveLength(1);
@@ -271,6 +283,8 @@ test("one intercompany transfer shows two linked cases in one history entry and 
   expect(groupPreview.sort()).toEqual([...hire.items, ...sending[0]!.items].map((item) => item.item_key).sort());
   const events = await read<{ items: Event[] }>(`/api/v1/employees/${person}/lifecycle-events`);
   expect(events.items.filter((value) => value.event_type === "GROUP_TRANSFER")).toHaveLength(1);
+  expect(events.items.find((value) => value.id === event.id)).toMatchObject({ action_refusals: { correct: "lifecycle_void_unsupported" } });
+  expect(events.items.some((value) => value.voids_event_id === event.id)).toBe(false);
   await openHistory(admin);
   const history = admin.getByRole("region", { name: "인사 이력", exact: true });
   const entry = history.locator(`[id="ev-${event.id}"]`);

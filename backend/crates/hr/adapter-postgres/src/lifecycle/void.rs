@@ -72,18 +72,14 @@ pub(super) struct Original {
     before: (ClassificationColumns, Option<Date>),
 }
 
-fn refusal(code: &'static str, message: &str) -> HrError {
-    coded(KernelError::invalid_transition(message.to_owned()).with_code(code))
-}
-
 /// Locks and loads the event, refusing anything but the latest effective one.
 pub(super) async fn load_voidable(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     org: Uuid,
     employee: Uuid,
     event_id: Uuid,
-    actor: UserId,
-    holds_permission: bool,
+    (actor, holds_permission): (UserId, bool),
+    action: &str,
 ) -> Result<Original, HrError> {
     let row = sqlx::query(
         "SELECT l.event_type, l.state, l.effective_date, l.expected_return_date, \
@@ -120,7 +116,7 @@ pub(super) async fn load_voidable(
         latest: latest == Some(event_id),
     };
     if let Some(code) = lifecycle_event::refusal(
-        "lifecycle_event_rescind",
+        action,
         &actor.to_string(),
         &org.to_string(),
         &org.to_string(),
@@ -139,7 +135,9 @@ pub(super) async fn load_voidable(
                 "only the employee's latest change can be corrected or rescinded; void the later ones first"
             }
         };
-        return Err(refusal(code, message));
+        return Err(coded(
+            KernelError::invalid_transition(message).with_code(code),
+        ));
     }
     Ok(Original {
         id: event_id,
@@ -266,7 +264,15 @@ pub(super) async fn rescind_tx(
     batch_id: Option<Uuid>,
 ) -> Result<RescindOutcome, HrError> {
     let org_uuid = *org.as_uuid();
-    let original = load_voidable(tx, org_uuid, employee, event_id, actor, holds_permission).await?;
+    let original = load_voidable(
+        tx,
+        org_uuid,
+        employee,
+        event_id,
+        (actor, holds_permission),
+        "lifecycle_event_rescind",
+    )
+    .await?;
     let cascades = scheduled_cascades(tx, org_uuid, employee).await?;
     if !request.confirm_cascades {
         return Ok(RescindOutcome {
@@ -322,9 +328,8 @@ pub(super) async fn rescind_tx(
             .unwrap_or(request.reason_code.trim()),
     )
     .await?;
-    let rescinded = load_lifecycle_event(tx, org_uuid, id).await?;
     Ok(RescindOutcome {
         cascades,
-        rescinded: Some(rescinded),
+        rescinded: Some(load_lifecycle_event(tx, org_uuid, id).await?),
     })
 }

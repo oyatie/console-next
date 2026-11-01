@@ -37,6 +37,64 @@ async fn page(f: &fixture::Fixture, employee: Uuid, query: LifecycleEventsQuery)
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn group_transfer_correction_uses_the_cedar_refusal_but_rescission_is_allowed(pool: PgPool) {
+    let f = fixture::fixture(pool.clone()).await;
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+        .bind(f.principal.user_id.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let employee = f
+        .create(f.body("group-correction", "REGULAR"))
+        .await
+        .unwrap()
+        .employee_id();
+    let event = seed(&f, &pool, employee, "GROUP_TRANSFER", "APPLIED", None).await;
+    let before = page(&f, employee, LifecycleEventsQuery::default()).await;
+    assert_eq!(
+        before["items"][0]["action_refusals"],
+        json!({"correct": "lifecycle_void_unsupported"})
+    );
+    let error =
+        f.hr.correct_lifecycle_event(
+            f.principal.clone(),
+            employee,
+            event,
+            serde_json::from_value(json!({
+                "replacement": {
+                    "event_type": "GROUP_TRANSFER", "effective_date": "2026-10-20",
+                    "to_workplace_id": Uuid::new_v4(), "comment": "전적 정정 검증"
+                },
+                "reason_code": "INPUT_ERROR", "note": "회귀 검증"
+            }))
+            .unwrap(),
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(error.status.as_u16(), 409);
+    assert_eq!(error.code, before["items"][0]["action_refusals"]["correct"]);
+    assert_eq!(error.message, "this event cannot be corrected or rescinded");
+    let preview =
+        f.hr.rescind_lifecycle_event(
+            f.principal.clone(),
+            employee,
+            event,
+            serde_json::from_value(json!({
+                "reason_code": "INPUT_ERROR", "note": "회귀 검증"
+            }))
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(preview.rescinded.is_none());
+    assert_eq!(
+        page(&f, employee, LifecycleEventsQuery::default()).await,
+        before
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn every_event_refusal_is_server_authored_and_latest_is_not_page_local(pool: PgPool) {
     let f = fixture::fixture(pool.clone()).await;
     sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")

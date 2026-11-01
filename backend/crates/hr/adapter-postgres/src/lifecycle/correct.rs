@@ -16,7 +16,6 @@ pub use super::correction_authorization::lifecycle_correction_binding;
 use super::normalize::normalize_lifecycle_transition;
 use super::prepare::prepare_lifecycle_event;
 use super::record::record_lifecycle_event_tx;
-use super::title_reason::coded;
 use super::types::EmployeeLifecycleEventResponse;
 use super::void::{
     RescindLifecycleEventRequest, RescindOutcome, check_void_reason, load_voidable, rescind_tx,
@@ -217,15 +216,7 @@ impl HrService {
             Box::pin(async move {
                 let holds_permission = super::action_refusals::require_permission(tx, &principal, employee_id).await?;
                 check_void_reason(tx, org, &request.reason_code, request.note.as_deref()).await?;
-                let original = load_voidable(tx, org_uuid, employee_id, event_id, actor, holds_permission).await?;
-                if original.event_type == "GROUP_TRANSFER" {
-                    return Err(coded(
-                        KernelError::invalid_transition(
-                            "a 전적 is rescinded and recorded again, not corrected",
-                        )
-                        .with_code("lifecycle_void_unsupported"),
-                    ));
-                }
+                let original = load_voidable(tx, org_uuid, employee_id, event_id, (actor, holds_permission), "lifecycle_event_correct").await?;
                 if transition.event_type != original.event_type
                     || transition.effective_date != original.effective_date
                 {
