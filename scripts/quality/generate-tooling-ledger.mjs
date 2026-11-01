@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { inventory, render, renderArchitecture, renderOwnerSummary, reviewRows } from "./tooling-inventory.mjs";
+import { inventory, registerRows, render, renderArchitecture, renderOwnerSummary, reviewRows } from "./tooling-inventory.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (file) => readFileSync(resolve(root, file), "utf8");
@@ -16,7 +16,7 @@ const tools = [
   ["npm", ".github/workflows/ci.yml", "runner bundled; not pinned", "CI/supply chain"],
   ["Chromium", ".github/workflows/ci.yml", "Playwright lock pin", "test"],
 ].map(([name, file, pin, layer]) => ({ kind: "ci-tool", name, direct: true, uses: [{ file, user: file === "apps/web/font-subsets.requirements.txt" ? "scripts/font-subsets.mjs" : file, pin, layer }], callsites: [], evidence: [] }));
-// Refresh an existing dependency/tool/image pin without reclassifying it or requiring Cargo metadata.
+// Refresh tool/image pins and npm decisions without reclassifying or requiring Cargo metadata.
 const approvedTool = process.argv.find((arg) => arg.startsWith("--approved-tool="))?.split("=")[1];
 const pins = approvedTool ?? process.argv.find((arg) => arg.startsWith("--pins="))?.slice("--pins=".length);
 if (pins) {
@@ -37,14 +37,12 @@ if (pins) {
     for (const use of row.uses) {
       const matches = observed?.uses.filter((u) => u.file === use.file && u.user === use.user && u.layer === use.layer && u.override === use.override);
       if (matches?.length !== 1) throw new Error(`tool/image use changed: ${row.name} in ${use.file}; run full review`);
-      const field = row.kind === "npm" ? "requirement" : "pin";
-      use[field] = matches[0][field];
+      if (row.kind !== "npm") use.pin = matches[0].pin;
     }
-    if (row.kind === "npm") row.pins = observed.pins;
   }
   for (const [file, body] of [
-    ["docs/quality/dependency-register.json", JSON.stringify(register, null, 2) + "\n"],
-    ["docs/quality/dependency-register.md", render(register.rows)],
+    ["docs/quality/dependency-register.json", JSON.stringify({ ...register, rows: registerRows(register.rows) }, null, 2) + "\n"],
+    ["docs/quality/dependency-register.md", render(registerRows(register.rows))],
     ...(approvedTool ? [["docs/architecture/frontend-module-map.md", renderArchitecture(register.rows, "docs/architecture/frontend-module-map.md", "Frontend")]] : []),
   ]) {
     if (process.argv.includes("--write")) writeFileSync(resolve(root, file), body);
@@ -142,7 +140,7 @@ for (const row of rows.filter((r) => r.direct)) {
   row.evidence = [...new Set([...row.evidence, ...review.evidence])];
 }
 const reviewed = reviewRows(rows, reviews).sort((a, b) => `${a.kind}:${a.name}`.localeCompare(`${b.kind}:${b.name}`));
-const direct = reviewed.filter((r) => r.direct);
+const direct = registerRows(reviewed.filter((r) => r.direct));
 const output = { generatedBy: "node scripts/quality/generate-tooling-ledger.mjs --write", reviewedOn: sources.checked, limitations: ["Fuzz lock is stale on base: declarations and committed pins included; stale dependency edges are not inferred.", "Calls are textual candidates, not proof of dead code.", "No dependency approved by inventory presence; no new gate enforcement until slice 4."], rows: direct };
 const transitive = { generatedBy: output.generatedBy, reviewedOn: sources.checked, note: "Resolved implementation inventory only; no independent classifications, recommendations or approval rulings.", rows: reviewed.filter((r) => !r.direct) };
 const outputs = [

@@ -70,7 +70,7 @@ export function inventory(files, readInput, metadata = []) {
     const name = location.split("node_modules/").at(-1);
     const row = add("npm", name);
     row.pins ??= [];
-    row.pins.push({ location, version: pin.version, license: pin.license ?? null, integrity: pin.integrity ?? null, source: pin.resolved ?? null });
+    row.pins.push({ location, version: pin.version, license: pin.license ?? null, integrity: pin.integrity ?? null, source: pin.resolved ?? null, inBundle: pin.inBundle ?? false });
     row.evidence = ["package-lock.json", `https://registry.npmjs.org/${encodeURIComponent(name)}`];
   }
   if (files.includes("package-lock.json")) for (const [location, pin] of Object.entries(JSON.parse(read("package-lock.json")).packages ?? {})) {
@@ -162,6 +162,15 @@ export function reviewRows(rows, reviews) {
   });
 }
 
+// Decisions survive npm version bumps; manifests and the lock own their technical inventory.
+export function registerRows(rows) {
+  return rows.map((row) => {
+    if (row.kind !== "npm") return row;
+    const { pins: _pins, resolvedParents: _resolvedParents, resolvedFootprint: _resolvedFootprint, ...decision } = row;
+    return { ...decision, uses: row.uses.map(({ requirement: _requirement, ...use }) => use) };
+  });
+}
+
 export function render(rows) {
   const direct = rows.filter((r) => r.direct);
   const dependencies = direct.filter((r) => dependencyKinds.has(r.kind));
@@ -175,7 +184,7 @@ export function render(rows) {
     `Snapshot: 2026-10-26. ${direct.length} direct dependency/tool/gate rows. Resolved-only names are inventoried separately.`, "",
     `The [2026-10-26 ruling](dependency-ruling-2026-10-26.md) and subsequent explicit owner rulings record ${approved} STANDARD approvals (including the three owner-approved bases); ${pending} direct dependencies remain NEEDS-OWNER. The four OpenTelemetry trace rows are NEEDS-OWNER because the Rust traces SDK is Beta. Inventory, allowlists and provenance alone confer no approval.`, "",
     `Owner decisions: [${pending} unresolved rows, grouped with one recommendation per group](dependency-owner-summary.md). Resolved-only names are technical inventory in [dependency-transitive-inventory.json](dependency-transitive-inventory.json), without classifications or rulings. Gates and vendored CI sources below are separate from the ${dependencies.length} direct dependency decisions.`, "",
-    "Regenerate offline: node scripts/quality/generate-tooling-ledger.mjs --write. Verify: omit --write. Sources are dated snapshots, not live CI requests. JSON includes usages, targets, features, pins and textual call-site candidates. Candidates include manifests/configuration and require review before removal.", "",
+    "Regenerate offline: node scripts/quality/generate-tooling-ledger.mjs --write. Verify: omit --write. Sources are dated research snapshots, not live CI requests. npm requirements and resolved versions come only from manifests and package-lock.json; the register retains decisions, layers, licence review and evidence. JSON also includes targets, features and textual call-site candidates. Candidates include manifests/configuration and require review before removal.", "",
     "Architecture: [frontend](../architecture/frontend-module-map.md), [backend](../architecture/backend-module-map.md). Proposed users confer no permission. Cross-ring uses are flagged, not grandfathered. Licence policies: [backend](../../backend/deny.toml), [desktop](../../apps/desktop/src-tauri/deny.toml).", "",
     "Footprint: npm unpacked bytes are not browser bundle KB; Rust transitive counts include target/build/dev edges, not compile time. Unmeasured bundle/compile deltas and unverified security processes are explicit. Review owner: Jason Lee; review date: 2026-10-26.", "",
   ];

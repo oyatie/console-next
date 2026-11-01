@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // The owner register is the npm allowlist. Existing pending declarations stay visible;
-// inventory does not approve a new package, consumer, requirement or override.
+// inventory does not approve a new package, consumer, layer or override target.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,12 +20,17 @@ export function checkDeps(manifests, register, lock) {
     const entry = registered.get(row.name);
     for (const use of row.uses) {
       if (!entry) problems.push(`${use.file}: "${row.name}" is not in the owner dependency register`);
-      else if (!entry.uses.some((prior) => ["file", "user", "requirement", "layer", "override"].every((key) => prior[key] === use[key])))
+      else if (!entry.uses.some((prior) => ["file", "user", "layer", "override"].every((key) => prior[key] === use[key])))
         problems.push(`${use.file}: "${row.name}" use is not recorded in the owner dependency register`);
     }
-    const versions = (pins) => (pins ?? []).map(({ location, version }) => `${location}:${version}`).sort();
-    if (entry && JSON.stringify(versions(entry.pins)) !== JSON.stringify(versions(row.pins)))
-      problems.push(`"${row.name}": register lock versions do not match package-lock.json; regenerate the registered pins`);
+    if (entry && (!row.pins?.length || row.pins.some((pin) => !pin.version)))
+      problems.push(`"${row.name}": resolved version is missing from package-lock.json`);
+    if (entry && row.pins?.some((pin) => {
+      if (pin.inBundle && pin.source === null) return false;
+      const url = URL.canParse(pin.source ?? "") && new URL(pin.source);
+      return !url || url.origin !== "https://registry.npmjs.org" || !url.pathname.startsWith(`/${row.name}/-/`) || url.href !== pin.source;
+    }))
+      problems.push(`"${row.name}": resolved source must be its npm registry tarball in package-lock.json`);
   }
   return problems;
 }

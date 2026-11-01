@@ -46822,7 +46822,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "~4.14.0",
           "layer": "test"
         }
       ],
@@ -46849,15 +46848,6 @@
         "https://playwright.dev/docs/accessibility-testing",
         "docs/quality/dependency-ruling-2026-10-26.md",
         "https://playwright.dev/docs/accessibility-testing:"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/@axe-core/playwright",
-          "version": "4.14.0",
-          "license": "MPL-2.0",
-          "integrity": "sha512-SGUhG5PIHd2eMdpgBF2PyQLOhX+qyDR2PT4cmoS4Qk2ak+jX/rrSvst9l0PGv5WTHolKpUMvVmoHpr4cZgf1RQ==",
-          "source": "https://registry.npmjs.org/@axe-core/playwright/-/playwright-4.14.0.tgz"
-        }
       ],
       "lastRelease": "2026-10-15T13:33:17.706Z",
       "license": "MPL-2.0",
@@ -46896,9 +46886,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 1
-      },
       "observedLayers": [
         "test"
       ],
@@ -46934,7 +46921,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^3.12.4",
           "layer": "web: UI"
         }
       ],
@@ -46948,21 +46934,6 @@
         "https://registry.npmjs.org/%40internationalized%2Fdate",
         "https://react-spectrum.adobe.com/internationalized/date/index.html",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/@internationalized/date",
-          "version": "3.12.4",
-          "license": "Apache-2.0",
-          "integrity": "sha512-M1dEn4c1U1HsSlaVR8upZtSqvXrTkHDfv18H01uCSJyjVLDxnBR38v/fMxecmlwXKR4i9HeZcmgQAPE6A+aGJQ==",
-          "source": "https://registry.npmjs.org/@internationalized/date/-/date-3.12.4.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web",
-        "node_modules/react-aria",
-        "node_modules/react-aria-components",
-        "node_modules/react-stately"
       ],
       "lastRelease": "2026-09-01T14:27:23.965Z",
       "license": "Apache-2.0",
@@ -46998,9 +46969,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 2
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -47035,7 +47003,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^1.63.0",
           "layer": "test"
         }
       ],
@@ -47434,15 +47401,6 @@
         "https://registry.npmjs.org/@playwright/test",
         "https://github.com/microsoft/playwright.git"
       ],
-      "pins": [
-        {
-          "location": "node_modules/@playwright/test",
-          "version": "1.64.1",
-          "license": "Apache-2.0",
-          "integrity": "sha512-IaYGml/nSOiZWROfPtuIL7neuu9qDOZ3TNvNljUIrhDMxiGTgPjzj/g9p9RxpS2tSepPDRY+UwAaEeiKtUvIAg==",
-          "source": "https://registry.npmjs.org/@playwright/test/-/test-1.64.1.tgz"
-        }
-      ],
       "lastRelease": "2026-10-14T11:58:13.696Z",
       "license": "Apache-2.0",
       "maintainers": "pavelfeldman, yurys, dgozman-ms, microsoft-oss-releases, microsoft1es",
@@ -47480,9 +47438,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 2
-      },
       "observedLayers": [
         "test"
       ],
@@ -47563,7 +47518,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^10.0.0",
           "layer": "test"
         }
       ],
@@ -47576,15 +47530,6 @@
         "https://registry.npmjs.org/%40stryker-mutator%2Fcore",
         "https://stryker-mutator.io/docs/stryker-js/introduction/",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/@stryker-mutator/core",
-          "version": "10.1.1",
-          "license": "Apache-2.0",
-          "integrity": "sha512-4xJAOCw9utJMLyrTk9gINi434tBxnyuwt8lU/InyoKagKd2/zh/2ui7ncWoD0qZeJrxClYzblg8iUh5ewBAB3Q==",
-          "source": "https://registry.npmjs.org/@stryker-mutator/core/-/core-10.1.1.tgz"
-        }
       ],
       "lastRelease": "2026-10-23T19:18:22.458Z",
       "license": "Apache-2.0",
@@ -47622,9 +47567,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 165
-      },
       "observedLayers": [
         "test"
       ],
@@ -47660,7 +47602,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^5.105.0",
           "layer": "web: UI"
         }
       ],
@@ -48077,18 +48018,6 @@
         "https://react.dev/learn/build-a-react-app-from-scratch",
         "docs/quality/dependency-ruling-2026-10-26.md"
       ],
-      "pins": [
-        {
-          "location": "node_modules/@tanstack/react-query",
-          "version": "5.105.0",
-          "license": "MIT",
-          "integrity": "sha512-y+hMuDERvgg6ay1da0V1a6ZC0ZONt7dELxSFkqRZuwm7p1TTZs0MoXrPlBRflIpRoYjvzQVYxycnLImpFLhWrw==",
-          "source": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.105.0.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web"
-      ],
       "lastRelease": "2026-10-19T16:57:50.440Z",
       "license": "MIT",
       "maintainers": "tannerlinsley, alemtuzlak, kevinvandy",
@@ -48125,9 +48054,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 1
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -48162,7 +48088,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^1.170.40",
           "layer": "web: UI"
         }
       ],
@@ -48508,18 +48433,6 @@
         "https://react.dev/learn/build-a-react-app-from-scratch",
         "docs/quality/dependency-ruling-2026-10-26.md"
       ],
-      "pins": [
-        {
-          "location": "node_modules/@tanstack/react-router",
-          "version": "1.170.46",
-          "license": "MIT",
-          "integrity": "sha512-ez1iNIhsPjGlaDHg3BXWs67EWVIYzB2tbopEHYDESdkO7owgkGb5de52+5Kv2v1fxdkggcNzo35bdk4arTVGQw==",
-          "source": "https://registry.npmjs.org/@tanstack/react-router/-/react-router-1.170.46.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web"
-      ],
       "lastRelease": "2026-10-22T20:10:14.318Z",
       "license": "MIT",
       "maintainers": "tannerlinsley, alemtuzlak, kevinvandy",
@@ -48556,9 +48469,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 9
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -48593,7 +48503,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^26.6.6",
           "layer": "build/tooling"
         }
       ],
@@ -48610,33 +48519,6 @@
         "https://api.npmjs.org/downloads/point/last-week/@types/node.",
         "https://registry.npmjs.org/@types/node",
         "https://github.com/DefinitelyTyped/DefinitelyTyped.git"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/@fast-csv/format/node_modules/@types/node",
-          "version": "14.18.63",
-          "license": "MIT",
-          "integrity": "sha512-fAtCfv4jJg+ExtXhvCkCqUKZ+4ok/JQk01qDKhL5BDDoS3AxKXhV5/MAVUZyQnSEd2GT92fkgZl0pz0Q0AzcIQ==",
-          "source": "https://registry.npmjs.org/@types/node/-/node-14.18.63.tgz"
-        },
-        {
-          "location": "node_modules/@fast-csv/parse/node_modules/@types/node",
-          "version": "14.18.63",
-          "license": "MIT",
-          "integrity": "sha512-fAtCfv4jJg+ExtXhvCkCqUKZ+4ok/JQk01qDKhL5BDDoS3AxKXhV5/MAVUZyQnSEd2GT92fkgZl0pz0Q0AzcIQ==",
-          "source": "https://registry.npmjs.org/@types/node/-/node-14.18.63.tgz"
-        },
-        {
-          "location": "node_modules/@types/node",
-          "version": "26.6.6",
-          "license": "MIT",
-          "integrity": "sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==",
-          "source": "https://registry.npmjs.org/@types/node/-/node-26.6.6.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "node_modules/@fast-csv/format",
-        "node_modules/@fast-csv/parse"
       ],
       "lastRelease": "2026-10-09T18:46:47.657Z",
       "license": "MIT",
@@ -48672,9 +48554,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 1
-      },
       "observedLayers": [
         "build/tooling"
       ],
@@ -48755,7 +48634,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^19.3.0",
           "layer": "build/tooling"
         }
       ],
@@ -48771,15 +48649,6 @@
         "https://react.dev/learn/typescript:",
         "https://registry.npmjs.org/@types/react",
         "https://github.com/DefinitelyTyped/DefinitelyTyped.git"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/@types/react",
-          "version": "19.3.0",
-          "license": "MIT",
-          "integrity": "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==",
-          "source": "https://registry.npmjs.org/@types/react/-/react-19.3.0.tgz"
-        }
       ],
       "lastRelease": "2026-09-09T18:08:49.750Z",
       "license": "MIT",
@@ -48815,9 +48684,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 1
-      },
       "observedLayers": [
         "build/tooling"
       ],
@@ -48898,7 +48764,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^19.3.0",
           "layer": "build/tooling"
         }
       ],
@@ -48913,15 +48778,6 @@
         "docs/quality/dependency-ruling-2026-10-26.md",
         "https://registry.npmjs.org/@types/react-dom",
         "https://github.com/DefinitelyTyped/DefinitelyTyped.git"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/@types/react-dom",
-          "version": "19.3.0",
-          "license": "MIT",
-          "integrity": "sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==",
-          "source": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.3.0.tgz"
-        }
       ],
       "lastRelease": "2026-09-09T18:07:51.886Z",
       "license": "MIT",
@@ -48957,9 +48813,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 0
-      },
       "observedLayers": [
         "build/tooling"
       ],
@@ -49040,7 +48893,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^6.1.1",
           "layer": "test"
         }
       ],
@@ -49053,15 +48905,6 @@
         "https://registry.npmjs.org/%40vitejs%2Fplugin-react",
         "https://vite.dev/plugins/",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/@vitejs/plugin-react",
-          "version": "6.1.2",
-          "license": "MIT",
-          "integrity": "sha512-fhJNGUdscQa4HkI0xFxwonWyhnVReCPDbXI7FH7jmzpnVCrFQI7PRrhWecO263610vOrs9tr2Y4xcf8uAdFxbw==",
-          "source": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.1.2.tgz"
-        }
       ],
       "lastRelease": "2026-10-05T10:08:27.143Z",
       "license": "MIT",
@@ -49098,9 +48941,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 1
-      },
       "observedLayers": [
         "test"
       ],
@@ -49136,7 +48976,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^4.4.0",
           "layer": "test"
         }
       ],
@@ -49162,15 +49001,6 @@
         "https://registry.npmjs.org/exceljs",
         "https://github.com/exceljs/exceljs",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/exceljs",
-          "version": "4.4.0",
-          "license": "MIT",
-          "integrity": "sha512-XctvKaEMaj1Ii9oDOqbW/6e1gXknSY4g/aLCDicOXqBE4M0nRWkUu0PTp++UPNzoFY12BNHMfs/VadKIS6llvg==",
-          "source": "https://registry.npmjs.org/exceljs/-/exceljs-4.4.0.tgz"
-        }
       ],
       "lastRelease": "2023-10-19T19:49:55.669Z",
       "license": "MIT",
@@ -49206,9 +49036,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 79
-      },
       "observedLayers": [
         "test"
       ],
@@ -49244,7 +49071,6 @@
         {
           "file": "packages/i18n/package.json",
           "user": "@console/i18n",
-          "requirement": "*",
           "layer": "web: UI"
         }
       ],
@@ -49265,18 +49091,6 @@
         "https://registry.npmjs.org/intl-messageformat",
         "https://formatjs.github.io/docs/intl-messageformat/",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/intl-messageformat",
-          "version": "12.1.4",
-          "license": "BSD-3-Clause",
-          "integrity": "sha512-JUkmv3cAEyijN3oiRiV3ctel7yVMuUCgfh7Pu8pj1/z6L1DSEPRyhuMaLjVw3pGmGJ5RDH54WVFxfMHZWTwyHw==",
-          "source": "https://registry.npmjs.org/intl-messageformat/-/intl-messageformat-12.1.4.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "packages/i18n"
       ],
       "lastRelease": "2026-10-19T23:41:01.448Z",
       "license": "BSD-3-Clause",
@@ -49313,9 +49127,6 @@
       "allowedUsers": [
         "@console/i18n"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 3
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -49350,7 +49161,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^1.63.0",
           "layer": "web: UI"
         }
       ],
@@ -49595,18 +49405,6 @@
         "https://lucide.dev/guide/packages/lucide-react",
         "docs/quality/dependency-ruling-2026-10-26.md"
       ],
-      "pins": [
-        {
-          "location": "node_modules/lucide-react",
-          "version": "1.63.0",
-          "license": "ISC",
-          "integrity": "sha512-GkBfQG+FUJ41x6y3/lNXiOziVU0Rcqqq0TCzhHS8avsFXHZmOdmfBqsVTvHSaVmbI+wbdGkxHRmhYWhD3N4/yA==",
-          "source": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.63.0.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web"
-      ],
       "lastRelease": "2026-10-21T06:12:38.158Z",
       "license": "ISC",
       "maintainers": "ericfennis",
@@ -49641,9 +49439,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 0
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -49678,7 +49473,6 @@
         {
           "file": "packages/api/package.json",
           "user": "@console/api",
-          "requirement": "0.17.0",
           "layer": "web: data"
         }
       ],
@@ -49700,18 +49494,6 @@
         "https://registry.npmjs.org/openapi-fetch",
         "https://openapi-ts.dev/openapi-fetch/",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/openapi-fetch",
-          "version": "0.17.0",
-          "license": "MIT",
-          "integrity": "sha512-PsbZR1wAPcG91eEthKhN+Zn92FMHxv+/faECIwjXdxfTODGSGegYv0sc1Olz+HYPvKOuoXfp+0pA2XVt2cI0Ig==",
-          "source": "https://registry.npmjs.org/openapi-fetch/-/openapi-fetch-0.17.0.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "packages/api"
       ],
       "lastRelease": "2026-02-11T16:02:21.454Z",
       "license": "MIT",
@@ -49749,9 +49531,6 @@
       "allowedUsers": [
         "@console/api"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 1
-      },
       "observedLayers": [
         "web: data"
       ],
@@ -49786,7 +49565,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^7.13.0",
           "layer": "test"
         }
       ],
@@ -49801,15 +49579,6 @@
         "https://registry.npmjs.org/openapi-typescript",
         "https://openapi-ts.dev/introduction",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/openapi-typescript",
-          "version": "7.13.0",
-          "license": "MIT",
-          "integrity": "sha512-EFP392gcqXS7ntPvbhBzbF8TyBA+baIYEm791Hy5YkjDYKTnk/Tn5OQeKm5BIZvJihpp8Zzr4hzx0Irde1LNGQ==",
-          "source": "https://registry.npmjs.org/openapi-typescript/-/openapi-typescript-7.13.0.tgz"
-        }
       ],
       "lastRelease": "2026-02-11T16:02:25.378Z",
       "license": "MIT",
@@ -49846,9 +49615,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 36
-      },
       "observedLayers": [
         "test"
       ],
@@ -49884,7 +49650,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^1.90.0",
           "layer": "test"
         }
       ],
@@ -49908,15 +49673,6 @@
         "https://registry.npmjs.org/oxlint",
         "https://oxc.rs/docs/guide/usage/linter.html",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/oxlint",
-          "version": "1.90.0",
-          "license": "MIT",
-          "integrity": "sha512-RkTN9EmgIUpLuhNoLhO3OliMGJlvb3Dk7XVjBZnfoMCHrVpuz5ESd97klfiyYeV7XfA2lNLnDCPMkUI+Qw5How==",
-          "source": "https://registry.npmjs.org/oxlint/-/oxlint-1.90.0.tgz"
-        }
       ],
       "lastRelease": "2026-10-19T17:24:22.105Z",
       "license": "MIT",
@@ -49952,9 +49708,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 19
-      },
       "observedLayers": [
         "test"
       ],
@@ -49990,7 +49743,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^1.3.9",
           "layer": "web: UI"
         }
       ],
@@ -50029,18 +49781,6 @@
         "https://github.com/orioncactus/pretendard",
         "docs/quality/dependency-ruling-2026-10-26.md"
       ],
-      "pins": [
-        {
-          "location": "node_modules/pretendard",
-          "version": "1.3.9",
-          "license": "OFL-1.1",
-          "integrity": "sha512-PaQAADyLY5v4kYFwkpSJHbSSYIkiriY/1xXw75TKoZ9UQQqeU+tvP05yTdZAWibiIYoo8ZKtRv8PM7w0IaywSw==",
-          "source": "https://registry.npmjs.org/pretendard/-/pretendard-1.3.9.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web"
-      ],
       "lastRelease": "2023-11-05T18:22:53.187Z",
       "license": "OFL-1.1",
       "maintainers": "orioncactus, phoary",
@@ -50076,9 +49816,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 0
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -50113,7 +49850,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "6.16.1",
           "layer": "build/tooling",
           "override": "typed-rest-client > qs"
         }
@@ -50128,18 +49864,6 @@
         "https://registry.npmjs.org/qs",
         "https://github.com/ljharb/qs",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/qs",
-          "version": "6.16.1",
-          "license": "BSD-3-Clause",
-          "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
-          "source": "https://registry.npmjs.org/qs/-/qs-6.16.1.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "node_modules/typed-rest-client"
       ],
       "lastRelease": "2026-10-14T22:06:17.002Z",
       "license": "BSD-3-Clause",
@@ -50175,9 +49899,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 18
-      },
       "observedLayers": [
         "build/tooling"
       ],
@@ -50213,7 +49934,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^19.3.0",
           "layer": "web: UI"
         }
       ],
@@ -51218,18 +50938,6 @@
         "docs/quality/dependency-ruling-2026-10-26.md",
         "https://github.com/react/react.git"
       ],
-      "pins": [
-        {
-          "location": "node_modules/react",
-          "version": "19.3.1",
-          "license": "MIT",
-          "integrity": "sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==",
-          "source": "https://registry.npmjs.org/react/-/react-19.3.1.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web"
-      ],
       "lastRelease": "2026-10-14T16:47:15.290Z",
       "license": "MIT",
       "maintainers": "fb, react-bot",
@@ -51265,9 +50973,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 0
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -51348,7 +51053,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^1.21.1",
           "layer": "web: UI"
         }
       ],
@@ -51405,18 +51109,6 @@
         "https://react-spectrum.adobe.com/react-aria/components.html",
         "docs/quality/dependency-ruling-2026-10-26.md"
       ],
-      "pins": [
-        {
-          "location": "node_modules/react-aria-components",
-          "version": "1.22.1",
-          "license": "Apache-2.0",
-          "integrity": "sha512-UTHaYHOaM71bOCjGPF50DcLywlrwAodE63IP64LB4kO+OizatQEL8TesVEOM8+TkBeSgHoflJ45388IlJfa7aw==",
-          "source": "https://registry.npmjs.org/react-aria-components/-/react-aria-components-1.22.1.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web"
-      ],
       "lastRelease": "2026-10-09T20:23:49.939Z",
       "license": "Apache-2.0",
       "maintainers": "devongovett, aspro83",
@@ -51451,9 +51143,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 12
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -51488,7 +51177,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^19.3.0",
           "layer": "web: UI"
         }
       ],
@@ -51745,18 +51433,6 @@
         "https://react.dev/learn/typescript",
         "https://github.com/react/react.git"
       ],
-      "pins": [
-        {
-          "location": "node_modules/react-dom",
-          "version": "19.3.1",
-          "license": "MIT",
-          "integrity": "sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==",
-          "source": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web"
-      ],
       "lastRelease": "2026-10-14T16:49:10.081Z",
       "license": "MIT",
       "maintainers": "fb, react-bot",
@@ -51792,9 +51468,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 1
-      },
       "observedLayers": [
         "web: UI"
       ],
@@ -51875,7 +51548,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^17.15.0",
           "layer": "test"
         }
       ],
@@ -51888,15 +51560,6 @@
         "https://registry.npmjs.org/stylelint",
         "https://stylelint.io/user-guide/get-started/",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/stylelint",
-          "version": "17.16.0",
-          "license": "MIT",
-          "integrity": "sha512-ejlWnbJ13x1GU32+zZXa6sYQJsKKkwSdv2B4rAdO3OWdEmvhSJKcXi5pOphQYSzyaj1kXpuGJr7pcMBNfDIuPw==",
-          "source": "https://registry.npmjs.org/stylelint/-/stylelint-17.16.0.tgz"
-        }
       ],
       "lastRelease": "2026-10-01T10:17:13.977Z",
       "license": "MIT",
@@ -51934,9 +51597,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 113
-      },
       "observedLayers": [
         "test"
       ],
@@ -51972,7 +51632,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^1.12.1",
           "layer": "test"
         }
       ],
@@ -51985,15 +51644,6 @@
         "https://registry.npmjs.org/stylelint-declaration-strict-value",
         "https://github.com/AndyOGo/stylelint-declaration-strict-value",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/stylelint-declaration-strict-value",
-          "version": "1.12.1",
-          "license": "MIT",
-          "integrity": "sha512-KSQTXfWboeebH0tw3bZq5ZPLnkUBHvz9PtzAmIaqU7egLvjN7wU/F0tukFBVyGDKQEfDlLNGDNvhI/O1+6KipQ==",
-          "source": "https://registry.npmjs.org/stylelint-declaration-strict-value/-/stylelint-declaration-strict-value-1.12.1.tgz"
-        }
       ],
       "lastRelease": "2026-08-24T18:56:29.569Z",
       "license": "MIT",
@@ -52028,9 +51678,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 92
-      },
       "observedLayers": [
         "test"
       ],
@@ -52066,7 +51713,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "~5.9",
           "layer": "build/tooling"
         }
       ],
@@ -52114,15 +51760,6 @@
         "https://react.dev/learn/typescript.",
         "https://github.com/microsoft/TypeScript.git"
       ],
-      "pins": [
-        {
-          "location": "node_modules/typescript",
-          "version": "5.9.3",
-          "license": "Apache-2.0",
-          "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
-          "source": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz"
-        }
-      ],
       "lastRelease": "2026-07-08T15:55:18.431Z",
       "license": "Apache-2.0",
       "maintainers": "microsoft1es, typescript-bot, weswigham, andrewbranch, typescript-deploys, microsoft-oss-releases, jakebailey",
@@ -52162,9 +51799,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 0
-      },
       "observedLayers": [
         "build/tooling"
       ],
@@ -52245,7 +51879,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^11.1.1",
           "layer": "build/tooling",
           "override": "exceljs > uuid"
         }
@@ -52608,18 +52241,6 @@
         "https://github.com/uuidjs/uuid",
         "docs/quality/dependency-ruling-2026-10-26.md"
       ],
-      "pins": [
-        {
-          "location": "node_modules/uuid",
-          "version": "11.1.1",
-          "license": "MIT",
-          "integrity": "sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==",
-          "source": "https://registry.npmjs.org/uuid/-/uuid-11.1.1.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "node_modules/exceljs"
-      ],
       "lastRelease": "2026-10-10T00:30:19.423Z",
       "license": "MIT",
       "maintainers": "broofa, ctavan",
@@ -52654,9 +52275,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 0
-      },
       "observedLayers": [
         "build/tooling"
       ],
@@ -52692,7 +52310,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^8.3.5",
           "layer": "test"
         }
       ],
@@ -53268,15 +52885,6 @@
         "docs/quality/dependency-ruling-2026-10-26.md",
         "https://api.npmjs.org/downloads/point/last-week/vite"
       ],
-      "pins": [
-        {
-          "location": "node_modules/vite",
-          "version": "8.3.5",
-          "license": "MIT",
-          "integrity": "sha512-z1YpjieJ9g0ebTmQpLBv/oq9E3F9EIlOe+7LahW8SrE3LTiG3udBRUXQOlYXP9b+IC2q2phHeVxj9xGlw34OEQ==",
-          "source": "https://registry.npmjs.org/vite/-/vite-8.3.5.tgz"
-        }
-      ],
       "lastRelease": "2026-10-21T06:38:54.907Z",
       "license": "MIT",
       "maintainers": "yyx990803, vitebot",
@@ -53312,9 +52920,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 39
-      },
       "observedLayers": [
         "test"
       ],
@@ -53350,7 +52955,6 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^5.0.5",
           "layer": "test"
         }
       ],
@@ -53851,15 +53455,6 @@
         "https://vitest.dev/guide/",
         "docs/quality/dependency-ruling-2026-10-26.md"
       ],
-      "pins": [
-        {
-          "location": "node_modules/vitest",
-          "version": "5.0.5",
-          "license": "MIT",
-          "integrity": "sha512-cPODOMF8YnkiiYtDdHo6n4wWmBrOBBbOIYH2d33M4l3CdNn72h+qMmO6uXffUN6A5AZFXNND/d+krS9mgkXRfg==",
-          "source": "https://registry.npmjs.org/vitest/-/vitest-5.0.5.tgz"
-        }
-      ],
       "lastRelease": "2026-10-15T14:29:01.396Z",
       "license": "MIT",
       "maintainers": "ariperkkio, antfu, hiogawa, oreanno, yyx990803",
@@ -53898,9 +53493,6 @@
       "allowedUsers": [
         "console-react"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 22
-      },
       "observedLayers": [
         "test"
       ],
@@ -53936,7 +53528,6 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^4.6.7",
           "layer": "web: UI"
         }
       ],
@@ -53948,19 +53539,6 @@
         "https://registry.npmjs.org/zod",
         "https://zod.dev/",
         "docs/quality/dependency-ruling-2026-10-26.md"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/zod",
-          "version": "4.6.7",
-          "license": "MIT",
-          "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==",
-          "source": "https://registry.npmjs.org/zod/-/zod-4.6.7.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "apps/web",
-        "node_modules/mutation-server-protocol"
       ],
       "lastRelease": "2026-10-12T16:29:37.778Z",
       "license": "MIT",
@@ -53995,9 +53573,6 @@
       "allowedUsers": [
         "@console/web"
       ],
-      "resolvedFootprint": {
-        "uniqueTransitiveNamesAcrossAllLockVersions": 0
-      },
       "observedLayers": [
         "web: UI"
       ],
