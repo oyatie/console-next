@@ -12,27 +12,26 @@ pub(crate) async fn get_catalog(Extension(_principal): Extension<Principal>) -> 
 }
 
 pub(crate) fn catalog() -> Value {
-    let domains: Vec<Value> = Domain::ALL
-        .into_iter()
-        .map(|domain| {
-            let mut operations: Vec<Value> = tagged()
-                .filter(|(_, d, _)| *d == domain)
-                .map(|(f, _, level)| json!({ "operation": f.as_str(), "level": level }))
-                .collect();
-            // Record-level Cedar clearance is an action group, not a legacy Feature.
-            if domain == Domain::Sensitive {
-                operations.extend([Level::View, Level::Edit].map(
-                    |level| json!({ "operation": action_group(domain, level), "level": level }),
+    let domains: Vec<Value> =
+        Domain::ALL
+            .into_iter()
+            .map(|domain| {
+                let mut operations: Vec<Value> = tagged()
+                    .filter(|(_, d, _)| *d == domain)
+                    .map(|(f, _, level)| json!({ "operation": f.as_str(), "level": level }))
+                    .collect();
+                // Record-level Cedar clearance is an action group, not a legacy Feature.
+                operations.extend(domain.record_levels().iter().map(
+                    |level| json!({ "operation": action_group(domain, *level), "level": level }),
                 ));
-            }
-            json!({
-                "domain": domain,
-                "grantable": domain.grantable(),
-                "levels": domain.offered(),
-                "operations": operations,
+                json!({
+                    "domain": domain,
+                    "grantable": domain.grantable(),
+                    "levels": domain.offered(),
+                    "operations": operations,
+                })
             })
-        })
-        .collect();
+            .collect();
     let scope_kinds: Vec<Value> = [
         NodeKind::Tenant,
         NodeKind::LegalEntity,

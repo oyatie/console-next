@@ -58,8 +58,8 @@ pub struct PayGroup {
     pub proration: ProrationBasis,
     #[serde(with = "ChannelWire")]
     pub channel: PaymentChannel,
-    pub sensitive: bool,
-    pub pay_basis_allowed: Vec<PayBasis>,
+    pub sensitive: Option<bool>,
+    pub pay_basis_allowed: Option<Vec<PayBasis>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

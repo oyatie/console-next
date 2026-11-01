@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[path = "nullable_pay_groups.rs"]
+mod nullable_pay_groups;
+
 const GROUPS: &str = "/api/v1/payroll/pay-groups";
 
 async fn entity(pool: &PgPool, org: OrgId) -> Uuid {

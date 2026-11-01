@@ -23,7 +23,7 @@ impl PayGroupFactLoader for PgPayrollStore {
         if !armed {
             return Err(KernelError::forbidden("pay-group facts require tenant RLS"));
         }
-        let groups: Vec<(uuid::Uuid, uuid::Uuid, bool)> =
+        let groups: Vec<(uuid::Uuid, uuid::Uuid, Option<bool>)> =
             sqlx::query_as("SELECT id,legal_entity_id,sensitive FROM pay_groups WHERE org_id=$1")
                 .bind(org.as_uuid())
                 .fetch_all(tx.as_mut())
@@ -34,7 +34,7 @@ impl PayGroupFactLoader for PgPayrollStore {
             .map(|(id, legal_entity_id, sensitive)| PayGroupFact {
                 id,
                 legal_entity_id,
-                sensitive,
+                sensitive: sensitive.unwrap_or(true),
             })
             .collect())
     }

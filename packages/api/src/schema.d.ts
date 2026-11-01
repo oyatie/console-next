@@ -24926,11 +24926,31 @@ export interface components {
             /** @description Optional account-selected display name; null uses the numbered default. */
             label?: string | null;
         };
-        PayGroup: components["schemas"]["PayGroupDefinition"] & {
+        PayGroup: components["schemas"]["PayGroupRules"] & {
             /** Format: uuid */
             id: string;
+            sensitive: boolean | null;
+            pay_basis_allowed: components["schemas"]["PayGroupPayBases"] | null;
         };
-        PayGroupDefinition: {
+        PayGroupDefinition: components["schemas"]["PayGroupRules"] & {
+            sensitive: boolean;
+            pay_basis_allowed: components["schemas"]["PayGroupPayBases"];
+        };
+        PayGroupPage: {
+            items: components["schemas"]["PayGroup"][];
+            legal_entities: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+            }[];
+        };
+        PayGroupPayBases: ("MONTHLY" | "HOURLY")[];
+        PayGroupPeriodRule: {
+            start_day: number | "FIRST";
+            /** @enum {integer} */
+            month_offset: -1 | 0;
+        };
+        PayGroupRules: {
             /** Format: uuid */
             legal_entity_id: string;
             name: string;
@@ -24947,21 +24967,6 @@ export interface components {
             proration: "CALENDAR_DAYS" | "SCHEDULED_WORKDAYS";
             /** @enum {string} */
             channel: "ATTESTATION_ONLY" | "FILE_GENERIC";
-            sensitive: boolean;
-            pay_basis_allowed: ("MONTHLY" | "HOURLY")[];
-        };
-        PayGroupPage: {
-            items: components["schemas"]["PayGroup"][];
-            legal_entities: {
-                /** Format: uuid */
-                id: string;
-                name: string | null;
-            }[];
-        };
-        PayGroupPeriodRule: {
-            start_day: number | "FIRST";
-            /** @enum {integer} */
-            month_offset: -1 | 0;
         };
         PayrollClosePreflight: {
             checks: components["schemas"]["PayrollPreflightCheck"][];

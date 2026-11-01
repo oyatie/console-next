@@ -20,7 +20,7 @@ export const koAccessCodes = {
   "accessCodes.domain.discipline": "징계",
   "accessCodes.domain.discipline.help": "징계 기록",
   "accessCodes.domain.sensitive": "건강·민감",
-  "accessCodes.domain.sensitive.help": "건강·장애·노조 등 민감정보와 민감 급여 그룹. 급여 그룹은 급여 권한도 필요합니다.",
+  "accessCodes.domain.sensitive.help": "급여 권한 범위 안 민감 급여 그룹",
   "accessCodes.domain.documents": "증명서·문서",
   "accessCodes.domain.documents.help": "증명서 발급과 인사 문서",
   "accessCodes.domain.notice": "공지",

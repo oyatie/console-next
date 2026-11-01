@@ -11813,8 +11813,16 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../payroll/rest/openapi/schemas/PayGroupPage.yaml"),
     },
     NamedYaml {
+        name: "PayGroupPayBases",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayGroupPayBases.yaml"),
+    },
+    NamedYaml {
         name: "PayGroupPeriodRule",
         body: include_str!("../../payroll/rest/openapi/schemas/PayGroupPeriodRule.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroupRules",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayGroupRules.yaml"),
     },
     NamedYaml {
         name: "PayrollClosePreflight",

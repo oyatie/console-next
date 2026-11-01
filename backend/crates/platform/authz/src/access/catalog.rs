@@ -150,6 +150,15 @@ impl Domain {
     pub const fn grantable(self) -> bool {
         !self.offered().is_empty()
     }
+
+    /// Live record clearance groups, independent of legacy operation keys.
+    #[must_use]
+    pub const fn record_levels(self) -> &'static [Level] {
+        match self {
+            Self::Sensitive => &[Level::View, Level::Edit],
+            _ => &[],
+        }
+    }
 }
 
 impl Level {

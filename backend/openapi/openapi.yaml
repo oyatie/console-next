@@ -52535,16 +52535,64 @@ components:
     PayGroup:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       allOf:
-      - {$ref: '#/components/schemas/PayGroupDefinition'}
+      - {$ref: '#/components/schemas/PayGroupRules'}
       - type: object
-        required: [id]
+        required: [id, sensitive, pay_basis_allowed]
         properties:
           id: {type: string, format: uuid}
+          sensitive: {type: [boolean, 'null']}
+          pay_basis_allowed:
+            anyOf:
+            - {$ref: '#/components/schemas/PayGroupPayBases'}
+            - {type: 'null'}
       unevaluatedProperties: false
     PayGroupDefinition:
       # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf:
+      - {$ref: '#/components/schemas/PayGroupRules'}
+      - type: object
+        required: [sensitive, pay_basis_allowed]
+        properties:
+          sensitive: {type: boolean}
+          pay_basis_allowed: {$ref: '#/components/schemas/PayGroupPayBases'}
+    PayGroupPage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
-      required: [legal_entity_id, name, pay_date_rule, base_period, variable_period, proration, channel, sensitive, pay_basis_allowed]
+      required: [items, legal_entities]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/PayGroup'}
+        legal_entities:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: {type: string, format: uuid}
+              name: {type: [string, 'null']}
+    PayGroupPayBases:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: array
+      minItems: 1
+      maxItems: 2
+      uniqueItems: true
+      items: {type: string, enum: [MONTHLY, HOURLY]}
+    PayGroupPeriodRule:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [start_day, month_offset]
+      properties:
+        start_day:
+          oneOf:
+          - {type: integer, minimum: 1, maximum: 28}
+          - {type: string, enum: [FIRST]}
+        month_offset: {type: integer, enum: [-1, 0]}
+    PayGroupRules:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [legal_entity_id, name, pay_date_rule, base_period, variable_period, proration, channel]
       properties:
         legal_entity_id: {type: string, format: uuid}
         name: {type: string, minLength: 1, maxLength: 40}
@@ -52563,40 +52611,6 @@ components:
         variable_period: {$ref: '#/components/schemas/PayGroupPeriodRule'}
         proration: {type: string, enum: [CALENDAR_DAYS, SCHEDULED_WORKDAYS]}
         channel: {type: string, enum: [ATTESTATION_ONLY, FILE_GENERIC]}
-        sensitive: {type: boolean}
-        pay_basis_allowed:
-          type: array
-          minItems: 1
-          maxItems: 2
-          uniqueItems: true
-          items: {type: string, enum: [MONTHLY, HOURLY]}
-    PayGroupPage:
-      # SPDX-License-Identifier: LicenseRef-Proprietary
-      type: object
-      required: [items, legal_entities]
-      properties:
-        items:
-          type: array
-          items: {$ref: '#/components/schemas/PayGroup'}
-        legal_entities:
-          type: array
-          items:
-            type: object
-            required: [id, name]
-            properties:
-              id: {type: string, format: uuid}
-              name: {type: [string, 'null']}
-    PayGroupPeriodRule:
-      # SPDX-License-Identifier: LicenseRef-Proprietary
-      type: object
-      additionalProperties: false
-      required: [start_day, month_offset]
-      properties:
-        start_day:
-          oneOf:
-          - {type: integer, minimum: 1, maximum: 28}
-          - {type: string, enum: [FIRST]}
-        month_offset: {type: integer, enum: [-1, 0]}
     PayrollClosePreflight:
       type: object
       required:

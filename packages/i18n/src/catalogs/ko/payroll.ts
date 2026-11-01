@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koPayroll = {
+  "payroll.accessInactive": "급여가 활성화되지 않아 급여·민감 급여 그룹 권한은 급여 화면에서 사용할 수 없습니다.",
   "payroll.title": "급여",
   "payroll.alpha": "급여 준비 · 세무사와 함께 확인하는 비공개 시범 운영",
   "payroll.entity": "법인",

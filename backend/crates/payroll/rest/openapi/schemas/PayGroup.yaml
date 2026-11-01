@@ -1,8 +1,13 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 allOf:
-- {$ref: '#/components/schemas/PayGroupDefinition'}
+- {$ref: '#/components/schemas/PayGroupRules'}
 - type: object
-  required: [id]
+  required: [id, sensitive, pay_basis_allowed]
   properties:
     id: {type: string, format: uuid}
+    sensitive: {type: [boolean, 'null']}
+    pay_basis_allowed:
+      anyOf:
+      - {$ref: '#/components/schemas/PayGroupPayBases'}
+      - {type: 'null'}
 unevaluatedProperties: false
