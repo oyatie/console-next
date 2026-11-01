@@ -25,7 +25,11 @@ export function checkDeps(manifests, register, lock) {
     }
     if (entry && (!row.pins?.length || row.pins.some((pin) => !pin.version)))
       problems.push(`"${row.name}": resolved version is missing from package-lock.json`);
-    if (entry && row.pins?.some((pin) => !pin.source?.startsWith(`https://registry.npmjs.org/${row.name}/-/`)))
+    if (entry && row.pins?.some((pin) => {
+      if (pin.inBundle && pin.source === null) return false;
+      const url = URL.canParse(pin.source ?? "") && new URL(pin.source);
+      return !url || url.origin !== "https://registry.npmjs.org" || !url.pathname.startsWith(`/${row.name}/-/`) || url.href !== pin.source;
+    }))
       problems.push(`"${row.name}": resolved source must be its npm registry tarball in package-lock.json`);
   }
   return problems;

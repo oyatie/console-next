@@ -72,6 +72,7 @@ for (const [kind, requirement, pin] of [
   ["alias", "npm:preact@10.0.0", { name: "preact", version: "10.0.0", resolved: "https://registry.npmjs.org/preact/-/preact-10.0.0.tgz" }],
   ["github", "github:evil/react#abc", { version: "19.3.1", resolved: "git+ssh://git@github.com/evil/react.git#abc" }],
   ["tarball", "https://evil.example/react.tgz", { version: "19.3.1", resolved: "https://evil.example/react.tgz" }],
+  ["traversal", "^19", { version: "19.3.1", resolved: "https://registry.npmjs.org/react/-/../../preact/-/preact-10.0.0.tgz" }],
 ]) {
   test(`refuses ${kind} swaps under a registered package name`, () => {
     const changed = structuredClone(manifests);
@@ -84,14 +85,35 @@ for (const [kind, requirement, pin] of [
   });
 }
 
-test("refuses missing or mismatched sources on any nested pin", () => {
-  for (const resolved of [undefined, "https://registry.npmjs.org/preact/-/preact-10.0.0.tgz"]) {
+test("refuses missing, mismatched or noncanonical sources on any nested pin", () => {
+  for (const resolved of [
+    undefined,
+    "not a URL",
+    "https://registry.npmjs.org/preact/-/preact-10.0.0.tgz",
+    "https://evil.example/react/-/react-19.3.1.tgz",
+    "https://registry.npmjs.org/react/-/./react-19.3.1.tgz",
+    "https://registry.npmjs.org/react/-/%2e/react-19.3.1.tgz",
+  ]) {
     const changedLock = structuredClone(lock);
     changedLock.packages["apps/web/node_modules/react"] = { version: "19.3.1", resolved };
     assert.deepEqual(checkDeps(manifests, register, changedLock), [
       '"react": resolved source must be its npm registry tarball in package-lock.json',
     ]);
   }
+});
+
+test("accepts bundled copies without a resolved URL while checking other pins", () => {
+  const changedLock = structuredClone(lock);
+  changedLock.packages["node_modules/parent/node_modules/react"] = { version: "19.2.0", inBundle: true };
+  assert.deepEqual(checkDeps(manifests, register, changedLock), []);
+  changedLock.packages["node_modules/react"].resolved = "https://evil.example/react.tgz";
+  assert.deepEqual(checkDeps(manifests, register, changedLock), [
+    '"react": resolved source must be its npm registry tarball in package-lock.json',
+  ]);
+  changedLock.packages["node_modules/react"].inBundle = true;
+  assert.deepEqual(checkDeps(manifests, register, changedLock), [
+    '"react": resolved source must be its npm registry tarball in package-lock.json',
+  ]);
 });
 
 test("reads nested and multiple resolved versions from the lock", () => {

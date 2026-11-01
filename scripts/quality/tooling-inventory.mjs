@@ -70,7 +70,7 @@ export function inventory(files, readInput, metadata = []) {
     const name = location.split("node_modules/").at(-1);
     const row = add("npm", name);
     row.pins ??= [];
-    row.pins.push({ location, version: pin.version, license: pin.license ?? null, integrity: pin.integrity ?? null, source: pin.resolved ?? null });
+    row.pins.push({ location, version: pin.version, license: pin.license ?? null, integrity: pin.integrity ?? null, source: pin.resolved ?? null, inBundle: pin.inBundle ?? false });
     row.evidence = ["package-lock.json", `https://registry.npmjs.org/${encodeURIComponent(name)}`];
   }
   if (files.includes("package-lock.json")) for (const [location, pin] of Object.entries(JSON.parse(read("package-lock.json")).packages ?? {})) {
