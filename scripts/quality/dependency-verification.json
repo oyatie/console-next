@@ -1,4 +1,11 @@
 {
+  "package.json:devDependencies:@types/node": {
+    "requirement": "^26.6.6",
+    "version": "26.6.6",
+    "registry": "https://registry.npmjs.org/%40types%2Fnode/26.6.6",
+    "checked": "2026-11-02",
+    "note": "docs/quality/dependencies/node-types-26.md"
+  },
   "package.json:devDependencies:@axe-core/playwright": {
     "requirement": "~4.14.0",
     "version": "4.14.0",
