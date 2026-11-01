@@ -28,7 +28,7 @@ for (const state of Object.keys(screen.states) as NumberingState[]) for (const w
           await expect(main.locator('[data-read-layout="form"][aria-busy="true"]')).toBeVisible();
         } else {
           await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();
-          await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
+          await expect(main.getByRole("alert").getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
         }
         await expect(card).toHaveCount(0);
         await expect(after).toHaveCount(0);
@@ -53,7 +53,7 @@ for (const state of Object.keys(screen.states) as NumberingState[]) for (const w
         if (state === "phase-loading") fixture.releasePhase();
         else {
           fixture.recover();
-          await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
+          await main.getByRole("alert").getByRole("button", { name: t("common.retry"), exact: true }).click();
           await expect.poll(fixture.phaseReads).toBeGreaterThan(before);
         }
         await expect(after).toBeVisible();

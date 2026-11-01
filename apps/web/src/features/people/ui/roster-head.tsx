@@ -10,10 +10,8 @@ import { Kbd } from "../../../ui/record/record-section";
 import { buttonClass } from "../../../ui/button/button-class";
 import { VIEWS, type Review, type StatusView, type View } from "../domain/roster";
 import { useQuery } from "@tanstack/react-query";
-import { checklistRef } from "../../../reference/entity/api";
 import { Band } from "../../../ui/band/band";
 import { AsOf } from "../../../ui/page-head/as-of";
-import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { accessRefusal } from "../../../reference/authz/domain/access";
@@ -35,16 +33,13 @@ export function RosterHead({ manage, status, review, onView, actions, switcher, 
   switcher?: ReactNode;
   unplaced?: boolean;
 }) {
-  const setup = useQuery({ ...checklistRef, retry: false }).data?.phase === "SETUP";
   const access = useQuery(myAccessQuery);
   const { peopleAccess } = route.useRouteContext();
   const navigate = useNavigate({ from: "/people" });
   const view = VIEWS.find((v) => v.status === status && (v.review ?? []).join() === review.join())?.id ?? null;
   return (
     <Band className={s.band}>
-      <PageHead title={t(unplaced ? "roster.view.unplaced" : "roster.page.roster")} meta={<>
-        <PhaseLine phase={setup ? "setup" : "operating"}>{t(setup ? "roster.head.setup" : "roster.head.op")}</PhaseLine>
-      </>} asOf={<AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} />} actions={manage && (
+      <PageHead title={t(unplaced ? "roster.view.unplaced" : "roster.page.roster")} asOf={<AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} />} actions={manage && (
           <>
             <Link className={buttonClass()} to="/people/import"><Upload size={16} aria-hidden /> {t("roster.head.import")}</Link>
             {actions}

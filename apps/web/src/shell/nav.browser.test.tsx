@@ -39,7 +39,10 @@ test("a pending tenant phase never flashes the operating rail", async () => {
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
     // Let both access observers render while the phase response is still held.
     await page.evaluate(() => new Promise(done => setTimeout(done, 100)));
-    await element(rail.getByRole("link")).toHaveText(["홈"]);
+    await element(rail.getByRole("link")).toHaveCount(0);
+    await element(rail.getByRole("status")).toBeVisible();
+    const bone = await rail.locator("[data-bone]").first().boundingBox();
+    expect(bone!.width).toBeGreaterThan(0);
     release();
     await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "직원", "권한"]);
   } finally {
@@ -196,7 +199,8 @@ test("a changed idle checklist cannot change the rail until navigation", async (
   }
 });
 
-test("a pending SETUP checklist never flashes the fallback rail", async () => {
+test("a pending SETUP checklist keeps the last answered rail", async () => {
+  const previousLinks = await page.getByRole("navigation", { name: "주 메뉴" }).getByRole("link").allTextContents();
   let release!: () => void;
   const pending = new Promise<void>(done => { release = done; });
   await page.route("**/api/v1/users/me", route => route.fulfill({ json: { ...user, tenant: { ...user.tenant, phase: "SETUP", go_live_at: null } } }));
@@ -213,7 +217,7 @@ test("a pending SETUP checklist never flashes the fallback rail", async () => {
     await decisions;
     await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    await element(rail.getByRole("link")).toHaveText(["홈"]);
+    await element(rail.getByRole("link")).toHaveText(previousLinks);
     release();
     await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "직원", "권한"]);
   } finally {

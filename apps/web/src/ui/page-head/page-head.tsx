@@ -1,7 +1,7 @@
 import { useContext, type ReactNode } from "react";
 import s from "./page-head.module.css";
 import { shown } from "../shown";
-import { PageHeadingLevel } from "../page/page-scope";
+import { PageHeadingLevel, PagePhase } from "../page/page-scope";
 
 /**
  * The head of a page (design-language §4.3, kit .ph): where it sits (`crumbs`), the one h1 `title`, what it is
@@ -28,7 +28,9 @@ export type PageHeadProps = {
 };
 
 export function PageHead({ title, titleId, crumbs, meta, tools, primary, actions, asOf, tabs, band, sub }: PageHeadProps) {
-  const Title = useContext(PageHeadingLevel) === 1 ? "h1" : "h2";
+  const level = useContext(PageHeadingLevel);
+  const phase = useContext(PagePhase);
+  const Title = level === 1 ? "h1" : "h2";
   return (
     <header className={s.head} data-band={band || undefined} data-tabs={shown(tabs) || undefined}>
       {crumbs}
@@ -40,9 +42,10 @@ export function PageHead({ title, titleId, crumbs, meta, tools, primary, actions
         {shown(tools) && <div className={s.tools}>{tools}</div>}
         {shown(primary) && <div className={s.primary}>{primary}</div>}
       </div>
+      {level === 1 && <PagePhase value={null}>{phase}</PagePhase>}
       {shown(sub) && <div className={s.sub}>{sub}</div>}
-      {asOf}
       {tabs}
+      {asOf}
     </header>
   );
 }

@@ -1,9 +1,34 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
-import { expect as element } from "@playwright/test";
+import { firefox, expect as element } from "@playwright/test";
 import type { components } from "@console/api";
+import { loadCatalog, t } from "@console/i18n";
+import { AT, id } from "../../../../e2e/mock/fixtures";
 import { clearShifts } from "../../../../e2e/stability";
+import { chromium } from "../lib/browser-test";
 import { navFixture, navModules } from "./nav.browser-fixture";
+
+test("cached active support session stays visible when access and support refetches both fail", async () => {
+  await loadCatalog("ko");
+  const { server, browser, page, errors } = await navFixture();
+  let failing = false;
+  await page.route("**/api/v1/access/me", route => failing
+    ? route.fulfill({ status: 503, json: { error: { code: "unavailable" } } }) : route.fallback());
+  await page.route("**/api/v1/support-sessions/active", route => failing
+    ? route.fulfill({ status: 503, json: { error: { code: "unavailable" } } })
+    : route.fulfill({ json: { sessions: [{ id: id(1), operator_label: "검증 운영자", expires_at: AT }],
+      pending_count: 0, pending_approvals: [], can_approve: false } satisfies components["schemas"]["ActiveSupportSessions"] }));
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    const banner = page.getByText(t("supportAccess.banner"), { exact: true });
+    await element(banner).toBeVisible();
+    failing = true;
+    await page.evaluate(() => window.refetchNavDecisions());
+    await element(banner).toBeVisible();
+    await element(page.getByText(t("common.read.stale"), { exact: false })).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally { await browser.close(); await server.close(); }
+}, 60_000);
 
 test("late module readiness stays cached until navigation, including return to an earlier page", async () => {
   const { server, browser, page, errors } = await navFixture();
@@ -70,25 +95,37 @@ test("a readiness command refreshes the shared modules cache once without a navi
   } finally { await browser.close(); await server.close(); }
 }, 60_000);
 
-test("a modules 503 preserves S1 behavior and a failed refresh keeps last good readiness", async () => {
-  const { server, browser, page, errors } = await navFixture();
+for (const engine of [chromium, ...(process.env.E2E_XBROWSER === "1" ? [firefox] : [])]) test.each(["503", "network"])(`a cold modules %s keeps independent links and retry restores readiness without navigation in ${engine.name()}`, async fault => {
+  await loadCatalog("ko");
+  const { server, browser, page, errors } = await navFixture(engine);
   let unavailable = true;
   await page.route("**/api/v1/onboarding/modules", route => unavailable
-    ? route.fulfill({ status: 503, json: { error: { code: "unavailable" } } })
+    ? fault === "network" ? route.abort("failed") : route.fulfill({ status: 503, json: { error: { code: "unavailable" } } })
     : route.fulfill({ json: [{ key: "people", ready: true, unblock: null }] satisfies components["schemas"]["OnboardingModules"] }));
   try {
     await page.goto(server.resolvedUrls!.local[0]!);
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    await element(rail.getByRole("link", { name: "근태", exact: true })).toBeVisible();
+    await element(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests"), t("shell.link.settings")]);
+    await element(rail.getByRole("alert")).toHaveCount(1);
+    await element(rail.getByRole("alert").getByRole("heading")).toHaveText(t("shell.nav.failed"));
+    await page.reload();
+    await element(rail.getByRole("alert")).toHaveCount(1);
+    const url = page.url();
     unavailable = false;
-    await page.evaluate(() => window.refetchNavModules());
-    await rail.getByRole("link", { name: "직원", exact: true }).click();
+    await rail.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
+    await element(rail.getByRole("alert")).toHaveCount(0);
+    expect(page.url()).toBe(url);
     await element(rail.getByRole("link", { name: "근태", exact: true })).toHaveCount(0);
     unavailable = true;
     await page.evaluate(() => window.refetchNavModules());
-    await rail.getByRole("link", { name: "홈", exact: true }).click();
     await element(rail.getByRole("link", { name: "근태", exact: true })).toHaveCount(0);
     await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
+    await rail.getByRole("link", { name: "직원", exact: true }).click();
+    await element(rail.getByRole("link", { name: "근태", exact: true })).toHaveCount(0);
+    await page.reload();
+    await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
+    await element(rail.getByRole("link", { name: "근태", exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally { await browser.close(); await server.close(); }
 }, 60_000);

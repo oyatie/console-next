@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { beforeAll, expect, test } from "vitest";
+import { expect as element } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
+import { authz, checklist, failure } from "../../../../e2e/mock/fixtures";
+import { navFixture } from "./nav.browser-fixture";
+
+beforeAll(() => loadCatalog("ko"));
+
+test("a refused access read leaves the phase slot quiet", async () => {
+  const { server, browser, page } = await navFixture();
+  await page.route("**/api/v1/access/me", route => route.fulfill({ status: 403, json: failure("forbidden") }));
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    await element(page.getByRole("heading", { name: "Setup", exact: true })).toBeVisible();
+    const slot = page.locator("header [data-phase-band]");
+    await element(slot).toHaveCount(0);
+  } finally { await browser.close(); await server.close(); }
+}, 60_000);
+
+test("the receipt stays in the page head, dismisses across reloads, and stays out of print with the skip link", async () => {
+  const { server, browser, page } = await navFixture();
+  const goLiveAt = new Date().toISOString();
+  await page.route("**/api/v1/settings", route => route.fulfill({ json: { can_change: false, items: [{ key: "onboarding.receipt_days", value: 2 }] } }));
+  await page.route("**/api/v1/me/authz", route => route.fulfill({ json: authz }));
+  await page.route("**/api/v1/onboarding/checklist", route => route.fulfill({ json: { ...checklist, go_live_at: goLiveAt } }));
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    const receipt = page.locator('header [data-phase-band]').filter({ hasText: t("setup.receipt.started.title") });
+    const assertPlacement = async () => {
+      await element(receipt).toHaveCount(1);
+      const band = await receipt.boundingBox();
+      const head = await page.getByRole("heading", { name: "Setup", exact: true }).boundingBox();
+      expect(band!.y).toBeGreaterThanOrEqual(head!.y + head!.height);
+    };
+    await assertPlacement();
+    await page.reload();
+    await assertPlacement();
+    await page.emulateMedia({ media: "print" });
+    await element(receipt).toBeHidden();
+    await element(page.getByRole("link", { name: t("shell.skip"), includeHidden: true })).toBeHidden();
+    await page.emulateMedia({ media: "screen" });
+    await page.getByRole("button", { name: t("setup.phase.dismiss"), exact: true }).click();
+    await element(receipt).toHaveCount(0);
+    await element(page.locator("header [data-phase-band]")).toHaveCount(0);
+    await page.reload();
+    await element(page.getByRole("heading", { name: "Setup", exact: true })).toBeVisible();
+    await element(receipt).toHaveCount(0);
+    await element(page.locator("header [data-phase-band]")).toHaveCount(0);
+    await page.evaluate(() => {
+      for (const key of Object.keys(localStorage)) if (key.startsWith("console.phase.dismissed.")) {
+        localStorage.setItem(`${key}.other`, localStorage.getItem(key)!);
+        localStorage.removeItem(key);
+      }
+    });
+    await page.reload();
+    await assertPlacement();
+  } finally { await browser.close(); await server.close(); }
+}, 60_000);

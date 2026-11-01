@@ -2,7 +2,7 @@ import { personName } from "../reference/person/present";
 import { activeSupportQuery } from "../reference/support-access/api";
 import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
 import { DomainNotice } from "../auth/domain-notice";
-import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Search, Sun, UserRound } from "lucide-react";
@@ -13,11 +13,15 @@ import { HeldNotice } from "../ui/live/held-notice";
 import { LiveStatus } from "../ui/live/live-status";
 import { focusSoon } from "../lib/react/announce";
 import { get, navigationRead, read } from "../lib/query";
+import { isAnswer } from "../lib/react/query-defaults";
+import { QueryState } from "../lib/react/query-state";
+import { ReadFailureContext } from "../lib/react/read-failure-context";
 import { chunk } from "../lib/chunk-guard";
 import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
 import { useTheme } from "./theme";
-import { PLATFORM_NAV, activeLink, tenantNav } from "./nav";
+import { PLATFORM_NAV, TENANT_NAV, activeLink, rememberedRail, tenantNav } from "./nav";
+import { Skeleton } from "../ui/skeleton/skeleton";
 import { PhaseBand } from "./phase-band";
 import { SessionRecovery } from "./session-recovery";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
@@ -38,13 +42,17 @@ export function Shell() {
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
   const restore = useQuery({ ...read("/api/v1/auth/token/refresh", refresh), enabled: false });
   const restoring = !claims && restore.isPending;
+  const principal = session.principal;
+  const railKey = principal ? `console.nav.${principal}` : null;
+  const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
+  if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
   const identity = useQuery({ ...identityQuery, enabled: !platform && Boolean(session.token) });
   const router = useRouter();
   const access = useQuery({ ...myAccessQuery, enabled: !platform && Boolean(session.token) });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && Boolean(session.token) });
   const me = useQuery({ ...navigationRead(meQuery), enabled: !platform && Boolean(session.token) });
-  const phase = me.data?.tenant?.phase;
+  const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && phase === "SETUP", retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && Boolean(session.token) });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
@@ -61,11 +69,34 @@ export function Shell() {
   const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
   const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
-  const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data }>();
+  const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data | null }>();
+  const modulesFault = modules.isError && !isAnswer(modules.error);
+  const [pageFailures, setPageFailures] = useState(0);
+  const registerFailure = useMemo(() => () => {
+    setPageFailures(count => count + 1);
+    return () => setPageFailures(count => count - 1);
+  }, []);
+  const { refetch: refetchModules } = modules;
+  const recovery = useMemo(() => ({ register: registerFailure, retry: () => {
+    if (modulesFault) void refetchModules({ cancelRefetch: false });
+  } }), [registerFailure, modulesFault, refetchModules]);
+  const answered = ready && access.isSuccess && [support, me].every(q => !(q.isError && !isAnswer(q.error)));
   // Late readiness reads reveal entries on the next navigation, never between inputs.
-  if (ready && railTargets?.pathname !== pathname) setRailTargets({ pathname, value: setupTargets, modules: modules.data });
-  const menu: readonly NavHub[] = platform ? PLATFORM_NAV : tenantNav(ready ? access.data : undefined, router.routesByPath,
-    ready && support.data?.can_approve, { pathname, phase, setupTargets: railTargets?.value, modules: railTargets?.modules });
+  // A cold fault has no readiness snapshot; its first answer can recover immediately after retry.
+  if (answered && (railTargets?.pathname !== pathname || modules.isSuccess && railTargets.modules == null)) setRailTargets({ pathname, value: setupTargets,
+    modules: modules.isSuccess ? modules.data : modulesFault && savedRail.key === railKey ? savedRail.answer?.context.modules : undefined });
+  const answer = useMemo(() => answered && access.data ? { access: access.data, supportApproval: support.isSuccess && !!support.data?.can_approve,
+    context: { pathname, phase, setupTargets: railTargets?.value,
+      modules: modules.isSuccess ? railTargets?.modules : modulesFault ? railTargets?.modules ?? null : undefined } } : undefined,
+  [answered, access.data, support.isSuccess, support.data?.can_approve, pathname, phase, railTargets, modules.isSuccess, modulesFault]);
+  if (answer && savedRail.answer !== answer) setSavedRail({ key: railKey, answer });
+  useEffect(() => {
+    if (!railKey || !answer) return;
+    try { localStorage.setItem(railKey, JSON.stringify(answer)); } catch { return; /* Storage is optional. */ }
+  }, [railKey, answer]);
+  const displayed = answer ?? (savedRail.key === railKey ? savedRail.answer : undefined);
+  const menu: readonly NavHub[] = platform ? PLATFORM_NAV : displayed ? tenantNav(displayed.access, router.routesByPath,
+    displayed.supportApproval, displayed.context) : [];
   // Phone widths hide the rail; the top bar's menu button discloses it.
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -106,6 +137,13 @@ export function Shell() {
       <a className="skip" href="#main">{t("shell.skip")}</a>
       <nav id="rail" ref={rail} className="rail" aria-label={t("shell.nav")}>
         <div className="rail__brand"><span className="rail__mark" aria-hidden>C</span>{t("app.name")}</div>
+        {!platform && !displayed && <div role="status" aria-busy="true" aria-label={t("common.loading")}>
+          {TENANT_NAV.map(g => <div key={g.hub}>
+            <div className="rail__hub">{t(g.hub)}</div>
+            <ul className="rail__list">{g.links.filter(l => l.to in router.routesByPath).map(l =>
+              <li key={l.to} className="rail__link"><Skeleton decorative bones={["line"]} /></li>)}</ul>
+          </div>)}
+        </div>}
         {menu.map((g) => (
           <div key={g.hub}>
             <div className="rail__hub">{t(g.hub)}</div>
@@ -119,6 +157,9 @@ export function Shell() {
             ))}</ul>
           </div>
         ))}
+        {!platform && answered && modulesFault && (pageFailures > 0
+          ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
+          : <QueryState q={modules} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState>)}
       </nav>
       <header className="top" aria-busy={restoring || undefined}>
         {!restoring && <>
@@ -148,12 +189,14 @@ export function Shell() {
       </header>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
       <PageMain className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
+        <ReadFailureContext.Provider value={recovery}>
         <SessionRecovery>
         <ChangeNotice key={pathname} />
         <HeldNotice />
-        {!platform && <DomainNotice />}{!platform && <ActiveSupportBanner />}
-        <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand><Outlet /></PhaseBand>}</RouteGuard>
+        {!platform && <DomainNotice />}{!platform && !(access.isError && support.isError && !support.data) && <ActiveSupportBanner />}
+        <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Outlet /></PhaseBand>}</RouteGuard>
         </SessionRecovery>
+        </ReadFailureContext.Provider>
       </PageMain>
       {jump && (
         <Suspense fallback={null}>

@@ -77,9 +77,8 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
           </Button>
         ))}
       </div>
-      <p id={reasonId} className={css.phase} aria-hidden={!s && !readFailed || undefined} data-loading={!s && !readFailed || undefined} data-phase={phase} data-failed={readFailed || undefined}>
-        <span className={css.dot} aria-hidden />
-        <span aria-hidden={readFailed || undefined}>{t(phase === "operating" && routed ? "structure.phase.operatingRouted" : `structure.phase.${phase}`)}</span>
+      <p id={reasonId} className={css.phase} aria-hidden={!s && !readFailed || undefined} data-loading={!s && !readFailed || undefined} data-failed={readFailed || undefined}>
+        <span aria-hidden={readFailed || undefined}>{t(phase === "operating" && routed ? "structure.effect.operatingRouted" : `structure.effect.${phase}`)}</span>
         {readFailed && <span className={css.phaseError}>{t("structure.readFailed")}</span>}
       </p>
       {!readOnly && orgEdit && selected?.kind === "entity" && <AddUnit n={selected} primary />}

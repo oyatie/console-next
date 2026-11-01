@@ -13,7 +13,7 @@ export const navModules = (phase: string): components["schemas"]["OnboardingModu
 ];
 
 declare global {
-  interface Window { __refetchChecklist: () => Promise<void>; refetchNavModules: () => Promise<void>; __navFacts: { phase?: string; state?: string } }
+  interface Window { __refetchChecklist: () => Promise<void>; refetchNavModules: () => Promise<void>; refetchNavDecisions: () => Promise<void>; switchNavPrincipal: () => void; __navFacts: { phase?: string; state?: string } }
 }
 
 export async function navFixture(engine = chromium) {
@@ -26,9 +26,10 @@ export async function navFixture(engine = chromium) {
         import React from 'react'; import {createRoot} from 'react-dom/client';
         import {QueryClient,QueryClientProvider,useQuery} from '@tanstack/react-query';
         import {createRootRoute,createRoute,createRouter,RouterProvider,Link} from '@tanstack/react-router';
-        import {configure,refresh} from '@console/api'; import {webPlatform} from '@console/api/web';
+        import {configure,refresh,session} from '@console/api'; import {webPlatform} from '@console/api/web';
         import {loadCatalog} from '@console/i18n';
         import {Shell} from '/apps/web/src/shell/shell.tsx';
+        import {PageHead} from '/apps/web/src/ui/page-head/page-head.tsx';
         import {GoLive} from '/apps/web/src/features/onboarding/ui/go-live.tsx';
         import {meQuery} from '/apps/web/src/features/account/api.ts';
         import {checklistQuery,SETUP_READS,skipStep} from '/apps/web/src/features/onboarding/api.ts';
@@ -43,13 +44,18 @@ export async function navFixture(engine = chromium) {
           const me=useQuery(navigationRead(meQuery));
           window.__navFacts={phase:me.data?.tenant?.phase};
           const complete=useCommand({run:()=>skipStep('org'),invalidates:SETUP_READS});
-          return React.createElement(React.Fragment,null,React.createElement('h1',null,'Setup'),React.createElement(Link,{to:'/setup/go-live'},'Start operations'),React.createElement(Link,{to:'/people/period-locks'},'Period locks'),React.createElement('button',{onClick:()=>complete.mutate()},'Complete setup'));
+          return React.createElement(React.Fragment,null,React.createElement(PageHead,{title:'Setup'}),React.createElement(Link,{to:'/setup/go-live'},'Start operations'),React.createElement(Link,{to:'/people/period-locks'},'Period locks'),React.createElement('button',{onClick:()=>complete.mutate()},'Complete setup'));
         }
         const routes=paths.map(path=>createRoute({getParentRoute:()=>root,path,staticData:{access:'signed-in'},component:Fixture}));
         const router=createRouter({routeTree:root.addChildren([...routes,createRoute({getParentRoute:()=>root,path:'/setup/go-live',staticData:{access:'signed-in'},component:GoLive})])});
         const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:Infinity}}});
+        window.switchNavPrincipal=()=>{
+          session.set({access_token:'h.'+btoa(JSON.stringify({...session.claims,sub:'other-principal',name:'Test operator'}))+'.s',token_type:'Bearer',refresh_expires_at:'2099-01-01T00:00:00Z',requires_passkey_setup:false,privacy_consent_accepted:true});
+          void router.navigate({to:'/org'});
+        };
         window.__refetchChecklist=async()=>{await invalidateWhere(client,path=>path===queryPath(checklistQuery));};
         window.refetchNavModules=async()=>{await invalidateWhere(client,path=>path==='/api/v1/onboarding/modules');};
+        window.refetchNavDecisions=async()=>{await invalidateWhere(client,path=>path==='/api/v1/access/me'||path==='/api/v1/support-sessions/active');};
         createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client},React.createElement(RouterProvider,{router})));
       ` : undefined }],
   });
@@ -63,7 +69,7 @@ export async function navFixture(engine = chromium) {
     if (path === "/api/v1/onboarding/modules") return route.fulfill({ json: navModules(user.tenant!.phase) });
     const json = path.endsWith("/token/refresh") ? token() : path === "/api/v1/users/me" ? user :
       path === "/api/v1/onboarding/checklist" ? operatingChecklist :
-      path === "/api/v1/access/me" ? { is_ops: true, entries: [] } :
+      path === "/api/v1/access/me" ? { account_id: user.id, is_ops: true, phase: user.tenant!.phase, as_of: user.created_at, entries: [] } :
       path === "/api/v1/me/authz" ? { capabilities: [] } :
       path === "/api/v1/support-sessions/active" ? { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } : {};
     return route.fulfill({ json });

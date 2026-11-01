@@ -1,3 +1,4 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
-/* A first visit has no known band height: keep its late answer below the route without moving the head. */
-.floating { position: sticky; bottom: 0; z-index: 1; }
+.band { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-block-size: var(--target); min-inline-size: 0; color: var(--steel); font-size: var(--text-xs); }
+.band > [data-phase], .band > button { flex: none; white-space: nowrap; }
+@media print { .band { display: none; } }
