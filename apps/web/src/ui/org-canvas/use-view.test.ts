@@ -58,3 +58,15 @@ test("reveal avoids the overview when the usual centre overlaps it, at the curre
   const wide = revealView({ zoom: 1, x: 0, y: 0 }, { x: 0, y: 700, w: 800, h: 80 }, { w: 1000, h: 600 }, i);
   expect(wide.y + 700 + 80).toBeLessThan(i.corner.y);
 });
+
+test("first paint fits the workplace level inside the canvas, clear of the measured bars", () => {
+  const size = { w: 600, h: 473 };
+  const view = firstView(1000, size, 56, 300);
+  expect(view.zoom).toBeLessThan(1);
+  expect(view.y + size.h * view.zoom).toBeLessThanOrEqual(356);
+  expect(firstView(340, { w: 1060, h: 700 }, 56, 300).zoom).toBe(1);
+});
+
+test("a canvas too short at minimum zoom keeps its readable panning view", () => {
+  expect(firstView(1000, { w: 600, h: 473 }, 56, 100).zoom).toBe(1);
+});

@@ -10,17 +10,14 @@ import { PhaseSlot } from "./phase-band";
 export const order = 128;
 
 export default function PhaseBandGallery() {
-  const [failed, setFailed] = useState(true);
   const [receipt, setReceipt] = useState(true);
   return <PageHeadingLevel value={2}><Section title={tg("section.pageHead")}>
     <div data-phase-example="loading"><PageHead title={t("common.loading")} /><PhaseSlot loading /></div>
-    <div data-phase-example="failed">
-      <PageHead title={t("setup.phase.checklistFailed")} />
-      <PhaseSlot loading={false} phase="operating" text={t("setup.phase.operating")}
-        fault={failed ? { text: `${t("setup.phase.checklistFailed")} ${t("common.read.failedReason")}`, retry: () => setFailed(false) } : undefined} />
+    <div data-phase-example="setup"><PageHead title={t("shell.phase.setup")} />
+      <PhaseSlot phase="setup" text={`${t("shell.phase.setup")} · ${t("setup.step.entity")}`} />
     </div>
-    <div data-phase-example="receipt"><PageHead title={t("setup.phase.started.title")} />
-      <PhaseSlot loading={false} phase="operating" text={t("setup.phase.operating")} dismiss={receipt ? () => setReceipt(false) : undefined} />
+    <div data-phase-example="receipt"><PageHead title={t("setup.receipt.started.title")} />
+      <PhaseSlot phase={receipt ? "started" : undefined} dismiss={() => setReceipt(false)} />
     </div>
   </Section></PageHeadingLevel>;
 }

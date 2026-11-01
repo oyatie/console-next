@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "../a11y";
-import { AT, failure, structure, token, user } from "../mock/fixtures";
+import { AT, failure, id, screenAccess, structure, token, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { expectStable, recordShifts } from "../stability";
@@ -146,6 +146,9 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     if (width === 1440) {
       const chart = await page.getByRole("region", { name: t("structure.chart.label"), exact: true }).boundingBox();
       expect(chart!.height).toBeGreaterThan(0);
+      const tree = await page.getByRole("tree").boundingBox();
+      expect(tree!.y + tree!.height).toBeLessThanOrEqual(chart!.y + chart!.height);
+      expect(tree!.y + tree!.height).toBeLessThanOrEqual(900);
       expect(chart!.y + chart!.height).toBeLessThanOrEqual(900);
     }
     if (width > 960) {
@@ -159,8 +162,8 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     await page.evaluate(() => document.fonts.ready);
     await expect(page.getByRole("group", { name: t("structure.views"), exact: true })).toBeVisible();
     await expect(page.getByRole("main").locator('[aria-busy="true"]').last()).toBeVisible();
-    const phase = page.locator('[data-phase][data-loading]');
-    await expect(phase).toHaveText(t("structure.phase.operating"));
+    const phase = page.locator('.page__head [data-loading]');
+    await expect(phase).toHaveText(t("structure.effect.operating"));
     await expect(phase).toBeHidden();
     expect(await geometry()).toEqual(populated);
     await expectStable(page, "org: loading head");
@@ -233,6 +236,34 @@ for (const width of [1440, 1024, 390]) test(`org: normal fonts never move painte
     await expectAccessible(page, `org: normal fonts at ${width}px`);
     await page.evaluate(() => new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
     expect(await page.evaluate(() => (window as unknown as { fontControlMoves: string[] }).fontControlMoves)).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+
+test("org: a short setup canvas keeps its workplace selectable @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess("/org", "SETUP") });
+  const tree = structure(1);
+  tree.phase = "SETUP";
+  await mockRoute(page, "get", "/api/v1/legal-entities/{entityId}", { status: 404, json: failure("not_found") });
+  const entity = tree.entities[0]!, workplace = entity.children[0]!;
+  workplace.children = [];
+  entity.children.push({ ...workplace, id: id(5), name: `${workplace.name} 2` });
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+  try {
+    await page.goto("/org");
+    const site = page.getByRole("treeitem", { name: new RegExp(`^${workplace.name},`) });
+    await expect(site).toBeVisible();
+    const find = page.getByRole("searchbox", { name: t("structure.find.label"), exact: true });
+    await find.fill(workplace.name);
+    await find.press("Enter");
+    await expect(site).toHaveAttribute("data-s", /\bnow\b/);
+    await find.press("Escape");
+    await site.click({ trial: true, timeout: 5000 });
+    await site.click({ timeout: 5000 });
+    await expect(site).toHaveAttribute("aria-selected", "true");
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

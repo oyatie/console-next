@@ -4,11 +4,11 @@ import { loadCatalog, t } from "@console/i18n";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { PhaseBand } from "../../../shell/phase-band";
 
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { phase: "OPERATING" }, isPending: false, isError: false }) }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { phase: "OPERATING", items: [{ key: "onboarding.receipt_days", value: 2 }] }, isPending: false, isError: false }) }));
 
 // Model the timestamp captured by the mounted setup shell, before its go-live response arrives.
 const times = vi.hoisted(() => ({ mounted: Date.parse("2026-10-09T00:00:00Z"), updatedAfter: 2000 }));
-vi.mock("./use-setup", () => ({ useSetupChecklist: () => ({ q: {
+vi.mock("./use-setup", () => ({ useSetupChecklist: () => ({ phaseQ: {
   data: { phase: "OPERATING", go_live_at: "2026-10-09T00:00:01Z" },
   dataUpdatedAt: times.mounted + times.updatedAfter, isPending: false,
 } }) }));
@@ -24,7 +24,7 @@ test("an already mounted setup shell shows the reminder when a later go-live res
   vi.setSystemTime(times.mounted + 2000);
   const content = "route content";
   const html = renderToStaticMarkup(<PhaseBand><PageHead title={content} /></PhaseBand>);
-  expect(html).toContain(t("setup.phase.started.title"));
+  expect(html).toContain(t("setup.receipt.started.title"));
   expect(html).toContain("route content");
 });
 
@@ -34,6 +34,6 @@ test("the operating reminder stays present when the server clock is ahead of the
   vi.setSystemTime(times.mounted + 500);
   const content = "route content";
   const html = renderToStaticMarkup(<PhaseBand><PageHead title={content} /></PhaseBand>);
-  expect(html).toContain(t("setup.phase.started.title"));
+  expect(html).toContain(t("setup.receipt.started.title"));
   expect(html).toContain(content);
 });

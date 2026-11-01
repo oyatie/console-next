@@ -49,12 +49,14 @@ export function revealView(v: View, r: Rect, vp: { w: number; h: number }, i: In
 
 /**
  * The first view of a stage `size` wide in a viewport `vw` wide, its top `top` below the viewport's: it fits the width
- * only (a tall chart pans down, as a page scrolls); fitted below what reads comfortably, it opens at 100% from
+ * first, then its available height when the width fits. Fitted below what reads comfortably, a wide chart opens at 100% from
  * the start of the chart instead (the keyboard's box is then brought into view).
  */
-export function firstView(vw: number, size: { w: number; h: number }, top: number): View {
+export function firstView(vw: number, size: { w: number; h: number }, top: number, height = Infinity): View {
   const fitted = size.w > vw ? fitZoom(vw, Infinity, size.w, size.h) : 1;
-  const zoom = fitted < READABLE ? 1 : fitted;
+  const readable = fitted < READABLE ? 1 : fitted;
+  // Fit only when the whole chart can fit; otherwise keep the readable panning view.
+  const zoom = size.w * readable <= vw && size.h * ZOOM.min <= height ? Math.min(readable, fitZoom(vw, height, size.w, size.h)) : readable;
   return { zoom, x: Math.max(0, (vw - size.w * zoom) / 2), y: top };
 }
 
@@ -76,7 +78,10 @@ export function useView(viewport: RefObject<HTMLElement | null>, size: { w: numb
   const padding = useRef<Insets>({ top: 0, bottom: 0 });
   // Read the viewport itself: a handler may run before the measured size reaches state.
   const dims = () => ({ w: viewport.current?.clientWidth ?? 0, h: viewport.current?.clientHeight ?? 0 });
-  const initial = (vw: number): View => firstView(vw, size, insets().top);
+  const initial = (vw: number): View => {
+    const i = insets();
+    return firstView(vw, size, i.top, dims().h - i.top - i.bottom);
+  };
   const fit = () => {
     auto.current = false;
     setView(fitView(dims(), size, insets()));

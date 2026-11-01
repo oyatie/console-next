@@ -1,5 +1,4 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
-.band { display: flex; align-items: center; gap: var(--space-2); block-size: var(--target); min-inline-size: 0; color: var(--steel); font-size: var(--text-xs); }
+.band { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-block-size: var(--target); min-inline-size: 0; color: var(--steel); font-size: var(--text-xs); }
 .band > [data-phase], .band > button { flex: none; white-space: nowrap; }
-.text { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media print { .band { display: none; } }

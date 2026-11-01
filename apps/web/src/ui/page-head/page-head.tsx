@@ -42,9 +42,9 @@ export function PageHead({ title, titleId, crumbs, meta, tools, primary, actions
         {shown(tools) && <div className={s.tools}>{tools}</div>}
         {shown(primary) && <div className={s.primary}>{primary}</div>}
       </div>
+      {level === 1 && <PagePhase value={null}>{phase}</PagePhase>}
       {shown(sub) && <div className={s.sub}>{sub}</div>}
       {tabs}
-      {level === 1 && <PagePhase value={null}>{phase}</PagePhase>}
       {asOf}
     </header>
   );
