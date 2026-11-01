@@ -6,7 +6,7 @@ import { attendanceBoardState, attendanceSheetState } from "./attendance-helpers
 
 test.beforeAll(() => loadCatalog("ko"));
 
-for (const screen of [attendanceBoardScreens[3]]) for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
+for (const screen of attendanceBoardScreens.filter(screen => screen.key === "attendance-calendar")) for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {
     await attendanceBoardState(page, screen, state, width);
   });

@@ -7,6 +7,7 @@ import { ATTENDANCE_MARK, labeled } from "../../../lib/labels";
 import { GLYPH } from "../domain/day";
 import { draftState, type Draft } from "../domain/grid";
 import { clock } from "../domain/minutes";
+import { monthOf } from "../domain/month";
 import { closed } from "../domain/month-state";
 import { problemText, refusalText } from "../present";
 import { DayBar } from "./day-bar";
@@ -28,7 +29,7 @@ export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }:
     <div className={s.boardRow}>
       <span aria-hidden>{tone ? GLYPH[tone] : ""}</span>
       <span>
-        <Link from="/attendance" to="." search={(x) => ({ ...x, person: row.employee_id })}>{row.name}</Link> <span className="muted num">{row.employee_number}</span>
+        <Link from="/attendance" to="." search={(x) => ({ ...x, month: monthOf(row.day.date), person: row.employee_id })}>{row.name}</Link> <span className="muted num">{row.employee_number}</span>
         {row.own && <span className="muted"> {t("attendanceRecords.grid.ownTag")}</span>}
       </span>
       <DayBar day={row.day} />

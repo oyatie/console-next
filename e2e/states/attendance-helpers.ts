@@ -119,7 +119,7 @@ export async function attendanceBoardState(page: Page, screen: typeof attendance
 
 export async function attendanceSheetState(page: Page, sheet: "cancel" | "undo", state: AttendanceState, width: number) {
   await page.setViewportSize({ width, height: 900 });
-  const screen = attendanceBoardScreens[sheet === "cancel" ? 3 : 0];
+  const screen = attendanceBoardScreens.find(candidate => candidate.key === (sheet === "cancel" ? "attendance-calendar" : "attendance-month"))!;
   const fixture = await mockScreen(page, screen, "populated");
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });

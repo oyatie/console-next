@@ -12,8 +12,9 @@ import { attendanceBoardScreens, type AttendanceState } from "./attendance";
 import { attendanceBoardState } from "./attendance-helpers";
 
 test.beforeAll(() => loadCatalog("ko"));
+const screen = attendanceBoardScreens.find(candidate => candidate.key === "attendance-day")!;
 
-for (const screen of [attendanceBoardScreens[1]]) for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
+for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {
     await attendanceBoardState(page, screen, state, width);
   });
@@ -72,8 +73,8 @@ test("a held date read reserves the day panel without the previous date's notice
 for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) test(`day board status and entry fields stay readable at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width, height: 900 });
-  const fixture = await mockScreen(page, attendanceBoardScreens[1], "populated");
-  await page.goto(attendanceBoardScreens[1].path);
+  const fixture = await mockScreen(page, screen, "populated");
+  await page.goto(screen.path);
   const input = page.getByRole("textbox", { name: /^근태직원 2 기록/ });
   await expect(input).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
@@ -140,8 +141,8 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
 
 for (const width of [1440, 390]) test(`day drawer retains readable board rows at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
-  const fixture = await mockScreen(page, attendanceBoardScreens[1], "populated");
-  await page.goto(attendanceBoardScreens[1].path);
+  const fixture = await mockScreen(page, screen, "populated");
+  await page.goto(screen.path);
   await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
   await expect(page.getByRole(width === 1440 ? "complementary" : "dialog")).toBeVisible();
   const name = page.getByRole("link", { name: "근태직원 1", exact: true });

@@ -11,8 +11,9 @@ import { attendanceScreens, type AttendanceState } from "./attendance";
 import { attendanceReadState } from "./attendance-helpers";
 
 test.beforeAll(() => loadCatalog("ko"));
+const screen = attendanceScreens.find(candidate => candidate.key === "attendance-close")!;
 
-for (const screen of [attendanceScreens[1]]) for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
+for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {
     await attendanceReadState(page, screen, state, width);
   });
@@ -21,7 +22,6 @@ for (const screen of [attendanceScreens[1]]) for (const state of Object.keys(scr
 for (const width of [1440, 390]) for (const scope of ["all", "unavailable"] as const) {
   test(`month close ${scope} workplace label at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    const screen = attendanceScreens[1];
     const fixture = { ...await mockScreen(page, screens[0], "populated"), ...await attendanceReads(page, screen, "populated") };
     const path = new URL(screen.path, "http://localhost");
     if (scope === "all") path.searchParams.delete("wp");
