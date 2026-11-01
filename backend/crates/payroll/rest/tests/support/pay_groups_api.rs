@@ -57,6 +57,7 @@ async fn explicit_pay_groups_round_trip_over_http_and_require_live_cedar(pool: P
         assert_eq!(response.json["error"]["code"], "forbidden");
     }
     let grant = pay_view::grant_manage(&pool, org, actor, Some(a)).await;
+    pay_view::grant_sensitive(&pool, org, actor, Some(a), "edit").await;
     for target in [b, Uuid::new_v4()] {
         let refused = post(service.clone(), &token, input(target)).await;
         assert_eq!(refused.status, StatusCode::FORBIDDEN);
@@ -102,6 +103,7 @@ async fn pay_groups_http_refuses_missing_rules_invalid_input_and_cross_tenant_re
     seed_user(&pool, actor, *org.as_uuid(), "MEMBER").await;
     let a = entity(&pool, org).await;
     pay_view::grant_manage(&pool, org, actor, None).await;
+    pay_view::grant_sensitive(&pool, org, actor, None, "edit").await;
     let keys = keys();
     let token = bearer(&pool, &keys, actor, org, "MEMBER").await;
     let service = app(runtime_role_pool(&pool).await, &keys);
@@ -176,4 +178,40 @@ async fn pay_groups_http_refuses_missing_rules_invalid_input_and_cross_tenant_re
     let refused = post(service, &foreign_token, input(a)).await;
     assert_eq!(refused.status, StatusCode::FORBIDDEN);
     assert_eq!(refused.json["error"]["code"], "forbidden");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn sensitive_group_http_refuses_create_and_hides_rows_without_clearance(pool: PgPool) {
+    let org = OrgId::one();
+    let actor = UserId::new();
+    seed_user(&pool, actor, *org.as_uuid(), "SUPER_ADMIN").await;
+    let a = entity(&pool, org).await;
+    pay_view::grant_manage(&pool, org, actor, None).await;
+    let keys = keys();
+    let token = bearer(&pool, &keys, actor, org, "SUPER_ADMIN").await;
+    let service = app(runtime_role_pool(&pool).await, &keys);
+    let denied = post(service.clone(), &token, input(a)).await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN);
+    assert_eq!(denied.json["error"]["code"], "forbidden");
+    assert_eq!(
+        get(service.clone(), GROUPS, &token).await.json["items"],
+        json!([])
+    );
+    let clearance = pay_view::grant_sensitive(&pool, org, actor, None, "edit").await;
+    let created = post(service.clone(), &token, input(a)).await;
+    assert_eq!(created.status, StatusCode::CREATED);
+    assert_eq!(
+        get(service.clone(), GROUPS, &token).await.json["items"],
+        json!([created.json])
+    );
+    // rls-arming: ok remove live clearance while reusing the same HTTP bearer.
+    sqlx::query("UPDATE access_grants SET status='REVOKED',revoked_at=now(),revoked_by=granted_by WHERE id=$1")
+        .bind(clearance).execute(&pool).await.unwrap();
+    let hidden = get(service.clone(), GROUPS, &token).await;
+    assert_eq!(hidden.status, StatusCode::OK);
+    assert_eq!(hidden.json["items"], json!([]));
+    assert_eq!(hidden.json["legal_entities"], json!([{"id":a,"name":null}]));
+    let denied = post(service, &token, input(a)).await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN);
+    assert_eq!(denied.json["error"]["code"], "forbidden");
 }

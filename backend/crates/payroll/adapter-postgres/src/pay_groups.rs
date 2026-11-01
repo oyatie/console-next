@@ -106,10 +106,8 @@ impl PgPayrollStore {
         let audit = event(org, actor, "payroll.pay_group_create", id)?;
         with_audit(&self.pool, audit, move |tx| Box::pin(async move {
             let facts = load_facts(tx, org, *actor.as_uuid()).await?;
-            if !facts.authorize(Feature::PayrollRunManage.as_str(), NodeRef {
-                kind: NodeKind::LegalEntity, id: input.legal_entity_id,
-            }).map_err(cedar_error)? {
-                return Err(KernelError::forbidden("pay-group creation requires entity pay:edit").into());
+            if !facts.authorize_pay_group_creation(input.legal_entity_id, input.sensitive).map_err(cedar_error)? {
+                return Err(KernelError::forbidden("pay-group creation requires entity pay:edit and sensitive:edit for sensitive groups").into());
             }
             if !(1..=40).contains(&input.name.chars().count()) || input.name.trim_matches(' ').is_empty() {
                 return Err(KernelError::validation("pay-group name requires 1–40 characters").with_field("name").into());
@@ -162,23 +160,11 @@ impl PgPayrollStore {
                         KernelError::forbidden("pay-group listing requires pay:view").into(),
                     );
                 }
-                let sql = format!(
-                    "SELECT to_jsonb(g)
-                 FROM pay_groups g WHERE g.org_id=$1 AND {} ORDER BY g.legal_entity_id,g.name,g.id",
-                    filter.where_sql,
-                );
-                let mut query =
-                    sqlx::query_scalar::<_, Json<PayGroup>>(sqlx::AssertSqlSafe(sql.as_str()))
-                        .bind(org.as_uuid());
-                for bind in &filter.binds {
-                    let SqlValue::TextArray(values) = bind else {
-                        return Err(
-                            KernelError::unavailable("unsupported pay-group Cedar filter").into(),
-                        );
-                    };
-                    query = query.bind(values);
-                }
-                let items = query
+                let ids = facts.visible_pay_groups(tx, Feature::PayrollRunRead).await?;
+                let items = sqlx::query_scalar::<_, Json<PayGroup>>(
+                    "SELECT to_jsonb(g) FROM pay_groups g WHERE g.org_id=$1 AND g.id=ANY($2)
+                     ORDER BY g.legal_entity_id,g.name,g.id",
+                ).bind(org.as_uuid()).bind(ids)
                     .fetch_all(tx.as_mut())
                     .await?
                     .into_iter()

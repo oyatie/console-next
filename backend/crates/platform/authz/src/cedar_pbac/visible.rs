@@ -14,6 +14,9 @@ use uuid::Uuid;
 mod employee;
 pub use employee::{EmployeePlacement, EmployeeVisibility};
 
+#[path = "visible_pay_group.rs"]
+mod pay_group;
+
 use crate::access::{
     AccessEngineError, AccessSlice, NodeKind, NodePath, NodeRef, load_access_subject, scope_path,
 };
