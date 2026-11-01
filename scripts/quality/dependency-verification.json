@@ -1,4 +1,32 @@
 {
+  "package.json:devDependencies:@axe-core/playwright": {
+    "requirement": "~4.14.0",
+    "version": "4.14.0",
+    "registry": "https://registry.npmjs.org/%40axe-core%2Fplaywright/4.14.0",
+    "checked": "2026-11-02",
+    "note": "docs/quality/dependencies/npm-group-2026-11.md"
+  },
+  "package.json:devDependencies:oxlint": {
+    "requirement": "^1.90.0",
+    "version": "1.90.0",
+    "registry": "https://registry.npmjs.org/oxlint/1.90.0",
+    "checked": "2026-11-02",
+    "note": "docs/quality/dependencies/npm-group-2026-11.md"
+  },
+  "apps/web/package.json:dependencies:@tanstack/react-query": {
+    "requirement": "^5.105.0",
+    "version": "5.105.0",
+    "registry": "https://registry.npmjs.org/%40tanstack%2Freact-query/5.105.0",
+    "checked": "2026-11-02",
+    "note": "docs/quality/dependencies/npm-group-2026-11.md"
+  },
+  "apps/web/package.json:dependencies:lucide-react": {
+    "requirement": "^1.63.0",
+    "version": "1.63.0",
+    "registry": "https://registry.npmjs.org/lucide-react/1.63.0",
+    "checked": "2026-11-02",
+    "note": "docs/quality/dependencies/npm-group-2026-11.md"
+  },
   "apps/web/package.json:dependencies:@internationalized/date": {
     "requirement": "^3.12.4",
     "version": "3.12.4",
