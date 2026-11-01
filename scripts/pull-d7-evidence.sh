@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: LicenseRef-Proprietary
 set -euo pipefail
-run=${1:?usage: pull-d7-evidence.sh RUN_ID READER_DIR}
-reader=${2:?usage: pull-d7-evidence.sh RUN_ID READER_DIR}
+run=${1:?usage: pull-d7-evidence.sh RUN_ID READER_DIR [REPO]}
+reader=${2:?usage: pull-d7-evidence.sh RUN_ID READER_DIR [REPO]}
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
-repo=$(git remote get-url public)
+repo=${3:-${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}}
 export CONSOLE_NEXT=${CONSOLE_NEXT:-$(git rev-parse --show-toplevel)}
 gh run view "$run" --repo "$repo" --json headSha,headBranch,event > "$scratch/run.json"
 gh run download "$run" --repo "$repo" --name d7-evidence --dir "$scratch"

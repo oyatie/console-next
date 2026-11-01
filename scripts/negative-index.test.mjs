@@ -69,6 +69,8 @@ test("D7 evidence runs on dev pushes without adding a PR gate", async () => {
   assert.match(journey.env.E2E_REPORTER, /json/);
   assert.ok(backend.findIndex(s => s.run === "node scripts/backend-tests.mjs") < backend.indexOf(journey));
   const job = ci.jobs["d7-evidence"];
+  const runner = steps => steps.find(s => s.uses?.startsWith("step-security/harden-runner@"))?.uses;
+  assert.equal(runner(job.steps), runner(ci.jobs.web.steps));
   assert.equal(job.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}");
   assert.deepEqual(job.needs, ["backend", "states"]);
   assert.ok(job.steps.some(s => s.with?.name === "d7-evidence"));

@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -112,11 +113,18 @@ class EvidenceTest(unittest.TestCase):
             self.assertIn("stale", result.stderr)
             self.assertEqual((root / "out/e2e.json").read_text(), before)
 
-    def test_pull_refuses_non_dev_wrong_commit_and_stale_artifacts_before_ingest(self):
+    def test_pull_without_public_remote_resolves_repo_and_refuses_invalid_artifacts(self):
         import subprocess
         import sys
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "git").write_text(f'''#!{sys.executable}
+import os, sys
+if sys.argv[1:4] == ['remote', 'get-url', 'public']:
+    sys.exit("error: No such remote 'public'")
+os.execv({shutil.which('git')!r}, ['git', *sys.argv[1:]])
+''')
+            (root / "git").chmod(0o755)
             (root / "evidence.py").write_text('''import os, sys
 from pathlib import Path
 def validate(data, name): pass
@@ -128,11 +136,18 @@ if __name__ == '__main__':
             fake.write_text(f'''#!{sys.executable}
 import json,os,sys
 from pathlib import Path
-if sys.argv[2] == 'view': print(os.environ['D7_RUN'])
-else:
+if sys.argv[1:3] == ['repo', 'view']:
+    assert os.environ['D7_REPO_LOOKUP'] == '1', sys.argv
+    print(os.environ['D7_REPO'])
+elif sys.argv[1:3] == ['run', 'view']:
+    assert sys.argv[sys.argv.index('--repo') + 1] == os.environ['D7_REPO'], sys.argv
+    print(os.environ['D7_RUN'])
+elif sys.argv[1:3] == ['run', 'download']:
+    assert sys.argv[sys.argv.index('--repo') + 1] == os.environ['D7_REPO'], sys.argv
     root = Path(sys.argv[sys.argv.index('--dir') + 1])
     for name in ('e2e', 'nextest'):
         (root / (name + '.json')).write_text(os.environ['D7_ARTIFACT'])
+else: sys.exit('unexpected gh command: ' + repr(sys.argv))
 ''')
             fake.chmod(0o755)
             run = {"headSha": "a" * 40, "headBranch": "dev", "event": "push"}
@@ -144,15 +159,28 @@ else:
             for metadata, artifact, message in cases:
                 env = {**os.environ, "PATH": directory + os.pathsep + os.environ["PATH"],
                        "D7_RUN": json.dumps(metadata), "D7_ARTIFACT": json.dumps(artifact),
+                       "GITHUB_REPOSITORY": "environment-owner/environment-repo",
+                       "D7_REPO": "environment-owner/environment-repo", "D7_REPO_LOOKUP": "0",
                        "D7_INGEST_LOG": str(root / "ingest.log")}
                 result = subprocess.run(["bash", "scripts/pull-d7-evidence.sh", "123", directory], env=env, capture_output=True, text=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(message, result.stderr)
                 self.assertFalse((root / "ingest.log").exists())
             env.update(D7_RUN=json.dumps(run), D7_ARTIFACT=json.dumps(data))
-            result = subprocess.run(["bash", "scripts/pull-d7-evidence.sh", "123", directory], env=env, capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual((root / "ingest.log").read_text().splitlines(), ["ingest e2e.json", "ingest nextest.json"])
+            sources = [("argument", ["argument-owner/argument-repo"], "environment-owner/environment-repo", "argument-owner/argument-repo"),
+                       ("environment", [], "environment-owner/environment-repo", "environment-owner/environment-repo"),
+                       ("gh discovery", [], None, "discovered-owner/discovered-repo"),
+                       ("empty environment", [], "", "discovered-owner/discovered-repo")]
+            for source, args, repository, expected in sources:
+                with self.subTest(source=source):
+                    env.pop("GITHUB_REPOSITORY", None)
+                    if repository is not None:
+                        env["GITHUB_REPOSITORY"] = repository
+                    env.update(D7_REPO=expected, D7_REPO_LOOKUP="1" if not args and not repository else "0")
+                    result = subprocess.run(["bash", "scripts/pull-d7-evidence.sh", "123", directory, *args], env=env, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual((root / "ingest.log").read_text().splitlines(), ["ingest e2e.json", "ingest nextest.json"])
+                    (root / "ingest.log").unlink()
 
     @unittest.skipUnless(os.environ.get("EVIDENCE_READER_DIR"), "reader proof requires EVIDENCE_READER_DIR")
     def test_produced_failure_turns_real_module_red_and_stale_file_stays_pending(self):
