@@ -27688,6 +27688,7 @@ export interface components {
         /** @enum {string} */
         SettingDirection: "tighten" | "loosen" | "neutral";
         SettingEntry: {
+            /** @description Registry key. onboarding.receipt_days is the post-go-live receipt duration in days; zero disables the receipt. */
             key: string;
             kind: {
                 /** @enum {string} */
