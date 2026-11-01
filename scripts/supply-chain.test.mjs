@@ -143,9 +143,17 @@ test("Dependabot groups only minor and patch updates weekly on dev, leaving majo
     assert.equal(update["target-branch"], "dev");
     assert.deepEqual(Object.values(update.groups).map((g) => g.patterns), [["*"]]);
     for (const group of Object.values(update.groups)) assert.deepEqual(group["update-types"], ["minor", "patch"]);
-    if (update["package-ecosystem"] !== "npm") assert.equal(update.ignore, undefined);
+    if (update["package-ecosystem"] === "github-actions") assert.equal(update.ignore, undefined);
   }
   assert.deepEqual(config.updates.find((u) => u["package-ecosystem"] === "cargo").directories.sort(), ["/apps/desktop/src-tauri", "/backend", "/backend/fuzz"]);
+});
+
+test("Dependabot defers only the coordinated stable Apalis migration, leaving desktop patches eligible", () => {
+  const config = yaml.load(read(".github/dependabot.yml"));
+  const cargo = config.updates.find((u) => u["package-ecosystem"] === "cargo");
+  assert.deepEqual(cargo.ignore, ["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({
+    "dependency-name": name, versions: [">=1.0.0"],
+  })));
 });
 
 test("Dependabot keeps Node declarations on the runtime major and defers native TypeScript", () => {

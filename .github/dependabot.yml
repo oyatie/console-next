@@ -33,6 +33,14 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
+    ignore:
+      # #315: stable changes migration checksums, metadata and ACL contracts; remove after the audited Apalis migration.
+      - dependency-name: "apalis"
+        versions: [">=1.0.0"]
+      - dependency-name: "apalis-postgres"
+        versions: [">=1.0.0"]
+      - dependency-name: "apalis-sql"
+        versions: [">=1.0.0"]
     groups:
       cargo:
         patterns: ["*"]
