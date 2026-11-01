@@ -61,12 +61,21 @@ test("reveal avoids the overview when the usual centre overlaps it, at the curre
 
 test("first paint fits the workplace level inside the canvas, clear of the measured bars", () => {
   const size = { w: 600, h: 473 };
-  const view = firstView(1000, size, 56, 300);
+  const view = firstView(1000, size, 56, 426);
   expect(view.zoom).toBeLessThan(1);
-  expect(view.y + size.h * view.zoom).toBeLessThanOrEqual(356);
+  expect(view.zoom).toBeGreaterThanOrEqual(0.8);
+  expect(view.y + size.h * view.zoom).toBeLessThanOrEqual(482);
   expect(firstView(340, { w: 1060, h: 700 }, 56, 300).zoom).toBe(1);
 });
 
-test("a canvas too short at minimum zoom keeps its readable panning view", () => {
-  expect(firstView(1000, { w: 600, h: 473 }, 56, 100).zoom).toBe(1);
+test.each([100, 227, 300, 374, 378.39])("a canvas %i px high cannot fit readably and keeps its panning view", height => {
+  expect(firstView(1000, { w: 600, h: 473 }, 56, height).zoom).toBe(1);
+});
+
+test("first views never shrink below the readable floor, even in a short or narrow canvas", () => {
+  for (const width of [0, 340, 600, 1000]) for (const height of [0, 100, 227, 300, 374, 378.4, 400, Infinity]) {
+    for (const size of [{ w: 600, h: 473 }, { w: 1250, h: 4000 }, { w: 432, h: 900 }]) {
+      expect(firstView(width, size, 56, height).zoom).toBeGreaterThanOrEqual(0.8);
+    }
+  }
 });

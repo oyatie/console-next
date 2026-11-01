@@ -146,6 +146,7 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     if (width === 1440) {
       const chart = await page.getByRole("region", { name: t("structure.chart.label"), exact: true }).boundingBox();
       expect(chart!.height).toBeGreaterThan(0);
+      expect(await page.getByRole("tree").evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBeGreaterThanOrEqual(0.8);
       const tree = await page.getByRole("tree").boundingBox();
       expect(tree!.y + tree!.height).toBeLessThanOrEqual(chart!.y + chart!.height);
       expect(tree!.y + tree!.height).toBeLessThanOrEqual(900);

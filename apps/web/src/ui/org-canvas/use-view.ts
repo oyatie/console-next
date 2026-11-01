@@ -56,7 +56,7 @@ export function firstView(vw: number, size: { w: number; h: number }, top: numbe
   const fitted = size.w > vw ? fitZoom(vw, Infinity, size.w, size.h) : 1;
   const readable = fitted < READABLE ? 1 : fitted;
   // Fit only when the whole chart can fit; otherwise keep the readable panning view.
-  const zoom = size.w * readable <= vw && size.h * ZOOM.min <= height ? Math.min(readable, fitZoom(vw, height, size.w, size.h)) : readable;
+  const zoom = size.w * readable <= vw && size.h * READABLE <= height ? Math.max(READABLE, Math.min(readable, fitZoom(vw, height, size.w, size.h))) : readable;
   return { zoom, x: Math.max(0, (vw - size.w * zoom) / 2), y: top };
 }
 

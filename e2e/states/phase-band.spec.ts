@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { checklist, failure, screenAccess } from "../mock/fixtures";
+import { checklist, failure, screenAccess, structure } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { clearShifts, expectStable, recordShifts } from "../stability";
@@ -99,6 +99,7 @@ for (const width of [1440, 390]) {
         await expectAxe(page, `receipt/${path}/${width}/${theme}`);
       }
       if (path === "/org" && width === 1440) {
+        expect(await main.getByRole("tree").evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBeGreaterThanOrEqual(0.8);
         const region = await main.getByRole("region", { name: t("structure.chart.label"), exact: true }).boundingBox();
         const tree = await main.getByRole("tree").boundingBox();
         expect(tree!.y + tree!.height).toBeLessThanOrEqual(region!.y + region!.height);
@@ -117,6 +118,30 @@ for (const width of [1440, 390]) {
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+for (const phase of ["SETUP", "OPERATING"] as const) test(`org: readable first view with ${phase === "SETUP" ? "setup" : "no phase notice"} at 1440 @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  const data = structure(3);
+  data.phase = phase;
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess("/org", phase) });
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: { ...checklist, phase } });
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: data });
+  try {
+    await page.goto("/org");
+    const main = page.getByRole("main"), tree = main.getByRole("tree");
+    await expect(tree).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    await expect(main.locator("[data-phase-band]")).toHaveCount(phase === "SETUP" ? 1 : 0);
+    expect(await tree.evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBeGreaterThanOrEqual(0.8);
+    const region = await main.getByRole("region", { name: t("structure.chart.label"), exact: true }).boundingBox();
+    const workplace = await tree.getByRole("treeitem", { name: new RegExp(`^${data.entities[0]!.children[0]!.name},`) }).boundingBox();
+    expect(workplace!.y).toBeGreaterThanOrEqual(region!.y);
+    expect(workplace!.y + workplace!.height).toBeLessThanOrEqual(region!.y + region!.height);
+    expect(workplace!.y + workplace!.height).toBeLessThanOrEqual(900);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
 
 for (const state of ["legacy", "expired", "disabled", "missing-setting", "checklist-503", "checklist-403"] as const) {
   test(`operating ${state}: no permanent phase or extra error @ui-state`, async ({ page }) => {
