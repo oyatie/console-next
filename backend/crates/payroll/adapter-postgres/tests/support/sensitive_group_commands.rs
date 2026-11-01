@@ -4,10 +4,11 @@ use console_platform_authz::{Feature, cedar_pbac::visible::load_facts};
 use console_platform_db::with_org_conn;
 
 async fn allowed(pool: &PgPool, org: OrgId, actor: UserId, action: Feature) -> Vec<Uuid> {
+    let store = PgPayrollStore::new(pool.clone());
     with_org_conn::<_, _, console_payroll_adapter_postgres::PgPayrollError>(pool, org, move |tx| {
         Box::pin(async move {
             let facts = load_facts(tx, org, *actor.as_uuid()).await?;
-            Ok(facts.visible_pay_groups(tx, action).await?)
+            Ok(facts.visible_pay_groups(tx, action, &store).await?)
         })
     })
     .await
@@ -77,6 +78,7 @@ async fn stored_sensitive_flag_controls_command_authority_not_just_read_authorit
         allowed(&rt, org, actor, Feature::PayrollRunRead).await,
         vec![group.id]
     );
+    let store = PgPayrollStore::new(rt.clone());
     with_org_conn::<_, _, console_payroll_adapter_postgres::PgPayrollError>(&rt, org, move |tx| {
         Box::pin(async move {
             let facts = load_facts(tx, org, *actor.as_uuid()).await?;
@@ -84,7 +86,7 @@ async fn stored_sensitive_flag_controls_command_authority_not_just_read_authorit
                 .execute(tx.as_mut())
                 .await?;
             let refused = facts
-                .visible_pay_groups(tx, Feature::PayrollRunRead)
+                .visible_pay_groups(tx, Feature::PayrollRunRead, &store)
                 .await
                 .unwrap_err();
             assert_eq!(refused.kind, ErrorKind::Forbidden);

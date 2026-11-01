@@ -41,7 +41,7 @@ test("only levels with an operation are offered, and screenless domains are not 
   const org = d("org", ["view", "edit", "approve", "export"], ["view", "edit", "approve"]);
   expect(liveLevels(hr)).toEqual(["view", "edit"]);
   expect(liveLevels(attendance)).toEqual(["view", "edit"]);
-  expect([hr, pay, bank, org].filter((x) => sellable(x)).map((x) => x.domain)).toEqual(["hr_basic", "org"]);
+  expect([hr, pay, bank, org].filter((x) => sellable(x)).map((x) => x.domain)).toEqual(["hr_basic", "pay", "org"]);
   expect(liveColumns([hr, pay, bank])).toEqual(["view", "edit"]);
   expect(liveColumns([hr, org])).toEqual(["view", "edit", "approve"]);
 });
@@ -67,12 +67,27 @@ test("조직's approve is offered once org changes route; 퇴직 확인 and 예�
 test("export is a column once an operation carries it; screenless domains move to not yet", () => {
   const hr = op("hr_basic", ["view", "edit", "export"]);
   expect(liveColumns([hr], new Set())).toEqual(["view", "edit", "export"]);
-  expect(["pay", "evaluation", "notice"].map((d) => sellable(op(d, ["view", "edit"]), new Set()))).toEqual([false, false, false]);
+  expect(["evaluation", "notice"].map((d) => sellable(op(d, ["view", "edit"]), new Set()))).toEqual([false, false]);
   for (const domain of ["audit", "settings", "retention"]) {
     expect(sellable(op(domain, ["view"]), new Set())).toBe(true);
     expect(liveLevels(op(domain, ["view"]), new Set())).toEqual(["view"]);
     expect(sellable(op(domain, []), new Set())).toBe(false);
   }
+});
+
+test("payroll and sensitive clearance offer only server-catalogued levels and round-trip separately", () => {
+  for (const domain of ["pay", "sensitive"]) {
+    const offered = op(domain, ["view", "edit"]);
+    expect(sellable(offered)).toBe(true);
+    expect(liveLevels(offered)).toEqual(["view", "edit"]);
+    expect(sellable(op(domain, []))).toBe(false);
+    expect(sellable({ ...offered, grantable: false })).toBe(false);
+  }
+  expect(toLines(toggle({}, "pay", "edit"), ["pay", "sensitive"])).toEqual([
+    { domain: "pay", levels: ["view", "edit"] },
+  ]);
+  const lines = toLines(toggle(toggle({}, "pay", "view"), "sensitive", "edit"), ["pay", "sensitive"]);
+  expect(fromLines(lines)).toEqual({ pay: ["view"], sensitive: ["edit"] });
 });
 
 test("ROL-M2: a held role's edit names what each domain gains and loses", () => {

@@ -40,7 +40,7 @@ export const isEmpty = (grid: Chosen) => Object.values(grid).every((v) => !v.len
 
 type Offered = { domain: string; grantable: boolean; levels: readonly Level[]; operations: readonly { level: Level }[] };
 /** Domains with no console screen in the MVP (Org + HR first): listed as "not yet", never sold as a permission. */
-const NO_SCREEN = new Set(["pay", "evaluation", "notice"]);
+const NO_SCREEN = new Set(["evaluation", "notice"]);
 /**
  * The approve level by domain (#26). The org row's is the approval of an org change: until that class routes it does
  * nothing and is not offered. The exit row's is the HQ confirmation (the server still asks for it; under "none" the HR

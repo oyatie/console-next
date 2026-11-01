@@ -15,6 +15,19 @@ fn every_tag_lands_on_an_offered_level_of_a_grantable_domain() {
 }
 
 #[test]
+fn record_clearance_levels_are_live_offered_levels() {
+    for domain in Domain::ALL {
+        for level in domain.record_levels() {
+            assert!(domain.offered().contains(level));
+        }
+    }
+    assert_eq!(
+        Domain::Sensitive.record_levels(),
+        &[Level::View, Level::Edit]
+    );
+}
+
+#[test]
 fn fenced_keys_are_untagged() {
     for f in [
         Feature::WorkOrderCreate,

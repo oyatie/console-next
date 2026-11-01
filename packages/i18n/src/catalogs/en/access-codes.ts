@@ -20,7 +20,7 @@ export const enAccessCodes: Partial<Record<keyof typeof koAccessCodes, string>> 
   "accessCodes.domain.discipline": "Discipline",
   "accessCodes.domain.discipline.help": "Disciplinary records",
   "accessCodes.domain.sensitive": "Health & sensitive",
-  "accessCodes.domain.sensitive.help": "Health, disability, union and other sensitive data",
+  "accessCodes.domain.sensitive.help": "Sensitive pay groups within the scope of Pay access",
   "accessCodes.domain.documents": "Certificates & documents",
   "accessCodes.domain.documents.help": "Certificates and HR documents",
   "accessCodes.domain.notice": "Notices",
