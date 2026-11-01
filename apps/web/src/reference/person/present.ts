@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 
 export type PersonIdentity = {
   id: string;
@@ -38,6 +39,9 @@ export function personLabel(person: PersonIdentity, peers: readonly PersonIdenti
   const rawName = nameOf(person);
   const name = personName(rawName, t("people.label.unnamed"));
   const others = peers.filter((p) => personId(p) !== personId(person) && nameOf(p) === rawName);
-  const detail = detailOf(person);
-  return { name, detail, text: `${name} · ${detail}`, sameName: !!rawName && others.length > 0 };
+  const sameName = !!rawName && others.length > 0;
+  const identity = detailOf(person);
+  const detail = sameName && person.display_name != null && person.created_at && others.some(p => detailOf(p) === identity)
+    ? t("people.label.accountCreated", { at: fmtDateTime(person.created_at) }) : identity;
+  return { name, detail, text: `${name} · ${detail}`, sameName };
 }

@@ -54,22 +54,18 @@ test("person-card actions distinguish linked namesakes in their accessible names
   expect(new Set(names).size).toBe(2);
 });
 
-test.each(["ko", "en"] as const)("colliding account options show the account creation time in %s", async locale => {
+test.each(["ko", "en"] as const)("colliding account options share the creation-time detail with list labels in %s", async locale => {
   await loadCatalog(locale);
   const first = { id: "account-a", display_name: "Namesake", sign_in_id: "worker1234@example.test", created_at: "2026-10-01T01:00:00Z" };
   const second = { ...first, id: "account-b", sign_in_id: "writer1234@example.test", created_at: "2026-10-01T02:00:00Z" };
   const peers = [first, second];
   for (const account of peers) {
     const option = personOption(account, peers);
-    expect(option.context).toContain(fmtDateTime(account.created_at));
-    expect(option.context).toBe(t("people.label.accountCreated", { at: fmtDateTime(account.created_at) }));
-    expect(renderToStaticMarkup(<>{option.display}{option.context}</>)).not.toContain(account.id);
+    const html = renderToStaticMarkup(<>{option.display}</>);
+    expect(option.context).toBeUndefined();
+    expect(html).toBe(renderToStaticMarkup(<PersonLabel person={account} peers={peers} linked={false} />));
+    expect(html).toContain(t("people.label.accountCreated", { at: fmtDateTime(account.created_at) }));
+    expect(html).not.toContain(account.id);
   }
-  expect(personOption(first, peers).context).not.toBe(personOption(second, peers).context);
-  expect(personOption(first, [first]).context).toBeUndefined();
-  expect(personOption(first, [first, { ...second, employee_number: "E-2" }]).context).toBeUndefined();
-  expect(personOption({ ...first, created_at: undefined }, peers).context).toBeUndefined();
-  const employees = peers.map(({ display_name, ...account }) => ({ ...account, name: display_name }));
-  expect(personOption(employees[0]!, employees).context).toBeUndefined();
   await loadCatalog("ko");
 });
