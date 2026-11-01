@@ -18,6 +18,7 @@ test("first run has one primary action and leaves importing to the header", () =
   expect(html).not.toMatch(/href="\/(org\/(import|paste)|people\/import)"/);
   expect(html).not.toMatch(/<ol|<h3|되돌릴 수 있습니다|조직 구조는 법인/);
   expect(html.match(/<h2/g)).toHaveLength(1);
+  expect(html).toContain('<h2 id="first-run-title"');
   expect(html.match(/<span class="muted"/g)).toHaveLength(1);
 });
 

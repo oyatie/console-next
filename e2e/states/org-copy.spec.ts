@@ -28,6 +28,7 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
       await expect(main.getByText(/되돌릴 수 있습니다|조직 구조는 법인|이미 엑셀로/)).toHaveCount(0);
       if (empty) {
         await expect(main.getByRole("heading", { name: t("structure.first.title"), exact: true })).toBeVisible();
+        await expect(main.getByRole("heading", { name: t("structure.first.title"), exact: true })).toHaveAttribute("id", "first-run-title");
         await expect(main.locator(".state .btn--primary")).toHaveCount(1);
         await expect(main.getByRole("link", { name: t("structure.first.addEntity"), exact: true })).toHaveAttribute("href", "/org/entities/new");
       } else {
