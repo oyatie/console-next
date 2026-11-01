@@ -10643,6 +10643,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payroll/pay-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List permitted entity pay groups */
+        get: operations["listPayGroups"];
+        put?: never;
+        /** Create an explicit entity pay group */
+        post: operations["createPayGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payroll/payslips/me": {
         parameters: {
             query?: never;
@@ -18010,6 +18028,7 @@ export interface components {
             /** @description Business/legal reason for the transfer. */
             reason: string;
         };
+        CreatePayGroup: components["schemas"]["PayGroupDefinition"];
         CreatePeriodLockRequest: {
             /** @enum {string} */
             domain: "payroll" | "accounting";
@@ -24906,6 +24925,43 @@ export interface components {
             last_used_at: string | null;
             /** @description Optional account-selected display name; null uses the numbered default. */
             label?: string | null;
+        };
+        PayGroup: components["schemas"]["PayGroupDefinition"] & {
+            /** Format: uuid */
+            id: string;
+        };
+        PayGroupDefinition: {
+            /** Format: uuid */
+            legal_entity_id: string;
+            name: string;
+            pay_date_rule: {
+                day: number | "LAST_DAY";
+                /** @enum {integer} */
+                month_offset: 0 | 1;
+                /** @enum {string} */
+                non_business_day: "PREVIOUS" | "NEXT";
+            };
+            base_period: components["schemas"]["PayGroupPeriodRule"];
+            variable_period: components["schemas"]["PayGroupPeriodRule"];
+            /** @enum {string} */
+            proration: "CALENDAR_DAYS" | "SCHEDULED_WORKDAYS";
+            /** @enum {string} */
+            channel: "ATTESTATION_ONLY" | "FILE_GENERIC";
+            sensitive: boolean;
+            pay_basis_allowed: ("MONTHLY" | "HOURLY")[];
+        };
+        PayGroupPage: {
+            items: components["schemas"]["PayGroup"][];
+            legal_entities: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+            }[];
+        };
+        PayGroupPeriodRule: {
+            start_day: number | "FIRST";
+            /** @enum {integer} */
+            month_offset: -1 | 0;
         };
         PayrollClosePreflight: {
             checks: components["schemas"]["PayrollPreflightCheck"][];
@@ -52459,6 +52515,75 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    listPayGroups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pay groups and legal-entity choices from the same Cedar-visible set, including entities with no groups. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayGroupPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Cedar facts or policy evaluation unavailable; no access is granted. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createPayGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePayGroup"];
+            };
+        };
+        responses: {
+            /** @description Explicit pay group created for the permitted legal entity. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayGroup"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Missing, malformed or invalid required choices; nothing is written (validation). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cedar facts or policy evaluation unavailable; no access is granted. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     listMyPayrollLines: {

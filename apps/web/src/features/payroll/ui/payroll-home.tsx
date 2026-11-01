@@ -12,20 +12,19 @@ import { LongTable } from "../../../ui/long-table/long-table";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { SetupRail } from "../../../ui/setup-rail/setup-rail";
 import { payGroupsQuery, payrollRunsQuery, type PayGroup } from "../api";
-import { runStatus } from "../present";
+import { payDateRule, periodRule, runStatus } from "../present";
 
 export function PayrollHome() {
   const groups = useQuery(payGroupsQuery);
   return <Page floorplan="list" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
     <QueryState q={groups} layout="list">{data => data.items.length ? <div className="form">
-      <Card title={t("payroll.deadlines")}><ul>{data.items.map(group => <li key={group.id}>{group.name} · {t("payroll.nextPay", { date: fmtDate(group.next_pay_date) })}</li>)}</ul></Card>
       {data.items.map(group => <Card key={group.id} title={group.name} meta={data.legal_entities.find(entity => entity.id === group.legal_entity_id)?.name}>
         <div className="form"><KeyValue readOnly items={[
-          { key: "payDateRule", label: t("payroll.payDateRule"), value: group.pay_date_rule },
-          { key: "basePeriod", label: t("payroll.basePeriod"), value: group.base_period },
-          { key: "variablePeriod", label: t("payroll.variablePeriod"), value: group.variable_period },
-          { key: "proration", label: t("payroll.proration"), value: group.proration },
-          { key: "channel", label: t("payroll.channel"), value: group.channel },
+          { key: "payDateRule", label: t("payroll.payDateRule"), value: payDateRule(group.pay_date_rule) },
+          { key: "basePeriod", label: t("payroll.basePeriod"), value: periodRule(group.base_period) },
+          { key: "variablePeriod", label: t("payroll.variablePeriod"), value: periodRule(group.variable_period) },
+          { key: "proration", label: t("payroll.proration"), value: t(`payroll.rule.${group.proration}`) },
+          { key: "channel", label: t("payroll.channel"), value: t(`payroll.rule.${group.channel}`) },
         ]} />
         <GroupRuns group={group} />
         </div>

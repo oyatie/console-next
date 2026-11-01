@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "pay:view", "scope": "entity"}
+tags: [payroll]
+operationId: listPayGroups
+summary: List permitted entity pay groups
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Pay groups and legal-entity choices from the same Cedar-visible set, including entities with no groups.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/PayGroupPage'}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403': {$ref: '#/components/responses/Forbidden'}
+  '503':
+    description: Cedar facts or policy evaluation unavailable; no access is granted.

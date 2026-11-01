@@ -7,6 +7,10 @@
     "/api/v1/payroll/employees/{employeeId}/payslip-draft": [
       "get"
     ],
+    "/api/v1/payroll/pay-groups": [
+      "get",
+      "post"
+    ],
     "/api/v1/payroll/payslips/me": [
       "get"
     ],
@@ -56,9 +60,14 @@
   "schemas": [
     "AttestPayrollDisbursementRequest",
     "ClosePayrollAttendanceRequest",
+    "CreatePayGroup",
     "DecidePayrollRunRequest",
     "MyPayrollLine",
     "MyPayrollLinePage",
+    "PayGroup",
+    "PayGroupDefinition",
+    "PayGroupPage",
+    "PayGroupPeriodRule",
     "PayrollClosePreflight",
     "PayrollDisbursement",
     "PayrollException",

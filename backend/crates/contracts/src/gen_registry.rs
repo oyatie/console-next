@@ -11622,6 +11622,23 @@ const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/payroll/pay-groups",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../payroll/rest/openapi/paths/api__v1__payroll__pay-groups.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../payroll/rest/openapi/paths/api__v1__payroll__pay-groups.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/payroll/payslips/me",
         operations: &[Operation {
             method: "get",
@@ -11768,6 +11785,10 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../payroll/rest/openapi/schemas/ClosePayrollAttendanceRequest.yaml"),
     },
     NamedYaml {
+        name: "CreatePayGroup",
+        body: include_str!("../../payroll/rest/openapi/schemas/CreatePayGroup.yaml"),
+    },
+    NamedYaml {
         name: "DecidePayrollRunRequest",
         body: include_str!("../../payroll/rest/openapi/schemas/DecidePayrollRunRequest.yaml"),
     },
@@ -11778,6 +11799,22 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "MyPayrollLinePage",
         body: include_str!("../../payroll/rest/openapi/schemas/MyPayrollLinePage.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroup",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayGroup.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroupDefinition",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayGroupDefinition.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroupPage",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayGroupPage.yaml"),
+    },
+    NamedYaml {
+        name: "PayGroupPeriodRule",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayGroupPeriodRule.yaml"),
     },
     NamedYaml {
         name: "PayrollClosePreflight",

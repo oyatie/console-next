@@ -10,8 +10,8 @@ export const rate: PayrollRate = {
 };
 const runStatuses = ["STAGED", "BLOCKED_LEGAL_GATE", "READY_FOR_REVIEW", "ATTENDANCE_CLOSED", "CALCULATING", "CALCULATED", "SUBMITTED", "REJECTED", "APPROVED", "DISBURSEMENT_SCHEDULED", "PAID", "ISSUED", "VOID"] as const satisfies readonly PayrollRun["status"][];
 export const payGroups: PayGroups = {
-  legal_entities: [{ id: id(800), name: "모의상사", country_code: "KR" }, { id: id(801), name: "모의상사 해외법인", country_code: "US" }],
-  items: [0, 1, 2].map(n => ({ id: id(810 + n), legal_entity_id: id(n < 2 ? 800 : 801), name: `모의 급여 그룹 ${n + 1}`, next_pay_date: "2026-11-25", pay_date_rule: "매월 25일", base_period: "전월 1일–말일", variable_period: "전월 1일–말일", proration: "달력일 기준", channel: "은행 이체" })),
+  legal_entities: [{ id: id(800), name: "모의상사" }, { id: id(801), name: "모의상사 해외법인" }],
+  items: [0, 1, 2].map(n => ({ id: id(810 + n), legal_entity_id: id(n < 2 ? 800 : 801), name: `모의 급여 그룹 ${n + 1}`, pay_date_rule: { day: 25 as const, month_offset: 0 as const, non_business_day: "PREVIOUS" as const }, base_period: { start_day: "FIRST" as const, month_offset: -1 as const }, variable_period: { start_day: 16 as const, month_offset: -1 as const }, proration: "CALENDAR_DAYS" as const, channel: "ATTESTATION_ONLY" as const, sensitive: false, pay_basis_allowed: ["MONTHLY" as const] })),
 };
 const payrollRuns: PayrollRun[] = runStatuses.map((status, n) => ({ id: id(850 + n), legal_entity_id: id(n === 12 ? 801 : 800), pay_group_id: id(n === 12 ? 812 : n % 2 ? 811 : 810), period_start: "2026-10-01", period_end: "2026-10-31", source_label: `모의 급여 ${n + 1}`, status, calculation_enabled: false, created_at: AT, updated_at: AT }));
 export async function mockPayroll(page: Page, screen: { key: string; read: string }, state: PayrollState | string, held: Promise<void>) {

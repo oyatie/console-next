@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [start_day, month_offset]
+properties:
+  start_day:
+    oneOf:
+    - {type: integer, minimum: 1, maximum: 28}
+    - {type: string, enum: [FIRST]}
+  month_offset: {type: integer, enum: [-1, 0]}

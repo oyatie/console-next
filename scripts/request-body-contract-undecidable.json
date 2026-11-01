@@ -1347,6 +1347,13 @@
       "reason": "rust_struct_not_strict"
     },
     {
+      "operation": "POST /api/v1/payroll/pay-groups",
+      "rust_file": "backend/crates/payroll/rest/src/pay_groups.rs",
+      "handler": "create",
+      "body_type": null,
+      "reason": "no_direct_json_binding"
+    },
+    {
       "operation": "POST /api/v1/payroll/runs/{id}/close-attendance",
       "rust_file": "backend/crates/payroll/rest/src/lib.rs",
       "handler": "lifecycle::close_attendance",

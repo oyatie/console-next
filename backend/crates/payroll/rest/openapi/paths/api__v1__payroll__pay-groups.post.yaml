@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+tags: [payroll]
+operationId: createPayGroup
+summary: Create an explicit entity pay group
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema: {$ref: '#/components/schemas/CreatePayGroup'}
+responses:
+  '201':
+    description: Explicit pay group created for the permitted legal entity.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/PayGroup'}
+  '422':
+    description: Missing, malformed or invalid required choices; nothing is written (validation).
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403': {$ref: '#/components/responses/Forbidden'}
+  '503':
+    description: Cedar facts or policy evaluation unavailable; no access is granted.
