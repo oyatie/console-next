@@ -845,7 +845,7 @@ name = "console-app"
 version = "0.1.0"
 dependencies = [
  "axum",
- "base64 0.22.1",
+ "base64 0.23.1",
  "calamine",
  "chrono",
  "chrono-tz",
@@ -1175,7 +1175,7 @@ dependencies = [
 name = "console-comms-adapter-postgres"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "console-comms-application",
  "console-comms-credential-cipher",
  "console-comms-domain",
@@ -1232,7 +1232,7 @@ dependencies = [
 name = "console-comms-credential-cipher"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "chacha20poly1305",
  "console-comms-application",
  "console-kernel-core",
@@ -1261,7 +1261,7 @@ name = "console-comms-rest"
 version = "0.1.0"
 dependencies = [
  "axum",
- "base64 0.22.1",
+ "base64 0.23.1",
  "console-comms-adapter-imap",
  "console-comms-adapter-mox",
  "console-comms-adapter-postgres",
@@ -1401,7 +1401,7 @@ dependencies = [
 name = "console-dispatch-application"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "console-dispatch-domain",
  "console-kernel-core",
  "console-workorder-domain",
@@ -1508,7 +1508,7 @@ name = "console-docs-rest"
 version = "0.1.0"
 dependencies = [
  "axum",
- "base64 0.22.1",
+ "base64 0.23.1",
  "console-contracts",
  "console-docs-adapter-postgres",
  "console-docs-application",
@@ -2049,7 +2049,7 @@ dependencies = [
 name = "console-hr-adapter-postgres"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "console-compliance-adapter-postgres",
  "console-compliance-domain",
  "console-entity-adapter-postgres",
@@ -2724,7 +2724,7 @@ dependencies = [
 name = "console-notifications-adapter-postgres"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "console-kernel-core",
  "console-notifications-application",
  "console-notifications-domain",
@@ -3206,7 +3206,7 @@ dependencies = [
 name = "console-platform-auth"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "console-kernel-core",
  "console-platform-db",
  "console-settings-domain",
@@ -3631,7 +3631,7 @@ name = "console-production-rest"
 version = "0.1.0"
 dependencies = [
  "axum",
- "base64 0.22.1",
+ "base64 0.23.1",
  "console-contracts",
  "console-kernel-core",
  "console-platform-auth",
