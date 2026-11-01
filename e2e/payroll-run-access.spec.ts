@@ -11,7 +11,8 @@ async function grantAlphaAccess(admin: Page, token: () => string, domain: "pay" 
   const label = domain === "pay" ? "급여" : "건강·민감";
   const name = `${label} ${level === "view" ? "조회" : "등록·수정"}`;
   await go(admin, "/access/roles/new");
-  await expect(admin.getByText("급여가 활성화되지 않아 급여·민감 급여 그룹 권한은 급여 화면에서 사용할 수 없습니다.", { exact: true })).toBeVisible();
+  const inactive = admin.getByText("급여가 활성화되지 않아 급여·민감 급여 그룹 권한은 급여 화면에서 사용할 수 없습니다.", { exact: true });
+  await expect(inactive).toBeVisible();
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill(name);
   if (domain === "pay" && level === "view") {
     const viewport = admin.viewportSize();
@@ -23,6 +24,7 @@ async function grantAlphaAccess(admin: Page, token: () => string, domain: "pay" 
       for (const theme of ["light", "dark"]) {
         await html.evaluate((el, value) => (el.dataset.theme = value), theme);
         await fits(admin, `payroll role editor/${width}/${theme}`);
+        await inactive.scrollIntoViewIfNeeded();
         const path = test.info().outputPath(`payroll-role-${width}-${theme}.png`);
         await admin.screenshot({ path, fullPage: true });
         await test.info().attach(`payroll-role-${width}-${theme}`, { path, contentType: "image/png" });
@@ -31,8 +33,10 @@ async function grantAlphaAccess(admin: Page, token: () => string, domain: "pay" 
     await html.evaluate((el, value) => value === null ? delete el.dataset.theme : (el.dataset.theme = value), original);
     if (viewport) await admin.setViewportSize(viewport);
   }
-  await expect(admin.getByRole("button", { name: `${label} 조회`, exact: true })).toHaveAttribute("aria-pressed", "false");
-  await admin.getByRole("button", { name: `${label} ${level === "view" ? "조회" : "등록·수정"}`, exact: true }).click();
+  await expect(admin.getByRole("checkbox", { name: `${label} 조회`, exact: true })).not.toBeChecked();
+  const permission = admin.getByRole("checkbox", { name: `${label} ${level === "view" ? "조회" : "등록·수정"}`, exact: true });
+  await permission.check();
+  await expect(permission).toBeChecked();
   const saved = admin.waitForResponse((r) => r.url().endsWith("/api/v1/access/roles") && r.request().method() === "POST");
   await admin.getByRole("button", { name: "역할 추가", exact: true }).click();
   const role = await saved;
