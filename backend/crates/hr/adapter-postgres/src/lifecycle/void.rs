@@ -80,7 +80,7 @@ pub(super) async fn load_voidable(
     employee: Uuid,
     event_id: Uuid,
     (actor, holds_permission): (UserId, bool),
-    action: &str,
+    action: super::action_refusals::VoidAction,
 ) -> Result<Original, HrError> {
     let row = sqlx::query(
         "SELECT l.event_type, l.state, l.effective_date, l.expected_return_date, \
@@ -116,7 +116,7 @@ pub(super) async fn load_voidable(
         latest: latest == Some(event_id),
     };
     if let Some(code) = lifecycle_event::refusal(
-        action,
+        action.cedar_action(),
         &actor.to_string(),
         &org.to_string(),
         &org.to_string(),
@@ -270,7 +270,7 @@ pub(super) async fn rescind_tx(
         employee,
         event_id,
         (actor, holds_permission),
-        lifecycle_event::RESCIND,
+        super::action_refusals::VoidAction::Rescind,
     )
     .await?;
     let cascades = scheduled_cascades(tx, org_uuid, employee).await?;

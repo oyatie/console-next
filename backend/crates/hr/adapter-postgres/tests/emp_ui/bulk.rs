@@ -185,7 +185,7 @@ async fn a_batch_undo_refuses_a_bad_reason_an_unknown_batch_and_a_second_undo(po
         f.hr.rescind_lifecycle_batch(f.ops.clone(), Uuid::new_v4(), undo(true, "PLAN_WITHDRAWN"))
             .await
             .unwrap_err();
-    assert_eq!(status(&unknown).0, 404);
+    assert_eq!(status(&unknown), (403, "forbidden"));
     assert_eq!(states(&f).await, ["SCHEDULED"]);
     f.hr.rescind_lifecycle_batch(f.ops.clone(), batch, undo(true, "PLAN_WITHDRAWN"))
         .await
@@ -194,7 +194,7 @@ async fn a_batch_undo_refuses_a_bad_reason_an_unknown_batch_and_a_second_undo(po
         f.hr.rescind_lifecycle_batch(f.ops.clone(), batch, undo(true, "PLAN_WITHDRAWN"))
             .await
             .unwrap_err();
-    assert_eq!(status(&again).0, 404);
+    assert_eq!(status(&again), (403, "forbidden"));
     assert_eq!(f.audits("employee.lifecycle.bulk_rescind").await, 1);
 }
 

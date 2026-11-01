@@ -6,7 +6,7 @@ use console_platform_authz::{
     Principal,
     cedar_pbac::{
         actions::lifecycle_event::{self, EventFacts},
-        visible::load_facts,
+        visible::{DecisionFacts, load_facts},
     },
 };
 use sqlx::{Postgres, Transaction};
@@ -18,23 +18,39 @@ use crate::{
     authz::{APPOINTMENT_KEYS, HrCaseFacts},
 };
 
+pub(super) enum VoidAction {
+    Correct,
+    Rescind,
+}
+
+impl VoidAction {
+    pub(super) fn cedar_action(self) -> &'static str {
+        match self {
+            Self::Correct => lifecycle_event::CORRECT,
+            Self::Rescind => lifecycle_event::RESCIND,
+        }
+    }
+}
+
 pub(super) async fn require_permission(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     employee: Uuid,
 ) -> Result<bool, HrError> {
-    let allowed = permission(tx, principal, employee).await?;
+    let allowed = load_permission(tx, principal, employee).await?;
     if allowed {
         return Ok(allowed);
     }
-    Err(HrError::from_kernel(
-        console_kernel_core::KernelError::forbidden(
-            "lifecycle event permission is required in this scope",
-        ),
+    Err(permission_denied())
+}
+
+pub(super) fn permission_denied() -> HrError {
+    HrError::from_kernel(console_kernel_core::KernelError::forbidden(
+        "lifecycle event permission is required in this scope",
     ))
 }
 
-async fn permission(
+async fn load_permission(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     employee: Uuid,
@@ -45,9 +61,18 @@ async fn permission(
         .await
         .map_err(HrError::from_kernel)?;
     let people = HrCaseFacts::load(tx, actor, &[employee]).await?;
+    permission(&access, &people, org, employee)
+}
+
+pub(super) fn permission(
+    access: &DecisionFacts,
+    people: &HrCaseFacts,
+    org: console_kernel_core::OrgId,
+    employee: Uuid,
+) -> Result<bool, HrError> {
     let mut allowed = false;
     for feature in APPOINTMENT_KEYS {
-        allowed |= people.permits(&access, org, employee, feature)?;
+        allowed |= people.permits(access, org, employee, feature)?;
     }
     Ok(allowed)
 }
@@ -60,7 +85,7 @@ pub(super) async fn project(
 ) -> Result<(), HrError> {
     let org = principal.org_id;
     let actor = *principal.user_id.as_uuid();
-    let holds_permission = permission(tx, principal, employee).await?;
+    let holds_permission = load_permission(tx, principal, employee).await?;
     let latest: Option<Uuid> = sqlx::query_scalar(
         "SELECT l.id FROM employee_lifecycle_events l WHERE l.org_id=$1 AND l.employee_id=$2 \
          AND l.state='APPLIED' AND l.event_type<>'RESCIND' \
