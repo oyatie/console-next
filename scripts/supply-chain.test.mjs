@@ -33,6 +33,16 @@ test("npm check runs the register gate and its regression tests", () => {
   assert.match(command, /node --test[^&]*scripts\/supply-chain\.test\.mjs/);
 });
 
+test("npm decision register stores no copies of manifest requirements or resolved lock data", () => {
+  const rows = JSON.parse(read("docs/quality/dependency-register.json")).rows.filter((r) => r.kind === "npm");
+  assert.ok(rows.length > 0);
+  for (const row of rows) {
+    for (const key of ["pins", "resolvedParents", "resolvedFootprint"]) assert.ok(!Object.hasOwn(row, key), `${row.name}: ${key}`);
+    assert.ok(row.uses.every((use) => !Object.hasOwn(use, "requirement")), row.name);
+    assert.ok(Object.hasOwn(row, "approval") && row.allowedLayers.length && row.license && row.reason, row.name);
+  }
+});
+
 test("CI runs on pushes, pull requests and merge queue results", () => {
   for (const event of ["push", "pull_request", "merge_group"]) {
     assert.ok(Object.hasOwn(workflow.on, event), `CI must run on ${event}`);

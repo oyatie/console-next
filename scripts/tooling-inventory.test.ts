@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { describe, expect, test } from "vitest";
-import { cargoPins, inventory, render, reviewRows } from "./quality/tooling-inventory.mjs";
+import { cargoPins, inventory, registerRows, render, reviewRows } from "./quality/tooling-inventory.mjs";
 
 const fixture = {
   "package.json": JSON.stringify({ name: "root", devDependencies: { oxlint: "1" }, overrides: { old: { child: "2" } } }),
@@ -16,6 +16,16 @@ const fixture = {
 const scan = (extra = {}, cargo = []) => inventory(Object.keys({ ...fixture, ...extra }), (p) => ({ ...fixture, ...extra })[p], cargo);
 
 describe("tooling inventory", () => {
+  test("register generation retains npm decisions without copying lock or requirement data", () => {
+    const row = { ...scan().find((r) => r.name === "react"), approval: null, allowedLayers: ["web: UI"], license: "MIT", reason: "UI review" };
+    const [decision] = registerRows([row]);
+    expect(decision).toMatchObject({ name: "react", approval: null, allowedLayers: ["web: UI"], license: "MIT", reason: "UI review" });
+    expect(decision.uses).toEqual([{ file: "apps/web/package.json", user: "@console/web", layer: "web: UI" }]);
+    for (const key of ["pins", "resolvedParents", "resolvedFootprint"]) expect(decision).not.toHaveProperty(key);
+    expect(row.pins).toHaveLength(1);
+    expect(row.uses[0].requirement).toBe("19");
+    expect(registerRows([decision])).toEqual([decision]);
+  });
   test("Cargo-generated lock records include fuzz-only and duplicate-version pins; malformed records refuse", () => {
     const lock = 'version = 4\n\n[[package]]\nname = "fuzz-only"\nversion = "1.0.0"\nsource = "registry+source"\n\n[[package]]\nname = "fuzz-only"\nversion = "2.0.0"\n';
     expect(cargoPins(lock).map((p) => p.version)).toEqual(["1.0.0", "2.0.0"]);

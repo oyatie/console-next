@@ -8,7 +8,7 @@ The [2026-10-26 ruling](dependency-ruling-2026-10-26.md) and subsequent explicit
 
 Owner decisions: [117 unresolved rows, grouped with one recommendation per group](dependency-owner-summary.md). Resolved-only names are technical inventory in [dependency-transitive-inventory.json](dependency-transitive-inventory.json), without classifications or rulings. Gates and vendored CI sources below are separate from the 151 direct dependency decisions.
 
-Regenerate offline: node scripts/quality/generate-tooling-ledger.mjs --write. Verify: omit --write. Sources are dated snapshots, not live CI requests. JSON includes usages, targets, features, pins and textual call-site candidates. Candidates include manifests/configuration and require review before removal.
+Regenerate offline: node scripts/quality/generate-tooling-ledger.mjs --write. Verify: omit --write. Sources are dated research snapshots, not live CI requests. npm requirements and resolved versions come only from manifests and package-lock.json; the register retains decisions, layers, licence review and evidence. JSON also includes targets, features and textual call-site candidates. Candidates include manifests/configuration and require review before removal.
 
 Architecture: [frontend](../architecture/frontend-module-map.md), [backend](../architecture/backend-module-map.md). Proposed users confer no permission. Cross-ring uses are flagged, not grandfathered. Licence policies: [backend](../../backend/deny.toml), [desktop](../../apps/desktop/src-tauri/deny.toml).
 

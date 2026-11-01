@@ -21,11 +21,11 @@ const lock = { packages: {
 
 const register = {
   rows: [
-    { kind: "npm", name: "react", direct: true, pins: [{ location: "node_modules/react", version: "19.3.1" }], uses: [
-      { file: "apps/web/package.json", user: "@console/web", requirement: "^19", layer: "web: UI" },
-      { file: "packages/api/package.json", user: "@console/api", requirement: "^19", layer: "build/tooling" },
+    { kind: "npm", name: "react", direct: true, uses: [
+      { file: "apps/web/package.json", user: "@console/web", layer: "web: UI" },
+      { file: "packages/api/package.json", user: "@console/api", layer: "build/tooling" },
     ] },
-    { kind: "npm", name: "vitest", direct: true, pins: [{ location: "node_modules/vitest", version: "5.0.5" }], uses: [{ file: "package.json", requirement: "^5", layer: "test" }] },
+    { kind: "npm", name: "vitest", direct: true, uses: [{ file: "package.json", layer: "test" }] },
   ],
 };
 
@@ -44,11 +44,14 @@ test("inventory of a transitive package does not allow a direct declaration", ()
   assert.match(checkDeps(manifests, { rows: register.rows.map((r) => ({ ...r, direct: false })) }, lock).join("\n"), /not in the owner dependency register/);
 });
 
-test("registered pending dependencies cannot expand to a new user or requirement", () => {
+test("registered pending dependencies cannot expand to a new consumer or layer", () => {
   const added = [...manifests, { file: "packages/x/package.json", json: { dependencies: { react: "^19" } } }];
   assert.match(checkDeps(added, register, lock).join("\n"), /use is not recorded/);
-  const changed = [{ file: "package.json", json: { devDependencies: { vitest: "^6" } } }];
+  const changed = [{ file: "package.json", json: { dependencies: { vitest: "^5" } } }];
   assert.match(checkDeps(changed, register, lock).join("\n"), /use is not recorded/);
+  const renamed = structuredClone(manifests);
+  renamed[1].json.name = "@console/other";
+  assert.match(checkDeps(renamed, register, lock).join("\n"), /use is not recorded/);
 });
 
 test("an override cannot introduce an unregistered package", () => {
@@ -56,40 +59,46 @@ test("an override cannot introduce an unregistered package", () => {
   assert.match(checkDeps(changed, register, lock).join("\n"), /planted.*not in the owner dependency register/);
 });
 
-test("refuses stale, missing and surplus register lock versions", () => {
-  for (const pins of [
-    [{ location: "node_modules/react", version: "19.3.0" }],
-    [],
-    [...register.rows[0].pins, { location: "apps/web/node_modules/react", version: "19.2.0" }],
-  ]) {
-    const changed = structuredClone(register);
-    changed.rows[0].pins = pins;
-    assert.match(checkDeps(manifests, changed, lock).join("\n"), /react.*lock versions.*package-lock\.json/);
+test("Dependabot may update a recorded package requirement and lock without editing decisions", () => {
+  const updated = structuredClone(manifests);
+  updated[0].json.devDependencies.vitest = "^6";
+  const updatedLock = structuredClone(lock);
+  updatedLock.packages["node_modules/vitest"].version = "6.0.1";
+  assert.deepEqual(checkDeps(updated, register, updatedLock), []);
+});
+
+test("reads nested and multiple resolved versions from the lock", () => {
+  const nestedLock = { packages: { ...lock.packages, "apps/web/node_modules/react": { version: "19.2.0" } } };
+  assert.deepEqual(checkDeps(manifests, register, nestedLock), []);
+  delete nestedLock.packages["node_modules/react"];
+  nestedLock.packages["apps/web/node_modules/react"].version = "19.2.1";
+  assert.deepEqual(checkDeps(manifests, register, nestedLock), []);
+});
+
+test("refuses a declared package missing its resolved lock version", () => {
+  for (const pin of [undefined, {}, { link: true, version: "19.3.1" }]) {
+    const changedLock = structuredClone(lock);
+    if (pin) changedLock.packages["node_modules/react"] = pin;
+    else delete changedLock.packages["node_modules/react"];
+    assert.match(checkDeps(manifests, register, changedLock).join("\n"), /react.*resolved version.*package-lock\.json/);
   }
 });
 
-test("compares nested lock locations and all versions, regardless of register pin order", () => {
-  const nested = { location: "apps/web/node_modules/react", version: "19.2.0" };
-  const changed = structuredClone(register);
-  changed.rows[0].pins.unshift(nested);
-  const nestedLock = { packages: { ...lock.packages, [nested.location]: { version: nested.version } } };
-  assert.deepEqual(checkDeps(manifests, changed, nestedLock), []);
-  nestedLock.packages[nested.location].version = "19.2.1";
-  assert.match(checkDeps(manifests, changed, nestedLock).join("\n"), /react.*lock versions.*package-lock\.json/);
-});
-
-test("checks registered override pins without registering unrelated transitive packages", () => {
+test("allows override version bumps while refusing a new override target", () => {
   const current = [{ file: "package.json", json: { overrides: { parent: { react: "19.3.1" } } } }];
   const recorded = { rows: [{ ...register.rows[0], uses: [
-    { file: "package.json", requirement: "19.3.1", layer: "build/tooling", override: "parent > react" },
+    { file: "package.json", layer: "build/tooling", override: "parent > react" },
   ] }] };
   assert.deepEqual(checkDeps(current, recorded, lock), []);
   const changedLock = structuredClone(lock);
   changedLock.packages["node_modules/react"].version = "19.3.2";
-  assert.match(checkDeps(current, recorded, changedLock).join("\n"), /react.*lock versions.*package-lock\.json/);
+  current[0].json.overrides.parent.react = "19.3.2";
+  assert.deepEqual(checkDeps(current, recorded, changedLock), []);
+  current[0].json.overrides.other = current[0].json.overrides.parent;
+  assert.match(checkDeps(current, recorded, changedLock).join("\n"), /use is not recorded/);
 });
 
-test("CLI refuses a stale register version while manifests and lock stay unchanged", (t) => {
+test("CLI accepts a lock-only bump with the decision register unchanged", (t) => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "check-deps-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const dir of ["scripts/quality", "docs/quality"]) mkdirSync(path.join(root, dir), { recursive: true });
@@ -98,16 +107,16 @@ test("CLI refuses a stale register version while manifests and lock stay unchang
   const put = (file, json) => writeFileSync(path.join(root, file), JSON.stringify(json));
   put("package.json", manifests[0].json);
   put("package-lock.json", lock);
-  const changed = structuredClone(register);
-  put("docs/quality/dependency-register.json", changed);
+  put("docs/quality/dependency-register.json", register);
   const run = () => spawnSync(process.execPath, [path.join(root, "scripts/check-deps.mjs")], { encoding: "utf8" });
   const passed = run();
   assert.equal(passed.status, 0, passed.stderr);
-  changed.rows[1].pins[0].version = "5.0.4";
-  put("docs/quality/dependency-register.json", changed);
-  const refused = run();
-  assert.equal(refused.status, 1, refused.stderr);
-  assert.match(refused.stderr, /vitest.*lock versions.*package-lock\.json/);
+  const changedLock = structuredClone(lock);
+  changedLock.packages["node_modules/vitest"].version = "5.0.6";
+  put("package-lock.json", changedLock);
+  const bumped = run();
+  assert.equal(bumped.status, 0, bumped.stderr);
+  assert.deepEqual(JSON.parse(readFileSync(path.join(root, "docs/quality/dependency-register.json"), "utf8")), register);
 });
 
 test("names a missing verification note without throwing", () => {
