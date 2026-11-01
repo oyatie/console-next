@@ -58574,6 +58574,7 @@ components:
       properties:
         key:
           type: string
+          description: Registry key. onboarding.receipt_days is the post-go-live receipt duration in days; zero disables the receipt.
         kind:
           type: object
           required: [type]
