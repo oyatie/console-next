@@ -162,7 +162,7 @@
 "apps/web/src/features/platform/ui/tenants.module.css": {"restyle":6},
 "apps/web/src/features/structure/ui/chart-top.tsx": {"dsClass":5},
 "apps/web/src/features/structure/ui/chart-view.tsx": {"dsClass":4},
-"apps/web/src/features/structure/ui/chart.module.css": {"restyle":137,"literal":28},
+"apps/web/src/features/structure/ui/chart.module.css": {"restyle":138,"literal":28},
 "apps/web/src/features/structure/ui/first-run.module.css": {"restyle":32,"literal":8},
 "apps/web/src/features/structure/ui/first-run.tsx": {"dsClass":2},
 "apps/web/src/features/structure/ui/outline-view.tsx": {"dsClass":1},
