@@ -46822,7 +46822,7 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "~4.13.0",
+          "requirement": "~4.14.0",
           "layer": "test"
         }
       ],
@@ -46853,10 +46853,10 @@
       "pins": [
         {
           "location": "node_modules/@axe-core/playwright",
-          "version": "4.13.0",
+          "version": "4.14.0",
           "license": "MPL-2.0",
-          "integrity": "sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==",
-          "source": "https://registry.npmjs.org/@axe-core/playwright/-/playwright-4.13.0.tgz"
+          "integrity": "sha512-SGUhG5PIHd2eMdpgBF2PyQLOhX+qyDR2PT4cmoS4Qk2ak+jX/rrSvst9l0PGv5WTHolKpUMvVmoHpr4cZgf1RQ==",
+          "source": "https://registry.npmjs.org/@axe-core/playwright/-/playwright-4.14.0.tgz"
         }
       ],
       "lastRelease": "2026-10-15T13:33:17.706Z",
@@ -47660,7 +47660,7 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^5.104.0",
+          "requirement": "^5.105.0",
           "layer": "web: UI"
         }
       ],
@@ -48080,10 +48080,10 @@
       "pins": [
         {
           "location": "node_modules/@tanstack/react-query",
-          "version": "5.104.0",
+          "version": "5.105.0",
           "license": "MIT",
-          "integrity": "sha512-e1TZmDCQnWIfiDVryIHeA6Idj+Lfx1hORLOhXS/l5wcgvtVD4yYqbTDl378sGQKIi2cSgb0TEMC9cKK8GGoJEw==",
-          "source": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.104.0.tgz"
+          "integrity": "sha512-y+hMuDERvgg6ay1da0V1a6ZC0ZONt7dELxSFkqRZuwm7p1TTZs0MoXrPlBRflIpRoYjvzQVYxycnLImpFLhWrw==",
+          "source": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.105.0.tgz"
         }
       ],
       "resolvedParents": [
@@ -49350,7 +49350,7 @@
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
-          "requirement": "^1.49.0",
+          "requirement": "^1.63.0",
           "layer": "web: UI"
         }
       ],
@@ -49598,10 +49598,10 @@
       "pins": [
         {
           "location": "node_modules/lucide-react",
-          "version": "1.49.0",
+          "version": "1.63.0",
           "license": "ISC",
-          "integrity": "sha512-ApfaNM4/7jBrVopqLJ84Jz8TMQ1Q1JeZ1PmKh25aeS3E1FTVcMkSh1bEQB7dfzdIrwXRP8p3z4AJjTIHHb5IIA==",
-          "source": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.49.0.tgz"
+          "integrity": "sha512-GkBfQG+FUJ41x6y3/lNXiOziVU0Rcqqq0TCzhHS8avsFXHZmOdmfBqsVTvHSaVmbI+wbdGkxHRmhYWhD3N4/yA==",
+          "source": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.63.0.tgz"
         }
       ],
       "resolvedParents": [
@@ -49884,7 +49884,7 @@
         {
           "file": "package.json",
           "user": "console-react",
-          "requirement": "^1.86.0",
+          "requirement": "^1.90.0",
           "layer": "test"
         }
       ],
@@ -49912,10 +49912,10 @@
       "pins": [
         {
           "location": "node_modules/oxlint",
-          "version": "1.86.0",
+          "version": "1.90.0",
           "license": "MIT",
-          "integrity": "sha512-og0lhgvZfgGF//gOOmZXvtr+GmBbAGEnbEhv/QUg7UW2Wi4wHMnJbnMD+zuHgPdJxdklfgpPupdlAaAySyxrZg==",
-          "source": "https://registry.npmjs.org/oxlint/-/oxlint-1.86.0.tgz"
+          "integrity": "sha512-RkTN9EmgIUpLuhNoLhO3OliMGJlvb3Dk7XVjBZnfoMCHrVpuz5ESd97klfiyYeV7XfA2lNLnDCPMkUI+Qw5How==",
+          "source": "https://registry.npmjs.org/oxlint/-/oxlint-1.90.0.tgz"
         }
       ],
       "lastRelease": "2026-10-19T17:24:22.105Z",
