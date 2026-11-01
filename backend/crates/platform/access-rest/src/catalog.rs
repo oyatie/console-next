@@ -4,7 +4,7 @@
 use axum::Json;
 use axum::extract::Extension;
 use console_platform_authz::Principal;
-use console_platform_authz::access::{Domain, Level, NodeKind, tagged};
+use console_platform_authz::access::{Domain, Level, NodeKind, action_group, tagged};
 use serde_json::{Value, json};
 
 pub(crate) async fn get_catalog(Extension(_principal): Extension<Principal>) -> Json<Value> {
@@ -15,10 +15,16 @@ pub(crate) fn catalog() -> Value {
     let domains: Vec<Value> = Domain::ALL
         .into_iter()
         .map(|domain| {
-            let operations: Vec<Value> = tagged()
+            let mut operations: Vec<Value> = tagged()
                 .filter(|(_, d, _)| *d == domain)
                 .map(|(f, _, level)| json!({ "operation": f.as_str(), "level": level }))
                 .collect();
+            // Record-level Cedar clearance is an action group, not a legacy Feature.
+            if domain == Domain::Sensitive {
+                operations.extend([Level::View, Level::Edit].map(
+                    |level| json!({ "operation": action_group(domain, level), "level": level }),
+                ));
+            }
             json!({
                 "domain": domain,
                 "grantable": domain.grantable(),
@@ -52,6 +58,36 @@ pub(crate) fn catalog() -> Value {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn payroll_and_sensitive_pay_group_clearance_are_offered_without_unused_levels() {
+        let c = super::catalog();
+        for (domain, operations) in [
+            (
+                "pay",
+                serde_json::json!([
+                    {"operation":"payroll_run_read","level":"view"},
+                    {"operation":"payroll_run_manage","level":"edit"}
+                ]),
+            ),
+            (
+                "sensitive",
+                serde_json::json!([
+                    {"operation":"sensitive::view","level":"view"},
+                    {"operation":"sensitive::edit","level":"edit"}
+                ]),
+            ),
+        ] {
+            let row = c["domains"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["domain"] == domain)
+                .unwrap();
+            assert_eq!(row["grantable"], true);
+            assert_eq!(row["operations"], operations);
+        }
+    }
+
     #[test]
     fn the_catalog_lists_every_domain_and_marks_every_scope_kind_enforceable() {
         let c = super::catalog();

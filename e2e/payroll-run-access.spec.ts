@@ -6,14 +6,19 @@ import { tenantInSetup } from "./setup-flows";
 import { chooseRadio, go } from "./flows";
 import { activatePendingGrants } from "./second-person-fixture";
 
-async function grantAlphaAccess(admin: Page, token: () => string, domain: "pay" | "sensitive") {
-  // These alpha role lines are absent from the editor; create the role through the public API.
-  const name = domain === "pay" ? "급여 민감 제외" : "급여 민감 허용";
-  const role = await apiOf(admin, token)("/access/roles", "POST", {
-    name_ko: name, status: "ACTIVE", lines: [{ domain, levels: ["view", "edit"] }],
-  });
+async function grantAlphaAccess(admin: Page, token: () => string, domain: "pay" | "sensitive", level: "view" | "edit" = "edit") {
+  const label = domain === "pay" ? "급여" : "건강·민감";
+  const name = `${label} ${level === "view" ? "조회" : "등록·수정"}`;
+  await go(admin, "/access/roles/new");
+  await admin.getByRole("textbox", { name: /^역할 이름/ }).fill(name);
+  await expect(admin.getByRole("button", { name: `${label} 조회`, exact: true })).toHaveAttribute("aria-pressed", "false");
+  await admin.getByRole("button", { name: `${label} ${level === "view" ? "조회" : "등록·수정"}`, exact: true }).click();
+  const saved = admin.waitForResponse((r) => r.url().endsWith("/api/v1/access/roles") && r.request().method() === "POST");
+  await admin.getByRole("button", { name: "역할 추가", exact: true }).click();
+  const role = await saved;
   expect(role.status()).toBe(201);
-  await admin.reload();
+  expect((await role.json()).lines).toEqual([{ domain, levels: level === "view" ? ["view"] : ["view", "edit"] }]);
+  await expect(admin).toHaveURL(/\/access\/roles$/);
   await go(admin, "/access/grants");
   await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("이임원");
@@ -72,7 +77,7 @@ test("payroll reads and commands require tenant pay access", { tag: ["@hr", "@ne
     const inboxAfter = await api("/me/inbox-docs?filter=payslip");
     expect(inboxAfter.status()).toBe(200);
     expect(await inboxAfter.json()).toEqual(before);
-    // The bootstrap owner holds tenant pay access; payroll is not offered in the MVP role grid.
+    // The bootstrap owner holds tenant pay access.
     const opsApi = apiOf(admin, opsToken);
     const groupsBefore = await opsApi("/payroll/pay-groups");
     expect(groupsBefore.status()).toBe(200);
@@ -115,6 +120,13 @@ test("payroll reads and commands require tenant pay access", { tag: ["@hr", "@ne
     const absent = await opsApi(missing);
     expect(absent.status()).toBe(404);
     expect(await codeOf(absent)).toBe("not_found");
+    await grantAlphaAccess(admin, opsToken, "pay", "view");
+    const viewOnly = await api("/payroll/pay-groups");
+    expect(viewOnly.status()).toBe(200);
+    expect((await viewOnly.json()).items).toEqual([]);
+    const viewCannotCreate = await api("/payroll/pay-groups", "POST", { ...groupInput, sensitive: false });
+    expect(viewCannotCreate.status()).toBe(403);
+    expect(await codeOf(viewCannotCreate)).toBe("forbidden");
     await grantAlphaAccess(admin, opsToken, "pay");
     const regularInput = { ...groupInput, name: "모의 일반 급여 그룹", sensitive: false };
     const regularResponse = await api("/payroll/pay-groups", "POST", regularInput);

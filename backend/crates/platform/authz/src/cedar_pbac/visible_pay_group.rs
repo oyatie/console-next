@@ -1,13 +1,30 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Record facts stay inside the canonical loader and the caller's RLS transaction.
-use super::{DecisionFacts, db};
+use super::DecisionFacts;
 use crate::{
     Feature,
     access::{AccessEngineError, Domain, Level, NodeKind, NodeRef, action_group},
 };
-use console_kernel_core::KernelError;
+use console_kernel_core::{KernelError, OrgId};
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
+
+/// Stored payroll record facts, supplied by the payroll adapter under tenant RLS.
+pub struct PayGroupFact {
+    pub id: Uuid,
+    pub legal_entity_id: Uuid,
+    pub sensitive: bool,
+}
+
+/// Payroll owns record storage; the canonical fact loader owns Cedar decisions.
+pub trait PayGroupFactLoader {
+    /// Refuse an unarmed/wrong tenant or bypass-RLS transaction.
+    fn load_pay_group_facts(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        org: OrgId,
+    ) -> impl Future<Output = Result<Vec<PayGroupFact>, KernelError>> + Send;
+}
 
 impl DecisionFacts {
     /// Creation evaluates the explicitly supplied sensitivity before anything is persisted.
@@ -55,31 +72,16 @@ impl DecisionFacts {
         &self,
         tx: &mut Transaction<'_, Postgres>,
         action: Feature,
+        loader: &impl PayGroupFactLoader,
     ) -> Result<Vec<Uuid>, KernelError> {
-        let armed: bool = sqlx::query_scalar(
-            "SELECT COALESCE(current_setting('app.current_org', true)=$1,false)
-             AND row_security_active('pay_groups')",
-        )
-        .bind(self.org.to_string())
-        .fetch_one(tx.as_mut())
-        .await
-        .map_err(db)?;
-        if !armed {
-            return Err(KernelError::forbidden("pay-group facts require tenant RLS"));
-        }
-        let groups: Vec<(Uuid, Uuid, bool)> =
-            sqlx::query_as("SELECT id,legal_entity_id,sensitive FROM pay_groups WHERE org_id=$1")
-                .bind(self.org.as_uuid())
-                .fetch_all(tx.as_mut())
-                .await
-                .map_err(db)?;
+        let groups = loader.load_pay_group_facts(tx, self.org).await?;
         let mut ids = Vec::new();
-        for (id, entity, sensitive) in groups {
+        for group in groups {
             if self
-                .pay_group_allowed(action, entity, sensitive)
+                .pay_group_allowed(action, group.legal_entity_id, group.sensitive)
                 .map_err(|_| KernelError::unavailable("pay-group Cedar decision unavailable"))?
             {
-                ids.push(id);
+                ids.push(group.id);
             }
         }
         Ok(ids)

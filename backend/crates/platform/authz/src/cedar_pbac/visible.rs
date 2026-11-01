@@ -16,6 +16,7 @@ pub use employee::{EmployeePlacement, EmployeeVisibility};
 
 #[path = "visible_pay_group.rs"]
 mod pay_group;
+pub use pay_group::{PayGroupFact, PayGroupFactLoader};
 
 use crate::access::{
     AccessEngineError, AccessSlice, NodeKind, NodePath, NodeRef, load_access_subject, scope_path,

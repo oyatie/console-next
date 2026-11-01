@@ -4,6 +4,9 @@
 
 mod support;
 
+#[path = "support/payroll_role_lines.rs"]
+mod payroll_role_lines;
+
 use axum::http::{Method, StatusCode};
 use serde_json::json;
 use sqlx::PgPool;

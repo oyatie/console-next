@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Typed configuration only; scheduling consumes these explicit choices.
+mod facts;
 mod wire;
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_payroll_domain::pay_groups::{PayDateRule, PaymentChannel, PeriodRule, ProrationBasis};
@@ -134,6 +135,7 @@ impl PgPayrollStore {
         actor: UserId,
     ) -> Result<PayGroupPage, PgPayrollError> {
         let audit = event(org, actor, "payroll.pay_group_list", *org.as_uuid())?;
+        let loader = self.clone();
         with_audit(&self.pool, audit, move |tx| {
             Box::pin(async move {
                 let facts = load_facts(tx, org, *actor.as_uuid()).await?;
@@ -160,7 +162,7 @@ impl PgPayrollStore {
                         KernelError::forbidden("pay-group listing requires pay:view").into(),
                     );
                 }
-                let ids = facts.visible_pay_groups(tx, Feature::PayrollRunRead).await?;
+                let ids = facts.visible_pay_groups(tx, Feature::PayrollRunRead, &loader).await?;
                 let items = sqlx::query_scalar::<_, Json<PayGroup>>(
                     "SELECT to_jsonb(g) FROM pay_groups g WHERE g.org_id=$1 AND g.id=ANY($2)
                      ORDER BY g.legal_entity_id,g.name,g.id",
