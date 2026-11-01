@@ -76,7 +76,7 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
         ))}
       </div>
       <p id={reasonId} className={css.phase} aria-hidden={!s && !readFailed || undefined} data-loading={!s && !readFailed || undefined} data-failed={readFailed || undefined}>
-        <span aria-hidden={readFailed || undefined}>{t(`structure.phase.${phase}Chip`)}</span>
+        {(readFailed || phase === "operating") && <span aria-hidden={readFailed || undefined}>{t("structure.phase.operatingChip")}</span>}
         {readFailed && <span className={css.phaseError}>{t("structure.readFailed")}</span>}
       </p>
       {!readOnly && orgEdit && selected?.kind === "entity" && <AddUnit n={selected} primary />}

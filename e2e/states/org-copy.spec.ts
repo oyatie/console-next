@@ -22,6 +22,9 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
       const main = page.getByRole("main");
       await expect(main.getByRole("heading", { name: t("structure.title"), exact: true })).toBeVisible();
       await expect(main.locator("#setup-panel-title, progress, ol[aria-label]")).toHaveCount(0);
+      const head = main.getByRole("group", { name: t("structure.views"), exact: true }).locator("..");
+      await expect(head).toBeVisible();
+      await expect(head.getByText(t("structure.phase.setupChip"), { exact: true })).toHaveCount(0);
       await expect(main.getByText(/되돌릴 수 있습니다|조직 구조는 법인|이미 엑셀로/)).toHaveCount(0);
       if (empty) {
         await expect(main.getByRole("heading", { name: t("structure.first.title"), exact: true })).toBeVisible();
@@ -66,6 +69,10 @@ for (const view of ["chart", "list", "outline"] as const) {
       const help = page.getByRole("dialog", { name: t("structure.shortcuts.title"), exact: true });
       await expect(help).toBeVisible();
       await expect(help.getByText(t("structure.shortcuts.find"), { exact: true })).toBeVisible();
+      const chartKeys = help.getByRole("region", { name: t("structure.view.chart"), exact: true });
+      for (const key of ["Home", "End", "Shift F10", "ContextMenu", "Backspace", "Alt ↑", "Alt ↓", "Esc"]) {
+        await expect(chartKeys.getByText(key, { exact: true })).toBeVisible();
+      }
       if (view === "outline") await expect(help.getByText(t("structure.shortcuts.nest"), { exact: true })).toBeVisible();
       await expectAxe(page, `org ${view}/shortcuts`);
       await page.keyboard.press("Escape");
@@ -80,6 +87,33 @@ for (const view of ["chart", "list", "outline"] as const) {
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+test("org: every bottom-bar button stays inside the canvas and clickable at 390px @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  try {
+    await page.goto("/org");
+    const canvas = page.getByRole("region", { name: t("structure.chart.label"), exact: true });
+    const zoom = canvas.getByRole("group", { name: t("uiOrgCanvas.zoom"), exact: true });
+    await expect(zoom.getByRole("button", { name: t("structure.collapseAll"), exact: true })).toBeVisible();
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+      const buttons = zoom.locator("..").getByRole("button");
+      for (const button of await buttons.all()) {
+        await button.scrollIntoViewIfNeeded();
+        await expect(button).toBeInViewport();
+        expect(await button.evaluate(el => {
+          const rect = el.getBoundingClientRect();
+          const bounds = el.closest("section")!.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+          return rect.left >= bounds.left && rect.right <= bounds.right && rect.top >= bounds.top && rect.bottom <= bounds.bottom && el.contains(hit);
+        }), await button.getAttribute("aria-label") ?? await button.textContent() ?? undefined).toBe(true);
+        await button.click();
+      }
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
 
 test("org: the gallery previews the empty state, count basis and keyboard help @ui-state", async ({ page }) => {
   const fixture = await mockScreen(page, screens[2], "populated");
