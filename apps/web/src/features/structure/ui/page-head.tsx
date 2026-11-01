@@ -11,10 +11,10 @@ import type { Structure } from "../domain/model";
 import { get } from "../../../lib/query";
 import { authzApplies, authzQuery, granted, type Feature } from "../../../reference/authz/api";
 import { checklistRef } from "../../../reference/entity/api";
-import { usePolicyRouted } from "../../../reference/settings/ui/use-policy-routed";
 import { AsOfControl } from "../../../ui/asof-control/asof-control";
 import { CompareControl } from "./compare-control";
 import { AddUnit } from "./add-unit";
+import { StructureKeys } from "./structure-keys";
 import { ExportDialog } from "./export-dialog";
 import type { Commands } from "./use-structure-commands";
 import css from "./chart.module.css";
@@ -28,8 +28,7 @@ const VIEWS: { id: View; icon: typeof Network }[] = [
 ];
 
 /**
- * The page head (spec S1): title, the org chart · list · outline switch, the phase in words (decisions #26: no approval in it
- * unless the tenant routes org changes), as-of date with the scheduled changes beside it (org-26), the change list and
+ * The page head: the org chart · list · outline switch, the phase, as-of date with the scheduled changes beside it (org-26), the change list and
  * history as a visible entry (org-26); the receipt of a change made from the chart sits in the chart's gutter (org-19).
  */
 export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed = false }: {
@@ -48,7 +47,6 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
   const [exporting, setExporting] = useState(false);
   const checklist = useQuery(checklistRef);
   const phase = (s?.phase ?? checklist.data?.phase) === "OPERATING" ? "operating" : "setup";
-  const routed = usePolicyRouted("org_structure");
   const authz = useQuery({ ...authzQuery, enabled: authzApplies() });
   // Until the grants land every verb is drawn (as before), so a holder's head never moves when they arrive; a reader's
   // verbs then leave (people-self-37).
@@ -78,11 +76,12 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
         ))}
       </div>
       <p id={reasonId} className={css.phase} aria-hidden={!s && !readFailed || undefined} data-loading={!s && !readFailed || undefined} data-failed={readFailed || undefined}>
-        <span aria-hidden={readFailed || undefined}>{t(phase === "operating" && routed ? "structure.effect.operatingRouted" : `structure.effect.${phase}`)}</span>
+        <span aria-hidden={readFailed || undefined}>{t(`structure.phase.${phase}Chip`)}</span>
         {readFailed && <span className={css.phaseError}>{t("structure.readFailed")}</span>}
       </p>
       {!readOnly && orgEdit && selected?.kind === "entity" && <AddUnit n={selected} primary />}
       <span className="grow" />
+      {view !== "list" && <StructureKeys view={view} />}
       {scheduled > 0 && <Link to="/org" search={{ tab: "changes", filter: "ready" }} className={buttonClass("ghost", { size: "sm", className: css.scheduled })} id="org-scheduled">{t("orgChange.chip.scheduled", { count: scheduled })}</Link>}
       <div id="structure-import" tabIndex={-1} className={css.importEntry} data-hidden={imports.length === 0 || (!readFailed && readOnly) || undefined} inert={!readFailed && (readOnly || imports.length === 0) || undefined}>
         {readFailed ? <Button variant="ghost" {...unavailable}><Upload size={16} aria-hidden />{t("structure.import.label")}</Button>

@@ -78,7 +78,7 @@ function RenameCard({ intent: { unit }, units, open, onClose }: Card<"rename">) 
     <ProposalForm intent={{ kind: "rename", unit }} v={v} set={set} onClose={onClose} spec={(kit) => ({
       title: t("orgPropose.title.rename", { name: unit.name }),
       context: (
-        <Context note={k.headcountNote} rows={[
+        <Context headcount rows={[
           { label: t("orgPropose.ctx.target"), value: k.path(unit) },
           { label: t("orgPropose.ctx.renamed"), value: t("orgPropose.ctx.renamed.value", { count: unit.headcount, sub }) },
         ]} />
@@ -119,7 +119,7 @@ function MoveCard({ intent: { unit }, units, open, onClose }: Card<"move">) {
     <ProposalForm intent={{ kind: "move", unit }} v={v} set={set} onClose={onClose} spec={(kit) => ({
       title: t("orgPropose.title.move", { name: unit.name }),
       context: (
-        <Context note={k.headcountNote} rows={[
+        <Context headcount rows={[
           { label: t("orgPropose.ctx.target"), value: k.path(unit) },
           { label: t("orgPropose.ctx.currentParent"), value: from ? k.path(from) : "—" },
           { label: t("orgPropose.ctx.carried"), value: t("orgPropose.ctx.carried.value", { count, sub }) },

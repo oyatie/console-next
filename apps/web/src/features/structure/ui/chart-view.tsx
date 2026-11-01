@@ -11,10 +11,10 @@ import { ChangeReceipt } from "../../../reference/org/ui/change-receipt";
 import { useChangeNote } from "../../../reference/org/ui/use-change-note";
 import { receiptAction } from "../../../ui/receipt/receipt-action";
 import { Button } from "../../../ui/button/button";
-import { todayKst } from "../../../lib/pure/today";
+import { HeadcountBasis } from "../../../reference/org/ui/headcount-basis";
 import { drawnAt, pathTo, type ChartNode, type Structure } from "../domain/model";
 import { collapseSelection, movable } from "../domain/rules";
-import { toolsSpot, WRAP_SITES, type Box } from "../domain/layout";
+import { toolsSpot, type Box } from "../domain/layout";
 import { ChartBoxes } from "./chart-boxes";
 import { ChartEditors } from "./chart-editors";
 import { useChartKeys } from "./use-chart-keys";
@@ -149,9 +149,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
     <FindStatus s={s} c={c} />
   ) : cmd.last && !quiet ? receipt : note ? (
     <ChangeReceipt />
-  ) : (
-    <p className={`${css.hint} card`}>{c.L.lod === "far" ? t("structureChart.farHint", { wrap: WRAP_SITES }) : c.focus.kind === "tenant" ? t("structure.caption", { date: s.asOf ?? todayKst() }) : t("structure.hint")}</p>
-  );
+  ) : null;
 
   return (
     <div className={css.chartWrap}>
@@ -168,7 +166,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
           <p className={`${css.dragBanner} card`} role="status"><CornerDownRight size={16} aria-hidden /><b>{t("structure.drop.moving", { name: drag.view.nodes.map((n) => n.name).join(", ") })}</b>{t("structure.drop.rules")}</p>
         ) : <ChartTop s={s} c={c} onFocus={onFocus} onFind={(id) => c.reveal(id)} />}
         gutter={gutter}
-        tools={<Button variant="ghost" onClick={() => c.setExpanded(new Set([c.focus.id]))}>{t("structure.collapseAll")}</Button>}
+        tools={<><HeadcountBasis>{t("structure.headcount.total", { count: c.focus.headcount })}</HeadcountBasis><Button variant="ghost" onClick={() => c.setExpanded(new Set([c.focus.id]))}>{t("structure.collapseAll")}</Button></>}
         layer={(zoom, visible) => (
           <>
             <ChartEditors s={s} c={c} zoom={zoom} visible={visible} pending={cmd.pending} batch={cmd.last?.batchId} onAdd={g.create} onRename={g.saveName} />

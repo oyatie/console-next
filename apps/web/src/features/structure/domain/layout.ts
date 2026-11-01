@@ -13,7 +13,7 @@ const SLOT = { w: W.site, h: 176 } as const;
 const ADD_HEIGHT = 108;
 const GY = 52, BUS = 16, GS = 10, IND = 24, SPINE = 12, GX = 16, MORE = 12, PAD = 40;
 /** Above this many workplace a legal entity's workplace wrap into tiles (far) or a grid (one legal entity in focus). */
-export const WRAP_SITES = 8;
+const WRAP_SITES = 8;
 
 export type Lod = "full" | "m" | "xs" | "tile";
 export type Depth = "sites" | "one" | "two" | "all";

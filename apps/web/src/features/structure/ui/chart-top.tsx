@@ -82,7 +82,6 @@ export function FindStatus({ s, c }: { s: Structure; c: ChartState }) {
           <span className={css.findPer}>
             {[...c.hits.perEntity].map(([id, n]) => <span key={id}>{t("structure.find.perEntity", { name: s.byId.get(id)?.name ?? "", count: n })}</span>)}
           </span>
-          <span>{t("structure.find.keys")}</span>
         </>
       )}
     </p>

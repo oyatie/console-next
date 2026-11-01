@@ -52,7 +52,6 @@ export function SitePreview({ L, box }: { L: Layout; box: Box }) {
         {rows.length === 0 && <li className="muted">{t("structure.preview.none")}</li>}
         {n.children.length > MAX && <li className="muted">{t("structure.preview.more", { count: n.children.length - MAX })}</li>}
       </ul>
-      <span className="muted">{t("structure.preview.keys")}</span>
     </PreviewCard>
   );
 }
@@ -70,7 +69,6 @@ export function HitPreview({ s, L, box, hit, at, total }: { s: Structure; L: Lay
       <span className="muted">{path}</span>
       <span className={css.previewHit}><b>{hit.name}</b><span className="num">{t("common.headcount", { count: hit.headcount })}</span></span>
       {line && <span className="muted">{line}</span>}
-      <span className="muted">{t("structure.find.keys")}</span>
     </PreviewCard>
   );
 }

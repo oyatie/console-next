@@ -56,7 +56,6 @@ export function SelectionBar({ s, c, g }: {
         <Button variant="ghost" onClick={() => void navigate({ search: (q) => ({ ...q, view: "list" }) })}><List size={16} aria-hidden />{t("structure.selection.inList")}</Button>
         <Button variant="ghost" onClick={() => c.setSel(new Set())}><X size={16} aria-hidden />{t("structure.selection.clear")}<kbd className={css.kbd}>{KEYS.clear}</kbd></Button>
       </div>
-      {c.byKeys && <p className={`${css.selnote} card`}>{t("structureChart.selection.keys")}</p>}
     </div>
   );
 }

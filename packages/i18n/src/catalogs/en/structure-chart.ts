@@ -2,7 +2,6 @@
 export const enStructureChart = {
   "structureChart.unplaced": "incl. {count, number} unplaced",
   "structureChart.selection.cursor": "focus on {name} (not chosen)",
-  "structureChart.selection.keys": "←→↑↓ move the focus · Ctrl Space select or unselect · Shift ↓ extend the selection · Ctrl A the whole level",
   "structureChart.moved": "just moved · from {from}",
   "structureChart.find.at": "{at, number} / {total, number}",
   "structureChart.menu.earlier": "Order: earlier",
@@ -42,6 +41,5 @@ export const enStructureChart = {
   "structureChart.export.prev": "Previous page",
   "structureChart.export.next": "Next page",
   "structureChart.export.consequencePages": "{pages, number} {format} pages hold {sites, number} workplaces · {depts, number} departments · {people, number} people",
-  "structureChart.farHint": "Workplaces at a glance · a legal entity with more than {wrap, number} workplaces folds them into two columns · hover a box or press Space to preview its departments",
   "structureChart.export.visible": "Visible list rows ({count, number})",
 } as const;
