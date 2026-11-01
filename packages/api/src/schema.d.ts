@@ -4299,7 +4299,7 @@ export interface paths {
         put?: never;
         /**
          * Rescind every event of a bulk appointment (BW-11)
-         * @description Each event of the batch through the single rescind, all or nothing (422 bulk_lifecycle_refused identifying readable refused employees and counting unreadable ones). Permission for every batch employee is checked before reason validation. A batch with no permitted employee, including a missing batch, returns the same bare 403 forbidden. A dated batch's SCHEDULED events are withdrawn with it (state CANCELLED, as the single cancel; a later reservation that depends on one refuses it). The restored units are each person's from_ binding; a locked payroll month refuses it (the batch can be rescinded until the payroll cutoff of its month). Audited per employee and as employee.lifecycle.bulk_rescind.
+         * @description Each event of the batch through the single rescind, all or nothing (422 bulk_lifecycle_refused identifying readable refused employees and counting unreadable ones). Permission for every batch employee is checked before reason validation. A batch with no permitted employee, including a missing batch, returns the same bare 403 forbidden. Permission includes withdrawn events; a caller permitted for any member gets 404 not_found when no APPLIED or SCHEDULED event remains. A dated batch's SCHEDULED events are withdrawn with it (state CANCELLED, as the single cancel; a later reservation that depends on one refuses it). The restored units are each person's from_ binding; a locked payroll month refuses it (the batch can be rescinded until the payroll cutoff of its month). Audited per employee and as employee.lifecycle.bulk_rescind.
          */
         post: operations["rescindBulkEmployeeLifecycleEvents"];
         delete?: never;
@@ -38348,6 +38348,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };

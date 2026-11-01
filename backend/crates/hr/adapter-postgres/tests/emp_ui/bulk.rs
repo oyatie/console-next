@@ -187,14 +187,32 @@ async fn a_batch_undo_refuses_a_bad_reason_an_unknown_batch_and_a_second_undo(po
             .unwrap_err();
     assert_eq!(status(&unknown), (403, "forbidden"));
     assert_eq!(states(&f).await, ["SCHEDULED"]);
-    f.hr.rescind_lifecycle_batch(f.ops.clone(), batch, undo(true, "PLAN_WITHDRAWN"))
+    let colleague = f.other(&[], BranchScope::All).await;
+    sqlx::query("INSERT INTO access_grants (org_id,account_id,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by) SELECT org_id,$2,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by FROM access_grants WHERE org_id=$1 AND account_id=$3")
+        .bind(f.org).bind(colleague.user_id.as_uuid()).bind(f.user)
+        .execute(&f.owner).await.unwrap();
+    f.hr.rescind_lifecycle_batch(colleague, batch, undo(true, "PLAN_WITHDRAWN"))
         .await
         .unwrap();
     let again =
         f.hr.rescind_lifecycle_batch(f.ops.clone(), batch, undo(true, "PLAN_WITHDRAWN"))
             .await
             .unwrap_err();
-    assert_eq!(status(&again), (403, "forbidden"));
+    assert_eq!(status(&again), (404, "not_found"));
+    // An exhausted batch still hides its existence from a caller without a live grant.
+    sqlx::query("UPDATE access_grants SET valid_to=now()-interval '1 second' WHERE org_id=$1 AND account_id=$2")
+        .bind(f.org).bind(f.user).execute(&f.owner).await.unwrap();
+    for batch_id in [batch, Uuid::new_v4()] {
+        let denied =
+            f.hr.rescind_lifecycle_batch(f.ops.clone(), batch_id, undo(true, "PLAN_WITHDRAWN"))
+                .await
+                .unwrap_err();
+        assert_eq!(status(&denied), status(&unknown));
+        assert_eq!(denied.message, unknown.message);
+        assert!(denied.refusals.is_none());
+        assert!(denied.errors.is_none());
+    }
+    assert_eq!(states(&f).await, ["CANCELLED"]);
     assert_eq!(f.audits("employee.lifecycle.bulk_rescind").await, 1);
 }
 

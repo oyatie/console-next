@@ -1,7 +1,7 @@
 //! BW-11 HrService entry points: rescind one event, rescind a bulk batch, and
 //! correct (정정) one event on the same date.
 
-use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
+use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
 use console_platform_authz::{Principal, cedar_pbac::visible::load_facts};
 use console_platform_db::with_audits;
@@ -130,17 +130,18 @@ impl HrService {
             Box::pin(async move {
                 let access = load_facts(tx, org, *actor.as_uuid())
                     .await.map_err(HrError::from_kernel)?;
-                // A dated batch's reservations are withdrawn with it (EMP-UI 8).
-                let events: Vec<(Uuid, Uuid, bool)> = sqlx::query_as(
-                    "SELECT employee_id, id, state = 'SCHEDULED' FROM employee_lifecycle_events \
-                     WHERE org_id = $1 AND batch_id = $2 AND event_type <> 'RESCIND' \
-                       AND state IN ('APPLIED', 'SCHEDULED') ORDER BY employee_id",
+                // Permission survives withdrawal: every member counts, whatever the event's state.
+                let events: Vec<(Uuid, Uuid, bool, bool)> = sqlx::query_as(
+                    "SELECT employee_id, id, state = 'SCHEDULED', \
+                            event_type <> 'RESCIND' AND state IN ('APPLIED', 'SCHEDULED') \
+                     FROM employee_lifecycle_events \
+                     WHERE org_id = $1 AND batch_id = $2 ORDER BY employee_id",
                 )
                 .bind(org.as_uuid())
                 .bind(batch_id)
                 .fetch_all(tx.as_mut())
                 .await?;
-                let employees: Vec<_> = events.iter().map(|(employee, _, _)| *employee).collect();
+                let employees: Vec<_> = events.iter().map(|(employee, _, _, _)| *employee).collect();
                 let people = HrCaseFacts::load(tx, *actor.as_uuid(), &employees).await?;
                 let permissions = employees.iter()
                     .map(|employee| permission(&access, &people, org, *employee))
@@ -148,12 +149,18 @@ impl HrService {
                 if !permissions.iter().any(|allowed| *allowed) {
                     return Err(permission_denied());
                 }
+                let events: Vec<_> = events.iter().zip(permissions)
+                    .filter(|((_, _, _, active), _)| *active)
+                    .collect();
+                if events.is_empty() {
+                    return Err(HrError::from_kernel(KernelError::not_found("batch not found")));
+                }
                 check_void_reason(tx, org, &request.reason_code, request.note.as_deref()).await?;
                 let rescind_batch = Uuid::new_v4();
                 let (mut outcomes, mut refusals) = (Vec::new(), Vec::new());
-                for ((employee, event, scheduled), holds_permission) in events.iter().zip(permissions) {
+                for ((employee, event, scheduled, _), holds_permission) in &events {
                     let undone = async {
-                        if !holds_permission {
+                        if !*holds_permission {
                             return Err(permission_denied());
                         }
                         if *scheduled {
@@ -162,7 +169,7 @@ impl HrService {
                             rescind_tx(
                                 tx,
                                 org,
-                                (actor, holds_permission),
+                                (actor, *holds_permission),
                                 *employee,
                                 *event,
                                 &request,
