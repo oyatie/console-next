@@ -10,8 +10,10 @@ import { opsQuery } from "../api";
 const state = vi.hoisted(() => ({ failed: false, path: "/access/roles", ops: "loaded" }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: (query: unknown) => {
   if (query === opsQuery) return {
-    data: state.ops === "loading" ? undefined : { account_id: "ops" },
-    error: ["failed", "refused"].includes(state.ops) ? new Error(state.ops) : null,
+    isPending: ["loading", "retrying"].includes(state.ops),
+    failureCount: state.ops === "loading" || state.ops === "loaded" ? 0 : 1,
+    data: ["loading", "retrying", "first-failed", "first-refused"].includes(state.ops) ? undefined : { account_id: "ops" },
+    error: ["failed", "refused", "first-failed", "first-refused"].includes(state.ops) ? new Error(state.ops) : null,
   };
   return { data: { items: [1, 2, 3] }, error: state.failed ? new Error("outage") : null };
 } }));
@@ -34,18 +36,25 @@ test("navigation distinguishes go-live checks from the planned access review", (
   expect(html).not.toContain("권한 검토");
 });
 
-test.each(["loading", "failed", "refused"])("ops tab is absent when its read is %s, including stale data", status => {
+test.each(["loading", "retrying", "failed", "refused", "first-failed", "first-refused"])("ops tab is absent when its read is %s, including stale data", status => {
   state.ops = status;
   expect(renderToStaticMarkup(<AccessHead />)).not.toContain("비상 관리자 계정");
 });
 
-test.each(["loading", "loaded"])("grants tab does not claim the ops path while ops is %s", status => {
+test.each(["loading", "loaded", "failed", "refused"])("grants tab does not claim a known ops path while ops is %s", status => {
   state.path = "/access/people/ops";
   state.ops = status;
   expect(renderToStaticMarkup(<AccessHead />)).not.toMatch(/href="\/access\/grants" aria-current="page"/);
 });
 
-test("grants tab marks an ordinary person's access as current", () => {
+test.each(["loaded", "retrying", "failed", "refused", "first-failed", "first-refused"])("grants tab marks an ordinary person's access as current while ops is %s", status => {
   state.path = "/access/people/person";
+  state.ops = status;
   expect(renderToStaticMarkup(<AccessHead />)).toMatch(/href="\/access\/grants" aria-current="page"/);
+});
+
+test("grants tab waits for the first ops answer on an ordinary person's access", () => {
+  state.path = "/access/people/person";
+  state.ops = "loading";
+  expect(renderToStaticMarkup(<AccessHead />)).not.toMatch(/href="\/access\/grants" aria-current="page"/);
 });

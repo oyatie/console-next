@@ -75,7 +75,12 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await page.goto(`/access/people/${id(20)}?grant=true`);
     const main = page.getByRole("main");
     const nav = main.getByRole("navigation", { name: "권한 화면" });
-    await expect(nav.getByRole("link", { name: "비상 관리자 계정", exact: true })).toHaveAttribute("aria-current", "page");
+    const active = nav.getByRole("link", { name: "비상 관리자 계정", exact: true });
+    await expect(active).toHaveAttribute("aria-current", "page");
+    await expect.poll(() => active.evaluate(el => {
+      const tab = el.getBoundingClientRect(), bar = el.parentElement!.getBoundingClientRect();
+      return tab.left >= bar.left && tab.right <= bar.right + 1;
+    })).toBe(true);
     await expect(nav.getByRole("link", { name: /부여 현황/ })).not.toHaveAttribute("aria-current", "page");
     await expect(main.getByText("운영 계정(ops)은 역할 없이 모든 권한을 가집니다.", { exact: false })).toBeVisible();
     await expect(main.getByRole("button", { name: "권한 부여", exact: true })).toHaveCount(0);
@@ -86,6 +91,37 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   });
 }
 
+for (const width of [1440, 390]) test(`grant picker distinguishes accounts with colliding name and sign-in masks at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockAccessScreen(page, accessScreens[0], "populated");
+  const accounts = ["worker1234", "writer1234"].map((login, i) => ({ ...user, id: id(100 + i), display_name: "동명 계정",
+    employee_id: null, employee_name: null, employee_number: null, employee_company: null, employee_org_unit: null,
+    sign_in_id: `${login}@example.test`, created_at: `2026-10-01T0${i + 1}:00:00Z`,
+  }));
+  await mockRoute(page, "get", "/api/v1/users", { status: 200, json: { items: accounts, total: 2, limit: 200, offset: 0 } });
+  await page.goto("/access/grants");
+  await page.getByRole("button", { name: "권한 부여", exact: true }).click();
+  const picker = page.getByRole("dialog", { name: "권한 부여할 사람", exact: true });
+  await picker.getByRole("combobox").fill("동명");
+  const first = page.getByRole("option", { name: /동명 계정.*w••••1234@example.test.*계정 생성.*10:00/ });
+  const second = page.getByRole("option", { name: /동명 계정.*w••••1234@example.test.*계정 생성.*11:00/ });
+  await expect(first).toBeVisible();
+  await expect(second).toBeVisible();
+  for (const option of [first, second]) {
+    const context = option.getByText(/계정 생성/);
+    expect(await context.evaluate(el => {
+      const bounds = el.closest('[role="option"]')!.getBoundingClientRect();
+      return Array.from(el.getClientRects()).every(rect => rect.left >= bounds.left && rect.right <= bounds.right);
+    })).toBe(true);
+  }
+  for (const account of accounts) await expect(picker).not.toContainText(account.id);
+  await expectAxe(page, `same-name account picker ${width}`);
+  await fits(page, `same-name account picker ${width}`);
+  await second.click();
+  await expect(page.getByRole("dialog", { name: "권한 부여", exact: true })).toBeVisible();
+  expect(fixture.unexpected).toEqual([]);
+});
+
 for (const status of [403, 503] as const) test(`ops tab hides after a ${status} read`, async ({ page }) => {
   const fixture = await mockAccessScreen(page, accessScreens[1], "populated");
   await mockRoute(page, "get", "/api/v1/access/ops", { status, json: failure(status === 403 ? "forbidden" : "service_unavailable") });
@@ -95,5 +131,25 @@ for (const status of [403, 503] as const) test(`ops tab hides after a ${status} 
   const nav = page.getByRole("navigation", { name: "권한 화면" });
   await expect(nav.getByRole("link", { name: /역할/ })).toBeVisible();
   await expect(nav.getByRole("link", { name: "비상 관리자 계정", exact: true })).toHaveCount(0);
+  expect(fixture.unexpected).toEqual([]);
+});
+
+for (const status of [403, 503] as const) test(`person access keeps the grants marker and hides missing identity ids after ops ${status}`, async ({ page }) => {
+  const fixture = await mockAccessScreen(page, accessScreens[0], "populated");
+  const account = { ...user, id: id(100), display_name: "검증직원", employee_id: null, employee_number: null,
+    employee_name: null, employee_company: null, employee_org_unit: null, sign_in_id: null };
+  await mockRoute(page, "get", "/api/v1/users", { status: 200, json: { items: [account], total: 1, limit: 200, offset: 0 } });
+  await mockRoute(page, "get", "/api/v1/access/ops", { status, json: failure(status === 403 ? "forbidden" : "service_unavailable") });
+  await mockRoute(page, "get", "/api/v1/access/accounts/{accountId}/effective", { status: 200, json: { ...screenAccess(`/access/people/${account.id}`), account_id: account.id } });
+  await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: [] });
+  await page.goto(`/access/people/${account.id}`);
+  const main = page.getByRole("main");
+  const nav = main.getByRole("navigation", { name: "권한 화면" });
+  await expect(nav.getByRole("link", { name: /부여 현황/ })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "비상 관리자 계정", exact: true })).toHaveCount(0);
+  await expect(main.getByRole("heading", { name: account.display_name, exact: true })).toBeVisible();
+  await expect(main.getByText("식별 정보 없음", { exact: false })).toBeVisible();
+  await expect(main).not.toContainText(account.id);
+  await expectAxe(page, `person access ops ${status}`);
   expect(fixture.unexpected).toEqual([]);
 });

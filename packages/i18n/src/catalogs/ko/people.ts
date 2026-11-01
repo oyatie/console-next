@@ -1,6 +1,8 @@
 // Korean source for `people.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koPeople = {
   "people.label.unnamed": "이름 없음",
+  "people.label.identityMissing": "식별 정보 없음",
+  "people.label.accountCreated": "계정 생성 {at}",
   "people.label.record": "{name} 인사카드",
   "people.label.grant": "{name} 권한 부여",
   // People

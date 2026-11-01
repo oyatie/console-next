@@ -2,6 +2,8 @@ import type { koPeople } from "../ko/people";
 
 export const enPeople: Partial<Record<keyof typeof koPeople, string>> = {
   "people.label.unnamed": "Unnamed person",
+  "people.label.identityMissing": "No identifying details",
+  "people.label.accountCreated": "Account created {at}",
   "people.label.record": "Person record for {name}",
   "people.label.grant": "Grant access to {name}",
   "people.title": "HR",

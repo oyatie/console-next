@@ -27,16 +27,18 @@ test("whitespace and canonical spelling cannot hide a namesake", () => {
 test("missing number uses placement; blank facts, short or malformed sign-in IDs always have a safe fallback", () => {
   expect(personLabel({ id: "a", name: "Person", employee_number: " ", company: "Company", org_unit: "HR" }).detail).toBe("Company · HR");
   expect(personLabel({ id: "a", name: "Person", sign_in_id: "ab@example.test" }).detail).toBe("a••••@example.test");
-  for (const sign_in_id of ["invalid", "@example.test", "login@"]) {
-    expect(personLabel({ id: "a", name: "Person", sign_in_id }).detail).toBe("a");
+  for (const sign_in_id of [undefined, null, "", " ", "invalid", "@example.test", "login@"]) {
+    const person = { id: "hidden-account-id", name: "Person", sign_in_id };
+    expect(personLabel(person).detail).toBe("식별 정보 없음");
+    expect(personLabel(person, [person, { ...person, id: "other-account-id" }]).text).not.toContain(person.id);
   }
-  expect(personLabel({ id: "a", name: " ", employee_number: " " }).text).toBe(`${t("people.label.unnamed")} · a`);
+  expect(personLabel({ id: "a", name: " ", employee_number: " " }).text).toBe(`${t("people.label.unnamed")} · 식별 정보 없음`);
 });
 
-test("colliding masks or identical employee facts remain distinguishable by stable id", () => {
+test("colliding masks and employee facts retain the visible namesake warning without raw account ids", () => {
   const first = { id: "a", name: "Person", sign_in_id: "worker1234@example.test" };
   const second = { ...first, id: "b", sign_in_id: "writer1234@example.test" };
-  expect(personLabel(first, [first, second]).detail).toBe("w••••1234@example.test · a");
-  expect(personLabel(second, [first, second]).detail).toBe("w••••1234@example.test · b");
-  expect(personLabel(a, [a, { ...a, id: "b", employee_id: "other" }]).detail).toBe("E-1 · HR · account-a");
+  expect(personLabel(first, [first, second])).toMatchObject({ detail: "w••••1234@example.test", sameName: true });
+  expect(personLabel(second, [first, second])).toMatchObject({ detail: "w••••1234@example.test", sameName: true });
+  expect(personLabel(a, [a, { ...a, id: "b", employee_id: "other" }])).toMatchObject({ detail: "E-1 · HR", sameName: true });
 });

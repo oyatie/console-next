@@ -12,9 +12,10 @@ test("same-name accounts without employee records have different masked sign-in 
   expect(accountLabel(b, b.id)).toBe("Namesake · w••••5678@example.test");
 });
 
-test("missing employee number uses primary placement, and missing all facts uses the stable account id", () => {
+test("missing employee number uses primary placement, and missing all facts uses a labelled placeholder", () => {
   expect(accountLabel({ id: "a", display_name: "Person", employee_number: " ", employee_company: "Company", employee_org_unit: "HR" }, "a")).toBe("Person · Company · HR");
-  expect(accountLabel({ id: "account-id", display_name: "Person", employee_number: null }, "account-id")).toBe("Person · account-id");
+  expect(accountLabel({ id: "account-id", display_name: "Person", employee_number: null }, "account-id")).toBe("Person · 식별 정보 없음");
+  expect(accountLabel(undefined, "account-id")).toBe(`${t("people.label.unnamed")} · 식별 정보 없음`);
 });
 
 test("an empty name never leaves an empty interpolation", () => {

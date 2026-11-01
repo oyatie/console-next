@@ -54,6 +54,9 @@ export default function TabsGallery() {
         <a href="#grants" className={tabClass}>{tg("tabs.grants")}<TabCount>{12}</TabCount></a>
         <a href="#ready" className={tabClass}>{tg("tabs.ready")}</a>
       </TabNav>
+      <div data-tabs-demo="scroll"><TabNav label={tg("sample.teamLong")} overflow="scroll">
+        {longItems.map((item, index) => <a key={item.id} href={`#${item.id}`} className={tabClass} aria-current={index === longItems.length - 1 ? "page" : undefined}>{item.label}</a>)}
+      </TabNav></div>
     </section>
   );
 }
