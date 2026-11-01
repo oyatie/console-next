@@ -101,7 +101,7 @@ hex = "0.4.3"
 url = "2.5.8"
 bytes = "1.11.1"
 # Version verified live against crates.io 2026-06-12: jsonwebtoken 10.4.0.
-jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust_crypto", "use_pem"] }
+jsonwebtoken = { version = "11.1.0", default-features = false, features = ["rust_crypto", "use_pem"] }
 # Owner-approved 2026-10-13 (brief 157): P-256 keys (platform-auth SPKI parsing, already
 # in the lock via jsonwebtoken) and the test-only soft passkey for the WebAuthn helpers.
 # Members add their own features.
