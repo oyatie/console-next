@@ -109,8 +109,8 @@ p256 = "0.13.2"
 webauthn-authenticator-rs = "0.5.5"
 # apalis 1.0.0-rc.9, apalis-postgres 1.0.0-rc.8, apalis-sql 1.0.0-rc.9.
 # No stable apalis 1.0.0 release was available at verification time.
-apalis = { version = "=1.0.0-rc.9" }
-apalis-postgres = { version = "=1.0.0-rc.8" }
+apalis = { version = "=1.0.0" }
+apalis-postgres = { version = "=1.0.0" }
 apalis-sql = { version = "=1.0.0-rc.9" }
 # Version verified live against crates.io 2026-06-12: calamine 0.35.0
 calamine = { version = "0.35.0", features = ["dates"] }
