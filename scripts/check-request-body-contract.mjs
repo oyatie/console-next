@@ -976,7 +976,7 @@ function routerUses(source, index) {
 // A route names its handler as a path (`logout`, `h::create_role`, `self::x::y`) resolved from
 // the router's module through its `use` bindings and module tree, inside the same crate graph.
 // No by-name fallback: a handler this cannot place stays undecidable rather than guessed.
-function resolveHandler(handlers, route) {
+export function resolveHandler(handlers, route) {
   const pieces = route.handler.split("::");
   const imports = route.imports.filter((binding) => binding.name === pieces[0]);
   if (imports.length > 1) return null;
@@ -1715,6 +1715,22 @@ export function collectAccessRoutes(repoRoot) {
     handlerFile: route.bodyContext.name ? route.bodyContext.file : null,
     handlerName: route.bodyContext.name ?? null,
   }));
+}
+
+// Reuse the module/import identities for authorization helper calls as well as REST handlers.
+export function collectAccessFunctions(repoRoot) {
+  return collectRustSourceIdentities(repoRoot).flatMap(({ identity, source, items }) => {
+    const scanned = scanRustSyntax(source, { projectCode: true });
+    if (!scanned.valid) throw new Error(`${identity.file}: ${scanned.error}`);
+    return [...scanned.projection.matchAll(/\bfn\s+(\w+)\s*\(/g)].flatMap(m => {
+      const start = scanned.projection.indexOf("{", m.index), semi = scanned.projection.indexOf(";", m.index);
+      if (start < 0 || (semi >= 0 && semi < start)) return [];
+      const body = scanRustSyntax(source, { start, rootDelimiter: "{" });
+      if (!body.valid) throw new Error(`${identity.file}: ${body.error}`);
+      return [{ ...identity, name: m[1], imports: items.rootImports,
+        body: source.slice(start, body.closing + 1), code: scanned.projection.slice(start, body.closing + 1) }];
+    });
+  });
 }
 
 export function evaluateRequestBodyContract({ repoRoot }) {
