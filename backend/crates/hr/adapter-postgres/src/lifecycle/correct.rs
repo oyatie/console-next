@@ -3,7 +3,7 @@
 
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
-use console_platform_authz::{Feature, Principal};
+use console_platform_authz::{Principal, cedar_pbac::actions::lifecycle_event};
 use console_platform_db::with_audits;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -21,7 +21,6 @@ use super::void::{
     RescindLifecycleEventRequest, RescindOutcome, check_void_reason, load_voidable, rescind_tx,
     restore_head,
 };
-use crate::authz::authorize_hr_org_wide;
 use crate::clock::today_kst;
 use crate::exits::group_transfer_case::withdraw_settlement_case;
 use crate::{HrError, HrService};
@@ -124,7 +123,6 @@ impl HrService {
         batch_id: Uuid,
         request: RescindLifecycleEventRequest,
     ) -> Result<Vec<RescindOutcome>, HrError> {
-        authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         let (org, actor) = (principal.org_id, principal.user_id);
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
@@ -147,24 +145,26 @@ impl HrService {
                 let rescind_batch = Uuid::new_v4();
                 let (mut outcomes, mut refusals) = (Vec::new(), Vec::new());
                 for (employee, event, scheduled) in &events {
-                    let undone = if *scheduled {
-                        withdraw_scheduled(tx, (org, actor), *employee, *event, &request).await
-                    } else {
-                        let batch = Some(rescind_batch);
+                    let undone = async {
                         let holds_permission =
                             super::action_refusals::require_permission(tx, &principal, *employee)
                                 .await?;
-                        rescind_tx(
-                            tx,
-                            org,
-                            (actor, holds_permission),
-                            *employee,
-                            *event,
-                            &request,
-                            batch,
-                        )
-                        .await
-                    };
+                        if *scheduled {
+                            withdraw_scheduled(tx, (org, actor), *employee, *event, &request).await
+                        } else {
+                            rescind_tx(
+                                tx,
+                                org,
+                                (actor, holds_permission),
+                                *employee,
+                                *event,
+                                &request,
+                                Some(rescind_batch),
+                            )
+                            .await
+                        }
+                    }
+                    .await;
                     match undone {
                         Ok(outcome) => outcomes.push(outcome),
                         Err(error) if error.status.is_client_error() => refusals.push(json!({
@@ -216,7 +216,7 @@ impl HrService {
             Box::pin(async move {
                 let holds_permission = super::action_refusals::require_permission(tx, &principal, employee_id).await?;
                 check_void_reason(tx, org, &request.reason_code, request.note.as_deref()).await?;
-                let original = load_voidable(tx, org_uuid, employee_id, event_id, (actor, holds_permission), "lifecycle_event_correct").await?;
+                let original = load_voidable(tx, org_uuid, employee_id, event_id, (actor, holds_permission), lifecycle_event::CORRECT).await?;
                 if transition.event_type != original.event_type
                     || transition.effective_date != original.effective_date
                 {

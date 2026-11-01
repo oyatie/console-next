@@ -6,6 +6,7 @@
 //! test (status, code, nothing written, audit row present or absent); tests
 //! named `regression_*` fail on the parent commit 3c988fc2.
 
+mod batch_access;
 mod bulk;
 mod catalog;
 #[path = "../support/lifecycle_grant.rs"]
