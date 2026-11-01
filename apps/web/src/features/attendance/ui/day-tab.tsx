@@ -94,7 +94,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                     {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
                   </p>
                   {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
-                  {b.groups.length > 0 && <p id={grammarHintId} className="muted">{t("attendanceRecords.grammar.hint")}</p>}
+                  {b.groups.length > 0 && <div className="muted"><strong>{t("attendanceRecords.grammar.label")}</strong><p id={grammarHintId}>{t("attendanceRecords.grammar.hint")}</p></div>}
                   {!b.groups.length ? (
                     search.issues || search.unscheduled ? (
                       <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />

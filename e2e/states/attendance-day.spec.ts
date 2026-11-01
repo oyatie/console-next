@@ -106,6 +106,7 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   await testInfo.attach("day-board", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   for (const detail of [false, true]) {
     if (detail) await page.getByRole("button", { name: t("attendanceRecords.board.detail"), exact: true }).click();
+    await expect(page.getByText("근태 기록 입력 방법", { exact: true })).toBeVisible();
     const hint = page.getByText(t("attendanceRecords.grammar.hint"), { exact: true });
     await expect(hint).toHaveCount(1);
     await expect(hint).toBeVisible();

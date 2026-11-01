@@ -7,9 +7,7 @@ import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { personOption } from "../../../reference/person/ui/person-option";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { peopleQuery, type Evidence } from "../api";
-import { EVIDENCE, type EvidenceDraft } from "../domain/evidence";
-
-const NOTE_MAX_LENGTH = 500;
+import { EVIDENCE, NOTE_MAX_LENGTH, type EvidenceDraft } from "../domain/evidence";
 
 /** What a write was taken from: a paper sheet, a device file, a supervisor (named), the employee's statement or other. */
 export function EvidenceField({ value, onChange, disabled }: { value: EvidenceDraft; onChange: (v: EvidenceDraft) => void; disabled?: boolean }) {

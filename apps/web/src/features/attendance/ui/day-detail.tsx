@@ -63,7 +63,7 @@ export function DayDetail({ board, store, grammarHintId, onAssign, onNote }: { b
         if (r.own) return t("attendanceRecords.grid.ownRow");
         return (
           <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} error={s && !s.ok ? refusalText(s.code) : undefined}>
-            {(p) => <TableControl><TextInput {...p} aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} /></TableControl>}
+            {(p) => <TableControl><TextInput {...p} readOnly={closed(r.month_state)} aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} /></TableControl>}
           </Field>
         );
       },

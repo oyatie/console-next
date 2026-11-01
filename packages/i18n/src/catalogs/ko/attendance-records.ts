@@ -52,6 +52,7 @@ export const koAttendanceRecords = {
   "attendanceRecords.paste.refusal.unsupportedRowType": "출근/퇴근 이외의 행 구분을 읽을 수 없습니다 · 출근/퇴근만 붙여넣거나 가져오기를 사용하십시오",
   "attendanceRecords.paste.refusal.clockOutOnly": "퇴근 시각만 있는 칸은 시간 기록으로 입력할 수 없습니다 · 출근 시각도 입력하거나 해당 칸을 제외하십시오",
   "attendanceRecords.paste.refusal.noCells": "반영할 근태 칸이 없습니다 · 값이 있는 날짜 열을 포함해 다시 붙여넣으십시오",
+  "attendanceRecords.grammar.label": "근태 기록 입력 방법",
   "attendanceRecords.grammar.hint": "9-18 · 9:30-18:15 · 22-6+ (다음 날 퇴근) · 9-12,13-18 (외출) · 7:52- (출근만) · = (소정대로) · x (결근) · o (외근) · 출장",
   "attendanceRecords.grid.label": "월간 근무표",
   "attendanceRecords.grid.number": "사번",

@@ -52,6 +52,7 @@ export const enAttendanceRecords: Partial<Record<keyof typeof koAttendanceRecord
   "attendanceRecords.paste.refusal.unsupportedRowType": "Only clock-in and clock-out row types can be combined · remove other row types or use import",
   "attendanceRecords.paste.refusal.clockOutOnly": "A clock-out without a clock-in cannot be combined · add the clock-in or remove that cell",
   "attendanceRecords.paste.refusal.noCells": "No attendance cells to add · paste at least one numbered day with a value",
+  "attendanceRecords.grammar.label": "Attendance entry format",
   "attendanceRecords.grammar.hint": "9-18 · 9:30-18:15 · 22-6+ (ends next day) · 9-12,13-18 (time away) · 7:52- (in only) · = (as scheduled) · x (absent) · o (outside work)",
   "attendanceRecords.grid.label": "Month timesheet",
   "attendanceRecords.grid.number": "No.",
