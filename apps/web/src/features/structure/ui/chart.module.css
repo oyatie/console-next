@@ -121,7 +121,6 @@
 
 /* Below the 1280 desktop the page stacks rather than scrolling sideways (the chart itself pans). */
 @media (max-width: 960px) {
-  .page .skeleton, .page .chartWrap { min-height: calc(var(--row-h) * 12); }
   .head { flex-wrap: wrap; }
   .phase { flex-basis: 100%; min-block-size: calc(2 * 1lh); white-space: normal; overflow: visible; }
   .body { flex-direction: column; }
