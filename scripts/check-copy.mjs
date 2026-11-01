@@ -22,6 +22,18 @@ const BASELINE = "scripts/copy-unused-baseline.json";
 const MATURITY_BASELINE = "scripts/copy-maturity-baseline.json";
 const escape = (s) => s.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
 
+/** Served lifecycle refusal ids are also message ids; a raw id is never an explanation. */
+export function checkRefusalCopy(sources, catalogs) {
+  const codes = new Set(sources.flatMap(({ text }) => [...text
+    .split(/#\[cfg\(test\)\]\s*mod tests\s*\{/)[0].replace(/^\s*\/\/.*$/gm, "")
+    .matchAll(/"(lifecycle\.refuse\.[a-z_]+)"/g)].map(match => match[1])));
+  return Object.entries(catalogs).flatMap(([locale, entries]) => {
+    const copy = new Map(entries.map(entry => [entry.id, entry.text]));
+    return [...codes].filter(code => !copy.get(code)?.trim() || copy.get(code)?.trim() === code)
+      .map(code => `${locale}: ${code}: served refusal has no catalog copy`);
+  });
+}
+
 // Governed writes share commit and dismiss copy across every feature, including page-sized forms.
 export function checkComposer(file, text) {
   if (/^packages\/i18n\/src\/catalogs\/ko\//.test(file)) return copyEntries(file, text).flatMap((entry) =>
@@ -221,7 +233,7 @@ export function copyEntries(file, text) {
   const visit = (node) => {
     if (ts.isPropertyAssignment(node) && ts.isStringLiteralLike(node.name) && ts.isStringLiteralLike(node.initializer)) {
       const value = node.initializer.text;
-      if (/(^|\/)(ko|en)\//.test(file) || HANGUL.test(value)) entries.push({ id: node.name.text, where: file, text: value });
+      if (/(^|\/)(ko|en)(\/|\.ts$)/.test(file) || HANGUL.test(value)) entries.push({ id: node.name.text, where: file, text: value });
       return;
     }
     if (ts.isStringLiteralLike(node) && HANGUL.test(node.text)) entries.push({ id: file, where: file, text: node.text });
@@ -283,6 +295,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
   const problems = [];
   const composerFindings = [];
+  const catalogs = Object.fromEntries(["ko", "en"].map(locale => [locale, walk(CATALOGS)
+    .filter(file => file.endsWith(".ts") && (file.includes(`/${locale}/`) || file.endsWith(`/${locale}.ts`)))
+    .flatMap(file => copyEntries(file, readFileSync(file, "utf8")))]));
+  const served = existsSync("backend") ? walk("backend").filter(file => file.includes("/src/") && file.endsWith(".rs") && !/tests?\.rs$/.test(file)) : [];
+  problems.push(...checkRefusalCopy(served.map(file => ({ file, text: readFileSync(file, "utf8") })), catalogs));
   // schema.d.ts is generated from the backend's OpenAPI doc comments (`npm run gen:api`), never rendered.
   for (const p of ["apps/web/src", "packages/api/src"].flatMap((d) => walk(d))) {
     if (!/\.(tsx?|css)$/.test(p) || isTest(p) || p === "packages/api/src/schema.d.ts") continue;
