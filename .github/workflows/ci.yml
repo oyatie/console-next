@@ -6,7 +6,7 @@
 # bundle budget, gitleaks over the whole history and the build, licence headers on added files, fixture ids
 # (checksum-valid RRNs, whole or Excel-stripped) and the npm licence gate.
 # backend also runs non-database Rust tests with nextest and reconciles JUnit with a fresh test inventory.
-# Database tests and real-backend browser E2E are not wired here yet; mocked browser states run in states.
+# Database tests remain INTEG's; solo journey evidence runs on dev pushes, mocked states on every run.
 name: ci
 on:
   push:
@@ -57,6 +57,10 @@ jobs:
       - run: npm run check
       - name: GHCR retention safety controls
         run: node --test scripts/ghcr-retention.test.mjs
+      - name: D7 producer regression controls
+        run: |
+          node --test scripts/negative-index.test.mjs
+          python3 scripts/d7_evidence_test.py
       - name: Spreadsheet paste browser regression
         run: npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table-paste.spec.ts
 
@@ -249,6 +253,7 @@ jobs:
           npx playwright install --with-deps --only-shell chromium
           npm run build
       - name: Release backend for Home probe
+        id: d7-build
         run: cargo build --release --locked -p console-app --features e2e-test-support
       - name: Served 2,000-person Home budget
         working-directory: .
@@ -287,6 +292,62 @@ jobs:
         with:
           name: backend-test-results
           path: backend/target/nextest/ci/
+          if-no-files-found: error
+
+      - name: Firefox for D7 solo journey
+        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.d7-build.outcome == 'success' }}
+        working-directory: .
+        run: npx playwright install --with-deps firefox
+      - name: Solo journey on Chromium and Firefox
+        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.d7-build.outcome == 'success' }}
+        working-directory: .
+        env:
+          E2E_SERVED: "1"
+          E2E_PREBUILT: "1"
+          E2E_REPORTER: line,json
+          CONSOLE_APP_BIN: backend/target/release/console-app
+        run: |
+          failed=0
+          for browser in 0 1; do
+            E2E_XBROWSER="$browser" PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/d7/playwright-$browser.json" \
+              npx playwright test e2e/first-run-solo.spec.ts --grep @first-run || failed=1
+          done
+          exit "$failed"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.d7-build.outcome == 'success' }}
+        with:
+          name: d7-playwright
+          path: .cache/d7/*.json
+          include-hidden-files: true
+          if-no-files-found: error
+
+  d7-evidence:
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
+    needs: [backend, states]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version, cache: npm}
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {pattern: states-report-*, merge-multiple: true, path: .cache/d7-input}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {name: d7-playwright, path: .cache/d7-input}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {name: backend-test-results, path: .cache/d7-nextest}
+      - run: python3 scripts/d7-evidence.py .cache/d7-evidence .cache/d7-nextest/junit.xml .cache/d7-input/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: d7-evidence
+          path: .cache/d7-evidence/*.json
+          include-hidden-files: true
           if-no-files-found: error
 
   supply-chain:
