@@ -61,8 +61,7 @@ for (const screen of accessScreens) for (const state of screen.states) for (cons
           }
         }
       }
-      // Roles reflow belongs to slice 3; this slice registers its existing states without changing that screen.
-      if (screen.key === "access-grants") await fits(page, `${screen.key}/${state}/${phase}/${width}`);
+      await fits(page, `${screen.key}/${state}/${phase}/${width}`);
       await expectAxe(page, `${screen.key}/${state}/${phase}/${width}`);
       expect(errors).toEqual([]);
       expect(fixture.unexpected).toEqual([]);

@@ -49,12 +49,6 @@
   },
   {
     "locale": "en",
-    "id": "access.grid.notYet",
-    "lane": "LMG-REFUSE",
-    "gap": "REFUSE"
-  },
-  {
-    "locale": "en",
     "id": "attendanceSchedule.preview.nightHint",
     "lane": "LMG-DEPTH-ATT",
     "gap": "DEPTH:att"

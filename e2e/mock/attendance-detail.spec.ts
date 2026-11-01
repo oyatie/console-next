@@ -14,11 +14,11 @@ test.beforeAll(() => loadCatalog("ko"));
 test.use({ trace: "off" });
 
 type Board = components["schemas"]["AttendanceDayBoard"];
-async function setup(page: Page, count: number) {
+async function setup(page: Page, count: number, closed = false) {
   const fixture = await mockScreen(page, screens[0], "populated");
   const rows: Board["groups"][number]["rows"] = Array.from({ length: count }, (_, n) => ({
     employee_id: id(n + 100), employee_number: `AT-${n + 1}`, name: `근태직원 ${n + 1}`, own: false,
-    month_state: { state: "OPEN" },
+    month_state: { state: closed ? "CLOSED" : "OPEN" },
     day: { date: "2026-10-06", plan: { kind: n < 3 ? "NO_SCHEDULE" : "REST_DAY", holiday_work: false },
       marks: n < 3 ? ["NO_SCHEDULE"] : [],
       recognition: { recorded: 0, recognised: 0, regular: 0, approved: 0, early_unrecognised: 0, late_unrecognised: 0, late_in: 0, early_out: 0, away: 0, approval_unused: 0 } },
@@ -199,5 +199,22 @@ test("attendance recovery copies both cells and sign-out purges them before anot
   await expect(first).toHaveValue("");
   await expect(second).toHaveValue("");
   expect(await storedDrafts()).toEqual([]);
+  expect(fixture.unexpected).toEqual([]);
+});
+
+
+test("closed-month detail keeps arrow-key focus on a read-only record", async ({ page }) => {
+  const fixture = await setup(page, 5, true);
+  await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
+  await page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }).click();
+  await page.keyboard.press("Tab");
+  for (let column = 0; column < 4; column++) await page.keyboard.press("ArrowRight");
+  const input = page.getByRole("textbox", { name: /^근태직원 1 입력/ });
+  await expect(input).toBeFocused();
+  await expect(input).toHaveAttribute("readonly");
+  await page.keyboard.type("9-18");
+  await expect(input).toHaveValue("");
+  await input.press("ArrowRight");
+  await expect(input).toBeFocused();
   expect(fixture.unexpected).toEqual([]);
 });

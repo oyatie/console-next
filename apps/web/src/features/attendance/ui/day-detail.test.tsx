@@ -32,7 +32,9 @@ beforeAll(async () => {
     function Fixture() {
       const store = useDrafts('day-detail-test');
       const [note, setNote] = useState(null);
-      return h('main', null, h('h1', null, 'Day detail'), h('p', {id: 'board-grammar'}, t('attendanceRecords.grammar.hint')), note && h('p', {role: 'status'}, note), h(DayDetail, {board: ${JSON.stringify(board)}, store, grammarHintId: 'board-grammar', onAssign() {}, onNote: setNote}));
+      const board = ${JSON.stringify(board)};
+      if (new URLSearchParams(location.search).has('closed')) board.groups[0].rows[0].month_state = {state: 'CLOSED'};
+      return h('main', null, h('h1', null, 'Day detail'), h('p', {id: 'board-grammar'}, t('attendanceRecords.grammar.hint')), note && h('p', {role: 'status'}, note), h(DayDetail, {board, store, grammarHintId: 'board-grammar', onAssign() {}, onNote: setNote}));
     }
     createRoot(document.getElementById('root')).render(h(Fixture));
   `);
@@ -121,4 +123,19 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   await visible(paper.locator('th[scope="rowgroup"]')).toHaveCount(2);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await visible(page.getByRole("textbox", { name: /^0-0 입력/ })).toHaveValue("+2");
+});
+
+
+test("arrow keys enter a closed-month input without allowing a draft", async () => {
+  await page.goto(`${page.url()}?closed`);
+  await page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }).click();
+  await page.keyboard.press("Tab");
+  for (let column = 0; column < 4; column++) await page.keyboard.press("ArrowRight");
+  const input = page.getByRole("textbox", { name: /^0-0 입력/ });
+  await visible(input).toBeFocused();
+  await visible(input).toHaveAttribute("readonly");
+  await page.keyboard.type("9-18");
+  await visible(input).toHaveValue("");
+  await input.press("ArrowRight");
+  await visible(input).toBeFocused();
 });

@@ -65,7 +65,7 @@ test("BL-010 grant apply loses its response, preserves the receipt and is record
   await firstSignIn(browser, await inviteAccount(admin, "김원장", "none"));
   await go(admin, "/access/roles/new");
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill("원장 조회");
-  await admin.getByRole("button", { name: "인사기본 조회", exact: true }).click();
+  await admin.getByRole("checkbox", { name: "인사기본 조회", exact: true }).click();
   await admin.getByRole("button", { name: "역할 추가", exact: true }).click();
   await expect(admin.getByRole("row", { name: /원장 조회/ })).toBeVisible();
   await go(admin, "/access/grants");

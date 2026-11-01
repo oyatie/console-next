@@ -10,7 +10,12 @@
   var CAP = 10; // per page load: a render loop must not flood our own origin
   var BOOT_MS = 15000;
   var sent = 0;
+  var leaving = false;
   var seen = typeof WeakSet === "function" ? new WeakSet() : null;
+  // Use the chunk guard's lifecycle: Firefox aborts imports before pagehide; bfcache restores resume reporting.
+  window.addEventListener("beforeunload", function () { leaving = true; });
+  window.addEventListener("pagehide", function () { leaving = true; });
+  window.addEventListener("pageshow", function () { leaving = false; });
 
   // The running build: the entry chunk's hash (/assets/index-<hash>.js), "dev" under Vite's dev server. Read late:
   // the entry tag follows this script.
@@ -30,7 +35,7 @@
     return parts.join("/").slice(0, 64) || "/";
   }
   function report(kind, err) {
-    if (sent >= CAP) return;
+    if (leaving || sent >= CAP) return;
     if (err && (typeof err === "object" || typeof err === "function") && seen) {
       if (seen.has(err)) return; // vite:preloadError rethrows the same error as an unhandled rejection
       seen.add(err);

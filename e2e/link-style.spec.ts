@@ -129,7 +129,7 @@ test("no anchor on any route renders the browser's default link style", { tag: [
   const change = new URL(admin.url()).pathname;
   await go(admin, "/access/roles/new");
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill("링크 조회");
-  await admin.getByRole("button", { name: "인사기본 조회" }).click();
+  await admin.getByRole("checkbox", { name: "인사기본 조회" }).click();
   await admin.getByRole("button", { name: "역할 추가" }).click();
   await expect(admin).toHaveURL(/\/access\/roles$/);
 

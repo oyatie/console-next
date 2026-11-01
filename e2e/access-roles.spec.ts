@@ -25,18 +25,18 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   // A role from the grid: view on HR records and the organization. Nothing is preselected.
   await admin.getByRole("link", { name: "역할 추가" }).first().click();
   await routeReady(admin);
-  await expect(admin.getByRole("button", { name: "인사기본 조회", pressed: true })).toHaveCount(0);
+  await expect(admin.getByRole("checkbox", { name: "인사기본 조회", checked: true })).toHaveCount(0);
   await admin.getByRole("button", { name: "역할 추가" }).click();
   await expect(admin.getByText("역할 이름을 입력하십시오.")).toBeVisible();
   await expect(admin.getByText("할 수 있는 일을 하나 이상 선택하십시오.")).toBeVisible();
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill("인사 조회");
-  await admin.getByRole("button", { name: "인사기본 조회" }).click();
-  await admin.getByRole("button", { name: "조직 조회" }).click();
+  await admin.getByRole("checkbox", { name: "인사기본 조회" }).click();
+  await admin.getByRole("checkbox", { name: "조직 조회" }).click();
   // 등록·수정 lights 조회 as included; pressing the included cell clears the row.
-  await admin.getByRole("button", { name: "근태·휴가 등록·수정" }).click();
-  await expect(admin.getByRole("button", { name: /^근태·휴가 조회 · 자동 포함/, pressed: true })).toBeVisible();
-  await admin.getByRole("button", { name: /^근태·휴가 조회 · 자동 포함/ }).click();
-  await expect(admin.getByRole("button", { name: "근태·휴가 등록·수정", pressed: true })).toHaveCount(0);
+  await admin.getByRole("checkbox", { name: "근태·휴가 등록·수정" }).click();
+  await expect(admin.getByRole("checkbox", { name: /^근태·휴가 조회 · 자동 포함/, checked: true })).toBeVisible();
+  await admin.getByRole("checkbox", { name: /^근태·휴가 조회 · 자동 포함/ }).click();
+  await expect(admin.getByRole("checkbox", { name: "근태·휴가 등록·수정", checked: true })).toHaveCount(0);
   const preview = admin.getByRole("complementary", { name: "이 역할을 가진 사람은" });
   await expect(preview).toContainText("범위 안 직원의 인사기본: 조회할 수 있습니다.");
   await expect(preview).toContainText("자기 자신의 인사 기록 변경");
@@ -50,7 +50,7 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   // Duplicate, then delete the copy (no holders: a reason, nothing revoked).
   await admin.getByRole("link", { name: "인사 조회 역할 복제" }).click();
   await expect(admin.getByRole("textbox", { name: /^역할 이름/ })).toHaveValue("인사 조회 사본");
-  await expect(admin.getByRole("button", { name: "인사기본 조회", pressed: true })).toBeVisible();
+  await expect(admin.getByRole("checkbox", { name: "인사기본 조회", checked: true })).toBeVisible();
   await admin.getByRole("button", { name: "역할 추가" }).click();
   await admin.getByRole("button", { name: "인사 조회 사본 역할 삭제" }).click();
   const del = admin.getByRole("dialog", { name: "「인사 조회 사본」 역할 삭제" });

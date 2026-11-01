@@ -5,7 +5,7 @@ import { chooseRadio, go, stepUp } from "../flows";
 export async function grantSetupRole(admin: Page, person: string, role: string, prepared: boolean) {
   await go(admin, "/access/roles/new");
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill(role);
-  await admin.getByRole("button", { name: "인사기본 등록·수정" }).click();
+  await admin.getByRole("checkbox", { name: "인사기본 등록·수정" }).click();
   await admin.getByRole("button", { name: "역할 추가" }).click();
   await expect(admin).toHaveURL(/\/access\/roles$/);
   await go(admin, "/access/grants");

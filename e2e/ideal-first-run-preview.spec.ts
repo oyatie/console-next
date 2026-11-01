@@ -54,7 +54,7 @@ test("BL-014: setup people have departments, stale preview re-arms, and post-liv
   const other = await admin.context().newPage();
   await other.goto("/access/roles/new");
   await other.getByRole("textbox", { name: /^역할 이름/ }).fill("동시 등록 역할");
-  await other.getByRole("button", { name: "인사기본 조회" }).click();
+  await other.getByRole("checkbox", { name: "인사기본 조회" }).click();
   await other.getByRole("button", { name: "역할 추가" }).click();
   await expect(other).toHaveURL(/\/access\/roles$/);
   const refusal = admin.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/onboarding/go-live" && r.request().method() === "POST");

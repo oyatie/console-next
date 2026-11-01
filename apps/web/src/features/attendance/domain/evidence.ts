@@ -1,5 +1,7 @@
 // The evidence a write records: what it was taken from, and a named supervisor for a supervisor's confirmation.
 
+/** AttendanceEvidence.note maxLength in the OpenAPI contract. */
+export const NOTE_MAX_LENGTH = 500;
 export const EVIDENCE = ["PAPER_SHEET", "DEVICE_FILE", "SUPERVISOR_CONFIRM", "EMPLOYEE_STATEMENT", "OTHER"] as const;
 type Kind = (typeof EVIDENCE)[number];
 /** The wire shape (AttendanceEvidence). */
