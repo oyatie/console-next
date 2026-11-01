@@ -12,6 +12,12 @@ use uuid::Uuid;
 #[path = "../../rest/tests/fixtures/pay_view.rs"]
 mod pay_access;
 
+#[path = "support/sensitive_group_commands.rs"]
+mod sensitive_group_commands;
+
+#[path = "support/sensitive_groups.rs"]
+mod sensitive_groups;
+
 async fn entity(pool: &PgPool, org: OrgId) -> Uuid {
     // rls-arming: ok owner creates prerequisites; all pay-group calls use console_rt.
     sqlx::query_scalar("INSERT INTO legal_entities(org_id,id,needs_confirmation,created_change_mode) VALUES ($1,$2,true,'MIGRATION') RETURNING id")
