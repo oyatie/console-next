@@ -12,6 +12,16 @@ required:
 - created_by_name
 - created_at
 properties:
+  action_refusals:
+    type: object
+    additionalProperties: false
+    description: >-
+      Always present on GET lifecycle-events items. Cedar decisions for opening correction/rescission;
+      a present verb carries its server refusal code, an absent verb is permitted.
+      Payload, concurrency and period guards are rechecked by the command.
+    properties:
+      correct: {type: string}
+      rescind: {type: string}
   actor_kind: {oneOf: [{$ref: '#/components/schemas/ActorKind'}, {type: 'null'}]}
   command_id: {type: [string, 'null'], format: uuid}
   id:

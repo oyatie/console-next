@@ -10,6 +10,8 @@ mod cross_entity;
 mod filing_review;
 mod group;
 mod initial_placement;
+#[path = "../support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 mod placement_tree;
 mod previous_writer;
 mod settlement;
@@ -75,6 +77,7 @@ async fn fixture(pool: PgPool, live: bool) -> Fixture {
         let sql = format!("UPDATE tenant_phase SET phase = 'OPERATING' WHERE org_id = '{org}'");
         seed(&pool, org, sql).await;
     }
+    lifecycle_grant::grant(&pool, org, user).await;
     let employee: Uuid = sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, position, source_filename, source_sheet, \
          source_row, source_key, hire_date) \

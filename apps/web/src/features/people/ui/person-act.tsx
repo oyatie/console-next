@@ -74,21 +74,21 @@ function resolve(d: Detail, act: string, events: LifecycleEvent[] | undefined): 
     return { kind: "unavailable", code, why: reason ?? (isMessageId(key) ? t(key) : t("person.act.unavailable.state")) };
   };
   if (verb && id && !x) return unavailable(undefined, t("person.act.unavailable.not_found"));
+  const invalidState = () => unavailable(undefined, t("person.act.unavailable.invalid_transition"));
   const refusal = verb === "correct" || verb === "rescind" ? x?.action_refusals?.[verb] : undefined;
   if (refusal) return unavailable(refusal);
-  if (verb === "cancel") return x && cancellable(x) ? { kind: "cancel", x } : unavailable();
-  if (verb === "rescind") return x && voidable(x, events) ? { kind: "rescind", x } : unavailable();
+  if (verb === "cancel") return x && cancellable(x) ? { kind: "cancel", x } : invalidState();
+  if (verb === "rescind") return x && voidable(x) ? { kind: "rescind", x } : unavailable();
   if (verb === "correct") {
-    // A group transfer is rescinded and recorded again, never corrected in place.
-    if (!x || !correctable(x, events)) return unavailable();
+    if (!x || !correctable(x)) return unavailable();
     const signoffs = listed?.required_signoffs ?? CORRECTION_SIGNOFFS[x.event_type] ?? BASE_SIGNOFFS;
     return { kind: "form", offer: { event_type: type, required_signoffs: signoffs } as Offer, seed: { from: x, mode: "correct" } };
   }
   if (!listed || !state?.enabled) return unavailable(undefined, why);
   const offer = { ...listed, event_type: type, min: state.min, max: state.max, after: state.after, before: state.before } as Offer;
   if (verb === null || act === "APPOINT:job" || act === "TRANSFER:relocate") return { kind: "form", offer };
-  if (verb === "edit") return x && cancellable(x) ? { kind: "form", offer: { ...listed, event_type: type } as Offer, seed: { from: x, mode: "edit" } } : unavailable();
-  return x && x.state !== "APPLIED" ? { kind: "form", offer, seed: { from: x, mode: "again" } } : unavailable();
+  if (verb === "edit") return x && cancellable(x) ? { kind: "form", offer: { ...listed, event_type: type } as Offer, seed: { from: x, mode: "edit" } } : invalidState();
+  return x && x.state !== "APPLIED" ? { kind: "form", offer, seed: { from: x, mode: "again" } } : invalidState();
 }
 
 /**

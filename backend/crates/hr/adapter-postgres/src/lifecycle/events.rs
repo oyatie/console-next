@@ -73,7 +73,7 @@ impl HrService {
                     let history = DirectoryAccess::LifecycleHistory;
                     let event = access_event(&reader, history, &[employee_id], me, json!({}))?;
 
-                    let items = sqlx::query(lifecycle_event_select!(
+                    let mut items = sqlx::query(lifecycle_event_select!(
                         "WHERE l.org_id = $1 AND l.employee_id = $2 \
                  AND ($3::timestamptz IS NULL OR (l.created_at, l.id) < ($3, $4)) \
                  ORDER BY l.created_at DESC, l.id DESC LIMIT $5"
@@ -89,6 +89,7 @@ impl HrService {
                     .into_iter()
                     .map(employee_lifecycle_event_from_row)
                     .collect::<Result<Vec<_>, HrError>>()?;
+                    super::action_refusals::project(tx, &reader, employee_id, &mut items).await?;
                     Ok(((head_version, items, manager), vec![event]))
                 })
             })

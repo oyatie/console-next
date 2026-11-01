@@ -59,7 +59,7 @@ impl HrCaseFacts {
         self.permits(facts, org, employee, Feature::EmployeeDirectoryRead)
     }
 
-    pub(super) fn permits(
+    pub(crate) fn permits(
         &self,
         facts: &DecisionFacts,
         org: OrgId,

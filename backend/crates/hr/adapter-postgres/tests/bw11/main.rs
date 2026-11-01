@@ -4,6 +4,8 @@
 //! floor; `void` covers correction and rescission.
 
 mod hooks;
+#[path = "../support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 #[path = "../../../../../test-support/person_fixtures.rs"]
 mod person_fixtures;
 mod solo_correction;
@@ -50,6 +52,7 @@ pub async fn fixture(pool: PgPool) -> Fixture {
     .execute(&pool)
     .await
     .unwrap();
+    lifecycle_grant::grant(&pool, *org.as_uuid(), *user.as_uuid()).await;
     let employee: Uuid = sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, position, source_filename, source_sheet, \
          source_row, source_key, hire_date) \

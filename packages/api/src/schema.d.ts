@@ -19820,6 +19820,11 @@ export interface components {
             next_cursor?: string | null;
         };
         EmployeeLifecycleEvent: {
+            /** @description Always present on GET lifecycle-events items. Cedar decisions for opening correction/rescission; a present verb carries its server refusal code, an absent verb is permitted. Payload, concurrency and period guards are rechecked by the command. */
+            action_refusals?: {
+                correct?: string;
+                rescind?: string;
+            };
             actor_kind?: components["schemas"]["ActorKind"] | null;
             /** Format: uuid */
             command_id?: string | null;

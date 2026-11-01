@@ -82,6 +82,8 @@ pub(super) async fn load_voidable(
     org: Uuid,
     employee: Uuid,
     event_id: Uuid,
+    actor: UserId,
+    holds_permission: bool,
 ) -> Result<Original, HrError> {
     let row = sqlx::query(
         "SELECT l.event_type, l.state, l.effective_date, l.expected_return_date, \
@@ -108,35 +110,36 @@ pub(super) async fn load_voidable(
     let state: String = row.try_get("state")?;
     let voided: bool = row.try_get("voided")?;
     let latest: Option<Uuid> = row.try_get("latest")?;
-    if state != "APPLIED" {
-        return Err(refusal(
-            "lifecycle_void_not_applied",
-            "only an APPLIED event can be corrected or rescinded",
-        ));
-    }
-    if matches!(kind.as_str(), "TERMINATE" | "OFFBOARD" | "EXIT_REVERSAL") {
-        return Err(refusal(
-            "lifecycle_void_exit_owned",
-            "an exit is reversed by rejecting its exit case with a reason",
-        ));
-    }
-    if matches!(kind.as_str(), "ONBOARD" | "REHIRE" | "RESCIND") {
-        return Err(refusal(
-            "lifecycle_void_unsupported",
-            "this event cannot be corrected or rescinded",
-        ));
-    }
-    if voided {
-        return Err(refusal(
-            "lifecycle_event_voided",
-            "this event was already corrected or rescinded",
-        ));
-    }
-    if latest != Some(event_id) {
-        return Err(refusal(
-            "lifecycle_void_not_latest",
-            "only the employee's latest change can be corrected or rescinded; void the later ones first",
-        ));
+    use console_platform_authz::cedar_pbac::actions::lifecycle_event::{self, EventFacts};
+    // The command gate already checked permission; these are the locked domain facts.
+    let facts = EventFacts {
+        holds_permission,
+        state: &state,
+        kind: &kind,
+        voided,
+        latest: latest == Some(event_id),
+    };
+    if let Some(code) = lifecycle_event::refusal(
+        "lifecycle_event_rescind",
+        &actor.to_string(),
+        &org.to_string(),
+        &org.to_string(),
+        &facts,
+    )
+    .map_err(HrError::internal)?
+    {
+        let message = match code {
+            "lifecycle_void_not_applied" => "only an APPLIED event can be corrected or rescinded",
+            "lifecycle_void_exit_owned" => {
+                "an exit is reversed by rejecting its exit case with a reason"
+            }
+            "lifecycle_void_unsupported" => "this event cannot be corrected or rescinded",
+            "lifecycle_event_voided" => "this event was already corrected or rescinded",
+            _ => {
+                "only the employee's latest change can be corrected or rescinded; void the later ones first"
+            }
+        };
+        return Err(refusal(code, message));
     }
     Ok(Original {
         id: event_id,
@@ -256,14 +259,14 @@ pub(super) async fn restore_head(
 pub(super) async fn rescind_tx(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     org: OrgId,
-    actor: UserId,
+    (actor, holds_permission): (UserId, bool),
     employee: Uuid,
     event_id: Uuid,
     request: &RescindLifecycleEventRequest,
     batch_id: Option<Uuid>,
 ) -> Result<RescindOutcome, HrError> {
     let org_uuid = *org.as_uuid();
-    let original = load_voidable(tx, org_uuid, employee, event_id).await?;
+    let original = load_voidable(tx, org_uuid, employee, event_id, actor, holds_permission).await?;
     let cascades = scheduled_cascades(tx, org_uuid, employee).await?;
     if !request.confirm_cascades {
         return Ok(RescindOutcome {

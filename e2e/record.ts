@@ -44,5 +44,5 @@ export const expectNoHrActs = (page: Page) => expect(cardVerbs(page).getByRole("
 /** Switches the record back to its 인사카드 tab (sections, the exit card). */
 export const openCard = (page: Page) => page.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: "인사카드", exact: true }).click();
 
-/** Switches the record to its 발령 이력 tab, where the action history (region 인사 이력) lives. */
-export const openHistory = (page: Page) => page.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: /^발령 이력/ }).click();
+/** Switches the record to its 인사 이력 tab, where the action history (region 인사 이력) lives. */
+export const openHistory = (page: Page) => page.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: /^인사 이력/ }).click();

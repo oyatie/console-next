@@ -61,3 +61,16 @@ test("an older event response explains unavailability without making up a server
   expect(markup).toContain(t("person.act.unavailable.state"));
   expect(markup).not.toContain("<code");
 });
+
+
+test.each(["again", "cancel", "edit"])("%s restores the specific reason for an applied record", verb => {
+  const markup = renderToStaticMarkup(<ActHost d={detail} act={`${verb}:event`} events={{ data: { items: [event], head_version: 1 }, isFetching: false } as unknown as Props["events"]} onClose={() => {}} onOpen={() => {}} onRecorded={() => {}} />);
+  expect(markup).toContain(t("person.act.unavailable.invalid_transition"));
+  expect(markup).not.toContain("<code");
+});
+
+test("the personnel history glossary covers tabs, jumps and print", () => {
+  expect(t("empCard.tab.events")).toBe("인사 이력");
+  expect(t("peopleJump.do.events")).toBe("인사 이력 보기");
+  expect(t("empDoc.print.part.events")).toBe("인사 이력");
+});

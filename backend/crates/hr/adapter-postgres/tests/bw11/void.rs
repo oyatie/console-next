@@ -68,6 +68,8 @@ async fn a_rescission_previews_then_restores_the_head_once(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_correction_replaces_the_event_on_its_date(pool: PgPool) {
     let f = fixture(pool).await;
+    sqlx::query("INSERT INTO tenant_setting_overrides(org_id,key,value,set_by,reason_code) VALUES ($1,'authz.sole_holder.mode','\"refuse\"',$2,'TEST')")
+        .bind(f.principal.org_id.as_uuid()).bind(f.principal.user_id.as_uuid()).execute(&f.owner).await.unwrap();
     let leave = |kind: &str, extra: Value| {
         let mut body = json!({"event_type": "LEAVE_OF_ABSENCE", "leave_type": kind,
             "effective_date": "2026-09-01", "comment": "BW-11",

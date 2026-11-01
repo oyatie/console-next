@@ -13,7 +13,7 @@ type Employee = components["schemas"]["Employee"];
  * The verbs a history row offers (BW-11): a reservation is changed or withdrawn, a record that failed to apply is recorded
  * again, the latest change in force is corrected or rescinded. The ribbon and the card's spine both read them here.
  */
-export function rowVerbs(x: LifecycleEvent, { employee, all, offered, onAct }: { employee: Employee; all: readonly LifecycleEvent[]; offered: (type: string) => boolean; onAct: (act: string) => void }) {
+export function rowVerbs(x: LifecycleEvent, { employee, offered, onAct }: { employee: Employee; all: readonly LifecycleEvent[]; offered: (type: string) => boolean; onAct: (act: string) => void }) {
   const action = label(LIFECYCLE_EVENT, x.event_type);
   return cancellable(x) ? (
     <>
@@ -23,9 +23,9 @@ export function rowVerbs(x: LifecycleEvent, { employee, all, offered, onAct }: {
   )
     : x.state === "SCHEDULED" ? <Button variant="ghost" onClick={() => focusSoon("exit")}>{t("person.history.exitCancel")}</Button>
     : x.state === "APPLY_FAILED" && employee.failed_event?.id === x.id && offered(x.event_type) ? <Button variant="ghost" onClick={() => onAct(`again:${x.id}`)}>{t("person.next.retry")}</Button>
-    : voidable(x, all) ? (
+    : voidable(x) ? (
       <>
-        {correctable(x, all) ? <Button variant="ghost" onClick={() => onAct(`correct:${x.id}`)}>{t("person.history.correct")}</Button>
+        {correctable(x) ? <Button variant="ghost" onClick={() => onAct(`correct:${x.id}`)}>{t("person.history.correct")}</Button>
           : <DisabledReason layout="inline" control={(p) => <Button variant="ghost" {...p}>{t("person.history.correct")}</Button>} reason={t("lifecycle.correct.groupTransfer")} />}
         <Button variant="ghost-danger" onClick={() => onAct(`rescind:${x.id}`)}>{t("person.history.rescind")}</Button>
       </>

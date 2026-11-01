@@ -88,6 +88,7 @@ pub fn employee_lifecycle_event_from_row(
     let signoffs = serde_json::from_value::<EmployeeLifecycleSignoffs>(signoffs)
         .map_err(|err| HrError::validation(format!("invalid lifecycle signoffs: {err}")))?;
     Ok(EmployeeLifecycleEventResponse {
+        action_refusals: None,
         id: row.try_get("id")?,
         employee_id: row.try_get("employee_id")?,
         event_type: row.try_get("event_type")?,

@@ -81,7 +81,7 @@ export const koEmpDoc = {
   "empDoc.print.part.personal": "인적사항",
   "empDoc.print.part.job": "재직 · 배치",
   "empDoc.print.part.contract": "계약",
-  "empDoc.print.part.events": "발령 이력",
+  "empDoc.print.part.events": "인사 이력",
   "empDoc.print.part.records": "이력 (경력·학력·자격·병역·교육)",
   "empDoc.print.restricted": "제한 항목(장애·보훈·징계)은 인쇄할 수 없습니다 · 필요하면 목적을 선택해 그 구획을 따로 엽니다",
   "empDoc.print.preview": "인쇄 미리 보기",

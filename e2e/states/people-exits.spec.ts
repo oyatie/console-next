@@ -114,6 +114,7 @@ test("P1-3 header and countdown follow the tenant deadline window @ui-state", as
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`close refusal opens blocking item ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[1], "populated");
     await mockExitCase(page, "reported");
     const problem: import("@console/api").components["schemas"]["LifecycleProblem"] = {
@@ -121,7 +122,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     };
     await page.route(url => url.pathname === `/api/v1/lifecycle-cases/${exitTrail().id}/close`, route => route.fulfill({ status: 409, contentType: "application/problem+json", json: problem }));
     await page.goto(exitCaseScreen.path);
-    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await page.getByRole("button", { name: t("lifecycle.trail.close"), exact: true }).click();
     const refusal = page.getByRole("alert");
     await expect(refusal).toContainText(t("lifecycle.refuse.close_blocked"));
