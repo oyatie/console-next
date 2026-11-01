@@ -8,13 +8,15 @@ import sys
 from datetime import datetime, timedelta, timezone
 import xml.etree.ElementTree as ET
 
+MAX_AGE_DAYS = 7
+
 
 def fresh(value):
     if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|\+00:00)", value):
         raise ValueError("expected UTC RFC 3339 report timestamp")
     age = datetime.now(timezone.utc) - datetime.fromisoformat(value.replace("Z", "+00:00"))
-    if not timedelta(0) <= age <= timedelta(days=7):
-        raise ValueError("stale or future report refused (maximum age: 7 days)")
+    if not timedelta(0) <= age <= timedelta(days=MAX_AGE_DAYS):
+        raise ValueError(f"stale or future report refused (maximum age: {MAX_AGE_DAYS} days)")
     return value
 
 

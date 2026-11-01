@@ -61,6 +61,8 @@ jobs:
         run: |
           node --test scripts/negative-index.test.mjs
           python3 scripts/d7_evidence_test.py
+          node --test scripts/d10-census.test.mjs
+          python3 scripts/d10_evidence_test.py
       - name: Spreadsheet paste browser regression
         run: npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table-paste.spec.ts
 
@@ -347,6 +349,15 @@ jobs:
         with:
           name: d7-evidence
           path: .cache/d7-evidence/*.json
+          include-hidden-files: true
+          if-no-files-found: error
+
+      - run: node scripts/d10-census.mjs > .cache/d10-census.json
+      - run: python3 scripts/d10-evidence.py .cache/d10-evidence .cache/d10-census.json .cache/d7-evidence .cache/d7-input/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: d10-evidence
+          path: .cache/d10-evidence/*.json
           include-hidden-files: true
           if-no-files-found: error
 

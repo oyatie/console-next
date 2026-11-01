@@ -86,6 +86,12 @@ class EvidenceTest(unittest.TestCase):
                 producer.fresh(value)
         self.assertEqual(producer.fresh(self.time), self.time)
 
+    def test_age_limit_and_diagnostic_read_one_constant(self):
+        from unittest.mock import patch
+        with patch.object(producer, "MAX_AGE_DAYS", 1):
+            with self.assertRaisesRegex(ValueError, "1 days"):
+                producer.fresh((self.now - timedelta(days=2)).isoformat())
+
     def test_cli_uses_report_time_commit_and_rejects_stale_inputs_before_writing(self):
         import subprocess
         import sys
