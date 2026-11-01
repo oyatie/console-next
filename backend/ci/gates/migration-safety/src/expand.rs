@@ -91,7 +91,7 @@ impl FreshObjects {
 }
 
 pub(super) fn column(statement: &str, words: &[&str]) -> bool {
-    let ["add", "column", _, rest @ ..] = words else {
+    let ["add", "column", column, ..] = words else {
         return false;
     };
     let mut depth = 0;
@@ -103,6 +103,39 @@ pub(super) fn column(statement: &str, words: &[&str]) -> bool {
             _ => {}
         }
     }
+    if let Some((prefix, check)) = statement.split_once(" check (") {
+        // An explicit NULL arm admits pre-expand rows and N-1 inserts unchanged.
+        let guard = format!("{column} is null or (");
+        if !check.starts_with(&guard)
+            || !check.ends_with("))")
+            || words.contains(&"default")
+            || words.windows(2).any(|pair| pair == ["not", "null"])
+        {
+            return false;
+        }
+        let mut depth = 1;
+        for (index, ch) in check.char_indices() {
+            match ch {
+                '(' => depth += 1,
+                ')' => depth -= 1,
+                _ => {}
+            }
+            if depth == 0 && index + 1 != check.len() {
+                return false;
+            }
+        }
+        let tokens = crate::tokenize_table_reference_sql(prefix);
+        let words: Vec<_> = tokens.iter().map(String::as_str).collect();
+        return crate::table_name_after_alter_table(&tokens, 2)
+            .is_some_and(|(_, start)| column_without_check(prefix, &words[start..]));
+    }
+    column_without_check(statement, words)
+}
+
+fn column_without_check(statement: &str, words: &[&str]) -> bool {
+    let ["add", "column", _, rest @ ..] = words else {
+        return false;
+    };
     let end = rest
         .iter()
         .position(|word| ["null", "not", "default"].contains(word))

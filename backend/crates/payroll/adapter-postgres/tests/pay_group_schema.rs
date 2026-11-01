@@ -24,7 +24,7 @@ async fn entity(pool: &PgPool, org: OrgId) -> Uuid {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn pay_group_rules_have_no_defaults_and_reject_missing_or_blank_values(pool: PgPool) {
+async fn pay_group_rules_have_no_defaults_and_only_expand_choices_allow_null(pool: PgPool) {
     let columns: Vec<(String, String, Option<String>)> = sqlx::query_as(
         "SELECT column_name,is_nullable,column_default FROM information_schema.columns
          WHERE table_name='pay_groups' AND column_name IN
@@ -35,11 +35,13 @@ async fn pay_group_rules_have_no_defaults_and_reject_missing_or_blank_values(poo
         8,
         "all consequential pay-group facts must exist"
     );
-    assert!(
-        columns
-            .iter()
-            .all(|(_, nullable, default)| nullable == "NO" && default.is_none())
-    );
+    assert!(columns.iter().all(|(name, nullable, default)| nullable
+        == if ["sensitive", "pay_basis_allowed"].contains(&name.as_str()) {
+            "YES"
+        } else {
+            "NO"
+        }
+        && default.is_none()));
     let org = OrgId::from_uuid(Uuid::new_v4());
     seed_org_and_super_admin(&pool, *org.as_uuid(), "pay-group-schema").await;
     let entity = entity(&pool, org).await;
@@ -65,7 +67,12 @@ async fn pay_group_rules_have_no_defaults_and_reject_missing_or_blank_values(poo
                 "INSERT INTO pay_groups SELECT (jsonb_populate_record(NULL::pay_groups,$1)).*",
             )
             .bind(values);
-            let error = query.execute(tx.as_mut()).await.unwrap_err();
+            let result = query.execute(tx.as_mut()).await;
+            if value.is_none() && ["sensitive", "pay_basis_allowed"].contains(&column) {
+                result.unwrap();
+                continue;
+            }
+            let error = result.unwrap_err();
             assert_eq!(
                 error.as_database_error().unwrap().code().as_deref(),
                 Some(if value.is_none() {

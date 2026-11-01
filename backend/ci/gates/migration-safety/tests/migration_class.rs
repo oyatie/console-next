@@ -169,7 +169,7 @@ fn summary_reports_only_committed_additions_with_json_escaping() -> TestResult {
     )?;
     fixture.write(
         NEW_VERSION + 1,
-        "-- migration-class: contract — remove \"old\" \\ data\nDROP TABLE sample;",
+        "-- migration-class: contract — remove \"old\" \\ data\n-- contract-of: 0001\nDROP TABLE sample;",
     )?;
     fixture.commit()?;
     fixture.write(NEW_VERSION + 2, "THIS IS NOT SQL;")?;

@@ -284,7 +284,7 @@ fn separate_contract_reason_header_is_supported() -> TestResult {
     let fixture = Fixture::new()?;
     fixture.write(
         NEW_VERSION,
-        "-- migration-class: contract\n-- migration-reason: retire old data\nDROP TABLE sample;",
+        "-- migration-class: contract\n-- migration-reason: retire old data\n-- contract-of: 0001\nDROP TABLE sample;",
     )?;
     assert!(check_workspace(&fixture.0)?.passed());
     Ok(())

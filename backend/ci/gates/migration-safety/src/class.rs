@@ -2,6 +2,7 @@
 //! Expand is a minimum syntactic class, not proof of N-1 behavioural compatibility.
 //! Headers precede SQL: `-- migration-class: expand` or `contract — <reason>`.
 //! Contract also accepts a separate `-- migration-reason: <reason>` header.
+//! Non-additive ALTER/DROP also needs a leading `-- contract-of: <expand version>`.
 //! `-- migration-backfill: <reason>` exempts data writes only, never schema changes.
 use crate::{
     GateResult, Violation, ViolationKind, config, order, sanitize_sql, tokenize_table_reference_sql,
@@ -142,13 +143,26 @@ fn classify(content: &str) -> Result<(&str, &str), (ViolationKind, String)> {
             format!("{error}; {rehearsal}"),
         )
     })?;
-    if class == "expand" && minimum(content) == "contract" {
+    let inferred = minimum(content);
+    if class == "expand" && inferred == "contract" {
         return Err((
             ViolationKind::MigrationClassMismatch,
             format!(
                 "declared expand is weaker than inferred contract (destructive, unknown or unparsable SQL); declare contract with a reason; {rehearsal}"
             ),
         ));
+    }
+    if inferred == "contract"
+        && sanitize_sql(content, true)
+            .split(';')
+            .any(|statement| matches!(statement.split_whitespace().next(), Some("alter" | "drop")))
+    {
+        let markers = header(content, "-- contract-of:");
+        if !matches!(markers.as_slice(), [version] if matches!(version.len(), 4 | 14..=17) && version.bytes().all(|ch| ch.is_ascii_digit()))
+        {
+            return Err((ViolationKind::MigrationClassHeader,
+                "contract DDL requires exactly one leading -- contract-of: <expand version>; split expand now from contract in a later release".into()));
+        }
     }
     Ok((class, reason))
 }
