@@ -24,7 +24,7 @@ beforeAll(async () => {
   server = await pickerTestServer("day-detail", `
     import { createElement as h, useState } from 'react';
     import { createRoot } from 'react-dom/client';
-    import { loadCatalog } from '@console/i18n';
+    import { loadCatalog, t } from '@console/i18n';
     import { DayDetail } from '/apps/web/src/features/attendance/ui/day-detail.tsx';
     import { useDrafts } from '/apps/web/src/features/attendance/ui/use-drafts.ts';
     import '/apps/web/src/app.css';
@@ -32,7 +32,7 @@ beforeAll(async () => {
     function Fixture() {
       const store = useDrafts('day-detail-test');
       const [note, setNote] = useState(null);
-      return h('main', null, h('h1', null, 'Day detail'), note && h('p', {role: 'status'}, note), h(DayDetail, {board: ${JSON.stringify(board)}, store, onAssign() {}, onNote: setNote}));
+      return h('main', null, h('h1', null, 'Day detail'), h('p', {id: 'board-grammar'}, t('attendanceRecords.grammar.hint')), note && h('p', {role: 'status'}, note), h(DayDetail, {board: ${JSON.stringify(board)}, store, grammarHintId: 'board-grammar', onAssign() {}, onNote: setNote}));
     }
     createRoot(document.getElementById('root')).render(h(Fixture));
   `);
@@ -68,12 +68,11 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
     await page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }).click();
     await page.keyboard.press("Tab");
     await visible(grids.first().getByRole("row").nth(1)).toBeFocused();
-    for (const column of ["number", "name", "plan", "input"]) {
+    for (const column of ["number", "name", "plan"]) {
       await page.keyboard.press("ArrowRight");
       await visible(grids.first().locator(`[data-key="row:0-0:${column}"]`)).toBeFocused();
     }
-    await visible(grids.first().getByRole("gridcell").filter({ has: input })).toBeFocused();
-    await page.keyboard.press("Tab");
+    await page.keyboard.press("ArrowRight");
   }
   await visible(input).toBeFocused();
   const original = await input.evaluateHandle(el => {
@@ -84,7 +83,7 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   await input.fill("+2");
   await visible(input).toBeFocused();
   await visible(input).toHaveAttribute("aria-invalid", "true");
-  await visible(input).toHaveAccessibleDescription(t("attendanceRecords.refusal.overtime_typed"));
+  await visible(input).toHaveAccessibleDescription(`${t("attendanceRecords.grammar.hint")} ${t("attendanceRecords.refusal.overtime_typed")}`);
   await input.clear();
   await visible(input).not.toHaveAttribute("aria-invalid");
   await visible(input).toBeFocused();

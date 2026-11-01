@@ -47,8 +47,8 @@ export function Tabs({ label, items, selected, onSelect, renderList, children }:
  * Tabs that are routes (a vertical's sections: roles, grants, readiness): a labelled nav whose links the caller renders with
  * `tabClass` and marks `aria-current="page"` when current, plus `TabCount` for a count. Not a tablist: each is a page.
  */
-export function TabNav({ label, children }: { label: string; children: ReactNode }) {
-  return <nav aria-label={label} className={s.list}>{children}</nav>;
+export function TabNav({ label, children, overflow }: { label: string; children: ReactNode; overflow?: "scroll" }) {
+  return <nav aria-label={label} className={`${s.list} ${overflow === "scroll" ? s.scroll : ""}`}>{children}</nav>;
 }
 
 /** Keep unknown counts' layout slots; show zero once the read settles. */

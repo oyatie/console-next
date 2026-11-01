@@ -146,8 +146,8 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
           items={[
             { key: "ok", text: t("attendanceRecords.save.groupOk", { count: p.ok }) },
             { key: "unchanged", text: t("attendanceRecords.save.groupUnchanged", { count: p.unchanged }) },
-            { key: "opens", text: t("attendanceRecords.save.opens", { blocking: p.opens.blocking, decision: p.opens.decision }) },
-            { key: "closes", text: t("attendanceRecords.save.closes", { blocking: p.closes.blocking, decision: p.closes.decision }) },
+            ...(p.opens.blocking || p.opens.decision ? [{ key: "opens", text: t("attendanceRecords.save.opens", { blocking: p.opens.blocking, decision: p.opens.decision }) }] : []),
+            ...(p.closes.blocking || p.closes.decision ? [{ key: "closes", text: t("attendanceRecords.save.closes", { blocking: p.closes.blocking, decision: p.closes.decision }) }] : []),
           ]}
         />
       )}

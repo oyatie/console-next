@@ -18,3 +18,6 @@
 .measure { position: absolute; visibility: hidden; pointer-events: none; display: flex; inset-inline: 0; height: 0; overflow: hidden; }
 .measure > * { flex-shrink: 0; max-width: none; }
 .overflow { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.scroll { flex-wrap: nowrap; overflow-x: auto; min-width: 0; }
+.scroll > a { flex-shrink: 0; white-space: nowrap; }

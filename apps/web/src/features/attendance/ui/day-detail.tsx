@@ -26,7 +26,7 @@ type PendingPaste = { scope: string; date: string; people: PastePerson[]; plan: 
  * employee number (never by name) and says how many matched. The recognition column is the server's preview of the
  * drafts, "computing recognition" while it is on its way, never a guessed number.
  */
-export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard; store: ReturnType<typeof useDrafts>; onAssign: (row: BoardRow) => void; onNote: (message: string) => void }) {
+export function DayDetail({ board, store, grammarHintId, onAssign, onNote }: { board: DayBoard; store: ReturnType<typeof useDrafts>; grammarHintId: string; onAssign: (row: BoardRow) => void; onNote: (message: string) => void }) {
   const rows = useMemo(() => board.groups.flatMap((g) => g.rows), [board.groups]);
   const date = board.date;
   const [query, setQuery] = useState("");
@@ -55,7 +55,7 @@ export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard;
     { id: "name", width: 160, rowHeader: true, header: t("attendanceRecords.grid.name"), cell: (r) => r.name },
     { id: "plan", width: 240, header: t("attendanceRecords.day.plan"), cell: (r) => <>{r.day.plan.shift ? shiftText(r.day.plan.shift) : t(`attendance.dayKind.${r.day.plan.kind}`)}{r.day.plan.kind === "NO_SCHEDULE" && <> <TableControl><Button size="sm" onKeyDown={e => e.stopPropagation()} onClick={() => onAssign(r)}>{t("attendanceRecords.unscheduled.assign")}</Button></TableControl></>}</> },
     {
-      id: "input", width: 320, header: t("attendanceRecords.detail.input"),
+      id: "input", width: 320, focusMode: "child", header: t("attendanceRecords.detail.input"),
       cell: (r) => {
         const k = cellKey(r.employee_id, date);
         const d = store.drafts[k];
@@ -63,7 +63,7 @@ export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard;
         if (r.own) return t("attendanceRecords.grid.ownRow");
         return (
           <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} error={s && !s.ok ? refusalText(s.code) : undefined}>
-            {(p) => <TableControl><TextInput {...p} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} /></TableControl>}
+            {(p) => <TableControl><TextInput {...p} aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} /></TableControl>}
           </Field>
         );
       },

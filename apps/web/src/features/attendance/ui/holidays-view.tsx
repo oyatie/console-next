@@ -35,7 +35,7 @@ export function HolidaysView({ tree, onDone }: { tree: ScheduleTree; onDone: (me
         title={t("attendanceHolidays.holidays.title")}
         meta={t("attendanceHolidays.holidays.meta")}
         flush
-        tools={
+        tools={!q.error &&
           <>
             <YearStepper year={year} onYear={setYear} />
             <Button size="sm" variant="primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden /> {t("attendanceHolidays.holidays.add")}</Button>

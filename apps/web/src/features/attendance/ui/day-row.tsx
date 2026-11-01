@@ -7,6 +7,7 @@ import { ATTENDANCE_MARK, labeled } from "../../../lib/labels";
 import { GLYPH } from "../domain/day";
 import { draftState, type Draft } from "../domain/grid";
 import { clock } from "../domain/minutes";
+import { monthOf } from "../domain/month";
 import { closed } from "../domain/month-state";
 import { problemText, refusalText } from "../present";
 import { DayBar } from "./day-bar";
@@ -17,7 +18,7 @@ import s from "./records.module.css";
  * one verb. A missing clock-out or a missing day is typed in place: the draft waits for the save, which asks for the
  * evidence once for every row. The own row and a closed month's row are read-only.
  */
-export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRow; draft?: Draft; onDraft: (value: string | null) => void; onOpen: () => void; onAssign: () => void }) {
+export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }: { row: BoardRow; draft?: Draft; grammarHintId: string; onDraft: (value: string | null) => void; onOpen: () => void; onAssign: () => void }) {
   const mark = row.day.marks[0];
   const tone = mark ? labeled(ATTENDANCE_MARK, mark).tone : undefined;
   const start = row.day.entry?.kind === "CLOCK_IN_ONLY" ? row.day.entry.segments[0]?.start : undefined;
@@ -28,11 +29,11 @@ export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRo
     <div className={s.boardRow}>
       <span aria-hidden>{tone ? GLYPH[tone] : ""}</span>
       <span>
-        <Link from="/attendance" to="." search={(x) => ({ ...x, person: row.employee_id })}>{row.name}</Link> <span className="muted num">{row.employee_number}</span>
+        <Link from="/attendance" to="." search={(x) => ({ ...x, month: monthOf(row.day.date), person: row.employee_id })}>{row.name}</Link> <span className="muted num">{row.employee_number}</span>
         {row.own && <span className="muted"> {t("attendanceRecords.grid.ownTag")}</span>}
       </span>
       <DayBar day={row.day} />
-      <span>{mark && <span className="sr-only">{t(`attendanceRecords.mark.${mark}`)} </span>}{problemText(row)}</span>
+      <span>{mark && <strong>{t(`attendanceRecords.mark.${mark}`)} </strong>}{problemText(row)}</span>
       {row.day.plan.kind === "NO_SCHEDULE" ? (
         <Button size="sm" onClick={onAssign}>{t("attendanceRecords.unscheduled.assign")}</Button>
       ) : inline ? (
@@ -40,6 +41,7 @@ export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRo
           {(p) => (
             <TextInput
               {...p}
+              aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")}
               value={typed}
               maxLength={40}
               placeholder={undefined}
