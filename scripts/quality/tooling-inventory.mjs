@@ -166,8 +166,8 @@ export function reviewRows(rows, reviews) {
 export function registerRows(rows) {
   return rows.map((row) => {
     if (row.kind !== "npm") return row;
-    const { pins, resolvedParents, resolvedFootprint, ...decision } = row;
-    return { ...decision, uses: row.uses.map(({ requirement, ...use }) => use) };
+    const { pins: _pins, resolvedParents: _resolvedParents, resolvedFootprint: _resolvedFootprint, ...decision } = row;
+    return { ...decision, uses: row.uses.map(({ requirement: _requirement, ...use }) => use) };
   });
 }
 

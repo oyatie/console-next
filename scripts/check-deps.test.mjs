@@ -15,8 +15,8 @@ const manifests = [
 ];
 
 const lock = { packages: {
-  "node_modules/react": { version: "19.3.1" },
-  "node_modules/vitest": { version: "5.0.5" },
+  "node_modules/react": { version: "19.3.1", resolved: "https://registry.npmjs.org/react/-/react-19.3.1.tgz" },
+  "node_modules/vitest": { version: "5.0.5", resolved: "https://registry.npmjs.org/vitest/-/vitest-5.0.5.tgz" },
 } };
 
 const register = {
@@ -64,11 +64,38 @@ test("Dependabot may update a recorded package requirement and lock without edit
   updated[0].json.devDependencies.vitest = "^6";
   const updatedLock = structuredClone(lock);
   updatedLock.packages["node_modules/vitest"].version = "6.0.1";
+  updatedLock.packages["node_modules/vitest"].resolved = "https://registry.npmjs.org/vitest/-/vitest-6.0.1.tgz";
   assert.deepEqual(checkDeps(updated, register, updatedLock), []);
 });
 
+for (const [kind, requirement, pin] of [
+  ["alias", "npm:preact@10.0.0", { name: "preact", version: "10.0.0", resolved: "https://registry.npmjs.org/preact/-/preact-10.0.0.tgz" }],
+  ["github", "github:evil/react#abc", { version: "19.3.1", resolved: "git+ssh://git@github.com/evil/react.git#abc" }],
+  ["tarball", "https://evil.example/react.tgz", { version: "19.3.1", resolved: "https://evil.example/react.tgz" }],
+]) {
+  test(`refuses ${kind} swaps under a registered package name`, () => {
+    const changed = structuredClone(manifests);
+    changed[1].json.dependencies.react = requirement;
+    const changedLock = structuredClone(lock);
+    changedLock.packages["node_modules/react"] = pin;
+    assert.deepEqual(checkDeps(changed, register, changedLock), [
+      '"react": resolved source must be its npm registry tarball in package-lock.json',
+    ]);
+  });
+}
+
+test("refuses missing or mismatched sources on any nested pin", () => {
+  for (const resolved of [undefined, "https://registry.npmjs.org/preact/-/preact-10.0.0.tgz"]) {
+    const changedLock = structuredClone(lock);
+    changedLock.packages["apps/web/node_modules/react"] = { version: "19.3.1", resolved };
+    assert.deepEqual(checkDeps(manifests, register, changedLock), [
+      '"react": resolved source must be its npm registry tarball in package-lock.json',
+    ]);
+  }
+});
+
 test("reads nested and multiple resolved versions from the lock", () => {
-  const nestedLock = { packages: { ...lock.packages, "apps/web/node_modules/react": { version: "19.2.0" } } };
+  const nestedLock = { packages: { ...lock.packages, "apps/web/node_modules/react": { version: "19.2.0", resolved: "https://registry.npmjs.org/react/-/react-19.2.0.tgz" } } };
   assert.deepEqual(checkDeps(manifests, register, nestedLock), []);
   delete nestedLock.packages["node_modules/react"];
   nestedLock.packages["apps/web/node_modules/react"].version = "19.2.1";
