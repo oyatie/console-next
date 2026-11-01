@@ -32,11 +32,11 @@ async function role(admin: Page, name: string, cells: string[]) {
   await go(admin, "/access/roles");
   await admin.getByRole("link", { name: "역할 추가" }).first().click();
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill(name);
-  for (const cell of cells) await admin.getByRole("button", { name: cell, exact: true }).click();
+  for (const cell of cells) await admin.getByRole("checkbox", { name: cell, exact: true }).click();
   // governance-03/04: no 결재 cell while org changes do not route; 퇴직 확인 and 내보내기 can be chosen.
-  await expect(admin.getByRole("button", { name: "조직 결재" })).toHaveCount(0);
-  await expect(admin.getByRole("button", { name: "퇴직 확인" })).toBeVisible();
-  await expect(admin.getByRole("button", { name: "인사기본 내보내기" })).toBeVisible();
+  await expect(admin.getByRole("checkbox", { name: "조직 결재" })).toHaveCount(0);
+  await expect(admin.getByRole("checkbox", { name: "퇴직 확인" })).toBeVisible();
+  await expect(admin.getByRole("checkbox", { name: "인사기본 내보내기" })).toBeVisible();
   await snap(admin, "after-role-grid");
   await admin.getByRole("button", { name: "역할 추가" }).click();
   await expect(admin.getByRole("row", { name: new RegExp(name) })).toBeVisible();

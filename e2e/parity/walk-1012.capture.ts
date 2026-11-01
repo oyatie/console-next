@@ -63,7 +63,7 @@ test("parity 1012: solo rail, exact terms, real stale launch and day one", async
   const other = await a.context().newPage();
   await go(other, "/access/roles/new");
   await other.getByRole("textbox", { name: /^역할 이름/ }).fill("동시 등록 역할");
-  await other.getByRole("button", { name: "인사기본 조회", exact: true }).click();
+  await other.getByRole("checkbox", { name: "인사기본 조회", exact: true }).click();
   await other.getByRole("button", { name: "역할 만들기" }).click();
   await expect(other).toHaveURL(/\/access\/roles$/);
   const refusal = a.waitForResponse((r) => r.url().endsWith("/onboarding/go-live") && r.request().method() === "POST");

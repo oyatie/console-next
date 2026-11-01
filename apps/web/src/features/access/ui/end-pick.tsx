@@ -3,18 +3,18 @@ import { t } from "@console/i18n";
 import { ToggleButton } from "../../../ui/button/button";
 import { DateInput } from "../../../ui/date/date-input";
 import { endPresets } from "../domain/grants";
+import field from "../../../ui/field/field.module.css";
 import s from "./access.module.css";
 
 /**
  * The last day of a grant (mockup M4, design §9.2): 3-month, 6-month and 1-year chips, or a picked date for any later day. An explicit
  * grant always ends (no open end); renewal is a new decision. Nothing is preselected. `value` is the last day it counts.
  */
-export function EndPick({ value, onChange, today, error, hideLabel = false }: {
+export function EndPick({ value, onChange, today, error }: {
   value: string | null;
   onChange: (day: string | null) => void;
   today: string;
   error?: string;
-  hideLabel?: boolean;
 }) {
   const id = useId();
   const presets = endPresets(today);
@@ -24,7 +24,7 @@ export function EndPick({ value, onChange, today, error, hideLabel = false }: {
   const custom = typing || (value != null && !preset);
   return (
     <div className={s.endPick} role="group" aria-labelledby={`${id}-l`} aria-describedby={error ? `${id}-e` : undefined}>
-      <span id={`${id}-l`} className={hideLabel ? "sr-only" : "field__label"}>{t("access.grant.end")}</span>
+      <span id={`${id}-l`} className={field.label}>{t("access.grant.end")}</span>
       <div className={s.chips}>
         {presets.map((p) => (
           <ToggleButton key={p.id} size="sm" pressed={value === p.date} aria-label={t("access.grant.end.preset", { label: t(`access.grant.end.${p.id}`), date: p.date })} onClick={() => (setTyping(false), onChange(p.date))}>
@@ -36,7 +36,7 @@ export function EndPick({ value, onChange, today, error, hideLabel = false }: {
       {typing && (
         <DateInput label={t("access.grant.end.date")} className={s.endDate} min={today} value={value && !preset ? value : ""} onChange={(date) => onChange(date || null)} onBlur={(e) => e.currentTarget.value && setTyping(false)} />
       )}
-      {error && <span id={`${id}-e`} className="field__error">{error}</span>}
+      {error && <span id={`${id}-e`} className={field.error}>{error}</span>}
     </div>
   );
 }

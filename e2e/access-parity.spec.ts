@@ -44,7 +44,7 @@ async function role(admin: Page, c: ReturnType<typeof clickCounter>, name: strin
   await c.click(admin.getByRole("link", { name: "역할 추가" }).first());
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill(name);
   if (description) await admin.getByRole("textbox", { name: /^설명/ }).fill(description);
-  for (const cell of cells) await c.click(admin.getByRole("button", { name: cell, exact: true }));
+  for (const cell of cells) await c.click(admin.getByRole("checkbox", { name: cell, exact: true }));
   await c.click(admin.getByRole("button", { name: "역할 추가" }));
   await expect(admin.getByRole("row", { name: new RegExp(name) })).toBeVisible();
 }
@@ -126,11 +126,11 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
   await pickRole(c, admin, sheet, "인사 실무");
   await pickScope(c, admin, sheet, /주식회사 새온(?!물류)/);
   await c.click(sheet.getByRole("button", { name: /^1년/ }));
-  await c.click(sheet.getByRole("button", { name: "역할 하나 더" }));
+  await c.click(sheet.getByRole("button", { name: "역할 추가" }));
   await pickRole(c, admin, sheet, "인사 조회");
   await pickScope(c, admin, sheet, /주식회사 새온물류/, "M3-scope-picker");
   await c.click(sheet.getByRole("button", { name: "날짜 선택" }).last());
-  await sheet.getByLabel("마지막 날 (날짜)").fill(kstDate(176));
+  await sheet.getByLabel("종료일 (날짜)").fill(kstDate(176));
   await chooseRadio(sheet, /^운영 시작과 함께/);
   await chooseRadio(sheet, /^업무 배정·변경/);
   await expect(sheet).toContainText("김인사님이 운영 시작부터 인사 실무");
@@ -148,7 +148,7 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
   await pickRole(c, admin, sheet, "인사 실무");
   await pickScope(c, admin, sheet, /공장2/);
   await c.click(sheet.getByRole("button", { name: "날짜 선택" }));
-  await sheet.getByLabel("마지막 날 (날짜)").fill(kstDate(176));
+  await sheet.getByLabel("종료일 (날짜)").fill(kstDate(176));
   await chooseRadio(sheet, /^운영 시작과 함께/);
   await chooseRadio(sheet, /^업무 배정·변경/);
   await c.click(sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }));
@@ -201,7 +201,7 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
   // Rows are named by their name cell alone, so a namesake is found by its placement.
   for (const [name, place] of [["김민수", "본사"], ["김인사", "본사"], ["김민수", "공장2"]])
     await table.getByRole("row").filter({ hasText: name }).filter({ hasText: place }).getByRole("gridcell").first().click();
-  const form = admin.getByRole("region", { name: "모두에게 줄 권한" });
+  const form = admin.getByRole("region", { name: "부여할 역할" });
   await pickRole(c, admin, form, "인사 조회");
   await pickScope(c, admin, form, /주식회사 새온물류/);
   await c.click(form.getByRole("button", { name: /^6개월/ }));
@@ -225,7 +225,7 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
   await expect(admin.getByRole("heading", { name: "김인사님이 할 수 있는 일" })).toBeVisible();
   await expectAccessible(admin, "person access");
   await shot(admin, "M6-person-access");
-  await admin.getByRole("navigation", { name: "권한 화면" }).getByRole("link", { name: "운영 시작 준비" }).click();
+  await admin.getByRole("navigation", { name: "권한 화면" }).getByRole("link", { name: "권한 검토" }).click();
   await expect(admin.getByText("한서연님은 계정이 있지만 부여가 없습니다")).toBeVisible();
   await expectAccessible(admin, "readiness");
   await shot(admin, "M6-readiness");

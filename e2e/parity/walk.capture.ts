@@ -168,7 +168,7 @@ test("parity: roles, grants, review entry and emergency account", async ({ brows
   await capture(a, "access", ["M1-roles-empty", "C11-first-use"], "Actual no-preset role entry.");
   await go(a, "/access/roles/new");
   await a.getByRole("textbox", { name: /^역할 이름/ }).fill("인사 조회");
-  await a.getByRole("button", { name: "인사기본 조회", exact: true }).click();
+  await a.getByRole("checkbox", { name: "인사기본 조회", exact: true }).click();
   await capture(a, "access", ["M2-role-edit", "C1-decision", "C4-version"], "Actual role grid before create, unheld role; no semantic decision/version migration.");
   await a.getByRole("button", { name: "역할 추가", exact: true }).click();
   await expect(a.getByRole("row", { name: /인사 조회/ })).toBeVisible();

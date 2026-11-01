@@ -17,7 +17,7 @@ async function role(admin: Page, name: string, cells: string[]) {
   await go(admin, "/access/roles");
   await admin.getByRole("link", { name: "역할 추가" }).first().click();
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill(name);
-  for (const cell of cells) await admin.getByRole("button", { name: cell, exact: true }).click();
+  for (const cell of cells) await admin.getByRole("checkbox", { name: cell, exact: true }).click();
   await admin.getByRole("button", { name: "역할 추가" }).click();
   await expect(admin.getByRole("row", { name: new RegExp(name) })).toBeVisible();
 }

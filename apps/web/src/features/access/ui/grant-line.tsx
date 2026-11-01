@@ -32,7 +32,7 @@ export function GrantLine({ n, line, roles, today, missing, refusal, stacked = f
     <fieldset className={stacked ? s.stackedLine : s.line} aria-label={t("access.grant.line", { n })}>
       <RolePick roles={roles} value={line.role_id} onChange={(role_id) => onChange({ ...line, role_id })} error={err("role") ?? err("duplicate")} hideLabel />
       <ScopeButton id={`ac-scope-${line.key}`} value={line.scope} error={err("scope")} onOpen={onPickScope} />
-      <EndPick value={line.end} onChange={(end) => onChange({ ...line, end })} today={today} error={err("end") ?? err("end_past")} hideLabel />
+      <EndPick value={line.end} onChange={(end) => onChange({ ...line, end })} today={today} error={err("end") ?? err("end_past")} />
       {!stacked && (onRemove ? <Button variant="ghost" aria-label={t("access.grant.line.remove", { n })} onClick={onRemove}><X size={16} aria-hidden /></Button> : <span />)}
       {refusal && <div className={s.full}><Banner tone="danger" live="assertive">{refusal}</Banner></div>}
     </fieldset>

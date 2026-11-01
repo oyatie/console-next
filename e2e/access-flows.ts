@@ -34,7 +34,7 @@ async function ensureRole(admin: Page, access: Access) {
   const grid = admin.getByRole("table", { name: "데이터 영역별 권한" });
   // Levels beyond 조회 first (each lights 조회 as included), then 조회 where it is a domain's only level.
   for (const level of levels) {
-    const open = grid.getByRole("button", { name: new RegExp(`(^| )${level}$`), pressed: false });
+    const open = grid.getByRole("checkbox", { name: new RegExp(`(^| )${level}$`), checked: false });
     for (let n = await open.count(); n > 0; n = await open.count()) await open.first().click();
   }
   const created = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/access/roles");

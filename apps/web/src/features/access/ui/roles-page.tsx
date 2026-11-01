@@ -9,6 +9,7 @@ import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
+import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
 import { grantsQuery, rolesQuery, type AccessGrant, type AccessRole } from "../api";
 import { linesText } from "../present";
@@ -19,9 +20,10 @@ import s from "./access.module.css";
 /** No preset roles (decision #19): the empty state opens the role editor. */
 function NoRoles() {
   return (
-    <section className="card state" aria-labelledby="ac-empty">
-      <h2 id="ac-empty" className="state__title">{t("access.roles.empty.title")}</h2>
-    </section>
+    <Card label={t("access.roles.empty.title")} flush>
+      <EmptyState title={t("access.roles.empty.title")} reason={t("access.roles.empty.reason")}
+        actions={<Link to="/access/roles/new" className={buttonClass("primary")}>{t("access.roles.create")}</Link>} />
+    </Card>
   );
 }
 
@@ -30,10 +32,10 @@ function Holders({ r, grants }: { r: AccessRole; grants: readonly AccessGrant[] 
   if (!r.holder_count) return <span className="muted">{t("access.people", { count: 0 })}</span>;
   const mine = grants.filter((g) => g.role_id === r.id);
   return (
-    <span className={s.nowrap}>
+    <div className={s.actions}>
       <Link to="/access/grants" search={{ role: r.id }}>{t("access.people", { count: r.holder_count })}</Link>
       {mine.length > 0 && mine.every((g) => g.enforcement === "PREPARED") && <Chip tone="info">{t("access.roles.fromGoLive")}</Chip>}
-    </span>
+    </div>
   );
 }
 
@@ -46,7 +48,7 @@ export function RolesPage() {
   const live = grants.data?.items ?? [];
   return (
     <div className="page">
-      <AccessHead actions={<Link to="/access/roles/new" className={buttonClass("primary")}><Plus size={16} aria-hidden />{t("access.roles.create")}</Link>} />
+      <AccessHead actions={roles.data?.items.length ? <Link to="/access/roles/new" className={buttonClass("primary")}><Plus size={16} aria-hidden />{t("access.roles.create")}</Link> : undefined} />
 <QueryState q={roles} layout="list">{d => <>      {done && <Banner live="polite">{done}</Banner>}
       {d.items.length ? (
           <>
@@ -56,15 +58,15 @@ export function RolesPage() {
                 rows={d.items}
                 rowId={(r) => r.id}
                 columns={[
-                  { header: t("access.roles.col.name"), cell: (r) => <Link to="/access/roles/$roleId" params={{ roleId: r.id }}>{r.name_ko}</Link> },
-                  { header: t("access.roles.col.lines"), cell: (r) => <span className="muted">{linesText(r.lines)}</span> },
+                  { card: "title", rowHeader: true, header: t("access.roles.col.name"), cell: (r) => <Link to="/access/roles/$roleId" params={{ roleId: r.id }}>{r.name_ko}</Link> },
+                  { card: "fact", header: t("access.roles.col.lines"), cell: (r) => <span className="muted">{linesText(r.lines)}</span> },
                   // Roles carry no scope rule in the pilot (contract): the scope is chosen for each person at grant.
-                  { header: t("access.roles.col.scope"), fit: true, cell: () => t("access.roles.scope.atGrant") },
-                  { header: t("access.roles.col.holders"), fit: true, cell: (r) => <Holders r={r} grants={live} /> },
-                  { header: t("access.roles.col.state"), fit: true, cell: (r) => (r.holder_count ? <Chip tone="ok">{t("access.roles.state.used")}</Chip> : <Chip>{t("access.roles.state.unused")}</Chip>) },
+                  { card: "fact", header: t("access.roles.col.scope"), cell: () => t("access.roles.scope.atGrant") },
+                  { card: "fact", header: t("access.roles.col.holders"), cell: (r) => <Holders r={r} grants={live} /> },
+                  { card: "status", header: t("access.roles.col.state"), cell: (r) => (r.holder_count ? <Chip tone="ok">{t("access.roles.state.used")}</Chip> : <Chip>{t("access.roles.state.unused")}</Chip>) },
                   {
+                    card: "action",
                     header: <span className="sr-only">{t("access.roles.col.actions")}</span>,
-                    fit: true,
                     cell: (r) => (
                       <div className={s.actions}>
                         <Link to="/access/roles/new" search={{ copy: r.id }} className={buttonClass("ghost")} aria-label={t("access.roles.copy.label", { name: r.name_ko })}>{t("access.roles.copy")}</Link>

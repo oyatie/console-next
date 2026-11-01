@@ -6,16 +6,17 @@ import { PageHead } from "../../../ui/page-head/page-head";
 import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
-import { grantsQuery, meQuery, rolesQuery } from "../api";
+import { grantsQuery, meQuery, opsQuery, rolesQuery } from "../api";
 
 /**
- * The access page head: title, the phase line (grants wait for go-live while SETUP lasts) and the three views, the
+ * The access page head: title, the phase line (grants wait for go-live while SETUP lasts) and the served views, the
  * first two with their counts (mockup M1). A person's access sits under the grants view. `sub` is the view's lede.
  */
 export function AccessHead({ actions, sub }: { actions?: ReactNode; sub?: ReactNode }) {
   const me = useQuery(meQuery);
   const roles = useQuery(rolesQuery);
   const grants = useQuery(grantsQuery());
+  const ops = useQuery(opsQuery);
   const path = useRouterState({ select: (r) => r.location.pathname });
   const phase = me.data?.phase;
   const failed = !!(me.error || roles.error || grants.error);
@@ -26,11 +27,12 @@ export function AccessHead({ actions, sub }: { actions?: ReactNode; sub?: ReactN
       tools={failed ? undefined : actions}
       sub={sub}
       tabs={
-        <TabNav label={t("access.nav")}>
+        <TabNav label={t("access.nav")} overflow="scroll">
           {/* Held empty until the count lands, so the tabs never move under a pointer. */}
           <Link to="/access/roles" className={tabClass}>{t("access.nav.roles")}<TabCount>{failed ? undefined : roles.data?.items.length}</TabCount></Link>
-          <Link to="/access/grants" className={tabClass} aria-current={path.startsWith("/access/people/") ? "true" : undefined}>{t("access.nav.grants")}<TabCount>{failed ? undefined : grants.data?.items.length}</TabCount></Link>
+          <Link to="/access/grants" className={tabClass} aria-current={path.startsWith("/access/people/") && path !== `/access/people/${ops.data?.account_id}` ? "page" : undefined}>{t("access.nav.grants")}<TabCount>{failed ? undefined : grants.data?.items.length}</TabCount></Link>
           <Link to="/access/ready" className={tabClass}>{t("access.nav.ready")}</Link>
+          {ops.data && <Link to="/access/people/$accountId" params={{ accountId: ops.data.account_id }} className={tabClass}>{t("access.nav.ops")}</Link>}
         </TabNav>
       }
     />
