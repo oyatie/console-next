@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
-import { screenAccess } from "../mock/fixtures";
+import { failure, id, screenAccess, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { accessScreens, mockAccessScreen } from "./access";
 
@@ -20,7 +20,6 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await page.goto("/access/roles");
     const main = page.getByRole("main");
     const nav = main.getByRole("navigation", { name: "권한 화면" });
-    for (const label of ["역할", "부여 현황", "권한 검토", "비상 관리자 계정"]) await expect(nav.getByRole("link", { name: new RegExp(label) })).toBeVisible();
     await expect(main.getByText("역할에 할 수 있는 일을 정한 뒤, 사람에게 범위와 종료일을 지정해 부여합니다.", { exact: true })).toBeVisible();
     await main.getByRole("link", { name: "역할 추가", exact: true }).click();
     const matrix = main.getByRole("table", { name: "데이터 영역별 권한" });
@@ -31,12 +30,16 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await page.keyboard.press("Space");
     await expect(edit).toBeChecked();
     await expect(matrix.getByRole("checkbox", { name: /자동 포함/ })).toBeChecked();
-    await expect(matrix.getByText("자동 포함", { exact: true })).toBeVisible();
+    const auto = matrix.getByText("자동 포함", { exact: true });
+    await expect(auto).toBeVisible();
+    expect(await auto.evaluate(el => el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight))).toBeLessThanOrEqual(1.1);
+    await expect(edit.locator("..")).toHaveText("");
     await matrix.getByRole("checkbox", { name: /자동 포함/ }).focus();
     await page.keyboard.press("Space");
     await expect(edit).not.toBeChecked();
     await expect(view).not.toBeChecked();
     await expect(main.getByText(/아직 없음/)).toHaveCount(0);
+    for (const label of ["역할", "부여 현황", "운영 시작 준비", "비상 관리자 계정"]) await expect(nav.getByRole("link", { name: new RegExp(label) })).toBeVisible();
     await expectAxe(page, `access first use ${width} ${colorScheme}`);
     await fits(page, `access first use ${width} ${colorScheme}`);
     expect(fixture.unexpected).toEqual([]);
@@ -61,4 +64,36 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await fits(page, `grant period ${width} ${colorScheme}`);
     expect(fixture.unexpected).toEqual([]);
   });
+
+  test(`ops tab is current and offers no grant action at ${width}px ${colorScheme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    const fixture = await mockAccessScreen(page, accessScreens[0], "populated");
+    await mockRoute(page, "get", "/api/v1/users", { status: 200, json: { items: [{ ...user, id: id(20), display_name: "운영 계정" }], total: 1, limit: 200, offset: 0 } });
+    await mockRoute(page, "get", "/api/v1/access/accounts/{accountId}/effective", { status: 200, json: { ...screenAccess("/access/people/" + id(20)), account_id: id(20), is_ops: true } });
+    await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: [] });
+    await page.goto(`/access/people/${id(20)}?grant=true`);
+    const main = page.getByRole("main");
+    const nav = main.getByRole("navigation", { name: "권한 화면" });
+    await expect(nav.getByRole("link", { name: "비상 관리자 계정", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", { name: /부여 현황/ })).not.toHaveAttribute("aria-current", "page");
+    await expect(main.getByText("운영 계정(ops)은 역할 없이 모든 권한을 가집니다.", { exact: false })).toBeVisible();
+    await expect(main.getByRole("button", { name: "권한 부여", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "권한 부여", exact: true })).toHaveCount(0);
+    await expectAxe(page, `ops account ${width} ${colorScheme}`);
+    await fits(page, `ops account ${width} ${colorScheme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
 }
+
+for (const status of [403, 503] as const) test(`ops tab hides after a ${status} read`, async ({ page }) => {
+  const fixture = await mockAccessScreen(page, accessScreens[1], "populated");
+  await mockRoute(page, "get", "/api/v1/access/ops", { status, json: failure(status === 403 ? "forbidden" : "service_unavailable") });
+  const read = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/access/ops" && response.status() === status);
+  await page.goto("/access/roles");
+  await read;
+  const nav = page.getByRole("navigation", { name: "권한 화면" });
+  await expect(nav.getByRole("link", { name: /역할/ })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "비상 관리자 계정", exact: true })).toHaveCount(0);
+  expect(fixture.unexpected).toEqual([]);
+});

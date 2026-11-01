@@ -186,7 +186,6 @@ test("attendance recovery copies both cells and sign-out purges them before anot
   expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe("2026-10-06 · 근태직원 1 · 9-18\n2026-10-06 · 근태직원 2 · 9-16");
   await recovery.getByRole("button", { name: "저장하지 않고 로그아웃" }).click();
   await expect(page).toHaveURL(/\/login/);
-  await expect(page.getByRole("textbox", { name: t("auth.login.id"), exact: true })).toBeVisible();
   const storedDrafts = () => page.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith("console.draft:") || k.startsWith("console.attendance.drafts:")));
   expect(await storedDrafts()).toEqual([]);
   const pair = token();

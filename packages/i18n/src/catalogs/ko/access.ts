@@ -5,7 +5,7 @@ export const koAccess = {
   "access.nav.ops": "비상 관리자 계정",
   "access.nav.roles": "역할",
   "access.nav.grants": "부여 현황",
-  "access.nav.ready": "권한 검토",
+  "access.nav.ready": "운영 시작 준비",
   "access.phase.setup": "설정 단계 · 부여는 운영 시작과 함께 적용됩니다",
   "access.phase.operating": "운영 중 · 부여별 적용 시점은 저장 전에 확인합니다",
   "access.cancel": "취소",

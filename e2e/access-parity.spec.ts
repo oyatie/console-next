@@ -225,7 +225,7 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
   await expect(admin.getByRole("heading", { name: "김인사님이 할 수 있는 일" })).toBeVisible();
   await expectAccessible(admin, "person access");
   await shot(admin, "M6-person-access");
-  await admin.getByRole("navigation", { name: "권한 화면" }).getByRole("link", { name: "권한 검토" }).click();
+  await admin.getByRole("navigation", { name: "권한 화면" }).getByRole("link", { name: "운영 시작 준비" }).click();
   await expect(admin.getByText("한서연님은 계정이 있지만 부여가 없습니다")).toBeVisible();
   await expectAccessible(admin, "readiness");
   await shot(admin, "M6-readiness");

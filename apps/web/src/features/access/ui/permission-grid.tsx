@@ -25,7 +25,7 @@ export function PermissionGrid({ domains, value, routed, onChange }: { domains: 
         aria-label={t(auto ? "access.grid.cell.auto" : "access.grid.cell", { domain: domainText(d.domain), level: word(d, l) })}
         onChange={() => onChange(toggle(value, d.domain, l))}
       >
-        {auto ? t("access.grid.auto") : word(d, l)}
+        {auto ? <span className={s.nowrap}>{t("access.grid.auto")}</span> : null}
       </Check>
     );
   };
@@ -35,7 +35,7 @@ export function PermissionGrid({ domains, value, routed, onChange }: { domains: 
       rows={domains.filter((d) => sellable(d, routed))}
       rowId={(d) => d.domain}
       columns={[
-        { header: t("access.grid.domain"), cell: (d) => <><strong>{domainText(d.domain)}</strong><span className={s.help}>{domainHelp(d.domain)}</span></> },
+        { header: t("access.grid.domain"), cell: (d) => <><strong>{domainText(d.domain)}</strong><small className={s.help}>{domainHelp(d.domain)}</small></> },
         ...liveColumns(domains, routed).map((l) => ({ header: levelText(l), fit: true, cell: (d: AccessCatalogDomain) => cell(d, l) })),
       ]}
     />

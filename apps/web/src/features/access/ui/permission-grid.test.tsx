@@ -15,4 +15,6 @@ test("matrix cells are labelled checkboxes, including implied view, without a ro
   expect(html).toContain(t("access.grid.auto"));
   expect(html).not.toContain("aria-pressed");
   expect(html).not.toContain("아직 없음");
+  const labels = html.match(/<label class="check">.*?<\/label>/g)!;
+  expect(labels.map(label => label.replace(/<[^>]*>/g, ""))).toEqual([t("access.grid.auto"), ""]);
 });

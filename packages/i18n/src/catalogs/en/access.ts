@@ -6,7 +6,7 @@ export const enAccess: Partial<Record<keyof typeof koAccess, string>> = {
   "access.nav.ops": "Emergency admin account",
   "access.nav.roles": "Roles",
   "access.nav.grants": "Grants",
-  "access.nav.ready": "Access review",
+  "access.nav.ready": "Go-live readiness",
   "access.phase.setup": "Setup · grants apply when operations start",
   "access.phase.operating": "Operating · confirm each grant's activation time before saving",
   "access.cancel": "Cancel",

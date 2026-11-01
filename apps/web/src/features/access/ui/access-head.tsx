@@ -20,6 +20,7 @@ export function AccessHead({ actions, sub }: { actions?: ReactNode; sub?: ReactN
   const path = useRouterState({ select: (r) => r.location.pathname });
   const phase = me.data?.phase;
   const failed = !!(me.error || roles.error || grants.error);
+  const opsAccount = !ops.error ? ops.data?.account_id : undefined;
   return (
     <PageHead
       title={t("access.title")}
@@ -30,9 +31,9 @@ export function AccessHead({ actions, sub }: { actions?: ReactNode; sub?: ReactN
         <TabNav label={t("access.nav")} overflow="scroll">
           {/* Held empty until the count lands, so the tabs never move under a pointer. */}
           <Link to="/access/roles" className={tabClass}>{t("access.nav.roles")}<TabCount>{failed ? undefined : roles.data?.items.length}</TabCount></Link>
-          <Link to="/access/grants" className={tabClass} aria-current={path.startsWith("/access/people/") && path !== `/access/people/${ops.data?.account_id}` ? "page" : undefined}>{t("access.nav.grants")}<TabCount>{failed ? undefined : grants.data?.items.length}</TabCount></Link>
+          <Link to="/access/grants" className={tabClass} aria-current={opsAccount && path.startsWith("/access/people/") && path !== `/access/people/${opsAccount}` ? "page" : undefined}>{t("access.nav.grants")}<TabCount>{failed ? undefined : grants.data?.items.length}</TabCount></Link>
           <Link to="/access/ready" className={tabClass}>{t("access.nav.ready")}</Link>
-          {ops.data && <Link to="/access/people/$accountId" params={{ accountId: ops.data.account_id }} className={tabClass}>{t("access.nav.ops")}</Link>}
+          {opsAccount && <Link to="/access/people/$accountId" params={{ accountId: opsAccount }} className={tabClass}>{t("access.nav.ops")}</Link>}
         </TabNav>
       }
     />
