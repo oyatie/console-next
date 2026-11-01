@@ -3,26 +3,26 @@
 
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
-use console_platform_authz::{Feature, Principal};
+use console_platform_authz::{Principal, cedar_pbac::visible::load_facts};
 use console_platform_db::with_audits;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::action_refusals::{VoidAction, permission, permission_denied};
 use super::batch_undo::withdraw_scheduled;
 use super::correction_authorization::authorize_sensitive_correction;
 pub use super::correction_authorization::lifecycle_correction_binding;
 use super::normalize::normalize_lifecycle_transition;
 use super::prepare::prepare_lifecycle_event;
 use super::record::record_lifecycle_event_tx;
-use super::title_reason::coded;
 use super::types::EmployeeLifecycleEventResponse;
 use super::void::{
     RescindLifecycleEventRequest, RescindOutcome, check_void_reason, load_voidable, rescind_tx,
     restore_head,
 };
-use crate::authz::authorize_hr_org_wide;
+use crate::authz::HrCaseFacts;
 use crate::clock::today_kst;
 use crate::exits::group_transfer_case::withdraw_settlement_case;
 use crate::{HrError, HrService};
@@ -118,59 +118,76 @@ impl HrService {
     }
 
     /// `POST /employees/lifecycle-events/bulk/{batch_id}/rescind`: every event
-    /// of the batch, all or nothing; a refusal names each employee.
+    /// of the batch, all or nothing; refusals identify only readable employees.
     pub async fn rescind_lifecycle_batch(
         &self,
         principal: Principal,
         batch_id: Uuid,
         request: RescindLifecycleEventRequest,
     ) -> Result<Vec<RescindOutcome>, HrError> {
-        authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         let (org, actor) = (principal.org_id, principal.user_id);
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                check_void_reason(tx, org, &request.reason_code, request.note.as_deref()).await?;
-                // A dated batch's reservations are withdrawn with it (EMP-UI 8).
-                let events: Vec<(Uuid, Uuid, bool)> = sqlx::query_as(
-                    "SELECT employee_id, id, state = 'SCHEDULED' FROM employee_lifecycle_events \
-                     WHERE org_id = $1 AND batch_id = $2 AND event_type <> 'RESCIND' \
-                       AND state IN ('APPLIED', 'SCHEDULED') ORDER BY employee_id",
+                let access = load_facts(tx, org, *actor.as_uuid())
+                    .await.map_err(HrError::from_kernel)?;
+                // Permission survives withdrawal: every member counts, whatever the event's state.
+                let events: Vec<(Uuid, Uuid, bool, bool)> = sqlx::query_as(
+                    "SELECT employee_id, id, state = 'SCHEDULED', \
+                            event_type <> 'RESCIND' AND state IN ('APPLIED', 'SCHEDULED') \
+                     FROM employee_lifecycle_events \
+                     WHERE org_id = $1 AND batch_id = $2 ORDER BY employee_id",
                 )
                 .bind(org.as_uuid())
                 .bind(batch_id)
                 .fetch_all(tx.as_mut())
                 .await?;
-                if events.is_empty() {
-                    return Err(HrError::from_kernel(KernelError::not_found(
-                        "batch not found",
-                    )));
+                let employees: Vec<_> = events.iter().map(|(employee, _, _, _)| *employee).collect();
+                let people = HrCaseFacts::load(tx, *actor.as_uuid(), &employees).await?;
+                let permissions = employees.iter()
+                    .map(|employee| permission(&access, &people, org, *employee))
+                    .collect::<Result<Vec<_>, _>>()?;
+                if !permissions.iter().any(|allowed| *allowed) {
+                    return Err(permission_denied());
                 }
+                let events: Vec<_> = events.iter().zip(permissions)
+                    .filter(|((_, _, _, active), _)| *active)
+                    .collect();
+                if events.is_empty() {
+                    return Err(HrError::from_kernel(KernelError::not_found("batch not found")));
+                }
+                check_void_reason(tx, org, &request.reason_code, request.note.as_deref()).await?;
                 let rescind_batch = Uuid::new_v4();
                 let (mut outcomes, mut refusals) = (Vec::new(), Vec::new());
-                for (employee, event, scheduled) in &events {
-                    let undone = if *scheduled {
-                        withdraw_scheduled(tx, (org, actor), *employee, *event, &request).await
-                    } else {
-                        let batch = Some(rescind_batch);
-                        let holds_permission =
-                            super::action_refusals::require_permission(tx, &principal, *employee)
-                                .await?;
-                        rescind_tx(
-                            tx,
-                            org,
-                            (actor, holds_permission),
-                            *employee,
-                            *event,
-                            &request,
-                            batch,
-                        )
-                        .await
-                    };
+                for ((employee, event, scheduled, _), holds_permission) in &events {
+                    let undone = async {
+                        if !*holds_permission {
+                            return Err(permission_denied());
+                        }
+                        if *scheduled {
+                            withdraw_scheduled(tx, (org, actor), *employee, *event, &request).await
+                        } else {
+                            rescind_tx(
+                                tx,
+                                org,
+                                (actor, *holds_permission),
+                                *employee,
+                                *event,
+                                &request,
+                                Some(rescind_batch),
+                            )
+                            .await
+                        }
+                    }
+                    .await;
                     match undone {
                         Ok(outcome) => outcomes.push(outcome),
-                        Err(error) if error.status.is_client_error() => refusals.push(json!({
-                            "employee_id": employee, "code": error.code, "message": error.message,
-                        })),
+                        Err(error) if error.status.is_client_error() => {
+                            refusals.push(if people.readable(&access, org, *employee)? {
+                                json!({"employee_id": employee, "code": error.code, "message": error.message})
+                            } else {
+                                json!({"count": 1, "code": "forbidden", "message": permission_denied().message})
+                            });
+                        }
                         Err(error) => return Err(error),
                     }
                 }
@@ -217,15 +234,7 @@ impl HrService {
             Box::pin(async move {
                 let holds_permission = super::action_refusals::require_permission(tx, &principal, employee_id).await?;
                 check_void_reason(tx, org, &request.reason_code, request.note.as_deref()).await?;
-                let original = load_voidable(tx, org_uuid, employee_id, event_id, actor, holds_permission).await?;
-                if original.event_type == "GROUP_TRANSFER" {
-                    return Err(coded(
-                        KernelError::invalid_transition(
-                            "a 전적 is rescinded and recorded again, not corrected",
-                        )
-                        .with_code("lifecycle_void_unsupported"),
-                    ));
-                }
+                let original = load_voidable(tx, org_uuid, employee_id, event_id, (actor, holds_permission), VoidAction::Correct).await?;
                 if transition.event_type != original.event_type
                     || transition.effective_date != original.effective_date
                 {

@@ -14,3 +14,10 @@ test("lifecycle correction publishes the optional bound solo step-up", () => {
   assert.match(operation.description, /EXCEPTION_DECIDE/);
   assert.match(operation.description, /second_person_required/);
 });
+
+test("batch withdrawal documents forbidden and already-withdrawn responses", () => {
+  const document = load(readFileSync(new URL("../backend/openapi/openapi.yaml", import.meta.url), "utf8"));
+  const operation = document.paths["/api/v1/employees/lifecycle-events/bulk/{batch_id}/rescind"].post;
+  assert.equal(operation.responses["403"].$ref, "#/components/responses/Forbidden");
+  assert.equal(operation.responses["404"].$ref, "#/components/responses/NotFound");
+});

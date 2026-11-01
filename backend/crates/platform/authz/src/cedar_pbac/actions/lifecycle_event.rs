@@ -4,7 +4,9 @@ use std::sync::OnceLock;
 
 use super::{ActionBundle, Fact};
 
-pub const ACTIONS: [&str; 2] = ["lifecycle_event_correct", "lifecycle_event_rescind"];
+pub const CORRECT: &str = "lifecycle_event_correct";
+pub const RESCIND: &str = "lifecycle_event_rescind";
+pub const ACTIONS: [&str; 2] = [CORRECT, RESCIND];
 const CODES: [&str; 5] = [
     "lifecycle_void_not_applied",
     "lifecycle_void_exit_owned",

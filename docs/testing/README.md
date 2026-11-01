@@ -22,3 +22,5 @@ When unsure, widen the checks. Record a skipped suite as **not affected**, with 
 
 See [E2E strategy, measurement protocol and current evidence](e2e.md) for browser selection, tagging,
 flake accounting and the distinction between current behaviour and the target.
+
+See [known live test failures](known-live-reds.md) for current reproductions and follow-ups.
