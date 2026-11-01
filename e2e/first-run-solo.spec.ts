@@ -21,194 +21,224 @@ import { expectComposer } from "./helpers/composer";
 test("a solo administrator goes from an empty tenant to operating", { tag: "@first-run" }, async ({ browser }) => {
   const c = clickCounter();
   const companyDomain = unique("ganasol");
-  const v = await vendorPage(browser);
-  await go(v, "/platform");
-  await c.click(v.getByRole("button", { name: "고객 계정 개설" }));
-  await v.getByLabel("고객 이름").fill("가나솔루션");
-  await tenantSlugField(v).fill(companyDomain);
-  await c.click(tenantOnboardSubmit(v));
-  const code = await takeCode(v);
-  expect(c.done("vendor: open the tenant and hand over the code")).toBeLessThanOrEqual(4);
-  // Cancelling enrollment spends the code; the vendor issues a new one.
-  const cancelled = await (await browser.newContext()).newPage();
-  await cancelled.goto("/login");
-  await cancelled.locator("summary").filter({ hasText: "처음이면 일회용 코드" }).click();
-  await cancelled.getByLabel("일회용 코드", { exact: true }).fill(code);
-  await cancelled.getByRole("button", { name: "코드로 로그인" }).click();
-  await cancelled.getByRole("button", { name: "로그인 취소" }).click();
-  await expect(cancelled).toHaveURL(/cancelled=1/);
-  await expect(cancelled.getByRole("status").filter({ hasText: "등록을 취소했습니다" })).toHaveText("등록을 취소했습니다 · 코드는 한 번만 쓸 수 있습니다 · 관리자에게 새 코드를 요청하십시오");
-  await cancelled.context().close();
-  const replacement = await vendorStepUp(async () => {
-    await c.click(v.getByRole("complementary", { name: "가나솔루션", exact: true }).getByRole("button", { name: "패스키로 확인하고 관리자 코드 재발급", exact: true }));
-    return takeCode(v);
+  const replacement = await test.step("J0 Provision tenant and replace cancelled code", async () => {
+    const v = await vendorPage(browser);
+    await go(v, "/platform");
+    await c.click(v.getByRole("button", { name: "고객 계정 개설" }));
+    await v.getByLabel("고객 이름").fill("가나솔루션");
+    await tenantSlugField(v).fill(companyDomain);
+    await c.click(tenantOnboardSubmit(v));
+    const code = await takeCode(v);
+    expect(c.done("vendor: open the tenant and hand over the code")).toBeLessThanOrEqual(4);
+    // Cancelling enrollment spends the code; the vendor issues a new one.
+    const cancelled = await (await browser.newContext()).newPage();
+    await cancelled.goto("/login");
+    await cancelled.locator("summary").filter({ hasText: "처음이면 일회용 코드" }).click();
+    await cancelled.getByLabel("일회용 코드", { exact: true }).fill(code);
+    await cancelled.getByRole("button", { name: "코드로 로그인" }).click();
+    await cancelled.getByRole("button", { name: "로그인 취소" }).click();
+    await expect(cancelled).toHaveURL(/cancelled=1/);
+    await expect(cancelled.getByRole("status").filter({ hasText: "등록을 취소했습니다" })).toHaveText("등록을 취소했습니다 · 코드는 한 번만 쓸 수 있습니다 · 관리자에게 새 코드를 요청하십시오");
+    await cancelled.context().close();
+    const replacement = await vendorStepUp(async () => {
+      await c.click(v.getByRole("complementary", { name: "가나솔루션", exact: true }).getByRole("button", { name: "패스키로 확인하고 관리자 코드 재발급", exact: true }));
+      return takeCode(v);
+    });
+    expect(c.done("vendor: reissue after cancelled enrollment")).toBeLessThanOrEqual(2);
+    return replacement;
   });
-  expect(c.done("vendor: reissue after cancelled enrollment")).toBeLessThanOrEqual(2);
-  const admin = await firstSignIn(browser, replacement);
-  await routeReady(admin);
-  await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
-  await go(admin, "/setup/company-names", true);
-  await expect(admin).toHaveURL(/\/org\?tab=entities$/);
-  await go(admin, "/account");
 
-  await admin.getByRole("link", { name: companyDomain, exact: true }).click();
-  await expect(admin.getByText(`회사 도메인: ${companyDomain}`, { exact: true })).toBeVisible();
-  await expect(admin.getByRole("button", { name: "변경 요청", exact: true })).toBeEnabled();
-  await go(admin, "/");
+  const admin = await test.step("J1 First sign-in and company domain", async () => {
+    const admin = await firstSignIn(browser, replacement);
+    await routeReady(admin);
+    await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
+    await go(admin, "/setup/company-names", true);
+    await expect(admin).toHaveURL(/\/org\?tab=entities$/);
+    await go(admin, "/account");
 
-  // Home leads with the server's setup rail; the first step is the certificate.
-  const rail = await homeRail(admin);
-  await expect(rail).toBeVisible();
-  await expectAccessible(admin, "setup rail");
-  await c.click(rail.getByRole("link", { name: "법인 등록" }).first());
+    await admin.getByRole("link", { name: companyDomain, exact: true }).click();
+    await expect(admin.getByText(`회사 도메인: ${companyDomain}`, { exact: true })).toBeVisible();
+    await expect(admin.getByRole("button", { name: "변경 요청", exact: true })).toBeEnabled();
+    await go(admin, "/");
+    return admin;
+  });
 
-  // 1. The legal entity and its first registration, typed beside no document.
-  await registerEntity(admin, "가나솔루션", true, c);
-  await expect(admin.getByText("홍길동", { exact: true }).first()).toBeVisible(); // 대표자 kept
-  expect(c.done("legal entity + registration")).toBeLessThanOrEqual(BUDGET.entity);
+  const rail = await test.step("J10 Home setup rail", async () => {
+    // Home leads with the server's setup rail; the first step is the certificate.
+    const rail = await homeRail(admin);
+    await expect(rail).toBeVisible();
+    await expectAccessible(admin, "setup rail");
+    return rail;
+  });
 
-  // 2. The first workplace: the certificate's own place, offered with its name prefilled.
-  await go(admin, "/");
-  const addWorkplace = rail.getByRole("link", { name: "사업장 등록" }).first();
-  await expect(addWorkplace).toHaveAttribute("href", /\/workplaces\/new$/);
-  await c.click(addWorkplace);
-  await registerWorkplace(admin, "가나솔루션", "본사", true, c);
-  expect(c.done("first workplace")).toBeLessThanOrEqual(BUDGET.workplace);
+  await test.step("J2 Register legal entity", async () => {
+    await c.click(rail.getByRole("link", { name: "법인 등록" }).first());
 
-  // 3. A second workplace with its own (branch) registration, from the entity's page.
-  await registerBranch(admin, "가나솔루션", "판교지점", REGISTRATION_FIXTURES.branch_primary.brn, false, c);
-  await c.click(admin.getByRole("tab", { name: /^사업장 2/ }));
-  await expect(admin.getByRole("row", { name: new RegExp(`판교지점 .*${brnDisplay(REGISTRATION_FIXTURES.branch_primary.brn)}`) })).toBeVisible();
-  await expectAccessible(admin, "entity workplaces");
-  expect(c.done("second workplace (own registration)")).toBeLessThanOrEqual(BUDGET.branch);
+    // 1. The legal entity and its first registration, typed beside no document.
+    await registerEntity(admin, "가나솔루션", true, c);
+    await expect(admin.getByText("홍길동", { exact: true }).first()).toBeVisible(); // 대표자 kept
+    expect(c.done("legal entity + registration")).toBeLessThanOrEqual(BUDGET.entity);
+  });
 
-  // 4. At least one 부서 is required before 운영 시작 (MVP requirement #4): the rail offers no skip, only 부서 추가.
-  //    The org is built on the chart: select the 사업장 (one click), A, the name, Enter.
-  await go(admin, "/");
-  await expect(rail.getByRole("button", { name: "부서 없이 진행" })).toHaveCount(0);
-  await c.click(rail.getByRole("link", { name: "부서 추가" }).first());
-  await expect(admin).toHaveURL(/\/org(\?|$)/);
-  await routeReady(admin);
-  await expect(admin.getByRole("dialog")).toHaveCount(0);
-  for (const [place, unit] of [["본사", "영업팀"], ["판교지점", "개발팀"]] as const) {
-    await findPressable(admin, place);
-    await c.click(box(admin, place));
-    await addDepartments(admin, place, [unit]);
-  }
-  await expectAccessible(admin, "setup org");
-  // A person may still be placed straight on a 사업장: the register form offers it (no dead end).
-  await go(admin, "/");
-  await c.click(rail.getByRole("link", { name: "직원 등록" }).first());
-  const probe = registerSheet(admin);
-  const placement = probe.getByRole("combobox", { name: "둘 곳" });
-  await placement.fill("판교");
-  await expect(admin.getByRole("option", { name: /› 판교지점 \d+명$/ })).toBeVisible();
-  // Dismiss the picker and sheet before reopening; rapid history changes can keep the probe mounted.
-  await placement.press("Escape");
-  await c.click(probe.getByRole("button", { name: "닫기", exact: true }).last());
-  await expect(probe).toBeHidden();
-  expect(c.done("org: two departments, applied at once")).toBeLessThanOrEqual(BUDGET.org);
+  await test.step("J3 Register head and branch workplaces", async () => {
+    // 2. The first workplace: the certificate's own place, offered with its name prefilled.
+    await go(admin, "/");
+    const addWorkplace = rail.getByRole("link", { name: "사업장 등록" }).first();
+    await expect(addWorkplace).toHaveAttribute("href", /\/workplaces\/new$/);
+    await c.click(addWorkplace);
+    await registerWorkplace(admin, "가나솔루션", "본사", true, c);
+    expect(c.done("first workplace")).toBeLessThanOrEqual(BUDGET.workplace);
 
-  // 5. The first employee, placed by id: the one entity is a fact; the workplace is chosen (no default).
-  await c.click(admin.getByRole("link", { name: "직원 등록", exact: true }).first());
-  const sheet = registerSheet(admin);
-  await expect(sheet.getByRole("combobox", { name: "둘 곳" })).toHaveValue("");
-  await expect(sheet.getByRole("textbox", { name: /^이름/ })).toBeVisible();
-  const extra = sheet.getByRole("group", { name: "추가 정보", exact: true });
-  await expect(extra).toBeVisible();
-  await expect(extra.locator("details")).toHaveCount(0);
-  await expect(sheet.getByText(/인사카드에서 채우도록 바뀔 예정/)).toHaveCount(0);
-  await sheet.getByRole("textbox", { name: /^이름/ }).fill("김직원");
-  // The commit is never dead (V4): the missing hire date is named and focused; placement can wait.
-  await pressRegister(admin);
-  await expect(sheet.getByRole("alert")).toContainText("수정해야 등록됩니다");
-  await expect(sheet.getByRole("alert")).toContainText("1개를 수정해야 등록됩니다 · 입사일");
-  await expect(sheet.getByRole("textbox", { name: /^입사일/ })).toBeFocused();
-  await fillRegister(admin, { name: "김직원", unit: "영업팀", hired: kstDate() }, c);
-  await expectAccessible(admin, "register employee (placement)");
-  await pressRegister(admin, false, c);
-  await expect(receiptOf(admin, "김직원")).toBeVisible();
-  await openRegistered(admin, "김직원");
-  await expect(admin.getByRole("heading", { name: /김직원/, level: 1 })).toBeVisible();
-  // The employer of record and the workplace, read back by id.
-  await expect(admin.getByRole("group", { name: "소속", exact: true }).getByRole("link", { name: "주식회사 가나솔루션" })).toBeVisible(); // the head's 소속, not the placement history's same link
-  await expect(admin.getByRole("group", { name: "소속", exact: true }).getByRole("link", { name: "본사" })).toBeVisible(); // the head's 소속, not the placement history's same link
-  expect(c.done("register one employee")).toBeLessThanOrEqual(BUDGET.employee);
+    // 3. A second workplace with its own (branch) registration, from the entity's page.
+    await registerBranch(admin, "가나솔루션", "판교지점", REGISTRATION_FIXTURES.branch_primary.brn, false, c);
+    await c.click(admin.getByRole("tab", { name: /^사업장 2/ }));
+    await expect(admin.getByRole("row", { name: new RegExp(`판교지점 .*${brnDisplay(REGISTRATION_FIXTURES.branch_primary.brn)}`) })).toBeVisible();
+    await expectAccessible(admin, "entity workplaces");
+    expect(c.done("second workplace (own registration)")).toBeLessThanOrEqual(BUDGET.branch);
+  });
 
-  await gradeJourney(admin);
-  await go(admin, "/statutory");
-  const filing=admin.getByRole("row").filter({hasText:"김직원"}).filter({hasText:"국민연금"});
-  await expect(filing).toContainText("가능일");
-  // The product deliberately shows the earliest start and legal deadline, without a duplicate target.
-  await expect(filing).toContainText("시작");
-  await expect(filing).toContainText("기한");
-  await expect(filing).not.toContainText("목표");
-  await resolveFilingNotApplicable(admin,filing);
-  await admin.getByRole("button",{name:"처리 내역",exact:true}).click();
-  await expect(filing).toContainText("미해당");
-  await expect(filing.getByText("신고일",{exact:true})).toHaveCount(0);
+  await test.step("J4 Create departments and choose placement", async () => {
+    // 4. At least one 부서 is required before 운영 시작 (MVP requirement #4): the rail offers no skip, only 부서 추가.
+    //    The org is built on the chart: select the 사업장 (one click), A, the name, Enter.
+    await go(admin, "/");
+    await expect(rail.getByRole("button", { name: "부서 없이 진행" })).toHaveCount(0);
+    await c.click(rail.getByRole("link", { name: "부서 추가" }).first());
+    await expect(admin).toHaveURL(/\/org(\?|$)/);
+    await routeReady(admin);
+    await expect(admin.getByRole("dialog")).toHaveCount(0);
+    for (const [place, unit] of [["본사", "영업팀"], ["판교지점", "개발팀"]] as const) {
+      await findPressable(admin, place);
+      await c.click(box(admin, place));
+      await addDepartments(admin, place, [unit]);
+    }
+    await expectAccessible(admin, "setup org");
+    // A person may still be placed straight on a 사업장: the register form offers it (no dead end).
+    await go(admin, "/");
+    await c.click(rail.getByRole("link", { name: "직원 등록" }).first());
+    const probe = registerSheet(admin);
+    const placement = probe.getByRole("combobox", { name: "둘 곳" });
+    await placement.fill("판교");
+    await expect(admin.getByRole("option", { name: /› 판교지점 \d+명$/ })).toBeVisible();
+    // Dismiss the picker and sheet before reopening; rapid history changes can keep the probe mounted.
+    await placement.press("Escape");
+    await c.click(probe.getByRole("button", { name: "닫기", exact: true }).last());
+    await expect(probe).toBeHidden();
+    expect(c.done("org: two departments, applied at once")).toBeLessThanOrEqual(BUDGET.org);
+  });
 
-  // 6. A roster import while still in setup.
-  await go(admin, "/people/import");
-  await chooseWorkbook(admin, "roster.xlsx", await rosterXlsx("가나솔루션", [["GN-0101", "이개발", "개발팀", "선임", "2025-04-01"]]));
-  await payPeriod(admin);
-  await c.click(admin.getByRole("button", { name: "명부 미리보기" }));
-  await c.click(admin.getByRole("button", { name: "모의 반영 실행" }));
-  await c.click(admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }));
-  await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();
-  expect(c.done("import a roster")).toBeLessThanOrEqual(BUDGET.import);
+  await test.step("J5 Register employee and read back placement", async () => {
+    // 5. The first employee, placed by id: the one entity is a fact; the workplace is chosen (no default).
+    await c.click(admin.getByRole("link", { name: "직원 등록", exact: true }).first());
+    const sheet = registerSheet(admin);
+    await expect(sheet.getByRole("combobox", { name: "둘 곳" })).toHaveValue("");
+    await expect(sheet.getByRole("textbox", { name: /^이름/ })).toBeVisible();
+    const extra = sheet.getByRole("group", { name: "추가 정보", exact: true });
+    await expect(extra).toBeVisible();
+    await expect(extra.locator("details")).toHaveCount(0);
+    await expect(sheet.getByText(/인사카드에서 채우도록 바뀔 예정/)).toHaveCount(0);
+    await sheet.getByRole("textbox", { name: /^이름/ }).fill("김직원");
+    // The commit is never dead (V4): the missing hire date is named and focused; placement can wait.
+    await pressRegister(admin);
+    await expect(sheet.getByRole("alert")).toContainText("수정해야 등록됩니다");
+    await expect(sheet.getByRole("alert")).toContainText("1개를 수정해야 등록됩니다 · 입사일");
+    await expect(sheet.getByRole("textbox", { name: /^입사일/ })).toBeFocused();
+    await fillRegister(admin, { name: "김직원", unit: "영업팀", hired: kstDate() }, c);
+    await expectAccessible(admin, "register employee (placement)");
+    await pressRegister(admin, false, c);
+    await expect(receiptOf(admin, "김직원")).toBeVisible();
+    await openRegistered(admin, "김직원");
+    await expect(admin.getByRole("heading", { name: /김직원/, level: 1 })).toBeVisible();
+    // The employer of record and the workplace, read back by id.
+    await expect(admin.getByRole("group", { name: "소속", exact: true }).getByRole("link", { name: "주식회사 가나솔루션" })).toBeVisible(); // the head's 소속, not the placement history's same link
+    await expect(admin.getByRole("group", { name: "소속", exact: true }).getByRole("link", { name: "본사" })).toBeVisible(); // the head's 소속, not the placement history's same link
+    expect(c.done("register one employee")).toBeLessThanOrEqual(BUDGET.employee);
+  });
 
-  // 7. Go-live: the terms are accepted in place, the sole-approver fact is confirmed, and the passkey signs it.
-  await go(admin, "/");
-  await c.click(rail.getByRole("link", { name: "이용약관 동의" }));
-  await expect(admin.getByRole("heading", { name: "운영 시작", level: 1 })).toBeVisible();
-  await startOperations(admin, true, c);
-  expect(c.done("운영 시작")).toBeLessThanOrEqual(BUDGET.golive);
+  await test.step("J7 Record and correct promotion", () => gradeJourney(admin));
+  await test.step("J9 Resolve statutory filing", async () => {
+    await go(admin, "/statutory");
+    const filing=admin.getByRole("row").filter({hasText:"김직원"}).filter({hasText:"국민연금"});
+    await expect(filing).toContainText("가능일");
+    // The product deliberately shows the earliest start and legal deadline, without a duplicate target.
+    await expect(filing).toContainText("시작");
+    await expect(filing).toContainText("기한");
+    await expect(filing).not.toContainText("목표");
+    await resolveFilingNotApplicable(admin,filing);
+    await admin.getByRole("button",{name:"처리 내역",exact:true}).click();
+    await expect(filing).toContainText("미해당");
+    await expect(filing.getByText("신고일",{exact:true})).toHaveCount(0);
+  });
 
-  // 8. Operating, alone: an org change is recorded and applies at once (decisions #26: no 결재 by default, so a solo
-  // HR worker is never stuck waiting for an approver who does not exist); it stays on record with its reason.
-  // On the chart the same gesture as in setup (select, A) opens the change sheet.
-  await go(admin, "/org");
-  await findPressable(admin, "본사");
-  await c.click(box(admin, "본사"));
-  await admin.keyboard.press("a");
-  const proposal = admin.getByRole("dialog", { name: "부서 신설" });
-  await proposal.getByLabel("부서 이름").fill("마케팅팀");
-  await c.click(proposal.getByRole("button", { name: /^오늘/ }));
-  await proposal.getByLabel("사유").fill("마케팅 기능 신설");
-  await expectComposer(proposal, "부서 신설 1개 적용");
-  const applied = admin.waitForResponse((r) => r.request().method() === "GET" && /\/api\/v1\/org-changes\/[0-9a-f-]+$/.test(new URL(r.url()).pathname));
-  await c.click(proposal.getByRole("button", { name: "부서 신설 1개 적용" }));
-  const created = await (await applied).json() as { created_unit_ids: string[] };
-  expect(created.created_unit_ids).toHaveLength(1);
-  await proposal.waitFor({ state: "hidden" });
-  // org-19: stay on the chart, select the department the server created, and link its record in the receipt.
-  await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(created.created_unit_ids[0]);
-  await expect(admin.getByRole("complementary", { name: "마케팅팀", exact: true })).toBeVisible();
-  await expect(admin.getByRole("status").filter({ hasText: "마케팅팀 신설을 반영했습니다" }).first()).toBeVisible();
-  c.done("org change after go-live: record and apply");
-  // The chart opens at 사업장 depth; the find brings the new 부서 into view inside 본사.
-  await findBox(admin, "마케팅팀");
+  await test.step("J5 Import employee roster", async () => {
+    // 6. A roster import while still in setup.
+    await go(admin, "/people/import");
+    await chooseWorkbook(admin, "roster.xlsx", await rosterXlsx("가나솔루션", [["GN-0101", "이개발", "개발팀", "선임", "2025-04-01"]]));
+    await payPeriod(admin);
+    await c.click(admin.getByRole("button", { name: "명부 미리보기" }));
+    await c.click(admin.getByRole("button", { name: "모의 반영 실행" }));
+    await c.click(admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }));
+    await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();
+    expect(c.done("import a roster")).toBeLessThanOrEqual(BUDGET.import);
+  });
 
-  // A lone administrator records unusual attendance with evidence and an explicit acknowledgement.
-  await officeSchedule(admin);
-  const date = kstDate();
-  const grid = await openMonth(admin, date.slice(0, 7));
-  await cellOf(admin, "김직원", date).click();
-  await admin.keyboard.type("5-23");
-  await admin.keyboard.press("Enter");
-  await grid.focus();
-  await admin.keyboard.press("ControlOrMeta+s");
-  const save = admin.getByRole("complementary", { name: /저장 · 초안 1칸/ });
-  const confirm = save.getByRole("checkbox", { name: /김직원.*5-23.*확인 기준 960분/ });
-  await expect(confirm).not.toBeChecked({ timeout: test.info().timeout });
-  await chooseRadio(save, /출근부 \(종이\)/);
-  await expect(save.getByRole("button", { name: /칸 저장/ })).toHaveAttribute("aria-disabled", "true");
-  await expectAccessible(admin, "solo long record confirmation");
-  await confirm.press("Space");
-  await expect(confirm).toBeChecked();
-  await save.getByRole("button", { name: "1칸 저장", exact: true }).click();
-  await expect(admin.getByRole("status").filter({ hasText: "1칸을 저장했습니다" })).toBeVisible();
+  await test.step("J6 Start operations", async () => {
+    // 7. Go-live: the terms are accepted in place, the sole-approver fact is confirmed, and the passkey signs it.
+    await go(admin, "/");
+    await c.click(rail.getByRole("link", { name: "이용약관 동의" }));
+    await expect(admin.getByRole("heading", { name: "운영 시작", level: 1 })).toBeVisible();
+    await startOperations(admin, true, c);
+    expect(c.done("운영 시작")).toBeLessThanOrEqual(BUDGET.golive);
+  });
+
+  await test.step("J4 Apply operating org change", async () => {
+    // 8. Operating, alone: an org change is recorded and applies at once (decisions #26: no 결재 by default, so a solo
+    // HR worker is never stuck waiting for an approver who does not exist); it stays on record with its reason.
+    // On the chart the same gesture as in setup (select, A) opens the change sheet.
+    await go(admin, "/org");
+    await findPressable(admin, "본사");
+    await c.click(box(admin, "본사"));
+    await admin.keyboard.press("a");
+    const proposal = admin.getByRole("dialog", { name: "부서 신설" });
+    await proposal.getByLabel("부서 이름").fill("마케팅팀");
+    await c.click(proposal.getByRole("button", { name: /^오늘/ }));
+    await proposal.getByLabel("사유").fill("마케팅 기능 신설");
+    await expectComposer(proposal, "부서 신설 1개 적용");
+    const applied = admin.waitForResponse((r) => r.request().method() === "GET" && /\/api\/v1\/org-changes\/[0-9a-f-]+$/.test(new URL(r.url()).pathname));
+    await c.click(proposal.getByRole("button", { name: "부서 신설 1개 적용" }));
+    const created = await (await applied).json() as { created_unit_ids: string[] };
+    expect(created.created_unit_ids).toHaveLength(1);
+    await proposal.waitFor({ state: "hidden" });
+    // org-19: stay on the chart, select the department the server created, and link its record in the receipt.
+    await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(created.created_unit_ids[0]);
+    await expect(admin.getByRole("complementary", { name: "마케팅팀", exact: true })).toBeVisible();
+    await expect(admin.getByRole("status").filter({ hasText: "마케팅팀 신설을 반영했습니다" }).first()).toBeVisible();
+    c.done("org change after go-live: record and apply");
+    // The chart opens at 사업장 depth; the find brings the new 부서 into view inside 본사.
+    await findBox(admin, "마케팅팀");
+  });
+
+  await test.step("J8 Record attendance with explicit acknowledgement", async () => {
+    // A lone administrator records unusual attendance with evidence and an explicit acknowledgement.
+    await officeSchedule(admin);
+    const date = kstDate();
+    const grid = await openMonth(admin, date.slice(0, 7));
+    await cellOf(admin, "김직원", date).click();
+    await admin.keyboard.type("5-23");
+    await admin.keyboard.press("Enter");
+    await grid.focus();
+    await admin.keyboard.press("ControlOrMeta+s");
+    const save = admin.getByRole("complementary", { name: /저장 · 초안 1칸/ });
+    const confirm = save.getByRole("checkbox", { name: /김직원.*5-23.*확인 기준 960분/ });
+    await expect(confirm).not.toBeChecked({ timeout: test.info().timeout });
+    await chooseRadio(save, /출근부 \(종이\)/);
+    await expect(save.getByRole("button", { name: /칸 저장/ })).toHaveAttribute("aria-disabled", "true");
+    await expectAccessible(admin, "solo long record confirmation");
+    await confirm.press("Space");
+    await expect(confirm).toBeChecked();
+    await save.getByRole("button", { name: "1칸 저장", exact: true }).click();
+    await expect(admin.getByRole("status").filter({ hasText: "1칸을 저장했습니다" })).toBeVisible();
+  });
+
 });
 
 // Decision #7 case B (design §5.5), only where a tenant turns 결재 on (approval.policy.org_structure = route): with no
