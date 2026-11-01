@@ -46,6 +46,12 @@ const retain = () => {
   state.s.root.children.push({ id: "entity", kind: "entity", name: "법인", headcount: 0, chips: [], depth: 1, children: [] });
 };
 
+test("the setup head leaves the phase label to the shell band", () => {
+  state.s = buildStructure({ tenant_name: "org", phase: "SETUP", entities: [], unplaced: [] });
+  state.error = null;
+  expect(render()).not.toContain(t("structure.phase.setupChip"));
+});
+
 test("failed change dates never claim previous, next or history is empty; one page error carries the reference", () => {
   const html = render();
   for (const key of ["asof.noPrevious", "asof.noNext", "asof.noChanges"] as const) expect(html).not.toContain(t(key));

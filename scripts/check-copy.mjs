@@ -99,9 +99,9 @@ export function checkUnused(ids, sources, baseline) {
 //    Legitimate Korean uses live in scripts/copy-terms-allow.json; stale entries fail, so the list only shrinks.
 //    Context comes from the catalog id; rendered walk text is checked separately below.
 const MATURITY_RULES = [
-  { rule: "prose.인원정의", re: /인원은|인원입니다/, when: ({ id }) => /^(?:structure\.(?:caption|list\.caption)|orgPropose\.ctx\.headcountNote)$/.test(id), use: "the shared headcount basis behind 이유 보기" },
-  { rule: "prose.되돌리기", re: /바로 적용|되돌릴 수|되돌리기/, when: ({ id }) => /^structure\.(?:effect\.|setup\.summary$|first\.caption$)/.test(id), use: "a phase chip; consequences belong to the action" },
-  { rule: "prose.설정중복", re: /\S+/, when: ({ id }) => /^structure\.(?:first\.(?:intro|caption|ghostSite|ghostDept|oneTitle)$|setup\.tip$)/.test(id), use: "one empty-state sentence and action; the checklist belongs to Home" },
+  { rule: "prose.인원정의", re: /인원은|인원입니다/, when: ({ id }) => /^(?:structure|orgPropose)\./.test(id) && !/^structure\.(?:headcount\.basis|export\.stamp)$/.test(id), use: "the shared headcount basis behind 이유 보기" },
+  { rule: "prose.되돌리기", re: /바로 적용|되돌릴 수|되돌리기/, when: ({ id }) => /^(?:structure|orgPropose)\./.test(id) && !/\.(?:consequence|undo|redo|receipt)(?:\.|$)/.test(id), use: "consequences on the action, not standing prose" },
+  { rule: "prose.설정중복", re: /법인\s*[→>·]\s*사업장\s*[→>·]\s*부서|(?:엑셀|조직표).*(?:붙여넣기|시작)/, when: ({ id }) => /^(?:structure|orgPropose)\./.test(id), use: "one empty-state sentence and action; the checklist belongs to Home" },
   { rule: "term.이력", re: /변경 내역/, use: "변경 이력" },
   { rule: "term.미배치", re: /소속 지점 미지정/, use: "미배치" },
   { rule: "term.대기", re: /내 차례/, use: "대기" },
