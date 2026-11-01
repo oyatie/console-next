@@ -10,17 +10,22 @@ import { inventory } from "./quality/tooling-inventory.mjs";
 const FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
 
 // manifests: [{ file, json }]; returns the problem lines (empty = pass).
-export function checkDeps(manifests, register) {
+export function checkDeps(manifests, register, lock) {
   const sources = new Map(manifests.map(({ file, json }) => [file, JSON.stringify(json)]));
+  sources.set("package-lock.json", JSON.stringify(lock));
   const registered = new Map(register.rows.filter((r) => r.kind === "npm" && r.direct).map((r) => [r.name, r]));
   const problems = [];
   for (const row of inventory([...sources.keys()], (file) => sources.get(file))) {
+    if (!row.direct) continue;
     const entry = registered.get(row.name);
     for (const use of row.uses) {
       if (!entry) problems.push(`${use.file}: "${row.name}" is not in the owner dependency register`);
       else if (!entry.uses.some((prior) => ["file", "user", "requirement", "layer", "override"].every((key) => prior[key] === use[key])))
         problems.push(`${use.file}: "${row.name}" use is not recorded in the owner dependency register`);
     }
+    const versions = (pins) => (pins ?? []).map(({ location, version }) => `${location}:${version}`).sort();
+    if (entry && JSON.stringify(versions(entry.pins)) !== JSON.stringify(versions(row.pins)))
+      problems.push(`"${row.name}": register lock versions do not match package-lock.json; regenerate the registered pins`);
   }
   return problems;
 }
@@ -71,7 +76,14 @@ export function checkDependencyNotes(manifests, previous, notes, lock, readNote)
           problems.push(`${key}: added/changed dependency needs a verification note matching its requirement and lock pin`);
           continue;
         }
-        const text = readNote(note.note);
+        let text;
+        try {
+          text = readNote(note.note);
+        } catch (error) {
+          if (error.code !== "ENOENT") throw error;
+          problems.push(`${key}: verification note file is missing: ${note.note}`);
+          continue;
+        }
         if (!["Reason", "Provenance", "License", "Security"].every((heading) => new RegExp(`^${heading}:\\s*\\S.+`, "m").test(text)))
           problems.push(`${key}: verification note must explain Reason, Provenance, License and Security`);
       }
@@ -83,7 +95,8 @@ export function checkDependencyNotes(manifests, previous, notes, lock, readNote)
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const register = JSON.parse(readFileSync(path.join(root, "docs/quality/dependency-register.json"), "utf8"));
-  const problems = checkDeps(readManifests(root), register);
+  const lock = JSON.parse(readFileSync(path.join(root, "package-lock.json"), "utf8"));
+  const problems = checkDeps(readManifests(root), register, lock);
   if (problems.length) {
     console.error(`deps: ${problems.length} problem(s); update the owner dependency register only with owner approval:\n${problems.join("\n")}`);
     process.exit(1);

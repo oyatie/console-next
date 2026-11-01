@@ -47437,10 +47437,10 @@
       "pins": [
         {
           "location": "node_modules/@playwright/test",
-          "version": "1.63.0",
+          "version": "1.64.1",
           "license": "Apache-2.0",
-          "integrity": "sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==",
-          "source": "https://registry.npmjs.org/@playwright/test/-/test-1.63.0.tgz"
+          "integrity": "sha512-IaYGml/nSOiZWROfPtuIL7neuu9qDOZ3TNvNljUIrhDMxiGTgPjzj/g9p9RxpS2tSepPDRY+UwAaEeiKtUvIAg==",
+          "source": "https://registry.npmjs.org/@playwright/test/-/test-1.64.1.tgz"
         }
       ],
       "lastRelease": "2026-10-14T11:58:13.696Z",
@@ -47580,10 +47580,10 @@
       "pins": [
         {
           "location": "node_modules/@stryker-mutator/core",
-          "version": "10.0.0",
+          "version": "10.1.1",
           "license": "Apache-2.0",
-          "integrity": "sha512-ZvMsRyaXQQ5e6Thcid9pkuODv6Fn9E3nrBQJUap+hcJuGJ4unm26afo3m6YKSjn8kinyxJ/3TXf0cTWRDaTxVw==",
-          "source": "https://registry.npmjs.org/@stryker-mutator/core/-/core-10.0.0.tgz"
+          "integrity": "sha512-4xJAOCw9utJMLyrTk9gINi434tBxnyuwt8lU/InyoKagKd2/zh/2ui7ncWoD0qZeJrxClYzblg8iUh5ewBAB3Q==",
+          "source": "https://registry.npmjs.org/@stryker-mutator/core/-/core-10.1.1.tgz"
         }
       ],
       "lastRelease": "2026-10-23T19:18:22.458Z",
@@ -48511,10 +48511,10 @@
       "pins": [
         {
           "location": "node_modules/@tanstack/react-router",
-          "version": "1.170.40",
+          "version": "1.170.46",
           "license": "MIT",
-          "integrity": "sha512-vVr3va9Mcq05rZRrDZPGoptAClRMKHvekLbpg2GcfXvAAtOVhW6Q93tOz4dvS8j03vTVrU25VM6weP1SIHGEew==",
-          "source": "https://registry.npmjs.org/@tanstack/react-router/-/react-router-1.170.40.tgz"
+          "integrity": "sha512-ez1iNIhsPjGlaDHg3BXWs67EWVIYzB2tbopEHYDESdkO7owgkGb5de52+5Kv2v1fxdkggcNzo35bdk4arTVGQw==",
+          "source": "https://registry.npmjs.org/@tanstack/react-router/-/react-router-1.170.46.tgz"
         }
       ],
       "resolvedParents": [
@@ -49057,10 +49057,10 @@
       "pins": [
         {
           "location": "node_modules/@vitejs/plugin-react",
-          "version": "6.1.1",
+          "version": "6.1.2",
           "license": "MIT",
-          "integrity": "sha512-yxLaQV9gkhS8ezJqCM6+ndU7mDY6gqAg75NQ+0IjwEI8IYOmQCgkRwHKVSfWXW076DsqMo0Dk+0FK1U+M5RgFw==",
-          "source": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.1.1.tgz"
+          "integrity": "sha512-fhJNGUdscQa4HkI0xFxwonWyhnVReCPDbXI7FH7jmzpnVCrFQI7PRrhWecO263610vOrs9tr2Y4xcf8uAdFxbw==",
+          "source": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.1.2.tgz"
         }
       ],
       "lastRelease": "2026-10-05T10:08:27.143Z",
@@ -49269,10 +49269,10 @@
       "pins": [
         {
           "location": "node_modules/intl-messageformat",
-          "version": "12.1.2",
+          "version": "12.1.4",
           "license": "BSD-3-Clause",
-          "integrity": "sha512-Y7ZnMtT/04nVJnjf1/x/AkfP5we/iN0AhckDdlFPtnetk6/VTuj2OPW5SE7steMd3UNaOtky4KJJY6jwyvWfJg==",
-          "source": "https://registry.npmjs.org/intl-messageformat/-/intl-messageformat-12.1.2.tgz"
+          "integrity": "sha512-JUkmv3cAEyijN3oiRiV3ctel7yVMuUCgfh7Pu8pj1/z6L1DSEPRyhuMaLjVw3pGmGJ5RDH54WVFxfMHZWTwyHw==",
+          "source": "https://registry.npmjs.org/intl-messageformat/-/intl-messageformat-12.1.4.tgz"
         }
       ],
       "resolvedParents": [
@@ -51221,10 +51221,10 @@
       "pins": [
         {
           "location": "node_modules/react",
-          "version": "19.3.0",
+          "version": "19.3.1",
           "license": "MIT",
-          "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==",
-          "source": "https://registry.npmjs.org/react/-/react-19.3.0.tgz"
+          "integrity": "sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==",
+          "source": "https://registry.npmjs.org/react/-/react-19.3.1.tgz"
         }
       ],
       "resolvedParents": [
@@ -51408,10 +51408,10 @@
       "pins": [
         {
           "location": "node_modules/react-aria-components",
-          "version": "1.21.1",
+          "version": "1.22.1",
           "license": "Apache-2.0",
-          "integrity": "sha512-J88WflYY0z+EhLX0ce+GjFlQ3ag3ubIgfUTjpKSrBQBu92Xtl4Ub9o118HItUddtbk1Ido0jzyPy94/klZy1hg==",
-          "source": "https://registry.npmjs.org/react-aria-components/-/react-aria-components-1.21.1.tgz"
+          "integrity": "sha512-UTHaYHOaM71bOCjGPF50DcLywlrwAodE63IP64LB4kO+OizatQEL8TesVEOM8+TkBeSgHoflJ45388IlJfa7aw==",
+          "source": "https://registry.npmjs.org/react-aria-components/-/react-aria-components-1.22.1.tgz"
         }
       ],
       "resolvedParents": [
@@ -51748,10 +51748,10 @@
       "pins": [
         {
           "location": "node_modules/react-dom",
-          "version": "19.3.0",
+          "version": "19.3.1",
           "license": "MIT",
-          "integrity": "sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==",
-          "source": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.0.tgz"
+          "integrity": "sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==",
+          "source": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz"
         }
       ],
       "resolvedParents": [
@@ -51892,10 +51892,10 @@
       "pins": [
         {
           "location": "node_modules/stylelint",
-          "version": "17.15.0",
+          "version": "17.16.0",
           "license": "MIT",
-          "integrity": "sha512-mWIkesYQvQjf4Kvdeu9ns0IL8/K/wtjaGxPqsPd6DlLZvaQxGysJsocxUDrBcyHQ5VleAk4uSMat4yMrVED7PA==",
-          "source": "https://registry.npmjs.org/stylelint/-/stylelint-17.15.0.tgz"
+          "integrity": "sha512-ejlWnbJ13x1GU32+zZXa6sYQJsKKkwSdv2B4rAdO3OWdEmvhSJKcXi5pOphQYSzyaj1kXpuGJr7pcMBNfDIuPw==",
+          "source": "https://registry.npmjs.org/stylelint/-/stylelint-17.16.0.tgz"
         }
       ],
       "lastRelease": "2026-10-01T10:17:13.977Z",
