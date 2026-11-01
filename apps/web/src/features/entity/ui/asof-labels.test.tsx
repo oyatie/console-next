@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog, t } from "@console/i18n";
+import { loadCatalog } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import type { LegalEntity, RegularWorkers } from "@console/api/pending";
 import { RecordAside } from "./record-aside";
@@ -19,6 +19,4 @@ test.each(["2026-09-01", "2026-11-01"])("record labels carry the snapshot date %
   expect(html).toContain(`${fmtDate(asOf)} 기준 상태`);
   expect(html).toContain(`${fmtDate(asOf)} 재직`);
   expect(html).not.toMatch(/오늘\(|지금 상태|지금 재직/);
-  expect(t("structure.caption", { date: asOf })).toContain(`${asOf} 기준`);
-  expect(t("structure.caption", { date: asOf })).not.toContain("오늘");
 });

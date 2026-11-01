@@ -6,7 +6,6 @@ import { loadCatalog } from "@console/i18n";
 import { buildStructure } from "../domain/model";
 import { registryRows, vacantHeads } from "../domain/registry";
 import { HeadCell, RegistryFilters } from "./registry-bar";
-import { SetupPanel } from "./setup-panel";
 
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useNavigate: () => vi.fn() }), Link: () => null }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { steps: [{ key: "org", state: "attention", remedy: "assign_department", count: 3 }] } }) }));
@@ -23,13 +22,10 @@ test("one vacancy set counts departments only and is exactly the flat vacancy fi
   expect(vacantHeads(buildStructure({ tenant_name: "T", phase: "SETUP", unplaced: [], entities: [] }))).toEqual({ count: 0, ids: [] });
 });
 
-test("the list chip and setup department step show the same vacancy count", () => {
+test("the list chip shows the vacancy count", () => {
   const filters = renderToStaticMarkup(<RegistryFilters s={s} rows={[]} filters={new Set()} onFilters={() => undefined} vacancyCount={vacantHeads(s).count} />);
   expect(filters).toContain("부서장 없음 2");
-  const panel = renderToStaticMarkup(<SetupPanel s={s} fixLink={code => <span>{code}</span>} />);
-  expect(panel).toContain("부서장 없음 2");
-  expect(panel).toContain("부서 없는 직원 3명");
-  expect(panel).toContain("assign_department");
+
 });
 
 test("the vacant list head has one warning and a direct appoint action; history stays read only", () => {

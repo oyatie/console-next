@@ -116,6 +116,12 @@ test.each([
   ["prose.부제", "org.subtitle", "변경 사항은 이력에 남습니다", "조직 구조"],
   ["prose.단계", "org.phase.operating", "운영 중 · 변경 사항은 이력에 남습니다", "운영 중"],
   ["prose.운영시제", "setup.phase.started.detail", "운영을 시작하면 정정으로 바뀝니다.", "운영 중"],
+  ["prose.인원정의", "structure.caption", "인원은 하위 조직을 포함한 재직자입니다", ""],
+  ["prose.인원정의", "orgPropose.ctx.headcountNote", "인원은 퇴직자를 제외한 인원입니다", ""],
+  ["prose.되돌리기", "structure.effect.setup", "변경한 내용은 바로 적용되고 되돌릴 수 있습니다", "설정 단계"],
+  ["prose.되돌리기", "structure.setup.summary", "지금 변경하는 것은 모두 바로 적용되고 되돌릴 수 있습니다", ""],
+  ["prose.설정중복", "structure.first.intro", "법인 → 사업장 → 부서 순서로 쌓입니다", ""],
+  ["prose.설정중복", "structure.setup.tip", "이미 엑셀로 관리하던 조직표가 있다면 붙여넣기로 시작합니다", ""],
 ])("maturity %s refuses %s and accepts its replacement", (rule, id, text, near) => {
   expect(checkTerms([entry(id, text)], []).some((p) => p.includes(`: ${rule}:`))).toBe(true);
   expect(checkTerms([entry(id, near)], [])).toEqual([]);
@@ -125,6 +131,8 @@ test.each([
   ["setup.step.entity", "법인 등록"],
   ["home.empty.partial.title", "볼 수 있는 항목 중에는 처리할 일이 없습니다"],
   ["orgUnit.merge.subtitle", "구성원 {count, number}명"],
+  ["structure.headcount.basis", "인원은 하위 조직을 포함한 재직자입니다"],
+  ["structure.shortcuts.nest", "Tab 하위로 · Shift Tab 위로"],
 ])("maturity context accepts %s without an exception", (id, text) => {
   expect(checkTerms([entry(id, text)], [])).toEqual([]);
 });

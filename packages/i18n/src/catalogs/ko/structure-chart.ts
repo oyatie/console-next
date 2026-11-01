@@ -2,7 +2,6 @@
 export const koStructureChart = {
   "structureChart.unplaced": "미배치 {count, number}명 포함",
   "structureChart.selection.cursor": "초점은 {name}(선택 안 됨)",
-  "structureChart.selection.keys": "←→↑↓ 초점 이동 · Ctrl Space 선택 켜고 끄기 · Shift ↓ 선택 확장 · Ctrl A 같은 단계 모두",
   "structureChart.moved": "방금 옮김 · {from}에서",
   "structureChart.find.at": "{at, number} / {total, number}",
   "structureChart.menu.earlier": "순서 앞으로",
@@ -42,6 +41,5 @@ export const koStructureChart = {
   "structureChart.export.prev": "앞 쪽",
   "structureChart.export.next": "다음 쪽",
   "structureChart.export.consequencePages": "{format} {pages, number}쪽에 사업장 {sites, number}곳 · 부서 {depts, number}개 · 인원 {people, number}명이 들어갑니다",
-  "structureChart.farHint": "사업장까지 · 한눈 보기 · 사업장이 {wrap, number}곳을 넘는 법인은 두 줄로 접어 보여 줍니다 · 상자에 올리거나 Space를 누르면 부서를 미리 봅니다",
   "structureChart.export.visible": "목록에 보이는 {count, number}개 행",
 } as const;

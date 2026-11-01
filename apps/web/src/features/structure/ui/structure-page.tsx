@@ -15,7 +15,6 @@ import { OutlineView } from "./outline-view";
 import { PageHead } from "./page-head";
 import { CompareResults } from "./compare-control";
 import { RegistryView } from "./registry-view";
-import { SetupPanel } from "./setup-panel";
 import { ChartSkeleton } from "./chart-skeleton";
 import { useStructure } from "./use-structure";
 import { useStructureCommands } from "./use-structure-commands";
@@ -27,13 +26,11 @@ const PROPOSAL_ACTS: readonly string[] = ["create", "rename", "move", "dissolve"
 
 /**
  * company structure (spec S1): one page, three views of the same tree and the same selection (org chart · list · outline), the
- * phase stated in the head, and the setup panel beside it while setting up. An empty tenant shows the first run
+ * phase stated in the head. An empty tenant shows the first run
  * (S10) in the chart's place. One selected box opens its side panel (S5 workplace, S6 department) and its acts open the structure
  * sheets over the page; a proposal card a link names (`?act=create` …) opens in the panel slot instead.
  */
-export function StructurePage({ fixLink, proposal, panel, sheets }: {
-  /** Where a setup remedy is fixed (the onboarding slice's links). */
-  fixLink: (code: string) => ReactNode;
+export function StructurePage({ proposal, panel, sheets }: {
   /** The proposal card for `?act=` (the org slice). */
   proposal: ReactNode;
   /** The side panel of the one selected box (the org and entity slices). */
@@ -106,10 +103,8 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
               : <ChartView key={focus ?? "tenant"} pick={jump} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
             }
 
-        {/* The setup panel belongs to the home view (S1); a focused chart (S2) takes the full width. */}
         {proposing ? <aside className={css.side} aria-label={t("structure.side")}>{proposal}</aside>
-          : paneled && tree.data ? <div className={css.side}>{panel(url.last!, tree.data, cmd.readOnly)}</div>
-          : s?.phase === "SETUP" && !s.readOnly && view === "chart" && !focus && <SetupPanel s={s} first={empty} fixLink={fixLink} />}
+          : paneled && tree.data ? <div className={css.side}>{panel(url.last!, tree.data, cmd.readOnly)}</div> : null}
       </div>
       {!cmd.readOnly && sheets}
     {/* Late comparison records follow the full-height chart so they cannot shrink its canvas. */}

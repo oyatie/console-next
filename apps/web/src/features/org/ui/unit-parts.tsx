@@ -3,20 +3,20 @@ import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { DerivedValue } from "../../../ui/field/derived-value";
+import { HeadcountBasis } from "../../../reference/org/ui/headcount-basis";
 import type { Unit } from "../domain/proposal";
 import { preview } from "../domain/preview";
 import { NameField } from "./propose-fields";
 import type { Kit } from "./proposal-form";
 import { StructureDiff } from "./structure-diff";
 import type { UnitKit } from "./use-unit-kit";
-import s from "./propose.module.css";
 
 type Summary = components["schemas"]["OrgChangeSummary"];
 type Op = components["schemas"]["OrgProposalOp"];
 export type Row = { label: string; value: ReactNode; basis?: string };
 
-/** The card's context: values derived by rule with their basis, then the facts as a list, then `note` once. */
-export function Context({ rows, note }: { rows: Row[]; note?: string }) {
+/** The card's context: values derived by rule with their basis, then the facts as a list, then the shared headcount basis on demand. */
+export function Context({ rows, headcount }: { rows: Row[]; headcount?: boolean }) {
   const facts = rows.filter((r) => r.basis === undefined);
   return (
     <>
@@ -26,7 +26,7 @@ export function Context({ rows, note }: { rows: Row[]; note?: string }) {
           {facts.map((r) => [<dt key={`${r.label}-t`}>{r.label}</dt>, <dd key={`${r.label}-d`}>{r.value}</dd>])}
         </dl>
       )}
-      {note && <p className={s.note}>{note}</p>}
+      {headcount && <HeadcountBasis />}
     </>
   );
 }

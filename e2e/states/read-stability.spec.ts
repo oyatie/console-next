@@ -164,7 +164,7 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     await expect(page.getByRole("group", { name: t("structure.views"), exact: true })).toBeVisible();
     await expect(page.getByRole("main").locator('[aria-busy="true"]').last()).toBeVisible();
     const phase = page.locator('.page__head [data-loading]');
-    await expect(phase).toHaveText(t("structure.effect.operating"));
+    await expect(phase).toHaveText(t("structure.phase.operatingChip"));
     await expect(phase).toBeHidden();
     expect(await geometry()).toEqual(populated);
     await expectStable(page, "org: loading head");

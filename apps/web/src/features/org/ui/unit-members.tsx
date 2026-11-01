@@ -57,7 +57,7 @@ export function DissolveCard({ intent: { unit }, units, open, moving, onClose }:
     <ProposalForm intent={{ kind: "dissolve", unit }} v={v} set={set} onClose={onClose} spec={() => ({
       title: t("orgPropose.title.dissolve", { name: unit.name }),
       context: (
-        <Context note={k.headcountNote} rows={[
+        <Context headcount rows={[
           { label: t("orgPropose.ctx.target"), value: k.path(unit) },
           { label: t("orgPropose.ctx.members"), value: t("orgPropose.ctx.members.value", { direct, total: k.rollup(unit) }) },
           { label: t("orgPropose.ctx.children"), value: k.kidNames(unit) },
@@ -105,7 +105,7 @@ export function ReassignCard({ intent: i, units, open, onClose }: { intent: Extr
   return (
     <ProposalForm intent={i} v={v} set={set} onClose={onClose} spec={(kit) => ({
       title: t("orgPropose.title.reassign", { name: unit.name, count }),
-      context: <Context note={k.headcountNote} rows={[{ label: t("orgPropose.ctx.from"), value: k.path(unit) }, { label: t("orgPropose.ctx.moversLabel"), value: movers }]} />,
+      context: <Context headcount rows={[{ label: t("orgPropose.ctx.from"), value: k.path(unit) }, { label: t("orgPropose.ctx.moversLabel"), value: movers }]} />,
       inputs: kit.wrap("to", (
         <div className="field">
           <UnitPicker units={units} options={options} value={kit.v.to} onChange={(x) => kit.set("to", x)} labelText={t("orgPropose.field.to")} />
