@@ -24,6 +24,14 @@ const access = (enforcement: string, kind: "TENANT" | "WORKPLACE" = "TENANT") =>
 }) as AccessEffective;
 beforeAll(() => loadCatalog("ko"));
 
+test("Cedar action requirements consume only an explicit server permit", () => {
+  const need = { action: "bulk_appointment" } as unknown as AccessRequirement;
+  for (const is_ops of [false, true]) for (const decision of [true, false, undefined]) {
+    const held = { ...access("ENFORCED"), is_ops, decisions: decision === undefined ? {} : { bulk_appointment: decision } };
+    expect(accessRefusal(held, need)).toBe(decision === true ? null : "access_denied");
+  }
+});
+
 test.each(["missing", "scoped", "allowed"])("all required reads decide before the page mounts: %s", async state => {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
   routeAccess = { allOf: [{ domain: "hr_basic", level: "edit" }, entityReadAccess] };

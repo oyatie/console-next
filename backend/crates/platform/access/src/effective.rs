@@ -8,6 +8,10 @@ use console_platform_authz::Principal;
 use console_platform_authz::access::{
     AccessSlice, Domain, Enforcement, Level, action_group, load_access_subject, load_tenant_phase,
 };
+use console_platform_authz::{
+    access::{NodeKind, NodeRef, cedar::BULK_APPOINTMENT},
+    cedar_pbac::visible::load_facts,
+};
 use console_platform_db::with_org_conn;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -119,7 +123,21 @@ pub async fn account(s: &AccessService, p: Principal, account: Uuid) -> AccessRe
 pub async fn me(s: &AccessService, p: Principal) -> AccessResult<Value> {
     let me = *p.user_id.as_uuid();
     let out = with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
-        Box::pin(async move { effective_of(tx, p.org_id, me).await })
+        Box::pin(async move {
+            let mut out = effective_of(tx, p.org_id, me).await?;
+            let facts = load_facts(tx, p.org_id, me).await?;
+            let allowed = facts
+                .authorize(
+                    BULK_APPOINTMENT,
+                    NodeRef {
+                        kind: NodeKind::Tenant,
+                        id: *p.org_id.as_uuid(),
+                    },
+                )
+                .map_err(AccessError::internal)?;
+            out["decisions"] = json!({BULK_APPOINTMENT: allowed});
+            Ok(out)
+        })
     })
     .await?;
     Ok(out)

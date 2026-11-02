@@ -41,6 +41,8 @@ pub enum AccessEngineError {
 const APPLIES: &str =
     "appliesTo { principal: [Account], resource: [Tenant, LegalEntity, Workplace, Dept] };";
 
+pub const BULK_APPOINTMENT: &str = "bulk_appointment";
+
 const PLATFORM_POLICIES: [(&str, &str); 2] = [
     (
         "platform.isolation",
@@ -79,6 +81,11 @@ pub fn schema_source() -> String {
             action_group(domain, level)
         ));
     }
+    src.push_str(&format!(
+        "action \"{BULK_APPOINTMENT}\" in [\"{}\", \"{}\"] {APPLIES}\n",
+        action_group(Domain::HrBasic, super::catalog::Level::Edit),
+        action_group(Domain::Appointment, super::catalog::Level::Edit),
+    ));
     src
 }
 

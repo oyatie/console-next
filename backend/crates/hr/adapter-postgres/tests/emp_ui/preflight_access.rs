@@ -207,7 +207,7 @@ async fn bulk_preview_and_commit_use_the_same_live_appointment_action(pool: PgPo
     let f = fixture(pool, true).await;
     let clock = FixedClock(Timestamp::now_utc());
     let employee = f.employee().await;
-    replace_hr_grant(&f, &["view", "edit"], &clock).await;
+    replace_hr_grant(&f, &["view"], &clock).await;
     let key = Uuid::new_v4().to_string();
     for error in [
         f.hr.preview_bulk_lifecycle_events(f.ops.clone(), promotion(employee, "2027-03-01"))

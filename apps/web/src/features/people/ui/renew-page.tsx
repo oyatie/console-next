@@ -1,5 +1,6 @@
 import { QueryState } from "../../../lib/react/query-state";
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
+import { operationAccess } from "../../../reference/authz/domain/operation-access";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -42,7 +43,7 @@ const request = (b: RenewBatch, memo: string): BulkRequest =>
  * server ever takes mixed acts.
  */
 export function RenewPage() {
-  return <AccessGate domain="appointment" level="edit" tenant><RenewWorkspace /></AccessGate>;
+  return <AccessGate {...operationAccess["POST /api/v1/employees/lifecycle-events/bulk/preview"]}><RenewWorkspace /></AccessGate>;
 }
 
 function RenewWorkspace() {

@@ -58,6 +58,9 @@ pub async fn create(
     headers: &HeaderMap,
     body: BulkEmployeeLifecycleEventRequest,
 ) -> Response {
+    if let Err(error) = service.check_bulk_lifecycle_access(&principal).await {
+        return HrApiError(error).into_response();
+    }
     let checked = validate_idempotency_key(
         headers
             .get(IDEMPOTENCY_KEY_HEADER)
@@ -88,9 +91,6 @@ async fn accept(
     idempotency_key: String,
     body: Value,
 ) -> Response {
-    if let Err(error) = service.check_bulk_lifecycle_access(&principal).await {
-        return HrApiError(error).into_response();
-    }
     let slot = match DriverSlot::take() {
         Ok(slot) => slot,
         Err(error) => {

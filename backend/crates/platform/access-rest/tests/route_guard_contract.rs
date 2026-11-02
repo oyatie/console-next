@@ -9,6 +9,34 @@ use sqlx::PgPool;
 use support::{grant_op, world};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn bulk_appointment_decision_uses_live_tenant_grants_of_either_domain(pool: PgPool) {
+    for domain in ["hr_basic", "appointment"] {
+        let mut w = world(pool.clone()).await;
+        let role = w
+            .role(domain, json!([{ "domain": domain, "levels": ["edit"] }]))
+            .await;
+        for (scope, node, in_setup, allowed) in [
+            ("LEGAL_ENTITY", Some(w.le_a), true, false),
+            ("TENANT", None, false, false),
+            ("TENANT", None, true, true),
+        ] {
+            w.grant(json!([grant_op(w.hr, role, scope, node, in_setup)]))
+                .await;
+            let (status, me) = w.call(Method::GET, "/api/v1/access/me", w.hr, None).await;
+            assert_eq!(status, StatusCode::OK, "{me}");
+            assert_eq!(
+                me["decisions"]["bulk_appointment"], allowed,
+                "{domain}: {me}"
+            );
+            sqlx::query("UPDATE access_grants SET status = 'REVOKED', revoked_at = now(), revoked_by = $3 WHERE org_id = $1 AND account_id = $2 AND status <> 'REVOKED'")
+                .bind(w.org).bind(w.hr.as_uuid()).bind(w.ops.as_uuid()).execute(&w.owner).await.unwrap();
+            let (_, revoked) = w.call(Method::GET, "/api/v1/access/me", w.hr, None).await;
+            assert_eq!(revoked["decisions"]["bulk_appointment"], false, "{revoked}");
+        }
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn route_refusal_and_implied_view_are_server_decisions(pool: PgPool) {
     let mut w = world(pool).await;
     for path in [

@@ -112,12 +112,13 @@ test("effective screen grants follow every generated route requirement without o
       const need = readRequirement(path);
       const requirements = "allOf" in need ? need.allOf : [need];
       // An empty generated scope list is ops-only; the fixture must preserve that refusal.
-      const grantable = requirements.filter(need => need.scopes?.length !== 0);
+      const grantable = requirements.filter(need => "action" in need || need.scopes?.length !== 0);
       expect(access.is_ops).toBe(false);
       expect(accessRefusal(access, need), path).toBe(grantable.length === requirements.length ? null : "access_denied");
       expect(access.entries.map(({ domain, level }) => ({ domain, level }))).toEqual(
-        [...new Map(grantable.map(({ domain, level }) => [`${domain}/${level}`, { domain, level }])).values()],
+        [...new Map(grantable.flatMap(need => "action" in need ? [] : [[`${need.domain}/${need.level}`, { domain: need.domain, level: need.level }] as const])).values()],
       );
+      for (const need of requirements) if ("action" in need) expect(access.decisions?.[need.action]).toBe(true);
       expect(access.entries.every(entry => entry.enforcement === "ENFORCED")).toBe(true);
     });
   }

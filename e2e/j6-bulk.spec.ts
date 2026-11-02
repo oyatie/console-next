@@ -39,7 +39,7 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
   await expectAccessible(admin, "J6: roster with a selection");
   await c.click(admin.getByRole("button", { name: "선택한 3명 일괄 발령" }));
   // The bulk workspace (spec E6-move): who, before anything is chosen; no kind, no date.
-  await expect(admin.getByRole("heading", { name: "일괄 발령 · 3명", level: 1 })).toBeVisible();
+  await expect(admin.getByRole("region", { name: "일괄 발령 · 3명", exact: true })).toBeVisible();
   for (const name of names) await expect(admin.getByRole("table", { name: /지금 → 새 위치/ })).toContainText(name);
   await c.click(admin.getByRole("group", { name: "무엇을" }).getByRole("button", { name: "전보" }));
   await c.click(admin.getByRole("listbox", { name: "어디로" }).getByRole("option", { name: /^채용팀/ }));

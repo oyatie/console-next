@@ -83,8 +83,12 @@ test.describe("route requirements with a real grantless account", () => {
           await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
           const permission = await card.locator(".state > .muted").innerText();
           const need = readRequirement(path as Parameters<typeof readRequirement>[0]);
-          const required = "domain" in need ? [need] : need.allOf;
+          const required = "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
+            if ("action" in entry) {
+              expect(permission).toContain(ko[`denied.action.${entry.action}` as keyof typeof ko]);
+              continue;
+            }
             expect(permission).toContain(ko[`accessCodes.domain.${entry.domain}` as keyof typeof ko]);
             expect(permission).toContain(ko[`accessCodes.level.${entry.level}` as keyof typeof ko]);
           }

@@ -1,4 +1,4 @@
-x-console-authz: {"permission": "LifecycleManage", "scope": "tenant"}
+x-console-authz: {"action": "bulk_appointment", "scope": "tenant"}
 tags:
   - employees
 operationId: createBulkEmployeeLifecycleEvents

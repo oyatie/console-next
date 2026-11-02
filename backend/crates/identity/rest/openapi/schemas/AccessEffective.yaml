@@ -6,6 +6,14 @@ required:
 - as_of
 - entries
 properties:
+  decisions:
+    type: object
+    description: Server Cedar decisions for tenant-wide commands. Missing decisions never admit a command.
+    additionalProperties: false
+    properties:
+      bulk_appointment:
+        type: boolean
+        description: Either hr_basic edit or appointment edit over the tenant, decided by the bulk_appointment Cedar action.
   account_id:
     $ref: '#/components/schemas/Uuid'
   is_ops:

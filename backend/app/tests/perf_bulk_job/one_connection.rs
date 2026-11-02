@@ -16,6 +16,7 @@ use crate::{BULK, perf, transfer, transfers};
 /// on their own tasks; the batch never waits for them.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_job_batch_never_waits_on_a_second_connection(pool: PgPool) {
+    let _drivers = crate::DRIVER_TEST.lock().await;
     let acquire = std::time::Duration::from_secs(5);
     let runtime = perf::sized_role_pool(&pool, "console_rt", 1, acquire).await;
     let (ctx, org, admin) = perf::setup_with_runtime(&pool, runtime).await;

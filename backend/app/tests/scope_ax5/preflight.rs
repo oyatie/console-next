@@ -12,8 +12,7 @@ async fn scoped_preflights_name_the_tenant_boundary_before_disclosing_facts(pool
     let mut w = world::world_with_lines(
         pool,
         json!([
-            {"domain":"hr_basic","levels":["view","edit"]},
-            {"domain":"appointment","levels":["edit"]}
+            {"domain":"hr_basic","levels":["view","edit"]}
         ]),
     )
     .await;
