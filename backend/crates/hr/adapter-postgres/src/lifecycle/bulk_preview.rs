@@ -2,14 +2,13 @@
 //! batch's exact counts before the commit, by the commit's own validation
 //! (`bulk_plan`), writing nothing and auditing nothing.
 
-use console_platform_authz::{Feature, Principal};
+use console_platform_authz::Principal;
 use console_platform_db::with_org_conn;
 use serde::Serialize;
 use serde_json::Value;
 
 use super::bulk_plan::{bulk_input, plan_bulk};
 use super::requests::BulkEmployeeLifecycleEventRequest;
-use crate::authz::authorize_hr_org_wide;
 use crate::clock::today_kst;
 use crate::{HrError, HrService};
 
@@ -43,27 +42,28 @@ impl HrService {
         principal: Principal,
         body: BulkEmployeeLifecycleEventRequest,
     ) -> Result<BulkLifecyclePreview, HrError> {
-        authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
-        let input = bulk_input(body)?;
         let (org, scope, today) = (
             principal.org_id,
             principal.branch_scope.clone(),
             today_kst(),
         );
-        let scheduled =
-            console_hr_domain::text::parse_yyyy_mm_dd(&input.transition.effective_date)? > today;
         // the preview takes the commit's row locks for its short
         // read transaction (prepare locks each employee); a lock-free prepare
         // comes if a 3,000-person preview ever contends with live writes.
         let plan = with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                super::action_refusals::require_bulk_permission(tx, &principal).await?;
+                let input = bulk_input(body)?;
+                let scheduled =
+                    console_hr_domain::text::parse_yyyy_mm_dd(&input.transition.effective_date)?
+                        > today;
                 plan_bulk(tx, org, &input, &scope, today)
                     .await
-                    .map(|p| (p, input))
+                    .map(|p| (p, input, scheduled))
             })
         })
         .await;
-        let (plan, input) = plan?;
+        let (plan, input, scheduled) = plan?;
         let refused = plan.refusals.len();
         let ok = plan.loaded.len();
         Ok(BulkLifecyclePreview {

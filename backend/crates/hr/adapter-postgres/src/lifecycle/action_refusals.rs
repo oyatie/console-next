@@ -3,7 +3,8 @@
 use std::collections::BTreeMap;
 
 use console_platform_authz::{
-    Principal,
+    Feature, Principal,
+    access::{NodeKind, NodeRef},
     cedar_pbac::{
         actions::lifecycle_event::{self, EventFacts},
         visible::{DecisionFacts, load_facts},
@@ -48,6 +49,72 @@ pub(super) fn permission_denied() -> HrError {
     HrError::from_kernel(console_kernel_core::KernelError::forbidden(
         "lifecycle event permission is required in this scope",
     ))
+}
+
+pub(super) async fn require_bulk_permission(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: &Principal,
+) -> Result<(), HrError> {
+    require_tenant_permissions(tx, principal, &[Feature::LifecycleManage]).await
+}
+
+impl crate::HrService {
+    /// Admit the request before reserving an async driver; acceptance rechecks in its write transaction.
+    pub async fn check_bulk_lifecycle_access(&self, principal: &Principal) -> Result<(), HrError> {
+        let principal = principal.clone();
+        console_platform_db::with_org_conn::<_, _, HrError>(
+            &self.pool,
+            principal.org_id,
+            move |tx| Box::pin(async move { require_bulk_permission(tx, &principal).await }),
+        )
+        .await
+    }
+}
+
+/// Tenant-wide preflights use one live Cedar snapshot before reading or validating payloads.
+pub(super) async fn require_tenant_permissions(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: &Principal,
+    features: &[Feature],
+) -> Result<(), HrError> {
+    let org = principal.org_id;
+    let access = load_facts(tx, org, *principal.user_id.as_uuid())
+        .await
+        .map_err(HrError::from_kernel)?;
+    for feature in features {
+        if !access
+            .authorize(
+                feature.as_str(),
+                NodeRef {
+                    kind: NodeKind::Tenant,
+                    id: *org.as_uuid(),
+                },
+            )
+            .map_err(|e| {
+                HrError::internal(format!("lifecycle permission facts unavailable: {e}"))
+            })?
+        {
+            let nodes = access.permitted_nodes(feature.as_str()).map_err(|e| {
+                HrError::internal(format!("lifecycle permission facts unavailable: {e}"))
+            })?;
+            if nodes.is_empty() {
+                return Err(permission_denied());
+            }
+            return Err(HrError {
+                errors: None,
+                status: http::StatusCode::FORBIDDEN,
+                code: "scope_tenant_wide_only",
+                message: "this works on the whole tenant; a grant over 전체 is needed".to_owned(),
+                refusals: Some(Box::new(serde_json::Value::Array(
+                    nodes
+                        .into_iter()
+                        .map(|node| serde_json::json!({"kind": node.kind, "node_id": node.id}))
+                        .collect(),
+                ))),
+            });
+        }
+    }
+    Ok(())
 }
 
 async fn load_permission(

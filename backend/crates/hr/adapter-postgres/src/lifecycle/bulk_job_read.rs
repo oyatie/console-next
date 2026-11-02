@@ -23,9 +23,11 @@ impl HrService {
         principal: &Principal,
         id: Uuid,
     ) -> Result<BulkLifecycleJob, HrError> {
+        let principal = principal.clone();
         let org = principal.org_id;
         let row = with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                super::action_refusals::require_bulk_permission(tx, &principal).await?;
                 Ok(sqlx::query(sqlx::AssertSqlSafe(format!(
                     "SELECT {JOB_COLUMNS} FROM employee_lifecycle_bulk_jobs \
                       WHERE org_id = $1 AND id = $2"

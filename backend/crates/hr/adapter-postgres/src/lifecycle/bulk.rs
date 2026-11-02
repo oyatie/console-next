@@ -60,7 +60,6 @@ impl HrService {
         progress: Option<BulkProgress>,
     ) -> Result<Value, HrError> {
         let fingerprint = json!(&body);
-        let input = bulk_input(body)?;
         let scope = principal.branch_scope.clone();
         let org = principal.org_id;
         let actor = principal.user_id;
@@ -70,6 +69,8 @@ impl HrService {
 
         let response = with_audits::<_, _, HrError>(&self.pool, org, |tx| {
             Box::pin(async move {
+                super::action_refusals::require_bulk_permission(tx, &principal).await?;
+                let input = bulk_input(body)?;
                 match claim_idempotency_key(tx, OPERATION, &idempotency_key, &fingerprint).await? {
                     IdempotencyClaim::Replay(response) => return Ok((response, vec![])),
                     IdempotencyClaim::Mismatch => return Err(idempotency_key_reused()),

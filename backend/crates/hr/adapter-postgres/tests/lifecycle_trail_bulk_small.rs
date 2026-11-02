@@ -3,6 +3,8 @@
 #[allow(dead_code)]
 #[path = "emp_create/fixture.rs"]
 mod fixture;
+#[path = "support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 
 use console_hr_adapter_postgres::clock::today_kst;
 use serde_json::json;
@@ -15,6 +17,12 @@ async fn bulk_cases_roll_back_with_the_event_and_scheduled_replay_keeps_one_pend
     pool: PgPool,
 ) {
     let f = fixture::fixture(pool.clone()).await;
+    lifecycle_grant::grant(
+        &pool,
+        *f.principal.org_id.as_uuid(),
+        *f.principal.user_id.as_uuid(),
+    )
+    .await;
     let mut employees = Vec::new();
     for key in ["batch-trail-one", "batch-trail-two"] {
         let mut body = f.body(key, "REGULAR");

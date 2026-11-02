@@ -20,6 +20,8 @@ export const operationAccess = {
   "GET /api/v1/employees": {"domain":"hr_basic","level":"view"},
   "POST /api/v1/employees": {"domain":"hr_basic","level":"edit"},
   "GET /api/v1/employees/import/unplaced": {"domain":"hr_basic","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "POST /api/v1/employees/lifecycle-events/bulk": {"domain":"appointment","level":"edit","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/employees/lifecycle-events/bulk/jobs/{job_id}": {"domain":"appointment","level":"edit","tenant":true,"scopes":["TENANT"]},
   "POST /api/v1/employees/lifecycle-events/bulk/preview": {"domain":"appointment","level":"edit","tenant":true,"scopes":["TENANT"]},
   "GET /api/v1/entity-setup/batches": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "GET /api/v1/hr/certificates": {"domain":"hr_basic","level":"edit"},

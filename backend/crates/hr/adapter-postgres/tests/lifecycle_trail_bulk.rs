@@ -5,6 +5,8 @@
 #[allow(dead_code)]
 #[path = "emp_create/fixture.rs"]
 mod fixture;
+#[path = "support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -20,6 +22,12 @@ use uuid::Uuid;
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointment(pool: PgPool) {
     let f = fixture::fixture(pool.clone()).await;
+    lifecycle_grant::grant(
+        &pool,
+        *f.principal.org_id.as_uuid(),
+        *f.principal.user_id.as_uuid(),
+    )
+    .await;
     let people = 2_000;
     let mut employees = Vec::with_capacity(people);
     for n in 0..people {

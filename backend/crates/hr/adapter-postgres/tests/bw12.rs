@@ -7,11 +7,16 @@
 
 #[path = "support/go_live.rs"]
 mod go_live;
+#[allow(dead_code)]
+#[path = "support/lifecycle_grant.rs"]
+mod lifecycle_grant;
+#[path = "bw12/limit.rs"]
+mod limit;
 use std::collections::BTreeSet;
 
 use console_hr_adapter_postgres::HrService;
 use console_hr_adapter_postgres::lifecycle::requests::CreateEmployeeLifecycleEventRequest;
-use console_kernel_core::{BranchScope, OrgId, UserId};
+use console_kernel_core::{BranchScope, Clock, FixedClock, OrgId, Timestamp, UserId};
 use console_platform_authz::{Principal, Role};
 use serde_json::json;
 use sqlx::PgPool;
@@ -87,12 +92,10 @@ async fn fixture(pool: PgPool, window: Option<(&str, &str)>) -> Fixture {
         .connect_with(options)
         .await
         .unwrap();
-    let principal = Principal::new(
-        user,
-        org,
-        BTreeSet::from([Role::SuperAdmin]),
-        BranchScope::All,
-    );
+    let roles = BTreeSet::from([Role::SuperAdmin]);
+    let principal = Principal::new(user, org, roles, BranchScope::All);
+    lifecycle_grant::grant_hr_basic(&pool, *org.as_uuid(), *user.as_uuid(), &["view", "edit"])
+        .await;
     Fixture {
         hr: HrService::new(rt),
         owner: pool,
@@ -206,6 +209,15 @@ async fn a_renewal_past_two_years_needs_an_exception_with_a_statutory_ground(poo
     assert!(choices[0].basis.contains("제4조제1항제4호"));
     let mut reader = f.principal.clone();
     reader.roles = BTreeSet::from([Role::Executive]);
+    let clock = FixedClock(Timestamp::now_utc());
+    sqlx::query("UPDATE access_grants SET valid_to=$3 WHERE org_id=$1 AND account_id=$2")
+        .bind(f.org)
+        .bind(f.user)
+        .bind(clock.now())
+        .execute(&f.owner)
+        .await
+        .unwrap();
+    lifecycle_grant::grant_hr_basic(&f.owner, f.org, f.user, &["view"]).await;
     assert!(
         f.hr.employee_fixed_term(reader.clone(), f.employee)
             .await
@@ -219,6 +231,7 @@ async fn a_renewal_past_two_years_needs_an_exception_with_a_statutory_ground(poo
             .as_u16(),
         403
     );
+    lifecycle_grant::grant_hr_basic(&f.owner, f.org, f.user, &["view", "edit"]).await;
     f.renew("2026-12-31", Some(older)).await.unwrap();
     assert!(
         f.hr.employee_fixed_term_for_renewal(
@@ -286,23 +299,6 @@ async fn childcare_leave_does_not_count_and_the_fallback_is_flagged_not_blocked(
     );
     let exception = g.exception("OLDER_WORKER", "2027-06-30").await;
     g.renew("2027-06-30", Some(exception)).await.unwrap();
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn changing_the_registered_limit_changes_the_renewal_outcome(pool: PgPool) {
-    let f = fixture(pool, Some(("2024-11-01", "2026-09-30"))).await;
-    assert_eq!(
-        f.renew("2026-12-31", None).await.unwrap_err(),
-        (409, "fixed_term_limit".to_owned())
-    );
-    sqlx::query("UPDATE statutory_rules SET value_num=value_num+1 WHERE code='FIXED_TERM_MAX_YEARS' AND effective_from <= DATE '2026-09-30' AND (effective_to_exclusive IS NULL OR DATE '2026-09-30' < effective_to_exclusive)")
-        .execute(&f.owner).await.unwrap();
-    let view =
-        f.hr.employee_fixed_term(f.principal.clone(), f.employee)
-            .await
-            .unwrap();
-    assert_eq!(view.two_year_date.as_deref(), Some("2027-10-31"));
-    f.renew("2026-12-31", None).await.unwrap();
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

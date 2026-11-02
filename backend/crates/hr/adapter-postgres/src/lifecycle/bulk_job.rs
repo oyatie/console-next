@@ -215,11 +215,11 @@ impl HrService {
     ) -> Result<(BulkLifecycleJob, bool), HrError> {
         let body: BulkEmployeeLifecycleEventRequest = serde_json::from_value(request.clone())
             .map_err(|_| HrError::validation("bulk request is not readable"))?;
-        bulk_input(body)?;
-        let org = principal.org_id;
-        let actor = principal.user_id;
+        let (org, actor, principal) = (principal.org_id, principal.user_id, principal.clone());
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                super::action_refusals::require_bulk_permission(tx, &principal).await?;
+                bulk_input(body)?;
                 let text = request.to_string();
                 let inserted = sqlx::query(sqlx::AssertSqlSafe(format!(
                     "INSERT INTO employee_lifecycle_bulk_jobs \

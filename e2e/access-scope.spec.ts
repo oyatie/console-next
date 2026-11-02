@@ -59,7 +59,7 @@ for (const { key, scope } of [
   try {
     await go(admin, "/org");
     await addDepartments(admin, "본점", ["인사부"]);
-    await role(admin, "부서 인사", ["인사기본 등록·수정", "조직 조회"]);
+    await role(admin, "부서 인사", ["인사기본 조회", "인사기본 등록·수정", "발령 등록·수정", "조직 조회"]);
     await go(admin, "/access/grants");
     await admin.getByRole("button", { name: ko["access.grant.title"], exact: true }).click();
     await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("이임원");
@@ -83,6 +83,18 @@ for (const { key, scope } of [
       await routeReady(hr);
       await expect(hr.getByRole("main").getByRole("heading", { level: 1 }).first()).toBeVisible();
       await expect(denied(hr)).toHaveCount(0);
+    }
+    // A narrower grant names the tenant boundary before exposing a person or validating a date.
+    const employee = crypto.randomUUID();
+    for (const path of [`/employees/${employee}/fixed-term`, `/employees/${employee}/fixed-term?contract_end_date=invalid`]) {
+      const response = await readAsHr(path);
+      expect(response.status()).toBe(403);
+      expect((await response.json()).error.code).toBe("scope_tenant_wide_only");
+    }
+    for (const path of ["/employees/lifecycle-events/bulk/preview", "/employees/lifecycle-events/bulk"]) {
+      const response = await readAsHr(path, "POST", { event_type: "PROMOTE", employee_ids: [employee], effective_date: "2027-03-01", to_position: "과장", comment: "정기 인사" }, { "Idempotency-Key": crypto.randomUUID() });
+      expect(response.status()).toBe(403);
+      expect((await response.json()).error.code).toBe("scope_tenant_wide_only");
     }
     if (key === "department") for (const path of ["/org", "/org/entities", "/org/changes", "/org/history", "/setup/org", "/setup/company-names", "/people/exits"]) {
       await go(hr, path, path.startsWith("/setup/"));
