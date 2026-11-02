@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
@@ -13,6 +14,7 @@ import { forgetResize } from "./stability";
 
 // The mockups' desktop size (spec: 1440 × 900).
 test.use({ viewport: { width: 1440, height: 900 } });
+test.beforeAll(() => loadCatalog("ko"));
 
 test("an empty tenant builds its structure on the chart", { tag: "@org" }, async ({ browser }) => {
   test.setTimeout(180_000); // one existing tenant, including desktop/phone accessibility and the delayed initial read
@@ -25,12 +27,11 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
 
-  // S10: the empty chart is the sequence, with the setup steps beside it.
+  // The empty chart has one action to register the first legal entity.
   await go(admin, "/org");
-  await expect(admin.getByRole("heading", { name: "첫 법인을 등록합니다" })).toBeVisible();
-  await expect(admin.getByRole("complementary", { name: "시작", exact: true })).toBeVisible();
+  await expect(admin.getByRole("heading", { name: t("structure.first.title"), exact: true })).toBeVisible();
   await expectAccessible(admin, "structure first run");
-  await c.click(admin.getByRole("link", { name: "법인 추가" }));
+  await c.click(admin.getByRole("link", { name: t("structure.first.addEntity"), exact: true }));
   await registerEntity(admin, "새온정밀", false, c);
   const entityRecord = new URL(admin.url()).pathname;
 
@@ -66,7 +67,6 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
   await go(admin, "/org");
   await leaveScreen(admin);
   await expect(box(admin, "평택공장")).toBeVisible();
-  await expect(admin.getByRole("complementary", { name: "설정 진행" })).toBeVisible();
   await expectAccessible(admin, "structure chart (one entity)");
   c.done("first entity and workplace");
 
