@@ -57,6 +57,7 @@ export const koComposer = {
   "composer.commit.next": "{label} · 다음 직원",
   "composer.action.profile": "인사 정보",
   "composer.action.payGroup": "급여 그룹",
+  "composer.action.payrollRun": "급여",
   "composer.verb.approve": "승인",
   "composer.verb.complete": "완료",
   "composer.action.orgDetails": "부서 정보",

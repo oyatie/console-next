@@ -6,7 +6,7 @@
 // use one degrade where it is not served. Remove an entry once its path is generated, and a type that then fails to
 // match is a contract bug to raise, not to paper over.
 import type { PayrollPaths, PayrollModule } from "./payroll";
-export type { PayGroup, PayGroups, PayrollRate, PayrollRates, PayrollRun } from "./payroll";
+export type { PayGroup, PayGroups, PayrollRate, PayrollRates, PayrollRun, CreatePayrollRun, PayrollRunDetail } from "./payroll";
 import type { StatutoryPaths } from "./statutory";
 export type { FilingTask, FilingPage, RegisterPage, RecordFiling, FilingFacts, FilingReason, FilingCitation } from "./statutory";
 import type { components, paths } from "../schema";
