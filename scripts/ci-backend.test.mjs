@@ -187,6 +187,54 @@ test("nextest shards compile disjoint integration targets and cover every worksp
   assert.equal(ci.jobs["backend-tests"].env.NEXTEST_SHARDS, "${{ strategy.job-total }}");
 });
 
+test("shard targets respect Cargo's resolved required features", async () => {
+  const { buildTargets } = await import("./backend-tests.mjs");
+  const metadata = { workspace_members: ["app"], packages: [{ id: "app", targets: [
+    { name: "ordinary", kind: ["test"] },
+    { name: "attendance", kind: ["test"], "required-features": ["attendance"] },
+    { name: "action_inbox_api", kind: ["test"], "required-features": ["full"] },
+    { name: "mixed", kind: ["test"], "required-features": ["attendance", "full"] },
+  ] }], resolve: { nodes: [{ id: "app", features: ["default", "mvp", "attendance"] }] } };
+  assert.deepEqual(buildTargets(metadata, 1, 2), ["--workspace", "--lib", "--bins", "--test", "attendance"]);
+  assert.deepEqual(buildTargets(metadata, 2, 2), ["--workspace", "--test", "ordinary"]);
+  assert.throws(() => buildTargets({ ...metadata, resolve: null }, 1, 2), /missing resolved features/);
+  metadata.packages.push({ id: "other", targets: [{ name: "ordinary", kind: ["test"], "required-features": ["full"] }] });
+  metadata.workspace_members.push("other");
+  metadata.resolve.nodes.push({ id: "other", features: [] });
+  assert.throws(() => buildTargets(metadata, 1, 2), /ambiguous feature-gated test target/);
+});
+
+test("PR fan-out stays below the runner allowance across workflows", () => {
+  const shards = ci.jobs["backend-tests"].strategy.matrix.shard;
+  const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url)));
+  assert.ok(shards.length <= 2);
+  assert.ok(timings.maxShards <= 4);
+  assert.ok(timings.budgetSeconds <= 600);
+  // Long root jobs can overlap later jobs; count every dependency-independent combination.
+  let concurrent = 0;
+  for (const file of ["ci.yml", "codeql.yml", "platform.yml", "workflows-check.yml"]) {
+    const workflow = yaml.load(readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), "utf8"));
+    const ancestors = name => [workflow.jobs[name].needs ?? []].flat().flatMap(n => [n, ...ancestors(n)]);
+    const nodes = [];
+    for (const [name, job] of Object.entries(workflow.jobs)) {
+      if (job.if?.includes("github.ref == 'refs/heads/dev'")) continue;
+      const matrix = job.strategy?.matrix;
+      const width = values => typeof values === "string"
+        ? new Function("github", "fromJSON", `return ${values.slice(3, -2)}`)({ event_name: "pull_request" }, JSON.parse).length : values.length;
+      const count = name === "states" ? timings.maxShards : !matrix ? 1 : matrix.include?.length ?? Object.values(matrix).reduce((n, values) => n * width(values), 1);
+      nodes.push({ name, count, ancestors: new Set(ancestors(name)) });
+    }
+    let widest = 0;
+    for (let mask = 1; mask < 2 ** nodes.length; mask++) {
+      const active = nodes.filter((_, i) => mask & (1 << i));
+      if (active.every(node => active.every(other => !node.ancestors.has(other.name))))
+        widest = Math.max(widest, active.reduce((sum, node) => sum + node.count, 0));
+    }
+    concurrent += widest;
+  }
+  assert.ok(concurrent <= 20, `${concurrent} concurrent PR jobs exceeds the runner allowance`);
+});
+
 test("D7 publishes explicit failed upstream status even when backend artifacts are absent", () => {
   const job = ci.jobs["d7-evidence"];
   for (const name of backendJobs) assert.ok(job.needs.includes(name), name);

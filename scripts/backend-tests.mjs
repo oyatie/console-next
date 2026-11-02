@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -101,8 +101,15 @@ export function buildTargets(metadata, index, count) {
   const members = new Set(metadata.workspace_members);
   const packages = metadata.packages.filter(pkg => members.has(pkg.id));
   assert.ok(packages.every(pkg => pkg.targets.every(target => !target.test || target.kind.some(kind => ["lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro", "bin", "test"].includes(kind)))), "unsupported nextest test target");
-  const targets = [...new Set(packages
-    .flatMap(pkg => pkg.targets.filter(target => target.kind.includes("test") && target.test !== false).map(target => target.name)))].sort();
+  const features = new Map(metadata.resolve?.nodes.map(node => [node.id, new Set(node.features)]));
+  const enabled = new Set(), disabled = new Set();
+  for (const pkg of packages) for (const target of pkg.targets.filter(target => target.kind.includes("test") && target.test !== false)) {
+    const required = target["required-features"] ?? [];
+    assert.ok(!required.length || features.has(pkg.id), `missing resolved features for ${pkg.id}`);
+    (required.every(feature => features.get(pkg.id).has(feature)) ? enabled : disabled).add(target.name);
+  }
+  for (const name of enabled) assert.ok(!disabled.has(name), `ambiguous feature-gated test target: ${name}`);
+  const targets = [...enabled].sort();
   assert.ok(total <= targets.length, "nextest shard has no integration targets");
   return ["--workspace", ...(shard === 1 ? ["--lib", "--bins"] : []),
     ...targets.filter((_, i) => i % total === shard - 1).flatMap(name => ["--test", name])];
@@ -114,11 +121,17 @@ function main() {
   const env = { ...process.env, SQLX_OFFLINE: "true" };
   for (const key of Object.keys(env)) if (key.endsWith("DATABASE_URL") || /^PG(HOST|PORT|USER|PASSWORD|DATABASE|SERVICE)/.test(key)) delete env[key];
   const options = { cwd: path.join(root, "backend"), env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 };
-  const cargoJSON = (args) => JSON.parse(execFileSync("cargo", args, { ...options, stdio: ["ignore", "pipe", "inherit"] }));
-  const metadata = cargoJSON(["metadata", "--no-deps", "--locked", "--format-version", "1"]);
+  const cargoJSON = (args) => {
+    const result = spawnSync("cargo", args, options);
+    if (result.stderr) process.stderr.write(result.stderr);
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, `cargo ${args.slice(0, 2).join(" ")} failed (${result.status ?? result.signal})`);
+    return JSON.parse(result.stdout);
+  };
+  const metadata = cargoJSON(["metadata", "--locked", "--format-version", "1"]);
   const args = [...buildTargets(metadata, env.NEXTEST_SHARD, env.NEXTEST_SHARDS), "--locked", "--profile", "ci", "--config-file", path.join(root, ".config/nextest.toml"), "--ignore-default-filter"];
   const list = cargoJSON(["nextest", "list", ...args, "--message-format", "json"]);
-  const byPackage = new Map(metadata.packages.map((pkg) => [pkg.id, databaseTests(sources(path.dirname(pkg.manifest_path)))]));
+  const byPackage = new Map(metadata.packages.filter(pkg => metadata.workspace_members.includes(pkg.id)).map((pkg) => [pkg.id, databaseTests(sources(path.dirname(pkg.manifest_path)))]));
   const inventory = classifyTests(list, byPackage);
   const report = path.join(metadata.workspace_root, "target/nextest/ci");
   mkdirSync(report, { recursive: true });

@@ -88,6 +88,18 @@ test("a plan beyond GitHub's matrix limit fails planning explicitly", async () =
   assert.throws(() => planStates(report(Object.fromEntries(Object.keys(specs).map(f => [f, 1]))), { ...settings, specs }), /STATES_MATRIX_LIMIT/);
 });
 
+test("the configured shard ceiling refuses runner fan-out without dropping specs", async () => {
+  const { planStates } = await load();
+  const specs = Object.fromEntries([0, 1, 2].map(i => [`mock/${i}.spec.ts`, { seconds: 150, tests: 1 }]));
+  const input = report(Object.fromEntries(Object.keys(specs).map(f => [f, 1])));
+  assert.throws(() => planStates(input, { ...settings, specs, maxShards: 2 }), /STATES_MATRIX_LIMIT/);
+  const plan = planStates(input, { ...settings, specs, maxShards: 3 });
+  assert.deepEqual(plan.shards.flatMap(s => s.files).sort(), Object.keys(specs).map(f => `e2e/${f}`).sort());
+  for (const maxShards of [0, -1, 1.5, "4", 257]) {
+    assert.throws(() => planStates(input, { ...settings, specs, maxShards }), /STATES_INVALID_TIMINGS/);
+  }
+});
+
 test("a matrix selects only planned shards; malformed and oversized plans fail closed", async () => {
   const { planStates, filesForShard } = await load();
   const plan = planStates(report({ "mock/a.spec.ts": 4 }), settings);

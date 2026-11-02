@@ -10,8 +10,8 @@ const positive = n => Number.isFinite(n) && n > 0;
 const specPath = file => /^(?:(?:mock|states)\/[^/]+\.spec\.ts|layout\/layout\.spec\.ts)$/.test(file);
 
 function validateTimings(timings) {
-  const { budgetSeconds, startupSeconds, workers, defaultTestSeconds, specs } = timings;
-  if (![budgetSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || !Number.isInteger(workers) || startupSeconds >= budgetSeconds || !specs || typeof specs !== "object")
+  const { budgetSeconds, startupSeconds, workers, defaultTestSeconds, specs, maxShards = 256 } = timings;
+  if (![budgetSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || !Number.isInteger(workers) || !Number.isInteger(maxShards) || maxShards < 1 || maxShards > 256 || startupSeconds >= budgetSeconds || !specs || typeof specs !== "object")
     refuse("STATES_INVALID_TIMINGS", "expected positive budget, startup, workers, default and per-spec durations");
   for (const [file, entry] of Object.entries(specs)) if (!specPath(file) || !positive(entry?.seconds) || !Number.isInteger(entry?.tests) || entry.tests <= 0)
     refuse("STATES_INVALID_TIMINGS", file);
@@ -41,7 +41,7 @@ export function planStates(report, timings, measured) {
   } catch (error) {
     throw new Error(error.message.replace(/^E2E_/, "STATES_"));
   }
-  if (jobs.length > 256) refuse("STATES_MATRIX_LIMIT", "plan exceeds GitHub's 256-job matrix limit");
+  if (jobs.length > (timings.maxShards ?? 256)) refuse("STATES_MATRIX_LIMIT", `plan exceeds the configured ${timings.maxShards ?? 256}-job matrix limit`);
   return { budgetSeconds, testCounts: Object.fromEntries(counts),
     shards: jobs.map((job, i) => ({ id: i + 1, files: job.files.map(file => `e2e/${file}`), seconds: job.est })) };
 }

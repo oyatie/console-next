@@ -170,3 +170,43 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
   assert.equal(artifact.with["if-no-files-found"], "error");
   assert.ok(workflow.jobs["ci-ok"].needs.includes("backend-tests"));
 });
+
+for (const mode of ["pass", "compile-error"]) test(`cold-cache discovery: ${mode} builds targets or exposes Cargo stderr`, () => {
+  const root = mkdtempSync(path.join(tmpdir(), "backend-cold-"));
+  try {
+    mkdirSync(path.join(root, "bin"));
+    writeFileSync(path.join(root, "lib.rs"), "#[test] fn ordinary() {}\n");
+    const metadata = { workspace_root: root, workspace_members: ["example"], packages: [{
+      id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [
+        { name: "ordinary", kind: ["test"] }, { name: "optional", kind: ["test"], "required-features": ["full"] },
+      ],
+    }, { id: "external", manifest_path: path.join(root, "absent/Cargo.toml"), targets: [] }], resolve: { nodes: [{ id: "example", features: [] }] } };
+    writeFileSync(path.join(root, "metadata.json"), JSON.stringify(metadata));
+    writeFileSync(path.join(root, "list.json"), JSON.stringify(listing(suite(["ordinary"]))));
+    writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "ordinary"]]));
+    writeFileSync(path.join(root, "bin/cargo"), `#!${process.execPath}
+const fs = require('node:fs'), path = require('node:path');
+const root = process.env.FIXTURE_ROOT, args = process.argv.slice(2);
+if (args[0] === 'metadata') {
+  if (args.includes('--no-deps') && process.env.MODE === 'pass') process.exit(91);
+  process.stdout.write(fs.readFileSync(path.join(root, 'metadata.json')));
+} else if (args[1] === 'list') {
+  if (args.includes('--no-run') || args.includes('--no-build') || args.includes('optional')) process.exit(92);
+  if (process.env.MODE === 'compile-error') { process.stderr.write('error: test binary compilation failed\\n'); process.exit(101); }
+  fs.writeFileSync(path.join(root, 'built'), 'binary');
+  process.stdout.write(fs.readFileSync(path.join(root, 'list.json')));
+} else {
+  if (!fs.existsSync(path.join(root, 'built'))) process.exit(93);
+  fs.copyFileSync(path.join(root, 'result.xml'), path.join(root, 'target/nextest/ci/junit.xml'));
+}
+`, { mode: 0o755 });
+    const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], {
+      encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, NEXTEST_SHARD: "1", NEXTEST_SHARDS: "1" },
+    });
+    assert.equal(result.status, mode === "pass" ? 0 : 1, result.stdout + result.stderr);
+    if (mode === "compile-error") {
+      assert.match(result.stderr, /error: test binary compilation failed/);
+      assert.match(result.stderr, /cargo nextest list failed \(101\)/);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

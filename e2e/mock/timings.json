@@ -1,120 +1,249 @@
 {
-  "budgetSeconds": 300,
+  "budgetSeconds": 600,
+  "maxShards": 4,
   "startupSeconds": 40,
   "workers": 2,
   "defaultTestSeconds": 10,
   "specs": {
     "layout/layout.spec.ts": {
-      "seconds": 10.5,
+      "seconds": 35,
       "tests": 8
     },
     "mock/account-picker.spec.ts": {
-      "seconds": 10.1,
+      "seconds": 18.7,
+      "tests": 6
+    },
+    "mock/attendance-detail.spec.ts": {
+      "seconds": 15,
       "tests": 6
     },
     "mock/attendance-weekly.spec.ts": {
-      "seconds": 14.3,
+      "seconds": 16.4,
       "tests": 8
     },
     "mock/composer.spec.ts": {
-      "seconds": 9.5,
+      "seconds": 16.2,
       "tests": 8
     },
     "mock/csv-exports.spec.ts": {
-      "seconds": 1.3,
+      "seconds": 2,
       "tests": 2
     },
     "mock/date-calendar-build.spec.ts": {
-      "seconds": 3.8,
+      "seconds": 5.3,
       "tests": 5
     },
     "mock/date-calendar.spec.ts": {
-      "seconds": 8.1,
+      "seconds": 9.2,
       "tests": 5
     },
     "mock/dept-head.spec.ts": {
-      "seconds": 13.8,
+      "seconds": 14.7,
+      "tests": 2
+    },
+    "mock/emergency-contacts.spec.ts": {
+      "seconds": 3.1,
+      "tests": 2
+    },
+    "mock/error-beacon-navigation.spec.ts": {
+      "seconds": 0.2,
       "tests": 2
     },
     "mock/inbox-page.spec.ts": {
-      "seconds": 27.7,
+      "seconds": 47.6,
       "tests": 29
     },
     "mock/nav-modules.spec.ts": {
-      "seconds": 1.2,
-      "tests": 3
+      "seconds": 6.2,
+      "tests": 4
     },
     "mock/outcome-gallery.spec.ts": {
-      "seconds": 2.7,
+      "seconds": 4.6,
       "tests": 2
     },
     "mock/page-frame.spec.ts": {
-      "seconds": 30.3,
+      "seconds": 47.9,
       "tests": 8
     },
     "mock/people-rrn-gallery.spec.ts": {
-      "seconds": 6.1,
+      "seconds": 4.6,
       "tests": 2
     },
     "mock/people-tabs.spec.ts": {
-      "seconds": 52.2,
+      "seconds": 34.1,
       "tests": 15
     },
     "mock/route-focus-title.spec.ts": {
-      "seconds": 5.1,
+      "seconds": 5.5,
       "tests": 4
     },
     "mock/route.spec.ts": {
-      "seconds": 3.7,
+      "seconds": 9.1,
       "tests": 8
     },
     "mock/settings-hub.spec.ts": {
-      "seconds": 7.8,
+      "seconds": 22.1,
       "tests": 8
     },
     "mock/side-panel.spec.ts": {
-      "seconds": 28.6,
+      "seconds": 55.6,
       "tests": 9
     },
     "mock/tabs-gallery.spec.ts": {
-      "seconds": 13.8,
-      "tests": 6
+      "seconds": 36.2,
+      "tests": 7
+    },
+    "states/access-ia.spec.ts": {
+      "seconds": 27.7,
+      "tests": 20
     },
     "states/access.spec.ts": {
-      "seconds": 65.1,
+      "seconds": 144.4,
       "tests": 60
     },
     "states/account.spec.ts": {
-      "seconds": 8.1,
+      "seconds": 9.3,
       "tests": 8
     },
     "states/attendance-close.spec.ts": {
-      "seconds": 15.2,
+      "seconds": 22.2,
       "tests": 14
     },
     "states/attendance-day.spec.ts": {
-      "seconds": 21.3,
+      "seconds": 41.1,
       "tests": 17
     },
     "states/attendance-issues.spec.ts": {
-      "seconds": 12.6,
+      "seconds": 19.6,
       "tests": 11
     },
     "states/attendance-month.spec.ts": {
-      "seconds": 32.8,
+      "seconds": 64,
       "tests": 30
     },
     "states/attendance-overtime.spec.ts": {
-      "seconds": 11.5,
+      "seconds": 20.9,
       "tests": 10
     },
+    "states/attendance-overview.spec.ts": {
+      "seconds": 25.9,
+      "tests": 16
+    },
     "states/attendance-schedule.spec.ts": {
-      "seconds": 19.6,
+      "seconds": 38.7,
       "tests": 20
     },
     "states/attendance-shared.spec.ts": {
-      "seconds": 1.7,
+      "seconds": 3.4,
+      "tests": 3
+    },
+    "states/entity-record.spec.ts": {
+      "seconds": 31.1,
+      "tests": 22
+    },
+    "states/entity.spec.ts": {
+      "seconds": 3.9,
       "tests": 2
+    },
+    "states/home-setup.spec.ts": {
+      "seconds": 26,
+      "tests": 20
+    },
+    "states/identity-sheet.spec.ts": {
+      "seconds": 13.6,
+      "tests": 4
+    },
+    "states/lifecycle-sheets.spec.ts": {
+      "seconds": 109,
+      "tests": 63
+    },
+    "states/numbering.spec.ts": {
+      "seconds": 14.5,
+      "tests": 8
+    },
+    "states/org-change-counts.spec.ts": {
+      "seconds": 14.7,
+      "tests": 8
+    },
+    "states/org-changes-counts.spec.ts": {
+      "seconds": 37.6,
+      "tests": 16
+    },
+    "states/org-changes.spec.ts": {
+      "seconds": 85.1,
+      "tests": 45
+    },
+    "states/org-copy.spec.ts": {
+      "seconds": 24.6,
+      "tests": 11
+    },
+    "states/org-dates.spec.ts": {
+      "seconds": 12.3,
+      "tests": 4
+    },
+    "states/org-toolbar.spec.ts": {
+      "seconds": 20.2,
+      "tests": 4
+    },
+    "states/org-work.spec.ts": {
+      "seconds": 84.1,
+      "tests": 37
+    },
+    "states/pay-group-setup.spec.ts": {
+      "seconds": 16.9,
+      "tests": 11
+    },
+    "states/payroll.spec.ts": {
+      "seconds": 48.1,
+      "tests": 26
+    },
+    "states/people-dates.spec.ts": {
+      "seconds": 19.1,
+      "tests": 8
+    },
+    "states/people-directory.spec.ts": {
+      "seconds": 43.3,
+      "tests": 8
+    },
+    "states/people-exits.spec.ts": {
+      "seconds": 61.4,
+      "tests": 29
+    },
+    "states/people-import.spec.ts": {
+      "seconds": 40.3,
+      "tests": 18
+    },
+    "states/phase-band.spec.ts": {
+      "seconds": 22.7,
+      "tests": 17
+    },
+    "states/read-errors.spec.ts": {
+      "seconds": 156.4,
+      "tests": 44
+    },
+    "states/read-stability.spec.ts": {
+      "seconds": 120.6,
+      "tests": 44
+    },
+    "states/request-failure.spec.ts": {
+      "seconds": 20.4,
+      "tests": 10
+    },
+    "states/screens.spec.ts": {
+      "seconds": 90.7,
+      "tests": 42
+    },
+    "states/statutory-register.spec.ts": {
+      "seconds": 3.1,
+      "tests": 2
+    },
+    "states/structure-selection.spec.ts": {
+      "seconds": 1.8,
+      "tests": 2
+    },
+    "states/workplace-bulk.spec.ts": {
+      "seconds": 32.1,
+      "tests": 20
     }
   }
 }
