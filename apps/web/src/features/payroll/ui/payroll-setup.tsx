@@ -14,10 +14,9 @@ import { PayGroupSheet } from "./pay-group-sheet";
 export function PayrollSetup() {
   const groups = useQuery(payGroupsQuery);
   const [open, setOpen] = useState(false);
-  return <Page floorplan="form" head={{ title: t("payroll.setup.page"), sub: t("payroll.setup.explicit"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>
+  return <Page floorplan="form" head={{ title: t("payroll.setup.page"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>
     <QueryState q={groups} layout="list">{data => data.legal_entities.length ? <>
-      <Card title={t("payroll.setup.group")}>
-        <p>{t("payroll.setup.groupCount", { count: data.items.length })}</p>
+      <Card title={t("payroll.setup.group")} meta={t("payroll.setup.groupCount", { count: data.items.length })}>
         <Button variant="primary" onClick={() => setOpen(true)}>{t("payroll.setup.add")}</Button>
       </Card>
       {open && <PayGroupSheet entities={data.legal_entities} onClose={() => setOpen(false)} onSaved={() => setOpen(false)} />}

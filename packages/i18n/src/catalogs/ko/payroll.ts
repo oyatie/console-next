@@ -89,8 +89,9 @@ export const koPayroll = {
   "payroll.setup.explicit": "법인과 모든 급여 규칙을 직접 선택하십시오. 미리 선택된 값은 없습니다.",
   "payroll.setup.sensitiveHint": "민감 그룹은 해당 법인의 급여 권한과 민감 급여 권한이 모두 필요합니다.",
   "payroll.setup.basisRequired": "허용할 급여 기준을 하나 이상 선택하십시오.",
+  "payroll.setup.required": "선택하지 않은 필수 항목이 있습니다.",
   "payroll.setup.consequence": "{entity}에 {name} 급여 그룹을 등록합니다. 급여 계산이나 지급은 시작하지 않습니다.",
   "payroll.setup.saved": "{name} 급여 그룹을 등록했습니다.",
-  "payroll.setup.groupCount": "등록된 급여 그룹 {count}개 · 추가할 그룹의 법인과 규칙을 선택하십시오.",
+  "payroll.setup.groupCount": "등록된 급여 그룹 {count}개",
   "payroll.setup.noEntities": "급여 그룹을 등록할 법인이 없습니다",
 } as const;

@@ -4,7 +4,7 @@ import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { mockScreen } from "../mock/screen";
-import { failure, id } from "../mock/fixtures";
+import { failure, id, screenAccess } from "../mock/fixtures";
 import { payGroups } from "../mock/payroll";
 import { payrollScreens } from "./payroll";
 import { commitLabel } from "../../apps/web/src/ui/composer/actions";
@@ -36,6 +36,7 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
   await page.setViewportSize({ width, height: 900 });
   await page.emulateMedia({ colorScheme });
   const fixture = await mockScreen(page, payrollScreens[0], "empty");
+  await page.route("**/api/v1/access/me", route => route.fulfill({ json: screenAccess("/payroll/setup") }));
   const writes: components["schemas"]["CreatePayGroup"][] = [];
   let created: components["schemas"]["PayGroup"] | undefined;
   await page.route("**/api/v1/payroll/pay-groups", async route => {
@@ -46,22 +47,35 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
   });
   try {
     await page.goto("/payroll");
-    await page.getByRole("main").getByRole("link", { name: t("payroll.setup.add"), exact: true }).first().click();
+    const rail = page.getByRole("region", { name: t("payroll.setup.title"), exact: true });
+    await rail.getByRole("link", { name: t("payroll.setup.add"), exact: true }).click();
     await expect(page).toHaveURL(/\/payroll\/setup$/);
+    await expect(page.getByRole("main").getByText(t("payroll.setup.groupCount", { count: 0 }), { exact: true })).toBeVisible();
+    await expect(page.getByText(t("payroll.setup.explicit"), { exact: true })).toHaveCount(0);
     await page.getByRole("main").getByRole("button", { name: t("payroll.setup.add"), exact: true }).click();
     const sheet = page.getByRole("dialog", { name: t("payroll.setup.add"), exact: true });
     await expect(sheet).toBeVisible();
+    await expect(page.getByText(t("payroll.setup.explicit"), { exact: true })).toHaveCount(1);
+    await expect(sheet.getByRole("heading", { name: t("composer.section.effects"), exact: true })).toHaveCount(0);
     const choices = sheet.getByRole("combobox");
     for (const choice of await choices.all()) await expect(choice).toHaveValue("");
     await expect(sheet.getByRole("checkbox", { checked: true })).toHaveCount(0);
     await sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true }).click();
+    await expect(sheet.getByRole("alert")).toHaveText(t("payroll.setup.required"));
+    await expect(page.getByText(t("payroll.setup.explicit"), { exact: true })).toHaveCount(1);
+    await expect(sheet.getByRole("heading", { name: t("composer.section.effects"), exact: true })).toHaveCount(0);
     expect(writes).toEqual([]);
+    await fits(page, `pay-group-setup/invalid/${width}`);
+    await expectAxe(page, `pay-group-setup/invalid/${width}`);
+    await page.screenshot({ path: test.info().outputPath(`pay-group-setup-invalid-${width}.png`) });
     await fill(sheet, width === 390, false);
     await sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true }).click();
     await expect(sheet.getByText(t("payroll.setup.basisRequired"), { exact: true })).toBeVisible();
     expect(writes).toEqual([]);
     await sheet.getByRole("checkbox", { name: t("payroll.rule.MONTHLY"), exact: true }).press("Space");
     await sheet.getByRole("checkbox", { name: t("payroll.rule.HOURLY"), exact: true }).press("Space");
+    await expect(sheet.getByRole("heading", { name: t("composer.section.effects"), exact: true })).toBeVisible();
+    await expect(sheet.getByRole("alert")).toHaveCount(0);
     await fits(page, `pay-group-setup/${width}`);
     await expectAxe(page, `pay-group-setup/${width}`);
     await page.screenshot({ path: test.info().outputPath(`pay-group-setup-${width}.png`) });
@@ -124,11 +138,26 @@ for (const state of ["loading", "failed", "refused"] as const) test(`setup read 
   try {
     await page.goto("/payroll/setup");
     const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { level: 1, name: t("payroll.setup.page"), exact: true })).toBeVisible();
     if (state === "loading") await expect(main.locator('[aria-busy="true"]').last()).toBeVisible();
     else if (state === "failed") await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible({ timeout: 15_000 });
     else await expect(main.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible();
     await expect(main.getByRole("button", { name: t("payroll.setup.add"), exact: true })).toHaveCount(0);
     await expectAxe(page, `payroll-setup/${state}`);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+for (const state of ["empty", "populated"] as const) test(`view-only payroll ${state} hides every setup action`, async ({ page }) => {
+  const fixture = await mockScreen(page, payrollScreens[0], state);
+  await page.route("**/api/v1/access/me", route => route.fulfill({ json: screenAccess("/payroll") }));
+  try {
+    await page.goto("/payroll");
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { level: 1, name: t("payroll.title"), exact: true })).toBeVisible();
+    await expect(main.getByRole("region", { name: state === "empty" ? t("payroll.setup.title") : payGroups.items[0]!.name, exact: true })).toBeVisible();
+    await expect(main.getByRole("link", { name: t("payroll.setup.add"), exact: true })).toHaveCount(0);
+    await expect(main.getByRole("link", { name: t("payroll.reference.title"), exact: true }).first()).toBeVisible();
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

@@ -92,3 +92,22 @@ test("the CLI runs --check-ops and propagates a composition failure", () => {
   expect(result.stderr).toContain("synthetic-composition-failure");
   expect(readFileSync(args, "utf8").trim().split("\n").at(-1)).toBe("--check-ops");
 });
+
+test("pay group runtime constraints follow the committed contract and reject hand edits", () => {
+  const runtimeOut = path.join(dir, "pay-group-schema.ts");
+  const schemas = {
+    PayGroupRules: { type: "object", properties: { name: { type: "string", maxLength: 23 }, channel: { type: "string", enum: ["FILE_GENERIC"] } } },
+    PayGroupPeriodRule: { type: "object", properties: { start_day: { type: "integer", minimum: 2, maximum: 17 } } },
+    PayGroupPayBases: { type: "array", items: { type: "string", enum: ["HOURLY"] } },
+  };
+  writeFileSync(path.join(repo, "backend/openapi/openapi.yaml"), JSON.stringify({ openapi: "3.1.0", info: { title: "t", version: "1" }, paths: {}, components: { schemas } }));
+  git("add", "-A");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-qm", "test pay group constraints");
+  expect(checkApiSchema({ repo, out, runtimeOut, write: true }).ok).toBe(true);
+  const generated = readFileSync(runtimeOut, "utf8");
+  const json = generated.slice(generated.indexOf("= ") + 2, generated.lastIndexOf(" as const"));
+  expect(JSON.parse(json)).toEqual(schemas);
+  expect(checkApiSchema({ repo, out, runtimeOut }).ok).toBe(true);
+  writeFileSync(runtimeOut, generated.replace("23", "40"));
+  expect(checkApiSchema({ repo, out, runtimeOut })).toMatchObject({ ok: false, message: expect.stringContaining("runtime schema drift") });
+});

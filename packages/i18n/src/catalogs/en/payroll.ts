@@ -89,8 +89,9 @@ export const enPayroll = {
   "payroll.setup.explicit": "Choose the entity and every pay rule explicitly. No values are preselected.",
   "payroll.setup.sensitiveHint": "Sensitive groups require both payroll and sensitive payroll access for the entity.",
   "payroll.setup.basisRequired": "Choose at least one allowed pay basis.",
+  "payroll.setup.required": "Some required fields are still missing.",
   "payroll.setup.consequence": "Create the {name} pay group for {entity}. This does not start payroll calculation or payment.",
   "payroll.setup.saved": "Created pay group {name}.",
-  "payroll.setup.groupCount": "{count} pay groups registered. Choose the entity and rules for an additional group.",
+  "payroll.setup.groupCount": "{count} pay groups registered",
   "payroll.setup.noEntities": "No legal entities available for pay group setup",
 } as const;

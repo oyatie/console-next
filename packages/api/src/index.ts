@@ -7,3 +7,4 @@ export type { paths, components } from "./schema";
 export * from "./support-sessions";
 
 export { OTP_LENGTH, OTP_GROUP_LENGTH, OTP_PATTERN } from "./otp-format";
+export { payGroupSchemas } from "./pay-group-schema";
