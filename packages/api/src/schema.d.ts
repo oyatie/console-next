@@ -10695,6 +10695,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payroll/runs/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview the next run derived from pay-group rules */
+        get: operations["previewPayrollRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payroll/runs/{id}": {
         parameters: {
             query?: never;
@@ -25270,6 +25287,8 @@ export interface components {
             /** @description Unpaginated delivery summary; null until at least one payslip has been issued. */
             payslip_delivery: components["schemas"]["PayrollPayslipDeliverySummary"] | null;
         };
+        /** @enum {string} */
+        PayrollRunKind: "REGULAR" | "OFF_CYCLE" | "CORRECTION" | "EXIT_SETTLEMENT";
         PayrollRunPage: {
             items: components["schemas"]["PayrollRunSummary"][];
             /** Format: int64 */
@@ -25278,6 +25297,23 @@ export interface components {
             limit: number;
             /** Format: int64 */
             offset: number;
+        };
+        PayrollRunPreview: {
+            legal_entity_id: components["schemas"]["Uuid"];
+            pay_group_id: components["schemas"]["Uuid"];
+            kind: components["schemas"]["PayrollRunKind"];
+            attribution_month: string;
+            /** Format: date */
+            pay_date: string;
+            pay_date_clamped: boolean;
+            /** Format: date */
+            period_start: string;
+            /** Format: date */
+            period_end: string;
+            /** Format: date */
+            variable_period_start: string;
+            /** Format: date */
+            variable_period_end: string;
         };
         PayrollRunSummary: {
             id: components["schemas"]["Uuid"];
@@ -52639,6 +52675,51 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    previewPayrollRun: {
+        parameters: {
+            query: {
+                pay_group_id: components["schemas"]["Uuid"];
+                kind: components["schemas"]["PayrollRunKind"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read-only derived facts for the first unoccupied month of this kind from the current month. Creation recomputes these facts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollRunPreview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description validation for missing group or invalid kind. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description holiday_calendar_missing when an adjustment requires an unloaded calendar year; or unavailable Cedar facts. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getPayrollRun: {

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! HTTP boundary; the store owns Cedar, validation and audit in one transaction.
+#[path = "run_preview.rs"]
+mod run_preview;
 use axum::{
     Json, Router,
     extract::State,
@@ -7,6 +9,7 @@ use axum::{
     routing::get,
 };
 use console_payroll_adapter_postgres::pay_groups::{CreatePayGroup, PayGroup, PayGroupPage};
+pub(crate) use run_preview::preview;
 
 use crate::{PayrollRestState, RestError, principal_from_headers};
 

@@ -17,6 +17,9 @@
     "/api/v1/payroll/runs": [
       "get"
     ],
+    "/api/v1/payroll/runs/preview": [
+      "get"
+    ],
     "/api/v1/payroll/runs/{id}": [
       "get"
     ],
@@ -83,7 +86,9 @@
     "PayrollPreflightCheck",
     "PayrollRunCalcSummary",
     "PayrollRunDetail",
+    "PayrollRunKind",
     "PayrollRunPage",
+    "PayrollRunPreview",
     "PayrollRunSummary",
     "PayrollStatutoryCitation",
     "PayrollStatutoryInstrument",

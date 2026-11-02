@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+tags: [payroll]
+operationId: previewPayrollRun
+summary: Preview the next run derived from pay-group rules
+security:
+- bearerAuth: []
+parameters:
+- {name: pay_group_id, in: query, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+- {name: kind, in: query, required: true, schema: {$ref: '#/components/schemas/PayrollRunKind'}}
+responses:
+  '200':
+    description: Read-only derived facts for the first unoccupied month of this kind from the current month. Creation recomputes these facts.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/PayrollRunPreview'}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
+  '422': {description: validation for missing group or invalid kind.}
+  '503': {description: holiday_calendar_missing when an adjustment requires an unloaded calendar year; or unavailable Cedar facts.}
