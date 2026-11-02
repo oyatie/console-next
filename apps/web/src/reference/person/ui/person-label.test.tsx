@@ -5,12 +5,21 @@ import { beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
-import { PersonLabel, PersonRecordLink } from "./person-label";
+import { PersonLabel, PersonRecordLink, PersonRef } from "./person-label";
 import { personOption } from "./person-option";
 
 vi.mock("@tanstack/react-router", () => ({ Link: ({ params, children, ...props }: { params: { id: string }; children: ReactNode }) => <a {...props} href={`/people/${params.id}`}>{children}</a> }));
 beforeAll(() => loadCatalog("ko"));
 const person = { id: "account-a", display_name: "Namesake", employee_id: "person-a", employee_number: "E-1" };
+
+test("an account's person reference uses only linked employee facts", () => {
+  const account = { ...person, employee_name: "Employee", employee_company: "Company", employee_org_unit: "Team", sign_in_id: "private@example.test" };
+  const html = renderToStaticMarkup(<PersonRef account={account} />);
+  for (const fact of ["Employee", "E-1", "Company", "Team"]) expect(html).toContain(fact);
+  expect(html).toContain('href="/people/person-a"');
+  for (const privateFact of ["Namesake", "private@example.test", "account-a"]) expect(html).not.toContain(privateFact);
+  expect(renderToStaticMarkup(<PersonRef account={{ ...account, employee_id: null }} />)).toBe("");
+});
 
 test("the disambiguator is visible text, not only a tooltip", () => {
   const html = renderToStaticMarkup(<PersonLabel person={person} />).replace(/title="[^"]*"/g, "");

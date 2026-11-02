@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { PasskeyError } from "../../../lib/react/passkey-error";
 import { readGroup } from "../../../lib/react/query-view";
@@ -13,14 +14,17 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { Field, TextInput } from "../../../ui/field/field";
+import { Table } from "../../../ui/table";
+import { EmptyState } from "../../../ui/empty-state";
+import { PersonLabel, PersonRef } from "../../../reference/person/ui/person-label";
 import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import { usePolicyRouted } from "../../../reference/settings/ui/use-policy-routed";
 import { modulesQuery } from "../../../reference/onboarding/api";
 import { fromLines, isEmpty, toLines, type Chosen } from "../domain/grid";
-import { ACCESS_READS, accountsQuery, catalogQuery, createRole, grantsQuery, meQuery, roleQuery, updateRole, type AccessCatalog, type AccessGrant, type AccessRole } from "../api";
+import { ACCESS_READS, accountsQuery, catalogQuery, createRole, grantsQuery, meQuery, roleQuery, roleVersionsQuery, updateRole, type AccessCatalog, type AccessGrant, type AccessRole } from "../api";
 import { AccessHead } from "./access-head";
-import { accountLabel, grantPerson } from "../present";
+import { accountLabel, grantPerson, linesText } from "../present";
 import { PermissionGrid } from "./permission-grid";
 import { RoleDiff } from "./role-diff";
 import { RolePreview } from "./role-preview";
@@ -38,7 +42,24 @@ function useHolders(role: AccessRole | undefined) {
   const live: readonly AccessGrant[] = grants.data?.items ?? [];
   const holders = [...new Map(live.map((g) => [g.account_id, g])).values()];
   const names = holders.map((g) => accountLabel(grantPerson(g, accounts.data?.items ?? []), g.account_id, accounts.data?.items));
-  return { names: names.join(", "), now: live.some((g) => g.enforcement === "ENFORCED"), waiting: live.length > 0 && live.every((g) => g.enforcement === "PREPARED") };
+  return { grants, holders, accounts: accounts.data?.items ?? [], names: names.join(", "), now: live.some((g) => g.enforcement === "ENFORCED"), waiting: live.length > 0 && live.every((g) => g.enforcement === "PREPARED") };
+}
+
+function RoleVersions({ role }: { role: AccessRole }) {
+  const versions = useQuery(roleVersionsQuery(role.id));
+  const reasons = useReasons();
+  return <Card title={t("access.role.versions")} flush>
+    <QueryState q={versions} layout="list">{rows => rows.length ? <Table
+      label={t("access.role.versions")} rows={rows} rowId={row => String(row.version)}
+      columns={[
+        { header: t("access.role.version.column"), fit: true, cell: row => row.version },
+        { header: t("access.roles.col.name"), cell: row => row.name_ko },
+        { header: t("access.roles.col.lines"), cell: row => linesText(row.lines) },
+        { header: t("access.role.version.at"), cell: row => fmtDateTime(row.created_at) },
+        { header: t("access.grant.reason"), cell: row => reasons.codes.find(code => code.code === row.reason_code)?.label ?? row.reason_code ?? t("access.role.version.noReason") },
+      ]}
+    /> : <EmptyState title={t("access.role.versions.empty")} reason={null} />}</QueryState>
+  </Card>;
 }
 
 function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessRole; copy: boolean; setup: boolean }) {
@@ -70,7 +91,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
   const save = () => (problems ? setTried(true) : run.mutate(undefined));
   const holders = editing?.holder_count ?? 0;
   const who = useHolders(editing);
-  const effect = !holders ? t("access.role.effect.none")
+  const effect = holders && !who.grants.isSuccess ? t(who.grants.isPending ? "common.loading" : "common.loadFailed.title") : !holders ? t("access.role.effect.none")
     : !setup ? t("access.role.effect.live", { count: holders, names: who.names })
     : t(who.now ? "access.role.effect.setup" : "access.role.effect.golive", { count: holders, names: who.names });
   return (
@@ -90,6 +111,18 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
           <PermissionGrid domains={cat.domains} value={d.grid} routed={routed} payrollReady={modules.data?.some((m) => m.key === "payroll" && m.ready) ?? false} onChange={(grid) => setD({ ...d, grid })} />
           {tried && isEmpty(d.grid) && <p className={`field__error ${s.pad}`} role="alert">{t("access.role.grid.missing")}</p>}
         </Card>
+        {editing && <Card title={t("access.roles.col.holders")} meta={holders ? t(who.waiting ? "access.role.meta.golive" : "access.role.meta", { count: holders }) : undefined} flush>
+          {holders ? <QueryState q={who.grants} layout="list">{() => <ul className={s.held}>
+            {who.holders.map(g => {
+              const account = who.accounts.find(a => a.id === g.account_id);
+              return <li key={g.account_id}>
+                <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, who.accounts)} peers={who.accounts} linked={false} wrap /></Link>
+                {account && <PersonRef account={account} />}
+              </li>;
+            })}
+          </ul>}</QueryState> : <EmptyState title={t("access.role.effect.none")} reason={null} />}
+        </Card>}
+        {editing && <RoleVersions role={editing} />}
       </div>
       <aside className={`card ${s.preview}`} aria-labelledby="ac-preview">
         <h2 id="ac-preview">{t("access.preview.title")}</h2>
@@ -102,7 +135,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
           actions={
             <>
               <Link to="/access/roles" className={buttonClass("ghost")}>{t("access.cancel")}</Link>
-              <Button variant="primary" disabled={run.isPending} onClick={save}>{t(held ? "access.role.save.held" : editing ? "access.role.save" : "access.role.create")}</Button>
+              <Button variant="primary" disabled={run.isPending || Boolean(holders && !who.grants.isSuccess)} onClick={save}>{t(held ? "access.role.save.held" : editing ? "access.role.save" : "access.role.create")}</Button>
             </>
           }
         />
@@ -120,7 +153,6 @@ export function RoleEditorPage({ roleId, copy }: { roleId?: string; copy?: strin
   const title = roleId ? t("access.role.title.edit") : copy ? t("access.role.title.copy") : t("access.role.title.new");
   const setup = me.data?.phase !== "OPERATING";
   const held = roleId ? role.data : undefined;
-  const who = useHolders(held);
   return (
     <div className="page">
       <AccessHead />
@@ -128,8 +160,8 @@ export function RoleEditorPage({ roleId, copy }: { roleId?: string; copy?: strin
       <div className={s.titleRow}>
         <Link to="/access/roles" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.role.back")}</Link>
         <h2 className="page__title">{held ? t("access.role.title.named", { title, name: held.name_ko }) : title}</h2>
+        {held && <Chip>{t("access.role.version", { version: held.version })}</Chip>}
         {held && (held.holder_count ? <Chip tone="ok">{t("access.roles.state.used")}</Chip> : <Chip>{t("access.roles.state.unused")}</Chip>)}
-        {held && held.holder_count > 0 && <span className="muted">{t(who.waiting ? "access.role.meta.golive" : "access.role.meta", { count: held.holder_count })}</span>}
       </div>
       <Editor key={role.data ? `${role.data.id}:${role.data.version}` : "new"} cat={cat.data!} role={role.data} copy={!roleId && Boolean(source)} setup={setup} />
       </>

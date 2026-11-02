@@ -379,11 +379,6 @@
    "reason": "K0 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/access/roles/{roleId}/versions": {
-   "lane": "MAT-ACC",
-   "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/approval-inbox/bulk-tasks": {
    "lane": "H1",
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",

@@ -4,6 +4,7 @@ export const koAccounts = {
 
   // People: accounts list
   "accounts.title": "계정",
+  "accounts.back": "계정 목록으로",
   "accounts.invite": "계정 초대",
   "accounts.table": "계정",
   "accounts.count": "계정 {count, number}개",
@@ -21,7 +22,6 @@ export const koAccounts = {
   "accounts.inactive": "비활성화됨",
   "accounts.passkey.yes": "있음",
   "accounts.passkey.no": "없음",
-  "accounts.employee.code": "{name} · {number}",
 
   // Account panel
   "accounts.section.employee": "직원 연결",

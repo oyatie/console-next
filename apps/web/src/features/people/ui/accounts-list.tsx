@@ -20,7 +20,7 @@ import { AccountPanel } from "./account-panel";
 import { InviteSheet } from "./account-invite-sheet";
 import { IssuedCode } from "./account-issued-code";
 import type { Issued } from "./use-issue-code";
-import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { PersonLabel, PersonRef } from "../../../reference/person/ui/person-label";
 import { personOption } from "../../../reference/person/ui/person-option";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { readFailureText } from "../../../lib/refusal";
@@ -158,14 +158,14 @@ const columns = (peers: readonly Person[], open?: string): LongColumn<Person>[] 
     id: "name",
     header: t("accounts.col.name"),
     // The ops account is the one preset: named as such, never by a role title (company-17).
-    cell: (p) => <>{p.id === open ? <strong aria-current="true"><PersonLabel person={p} peers={peers} /></strong> : <PersonLabel person={p} peers={peers} />}{p.is_tenant_ops && <> <Chip tone="info">{t("accounts.ops")}</Chip></>}</>,
+    cell: (p) => <>{p.id === open ? <strong aria-current="true"><PersonLabel person={p} peers={peers} linked={false} /></strong> : <PersonLabel person={p} peers={peers} linked={false} />}{p.is_tenant_ops && <> <Chip tone="info">{t("accounts.ops")}</Chip></>}</>,
     rowHeader: true,
     width: "40%",
   },
   {
     id: "employee",
     header: t("accounts.col.employee"),
-    cell: (p) => (p.employee_link_status === "LINKED" ? (p.employee_number ? t("accounts.employee.code", { name: p.employee_name ?? "", number: p.employee_number }) : p.employee_name) : <Muted>{t("accounts.unlinked")}</Muted>),
+    cell: (p) => (p.employee_id ? <PersonRef account={p} /> : <Muted>{t("accounts.unlinked")}</Muted>),
     width: "2fr",
   },
   {
