@@ -165,6 +165,7 @@ export const VIEWS: View[] = [
   { id: "contractSoon", status: "current", review: ["contractSoon"] },
   { id: "gaps", status: "current", review: ["register"] },
 ];
+export const activeView = (status: StatusView, review: readonly Review[]) => VIEWS.find(v => v.status === status && (v.review ?? []).join() === review.join());
 
 
 /** Retention of an exited person's register (Labor Standards Act §42, Decree §22): 3 years from the exit date (the day after the last working day). */

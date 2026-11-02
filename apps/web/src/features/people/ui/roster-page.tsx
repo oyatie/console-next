@@ -11,7 +11,7 @@ import { usePrefetch } from "../../../lib/react/prefetch";
 import { todayKst } from "../../../lib/pure/today";
 import { useReasonCodesReady } from "../../../lib/reason-codes";
 import { employeeQuery } from "../api";
-import { exactNumber, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
+import { activeView, exactNumber, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
 import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { BulkRescind } from "./bulk-rescind";
 import { BulkSheet } from "./bulk-sheet";
@@ -80,7 +80,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   const can = useCan();
   const prefetch = usePrefetch();
   // The memory always describes the current filters (a new filter starts at the top).
-  useEffect(() => void (memory = memory?.key === key ? { ...memory, q } : { key, q, top: 0, row: null }), [key, q]);
+  useEffect(() => remember(key, q, { q }), [key, q]);
 
   const setFilter = (f: { status?: StatusView; review?: Review[]; unit?: string | null; sort?: RosterOrder }) => {
     // A select-all selection is a saved query: a new filter would silently mean other people.
@@ -180,6 +180,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   };
 
   const filtered = Boolean(q || unit || status !== "current" || review.length);
+  const customFilters = Boolean(q || unit || !activeView(status, review));
   // People who share a name keep it as written (E1-dup): said once, and told apart by number, placement and dates.
   const sameName = q && r.rows.length > 1 && r.rows.every((e) => e.name === r.rows[0]!.name) ? r.rows.length : 0;
   const empty = filtered ? (
@@ -208,7 +209,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
         unit={unit}
         counts={r}
         onChange={setFilter}
-        onReset={filtered && (r.loading || r.rows.length > 0) ? reset : undefined}
+        onReset={customFilters && (r.loading || r.rows.length > 0) ? reset : undefined}
         findSlot={setFindSlot}
         density={view.density}
         onDensity={view.setDensity}

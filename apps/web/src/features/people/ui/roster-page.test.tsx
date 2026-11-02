@@ -5,8 +5,9 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { ApiError, myAccessQuery } from "../../../reference/authz/api";
 import { RosterPage } from "./roster-page";
+import { VIEWS } from "../domain/roster";
 
-const state = vi.hoisted(() => ({ refused: false, body: "roster rows", org: false, loading: false, empty: false, search: {} as { review?: string } }));
+const state = vi.hoisted(() => ({ refused: false, body: "roster rows", org: false, loading: false, empty: false, search: {} as { status?: string; review?: string; unit?: string; sort?: string } }));
 const table = vi.hoisted(() => vi.fn());
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }), Link: () => null, useNavigate: () => vi.fn() }));
 vi.mock("@tanstack/react-query", async original => ({
@@ -19,9 +20,9 @@ vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => fals
 vi.mock("../../../lib/react/prefetch", () => ({ usePrefetch: () => vi.fn() }));
 vi.mock("../../../lib/reason-codes", () => ({ useReasonCodesReady: () => false }));
 vi.mock("./roster-table", () => ({ RosterTable: (props: { empty: React.ReactNode }) => { table(props); return <div>{state.empty ? props.empty : state.body}</div>; } }));
-vi.mock("./use-roster", () => ({ BULK_MAX: 100, SOON_DAYS: 60, useRoster: () => ({
+vi.mock("./use-roster", async original => ({ ...await original<typeof import("./use-roster")>(), useRoster: () => ({
   list: { data: state.refused ? undefined : { pages: [{ items: [], total: 1 }] }, isPending: false, hasNextPage: true, error: state.refused ? new ApiError(403, "access_denied", "") : null, refetch: vi.fn() },
-  rows: [], total: 1, loading: state.loading, status: { totals: { all: 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
+  rows: state.empty ? [] : [{ id: "person", name: "가상직원" }], total: 1, loading: state.loading, status: { totals: { all: 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
 }) }));
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => { state.refused = false; state.org = false; state.loading = false; state.empty = false; state.search = {}; table.mockClear(); });
@@ -68,6 +69,20 @@ test.each([false, true])("the unfiltered roster does not offer a filter reset wh
 
 test("the filtered empty state offers exactly one reset", () => {
   state.search = { review: "identity" };
+  state.empty = true;
+  expect(render().split(t("people.filter.reset"))).toHaveLength(2);
+});
+
+test.each(VIEWS.filter(view => view.id !== "current"))("the $id view uses the current tab to reset and keeps a reset for extra filters or empty results", (view) => {
+  state.search = { status: view.status, review: view.review?.join(","), sort: "hire_date" };
+  for (const loading of [false, true]) {
+    state.loading = loading;
+    expect(render()).not.toContain(t("people.filter.reset"));
+  }
+  state.search.unit = "department";
+  expect(render().split(t("people.filter.reset"))).toHaveLength(2);
+  state.search.unit = undefined;
+  state.loading = false;
   state.empty = true;
   expect(render().split(t("people.filter.reset"))).toHaveLength(2);
 });
