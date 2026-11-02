@@ -131,7 +131,7 @@ export function ServerPicker(p: {
               </ListBoxItem>
             )}
           </ListBox>
-          <div className={css.foot} aria-hidden={truncated ? undefined : true}>{truncated ? t("uiServerPicker.narrow", { count: p.options.length }) : t("uiServerPicker.keys")}</div>
+          <div className={css.foot}>{truncated ? t("uiServerPicker.narrow", { count: p.options.length }) : t("uiServerPicker.keys")}</div>
         </Popover>
       </ComboBox>
       {pending && homonyms.length > 1 && (

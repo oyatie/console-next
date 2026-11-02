@@ -189,3 +189,31 @@ test("scrolling route tabs reveal the current link on arrival, resize and select
   await page.reload();
   await element.poll(visible).toBe(true);
 });
+
+test("scrolling tabs reveal the current link after an existing count text node changes", async () => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}tabs-test`);
+  const nav = page.locator('[data-tabs-demo="scroll"]').getByRole("navigation");
+  await element(nav.locator('[aria-current="page"]')).toBeVisible();
+  await nav.evaluate(el => {
+    el.style.width = "240px";
+    el.querySelector('[aria-current="page"]')!.removeAttribute("aria-current");
+    const links = Array.from(el.querySelectorAll("a"));
+    links.forEach(link => { link.textContent = "목록"; });
+    const current = links.at(-2)!;
+    current.setAttribute("aria-current", "page");
+    const count = document.createElement("span");
+    count.appendChild(document.createTextNode("0"));
+    current.appendChild(count);
+  });
+  await element.poll(() => nav.evaluate(el => {
+    const tab = el.querySelector('[aria-current="page"]')!.getBoundingClientRect(), bar = el.getBoundingClientRect();
+    return tab.left >= bar.left && tab.right <= bar.right + 1;
+  })).toBe(true);
+  await nav.evaluate(el => { el.querySelector('[aria-current="page"]')!.lastChild!.firstChild!.textContent = "2,000,000"; });
+  await element.poll(() => nav.evaluate(el => {
+    const tab = el.querySelector('[aria-current="page"]')!.getBoundingClientRect(), bar = el.getBoundingClientRect();
+    return tab.left >= bar.left && tab.right <= bar.right + 1;
+  })).toBe(true);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+});

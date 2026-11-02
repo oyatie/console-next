@@ -64,3 +64,46 @@ test.each(["ko", "en"] as const)("colliding account details use the creation tim
   expect(personLabel(employees[0]!, employees).detail).toBe("w••••1234@example.test");
   await loadCatalog("ko");
 });
+
+test.each(["ko", "en"] as const)("accounts created in the same minute retain a distinct readable, masked identifier in %s", async locale => {
+  await loadCatalog(locale);
+  for (const seconds of ["00", "30"]) {
+    const first = { id: "account-a", display_name: "Namesake", sign_in_id: "worker1234@example.test", created_at: "2026-10-01T01:00:00Z" };
+    const second = { ...first, id: "account-b", sign_in_id: "writer1234@example.test", created_at: `2026-10-01T01:00:${seconds}Z` };
+    const peers = [first, second];
+    const labels = peers.map(p => personLabel(p, peers));
+    expect(new Set(labels.map(l => l.text)).size).toBe(2);
+    for (const [index, label] of labels.entries()) {
+      expect(label.detail).toContain(t("people.label.accountCreated", { at: fmtDateTime(first.created_at) }));
+      expect(label.detail).toContain("@example.test");
+      expect(label.detail).not.toContain(peers[index]!.sign_in_id);
+      expect(label.text).not.toContain(peers[index]!.id);
+    }
+  }
+  await loadCatalog("ko");
+});
+
+test("2,000 rows build the collision lookup once, within the interaction budget", () => {
+  let reads = 0;
+  const peers = Array.from({ length: 2000 }, (_, i) => ({
+    id: `account-${i}`, get display_name() { reads++; return `Namesake ${i % 2}`; },
+    employee_number: `E-${i}`, org_unit: "HR",
+  }));
+  const start = performance.now();
+  const labels = peers.map(p => personLabel(p, peers));
+  const elapsed = performance.now() - start;
+  expect(labels.every(l => l.sameName)).toBe(true);
+  expect(new Set(labels.map(l => l.text)).size).toBe(2000);
+  expect(reads).toBeLessThanOrEqual(2000 * 8);
+  expect(elapsed).toBeLessThan(500);
+});
+
+test("a replaced peer snapshot refreshes collisions and an absent person is still compared", () => {
+  const first = { id: "a", name: "Person", employee_number: "E-1" };
+  const second = { ...first, id: "b", employee_number: "E-2" };
+  const peers = [first];
+  expect(personLabel(first, peers).sameName).toBe(false);
+  expect(personLabel(second, peers).sameName).toBe(true);
+  expect(personLabel(first, [...peers, second]).sameName).toBe(true);
+  expect(personLabel(first, peers).sameName).toBe(false);
+});

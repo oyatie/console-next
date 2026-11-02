@@ -60,7 +60,7 @@ export function TabNav({ label, children, overflow }: { label: string; children:
       else if (tab.right > viewport.right) bar.scrollLeft += tab.right - viewport.right;
     };
     const observer = new MutationObserver(reveal);
-    observer.observe(bar, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-current"] });
+    observer.observe(bar, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["aria-current"] });
     const resize = new ResizeObserver(reveal);
     resize.observe(bar);
     return () => { observer.disconnect(); resize.disconnect(); };
