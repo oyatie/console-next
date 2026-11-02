@@ -226,7 +226,7 @@ fn the_reference_workbooks_are_not_rosters_and_ask_for_a_mapping() {
 /// panic wherever overflow checks are on (dev and test builds). An upload is
 /// refused or read, never a panic.
 #[test]
-#[ignore = "regression FZ-5 open, owner IMPORT: vendored calamine get_dimension underflows on a reversed dimension"]
+#[ignore = "owner=import; reason=FZ-5 calamine get_dimension underflows on a reversed dimension; expires=2026-12-03"]
 fn regression_fz5_a_reversed_dimension_is_read_or_refused_without_panicking() {
     let book = include_bytes!("../../../fuzz/regressions/fz5-reversed-dimension.xlsx");
     let caps = default_caps().unwrap();

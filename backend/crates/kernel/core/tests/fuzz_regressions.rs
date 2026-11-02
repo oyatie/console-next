@@ -11,7 +11,7 @@ use console_kernel_core::kr::PhoneE164;
 /// `0` after `+82` is stored as `+820…`, which re-parses to another number, so
 /// the same phone can sit in two rows under two values.
 #[test]
-#[ignore = "regression FZ-3 open, owner kernel: PhoneE164 stores +820… that re-parses to another value"]
+#[ignore = "owner=kernel; reason=FZ-3 PhoneE164 stores +820… that re-parses differently; expires=2026-12-03"]
 fn regression_fz3_a_stored_phone_parses_back_to_itself() {
     for raw in ["00 82 10-1234-5678", "+82 00 10 1234 5678", "0055100080"] {
         let stored = PhoneE164::parse(raw).expect("accepted today; a refusal also fixes FZ-3");

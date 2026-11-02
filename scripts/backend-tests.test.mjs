@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
-import { classifyTests, databaseTests, verifyJUnit } from "./backend-tests.mjs";
+import * as backendTests from "./backend-tests.mjs";
 
+const { classifyTests, databaseTests, verifyJUnit } = backendTests;
 const workflow = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
 const suite = (names) => ({ "binary-id": "example::mixed", "package-id": "example", "package-name": "example", status: "listed", testcases: Object.fromEntries(names.map((name) => [name, { ignored: false }])) });
 const listing = (...suites) => ({ "rust-suites": Object.fromEntries(suites.map((s) => [s["binary-id"], s])) });
@@ -76,15 +78,48 @@ test("identical names in other packages stay selected and all-database binaries 
 });
 
 test("ignored cases are explicitly accounted for; missing inventories fail closed", () => {
-  const s = suite(["ordinary", "known_ignored"]);
+  const s = suite(["ordinary", "known_ignored", "ignored_database"]);
   s.testcases.known_ignored.ignored = true;
-  const result = classifyTests(listing(s), new Map([["example", new Set()]]));
-  assert.deepEqual(result.ignored, [["example::mixed", "known_ignored"]]);
+  s.testcases.ignored_database.ignored = true;
+  const result = classifyTests(listing(s), new Map([["example", new Set(["ignored_database"])]]));
+  assert.deepEqual(result.ignored, [["example::mixed", "known_ignored"], ["example::mixed", "ignored_database"]]);
+  assert.deepEqual(result.ignoredDatabase, [["example::mixed", "ignored_database"]]);
   assert.equal(result.selected.length, 1);
-  assert.deepEqual(classifyTests(listing(s), new Map([["example", new Set(["known_ignored"])]] )).ignored, result.ignored);
+  assert.deepEqual(classifyTests(listing(s), new Map([["example", new Set(["known_ignored", "ignored_database"])]] )).ignored, result.ignored);
   assert.throws(() => classifyTests(listing(s), new Map()), /missing/);
   assert.throws(() => classifyTests(listing({ ...s, status: "skipped" }), new Map([["example", new Set()]])), /listed/);
   assert.throws(() => classifyTests(listing(), new Map()), /zero/);
+});
+
+test("database shards use measured durations and cover each selected identity once", () => {
+  const ids = Array.from({ length: 8 }, (_, i) => ["example::db", `case_${i}`]);
+  const timings = { tests: Object.fromEntries(ids.map((id, i) => [JSON.stringify(id), i + 1])) };
+  const plan = backendTests.planDatabaseTests(ids, timings, 4);
+  assert.equal(plan.shards.length, 4);
+  assert.deepEqual(plan.shards.flatMap((s) => s.tests).sort(), ids.sort());
+  assert.ok(Math.max(...plan.shards.map((s) => s.seconds)) - Math.min(...plan.shards.map((s) => s.seconds)) <= 1);
+  for (const invalid of [0, 5, 1.5]) assert.throws(() => backendTests.planDatabaseTests(ids, timings, invalid));
+  assert.throws(() => backendTests.planDatabaseTests([ids[0], ids[0]], timings, 1), /duplicate/);
+});
+
+test("ignored tests require an unexpired owner, reason and expiry", () => {
+  const valid = '#[ignore = "owner=import; reason=open regression; expires=2026-12-03"]\n#[test] fn ignored() {}';
+  assert.equal(backendTests.validateIgnoredTests([valid], "2026-11-03"), 1);
+  assert.equal(backendTests.validateIgnoredTests(['#[test]\n// ignore-policy: owner=db; reason=feature gate; expires=2026-12-03\n#[cfg_attr(not(feature = "test-postgres"), ignore)]\nfn gated() {}'], "2026-11-03"), 1);
+  for (const source of [
+    "#[ignore]\n#[test] fn bare() {}",
+    '#[ignore = "open regression"]\n#[test] fn unowned() {}',
+    valid.replace("2026-12-03", "2026-11-02"),
+    valid.replace("2026-12-03", "2026-02-30"),
+  ]) assert.throws(() => backendTests.validateIgnoredTests([source], "2026-11-03"), /ignore policy/);
+});
+
+test("every repository ignore has live ownership metadata", () => {
+  const readRust = (directory) => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(directory, entry.name);
+    return entry.isDirectory() ? readRust(file) : entry.name.endsWith(".rs") ? [readFileSync(file, "utf8")] : [];
+  });
+  assert.equal(backendTests.validateIgnoredTests(readRust(fileURLToPath(new URL("../backend", import.meta.url)))), 15);
 });
 
 const junit = (cases, extra = "", failures = 0) => `<?xml version="1.0"?><testsuites tests="${cases.length}" failures="${failures}" errors="0"><testsuite>${cases.map(([binary, name]) => `<testcase classname="${binary}" name="${name}">${extra}</testcase>`).join("")}</testsuite></testsuites>`;
@@ -102,18 +137,24 @@ test("runner propagates failures, refuses stale/missing JUnit and runs without d
   const root = mkdtempSync(path.join(tmpdir(), "backend-tests-"));
   try {
     mkdirSync(path.join(root, "bin"));
-    writeFileSync(path.join(root, "lib.rs"), '#[test] fn ordinary() {}\n#[sqlx::test] async fn database(pool: PgPool) {}\n#[cfg(feature = "test-postgres")] #[sqlx::test] async fn feature_database() {}');
-    const s = suite(["ordinary", "database", "tooling"]);
+    const sourceFile = path.join(root, "lib.rs");
+    writeFileSync(sourceFile, '#[test] fn ordinary() {}\n#[sqlx::test] async fn database(pool: PgPool) {}\n#[sqlx::test] #[ignore = "owner=db; reason=fixture; expires=2099-01-01"] async fn ignored_database(pool: PgPool) {}\n#[cfg(feature = "test-postgres")] #[sqlx::test] async fn feature_database() {}');
+    const s = suite(["ordinary", "database", "ignored_database", "tooling"]);
+    s.testcases.ignored_database.ignored = true;
     s.testcases.tooling.ignored = true;
+    const db = suite(["ordinary", "database", "ignored_database", "feature_database", "tooling"]);
+    db.testcases.ignored_database.ignored = true;
+    db.testcases.tooling.ignored = true;
     writeFileSync(path.join(root, "metadata.json"), JSON.stringify({ workspace_root: root, target_directory: path.join(root, "custom-build-cache"), workspace_members: ["example"], packages: [{ id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [{ name: "first", kind: ["test"] }, { name: "second", kind: ["test"] }] }] }));
     writeFileSync(path.join(root, "list.json"), JSON.stringify(listing(s)));
+    writeFileSync(path.join(root, "list-db.json"), JSON.stringify(listing(db)));
     const cargo = `#!${process.execPath}
 const fs = require('node:fs'), path = require('node:path');
 const root = process.env.FIXTURE_ROOT, args = process.argv.slice(2);
-if (process.env.DATABASE_URL || process.env.PGHOST) process.exit(91);
+if (Boolean(process.env.DATABASE_URL || process.env.PGHOST) !== (process.env.EXPECT_DATABASE === '1')) process.exit(91);
 if (args[0] === 'metadata') process.stdout.write(fs.readFileSync(path.join(root, 'metadata.json')));
 else if (args[1] === 'list') {
-  process.stdout.write(fs.readFileSync(path.join(root, 'list.json')));
+  process.stdout.write(fs.readFileSync(path.join(root, args.includes('--features') ? 'list-db.json' : 'list.json')));
   if (process.env.MODE === 'spawn-error') fs.unlinkSync(__filename);
 }
 else {
@@ -138,11 +179,92 @@ else {
     }
     const args = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
     for (const flag of ["--workspace", "--locked", "--no-fail-fast", "--ignore-default-filter"]) assert.ok(args.includes(flag));
+    assert.equal(args[args.indexOf("--retries") + 1], "0");
     assert.equal(args[args.indexOf("--run-ignored") + 1], "default");
     assert.ok(readFileSync(path.join(root, "summary.md"), "utf8").includes("1/1 non-database tests passed"));
-    assert.match(readFileSync(path.join(root, "summary.md"), "utf8"), /3 deferred \(1 listed database tests, 1 explicitly ignored, 1 feature-gated/);
+    assert.match(readFileSync(path.join(root, "summary.md"), "utf8"), /4 deferred \(1 listed database tests, 2 explicitly ignored, 1 feature-gated/);
     assert.match(readFileSync(path.join(root, "summary.md"), "utf8"), /Ignored by source attribute: `example::mixed \/ tooling`/);
+
+    writeFileSync(path.join(root, "bin/cargo"), cargo, { mode: 0o755 });
+    writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "database"], ["example::mixed", "ignored_database"], ["example::mixed", "feature_database"]]));
+    const database = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname, "--db", "--shard", "1/1"], { encoding: "utf8", env: {
+      ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: "pass", EXPECT_DATABASE: "1",
+      DATABASE_URL: "postgres://postgres@127.0.0.1/postgres", PGHOST: "127.0.0.1", GITHUB_STEP_SUMMARY: path.join(root, "db-summary.md"),
+    } });
+    assert.equal(database.status, 0, database.stdout + database.stderr);
+    const dbArgs = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
+    assert.equal(dbArgs[dbArgs.indexOf("--features") + 1], "test-postgres,console-app/full,console-app/e2e-test-support,console-app/dev-auth");
+    assert.equal(dbArgs[dbArgs.indexOf("--run-ignored") + 1], "all");
+    for (const name of ["database", "ignored_database", "feature_database"]) assert.ok(dbArgs.at(-1).includes(name));
+    for (const name of ["ordinary", "tooling"]) assert.ok(!dbArgs.at(-1).includes(`test(=${name})`));
+    assert.match(readFileSync(path.join(root, "db-summary.md"), "utf8"), /3\/3 database tests passed/);
+
+    writeFileSync(sourceFile, readFileSync(sourceFile, "utf8") + '\n#[cfg(feature = "never-enabled")] #[sqlx::test] async fn missing_database() {}\n');
+    const missing = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname, "--db"], { encoding: "utf8", env: {
+      ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: "pass", EXPECT_DATABASE: "1", DATABASE_URL: "postgres://postgres@127.0.0.1/postgres",
+    } });
+    assert.equal(missing.status, 1, missing.stdout + missing.stderr);
+    assert.match(missing.stderr, /database declarations are absent from both feature variants/);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("database result collection proves all shards and preserves measured durations", () => {
+  const ids = [["binary", "one"], ["binary", "two"]];
+  const plan = backendTests.planDatabaseTests(ids, {}, 2);
+  const result = backendTests.collectDatabaseResults(plan, [
+    junit([["binary", "one"]]).replace('<testcase classname="binary" name="one">', '<testcase classname="binary" name="one" time="1.2">'),
+    junit([["binary", "two"]]).replace('<testcase classname="binary" name="two">', '<testcase classname="binary" name="two" time="2.3">'),
+  ]);
+  assert.deepEqual(result.counts, { tests: 2, passed: 2, failed: 0 });
+  assert.deepEqual(result.timings.tests, { '["binary","one"]': 1.2, '["binary","two"]': 2.3 });
+  assert.throws(() => backendTests.collectDatabaseResults(plan, [junit(ids.slice(0, 1))]), /identities/);
+});
+
+test("the database workflow is tiered, pinned and limited to four duration shards", () => {
+  const file = readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8");
+  const dbWorkflow = yaml.load(file);
+  assert.match(file, /merge_group:/);
+  assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
+  assert.match(file, /schedule:\s*\n\s*- cron:/);
+  assert.deepEqual(dbWorkflow.on.pull_request.paths, [
+    ".github/workflows/db-tests.yml",
+    "scripts/backend-tests.mjs",
+    ".config/nextest.toml",
+  ]);
+  const job = dbWorkflow.jobs["db-tests"];
+  assert.deepEqual(job.strategy.matrix.shard, [1, 2, 3, 4]);
+  assert.equal(job.strategy["max-parallel"], 4);
+  const compose = readFileSync(new URL("../deploy/dev/compose.e2e.yml", import.meta.url), "utf8");
+  assert.equal(job.services.postgres.image, compose.match(/image: (postgres:[^\n]+)/)[1]);
+  assert.match(job.env.DATABASE_URL, /github\.run_id/);
+  const run = job.steps.find((step) => step.run?.includes("scripts/backend-tests.mjs --db"));
+  assert.match(run.run, /--shard.*matrix\.shard.*\/4/);
+  assert.match(run.run, /--timings/);
+  const restore = job.steps.find((step) => step.uses?.startsWith("actions/cache/restore@"));
+  const save = job.steps.find((step) => step.uses?.startsWith("actions/cache/save@"));
+  assert.deepEqual(restore.with.path.split("\n"), [
+    "~/.cargo/registry",
+    "backend/target/debug/deps/*.rlib",
+    "backend/target/debug/deps/*.rmeta",
+    "backend/target/debug/deps/*.so",
+  ]);
+  assert.match(restore.with.key, /hashFiles\('backend\/rust-toolchain\.toml', 'backend\/Cargo\.lock', 'backend\/\*\*\/Cargo\.toml'\)/);
+  assert.equal(save.with.path, restore.with.path);
+  assert.match(save.if, /github\.event_name == 'push'.*github\.ref == 'refs\/heads\/dev'.*matrix\.shard == 1/);
+  const budget = job.steps.find((step) => step.name === "Enforce Rust cache budget");
+  assert.equal(budget.env.RUST_CACHE_MAX_BYTES, "3221225472");
+  assert.match(budget.run, /find.*\.cargo\/registry.*find backend\/target\/debug\/deps/s);
+  assert.match(budget.run, /tar.*zstd.*stat -c %s/s);
+  assert.match(budget.run, /test.*RUST_CACHE_MAX_BYTES/);
+  assert.equal(dbWorkflow.jobs["db-test-timings"].needs, "db-tests");
+  const alert = dbWorkflow.jobs["alert-nightly"];
+  assert.deepEqual(alert.permissions, { contents: "read", issues: "write" });
+  assert.match(alert.if, /github\.event_name == 'schedule'/);
+  assert.match(alert.steps.map((step) => step.run ?? "").join("\n"), /issues.*comments|comments.*issues/s);
+  for (const workflowJob of Object.values(dbWorkflow.jobs)) for (const step of workflowJob.steps) {
+    if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
+    assert.ok(!step["continue-on-error"]);
+  }
 });
 
 test("backend tests inherit hardening, pinned tooling, JUnit artifacts and blocking ci-ok wiring", () => {

@@ -51,5 +51,15 @@ in the inventory artifact. These cases remain visible debt and are not counted a
 JUnit must contain every selected identity exactly once, without skips, failures or errors, and nextest
 must exit successfully. Any discrepancy fails `backend-tests` and the required `ci-ok` aggregate.
 The runner uses the existing [CI JUnit profile](../../.config/nextest.toml), with no retries and no early
-exit after the first failure. Database test execution and its Postgres role topology are the next step;
-no database tests are claimed as executed by this tier.
+exit after the first failure.
+
+Run `node scripts/backend-tests.mjs --db` with `DATABASE_URL` for the database selection. The command
+enables the workspace `test-postgres` features and the app's full, E2E-fixture and development-auth
+test surfaces, then selects SQLx tests from the same source inventory; there is no checked-in test list.
+The `db-tests` workflow runs for gate-changing pull requests, merge groups, dev pushes and nightly
+against the pinned PostgreSQL service image. Four jobs are packed from
+the latest same-repository JUnit durations, with equal weights only when no measurement exists yet.
+Tests excluded by the development-auth feature run from a derived default-feature variant in the same
+plan, so mutually exclusive feature guards cannot make either side disappear.
+Their reports are reconciled into one exact inventory before new timings are trusted. Source ignores
+must carry an owner, reason and unexpired date; database ignores still run with `--run-ignored all`.

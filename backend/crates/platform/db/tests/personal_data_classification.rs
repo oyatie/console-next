@@ -4712,7 +4712,7 @@ async fn every_application_column_is_classified_or_its_table_is_declared(pool: P
 /// Paste its stdout over the body of the constant. `#[sqlx::test]` embeds the
 /// migration set at COMPILE time, so `touch` this file first or a stale binary
 /// will print a stale baseline in a fraction of a second.
-#[ignore = "generator, not an assertion"]
+#[ignore = "owner=privacy; reason=manual baseline generator rather than an assertion; expires=2026-12-03"]
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn print_unclassified_baseline(pool: PgPool) {
     let columns = application_columns(&pool).await;
