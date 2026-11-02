@@ -207,19 +207,25 @@ export function expandedFor(focus: ChartNode, depth: Depth): Set<string> {
   return out;
 }
 
-export type Spot = "above" | "below" | "right" | "left" | "inside";
+type Spot = "above" | "below" | "right" | "left";
+type ToolsSpot = { side: Spot; x: number; y: number; overlap: number };
 /** Whether a `w` × `h` rect at (x, y) covers no box other than `except`. */
 export const freeAt = (L: Layout, x: number, y: number, w: number, h: number, except?: Box) =>
   !L.boxes.some((o) => o !== except && o.x < x + w && o.x + o.w > x && o.y < y + h && o.y + o.h > y);
 
-/**
- * Where a box's toolbar (about `w` × `h`, `scale` times that when a zoomed-out chart scales its controls back up)
- * goes without covering another box: above its top edge, right-aligned (spec S2), else below, to the right, to the
- * left; otherwise on its own top-right corner, so adding a child always stays reachable.
- */
-export function toolsSpot(L: Layout, b: Box, scale = 1, w = 320 * scale, h = 36 * scale, visible?: { x: number; y: number; w: number; h: number }): Spot {
-  // Inside the stage too: a spot past its edge is cut off by the canvas.
-  const free = (x: number, y: number) => x >= 0 && y >= 0 && x + w <= L.w && (!visible || (x >= visible.x && y >= visible.y && x + w <= visible.x + visible.w && y + h <= visible.y + visible.h)) && freeAt(L, x, y, w, h, b);
+/** Prefer an outside edge; otherwise minimize covered box area while keeping the measured toolbar visible. */
+export function toolsSpot(L: Layout, b: Box, scale = 1, w = 320 * scale, h = 36 * scale, visible?: { x: number; y: number; w: number; h: number }): ToolsSpot {
+  const left = Math.max(0, visible?.x ?? 0), top = Math.max(0, visible?.y ?? 0);
+  const right = Math.min(L.w, visible ? visible.x + visible.w : L.w);
+  const bottom = Math.min(L.h, visible ? visible.y + visible.h : L.h);
+  const overlap = (x: number, y: number) => L.boxes.reduce((area, o) => area + Math.max(0, Math.min(x + w, o.x + o.w) - Math.max(x, o.x)) * Math.max(0, Math.min(y + h, o.y + o.h) - Math.max(y, o.y)), 0)
+    + w * h - Math.max(0, Math.min(w, right - left)) * Math.max(0, Math.min(h, bottom - top));
   const spots: [Spot, number, number][] = [["above", b.x + b.w - w, b.y - h - 4], ["below", b.x + b.w - w, b.y + b.h + 14], ["right", b.x + b.w + 8, b.y], ["left", b.x - w - 8, b.y]];
-  return spots.find(([, x, y]) => free(x, y))?.[0] ?? "inside";
+  const clear = spots.find(([, x, y]) => x >= left && y >= top && x + w <= right && y + h <= bottom && overlap(x, y) === 0);
+  if (clear) return { side: clear[0], x: clear[1], y: clear[2], overlap: 0 };
+  return spots.map(([side, x, y]) => {
+    x = Math.max(left, Math.min(x, right - w));
+    y = Math.max(top, Math.min(y, bottom - h));
+    return { side, x, y, overlap: overlap(x, y) };
+  }).reduce((best, spot) => spot.overlap < best.overlap ? spot : best);
 }

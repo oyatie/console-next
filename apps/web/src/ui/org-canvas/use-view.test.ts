@@ -36,6 +36,21 @@ test("a box in the clear area leaves the view as it is", () => {
   expect(revealView(v, { x: 100, y: 100, w: 200, h: 80 }, { w: 1000, h: 600 }, { top: 60, bottom: 70 })).toBe(v);
 });
 
+test.each([
+  { x: 0, y: 100, w: 200, h: 80 },
+  { x: 100, y: 60, w: 200, h: 80 },
+  { x: 800, y: 100, w: 200, h: 80 },
+  { x: 100, y: 450, w: 200, h: 80 },
+])("reveal leaves a margin when a found box touches an edge: %j", box => {
+  const view = { zoom: 1, x: 0, y: 0 };
+  const next = revealView(view, box, { w: 1000, h: 600 }, { top: 60, bottom: 70 });
+  expect(next).not.toBe(view);
+  expect(next.x + box.x).toBeGreaterThan(0);
+  expect(next.y + box.y).toBeGreaterThan(60);
+  expect(next.x + box.x + box.w).toBeLessThan(1000);
+  expect(next.y + box.y + box.h).toBeLessThan(530);
+});
+
 test("fit pads only the measured bars, ignoring the overview's corner height", () => {
   const i = barInsets({ top: 100, bottom: 700 }, { bottom: 152, height: 52 }, { top: 638, height: 46 });
   expect(i).toEqual({ top: 60, bottom: 70 });

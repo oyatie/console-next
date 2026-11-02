@@ -13,7 +13,6 @@ import { receiptAction } from "../../../ui/receipt/receipt-action";
 import { Button } from "../../../ui/button/button";
 import { drawnAt, pathTo, type ChartNode, type Structure } from "../domain/model";
 import { collapseSelection, movable } from "../domain/rules";
-import { toolsSpot, type Box } from "../domain/layout";
 import { ChartBoxes } from "./chart-boxes";
 import { ChartEditors } from "./chart-editors";
 import { useChartKeys } from "./use-chart-keys";
@@ -117,7 +116,6 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
     const b = id && id !== s.root.id ? c.shown.get(id) : undefined;
     return b ? [b] : [];
   });
-  const spotFor = (b: Box, zoom: number, visible: Pick<Box, "x" | "y" | "w" | "h">) => toolsSpot(c.L, b, unzoomOf(zoom), undefined, undefined, visible);
   const gestures: Gestures = { add: g.add, rename: g.rename, move: (n) => g.move(pickMoving(n)), remove: (n) => g.remove(n.kind === "site" ? [n] : pickMoving(n)), focusOn: g.focusOn, merge: g.merge, order: g.order, open: (n) => open(n) };
   const pickMoving = (n: ChartNode) => (c.sel.has(n.id) ? collapseSelection(s, c.sel).top : [n]).filter(movable);
   const keys = useChartKeys(c, { ...gestures, open, menu: (n) => (setHover(n.id), setMenu(n.id)), find: () => focusSoon("structure-find") });
@@ -171,7 +169,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
             <ChartEditors s={s} c={c} zoom={zoom} visible={visible} pending={cmd.pending} batch={cmd.last?.batchId} onAdd={g.create} onRename={g.saveName} />
             {hitTile && hitId ? <HitPreview s={s} L={c.L} box={hitTile} hit={s.byId.get(hitId)!} at={c.hit + 1} total={c.hits.ids.length} />
               : hoverBox && (hoverBox.lod === "tile" || hoverBox.lod === "xs") && hoverBox.node.kind === "site" && <SitePreview L={c.L} box={hoverBox} />}
-            {toolsBoxes.map((b) => <NodeTools key={b.node.id} box={b} spot={spotFor(b, zoom, visible)} g={gestures} canEdit={g.canEdit} onPointerDown={drag.onPointerDown} />)}
+            {toolsBoxes.map((b) => <NodeTools key={b.node.id} box={b} layout={c.L} scale={unzoomOf(zoom)} visible={visible} g={gestures} canEdit={g.canEdit} />)}
           </>
         )}
         minimap={{ userId: myId(), rects: c.L.boxes.filter((b) => b.node.kind !== "tenant").map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h, level: b.node.kind, hit: c.sel.has(b.node.id) || c.hits.ids.includes(b.node.id) })) }}
