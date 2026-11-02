@@ -15,7 +15,7 @@
 .calendarButton:hover { background: var(--muted); }
 .calendarButton:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .calendarButton[aria-disabled="true"] { color: var(--steel); cursor: not-allowed; }
-.popover { z-index: 18; min-width: 18rem; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-pop); }
+.popover { z-index: 18; width: calc(var(--target-touch) * 7 + var(--space-3) * 2); max-width: calc(100vw - var(--space-3) * 2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-pop); }
 .dialog { outline: none; }
 .inputError { flex-basis: 100%; color: var(--danger-tx); font-size: var(--text-sm); }
 .remedy { margin-left: var(--space-2); }

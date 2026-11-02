@@ -5,6 +5,7 @@ import { expectAxe, fits } from "../a11y";
 import { screenAccess, structure } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
+import { orgPanelReads } from "../mock/org-work";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -24,9 +25,12 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
       await expect(main.locator("#setup-panel-title, progress, ol[aria-label]")).toHaveCount(0);
       const head = main.getByRole("group", { name: t("structure.views"), exact: true }).locator("..");
       await expect(head).toBeVisible();
+      if (width === 390) await expect(head.locator("p:empty")).toHaveCount(0);
       await expect(head.getByText(t("structure.phase.setupChip"), { exact: true })).toHaveCount(0);
       await expect(main.getByText(/되돌릴 수 있습니다|조직 구조는 법인|이미 엑셀로/)).toHaveCount(0);
       if (empty) {
+        await expect(main.getByRole("region", { name: t("asof.label"), exact: true })).toHaveCount(0);
+        await expect(main.getByRole("button", { name: t("asof.compare"), exact: true })).toHaveCount(0);
         await expect(main.getByRole("heading", { name: t("structure.first.title"), exact: true })).toBeVisible();
         await expect(main.getByRole("heading", { name: t("structure.first.title"), exact: true })).toHaveAttribute("id", "first-run-title");
         await expect(main.locator(".state .btn--primary")).toHaveCount(1);
@@ -50,6 +54,39 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+test("org: list retains visible column headers at 390px @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  try {
+    await page.goto("/org?view=list");
+    const grid = page.getByRole("grid", { name: t("structure.list.label"), exact: true });
+    const heading = grid.getByRole("columnheader", { name: t("structure.list.name"), exact: true });
+    await expect(heading).toBeVisible();
+    await expect(heading).toBeInViewport();
+    await expect(grid.getByRole("rowheader").first()).toBeVisible();
+    await fits(page, "org list/390");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+test("org: an empty workplace remains clickable when its hover actions fall inside the card @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await orgPanelReads(page);
+  const tree = structure(1);
+  tree.phase = "SETUP";
+  tree.entities[0]!.children[0]!.children = [];
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+  try {
+    await page.goto("/org");
+    const workplace = page.getByRole("treeitem", { name: /^본사,/ });
+    await workplace.hover();
+    await workplace.click({ timeout: 5000 });
+    await expect(workplace).toHaveAttribute("aria-selected", "true");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
 
 for (const view of ["chart", "list", "outline"] as const) {
   test(`org: ${view} keeps definitions and shortcuts on demand @ui-state`, async ({ page }) => {

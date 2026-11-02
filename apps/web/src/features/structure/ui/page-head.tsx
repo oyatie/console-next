@@ -42,6 +42,7 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
   const today = todayKst();
   const value = q.compare_b ?? q.as_of ?? today;
   const readOnly = cmd.readOnly;
+  const firstRun = s?.phase === "SETUP" && s.root.children.length === 0 && !s.readOnly;
   const selected = s?.byId.get(q.sel ?? "");
   const parent = selected?.kind === "site" ? selected : selected?.siteId ? s?.byId.get(selected.siteId) : s?.root.children[0]?.children[0];
   const [exporting, setExporting] = useState(false);
@@ -75,10 +76,10 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
           </Button>
         ))}
       </div>
-      <p id={reasonId} className={css.phase} aria-hidden={!s && !readFailed || undefined} data-loading={!s && !readFailed || undefined} data-failed={readFailed || undefined}>
+      {(readFailed || phase === "operating") && <p id={reasonId} className={css.phase} aria-hidden={!s && !readFailed || undefined} data-loading={!s && !readFailed || undefined} data-failed={readFailed || undefined}>
         {(readFailed || phase === "operating") && <span aria-hidden={readFailed || undefined}>{t("structure.phase.operatingChip")}</span>}
         {readFailed && <span className={css.phaseError}>{t("structure.readFailed")}</span>}
-      </p>
+      </p>}
       {!readOnly && orgEdit && selected?.kind === "entity" && <AddUnit n={selected} primary />}
       <span className="grow" />
       {view !== "list" && <StructureKeys view={view} />}
@@ -91,9 +92,11 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
       {exporting && s && <ExportDialog s={s} onClose={() => setExporting(false)} />}
       {cmd.pending && <span className="sr-only" role="status">{t("structure.saving")}</span>}
     </div>
+    {!firstRun && <div className="row">
     <AsOfControl today={today} value={value} knownAt={q.known_at} onChange={(date, known_at) => void nav({ search: (search) => ({ ...search, as_of: date === today ? undefined : date, known_at, compare_a: undefined, compare_b: undefined, act: undefined }) })} changeDates={changeDates} loadingDates={loadingDates} />
-    {value > today && !q.known_at && !q.compare_a && parent?.unitId && <Button onClick={() => void nav({ search: (search) => ({ ...search, act: "create", sel: parent.unitId, kind: "DEPARTMENT" }) })}>{t("asof.create")}</Button>}
     <CompareControl unavailable={unavailable} />
+    </div>}
+    {value > today && !q.known_at && !q.compare_a && parent?.unitId && <Button onClick={() => void nav({ search: (search) => ({ ...search, act: "create", sel: parent.unitId, kind: "DEPARTMENT" }) })}>{t("asof.create")}</Button>}
     </>
   );
 }

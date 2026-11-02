@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { go, koDate } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { setupCompany } from "./setup-flows";
+import { openAsOf } from "./dates";
 
 test("the entities as-of field uses Korean format with an en-US browser locale", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const page = await openTenant(browser, "date-locale", "날짜 서식", "en-US");
@@ -12,8 +13,7 @@ test("the entities as-of field uses Korean format with an en-US browser locale",
 
   await setupCompany(page, "날짜 서식", "본점");
   await go(page, "/org/entities");
-  const asOf = page.getByRole("region", { name: "기준일", exact: true });
-  const input = asOf.getByLabel(/^기준일/);
+  const input = (await openAsOf(page)).getByRole("textbox", { name: "기준일", exact: true });
   await expect(input).toHaveAttribute("type", "text");
   await expect(input).toHaveValue(/^\d{4}\. \d{2}\. \d{2}\.$/);
 });
@@ -24,7 +24,6 @@ test("typing an as-of date commits one navigation on blur or Enter", { tag: ["@o
   await setupCompany(page, "날짜 입력", "본점");
   await go(page, "/org/entities");
   const asOf = page.getByRole("region", { name: "기준일", exact: true });
-  const input = asOf.getByLabel(/^기준일/);
   const navigations: string[] = [];
   await page.exposeFunction("recordDateNavigation", (url: string) => { navigations.push(url); });
   await page.evaluate(() => {
@@ -40,6 +39,8 @@ test("typing an as-of date commits one navigation on blur or Enter", { tag: ["@o
     }
   });
   for (const [draft, iso, commit] of [["20261115", "2026-11-15", "blur"], ["2026. 11. 25.", "2026-11-25", "Enter"]] as const) {
+    const picker = await openAsOf(page);
+    const input = picker.getByRole("textbox", { name: "기준일", exact: true });
     const before = page.url();
     const count = navigations.length;
     await input.fill("");
@@ -47,10 +48,10 @@ test("typing an as-of date commits one navigation on blur or Enter", { tag: ["@o
     await expect(input).toHaveValue(draft);
     expect(page.url()).toBe(before);
     expect(navigations).toHaveLength(count);
-    await expect(asOf.getByText("날짜가 올바르지 않습니다", { exact: false })).toHaveCount(0);
+    await expect(picker.getByText("날짜가 올바르지 않습니다", { exact: false })).toHaveCount(0);
     if (commit === "blur") await input.blur();
-    else { await input.press(commit); await input.blur(); }
-    await expect(input).toHaveValue(koDate(iso));
+    else await input.press(commit);
+    await expect(asOf.getByRole("button", { name: /^기준일 · / })).toContainText(koDate(iso));
     await expect(page).toHaveURL(new RegExp(`as_of=${iso}`));
     await expect.poll(() => navigations.length).toBe(count + 1);
   }

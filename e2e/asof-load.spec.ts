@@ -7,6 +7,7 @@ import { addDepts, openUnit, sheet } from "./helpers/structure";
 import { openTenant } from "./helpers/tenant";
 import { setupCompany, startOperations } from "./setup-flows";
 import { box, findBox, leaveScreen } from "./structure-flows";
+import { openAsOf } from "./dates";
 
 // The 2,000-person fixture enters through the normal workbook UI, with one ops account and no API writes.
 test("dated chart and comparison retain 2,000 imported people through a projected rename", {
@@ -55,10 +56,11 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   expect((await submitted).status(), "scheduled rename refused").toBe(200);
   await expect(rename).toBeHidden({ timeout: 30_000 });
   const control = admin.getByRole("region", { name: "기준일", exact: true });
-  await expect(control.getByRole("group", { name: "변경일" }).locator(`[data-change-date="${due}"]`)).toBeVisible();
-  await control.getByRole("button", { name: "다음 변경일" }).focus();
+  const picker = await openAsOf(admin);
+  await expect(picker.getByRole("group", { name: "변경일" }).locator(`[data-change-date="${due}"]`)).toBeVisible();
+  await picker.getByRole("button", { name: "다음 변경일" }).focus();
   await admin.keyboard.press("Enter");
-  await expect(control.getByLabel(/^기준일/)).toHaveValue(koDate(due));
+  await expect(control.getByRole("button", { name: /^기준일 · / })).toContainText(koDate(due));
   await findBox(admin, "대량미래팀");
   await expect(box(admin, "대량미래팀")).toHaveAttribute("aria-label", /2,?000명/);
   await expect(box(admin, "대량미래팀")).toHaveAttribute("data-scheduled", "true");
@@ -73,10 +75,15 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   const held = new Promise<void>((resolve) => { release = resolve; });
   await admin.route(target, async (route) => { await held; await route.continue(); });
   const requested = admin.waitForRequest((request) => target(new URL(request.url())));
-  const geometry = () => compare.evaluate((el) => [el.nextElementSibling!, document.getElementById("org-scheduled")!].map((node) => {
-    const { x, y, width, height } = node.getBoundingClientRect();
-    return { x, y, width, height };
-  }));
+  const geometry = async () => {
+    const canvas = admin.getByRole("region", { name: "조직도", exact: true });
+    // Loading reserves the whole chart region, including a selected inspector.
+    const surface = await canvas.count() ? canvas.locator("../..") : admin.locator('[data-read-layout="grid"]');
+    return Promise.all([surface, admin.locator("#org-scheduled")].map((node) => node.evaluate((el) => {
+      const { x, y, width, height } = el.getBoundingClientRect();
+      return { x, y, width, height };
+    })));
+  };
   try {
     await compare.getByLabel(/^날짜 B/).fill(due);
     await compare.getByLabel(/^날짜 B/).blur();

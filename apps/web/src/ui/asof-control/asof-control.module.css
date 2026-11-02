@@ -6,3 +6,4 @@
 .navigation { display: inline-grid; align-items: start; }
 .navigation > *, .navigation::after { grid-area: 1 / 1; }
 .navigation::after { content: attr(data-reason); visibility: hidden; font-size: var(--text-sm); padding-top: var(--row-h); }
+.control { min-width: 0; }

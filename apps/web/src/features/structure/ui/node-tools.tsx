@@ -38,7 +38,7 @@ export function NodeTools({ box, spot, g, canEdit, onPointerDown }: {
       label={t("structure.tools.label", { name: n.name })}
       onPointerDown={spot === "inside" ? (e) => onPointerDown(e, n.id) : undefined}
     >
-      {canEdit && <AddUnit n={n} onAdd={() => g.add(n)} />}
+      {canEdit && <AddUnit n={n} icon={spot === "inside"} onAdd={() => g.add(n)} />}
       {spot !== "inside" && <DetailLink n={n} className={buttonClass("ghost")} />}
       {/* Registering people is the other half of setup (#21): straight from the place they work, prefilled. */}
       {spot !== "inside" && canEdit && (n.kind === "site" || n.kind === "dept") && n.unitId && (

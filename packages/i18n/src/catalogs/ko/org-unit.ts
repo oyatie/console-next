@@ -62,7 +62,6 @@ export const koOrgUnit = {
   "orgUnit.gov.name": "부서 이름",
   "orgUnit.gov.date": "시행일",
   "orgUnit.gov.today": "오늘",
-  "orgUnit.gov.nextMonth": "다음 달 1일 ({date})",
   "orgUnit.gov.reason": "사유",
   "orgUnit.gov.missing": "{list|이가} 남아 아직 반영할 수 없습니다",
   "orgUnit.gov.missingName": "부서 이름",
