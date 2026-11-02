@@ -34,13 +34,10 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # #315: stable changes migration checksums, metadata and ACL contracts; remove after the audited Apalis migration.
+      # Defer all Apalis updates until the audited migration; see docs/quality/dependencies/dependabot-cargo-315.md.
       - dependency-name: "apalis"
-        versions: [">=1.0.0"]
       - dependency-name: "apalis-postgres"
-        versions: [">=1.0.0"]
       - dependency-name: "apalis-sql"
-        versions: [">=1.0.0"]
     groups:
       cargo:
         patterns: ["*"]

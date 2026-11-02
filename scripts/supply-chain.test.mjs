@@ -178,12 +178,14 @@ test("Dependabot groups only minor and patch updates weekly on dev, leaving majo
   assert.deepEqual(config.updates.find((u) => u["package-ecosystem"] === "cargo").directories.sort(), ["/apps/desktop/src-tauri", "/backend", "/backend/fuzz"]);
 });
 
-test("Dependabot defers only the coordinated stable Apalis migration, leaving desktop patches eligible", () => {
-  const config = yaml.load(read(".github/dependabot.yml"));
+test("Dependabot defers all Apalis updates until the coordinated migration, leaving desktop patches eligible", () => {
+  const source = read(".github/dependabot.yml");
+  const config = yaml.load(source);
   const cargo = config.updates.find((u) => u["package-ecosystem"] === "cargo");
   assert.deepEqual(cargo.ignore, ["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({
-    "dependency-name": name, versions: [">=1.0.0"],
+    "dependency-name": name,
   })));
+  assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
 });
 
 test("Dependabot keeps Node declarations on the runtime major and defers native TypeScript", () => {
