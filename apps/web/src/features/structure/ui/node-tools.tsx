@@ -19,7 +19,7 @@ import type { Gestures } from "../present";
 import { AddUnit } from "./add-unit";
 
 /**
- * The toolbar prefers a clear outside edge, then keeps the add action on its own corner.
+ * The toolbar prefers a clear outside edge, then keeps the add action above its own corner.
  * The box itself holds the ⋯ menu, including right-click and Shift+F10.
  */
 export function NodeTools({ box, spot, g, canEdit, onPointerDown }: {
@@ -34,7 +34,7 @@ export function NodeTools({ box, spot, g, canEdit, onPointerDown }: {
   return (
     <CanvasToolbar
       anchor={ANCHOR[spot](box)}
-      side={spot}
+      side={spot === "inside" ? "above" : spot}
       label={t("structure.tools.label", { name: n.name })}
       onPointerDown={spot === "inside" ? (e) => onPointerDown(e, n.id) : undefined}
     >
