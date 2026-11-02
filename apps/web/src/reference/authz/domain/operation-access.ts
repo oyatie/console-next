@@ -6,6 +6,7 @@ export const operationAccess = {
   "GET /api/v1/access/accounts/{accountId}/effective": {"domain":"access","level":"view"},
   "GET /api/v1/access/grants": {"domain":"access","level":"view"},
   "POST /api/v1/access/grants/preview": {"domain":"access","level":"edit"},
+  "GET /api/v1/access/people/{id}": {"domain":"access","level":"view"},
   "GET /api/v1/access/roles": {"domain":"access","level":"view"},
   "POST /api/v1/access/roles": {"domain":"access","level":"edit","tenant":true,"scopes":["TENANT"]},
   "GET /api/v1/access/roles/{roleId}": {"domain":"access","level":"view"},

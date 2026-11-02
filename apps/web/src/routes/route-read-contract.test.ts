@@ -29,6 +29,14 @@ test("the table covers every guarded leaf; hubs compose only those leaf requirem
   expect(Object.keys(routeReads).sort()).toEqual(guarded.sort());
 });
 
+test("access person declares its account read without changing the effective-read scope", () => {
+  const read = "GET /api/v1/access/people/{id}";
+  expect(routeReads["/access/people/$accountId"].reads).toContain(read);
+  const effective = operationAccess["GET /api/v1/access/accounts/{accountId}/effective"];
+  expect(operationAccess).toHaveProperty(read, effective);
+  expect(readRequirement("/access/people/$accountId")).toEqual(effective);
+});
+
 for (const [path, contract] of Object.entries(routeReads)) {
   const ops = [...contract.reads, ...("command" in contract ? [contract.command] : [])];
   test(`${path}: exact generated contract, including scopes and all prerequisites`, () => {
