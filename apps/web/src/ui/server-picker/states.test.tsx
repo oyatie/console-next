@@ -143,14 +143,13 @@ test("an empty page with a positive total does not ask to narrow zero results", 
   await expectElement(page.getByText(/처음 0건만 표시합니다/)).toHaveCount(0);
 });
 
-test("the narrowing guidance is exposed to assistive technology, keyboard tips are decorative", async () => {
+test("narrowing and identity guidance are exposed to assistive technology", async () => {
   for (const mode of ["complete", "results"]) {
     const input = await open(mode);
     await input.press("ArrowDown");
-    const footer = page.getByText(mode === "results" ? "처음 20건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오." : "↑↓ 이동 · Enter 선택 · 이름이 겹치면 사번이나 소속, 로그인 아이디를 확인합니다", { exact: true });
+    const footer = page.getByText(mode === "results" ? "처음 20건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오." : "동명이인은 사번·소속·로그인 식별 정보·계정 생성 시각으로 구분합니다", { exact: true });
     await expectElement(footer).toBeVisible();
-    if (mode === "results") await expectElement(footer).not.toHaveAttribute("aria-hidden", "true");
-    else await expectElement(footer).toHaveAttribute("aria-hidden", "true");
+    await expectElement(footer).not.toHaveAttribute("aria-hidden", "true");
   }
 });
 

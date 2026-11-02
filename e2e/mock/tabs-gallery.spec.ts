@@ -2,6 +2,36 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+test("scrolling route tabs keep the current tab visible when a count finishes loading", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/_gallery");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  const nav = page.locator('[data-tabs-demo="scroll"]').getByRole("navigation");
+  const current = nav.locator('[aria-current="page"]');
+  await expect(current).toBeVisible();
+  await nav.evaluate(el => {
+    el.style.width = "240px";
+    el.querySelector('[aria-current="page"]')!.removeAttribute("aria-current");
+    const links = Array.from(el.querySelectorAll("a"));
+    links.forEach(link => { link.textContent = "목록"; });
+    const selected = links.at(-2)!;
+    selected.setAttribute("aria-current", "page");
+    const count = document.createElement("span");
+    count.appendChild(document.createTextNode("0"));
+    selected.appendChild(count);
+  });
+  const visible = () => current.evaluate(el => {
+    const tab = el.getBoundingClientRect(), bar = el.parentElement!.getBoundingClientRect();
+    return tab.left >= bar.left && tab.right <= bar.right + 1;
+  });
+  await expect.poll(visible).toBe(true);
+  const scroll = await page.evaluate(() => scrollY);
+  await current.evaluate(el => { el.lastChild!.firstChild!.textContent = "2,000,000"; });
+  await expect.poll(visible).toBe(true);
+  expect(await page.evaluate(() => scrollY)).toBe(scroll);
+});
+
 test("gallery view links preserve scroll at an existing hash and keep the table gallery available", async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.route("**/api/**", route => route.fulfill({ status: 403, json: { error: { code: "forbidden", message: "" } } }));

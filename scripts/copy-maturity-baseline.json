@@ -124,7 +124,6 @@
   "packages/i18n/src/catalogs/ko/structure.ts structure.jump.keys prose.단축키 ec54bded8524519c2b64": 1,
   "packages/i18n/src/catalogs/ko/ui-chain-stepper.ts uiChainStepper.mine term.대기 aaefbb8fe1762463daec": 1,
   "packages/i18n/src/catalogs/ko/ui-handoff.ts uiHandoff.mine term.대기 aaefbb8fe1762463daec": 1,
-  "packages/i18n/src/catalogs/ko/ui-server-picker.ts uiServerPicker.keys prose.단축키 2519218fe29b8f1d871a": 1,
   "packages/i18n/src/catalogs/ko/unplaced.ts unplaced.groupNone verb.선택 b0a9a341d815859c875f": 1,
   "packages/i18n/src/catalogs/ko/unplaced.ts unplaced.picked verb.선택 8d8d4bbcc8f58faefedd": 1,
   "packages/i18n/src/catalogs/ko/workplace.ts workplace.close.person.with verb.이동 efca7b54724d91323bd9": 1,

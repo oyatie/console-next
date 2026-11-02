@@ -97,7 +97,7 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   const fixture = await mockAccessScreen(page, accessScreens[0], "populated");
   const accounts = ["worker1234", "writer1234"].map((login, i) => ({ ...user, id: id(100 + i), display_name: "동명 계정",
     employee_id: null, employee_name: null, employee_number: null, employee_company: null, employee_org_unit: null,
-    sign_in_id: `${login}@example.test`, created_at: `2026-10-01T0${i + 1}:00:00Z`,
+    sign_in_id: `${login}@example.test`, created_at: `2026-10-01T01:00:${i === 0 ? "00" : "30"}Z`,
   }));
   await mockRoute(page, "get", "/api/v1/users", { status: 200, json: { items: accounts, total: 2, limit: 200, offset: 0 } });
   await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: fixture.grants.slice(0, 2) });
@@ -105,16 +105,19 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   await page.getByRole("button", { name: "권한 부여", exact: true }).click();
   const picker = page.getByRole("dialog", { name: "권한 부여할 사람", exact: true });
   await picker.getByRole("combobox").fill("동명");
-  const first = page.getByRole("option", { name: /동명 계정.*계정 생성.*10:00/ });
-  const second = page.getByRole("option", { name: /동명 계정.*계정 생성.*11:00/ });
+  await expect(page.getByText(/계정 생성 시각으로 구분합니다/)).toBeVisible();
+  const first = page.getByRole("option", { name: /동명 계정.*계정 생성.*10:00.*orker1234/ });
+  const second = page.getByRole("option", { name: /동명 계정.*계정 생성.*10:00.*riter1234/ });
   await expect(first).toBeVisible();
   await expect(second).toBeVisible();
   for (const option of [first, second]) {
     const context = option.getByText(/계정 생성/);
-    expect(await context.evaluate(el => {
+    const layout = await context.evaluate(el => {
       const bounds = el.closest('[role="option"]')!.getBoundingClientRect();
-      return Array.from(el.getClientRects()).every(rect => rect.left >= bounds.left && rect.right <= bounds.right && rect.top >= bounds.top && rect.bottom <= bounds.bottom);
-    })).toBe(true);
+      const rects = Array.from(el.getClientRects());
+      return { fits: rects.every(rect => rect.left >= bounds.left && rect.right <= bounds.right && rect.top >= bounds.top && rect.bottom <= bounds.bottom), bounds: bounds.toJSON(), rects: rects.map(rect => rect.toJSON()) };
+    });
+    expect(layout.fits, JSON.stringify(layout)).toBe(true);
   }
   expect(await first.evaluate(el => el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(await second.evaluate(el => el.getBoundingClientRect().top));
   for (const account of accounts) await expect(picker).not.toContainText(account.id);
@@ -126,8 +129,8 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
   const main = page.getByRole("main");
-  await expect(main.getByRole("link", { name: /동명 계정.*계정 생성.*10:00/ })).toBeVisible();
-  await expect(main.getByRole("link", { name: /동명 계정.*계정 생성.*11:00/ })).toBeVisible();
+  await expect(main.getByRole("link", { name: /동명 계정.*계정 생성.*10:00.*orker1234/ })).toBeVisible();
+  await expect(main.getByRole("link", { name: /동명 계정.*계정 생성.*10:00.*riter1234/ })).toBeVisible();
   expect(fixture.unexpected).toEqual([]);
 });
 

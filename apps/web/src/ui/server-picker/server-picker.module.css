@@ -8,7 +8,7 @@
 .icon { position: absolute; left: var(--space-2); width: var(--space-4); height: var(--space-4); color: var(--steel); pointer-events: none; }
 .pop { width: var(--trigger-width); min-width: calc(var(--panel-w) / 1.2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: hidden; }
 .group { display: flex; justify-content: space-between; padding: var(--space-2) var(--space-3) var(--space-1); font-size: var(--text-xs); color: var(--steel); font-weight: var(--fw-medium); }
-.option { display: grid; grid-template-columns: 1fr auto; gap: 0 var(--space-3); align-items: center; }
+.option { display: grid; grid-template-columns: 1fr auto; gap: 0 var(--space-3); align-items: center; height: auto; min-height: var(--row-h); }
 .option:hover, .option[data-hovered] { background: var(--muted); }
 .name { font-weight: var(--fw-medium); }
 .code { font-family: var(--font-mono); font-size: var(--text-xs); }

@@ -5,9 +5,9 @@ import { Chip } from "../../../ui/chip";
 import { personLabel, type PersonIdentity } from "../present";
 import s from "./person-label.module.css";
 
-export function PersonLabel({ person, peers, linked = true }: { person: PersonIdentity; peers?: readonly PersonIdentity[]; linked?: boolean }) {
+export function PersonLabel({ person, peers, linked = true, wrap = false }: { person: PersonIdentity; peers?: readonly PersonIdentity[]; linked?: boolean; wrap?: boolean }) {
   const label = personLabel(person, peers);
-  const content = <bdi className={s.label} title={label.text}>
+  const content = <bdi className={`${s.label} ${wrap ? s.wrap : ""}`} title={label.text}>
     <bdi className={s.name}><bdi className={s.text}>{label.name}</bdi>{label.sameName && <Chip>{t("people.sameName.chip")}</Chip>}</bdi>
     <bdi className={`${s.detail} t-xs muted`}>{label.detail}</bdi>
   </bdi>;

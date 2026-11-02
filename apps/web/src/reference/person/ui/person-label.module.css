@@ -4,3 +4,4 @@
 .name > span { flex: none; }
 .text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrap .detail { white-space: normal; overflow-wrap: anywhere; }

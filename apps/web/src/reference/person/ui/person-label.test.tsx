@@ -63,7 +63,7 @@ test.each(["ko", "en"] as const)("colliding account options share the creation-t
     const option = personOption(account, peers);
     const html = renderToStaticMarkup(<>{option.display}</>);
     expect(option.context).toBeUndefined();
-    expect(html).toBe(renderToStaticMarkup(<PersonLabel person={account} peers={peers} linked={false} />));
+    expect(html).toBe(renderToStaticMarkup(<PersonLabel person={account} peers={peers} linked={false} wrap />));
     expect(html).toContain(t("people.label.accountCreated", { at: fmtDateTime(account.created_at) }));
     expect(html).not.toContain(account.id);
   }
