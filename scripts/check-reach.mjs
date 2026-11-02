@@ -6,11 +6,11 @@
 import { spawnSync } from "node:child_process";
 import ts from "typescript";
 import yaml from "js-yaml";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { atBase, baselineGrowth } from "./quality/ratchet.mjs";
+import { atBase, baselineGrowth, qualityRef } from "./quality/ratchet.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MODULES = new Set(["Entity", "Org", "HR"]);
@@ -168,14 +168,14 @@ export function checkOperations({ gaps, operations, previous, uncalled }) {
 
 export const lowerOperations = (operations, uncalled) => Object.fromEntries(Object.entries(operations).filter(([op]) => uncalled.includes(op)));
 
-function operationTree(files) {
-  const metadata = spawnSync("cargo", ["metadata", "--offline", "--no-deps", "--format-version", "1"], { cwd: path.join(ROOT, "backend"), encoding: "utf8", maxBuffer: 1 << 26 });
+function operationTree(files, root = ROOT) {
+  const metadata = spawnSync("cargo", ["metadata", "--offline", "--no-deps", "--format-version", "1"], { cwd: path.join(root, "backend"), encoding: "utf8", maxBuffer: 1 << 26 });
   if (metadata.status !== 0) throw new Error(`reach: release metadata unreadable: ${metadata.stderr}`);
   const { packages } = JSON.parse(metadata.stdout);
   const shipped = releasePackages(packages.find((p) => p.name === "console-app"));
   const releaseCrates = new Set(), crates = new Map();
   for (const p of packages) {
-    const dir = path.dirname(p.manifest_path), relative = path.relative(realpathSync(path.join(ROOT, "backend/crates")), dir);
+    const dir = path.dirname(p.manifest_path), relative = path.relative(realpathSync(path.join(root, "backend/crates")), dir);
     if (relative.startsWith("..")) continue;
     const crate = relative.split(path.sep)[0];
     const paths = path.join(dir, "openapi/paths");
@@ -186,7 +186,7 @@ function operationTree(files) {
       if (m) crates.set(`${m[2].toUpperCase()} /${m[1].replaceAll("__", "/")}`, crate);
     }
   }
-  const spec = yaml.load(readFileSync(path.join(ROOT, "backend/openapi/openapi.yaml"), "utf8"));
+  const spec = yaml.load(readFileSync(path.join(root, "backend/openapi/openapi.yaml"), "utf8"));
   // Path filenames omit parameter braces; join through the contract rather than guessing parameter names.
   const owners = new Map(Object.entries(spec.paths).flatMap(([p, item]) => Object.keys(item).map((m) => [`${m.toUpperCase()} ${p}`, crates.get(`${m.toUpperCase()} ${p.replace(/[{}]/g, "")}`)]).filter(([, c]) => c)));
   const uncalled = operationGaps({ spec, files, crates: owners });
@@ -213,7 +213,7 @@ function registeredUnits() {
 }
 
 /** Bootstrap against the base's actual debt, even before it has an operations baseline. */
-export function operationsAtBase(base) {
+export function operationsAtBase(base, unreleasedOnly = false) {
   const contract = spawnSync("git", ["show", `${base}:backend/openapi/openapi.yaml`], { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 });
   if (contract.status !== 0) throw new Error(`reach: base contract unreadable: ${contract.error ?? contract.stderr}`);
   const spec = yaml.load(contract.stdout);
@@ -231,7 +231,21 @@ export function operationsAtBase(base) {
     offset = end + size + 2;
     return [f, src];
   });
-  return Object.fromEntries(operationGaps({ spec, files, crates: new Map() }).map((op) => [op, {}]));
+  let gaps = operationGaps({ spec, files, crates: new Map() });
+  if (unreleasedOnly) {
+    const root = mkdtempSync(path.join(tmpdir(), "reach-release-"));
+    try {
+      const archive = spawnSync("git", ["archive", base, "backend", "third-party"], { cwd: ROOT, maxBuffer: 1 << 28 });
+      if (archive.status !== 0) throw new Error(`reach: base release unreadable: ${archive.error ?? archive.stderr}`);
+      const unpack = spawnSync("tar", ["-xf", "-", "-C", root], { input: archive.stdout, encoding: "utf8" });
+      if (unpack.status !== 0) throw new Error(`reach: base release unreadable: ${unpack.error ?? unpack.stderr}`);
+      const release = new Set(operationTree(files, root).gaps);
+      gaps = gaps.filter((op) => !release.has(op));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+  return Object.fromEntries(gaps.map((op) => [op, {}]));
 }
 
 async function atBaseOf(base) {
@@ -244,7 +258,9 @@ async function atBaseOf(base) {
     ({ UNTRACKED: untracked } = await import(file));
   }
   const data = json === undefined ? undefined : JSON.parse(json);
-  return { baseline: Array.isArray(data) ? data : data?.records, operations: data?.operations ?? operationsAtBase(base), untracked };
+  // Promotion may seed existing dormant APIs; already shipped APIs retain the shrink-only baseline.
+  const dormant = data?.operations && atBase(ROOT, base, "backend/Cargo.toml") !== undefined ? operationsAtBase(base, true) : {};
+  return { baseline: Array.isArray(data) ? data : data?.records, operations: data?.operations ? { ...dormant, ...data.operations } : operationsAtBase(base), untracked };
 }
 
 async function main() {
@@ -268,7 +284,7 @@ async function main() {
     return;
   }
   const at = process.argv.indexOf("--base");
-  tree.previous = await atBaseOf(at > 0 ? process.argv[at + 1] : (process.env.QUALITY_BASE ?? "dev"));
+  tree.previous = await atBaseOf(at > 0 ? process.argv[at + 1] : qualityRef(ROOT));
   const problems = [...check(tree), ...checkOperations({ ...opTree, operations, previous: tree.previous.operations })];
   if (problems.length) {
     console.error(`reach: ${problems.length} problem(s):\n${problems.join("\n")}`);

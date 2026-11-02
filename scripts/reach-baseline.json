@@ -614,6 +614,36 @@
    "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
+  "GET /api/v1/payroll/employees/{employeeId}/payslip-draft": {
+   "lane": "Payroll S4 직원 급여",
+   "reason": "The employee payroll screen will preview draft payslips with statutory citations.",
+   "when": "2026-11-11"
+  },
+  "GET /api/v1/payroll/payslips/me": {
+   "lane": "Payroll S7 교부",
+   "reason": "The payslip delivery journey will let employees read their issued payslips.",
+   "when": "2026-11-18"
+  },
+  "GET /api/v1/payroll/runs/{id}": {
+   "lane": "Payroll S3 run create",
+   "reason": "The run page will load its header and six-stage progress rail after run creation.",
+   "when": "2026-11-09"
+  },
+  "GET /api/v1/payroll/runs/{id}/close-preflight": {
+   "lane": "Payroll S5 대상·근태",
+   "reason": "The attendance stage will show close prerequisites once attendance month close is available.",
+   "when": "2026-11-13"
+  },
+  "GET /api/v1/payroll/runs/{id}/exceptions": {
+   "lane": "Payroll S6 계산·검토",
+   "reason": "The calculation review stage will list exceptions before submission.",
+   "when": "2026-11-16"
+  },
+  "GET /api/v1/payroll/runs/{id}/payslip-delivery": {
+   "lane": "Payroll S7 교부",
+   "reason": "The delivery stage will show issued payslip delivery status with e-mail off by default.",
+   "when": "2026-11-18"
+  },
   "GET /api/v1/policy/assignments": {
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -998,6 +1028,61 @@
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
+  },
+  "POST /api/v1/payroll/employees/{employeeId}/contract-wages": {
+   "lane": "Payroll S4 직원 급여",
+   "reason": "The employee payroll screen will record contract wages before draft calculation.",
+   "when": "2026-11-11"
+  },
+  "POST /api/v1/payroll/pay-groups": {
+   "lane": "Payroll S2 PayGroup setup",
+   "reason": "The pay group setup sheet will save explicitly selected pay rules without defaults.",
+   "when": "2026-11-06"
+  },
+  "POST /api/v1/payroll/runs/{id}/calculate": {
+   "lane": "Payroll S6 계산·검토",
+   "reason": "The calculation stage will calculate a run after attendance month close.",
+   "when": "2026-11-16"
+  },
+  "POST /api/v1/payroll/runs/{id}/close-attendance": {
+   "lane": "Payroll S5 대상·근태",
+   "reason": "The attendance stage will attest and close run attendance after preflight passes.",
+   "when": "2026-11-13"
+  },
+  "POST /api/v1/payroll/runs/{id}/decision": {
+   "lane": "Payroll S6 계산·검토",
+   "reason": "The review stage will record the second person's approval or rejection.",
+   "when": "2026-11-16"
+  },
+  "POST /api/v1/payroll/runs/{id}/disbursement/attest": {
+   "lane": "Payroll S7 지급",
+   "reason": "The disbursement stage will attest the outcome of a scheduled payment.",
+   "when": "2026-11-18"
+  },
+  "POST /api/v1/payroll/runs/{id}/exceptions/{exceptionId}/resolve": {
+   "lane": "Payroll S6 계산·검토",
+   "reason": "The exception review stage will resolve flagged items before submission.",
+   "when": "2026-11-16"
+  },
+  "POST /api/v1/payroll/runs/{id}/issue-payslips": {
+   "lane": "Payroll S7 교부",
+   "reason": "The delivery stage will issue payslips after the legal delivery gate passes.",
+   "when": "2026-11-18"
+  },
+  "POST /api/v1/payroll/runs/{id}/schedule-disbursement": {
+   "lane": "Payroll S7 지급",
+   "reason": "The disbursement stage will schedule payment for an approved run.",
+   "when": "2026-11-18"
+  },
+  "POST /api/v1/payroll/runs/{id}/submit": {
+   "lane": "Payroll S6 계산·검토",
+   "reason": "The review stage will submit a calculated run for the second person's decision.",
+   "when": "2026-11-16"
+  },
+  "POST /api/v1/payroll/runs/{id}/withdraw": {
+   "lane": "Payroll S6 계산·검토",
+   "reason": "The review stage will withdraw a submitted run so its preparer can correct it.",
+   "when": "2026-11-16"
   },
   "POST /api/v1/policy/drafts": {
    "lane": "K2",

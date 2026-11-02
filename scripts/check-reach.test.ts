@@ -236,6 +236,49 @@ test("operations: initial seeding is limited to uncalled operations already pres
   expect(checkOperations({ gaps: [plantedOp], operations: { [plantedOp]: allowance }, previous })).toEqual([expect.stringContaining(`operations: ${plantedOp}: baseline must only shrink`)]);
 }, 30_000);
 
+test("operations: promotion seeds only existing uncalled APIs excluded from the base release", () => {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-promotion-")));
+  try {
+    for (const dir of ["scripts/quality", "backend/app/src", "third-party"]) mkdirSync(path.join(root, dir), { recursive: true });
+    for (const file of ["check-reach.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
+    symlinkSync(path.resolve("node_modules"), path.join(root, "node_modules"), "dir");
+    writeFileSync(path.join(root, "third-party/.keep"), "");
+    writeFileSync(path.join(root, "rustfmt.toml"), 'edition = "2021"\n');
+    writeFileSync(path.join(root, "backend/Cargo.toml"), '[workspace]\nmembers = ["app", "crates/hr/rest", "crates/payroll/rest"]\nresolver = "2"\n');
+    const app = '[package]\nname = "console-app"\nversion = "0.1.0"\nedition = "2021"\n[features]\ndefault = ["mvp"]\nmvp = []\npayroll = ["dep:console-payroll-rest"]\n[dependencies]\nconsole-hr-rest = { path = "../crates/hr/rest" }\nconsole-payroll-rest = { path = "../crates/payroll/rest", optional = true }\n';
+    writeFileSync(path.join(root, "backend/app/Cargo.toml"), app);
+    writeFileSync(path.join(root, "backend/app/src/main.rs"), "fn main() {}\n");
+    for (const module of ["hr", "payroll"]) {
+      const rest = path.join(root, `backend/crates/${module}/rest`);
+      mkdirSync(path.join(rest, "src"), { recursive: true });
+      mkdirSync(path.join(rest, "openapi/paths"), { recursive: true });
+      writeFileSync(path.join(rest, "Cargo.toml"), `[package]\nname = "console-${module}-rest"\nversion = "0.1.0"\nedition = "2021"\n`);
+      writeFileSync(path.join(rest, "src/lib.rs"), "// SPDX-License-Identifier: LicenseRef-Proprietary\n");
+      writeFileSync(path.join(rest, `openapi/paths/api__v1__${module}__probe.get.yaml`), "{}");
+    }
+    mkdirSync(path.join(root, "backend/openapi"), { recursive: true });
+    writeFileSync(path.join(root, "backend/openapi/openapi.yaml"), JSON.stringify({ paths: { "/api/v1/hr/probe": { get: {} }, "/api/v1/payroll/probe": { get: {} } } }));
+    const git = (...args: string[]) => {
+      const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+    };
+    const commit = () => { git("add", "."); git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: release feature closure"); };
+    git("init");
+    commit();
+    const read = () => {
+      const result = spawnSync("node", ["--input-type=module", "-e", 'import { operationsAtBase } from "./scripts/check-reach.mjs"; console.log(JSON.stringify(operationsAtBase("HEAD", true)));'], { cwd: root, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+      return JSON.parse(result.stdout);
+    };
+    expect(read()).toEqual({ "GET /api/v1/payroll/probe": {} });
+    writeFileSync(path.join(root, "backend/app/Cargo.toml"), app.replace("mvp = []", 'mvp = ["payroll"]'));
+    commit();
+    expect(read()).toEqual({});
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}, 30_000);
+
 test("registration end is reached from the certificate menu; restoring its old baseline entry fails", () => {
   const saved = JSON.parse(readFileSync(new URL("./reach-baseline.json", import.meta.url), "utf8"));
   const baseline = Array.isArray(saved) ? saved : saved.records;
