@@ -48,6 +48,8 @@ export function useRoster(f: OrderedRoster) {
   const [arrived, setArrived] = useState(false);
   if (!arrived && !list.isFetching) setArrived(true);
   const rereading = !arrived && !list.isFetchedAfterMount;
+  // Keep the search mounted during a filter read, without offering the previous filter's people.
+  const waiting = rereading || list.isPlaceholderData;
   // The facets read takes the same status filter as the list, PRE_HIRE included (read_filters.rs); its OpenAPI enum
   // has not caught up with the list's, hence the cast.
   const facets = facetQueries({ ...f, sort: undefined }, today, SOON_DAYS) as unknown as Record<"list" | "review", FacetQuery>;
@@ -66,10 +68,10 @@ export function useRoster(f: OrderedRoster) {
   }, [changed, total, refetch]);
   return {
     list,
-    /** No rows to show yet: the first read, or the re-read on arrival of rows a command changed. */
-    loading: list.isPending || rereading,
-    rows: rereading ? NONE : rows,
-    total: rereading ? undefined : total,
+    /** No matching rows yet: the first read, a changed filter, or the re-read on arrival after a command. */
+    loading: list.isPending || waiting,
+    rows: waiting ? NONE : rows,
+    total: waiting ? undefined : total,
     changed,
     status: { totals: statusTotals(statusCounts(probe.data?.status)), failed: statusCounts().map(() => probe.isError) },
     review: { totals: reviewTotals(reviewCounts(review.data?.review)), failed: reviewCounts().map(() => review.isError) },

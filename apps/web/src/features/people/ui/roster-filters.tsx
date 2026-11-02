@@ -5,7 +5,7 @@ import { fmtNumber } from "@console/i18n/format";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Segmented } from "../../../ui/button/segmented";
 import { Band } from "../../../ui/band/band";
-import { REVIEWS, headcount, toggleReview, type Review, type StatusView } from "../domain/roster";
+import { REVIEWS, headcount, statusesOf, toggleReview, type Review, type StatusView } from "../domain/roster";
 import type { Density } from "./use-roster-columns";
 import { RosterScope } from "./roster-scope";
 import { SOON_DAYS } from "./use-roster";
@@ -21,12 +21,13 @@ const n = (v: number | undefined, failed: boolean) => (failed ? <span title={t("
  * arithmetic on screen (active + on leave = headcount; starting soon counted apart; exit kept 3 years), then the to-do chips. A status chip
  * is one choice (pressed = shown); to-do chips toggle and combine with AND. Every count is the server's total.
  */
-export function RosterFilters({ status, review, unit, counts, onChange, findSlot, density, onDensity, tools }: {
+export function RosterFilters({ status, review, unit, counts, onChange, onReset, findSlot, density, onDensity, tools }: {
   status: StatusView;
   review: readonly Review[];
   unit?: string;
   counts: { status: Totals<StatusView>; review: Totals<Review> };
   onChange: (f: { status?: StatusView; review?: Review[]; unit?: string | null }) => void;
+  onReset?: () => void;
   /** Where the table's search lands, in this band. */
   findSlot: (el: HTMLElement | null) => void;
   density: Density;
@@ -37,11 +38,11 @@ export function RosterFilters({ status, review, unit, counts, onChange, findSlot
   const st = counts.status;
   const failed = st.failed.some(Boolean);
   const chip = (v: StatusView, label: string, icon?: boolean) => (
-    <ToggleButton key={v} look="chip" count={n(st.totals[v], failed)} pressed={status === v || (status === "current" && v !== "EXITED" && v !== "UNKNOWN")} onClick={() => onChange({ status: status === v ? "current" : v })}>
+    <ToggleButton key={v} look="chip" count={n(st.totals[v], failed)} pressed={statusesOf(status)?.some(s => s === v) ?? false} onClick={() => onChange({ status: status === v ? "current" : v })}>
       {icon && <Lock size={12} aria-hidden />}{label}{" "}
     </ToggleButton>
   );
-  const reviews = REVIEWS.filter((r, i) => r !== "contractSoon" && r !== "register" && r !== "unplaced" && (review.includes(r) || (!counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0)));
+  const reviews = REVIEWS.filter((r, i) => review.includes(r) || (r !== "contractSoon" && r !== "register" && r !== "unplaced" && !counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0));
   const pending = (st.totals.ACTIVE === undefined && !failed) || (counts.review.totals.contractSoon === undefined && !counts.review.failed.some(Boolean));
   return (
     <>
@@ -51,6 +52,7 @@ export function RosterFilters({ status, review, unit, counts, onChange, findSlot
         <span ref={findSlot} className={s.findSlot} />
         <Segmented label={t("roster.columns.density")} value={density} onChange={onDensity} items={(["compact", "regular"] as const).map((d) => ({ id: d, label: t(`roster.density.${d}`) }))} />
         {tools}
+        {onReset && <Button variant="ghost" onClick={onReset}>{t("people.filter.reset")}</Button>}
       </Band>
       {/* One row that never wraps, its chips shown once both counts land: a count arriving cannot move a control. */}
       <Band tone="canvas" className={s.stats} role="group" tabIndex={0} aria-label={t("people.filter.label")} data-pending={pending || undefined}>

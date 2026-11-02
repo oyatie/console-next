@@ -110,6 +110,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
     setSel(NO_SELECTION);
     find("");
     setFilter({ status: "current", review: [], unit: null });
+    focusSoon("people-title");
   };
   const select = (id: string | undefined) => void navigate({ search: (prev) => ({ ...prev, sel: id }), replace: true });
   const closePaste = () => void navigate({ search: (prev) => ({ ...prev, bulk: undefined }), replace: true });
@@ -207,6 +208,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
         unit={unit}
         counts={r}
         onChange={setFilter}
+        onReset={filtered ? reset : undefined}
         findSlot={setFindSlot}
         density={view.density}
         onDensity={view.setDensity}
@@ -242,7 +244,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
               label={t("people.table")}
               rows={r.rows}
               total={total}
-              hasMore={r.list.hasNextPage}
+              hasMore={!r.loading && r.list.hasNextPage}
               loadingMore={r.list.isFetchingNextPage}
               onLoadMore={() => void (r.list.hasNextPage && !r.list.isFetchingNextPage && r.list.fetchNextPage())}
               loading={r.loading}

@@ -184,7 +184,6 @@
   "unused-export:apps/web/src/features/people/domain/roster.ts:Status": 1,
   "unused-export:apps/web/src/features/people/domain/roster.ts:STATUS_VIEWS": 1,
   "unused-export:apps/web/src/features/people/domain/roster.ts:STATUSES": 1,
-  "unused-export:apps/web/src/features/people/domain/roster.ts:statusesOf": 1,
   "unused-export:apps/web/src/features/people/domain/scope.ts:ScopeRow": 1,
   "unused-export:apps/web/src/features/people/domain/unplaced.ts:sourceValue": 1,
   "unused-export:apps/web/src/features/people/present.ts:hiredText": 1,
