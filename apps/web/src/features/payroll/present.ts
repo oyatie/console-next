@@ -12,3 +12,15 @@ export function cited(rate: PayrollRate) {
 }
 export const rateValue = (rate: PayrollRate) => cited(rate) && rate.status !== "HELD" ? rate.value : t("payroll.reference.held");
 export const referenceStatus = (rates: PayrollRates) => !rates.adopted ? t("payroll.reference.noPack") : rates.items.length ? null : t("payroll.reference.empty");
+
+const stages = ["attendance", "calculate", "exceptions", "approval", "payment", "delivery"] as const;
+const currentStage = {
+  STAGED: "attendance", BLOCKED_LEGAL_GATE: "attendance", READY_FOR_REVIEW: "attendance",
+  ATTENDANCE_CLOSED: "calculate", CALCULATING: "calculate", CALCULATED: "exceptions", REJECTED: "exceptions",
+  SUBMITTED: "approval", APPROVED: "payment", DISBURSEMENT_SCHEDULED: "payment", PAID: "delivery", ISSUED: "complete", VOID: "void",
+} as const satisfies Record<PayrollRun["status"], typeof stages[number] | "complete" | "void">;
+export function runStages(status: PayrollRun["status"]) {
+  const stage = currentStage[status];
+  const current = stage === "complete" ? stages.length : stage === "void" ? -1 : stages.indexOf(stage);
+  return stages.map((key, index) => ({ key, state: index === current ? "current" as const : index < current ? "done" as const : "waiting" as const }));
+}

@@ -2,6 +2,8 @@ import { ApiError } from "@console/api";
 import { isMessageId, t } from "@console/i18n";
 
 export const catalogRefusal = (code: string) => code.includes(".refuse.") && isMessageId(code) ? t(code) : undefined;
+const permanentFailure = (error: unknown) => error instanceof ApiError && error.status >= 400 && error.status < 500 && ![408, 429].includes(error.status)
+  ? t("common.failed.permanent", { status: String(error.status) }) : undefined;
 
 /**
  * What failed, in words the user can act on: catalog copy for an error code the client knows
@@ -24,7 +26,7 @@ export function readFailureText(error: unknown, own?: (code: string) => string |
     const id = `common.failed.code.${code}`;
     if (isMessageId(id)) return t(id);
     const outcome = `requestOutcome.code.${code}`;
-    return isMessageId(outcome) ? t(outcome) : t("common.read.failedReason");
+    return isMessageId(outcome) ? t(outcome) : permanentFailure(error) ?? t("common.read.failedReason");
   });
 }
 
@@ -35,7 +37,7 @@ function reason(error: unknown, own?: (code: string) => string | undefined): str
   if (isMessageId(byCode)) return t(byCode);
   const outcome = error instanceof ApiError ? `requestOutcome.code.${error.code}` : "";
   if (isMessageId(outcome)) return t(outcome);
-  if (error instanceof ApiError) return error.fromServer ? error.message : t("common.failed.status", { status: String(error.status) });
+  if (error instanceof ApiError) return error.fromServer ? error.message : permanentFailure(error) ?? t("common.failed.status", { status: String(error.status) });
   return t("common.networkError");
 }
 

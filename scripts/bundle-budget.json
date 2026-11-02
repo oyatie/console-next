@@ -50,6 +50,7 @@
     "routes": [
       "src/features/account/Account.tsx",
       "src/features/org/OrgChange.tsx",
+      "src/features/payroll/ui/run-page.tsx",
       "src/features/people/ui/card-page.tsx",
       "src/features/people/ui/card-print.tsx",
       "src/features/people/ui/certificate-page.tsx",

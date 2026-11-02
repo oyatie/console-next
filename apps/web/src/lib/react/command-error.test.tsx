@@ -11,6 +11,12 @@ import { useCommand } from "./command";
 
 beforeAll(() => loadCatalog("ko"));
 
+test.each([403, 404, 405])("permanent HTTP %s has no retry prompt or raw fallback code", async status => {
+  const banner = await html(new ApiError(status, `http_${status}`, "diagnostic", [], undefined, false));
+  expect(banner).toContain(`HTTP ${status}`);
+  expect(banner).not.toMatch(/다시 시도|http_\d+|diagnostic/);
+});
+
 test.each(["org_change_sod_violation", "leave_decide_requester_forbidden", "sod_violation", "second_person_required"])("%s explains identity refusal and who can decide", async (code) => {
   const banner = await html(new ApiError(403, code, "internal diagnostic", [], undefined, true));
   expect(banner).toContain("다른 사람");

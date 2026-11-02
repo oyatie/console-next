@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { t } from "@console/i18n";
 import { ApiError } from "@console/api";
-import { failureText, signInError } from "./refusal";
+import { failureText, readFailureText, signInError } from "./refusal";
 
 test("a browser too old for passkeys gets the update message, never the network message", () => {
   expect(signInError(new Error("passkey_unavailable"))).toBe(t("auth.passkey.unavailable"));
@@ -27,4 +27,19 @@ test("a 503 or 429 with Retry-After says when to try again; other refusals do no
   expect(failureText(limited)).toContain(t("common.failed.retryAfter", { seconds: "60" }));
   expect(failureText(new ApiError(409, "something_else", "서버 문구", [], undefined, true, [], { retryAfterMs: 5000 }))).toBe("서버 문구");
   expect(failureText(new ApiError(503, "unavailable", "서버 문구"))).toBe("서버 문구");
+});
+
+// Permanent refusals need changed facts or access; time alone does not resolve them.
+test.each([403, 404, 405])("HTTP %s does not promise that retrying will help", status => {
+  const error = new ApiError(status, `http_${status}`, "diagnostic", [], undefined, false);
+  for (const text of [failureText(error), readFailureText(error)]) {
+    expect(text).toContain(`HTTP ${status}`);
+    expect(text).not.toMatch(/다시 시도|diagnostic/);
+  }
+});
+
+test.each([408, 429, 500])("HTTP %s keeps its transient failure guidance", status => {
+  const error = new ApiError(status, `http_${status}`, "diagnostic", [], undefined, false);
+  expect(failureText(error)).toContain("다시 시도");
+  expect(readFailureText(error)).toContain("다시 시도");
 });
