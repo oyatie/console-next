@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Typed configuration only; scheduling consumes these explicit choices.
 mod facts;
+pub mod run_preview;
 mod wire;
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_payroll_domain::pay_groups::{PayDateRule, PaymentChannel, PeriodRule, ProrationBasis};

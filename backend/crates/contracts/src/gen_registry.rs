@@ -11742,6 +11742,15 @@ const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/payroll/runs/preview",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../payroll/rest/openapi/paths/api__v1__payroll__runs__preview.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/payroll/runs/{id}",
         operations: &[Operation {
             method: "get",
@@ -11964,8 +11973,16 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../payroll/rest/openapi/schemas/PayrollRunDetail.yaml"),
     },
     NamedYaml {
+        name: "PayrollRunKind",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayrollRunKind.yaml"),
+    },
+    NamedYaml {
         name: "PayrollRunPage",
         body: include_str!("../../payroll/rest/openapi/schemas/PayrollRunPage.yaml"),
+    },
+    NamedYaml {
+        name: "PayrollRunPreview",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayrollRunPreview.yaml"),
     },
     NamedYaml {
         name: "PayrollRunSummary",

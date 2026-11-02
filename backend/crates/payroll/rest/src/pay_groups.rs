@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! HTTP boundary; the store owns Cedar, validation and audit in one transaction.
+#[path = "run_preview.rs"]
+mod run_preview;
 use axum::{
     Json, Router,
     extract::State,
@@ -12,6 +14,7 @@ use console_platform_db::{command_outcomes::CommandOutcome, with_org_conn};
 use console_platform_request_context::record_access::{self, outcome::ReadFuture};
 use sqlx::PgPool;
 use uuid::Uuid;
+pub(crate) use run_preview::preview;
 
 use crate::{PayrollRestState, RestError, principal_from_headers};
 

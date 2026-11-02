@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Consequential pay-group choices; none has a default.
+pub mod run_schedule;
+
 use console_kernel_core::KernelError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
