@@ -8,6 +8,7 @@ use crate::state::db::migration::migration_database_pool_options;
 use crate::state::db::migration::prepare_migration_database_connection;
 use console_platform_jobs::migrate_and_reconcile_apalis_postgres;
 use sqlx::PgConnection;
+use std::future::Future;
 use std::time::Duration;
 
 /// Embedded schema migrations, compiled into the binary at build time from the
@@ -21,6 +22,8 @@ pub(crate) static MIGRATOR: sqlx::migrate::Migrator =
 
 pub(crate) const MIGRATION_LOCK_TIMEOUT: &str = "5s";
 pub(crate) const MIGRATION_STATEMENT_TIMEOUT: &str = "60s";
+const MIGRATION_DATABASE_CONNECT_ATTEMPTS: u32 = 6;
+const MIGRATION_DATABASE_CONNECT_RETRY_DELAY: Duration = Duration::from_secs(2);
 
 /// Apply the embedded schema migrations against `DATABASE_URL`, then return.
 ///
@@ -38,10 +41,17 @@ pub async fn run_migrations(config: &AppConfig) -> Result<(), AppError> {
         .as_deref()
         .ok_or_else(|| AppError::Config("migrate role requires DATABASE_URL".to_owned()))?;
 
-    let pool = migration_database_pool_options()
-        .connect(database_url)
-        .await
-        .map_err(AppError::Database)?;
+    let pool = connect_migration_database_with_retry(
+        MIGRATION_DATABASE_CONNECT_ATTEMPTS,
+        MIGRATION_DATABASE_CONNECT_RETRY_DELAY,
+        || async {
+            migration_database_pool_options()
+                .connect(database_url)
+                .await
+        },
+    )
+    .await
+    .map_err(AppError::Database)?;
 
     // `after_connect` has already enforced the migration budgets and exact
     // migration identity on this physical connection. Keep the same checkout
@@ -111,6 +121,45 @@ pub async fn run_migrations(config: &AppConfig) -> Result<(), AppError> {
     Ok(())
 }
 
+async fn connect_migration_database_with_retry<T, Connect, ConnectFuture>(
+    max_attempts: u32,
+    retry_delay: Duration,
+    mut connect: Connect,
+) -> Result<T, sqlx::Error>
+where
+    Connect: FnMut() -> ConnectFuture,
+    ConnectFuture: Future<Output = Result<T, sqlx::Error>>,
+{
+    let started = tokio::time::Instant::now();
+    for attempt in 1..=max_attempts {
+        match connect().await {
+            Ok(connection) => {
+                tracing::info!(
+                    attempt,
+                    max_attempts,
+                    waited_seconds = started.elapsed().as_secs_f64(),
+                    "migration database is reachable"
+                );
+                return Ok(connection);
+            }
+            // PoolTimedOut is the pre-connection readiness failure. Credentials,
+            // identity checks and migration errors must remain fail-fast.
+            Err(sqlx::Error::PoolTimedOut) if attempt < max_attempts => {
+                tracing::warn!(
+                    attempt,
+                    max_attempts,
+                    waited_seconds = started.elapsed().as_secs_f64(),
+                    retry_in_seconds = retry_delay.as_secs_f64(),
+                    "migration database is not reachable; retrying"
+                );
+                tokio::time::sleep(retry_delay).await;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    Err(sqlx::Error::PoolTimedOut)
+}
+
 async fn acquire_migration_lock(connection: &mut PgConnection) -> Result<(), AppError> {
     // A blocking advisory-lock query remains an open virtual transaction.
     // CREATE INDEX CONCURRENTLY in the current migration owner waits for it,
@@ -158,4 +207,51 @@ async fn applied_migration_count(connection: &mut PgConnection) -> Result<usize,
         .map_err(AppError::Database)?;
     usize::try_from(count)
         .map_err(|err| AppError::Internal(format!("invalid migration count: {err}")))
+}
+
+#[cfg(test)]
+mod connection_retry_tests {
+    use super::connect_migration_database_with_retry;
+    use sqlx::Error;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn pool_timeouts_retry_up_to_the_bound() {
+        let attempts = AtomicU32::new(0);
+        let connected = connect_migration_database_with_retry(3, Duration::ZERO, || async {
+            if attempts.fetch_add(1, Ordering::Relaxed) < 2 {
+                Err(Error::PoolTimedOut)
+            } else {
+                Ok("connected")
+            }
+        })
+        .await
+        .expect("third attempt connects");
+        assert_eq!(connected, "connected");
+        assert_eq!(attempts.load(Ordering::Relaxed), 3);
+
+        let attempts = AtomicU32::new(0);
+        let error = connect_migration_database_with_retry(2, Duration::ZERO, || async {
+            attempts.fetch_add(1, Ordering::Relaxed);
+            Err::<(), _>(Error::PoolTimedOut)
+        })
+        .await
+        .expect_err("the retry bound returns the last timeout");
+        assert!(matches!(error, Error::PoolTimedOut));
+        assert_eq!(attempts.load(Ordering::Relaxed), 2);
+    }
+
+    #[tokio::test]
+    async fn non_transient_connection_errors_still_fail_once() {
+        let attempts = AtomicU32::new(0);
+        let error = connect_migration_database_with_retry(3, Duration::ZERO, || async {
+            attempts.fetch_add(1, Ordering::Relaxed);
+            Err::<(), _>(Error::Configuration("invalid fixture".into()))
+        })
+        .await
+        .expect_err("configuration errors are not retryable");
+        assert!(matches!(error, Error::Configuration(_)));
+        assert_eq!(attempts.load(Ordering::Relaxed), 1);
+    }
 }

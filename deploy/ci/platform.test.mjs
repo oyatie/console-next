@@ -62,9 +62,13 @@ test('the image ships the real API, worker and migrations without development fe
 test('Flux waits for database and digest-named migration before starting the app', () => {
   const docs = yaml.loadAll(read('deploy/reconcile/kustomizations.yaml'));
   const app = docs.find(d => d.metadata.name === 'console-app');
+  const database = docs.find(d => d.metadata.name === 'console-database');
   const migrate = docs.find(d => d.metadata.name === 'console-migrate');
   assert.ok(app.spec.dependsOn.some(d => d.name === 'console-migrate'));
   assert.ok(migrate.spec.dependsOn.some(d => d.name === 'console-database'));
+  const databaseReady = database.spec.healthCheckExprs.find(e => e.kind === 'Cluster');
+  assert.match(databaseReady.current, /conditions\.exists\(.+type == 'Ready'.+status == 'True'/);
+  assert.match(databaseReady.inProgress, /!.*conditions\.exists/);
   assert.equal(migrate.spec.wait, true);
   assert.equal(app.spec.prune, true);
   assert.ok(app.spec.healthCheckExprs.some(e => e.kind === 'Rollout'));

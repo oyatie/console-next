@@ -121,7 +121,8 @@ for (const pod of get('pods')) {
   if (pod.metadata.labels?.app === 'console-api') await readyz(pod);
   // Pod readiness does not prove WAL archiving or backups work; the Barman instance runs as a database sidecar.
   const backupPod = namespace === 'cnpg-system' || pod.metadata.labels?.['cnpg.io/cluster'] || pod.metadata.labels?.app === 'console-objects';
-  if (!backupPod && (pod.status?.phase === 'Succeeded' || (pod.status?.phase === 'Running' && containers.length && containers.every(c => c.ready)))) continue;
+  const evidencePod = backupPod || pod.metadata.labels?.app === 'console-migrate';
+  if (!evidencePod && (pod.status?.phase === 'Succeeded' || (pod.status?.phase === 'Running' && containers.length && containers.every(c => c.ready)))) continue;
   if (!redactionReady) continue;
   const described = kubectl(['describe', 'pod', name, '-n', namespace]);
   print(`describe pod ${namespace}/${name} (names and states):`);
