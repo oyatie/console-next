@@ -58,21 +58,23 @@ test("the solo flow names only implemented journeys and preserves audit as missi
 test("D7 evidence runs on dev pushes without adding a PR gate", async () => {
   const { default: yaml } = await import("js-yaml");
   const ci = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
-  const backend = ci.jobs.backend.steps;
-  const journey = backend.find(s => s.name === "Solo journey on Chromium and Firefox");
-  for (const step of backend.filter(s => /D7|Solo journey/.test(s.name ?? "") || s.with?.name === "d7-playwright")) {
+  const home = ci.jobs.home;
+  assert.ok(home, "served journeys must run in Home CI");
+  const journey = home.steps.find(s => s.name === "Solo journey on Chromium and Firefox");
+  for (const step of home.steps.filter(s => /D7|Solo journey/.test(s.name ?? "") || s.with?.name === "d7-playwright")) {
     assert.match(step.if, /github\.event_name == 'push'/);
     assert.match(step.if, /github\.ref == 'refs\/heads\/dev'/);
   }
   assert.match(journey.run, /for browser in 0 1/);
   assert.match(journey.run, /\|\| failed=1/);
   assert.match(journey.env.E2E_REPORTER, /json/);
-  assert.ok(backend.findIndex(s => s.run === "node scripts/backend-tests.mjs") < backend.indexOf(journey));
+  assert.deepEqual(home.needs, ["backend"]);
+  assert.ok(ci.jobs.backend.steps.some(s => s.run === "node scripts/backend-tests.mjs"));
   const job = ci.jobs["d7-evidence"];
   const runner = steps => steps.find(s => s.uses?.startsWith("step-security/harden-runner@"))?.uses;
   assert.equal(runner(job.steps), runner(ci.jobs.web.steps));
   assert.equal(job.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}");
-  assert.deepEqual(job.needs, ["backend", "states", "d10-probes"]);
+  assert.deepEqual(job.needs, ["backend", "home", "states", "d10-probes"]);
   assert.ok(job.steps.some(s => s.with?.name === "d7-evidence"));
   assert.ok(!ci.jobs["ci-ok"].needs.includes("d7-evidence"));
   assert.ok(!ci.jobs["ci-ok"].steps.some(s => s.run?.includes("needs.d7-evidence")));
