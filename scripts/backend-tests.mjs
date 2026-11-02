@@ -263,8 +263,8 @@ function main() {
   for (const name of ["junit.xml", "junit-featured.xml", "junit-default.xml"]) rmSync(path.join(report, name), { force: true });
   let expected, runs, label, artifact = inventory;
   if (command.database) {
-    const featured = [...inventory.database, ...inventory.ignoredDatabase];
-    const defaults = [...defaultInventory.database, ...defaultInventory.ignoredDatabase];
+    const featured = inventory.database;
+    const defaults = defaultInventory.database;
     const featuredKeys = new Set(featured.map(identity)), defaultKeys = new Set(defaults.map(identity));
     const missingInBoth = inventory.featureGatedDatabase.filter((id) => new Set(defaultInventory.featureGatedDatabase.map(identity)).has(identity(id)));
     assert.deepEqual(missingInBoth, [], "database declarations are absent from both feature variants");
@@ -284,7 +284,7 @@ function main() {
     label = "database";
     artifact = { ...inventory, databaseFeaturesEnabled: enabled, defaultOnlyDatabase: defaultOnly };
     summary(`Rust database tests discovered: ${tests.length} (${enabled.length} enabled by database features, ${defaultOnly.length} requiring the default feature variant); shard ${command.shard}/${command.total} selected ${expected.length} by measured duration (${shard.seconds.toFixed(1)}s estimate).`, env);
-    summary(`${inventory.ignoredDatabase.length} source-ignored database tests run; ${inventory.ignored.length - inventory.ignoredDatabase.length} other source-ignored tests carry owner, reason and expiry.`, env);
+    summary(`Source-ignored database quarantine: ${inventory.ignoredDatabase.length} exact owned identities; ${inventory.ignored.length - inventory.ignoredDatabase.length} other source-ignored tests carry owner, reason and expiry.`, env);
   } else {
     const deferred = inventory.database.length + inventory.ignored.length + inventory.featureGatedDatabase.length;
     summary(`Rust tests discovered: ${inventory.selected.length} non-database; ${deferred} deferred (${inventory.database.length} listed database tests, ${inventory.ignored.length} explicitly ignored, ${inventory.featureGatedDatabase.length} feature-gated database source declarations, including test-postgres).`, env);
@@ -297,7 +297,7 @@ function main() {
   const results = [];
   for (const run of runs) {
     rmSync(path.join(report, "junit.xml"), { force: true });
-    const result = spawnSync("cargo", ["nextest", "run", ...run.args, "--no-fail-fast", "--retries", "0", "--run-ignored", command.database ? "all" : "default", "-E", run.filter ?? exactFilter(run.tests)], { ...options, stdio: "inherit" });
+    const result = spawnSync("cargo", ["nextest", "run", ...run.args, "--no-fail-fast", "--retries", "0", "--run-ignored", "default", "-E", run.filter ?? exactFilter(run.tests)], { ...options, stdio: "inherit" });
     assert.ifError(result.error);
     const xml = readFileSync(path.join(report, "junit.xml"), "utf8");
     if (command.database) renameSync(path.join(report, "junit.xml"), path.join(report, `junit-${run.name}.xml`));

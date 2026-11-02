@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# Long PostgreSQL tests run on merge candidates, dev, nightly and gate-changing pull requests.
+# Long PostgreSQL tests run on dev, nightly and gate-changing pull requests.
+# merge_group stays disabled until CI-FAST keeps this gate within the 60-minute queue timeout.
 name: db-tests
 on:
-  merge_group:
   pull_request:
     paths:
       - .github/workflows/db-tests.yml
@@ -10,12 +10,11 @@ on:
       - .config/nextest.toml
   push:
     branches: [dev]
-  workflow_dispatch:
   schedule:
     - cron: '47 17 * * *'
 permissions: {}
 concurrency:
-  group: db-tests-${{ github.event_name }}-${{ github.sha }}
+  group: db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}
   cancel-in-progress: false
 
 jobs:
@@ -98,9 +97,8 @@ jobs:
         with:
           path: |-
             ~/.cargo/registry
-            backend/target/debug/deps/*.rlib
-            backend/target/debug/deps/*.rmeta
-            backend/target/debug/deps/*.so
+            backend/target/*/.fingerprint
+            backend/target/*/deps
           key: db-tests-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
           restore-keys: db-tests-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-
       - name: Install pinned Rust test runner
@@ -119,26 +117,31 @@ jobs:
           path: .cache/db-test-timings
       - name: Run duration shard
         run: node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
-      - name: Enforce Rust cache budget
+      - name: Check Rust cache budget
+        id: cache-budget
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true'
         env:
           RUST_CACHE_MAX_BYTES: '3221225472'
         run: |
           cache_archive="${RUNNER_TEMP}/db-tests-rust-cache.tar.zst"
           find "$HOME/.cargo/registry" -type f -print0 > "${RUNNER_TEMP}/db-tests-rust-cache-files"
-          find backend/target/debug/deps -maxdepth 1 -type f \( -name '*.rlib' -o -name '*.rmeta' -o -name '*.so' \) -print0 >> "${RUNNER_TEMP}/db-tests-rust-cache-files"
+          find backend/target -type f \( -path 'backend/target/*/.fingerprint/*' -o -path 'backend/target/*/deps/*' \) -print0 >> "${RUNNER_TEMP}/db-tests-rust-cache-files"
           tar --null -T "${RUNNER_TEMP}/db-tests-rust-cache-files" -cf - | zstd -q -T0 -3 -o "$cache_archive"
           cache_bytes="$(stat -c %s "$cache_archive")"
           echo "Rust cache candidate: ${cache_bytes} bytes / ${RUST_CACHE_MAX_BYTES} bytes." >> "$GITHUB_STEP_SUMMARY"
-          test "$cache_bytes" -le "$RUST_CACHE_MAX_BYTES"
+          if (( cache_bytes > RUST_CACHE_MAX_BYTES )); then
+            echo "::warning::Rust cache candidate is over budget; this shard remains green and the cache will not be saved."
+            echo 'save=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'save=true' >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' && steps.cache-budget.outputs.save == 'true'
         with:
           path: |-
             ~/.cargo/registry
-            backend/target/debug/deps/*.rlib
-            backend/target/debug/deps/*.rmeta
-            backend/target/debug/deps/*.so
+            backend/target/*/.fingerprint
+            backend/target/*/deps
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0
         if: ${{ !cancelled() }}

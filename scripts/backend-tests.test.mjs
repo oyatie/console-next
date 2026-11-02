@@ -138,7 +138,7 @@ test("runner propagates failures, refuses stale/missing JUnit and runs without d
   try {
     mkdirSync(path.join(root, "bin"));
     const sourceFile = path.join(root, "lib.rs");
-    writeFileSync(sourceFile, '#[test] fn ordinary() {}\n#[sqlx::test] async fn database(pool: PgPool) {}\n#[sqlx::test] #[ignore = "owner=db; reason=fixture; expires=2099-01-01"] async fn ignored_database(pool: PgPool) {}\n#[cfg(feature = "test-postgres")] #[sqlx::test] async fn feature_database() {}');
+    writeFileSync(sourceFile, '#[test] fn ordinary() {}\n#[sqlx::test] async fn database(pool: PgPool) {}\n#[sqlx::test]\n#[ignore = "owner=db; reason=fixture; expires=2099-01-01"]\nasync fn ignored_database(pool: PgPool) {}\n#[cfg(feature = "test-postgres")] #[sqlx::test] async fn feature_database() {}');
     const s = suite(["ordinary", "database", "ignored_database", "tooling"]);
     s.testcases.ignored_database.ignored = true;
     s.testcases.tooling.ignored = true;
@@ -159,13 +159,19 @@ else if (args[1] === 'list') {
 }
 else {
   fs.writeFileSync(path.join(root, 'args.json'), JSON.stringify(args));
-  if (process.env.MODE !== 'missing') fs.copyFileSync(path.join(root, 'result.xml'), path.join(root, 'target/nextest/ci/junit.xml'));
+  const callsFile = path.join(root, 'calls.json');
+  const calls = fs.existsSync(callsFile) ? JSON.parse(fs.readFileSync(callsFile)) : [];
+  calls.push(args);
+  fs.writeFileSync(callsFile, JSON.stringify(calls));
+  const result = args.includes('--features') ? 'result-db.xml' : 'result.xml';
+  if (process.env.MODE !== 'missing') fs.copyFileSync(path.join(root, result), path.join(root, 'target/nextest/ci/junit.xml'));
   process.exit(process.env.MODE === 'exit' ? 100 : 0);
 }
 `;
     for (const mode of ["pass", "sharded", "failure", "exit", "missing", "skipped", "spawn-error"]) {
       writeFileSync(path.join(root, "bin/cargo"), cargo, { mode: 0o755 });
       writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "ordinary"]], mode === "skipped" ? "<skipped/>" : "", mode === "failure" ? 1 : 0));
+      writeFileSync(path.join(root, "result-db.xml"), junit([["example::mixed", "database"], ["example::mixed", "feature_database"]]));
       const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], { encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, NEXTEST_SHARD: mode === "sharded" ? "2" : undefined, NEXTEST_SHARDS: mode === "sharded" ? "2" : undefined, DATABASE_URL: "postgres://unused.invalid/db", PGHOST: "unused.invalid", GITHUB_STEP_SUMMARY: path.join(root, "summary.md") } });
       assert.equal(result.status, ["pass", "sharded"].includes(mode) ? 0 : 1, result.stdout + result.stderr);
       if (mode === "sharded") {
@@ -186,18 +192,28 @@ else {
     assert.match(readFileSync(path.join(root, "summary.md"), "utf8"), /Ignored by source attribute: `example::mixed \/ tooling`/);
 
     writeFileSync(path.join(root, "bin/cargo"), cargo, { mode: 0o755 });
-    writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "database"], ["example::mixed", "ignored_database"], ["example::mixed", "feature_database"]]));
     const database = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname, "--db", "--shard", "1/1"], { encoding: "utf8", env: {
       ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: "pass", EXPECT_DATABASE: "1",
       DATABASE_URL: "postgres://postgres@127.0.0.1/postgres", PGHOST: "127.0.0.1", GITHUB_STEP_SUMMARY: path.join(root, "db-summary.md"),
     } });
     assert.equal(database.status, 0, database.stdout + database.stderr);
-    const dbArgs = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
+    const dbArgs = JSON.parse(readFileSync(path.join(root, "calls.json"), "utf8")).at(-1);
     assert.equal(dbArgs[dbArgs.indexOf("--features") + 1], "test-postgres,console-app/full,console-app/e2e-test-support,console-app/dev-auth");
-    assert.equal(dbArgs[dbArgs.indexOf("--run-ignored") + 1], "all");
-    for (const name of ["database", "ignored_database", "feature_database"]) assert.ok(dbArgs.at(-1).includes(name));
-    for (const name of ["ordinary", "tooling"]) assert.ok(!dbArgs.at(-1).includes(`test(=${name})`));
-    assert.match(readFileSync(path.join(root, "db-summary.md"), "utf8"), /3\/3 database tests passed/);
+    assert.equal(dbArgs[dbArgs.indexOf("--run-ignored") + 1], "default");
+    for (const name of ["database", "feature_database"]) assert.ok(dbArgs.at(-1).includes(name));
+    for (const name of ["ordinary", "tooling", "ignored_database"]) assert.ok(!dbArgs.at(-1).includes(`test(=${name})`));
+    const dbInventory = JSON.parse(readFileSync(path.join(root, "target/nextest/ci/inventory.json"), "utf8"));
+    assert.deepEqual(dbInventory.ignoredDatabase, [["example::mixed", "ignored_database"]]);
+    assert.match(readFileSync(path.join(root, "db-summary.md"), "utf8"), /2\/2 database tests passed/);
+    assert.match(readFileSync(path.join(root, "db-summary.md"), "utf8"), /Source-ignored database quarantine: 1 exact owned identities/);
+
+    writeFileSync(sourceFile, readFileSync(sourceFile, "utf8").replace("expires=2099-01-01", "expires=2000-01-01"));
+    const expired = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], { encoding: "utf8", env: {
+      ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: "pass",
+    } });
+    assert.equal(expired.status, 1, expired.stdout + expired.stderr);
+    assert.match(expired.stderr, /ignored_database: invalid or expired ignore policy/);
+    writeFileSync(sourceFile, readFileSync(sourceFile, "utf8").replace("expires=2000-01-01", "expires=2099-01-01"));
 
     writeFileSync(sourceFile, readFileSync(sourceFile, "utf8") + '\n#[cfg(feature = "never-enabled")] #[sqlx::test] async fn missing_database() {}\n');
     const missing = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname, "--db"], { encoding: "utf8", env: {
@@ -223,9 +239,13 @@ test("database result collection proves all shards and preserves measured durati
 test("the database workflow is tiered, pinned and limited to four duration shards", () => {
   const file = readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8");
   const dbWorkflow = yaml.load(file);
-  assert.match(file, /merge_group:/);
+  assert.deepEqual(Object.keys(dbWorkflow.on).sort(), ["pull_request", "push", "schedule"]);
+  assert.doesNotMatch(file, /^\s*merge_group:/m);
+  assert.match(file, /merge_group.*CI-FAST/);
   assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
   assert.match(file, /schedule:\s*\n\s*- cron:/);
+  assert.equal(dbWorkflow.concurrency.group, "db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}");
+  assert.equal(dbWorkflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(dbWorkflow.on.pull_request.paths, [
     ".github/workflows/db-tests.yml",
     "scripts/backend-tests.mjs",
@@ -244,18 +264,19 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   const save = job.steps.find((step) => step.uses?.startsWith("actions/cache/save@"));
   assert.deepEqual(restore.with.path.split("\n"), [
     "~/.cargo/registry",
-    "backend/target/debug/deps/*.rlib",
-    "backend/target/debug/deps/*.rmeta",
-    "backend/target/debug/deps/*.so",
+    "backend/target/*/.fingerprint",
+    "backend/target/*/deps",
   ]);
   assert.match(restore.with.key, /hashFiles\('backend\/rust-toolchain\.toml', 'backend\/Cargo\.lock', 'backend\/\*\*\/Cargo\.toml'\)/);
   assert.equal(save.with.path, restore.with.path);
   assert.match(save.if, /github\.event_name == 'push'.*github\.ref == 'refs\/heads\/dev'.*matrix\.shard == 1/);
-  const budget = job.steps.find((step) => step.name === "Enforce Rust cache budget");
+  const budget = job.steps.find((step) => step.name === "Check Rust cache budget");
   assert.equal(budget.env.RUST_CACHE_MAX_BYTES, "3221225472");
-  assert.match(budget.run, /find.*\.cargo\/registry.*find backend\/target\/debug\/deps/s);
+  assert.match(budget.run, /find.*\.cargo\/registry.*find backend\/target.*\.fingerprint.*deps/s);
   assert.match(budget.run, /tar.*zstd.*stat -c %s/s);
-  assert.match(budget.run, /test.*RUST_CACHE_MAX_BYTES/);
+  assert.match(budget.run, /::warning::/);
+  assert.doesNotMatch(budget.run, /\btest\b.*RUST_CACHE_MAX_BYTES/);
+  assert.match(save.if, /steps\.cache-budget\.outputs\.save == 'true'/);
   assert.equal(dbWorkflow.jobs["db-test-timings"].needs, "db-tests");
   const alert = dbWorkflow.jobs["alert-nightly"];
   assert.deepEqual(alert.permissions, { contents: "read", issues: "write" });

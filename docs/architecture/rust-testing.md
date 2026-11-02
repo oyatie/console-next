@@ -36,7 +36,7 @@ published beside JUnit in the `backend-test-results-<shard>` artifacts. No basel
 
 Nextest shards run alongside clippy, gates and the release build, restoring the same trusted cache.
 The Rust cache covers both builds, keyed by runner OS/architecture, toolchain, manifests, lockfile and
-commit. Only successful pushes to dev save it; pull requests and merge groups only restore it.
+commit. Only successful pushes to dev save it; pull requests only restore it.
 Incremental compilation is disabled to limit cache size. A warm hosted run targets ten minutes including
 restore and upload; the first run or a changed dependency key builds cold and can exceed that target.
 Hosted summaries must establish the actual timing; the local cold proof took about seventeen minutes.
@@ -56,10 +56,12 @@ exit after the first failure.
 Run `node scripts/backend-tests.mjs --db` with `DATABASE_URL` for the database selection. The command
 enables the workspace `test-postgres` features and the app's full, E2E-fixture and development-auth
 test surfaces, then selects SQLx tests from the same source inventory; there is no checked-in test list.
-The `db-tests` workflow runs for gate-changing pull requests, merge groups, dev pushes and nightly
+The `db-tests` workflow runs for gate-changing pull requests, dev pushes and nightly
 against the pinned PostgreSQL service image. Four jobs are packed from
 the latest same-repository JUnit durations, with equal weights only when no measurement exists yet.
 Tests excluded by the development-auth feature run from a derived default-feature variant in the same
 plan, so mutually exclusive feature guards cannot make either side disappear.
 Their reports are reconciled into one exact inventory before new timings are trusted. Source ignores
-must carry an owner, reason and unexpired date; database ignores still run with `--run-ignored all`.
+must carry an owner, reason and unexpired date. Database ignores remain quarantined until that date and
+their exact identities stay in the published inventory; the runner never broadens selection with
+`--run-ignored all`.
