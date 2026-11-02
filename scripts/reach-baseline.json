@@ -619,11 +619,6 @@
    "reason": "The payslip delivery journey will let employees read their issued payslips.",
    "when": "2026-11-18"
   },
-  "GET /api/v1/payroll/runs/{id}": {
-   "lane": "Payroll S3 run create",
-   "reason": "The run page will load its header and six-stage progress rail after run creation.",
-   "when": "2026-11-09"
-  },
   "GET /api/v1/payroll/runs/{id}/close-preflight": {
    "lane": "Payroll S5 대상·근태",
    "reason": "The attendance stage will show close prerequisites once attendance month close is available.",

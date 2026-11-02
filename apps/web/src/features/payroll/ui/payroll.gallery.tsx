@@ -7,6 +7,7 @@ import { Section } from "../../../gallery/Section";
 import { ReferenceRegister } from "./reference-register";
 import { PayGroupSheet } from "./pay-group-sheet";
 import { Button } from "../../../ui/button/button";
+import { RunHeader } from "./run-page";
 export const order = 154;
 // Synthetic gallery data, never a statutory value or an adopted pack.
 const galleryRate = (): PayrollRate => ({
@@ -19,6 +20,7 @@ export default function PayrollGallery() {
   const [open, setOpen] = useState(false);
   const rate = galleryRate();
   return <Section title={t("payroll.reference.title")}><div className="form">
+    <RunHeader entity={tg("sample.company")} run={{ id: "00000000-0000-4000-8000-000000000002", legal_entity_id: "00000000-0000-4000-8000-000000000001", pay_group_id: "00000000-0000-4000-8000-000000000003", source_label: t("payroll.runName"), period_start: "2026-10-01", period_end: "2026-10-31", status: "STAGED", calculation_enabled: false, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z" }} />
     <Button onClick={() => setOpen(true)}>{t("payroll.setup.add")}</Button>
     {open && <PayGroupSheet entities={[{ id: "00000000-0000-4000-8000-000000000001", name: tg("sample.company") }]} onClose={() => setOpen(false)} onSaved={() => setOpen(false)} />}
     <ReferenceRegister data={{ adopted: true, country_code: "KR", items: [rate, { ...rate, code: "HELD", instrument_ko: "" }] }} />

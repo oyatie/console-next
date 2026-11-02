@@ -7,4 +7,5 @@ export type CreatePayGroup = components["schemas"]["CreatePayGroup"];
 export const createPayGroup = (body: CreatePayGroup, key: string) => unwrap(api.POST("/api/v1/payroll/pay-groups", { body, headers: { "idempotency-key": key } }));
 export const payGroupsQuery = get("/api/v1/payroll/pay-groups");
 export const payrollRunsQuery = get("/api/v1/payroll/runs");
+export const payrollRunQuery = (id: string) => get("/api/v1/payroll/runs/{id}", { params: { path: { id } } });
 export const payrollRatesQuery = (id: string) => get("/api/v1/payroll/reference/rates", { params: { query: { legal_entity_id: id } } });
