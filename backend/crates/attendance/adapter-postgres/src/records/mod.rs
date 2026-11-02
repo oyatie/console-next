@@ -3,6 +3,8 @@
 //! Errors share `ScheduleStoreError` and its codes.
 
 mod board;
+mod board_issues;
+mod board_page;
 mod cells;
 mod day;
 mod edits;
@@ -12,7 +14,7 @@ mod roster;
 mod save;
 mod thresholds;
 
-pub use board::BoardQuery;
+pub use board::{BoardQuery, BoardReadAccess, BoardReadTarget};
 pub use grid::GridQuery;
 
 /// Explicit filters are resources, so absence and branch reach use the schedule's authorizer.

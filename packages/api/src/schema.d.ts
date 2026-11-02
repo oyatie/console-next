@@ -1485,7 +1485,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first */
+        /**
+         * One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first
+         * @description Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and each person's dated workplace are authorized in the same fact snapshot.
+         */
         get: operations["readAttendanceDayBoard"];
         put?: never;
         post?: never;
@@ -15425,6 +15428,16 @@ export interface components {
             marks: components["schemas"]["AttendanceMark"][];
         };
         AttendanceDayBoard: {
+            /** @description Requested-day issue counts before row filters or pagination; earliest_date is the oldest matching issue in the authorized scope within that calendar month, through the requested day, including people who left earlier in the month. */
+            issue_groups?: {
+                kind: components["schemas"]["AttendanceMark"];
+                /** Format: int64 */
+                count: number;
+                /** Format: date */
+                earliest_date: string;
+            }[];
+            /** Format: uuid */
+            next_cursor?: string | null;
             /** Format: date */
             date: string;
             judged: boolean;
@@ -33292,6 +33305,12 @@ export interface operations {
                 issues_only?: boolean;
                 /** @description show only people without a resolved schedule; counts remain for the whole scope */
                 no_schedule_only?: boolean;
+                /** @description only rows carrying this issue kind; aggregates remain for the entire authorized day scope */
+                mark?: components["schemas"]["AttendanceMark"];
+                /** @description exclusive employee UUID keyset cursor */
+                cursor?: components["schemas"]["Uuid"];
+                /** @description bound returned rows; omitted preserves the unpaged board */
+                limit?: number;
                 /** @description return every row without folding normal people; existing filters still apply */
                 rows?: "all";
             };

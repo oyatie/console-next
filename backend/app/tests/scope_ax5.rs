@@ -21,6 +21,8 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+#[path = "scope_ax5/attendance.rs"]
+mod attendance;
 #[path = "support/go_live.rs"]
 mod go_live;
 #[path = "support/refusals.rs"]
@@ -38,9 +40,7 @@ const FORBIDDEN: StatusCode = StatusCode::FORBIDDEN;
 
 /// Pin the actual first reads before projecting these boundaries into the route contract.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn route_first_reads_admit_entity_and_workplace_but_refuse_department_org_grants(
-    pool: PgPool,
-) {
+async fn route_first_reads_keep_the_legacy_org_boundaries(pool: PgPool) {
     let mut w = world::world_with_lines(
         pool,
         json!([

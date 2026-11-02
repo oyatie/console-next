@@ -3471,10 +3471,11 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/attendance/days:
     get:
-      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "entity", "engine": "cedar"}
       tags: [attendance]
       operationId: readAttendanceDayBoard
       summary: One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first
+      description: Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and each person's dated workplace are authorized in the same fact snapshot.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: date, in: query, required: true, schema: { type: string, format: date } }
@@ -3482,6 +3483,9 @@ paths:
         - { name: unit_id, in: query, required: false, description: open this 부서 group (all its rows), schema: { $ref: '#/components/schemas/Uuid' } }
         - { name: issues_only, in: query, required: false, schema: { type: boolean } }
         - { name: no_schedule_only, in: query, required: false, description: show only people without a resolved schedule; counts remain for the whole scope, schema: { type: boolean } }
+        - { name: mark, in: query, required: false, description: only rows carrying this issue kind; aggregates remain for the entire authorized day scope, schema: { $ref: '#/components/schemas/AttendanceMark' } }
+        - { name: cursor, in: query, required: false, description: exclusive employee UUID keyset cursor, schema: { $ref: '#/components/schemas/Uuid' } }
+        - { name: limit, in: query, required: false, description: bound returned rows; omitted preserves the unpaged board, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: rows, in: query, required: false, description: return every row without folding normal people; existing filters still apply, schema: { type: string, enum: [all] } }
       responses:
         '200': { description: Board, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceDayBoard' } } } }
@@ -34490,7 +34494,24 @@ components:
     AttendanceDayBoard:
       type: object
       required: [date, judged, ledger, marks, groups]
-      properties: { date: { type: string, format: date }, judged: { type: boolean }, ledger: { $ref: '#/components/schemas/AttendanceLedger' }, marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }, groups: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardGroup' } } }
+      # Additive fields stay optional for N-1 board fixtures; the server always returns them.
+      properties:
+        issue_groups:
+          type: array
+          description: Requested-day issue counts before row filters or pagination; earliest_date is the oldest matching issue in the authorized scope within that calendar month, through the requested day, including people who left earlier in the month.
+          items:
+            type: object
+            required: [kind, count, earliest_date]
+            properties:
+              kind: { $ref: '#/components/schemas/AttendanceMark' }
+              count: { type: integer, format: int64 }
+              earliest_date: { type: string, format: date }
+        next_cursor: { type: [string, 'null'], format: uuid }
+        date: { type: string, format: date }
+        judged: { type: boolean }
+        ledger: { $ref: '#/components/schemas/AttendanceLedger' }
+        marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }
+        groups: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardGroup' } }
     AttendanceDayKind:
       type: string
       enum: [WORK, WEEKLY_HOLIDAY, REST_DAY, PUBLIC_HOLIDAY, SUBSTITUTE_HOLIDAY, ELECTION_DAY, LABOR_DAY, CONTRACTUAL_HOLIDAY, NO_SCHEDULE]
