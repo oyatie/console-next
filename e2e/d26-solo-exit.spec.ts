@@ -1,10 +1,13 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api/schema";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, registerEmployee, routeReady, takeCode, unique, vendorPage } from "./flows";
 import { REGISTRATION_FIXTURES, acceptSetupTerms, setupCompany, setupRail, brnDisplay } from "./setup-flows";
 import { signOff } from "./sheet";
 import { apiOf, bearerOf } from "./helpers/api";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // Decisions #26 for a one-person tenant (solo ops, empty DB, no helper account): 결재 is off by default, so setup
 // asks for no approver, 운영 시작 asks for no sole-approver tick, and an exit closes with the same person confirming
@@ -106,7 +109,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await go(admin, "/org/entities");
   await admin.getByRole("row", { name: /혼자상사/ }).click();
   // After go-live the number is locked: its only verb is the identifier correction.
-  await admin.getByRole("button", { name: "등록번호 식별번호 정정", exact: true }).click();
+  await admin.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.brn") }), exact: true }).click();
   const brn = admin.getByRole("dialog", { name: "사업자등록번호 정정" });
   await expect(brn).toContainText("운영 계정이 정정합니다");
   await expect(brn).not.toContainText(/결재|승인된 예외/);

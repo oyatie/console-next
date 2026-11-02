@@ -19,8 +19,6 @@ import { Members } from "../../../reference/org/ui/structure-members";
 import { WorkplaceActions } from "./workplace-actions";
 import { WorkplaceFacts } from "./workplace-facts";
 import { lockOf, RecordLockProvider } from "./use-record-lock";
-import { focusSoon } from "../../../lib/react/announce";
-import css from "../../../reference/org/ui/structure.module.css";
 
 /** A workplace beside the chart (S5-panel): its numbers, facts with their verbs, social insurance, people, actions and history. */
 export function WorkplaceSidePanel({ place, tenant, setup, onClose, onAct, as_of, known_at, readOnly = false }: WorkplacePanelProps) {
@@ -41,7 +39,6 @@ function Body({ e, w, place, setup, onClose, onAct, as_of, known_at, readOnly = 
   const n = place.node;
   const name = readOnly ? n.name : workplaceName(w);
   const st = labeled(RECORD_STATUS, w.current?.status ?? "CONTINUING");
-  const toHistory = () => (document.getElementById("wp-history")?.scrollIntoView({ block: "start" }), focusSoon("wp-history-h"));
   return (
     <PanelShell
       crumb={[...place.path, name]}
@@ -72,11 +69,10 @@ function Body({ e, w, place, setup, onClose, onAct, as_of, known_at, readOnly = 
             { label: t("orgStructure.stat.depts"), value: descendants(n).length },
           ]}
         />
-        <WorkplaceFacts e={e} w={w} place={place} onAct={onAct} onHistory={toHistory} />
-        {e.biz_kind === "CORPORATION" && <p className={css.note}>{t("workplace.edit.withholdingNote")}</p>}
+        <WorkplaceFacts e={e} w={w} place={place} onAct={onAct} />
       </Sec>
       <Sec id="wp-insurance" title={t("orgStructure.wp.insurance")}>
-        <WorkplaceInsurance e={e} w={w} onHistory={toHistory} />
+        <WorkplaceInsurance e={e} w={w} />
       </Sec>
       {!readOnly && <Sec id="wp-actions" title={t("orgStructure.tab.actions")}>
         {w.can_manage ? <WorkplaceActions place={place} setup={setup} onAct={onAct} /> : <p className="muted">{t("entityOps.lock.reachWorkplace")}</p>}

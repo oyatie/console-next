@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import ExcelJS from "exceljs";
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { LegalEntity } from "@console/api/pending";
 import { go, kstDate, option } from "./flows";
 import { tenantInSetup } from "./setup-flows";
 import { apiAs } from "./chaos";
 import { fillDate } from "./sheet";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 async function readEntity(page: Page, id: string): Promise<LegalEntity> {
   const read = page.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === `/api/v1/legal-entities/${id}`);
@@ -97,14 +100,14 @@ test("registration change: unchanged hold, unlink through the dated sheet @org",
   const before = await readEntity(page, id);
   const workplace = before.workplaces[0]!;
   await go(page, `/org/entities/${id}?wp=${workplace.id}`);
-  await page.getByRole("button", { name: "본사 사업자등록 변경" }).click();
+  await page.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("workplace.field.regMode") }), exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "본사 사업자등록 변경" });
   await expect(sheet.getByRole("button", { name: "등록 변경", exact: true })).toHaveAttribute("aria-disabled", "true");
   await option(page, "변경할 사업자등록", "등록증 연결 안 함").click();
   await sheet.getByRole("textbox", { name: "변경 사유" }).fill("연결 해제");
   const other = await page.context().newPage();
   await go(other, `/org/entities/${id}?wp=${workplace.id}`);
-  await other.getByRole("button", { name: "본사 사업자등록 변경" }).click();
+  await other.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("workplace.field.regMode") }), exact: true }).click();
   const otherSheet = other.getByRole("dialog", { name: "본사 사업자등록 변경" });
   await option(other, "변경할 사업자등록", "등록증 연결 안 함").click();
   await otherSheet.getByRole("textbox", { name: "변경 사유" }).fill("연결 해제");

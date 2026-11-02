@@ -84,8 +84,7 @@ export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }
         <FactRow label={t("entityRecord.field.taxType")} action={fix(f.taxType)}>{[e.biz_kind && label(BIZ_KIND, e.biz_kind), c?.tax_type && label(TAX_TYPE, c.tax_type)].filter(Boolean).join(" · ") || "—"}</FactRow>
         <FactRow label={t("entity.name.classificationReason")} action={fix(f.classificationReason)}>{c?.classification_reason || "—"}</FactRow>
         <FactRow label={t("entityRecord.field.brn")} action={idAction("brn")}>
-          <span className={s.line}><span className="code">{r.brn?.display ?? "—"}</span></span>
-          <span className={`${s.line} ${s.sub}`}>{t(operating ? "entityRecord.cert.brnLocked" : "entityRecord.cert.brnSetup")}</span>
+          <span className="code">{r.brn?.display ?? "—"}</span>
         </FactRow>
         <FactRow no={1} label={name.label} wide action={fix(name)}>{name.current}</FactRow>
         <FactRow no={2} label={t(corp ? "entityRecord.field.representatives" : "entityRecord.field.owner")} action={fix(ef.representatives)}>{reps ? reps.join(", ") || "—" : t("entity.field.restricted")}</FactRow>
@@ -113,10 +112,10 @@ export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }
           {(c?.business_types ?? []).length === 0 && "—"}
         </FactRow>
         <FactRow no={corp ? 8 : 7} label={t("entityRecord.field.issueReason")}>{c?.issue_reason_kind ? label(ISSUE_REASON, c.issue_reason_kind as never) : "—"}</FactRow>
-        <FactRow no={9} label={t("entityRecord.field.liquor")} action={fix(f.liquor)}>{c?.liquor_license_no || <Muted>{t("entityRecord.cert.none")}</Muted>}</FactRow>
+        <FactRow no={9} label={t("entityRecord.field.liquor")} action={fix(f.liquor)}>{c?.liquor_license_no || "—"}</FactRow>
         <FactRow no={10} label={t("entityRecord.field.unitTaxation")} action={fix(f.unitTaxation)}>{c?.unit_taxation == null ? "—" : t(c.unit_taxation ? "entityRecord.cert.unitYes" : "entityRecord.cert.unitNo")}</FactRow>
         <FactRow no={11} label={t("entityRecord.field.email")} action={fix(f.email)}>{c?.e_invoice_email || "—"}</FactRow>
-        <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}><span className="num">{c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"}</span> · {c?.tax_office_label || "—"}</FactRow>
+        <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}>{f.issued.current}</FactRow>
       </div>
       {showCheck && <NtsCheck historical={lock === "asof"} registration={r} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.attach(r.id)} />}
       {statusing && <RegistrationStatusSheet e={e} r={r} onClose={() => setStatusing(false)} />}

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Locator } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { go } from "./flows";
 import { openTenant } from "./helpers/tenant";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 async function blocked(button: Locator, reason: string) {
   await expect(button).toHaveAttribute("aria-disabled", "true");
@@ -47,7 +50,7 @@ test("empty composers explain their blocks, keep focus and reveal access field e
 
   await go(admin, "/org/entities?add=true");
   const entity = admin.getByRole("dialog", { name: "법인 추가", exact: true });
-  const reason = "사업자 구분, 이름, 대표자를 정하면 저장할 수 있습니다.";
+  const reason = t("entityQuick.hold.basics");
   await blocked(entity.getByRole("button", { name: "법인 등록", exact: true }), reason);
   await expect(entity.getByText(reason, { exact: true })).toHaveCount(1);
   await expect(entity.getByRole("button", { name: "법인 등록 후 첫 사업장 추가" })).toHaveCount(0);

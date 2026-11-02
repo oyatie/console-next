@@ -3,7 +3,6 @@
 import type { koWorkplaceRegChange } from "../ko/workplace-reg-change";
 
 export const enWorkplaceRegChange: Record<keyof typeof koWorkplaceRegChange, string> = {
-  "workplaceRegChange.action": "Change registration",
   "workplaceRegChange.title": "Change business registration of {name}",
   "workplaceRegChange.kicker": "{entity} · {name}",
   "workplaceRegChange.target": "New registration",

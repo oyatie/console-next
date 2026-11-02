@@ -50,7 +50,7 @@ test("quick add: three inputs, the receipt's undo, and a corporation sent on to 
   await expect(s.getByText(/법인등록번호와 본점 소재지가 있어야/)).toBeVisible();
   await expect(s.getByRole("button", { name: "법인 등록", exact: true })).toHaveAttribute("aria-disabled", "true");
   await s.getByRole("button", { name: "등록증 보며 모두 입력" }).click();
-  await expect(admin.getByRole("heading", { name: "법인 추가", level: 1 })).toBeVisible();
+  await expect(admin.getByRole("heading", { name: "법인 등록", level: 1 })).toBeVisible();
   // What the sheet chose is carried: the wizard opens on the certificate with kind and name set.
   await expect(admin.getByText("법인사업자 · (주)새온바이오")).toBeVisible();
   await expect(admin.locator('[aria-current="step"]')).toHaveText(/사업자등록증/);

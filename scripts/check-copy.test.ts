@@ -614,3 +614,16 @@ test("shell and common have no glossary or standing-prose debt", async () => {
   expect(shared.find((e) => e.id === "shell.jump")?.text).toMatch(/^검색·이동/);
   expect(shared.find((e) => e.id === "common.denied.granters")?.text).toContain("권한을 부여할 수 있는 담당자");
 });
+
+for (const [id, text] of [["entity.basis.DECLARED", "사업장 추가 때 정함"], ["entityCreate.cert.notice", "1단계에서 정한 값"], ["workplace.primary.headUnset", "정하면 반영됩니다"], ["entityRecord.history.derived", "등록증에 따라 정해짐"]]) {
+  test(`entity copy rejects informal designation: ${id}`, () => {
+    expect(checkTerms([{ id, text }], [])).toContainEqual(expect.stringContaining("verb.지정"));
+  });
+}
+
+test("entity field emptiness has one marker", () => {
+  for (const id of ["workplace.kind.unset", "workplace.code.none", "entityOps.info.none"]) {
+    expect(checkTerms([{ id, text: "없음" }], [])).toContainEqual(expect.stringContaining("empty.표시"));
+    expect(checkTerms([{ id, text: "—" }], [])).toEqual([]);
+  }
+});

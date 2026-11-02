@@ -16,6 +16,7 @@ import { toAddr, toKr, type Addr } from "../domain/record-values";
 
 
 const dash = (s: string | null | undefined) => s || "—";
+const issuedText = (on: string | null | undefined, office: string | null | undefined) => [on && fmtDate(on), office].filter(Boolean).join(" · ") || "—";
 const TAXES: NtsTaxType[] = ["01", "02", "07", "04", "05", "06"];
 const yn = (b: boolean | null | undefined) => (b == null ? "—" : t(b ? "entityRecord.unitTaxation.yes" : "entityRecord.unitTaxation.no"));
 /** An issue date before the opening date (the server refuses it: issued_before_opened). */
@@ -91,7 +92,7 @@ export function registrationFields(r: BusinessRegistration) {
     } satisfies FieldSpec<string | null>,
     email: text(t("entityRecord.field.email"), "e_invoice_email", c?.e_invoice_email ?? "", validEmail),
     issued: {
-      label: t("entityRecord.field.issued"), group, owner, current: `${c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"} · ${dash(c?.tax_office_label)}`,
+      label: t("entityRecord.field.issued"), group, owner, current: issuedText(c?.cert_issued_on, c?.tax_office_label),
       initial: { on: c?.cert_issued_on ?? "", office: c?.tax_office_label ?? "" },
       edit: (v, set) => (
         <>
@@ -99,7 +100,7 @@ export function registrationFields(r: BusinessRegistration) {
           <Field label={t("entityRecord.field.taxOffice")} required>{(f) => <TextInput {...f} value={v.office} onChange={(x) => set({ ...v, office: x.target.value })} />}</Field>
         </>
       ),
-      show: (v) => `${v.on ? fmtDate(v.on) : "—"} · ${dash(v.office.trim())}`,
+      show: (v) => issuedText(v.on, v.office.trim()),
       patch: (v) => ({ cert_issued_on: v.on || null, tax_office_label: v.office.trim() }),
       ready: (v) => v.office.trim() !== "" && (v.on !== (c?.cert_issued_on ?? "") || v.office.trim() !== (c?.tax_office_label ?? "")),
     } satisfies FieldSpec<{ on: string; office: string }>,

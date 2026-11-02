@@ -18,7 +18,7 @@ for (const abstract of [false, true]) {
       current: { name: "근무지", status: "CONTINUING", address: abstract ? null : { road_addr_part1: "서울특별시 종로구 세종대로 209" } },
     } as unknown as Workplace;
     const e = { id: "e1", workplaces: [w], registrations: [{ id: "r1", brn: { display: "000-81-00009" } }] } as unknown as LegalEntity;
-    const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><WorkplaceFacts e={e} w={w} onHistory={() => {}} /></QueryClientProvider>);
+    const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><WorkplaceFacts e={e} w={w} /></QueryClientProvider>);
     expect(html).toContain("등록 대상 아님 사유");
     expect(html).toContain("000-81-00009");
     expect(html).not.toContain("등록증 없음");

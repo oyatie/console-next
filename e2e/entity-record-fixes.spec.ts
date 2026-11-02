@@ -1,9 +1,12 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, koDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { registerEntity, registerWorkplace } from "./setup-flows";
 import { fillDate } from "./sheet";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // LANE ENTITY-FIX: the 법인 record's dead ends found by the parity capture (S3, 2026-10-07), from an empty tenant
 // through the UI, each a regression test that failed on mvp 442d9d7a. A 법인 with an uploaded 등록증 and its 사업장:
@@ -64,7 +67,7 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
   slow = false;
 
   // (2) 개업연월일 정정 after a 발급일: the sheet holds the 발급일 too and says why before anything is sent.
-  await a.getByRole("button", { name: "개업연월일 정정" }).click();
+  await a.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.openedOn") }), exact: true }).click();
   const opened = sheet(a, "개업연월일 수정");
   await fillDate(opened, "2020-03-03", "개업연월일");
   await expect(opened.getByText("발급일이 개업일보다 앞섭니다")).toBeVisible();
@@ -93,7 +96,7 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
   // The scheduled change is already dated in recent history; it never gets a second plan row above it.
   await expect(rail.getByText("변경 예약", { exact: true })).toHaveCount(0);
   await expect(rail.getByText(/예정/)).toBeVisible();
-  await expect(rail.getByText("부가가치세 신고 단위 · 등록증에 따라 정해짐")).toBeVisible();
+  await expect(rail.getByText(t("entityRecord.history.derived"))).toBeVisible();
   await expect(rail.getByText(koDate(kstDate())).first()).toBeVisible();
 
   // The 대표전화 정정 lists only 대표전화, not the scheduled 대표자 변경 (backend history diff).
@@ -117,7 +120,7 @@ test("the record rail dates an entry recorded before 09:00 KST by the Korean day
   });
   await a.reload();
   const rail = a.getByRole("region", { name: "이력" }).first();
-  await expect(rail.getByText("법인 만듦")).toBeVisible();
+  await expect(rail.getByText(t("entityRecord.history.created"))).toBeVisible();
   await expect(rail.getByText(koDate(kstDate())).first()).toBeVisible();
   await expect(rail.getByText(koDate(kstDate(-1)))).toHaveCount(0);
 });

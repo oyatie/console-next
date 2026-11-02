@@ -45,10 +45,12 @@ test("사업장: add with no defaults, the panel, change the representative work
   // typed address (2).
   expect(c.done("a 사업장 with no certificate, reported with the head office")).toBeLessThanOrEqual(8);
 
-  // 3. The panel: counts, facts with their verbs (개설일 is 정정만), the insurance unit, actions with consequences.
+  // 3. The panel: counts, one edit per fact, the insurance unit and actions with consequences.
   const pangyo = await openUnit(admin, "판교지점");
   await expect(pangyo.getByRole("definition").filter({ hasText: "본점 번호로 함께 신고" })).toBeVisible();
-  await expect(pangyo.getByText("정정만")).toBeVisible();
+  const opened = t("workplace.field.openedOn");
+  await expect(pangyo.getByRole("button", { name: t("uiRecordActions.of", { field: opened, verb: t("uiRecordActions.edit") }), exact: true })).toHaveText(t("uiRecordActions.edit"));
+  await expect(pangyo.getByRole("button", { name: t("uiRecordActions.more", { field: opened }), exact: true })).toHaveCount(0);
   await expect(pangyo.getByRole("button", { name: "부서 추가" })).toHaveAccessibleDescription("판교지점 바로 아래에 부서가 생깁니다");
   await expectAccessible(admin, "workplace panel");
 

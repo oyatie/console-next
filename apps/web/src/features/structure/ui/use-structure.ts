@@ -1,6 +1,6 @@
 import { readGroup } from "../../../lib/react/query-view";
 import { get } from "../../../lib/query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { buildStructure } from "../domain/model";
@@ -23,7 +23,7 @@ export function useStructure({ as_of, known_at, compare_a, compare_b }: AsOf & {
   const entityQuery = entitiesAt(q);
   const entities = useFreshOnArrival(useQuery({ ...entityQuery, placeholderData: keepPreviousData }), entityQuery);
   const kinds = useQuery({ ...kindsRef, retry: false }).data?.items;
-  const s = useMemo(() => {
+  const answered = useMemo(() => {
     if (!tree.data || !entities.data || tree.isPlaceholderData || entities.isPlaceholderData) return undefined;
     const structure = buildStructure(tree.data, entities.data.items, (code) => (kinds ? kindName(kinds, code) : undefined));
     if (comparing) {
@@ -36,5 +36,9 @@ export function useStructure({ as_of, known_at, compare_a, compare_b }: AsOf & {
     return structure;
   }, [tree.data, tree.isPlaceholderData, entities.data, entities.isPlaceholderData, kinds, comparing, diff.data]);
   const ready = readGroup([tree, entities]);
+  const [last, setLast] = useState(answered);
+  if (answered && last !== answered) setLast(answered);
+  // Retain one answered snapshot while either dated read is pending; never mix facts from two dates.
+  const s = answered ?? (ready.isPlaceholderData && last ? { ...last, readOnly: true } : undefined);
   return { s, tree, ready: !s && !ready.error ? { ...ready, data: undefined, isPending: true } : ready, entities, diff: comparing ? diff.data : undefined };
 }

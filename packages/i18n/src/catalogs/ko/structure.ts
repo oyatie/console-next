@@ -139,7 +139,7 @@ export const koStructure = {
   "structure.selection.delete": "삭제",
   "structure.selection.inList": "목록에서 보기",
   "structure.selection.clear": "선택 해제",
-  "structure.first.title": "등록된 법인이 없습니다",
+  "structure.first.title": "첫 법인을 등록합니다",
   "structure.first.oneBody": "사업자등록증 정보를 입력해 등록합니다.",
   "structure.first.addEntity": "법인 등록",
   "structure.jump.people": "직원",

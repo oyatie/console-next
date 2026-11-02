@@ -5,7 +5,6 @@ import { RegularHeadcount } from "./regular-headcount";
 import { entityFields } from "./record-entity-fields";
 import type { Act } from "./record-revise-sheet";
 import s from "./record.module.css";
-import { Muted } from "../../../ui/muted/muted";
 
 /**
  * VAT, employment insurance and workers (spec S3): the derived filing unit with its basis, main industry, priority-support status, and
@@ -25,7 +24,7 @@ export function VatCard({ e, act }: { e: LegalEntity; act: Act }) {
           {c?.vat_unit_mode_basis && <span className={s.sub}> {t(`entity.basis.${c.vat_unit_mode_basis}`)}</span>}
         </FactRow>
         <FactRow label={t("entityRecord.vat.mainKsic")} action={f.mainKsic ? { kind: "fix", onPress: () => act.field(f.mainKsic!) } : null}>
-          {c?.main_ksic ? `KSIC ${c.main_ksic.code} · ${c.main_ksic.label}` : <Muted>{t("entityRecord.vat.ksicPending")}</Muted>}
+          {c?.main_ksic ? `KSIC ${c.main_ksic.code} · ${c.main_ksic.label}` : "—"}
         </FactRow>
         <FactRow label={t("entityRecord.vat.priority")}>
           {c?.priority_support ? t(c.priority_support === "YES" ? "entityRecord.vat.priorityYes" : "entityRecord.vat.priorityNo") : "—"}

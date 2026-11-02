@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { LegalEntity, Workplace } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { focusSoon } from "../../../lib/react/announce";
 import { workplaceHistoryQuery } from "../api";
 import { registrationOf, workplaceName } from "../domain/view";
 import { History } from "./history-tab";
@@ -20,14 +19,13 @@ export function WorkplacePanel({ e, w }: { e: LegalEntity; w: Workplace }) {
   const reg = registrationOf(e, w.registration_id);
   const name = workplaceName(w);
   const hid = `wh-${w.id}`;
-  const toHistory = () => (document.getElementById(hid)?.scrollIntoView({ block: "start" }), focusSoon(hid));
   return (
     <aside className="card panel" aria-label={name}>
       <div className="panel__head">
         <h2 className="panel__title">{name}</h2>
       </div>
       {reg && <VerificationBadge r={reg} />}
-      <WorkplaceFacts e={e} w={w} onHistory={toHistory} />
+      <WorkplaceFacts e={e} w={w} />
       <dl className={s.facts}>
         <dt>{t("workplace.col.people")}</dt>
         <dd className="num">{t("entity.count.people", { count: w.headcount })}</dd>
@@ -35,7 +33,7 @@ export function WorkplacePanel({ e, w }: { e: LegalEntity; w: Workplace }) {
       <RegularHeadcount r={w.regular_workers} asOf={e.as_of} />
       <section aria-labelledby={`ins-${w.id}`}>
         <h3 id={`ins-${w.id}`} className="field__label">{t("workplace.field.insurance")}</h3>
-        <WorkplaceInsurance e={e} w={w} onHistory={toHistory} />
+        <WorkplaceInsurance e={e} w={w} />
       </section>
       <section aria-labelledby={hid}>
         <h3 id={hid} className="field__label" tabIndex={-1}>{t("entity.history.title")}</h3>

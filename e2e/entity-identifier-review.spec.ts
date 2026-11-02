@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { FORMATS } from "../apps/web/src/lib/pure/formats";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { grantAccess } from "./access-flows";
@@ -7,6 +8,8 @@ import { firstSignIn, go, option, passkeyLogin, registerEmployee, stepUp, takeCo
 import { apiOf, bearerOf } from "./helpers/api";
 import { letGrantsAge } from "./second-person-fixture";
 import { REGISTRATION_FIXTURES, SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const inbox = (page: Page) => page.getByRole("region", { name: "업무함", exact: true });
 const register = (page: Page) => page.getByRole("region", { name: "번호 정정 · 사후 검토", exact: true });
@@ -25,7 +28,7 @@ async function capture(page: Page, name: string) {
 
 /** The operating requester submits evidence, completes its passkey ceremony and follows the durable receipt. */
 async function requestCorrection(page: Page, value: string, tag: string) {
-  await page.getByRole("button", { name: "법인등록번호 식별번호 정정" }).click();
+  await page.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.crn") }), exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "법인등록번호 정정", exact: true });
   await sheet.getByLabel("올바른 번호").fill(value);
   await option(page, "정정 사유", "서류 판독 잘못").click();
