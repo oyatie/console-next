@@ -25,9 +25,9 @@ import { WorkplaceMoveSheet } from "./workplace-move-sheet";
 import { WorkplaceStatusSheet } from "./workplace-status";
 import { Muted } from "../../../ui/muted/muted";
 
-type Open = { k: "info"; field: InfoKey; clear?: boolean } | { k: "move" | "status" | "attach" | "code" | "changeReg" } | { k: "kind" | "primary" };
+type Open = { k: "info"; field: InfoKey } | { k: "move" | "status" | "attach" | "code" | "changeReg" } | { k: "kind" | "primary" };
 
-export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEntity; w: Workplace; place?: Place; onAct?: (a: StructureAct) => void; onHistory: () => void }) {
+export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Workplace; place?: Place; onAct?: (a: StructureAct) => void }) {
   const [state, setOpen] = useState<Open | null>(null);
   const navigate = useNavigate();
   // Kind and primary/head-office are structure acts: their sheets live with the org chart (one host); from the entity page the row's
@@ -42,9 +42,9 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
   const asof = useRecordLock() === "asof";
   const manage = !asof && !e.read_only && !w.read_only && w.can_manage;
   const why = w.closed_on ? t("workplace.closed.noEdit") : undefined;
-  const row = (label: string, value: ReactNode, o: Open, extra?: { add?: boolean; clear?: InfoKey | false; hint?: ReactNode }): Fact => ({
+  const row = (label: string, value: ReactNode, o: Open, extra?: { add?: boolean }): Fact => ({
     label,
-    value: <>{value}{extra?.hint && <> <Muted>· {extra.hint}</Muted></>}</>,
+    value,
     act: manage && (
       <RowActions
         field={label}
@@ -52,17 +52,13 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
         onEdit={() => (o.k === "kind" ? structure("wp-kind") : o.k === "primary" ? structure("wp-primary") : setOpen(o))}
         why={why}
         path={setup ? "setup" : "revision"}
-        history={onHistory}
-        end={extra?.clear && !why ? { verb: "clear", onPress: () => setOpen({ k: "info", field: extra.clear as InfoKey, clear: true }) } : undefined}
       />
     ),
   });
   const none = <Muted>{t("entityOps.info.none")}</Muted>;
-  const info = (field: InfoKey, value: string | null | undefined) => row(INFO_LABEL[field](), value || none, { k: "info", field }, { clear: field !== "name" && Boolean(value) && field });
+  const info = (field: InfoKey, value: string | null | undefined) => row(INFO_LABEL[field](), value || none, { k: "info", field });
   const reg = registrationOf(e, w.registration_id);
   const filing = registrationOf(e, w.filing_registration_id);
-  const primary = e.workplaces.find((x) => x.is_primary);
-  const head = e.workplaces.find((x) => x.id === e.head_office_workplace_id);
   const roles = [w.is_primary && t("workplace.primary"), w.is_head_office && t("workplace.headOffice")].filter(Boolean).join(" · ");
   const st = labeled(RECORD_STATUS, c?.status ?? "CONTINUING");
   const suspended = c?.status === "SUSPENDED";
@@ -71,10 +67,10 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
   const siblings = place?.entity.children.filter((x) => x.kind === "WORKPLACE") ?? [];
   const rows: (Fact | false)[] = [
     info("name", workplaceName(w)),
-    row(t("workplace.create.kind"), w.kind_code ? kindName(kinds, w.kind_code) : <Muted>{t("workplace.kind.unset")}</Muted>, { k: "kind" }, { hint: t("workplace.kind.labelOnly") }),
+    row(t("workplace.create.kind"), w.kind_code ? kindName(kinds, w.kind_code) : none, { k: "kind" }),
     w.is_abstract
       ? { label: t("workplace.create.address"), value: w.not_registered_reason?.label ?? none }
-      : row(t("workplace.create.address"), addressLine(c?.address) || <Muted>{t("workplace.incomplete")}</Muted>, { k: "move" }),
+      : row(t("workplace.create.address"), addressLine(c?.address) || none, { k: "move" }),
     row(
       t("workplace.field.status"),
       <span className="row">
@@ -83,7 +79,7 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
       </span>,
       { k: "status" },
     ),
-    row(t("orgStructure.wp.roles"), roles || <Muted>{t("orgStructure.wp.notRoles", { primary: primary ? workplaceName(primary) : "—", head: head ? workplaceName(head) : "—" })}</Muted>, { k: "primary" }),
+    row(t("orgStructure.wp.roles"), roles || none, { k: "primary" }),
     reg
       ? {
           label: t("workplace.field.regMode"),
@@ -99,7 +95,7 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
                   onClick={() => setOpen({ k: "changeReg" })}
                   aria-label={t("workplaceRegChange.title", { name: workplaceName(w) })}
                 >
-                  {t("workplaceRegChange.action")}
+                  {t("entityRecord.action.fix")}
                 </Button>
               )}
               {manage && !why && !reg.closed_on && <Link to="/org/entities/$id" params={{ id: e.id }} search={{ as_of: e.as_of, known_at: e.known_at ?? undefined, wp: w.id, reissue: reg.id }} className="link" aria-label={t("entityReissue.actionOf", { brn: reg.brn?.display ?? "" })}>{t("entityReissue.action")}</Link>}
@@ -114,7 +110,7 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
       label: t("workplace.filing.entityBasis"),
       value: filing?.brn?.display ?? none,
     },
-    row(t("workplace.field.openedOn"), <span className="num">{c?.opened_on ? fmtDate(c.opened_on) : "—"}</span>, { k: "info", field: "openedOn" }, { hint: t("entityRecord.action.cor") }),
+    row(t("workplace.field.openedOn"), <span className="num">{c?.opened_on ? fmtDate(c.opened_on) : "—"}</span>, { k: "info", field: "openedOn" }),
     info("representative", c?.representative_name),
     info("product", c?.main_product),
     info("phone", c?.phone?.display),
@@ -136,7 +132,7 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
     <>
       <Facts rows={rows} />
       {open?.k === "code" && <WorkplaceCodeEdit w={w} onDone={close} />}
-      {open?.k === "info" && <WorkplaceEdit e={e} w={w} field={open.field} clear={open.clear} setup={setup} onClose={close} />}
+      {open?.k === "info" && <WorkplaceEdit e={e} w={w} field={open.field} setup={setup} onClose={close} />}
       {open?.k === "move" && <WorkplaceMoveSheet e={e} w={w} onClose={close} />}
       {open?.k === "status" && <WorkplaceStatusSheet e={e} w={w} onClose={close} />}
       {open?.k === "attach" && <AttachHost entityId={e.id} workplaceId={w.id} onClose={close} />}

@@ -113,7 +113,7 @@ export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }
           {(c?.business_types ?? []).length === 0 && "—"}
         </FactRow>
         <FactRow no={corp ? 8 : 7} label={t("entityRecord.field.issueReason")}>{c?.issue_reason_kind ? label(ISSUE_REASON, c.issue_reason_kind as never) : "—"}</FactRow>
-        <FactRow no={9} label={t("entityRecord.field.liquor")} action={fix(f.liquor)}>{c?.liquor_license_no || <Muted>{t("entityRecord.cert.none")}</Muted>}</FactRow>
+        <FactRow no={9} label={t("entityRecord.field.liquor")} action={fix(f.liquor)}>{c?.liquor_license_no || "—"}</FactRow>
         <FactRow no={10} label={t("entityRecord.field.unitTaxation")} action={fix(f.unitTaxation)}>{c?.unit_taxation == null ? "—" : t(c.unit_taxation ? "entityRecord.cert.unitYes" : "entityRecord.cert.unitNo")}</FactRow>
         <FactRow no={11} label={t("entityRecord.field.email")} action={fix(f.email)}>{c?.e_invoice_email || "—"}</FactRow>
         <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}><span className="num">{c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"}</span> · {c?.tax_office_label || "—"}</FactRow>

@@ -5,9 +5,9 @@ import { koDate, kstDate } from "./flows";
 import { setupCompany } from "./setup-flows";
 import { openAsOf } from "./dates";
 
-test("failed chart reads are unknown, with one retry and explained inert actions", { tag: ["@org", "@regression", "@negative"] }, async ({ browser }) => {
-  const page = await openTenant(browser, "org-chart-read-failure", "조직읽기확인");
-  await setupCompany(page, "조직읽기확인", "본사");
+for (const empty of [false, true]) test(`failed chart reads recover to ${empty ? "the first entity registration" : "the chart"}, with one retry and explained inert actions`, { tag: ["@org", "@regression", "@negative"] }, async ({ browser }) => {
+  const page = await openTenant(browser, empty ? "org-empty-read-failure" : "org-chart-read-failure", "조직읽기확인");
+  if (!empty) await setupCompany(page, "조직읽기확인", "본사");
   await page.setViewportSize({ width: 390, height: 844 });
   const reference = "org-chart-read-reference";
   const reads = ["/api/v1/org-structure", "/api/v1/org-structure/change-dates", "/api/v1/legal-entities"];
@@ -54,6 +54,12 @@ test("failed chart reads are unknown, with one retry and explained inert actions
     await page.unrouteAll({ behavior: "wait" });
     await retry.click();
     await expect(main.getByRole("alert")).toHaveCount(0);
+    if (empty) {
+      await expect(main.getByRole("heading", { name: "첫 법인을 등록합니다", exact: true })).toBeVisible();
+      await main.getByRole("link", { name: "법인 등록", exact: true }).click();
+      await expect(page).toHaveURL(/\/org\/entities\/new/);
+      return;
+    }
     await expect(main.getByRole("tree", { name: /조직도$/ })).toBeVisible();
     const compare = main.getByRole("button", { name: "기준일 비교", exact: true });
     await expect(compare).toBeEnabled();

@@ -139,7 +139,7 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.selection.delete": "Delete",
   "structure.selection.inList": "Show in the list",
   "structure.selection.clear": "Clear the choice",
-  "structure.first.title": "No legal entities registered",
+  "structure.first.title": "Register your first legal entity",
   "structure.first.oneBody": "Register the values shown on the business registration certificate.",
   "structure.first.addEntity": "Register legal entity",
   "structure.jump.people": "People",

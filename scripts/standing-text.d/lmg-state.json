@@ -14,7 +14,7 @@
     "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 23,
     "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 22,
     "apps/web/src/features/entity/ui/entity-routes.tsx#EntitiesScreen": 118,
-    "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 261,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 260,
     "apps/web/src/features/entity/ui/entity-routes.tsx#NewEntityScreen": 99,
     "apps/web/src/features/identifiers/ui/identifiers-page.tsx#IdentifiersPage": 52,
     "apps/web/src/features/import/ui/import-page.tsx#ImportPage": 130,

@@ -39,7 +39,7 @@
 "apps/web/src/features/entity/ui/record-revise-sheet.tsx": {"dsClass":3},
 "apps/web/src/features/entity/ui/record-vat-card.tsx": {"dsClass":1},
 "apps/web/src/features/entity/ui/record-workplaces-card.tsx": {"dsClass":3},
-"apps/web/src/features/entity/ui/record.module.css": {"restyle":106,"literal":11},
+"apps/web/src/features/entity/ui/record.module.css": {"restyle":103,"literal":11},
 "apps/web/src/features/entity/ui/unattached-workplaces.tsx": {"dsClass":3},
 "apps/web/src/features/entity/ui/workplace-actions.tsx": {"dsClass":2},
 "apps/web/src/features/entity/ui/workplace-edit.tsx": {"dsClass":2},

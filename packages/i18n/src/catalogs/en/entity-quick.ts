@@ -7,7 +7,7 @@ export const enEntityQuick = {
   "entityQuick.paste": "Paste a list of entities",
   "entityQuick.import": "Import an org sheet",
   "entityQuick.consequence": "Saving puts {name} on the org chart at once, marked “no certificate”. You can undo it during setup.",
-  "entityQuick.hold.basics": "Choose the business type and enter the name and representative to save.",
+  "entityQuick.hold.basics": "Select the business type and enter its name and representative to register.",
   "entityQuick.hold.corp": "The server saves a corporation only with its corporate registration number and head office. Continue with “Type the whole certificate”.",
   "entityQuick.create": "Register entity",
   "entityQuick.createAndWorkplace": "Register and add its first workplace",

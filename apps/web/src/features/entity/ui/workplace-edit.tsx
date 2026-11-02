@@ -99,7 +99,6 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
           <DateField label={t("entity.edit.from")} required value={from} onChange={setFrom} today={today}  />
           <ChoiceField label={t("entity.edit.reason")} required options={REASONS.map((r) => ({ value: r, label: t(`workplace.reason.${r}`) }))} value={reason} onChange={setReason} />
         </div>
-        {e.biz_kind === "CORPORATION" && <p className="muted">{t("workplace.edit.withholdingNote")}</p>}
         {!(contact || insured) && <p className="muted">{t("entity.edit.nothing")}</p>}
         {openedFixed && reason !== "ENTRY_CORRECTION" && <p className="notice">{t("entityOps.info.openedIsCorrection")}</p>}
         <PathNote path={props.setup ? "setup" : openedFixed ? "correction" : "revision"} />

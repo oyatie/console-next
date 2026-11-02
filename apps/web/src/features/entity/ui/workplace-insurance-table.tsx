@@ -52,7 +52,7 @@ function InsuranceTable({ e, w, act }: { e: LegalEntity; w: Workplace; act: Reac
  * A workplace's social insurance relations with their one edit (record-actions §3): the same block on the legal entity page's panel and the
  * chart's side panel, its sheet editing only the insurance relations as their own dated revision.
  */
-export function WorkplaceInsurance({ e, w, onHistory }: { e: LegalEntity; w: Workplace; onHistory: () => void }) {
+export function WorkplaceInsurance({ e, w }: { e: LegalEntity; w: Workplace }) {
   const [open, setOpen] = useState(false);
   const setup = useQuery({ ...checklistRef, retry: false }).data?.phase === "SETUP";
   // A historical view (as-of) of the legal entity page draws no verbs, like the record's own fact rows.
@@ -61,7 +61,7 @@ export function WorkplaceInsurance({ e, w, onHistory }: { e: LegalEntity; w: Wor
   const field = t("workplace.field.insurance");
   return (
     <>
-      <InsuranceTable e={e} w={w} act={manage && <RowActions field={field} onEdit={() => setOpen(true)} why={w.closed_on ? t("workplace.closed.noEdit") : undefined} path={setup ? "setup" : "revision"} history={onHistory} />} />
+      <InsuranceTable e={e} w={w} act={manage && <RowActions field={field} onEdit={() => setOpen(true)} why={w.closed_on ? t("workplace.closed.noEdit") : undefined} path={setup ? "setup" : "revision"} />} />
       {open && <WorkplaceEdit e={e} w={w} field="insurance" setup={setup} onClose={() => setOpen(false)} />}
     </>
   );
