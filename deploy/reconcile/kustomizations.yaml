@@ -80,6 +80,12 @@ spec:
   dependsOn:
     - name: console-secrets
     - name: console-objects
+  healthCheckExprs:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      failed: 'false'
+      inProgress: "!has(status.conditions) || !status.conditions.exists(condition, condition.type == 'Ready' && condition.status == 'True')"
+      current: "has(status.conditions) && status.conditions.exists(condition, condition.type == 'Ready' && condition.status == 'True')"
   sourceRef:
     kind: OCIRepository
     name: console-deploy

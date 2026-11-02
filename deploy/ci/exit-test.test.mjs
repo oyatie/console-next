@@ -120,12 +120,21 @@ test('diagnostics include healthy CNPG controller logs and namespaced Job creati
 const args = process.argv.slice(2);
 const namespaces = ['console','cnpg-system','flux-system'];
 if (args.includes('current-context')) console.log('kind-platform-fixture');
-else if (args[0] === 'logs') console.log('operator: jobs.batch console-db-1-initdb is forbidden controller-secret-value');
-else if (args[1] === 'pods') console.log(JSON.stringify({items:[{
-  metadata:{name:'cnpg-controller-manager-fixture',namespace:'cnpg-system'},
-  spec:{containers:[{name:'manager'}]},
-  status:{phase:'Running',containerStatuses:[{name:'manager',ready:true,restartCount:0}]},
-}]}));
+else if (args[0] === 'logs') console.log(args.includes('console-migrate-fixture')
+  ? 'migration database is reachable waited_seconds=24'
+  : 'operator: jobs.batch console-db-1-initdb is forbidden controller-secret-value');
+else if (args[1] === 'pods') console.log(JSON.stringify({items:[
+  {
+    metadata:{name:'cnpg-controller-manager-fixture',namespace:'cnpg-system'},
+    spec:{containers:[{name:'manager'}]},
+    status:{phase:'Running',containerStatuses:[{name:'manager',ready:true,restartCount:0}]},
+  },
+  {
+    metadata:{name:'console-migrate-fixture',namespace:'console',labels:{app:'console-migrate'}},
+    spec:{containers:[{name:'console'}]},
+    status:{phase:'Succeeded',containerStatuses:[{name:'console',ready:false,restartCount:0,state:{terminated:{exitCode:0,reason:'Completed'}}}]},
+  },
+]}));
 else if (args[1] === 'secrets') console.log(JSON.stringify({items:[{data:{password:Buffer.from('controller-secret-value').toString('base64')}}]}));
 else if (args[1] === 'jobs') console.log(JSON.stringify({items:process.env.EMPTY_JOBS ? [] : namespaces.map(namespace=>({metadata:{name:'initdb-fixture',namespace},status:{failed:1}}))}));
 else if (args[1] === 'events') console.log(JSON.stringify({items:namespaces.map(namespace=>({metadata:{name:'create-fixture',namespace},reason:'FailedCreate',message:'initdb pod refused controller-secret-value',involvedObject:{kind:'Job',name:'initdb-fixture'}}))}));
@@ -135,6 +144,7 @@ else console.log(JSON.stringify({items:[]}));
     const result = run({});
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /operator: jobs.batch console-db-1-initdb is forbidden \[REDACTED\]/);
+    assert.match(result.stdout, /migration database is reachable waited_seconds=24/);
     for (const namespace of ['console', 'cnpg-system', 'flux-system']) {
       assert.match(result.stdout, new RegExp(`"resource":"jobs","namespace":"${namespace}"`));
       assert.match(result.stdout, new RegExp(`"resource":"event","namespace":"${namespace}".*FailedCreate`));
