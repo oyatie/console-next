@@ -13,7 +13,7 @@ export type DatePreset = { label: string; date: string; disabledReason?: string 
 /** A business date (components.html §5): keyboard entry and an accessible calendar, with one shared set of bounds and presets. */
 export function DateField({ label, required, value, onChange, onInvalid, today, min: floor, minFrom, minReason, max, maxReason, disabledDates, basis, note, echo, presets, suggestWeekday = false, error, remedy, inputRef, showErrors = true }: {
   label: string;
-  required: boolean;
+  required: boolean | null;
   /** Whether the typed text was refused (see DateInput): an optional field's form holds its save on it. */
   onInvalid?: (invalid: boolean) => void;
   /** `YYYY-MM-DD`, or "" while empty. */

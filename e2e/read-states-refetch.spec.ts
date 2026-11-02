@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { go, kstDate, registerEmployee, routeReady } from "./flows";
 import { SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows";
+import { openAsOf } from "./dates";
 
 const cases = [
   { path: "/", read: "/api/v1/me/action-inbox", button: /^기다리는 중/ },
@@ -103,10 +104,12 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
         held = true;
         let control: Locator;
         if ("date" in row) {
-          const field = main.getByRole("textbox", { name: /^기준일/ });
+          const orgDate = row.path === "/org" || row.path === "/org/entities" || row.path === "$entity";
+          const field = (orgDate ? await openAsOf(page) : main).getByRole("textbox", { name: /^기준일/ });
           await field.fill(kstDate(-1));
           await field.press("Tab");
-          control = main.getByRole("button", { name: "달력 열기", exact: true }).first();
+          control = orgDate ? main.getByRole("button", { name: /^기준일 · / }) : main.getByRole("button", { name: "달력 열기", exact: true }).first();
+          if (orgDate) await expect(control.locator("time")).toHaveAttribute("datetime", kstDate(-1));
         } else if ("search" in row) {
           const field = main.getByRole("textbox", { name: row.search }).or(main.getByRole("searchbox", { name: row.search })).or(main.getByRole("combobox", { name: row.search }));
           await field.fill("읽기 유지");

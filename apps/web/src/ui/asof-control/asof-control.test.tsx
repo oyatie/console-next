@@ -1,9 +1,13 @@
-import { afterEach, beforeAll, expect, test } from "vitest";
+import type { ComponentProps } from "react";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { AsOfControl } from "./asof-control";
 import { nearestDate } from "./dates";
+
+// Inspect the opened panel's contents here; browser tests cover disclosure and focus.
+vi.mock("../popover/popover-button", () => ({ PopoverButton: ({ trigger, children }: ComponentProps<typeof import("../popover/popover-button").PopoverButton>) => <>{trigger}{children(() => undefined)}</> }));
 
 beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
 afterEach(() => i18n.set("ko"));
@@ -58,16 +62,17 @@ test.each(["ko", "en"] as const)("%s dated bands show one date line and a return
     expect(band).not.toContain('class="prose ');
     expect(html).not.toMatch(/오늘\(|지금 상태|지금 재직/);
   }
-  expect(render({ value: past, knownAt })).toContain(t("asof.knownAt"));
+  expect(render({ value: past, knownAt })).not.toContain(t("asof.knownAt"));
+  expect(render()).not.toContain(t("asof.advanced"));
   expect(render()).not.toContain('data-placement="page"');
   expect(render()).not.toContain(t("asof.readOnly"));
   expect(render({ knownAt: "" })).not.toContain('aria-invalid="true"');
 });
 
-test("invalid knowledge and as-of dates expose the valid-date remedy on the field", () => {
+test("invalid knowledge links show recovery and invalid as-of dates mark the field", () => {
   const known = render({ knownAt: "2026-02-30" });
   expect(known).toContain(t("asof.dateInvalid"));
-  expect(known).toContain('aria-invalid="true"');
+  expect(known).toContain(t("asof.returnToday"));
   const date = render({ value: "2026-02-30" });
   expect(date).toContain(t("asof.dateInvalid"));
   expect(date).toContain('aria-invalid="true"');
@@ -78,7 +83,7 @@ test("knowledge timestamp deep links remain exact and loading ribbon does not cl
   const knownAt = "2026-09-15T12:34:56+09:00";
   const html = render({ knownAt, value: "2026-09-01", loadingDates: true });
   expect(html).toContain(t("asof.known", { date: fmtDate("2026-09-01"), known: fmtDateTime(knownAt) }));
-  expect(html).toContain('value="2026. 09. 15."');
+  expect(html).not.toContain('value="2026. 09. 15."');
   expect(html).toContain('aria-busy="true"');
   expect(html).not.toContain(t("asof.noChanges"));
 });
@@ -88,7 +93,7 @@ test("malformed knowledge timestamps with a valid calendar prefix expose the dat
   for (const knownAt of ["2026-10-09Tgarbage", "2026-10-09T24:00:00Z", "2026-10-09T12:34:56"]) {
     const html = render({ knownAt });
     expect(html).toContain(t("asof.dateInvalid"));
-    expect(html).toContain('aria-invalid="true"');
+    expect(html).not.toContain(t("asof.advanced"));
     expect(html).toContain(t("asof.returnToday"));
   }
 });

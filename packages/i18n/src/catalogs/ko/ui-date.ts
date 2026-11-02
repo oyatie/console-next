@@ -2,7 +2,7 @@
 // bounds line and the weekend suggestion. `{date}`, `{min}`, `{max}` and `{next}` come preformatted.
 export const koUiDate = {
   "uiDate.presets": "{label} 빠른 선택",
-  "uiDate.placeholder": "YYYY. MM. DD.",
+  "uiDate.placeholder": "연도. 월. 일.",
   "uiDate.calendar.open": "달력 열기",
   "uiDate.calendar.label": "날짜 선택",
   "uiDate.calendar.failed": "달력을 불러오지 못했습니다. 날짜를 직접 입력하십시오.",
@@ -15,7 +15,7 @@ export const koUiDate = {
   "uiDate.outOfRange": "선택할 수 있는 범위 밖의 날짜입니다.",
   "uiDate.weekend": "{day}입니다. 첫 근무일은 {next}입니다.",
   "uiDate.weekend.use": "{next}로 변경",
-  "uiDate.bad.format": "날짜 형식은 YYYY. MM. DD.입니다.",
+  "uiDate.bad.format": "연도 4자리, 월 2자리, 일 2자리로 입력하십시오.",
   "uiDate.bad.month": "{month, number}월은 올바르지 않습니다.",
   "uiDate.bad.day": "{month, number}월 {day, number}일은 올바르지 않습니다.",
   "uiDate.preset.today": "오늘",

@@ -5,6 +5,7 @@ import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay, pasteText } from "./helpers/attendance-records";
 import { chooseRadio, go, kstDate, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
+import { openAsOf } from "./dates";
 
 // 근태 S2 (A3-grid, A3-save, A3-receipt, A3-correct, A3-void, A12-conflict) from an empty database: a schedule made
 // through the UI, then a month of records typed, refused, fixed, pasted, saved with 근거, undone, corrected, voided and
@@ -186,8 +187,9 @@ test("월간 근무표: type, refuse, fix, paste, save with 근거, undo, correc
 test("change-date ribbon waits for its current read after attendance setup", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "attdates", "근태변경일주식회사");
   await go(admin, "/org");
-  const ribbon = admin.getByRole("region", { name: "기준일", exact: true }).getByRole("group", { name: "변경일" });
+  const ribbon = (await openAsOf(admin)).getByRole("group", { name: "변경일" });
   await expect(ribbon.locator("[data-change-date]").first()).toBeVisible();
+  await admin.keyboard.press("Escape");
   const hired = kstDate(-60);
   await registerEmployee(admin, { name: "윤하준", number: "D-0001", hired });
   const target = (url: URL) => url.pathname === "/api/v1/org-structure/change-dates";
@@ -196,6 +198,7 @@ test("change-date ribbon waits for its current read after attendance setup", { t
   await admin.route(target, async (route) => { await held; await route.continue(); });
   const navigating = go(admin, "/org");
   try {
+    await openAsOf(admin);
     await expect(ribbon).toHaveAttribute("aria-busy", "true");
     await expect(ribbon.locator("[data-change-date]")).toHaveCount(0);
     release();

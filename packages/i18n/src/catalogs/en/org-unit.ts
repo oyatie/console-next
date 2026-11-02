@@ -63,7 +63,6 @@ export const enOrgUnit: Record<keyof typeof koOrgUnit, string> = {
   "orgUnit.gov.name": "Department name",
   "orgUnit.gov.date": "Effective date",
   "orgUnit.gov.today": "Today",
-  "orgUnit.gov.nextMonth": "First of next month ({date})",
   "orgUnit.gov.reason": "Reason",
   "orgUnit.gov.missing": "Still missing: {list}",
   "orgUnit.gov.missingName": "the department name",

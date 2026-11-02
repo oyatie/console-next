@@ -30,9 +30,11 @@ export function useChartKeys(c: ChartState, g: Gestures & { open: (n: ChartNode)
     const parent = n.parentId ? c.order.find((x) => x.id === n.parentId) : undefined;
     const open = c.expanded.has(n.id) || n.id === c.focus.id;
     const ctrl = e.ctrlKey || e.metaKey;
-    const letter = e.code.startsWith("Key");
+    const letter = e.key !== "/" && e.code.startsWith("Key");
     const key = letter ? e.code.slice(3) : e.key === " " ? "Space" : e.key;
-    const chord = `${ctrl ? "Ctrl " : ""}${e.altKey ? "Alt " : ""}${e.shiftKey && !letter ? "Shift " : ""}${key}`;
+    const vertical = key === "ArrowUp" || key === "ArrowDown";
+    // Only selection, reorder and the context menu depend on modifiers; e.key owns layout-specific punctuation.
+    const chord = `${ctrl && (letter || key === "Space") ? "Ctrl " : ""}${e.altKey ? "Alt " : ""}${e.shiftKey && (key === "F10" || vertical && !e.altKey) ? "Shift " : ""}${key}`;
     const command = CHART_KEYS.find(([, keys]) => (keys as readonly string[]).includes(chord))?.[0];
     const handled = () => e.preventDefault();
     switch (command) {

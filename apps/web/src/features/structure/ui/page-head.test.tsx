@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { ApiError } from "../../../reference/authz/api";
@@ -24,6 +24,7 @@ vi.mock("@tanstack/react-query", async original => ({
   useQuery: (q: Parameters<typeof queryPath>[0]) => queryPath(q) === "/api/v1/org-structure/change-dates" ? state.dates : { isPending: true },
 }));
 vi.mock("../../../reference/settings/ui/use-policy-routed", () => ({ usePolicyRouted: () => false }));
+vi.mock("../../../ui/popover/popover-button", () => ({ PopoverButton: ({ trigger, children }: ComponentProps<typeof import("../../../ui/popover/popover-button").PopoverButton>) => <>{trigger}{children(() => undefined)}</> }));
 vi.mock("./use-structure-commands", () => ({ useStructureCommands: (readOnly: boolean) => ({ readOnly }) }));
 vi.mock("./use-structure", () => ({ useStructure: () => ({
   s: state.s, tree: { error: state.error },
@@ -75,7 +76,7 @@ test("a cold structure failure shares one reason for dependent actions", () => {
 
 test("a cold structure failure leaves the date field and recovery controls outside inert regions", () => {
   const html = render();
-  expect(html).toContain('<section aria-label="기준일"');
+  expect(html).toMatch(/<section[^>]*aria-label="기준일"/);
   expect(html).not.toContain('inert=""');
 });
 
