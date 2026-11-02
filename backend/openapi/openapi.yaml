@@ -2776,7 +2776,7 @@ paths:
       - access
       operationId: getAccessPerson
       summary: Get an account for the access screens
-      description: Requires tenant-wide access view through Cedar. Returns the existing UserSummary including the linked employee, when present. Authorization precedes lookup; missing and foreign-tenant account IDs return the same not-found response.
+      description: Requires tenant-wide access view through Cedar. Returns only access-screen labels, employee reference and account state, without phone or other contact details. Authorization precedes lookup; missing and foreign-tenant account IDs return the same not-found response.
       security:
       - bearerAuth: []
       parameters:
@@ -2791,7 +2791,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserSummary'
+                $ref: '#/components/schemas/AccessPerson'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -32907,6 +32907,64 @@ components:
       - edit
       - approve
       - export
+    AccessPerson:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      description: Access-screen account labels and state. Contact details and unrelated HR facts are excluded.
+      required:
+      - id
+      - display_name
+      - employee_id
+      - employee_name
+      - employee_number
+      - employee_company
+      - employee_org_unit
+      - employee_link_status
+      - roles
+      - branch_ids
+      - is_active
+      - is_tenant_ops
+      - has_passkey
+      - account_status
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+        sign_in_id:
+          type: [string, 'null']
+          description: Account login label used to distinguish unlinked accounts; not a contact address.
+        employee_id:
+          type: [string, 'null']
+          format: uuid
+        employee_name:
+          type: [string, 'null']
+        employee_number:
+          type: [string, 'null']
+        employee_company:
+          type: [string, 'null']
+        employee_org_unit:
+          type: [string, 'null']
+        employee_link_status:
+          type: string
+          enum: [LINKED, UNLINKED]
+        roles:
+          type: array
+          items:
+            type: string
+        branch_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Uuid'
+        is_active:
+          type: boolean
+        is_tenant_ops:
+          type: boolean
+        has_passkey:
+          type: boolean
+        account_status:
+          $ref: '#/components/schemas/AccountStatus'
     AccessRequest:
       type: object
       required:

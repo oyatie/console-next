@@ -54,7 +54,7 @@ export type AccessGrantPreview = { receipt_id: Uuid; phase: "SETUP" | "OPERATING
 // One source for "what can this account do" (governance-22): the server's effective read, shared with My access and the
 // refused state (reference/authz).
 export type { AccessEffective, AccessEffectiveEntry } from "../../reference/authz/api";
-export type Account = components["schemas"]["UserSummary"];
+export type Account = components["schemas"]["AccessPerson"];
 
 // the access paths go through the shared client untyped until they are generated (see the header).
 type Init = { params?: { query?: Record<string, string | number | boolean> }; headers?: Record<string, string>; body?: unknown };
@@ -85,6 +85,7 @@ export const roleVersionsQuery = (roleId: string) => get("/api/v1/access/roles/{
 /** Live grants (not ended or revoked), for one account or one role when asked. */
 export const grantsQuery = (by?: { account_id: string } | { role_id: string }) => list<AccessGrant>(`${BASE}/grants`, by);
 export const effectiveQuery = accountAccessQuery;
+export const accountQuery = (id: string) => get("/api/v1/access/people/{id}", { params: { path: { id } } });
 // shortcut: GET /api/v1/users lacks q; keep the current 200-account page until server search is served.
 // Re-read on every visit, so an account invited a moment ago is grantable at once (governance-20).
 export const accountsQuery = { ...get("/api/v1/users", { params: { query: { limit: 200 } } }), refetchOnMount: "always" as const };

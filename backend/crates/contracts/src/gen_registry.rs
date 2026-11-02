@@ -6874,6 +6874,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../identity/rest/openapi/schemas/AccessLevel.yaml"),
     },
     NamedYaml {
+        name: "AccessPerson",
+        body: include_str!("../../identity/rest/openapi/schemas/AccessPerson.yaml"),
+    },
+    NamedYaml {
         name: "AccessRequest",
         body: include_str!("../../identity/rest/openapi/schemas/AccessRequest.yaml"),
     },
