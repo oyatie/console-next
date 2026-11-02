@@ -19,7 +19,7 @@ spec.loader.exec_module(producer)
 class D10Test(unittest.TestCase):
     def setUp(self):
         self.operation = "POST /api/v1/sample"
-        self.probe = {"operation": self.operation, "principal": "no-grant", "http_status": 403, "control_http_status": 422}
+        self.probe = {"operation": self.operation, "principal": "no-grant", "http_status": 403, "control_http_status": 422, "code": "missing_grant"}
         self.report = {"errors": [], "suites": [{"specs": [{"file": "authz/write-refusals.spec.ts", "title": "refuses", "tests": [
             {"projectName": "parallel", "expectedStatus": "passed", "results": [{"status": "passed", "attachments": []}]}]}]}]}
 
@@ -32,13 +32,35 @@ class D10Test(unittest.TestCase):
     def test_only_an_executed_no_grant_probe_with_a_control_can_pass(self):
         self.assertEqual(self.rows()[0]["status"], "pass")
         for field, value in (("principal", "ops"), ("control_http_status", 403), ("control_http_status", 401),
-                             ("http_status", 401), ("http_status", 422), ("http_status", True)):
+                             ("control_http_status", 302), ("http_status", 401), ("http_status", 422), ("http_status", True)):
             with self.subTest(field=field, value=value):
                 original = copy.deepcopy(self.probe)
                 self.probe[field] = value
                 self.assertNotEqual(self.rows()[0]["status"], "pass")
                 self.probe = original
         self.probe["http_status"] = 201
+        self.assertEqual(self.rows()[0]["status"], "fail")
+
+    def test_live_probe_retains_refusal_code_reference_and_unknown_failures(self):
+        self.probe.update(code="missing_grant", support_ref="synthetic-reference")
+        row = self.rows()[0]
+        self.assertEqual(row["code"], "missing_grant")
+        self.assertEqual(row["support_ref"], "synthetic-reference")
+        self.assertEqual(row["status"], "pass")
+        for code in (None, "", 42):
+            self.probe["code"] = code
+            self.assertEqual(self.rows()[0]["status"], "unknown")
+        self.probe.update(http_status=0, error="request failed")
+        row = self.rows()[0]
+        self.assertEqual(row["status"], "unknown")
+        self.assertEqual(row["error"], "request failed")
+
+    def test_self_service_is_never_counted_as_no_grant_refusal(self):
+        self.probe.update(code="validation", self_service_reason="Own session operation")
+        self.assertEqual(self.rows()[0]["status"], "unknown")
+
+    def test_accepted_write_is_red_even_when_its_ops_control_fails(self):
+        self.probe.update(http_status=201, control_http_status=403)
         self.assertEqual(self.rows()[0]["status"], "fail")
 
     def test_failed_retries_expected_failures_and_report_errors_never_pass(self):

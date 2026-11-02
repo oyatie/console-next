@@ -51,3 +51,23 @@ test("wire names without enrollment in the Cedar action registry stay unresolved
   assert.match(registry, /SampleWrite/);
   assert.doesNotMatch(registry, /LegacyWrite/);
 });
+
+test("dev write probes reuse the E2E backend and feed the existing evidence producer even on failure", () => {
+  const ci = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
+  const job = ci.jobs["d10-probes"];
+  assert.ok(job, "a live D10 probe job is required");
+  assert.match(job.if, /github.event_name == 'push'/);
+  assert.match(job.if, /refs\/heads\/dev/);
+  assert.equal(job["runs-on"], ci.jobs.backend["runs-on"]);
+  assert.ok(job.needs.includes("backend"));
+  const execute = job.steps.find(s => s.run?.includes("authz/write-refusals.spec.ts"));
+  assert.match(execute.run, /--project=parallel/);
+  assert.equal(execute.env.E2E_REPORTER, "line,json");
+  assert.equal(execute.env.CONSOLE_APP_BIN, ".cache/d10-backend/console-app");
+  assert.ok(job.steps.some(s => s.with?.name === "d10-playwright" && s.if?.includes("!cancelled()")));
+  const evidence = ci.jobs["d7-evidence"];
+  assert.ok(evidence.needs.includes("d10-probes"));
+  assert.ok(evidence.steps.some(s => s.with?.name === "d10-playwright" && s.with.path === ".cache/d7-input"));
+  const approved = new Set(Object.values(ci.jobs).filter(j => j !== job).flatMap(j => j.steps ?? []).map(s => s.uses).filter(Boolean));
+  for (const step of job.steps) if (step.uses) assert.ok(approved.has(step.uses), step.uses);
+});

@@ -280,6 +280,13 @@ jobs:
       - name: Release backend for Home probe
         id: d7-build
         run: cargo build --release --locked -p console-app --features e2e-test-support
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        with:
+          name: d10-backend
+          path: backend/target/release/console-app
+          retention-days: 1
+          if-no-files-found: error
       - name: Served 2,000-person Home budget
         working-directory: .
         env:
@@ -346,9 +353,45 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+  d10-probes:
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
+    needs: [backend]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version, cache: npm}
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: npm run build
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {name: d10-backend, path: .cache/d10-backend}
+      - run: chmod +x .cache/d10-backend/console-app
+      - name: Live no-grant write census on Chromium
+        env:
+          E2E_SERVED: "1"
+          E2E_PREBUILT: "1"
+          E2E_REPORTER: line,json
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/d10/playwright.json
+          CONSOLE_APP_BIN: .cache/d10-backend/console-app
+        run: npx playwright test e2e/authz/write-refusals.spec.ts --project=parallel
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: d10-playwright
+          path: .cache/d10/playwright.json
+          include-hidden-files: true
+          if-no-files-found: error
+
   d7-evidence:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
-    needs: [backend, states]
+    needs: [backend, states, d10-probes]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -365,6 +408,8 @@ jobs:
         with: {pattern: states-report-*, merge-multiple: true, path: .cache/d7-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with: {name: d7-playwright, path: .cache/d7-input}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {name: d10-playwright, path: .cache/d7-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with: {name: backend-test-results, path: .cache/d7-nextest}
       - run: python3 scripts/d7-evidence.py .cache/d7-evidence .cache/d7-nextest/junit.xml .cache/d7-input/*.json
