@@ -123,8 +123,7 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
 
   // Several at once: Shift-click, then the selection bar.
   await revealUnit(admin, "설비보전팀");
-  await findPressable(admin, "생산부");
-  await box(admin, "생산부").click({ modifiers: ["Shift"] });
+  await (await findPressable(admin, "생산부")).click({ modifiers: ["Shift"] });
   const bar = admin.getByRole("region", { name: "선택한 조직" });
   await expect(bar).toContainText("2개 선택");
   await expectAccessible(admin, "structure chart (multi-select)");
