@@ -25,7 +25,7 @@ async function fixture(page: Page) {
   });
   const entries = ["/people", "/people/bulk", "/people/notices", "/people/exits", "/people/unplaced"].flatMap(path => screenAccess(path).entries);
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities, { feature: "employee_directory_manage", permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false }] } });
-  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/people"), entries } });
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/people/bulk"), entries } });
   await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { items: [], can_manage: true } });
   await mockRoute(page, "get", "/api/v1/reason-codes", request => ({ status: 200, json: { domain: new URL(request.url()).searchParams.get("domain")!, items: [] } }));
   await mockRoute(page, "get", "/api/v1/appointment-notices", { status: 200, json: { items: [], next_cursor: null } });

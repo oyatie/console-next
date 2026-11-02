@@ -31,12 +31,13 @@ export function screenAccess(path: string, phase: S["AccessEffective"]["phase"] 
   });
   const need = route && readRequirement(route);
   const requirements = need ? "allOf" in need ? need.allOf : [need] : [];
-  const entries: S["AccessEffectiveEntry"][] = requirements.filter(need => need.scopes?.length !== 0).map(need => ({
+  const entries: S["AccessEffectiveEntry"][] = requirements.flatMap(need => "action" in need || need.scopes?.length === 0 ? [] : [{
     domain: need.domain, level: need.level, enforcement: "ENFORCED",
     scope: { kind: need.tenant ? "TENANT" : need.scopes?.[0] ?? "TENANT", include_descendants: true },
     grant_id: id(90), role_id: id(91), role_name_ko: "화면 검증 역할", valid_from: AT, caveats: [],
-  }));
+  }]);
   return { account_id: user.id, is_ops: false, phase, as_of: AT,
+    decisions: Object.fromEntries(requirements.flatMap(need => "action" in need ? [[need.action, true]] : [])),
     entries: entries.filter((entry, i) => entries.findIndex(other => other.domain === entry.domain && other.level === entry.level && other.scope.kind === entry.scope.kind) === i),
   };
 }

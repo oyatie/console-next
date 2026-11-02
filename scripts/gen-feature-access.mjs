@@ -30,6 +30,11 @@ export function operationAccess() {
   return Object.fromEntries(Object.entries(spec.paths).flatMap(([path, methods]) => Object.entries(methods).flatMap(([method, op]) => {
     const auth = op["x-console-authz"];
     if (!auth) return [];
+    if (auth.action) {
+      if (auth.permission || auth.scope !== "tenant" || !Object.hasOwn(spec.components.schemas.AccessEffective.properties.decisions.properties, auth.action))
+        throw new Error(`Invalid Cedar action contract: ${method} ${path}`);
+      return [[`${method.toUpperCase()} ${path}`, { action: auth.action }]];
+    }
     const allowed = scopes[auth.scope];
     const [domain, level] = auth.permission.split(":");
     const permission = featureAccess()[auth.permission] ?? (level ? { domain, level } : null);

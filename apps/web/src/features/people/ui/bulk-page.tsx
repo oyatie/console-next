@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
+import { operationAccess } from "../../../reference/authz/domain/operation-access";
 import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -44,7 +45,7 @@ import { entityName } from "../../../reference/entity/domain/names";
  * set: all or nothing, one batch to cancel). Steps across the head say how far it is.
  */
 export function BulkPage() {
-  return <AccessGate domain="appointment" level="edit" tenant><BulkWorkspace /></AccessGate>;
+  return <AccessGate {...operationAccess["POST /api/v1/employees/lifecycle-events/bulk/preview"]}><BulkWorkspace /></AccessGate>;
 }
 
 function BulkWorkspace() {

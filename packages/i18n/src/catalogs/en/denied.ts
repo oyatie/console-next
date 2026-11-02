@@ -1,5 +1,6 @@
 // English for `denied.` ids (source: ../ko/denied.ts).
 export const enDenied = {
+  "denied.action.bulk_appointment": "Bulk appointments · tenant-wide access",
   "denied.scopeKind.LEGAL_ENTITY": "Entity scope",
   "denied.scopeKind.WORKPLACE": "Workplace scope",
   "denied.scopeKind.DEPARTMENT": "Department scope",

@@ -6,7 +6,6 @@ import { go, koDate, kstDate, registerEmployee } from "./flows";
 import { openHistory } from "./record";
 import { staffedTenant } from "./setup-flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
-import { clearShifts } from "./stability";
 
 type Clicks = ReturnType<typeof clickCounter>;
 const today = koDate(kstDate());
@@ -30,7 +29,6 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
   const names = ["김일번", "이이번", "박삼번"];
   for (const [i, name] of names.entries()) await registerEmployee(admin, { name, number: `J6-000${i + 1}`, unit: i === 2 ? "채용팀" : "인사부" });
 
-  await admin.evaluate(clearShifts);
   await go(admin, "/people");
   const find = admin.getByRole("searchbox", { name: "이름 또는 사번" });
   await find.fill("");
@@ -118,7 +116,6 @@ test("J6 bulk transfer from a paste: lines keyed by employee number, errors firs
   const people = [["김일번", "인사부"], ["이이번", "인사부"], ["박삼번", "인사부"], ["정사번", "채용팀"], ["최오번", "인사부"]] as const;
   for (const [i, [name, unit]] of people.entries()) await registerEmployee(admin, { name, unit, number: `P6-000${i + 1}` });
 
-  await admin.evaluate(clearShifts);
   await go(admin, "/people");
   await c.click(admin.getByRole("link", { name: "붙여넣어 일괄 발령" }));
   const sheet = admin.getByRole("dialog", { name: "일괄 발령" });
@@ -164,7 +161,6 @@ test("J6 bulk transfer from a paste: lines keyed by employee number, errors firs
   await sheet.getByRole("button", { name: "거부된 1명 제외 후 다시 시도" }).click();
   await expect(sheet).toBeHidden();
   await expect(admin.getByRole("status").filter({ hasText: `3명을 ${today}자로 전보했습니다` })).toBeVisible();
-  await go(admin, "/people");
   for (const [name, unit] of [["김일번", "채용팀"], ["이이번", "채용팀"], ["정사번", "인사부"], ["박삼번", "인사부"], ["최오번", "인사부"]] as const)
     await expect(admin.getByRole("row", { name: new RegExp(name) })).toContainText(unit);
 

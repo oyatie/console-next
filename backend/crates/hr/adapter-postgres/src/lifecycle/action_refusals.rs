@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use console_platform_authz::{
     Feature, Principal,
-    access::{NodeKind, NodeRef},
+    access::{NodeKind, NodeRef, cedar::BULK_APPOINTMENT},
     cedar_pbac::{
         actions::lifecycle_event::{self, EventFacts},
         visible::{DecisionFacts, load_facts},
@@ -58,7 +58,7 @@ pub(super) async fn require_bulk_permission(
     let access = load_facts(tx, principal.org_id, *principal.user_id.as_uuid())
         .await
         .map_err(HrError::from_kernel)?;
-    require_tenant_permission_any(&access, principal, &APPOINTMENT_KEYS)
+    require_tenant_permission_any(&access, principal, &[BULK_APPOINTMENT])
 }
 
 impl crate::HrService {
@@ -85,7 +85,7 @@ pub(super) async fn require_tenant_permissions(
         .await
         .map_err(HrError::from_kernel)?;
     for feature in features {
-        require_tenant_permission_any(&access, principal, std::slice::from_ref(feature))?;
+        require_tenant_permission_any(&access, principal, &[feature.as_str()])?;
     }
     Ok(())
 }
@@ -93,14 +93,14 @@ pub(super) async fn require_tenant_permissions(
 fn require_tenant_permission_any(
     access: &DecisionFacts,
     principal: &Principal,
-    features: &[Feature],
+    actions: &[&str],
 ) -> Result<(), HrError> {
     let org = principal.org_id;
     let mut nodes = BTreeSet::new();
-    for feature in features {
+    for action in actions {
         if access
             .authorize(
-                feature.as_str(),
+                action,
                 NodeRef {
                     kind: NodeKind::Tenant,
                     id: *org.as_uuid(),
@@ -112,7 +112,7 @@ fn require_tenant_permission_any(
         {
             return Ok(());
         }
-        nodes.extend(access.permitted_nodes(feature.as_str()).map_err(|e| {
+        nodes.extend(access.permitted_nodes(action).map_err(|e| {
             HrError::internal(format!("lifecycle permission facts unavailable: {e}"))
         })?);
     }

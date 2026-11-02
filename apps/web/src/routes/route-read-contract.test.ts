@@ -39,9 +39,12 @@ for (const [path, contract] of Object.entries(routeReads)) {
   for (const kind of [...scopeKinds, null]) {
     test(`${path} × ${kind ?? "no grant"}: route admits iff required first reads and form door admit`, () => {
       const requirements: Requirement[] = ops.map(op => ({ ...operationAccess, ...pendingPayrollReads })[op]);
-      const held = { is_ops: false, entries: kind ? requirements.map((need, i) => ({ ...need, grant_id: String(i), enforcement: "ENFORCED", scope: { kind } })) : [] } as unknown as AccessEffective;
+      const held = { is_ops: false,
+        decisions: Object.fromEntries(requirements.flatMap(need => "action" in need ? [[need.action, kind === "TENANT"]] : [])),
+        entries: kind ? requirements.flatMap((need, i) => "action" in need ? [] : [{ ...need, grant_id: String(i), enforcement: "ENFORCED", scope: { kind } }]) : [],
+      } as unknown as AccessEffective;
       // Independent evaluator: never call the UI decision to calculate the expected server verdict.
-      const readAdmits = (need: Requirement) => held.entries.some(entry => entry.domain === need.domain &&
+      const readAdmits = (need: Requirement) => "action" in need ? held.decisions?.[need.action] === true : held.entries.some(entry => entry.domain === need.domain &&
         (entry.level === need.level || need.level === "view" && ["edit", "approve", "export"].includes(entry.level)) &&
         (!need.tenant || entry.scope.kind === "TENANT") && (!need.scopes || need.scopes.includes(entry.scope.kind)));
       const need = routes[path]!.options.staticData!.access;
