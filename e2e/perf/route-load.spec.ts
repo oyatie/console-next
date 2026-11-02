@@ -120,13 +120,9 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
     context = undefined;
     const failures: string[] = [];
     let lastNavigation = 0;
-    for (const { path: route } of routeList) {
+    // Visit the unused operator session before its idle cutoff.
+    for (const { path: route } of [...routeList].sort((a, b) => Number(b.path === "/platform") - Number(a.path === "/platform"))) {
       const realm = route === "/platform" ? "vendor" : "tenant";
-      if (realm === "vendor") {
-        const actor = await vendorPage(browser);
-        states.vendor = await actor.context().storageState();
-        await actor.context().close();
-      }
       const url = urls[route] ?? route;
       const samples = { cold: [] as Awaited<ReturnType<typeof measure>>[], warm: [] as Awaited<ReturnType<typeof measure>>[] };
       if (!url.includes("$")) {
@@ -137,6 +133,13 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
             await new Promise(resolve => setTimeout(resolve, Math.max(0, 1050 - (Date.now() - lastNavigation))));
             lastNavigation = Date.now();
             samples[cache].push(await measure(page, url));
+          }
+          if (realm === "tenant" && !samples.cold.at(-1)?.errors.length && !samples.warm.at(-1)?.errors.length) {
+            // Input ends native LCP observation: report real activity only after both samples are captured.
+            const activity = page.waitForResponse(r => r.request().method() === "GET"
+              && new URL(r.url()).pathname === "/api/v1/users/me" && !!r.request().headers()["x-last-interaction"]);
+            await page.keyboard.press("Shift");
+            expect((await activity).status()).toBe(200);
           }
           states[realm] = await context!.storageState();
           await context!.close();
