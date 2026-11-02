@@ -1,18 +1,27 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Render the git snapshot into the directory layout consumed by Flux's dependency graph.
+// Render the git snapshot for the environment's pull consumer.
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import yaml from 'js-yaml';
 import { rolloutProgressDeadlineSeconds } from './rollout-deadline.mjs';
+import { readEnvironment } from './promote.mjs';
 
 const header = '# SPDX-License-Identifier: LicenseRef-Proprietary\n';
 const [environment, image, output] = process.argv.slice(2);
-assert.ok(['exit-test', 'template'].includes(environment), 'PLAT_OVERLAY: select a committed overlay');
+const config = readEnvironment(environment);
 assert.match(image ?? '', /^([^/@]+\/)*[^/:@]+@sha256:[a-f0-9]{64}$/, 'PLAT_IMAGE_DIGEST');
 const directory = resolve(output);
-const config = JSON.parse(readFileSync(`deploy/clusters/${environment}/platform.json`));
+const revision = {revision:process.env.GITHUB_SHA ?? 'local', image, environment};
+if (config.target === 'host') {
+  assert.match(revision.revision, /^(?!0{40}$)[a-f0-9]{40}$/, 'PLAT_REVISION: host artifacts need a full revision');
+  assert.ok(!existsSync(directory) || readdirSync(directory).length === 0,
+    'PLAT_HOST_OUTPUT: host artifacts require an empty output directory');
+  mkdirSync(directory, {recursive:true});
+  writeFileSync(join(directory, 'revision.json'), JSON.stringify(revision, null, 2)+'\n');
+  process.exit(0);
+}
 assert.ok(!Object.hasOwn(config, 'rolloutProgressDeadlineSeconds'),
   'PLAT_ROLLOUT_DEADLINE: configure only rolloutProgressDeadlineMarginSeconds; the deadline is manifest-derived');
 const lock = JSON.parse(readFileSync('deploy/versions.json'));
@@ -103,5 +112,5 @@ for (const name of readdirSync('deploy/base/platform')) {
 mkdirSync(join(directory, 'reconcile'), { recursive: true });
 writeFileSync(join(directory, 'reconcile', 'resources.yaml'), readFileSync('deploy/reconcile/kustomizations.yaml'));
 writeFileSync(join(directory, 'reconcile', 'kustomization.yaml'), header + yaml.dump({apiVersion:'kustomize.config.k8s.io/v1beta1',kind:'Kustomization',resources:['resources.yaml']}));
-writeFileSync(join(directory, 'revision.json'), JSON.stringify({revision:process.env.GITHUB_SHA ?? 'local', image, environment}, null, 2)+'\n');
+writeFileSync(join(directory, 'revision.json'), JSON.stringify(revision, null, 2)+'\n');
 console.log(`Rendered ${docs.length} workload resources for ${environment} to ${directory}`);
