@@ -1,5 +1,6 @@
 // The month grid's pure parts: cell keys, range selection, drafts over a selection, paste by employee number,
 // fill-as-scheduled, and the day ledger's partition. The grid component only draws what these return.
+import type { components } from "@console/api/schema";
 import { parseDraft, type DraftCode } from "./grammar";
 
 type Pos = { r: number; c: number };
@@ -257,10 +258,7 @@ export function readPaste(text: string, numbers: readonly (string | null)[], day
   return { cells, identities: [], matched: matched.size, missing: [...missing], ignoredColumns: [], refusal: null };
 }
 
-type Ledger = {
-  people: number; no_schedule: number; rest: number; no_record: number; missing_out: number; absent: number;
-  outside: number; trip: number; late_or_early: number; normal: number; pending: number;
-};
+type Ledger = components["schemas"]["AttendanceLedger"];
 const PARTS = ["no_schedule", "rest", "no_record", "missing_out", "absent", "outside", "trip", "late_or_early", "normal", "pending"] as const;
 /** The ledger's parts in reading order, and whether they add up to the people in scope (G8: a gap is a bug). */
 export const ledgerParts = (l: Ledger) => ({ parts: PARTS.map((k) => [k, l[k]] as const), adds: PARTS.reduce((n, k) => n + l[k], 0) === l.people });
