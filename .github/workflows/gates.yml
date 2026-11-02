@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+name: gates
+on:
+  workflow_call:
+    inputs:
+      sha: {required: true, type: string}
+    outputs:
+      result:
+        description: All required release gates passed for the candidate
+        value: ${{ jobs.predicate.outputs.result }}
+permissions: {}
+jobs:
+  predicate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      checks: read
+    outputs:
+      result: ${{ steps.predicate.outputs.result }}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false, fetch-depth: 0, ref: '${{ inputs.sha }}'}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version, cache: npm}
+      - name: Released change-set baseline
+        env: {REGISTRY_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 deploy/ci/tools.py flux cosign
+          npm ci --ignore-scripts --no-audit --no-fund
+          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          echo "GATES_BASE=$(node deploy/ci/api-compat.mjs base)" >> "${GITHUB_ENV}"
+      - id: predicate
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env: {CANDIDATE_SHA: '${{ inputs.sha }}'}
+        with:
+          script: |
+            const {emit} = await import(`${process.env.GITHUB_WORKSPACE}/deploy/ci/gates.mjs`);
+            await emit(github, core, process.env.CANDIDATE_SHA, process.env.GATES_BASE,
+              `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`);
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: console-gates-${{ inputs.sha }}
+          path: console-gates.json
+          if-no-files-found: error

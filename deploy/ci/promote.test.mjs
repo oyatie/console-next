@@ -31,7 +31,7 @@ function proof() {
   return {sha, repository, currentRevision:previous, gatesResult:'pass',
     run:{id:42, path:'.github/workflows/platform.yml', event:'push', head_branch:'dev',
       head_repository:{full_name:repository}, head_sha:sha, status:'completed', conclusion:'success'},
-    jobs:['validate', 'build (amd64, ubuntu-24.04)', 'build (arm64, ubuntu-24.04-arm)', 'publish', 'negative-signer / sign', ...exitNames]
+    jobs:['validate', 'build (amd64, ubuntu-24.04)', 'build (arm64, ubuntu-24.04-arm)', 'publish', 'scan', 'negative-signer / sign', ...exitNames]
       .map((name, index) => ({id:index + 1, name, run_id:42, head_sha:sha, status:'completed', conclusion:'success'})),
   };
 }
