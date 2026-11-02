@@ -165,3 +165,27 @@ test("long URL views overflow into more, keep the selection visible and resize w
     expect(await page.evaluate(() => document.scrollingElement!.scrollWidth - innerWidth)).toBe(0);
   }
 });
+
+test("scrolling route tabs reveal the current link on arrival, resize and selection changes", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}tabs-test`);
+  const nav = page.locator('[data-tabs-demo="scroll"]').getByRole("navigation");
+  const current = nav.locator('[aria-current="page"]');
+  const visible = () => current.evaluate(el => {
+    const tab = el.getBoundingClientRect(), bar = el.parentElement!.getBoundingClientRect();
+    return tab.left >= bar.left && tab.right <= bar.right + 1;
+  });
+  await element.poll(visible).toBe(true);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await element.poll(visible).toBe(true);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  // Route libraries update aria-current inside the mounted nav without rerendering its parent.
+  await nav.evaluate(el => {
+    el.querySelector('[aria-current]')!.removeAttribute("aria-current");
+    el.querySelector("a")!.setAttribute("aria-current", "page");
+  });
+  await element.poll(visible).toBe(true);
+  await page.reload();
+  await element.poll(visible).toBe(true);
+});

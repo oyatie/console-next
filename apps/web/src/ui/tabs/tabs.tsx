@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Tab, TabList, TabPanel, Tabs as AriaTabs } from "react-aria-components";
 import { fmtNumber } from "@console/i18n/format";
 import s from "./tabs.module.css";
@@ -48,7 +48,24 @@ export function Tabs({ label, items, selected, onSelect, renderList, children }:
  * `tabClass` and marks `aria-current="page"` when current, plus `TabCount` for a count. Not a tablist: each is a page.
  */
 export function TabNav({ label, children, overflow }: { label: string; children: ReactNode; overflow?: "scroll" }) {
-  return <nav aria-label={label} className={`${s.list} ${overflow === "scroll" ? s.scroll : ""}`}>{children}</nav>;
+  const nav = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (overflow !== "scroll") return;
+    const bar = nav.current!;
+    const reveal = () => {
+      const current = bar.querySelector<HTMLElement>('[aria-current="page"], [aria-current="true"]');
+      if (!current) return;
+      const tab = current.getBoundingClientRect(), viewport = bar.getBoundingClientRect();
+      if (tab.left < viewport.left) bar.scrollLeft += tab.left - viewport.left;
+      else if (tab.right > viewport.right) bar.scrollLeft += tab.right - viewport.right;
+    };
+    const observer = new MutationObserver(reveal);
+    observer.observe(bar, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-current"] });
+    const resize = new ResizeObserver(reveal);
+    resize.observe(bar);
+    return () => { observer.disconnect(); resize.disconnect(); };
+  }, [overflow]);
+  return <nav ref={nav} aria-label={label} className={`${s.list} ${overflow === "scroll" ? s.scroll : ""}`}>{children}</nav>;
 }
 
 /** Keep unknown counts' layout slots; show zero once the read settles. */

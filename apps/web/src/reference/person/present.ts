@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 
 export type PersonIdentity = {
   id: string;
@@ -12,6 +13,7 @@ export type PersonIdentity = {
   company?: string | null;
   org_unit?: string | null;
   sign_in_id?: string | null;
+  created_at?: string | null;
 };
 
 /** A person name stays visible even for an account whose name has not been set. */
@@ -26,18 +28,20 @@ function detailOf(p: PersonIdentity) {
   if (placement) return placement;
   const signIn = p.sign_in_id?.trim();
   const at = signIn?.lastIndexOf("@") ?? -1;
-  if (!signIn || at < 1 || at === signIn.length - 1) return p.id;
+  if (!signIn || at < 1 || at === signIn.length - 1) return t("people.label.identityMissing");
   const login = signIn.slice(0, at);
   // Keep a useful suffix without revealing short sign-in IDs in full.
   return `${login[0]}••••${login.length > 5 ? login.slice(-4) : ""}${signIn.slice(at)}`;
 }
 
-/** One label across account and employee surfaces; a collision retains the stable id, never a private identifier. */
+/** One label across account and employee surfaces; missing human identifiers never fall back to account UUIDs. */
 export function personLabel(person: PersonIdentity, peers: readonly PersonIdentity[] = []) {
   const rawName = nameOf(person);
   const name = personName(rawName, t("people.label.unnamed"));
   const others = peers.filter((p) => personId(p) !== personId(person) && nameOf(p) === rawName);
-  const detail = detailOf(person);
-  const distinct = others.some((p) => detailOf(p) === detail) ? `${detail} · ${person.id}` : detail;
-  return { name, detail: distinct, text: `${name} · ${distinct}`, sameName: !!rawName && others.length > 0 };
+  const sameName = !!rawName && others.length > 0;
+  const identity = detailOf(person);
+  const detail = sameName && person.display_name != null && person.created_at && others.some(p => detailOf(p) === identity)
+    ? t("people.label.accountCreated", { at: fmtDateTime(person.created_at) }) : identity;
+  return { name, detail, text: `${name} · ${detail}`, sameName };
 }
