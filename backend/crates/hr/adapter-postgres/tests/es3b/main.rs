@@ -78,6 +78,8 @@ async fn fixture(pool: PgPool, live: bool) -> Fixture {
         seed(&pool, org, sql).await;
     }
     lifecycle_grant::grant(&pool, org, user).await;
+    sqlx::query("INSERT INTO access_role_lines(org_id,role_id,version,domain,levels) SELECT org_id,role_id,1,'hr_basic',ARRAY['view','edit'] FROM access_grants WHERE org_id=$1 AND account_id=$2")
+        .bind(org).bind(user).execute(&pool).await.unwrap();
     let employee: Uuid = sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, position, source_filename, source_sheet, \
          source_row, source_key, hire_date) \

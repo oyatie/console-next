@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Only usable, payload-bound exceptions are offered by the renewal picker.
 use super::fixed_term::{FixedTermView, fixed_term_view};
-use crate::authz::authorize_hr_org_wide;
 use crate::clock::today_kst;
 use crate::{HrError, HrService};
 use console_hr_domain::lifecycle::fixed_term_exemption::FixedTermExemption;
@@ -76,19 +75,25 @@ impl HrService {
         employee_id: Uuid,
         contract_end_date: Option<String>,
     ) -> Result<FixedTermView, HrError> {
-        authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryRead)?;
-        if contract_end_date.is_some() {
-            authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
-        }
-        let end = contract_end_date
-            .as_deref()
-            .map(parse_yyyy_mm_dd)
-            .transpose()?
-            .map(|d| d.to_string());
         let org = principal.org_id;
         let today = today_kst();
         with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                let features: &[Feature] = if contract_end_date.is_some() {
+                    &[
+                        Feature::EmployeeDirectoryRead,
+                        Feature::EmployeeDirectoryManage,
+                    ]
+                } else {
+                    &[Feature::EmployeeDirectoryRead]
+                };
+                super::action_refusals::require_tenant_permissions(tx, &principal, features)
+                    .await?;
+                let end = contract_end_date
+                    .as_deref()
+                    .map(parse_yyyy_mm_dd)
+                    .transpose()?
+                    .map(|d| d.to_string());
                 let mut view = fixed_term_view(tx, *org.as_uuid(), employee_id, today).await?;
                 view.available_exceptions = super::fixed_term_options::available(
                     tx.as_mut(),

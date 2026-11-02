@@ -3,7 +3,8 @@
 use std::collections::BTreeMap;
 
 use console_platform_authz::{
-    Principal,
+    Feature, Principal,
+    access::{NodeKind, NodeRef},
     cedar_pbac::{
         actions::lifecycle_event::{self, EventFacts},
         visible::{DecisionFacts, load_facts},
@@ -48,6 +49,35 @@ pub(super) fn permission_denied() -> HrError {
     HrError::from_kernel(console_kernel_core::KernelError::forbidden(
         "lifecycle event permission is required in this scope",
     ))
+}
+
+/// Tenant-wide preflights use one live Cedar snapshot before reading or validating payloads.
+pub(super) async fn require_tenant_permissions(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: &Principal,
+    features: &[Feature],
+) -> Result<(), HrError> {
+    let org = principal.org_id;
+    let access = load_facts(tx, org, *principal.user_id.as_uuid())
+        .await
+        .map_err(HrError::from_kernel)?;
+    for feature in features {
+        if !access
+            .authorize(
+                feature.as_str(),
+                NodeRef {
+                    kind: NodeKind::Tenant,
+                    id: *org.as_uuid(),
+                },
+            )
+            .map_err(|e| {
+                HrError::internal(format!("lifecycle permission facts unavailable: {e}"))
+            })?
+        {
+            return Err(permission_denied());
+        }
+    }
+    Ok(())
 }
 
 async fn load_permission(

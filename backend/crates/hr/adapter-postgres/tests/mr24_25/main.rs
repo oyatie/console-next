@@ -51,6 +51,8 @@ pub async fn fixture(pool: PgPool) -> Fixture {
         .await
         .unwrap();
     lifecycle_grant::grant(&pool, *org.as_uuid(), *user.as_uuid()).await;
+    sqlx::query("INSERT INTO access_role_lines(org_id,role_id,version,domain,levels) SELECT org_id,role_id,1,'hr_basic',ARRAY['view','edit'] FROM access_grants WHERE org_id=$1 AND account_id=$2")
+        .bind(org.as_uuid()).bind(user.as_uuid()).execute(&pool).await.unwrap();
     let options = pool.connect_options().as_ref().clone();
     let rt = PgPoolOptions::new()
         .max_connections(2)

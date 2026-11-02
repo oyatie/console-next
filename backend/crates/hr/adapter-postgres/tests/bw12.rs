@@ -7,6 +7,9 @@
 
 #[path = "support/go_live.rs"]
 mod go_live;
+#[allow(dead_code)]
+#[path = "support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 use std::collections::BTreeSet;
 
 use console_hr_adapter_postgres::HrService;
@@ -87,12 +90,10 @@ async fn fixture(pool: PgPool, window: Option<(&str, &str)>) -> Fixture {
         .connect_with(options)
         .await
         .unwrap();
-    let principal = Principal::new(
-        user,
-        org,
-        BTreeSet::from([Role::SuperAdmin]),
-        BranchScope::All,
-    );
+    let roles = BTreeSet::from([Role::SuperAdmin]);
+    let principal = Principal::new(user, org, roles, BranchScope::All);
+    lifecycle_grant::grant_hr_basic(&pool, *org.as_uuid(), *user.as_uuid(), &["view", "edit"])
+        .await;
     Fixture {
         hr: HrService::new(rt),
         owner: pool,
@@ -206,6 +207,9 @@ async fn a_renewal_past_two_years_needs_an_exception_with_a_statutory_ground(poo
     assert!(choices[0].basis.contains("제4조제1항제4호"));
     let mut reader = f.principal.clone();
     reader.roles = BTreeSet::from([Role::Executive]);
+    sqlx::query("UPDATE access_grants SET valid_to=now()-interval '1 second' WHERE org_id=$1 AND account_id=$2")
+        .bind(f.org).bind(f.user).execute(&f.owner).await.unwrap();
+    lifecycle_grant::grant_hr_basic(&f.owner, f.org, f.user, &["view"]).await;
     assert!(
         f.hr.employee_fixed_term(reader.clone(), f.employee)
             .await
@@ -219,6 +223,7 @@ async fn a_renewal_past_two_years_needs_an_exception_with_a_statutory_ground(poo
             .as_u16(),
         403
     );
+    lifecycle_grant::grant_hr_basic(&f.owner, f.org, f.user, &["view", "edit"]).await;
     f.renew("2026-12-31", Some(older)).await.unwrap();
     assert!(
         f.hr.employee_fixed_term_for_renewal(
