@@ -155,7 +155,7 @@ test("ci-ok fails on any failed, cancelled or skipped required job", () => {
   const job = workflow.jobs["ci-ok"];
   assert.ok(job, "required ci-ok aggregate is missing");
   assert.equal(job.if, "${{ always() }}");
-  assert.deepEqual([...job.needs].sort(), ["affected", "backend", "commits", "states", "states-plan", "states-timings", "supply-chain", "web"]);
+  assert.deepEqual([...job.needs].sort(), ["affected", "backend", "commits", "home", "states", "states-plan", "states-timings", "supply-chain", "web"]);
   const command = job.steps.map((s) => s.run ?? "").join("\n");
   for (const required of job.needs) for (const status of ["success", "failure", "cancelled", "skipped"]) {
     const run = command.replace(/\$\{\{ needs(?:\.([\w-]+)|\['([\w-]+)'\])\.result \}\}/g, (_, dotted, quoted) => (dotted ?? quoted) === required ? status : "success");

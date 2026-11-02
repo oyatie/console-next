@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import yaml from "js-yaml";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const source = readFileSync(path.join(root, "scripts/backend-dev.mjs"), "utf8");
@@ -35,12 +36,42 @@ test("the launcher and Playwright resolve the backend from the public checkout",
   assert.doesNotMatch(readFileSync(path.join(root, "playwright.config.ts"), "utf8"), /backend-mvp/);
 });
 
-test("backend CI runs the served Home scale probe and retains its measurements", () => {
-  const ci = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
-  const backend = ci.split("\n  backend:\n")[1].split("\n  supply-chain:\n")[0];
-  assert.match(backend, /cargo build .*--release.*e2e-test-support/);
-  assert.match(backend, /E2E_SERVED: "1"/);
-  assert.match(backend, /home-inbox\.spec\.ts/);
-  assert.match(backend, /actions\/upload-artifact@/);
-  assert.match(backend, /test-results/);
+test("Home CI always runs the served scale probe from the candidate's release artifact", () => {
+  const { jobs } = yaml.load(readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8"));
+  const home = jobs.home;
+  assert.ok(home, "served Home must have its own required job");
+  assert.equal(home.if, undefined);
+  assert.deepEqual(home.needs, ["backend"]);
+  assert.equal(home["runs-on"], jobs.backend["runs-on"]);
+  assert.deepEqual(home.permissions, { contents: "read" });
+  assert.ok(home.steps[0].uses.startsWith("step-security/harden-runner@"));
+  const build = jobs.backend.steps.find(s => s.name === "Release backend for Home probe");
+  assert.match(build.run, /cargo build .*--release.*e2e-test-support/);
+  const upload = jobs.backend.steps.find(s => s.with?.name === "d10-backend");
+  assert.equal(upload.if, undefined, "candidate binary must be available on PRs and merge groups too");
+  const download = home.steps.find(s => s.uses?.startsWith("actions/download-artifact@"));
+  assert.equal(download.with.name, upload.with.name);
+  assert.equal(download.with["run-id"], undefined, "use this run's candidate, never another revision");
+  const probe = home.steps.find(s => s.name === "Served 2,000-person Home budget");
+  assert.equal(probe.if, undefined);
+  assert.match(probe.run, /home-inbox\.spec\.ts.*--project=parallel/);
+  assert.equal(probe.env.E2E_SERVED, "1");
+  assert.equal(probe.env.E2E_PREBUILT, "1");
+  assert.equal(probe.env.CONSOLE_APP_BIN, `${download.with.path}/console-app`);
+  assert.ok(home.steps.some(s => s.run === `chmod +x ${probe.env.CONSOLE_APP_BIN}`));
+  assert.ok(home.steps.some(s => s.run?.includes("npm run build")));
+  const report = home.steps.find(s => s.with?.name === "home-inbox-performance");
+  assert.equal(report.if, "${{ always() }}");
+  assert.equal(report.with.path, "test-results");
+  assert.equal(report.with["if-no-files-found"], "error");
+  assert.ok(jobs["ci-ok"].needs.includes("home"));
+  assert.ok(jobs["ci-ok"].steps[0].run.includes('test "${{ needs.home.result }}" = success'));
+  assert.ok(jobs["d7-evidence"].needs.includes("home"));
+  for (const name of ["Firefox for D7 solo journey", "Solo journey on Chromium and Firefox"]) {
+    const step = home.steps.find(s => s.name === name);
+    assert.equal(step.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}");
+  }
+  assert.equal(home.steps.find(s => s.name === "Solo journey on Chromium and Firefox").env.CONSOLE_APP_BIN, probe.env.CONSOLE_APP_BIN);
+  assert.ok(home.steps.some(s => s.with?.name === "d7-playwright"));
+  assert.ok(!jobs.backend.steps.some(s => s.run?.includes("playwright test")));
 });
