@@ -11,6 +11,6 @@ export function IssueGroups({ groups, selected, onSelect }: { groups: IssueGroup
     selected={selected} onSelect={id => onSelect(id as Mark)} columns={[
       { header: t("attendance.col.kind"), card: "title", rowHeader: true, cell: g => t(`attendanceRecords.mark.${g.kind}`) },
       { header: t("attendanceOverview.issues.count"), card: "fact", cell: g => t("attendance.count", { count: g.count }) },
-      { header: t("attendanceOverview.issues.oldest"), card: "fact", cell: g => dateText(g.oldest_date) },
+      { header: t("attendanceOverview.issues.oldest"), card: "fact", cell: g => dateText(g.earliest_date) },
     ]} /></Card>;
 }

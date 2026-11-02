@@ -31,7 +31,7 @@ for (const width of [1440, 390]) {
       const url = new URL(route.request().url());
       reads.push(url);
       if (url.searchParams.has("mark")) return route.fulfill({ status: 400, json: failure("invalid_query") });
-      return route.fulfill({ json: { ...attendanceDayBoard, ledger: { ...attendanceDayBoard.ledger, people: 39, late_or_early: 37, normal: 1 }, issue_groups: [{ kind: "LATE", count: 37, oldest_date: "2026-10-04" }, { kind: "NO_RECORD", count: 0, oldest_date: "2026-10-01" }], groups: attendanceDayBoard.groups.map(group => ({ ...group, people: 39, hidden: 37 })) } });
+      return route.fulfill({ json: { ...attendanceDayBoard, ledger: { ...attendanceDayBoard.ledger, people: 39, late_or_early: 37, normal: 1 }, issue_groups: [{ kind: "LATE", count: 37, earliest_date: "2026-10-04" }, { kind: "NO_RECORD", count: 0, earliest_date: "2026-10-01" }], groups: attendanceDayBoard.groups.map(group => ({ ...group, people: 39, hidden: 37 })) } });
     });
     await page.goto(`${screen.path}&wp=${id(4)}`);
     const groups = page.getByRole("grid", { name: "확인 필요 유형", exact: true });

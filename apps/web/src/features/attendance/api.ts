@@ -70,12 +70,12 @@ export const refusalCode = (e: unknown) => (e instanceof ApiError ? e.code : und
 export const failedWith = (e: unknown, status: number) => e instanceof ApiError && e.status === status;
 
 // --- records (S2): the day board, the month grid, one person's month, and the save path.
-// Pending response fields stay optional until interval judgments and scoped aggregates are served.
+// Pending interval judgments stay optional until served.
 type DayInterval = { start: number; end: number; minutes: number; category: "WORK" | "BREAK" | "WAIT" | "OVERTIME" | "NIGHT" | "HOLIDAY" | "NOT_WORK" | "DISPUTED"; recognised: boolean; reason: string };
 export type Day = S["AttendanceDay"] & { intervals?: DayInterval[] };
 export type BoardRow = S["AttendanceBoardRow"];
-export type IssueGroup = { kind: Mark; count: number; oldest_date: string };
-export type DayBoard = S["AttendanceDayBoard"] & { issue_groups?: IssueGroup[] };
+export type DayBoard = S["AttendanceDayBoard"];
+export type IssueGroup = NonNullable<DayBoard["issue_groups"]>[number];
 export type Entry = S["AttendanceEntry"];
 export type Mark = S["AttendanceMark"];
 export type GridRow = S["AttendanceGridRow"];
