@@ -117,7 +117,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
               const account = who.accounts.find(a => a.id === g.account_id);
               return <li key={g.account_id}>
                 <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, who.accounts)} peers={who.accounts} linked={false} wrap /></Link>
-                {account && <PersonRef account={account} />}
+                {account && <PersonRef account={account} wrap />}
               </li>;
             })}
           </ul>}</QueryState> : <EmptyState title={t("access.role.effect.none")} reason={null} />}

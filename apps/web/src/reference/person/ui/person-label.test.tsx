@@ -7,6 +7,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { PersonLabel, PersonRecordLink, PersonRef } from "./person-label";
 import { personOption } from "./person-option";
+import s from "./person-label.module.css";
 
 vi.mock("@tanstack/react-router", () => ({ Link: ({ params, children, ...props }: { params: { id: string }; children: ReactNode }) => <a {...props} href={`/people/${params.id}`}>{children}</a> }));
 beforeAll(() => loadCatalog("ko"));
@@ -77,4 +78,10 @@ test.each(["ko", "en"] as const)("colliding account options share the creation-t
     expect(html).not.toContain(account.id);
   }
   await loadCatalog("ko");
+});
+
+test("person references wrap only when the caller opts in", () => {
+  const account = { ...person, employee_name: "Employee" };
+  expect(renderToStaticMarkup(<PersonRef account={account} />)).not.toContain(s.wrap);
+  expect(renderToStaticMarkup(<PersonRef account={account} wrap />)).toContain(s.wrap);
 });

@@ -120,7 +120,7 @@ export function ServerPicker(p: {
         <Popover className={`popover ${css.pop}`}>
           <div className={css.group}>
             <span aria-hidden="true">{p.group}</span>
-            <span role="status">{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.count", { count: p.total ?? p.options.length })}</span>
+            <span role="status">{p.loading ? t("uiServerPicker.loading") : p.error ?? t("uiServerPicker.count", { count: p.total ?? p.options.length })}</span>
           </div>
           <ListBox className="listbox" shouldFocusOnHover={false} renderEmptyState={() => <div className={css.empty}>{p.loading ? t("uiServerPicker.loading") : p.error ?? t("uiServerPicker.none")}</div>}>
             {(o: PickerOption) => (

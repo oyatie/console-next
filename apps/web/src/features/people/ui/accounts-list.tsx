@@ -165,7 +165,7 @@ const columns = (peers: readonly Person[], open?: string): LongColumn<Person>[] 
   {
     id: "employee",
     header: t("accounts.col.employee"),
-    cell: (p) => (p.employee_id ? <PersonRef account={p} /> : <Muted>{t("accounts.unlinked")}</Muted>),
+    cell: (p) => (p.employee_id ? <PersonRef account={p} details={false} /> : <Muted>{t("accounts.unlinked")}</Muted>),
     width: "2fr",
   },
   {

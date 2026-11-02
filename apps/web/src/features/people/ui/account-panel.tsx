@@ -167,7 +167,7 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
   if (u.employee_id)
     return (
       <div className="row">
-        <PersonRef account={u} />
+        <PersonRef account={u} wrap />
         {canChange && <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate({ employeeId: null })}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.unlink") })}</Button>}
         <PasskeyError error={link.error} />
       </div>

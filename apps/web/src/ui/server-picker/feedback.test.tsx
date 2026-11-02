@@ -59,4 +59,5 @@ for (const width of [1440, 390]) test(`only a page read reserves one feedback li
   await search.press("ArrowDown");
   await expectElement(page.getByRole("option", { name: t("common.read.failedReason"), exact: true })).toBeVisible();
   await expectElement(page.getByRole("option", { name: t("uiServerPicker.none"), exact: true })).toHaveCount(0);
+  await expectElement(page.getByRole("status")).toHaveText(t("common.read.failedReason"));
 });

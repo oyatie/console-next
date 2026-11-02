@@ -43,7 +43,7 @@ async function fixture(page: Page, initial: User = linked) {
     account = body.employee_id === null ? unlinked : linked;
     return { status: 200, json: account };
   });
-  return { ...shell, writes, failSearch: () => { searchFailed = true; } };
+  return { ...shell, writes, failSearch: () => { searchFailed = true; }, recoverSearch: () => { searchFailed = false; } };
 }
 
 for (const width of [1440, 390]) {
@@ -61,13 +61,26 @@ for (const width of [1440, 390]) {
     const f = await fixture(page);
     await page.goto(`/people?view=accounts&sel=${linked.id}`);
     const grid = page.getByRole("grid", { name: "계정", exact: true });
-    const person = grid.getByRole("link", { name: /김직원.*EMP-12.*연결회사.*인사팀/ });
+    const person = grid.getByRole("link", { name: new RegExp(`^${employee.name}`) });
     await expect(person).toHaveAttribute("href", `/people/${employee.id}`);
-    await expect(grid.getByRole("link", { name: /^김계정/ })).toHaveCount(0);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, theme) => { el.dataset.theme = theme; }, theme);
+      await expect.poll(() => person.getByText(employee.name, { exact: true }).evaluate(el => {
+        const name = el.getBoundingClientRect();
+        const cell = el.closest('[role="gridcell"]')!.getBoundingClientRect();
+        return name.top >= cell.top && name.bottom <= cell.bottom && name.left >= cell.left && name.right <= cell.right && el.scrollWidth <= el.clientWidth;
+      }), { message: `the full linked name fits its cell in ${theme}` }).toBe(true);
+      await fits(page, "account person references");
+    }
+    await expect(person).toHaveText(employee.name);
+    await expect(grid.getByRole("rowheader").getByRole("link")).toHaveCount(0);
     const section = page.getByRole("complementary", { name: "김계정", exact: true }).getByRole("region", { name: "직원 연결", exact: true });
     await expect(section.getByRole("link", { name: /김직원.*EMP-12.*연결회사.*인사팀/ })).toHaveAttribute("href", `/people/${employee.id}`);
     await expectAxe(page, "account person references");
     await fits(page, "account person references");
+    await page.goto("/people?view=accounts");
+    await expect(person).toBeVisible();
+    await expect(grid.getByRole("rowheader").getByRole("link")).toHaveCount(0);
     expect(f.unexpected).toEqual([]);
   });
 
@@ -113,6 +126,42 @@ test("a failed person search reports the refusal without an empty-result claim @
   await expect(page.getByRole("option", { name: /김직원/ })).toHaveCount(0);
   await expect(page.getByRole("option", { name: "일치하는 결과가 없습니다", exact: true })).toHaveCount(0);
   await expect(page.getByText("일치하는 직원이 없습니다. 직원 기록이 없으면 먼저 직원을 등록합니다.", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "0건" })).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "잠시 뒤 다시 시도하십시오." })).toBeVisible();
+  f.recoverSearch();
+  await page.getByRole("button", { name: "다시 불러오기", exact: true, includeHidden: true }).click();
+  await expect(search).not.toHaveAttribute("aria-invalid", "true");
+  await search.press("ArrowDown");
+  await expect(page.getByRole("option", { name: /김직원/ })).toBeVisible();
+  expect(f.unexpected).toEqual([]);
+});
+
+test("a failed refresh removes previously loaded people from the picker @ui-state", async ({ page }) => {
+  const f = await fixture(page, unlinked);
+  await page.addInitScript(() => {
+    const fetch = window.fetch;
+    window.fetch = (input, init) => {
+      const request = new Request(input, init);
+      if (new URL(request.url).pathname !== "/api/v1/events") return fetch(input, init);
+      return Promise.resolve(new Response(new ReadableStream({ start(controller) {
+        controller.enqueue(new TextEncoder().encode(": connected\n\n"));
+        const refresh = () => controller.enqueue(new TextEncoder().encode('event: change\ndata: {"type":"employee","id":null}\n\n'));
+        window.addEventListener("person-refresh", refresh);
+        request.signal.addEventListener("abort", () => { window.removeEventListener("person-refresh", refresh); controller.close(); }, { once: true });
+      } }), { headers: { "content-type": "text/event-stream" } }));
+    };
+  });
+  await page.goto(`/people?view=accounts&sel=${linked.id}`);
+  const search = page.getByRole("combobox", { name: "연결할 직원", exact: true });
+  await search.fill("김직원");
+  await expect(page.getByRole("option", { name: /김직원/ })).toBeVisible();
+  await search.press("Escape");
+  f.failSearch();
+  // Live invalidation keeps the cached query data while refreshing it.
+  await page.evaluate(() => window.dispatchEvent(new Event("person-refresh")));
+  await expect(search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
+  await search.press("ArrowDown");
+  await expect(page.getByRole("option", { name: /김직원/ })).toHaveCount(0);
   expect(f.unexpected).toEqual([]);
 });
 
@@ -135,7 +184,7 @@ for (const initial of [linked, unlinked]) {
     await expect(section).toContainText(initial.employee_id ? "연결 안 됨" : "김직원");
     await expect(section.getByRole("button", { name: /승인/ })).toHaveCount(0);
     const grid = page.getByRole("grid", { name: "계정", exact: true });
-    await expect(grid.getByRole("link", { name: /김직원.*EMP-12/ })).toHaveCount(initial.employee_id ? 1 : 0);
+    await expect(grid.getByRole("link", { name: new RegExp(`^${employee.name}`) })).toHaveCount(initial.employee_id ? 1 : 0);
     expect(f.writes).toEqual([]);
     expect(f.unexpected).toEqual([]);
   });

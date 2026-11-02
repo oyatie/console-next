@@ -50,6 +50,7 @@ test("a refused holder read offers retry and prevents a blind role edit @ui-stat
   await page.goto(`/access/roles/${accessRole.id}`);
   const holders = page.getByRole("region", { name: "보유자", exact: true });
   await expect(holders.getByRole("alert")).toContainText("불러오지 못했습니다", { timeout: 20_000 });
+  await expect(page.getByRole("complementary", { name: "이 역할을 가진 사람은", exact: true })).toContainText("불러오지 못했습니다");
   await expect(page.getByRole("button", { name: "역할 저장", exact: true })).toBeDisabled();
   await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: f.grants });
   await holders.getByRole("button", { name: "다시 불러오기", exact: true }).click();
