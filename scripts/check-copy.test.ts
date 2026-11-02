@@ -8,9 +8,15 @@ import { afterAll, expect, test } from "vitest";
 import { EN_TERM_RULES, TERM_RULES, catalogIds, checkRuntimeOutput, checkTerms, checkUnused, copyEntries, checkComposer } from "./check-copy.mjs";
 import * as copyGate from "./check-copy.mjs";
 
-test("served lifecycle refusals require actual copy in both locales", () => {
-  const sources = [{ file: "backend/crates/hr/rest/src/cases.rs", text: 'refused("lifecycle.refuse.close_blocked")' }];
-  const entry = { id: "lifecycle.refuse.close_blocked", text: "Complete the open items." };
+test.each([
+  "lifecycle.refuse.close_blocked", "account_link.refuse.identity_unbound",
+  "governance.refuse.identity_unbound", "governance.refuse.same_person",
+  "leave.refuse.identity_unbound", "org_change.refuse.identity_unbound",
+  "org_change.refuse.missing_grant", "org_change.refuse.not_drafter",
+  "payroll.refuse.identity_unbound", "period_unlock.refuse.identity_unbound",
+])("served refusal %s requires actual copy in both locales", (code) => {
+  const sources = [{ file: "backend/crates/hr/rest/src/cases.rs", text: `refused("${code}")` }];
+  const entry = { id: code, text: "Complete the open items." };
   expect(copyGate.checkRefusalCopy(sources, { ko: [entry], en: [entry] })).toEqual([]);
   for (const text of ["", " ", entry.id]) {
     const problems = copyGate.checkRefusalCopy(sources, { ko: [entry], en: [{ ...entry, text }] });
@@ -21,14 +27,14 @@ test("served lifecycle refusals require actual copy in both locales", () => {
   expect(copyGate.checkRefusalCopy([{ ...sources[0], text: '// "lifecycle.refuse.comment"\n#[cfg(test)]\nmod tests { refused("lifecycle.refuse.test_only"); }' }], { ko: [], en: [] })).toEqual([]);
 });
 
-test("all served lifecycle refusal codes have Korean and English copy", async () => {
+test("all served refusal codes have Korean and English copy", async () => {
   const { execFileSync } = await import("node:child_process");
   const { ko } = await import("../packages/i18n/src/catalogs/ko");
   const { en } = await import("../packages/i18n/src/catalogs/en");
   const root = fileURLToPath(new URL("..", import.meta.url));
   const files = execFileSync("git", ["ls-files", "backend"], { cwd: root, encoding: "utf8" }).trim().split("\n");
-  const codes = [...new Set(files.filter(file => file.includes("/src/") && file.endsWith(".rs") && !/tests?\.rs$/.test(file))
-    .flatMap(file => [...readFileSync(path.join(root, file), "utf8").matchAll(/"(lifecycle\.refuse\.[a-z_]+)"/g)].map(match => match[1]!)))];
+  const codes = [...new Set(files.filter(file => file.includes("/src/") && file.endsWith(".rs") && !/(^|[/_])tests?\.rs$/.test(file))
+    .flatMap(file => [...readFileSync(path.join(root, file), "utf8").matchAll(/"([a-z_]+\.refuse\.[a-z_]+)"/g)].map(match => match[1]!)))];
   expect(codes.length).toBeGreaterThan(0);
   for (const code of codes) for (const catalog of [ko, en]) {
     const text = catalog[code as keyof typeof catalog];
@@ -431,15 +437,23 @@ test("CLI scans backend display strings, excluding comments and test fixtures", 
   expect(cli().stderr).toContain("error_i18n/employees.rs: term.퇴직:");
 });
 
-test("CLI refuses a served lifecycle refusal missing catalog copy", () => {
+test.each(["cases.rs", "attest.rs"])("CLI refuses a served refusal in %s missing catalog copy", (file) => {
   const { cli, dir } = runtimeCli();
   const folder = path.join(dir, "backend/crates/hr/rest/src");
   mkdirSync(folder, { recursive: true });
-  writeFileSync(path.join(folder, "cases.rs"), 'refused("lifecycle.refuse.close_blocked")');
+  writeFileSync(path.join(folder, file), 'refused("org_change.refuse.missing_grant")');
   const result = cli();
   expect(result.status).toBe(1);
-  expect(result.stderr).toContain("ko: lifecycle.refuse.close_blocked");
-  expect(result.stderr).toContain("en: lifecycle.refuse.close_blocked");
+  expect(result.stderr).toContain("ko: org_change.refuse.missing_grant");
+  expect(result.stderr).toContain("en: org_change.refuse.missing_grant");
+});
+
+test.each(["test.rs", "tests.rs", "case_test.rs", "case_tests.rs"])("CLI excludes refusal fixtures in %s", (file) => {
+  const { cli, dir } = runtimeCli();
+  const folder = path.join(dir, "backend/crates/hr/rest/src");
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(path.join(folder, file), 'refused("lifecycle.refuse.fixture_only")');
+  expect(cli().status).toBe(0);
 });
 
 test("CLI refuses a rendered title assembled from two catalog values", () => {

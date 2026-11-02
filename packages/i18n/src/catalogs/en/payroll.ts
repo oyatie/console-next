@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enPayroll = {
+  "payroll.refuse.identity_unbound": "The requester or decider identity could not be verified. Ask someone with account management permission to link the account to its personnel record or complete its identity review.",
   "payroll.accessInactive": "Payroll is not enabled, so pay and sensitive pay-group grants cannot be used on payroll screens.",
   "payroll.title": "Payroll",
   "payroll.alpha": "Payroll setup · closed alpha reviewed with your tax adviser",

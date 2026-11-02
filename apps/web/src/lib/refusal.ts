@@ -1,7 +1,7 @@
 import { ApiError } from "@console/api";
 import { isMessageId, t } from "@console/i18n";
 
-export const lifecycleRefusal = (code: string) => code.startsWith("lifecycle.refuse.") && isMessageId(code) ? t(code) : undefined;
+export const catalogRefusal = (code: string) => code.includes(".refuse.") && isMessageId(code) ? t(code) : undefined;
 
 /**
  * What failed, in words the user can act on: catalog copy for an error code the client knows
@@ -19,7 +19,7 @@ export function failureText(error: unknown, own?: (code: string) => string | und
 /** Reads use catalog reasons; unknown upstream prose is not product copy. */
 export function readFailureText(error: unknown, own?: (code: string) => string | undefined): string {
   return failureText(error, code => {
-    const text = own?.(code) || lifecycleRefusal(code);
+    const text = own?.(code) || catalogRefusal(code);
     if (text) return text;
     const id = `common.failed.code.${code}`;
     if (isMessageId(id)) return t(id);
@@ -29,7 +29,7 @@ export function readFailureText(error: unknown, own?: (code: string) => string |
 }
 
 function reason(error: unknown, own?: (code: string) => string | undefined): string {
-  const mine = error instanceof ApiError ? own?.(error.code) || lifecycleRefusal(error.code) : undefined;
+  const mine = error instanceof ApiError ? own?.(error.code) || catalogRefusal(error.code) : undefined;
   if (mine) return mine;
   const byCode = error instanceof ApiError ? `common.failed.code.${error.code}` : "";
   if (isMessageId(byCode)) return t(byCode);

@@ -2,13 +2,34 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
-import { expectAxe } from "../a11y";
+import { expectAxe, fits } from "../a11y";
 import { AT, checklist, failure, id, inbox, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`served organization refusal uses catalog copy ${width} ${theme} @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+  const fixture = await mockScreen(page, screens[2], "populated");
+  const code = "org_change.refuse.not_drafter";
+  await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 200, json: {
+    id: id(99), idempotency_key: "organization-change-withdrawal", command: "POST /api/v1/org-changes/{id}/cancel",
+    state: "REFUSED", created_at: AT, deadline: null, settled_at: AT,
+    inputs_masked: {}, result: null, refusal_code: code, masked: false, touched: [],
+  } });
+  try {
+    await page.goto(`/requests/${id(99)}`);
+    expect(t(code)).not.toBe(code);
+    await expect(page.getByText(t(code), { exact: true })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await fits(page, `organization-refusal/${width}/${theme}`);
+    await expectAxe(page, `organization-refusal/${width}/${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
 
 test("the gallery reserves the uncertain band for the keyed command", async ({ page }) => {
   await page.goto("/_gallery");

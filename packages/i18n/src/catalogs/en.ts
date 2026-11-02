@@ -1,3 +1,8 @@
+import { enGovernanceRefusals } from "./en/governance";
+import { enAccountLinkRefusals } from "./en/account_link";
+import { enPeriodUnlockRefusals } from "./en/period_unlock";
+import { enLeaveRefusals } from "./en/leave";
+import { enOrgChangeRefusals } from "./en/org_change";
 import { enPayroll } from "./en/payroll";
 import { enUiShiftBar } from "./en/ui-shift-bar";
 import { enNts } from "./en/nts";
@@ -120,6 +125,11 @@ import { enPeopleJump } from "./en/people-jump";
 
 // Partial: missing ids fall back to Korean (index.test.ts fails on any).
 export const en: Partial<Record<ScreenMessageId, string>> = {
+  ...enGovernanceRefusals,
+  ...enAccountLinkRefusals,
+  ...enPeriodUnlockRefusals,
+  ...enLeaveRefusals,
+  ...enOrgChangeRefusals,
   ...enUiShiftBar,
   ...enStatutory,
   ...enFormat,
