@@ -2,12 +2,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { ApiError, myAccessQuery } from "../../../reference/authz/api";
 import { RosterPage } from "./roster-page";
 
-const state = vi.hoisted(() => ({ refused: false, body: "roster rows", org: false }));
-vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({}), useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }), Link: () => null, useNavigate: () => vi.fn() }));
+const state = vi.hoisted(() => ({ refused: false, body: "roster rows", org: false, loading: false, empty: false, search: {} as { review?: string } }));
+const table = vi.hoisted(() => vi.fn());
+vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }), Link: () => null, useNavigate: () => vi.fn() }));
 vi.mock("@tanstack/react-query", async original => ({
   ...await original<typeof import("@tanstack/react-query")>(),
   useQuery: (options: { queryFn: unknown }) => options.queryFn === myAccessQuery.queryFn ? {
@@ -17,13 +18,13 @@ vi.mock("@tanstack/react-query", async original => ({
 vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => false }));
 vi.mock("../../../lib/react/prefetch", () => ({ usePrefetch: () => vi.fn() }));
 vi.mock("../../../lib/reason-codes", () => ({ useReasonCodesReady: () => false }));
-vi.mock("./roster-table", () => ({ RosterTable: () => <div>{state.body}</div> }));
+vi.mock("./roster-table", () => ({ RosterTable: (props: { empty: React.ReactNode }) => { table(props); return <div>{state.empty ? props.empty : state.body}</div>; } }));
 vi.mock("./use-roster", () => ({ BULK_MAX: 100, SOON_DAYS: 60, useRoster: () => ({
-  list: { data: state.refused ? undefined : { pages: [{ items: [], total: 1 }] }, isPending: false, error: state.refused ? new ApiError(403, "access_denied", "") : null, refetch: vi.fn() },
-  rows: [], total: 1, loading: false, status: { totals: { all: 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
+  list: { data: state.refused ? undefined : { pages: [{ items: [], total: 1 }] }, isPending: false, hasNextPage: true, error: state.refused ? new ApiError(403, "access_denied", "") : null, refetch: vi.fn() },
+  rows: [], total: 1, loading: state.loading, status: { totals: { all: 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
 }) }));
 beforeAll(() => loadCatalog("ko"));
-beforeEach(() => { state.refused = false; state.org = false; });
+beforeEach(() => { state.refused = false; state.org = false; state.loading = false; state.empty = false; state.search = {}; table.mockClear(); });
 const render = () => {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
   try { return renderToStaticMarkup(<QueryClientProvider client={client}><RosterPage manage={false} /></QueryClientProvider>); }
@@ -52,4 +53,21 @@ test("a refused roster read withholds its header, filters and rows", () => {
   expect(html).toContain('aria-label="이 화면에 접근 권한이 없습니다"');
   expect(html).not.toContain("roster rows");
   expect(html).not.toContain('role="group"');
+});
+
+test("the next page is not offered while replacement rows are loading", () => {
+  state.loading = true;
+  render();
+  expect(table).toHaveBeenCalledWith(expect.objectContaining({ hasMore: false }));
+});
+
+test.each([false, true])("the unfiltered roster does not offer a filter reset while loading=%s", (loading) => {
+  state.loading = loading;
+  expect(render()).not.toContain(t("people.filter.reset"));
+});
+
+test("the filtered empty state offers exactly one reset", () => {
+  state.search = { review: "identity" };
+  state.empty = true;
+  expect(render().split(t("people.filter.reset"))).toHaveLength(2);
 });
