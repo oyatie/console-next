@@ -47,8 +47,8 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_payroll_adapter_postgres::{
-    PayrollRunDetail, PayrollRunPage, PayrollRunSummary, PgPayrollError, PgPayrollStore,
-    get_run_in_tx, list_runs_in_tx,
+    PayrollRunDetail, PayrollRunPage, PgPayrollError, PgPayrollStore, get_run_in_tx,
+    list_runs_in_tx,
 };
 use console_platform_auth::JwtVerifier;
 use console_platform_db::{DbError, with_audits};
@@ -127,25 +127,6 @@ impl PayrollRestState {
             jwt_verifier,
         }
     }
-
-    /// SSR composition helper: the same `PayrollRunRead` listing as GET `/runs`,
-    /// or an empty vec (omit) when the caller is unauthenticated, unauthorized,
-    /// or the listing fails. Never a 401/403 on the HTML shell.
-    pub async fn visible_run_summaries(&self, headers: &HeaderMap) -> Vec<PayrollRunSummary> {
-        match list_runs_page(
-            self,
-            headers,
-            PageParams {
-                limit: Some(100),
-                offset: Some(0),
-            },
-        )
-        .await
-        {
-            Ok(page) => page.items,
-            Err(_) => Vec::new(),
-        }
-    }
 }
 
 pub fn router(state: PayrollRestState) -> Router {
@@ -205,6 +186,10 @@ pub fn router(state: PayrollRestState) -> Router {
             get(lifecycle::get_payslip_delivery),
         )
         .merge(payslip_draft::routes())
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            access::module_gate,
+        ))
         .with_state(state);
     console_platform_request_context::with_request_context(router, verifier, pool)
 }

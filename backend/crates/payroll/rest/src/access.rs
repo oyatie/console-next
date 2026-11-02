@@ -9,7 +9,8 @@ use sqlx::{Postgres, Transaction};
 use axum::http::HeaderMap;
 use console_platform_authz::Principal;
 
-use crate::{PayrollRestState, RestError};
+use crate::{PageParams, PayrollRestState, RestError, list_runs_page};
+use console_payroll_adapter_postgres::PayrollRunSummary;
 
 pub(crate) async fn require_run_read_in_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -63,6 +64,61 @@ pub(crate) async fn principal_from_headers(
     console_platform_request_context::resolve_principal(verifier, state.store.pool(), headers)
         .await
         .map_err(crate::rest_error_from_request_context)
+}
+
+pub(crate) async fn require_module(
+    state: &PayrollRestState,
+    headers: &HeaderMap,
+) -> Result<(), RestError> {
+    let principal = principal_from_headers(state, headers).await?;
+    let store = state.store.clone();
+    let (org, actor) = (principal.org_id, principal.user_id);
+    console_platform_db::with_org_conn::<_, _, RestError>(state.store.pool(), org, move |tx| {
+        Box::pin(async move {
+            console_platform_authz::cedar_pbac::visible::require_payroll_module(
+                tx,
+                org,
+                *actor.as_uuid(),
+                &store,
+            )
+            .await
+            .map_err(RestError::from_kernel)
+        })
+    })
+    .await
+}
+
+pub(crate) async fn module_gate(
+    axum::extract::State(state): axum::extract::State<PayrollRestState>,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, RestError> {
+    require_module(&state, request.headers()).await?;
+    Ok(next.run(request).await)
+}
+
+impl PayrollRestState {
+    /// SSR composition helper: the same `PayrollRunRead` listing as GET `/runs`,
+    /// or an empty vec (omit) when the caller is unauthenticated, unauthorized,
+    /// or the listing fails. Never a 401/403 on the HTML shell.
+    pub async fn visible_run_summaries(&self, headers: &HeaderMap) -> Vec<PayrollRunSummary> {
+        if require_module(self, headers).await.is_err() {
+            return Vec::new();
+        }
+        match list_runs_page(
+            self,
+            headers,
+            PageParams {
+                limit: Some(100),
+                offset: Some(0),
+            },
+        )
+        .await
+        {
+            Ok(page) => page.items,
+            Err(_) => Vec::new(),
+        }
+    }
 }
 
 #[cfg(test)]

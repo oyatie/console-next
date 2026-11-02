@@ -8,7 +8,9 @@ use console_governance_adapter_postgres::PgGovernanceStore;
 #[cfg(feature = "payroll")]
 use console_payroll_adapter_postgres::PgPayrollStore;
 #[cfg(any(feature = "payroll", feature = "governance"))]
-use console_platform_authz::{Action, Feature, authorize_org_wide};
+use console_platform_authz::Feature;
+#[cfg(feature = "governance")]
+use console_platform_authz::{Action, authorize_org_wide};
 #[cfg(feature = "support")]
 use console_support_adapter_postgres::PgSupportStore;
 #[cfg(feature = "workorder")]
@@ -168,16 +170,47 @@ impl PgActionInboxSources {
         &self,
         query: ActionInboxSourceQuery,
     ) -> Result<ActionInboxSourcePage, KernelError> {
-        // Inbox is a merged read: callers without org-wide PayrollRunManage
-        // (built-in EXECUTIVE/SUPER_ADMIN) get an empty source, not 403.
-        if authorize_org_wide(&self.principal, Action::new(Feature::PayrollRunManage)).is_err() {
+        let store = PgPayrollStore::new(self.pool.clone());
+        let facts_store = store.clone();
+        let (org, actor) = (self.principal.org_id, self.principal.user_id);
+        let allowed = console_platform_db::with_org_conn::<
+            _,
+            _,
+            console_payroll_adapter_postgres::PgPayrollError,
+        >(&self.pool, org, move |tx| {
+            Box::pin(async move {
+                use console_platform_authz::cedar_pbac::visible::{
+                    load_facts, require_payroll_module,
+                };
+                match require_payroll_module(tx, org, *actor.as_uuid(), &facts_store).await {
+                    Err(error) if error.code == Some("module_disabled") => return Ok(false),
+                    result => result?,
+                }
+                let facts = load_facts(tx, org, *actor.as_uuid()).await?;
+                facts
+                    .authorize(
+                        Feature::PayrollRunManage.as_str(),
+                        console_platform_authz::access::NodeRef {
+                            kind: console_platform_authz::access::NodeKind::Tenant,
+                            id: *org.as_uuid(),
+                        },
+                    )
+                    .map_err(|_| {
+                        KernelError::unavailable("payroll inbox decision unavailable").into()
+                    })
+            })
+        })
+        .await
+        .map_err(|error| source_failure("payroll", error))?;
+        // A merged inbox omits payroll work when its module or review permission is absent.
+        if !allowed {
             return Ok(empty_source_page());
         }
         let after = query
             .after
             .map(|position| (position.due, position.created_at, position.id));
         let source_limit = i64::try_from(query.limit).unwrap_or(200);
-        let (runs, total, has_more) = PgPayrollStore::new(self.pool.clone())
+        let (runs, total, has_more) = store
             .list_submitted_action_inbox_page(
                 self.principal.user_id,
                 query.as_of,

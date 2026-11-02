@@ -26,6 +26,10 @@ pub struct Harness {
 }
 
 pub async fn harness(owner: &PgPool, ops: bool) -> Harness {
+    harness_with_payroll(owner, ops, true).await
+}
+
+pub async fn harness_with_payroll(owner: &PgPool, ops: bool, compiled: bool) -> Harness {
     let org = OrgId::new();
     let user = seed_org_and_super_admin(owner, *org.as_uuid(), "rest-onboarding").await;
     // rls-arming: ok test fixture marks the real ops holder before console_rt requests.
@@ -91,11 +95,14 @@ pub async fn harness(owner: &PgPool, ops: bool) -> Harness {
         .unwrap()
         .session_family_id
         .unwrap();
-    let app = router(OnboardingRestState::new(
-        store.clone(),
-        Some(verifier),
-        Some(console_platform_test_support::soft_passkey::passkey_service()),
-    ));
+    let app = router(
+        OnboardingRestState::new(
+            store.clone(),
+            Some(verifier),
+            Some(console_platform_test_support::soft_passkey::passkey_service()),
+        )
+        .with_payroll(compiled),
+    );
     Harness {
         app,
         actor: OnboardingActor {

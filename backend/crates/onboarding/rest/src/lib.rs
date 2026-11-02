@@ -44,6 +44,7 @@ pub struct OnboardingRestState {
     store: PgOnboardingStore,
     jwt_verifier: Option<JwtVerifier>,
     passkey_step_up: Option<PasskeyService>,
+    payroll_compiled: bool,
 }
 
 impl OnboardingRestState {
@@ -57,7 +58,14 @@ impl OnboardingRestState {
             store,
             jwt_verifier,
             passkey_step_up,
+            payroll_compiled: false,
         }
+    }
+
+    #[must_use]
+    pub fn with_payroll(mut self, compiled: bool) -> Self {
+        self.payroll_compiled = compiled;
+        self
     }
 }
 
@@ -124,7 +132,13 @@ async fn modules(
     h: HeaderMap,
 ) -> Result<Response, RestError> {
     let a = actor(&s, &h).await?;
-    Ok(Json(s.store.modules(&a).await?).into_response())
+    let mut modules = s.store.modules(&a).await?;
+    for module in &mut modules {
+        if module.key == "payroll" {
+            module.ready &= s.payroll_compiled;
+        }
+    }
+    Ok(Json(modules).into_response())
 }
 
 async fn go_live_preview(

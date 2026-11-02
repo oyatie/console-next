@@ -115,7 +115,9 @@ fn only_neutral_keys_skip_a_risk_direction() {
                     || def.governance != Governance::Tenant
                     // A country-pack code with one allowed value cannot loosen a control.
                     || matches!(def.kind, SettingKind::Code { allowed } if allowed.len() == 1)
-                    || *key == SettingKey::OrgChangeApplyTime,
+                    || *key == SettingKey::OrgChangeApplyTime
+                    // Module availability does not alter payroll authority or pay rules.
+                    || *key == SettingKey::ModulePayrollEnabled,
                 "{key:?}: a tenant-editable policy value needs a risk direction"
             );
         }

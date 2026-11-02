@@ -234,3 +234,4 @@ mod privacy_requests_tests;
 
 pub mod employee_self_read;
 pub(crate) mod pay_group;
+pub(crate) mod payroll_module;
