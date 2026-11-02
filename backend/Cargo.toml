@@ -132,18 +132,18 @@ chrono-tz = "0.10.4"
 # Versions verified live against crates.io 2026-06-12:
 # axum 0.8.9, tower-http 0.7.0, tower 0.5.3, http 1.4.2,
 # tracing 0.1.44, tracing-subscriber 0.3.23,
-# tracing-opentelemetry 0.33.0, opentelemetry 0.32.0,
-# opentelemetry_sdk 0.32.1, opentelemetry-otlp 0.32.0.
+# OpenTelemetry versions verified against crates.io 2026-11-02:
+# tracing-opentelemetry 0.34.0, opentelemetry{,_sdk,-otlp} 0.33.1.
 axum = "0.8.9"
 tower-http = "0.7.0"
 tower = "0.5.3"
 http = "1.4.2"
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
-tracing-opentelemetry = "0.33.0"
-opentelemetry = "0.32.0"
-opentelemetry_sdk = "0.32.1"
-opentelemetry-otlp = "0.32.0"
+tracing-opentelemetry = "0.34.0"
+opentelemetry = "0.33.1"
+opentelemetry_sdk = "0.33.1"
+opentelemetry-otlp = "0.33.1"
 # Prometheus metrics: the `metrics` facade records into a process-global
 # recorder; metrics-exporter-prometheus renders the /metrics exposition. Versions
 # verified live against the crates.io index. default-features off: we only render

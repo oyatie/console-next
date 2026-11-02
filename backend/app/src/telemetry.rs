@@ -5,7 +5,7 @@ use crate::error::AppError;
 use console_kernel_core::TraceContext;
 use opentelemetry::global;
 use opentelemetry::trace::{TraceContextExt, TracerProvider};
-use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_otlp::{RetryPolicy, WithExportConfig, WithTonicConfig};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -67,16 +67,11 @@ pub fn init_tracing(config: &AppConfig) -> Result<TelemetryGuard, AppError> {
         let exporter = opentelemetry_otlp::SpanExporter::builder()
             .with_tonic()
             .with_endpoint(endpoint)
+            // Preserve the pre-0.33 single-attempt export behavior.
+            .with_retry_policy(RetryPolicy::disabled())
             .build()
             .map_err(|err| AppError::Telemetry(err.to_string()))?;
-        let provider = SdkTracerProvider::builder()
-            .with_resource(
-                Resource::builder()
-                    .with_service_name(config.service_name.clone())
-                    .build(),
-            )
-            .with_batch_exporter(exporter)
-            .build();
+        let provider = tracer_provider(config, exporter);
         let tracer = provider.tracer(config.service_name.clone());
         global::set_tracer_provider(provider.clone());
 
@@ -101,6 +96,20 @@ pub fn init_tracing(config: &AppConfig) -> Result<TelemetryGuard, AppError> {
     }
 }
 
+fn tracer_provider(
+    config: &AppConfig,
+    exporter: impl opentelemetry_sdk::trace::SpanExporter + 'static,
+) -> SdkTracerProvider {
+    SdkTracerProvider::builder()
+        .with_resource(
+            Resource::builder()
+                .with_service_name(config.service_name.clone())
+                .build(),
+        )
+        .with_batch_exporter(exporter)
+        .build()
+}
+
 #[derive(Debug)]
 pub struct TelemetryGuard {
     provider: Option<SdkTracerProvider>,
@@ -115,3 +124,7 @@ impl TelemetryGuard {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "telemetry_tests.rs"]
+mod tests;
