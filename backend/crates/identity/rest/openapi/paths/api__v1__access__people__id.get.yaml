@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "access:view", "scope": "any"}
 tags:
 - access
 operationId: getAccessPerson
