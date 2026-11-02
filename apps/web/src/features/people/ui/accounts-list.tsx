@@ -160,7 +160,6 @@ const columns = (peers: readonly Person[], open?: string): LongColumn<Person>[] 
   // The open account's row is marked, so the panel beside the list says whose it is.
   {
     id: "name",
-    card: "title",
     header: t("accounts.col.name"),
     // The ops account is the one preset: named as such, never by a role title (company-17).
     cell: (p) => <>{p.id === open ? <strong aria-current="true"><PersonLabel person={p} peers={peers} linked={false} /></strong> : <PersonLabel person={p} peers={peers} linked={false} />}{p.is_tenant_ops && <> <Chip tone="info">{t("accounts.ops")}</Chip></>}</>,
@@ -175,7 +174,6 @@ const columns = (peers: readonly Person[], open?: string): LongColumn<Person>[] 
   },
   {
     id: "status",
-    card: "status",
     header: t("accounts.col.status"),
     cell: (p) => {
       const st = labeled(ACCOUNT_STATUS, p.account_status);

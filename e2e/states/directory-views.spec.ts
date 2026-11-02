@@ -108,7 +108,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.goto("/people?view=accounts");
     const grid = page.getByRole("grid", { name: t("accounts.table"), exact: true, includeHidden: true });
     await expect(grid).toBeVisible();
-    await expect(grid).toHaveAttribute("data-layout", width === 390 ? "cards" : "rows");
+    await expect(grid).toHaveAttribute("data-layout", "rows");
     await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
     await expect.poll(() => requests.some(query => query.get("cursor") === "account-100")).toBe(true);
     expect(requests.every(query => !query.has("offset"))).toBe(true);
