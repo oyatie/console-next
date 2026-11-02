@@ -139,11 +139,10 @@ pub(crate) fn router(
             exceptions::read_correction_outcome,
         ),
     ));
-    let onboarding = console_onboarding_rest::router(OnboardingRestState::new(
-        PgOnboardingStore::new(pool),
-        jwt,
-        passkey,
-    ));
+    let onboarding = console_onboarding_rest::router(
+        OnboardingRestState::new(PgOnboardingStore::new(pool), jwt, passkey)
+            .with_payroll(cfg!(feature = "payroll")),
+    );
     entity.merge(onboarding).merge(exceptions)
 }
 

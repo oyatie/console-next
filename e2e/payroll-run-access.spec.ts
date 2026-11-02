@@ -111,6 +111,7 @@ test("payroll reads and commands require tenant pay access", { tag: ["@hr", "@ne
     expect(await inboxAfter.json()).toEqual(before);
     // The bootstrap owner holds tenant pay access.
     const opsApi = apiOf(admin, opsToken);
+    expect(await (await opsApi("/onboarding/modules")).json()).toEqual(expect.arrayContaining([expect.objectContaining({ key: "payroll", ready: true })]));
     const groupsBefore = await opsApi("/payroll/pay-groups");
     expect(groupsBefore.status()).toBe(200);
     const groups = await groupsBefore.json();
@@ -181,6 +182,21 @@ test("payroll reads and commands require tenant pay access", { tag: ["@hr", "@ne
     expect(cleared.status()).toBe(200);
     expect((await cleared.json()).items).toEqual(expect.arrayContaining([regular, group]));
     expect((await api("/payroll/pay-groups", "POST", groupInput)).status()).toBe(201);
+    const disabled = await opsApi("/settings/module.payroll.enabled", "POST", { value: false, reason_code: "POLICY_REVIEW" });
+    expect(disabled.status()).toBe(201);
+    expect(await (await opsApi("/onboarding/modules")).json()).toEqual(expect.arrayContaining([expect.objectContaining({ key: "payroll", ready: false })]));
+    for (const path of ["/payroll/pay-groups", "/payroll/runs", "/payroll/payslips/me"]) {
+      const refused = await opsApi(path);
+      expect(refused.status()).toBe(403);
+      expect(await codeOf(refused)).toBe("module_disabled");
+    }
+    const disabledCommand = await opsApi("/payroll/pay-groups", "POST", groupInput);
+    expect(disabledCommand.status()).toBe(403);
+    expect(await codeOf(disabledCommand)).toBe("module_disabled");
+    await admin.reload();
+    await expect(admin.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "급여", exact: true })).toHaveCount(0);
+    expect((await opsApi("/settings/module.payroll.enabled", "POST", { value: true, reason_code: "POLICY_REVIEW" })).status()).toBe(201);
+    expect((await opsApi("/payroll/runs")).status()).toBe(200);
   } finally {
     await Promise.all([admin.context().close(), reader.context().close()]);
   }

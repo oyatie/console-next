@@ -2,9 +2,8 @@
 use std::collections::BTreeMap;
 
 use console_kernel_core::{KernelError, OrgId, Resolved, SettingVersionId, Timestamp};
-use console_settings_domain::{
-    Governance, OverrideRow, SettingError, SettingKey, SettingValue, resolve_chain,
-};
+use console_settings_domain::{Governance, OverrideRow, SettingError, resolve_chain};
+pub use console_settings_domain::{SettingKey, SettingValue};
 use sqlx::{PgConnection, Row};
 use uuid::Uuid;
 

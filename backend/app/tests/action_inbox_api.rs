@@ -30,6 +30,9 @@ use std::sync::atomic::{AtomicU16, Ordering};
 #[path = "action_inbox/ranking.rs"]
 mod ranking;
 
+#[path = "action_inbox/payroll_module.rs"]
+mod payroll_module;
+
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 const PATH: &str = "/api/v1/me/action-inbox";
@@ -400,148 +403,6 @@ async fn rejects_forged_and_future_cursors(pool: PgPool) {
         .finish();
     let future_resp = get(service, &format!("{PATH}?{query}"), &token).await;
     assert_eq!(future_resp.status, StatusCode::UNPROCESSABLE_ENTITY);
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn action_inbox_payroll_source_enforces_sod_and_org_wide_manage(pool: PgPool) {
-    let keys = keys();
-    let branch = seed_branch(&pool, OrgId::one(), "급여 리전", "급여 지사").await;
-    let submitter = UserId::new();
-    seed_user(&pool, OrgId::one(), submitter, "EXECUTIVE", branch).await;
-    let approver = UserId::new();
-    seed_user(&pool, OrgId::one(), approver, "EXECUTIVE", branch).await;
-    let admin = UserId::new();
-    seed_user(&pool, OrgId::one(), admin, "ADMIN", branch).await;
-
-    let submitted_at = OffsetDateTime::now_utc() - Duration::minutes(1);
-    let run = seed_submitted_payroll_run(
-        &pool,
-        OrgId::one(),
-        submitter,
-        "inbox-sod-run",
-        submitted_at,
-    )
-    .await;
-    let _calculated = seed_payroll_run(
-        &pool,
-        OrgId::one(),
-        "inbox-calc-run",
-        "CALCULATED",
-        None,
-        None,
-    )
-    .await;
-
-    let service =
-        build_router(app_state(runtime_role_pool(&pool).await, keys.public_pem.clone()).unwrap());
-
-    let submitter_resp = get(
-        service.clone(),
-        PATH,
-        &bearer(&pool, &keys, OrgId::one(), submitter, "EXECUTIVE", branch).await,
-    )
-    .await;
-    assert_eq!(
-        submitter_resp.status,
-        StatusCode::OK,
-        "{:?}",
-        submitter_resp.json
-    );
-    assert_eq!(
-        payroll_ids(&submitter_resp.json),
-        Vec::<String>::new(),
-        "submitter must not see their own SUBMITTED run: {:?}",
-        submitter_resp.json
-    );
-    assert_eq!(submitter_resp.json["total"], 0);
-
-    // Workbench reuses PgActionInboxSources via list_complete_action_inbox.
-    let submitter_workbench = get(
-        service.clone(),
-        "/api/v1/me/workbench",
-        &bearer(&pool, &keys, OrgId::one(), submitter, "EXECUTIVE", branch).await,
-    )
-    .await;
-    assert_eq!(
-        submitter_workbench.status,
-        StatusCode::OK,
-        "{:?}",
-        submitter_workbench.json
-    );
-    assert_eq!(
-        submitter_workbench.json["action_inbox"]["status"], "ok",
-        "{:?}",
-        submitter_workbench.json
-    );
-    assert_eq!(
-        payroll_ids(&submitter_workbench.json["action_inbox"]),
-        Vec::<String>::new(),
-        "submitter must not see their own SUBMITTED run through workbench list_source_page: {:?}",
-        submitter_workbench.json
-    );
-    assert_eq!(submitter_workbench.json["action_inbox"]["total"], 0);
-
-    let approver_resp = get(
-        service.clone(),
-        PATH,
-        &bearer(&pool, &keys, OrgId::one(), approver, "EXECUTIVE", branch).await,
-    )
-    .await;
-    assert_eq!(
-        approver_resp.status,
-        StatusCode::OK,
-        "{:?}",
-        approver_resp.json
-    );
-    assert_eq!(
-        payroll_ids(&approver_resp.json),
-        vec![format!("payroll:{run}")],
-        "{:?}",
-        approver_resp.json
-    );
-    assert_eq!(approver_resp.json["items"][0]["kind"], "payroll");
-    assert_eq!(approver_resp.json["items"][0]["ref"], "inbox-sod-run");
-    assert_eq!(approver_resp.json["total"], 1);
-
-    let approver_workbench = get(
-        service.clone(),
-        "/api/v1/me/workbench",
-        &bearer(&pool, &keys, OrgId::one(), approver, "EXECUTIVE", branch).await,
-    )
-    .await;
-    assert_eq!(
-        approver_workbench.status,
-        StatusCode::OK,
-        "{:?}",
-        approver_workbench.json
-    );
-    assert_eq!(
-        approver_workbench.json["action_inbox"]["status"], "ok",
-        "{:?}",
-        approver_workbench.json
-    );
-    assert_eq!(
-        payroll_ids(&approver_workbench.json["action_inbox"]),
-        vec![format!("payroll:{run}")],
-        "{:?}",
-        approver_workbench.json
-    );
-    assert_eq!(approver_workbench.json["action_inbox"]["total"], 1);
-
-    let admin_resp = get(
-        service,
-        PATH,
-        &bearer(&pool, &keys, OrgId::one(), admin, "ADMIN", branch).await,
-    )
-    .await;
-    assert_eq!(admin_resp.status, StatusCode::OK, "{:?}", admin_resp.json);
-    assert_eq!(
-        payroll_ids(&admin_resp.json),
-        Vec::<String>::new(),
-        "branch-scoped ADMIN must see zero payroll inbox items: {:?}",
-        admin_resp.json
-    );
-    assert_eq!(admin_resp.json["total"], 0);
 }
 
 // ===========================================================================

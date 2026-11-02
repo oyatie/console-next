@@ -13,6 +13,25 @@ use tower::ServiceExt;
 const PATH: &str = "/api/v1/onboarding/modules";
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn compiled_out_payroll_stays_unready_even_with_an_enabled_setting(owner: PgPool) {
+    let h = harness_with_payroll(&owner, true, false).await;
+    // rls-arming: ok an enabled tenant setting cannot restore a compiled-out module.
+    let effective: time::OffsetDateTime = sqlx::query_scalar("INSERT INTO tenant_setting_overrides (org_id, key, value, effective_from, set_by, reason_code) VALUES ($1, 'module.payroll.enabled', 'true', clock_timestamp(), $2, 'POLICY_REVIEW') RETURNING effective_from")
+        .bind(h.actor.org.as_uuid()).bind(h.actor.user.as_uuid()).fetch_one(&owner).await.unwrap();
+    if let Ok(wait) = (effective - time::OffsetDateTime::now_utc()).try_into() {
+        tokio::time::sleep(wait).await;
+    }
+    let (status, data) = send(&h, "GET", PATH, Value::Null).await;
+    assert_eq!(status, StatusCode::OK, "{data}");
+    assert!(
+        data.as_array()
+            .unwrap()
+            .iter()
+            .any(|m| m["key"] == "payroll" && m["ready"] == false)
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn payroll_readiness_uses_only_the_current_tenant_setting(owner: PgPool) {
     let a = harness(&owner, true).await;
     let b = harness(&owner, false).await;
@@ -23,18 +42,21 @@ async fn payroll_readiness_uses_only_the_current_tenant_setting(owner: PgPool) {
             data.as_array()
                 .unwrap()
                 .iter()
-                .any(|m| m["key"] == "payroll" && m["ready"] == false)
+                .any(|m| m["key"] == "payroll" && m["ready"] == true)
         );
     }
-    // rls-arming: ok a scheduled activation must not enable the module early.
-    sqlx::query("INSERT INTO tenant_setting_overrides (org_id, key, value, effective_from, set_by, reason_code) VALUES ($1, 'module.payroll.enabled', 'true', now() + interval '1 day', $2, 'POLICY_REVIEW')")
+    // rls-arming: ok a scheduled deactivation must not disable the module early.
+    sqlx::query("INSERT INTO tenant_setting_overrides (org_id, key, value, effective_from, set_by, reason_code) VALUES ($1, 'module.payroll.enabled', 'false', now() + interval '1 day', $2, 'POLICY_REVIEW')")
         .bind(b.actor.org.as_uuid()).bind(b.actor.user.as_uuid()).execute(&owner).await.unwrap();
     for enabled in [true, false] {
         // rls-arming: ok owner seeds an effective-dated tenant module setting.
-        sqlx::query("INSERT INTO tenant_setting_overrides (org_id, key, value, effective_from, set_by, reason_code) VALUES ($1, 'module.payroll.enabled', $2, clock_timestamp(), $3, 'POLICY_REVIEW')")
+        let effective: time::OffsetDateTime = sqlx::query_scalar("INSERT INTO tenant_setting_overrides (org_id, key, value, effective_from, set_by, reason_code) VALUES ($1, 'module.payroll.enabled', $2, clock_timestamp(), $3, 'POLICY_REVIEW') RETURNING effective_from")
             .bind(a.actor.org.as_uuid()).bind(json!(enabled)).bind(a.actor.user.as_uuid())
-            .execute(&owner).await.unwrap();
-        for (h, expected) in [(&a, enabled), (&b, false)] {
+            .fetch_one(&owner).await.unwrap();
+        if let Ok(wait) = (effective - time::OffsetDateTime::now_utc()).try_into() {
+            tokio::time::sleep(wait).await;
+        }
+        for (h, expected) in [(&a, enabled), (&b, true)] {
             let (status, data) = send(
                 h,
                 "GET",
@@ -66,7 +88,7 @@ async fn no_grant_account_reads_readiness_without_counts(owner: PgPool) {
             .filter(|m| m["ready"] == true)
             .map(|m| m["key"].as_str().unwrap())
             .collect::<Vec<_>>(),
-        ["home", "org", "access"]
+        ["home", "org", "access", "payroll"]
     );
     for module in modules {
         assert_eq!(module.as_object().unwrap().len(), 3);

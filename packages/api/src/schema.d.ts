@@ -52614,6 +52614,15 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            /** @description Payroll module disabled (module_disabled). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     listPayrollRuns: {
