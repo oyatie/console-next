@@ -2,12 +2,14 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { tenantInSetup } from "./setup-flows";
-import { go } from "./flows";
+import { go, routeReady } from "./flows";
 import { commitLabel } from "../apps/web/src/ui/composer/actions";
+import { apiOf, bearerOf, codeOf } from "./helpers/api";
 
 test.beforeAll(() => loadCatalog("ko"));
 test("pay group setup persists every explicit rule through the real service", async ({ browser }) => {
   const { admin, exec } = await tenantInSetup(browser, "pay-group-setup", "모의급여설정상사", false, "본점", "none");
+  const token = bearerOf(admin);
   try {
     await go(admin, "/payroll/setup");
     await admin.getByRole("main").getByRole("button", { name: t("payroll.setup.add"), exact: true }).click();
@@ -31,18 +33,34 @@ test("pay group setup persists every explicit rule through the real service", as
     await sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true }).click();
     const response = await saved;
     expect(response.status()).toBe(201);
-    expect(await response.json()).toMatchObject({
+    const created = await response.json();
+    expect(created).toMatchObject({
       name: "모의 월급 그룹", sensitive: false, pay_basis_allowed: ["MONTHLY"],
       pay_date_rule: { day: "LAST_DAY", month_offset: 0, non_business_day: "PREVIOUS" },
       base_period: { start_day: "FIRST", month_offset: 0 }, variable_period: { start_day: "FIRST", month_offset: 0 },
       proration: "CALENDAR_DAYS", channel: "ATTESTATION_ONLY",
     });
+    const headers = await response.request().allHeaders();
+    expect(headers["idempotency-key"]).toBeTruthy();
+    const api = apiOf(admin, token);
+    const body = { ...created };
+    delete body.id;
+    const retryHeaders = { "Idempotency-Key": headers["idempotency-key"]! };
+    const replay = await api("/payroll/pay-groups", "POST", body, retryHeaders);
+    expect(replay.status()).toBe(response.status());
+    expect(await replay.json()).toEqual(created);
+    const mismatch = await api("/payroll/pay-groups", "POST", { ...body, name: "모의 다른 그룹" }, retryHeaders);
+    expect(mismatch.status()).toBe(409);
+    expect(await codeOf(mismatch)).toBe("idempotency_key_reused");
+    const listed = await api("/payroll/pay-groups");
+    expect((await listed.json()).items).toEqual([created]);
     await expect(sheet).toHaveCount(0);
     await go(admin, "/payroll");
     const card = admin.getByRole("region", { name: "모의 월급 그룹", exact: true });
     await expect(card).toContainText(t("payroll.rule.sensitive.false"));
     await expect(card).toContainText(t("payroll.rule.MONTHLY"));
     await admin.reload();
+    await routeReady(admin, "/payroll");
     await expect(card).toBeVisible();
   } finally { await admin.context().close(); await exec.context().close(); }
 });

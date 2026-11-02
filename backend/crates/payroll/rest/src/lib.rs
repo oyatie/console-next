@@ -191,7 +191,7 @@ pub fn router(state: PayrollRestState) -> Router {
             access::module_gate,
         ))
         .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    pay_groups::with_replay_context(router, verifier, pool)
 }
 
 #[derive(Debug, Deserialize)]

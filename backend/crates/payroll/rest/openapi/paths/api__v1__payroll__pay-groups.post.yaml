@@ -5,6 +5,12 @@ operationId: createPayGroup
 summary: Create an explicit entity pay group
 security:
 - bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: false
+  description: Optional retry key, trimmed before use. For the same tenant and actor, a completed request with the same key and body replays the original 201 response under current Cedar access; a different body returns 409. Omit only for independent creates.
+  schema: {type: string, minLength: 16, maxLength: 200}
 requestBody:
   required: true
   content:
@@ -12,12 +18,14 @@ requestBody:
       schema: {$ref: '#/components/schemas/CreatePayGroup'}
 responses:
   '201':
-    description: Explicit pay group created for the permitted legal entity.
+    description: Explicit pay group created for the permitted legal entity, or the original response replayed after current Cedar authorization.
     content:
       application/json:
         schema: {$ref: '#/components/schemas/PayGroup'}
   '422':
-    description: Missing, malformed or invalid required choices; nothing is written (validation).
+    description: Missing, malformed or invalid required choices (validation), or an invalid supplied Idempotency-Key (invalid_request_key); no pay group is written.
+  '409':
+    description: The key was used with a different body (idempotency_key_reused), is still processing (command_processing), or the saved result cannot be disclosed under current access (command_applied). Refused commands remain settled (command_settled); no pay group is written.
   '401': {$ref: '#/components/responses/Unauthorized'}
   '403': {$ref: '#/components/responses/Forbidden'}
   '503':
