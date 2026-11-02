@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 
 export function readEnvironment(environment, root = '.') {
   assert.match(environment ?? '', /^[a-z0-9][a-z0-9-]*$/, 'PLAT_OVERLAY: select a committed environment');
@@ -44,7 +44,7 @@ export function assertPromotion({sha, repository, run, jobs, gatesResult, curren
       job.run_id === run.id && job.head_sha === sha &&
       job.status === 'completed' && job.conclusion === 'success'),
   'PROMOTE_NOT_GREEN: require completed successful jobs for this platform run and SHA');
-  const workflow = yaml.load(readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8'));
+  const workflow = load(readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8'));
   for (const [name, job] of Object.entries(workflow.jobs)) {
     const matrix = job.strategy?.matrix;
     if (!matrix) {
@@ -56,12 +56,15 @@ export function assertPromotion({sha, repository, run, jobs, gatesResult, curren
     assert.ok(!matrix.exclude && (!matrix.include || Object.keys(matrix).length === 1),
       'PROMOTE_NOT_GREEN: unsupported matrix; update proof inventory before changing the workflow');
     const rows = matrix.include?.map(row => Object.values(row)) ?? Object.values(matrix)
-      .reduce((rows, values) => rows.flatMap(row => values.map(value => [...row, value])), [[]]);
+      .reduce((combinations, values) => combinations.flatMap(row => values.map(value => [...row, value])), [[]]);
     const expected = rows.map(row => `${name} (${row.join(', ')})`).sort();
-    const actual = jobs.filter(job => job.name.startsWith(`${name} (`)).map(job => job.name).sort();
+    const actual = jobs.filter(actualJob => actualJob.name.startsWith(`${name} (`)).map(actualJob => actualJob.name).sort();
     assert.deepEqual(actual, expected, `PROMOTE_NOT_GREEN: require every ${name} matrix job exactly once`);
   }
   assert.equal(gatesResult, 'pass', 'PROMOTE_GATES: release gates must pass');
+  assert.ok(currentRevision === null ||
+    spawnSync('git', ['rev-parse', '--is-shallow-repository'], {cwd:root, encoding:'utf8'}).stdout?.trim() === 'false',
+  'PROMOTE_NOT_DESCENDANT: channel ancestry requires a full checkout (fetch-depth: 0)');
   assert.ok(currentRevision === null || typeof currentRevision === 'string' &&
     /^(?!0{40}$)[a-f0-9]{40}$/.test(currentRevision) &&
     spawnSync('git', ['merge-base', '--is-ancestor', currentRevision, sha], {cwd:root}).status === 0,

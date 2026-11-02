@@ -5,12 +5,23 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const api = () => import(pathToFileURL(join(root, 'deploy/ci/promote.mjs')));
-const sha = execFileSync('git', ['rev-parse', 'HEAD'], {cwd:root, encoding:'utf8'}).trim();
-const previous = execFileSync('git', ['rev-parse', 'HEAD^'], {cwd:root, encoding:'utf8'}).trim();
+const historyRoot = mkdtempSync(join(tmpdir(), 'promotion-history-'));
+after(() => rmSync(historyRoot, {recursive:true, force:true}));
+const git = (...args) => execFileSync('git', args, {cwd:historyRoot, encoding:'utf8'}).trim();
+git('init', '--quiet');
+mkdirSync(join(historyRoot, '.github/workflows'), {recursive:true});
+cpSync(join(root, '.github/workflows/platform.yml'), join(historyRoot, '.github/workflows/platform.yml'));
+git('add', '.github/workflows/platform.yml');
+const commit = message => git('-c', 'user.name=ci', '-c', 'user.email=ci@example.invalid',
+  'commit', '--quiet', '--allow-empty', '--no-gpg-sign', '-m', message);
+commit('initial platform workflow');
+const previous = git('rev-parse', 'HEAD');
+commit('candidate');
+const sha = git('rev-parse', 'HEAD');
 const image = `example.invalid/console@sha256:${'a'.repeat(64)}`;
 const repository = 'example/console';
 const exitNames = ['ubuntu-24.04', 'ubuntu-24.04-arm'].flatMap(runner =>
@@ -93,9 +104,9 @@ test('renderer accepts a new environment directory and refuses unknown, traversa
     mkdirSync(join(dir, 'deploy/clusters/linked-config'));
     symlinkSync(join(dir, 'deploy/clusters/example/platform.json'), join(dir, 'deploy/clusters/linked-config/platform.json'));
     for (const environment of ['unknown', '../clusters/example', 'example/../example', 'linked', 'linked-config']) {
-      const result = render(environment, join(dir, 'refused'), dir);
-      assert.notEqual(result.status, 0);
-      assert.match(result.stderr, /PLAT_OVERLAY/);
+      const refused = render(environment, join(dir, 'refused'), dir);
+      assert.notEqual(refused.status, 0);
+      assert.match(refused.stderr, /PLAT_OVERLAY/);
       assert.equal(existsSync(join(dir, 'refused')), false);
     }
   } finally { rmSync(dir, {recursive:true, force:true}); }
@@ -138,7 +149,7 @@ test('a newly configured Kubernetes environment uses the existing renderer', () 
 test('green exact-SHA platform proof admits first, descendant and repeated promotions', async () => {
   const {assertPromotion} = await api();
   for (const currentRevision of [null, previous, sha]) {
-    assert.doesNotThrow(() => assertPromotion({...proof(), currentRevision}, root));
+    assert.doesNotThrow(() => assertPromotion({...proof(), currentRevision}, historyRoot));
   }
 });
 
@@ -147,7 +158,7 @@ for (const conclusion of ['failure', 'skipped', 'cancelled', 'neutral', null]) {
     const {assertPromotion} = await api();
     const input = proof();
     input.jobs[0].conclusion = conclusion;
-    assert.throws(() => assertPromotion(input, root), /PROMOTE_NOT_GREEN/);
+    assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_NOT_GREEN/);
   });
 }
 
@@ -170,7 +181,7 @@ for (const [reason, change] of [
   const {assertPromotion} = await api();
   const input = proof();
   change(input);
-  assert.throws(() => assertPromotion(input, root), /PROMOTE_NOT_GREEN/);
+  assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_NOT_GREEN/);
 });
 
 for (const [reason, change] of [
@@ -178,16 +189,17 @@ for (const [reason, change] of [
   ['non-push', input => { input.run.event = 'pull_request'; }],
   ['non-dev', input => { input.run.head_branch = 'feature'; }],
   ['missing repository', input => { delete input.run.head_repository; }],
+  ['missing both repositories', input => { delete input.repository; delete input.run.head_repository; }],
 ]) test(`PROMOTE_FORK: refuses ${reason}`, async () => {
   const {assertPromotion} = await api();
   const input = proof();
   change(input);
-  assert.throws(() => assertPromotion(input, root), /PROMOTE_FORK/);
+  assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_FORK/);
 });
 
 for (const gatesResult of ['fail', 'skipped', '', undefined]) test(`PROMOTE_GATES: refuses ${gatesResult}`, async () => {
   const {assertPromotion} = await api();
-  assert.throws(() => assertPromotion({...proof(), gatesResult}, root), /PROMOTE_GATES/);
+  assert.throws(() => assertPromotion({...proof(), gatesResult}, historyRoot), /PROMOTE_GATES/);
 });
 
 test('PROMOTE_NOT_GREEN: refuses matrix policies whose proof inventory is unsupported', async () => {
@@ -215,8 +227,25 @@ test('PROMOTE_NOT_DESCENDANT: refuses moving a channel backwards or accepting un
   input.run.head_sha = previous;
   input.jobs.forEach(job => { job.head_sha = previous; });
   input.currentRevision = sha;
-  assert.throws(() => assertPromotion(input, root), /PROMOTE_NOT_DESCENDANT/);
+  assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_NOT_DESCENDANT/);
   for (const currentRevision of [undefined, '', 'local', '0'.repeat(40), 'f'.repeat(40)]) {
-    assert.throws(() => assertPromotion({...proof(), currentRevision}, root), /PROMOTE_NOT_DESCENDANT/);
+    assert.throws(() => assertPromotion({...proof(), currentRevision}, historyRoot), /PROMOTE_NOT_DESCENDANT/);
   }
+});
+
+test('PROMOTE_NOT_DESCENDANT: caller must use fetch-depth: 0 for channel ancestry', async () => {
+  const {assertPromotion} = await api();
+  const dir = mkdtempSync(join(tmpdir(), 'promotion-shallow-'));
+  try {
+    execFileSync('git', ['clone', '--quiet', '--depth', '1', pathToFileURL(historyRoot).href, dir]);
+    assert.equal(execFileSync('git', ['rev-parse', '--is-shallow-repository'], {cwd:dir, encoding:'utf8'}).trim(), 'true');
+    for (const currentRevision of [sha, previous]) {
+      assert.throws(() => assertPromotion({...proof(), currentRevision}, dir), /PROMOTE_NOT_DESCENDANT:.*fetch-depth: 0/);
+    }
+    assert.doesNotThrow(() => assertPromotion({...proof(), currentRevision:null}, dir));
+    execFileSync('git', ['fetch', '--quiet', '--unshallow'], {cwd:dir});
+    for (const currentRevision of [previous, sha]) {
+      assert.doesNotThrow(() => assertPromotion({...proof(), currentRevision}, dir));
+    }
+  } finally { rmSync(dir, {recursive:true, force:true}); }
 });
