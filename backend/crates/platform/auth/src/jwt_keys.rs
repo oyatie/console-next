@@ -115,7 +115,7 @@ impl KeySet {
                 return Err(invalid_key("not an uncompressed point"));
             };
             let (x, y) = (URL_SAFE_NO_PAD.encode(x), URL_SAFE_NO_PAD.encode(y));
-            let kid = thumbprint(x.clone(), y.clone());
+            let kid = thumbprint(x.clone(), y.clone())?;
             if !keys.iter().any(|(known, _)| *known == kid) {
                 keys.push((kid, DecodingKey::from_ec_components(&x, &y)?));
             }
@@ -157,11 +157,14 @@ impl KeySet {
 
 /// The `kid` of the key that signs with `private_key`.
 pub(crate) fn signing_kid(private_key: &EncodingKey) -> Result<String, AuthError> {
-    Ok(Jwk::from_encoding_key(private_key, Algorithm::ES256)?.thumbprint(ThumbprintHash::SHA256))
+    Ok(
+        Jwk::from_encoding_key(private_key, Algorithm::ES256)?
+            .thumbprint(ThumbprintHash::SHA256)?,
+    )
 }
 
-fn thumbprint(x: String, y: String) -> String {
-    Jwk {
+fn thumbprint(x: String, y: String) -> Result<String, AuthError> {
+    Ok(Jwk {
         common: CommonParameters::default(),
         algorithm: AlgorithmParameters::EllipticCurve(EllipticCurveKeyParameters {
             key_type: EllipticCurveKeyType::EC,
@@ -170,7 +173,7 @@ fn thumbprint(x: String, y: String) -> String {
             y,
         }),
     }
-    .thumbprint(ThumbprintHash::SHA256)
+    .thumbprint(ThumbprintHash::SHA256)?)
 }
 
 fn invalid_key(reason: &str) -> AuthError {
