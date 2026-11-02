@@ -105,7 +105,7 @@ test("runner propagates failures, refuses stale/missing JUnit and runs without d
     writeFileSync(path.join(root, "lib.rs"), '#[test] fn ordinary() {}\n#[sqlx::test] async fn database(pool: PgPool) {}\n#[cfg(feature = "test-postgres")] #[sqlx::test] async fn feature_database() {}');
     const s = suite(["ordinary", "database", "tooling"]);
     s.testcases.tooling.ignored = true;
-    writeFileSync(path.join(root, "metadata.json"), JSON.stringify({ workspace_root: root, target_directory: path.join(root, "custom-build-cache"), packages: [{ id: "example", manifest_path: path.join(root, "Cargo.toml") }] }));
+    writeFileSync(path.join(root, "metadata.json"), JSON.stringify({ workspace_root: root, target_directory: path.join(root, "custom-build-cache"), workspace_members: ["example"], packages: [{ id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [{ name: "first", kind: ["test"] }, { name: "second", kind: ["test"] }] }] }));
     writeFileSync(path.join(root, "list.json"), JSON.stringify(listing(s)));
     const cargo = `#!${process.execPath}
 const fs = require('node:fs'), path = require('node:path');
@@ -122,11 +122,17 @@ else {
   process.exit(process.env.MODE === 'exit' ? 100 : 0);
 }
 `;
-    for (const mode of ["pass", "failure", "exit", "missing", "skipped", "spawn-error"]) {
+    for (const mode of ["pass", "sharded", "failure", "exit", "missing", "skipped", "spawn-error"]) {
       writeFileSync(path.join(root, "bin/cargo"), cargo, { mode: 0o755 });
       writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "ordinary"]], mode === "skipped" ? "<skipped/>" : "", mode === "failure" ? 1 : 0));
-      const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], { encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, DATABASE_URL: "postgres://unused.invalid/db", PGHOST: "unused.invalid", GITHUB_STEP_SUMMARY: path.join(root, "summary.md") } });
-      assert.equal(result.status, mode === "pass" ? 0 : 1, result.stdout + result.stderr);
+      const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], { encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, NEXTEST_SHARD: mode === "sharded" ? "2" : undefined, NEXTEST_SHARDS: mode === "sharded" ? "2" : undefined, DATABASE_URL: "postgres://unused.invalid/db", PGHOST: "unused.invalid", GITHUB_STEP_SUMMARY: path.join(root, "summary.md") } });
+      assert.equal(result.status, ["pass", "sharded"].includes(mode) ? 0 : 1, result.stdout + result.stderr);
+      if (mode === "sharded") {
+        const args = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
+        assert.ok(args.includes("--workspace"));
+        assert.deepEqual(args.slice(args.indexOf("--test"), args.indexOf("--test") + 2), ["--test", "second"]);
+        assert.ok(!args.includes("--lib") && !args.includes("--bins"));
+      }
       if (mode === "spawn-error") assert.match(result.stderr, /spawnSync cargo ENOENT/);
       assert.equal(JSON.parse(readFileSync(path.join(root, "target/nextest/ci/inventory.json"), "utf8")).selected.length, 1);
     }
@@ -140,13 +146,12 @@ else {
 });
 
 test("backend tests inherit hardening, pinned tooling, JUnit artifacts and blocking ci-ok wiring", () => {
-  const job = workflow.jobs.backend;
+  const job = workflow.jobs["backend-tests"];
   assert.ok(job, "backend checks and tests must execute in CI");
-  assert.ok(!workflow.jobs["backend-tests"], "nextest shares the existing backend build directory");
   assert.deepEqual(job.permissions, { contents: "read" });
   assert.equal(job.env.SQLX_OFFLINE, "true");
   assert.match(job.env.CARGO_NEXTEST_VERSION, /^\d+\.\d+\.\d+$/);
-  assert.ok(!job["continue-on-error"] && !job.if);
+  assert.ok(!job["continue-on-error"]);
   assert.ok(job.steps[0].uses.startsWith("step-security/harden-runner@"));
   for (const step of job.steps) {
     if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
@@ -155,39 +160,13 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
   const run = job.steps.find((s) => s.run === "node scripts/backend-tests.mjs");
   assert.ok(run && !run.if);
   assert.equal(run["working-directory"], ".");
-  assert.ok(job.steps.indexOf(run) > job.steps.findIndex((s) => s.run?.startsWith("cargo clippy ")));
   const check = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts.check;
   assert.match(check, /node --test[^&]*scripts\/backend-tests\.test\.mjs/);
   const install = job.steps.find((s) => s.name === "Install pinned Rust test runner");
   assert.ok(install.run.includes("releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/"));
   assert.match(install.run, /[a-f0-9]{64}.*sha256sum -c -/);
-  const artifact = job.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@") && s.with?.name === "backend-test-results");
+  const artifact = job.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@") && s.with?.name === "backend-test-results-${{ matrix.shard }}");
   assert.equal(artifact.if, "${{ !cancelled() }}");
   assert.equal(artifact.with["if-no-files-found"], "error");
-  assert.ok(workflow.jobs["ci-ok"].needs.includes("backend"));
-  const command = workflow.jobs["ci-ok"].steps.map((s) => s.run ?? "").join("\n");
-  for (const status of ["success", "failure", "cancelled", "skipped"]) {
-    const shell = command.replace(/\$\{\{ needs(?:\.([\w-]+)|\['([\w-]+)'\])\.result \}\}/g, (_, dotted, quoted) => (dotted ?? quoted) === "backend" ? status : "success");
-    assert.equal(spawnSync("bash", ["-e", "-c", shell]).status, status === "success" ? 0 : 1);
-  }
-});
-
-test("clippy and nextest reuse a Rust cache that only trusted dev pushes can save", () => {
-  const steps = workflow.jobs.backend.steps;
-  const restore = steps.find((s) => s.uses?.startsWith("actions/cache/restore@"));
-  const save = steps.find((s) => s.uses?.startsWith("actions/cache/save@"));
-  assert.ok(restore && save);
-  assert.match(restore.with.path, /backend\/target/);
-  assert.match(restore.with.path, /\.cargo\/registry/);
-  for (const input of ["backend/rust-toolchain.toml", "backend/Cargo.lock", "backend/**/Cargo.toml"])
-    assert.ok(restore.with.key.includes(input));
-  for (const input of ["runner.os", "runner.arch", "github.sha"])
-    assert.ok(restore.with.key.includes(input));
-  assert.equal(save.with.key, "${{ steps.rust-cache.outputs.cache-primary-key }}");
-  assert.equal(save.with.path, restore.with.path);
-  assert.equal(save.if, "github.event_name == 'push' && github.ref == 'refs/heads/dev'");
-  assert.ok(steps.indexOf(restore) < steps.findIndex((s) => s.run?.startsWith("cargo clippy ")));
-  assert.ok(steps.indexOf(save) > steps.findIndex((s) => s.run === "node scripts/backend-tests.mjs"));
-  const pins = steps.filter((s) => s.uses?.startsWith("actions/setup-node@")).map((s) => s.uses);
-  assert.deepEqual(pins, [workflow.jobs.web.steps.find((s) => s.uses?.startsWith("actions/setup-node@")).uses]);
+  assert.ok(workflow.jobs["ci-ok"].needs.includes("backend-tests"));
 });

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import { expect, test } from "vitest";
@@ -15,9 +16,11 @@ test("ci-ok cannot succeed when the reusable commit check fails or is skipped", 
   expect(ci.jobs.web.needs ?? []).not.toContain("commits");
   expect(ci.jobs.web.if).toBeUndefined();
   expect(ci.jobs["ci-ok"].needs).toContain("commits");
-  expect(ci.jobs["ci-ok"].steps[0].run).toContain('test "${{ needs.commits.result }}" = success');
   expect(ci.jobs["ci-ok"].needs).toContain("web");
-  expect(ci.jobs["ci-ok"].steps[0].run).toContain('test "${{ needs.web.result }}" = success');
+  for (const name of ["commits", "web"]) for (const result of ["failure", "skipped", "cancelled"]) {
+    const needs = Object.fromEntries(ci.jobs["ci-ok"].needs.map(job => [job, { result: job === name ? result : "success", outputs: { backend: "true" } }]));
+    expect(spawnSync("bash", ["-e", "-c", ci.jobs["ci-ok"].steps[0].run], { env: { ...process.env, NEEDS: JSON.stringify(needs), GITHUB_EVENT_NAME: "pull_request" } }).status).not.toBe(0);
+  }
 });
 
 test("the commit workflow checks event head commits with full history and read-only credentials", () => {
