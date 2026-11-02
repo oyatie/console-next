@@ -92,19 +92,18 @@ function DayPanel({ day }: { day: Day }) {
         items={[
           { key: "plan", label: t("attendanceRecords.day.plan"), value: day.plan.shift ? shiftText(day.plan.shift) : t(`attendance.dayKind.${day.plan.kind}`) },
           { key: "recorded", label: t("attendanceRecords.day.recorded"), value: day.entry ? entryText(day.entry.kind, day.entry.segments) : t("attendanceRecords.day.none") },
-          { key: "recognised", label: t("attendanceRecords.day.recognised"), value: day.entry ? t("attendanceOverview.day.sourceBasis", { source: t(`attendanceRecords.source.${day.entry.source}`), recognised: duration(r.recognised), regular: duration(r.regular), open: duration(r.excess_open ?? r.early_unrecognised + r.late_unrecognised) }) : t("attendanceRecords.day.recognisedValue", { recognised: duration(r.recognised), regular: duration(r.regular) }) },
+          { key: "recognised", label: t("attendanceRecords.day.recognised"), value: day.entry ? t("attendanceOverview.day.sourceBasis", { source: t(`attendanceRecords.source.${day.entry.source}`), recognised: duration(r.recognised), regular: duration(r.regular) }) : t("attendanceRecords.day.recognisedValue", { recognised: duration(r.recognised), regular: duration(r.regular) }) },
           { key: "outside", label: t("attendanceRecords.day.outside"), value: t("attendanceRecords.day.outsideValue", { outside: duration(r.outside_scheduled ?? r.approved + r.early_unrecognised + r.late_unrecognised), open: duration(r.excess_open ?? r.early_unrecognised + r.late_unrecognised) }) },
           { key: "notWorked", label: t("attendanceRecords.day.notWorked"), value: t("attendanceRecords.day.notWorkedValue", { late: r.late_in, early: r.early_out, away: r.away }) },
-          ...(!day.intervals ? [{ key: "minutes", label: t("attendanceOverview.day.minutes"), value: t("attendanceOverview.day.noMinutes") }] : []),
         ]}
       />
-      {day.intervals ? <Table label={t("attendanceOverview.day.minutes")} rows={day.intervals} rowId={i => `${i.start}-${i.end}-${i.category}`} columns={[
+      {day.intervals ? <><h3>{t("attendanceOverview.day.minutes")}</h3><Table label={t("attendanceOverview.day.minutes")} rows={day.intervals} rowId={i => `${i.start}-${i.end}-${i.category}`} columns={[
         { header: t("attendanceOverview.day.interval"), card: "title", rowHeader: true, cell: i => t("attendancePatterns.shift.span", { start: clockText(i.start), end: clockText(i.end) }) },
         { header: t("attendanceOverview.day.minuteCount"), card: "fact", cell: i => t("attendanceOverview.day.minuteValue", { count: i.minutes }) },
         { header: t("attendance.col.kind"), card: "fact", cell: i => t(`attendanceOverview.interval.${i.category}`) },
         { header: t("attendanceRecords.day.recognised"), card: "status", cell: i => t(i.recognised ? "attendanceOverview.day.counted" : "attendanceOverview.day.excluded") },
         { header: t("attendanceOverview.day.reason"), card: "fact", cell: i => i.reason },
-      ]} /> : null}
+      ]} /></> : null}
       {day.marks.length > 0 && <div className="row">{day.marks.map((m) => <MarkChip key={m} mark={m} />)}</div>}
     </>
   );

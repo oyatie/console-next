@@ -44,8 +44,8 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
-  // A changed date, scope or mark must not show rows and counts from the previous read.
-  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined, search.mark));
+  // A changed date, scope or filter must not show rows and counts from the previous read.
+  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined));
   const rows = useMemo(() => board.data?.groups.flatMap(g => g.rows) ?? [], [board.data]);
   const kindOf = usePlanKinds(rows, date);
   const store = useDrafts(`day:${date}`, rows);
@@ -59,7 +59,6 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const feedback = [drafts > 0 && t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 }), note, store.problem && t(`attendanceRecords.drafts.${store.problem}`)].filter(Boolean).join(" · ");
   const saveWhy = !online ? t("attendanceRecords.save.offline") : null;
   const empty = board.data?.ledger.people === 0;
-  const restoringDetail = search.detail && board.isPlaceholderData && board.data?.groups.some(g => g.hidden > 0);
 
   return (
     <div className={s.dayPage}>
@@ -83,7 +82,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
       </div>}
       {feedback && <p className="muted" role="status">{feedback}</p>}
 
-      <QueryState q={restoringDetail ? { ...board, isPending: true } : board} own={refusalText} layout="grid">{b => {
+      <QueryState q={board} own={refusalText} layout="grid">{b => {
         const ledger = ledgerParts(b.ledger);
         return <>
             <div className={s.monthLayout} data-docked={save || open ? "" : undefined}>

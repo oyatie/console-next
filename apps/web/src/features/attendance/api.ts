@@ -89,8 +89,8 @@ type CellPreview = S["AttendanceCellPreview"];
 
 // Reads. A save, undo, correction or void anywhere re-reads them (the prefix is invalidated; the live topic
 // `attendance_day` does the same for another HR worker's writes).
-export const dayBoardQuery = (date: string, workplace_id?: string, unit_id?: string, issues_only?: boolean, no_schedule_only?: boolean, rows?: "all", mark?: string) => {
-  const query = { date, workplace_id, unit_id, issues_only: issues_only || undefined, no_schedule_only: no_schedule_only || undefined, rows, ...(mark ? { mark } : {}) };
+export const dayBoardQuery = (date: string, workplace_id?: string, unit_id?: string, issues_only?: boolean, no_schedule_only?: boolean, rows?: "all") => {
+  const query = { date, workplace_id, unit_id, issues_only: issues_only || undefined, no_schedule_only: no_schedule_only || undefined, rows };
   const board = get("/api/v1/attendance/days", { params: { query } });
   return { ...board, queryFn: async (): Promise<DayBoard> => {
     try { return await board.queryFn(); }

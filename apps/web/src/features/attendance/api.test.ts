@@ -33,12 +33,12 @@ test("a compact query failure is not retried", async () => {
   expect(request).toHaveBeenCalledTimes(1);
 });
 
-test("a kind filter reaches the server without losing scope or period", async () => {
+test("the day board sends only supported scope and period filters", async () => {
   request.mockResolvedValue({ data: { groups: [], issue_groups: [] }, response: new Response() });
-  const query = dayBoardQuery("2026-10-06", "wp", "team", true, undefined, undefined, "MISSING_OUT");
+  const query = dayBoardQuery("2026-10-06", "wp", "team", true);
   await query.queryFn();
   expect(request).toHaveBeenCalledWith("/api/v1/attendance/days", { params: { query: {
-    date: "2026-10-06", workplace_id: "wp", unit_id: "team", issues_only: true, no_schedule_only: undefined, rows: undefined, mark: "MISSING_OUT",
+    date: "2026-10-06", workplace_id: "wp", unit_id: "team", issues_only: true, no_schedule_only: undefined, rows: undefined,
   } } });
 });
 
