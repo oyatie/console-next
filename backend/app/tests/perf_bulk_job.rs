@@ -4,6 +4,8 @@
 //! batch exactly once (all or nothing), its outcome on `GET …/bulk/jobs/{id}`,
 //! audited progress steps — and every refusal answers with nothing written.
 
+#[path = "perf_bulk_job/access.rs"]
+mod access;
 #[path = "perf_bulk_job/counts.rs"]
 mod counts;
 #[path = "support/go_live.rs"]
@@ -25,6 +27,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 pub(crate) const BULK: &str = "/api/v1/employees/lifecycle-events/bulk";
+
+// The driver cap belongs to the process, including when SQLx gives each test its own database.
+pub(crate) static DRIVER_TEST: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 pub(crate) fn transfer(ids: &[Uuid], unit: Uuid) -> Value {
     json!({
@@ -51,6 +56,7 @@ async fn settled(ctx: &Ctx, token: &str, location: &str) -> Value {
 /// (p95 3.0-4.0 s against "accepted <= 1 s"); `Prefer` was ignored.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_an_async_bulk_transfer_is_a_job_recorded_exactly_once(pool: PgPool) {
+    let _drivers = DRIVER_TEST.lock().await;
     let (ctx, org, admin) = setup(&pool).await;
     lifecycle_grant::grant(&pool, org, *admin.as_uuid()).await;
     let people = [
@@ -133,6 +139,7 @@ async fn regression_an_async_bulk_transfer_is_a_job_recorded_exactly_once(pool: 
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn async_bulk_refusals_write_nothing(pool: PgPool) {
+    let _drivers = DRIVER_TEST.lock().await;
     let (ctx, org, admin) = setup(&pool).await;
     lifecycle_grant::grant(&pool, org, *admin.as_uuid()).await;
     let person = seed_employee(&pool, org, "일괄 1").await;
