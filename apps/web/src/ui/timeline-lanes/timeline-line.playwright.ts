@@ -10,6 +10,7 @@ export default defineConfig({
   testDir: ".",
   testMatch: "timeline-line.spec.ts",
   outputDir: path.join(repo, "node_modules/.cache/ledger-playwright"),
+  forbidOnly: !!process.env.CI,
   workers: 2,
   retries: 0,
   reporter: "line",

@@ -86,3 +86,38 @@ test("the backend-dev secret-output test passes while the default backend port i
   });
   assert.equal(run.status, 0, run.stdout + run.stderr);
 });
+
+test("the CI launcher resets the service Postgres and starts only the object store through Compose", async (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-external-postgres-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const bin = path.join(dir, "bin"), log = path.join(dir, "docker.log"), input = path.join(dir, "docker-input");
+  mkdirSync(bin);
+  writeFileSync(path.join(bin, "docker"), "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$DOCKER_LOG\"\ncat >> \"$DOCKER_INPUT\"\n", { mode: 0o700 });
+  writeFileSync(path.join(dir, "console-app"), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+  const run = spawnSync(process.execPath, ["scripts/backend-dev.mjs", "--reset"], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 30_000,
+    env: {
+      ...process.env,
+      PATH: `${bin}:${process.env.PATH ?? ""}`,
+      DOCKER_INPUT: input,
+      DOCKER_LOG: log,
+      CONSOLE_APP_BIN: path.join(dir, "console-app"),
+      CONSOLE_DEV_POSTGRES_CONTAINER: "postgres-service",
+      CONSOLE_DEV_PROJECT: "external-postgres-test",
+      CONSOLE_DEV_BACKEND_PORT: String(await freePort()),
+      CONSOLE_DEV_PG_PORT: String(await freePort()),
+      CONSOLE_DEV_S3_PORT: String(await freePort()),
+      E2E_CACHE_DIR: path.join(dir, "cache"),
+    },
+  });
+  assert.equal(run.status, 0, run.stderr);
+  const calls = readFileSync(log, "utf8");
+  assert.match(calls, /exec postgres-service psql .*DROP DATABASE/);
+  assert.match(calls, /exec -i postgres-service bash -s/);
+  assert.match(calls, /compose .* up -d --wait seaweedfs/);
+  assert.doesNotMatch(calls, /compose .* up -d --wait\n/);
+  assert.doesNotMatch(calls, /exec -T postgres psql/);
+  assert.match(readFileSync(input, "utf8"), /CREATE ROLE console_app/);
+});

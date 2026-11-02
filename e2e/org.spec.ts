@@ -9,6 +9,7 @@ import { revealUnit } from "./structure-flows";
 // 결재 is off by default (decisions #26: approval.policy.org_structure = none) and no one holds settings_manage yet, so
 // a test cannot turn it on: this rejection/redraft journey waits for a tenant 결재 정책 (the engine stays covered
 // by the backend tests that pin route).
+// fixme: owner=@jason931225; reason=tenant approval policy cannot yet be enabled through the product; expires=2026-11-17
 test.fixme("an org change is drafted, submitted from its page, rejected with a reason and redrafted", { tag: "@org" }, async ({ browser }) => {
   const { admin, exec } = await tenantWithExecutive(browser, "orgco", "조직주식회사");
 

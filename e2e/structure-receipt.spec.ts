@@ -28,6 +28,7 @@ test("regression: an erase from the panel ends the chart's earlier receipt (org-
 });
 
 // The erased-unit view should close without re-reading the deleted resource.
+// fixme: owner=@jason931225; reason=the erase view re-reads the deleted resource; expires=2026-11-17
 test.fixme("an erase never re-reads the erased unit (org-13)", { tag: ["@regression", "@org"] }, async ({ browser }) => {
   const { admin } = await tenantInSetup(browser, "receipt13b", "영수회사", false, "본사");
   await go(admin, "/org");

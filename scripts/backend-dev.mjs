@@ -22,6 +22,7 @@ const WEB_ORIGIN = process.env.CONSOLE_WEB_ORIGIN ?? "http://localhost:5173";
 // shares a database with test runs.
 const PORT = PORTS;
 const PROJECT = COMPOSE_PROJECT;
+const postgresContainer = process.env.CONSOLE_DEV_POSTGRES_CONTAINER;
 // The E2E slot's cache (e2e/slot.ts sets it); the default is slot 0's.
 const CACHE = process.env.E2E_CACHE_DIR ?? CACHE_DIR;
 const RECORD = path.join(CACHE, "backend.json");
@@ -67,10 +68,32 @@ const compose = (args, opts = {}) =>
     ["compose", "-p", PROJECT, "-f", "deploy/dev/compose.e2e.yml", ...args],
     { cwd: ROOT, env: composeEnv, stdio: "inherit", ...opts },
   );
+const docker = (args, opts = {}) => spawnSync("docker", args, { cwd: ROOT, stdio: "inherit", ...opts });
 const must = (r, what) => {
   if (r.status !== 0) throw new Error(`${what} failed (exit ${r.status})`);
   console.log(`[boot] ${what} done at ${(performance.now() / 1000).toFixed(1)}s`);
 };
+
+function resetServicePostgres() {
+  const psql = (database, sql) => docker(["exec", postgresContainer, "psql", "--set", "ON_ERROR_STOP=1", "--username", "console_cluster_admin", "--dbname", database, "--command", sql]);
+  must(psql("postgres", `DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`), "service database drop");
+  must(psql("postgres", "DROP ROLE IF EXISTS console_rt, console_leave_cmd, console_ontology_cmd, console_platform_force_cmd, console_auth_cmd, console_app, console_leave_definer, console_ontology_writer"), "service role reset");
+  must(psql("postgres", `CREATE DATABASE "${DB}"`), "service database create");
+  const initEnv = {
+    POSTGRES_DB: DB,
+    POSTGRES_USER: "console_cluster_admin",
+    CONSOLE_APP_POSTGRES_PASSWORD: PW.app,
+    CONSOLE_RT_POSTGRES_PASSWORD: PW.rt,
+    CONSOLE_LEAVE_COMMAND_POSTGRES_PASSWORD: PW.leave,
+    CONSOLE_ONTOLOGY_COMMAND_POSTGRES_PASSWORD: PW.ontology,
+    CONSOLE_PLATFORM_FORCE_COMMAND_POSTGRES_PASSWORD: PW.force,
+  };
+  const exports = Object.entries(initEnv).map(([name, value]) => `export ${name}=${JSON.stringify(value)}`).join("\n");
+  must(docker(["exec", "-i", postgresContainer, "bash", "-s"], {
+    input: `${exports}\n${readFileSync(path.join(ROOT, "deploy/dev/postgres-init.sh"), "utf8")}`,
+    stdio: ["pipe", "inherit", "inherit"],
+  }), "service role bootstrap");
+}
 
 function devKeys() {
   const dir = path.join(CONSOLE, "ops/.dev-secrets");
@@ -152,10 +175,11 @@ if (!existsSync(BIN)) throw new Error(`no backend binary at ${BIN}; build with \
 // cold-start code is single-use).
 if (process.argv.includes("--reset")) {
   must(compose(["down", "-v"]), "reset");
+  if (postgresContainer) resetServicePostgres();
   // The vendor's passkey (e2e/flows.ts) belongs to the database just dropped.
   rmSync(path.join(CACHE, "vendor-passkey.json"), { force: true });
 }
-must(compose(["up", "-d", "--wait"]), "compose up");
+must(compose(["up", "-d", "--wait", ...(postgresContainer ? ["seaweedfs"] : [])]), "compose up");
 must(compose(["exec", "-T", "seaweedfs", "sh", "-ec",
   "printf 's3.bucket.create -name mnt-evidence\\ns3.bucket.create -name mnt-evidence-replica\\n' | weed shell -master=localhost:9333 -filer=localhost:8888"]), "evidence buckets");
 must(spawnSync(BIN, [], { cwd: CONSOLE, env: appEnv("migrate"), stdio: "inherit" }), "migrations");
@@ -163,11 +187,10 @@ must(spawnSync(BIN, [], { cwd: CONSOLE, env: appEnv("migrate"), stdio: "inherit"
 // that fsync stalled every commit for 5–17 s at once (rs3), failing whichever tests were writing. Set before the
 // API starts, so its connections inherit it; the demo stack leaves it unset.
 if (process.env.CONSOLE_DEV_ASYNC_COMMIT === "1")
-  must(
-    compose(["exec", "-T", "postgres", "psql", "-U", "console_cluster_admin", "-d", DB, "-v", "ON_ERROR_STOP=1",
-      "-c", `ALTER DATABASE ${DB} SET synchronous_commit = off`]),
-    "asynchronous commit",
-  );
+  must(postgresContainer
+    ? docker(["exec", postgresContainer, "psql", "-U", "console_cluster_admin", "-d", DB, "-v", "ON_ERROR_STOP=1", "-c", `ALTER DATABASE ${DB} SET synchronous_commit = off`])
+    : compose(["exec", "-T", "postgres", "psql", "-U", "console_cluster_admin", "-d", DB, "-v", "ON_ERROR_STOP=1", "-c", `ALTER DATABASE ${DB} SET synchronous_commit = off`]),
+  "asynchronous commit");
 // Which binary this backend runs, for E2E_REUSE's stale-binary guard (e2e/global-setup.ts).
 mkdirSync(CACHE, { recursive: true });
 // A launcher killed before rename can leave an unpublished record behind.

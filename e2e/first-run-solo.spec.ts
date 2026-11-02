@@ -242,6 +242,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
 // Decision #7 case B (design §5.5), only where a tenant turns 결재 on (approval.policy.org_structure = route): with no
 // other eligible holder, the drafter decides their own step after a passkey step-up, marked SOLE_HOLDER. MR-3 is
 // parked with APPR (decisions #26), so this waits for it.
+// fixme: owner=@jason931225; reason=the sole-holder approval fallback is not implemented; expires=2026-11-17
 test.fixme("a solo administrator decides a governed change through the sole-holder fallback", async () => {});
 
 // The roster import placing each person at a 법인 and 사업장 (by their 부서, MR-7) is proven in

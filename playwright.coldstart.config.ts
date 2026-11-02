@@ -5,6 +5,7 @@ import config from "./playwright.config";
 // Cold start needs the empty stack before any worker enrolls the platform admin.
 export default defineConfig({
   ...config,
+  forbidOnly: !!process.env.CI,
   testIgnore: [],
   testMatch: ["**/coldstart/otp.spec.ts"],
   workers: 1,
