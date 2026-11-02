@@ -1,7 +1,8 @@
-x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
+x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "entity", "engine": "cedar"}
 tags: [attendance]
 operationId: readAttendanceDayBoard
 summary: One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first
+description: Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and each person's dated workplace are authorized in the same fact snapshot.
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: date, in: query, required: true, schema: { type: string, format: date } }

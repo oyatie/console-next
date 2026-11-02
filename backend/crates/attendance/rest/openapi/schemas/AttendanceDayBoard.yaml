@@ -4,7 +4,7 @@ required: [date, judged, ledger, marks, groups]
 properties:
   issue_groups:
     type: array
-    description: Issue counts before row filters or pagination; earliest date is the requested day.
+    description: Requested-day issue counts before row filters or pagination; earliest_date is the oldest matching issue in the authorized scope within that calendar month, through the requested day, including people who left earlier in the month.
     items:
       type: object
       required: [kind, count, earliest_date]

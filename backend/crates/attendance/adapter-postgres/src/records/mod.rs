@@ -3,6 +3,7 @@
 //! Errors share `ScheduleStoreError` and its codes.
 
 mod board;
+mod board_issues;
 mod board_page;
 mod cells;
 mod day;

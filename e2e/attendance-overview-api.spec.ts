@@ -15,7 +15,10 @@ test("attendance issue aggregates and keysets describe the authorized scope", { 
   }
   const api = apiOf(admin, bearer);
   await expect.poll(bearer).not.toBe("");
-  const date = kstDate(-1);
+  const previousMonth = new Date(`${kstDate().slice(0, 7)}-01T00:00:00Z`);
+  previousMonth.setUTCDate(0);
+  const date = previousMonth.toISOString().slice(0, 10);
+  const first = `${date.slice(0, 7)}-01`;
   const path = `/attendance/days?date=${date}&mark=NO_SCHEDULE&limit=1`;
   const seen = new Set<string>();
   let cursor: string | null = null;
@@ -24,7 +27,7 @@ test("attendance issue aggregates and keysets describe the authorized scope", { 
     expect(response.status()).toBe(200);
     const board = await response.json();
     expect(board.ledger.people).toBe(3);
-    expect(board.issue_groups).toEqual([{ kind: "NO_SCHEDULE", count: 3, earliest_date: date }]);
+    expect(board.issue_groups).toEqual([{ kind: "NO_SCHEDULE", count: 3, earliest_date: first }]);
     const rows = board.groups.flatMap((g: { rows: { employee_id: string }[] }) => g.rows);
     expect(rows).toHaveLength(1);
     expect(seen.has(rows[0].employee_id)).toBe(false);
@@ -36,7 +39,7 @@ test("attendance issue aggregates and keysets describe the authorized scope", { 
   expect(empty.status()).toBe(200);
   const board = await empty.json();
   expect(board.groups).toEqual([]);
-  expect(board.issue_groups).toEqual([{ kind: "NO_SCHEDULE", count: 3, earliest_date: date }]);
+  expect(board.issue_groups).toEqual([{ kind: "NO_SCHEDULE", count: 3, earliest_date: first }]);
   const invalid = await api(`/attendance/days?date=${date}&mark=UNKNOWN`);
   expect(invalid.status()).toBe(400);
   expect((await invalid.json()).error.code).toBe("invalid_query");

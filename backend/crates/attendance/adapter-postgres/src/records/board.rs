@@ -42,11 +42,7 @@ pub struct BoardQuery {
 /// Authorization port: the REST face loads Cedar facts inside this read transaction.
 pub enum BoardReadTarget {
     Scope(Level, Uuid),
-    Person {
-        unit: Option<Uuid>,
-        workplace: Option<Uuid>,
-        entity: Option<Uuid>,
-    },
+    Person { workplace: Option<Uuid> },
 }
 pub type BoardReadAccess =
     Box<dyn Fn(BoardReadTarget) -> Result<bool, ScheduleStoreError> + Send + Sync>;
@@ -137,17 +133,19 @@ impl PgAttendanceStore {
                             (Level::Department, q.unit_id),
                         ] {
                             if let Some(id) = id {
-                                let exists = match kind {
-                                    Level::Workplace => u.org.workplaces.contains_key(&id),
-                                    Level::Department => u.org.units.contains_key(&id),
-                                    _ => false,
-                                };
-                                if !exists {
-                                    return Err(ScheduleStoreError::NotFound(
-                                        crate::schedule::codes::SCOPE_NOT_FOUND,
-                                    ));
+                                let workplace = match kind {
+                                    Level::Workplace => {
+                                        u.org.workplaces.contains_key(&id).then_some(id)
+                                    }
+                                    Level::Department => u.org.workplace_of_unit(id),
+                                    _ => None,
                                 }
-                                if !access(BoardReadTarget::Scope(kind, id))? {
+                                .ok_or(
+                                    ScheduleStoreError::NotFound(
+                                        crate::schedule::codes::SCOPE_NOT_FOUND,
+                                    ),
+                                )?;
+                                if !access(BoardReadTarget::Scope(Level::Workplace, workplace))? {
                                     return Err(ScheduleStoreError::Forbidden);
                                 }
                             }
@@ -156,44 +154,48 @@ impl PgAttendanceStore {
                         super::authorize_filters(&caller, &u, q.workplace_id, q.unit_id)?;
                     }
                     let own = own_employee(tx, caller.user_id).await?;
-                    let members = load_members(tx, date, date, None).await?;
-                    let candidates = members.iter().filter_map(|m| m.on(date)).filter(|p| {
-                        q.workplace_id.is_none_or(|w| p.workplace_id == Some(w))
+                    let first = date
+                        .replace_day(1)
+                        .map_err(|_| ScheduleStoreError::Corrupt("board month"))?;
+                    let members = load_members(tx, first, date, None).await?;
+                    let permitted = |p: &Person| -> Result<bool, ScheduleStoreError> {
+                        if !(q.workplace_id.is_none_or(|w| p.workplace_id == Some(w))
                             && (!q.no_schedule_only
                                 || q.unit_id.is_none_or(|unit| {
                                     p.unit.is_some_and(|id| {
                                         u.org.chain(id).iter().any(|(id, _)| *id == unit)
                                     })
-                                }))
-                    });
-                    let mut people = Vec::new();
-                    for p in candidates {
-                        let permitted = if let Some(access) = &access {
+                                })))
+                        {
+                            return Ok(false);
+                        }
+                        if let Some(access) = &access {
                             access(BoardReadTarget::Person {
-                                unit: p.unit,
                                 workplace: p.workplace_id,
-                                entity: p.legal_entity_id,
-                            })?
+                            })
                         } else {
-                            visible(&caller, &u, &p)
-                        };
-                        if permitted {
+                            Ok(visible(&caller, &u, p))
+                        }
+                    };
+                    let mut people = Vec::new();
+                    for p in members.iter().filter_map(|m| m.on(date)) {
+                        if permitted(&p)? {
                             people.push(p);
                         }
                     }
-                    let ids: Vec<Uuid> = people.iter().map(|p| p.id).collect();
+                    let ids: Vec<Uuid> = members.iter().map(|m| m.id).collect();
                     let settings = RecordSettings::load(
                         tx,
                         caller.org_id,
-                        people.iter().map(|p| p.legal_entity_id),
+                        members.iter().flat_map(|m| m.setting_entities()),
                     )
                     .await?;
-                    let mut entries = current(tx, date, date, Some(&ids)).await?;
+                    let mut entries = current(tx, first, date, Some(&ids)).await?;
                     let judged = date < today;
                     let closes = Closes::load(tx).await?;
                     let mut ledger = Ledger::default();
                     let mut marks = MarkCounts::default();
-                    let mut issues = BTreeMap::<Mark, i64>::new();
+                    let mut issues = BTreeMap::<Mark, IssueGroup>::new();
                     let rank = u.org.tree_rank();
                     let at = |id: Option<Uuid>| id.and_then(|x| rank.get(&x).copied());
                     // The 사업장's own group (no 부서) first, then its 부서 in the chart's order.
@@ -214,7 +216,14 @@ impl PgAttendanceStore {
                         );
                         count(&mut marks, &e.marks);
                         for mark in &e.marks {
-                            *issues.entry(*mark).or_default() += 1;
+                            issues
+                                .entry(*mark)
+                                .or_insert(IssueGroup {
+                                    kind: *mark,
+                                    count: 0,
+                                    earliest_date: date,
+                                })
+                                .count += 1;
                         }
                         let row = BoardRow {
                             employee_id: p.id,
@@ -278,19 +287,21 @@ impl PgAttendanceStore {
                         groups.retain(|g| g.no_schedule > 0);
                     }
                     let next_cursor = super::board_page::page(&mut groups, &q);
+                    super::board_issues::earliest(
+                        &u,
+                        &settings,
+                        &members,
+                        &entries,
+                        today,
+                        permitted,
+                        &mut issues,
+                    )?;
                     Ok(DayBoard {
                         date,
                         judged,
                         ledger,
                         marks,
-                        issue_groups: issues
-                            .into_iter()
-                            .map(|(kind, count)| IssueGroup {
-                                kind,
-                                count,
-                                earliest_date: date,
-                            })
-                            .collect(),
+                        issue_groups: issues.into_values().collect(),
                         next_cursor,
                         groups,
                     })
