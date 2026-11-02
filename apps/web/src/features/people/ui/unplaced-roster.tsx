@@ -20,16 +20,20 @@ const route = getRouteApi("/app/people");
 
 /** The same unplaced queue as the placement workflow, presented with the roster's table. */
 export function UnplacedRoster({ manage, switcher }: { manage: boolean; switcher?: ReactNode }) {
-  const window = useQuery(rosterWindowQuery);
+  const contractWindow = useQuery(rosterWindowQuery);
+  const soonDays = contractWindow.isError ? undefined : contractWindow.data;
   const navigate = route.useNavigate();
   const { peopleAccess } = route.useRouteContext();
-  return <PageReadGate q={window}>
-    <RosterHead manage={manage} soonDays={window.data} status="current" review={[]} unplaced switcher={switcher} onView={view => void navigate({ search: previous => ({ ...previous, placement: undefined, status: view.status === "current" ? undefined : view.status, review: joinReview(view.review ?? []) }), replace: true })} />
-    <AccessGate {...peopleAccess.unplaced} layout="list"><QueryState q={window} layout="list">{soonDays => <UnplacedRows manage={manage} soonDays={soonDays} />}</QueryState></AccessGate>
-  </PageReadGate>;
+  return <>
+    <RosterHead manage={manage} soonDays={soonDays} status="current" review={[]} unplaced switcher={switcher} onView={view => void navigate({ search: previous => ({ ...previous, placement: undefined, status: view.status === "current" ? undefined : view.status, review: joinReview(view.review ?? []) }), replace: true })} />
+    <AccessGate {...peopleAccess.unplaced} layout="list">
+      {contractWindow.isError && <QueryState q={contractWindow} inline>{() => null}</QueryState>}
+      <UnplacedRows manage={manage} soonDays={soonDays} />
+    </AccessGate>
+  </>;
 }
 
-function UnplacedRows({ manage, soonDays }: { manage: boolean; soonDays: number }) {
+function UnplacedRows({ manage, soonDays }: { manage: boolean; soonDays?: number }) {
   const queue = useUnplacedQueue();
   const navigate = route.useNavigate();
   const [find, setFind] = useState("");

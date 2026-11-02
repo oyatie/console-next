@@ -8,12 +8,13 @@ import { RosterPage } from "./roster-page";
 import { rosterWindowQuery } from "../api/roster";
 import { VIEWS } from "../domain/roster";
 
-const state = vi.hoisted(() => ({ refused: false, body: "roster rows", org: false, loading: false, empty: false, search: {} as { status?: string; review?: string; unit?: string; sort?: string } }));
+const state = vi.hoisted(() => ({ refused: false, settingsFailed: false, staleWindow: undefined as number | undefined, body: "roster rows", org: false, loading: false, empty: false, search: {} as { status?: string; review?: string; unit?: string; sort?: string } }));
 const table = vi.hoisted(() => vi.fn());
+const rosterRead = vi.hoisted(() => vi.fn());
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }), Link: () => null, useNavigate: () => vi.fn() }));
 vi.mock("@tanstack/react-query", async original => ({
   ...await original<typeof import("@tanstack/react-query")>(),
-  useQuery: (options: { queryFn: unknown }) => options === rosterWindowQuery ? { data: 21 } : options.queryFn === myAccessQuery.queryFn ? {
+  useQuery: (options: { queryFn: unknown }) => options === rosterWindowQuery ? { data: state.settingsFailed ? state.staleWindow : 21, isPending: false, isError: state.settingsFailed, error: state.settingsFailed ? new ApiError(503, "service_unavailable", "") : null, refetch: vi.fn() } : options.queryFn === myAccessQuery.queryFn ? {
     data: { is_ops: false, entries: state.org ? [{ grant_id: "org", domain: "org", level: "view", enforcement: "ENFORCED", scope: { kind: "TENANT" } }] : [] }, isPending: false, error: null,
   } : ({ data: undefined, isPending: false, isFetching: false, isFetchedAfterMount: true, error: new ApiError(403, "access_denied", ""), refetch: vi.fn() }),
 }));
@@ -21,12 +22,12 @@ vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => fals
 vi.mock("../../../lib/react/prefetch", () => ({ usePrefetch: () => vi.fn() }));
 vi.mock("../../../lib/reason-codes", () => ({ useReasonCodesReady: () => false }));
 vi.mock("./roster-table", () => ({ RosterTable: (props: { empty: React.ReactNode }) => { table(props); return <div>{state.empty ? props.empty : state.body}</div>; } }));
-vi.mock("./use-roster", async original => ({ ...await original<typeof import("./use-roster")>(), useRoster: () => ({
+vi.mock("./use-roster", async original => ({ ...await original<typeof import("./use-roster")>(), useRoster: (...args: unknown[]) => { rosterRead(...args); return ({
   list: { data: state.refused ? undefined : { pages: [{ items: [], total: 1 }] }, isPending: false, hasNextPage: true, error: state.refused ? new ApiError(403, "access_denied", "") : null, refetch: vi.fn() },
   rows: state.empty ? [] : [{ id: "person", name: "가상직원" }], total: 1, loading: state.loading, status: { totals: { all: 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
-}) }));
+}); } }));
 beforeAll(() => loadCatalog("ko"));
-beforeEach(() => { state.refused = false; state.org = false; state.loading = false; state.empty = false; state.search = {}; table.mockClear(); });
+beforeEach(() => { state.refused = false; state.settingsFailed = false; state.staleWindow = undefined; state.org = false; state.loading = false; state.empty = false; state.search = {}; table.mockClear(); rosterRead.mockClear(); });
 const render = () => {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
   try { return renderToStaticMarkup(<QueryClientProvider client={client}><RosterPage manage={false} /></QueryClientProvider>); }
@@ -86,4 +87,16 @@ test.each(VIEWS.filter(view => view.id !== "current"))("the $id view uses the cu
   state.loading = false;
   state.empty = true;
   expect(render().split(t("people.filter.reset"))).toHaveLength(2);
+});
+
+test.each([undefined, 21])("a settings outage keeps the roster and reports the failure once with cached window %s", cached => {
+  state.staleWindow = cached;
+  state.settingsFailed = true;
+  state.search = { review: "contractSoon,identity" };
+  const html = render();
+  expect(html).toContain("roster rows");
+  expect(rosterRead).toHaveBeenCalledWith(expect.anything(), undefined, true);
+  expect(html.split(t("common.read.failedReason"))).toHaveLength(2);
+  expect(html).not.toContain(t("directoryViews.contractSoon", { days: "—" }));
+  expect(html).not.toContain(t("roster.review.contractSoon", { days: "—" }));
 });

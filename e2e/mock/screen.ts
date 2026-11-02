@@ -42,6 +42,7 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   }));
   await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
   await mockDirectorySettings(page);
+  await page.route("**/api/v1/me/employee-views", route => route.fulfill({ status: 404, json: failure("not_found") }));
   // route.fulfill buffers bodies; a browser stream keeps the shell healthy without fake reconnects.
   await page.addInitScript(() => {
     const fetch = window.fetch;

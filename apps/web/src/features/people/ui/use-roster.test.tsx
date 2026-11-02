@@ -85,3 +85,18 @@ test.each([undefined, "hire_date", "-employee_number"] as const)("the roster con
   expect(next(page, [page], undefined, [undefined])).toBe("opaque-sort-and-id");
   expect(next({ ...page, next_cursor: null }, [page], undefined, [undefined])).toBeUndefined();
 });
+
+test("a failed window read preserves the other server filters and enables the roster", async () => {
+  function FailedWindow() {
+    useRoster({ status: "ON_LEAVE", review: ["contractSoon", "identity"], unit: "department", sort: "-hire_date" }, undefined, true);
+    return null;
+  }
+  renderToStaticMarkup(<FailedWindow />);
+  const options = vi.mocked(useInfiniteQuery).mock.calls.at(-1)![0];
+  expect(options.enabled).toBe(true);
+  await (options.queryFn as (context: { pageParam?: string }) => Promise<unknown>)({});
+  const query = http.get.mock.calls.at(-1)![1].params.query;
+  expect(query).toMatchObject({ status: ["ON_LEAVE"], identity_review_required: true, org_unit_id: "department", sort: "-hire_date" });
+  expect(query.contract_ending_before).toBeUndefined();
+  expect(vi.mocked(useQuery).mock.calls.every(([read]) => read!.enabled === true)).toBe(true);
+});

@@ -44,21 +44,34 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
-test("the saved-view form waits for its read and stays locked after a read failure", async () => {
+test.each([404, 405, 503])("saved views stay hidden until served and report status %s only when actionable", async status => {
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   const writes: string[] = [];
+  let available = false;
+  await page.unrouteAll({ behavior: "wait" });
   await page.route("**/api/v1/me/employee-views", async route => {
     if (route.request().method() !== "GET") writes.push(route.request().method());
     await held;
-    await route.fulfill({ status: 503, json: { error: { code: "service_unavailable", message: "" } } });
+    await route.fulfill(available ? { json: { items: [] } } : { status, json: { error: { code: "service_unavailable", message: "" } } });
   });
+  const response = page.waitForResponse("**/api/v1/me/employee-views");
+  const requested = page.waitForRequest("**/api/v1/me/employee-views");
   await page.goto(`${server.resolvedUrls!.local[0]}saved-views-test`);
-  await page.getByRole("button", { name: t("directoryViews.open"), exact: true }).click();
-  const save = page.getByRole("button", { name: commitLabel({ kind: "directoryView", mode: "save" }), exact: true });
-  await browserExpect(save).toBeDisabled();
+  await requested;
+  const open = page.getByRole("button", { name: t("directoryViews.open"), exact: true });
+  await browserExpect(open).toHaveCount(0);
   release();
-  await browserExpect(page.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
-  await browserExpect(save).toBeDisabled();
+  expect((await response).status()).toBe(status);
+  await browserExpect(open).toHaveCount(0);
+  const retry = page.getByRole("button", { name: t("common.retry"), exact: true });
+  if (status === 503) {
+    await browserExpect(retry).toBeVisible();
+    available = true;
+    await retry.click();
+    await browserExpect(open).toBeVisible();
+    await open.click();
+    await browserExpect(page.getByRole("button", { name: commitLabel({ kind: "directoryView", mode: "save" }), exact: true })).toBeEnabled();
+  } else await browserExpect(retry).toHaveCount(0);
   expect(writes).toEqual([]);
 });

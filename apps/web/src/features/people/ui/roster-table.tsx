@@ -26,7 +26,7 @@ export function StatusChip({ status }: { status?: string | null }) {
 }
 
 /** The most urgent next item, with "+n" when there are more (all of them in the tooltip and in the panel). */
-function Next({ e, today, soonDays }: { e: Employee; today: string; soonDays: number }) {
+function Next({ e, today, soonDays }: { e: Employee; today: string; soonDays?: number }) {
   const items = nextItems(e, today, soonDays).map(nextText);
   const [first] = items;
   if (!first) return <span className={s.steel}>{"—"}</span>;
@@ -42,7 +42,7 @@ function Next({ e, today, soonDays }: { e: Employee; today: string; soonDays: nu
  * The roster's columns (E1): employee number, name (a shared name gets nothing added: same-name people are told apart by employee number and placement on the
  * same row), company, placement (workplace › department), position, employment type, hire date, status, next. One line each, the full text in the title.
  */
-function useColumns(today: string, soonDays: number, exited: boolean, shown: readonly ColumnId[]): LongColumn<Employee>[] {
+function useColumns(today: string, soonDays: number | undefined, exited: boolean, shown: readonly ColumnId[]): LongColumn<Employee>[] {
   const units = useQuery(unitsQuery).data?.items ?? [];
   const entities = useQuery(entitiesRef).data?.items ?? [];
   const entity = (e: Employee) => entities.find((x) => x.id === e.legal_entity_id);
@@ -106,7 +106,7 @@ type TableProps = Parameters<typeof LongTable<Employee>>[0];
 const SORT_COLUMNS: Record<RosterSort, string> = { name: "name", employee_number: "number", org_unit: "unit", hire_date: "hired" };
 
 /** The people table: compact rows of the roster's columns, everything else as LongTable takes it. */
-export function RosterTable({ today, soonDays, exited = false, shown, density, sort = "name", onSort, ...p }: Omit<TableProps, "columns" | "density" | "rowId" | "sortDescriptor" | "onSortChange"> & { today: string; soonDays: number; exited?: boolean; shown: readonly ColumnId[]; density: "compact" | "regular"; sort?: RosterOrder; onSort?: (sort: RosterOrder) => void }) {
+export function RosterTable({ today, soonDays, exited = false, shown, density, sort = "name", onSort, ...p }: Omit<TableProps, "columns" | "density" | "rowId" | "sortDescriptor" | "onSortChange"> & { today: string; soonDays?: number; exited?: boolean; shown: readonly ColumnId[]; density: "compact" | "regular"; sort?: RosterOrder; onSort?: (sort: RosterOrder) => void }) {
   const activeKey = SORTS.find(key => sort === key || sort === `-${key}`)!;
   const columns = useColumns(today, soonDays, exited, shown).map(column => ({ ...column, allowsSorting: Boolean(onSort) && Object.values(SORT_COLUMNS).includes(column.id) }));
   return <LongTable {...p} density={density} columns={columns} rowId={(e) => e.id}

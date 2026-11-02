@@ -44,3 +44,12 @@ test("the current view marks unresolved people as included", () => {
   const chip = html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)?.find(button => button.includes(t("roster.status.UNKNOWN")));
   expect(chip).toContain('aria-pressed="true"');
 });
+
+test("status chips finish loading without a contract-window count", () => {
+  const html = renderToStaticMarkup(<RosterFilters status="current" review={["contractSoon", "identity"]}
+    counts={{ status: { totals: statusTotals([3, 0, 0, 0, 0]), failed: [] },
+      review: { totals: reviewTotals([0, undefined, 1, 0, 0, 0, 0]), failed: [] } }}
+    onChange={() => undefined} findSlot={() => undefined} density="regular" onDensity={() => undefined} />);
+  expect(html).not.toContain('data-pending="true"');
+  expect(html).not.toContain(t("roster.review.contractSoon", { days: "—" }));
+});

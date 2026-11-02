@@ -2,7 +2,7 @@
 import { loadCatalog, t } from "@console/i18n";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
-import { employees, facets, failure, id, user } from "../mock/fixtures";
+import { employees, facets, failure, id, screenAccess, user } from "../mock/fixtures";
 import { moveDetail } from "../mock/lifecycle-sheets";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
@@ -14,6 +14,79 @@ import { todayKst } from "../../apps/web/src/lib/pure/today";
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`unserved saved views stay hidden and outages can recover ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, screens[1], "populated");
+    const response = page.waitForResponse("**/api/v1/me/employee-views");
+    await page.goto("/people");
+    expect((await response).status()).toBe(404);
+    const open = page.getByRole("button", { name: t("directoryViews.open"), exact: true });
+    await expect(page.getByRole("grid", { name: t("people.table"), exact: true })).toBeVisible();
+    await expect(open).toHaveCount(0);
+    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+    await fits(page, `unserved views ${width} ${theme}`);
+    await expectAxe(page, `unserved views ${width} ${theme}`);
+    await page.route("**/api/v1/me/employee-views", route => route.fulfill({ status: 503, json: failure("service_unavailable") }));
+    await page.reload();
+    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1, { timeout: 10_000 });
+    await expect(open).toHaveCount(0);
+    await fits(page, `saved views outage ${width} ${theme}`);
+    await expectAxe(page, `saved views outage ${width} ${theme}`);
+    await page.route("**/api/v1/me/employee-views", route => route.fulfill({ json: { items: [] } }));
+    await page.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await expect(open).toHaveCount(1);
+    await expect(open).toBeVisible();
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  for (const placement of ["", "unplaced"]) test(`settings outage keeps the ${placement || "employee"} roster ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, screens[1], "populated");
+    await mockRoute(page, "get", "/api/v1/settings", { status: 503, json: failure("service_unavailable") });
+    if (placement) await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: {
+      ...screenAccess("/people"), entries: [...screenAccess("/people").entries, ...screenAccess("/people/unplaced").entries],
+    } });
+    await mockRoute(page, "get", "/api/v1/employees/facets", request => {
+      const result = facets(3);
+      return { status: 200, json: { ...result, review: { ...result.review,
+        contract_ending_before: new URL(request.url()).searchParams.has("contract_ending_before") ? 0 : null,
+      } } };
+    });
+    await mockRoute(page, "get", "/api/v1/employees/import/unplaced", { status: 200, json: { count: 1, items: [{
+      employee_id: id(100), name: "검증직원 1", company: "화면 검증 회사", reason: "no_place", employee_number: "UI-0001", employment_type: "REGULAR", hire_date: "2026-01-01",
+    }] } });
+    const requests: URLSearchParams[] = [];
+    await mockRoute(page, "get", "/api/v1/employees", request => {
+      requests.push(new URL(request.url()).searchParams);
+      return { status: 200, json: { items: employees(3), total: 3, offset: 0, limit: 100, next_cursor: null } };
+    });
+    await page.goto(`/people?review=contractSoon,identity${placement ? `&placement=${placement}` : ""}`);
+    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1, { timeout: 10_000 });
+    const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
+    await expect(grid).toBeVisible();
+    await expect(grid.getByText("UI-0001", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: t("directoryViews.contractSoon", { days: "—" }), exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: "—" })) })).toHaveCount(0);
+    if (!placement) {
+      await expect(page.getByRole("button", { name: new RegExp(`^${t("roster.status.ACTIVE")} 3$`) })).toBeVisible();
+      expect(requests.length).toBeGreaterThan(0);
+      expect(requests.every(query => !query.has("contract_ending_before") && query.get("identity_review_required") === "true")).toBe(true);
+    }
+    await fits(page, `settings outage ${placement} ${width} ${theme}`);
+    await expectAxe(page, `settings outage ${placement} ${width} ${theme}`);
+    await test.info().attach("settings-outage", { body: await page.screenshot({ path: test.info().outputPath("settings-outage.png"), fullPage: true }), contentType: "image/png" });
+    await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: contractWindowSettings(21) });
+    await page.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: t("directoryViews.contractSoon", { days: 21 }), exact: true })).toBeVisible();
+    await expect(grid.getByText("UI-0001", { exact: true })).toBeVisible();
+    if (placement) expect(requests).toHaveLength(0);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
   test(`accounts continues by cursor and resets server filters ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
@@ -82,8 +155,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       return { status: 200, json: { items: employees(100), total: fixture.count, offset: 0, limit: 100, next_cursor: null } };
     });
     await page.goto("/people?review=contractSoon,identity");
+    await expect(page.getByRole("heading", { name: t("roster.page.roster"), exact: true })).toBeVisible();
     const views = page.getByRole("group", { name: t("roster.view.label"), exact: true });
-    await expect(views.getByRole("button", { name: t("directoryViews.contractSoon", { days: "—" }), exact: true })).toBeVisible();
+    await expect(views.getByRole("button", { name: t("directoryViews.contractSoon", { days: "—" }), exact: true })).toHaveCount(0);
     expect(requests).toHaveLength(0);
     release();
     const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
@@ -104,7 +178,6 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 
   test(`personal directory views survive reload and replace server filters ${width} ${theme} @ui-state`, async ({ page }) => {
-    test.setTimeout(120_000);
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[1], "large");
@@ -139,7 +212,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await find.fill("저장하지 않을 이름");
     await find.press("Enter");
     await expect(page.getByText(t("roster.empty.q", { q: "저장하지 않을 이름" }), { exact: true })).toBeVisible();
-    const open = () => page.getByRole("button", { name: t("directoryViews.open"), exact: true }).click();
+    const open = async () => {
+      const button = page.getByRole("button", { name: t("directoryViews.open"), exact: true });
+      await expect(button).toBeVisible();
+      await button.click();
+    };
     await open();
     const sheet = page.getByRole("dialog", { name: t("directoryViews.open"), exact: true });
     await expect(sheet.getByText(t("directoryViews.empty"), { exact: true })).toBeVisible();
