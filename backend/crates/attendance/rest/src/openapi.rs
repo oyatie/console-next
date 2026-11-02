@@ -499,6 +499,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/AttendanceHolidayYear.yaml"),
     },
     NamedYaml {
+        name: "AttendanceInterval",
+        body: include_str!("../openapi/schemas/AttendanceInterval.yaml"),
+    },
+    NamedYaml {
         name: "AttendanceLayerSummary",
         body: include_str!("../openapi/schemas/AttendanceLayerSummary.yaml"),
     },

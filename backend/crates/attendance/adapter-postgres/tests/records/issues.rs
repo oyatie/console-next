@@ -3,11 +3,12 @@
 use console_attendance_adapter_postgres::BoardQuery;
 use console_attendance_domain::records::Mark;
 use sqlx::PgPool;
+use std::time::Instant;
 use time::macros::date;
 use uuid::Uuid;
 
 use super::save::{cell, save, scheduled};
-use super::support::{assign, key, office, seed, world};
+use super::support::{TestReads, assign, key, office, seed, world};
 use console_attendance_domain::schedule::Level;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -227,4 +228,51 @@ async fn two_thousand_people_have_stable_uuid_pages_and_unpaged_counts(owner: Pg
     assert!(last.groups.is_empty());
     assert!(last.next_cursor.is_none());
     assert_eq!(last.issue_groups[0].count, 2000);
+
+    let (pattern, _) = w
+        .store
+        .create_pattern(&w.hr(), &key(), office("성능 측정"))
+        .await
+        .unwrap();
+    w.store
+        .assign_schedule(
+            &w.hr(),
+            &key(),
+            assign(
+                Level::Workplace,
+                w.workplaces[0],
+                pattern.id,
+                date!(2026 - 01 - 01),
+            ),
+        )
+        .await
+        .unwrap();
+    w.store
+        .save_entries(
+            &w.hr(),
+            &key(),
+            save(vec![cell(&w, 0, date!(2026 - 10 - 31), "9-")]),
+        )
+        .await
+        .unwrap();
+    let started = Instant::now();
+    let measured = w
+        .store
+        .day_board(
+            &w.hr(),
+            BoardQuery {
+                date: Some(date!(2026 - 10 - 31)),
+                limit: Some(200),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    let elapsed = started.elapsed();
+    assert_eq!(measured.ledger.people, 2000);
+    eprintln!("2,000 people × 31 days: {elapsed:?}");
+    assert!(
+        elapsed.as_secs_f64() < 2.0,
+        "2,000 people over 31 days took {elapsed:?}"
+    );
 }

@@ -3,7 +3,7 @@
 use console_attendance_application::records_read::BoardGroup;
 use uuid::Uuid;
 
-use super::BoardQuery;
+use super::{BoardQuery, RECORDS_PAGE_LIMIT};
 
 pub(super) fn page(groups: &mut Vec<BoardGroup>, q: &BoardQuery) -> Option<Uuid> {
     if let Some(mark) = q.mark {
@@ -22,7 +22,7 @@ pub(super) fn page(groups: &mut Vec<BoardGroup>, q: &BoardQuery) -> Option<Uuid>
     ids.sort_unstable();
     let limit = q
         .limit
-        .map(|limit| limit.clamp(1, 200))
+        .map(|limit| limit.clamp(1, RECORDS_PAGE_LIMIT))
         .unwrap_or(ids.len());
     let next_cursor = (ids.len() > limit).then(|| ids[limit - 1]);
     ids.truncate(limit);

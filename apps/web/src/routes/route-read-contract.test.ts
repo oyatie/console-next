@@ -62,8 +62,13 @@ for (const [path, contract] of Object.entries(routeReads)) {
   }
 }
 
-test("attendance's actual month/day/schedule handlers use the projected branch caller", () => {
-  expect(source("attendance/rest/src/records.rs")).toMatch(/fn month[\s\S]*?let p = principal\(&s, &h\).await\?;\s*let c = caller\(&p, READ\)/);
+test("attendance record reads use one Cedar fact snapshot; schedule keeps its projected caller", () => {
+  const records = source("attendance/rest/src/records.rs");
+  for (const [handler, read] of [["days", "day_board"], ["month", "month_grid"], ["person_month", "person_month"]]) {
+    expect(records).toMatch(new RegExp(`async fn ${handler}[\\s\\S]*?let c = read_scope\\(&p\\)[\\s\\S]*?\\.${read}_with_access\\(&c,[\\s\\S]*?access::load!\\(org, actor\\)`));
+  }
+  expect(records).not.toContain("caller(&p, READ)");
+  expect(source("attendance/rest/src/records_access.rs").match(/load_facts/g)).toHaveLength(1);
   expect(source("attendance/rest/src/schedule/mod.rs")).toMatch(/const READ: Feature = Feature::EmployeeDirectoryRead/);
   expect(source("attendance/rest/src/schedule/mod.rs")).toContain("if branch_ids.is_empty()");
   for (const op of routeReads["/attendance"].reads) expect(operationAccess[op]).toEqual({ domain: "hr_basic", level: "view", scopes: ["TENANT", "LEGAL_ENTITY", "WORKPLACE"] });

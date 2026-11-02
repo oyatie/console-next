@@ -4,10 +4,14 @@
 mod grammar;
 mod marks;
 mod recognise;
+mod recognition_interval;
 
 pub use grammar::{Entry, ParseRefusal, parse};
 pub use marks::{Mark, Recorded, Thresholds, Tone, marks};
-pub use recognise::{Minutes, Recognition, recognise, scheduled};
+pub use recognise::{
+    IntervalCategory, IntervalReason, Minutes, RECOGNITION_RULE_VERSION, Recognition,
+    RecognitionInterval, recognise, scheduled,
+};
 
 use serde::{Deserialize, Serialize};
 

@@ -2,13 +2,13 @@
 //! The paid-time rule reaches preview, both grids and the day board.
 use console_attendance_adapter_postgres::{BoardQuery, GridQuery};
 use console_attendance_application::records::PreviewInput;
-use console_attendance_application::records_read::RecognitionRead;
-use console_attendance_domain::records::Mark;
+use console_attendance_application::records_read::{DayRead, RecognitionRead};
+use console_attendance_domain::records::{IntervalCategory, IntervalReason, Mark};
 use sqlx::PgPool;
 use time::macros::date;
 
 use super::save::{cell, save, scheduled};
-use super::support::key;
+use super::support::{TestReads, key};
 
 fn paid(r: RecognitionRead) {
     assert_eq!(
@@ -26,6 +26,22 @@ fn paid(r: RecognitionRead) {
     assert!(!r.over_cap);
 }
 
+fn intervals(day: &DayRead) -> Vec<(u16, u16, u32, IntervalCategory, bool, IntervalReason)> {
+    day.intervals
+        .iter()
+        .map(|i| {
+            (
+                i.start,
+                i.end,
+                i.minutes,
+                i.category,
+                i.recognised,
+                i.reason_code,
+            )
+        })
+        .collect()
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn worked_time_is_paid_on_every_projection_without_approval(owner: PgPool) {
     let w = scheduled(owner).await;
@@ -40,7 +56,45 @@ async fn worked_time_is_paid_on_every_projection_without_approval(owner: PgPool)
         )
         .await
         .unwrap();
-    paid(preview.cells[0].after.as_ref().unwrap().recognition);
+    let preview_day = preview.cells[0].after.as_ref().unwrap();
+    paid(preview_day.recognition);
+    assert_eq!(
+        intervals(preview_day),
+        vec![
+            (
+                540,
+                720,
+                180,
+                IntervalCategory::Work,
+                true,
+                IntervalReason::ScheduledWork
+            ),
+            (
+                720,
+                780,
+                60,
+                IntervalCategory::Break,
+                false,
+                IntervalReason::ScheduledBreak
+            ),
+            (
+                780,
+                1080,
+                300,
+                IntervalCategory::Work,
+                true,
+                IntervalReason::ScheduledWork
+            ),
+            (
+                1080,
+                1200,
+                120,
+                IntervalCategory::Overtime,
+                true,
+                IntervalReason::OpenOvertime
+            ),
+        ]
+    );
     w.store
         .save_entries(
             &w.hr(),
@@ -87,14 +141,9 @@ async fn worked_time_is_paid_on_every_projection_without_approval(owner: PgPool)
         .person_month(&w.hr(), w.people[0], "2026-10".into())
         .await
         .unwrap();
-    paid(
-        month
-            .days
-            .iter()
-            .find(|d| d.date == date)
-            .unwrap()
-            .recognition,
-    );
+    let month_day = month.days.iter().find(|d| d.date == date).unwrap();
+    paid(month_day.recognition);
+    assert_eq!(intervals(month_day), intervals(preview_day));
     let rest = month
         .days
         .iter()
@@ -114,13 +163,13 @@ async fn worked_time_is_paid_on_every_projection_without_approval(owner: PgPool)
         .await
         .unwrap();
     let rows: Vec<_> = board.groups.iter().flat_map(|g| &g.rows).collect();
-    paid(
-        rows.iter()
-            .find(|r| r.employee_id == w.people[0])
-            .unwrap()
-            .day
-            .recognition,
-    );
+    let board_day = &rows
+        .iter()
+        .find(|r| r.employee_id == w.people[0])
+        .unwrap()
+        .day;
+    paid(board_day.recognition);
+    assert_eq!(intervals(board_day), intervals(preview_day));
     let unplanned = rows.iter().find(|r| r.employee_id == w.people[2]).unwrap();
     assert_eq!(
         (

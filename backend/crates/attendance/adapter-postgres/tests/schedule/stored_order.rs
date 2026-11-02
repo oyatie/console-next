@@ -2,7 +2,7 @@
 //! (org-sibling-order): the 근무 일정 scope tree (and every picker built from
 //! it) and the 일별 board's 사업장 › 부서 groups.
 
-use super::support::{World, seed, world};
+use super::support::{TestReads, World, seed, world};
 
 use console_attendance_adapter_postgres::BoardQuery;
 use console_attendance_domain::schedule::Level;

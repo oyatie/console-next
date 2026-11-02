@@ -1,7 +1,7 @@
 //! RLS and a lower branch grant cannot read or mutate live S2 records.
 use super::save::{cell, paper, save, scheduled};
 use super::security_support::business;
-use super::support::{code, key};
+use super::support::{TestReads, code, key};
 use console_attendance_adapter_postgres::{BoardQuery, GridQuery};
 use console_attendance_application::CallerScope;
 use console_attendance_application::records::{CorrectInput, PreviewInput, UndoInput, VoidInput};

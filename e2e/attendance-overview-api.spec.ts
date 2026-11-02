@@ -10,15 +10,15 @@ test("attendance issue aggregates and keysets describe the authorized scope", { 
   await go(admin, "/org");
   await addDepartments(admin, "본사", ["인사부"]);
   const bearer = bearerOf(admin);
-  for (const [name, number] of [["윤하준", "O-0001"], ["황정우", "O-0002"], ["송재원", "O-0003"]]) {
-    await registerEmployee(admin, { name: name!, number: number!, hired: kstDate(-60) });
-  }
-  const api = apiOf(admin, bearer);
-  await expect.poll(bearer).not.toBe("");
   const previousMonth = new Date(`${kstDate().slice(0, 7)}-01T00:00:00Z`);
   previousMonth.setUTCDate(0);
   const date = previousMonth.toISOString().slice(0, 10);
   const first = `${date.slice(0, 7)}-01`;
+  for (const [name, number] of [["윤하준", "O-0001"], ["황정우", "O-0002"], ["송재원", "O-0003"]]) {
+    await registerEmployee(admin, { name: name!, number: number!, hired: first });
+  }
+  const api = apiOf(admin, bearer);
+  await expect.poll(bearer).not.toBe("");
   const path = `/attendance/days?date=${date}&mark=NO_SCHEDULE&limit=1`;
   const seen = new Set<string>();
   let cursor: string | null = null;
@@ -35,6 +35,23 @@ test("attendance issue aggregates and keysets describe the authorized scope", { 
     cursor = board.next_cursor;
   } while (cursor);
   expect(seen.size).toBe(3);
+  const person = [...seen][0]!;
+  for (const invalidPath of [
+    `/attendance/days?date=${date}&limit=0`,
+    `/attendance/days?date=${date}&limit=201`,
+    `/attendance/month?month=${date.slice(0, 7)}&limit=0`,
+    `/attendance/month?month=${date.slice(0, 7)}&limit=201`,
+  ]) {
+    const invalidLimit = await api(invalidPath);
+    expect(invalidLimit.status()).toBe(400);
+    expect((await invalidLimit.json()).error.code).toBe("invalid_query");
+  }
+  const monthPath = `/attendance/month?month=${date.slice(0, 7)}&limit=3`;
+  expect((await api(monthPath)).status()).toBe(200);
+  const personPath = `/attendance/people/${person}/month?month=${date.slice(0, 7)}`;
+  const personMonth = await api(personPath);
+  expect(personMonth.status()).toBe(200);
+  expect((await personMonth.json()).days.every((day: { intervals?: unknown[] }) => Array.isArray(day.intervals))).toBe(true);
   const empty = await api(`/attendance/days?date=${date}&mark=MISSING_OUT`);
   expect(empty.status()).toBe(200);
   const board = await empty.json();
@@ -47,10 +64,15 @@ test("attendance issue aggregates and keysets describe the authorized scope", { 
   const restrictedBearer = bearerOf(exec);
   await go(exec, "/account");
   await expect.poll(restrictedBearer).not.toBe("");
-  const refused = await apiOf(exec, restrictedBearer)(path);
-  expect(refused.status()).toBe(403);
-  const denial = await refused.json();
-  expect(denial.error.code).toBe("forbidden");
-  expect(denial).not.toHaveProperty("issue_groups");
-  expect(denial).not.toHaveProperty("ledger");
+  const restricted = apiOf(exec, restrictedBearer);
+  for (const refusedPath of [path, monthPath, personPath]) {
+    const refused = await restricted(refusedPath);
+    expect(refused.status()).toBe(403);
+    const denial = await refused.json();
+    expect(denial.error.code).toBe("forbidden");
+    expect(denial).not.toHaveProperty("issue_groups");
+    expect(denial).not.toHaveProperty("ledger");
+    expect(denial).not.toHaveProperty("rows");
+    expect(denial).not.toHaveProperty("days");
+  }
 });

@@ -4,7 +4,9 @@
 use console_attendance_application::records_read::{
     DayRead, EntryRead, GridCell, GridTotals, MarkCounts, PlanRead, RecognitionRead,
 };
-use console_attendance_domain::records::{EntryKind, Mark, Thresholds, Tone, evaluate, marks};
+use console_attendance_domain::records::{
+    EntryKind, Mark, RecognitionInterval, Thresholds, Tone, evaluate, marks,
+};
 use console_attendance_domain::schedule::{DayPlan, Window};
 use time::Date;
 
@@ -15,6 +17,7 @@ use crate::schedule::universe::Universe;
 pub(crate) struct Evaluated {
     pub plan: DayPlan,
     pub recognition: RecognitionRead,
+    pub intervals: Vec<RecognitionInterval>,
     pub marks: Vec<Mark>,
 }
 
@@ -49,9 +52,11 @@ pub(crate) fn evaluate_day(
         date < today,
         thresholds,
     );
+    let intervals = std::mem::take(&mut rec.intervals);
     Evaluated {
         plan,
         recognition: rec.into(),
+        intervals,
         marks,
     }
 }
@@ -71,6 +76,7 @@ pub(crate) fn day_read(date: Date, e: Evaluated, entry: Option<EntryRead>) -> Da
         plan: plan_read(&e.plan),
         entry,
         recognition: e.recognition,
+        intervals: e.intervals,
         marks: e.marks,
     }
 }

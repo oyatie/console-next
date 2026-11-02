@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use time::macros::date;
 
 use super::save::{cell, paper, save, scheduled};
-use super::support::{key, rows};
+use super::support::{TestReads, key, rows};
 use super::thresholds::seed_override;
 
 const TUE: time::Date = date!(2026 - 10 - 06);

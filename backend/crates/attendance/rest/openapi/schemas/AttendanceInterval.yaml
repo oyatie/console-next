@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: One contiguous interval from the versioned attendance recognition rule.
+required: [start, end, minutes, category, recognised, reason_code, rule_version]
+properties:
+  start: { type: integer, minimum: 0, maximum: 2880 }
+  end: { type: integer, minimum: 1, maximum: 2880 }
+  minutes: { type: integer, minimum: 1, maximum: 2880 }
+  category: { type: string, enum: [WORK, BREAK, WAIT, OVERTIME, NIGHT, HOLIDAY, NOT_WORK, DISPUTED] }
+  recognised: { type: boolean }
+  reason_code: { type: string, enum: [SCHEDULED_WORK, SCHEDULED_BREAK, PRIOR_APPROVED_OVERTIME, POST_APPROVED_OVERTIME, OPEN_OVERTIME, HOLIDAY_WORK, CONFIRMED_NOT_WORK, SCHEDULE_MISSING] }
+  rule_version: { type: string, minLength: 1 }

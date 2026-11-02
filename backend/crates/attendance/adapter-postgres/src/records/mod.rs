@@ -14,20 +14,32 @@ mod roster;
 mod save;
 mod thresholds;
 
-pub use board::{BoardQuery, BoardReadAccess, BoardReadTarget};
+pub use board::{BoardAccessFuture, BoardQuery, BoardReadAccess, BoardReadTarget};
 pub use grid::GridQuery;
 
-/// Explicit filters are resources, so absence and branch reach use the schedule's authorizer.
+pub const RECORDS_PAGE_LIMIT: usize = 200;
+
+/// Explicit filters are resources and resolve to the board's workplace boundary.
 pub(crate) fn authorize_filters(
-    caller: &console_attendance_application::CallerScope,
     universe: &crate::schedule::universe::Universe,
     workplace: Option<uuid::Uuid>,
     unit: Option<uuid::Uuid>,
+    access: &BoardReadAccess,
 ) -> Result<(), crate::schedule::ScheduleStoreError> {
     use console_attendance_domain::schedule::Level;
     for (kind, id) in [(Level::Workplace, workplace), (Level::Department, unit)] {
         if let Some(id) = id {
-            crate::schedule::preview::authorize_scope(caller, universe, &[], kind, id)?;
+            let workplace = match kind {
+                Level::Workplace => universe.org.workplaces.contains_key(&id).then_some(id),
+                Level::Department => universe.org.workplace_of_unit(id),
+                _ => None,
+            }
+            .ok_or(crate::schedule::ScheduleStoreError::NotFound(
+                crate::schedule::codes::SCOPE_NOT_FOUND,
+            ))?;
+            if !access(BoardReadTarget::Scope(Level::Workplace, workplace))? {
+                return Err(crate::schedule::ScheduleStoreError::Forbidden);
+            }
         }
     }
     Ok(())

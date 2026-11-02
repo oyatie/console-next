@@ -1,7 +1,8 @@
-x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
+x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "entity", "engine": "cedar"}
 tags: [attendance]
 operationId: readAttendanceMonthGrid
 summary: The 월간 근무표 — people × days, 100 people a page by keyset, with the four totals per row
+description: Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and every person's dated workplace use one fact snapshot.
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
@@ -11,6 +12,7 @@ parameters:
   - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 200 } }
 responses:
   '200': { description: Grid page, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceMonthGrid' } } } }
+  '400': { $ref: '#/components/responses/BadRequest' }
   '401': { $ref: '#/components/responses/Unauthorized' }
   '403': { $ref: '#/components/responses/Forbidden' }
   '404': { $ref: '#/components/responses/NotFound' }

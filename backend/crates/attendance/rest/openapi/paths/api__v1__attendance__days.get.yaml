@@ -16,6 +16,7 @@ parameters:
   - { name: rows, in: query, required: false, description: return every row without folding normal people; existing filters still apply, schema: { type: string, enum: [all] } }
 responses:
   '200': { description: Board, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceDayBoard' } } } }
+  '400': { $ref: '#/components/responses/BadRequest' }
   '401': { $ref: '#/components/responses/Unauthorized' }
   '403': { $ref: '#/components/responses/Forbidden' }
   '404': { $ref: '#/components/responses/NotFound' }

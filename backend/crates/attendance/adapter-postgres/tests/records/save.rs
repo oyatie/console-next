@@ -10,7 +10,7 @@ use sqlx::PgPool;
 use time::macros::date;
 use uuid::Uuid;
 
-use super::support::{World, assign, code, key, office, rows, today, world};
+use super::support::{TestReads, World, assign, code, key, office, rows, today, world};
 
 pub fn cell(w: &World, who: usize, d: time::Date, value: &str) -> CellInput {
     CellInput {

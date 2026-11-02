@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Scope defaults and actual unscheduled populations share the ledger's resolver.
 
-use super::support::{assign, key, office, seed, today, world};
+use super::support::{TestReads, assign, key, office, seed, today, world};
 use console_attendance_adapter_postgres::BoardQuery;
 use console_attendance_domain::schedule::Level;
 use serde_json::{Value, json};

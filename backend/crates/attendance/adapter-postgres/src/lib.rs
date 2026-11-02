@@ -32,7 +32,7 @@ mod keys;
 mod schedule;
 use keys::{event, fingerprint, idempotency_lock};
 mod records;
-pub use records::{BoardQuery, BoardReadAccess, BoardReadTarget, GridQuery};
+pub use records::{BoardQuery, BoardReadAccess, BoardReadTarget, GridQuery, RECORDS_PAGE_LIMIT};
 pub use schedule::ScheduleStoreError;
 
 const CANCEL_SUBSTITUTION_SQL: &str = "UPDATE attendance_substitutions SET status='CANCELLED', cancel_reason=$1 WHERE id=$2 AND status='ASSIGNED'";

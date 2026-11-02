@@ -1080,6 +1080,10 @@ const ATTENDANCE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../attendance/rest/openapi/schemas/AttendanceHolidayYear.yaml"),
     },
     NamedYaml {
+        name: "AttendanceInterval",
+        body: include_str!("../../attendance/rest/openapi/schemas/AttendanceInterval.yaml"),
+    },
+    NamedYaml {
         name: "AttendanceLayerSummary",
         body: include_str!("../../attendance/rest/openapi/schemas/AttendanceLayerSummary.yaml"),
     },

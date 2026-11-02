@@ -153,6 +153,7 @@
     "AttendanceHolidayPreview",
     "AttendanceHolidayRetireInput",
     "AttendanceHolidayYear",
+    "AttendanceInterval",
     "AttendanceLayerSummary",
     "AttendanceLedger",
     "AttendanceMark",

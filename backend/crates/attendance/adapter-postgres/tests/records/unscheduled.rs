@@ -8,7 +8,7 @@ use sqlx::PgPool;
 use time::{Duration, macros::date};
 
 use super::save::{cell, save, scheduled};
-use super::support::{key, seed, today};
+use super::support::{TestReads, key, seed, today};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn unscheduled_people_are_visible_and_never_normal_at_two_thousand(owner: PgPool) {
