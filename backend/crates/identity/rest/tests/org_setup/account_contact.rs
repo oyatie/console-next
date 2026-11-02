@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use super::{Harness, seed_employee_link, seed_user, send};
+use super::*;
 use http::StatusCode;
 use serde_json::json;
 use sqlx::PgPool;
@@ -157,4 +157,100 @@ async fn tenant_token_cannot_read_or_patch_the_platform_profile(pool: PgPool) {
         .await;
         assert_eq!(status, StatusCode::FORBIDDEN);
     }
+}
+
+async fn reader(pool: &PgPool) -> (Harness, UserId, UserId) {
+    let h = Harness::new(pool.clone()).await;
+    let actor = seed_user(pool, "권한 조회자", &[], None).await;
+    let target = seed_user(pool, "계정", &[], None).await;
+    let role = uuid::Uuid::new_v4();
+    sqlx::query("INSERT INTO access_roles (org_id,id,name_ko,status,version,created_by) VALUES ($1,$2,'권한 조회','ACTIVE',1,$3)")
+        .bind(OrgId::one().as_uuid()).bind(role).bind(target.as_uuid()).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES ($1,$2,1,'권한 조회','ACTIVE','SETUP',$3)")
+        .bind(OrgId::one().as_uuid()).bind(role).bind(target.as_uuid()).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) VALUES ($1,$2,1,'access',ARRAY['view'])")
+        .bind(OrgId::one().as_uuid()).bind(role).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO access_grants (org_id,account_id,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by) VALUES ($1,$2,$3,'TENANT',now() - interval '1 hour',true,'SETUP','INITIAL',$4)")
+        .bind(OrgId::one().as_uuid()).bind(actor.as_uuid()).bind(role).bind(target.as_uuid()).execute(pool).await.unwrap();
+    (h, actor, target)
+}
+
+async fn get(h: &Harness, actor: UserId, target: UserId) -> (StatusCode, Value) {
+    let token = h.token(actor, &[], vec![]).await;
+    send(
+        h,
+        "GET",
+        &format!("/api/v1/access/people/{target}"),
+        &token,
+        None,
+    )
+    .await
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn cedar_reader_gets_linked_summary_and_records_access(pool: PgPool) {
+    let (h, actor, target) = reader(&pool).await;
+    let employee = seed_employee_link(&pool, target, "ACCESS-001", "김직원").await;
+    let (status, body) = get(&h, actor, target).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let summary: console_identity_application::UserSummary = serde_json::from_value(body).unwrap();
+    assert_eq!(summary.id, target);
+    assert_eq!(summary.employee_id, Some(employee));
+    assert_eq!(summary.employee_number.as_deref(), Some("ACCESS-001"));
+    assert_eq!(summary.employee_name.as_deref(), Some("김직원"));
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE action='account.read' AND actor=$1 AND target_id=$2")
+        .bind(actor.as_uuid()).bind(target.to_string()).fetch_one(&pool).await.unwrap();
+    assert_eq!(count, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn cedar_refuses_ungranted_and_legacy_admin_readers_before_lookup(pool: PgPool) {
+    let h = Harness::new(pool.clone()).await;
+    let target = seed_user(&pool, "계정", &[], None).await;
+    for roles in [vec![], vec!["SUPER_ADMIN"]] {
+        let actor = seed_user(&pool, "조회자", &roles, None).await;
+        let token = h.token(actor, &roles, vec![]).await;
+        for id in [target, UserId::new()] {
+            let (status, body) = send(
+                &h,
+                "GET",
+                &format!("/api/v1/access/people/{id}"),
+                &token,
+                None,
+            )
+            .await;
+            assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+            assert_eq!(body["error"]["code"], "access_denied");
+        }
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn cedar_reader_gets_not_found_for_missing_and_foreign_accounts(pool: PgPool) {
+    let (h, actor, _) = reader(&pool).await;
+    let foreign = OrgId::new();
+    seed_org(&pool, foreign, "other-access").await;
+    let target = seed_user_in_org_with_team(&pool, foreign, "다른 계정", &[], None, None).await;
+    for id in [UserId::new(), target] {
+        let (status, body) = get(&h, actor, id).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+        assert_eq!(body["error"]["code"], "not_found");
+        assert!(body.get("id").is_none());
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn ops_reads_unlinked_account_without_legacy_roles(pool: PgPool) {
+    let h = Harness::new(pool.clone()).await;
+    let ops = seed_user(&pool, "운영 계정", &[], None).await;
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+        .bind(ops.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let target = seed_user(&pool, "계정", &[], None).await;
+    let (status, body) = get(&h, ops, target).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["employee_link_status"], "UNLINKED");
+    assert!(body["employee_id"].is_null());
 }

@@ -1,3 +1,4 @@
+pub(crate) mod access;
 mod account_link;
 pub(crate) mod authz;
 pub(crate) mod dto;
