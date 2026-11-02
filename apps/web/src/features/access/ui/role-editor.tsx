@@ -20,7 +20,7 @@ import { PersonLabel, PersonRef } from "../../../reference/person/ui/person-labe
 import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import { usePolicyRouted } from "../../../reference/settings/ui/use-policy-routed";
-import { modulesQuery } from "../../../reference/onboarding/api";
+import { moduleReady, modulesQuery, PAYROLL_MODULE } from "../../../reference/onboarding/api";
 import { fromLines, isEmpty, toLines, type Chosen } from "../domain/grid";
 import { ACCESS_READS, accountsQuery, catalogQuery, createRole, grantsQuery, meQuery, roleQuery, roleVersionsQuery, updateRole, type AccessCatalog, type AccessGrant, type AccessRole } from "../api";
 import { AccessHead } from "./access-head";
@@ -108,7 +108,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
           </div>
         </Card>
         <Card title={t("access.role.grid")} flush>
-          <PermissionGrid domains={cat.domains} value={d.grid} routed={routed} payrollReady={modules.data?.some((m) => m.key === "payroll" && m.ready) ?? false} onChange={(grid) => setD({ ...d, grid })} />
+          <PermissionGrid domains={cat.domains} value={d.grid} routed={routed} payrollReady={moduleReady(modules.data, PAYROLL_MODULE)} onChange={(grid) => setD({ ...d, grid })} />
           {tried && isEmpty(d.grid) && <p className={`field__error ${s.pad}`} role="alert">{t("access.role.grid.missing")}</p>}
         </Card>
         {editing && <Card title={t("access.roles.col.holders")} meta={holders ? t(who.waiting ? "access.role.meta.golive" : "access.role.meta", { count: holders }) : undefined} flush>

@@ -136,5 +136,7 @@ mod privacy_reveal;
 mod access_log_review;
 #[macro_use]
 mod privacy_rights;
+#[macro_use]
+mod modules;
 
-roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display, support, nts, orgchange, privacy_reveal, access_log_review, privacy_rights);
+roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display, support, nts, orgchange, privacy_reveal, access_log_review, privacy_rights, modules);

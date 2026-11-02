@@ -155,7 +155,7 @@ impl Domain {
     #[must_use]
     pub const fn record_levels(self) -> &'static [Level] {
         match self {
-            Self::Sensitive => &[Level::View, Level::Edit],
+            Self::Sensitive => self.offered(),
             _ => &[],
         }
     }

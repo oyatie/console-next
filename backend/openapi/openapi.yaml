@@ -23438,6 +23438,12 @@ paths:
                 $ref: '#/components/schemas/MyPayrollLinePage'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Payroll module disabled (module_disabled).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/payroll/runs:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -50603,7 +50609,7 @@ components:
         properties:
           key:
             type: string
-            enum: [home, org, access, people, exits, attendance, statutory]
+            enum: [home, org, access, people, exits, attendance, statutory, payroll]
           ready:
             type: boolean
           unblock:

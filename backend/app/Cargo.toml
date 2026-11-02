@@ -45,7 +45,7 @@ dev-auth = ["console-platform-auth-rest/dev-auth"]
 default = ["mvp"]
 # The modules in the MVP besides the always-on Org + HR core. 근태 is in the MVP
 # (decision #22; HR logs it in the pilot) although the web does not call it yet.
-mvp = ["attendance"]
+mvp = ["attendance", "payroll"]
 full = [
   # People
   "attendance", "leave", "recruiting", "evaluation", "benefit", "payroll",

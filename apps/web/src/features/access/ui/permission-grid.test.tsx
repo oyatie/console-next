@@ -21,7 +21,7 @@ test("matrix cells are labelled checkboxes, including implied view, without a ro
 });
 
 
-test("pay grants use the small help slot until payroll is ready, defaulting to inactive", () => {
+test("pay grants explain inactivity outside the narrow table cell until payroll is ready", () => {
   const domains: AccessCatalogDomain[] = ["pay", "sensitive"].map((domain) => ({
     domain, grantable: true, levels: ["view", "edit"],
     operations: [{ operation: `${domain}::view`, level: "view" }, { operation: `${domain}::edit`, level: "edit" }],
@@ -29,10 +29,13 @@ test("pay grants use the small help slot until payroll is ready, defaulting to i
   const inactive = "급여가 활성화되지 않아 급여·민감 급여 그룹 권한은 급여 화면에서 사용할 수 없습니다.";
   for (const payrollReady of [undefined, false, true]) {
     const html = renderToStaticMarkup(<PermissionGrid domains={domains} value={{}} routed={undefined} payrollReady={payrollReady} onChange={() => {}} />);
-    const help = html.match(/<small[^>]*>.*?<\/small>/g) ?? [];
-    expect(help.some((slot) => slot.includes(inactive))).toBe(!payrollReady);
+    const help = html.split("</table>")[0]!.match(/<small[^>]*>.*?<\/small>/g) ?? [];
+    expect(help.some((slot) => slot.includes(inactive))).toBe(false);
+    expect(html.includes(inactive)).toBe(!payrollReady);
+    if (!payrollReady) expect(html.indexOf(inactive)).toBeGreaterThan(html.indexOf("</table>"));
+    expect(html).toContain("민감 급여 그룹");
     expect(html).toContain(t("accessCodes.domain.sensitive.help"));
-    expect(html).not.toMatch(/건강·장애|노조/);
+    expect(html).not.toMatch(/건강·민감|건강·장애|노조/);
     expect(html.match(/type="checkbox"/g)).toHaveLength(4);
     expect(html).not.toContain("aria-pressed");
   }

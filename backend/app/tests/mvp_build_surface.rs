@@ -25,6 +25,16 @@ type TestError = Box<dyn std::error::Error + Send + Sync>;
 const ISSUER: &str = "console-platform-auth";
 const AUDIENCE: &str = "console-api";
 
+#[cfg(feature = "mvp")]
+#[test]
+fn mvp_includes_payroll() {
+    assert!(
+        CONFIGURED_ROUTE_SURFACES
+            .iter()
+            .any(|s| s.name == "payroll")
+    );
+}
+
 /// (module feature, its route surface name, a GET path it serves when compiled in).
 const COMPILED_OUT: &[(&str, &str, &str)] = &[
     #[cfg(not(feature = "attendance"))]
@@ -154,6 +164,19 @@ async fn compiled_out_module_routes_answer_404_and_mvp_routes_answer(
         // Control: the MVP org surface is mounted on this very router.
         let (status, body) = get(&app, "/api/v1/org-units", &token).await?;
         assert_ne!(status, StatusCode::NOT_FOUND, "MVP route missing: {body}");
+        let (status, body) = get(&app, "/api/v1/onboarding/modules", &token).await?;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let modules: serde_json::Value = serde_json::from_str(&body)?;
+        assert!(modules.as_array().is_some_and(|modules| {
+            modules
+                .iter()
+                .any(|m| m["key"] == "payroll" && m["ready"] == cfg!(feature = "payroll"))
+        }));
+        #[cfg(feature = "mvp")]
+        {
+            let (status, body) = get(&app, "/api/v1/payroll/payslips/me", &token).await?;
+            assert_eq!(status, StatusCode::OK, "{body}");
+        }
         for (module, _, path) in COMPILED_OUT {
             let (status, body) = get(&app, path, &token).await?;
             assert_eq!(

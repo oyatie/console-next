@@ -30,14 +30,16 @@ export function PermissionGrid({ domains, value, routed, payrollReady = false, o
     );
   };
   return (
-    <Table
+    <><Table
       label={t("access.grid.label")}
       rows={domains.filter((d) => sellable(d, routed))}
       rowId={(d) => d.domain}
       columns={[
-        { header: t("access.grid.domain"), cell: (d) => <><strong>{domainText(d.domain)}</strong><small className={s.help}>{d.domain === "pay" && !payrollReady ? t("payroll.accessInactive") : domainHelp(d.domain)}</small></> },
+        { header: t("access.grid.domain"), cell: (d) => <><strong>{domainText(d.domain)}</strong><small className={s.help}>{domainHelp(d.domain)}</small></> },
         ...liveColumns(domains, routed).map((l) => ({ header: levelText(l), fit: true, cell: (d: AccessCatalogDomain) => cell(d, l) })),
       ]}
     />
+    {!payrollReady && domains.some(d => d.domain === "pay" && sellable(d, routed)) && <small className={`${s.help} ${s.pad}`}>{t("payroll.accessInactive")}</small>}
+    </>
   );
 }
