@@ -13,6 +13,48 @@ use tower::ServiceExt;
 const PATH: &str = "/api/v1/onboarding/modules";
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn payroll_readiness_uses_only_the_current_tenant_setting(owner: PgPool) {
+    let a = harness(&owner, true).await;
+    let b = harness(&owner, false).await;
+    for h in [&a, &b] {
+        let (status, data) = send(h, "GET", PATH, Value::Null).await;
+        assert_eq!(status, StatusCode::OK, "{data}");
+        assert!(
+            data.as_array()
+                .unwrap()
+                .iter()
+                .any(|m| m["key"] == "payroll" && m["ready"] == false)
+        );
+    }
+    // rls-arming: ok a scheduled activation must not enable the module early.
+    sqlx::query("INSERT INTO tenant_setting_overrides (org_id, key, value, effective_from, set_by, reason_code) VALUES ($1, 'module.payroll.enabled', 'true', now() + interval '1 day', $2, 'POLICY_REVIEW')")
+        .bind(b.actor.org.as_uuid()).bind(b.actor.user.as_uuid()).execute(&owner).await.unwrap();
+    for enabled in [true, false] {
+        // rls-arming: ok owner seeds an effective-dated tenant module setting.
+        sqlx::query("INSERT INTO tenant_setting_overrides (org_id, key, value, effective_from, set_by, reason_code) VALUES ($1, 'module.payroll.enabled', $2, clock_timestamp(), $3, 'POLICY_REVIEW')")
+            .bind(a.actor.org.as_uuid()).bind(json!(enabled)).bind(a.actor.user.as_uuid())
+            .execute(&owner).await.unwrap();
+        for (h, expected) in [(&a, enabled), (&b, false)] {
+            let (status, data) = send(
+                h,
+                "GET",
+                &format!("{PATH}?org_id={}", a.actor.org.as_uuid()),
+                Value::Null,
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK, "{data}");
+            assert!(
+                data.as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|m| m["key"] == "payroll" && m["ready"] == expected),
+                "{data}, expected payroll ready={expected}"
+            );
+        }
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn no_grant_account_reads_readiness_without_counts(owner: PgPool) {
     let h = harness(&owner, false).await;
     let (status, data) = send(&h, "GET", PATH, Value::Null).await;

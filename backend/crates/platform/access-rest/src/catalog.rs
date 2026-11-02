@@ -72,7 +72,8 @@ mod tests {
                 "sensitive",
                 serde_json::json!([
                     {"operation":"sensitive::view","level":"view"},
-                    {"operation":"sensitive::edit","level":"edit"}
+                    {"operation":"sensitive::edit","level":"edit"},
+                    {"operation":"sensitive::export","level":"export"}
                 ]),
             ),
         ] {

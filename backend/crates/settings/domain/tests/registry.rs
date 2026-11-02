@@ -12,9 +12,31 @@ use std::collections::HashSet;
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`, support-session ceilings,
 /// inbox settings, five NTS settings, the organization apply time, tenant erasure cooling period,
 /// two privacy reveal settings, the shared deadline display window, eleven access-review keys,
-/// the operational objection-review clock, and the onboarding receipt window.
-const EXPECTED_KEYS: usize =
-    34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 2 + 2 + 1 + 11 + 1 + 1 + 1;
+/// the operational objection-review clock, the onboarding receipt window, and payroll activation.
+const EXPECTED_KEYS: usize = 34
+    + 17
+    + 1
+    + 1
+    + 1
+    + 10
+    + 2
+    + 6
+    + 9
+    + 1
+    + 6
+    + 3
+    + 2
+    + 2
+    + 3
+    + 5
+    + 2
+    + 2
+    + 1
+    + 11
+    + 1
+    + 1
+    + 1
+    + 1;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {

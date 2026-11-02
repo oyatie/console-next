@@ -24011,7 +24011,7 @@ export interface components {
         ObligationType: "LEGAL" | "REGULATORY" | "CONTRACTUAL" | "INTERNAL_POLICY" | "CONTROL_REQUIREMENT";
         OnboardingModules: {
             /** @enum {string} */
-            key: "home" | "org" | "access" | "people" | "exits" | "attendance" | "statutory";
+            key: "home" | "org" | "access" | "people" | "exits" | "attendance" | "statutory" | "payroll";
             ready: boolean;
             /** @enum {string|null} */
             unblock: "create_legal_entity" | "create_workplace" | "open_go_live_preview" | "register_employee" | null;
