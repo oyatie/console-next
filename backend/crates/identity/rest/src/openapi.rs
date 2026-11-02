@@ -749,6 +749,19 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/employee-views",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__me__employee-views.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__v1__me__employee-views.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/me/workbench",
         operations: &[Operation {
             method: "get",
@@ -1428,6 +1441,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "DirectoryPerson",
         body: include_str!("../openapi/schemas/DirectoryPerson.yaml"),
+    },
+    NamedYaml {
+        name: "EmployeeView",
+        body: include_str!("../openapi/schemas/EmployeeView.yaml"),
     },
     NamedYaml {
         name: "EnrollHandoffRequest",

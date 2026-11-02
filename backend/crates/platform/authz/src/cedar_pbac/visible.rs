@@ -48,6 +48,16 @@ pub struct DecisionFacts {
 }
 
 impl DecisionFacts {
+    /// Personal preference ownership uses the live account from this snapshot.
+    pub fn authorize_employee_view(&self, org: OrgId, owner: Uuid) -> Result<bool, String> {
+        super::actions::employee_view::decide(
+            &self.actor.to_string(),
+            &self.org.to_string(),
+            &org.to_string(),
+            self.actor == owner,
+        )
+    }
+
     /// The caller's employee link, resolved under the same tenant RLS snapshot.
     #[must_use]
     pub fn linked_employee_id(&self) -> Option<Uuid> {

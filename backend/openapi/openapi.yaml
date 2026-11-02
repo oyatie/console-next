@@ -19249,6 +19249,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/employee-views:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: listEmployeeViews
+      summary: List the caller's saved roster views
+      description: Cedar permits only the active caller's own views within the tenant. Ordered by name then id.
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Saved views, or an empty list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/EmployeeView'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: createEmployeeView
+      summary: Save a caller-owned roster view
+      description: >-
+        Cedar permits only the active caller's own views. Idempotency-Key must equal the view id.
+        An exact retry returns the stored view; another payload with that id returns idempotency_key_reused.
+        Names are trimmed and unique per caller within the tenant. Saving filters grants no directory access.
+      security: [{bearerAuth: []}]
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmployeeView'}
+      responses:
+        '201':
+          description: Stored view.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmployeeView'}
+        '200':
+          description: Exact replay of the stored view.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmployeeView'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409':
+          description: employee_view_name_taken for an existing name; idempotency_key_reused for changed content under the same id; command_in_progress while a concurrent request is still executing.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorBody'}
+        '422':
+          description: employee_view_key_mismatch for a missing or different key; validation for blank or oversized text. Unknown fields or incorrect JSON types are rejected.
   /api/v1/me/inbox-docs:
     get:
       tags:
@@ -43206,6 +43268,23 @@ components:
         recorded_at:
           type: [string, 'null']
           format: date-time
+    EmployeeView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [id, name, filters]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string, minLength: 1, maxLength: 200}
+        filters:
+          type: object
+          additionalProperties: false
+          description: Optional roster URL values, preserved verbatim. Each present value must contain non-whitespace text.
+          properties:
+            status: {type: string, minLength: 1, maxLength: 200}
+            review: {type: string, minLength: 1, maxLength: 200}
+            unit: {type: string, minLength: 1, maxLength: 200}
+            sort: {type: string, minLength: 1, maxLength: 200}
     EmployeeVoidOutcome:
       type: object
       required: [employee_id, status, review_required]

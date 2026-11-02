@@ -7,6 +7,8 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod access_revocation;
+mod employee_view;
+pub use employee_view::{EmployeeView, EmployeeViewFilters};
 pub mod holders;
 mod org;
 mod tenant_facts;
