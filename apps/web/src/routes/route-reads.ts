@@ -23,7 +23,7 @@ export const routeReads = {
   "/access/roles/new": { reads: [roles], command: "POST /api/v1/access/roles" },
   "/access/grants": { reads: ["GET /api/v1/access/grants"] },
   "/access/grants/bulk": { reads: [roles], command: "POST /api/v1/access/grants/preview" },
-  "/access/people/$accountId": { reads: ["GET /api/v1/access/accounts/{accountId}/effective"] },
+  "/access/people/$accountId": { reads: ["GET /api/v1/access/people/{id}", "GET /api/v1/access/accounts/{accountId}/effective"] },
   "/access/ready": { reads: ["GET /api/v1/access/grants"] },
   "/attendance": { reads: ["GET /api/v1/attendance/month", "GET /api/v1/attendance/days", "GET /api/v1/attendance/schedule/tree"] },
   "/org": { reads: [structure] },
