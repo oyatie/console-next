@@ -125,7 +125,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await page.getByRole("button", { name: t("lifecycle.trail.close"), exact: true }).click();
     const refusal = page.getByRole("alert");
-    await expect(refusal).toContainText(t("lifecycle.refuse.close_blocked"));
+    const reason = t("lifecycle.refuse.close_blocked");
+    expect(reason).not.toBe("lifecycle.refuse.close_blocked");
+    await expect(refusal).toContainText(reason);
+    await expect(refusal).not.toContainText("internal basis");
     await expect(refusal.getByText("lifecycle.refuse.close_blocked", { exact: true })).toBeVisible();
     const link = refusal.getByRole("link", { name: t("lifecycle.trail.openBlocking"), exact: true });
     await expect(link).toHaveAttribute("href", `${exitCaseScreen.path}#item-${exitTrail().items[0]!.id}`);

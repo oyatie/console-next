@@ -256,8 +256,7 @@ function groupDetail(g: GroupFacts, v: { date: string; consent: string; comment:
   return t("people.event.detail.group.MIXED", { ...v, severance: word(g.continuity), leave: word(g.annual_leave_continuity), service: word(g.seniority_continuity) });
 }
 
-const TRAIL_REFUSALS = ["lifecycle.refuse.window_not_open", "lifecycle.refuse.self_completion", "lifecycle.refuse.owner_line", "lifecycle.refuse.evidence_required", "lifecycle.refuse.close_blocked", "lifecycle.refuse.deadline_unknown"] as const;
-export const lifecycleTrailError = (code: string) => { const id = TRAIL_REFUSALS.find((candidate) => candidate === code); return id ? t(id) : undefined; };
+export { lifecycleRefusal as lifecycleTrailError } from "../../lib/refusal";
 export const trailItemLabel = (id: string | null, fallback: string) => { const known = ["lifecycle.trail.record", "lifecycle.trail.documents", "lifecycle.trail.filing", "lifecycle.trail.accessReview", "lifecycle.trail.documents.hire", "lifecycle.trail.documents.appoint", "lifecycle.trail.documents.leave_start", "lifecycle.trail.documents.leave_return", "lifecycle.trail.documents.contract", "lifecycle.trail.documents.group_transfer_hire"] as const; const key = known.find((candidate) => candidate === id); return key ? t(key) : (id?.startsWith("lifecycle.trail.documents.") || id?.startsWith("enum.checklistItem.")) && isMessageId(id) ? t(id) : fallback; };
 export const trailText = (id: string) => isMessageId(id) ? t(id) : id;
 export const ownerLabel = (line: string) => { const [domain, level] = line.split("."); return `${domainText(domain ?? "")} ${level === "edit" || level === "approve" ? levelText(level) : level ?? ""}`; };

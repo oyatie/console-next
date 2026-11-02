@@ -8,6 +8,8 @@ import { AT, id, failure } from "../mock/fixtures";
 import { moveDetail, unplacedTarget } from "../mock/lifecycle-sheets";
 import { mockRoute } from "../mock/route";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
+import { dateBox, todayPreset } from "../sheet";
+import { kstDate } from "../flows";
 
 for (const width of [1440, 390]) {
   for (const state of [403, 503, "loading"] as const) {
@@ -162,6 +164,27 @@ const appliedTransfer: components["schemas"]["EmployeeLifecycleEvent"] = {
   effective_date: "2026-10-20", comment: "", signoffs: { privacy_notice_ack: true, korean_labor_law_ack: true, payroll_cutoff_ack: false, retirement_settlement_ack: false }, created_by: id(1), created_by_name: "김담당", created_at: AT,
 };
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`today preset applies the workplace move immediately ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    await page.goto(lifecycleSheetScreens[0].path);
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toHaveAccessibleName(t("lifecycle.title.TRANSFER"));
+    await sheet.getByRole("combobox", { name: t("lifecycle.transfer.unit"), exact: true }).fill("재무팀");
+    await page.getByRole("option", { name: /재무팀/ }).click();
+    await expect(sheet).toHaveAccessibleName(t("lifecycle.title.relocate"));
+    const today = todayPreset(sheet);
+    await expect(today).toContainText(t("lifecycle.preset.today"));
+    await today.click();
+    await expect(today).toHaveAttribute("aria-pressed", "true");
+    await expect(dateBox(sheet)).toHaveValue(kstDate().replaceAll("-", ". ") + ".");
+    await expect(sheet).toContainText(t("lifecycle.when.today"));
+    await fits(page, `today-preset/${width}/${theme}`);
+    await expectAxe(page, `today-preset/${width}/${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
   test(`group transfer allows rescission and refuses correction ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
