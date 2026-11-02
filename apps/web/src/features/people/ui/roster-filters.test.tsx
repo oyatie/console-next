@@ -4,6 +4,7 @@ import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { REVIEWS, VIEWS, reviewTotals, statusTotals } from "../domain/roster";
 import { RosterFilters } from "./roster-filters";
+import { SOON_DAYS } from "./use-roster";
 
 vi.mock("./roster-scope", () => ({ RosterScope: () => null }));
 beforeAll(() => loadCatalog("ko"));
@@ -23,7 +24,7 @@ test.each(REVIEWS)("the active %s filter remains removable even if its count fai
     counts={{ status: { totals: statusTotals([3, 0, 1, 0, 0]), failed: [] },
       review: { totals: reviewTotals([]), failed: REVIEWS.map(() => true) } }}
     onChange={() => undefined} findSlot={() => undefined} density="regular" onDensity={() => undefined} />);
-  const chip = html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)?.find(button => button.includes(`title="${t(`roster.review.${review}.title`, { days: 60 })}"`));
+  const chip = html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)?.find(button => button.includes(`title="${t(`roster.review.${review}.title`, { days: SOON_DAYS })}"`));
   expect(chip).toContain('aria-pressed="true"');
   expect(chip).toContain(t("roster.count.failed"));
 });
@@ -33,7 +34,7 @@ test.each(VIEWS.filter(view => view.review?.length))("the $id view does not repe
     counts={{ status: { totals: statusTotals([3, 0, 1, 0, 0]), failed: [] },
       review: { totals: reviewTotals([0, 3, 0, 0, 3, 0, 0]), failed: [] } }}
     onChange={() => undefined} findSlot={() => undefined} density="regular" onDensity={() => undefined} />);
-  expect(html).not.toContain(t(`roster.review.${view.review![0]!}.title`, { days: 60 }));
+  expect(html).not.toContain(t(`roster.review.${view.review![0]!}.title`, { days: SOON_DAYS }));
 });
 
 test("the current view marks unresolved people as included", () => {

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { RosterOrder } from "../domain/roster-order";
-import { useRoster } from "./use-roster";
+import { PAGE, useRoster } from "./use-roster";
 
 const http = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("@tanstack/react-query", async importOriginal => ({
@@ -23,6 +23,22 @@ function Read({ sort }: { sort?: RosterOrder }) {
   return null;
 }
 
+test("a sort read retains rows and the total while pausing pagination", () => {
+  const rows = [{ id: "person" }];
+  vi.mocked(useInfiniteQuery).mockReturnValueOnce({
+    isFetching: true, isPending: false, isFetchedAfterMount: true, isPlaceholderData: true,
+    data: { pages: [{ items: rows, total: 2000, next_cursor: "previous-order" }] },
+  } as unknown as ReturnType<typeof useInfiniteQuery>);
+  function SortRead() {
+    const result = useRoster({ status: "current", review: [], sort: "employee_number" });
+    expect(result.rows).toEqual(rows);
+    expect(result.total).toBe(2000);
+    expect(result.loading).toBe(true);
+    return null;
+  }
+  renderToStaticMarkup(<SortRead />);
+});
+
 test.each([undefined, "hire_date", "-employee_number"] as const)("the roster continues by server cursor in order %s", async sort => {
   renderToStaticMarkup(<Read sort={sort} />);
   const options = vi.mocked(useInfiniteQuery).mock.calls.at(-1)![0];
@@ -30,14 +46,14 @@ test.each([undefined, "hire_date", "-employee_number"] as const)("the roster con
   const read = options.queryFn as (context: { pageParam?: string }) => Promise<unknown>;
   await read({});
   expect(http.get).toHaveBeenLastCalledWith("/api/v1/employees", { params: { query: expect.objectContaining({
-    sort: sort ?? "name", limit: 100, search: "가상", org_unit_id: "department", identity_review_required: true,
+    sort: sort ?? "name", limit: PAGE, search: "가상", org_unit_id: "department", identity_review_required: true,
   }) } });
   await read({ pageParam: "opaque-sort-and-id" });
   const request = http.get.mock.calls.at(-1)![1];
   expect(request).toEqual({ params: { query: expect.objectContaining({ cursor: "opaque-sort-and-id" }) } });
   expect(request?.params?.query).not.toHaveProperty("offset");
   const next = options.getNextPageParam!;
-  const page = { items: Array(100).fill({ id: "person" }), total: 2000, next_cursor: "opaque-sort-and-id" };
+  const page = { items: Array(PAGE).fill({ id: "person" }), total: 2000, next_cursor: "opaque-sort-and-id" };
   expect(next(page, [page], undefined, [undefined])).toBe("opaque-sort-and-id");
   expect(next({ ...page, next_cursor: null }, [page], undefined, [undefined])).toBeUndefined();
 });

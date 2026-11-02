@@ -8,7 +8,7 @@ import { ToggleButton } from "../../../ui/button/button";
 import { MenuButton } from "../../../ui/menu/menu-button";
 import { Kbd } from "../../../ui/record/record-section";
 import { buttonClass } from "../../../ui/button/button-class";
-import { VIEWS, type Review, type StatusView, type View } from "../domain/roster";
+import { activeView, VIEWS, type Review, type StatusView, type View } from "../domain/roster";
 import { useQuery } from "@tanstack/react-query";
 import { Band } from "../../../ui/band/band";
 import { AsOf } from "../../../ui/page-head/as-of";
@@ -36,7 +36,7 @@ export function RosterHead({ manage, status, review, onView, actions, switcher, 
   const access = useQuery(myAccessQuery);
   const { peopleAccess } = route.useRouteContext();
   const navigate = useNavigate({ from: "/people" });
-  const view = VIEWS.find((v) => v.status === status && (v.review ?? []).join() === review.join())?.id ?? null;
+  const view = activeView(status, review)?.id ?? null;
   return (
     <Band className={s.band}>
       <PageHead title={t(unplaced ? "roster.view.unplaced" : "roster.page.roster")} asOf={<AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} />} actions={manage && (

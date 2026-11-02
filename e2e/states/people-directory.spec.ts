@@ -6,6 +6,7 @@ import { employees, facets } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
+import { SOON_DAYS } from "../../apps/web/src/features/people/ui/use-roster";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -56,6 +57,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(firstPageCursor).toBeTruthy();
 
     await page.getByRole("button", { name: t("roster.view.contractSoon"), exact: true }).click();
+    await expect(reset).toHaveCount(0);
     await expect.poll(() => fixture.requests.some(query => query.has("contract_ending_before"))).toBe(true);
     const filtered = fixture.requests.find(query => query.has("contract_ending_before"))!;
     expect(filtered.has("cursor")).toBe(false);
@@ -64,7 +66,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
     await expect(grid.getByText(t("uiLongTable.loadingMore"), { exact: true })).toHaveCount(0);
     expect(fixture.requests.filter(query => query.has("contract_ending_before") && query.has("cursor"))).toHaveLength(0);
-    const active = filters.getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: 60 })) });
+    const active = filters.getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: SOON_DAYS })) });
     await expect(active).toHaveCount(0);
     await filters.getByRole("button", { name: new RegExp(t("roster.review.identity")) }).click();
     await expect(active).toHaveAttribute("aria-pressed", "true");
@@ -92,10 +94,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.getByRole("button", { name: t("roster.view.gaps"), exact: true }).click();
     await expect(foot).toContainText(t("roster.foot.range", { shown: 100, total: 250 }));
     await expect(filters.getByRole("button", { name: new RegExp(t("roster.review.register")) })).toHaveCount(0);
-    await expect(reset).toHaveCount(1);
-    await reset.click();
+    await expect(reset).toHaveCount(0);
+    await page.getByRole("button", { name: t("roster.view.current"), exact: true }).click();
     await expect(page).not.toHaveURL(/review=/);
-    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
     await expect(reset).toHaveCount(0);
 
     const find = page.getByRole("searchbox", { name: t("roster.find") });
@@ -105,6 +106,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(page).not.toHaveURL(/없는|search=/);
     await expect(reset).toHaveCount(1);
     await reset.click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
     await expect(find).toHaveValue("");
     await expect(foot).toContainText(t("roster.foot.range", { shown: 200, total: fixture.count }));
     await fits(page, `directory filters ${width} ${theme}`);
@@ -128,8 +130,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect.poll(() => fixture.requests.some(query => query.get("sort") === "employee_number")).toBe(true);
     await expect(rows).toHaveText(before);
     await expect(grid.getByText(t("uiLongTable.loading"), { exact: true })).toHaveCount(0);
-    await expect(grid.getByText(t("uiLongTable.loadingMore"), { exact: true })).toHaveCount(0);
     await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
+    await expect(grid.getByText(t("uiLongTable.loadingMore"), { exact: true })).toHaveCount(0);
     expect(fixture.requests.filter(query => query.get("sort") === "employee_number" && query.has("cursor"))).toHaveLength(0);
     await grid.evaluate(el => { el.scrollTop = 0; });
     const sorted = page.waitForResponse(response => new URL(response.url()).searchParams.get("sort") === "employee_number");
@@ -139,6 +141,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(page).toHaveURL(/sort=employee_number/);
     await fits(page, `directory sorting ${width} ${theme}`);
     await expectAxe(page, `directory sorting ${width} ${theme}`);
+    await test.info().attach(`directory-${width}-${theme}`, { body: await page.screenshot({ path: test.info().outputPath("directory.png"), fullPage: true }), contentType: "image/png" });
     expect(fixture.unexpected).toEqual([]);
   });
 }
