@@ -21,7 +21,7 @@ function CommandReference({ requestKey, api }: { requestKey?: string; api?: ApiE
   return (
     <>
       {requestKey && <p><OutcomeLink id={requestKey} /></p>}
-      {api && <div className="muted"><code>{api.code}</code></div>}
+      {api && <div className="muted"><code translate="no">{api.code}</code></div>}
       <SupportReference reference={api?.supportRef ?? api?.operationId} at={api?.supportRefAt} compact={Boolean(api?.supportRef)} />
     </>
   );

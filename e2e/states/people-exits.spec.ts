@@ -7,6 +7,7 @@ import { peopleExitScreens, type ExitCaseState } from "./people-exits";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { mockRoute } from "../mock/route";
+import { guardRawIds } from "../raw-id-guard";
 
 const exitCaseScreen = peopleExitScreens[0];
 
@@ -113,6 +114,7 @@ test("P1-3 header and countdown follow the tenant deadline window @ui-state", as
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`close refusal opens blocking item ${width} ${theme} @ui-state`, async ({ page }) => {
+    await guardRawIds(page.context());
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[1], "populated");
@@ -129,7 +131,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(reason).not.toBe("lifecycle.refuse.close_blocked");
     await expect(refusal).toContainText(reason);
     await expect(refusal).not.toContainText("internal basis");
-    await expect(refusal.getByText("lifecycle.refuse.close_blocked", { exact: true })).toBeVisible();
+    await expect(refusal.locator('code[translate="no"]')).toHaveText("lifecycle.refuse.close_blocked");
     const link = refusal.getByRole("link", { name: t("lifecycle.trail.openBlocking"), exact: true });
     await expect(link).toHaveAttribute("href", `${exitCaseScreen.path}#item-${exitTrail().items[0]!.id}`);
     await link.click();
