@@ -23,7 +23,7 @@ vi.mock("./register-toast", () => ({ RegisterToast: () => null }));
 beforeAll(() => loadCatalog("ko"));
 
 function filters(identity: number) {
-  return renderToStaticMarkup(<RosterFilters status="current" review={[]} counts={{
+  return renderToStaticMarkup(<RosterFilters soonDays={60} status="current" review={[]} counts={{
     status: { totals: { current: 4, ACTIVE: 2, ON_LEAVE: 1, PRE_HIRE: 1, UNKNOWN: 0, EXITED: 0, all: 4 }, failed: [] },
     review: { totals: { department: 0, contractPast: 0, contractSoon: 3, identity, unplaced: 4, register: 2, failed: 0 }, failed: [] },
   }} onChange={() => {}} findSlot={() => {}} density="regular" onDensity={() => {}} />);
@@ -51,6 +51,17 @@ test("exit peek contains only served actions", () => {
   expect(html).not.toContain("아직");
 });
 
+test("the built-in contract view label uses the configured window", () => {
+  const html = renderToStaticMarkup(<RosterHead soonDays={21} manage={false} status="current" review={[]} onView={() => {}} />);
+  expect(html).not.toContain(t("roster.view.contractSoon"));
+  expect(html).toContain(t("directoryViews.contractSoon", { days: 21 }));
+});
+
+test("the roster header withholds the contract view until its window is known", () => {
+  const html = renderToStaticMarkup(<RosterHead soonDays={undefined} manage={false} status="current" review={[]} onView={() => {}} />);
+  expect(html).not.toContain(t("directoryViews.contractSoon", { days: "—" }));
+});
+
 test("an empty registration run has one heading and no completion command", () => {
   const html = renderToStaticMarkup(<RegisterRun />);
   expect(html.match(/<h1\b/g)).toHaveLength(1);
@@ -67,7 +78,7 @@ test("the notices list offers its own primary composer entry", () => {
 
 
 test("the roster head delegates one export and shows its date as a fact", () => {
-  const html = renderToStaticMarkup(<RosterHead manage status="current" review={[]} onView={() => {}} actions={<Button>{t("roster.export")}</Button>} />);
+  const html = renderToStaticMarkup(<RosterHead soonDays={60} manage status="current" review={[]} onView={() => {}} actions={<Button>{t("roster.export")}</Button>} />);
   expect(html).toContain(">내보내기</button>");
   expect(html).not.toContain('export=');
   expect(html).not.toContain(t("roster.head.register"));

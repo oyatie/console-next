@@ -14,7 +14,6 @@ import type { RosterOrder } from "../domain/roster-order";
 import type { ColumnId } from "../domain/columns";
 import { Meter } from "../../../ui/meter/meter";
 import { nextText } from "../present";
-import { SOON_DAYS } from "./use-roster";
 import s from "./roster.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
@@ -27,8 +26,8 @@ export function StatusChip({ status }: { status?: string | null }) {
 }
 
 /** The most urgent next item, with "+n" when there are more (all of them in the tooltip and in the panel). */
-function Next({ e, today }: { e: Employee; today: string }) {
-  const items = nextItems(e, today, SOON_DAYS).map(nextText);
+function Next({ e, today, soonDays }: { e: Employee; today: string; soonDays?: number }) {
+  const items = nextItems(e, today, soonDays).map(nextText);
   const [first] = items;
   if (!first) return <span className={s.steel}>{"—"}</span>;
   return (
@@ -43,7 +42,7 @@ function Next({ e, today }: { e: Employee; today: string }) {
  * The roster's columns (E1): employee number, name (a shared name gets nothing added: same-name people are told apart by employee number and placement on the
  * same row), company, placement (workplace › department), position, employment type, hire date, status, next. One line each, the full text in the title.
  */
-function useColumns(today: string, exited: boolean, shown: readonly ColumnId[]): LongColumn<Employee>[] {
+function useColumns(today: string, soonDays: number | undefined, exited: boolean, shown: readonly ColumnId[]): LongColumn<Employee>[] {
   const units = useQuery(unitsQuery).data?.items ?? [];
   const entities = useQuery(entitiesRef).data?.items ?? [];
   const entity = (e: Employee) => entities.find((x) => x.id === e.legal_entity_id);
@@ -65,7 +64,7 @@ function useColumns(today: string, exited: boolean, shown: readonly ColumnId[]):
   const base: LongColumn<Employee>[] = [
     { id: "number", header: t("people.col.number"), cell: (e) => <span className="code">{e.employee_number ?? t("people.number.none")}</span>, rowHeader: true, width: 84 },
     { id: "name", header: t("people.col.name"), cell: (e) => <span className={s.nm} title={e.name}>{e.name}</span>, rowHeader: true, width: 100 },
-    { id: "entity", header: t("roster.col.entity"), cell: (e) => <EntityName entity={entity(e)} alias={entity(e) ? undefined : e.company} />, width: 104 },
+    { id: "entity", header: t("roster.col.entity"), cell: (e) => <EntityName entity={entity(e)} alias={entity(e) ? undefined : e.company} />, width: "25%" },
     { id: "unit", header: t("roster.col.place"), cell: (e) => <span title={place(e)}>{place(e)}</span>, width: "2.2fr" },
     { id: "position", header: t("people.col.position"), cell: (e) => <span title={e.position ?? undefined}>{e.position ?? "—"}</span>, width: 72 },
     { id: "type", header: t("roster.col.type"), cell: (e) => (e.employment_type ? label(EMPLOYMENT_TYPE, e.employment_type) : <span className={s.warnText}>{t("roster.type.missing")}</span>), width: 92 },
@@ -83,7 +82,7 @@ function useColumns(today: string, exited: boolean, shown: readonly ColumnId[]):
       ),
       width: 96,
     },
-    { id: "next", header: t("roster.col.next"), cell: (e) => <Next e={e} today={today} />, width: "1.6fr" },
+    { id: "next", header: t("roster.col.next"), cell: (e) => <Next e={e} today={today} soonDays={soonDays} />, width: "1.6fr" },
   ];
   // Exited people (E9-exited): the 3-year retention replaces placement details and what comes next.
   if (exited) return [...base.slice(0, 4), ...kept];
@@ -107,9 +106,9 @@ type TableProps = Parameters<typeof LongTable<Employee>>[0];
 const SORT_COLUMNS: Record<RosterSort, string> = { name: "name", employee_number: "number", org_unit: "unit", hire_date: "hired" };
 
 /** The people table: compact rows of the roster's columns, everything else as LongTable takes it. */
-export function RosterTable({ today, exited = false, shown, density, sort = "name", onSort, ...p }: Omit<TableProps, "columns" | "density" | "rowId" | "sortDescriptor" | "onSortChange"> & { today: string; exited?: boolean; shown: readonly ColumnId[]; density: "compact" | "regular"; sort?: RosterOrder; onSort?: (sort: RosterOrder) => void }) {
+export function RosterTable({ today, soonDays, exited = false, shown, density, sort = "name", onSort, ...p }: Omit<TableProps, "columns" | "density" | "rowId" | "sortDescriptor" | "onSortChange"> & { today: string; soonDays?: number; exited?: boolean; shown: readonly ColumnId[]; density: "compact" | "regular"; sort?: RosterOrder; onSort?: (sort: RosterOrder) => void }) {
   const activeKey = SORTS.find(key => sort === key || sort === `-${key}`)!;
-  const columns = useColumns(today, exited, shown).map(column => ({ ...column, allowsSorting: Boolean(onSort) && Object.values(SORT_COLUMNS).includes(column.id) }));
+  const columns = useColumns(today, soonDays, exited, shown).map(column => ({ ...column, allowsSorting: Boolean(onSort) && Object.values(SORT_COLUMNS).includes(column.id) }));
   return <LongTable {...p} density={density} columns={columns} rowId={(e) => e.id}
     sortDescriptor={onSort ? { column: SORT_COLUMNS[activeKey], direction: sort.startsWith("-") ? "descending" : "ascending" } : undefined}
     onSortChange={onSort && (descriptor => {

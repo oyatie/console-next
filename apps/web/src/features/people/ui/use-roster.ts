@@ -14,8 +14,6 @@ type FacetQuery = NonNullable<paths["/api/v1/employees/facets"]["get"]["paramete
 export const PAGE = 100;
 /** `bulk.max_lines`: the bulk lifecycle command takes up to this many employees. */
 export const BULK_MAX = MAX_LINES;
-/** Home's renewal queue window (`hr.contract_soon_days`; Employee.tsx CONTRACT_SOON_DAYS). */
-export const SOON_DAYS = 60;
 
 const NONE: Employee[] = [];
 const employees = (query: object) => get("/api/v1/employees", { params: { query } });
@@ -26,11 +24,12 @@ const employees = (query: object) => get("/api/v1/employees", { params: { query 
  * reads (domain/roster facetQueries), which do follow focus and polling; the list filter's total is the probe, so a
  * change by someone else shows as a banner instead of reshuffling the rows under the cursor.
  */
-export function useRoster(f: OrderedRoster) {
+export function useRoster(f: OrderedRoster, soonDays: number | undefined, enabled = soonDays !== undefined) {
   const today = todayKst();
-  const query = orderedQuery(f, today, SOON_DAYS);
+  const query = enabled ? orderedQuery(f, today, soonDays) : {};
   const list = useInfiniteQuery({
     ...cursorPages("/api/v1/employees", { ...query, limit: PAGE }),
+    enabled,
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
     refetchInterval: false,
@@ -46,8 +45,8 @@ export function useRoster(f: OrderedRoster) {
   // Rows a command changed since they were cached are re-read on arrival: until that read lands they are not shown,
   // or the new people would land under a pointer already aimed at a row. Latched, so a later re-read keeps the rows.
   const [arrived, setArrived] = useState(false);
-  if (!arrived && !list.isFetching) setArrived(true);
-  const rereading = !arrived && !list.isFetchedAfterMount;
+  if (!arrived && enabled && !list.isFetching) setArrived(true);
+  const rereading = !enabled || (!arrived && !list.isFetchedAfterMount);
   // A sort keeps the same people on screen until their new order arrives.
   const filterKey = JSON.stringify({ ...query, sort: undefined });
   const [loadedFilter, setLoadedFilter] = useState(filterKey);
@@ -57,15 +56,15 @@ export function useRoster(f: OrderedRoster) {
   const replacing = rereading || (list.isPlaceholderData && loadedFilter !== filterKey);
   // The facets read takes the same status filter as the list, PRE_HIRE included (read_filters.rs); its OpenAPI enum
   // has not caught up with the list's, hence the cast.
-  const facets = facetQueries({ ...f, sort: undefined }, today, SOON_DAYS) as unknown as Record<"list" | "review", FacetQuery>;
+  const facets = (enabled ? facetQueries({ ...f, sort: undefined }, today, soonDays) : { list: {}, review: {} }) as unknown as Record<"list" | "review", FacetQuery>;
   // Counts a command changed since they were cached are shown only once re-read (as the rows): the old ones would
   // redraw the filter chips under the pointer when the new ones land.
   const probeRead = get("/api/v1/employees/facets", { params: { query: facets.list } });
   const reviewRead = get("/api/v1/employees/facets", { params: { query: facets.review } });
-  const probe = useFreshOnArrival(useQuery(probeRead), probeRead);
-  const review = useFreshOnArrival(useQuery(reviewRead), reviewRead);
+  const probe = useFreshOnArrival(useQuery({ ...probeRead, enabled }), probeRead);
+  const review = useFreshOnArrival(useQuery({ ...reviewRead, enabled }), reviewRead);
   /** A count read after the rows says this filter moved (someone else added or changed people); an older one never does. */
-  const changed = total !== undefined && probe.data !== undefined && probe.data.total !== total && !list.isFetching && probe.dataUpdatedAt > list.dataUpdatedAt;
+  const changed = enabled && total !== undefined && probe.data !== undefined && probe.data.total !== total && !list.isFetching && probe.dataUpdatedAt > list.dataUpdatedAt;
   // An empty list that the counts say has people (an import from another tab) re-reads at once: no row is under the pointer.
   const { refetch } = list;
   useEffect(() => {
@@ -78,8 +77,8 @@ export function useRoster(f: OrderedRoster) {
     rows: replacing ? NONE : rows,
     total: replacing ? undefined : total,
     changed,
-    status: { totals: statusTotals(statusCounts(probe.data?.status)), failed: statusCounts().map(() => probe.isError) },
-    review: { totals: reviewTotals(reviewCounts(review.data?.review)), failed: reviewCounts().map(() => review.isError) },
+    status: { totals: statusTotals(statusCounts(enabled ? probe.data?.status : undefined)), failed: statusCounts().map(() => enabled && probe.isError) },
+    review: { totals: reviewTotals(reviewCounts(enabled ? review.data?.review : undefined)), failed: reviewCounts().map(() => enabled && review.isError) },
     query,
   };
 }

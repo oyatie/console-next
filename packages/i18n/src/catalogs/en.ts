@@ -249,4 +249,6 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enCommon,
   ...enSupport,
   ...enSupportAccess,
+  ...enDirectoryViews,
 };
+import { enDirectoryViews } from "./en/directory-views";

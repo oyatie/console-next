@@ -22,10 +22,11 @@ const route = getRouteApi("/app/people");
 /**
  * The roster's phase, today's as-of fact, commands and built-in filter views, with its accounts switch.
  */
-export function RosterHead({ manage, status, review, onView, actions, switcher, unplaced = false }: {
+export function RosterHead({ manage, status, review, soonDays, onView, actions, switcher, unplaced = false }: {
   manage: boolean;
   status: StatusView;
   review: readonly Review[];
+  soonDays?: number;
   onView: (v: View) => void;
   /** The roster's own commands that keep their component (export dialog). */
   actions?: ReactNode;
@@ -57,7 +58,7 @@ export function RosterHead({ manage, status, review, onView, actions, switcher, 
             <Link className={buttonClass("primary")} to="/people/new" search={{}}><Plus size={16} aria-hidden /> {t("people.register")} <Kbd k="A" /></Link>
           </>
         )} tabs={<div className={s.views} role="group" aria-label={t("roster.view.label")}>
-        {VIEWS.filter((v) => v.status).map((v) => <ToggleButton key={v.id} pressed={!unplaced && view === v.id} onClick={() => onView(v)}>{t(`roster.view.${v.id}`)}</ToggleButton>)}
+        {VIEWS.filter((v) => v.status && (v.id !== "contractSoon" || soonDays !== undefined)).map((v) => <ToggleButton key={v.id} pressed={!unplaced && view === v.id} onClick={() => onView(v)}>{v.id === "contractSoon" ? t("directoryViews.contractSoon", { days: soonDays ?? "—" }) : t(`roster.view.${v.id}`)}</ToggleButton>)}
         {access.data && accessRefusal(access.data, peopleAccess.unplaced) === null && <ToggleButton pressed={unplaced} onClick={() => void navigate({ to: "/people", search: previous => ({ ...previous, placement: unplaced ? undefined : "unplaced", sel: undefined }), replace: true })}>{t("roster.view.unplaced")}</ToggleButton>}
         {switcher}
       </div>} />
