@@ -1,10 +1,30 @@
 import { beforeAll, expect, test } from "vitest";
-import { i18n, loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { ApiError } from "@console/api";
 import { failureText, readFailureText } from "../../lib/refusal";
 import { lifecycleTrailError, peopleRefusal } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
+
+test.each(["ko", "en"] as const)("served refusal namespaces use catalog copy for reads and writes in %s", async (locale) => {
+  await loadCatalog(locale);
+  i18n.set(locale);
+  try {
+    for (const code of [
+      "account_link.refuse.identity_unbound", "governance.refuse.identity_unbound",
+      "governance.refuse.same_person", "leave.refuse.identity_unbound",
+      "org_change.refuse.identity_unbound", "org_change.refuse.missing_grant",
+      "org_change.refuse.not_drafter", "payroll.refuse.identity_unbound",
+      "period_unlock.refuse.identity_unbound",
+    ] as const) {
+      const text = t(code);
+      expect(text, code).not.toBe(code);
+      const error = new ApiError(403, code, "internal basis", [], undefined, true);
+      expect(failureText(error), code).toBe(text);
+      expect(readFailureText(error), code).toBe(text);
+    }
+  } finally { i18n.set("ko"); }
+});
 
 // UX-R1 PLACEMENT: each refusal that keeps 법인 · 사업장 · 부서 in step names the way forward.
 test("placement refusals are worded with their remedy; other codes fall through", () => {

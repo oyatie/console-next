@@ -9,7 +9,6 @@ import { moveDetail, unplacedTarget } from "../mock/lifecycle-sheets";
 import { mockRoute } from "../mock/route";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
 import { dateBox, todayPreset } from "../sheet";
-import { kstDate } from "../flows";
 
 for (const width of [1440, 390]) {
   for (const state of [403, 503, "loading"] as const) {
@@ -165,6 +164,7 @@ const appliedTransfer: components["schemas"]["EmployeeLifecycleEvent"] = {
 };
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`today preset applies the workplace move immediately ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-10-29T00:30:00+09:00"));
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
@@ -178,7 +178,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(today).toContainText(t("lifecycle.preset.today"));
     await today.click();
     await expect(today).toHaveAttribute("aria-pressed", "true");
-    await expect(dateBox(sheet)).toHaveValue(kstDate().replaceAll("-", ". ") + ".");
+    await expect(dateBox(sheet)).toHaveValue("2026. 10. 29.");
     await expect(sheet).toContainText(t("lifecycle.when.today"));
     await fits(page, `today-preset/${width}/${theme}`);
     await expectAxe(page, `today-preset/${width}/${theme}`);

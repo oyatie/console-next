@@ -222,6 +222,16 @@ test("an untrusted plain object cannot opt into the validation summary", async (
   expect(markup).toContain(t("common.networkError"));
 });
 
+test.each(["org_change.refuse.not_drafter", "org_change.refuse.identity_unbound"] as const)("field refusal %s uses its canonical catalog reason", async (code) => {
+  const error = new ApiError(422, "validation", "internal diagnostic", [], undefined, true, [], {
+    errors: [{ field: "change", code }],
+  });
+  const markup = await html(error, { formFields: ["change"] });
+  expect(markup).toContain(t(code));
+  expect(markup).not.toContain(t("common.failed.code.validation"));
+  expect(markup).not.toContain("internal diagnostic");
+});
+
 test("adversarial: validation refusal on server-only field shows in summary without a dead focus target", async () => {
   const error = new ApiError(422, "validation", "validation failed", [], undefined, true, [], {
     errors: [

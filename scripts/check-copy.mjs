@@ -22,11 +22,15 @@ const BASELINE = "scripts/copy-unused-baseline.json";
 const MATURITY_BASELINE = "scripts/copy-maturity-baseline.json";
 const escape = (s) => s.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
 
-/** Served lifecycle refusal ids are also message ids; a raw id is never an explanation. */
-export function checkRefusalCopy(sources, catalogs) {
-  const codes = new Set(sources.flatMap(({ text }) => [...text
+function refusalCodes(sources) {
+  return [...new Set(sources.flatMap(({ text }) => [...text
     .split(/#\[cfg\(test\)\]\s*mod tests\s*\{/)[0].replace(/^\s*\/\/.*$/gm, "")
-    .matchAll(/"(lifecycle\.refuse\.[a-z_]+)"/g)].map(match => match[1])));
+    .matchAll(/"([a-z][a-z0-9_.]*\.refuse\.[a-z0-9_.]+)"/g)].map(match => match[1])))];
+}
+
+/** Served refusal ids are also message ids; a raw id is never an explanation. */
+export function checkRefusalCopy(sources, catalogs) {
+  const codes = refusalCodes(sources);
   return Object.entries(catalogs).flatMap(([locale, entries]) => {
     const copy = new Map(entries.map(entry => [entry.id, entry.text]));
     return [...codes].filter(code => !copy.get(code)?.trim() || copy.get(code)?.trim() === code)
@@ -301,8 +305,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const catalogs = Object.fromEntries(["ko", "en"].map(locale => [locale, walk(CATALOGS)
     .filter(file => file.endsWith(".ts") && (file.includes(`/${locale}/`) || file.endsWith(`/${locale}.ts`)))
     .flatMap(file => copyEntries(file, readFileSync(file, "utf8")))]));
-  const served = existsSync("backend") ? walk("backend").filter(file => file.includes("/src/") && file.endsWith(".rs") && !/tests?\.rs$/.test(file)) : [];
-  problems.push(...checkRefusalCopy(served.map(file => ({ file, text: readFileSync(file, "utf8") })), catalogs));
+  const served = existsSync("backend") ? walk("backend").filter(file => file.includes("/src/") && file.endsWith(".rs") && !/(^|[/_])tests?\.rs$/.test(file))
+    .map(file => ({ file, text: readFileSync(file, "utf8") })) : [];
+  problems.push(...checkRefusalCopy(served, catalogs));
   // schema.d.ts is generated from the backend's OpenAPI doc comments (`npm run gen:api`), never rendered.
   for (const p of ["apps/web/src", "packages/api/src"].flatMap((d) => walk(d))) {
     if (!/\.(tsx?|css)$/.test(p) || isTest(p) || p === "packages/api/src/schema.d.ts") continue;
@@ -319,7 +324,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     .flatMap((d) => walk(d))
     .filter((p) => /\.tsx?$/.test(p) && !p.endsWith(".d.ts") && !isTest(p) && !p.startsWith(`${CATALOGS}/`))
     .map((p) => readFileSync(p, "utf8"));
-  problems.push(...checkUnused(ids, sources, JSON.parse(readFileSync(BASELINE, "utf8")).unused));
+  problems.push(...checkUnused(ids, [...sources, ...refusalCodes(served).map(code => JSON.stringify(code))], JSON.parse(readFileSync(BASELINE, "utf8")).unused));
   // The gallery is dev-only but still copy; the crash screen's strings ship outside the catalogs by necessity.
   const copyFiles = [...walk("packages/i18n/src"), ...walk("apps/web/public"), ...(existsSync("backend") ? walk("backend") : [])].filter(isCopyFile);
   const entries = copyFiles.flatMap((f) => copyEntries(f, readFileSync(f, "utf8")));

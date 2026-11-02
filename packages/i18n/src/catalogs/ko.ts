@@ -1,3 +1,8 @@
+import { koGovernanceRefusals } from "./ko/governance";
+import { koAccountLinkRefusals } from "./ko/account_link";
+import { koPeriodUnlockRefusals } from "./ko/period_unlock";
+import { koLeaveRefusals } from "./ko/leave";
+import { koOrgChangeRefusals } from "./ko/org_change";
 import { koPayroll } from "./ko/payroll";
 import { koUiShiftBar } from "./ko/ui-shift-bar";
 import { koNts } from "./ko/nts";
@@ -124,6 +129,11 @@ import { koEmpDoc } from "./ko/emp-doc";
 import { koPeopleJump } from "./ko/people-jump";
 
 export const ko = {
+  ...koGovernanceRefusals,
+  ...koAccountLinkRefusals,
+  ...koPeriodUnlockRefusals,
+  ...koLeaveRefusals,
+  ...koOrgChangeRefusals,
   ...koUiShiftBar,
   ...koStatutory,
   ...koFormat,

@@ -7,7 +7,7 @@ import { Banner } from "../../ui/banner/banner";
 import { Button } from "../../ui/button/button";
 import { Chip } from "../../ui/chip";
 import { ErrorSummary, type ErrorSummaryItem } from "../../ui/error-summary";
-import { failureText, readFailureText } from "../refusal";
+import { catalogRefusal, failureText, readFailureText } from "../refusal";
 import { SupportReference } from "./support-reference";
 import { outcomeUnknown, recoveryOf } from "./command";
 import { OutcomeLink } from "./outcome-link";
@@ -84,7 +84,7 @@ export function CommandError({
   const fieldErrors = extractFieldErrors(error);
   if (fieldErrors.length > 0) {
     const summaryItems: ErrorSummaryItem[] = fieldErrors.map((fe) => {
-      const mine = own?.(fe.code);
+      const mine = own?.(fe.code) || catalogRefusal(fe.code);
       const label = fe.field ? fieldLabel?.(fe.field) : undefined;
       const byCode = `common.failed.code.${fe.code}`;
       const outcome = `requestOutcome.code.${fe.code}`;
