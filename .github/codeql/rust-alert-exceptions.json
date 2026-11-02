@@ -1,0 +1,93 @@
+{
+  "schema": "codeql-rust-alert-exceptions-v1",
+  "entries": [
+    {
+      "number": 20,
+      "rule": "rust/cleartext-logging",
+      "path": "backend/crates/platform/storage/src/lib.rs",
+      "owner": "Security",
+      "reason": "Test-only assertion over a fixture organization and generated object IDs; no runtime log sink.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 24,
+      "rule": "rust/cleartext-logging",
+      "path": "backend/crates/comms/application/src/lib.rs",
+      "owner": "Security",
+      "reason": "Test-only assertion over generated IDs and a literal traversal filename; no runtime log sink.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 25,
+      "rule": "rust/cleartext-logging",
+      "path": "backend/crates/comms/application/src/lib.rs",
+      "owner": "Security",
+      "reason": "Test-only assertion over generated IDs and a literal traversal filename; no runtime log sink.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 31,
+      "rule": "rust/cleartext-logging",
+      "path": "backend/crates/payroll/domain/src/lib.rs",
+      "owner": "Security",
+      "reason": "Test-only assertion over generated wage inputs and calculated pension amounts; no runtime log sink.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 50,
+      "rule": "rust/uncontrolled-allocation-size",
+      "path": "backend/app/src/workflow_studio.rs",
+      "owner": "Security",
+      "reason": "The request limit is clamped to 1..=200 before allocation and the loop stops at that limit.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 53,
+      "rule": "rust/uncontrolled-allocation-size",
+      "path": "backend/crates/workorder/rest/src/lib.rs",
+      "owner": "Security",
+      "reason": "Requests above the 200-operation batch cap are rejected before allocating the result vector.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 54,
+      "rule": "rust/uncontrolled-allocation-size",
+      "path": "backend/crates/evaluation/rest/src/lib.rs",
+      "owner": "Security",
+      "reason": "Requests above the 20-goal cap are rejected before allocating the goal vector.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 55,
+      "rule": "rust/uncontrolled-allocation-size",
+      "path": "backend/crates/evaluation/rest/src/lib.rs",
+      "owner": "Security",
+      "reason": "Requests above the 10-evidence cap are rejected before allocating the evidence vector.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 57,
+      "rule": "rust/hard-coded-cryptographic-value",
+      "path": "backend/crates/platform/push/src/lib.rs",
+      "owner": "Security",
+      "reason": "The dummy Solapi key is inside cfg(test); runtime secrets come from required configuration.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 58,
+      "rule": "rust/hard-coded-cryptographic-value",
+      "path": "backend/crates/platform/push/src/lib.rs",
+      "owner": "Security",
+      "reason": "The deterministic public HMAC salt is inside cfg(test); runtime sends generate a fresh UUID salt.",
+      "expires_on": "2026-11-17"
+    },
+    {
+      "number": 68,
+      "rule": "rust/hard-coded-cryptographic-value",
+      "path": "backend/crates/production/rest/src/service_auth.rs",
+      "owner": "Security",
+      "reason": "The fixed key is inside cfg(test); runtime verifier keys are decoded from required configuration.",
+      "expires_on": "2026-11-17"
+    }
+  ]
+}

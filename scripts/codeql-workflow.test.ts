@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { expect, test } from "vitest";
 import yaml from "js-yaml";
 
-test("CodeQL covers PR merge commits and merge groups with a scoped upload token", () => {
+test("CodeQL covers PR merge commits, merge groups and gated dev Rust scans", () => {
   const workflow = yaml.load(readFileSync(".github/workflows/codeql.yml", "utf8"));
   const config = yaml.load(readFileSync(".github/codeql/codeql-config.yml", "utf8"));
   expect(Object.keys(workflow.on).sort()).toEqual(["merge_group", "pull_request", "push", "schedule"]);
@@ -37,11 +37,22 @@ test("CodeQL covers PR merge commits and merge groups with a scoped upload token
   const scanIndex = analyze.steps.findIndex((step) => step.uses?.startsWith("github/codeql-action/analyze@"));
   const scan = analyze.steps[scanIndex];
   expect(scan.with.output).toBe("${{ runner.temp }}/codeql-results");
+  expect(scan.with["wait-for-processing"]).toBe(true);
   const gate = analyze.steps[scanIndex + 1];
   expect(gate.if).toBe("${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}");
   expect(gate.env.CODEQL_BASE).toBe("${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}");
   expect(gate.env.CODEQL_RESULTS).toBe(scan.with.output);
   expect(gate.run).toBe('node scripts/check-codeql-diff.mjs "$CODEQL_RESULTS" "$CODEQL_BASE"');
+  const rustGate = analyze.steps[scanIndex + 2];
+  expect(rustGate).toEqual({
+    name: "Refuse untriaged high or critical Rust alerts",
+    if: "${{ github.event_name == 'push' && matrix.language == 'rust' }}",
+    env: {
+      CODEQL_ALERT_EXCEPTIONS: ".github/codeql/rust-alert-exceptions.json",
+      GH_TOKEN: "${{ github.token }}",
+    },
+    run: "node scripts/check-codeql-alerts.mjs",
+  });
   for (const step of analyze.steps.filter((step) => step.uses)) expect(step.uses).toMatch(/@[a-f0-9]{40}$/);
   expect(analyze["continue-on-error"]).toBeUndefined();
   expect(gate["continue-on-error"]).toBeUndefined();
