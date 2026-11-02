@@ -87,6 +87,7 @@ use axum::routing::put;
 // ---------------------------------------------------------------------------
 
 pub const USERS_PATH: &str = "/api/v1/users";
+pub const ACCESS_PERSON_PATH_TEMPLATE: &str = "/api/v1/access/people/{id}";
 /// Tenant people directory. Its router registration is intentionally private to
 /// the identity service until app-router and OpenAPI consolidation lands.
 pub const DIRECTORY_PEOPLE_PATH: &str = "/api/v1/directory/people";
@@ -129,6 +130,7 @@ pub const POLICY_USER_ASSIGNMENT_PREVIEW_PATH_TEMPLATE: &str =
     "/api/v1/policy/users/{id}/assignment-preview";
 pub const POLICY_AUDIT_EVENTS_PATH: &str = "/api/v1/policy/audit-events";
 pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
+    ACCESS_PERSON_PATH_TEMPLATE,
     USERS_PATH,
     DIRECTORY_PEOPLE_PATH,
     USERS_ME_PATH,
@@ -185,6 +187,10 @@ pub fn router(state: IdentityRestState) -> Router {
         .route(ME_AUTHZ_PATH, get(get_me_authz))
         .route(USERS_PATH, get(list_users).post(create_user))
         .route(DIRECTORY_PEOPLE_PATH, get(list_directory_people))
+        .route(
+            ACCESS_PERSON_PATH_TEMPLATE,
+            get(users::access::get_access_person),
+        )
         .route(USER_PATH_TEMPLATE, get(get_user).patch(update_user))
         .route(USER_DEACTIVATE_PATH_TEMPLATE, post(deactivate_user))
         .route(USER_ACTIVATE_PATH_TEMPLATE, post(activate_user))

@@ -2769,6 +2769,47 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/access/people/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+      - access
+      operationId: getAccessPerson
+      summary: Get an account for the access screens
+      description: Requires tenant-wide access view through Cedar. Returns the existing UserSummary including the linked employee, when present. Authorization precedes lookup; missing and foreign-tenant account IDs return the same not-found response.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: The requested account and its employee link.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cedar denies access view. Error code access_denied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          description: JWT verification is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/access/requests:
     get:
       tags:
