@@ -7,7 +7,7 @@ items:
   properties:
     key:
       type: string
-      enum: [home, org, access, people, exits, attendance, statutory]
+      enum: [home, org, access, people, exits, attendance, statutory, payroll]
     ready:
       type: boolean
     unblock:

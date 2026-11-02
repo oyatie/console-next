@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components, paths } from "../schema";
 // Requested S1a contract. Replace this overlay when the generated payroll contract lands.
-export type PayrollModule = { key: "payroll"; ready: boolean; unblock: null };
 export type PayGroup = components["schemas"]["PayGroup"];
 export type PayGroups = components["schemas"]["PayGroupPage"];
 export type PayrollRun = components["schemas"]["PayrollRunSummary"] & { legal_entity_id: string; pay_group_id: string };

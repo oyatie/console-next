@@ -23,7 +23,7 @@ fn record_clearance_levels_are_live_offered_levels() {
     }
     assert_eq!(
         Domain::Sensitive.record_levels(),
-        &[Level::View, Level::Edit]
+        Domain::Sensitive.offered()
     );
 }
 

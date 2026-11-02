@@ -185,7 +185,27 @@ impl PgOnboardingStore {
                     subject.phase == TenantPhase::Setup,
                 )
                 .await?;
-                Ok(console_onboarding_domain::readiness(&facts, subject.phase))
+                let key = console_settings_domain::SettingKey::ModulePayrollEnabled;
+                let settings = console_settings_adapter_postgres::resolve_in_tx(
+                    tx.as_mut(),
+                    actor.org,
+                    &[key],
+                    None,
+                    time::OffsetDateTime::now_utc(),
+                )
+                .await?;
+                let payroll_enabled = settings
+                    .get(&key)
+                    .and_then(|value| value.as_ref().ok())
+                    .and_then(|value| value.value.as_bool())
+                    == Some(true);
+                let mut modules = console_onboarding_domain::readiness(&facts, subject.phase);
+                modules.push(console_onboarding_domain::Module {
+                    key: "payroll",
+                    ready: payroll_enabled,
+                    unblock: None,
+                });
+                Ok(modules)
             })
         })
         .await

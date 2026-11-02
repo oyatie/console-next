@@ -6,6 +6,7 @@ import type { AllPaths } from "@console/api/pending";
 import type { AccessEffective } from "../reference/authz/api";
 import { accessRefusal } from "../reference/authz/domain/access";
 import { SETTINGS_VIEWS } from "./settings-views";
+import { moduleReady, PAYROLL_MODULE } from "../reference/onboarding/api";
 
 type Modules = AllPaths["/api/v1/onboarding/modules"]["get"]["responses"][200]["content"]["application/json"];
 type NavLink = { to: string; label: MessageId; icon: LucideIcon; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
@@ -26,7 +27,7 @@ export const TENANT_NAV: readonly NavHub[] = [
     { to: "/org", label: "shell.link.org", icon: Building2, module: "org" },
     { to: "/people", label: "shell.link.people", icon: Users, module: "people" },
     { to: "/attendance", label: "shell.link.attendance", icon: Clock, module: "attendance" },
-    { to: "/payroll", label: "shell.link.payroll", icon: FileText, module: "payroll", requireReadiness: true },
+    { to: "/payroll", label: "shell.link.payroll", icon: FileText, module: PAYROLL_MODULE, requireReadiness: true },
     { to: "/statutory", label: "shell.link.statutory", icon: ScrollText, module: "statutory" },
   ] },
   { hub: "shell.hub.admin", links: [
@@ -45,7 +46,7 @@ export function tenantNav(access: AccessEffective | undefined, routes: Routes, s
     if (link.to === "/") return true;
     if (!access) return false;
     if (link.requireReadiness && !modules) return false;
-    if (modules !== undefined && link.module && !modules?.some(m => m.key === link.module && m.ready)) return false;
+    if (modules !== undefined && link.module && !moduleReady(modules, link.module)) return false;
     if (phase === "SETUP") {
       // Keep S1's safe destinations if the checklist is unavailable; readiness can narrow them further.
       const targets = setupTargets ?? ["/org", "/people", "/access"];

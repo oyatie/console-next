@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import type { components } from "@console/api";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { tenantInSetup } from "./setup-flows";
 import { chooseRadio, go } from "./flows";
@@ -8,11 +9,15 @@ import { activatePendingGrants } from "./second-person-fixture";
 import { expectAxe, fits } from "./a11y";
 
 async function grantAlphaAccess(admin: Page, token: () => string, domain: "pay" | "sensitive", level: "view" | "edit" = "edit") {
-  const label = domain === "pay" ? "급여" : "건강·민감";
+  const label = domain === "pay" ? "급여" : "민감 급여 그룹";
   const name = `${label} ${level === "view" ? "조회" : "등록·수정"}`;
+  const response = await apiOf(admin, token)("/onboarding/modules");
+  expect(response.status()).toBe(200);
+  const modules: components["schemas"]["OnboardingModules"] = await response.json();
+  const payrollReady = modules.some(module => module.key === "payroll" && module.ready);
   await go(admin, "/access/roles/new");
   const inactive = admin.getByText("급여가 활성화되지 않아 급여·민감 급여 그룹 권한은 급여 화면에서 사용할 수 없습니다.", { exact: true });
-  await expect(inactive).toBeVisible();
+  await expect(inactive).toHaveCount(payrollReady ? 0 : 1);
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill(name);
   if (domain === "pay" && level === "view") {
     const viewport = admin.viewportSize();
@@ -24,7 +29,10 @@ async function grantAlphaAccess(admin: Page, token: () => string, domain: "pay" 
       for (const theme of ["light", "dark"]) {
         await html.evaluate((el, value) => (el.dataset.theme = value), theme);
         await fits(admin, `payroll role editor/${width}/${theme}`);
-        await inactive.scrollIntoViewIfNeeded();
+        if (!payrollReady) {
+          await inactive.scrollIntoViewIfNeeded();
+          expect(await inactive.evaluate(el => el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight))).toBeLessThanOrEqual(5);
+        }
         const path = test.info().outputPath(`payroll-role-${width}-${theme}.png`);
         await admin.screenshot({ path, fullPage: true });
         await test.info().attach(`payroll-role-${width}-${theme}`, { path, contentType: "image/png" });
@@ -151,6 +159,11 @@ test("payroll reads and commands require tenant pay access", { tag: ["@hr", "@ne
     const viewCannotCreate = await api("/payroll/pay-groups", "POST", { ...groupInput, sensitive: false });
     expect(viewCannotCreate.status()).toBe(403);
     expect(await codeOf(viewCannotCreate)).toBe("forbidden");
+    const enabled = await opsApi("/settings/module.payroll.enabled", "POST", { value: true, reason_code: "POLICY_REVIEW" });
+    expect(enabled.status()).toBe(201);
+    const modules = await opsApi("/onboarding/modules");
+    expect(await modules.json()).toEqual(expect.arrayContaining([expect.objectContaining({ key: "payroll", ready: true })]));
+    await admin.reload();
     await grantAlphaAccess(admin, opsToken, "pay");
     const regularInput = { ...groupInput, name: "모의 일반 급여 그룹", sensitive: false };
     const regularResponse = await api("/payroll/pay-groups", "POST", regularInput);
