@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { ApiError, myAccessQuery } from "../../../reference/authz/api";
 import { RosterPage } from "./roster-page";
+import { rosterWindowQuery } from "../api/roster";
 import { VIEWS } from "../domain/roster";
 
 const state = vi.hoisted(() => ({ refused: false, body: "roster rows", org: false, loading: false, empty: false, search: {} as { status?: string; review?: string; unit?: string; sort?: string } }));
@@ -12,7 +13,7 @@ const table = vi.hoisted(() => vi.fn());
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }), Link: () => null, useNavigate: () => vi.fn() }));
 vi.mock("@tanstack/react-query", async original => ({
   ...await original<typeof import("@tanstack/react-query")>(),
-  useQuery: (options: { queryFn: unknown }) => options.queryFn === myAccessQuery.queryFn ? {
+  useQuery: (options: { queryFn: unknown }) => options === rosterWindowQuery ? { data: 21 } : options.queryFn === myAccessQuery.queryFn ? {
     data: { is_ops: false, entries: state.org ? [{ grant_id: "org", domain: "org", level: "view", enforcement: "ENFORCED", scope: { kind: "TENANT" } }] : [] }, isPending: false, error: null,
   } : ({ data: undefined, isPending: false, isFetching: false, isFetchedAfterMount: true, error: new ApiError(403, "access_denied", ""), refetch: vi.fn() }),
 }));

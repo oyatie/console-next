@@ -6,7 +6,6 @@ import { employees, facets } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
-import { SOON_DAYS } from "../../apps/web/src/features/people/ui/use-roster";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -66,7 +65,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
     await expect(grid.getByText(t("uiLongTable.loadingMore"), { exact: true })).toHaveCount(0);
     expect(fixture.requests.filter(query => query.has("contract_ending_before") && query.has("cursor"))).toHaveLength(0);
-    const active = filters.getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: SOON_DAYS })) });
+    const active = filters.getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: 60 })) });
     await expect(active).toHaveCount(0);
     await filters.getByRole("button", { name: new RegExp(t("roster.review.identity")) }).click();
     await expect(active).toHaveAttribute("aria-pressed", "true");

@@ -13,14 +13,14 @@ beforeAll(() => loadCatalog("ko"));
 
 test.each([true, false])("placement comes from the workplace, even without a department (placed: %s)", (placed) => {
   const employee = { id: "person", name: "직원", legal_entity_id: "entity", workplace_id: placed ? "workplace" : null, org_unit: null, org_unit_id: null } as Employee;
-  const html = renderToStaticMarkup(<RosterTable rows={[employee]} today="2026-10-25" shown={["unit"]} density="regular" label="people" hasMore={false} onLoadMore={() => undefined} empty={null} />);
+  const html = renderToStaticMarkup(<RosterTable soonDays={60} rows={[employee]} today="2026-10-25" shown={["unit"]} density="regular" label="people" hasMore={false} onLoadMore={() => undefined} empty={null} />);
   expect(html).toContain(placed ? "본사 · 사업장 직속" : "미배치");
   expect(html).not.toContain(placed ? "미배치" : "본사");
 });
 
 test.each([false, true])("only server-supported columns sort, including the exited roster (%s)", exited => {
   const onSort = vi.fn();
-  renderToStaticMarkup(<RosterTable rows={[]} today="2026-10-25" exited={exited} shown={["unit", "hired", "type"]} density="regular" label="people" hasMore={false} onLoadMore={() => undefined} empty={null} sort="-employee_number" onSort={onSort} />);
+  renderToStaticMarkup(<RosterTable soonDays={60} rows={[]} today="2026-10-25" exited={exited} shown={["unit", "hired", "type"]} density="regular" label="people" hasMore={false} onLoadMore={() => undefined} empty={null} sort="-employee_number" onSort={onSort} />);
   const props = vi.mocked(LongTable).mock.calls.at(-1)![0];
   expect(props.sortDescriptor).toEqual({ column: "number", direction: "descending" });
   expect(props.columns.filter(c => c.allowsSorting).map(c => c.id)).toEqual(exited ? ["number", "name", "unit"] : ["number", "name", "unit", "hired"]);
@@ -36,7 +36,7 @@ test.each([false, true])("only server-supported columns sort, including the exit
 });
 
 test("a roster without a sort handler offers no sortable columns", () => {
-  renderToStaticMarkup(<RosterTable rows={[]} today="2026-10-25" shown={["unit", "hired", "type"]} density="regular" label="people" hasMore={false} onLoadMore={() => undefined} empty={null} />);
+  renderToStaticMarkup(<RosterTable soonDays={60} rows={[]} today="2026-10-25" shown={["unit", "hired", "type"]} density="regular" label="people" hasMore={false} onLoadMore={() => undefined} empty={null} />);
   const props = vi.mocked(LongTable).mock.calls.at(-1)![0];
   expect(props.columns.filter(column => column.allowsSorting)).toEqual([]);
   expect(props.sortDescriptor).toBeUndefined();

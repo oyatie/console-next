@@ -61,10 +61,14 @@ export function Accounts({ sel, head }: { sel?: string; head?: (available: boole
   const base = { search: searchQuery || undefined, include_inactive: s.inactive ?? false };
   const list = useInfiniteQuery({
     ...get(PATH, { params: { query: { ...base, limit: PAGE } } }),
-    queryFn: ({ pageParam }) => get(PATH, { params: { query: { ...base, limit: PAGE, offset: pageParam } } }).queryFn(),
-    initialPageParam: 0,
+    queryFn: ({ pageParam }) => get(PATH, { params: { query: { ...base, limit: PAGE,
+      ...(typeof pageParam === "string" ? { cursor: pageParam } : { offset: pageParam }),
+    } } }).queryFn(),
+    initialPageParam: undefined as string | number | undefined,
     placeholderData: keepPreviousData,
     getNextPageParam: (last, pages) => {
+      // shortcut: older responses omit next_cursor; remove offset support when all servers publish it.
+      if (last.next_cursor !== undefined) return last.next_cursor ?? undefined;
       const n = pages.reduce((sum, p) => sum + p.items.length, 0);
       return last.items.length > 0 && n < last.total ? n : undefined;
     },
@@ -156,6 +160,7 @@ const columns = (peers: readonly Person[], open?: string): LongColumn<Person>[] 
   // The open account's row is marked, so the panel beside the list says whose it is.
   {
     id: "name",
+    card: "title",
     header: t("accounts.col.name"),
     // The ops account is the one preset: named as such, never by a role title (company-17).
     cell: (p) => <>{p.id === open ? <strong aria-current="true"><PersonLabel person={p} peers={peers} /></strong> : <PersonLabel person={p} peers={peers} />}{p.is_tenant_ops && <> <Chip tone="info">{t("accounts.ops")}</Chip></>}</>,
@@ -170,6 +175,7 @@ const columns = (peers: readonly Person[], open?: string): LongColumn<Person>[] 
   },
   {
     id: "status",
+    card: "status",
     header: t("accounts.col.status"),
     cell: (p) => {
       const st = labeled(ACCOUNT_STATUS, p.account_status);
