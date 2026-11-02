@@ -412,6 +412,7 @@
     "AccessGrantPreviewItem",
     "AccessGranters",
     "AccessLevel",
+    "AccessPerson",
     "AccessRequest",
     "AccessRequestReason",
     "AccessRole",

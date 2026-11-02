@@ -193,14 +193,55 @@ async fn cedar_reader_gets_linked_summary_and_records_access(pool: PgPool) {
     let employee = seed_employee_link(&pool, target, "ACCESS-001", "김직원").await;
     let (status, body) = get(&h, actor, target).await;
     assert_eq!(status, StatusCode::OK, "{body}");
-    let summary: console_identity_application::UserSummary = serde_json::from_value(body).unwrap();
-    assert_eq!(summary.id, target);
-    assert_eq!(summary.employee_id, Some(employee));
-    assert_eq!(summary.employee_number.as_deref(), Some("ACCESS-001"));
-    assert_eq!(summary.employee_name.as_deref(), Some("김직원"));
+    assert_eq!(body["id"], target.to_string());
+    assert_eq!(body["employee_id"], employee.to_string());
+    assert_eq!(body["employee_number"], "ACCESS-001");
+    assert_eq!(body["employee_name"], "김직원");
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE action='account.read' AND actor=$1 AND target_id=$2")
         .bind(actor.as_uuid()).bind(target.to_string()).fetch_one(&pool).await.unwrap();
     assert_eq!(count, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn access_view_only_reader_gets_no_contact_or_unshown_account_fields(pool: PgPool) {
+    let (h, actor, target) = reader(&pool).await;
+    sqlx::query("UPDATE users SET phone='+821055550000' WHERE id=$1")
+        .bind(target.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (status, body) = get(&h, actor, target).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(
+        body.get("phone").is_none(),
+        "contact must be absent: {body}"
+    );
+    let allowed = [
+        "id",
+        "display_name",
+        "sign_in_id",
+        "employee_id",
+        "employee_name",
+        "employee_number",
+        "employee_company",
+        "employee_org_unit",
+        "employee_link_status",
+        "roles",
+        "branch_ids",
+        "is_active",
+        "is_tenant_ops",
+        "has_passkey",
+        "account_status",
+    ]
+    .into_iter()
+    .collect::<std::collections::BTreeSet<_>>();
+    let keys = body
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(keys, allowed, "access detail is a closed projection");
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
