@@ -2,7 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { firstSignIn, go, registerEmployee } from "../flows";
+import { firstSignIn, go, registerEmployee, vendorPage } from "../flows";
 import { inviteAccount } from "../access-flows";
 import { bearerOf } from "../helpers/api";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
@@ -31,6 +31,10 @@ test("every census write is measured with no grant and an ops control", { tag: [
     return bearer();
   };
   const opsToken = await capture(admin), viewerToken = await capture(viewer);
+  const platform = await vendorPage(browser);
+  const platformToken = bearerOf(platform);
+  await platform.reload();
+  await expect.poll(platformToken).not.toBe("");
   const ids: Record<string, string> = {};
   for (const collection of ["legal-entities", "workplaces", "org-units", "employees", "access/roles"]) {
     const response = await request.get(`/api/v1/${collection}`, { headers: { authorization: opsToken } });
@@ -51,11 +55,25 @@ test("every census write is measured with no grant and an ops control", { tag: [
   const faults: string[] = [];
   let controls = 0;
   for await (const { operation, result, control } of probeWrites(census.map(r => r.operation), ids, send(viewerToken), send(opsToken))) {
+    let ops_http_status: number | null = null, ops_support_ref: string | null = null;
+    if (result.http_status === 403 && result.support_ref) {
+      try {
+        const lookup = await request.get(`/api/platform/support-references/${encodeURIComponent(result.support_ref)}`, {
+          headers: { authorization: platformToken() }, failOnStatusCode: false, timeout: 10_000,
+        });
+        ops_http_status = lookup.status();
+        const context = await lookup.json().catch(() => null) as { support_ref?: string } | null;
+        ops_support_ref = context?.support_ref ?? null;
+        await lookup.dispose();
+      } catch {
+        ops_http_status = 0;
+      }
+    }
     const self_service_reason = selfService[operation];
     const { status, controlValid, fault } = classifyWrite(result, control, self_service_reason);
     if (controlValid && !self_service_reason) controls++;
     await info.attach("write-probe", { contentType: "application/json", body: Buffer.from(JSON.stringify({
-      operation, principal: "no-grant", ...result, status, control_http_status: control.http_status,
+      operation, principal: "no-grant", ...result, status, ops_http_status, ops_support_ref, control_http_status: control.http_status,
       control_code: control.code, self_service_reason,
     })) });
     if (fault) faults.push(`${operation}: ${fault}`);

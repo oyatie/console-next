@@ -35,7 +35,7 @@ def probe_rows(report):
                             state = "fail" if "fail" in states else "pass" if all(s == "pass" for s in states) else "unknown"
                         rows.append({"operation": data["operation"], "status": state,
                                      "principal": data.get("principal", "unknown"), "http_status": http, "control_http_status": control,
-                                     **{key: data.get(key) for key in ("code", "control_code", "support_ref", "error", "self_service_reason")},
+                                     **{key: data.get(key) for key in ("code", "control_code", "support_ref", "ops_http_status", "ops_support_ref", "error", "self_service_reason")},
                                      "title": "e2e/" + entry.get("file", "").replace("\\", "/").split("/e2e/")[-1].removeprefix("e2e/") + " › " + entry["title"]})
         for child in suite.get("suites", []): walk(child)
 

@@ -61,6 +61,17 @@ class EvidenceTest(unittest.TestCase):
         spec["file"] = "mock/sample.spec.ts"
         self.assertEqual(self.rows(), [])
 
+    def test_beacon_suite_supplies_shell_evidence_and_keeps_failed_or_skipped_attempts(self):
+        entry = self.report["suites"][0]["specs"][0]
+        entry["file"] = "error-beacon.spec.ts"
+        self.assertEqual(self.rows(), [{"kind": "client-errors", "title": "solo", "browser": "chromium", "status": "pass"}])
+        run = entry["tests"][0]
+        for state in ("failed", "skipped", "interrupted"):
+            run["results"][0]["status"] = state
+            self.assertNotEqual(self.rows()[0]["status"], "pass")
+        run["results"] = [{"status": "failed"}, {"status": "passed"}]
+        self.assertEqual([r["status"] for r in self.rows()], ["fail", "pass"])
+
     def test_default_mock_project_is_chromium_only_for_the_known_config(self):
         self.report["suites"][0]["specs"][0]["tests"][0]["projectName"] = ""
         self.assertEqual(self.rows()[-1]["browser"], "unknown")

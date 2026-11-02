@@ -55,6 +55,12 @@ class D10Test(unittest.TestCase):
         self.assertEqual(row["status"], "unknown")
         self.assertEqual(row["error"], "request failed")
 
+    def test_live_ops_lookup_is_preserved_for_the_support_reader(self):
+        self.probe.update(support_ref="a" * 32, ops_http_status=200, ops_support_ref="a" * 32)
+        row = self.rows()[0]
+        self.assertEqual(row["ops_http_status"], 200)
+        self.assertEqual(row["ops_support_ref"], self.probe["support_ref"])
+
     def test_self_service_is_never_counted_as_no_grant_refusal(self):
         self.probe.update(code="validation", self_service_reason="Own session operation")
         self.assertEqual(self.rows()[0]["status"], "unknown")

@@ -45,6 +45,8 @@ def e2e_rows(report, index):
                     browser = "chromium"
                 for result in test.get("results", []) or [{"status": "skipped"}]:
                     state = status(result["status"]) if test.get("expectedStatus") == "passed" and not report.get("errors") else "unknown"
+                    if file == "e2e/error-beacon.spec.ts":
+                        rows.append({"kind": "client-errors", "title": title, "browser": browser, "status": state})
 
                     def steps(items):
                         for step in items:
