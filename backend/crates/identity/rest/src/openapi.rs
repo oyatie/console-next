@@ -1214,6 +1214,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/AccessLevel.yaml"),
     },
     NamedYaml {
+        name: "AccessPerson",
+        body: include_str!("../openapi/schemas/AccessPerson.yaml"),
+    },
+    NamedYaml {
         name: "AccessRequest",
         body: include_str!("../openapi/schemas/AccessRequest.yaml"),
     },

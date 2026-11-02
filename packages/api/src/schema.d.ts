@@ -1143,7 +1143,7 @@ export interface paths {
         };
         /**
          * Get an account for the access screens
-         * @description Requires tenant-wide access view through Cedar. Returns the existing UserSummary including the linked employee, when present. Authorization precedes lookup; missing and foreign-tenant account IDs return the same not-found response.
+         * @description Requires tenant-wide access view through Cedar. Returns only access-screen labels, employee reference and account state, without phone or other contact details. Authorization precedes lookup; missing and foreign-tenant account IDs return the same not-found response.
          */
         get: operations["getAccessPerson"];
         put?: never;
@@ -14675,6 +14675,27 @@ export interface components {
          * @enum {string}
          */
         AccessLevel: "view" | "edit" | "approve" | "export";
+        /** @description Access-screen account labels and state. Contact details and unrelated HR facts are excluded. */
+        AccessPerson: {
+            id: components["schemas"]["Uuid"];
+            display_name: string;
+            /** @description Account login label used to distinguish unlinked accounts; not a contact address. */
+            sign_in_id?: string | null;
+            /** Format: uuid */
+            employee_id: string | null;
+            employee_name: string | null;
+            employee_number: string | null;
+            employee_company: string | null;
+            employee_org_unit: string | null;
+            /** @enum {string} */
+            employee_link_status: "LINKED" | "UNLINKED";
+            roles: string[];
+            branch_ids: components["schemas"]["Uuid"][];
+            is_active: boolean;
+            is_tenant_ops: boolean;
+            has_passkey: boolean;
+            account_status: components["schemas"]["AccountStatus"];
+        };
         AccessRequest: {
             id: components["schemas"]["Uuid"];
             requested_by: components["schemas"]["Uuid"];
@@ -32608,7 +32629,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserSummary"];
+                    "application/json": components["schemas"]["AccessPerson"];
                 };
             };
             401: components["responses"]["Unauthorized"];

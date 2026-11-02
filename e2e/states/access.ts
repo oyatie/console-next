@@ -7,6 +7,11 @@ import { AT, LONG_NAME, checklist, failure, id, screenAccess, user } from "../mo
 import { screens, type State } from "./registry";
 
 type S = components["schemas"];
+export const accessPerson = ({ id, display_name, sign_in_id = null, employee_id, employee_name, employee_number,
+  employee_company, employee_org_unit, employee_link_status, roles, branch_ids, is_active, is_tenant_ops,
+  has_passkey, account_status }: S["UserSummary"]): S["AccessPerson"] => ({ id, display_name, sign_in_id, employee_id,
+  employee_name, employee_number, employee_company, employee_org_unit, employee_link_status, roles, branch_ids,
+  is_active, is_tenant_ops, has_passkey, account_status });
 /** A realistic tenant role name (~13 characters): the 1440 table shows it whole. */
 const REALISTIC_ROLE = "늘봄정밀 인사 실무 담당";
 export const accessRole: S["AccessRole"] = { id: id(10), name_ko: "인사 조회", status: "ACTIVE", version: 1,
@@ -58,6 +63,11 @@ export async function mockAccessScreen(page: Page, screen: AccessScreen, state: 
     const matches = accounts.filter(a => [a.display_name, a.employee_name, a.employee_number].some(value => value?.toLowerCase().includes(q)));
     const limit = Number(query.get("limit") ?? 200), offset = Number(query.get("offset") ?? 0);
     return { status: 200, json: { items: matches.slice(offset, offset + limit), total: matches.length, limit, offset } };
+  });
+  await mockRoute(page, "get", "/api/v1/access/people/{id}", request => {
+    const accountId = new URL(request.url()).pathname.split("/").at(-1);
+    const account = accountId === id(20) ? { ...user, id: id(20), display_name: "운영 계정", is_tenant_ops: true } : accounts.find(a => a.id === accountId);
+    return account ? { status: 200, json: accessPerson(account) } : { status: 404, json: failure("not_found") };
   });
   await mockRoute(page, "get", "/api/v1/access/roles", async () => (await beforeReply("/api/v1/access/roles")) ?? { status: 200, json: count ? [{ ...accessRole, holder_count: count, name_ko: state === "long" ? LONG_NAME : accessRole.name_ko }] : [] });
   await mockRoute(page, "get", "/api/v1/access/grants", async request => {
