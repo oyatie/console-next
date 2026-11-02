@@ -3,9 +3,11 @@ import { expect, test } from "@playwright/test";
 import { openTenant } from "./helpers/tenant";
 import { koDate, kstDate } from "./flows";
 import { setupCompany } from "./setup-flows";
+import { openAsOf } from "./dates";
 
 test("failed chart reads are unknown, with one retry and explained inert actions", { tag: ["@org", "@regression", "@negative"] }, async ({ browser }) => {
   const page = await openTenant(browser, "org-chart-read-failure", "조직읽기확인");
+  await setupCompany(page, "조직읽기확인", "본사");
   await page.setViewportSize({ width: 390, height: 844 });
   const reference = "org-chart-read-reference";
   const reads = ["/api/v1/org-structure", "/api/v1/org-structure/change-dates", "/api/v1/legal-entities"];
@@ -35,9 +37,16 @@ test("failed chart reads are unknown, with one retry and explained inert actions
       await expect(control).toHaveAttribute("aria-disabled", "true");
       await expect(control).toHaveAccessibleDescription("조직 정보를 불러오지 못했습니다.");
     }
-    const dateControl = main.locator('section[aria-label="기준일"]');
+    const dateTrigger = main.getByRole("button", { name: /^기준일 · / });
+    await expect(dateTrigger).toBeEnabled();
+    await expect(dateTrigger.locator("time")).toBeVisible();
+    await expect(dateTrigger.locator("time")).toHaveAttribute("datetime", kstDate());
+    expect(await dateTrigger.evaluate(el => Boolean(el.closest("[inert]")))).toBe(false);
+    const dateControl = await openAsOf(page);
     await expect(dateControl.getByRole("textbox", { name: /^기준일/ })).toBeEditable();
     await expect(dateControl.getByRole("button", { name: "오늘", exact: true })).toBeEnabled();
+    await page.keyboard.press("Escape");
+    await expect(dateControl).toHaveCount(0);
     counts.clear();
     await retry.click();
     for (const path of reads) await expect.poll(() => counts.get(path)).toBe(1);
@@ -45,7 +54,7 @@ test("failed chart reads are unknown, with one retry and explained inert actions
     await page.unrouteAll({ behavior: "wait" });
     await retry.click();
     await expect(main.getByRole("alert")).toHaveCount(0);
-    await expect(main.getByRole("heading", { name: "첫 법인을 등록합니다" })).toBeVisible();
+    await expect(main.getByRole("tree", { name: /조직도$/ })).toBeVisible();
     const compare = main.getByRole("button", { name: "기준일 비교", exact: true });
     await expect(compare).toBeEnabled();
     await compare.click();
@@ -90,7 +99,7 @@ test("an invalid as-of date can be corrected or returned to today", { tag: ["@or
       const refused = page.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/org-structure" && r.status() === 422);
       await page.goto("/org?as_of=2025-02-30");
       await refused;
-      const date = page.getByRole("region", { name: "기준일", exact: true });
+      const date = await openAsOf(page);
       const field = date.getByRole("textbox", { name: /^기준일/ });
       await expect(field).toBeEditable();
       await field.focus();
@@ -103,7 +112,9 @@ test("an invalid as-of date can be corrected or returned to today", { tag: ["@or
       }
       await expect(page).not.toHaveURL(/as_of=/);
       await expect(page.getByRole("tree", { name: /조직도$/ })).toBeVisible();
-      await expect(field).toHaveValue(koDate(kstDate()));
+      await expect(page.getByRole("button", { name: /^기준일 · / })).toContainText(koDate(kstDate()));
+      await expect((await openAsOf(page)).getByRole("textbox", { name: /^기준일/ })).toHaveValue(koDate(kstDate()));
+      await page.keyboard.press("Escape");
     }
     await page.route(url => url.pathname === "/api/v1/org-structure" && url.searchParams.has("as_of"), route =>
       route.fulfill({ status: 503, headers: { "retry-after": "60" }, json: { error: { code: "service_unavailable", message: "조직 읽기에 실패했습니다." } } }));

@@ -71,6 +71,25 @@ test("controls retain their own keys and unrelated modifier chords do nothing", 
   expect(g.add).not.toHaveBeenCalled();
 });
 
+test.each(["ArrowLeft", "ArrowRight", "Enter", "Delete", "Home", " ", "/"])("Alt+%s is left to the browser", (key) => {
+  const { c, g, press } = fixture();
+  const event = press(key, key, { altKey: true });
+  expect(event.preventDefault).not.toHaveBeenCalled();
+  for (const handler of [...Object.values(c), ...Object.values(g)].filter(vi.isMockFunction)) {
+    expect(handler).not.toHaveBeenCalled();
+  }
+});
+
+test.each([["ArrowUp", -1], ["ArrowDown", 1]] as const)("Shift+Alt+%s reorders without extending selection", (key, direction) => {
+  const { c, g, node, press } = fixture();
+  const event = press(key, key, { shiftKey: true, altKey: true });
+  expect(event.preventDefault).toHaveBeenCalledOnce();
+  expect(g.order).toHaveBeenCalledExactlyOnceWith(node, direction);
+  expect(g.order.mock.results[0]!.value).toHaveBeenCalledOnce();
+  expect(c.select).not.toHaveBeenCalled();
+  expect(c.setCursor).not.toHaveBeenCalled();
+});
+
 test.each([
   ["Enter", "Enter", { shiftKey: true }, "open"],
   [" ", "Space", { shiftKey: true }, "expand"],
