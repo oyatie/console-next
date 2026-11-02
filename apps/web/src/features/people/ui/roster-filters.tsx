@@ -5,7 +5,7 @@ import { fmtNumber } from "@console/i18n/format";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Segmented } from "../../../ui/button/segmented";
 import { Band } from "../../../ui/band/band";
-import { REVIEWS, headcount, statusesOf, toggleReview, type Review, type StatusView } from "../domain/roster";
+import { REVIEWS, VIEWS, headcount, statusesOf, toggleReview, type Review, type StatusView } from "../domain/roster";
 import type { Density } from "./use-roster-columns";
 import { RosterScope } from "./roster-scope";
 import { SOON_DAYS } from "./use-roster";
@@ -42,7 +42,8 @@ export function RosterFilters({ status, review, unit, counts, onChange, onReset,
       {icon && <Lock size={12} aria-hidden />}{label}{" "}
     </ToggleButton>
   );
-  const reviews = REVIEWS.filter((r, i) => review.includes(r) || (r !== "contractSoon" && r !== "register" && r !== "unplaced" && !counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0));
+  const preset = VIEWS.some(v => v.status === status && (v.review ?? []).join() === review.join());
+  const reviews = REVIEWS.filter((r, i) => (review.includes(r) && !preset) || (r !== "contractSoon" && r !== "register" && r !== "unplaced" && !counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0));
   const pending = (st.totals.ACTIVE === undefined && !failed) || (counts.review.totals.contractSoon === undefined && !counts.review.failed.some(Boolean));
   return (
     <>
