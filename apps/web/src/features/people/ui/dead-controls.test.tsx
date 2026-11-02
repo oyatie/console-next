@@ -57,9 +57,9 @@ test("the built-in contract view label uses the configured window", () => {
   expect(html).toContain(t("directoryViews.contractSoon", { days: 21 }));
 });
 
-test("the roster header represents a window that is still loading", () => {
+test("the roster header withholds the contract view until its window is known", () => {
   const html = renderToStaticMarkup(<RosterHead soonDays={undefined} manage={false} status="current" review={[]} onView={() => {}} />);
-  expect(html).toContain(t("directoryViews.contractSoon", { days: "—" }));
+  expect(html).not.toContain(t("directoryViews.contractSoon", { days: "—" }));
 });
 
 test("an empty registration run has one heading and no completion command", () => {

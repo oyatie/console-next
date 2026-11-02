@@ -58,7 +58,7 @@ export function RosterHead({ manage, status, review, soonDays, onView, actions, 
             <Link className={buttonClass("primary")} to="/people/new" search={{}}><Plus size={16} aria-hidden /> {t("people.register")} <Kbd k="A" /></Link>
           </>
         )} tabs={<div className={s.views} role="group" aria-label={t("roster.view.label")}>
-        {VIEWS.filter((v) => v.status).map((v) => <ToggleButton key={v.id} pressed={!unplaced && view === v.id} onClick={() => onView(v)}>{v.id === "contractSoon" ? t("directoryViews.contractSoon", { days: soonDays ?? "—" }) : t(`roster.view.${v.id}`)}</ToggleButton>)}
+        {VIEWS.filter((v) => v.status && (v.id !== "contractSoon" || soonDays !== undefined)).map((v) => <ToggleButton key={v.id} pressed={!unplaced && view === v.id} onClick={() => onView(v)}>{v.id === "contractSoon" ? t("directoryViews.contractSoon", { days: soonDays ?? "—" }) : t(`roster.view.${v.id}`)}</ToggleButton>)}
         {access.data && accessRefusal(access.data, peopleAccess.unplaced) === null && <ToggleButton pressed={unplaced} onClick={() => void navigate({ to: "/people", search: previous => ({ ...previous, placement: unplaced ? undefined : "unplaced", sel: undefined }), replace: true })}>{t("roster.view.unplaced")}</ToggleButton>}
         {switcher}
       </div>} />

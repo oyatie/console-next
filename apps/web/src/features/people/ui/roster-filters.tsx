@@ -43,8 +43,8 @@ export function RosterFilters({ status, review, unit, soonDays, counts, onChange
     </ToggleButton>
   );
   const preset = activeView(status, review);
-  const reviews = REVIEWS.filter((r, i) => (review.includes(r) && !preset) || (r !== "contractSoon" && r !== "register" && r !== "unplaced" && !counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0));
-  const pending = (st.totals.ACTIVE === undefined && !failed) || (counts.review.totals.contractSoon === undefined && !counts.review.failed.some(Boolean));
+  const reviews = REVIEWS.filter((r, i) => (r !== "contractSoon" || soonDays !== undefined) && ((review.includes(r) && !preset) || (r !== "contractSoon" && r !== "register" && r !== "unplaced" && !counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0)));
+  const pending = (st.totals.ACTIVE === undefined && !failed) || (soonDays !== undefined && counts.review.totals.contractSoon === undefined && !counts.review.failed.some(Boolean));
   return (
     <>
       <Band className={s.scope}>

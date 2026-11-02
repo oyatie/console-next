@@ -163,3 +163,14 @@ test("department review survives the URL and uses the shared list and bulk selec
   expect(facetQueries(f, TODAY, 60).list).toMatchObject({ department_missing: true });
   expect(facetQueries(f, TODAY, 60).review).not.toHaveProperty("department_missing");
 });
+
+test("an unavailable contract window omits only the window-dependent filters and next items", () => {
+  const filter = { status: "current" as const, review: ["contractSoon", "identity"] as const };
+  expect(listQuery(filter, TODAY).contract_ending_before).toBeUndefined();
+  expect(listQuery(filter, TODAY).identity_review_required).toBe(true);
+  const facets = facetQueries(filter, TODAY);
+  expect(facets.list.contract_ending_before).toBeUndefined();
+  expect(facets.review.contract_ending_before).toBeUndefined();
+  expect(listQuery({ ...filter, review: ["contractPast"] }, TODAY).contract_ending_before).toBe(TODAY);
+  expect(nextItems(person({ contract_end_date: "2026-10-03" }), TODAY)).toEqual([]);
+});

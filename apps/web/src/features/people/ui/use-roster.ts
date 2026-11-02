@@ -24,9 +24,8 @@ const employees = (query: object) => get("/api/v1/employees", { params: { query 
  * reads (domain/roster facetQueries), which do follow focus and polling; the list filter's total is the probe, so a
  * change by someone else shows as a banner instead of reshuffling the rows under the cursor.
  */
-export function useRoster(f: OrderedRoster, soonDays: number | undefined) {
+export function useRoster(f: OrderedRoster, soonDays: number | undefined, enabled = soonDays !== undefined) {
   const today = todayKst();
-  const enabled = soonDays !== undefined;
   const query = enabled ? orderedQuery(f, today, soonDays) : {};
   const list = useInfiniteQuery({
     ...cursorPages("/api/v1/employees", { ...query, limit: PAGE }),

@@ -56,8 +56,8 @@ const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memo
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterPage({ manage, scoped = false, switcher, notice }: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode }) {
-  const window = useQuery(rosterWindowQuery);
-  const soonDays = window.data;
+  const contractWindow = useQuery(rosterWindowQuery);
+  const soonDays = contractWindow.isError ? undefined : contractWindow.data;
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const today = todayKst();
@@ -80,7 +80,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   const [rescinding, setRescinding] = useState(false);
   // The rescission sheet's reasons, read before its button shows, so nothing lands under the pointer when it opens.
   const rescindReady = useReasonCodesReady(batch ? "lifecycle_cancel" : null);
-  const r = useRoster({ status, review, unit, q, sort }, soonDays);
+  const r = useRoster({ status, review, unit, q, sort }, soonDays, !contractWindow.isPending);
   const view = useRosterColumns();
   const can = useCan();
   const prefetch = usePrefetch();
@@ -198,7 +198,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   // read); a current view that is empty while others exist is the table's own empty state, with its way to them.
   if (search.export === "register") return <RegisterExport onClose={() => void navigate({ search: (prev) => ({ ...prev, export: undefined }), replace: true })} />;
   return (
-    <PageReadGate q={window}><PageReadGate q={r.list}><div className={s.page}>
+    <PageReadGate q={r.list}><div className={s.page}>
       <RosterHead
         manage={manage}
         soonDays={soonDays}
@@ -228,7 +228,8 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
           focusSoon("people-title");
         }} /></>}
       />
-      <QueryState q={window} layout="list">{effectiveSoonDays => <QueryState q={r.list} layout="list">{() => <>
+      {contractWindow.isError && <QueryState q={contractWindow} inline>{() => null}</QueryState>}
+      <QueryState q={r.list} layout="list">{() => <>
       <div className={s.notes}>
       {status === "EXITED" && <ExitTabs view={exitView} kept={r.status.totals.EXITED} onView={setExitView} />}
       {(notice || scoped) && <p className="muted" role={notice ? "note" : undefined}>{notice}{notice && scoped && " "}{scoped && t("roster.scope.branches")}</p>}
@@ -252,7 +253,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
               sort={sort}
               onSort={(nextSort) => setFilter({ sort: nextSort })}
               today={today}
-              soonDays={effectiveSoonDays}
+              soonDays={soonDays}
               exited={status === "EXITED"}
               shown={view.shown}
               density={view.density}
@@ -293,7 +294,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
         )}
       />
       <PeopleJump />
-    </>}</QueryState>}</QueryState>
-    </div></PageReadGate></PageReadGate>
+    </>}</QueryState>
+    </div></PageReadGate>
   );
 }

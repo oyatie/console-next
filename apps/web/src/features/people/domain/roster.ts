@@ -49,18 +49,18 @@ export const parseSort = (v?: string): RosterSort => SORTS.find((x) => x === v) 
 export type RosterFilter = { status: StatusView; review: readonly Review[]; unit?: string; q?: string; sort?: RosterSort };
 
 /** What the review chips ask the server; `soonDays` is the renewal window Home's queue uses. */
-const reviewQuery = (on: readonly Review[], today: string, soonDays: number) => ({
+const reviewQuery = (on: readonly Review[], today: string, soonDays?: number) => ({
   identity_review_required: on.includes("identity") || undefined,
   home_branch_review_required: on.includes("unplaced") || undefined,
   register_review_required: on.includes("register") || undefined,
   department_missing: on.includes("department") || undefined,
   lifecycle_apply_failed: on.includes("failed") || undefined,
   // Strictly before the date: today finds contracts already over, today + window + 1 every one ending within it.
-  contract_ending_before: on.includes("contractPast") ? today : on.includes("contractSoon") ? addDays(today, soonDays + 1) : undefined,
+  contract_ending_before: on.includes("contractPast") ? today : on.includes("contractSoon") && soonDays !== undefined ? addDays(today, soonDays + 1) : undefined,
 });
 
 /** The list's server query (without paging). */
-export const listQuery = (f: RosterFilter, today: string, soonDays: number) => ({
+export const listQuery = (f: RosterFilter, today: string, soonDays?: number) => ({
   search: f.q || undefined,
   sort: f.sort && f.sort !== "name" ? f.sort : undefined,
   ...scopeQuery(f.unit),
@@ -75,9 +75,9 @@ type Facets = components["schemas"]["EmployeeFacets"];
  * the rest (unit, search, review chips), and its total is the list's. `review` is the status filter with the renewal
  * window: review counts ignore the review and contract filters, so one read counts every review chip.
  */
-export function facetQueries(f: RosterFilter, today: string, soonDays: number) {
+export function facetQueries(f: RosterFilter, today: string, soonDays?: number) {
   const base = { search: f.q || undefined, ...scopeQuery(f.unit), status: statusesOf(f.status) };
-  return { list: { ...base, ...reviewQuery(f.review, today, soonDays) }, review: { ...base, contract_ending_before: addDays(today, soonDays + 1) } };
+  return { list: { ...base, ...reviewQuery(f.review, today, soonDays) }, review: { ...base, contract_ending_before: soonDays === undefined ? undefined : addDays(today, soonDays + 1) } };
 }
 /** The per-status counts (STATUSES order) of a facets read; a status the server did not list counts 0. */
 export const statusCounts = (rows?: Facets["status"]) => STATUSES.map((s) => (rows ? (rows.find((r) => r.value === s)?.count ?? 0) : undefined));
@@ -112,7 +112,7 @@ export type NextItem =
  * action, then a contract ending within `soonDays` (or already over) while still employed; while on leave, the
  * expected return the leave named (unless the return is already scheduled, which is the next action).
  */
-export function nextItems(e: Employee, today: string, soonDays: number): NextItem[] {
+export function nextItems(e: Employee, today: string, soonDays?: number): NextItem[] {
   const items: NextItem[] = [];
   if (e.failed_event) items.push({ kind: "failed", event: e.failed_event.event_type, date: e.failed_event.effective_date });
   if (e.next_event) {
@@ -120,7 +120,7 @@ export function nextItems(e: Employee, today: string, soonDays: number): NextIte
     items.push({ kind: "event", event: e.next_event.event_type, date, days: daysBetween(today, date) });
   }
   const end = e.contract_end_date;
-  if (end && e.status !== "EXITED" && daysBetween(today, end) <= soonDays) items.push({ kind: "contract", date: end, days: daysBetween(today, end) });
+  if (end && soonDays !== undefined && e.status !== "EXITED" && daysBetween(today, end) <= soonDays) items.push({ kind: "contract", date: end, days: daysBetween(today, end) });
   const back = e.status === "ON_LEAVE" ? e.expected_return_date : undefined;
   if (back && e.next_event?.event_type !== "RETURN_FROM_LEAVE") items.push({ kind: "return", date: back, days: daysBetween(today, back) });
   return items;

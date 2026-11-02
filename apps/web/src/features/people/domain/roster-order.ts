@@ -9,7 +9,7 @@ export function parseOrder(raw?: string): RosterOrder {
 }
 
 /** An explicit order selects the server's keyset contract, including the default name order. */
-export const orderedQuery = (filter: OrderedRoster, today: string, soonDays: number) => ({
+export const orderedQuery = (filter: OrderedRoster, today: string, soonDays?: number) => ({
   ...listQuery({ ...filter, sort: undefined }, today, soonDays),
   sort: filter.sort ?? "name",
 });
