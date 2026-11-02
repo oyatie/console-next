@@ -37,7 +37,7 @@ test("the launcher and Playwright resolve the backend from the public checkout",
 
 test("backend CI runs the served Home scale probe and retains its measurements", () => {
   const ci = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
-  const backend = ci.split("  backend:")[1].split("  supply-chain:")[0];
+  const backend = ci.split("\n  backend:\n")[1].split("\n  supply-chain:\n")[0];
   assert.match(backend, /cargo build .*--release.*e2e-test-support/);
   assert.match(backend, /E2E_SERVED: "1"/);
   assert.match(backend, /home-inbox\.spec\.ts/);

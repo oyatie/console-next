@@ -131,11 +131,31 @@ test("each Rust gate propagates a tool failure", () => {
   }
 });
 
+test("affected paths uses full history, the event base and the checked-out merge commit", () => {
+  const affected = workflow.jobs.affected;
+  assert.ok(affected);
+  assert.equal(affected.if, undefined);
+  assert.deepEqual(affected.permissions, { contents: "read" });
+  const checkout = affected.steps.find((s) => s.uses?.startsWith("actions/checkout@"));
+  assert.deepEqual(checkout.with, { "persist-credentials": false, "fetch-depth": 0 });
+  assert.ok(affected.steps.some((s) => s.run === "node --test scripts/ci-affected.test.mjs"));
+  const classify = affected.steps.find((s) => s.id === "paths");
+  assert.deepEqual(classify.env, {
+    BASE_SHA: "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}",
+    HEAD_SHA: "${{ github.sha }}",
+  });
+  assert.equal(classify.run, 'node scripts/ci-affected.mjs "$GITHUB_EVENT_NAME" "$BASE_SHA" "$HEAD_SHA"');
+  assert.deepEqual(affected.outputs, { backend: "${{ steps.paths.outputs.backend }}", web: "${{ steps.paths.outputs.web }}" });
+  const existingUses = new Set(Object.entries(workflow.jobs).filter(([name]) => name !== "affected")
+    .flatMap(([, job]) => (job.steps ?? []).map((s) => s.uses).filter(Boolean)));
+  for (const step of affected.steps) if (step.uses) assert.ok(existingUses.has(step.uses));
+});
+
 test("ci-ok fails on any failed, cancelled or skipped required job", () => {
   const job = workflow.jobs["ci-ok"];
   assert.ok(job, "required ci-ok aggregate is missing");
   assert.equal(job.if, "${{ always() }}");
-  assert.deepEqual([...job.needs].sort(), ["backend", "commits", "states", "states-plan", "states-timings", "supply-chain", "web"]);
+  assert.deepEqual([...job.needs].sort(), ["affected", "backend", "commits", "states", "states-plan", "states-timings", "supply-chain", "web"]);
   const command = job.steps.map((s) => s.run ?? "").join("\n");
   for (const required of job.needs) for (const status of ["success", "failure", "cancelled", "skipped"]) {
     const run = command.replace(/\$\{\{ needs(?:\.([\w-]+)|\['([\w-]+)'\])\.result \}\}/g, (_, dotted, quoted) => (dotted ?? quoted) === required ? status : "success");

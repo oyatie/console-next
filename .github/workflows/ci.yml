@@ -19,6 +19,29 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  affected:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      backend: ${{ steps.paths.outputs.backend }}
+      web: ${{ steps.paths.outputs.web }}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false, fetch-depth: 0}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version}
+      - run: node --test scripts/ci-affected.test.mjs
+      - name: Classify changes against the merge base
+        id: paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: node scripts/ci-affected.mjs "$GITHUB_EVENT_NAME" "$BASE_SHA" "$HEAD_SHA"
+
   commits:
     permissions:
       contents: read
@@ -428,12 +451,13 @@ jobs:
 
   ci-ok:
     if: ${{ always() }}
-    needs: [commits, web, states-plan, states, states-timings, backend, supply-chain]
+    needs: [affected, commits, web, states-plan, states, states-timings, backend, supply-chain]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every CI job
         run: |
+          test "${{ needs.affected.result }}" = success
           test "${{ needs.commits.result }}" = success
           test "${{ needs.web.result }}" = success
           test "${{ needs['states-plan'].result }}" = success
