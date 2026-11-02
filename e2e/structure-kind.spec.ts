@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go, registerEmployee } from "./flows";
 import { addDepts, openUnit, panel, quickWorkplace, sheet } from "./helpers/structure";
 import { startOperations, tenantInSetup } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // 회사 구조, ENT-KIND MR-19/20 and CS-BE: a 사업장 is added through its 법인 (never an org change), its kind is a label
 // picked from the tenant's list (S5-kind-manage), its code and its place among its 법인's 사업장 are set on its panel,
@@ -24,7 +27,8 @@ test("사업장 kind, code and order; 부서 head, code and order; a new 사업�
 
   // 2. A 사업장's kind changes from its panel at once; nothing is preselected.
   const main = await openUnit(admin, "본점");
-  await expect(main.getByRole("definition").filter({ hasText: "사업장 · 이름표일 뿐" })).toBeVisible();
+  const kindValue = main.locator("dl > div").filter({ has: admin.getByText(t("workplace.create.kind"), { exact: true }) }).getByRole("definition").first();
+  await expect(kindValue).toHaveText(t("workplace.kind.WORKPLACE"));
   await main.getByRole("button", { name: "종류 수정" }).click();
   const kind = sheet(admin, "본점 종류 변경");
   await expect(kind.getByRole("button", { name: "종류 변경" })).toHaveAttribute("aria-disabled", "true");
@@ -32,7 +36,7 @@ test("사업장 kind, code and order; 부서 head, code and order; a new 사업�
   await expectAccessible(admin, "change a workplace's kind");
   await kind.getByRole("button", { name: "종류 변경" }).click();
   await expect(kind).toBeHidden();
-  await expect(main.getByRole("definition").filter({ hasText: "공장 · 이름표일 뿐" })).toBeVisible();
+  await expect(kindValue).toHaveText(t("workplace.kind.FACTORY"));
 
   // 3. The kind list: a kind in use is not hidden and says why; a label any kind shows (a default's included) is refused
   // before it is sent; a default renamed goes back to its own name; an unused tenant kind hides and shows again.

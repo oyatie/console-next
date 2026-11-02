@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, registerSheet } from "./flows";
@@ -6,6 +7,8 @@ import { hire, openClose } from "./helpers/close";
 import { addDepts } from "./helpers/structure";
 import { registerBranch, startOperations, tenantInSetup } from "./setup-flows";
 import { box, findBox, leaveScreen } from "./structure-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // UX-R2 ENDS (company-01, worst-case-18, move-17, company-35, worst-case-46): a 사업장 that still has people and 부서
 // closes in one act, by a plan with a line for everyone — never 「이 서버가 아직 하지 못합니다」, never a dead end for a solo
@@ -36,7 +39,7 @@ test("regression: a staffed workplace closes today in one act by its plan (compa
   // The old dead end is gone; a disabled commit names the one thing left, in order.
   await expect(s).not.toContainText("아직 하지 못합니다");
   await expect(commit).toHaveAttribute("aria-disabled", "true");
-  await expect(commit).toHaveAccessibleDescription("폐쇄일을 선택하면 닫을 수 있습니다.");
+  await expect(commit).toHaveAccessibleDescription(t("workplace.close.blockedDate"));
   await expect(commit).toHaveClass(/btn--danger/); // company-13: the irreversible commit is the danger action
   await fillDate(s, kstDate(), "폐쇄일");
   await expect(commit).toHaveAccessibleDescription(/개발팀 부서의 계획이 남았습니다/);
@@ -52,7 +55,7 @@ test("regression: a staffed workplace closes today in one act by its plan (compa
   // One press plans everyone; one person is changed to 퇴직 · 폐업 in the table; the preview counts exactly.
   await s.getByRole("button", { name: "모두 본사로" }).click();
   await expect(s).toContainText("본사로 전근 2명");
-  await expect(s).toContainText("부서 2개 옮김 · 0개 폐지");
+  await expect(s).toContainText(t("workplace.close.preview.units", { moved: 2, dissolved: 0 }));
   await expect(commit).not.toHaveAttribute("aria-disabled", "true");
   await plan(admin, s, "물류팀 계획", "폐지");
   await expect(commit).toHaveAccessibleDescription(/이물류님의 계획이 남았습니다/);
@@ -63,7 +66,7 @@ test("regression: a staffed workplace closes today in one act by its plan (compa
   await expect(where.getByRole("row", { name: /^개발팀/ })).toHaveAttribute("aria-disabled", "true");
   await expectAccessible(admin, "workplace close destination picker");
   await where.getByRole("row", { name: /^인사팀/ }).click();
-  await expect(s).toContainText("부서 1개 옮김 · 1개 폐지");
+  await expect(s).toContainText(t("workplace.close.preview.units", { moved: 1, dissolved: 1 }));
   await shot(admin, "after-02-plan-filled");
   await expectAccessible(admin, "workplace close plan");
 

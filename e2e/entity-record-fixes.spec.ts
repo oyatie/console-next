@@ -96,7 +96,7 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
   // The scheduled change is already dated in recent history; it never gets a second plan row above it.
   await expect(rail.getByText("변경 예약", { exact: true })).toHaveCount(0);
   await expect(rail.getByText(/예정/)).toBeVisible();
-  await expect(rail.getByText("부가가치세 신고 단위 · 등록증에 따라 정해짐")).toBeVisible();
+  await expect(rail.getByText(t("entityRecord.history.derived"))).toBeVisible();
   await expect(rail.getByText(koDate(kstDate())).first()).toBeVisible();
 
   // The 대표전화 정정 lists only 대표전화, not the scheduled 대표자 변경 (backend history diff).
@@ -120,7 +120,7 @@ test("the record rail dates an entry recorded before 09:00 KST by the Korean day
   });
   await a.reload();
   const rail = a.getByRole("region", { name: "이력" }).first();
-  await expect(rail.getByText("법인 만듦")).toBeVisible();
+  await expect(rail.getByText(t("entityRecord.history.created"))).toBeVisible();
   await expect(rail.getByText(koDate(kstDate())).first()).toBeVisible();
   await expect(rail.getByText(koDate(kstDate(-1)))).toHaveCount(0);
 });

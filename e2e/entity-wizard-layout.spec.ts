@@ -1,8 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go, option, routeReady } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { REGISTRATION_FIXTURES, typeAddress } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // LANE ENTITY-FIX: walkthrough W06 on the 법인 wizard and the quick sheet's head (parity S4), from an empty tenant
 // through the UI; regression tests that failed on mvp 442d9d7a.
@@ -60,7 +63,7 @@ test("the quick 법인 sheet says what it needs, and that is what it asks for", 
   await s.getByRole("textbox", { name: /^상호/ }).fill("새온공방");
   const create = s.getByRole("button", { name: "법인 등록", exact: true });
   await expect(create).toHaveAttribute("aria-disabled", "true");
-  await expect(s.getByText("사업자 구분, 이름, 대표자를 정하면 저장할 수 있습니다.")).toBeVisible();
+  await expect(s.getByText(t("entityQuick.hold.basics"))).toBeVisible();
   await s.getByRole("textbox", { name: /^성명/ }).fill("이새온");
   await expect(create).not.toHaveAttribute("aria-disabled", "true");
   // The corporation's refusal names the additional facts and offers the certificate path.
