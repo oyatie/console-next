@@ -130,6 +130,35 @@ class EvidenceTest(unittest.TestCase):
             self.assertIn("stale", result.stderr)
             self.assertEqual((root / "out/e2e.json").read_text(), before)
 
+    def test_cli_merges_all_shard_reports_and_retains_failures(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "node").write_text(f'#!{sys.executable}\nprint({json.dumps(json.dumps(self.index))})\n')
+            (root / "node").chmod(0o755)
+            (root / "report.json").write_text(json.dumps(self.report))
+            for shard in (1, 2):
+                target = root / "shards" / str(shard)
+                target.mkdir(parents=True)
+                failure = "<failure/>" if shard == 2 else ""
+                (target / "junit.xml").write_text(f'<testsuites timestamp="{self.time}"><testsuite><testcase classname="sample::refusals" name="refuses">{failure}</testcase></testsuite></testsuites>')
+            command = [sys.executable, str(Path(producer.__file__).resolve()), str(root / "out"), str(root / "shards"), str(root / "report.json")]
+            env = {**os.environ, "PATH": directory + os.pathsep + os.environ["PATH"]}
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            data = json.loads((root / "out/nextest.json").read_text())
+            self.assertEqual([row["status"] for row in data["rows"]], ["pass", "fail"])
+            self.assertEqual(data["run_at"], self.time)
+            (root / "shards/2/junit.xml").write_text('<testsuites><testsuite/></testsuites>')
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("timestamp required for every shard", result.stderr)
+            for file in (root / "shards").rglob("junit.xml"): file.unlink()
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("nextest JUnit required", result.stderr)
+
     def test_pull_without_public_remote_resolves_repo_and_refuses_invalid_artifacts(self):
         import subprocess
         import sys

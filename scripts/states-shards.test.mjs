@@ -253,10 +253,15 @@ test("a successful Playwright exit with an empty selection cannot pass a shard",
 
 test("ci-ok fails when the planner or any matrix shard fails or is skipped", () => {
   const aggregate = workflow.jobs["ci-ok"].steps[0].run;
-  const run = (plan, states, refresh = "skipped") => spawnSync("bash", ["-e", "-c", aggregate.replace(/\$\{\{ needs(?:\.([\w-]+)|\['([\w-]+)'\])\.result \}\}/g, (_, dotted, quoted) => {
-    const name = dotted ?? quoted;
-    return name === "states-plan" ? plan : name === "states" ? states : name === "states-timings" ? refresh : "success";
-  })], { encoding: "utf8" });
+  const run = (plan, states, refresh = "skipped") => {
+    const needs = Object.fromEntries(workflow.jobs["ci-ok"].needs.map(name => [name, { result: "success", outputs: { backend: "true" } }]));
+    needs["states-plan"].result = plan;
+    needs.states.result = states;
+    needs["states-timings"].result = refresh;
+    return spawnSync("bash", ["-e", "-c", aggregate], { encoding: "utf8", env: {
+      ...process.env, NEEDS: JSON.stringify(needs), GITHUB_EVENT_NAME: "pull_request",
+    } });
+  };
   assert.equal(run("success", "success").status, 0);
   assert.equal(run("success", "success", "success").status, 0);
   for (const result of ["failure", "skipped", "cancelled"]) {
@@ -298,8 +303,7 @@ test("CI consumes the plan's matrix and exact file list and ci-ok requires plann
   assert.equal(run.env.E2E_MODULES_FILE, jobs["states-plan"].steps.find(s => s.id === "plan").env.E2E_MODULES_FILE);
   assert.ok(jobs["ci-ok"].needs.includes("states-plan"));
   assert.ok(jobs["ci-ok"].needs.includes("states"));
-  assert.match(jobs["ci-ok"].steps[0].run, /needs\['states-plan'\]\.result/);
-  assert.match(jobs["ci-ok"].steps[0].run, /needs\.states\.result/);
+  assert.equal(jobs["ci-ok"].steps[0].env.NEEDS, "${{ toJSON(needs) }}");
   assert.match(jobs["states-timings"].if, /github\.event_name == 'push'/);
   assert.match(jobs["states-timings"].if, /refs\/heads\/dev/);
   assert.match(readFileSync(new URL("../package.json", import.meta.url), "utf8"), /--global-timeout=600000/);
