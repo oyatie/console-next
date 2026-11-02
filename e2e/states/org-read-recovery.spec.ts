@@ -55,7 +55,7 @@ test("org: retrying failed empty reads restores first registration @ui-state", a
     await expect(main.getByRole("alert")).toHaveCount(1);
     failed = false;
     await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
-    await expect(main.getByRole("heading", { name: "첫 법인을 등록합니다", exact: true })).toBeVisible();
+    await expect(main.getByRole("heading", { name: t("structure.first.title"), exact: true })).toBeVisible();
     await expect(main.getByRole("alert")).toHaveCount(0);
     await expect(main.getByRole("link", { name: t("structure.first.addEntity"), exact: true })).toHaveCount(1);
     for (const theme of ["light", "dark"]) {

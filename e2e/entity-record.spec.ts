@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { fillDate } from "./sheet";
 import { fmtDate } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
@@ -6,6 +7,8 @@ import { clickCounter } from "./clicks";
 import { go, kstDate, option, routeReady } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { REGISTRATION_FIXTURES, registerEntity, SECOND, staffedTenant, brnDisplay } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // The 법인 record (spec S3), from an empty tenant through the UI only: every fact with its one verb, 변경 vs 정정
 // with nothing preselected (and the dated change shown as scheduled), a 정정만 fact, the 사업자등록번호 correction in
@@ -67,7 +70,7 @@ test("the record: 변경 from a date, 정정 of the period in force, 정정만, 
   await expect(admin.getByText("02-555-0142").first()).toBeVisible();
 
   // 정정만: an opening date is only ever corrected, so the sheet skips the choice.
-  await admin.getByRole("button", { name: "개업연월일 정정" }).click();
+  await admin.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.openedOn") }), exact: true }).click();
   const opened = sheet(admin, "개업연월일 수정");
   await expect(opened.getByText(/이 칸은 정정만 합니다/)).toBeVisible();
   await fillDate(opened, "2020-03-03", "개업연월일");

@@ -24,12 +24,12 @@ const REASONS = ["RENAME", "CONTACT_CHANGE", "INSURANCE_ESTABLISHED", "INSURANCE
 /**
  * A dated change to one fact of a workplace (record-actions §3: the row's edit edits only that row's value): its name,
  * representative, main product, a contact, the mailing address, the opening date (a correction) or its insurance relations,
- * from a chosen date, with a reason. `clear` opens an optional fact emptied (its row's clear). The workplace revision carries
+ * from a chosen date, with a reason. The workplace revision carries
  * its whole state with the one edit applied; insurance changes go as their own revision.
  */
-export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: InfoKey | "insurance"; clear?: boolean; setup: boolean; onClose: () => void }) {
+export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: InfoKey | "insurance"; setup: boolean; onClose: () => void }) {
   // What the form was opened on (see EntityEdit): a refetch while it is open never turns typed fields into changes.
-  const [{ e, w, field, clear }] = useState(props);
+  const [{ e, w, field }] = useState(props);
   const { onClose } = props;
   const today = todayKst();
   const base = workplaceInput(e, w);
@@ -38,7 +38,6 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
     name: base?.name ?? "", representative: base?.representative_name ?? "", product: base?.main_product ?? "",
     phone: base?.phone ? toDomestic(base.phone) : "", fax: base?.fax ? toDomestic(base.fax) : "", email: base?.email ?? "",
     mail: toAddr(c?.mail_address), openedOn: base?.opened_on ?? "",
-    ...(clear && field !== "insurance" ? { [field]: field === "mail" ? null : "" } : {}),
   }));
   const set = <K extends keyof InfoDraft>(k: K, v: InfoDraft[K]) => setD((x) => ({ ...x, [k]: v }));
   const { name, phone, email } = d;
@@ -86,7 +85,7 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
   const valid = name.trim() !== "" && !(phone && !phoneE164(phone)) && !(d.fax && !phoneE164(d.fax)) && !(email && !validEmail(email)) && d.openedOn !== "" && (field !== "insurance" || insuranceUnserved || Object.keys(problems).length === 0);
   const ready = (contact || insured) && valid && from !== "" && reason !== null && (!openedFixed || reason === "ENTRY_CORRECTION");
   return (
-    <Dialog open title={t("uiRecordActions.of", { field: field === "insurance" ? t("workplace.field.insurance") : INFO_LABEL[field](), verb: t(clear ? "uiRecordActions.end.clear" : "uiRecordActions.edit") })} onClose={onClose}>
+    <Dialog open title={t("uiRecordActions.of", { field: field === "insurance" ? t("workplace.field.insurance") : INFO_LABEL[field](), verb: t("uiRecordActions.edit") })} onClose={onClose}>
       <Form className="form" onSubmit={() => ready && save.mutate(undefined)}>
         {field !== "insurance" ? (
           base && <InfoField only={field} d={d} set={set} today={today} openedFrom={c?.opened_on ?? ""} />

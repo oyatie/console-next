@@ -93,7 +93,7 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
                 <Button
                   variant="link"
                   onClick={() => setOpen({ k: "changeReg" })}
-                  aria-label={t("workplaceRegChange.title", { name: workplaceName(w) })}
+                  aria-label={t("entityRecord.action.fixOf", { field: t("workplace.field.regMode") })}
                 >
                   {t("entityRecord.action.fix")}
                 </Button>

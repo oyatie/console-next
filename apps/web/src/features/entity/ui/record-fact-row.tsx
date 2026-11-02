@@ -22,7 +22,7 @@ export function FactRow({ no, label, children, action: offered, wide }: { no?: n
       <span className={s.factLabel}>{label}</span>
       <span className={s.factValue}>{children}</span>
       <span className={s.factAction} data-loading={loading || undefined} aria-hidden={loading || undefined} inert={loading || undefined}>
-        {action && <Button variant="ghost" className={s.fix} aria-label={t(action.kind === "cor" ? "entityRecord.action.corOf" : action.kind === "lock" ? "entityRecord.action.lockOf" : "entityRecord.action.fixOf", { field: label })} onClick={action.onPress}>{t("entityRecord.action.fix")}</Button>}
+        {action && <Button variant="ghost" className={s.fix} aria-label={t("entityRecord.action.fixOf", { field: label })} onClick={action.onPress}>{t("entityRecord.action.fix")}</Button>}
       </span>
     </div>
   );
