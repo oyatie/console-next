@@ -5909,6 +5909,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/access/people/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__people__id.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/requests",
         operations: &[
             Operation {

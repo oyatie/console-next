@@ -1,8 +1,12 @@
 use crate::users::rows::fetch_user;
+use crate::users::rows::fetch_user_tx;
 use crate::users::scope::user_in_scope;
 use crate::{PgOrgError, PgOrgStore};
 use console_identity_application::{UserListQuery, UserPage, UserSummary};
 use console_kernel_core::{BranchScope, KernelError, UserId};
+use console_platform_authz::access::{
+    AccessSlice, Domain, Level, NodePath, action_group, load_access_subject,
+};
 use console_platform_db::with_org_conn;
 use console_platform_request_context::current_org;
 use sqlx::{Postgres, QueryBuilder};
@@ -11,6 +15,42 @@ pub(crate) const DEFAULT_USER_LIMIT: i64 = 50;
 const MAX_USER_LIMIT: i64 = 200;
 
 impl PgOrgStore {
+    /// Access-screen account detail: the same tenant-wide Cedar read as effective access.
+    pub async fn get_access_person(
+        &self,
+        actor: UserId,
+        user_id: UserId,
+    ) -> Result<UserSummary, PgOrgError> {
+        let org = current_org().map_err(KernelError::from)?;
+        with_org_conn::<_, _, PgOrgError>(&self.pool, org, move |tx| {
+            Box::pin(async move {
+                let subject =
+                    load_access_subject(tx, org, *actor.as_uuid(), time::OffsetDateTime::now_utc())
+                        .await
+                        .map_err(|error| {
+                            tracing::error!(%error, "access account facts unavailable");
+                            KernelError::internal("access authorization is unavailable")
+                        })?;
+                let allowed = AccessSlice::compile(&subject)
+                    .and_then(|slice| {
+                        slice.allows(
+                            &action_group(Domain::Access, Level::View),
+                            &NodePath::tenant(org),
+                        )
+                    })
+                    .map_err(|error| tracing::warn!(%error, "access account read denied"))
+                    .unwrap_or(false);
+                if !allowed {
+                    return Err(KernelError::forbidden("access account read is denied")
+                        .with_code("access_denied")
+                        .into());
+                }
+                fetch_user_tx(tx, user_id).await
+            })
+        })
+        .await
+    }
+
     /// Fetch a single user by id, restricted to the caller's branch scope.
     pub async fn get_user(
         &self,
