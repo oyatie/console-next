@@ -81,6 +81,7 @@ export const meQuery = myAccessQuery;
 export const opsQuery = q<{ account_id: Uuid; display_name: string }>(`${BASE}/ops`);
 export const rolesQuery = list<AccessRole>(`${BASE}/roles`, { status: "ACTIVE" });
 export const roleQuery = (id: string) => q<AccessRole>(`${BASE}/roles/${id}`);
+export const roleVersionsQuery = (roleId: string) => get("/api/v1/access/roles/{roleId}/versions", { params: { path: { roleId } } });
 /** Live grants (not ended or revoked), for one account or one role when asked. */
 export const grantsQuery = (by?: { account_id: string } | { role_id: string }) => list<AccessGrant>(`${BASE}/grants`, by);
 export const effectiveQuery = accountAccessQuery;

@@ -6,6 +6,7 @@ import type { components } from "@console/api/schema";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Banner } from "../../../ui/banner/banner";
 import { Chip } from "../../../ui/chip";
 import { Dialog } from "../../../ui/dialog";
@@ -27,8 +28,11 @@ import { BindingEvidence, BindingReviewChip } from "./binding-evidence";
 import { SignInId } from "./account-sign-in-id";
 import { personLabel, personName } from "../../../reference/person/present";
 import { personOption } from "../../../reference/person/ui/person-option";
-import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { PersonLabel, PersonRef } from "../../../reference/person/ui/person-label";
 import { Muted } from "../../../ui/muted/muted";
+import { EmptyState } from "../../../ui/empty-state";
+import { readFailureText } from "../../../lib/refusal";
+import { queryView } from "../../../lib/react/query-view";
 
 /** The facts the panel shows: a directory row or the account read on its own (which adds only `phone`). */
 type User = components["schemas"]["DirectoryPerson"];
@@ -72,7 +76,10 @@ export function AccountPanel({ id, row, admin, receipt, onClose, onIssued, onRec
         <BindingEvidence subjectId={id} />
       </Sheet>}
       {receipt && <Receipt state="recorded" message={receipt} />}
-      {u ? <Sections u={u} admin={admin} onIssued={onIssued} onRecorded={onRecorded} /> : <QueryState q={q}>{() => null}</QueryState>}
+      {u ? <Sections u={u} admin={admin} onIssued={onIssued} onRecorded={onRecorded} /> : queryView(q) === "not-found" ? <EmptyState
+        title={t("common.read.notFound.title")} reason={t("common.read.notFound.reason")}
+        actions={<Link from="/people" to="/people" search={previous => ({ ...previous, sel: undefined })} className={buttonClass()}>{t("accounts.back")}</Link>}
+      /> : <QueryState q={q}>{() => null}</QueryState>}
     </aside>
   );
 }
@@ -134,7 +141,7 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
   const [picked, setPicked] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
   const found = useQuery({ ...get("/api/v1/employees", { params: { query: { search: query.trim(), limit: 20 } } }), enabled: admin && query.trim() !== "" });
-  const options = found.data?.items ?? [];
+  const options = found.isError ? [] : found.data?.items ?? [];
   const link = useCommand({
     run: ({ employeeId, requestId }: { employeeId: string | null; requestId?: string }) => checkedOnAccount(u.id, () => linkAccount(u.id, employeeId, requestId), holdsLink(employeeId)),
     invalidates: [...INVALIDATES, "/api/v1/employees", "/api/v1/person-binding-reviews"],
@@ -160,7 +167,7 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
   if (u.employee_id)
     return (
       <div className="row">
-        <Link to="/people/$id" params={{ id: u.employee_id }}>{u.employee_number ? t("accounts.employee.code", { name: u.employee_name ?? "", number: u.employee_number }) : u.employee_name}</Link>
+        <PersonRef account={u} wrap />
         {canChange && <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate({ employeeId: null })}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.unlink") })}</Button>}
         <PasskeyError error={link.error} />
       </div>
@@ -177,11 +184,13 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
         onChange={setPicked}
         group={t("accounts.employee.group")}
         loading={found.isFetching}
+        error={found.isError ? readFailureText(found.error) : undefined}
         empty={t("accounts.employee.none")}
       />
       {picked && <PersonLabel person={{ ...options.find((p) => p.id === picked), id: picked, employee_id: picked }} peers={options} />}
       {tried && picked === null && <span className="field__error" role="alert">{t("accounts.employee.pickError")}</span>}
       <div className="row">
+        {found.isError && <Button onClick={() => void found.refetch()}>{t("common.retry")}</Button>}
         <Button disabled={link.isPending} onClick={() => (setTried(true), picked && link.mutate({ employeeId: picked }))}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.link") })}</Button>
       </div>
       <PasskeyError error={link.error} />

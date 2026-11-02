@@ -4,6 +4,7 @@ export const enAccounts: Partial<Record<keyof typeof koAccounts, string>> = {
   "accounts.search.label": "Search accounts by name or employee number",
 
   "accounts.title": "Accounts",
+  "accounts.back": "Back to accounts",
   "accounts.invite": "Invite account",
   "accounts.table": "Accounts",
   "accounts.count": "{count, plural, one {# account} other {# accounts}}",
@@ -21,7 +22,6 @@ export const enAccounts: Partial<Record<keyof typeof koAccounts, string>> = {
   "accounts.inactive": "Deactivated",
   "accounts.passkey.yes": "Yes",
   "accounts.passkey.no": "None",
-  "accounts.employee.code": "{name} · {number}",
 
   "accounts.section.employee": "Employee",
   "accounts.section.signIn": "Sign-in",

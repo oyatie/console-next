@@ -137,7 +137,9 @@ test("a failed background account refetch drops the previous total as well as th
   await page.evaluate(() => window.dispatchEvent(new Event("picker-refetch")));
   await expect(f.search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
   await expect(page.getByRole("option", { name: /검색계정/ })).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: /^0건$/ })).toHaveCount(1);
+  await expect(page.getByRole("status").filter({ hasText: /^0건$/ })).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "잠시 뒤 다시 시도하십시오." })).toBeVisible();
+  await expect(page.locator(".popover").getByText("잠시 뒤 다시 시도하십시오.", { exact: true })).toHaveCount(1);
   await expect(page.getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(0);
   await expect(page.getByText("처음 50건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오.", { exact: true })).toHaveCount(0);
   expect(f.unexpected).toEqual([]);

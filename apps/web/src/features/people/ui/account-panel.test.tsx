@@ -28,7 +28,7 @@ const row: NonNullable<Parameters<typeof AccountPanel>[0]["row"]> = {
   id: "account", display_name: "김계정", employee_id: "employee", employee_name: "김직원",
   account_status: "ACTIVE", is_active: true, created_at: "2026-10-01T00:00:00Z",
   branch_ids: [], has_passkey: true, roles: [], team: "MANAGEMENT", is_tenant_ops: false,
-  employee_number: null, employee_company: null, employee_org_unit: null, employee_position: null,
+  employee_number: "EMP-12", employee_company: "연결회사", employee_org_unit: "인사팀", employee_position: null,
   employee_identity_review_required: null, employee_identity_resolution_confidence: null, employee_link_status: "LINKED",
 };
 const panel = (id = "account", employeeId: string | null = "employee", admin = true) => renderToStaticMarkup(
@@ -47,6 +47,12 @@ beforeEach(() => {
 
 test("unlink explains the passkey check before submission", () => {
   expect(panel()).toContain(t("uiOverrideSheet.stepUp", { action: t("accounts.employee.unlink") }));
+});
+test("the linked person includes their own name, employee number and placement", () => {
+  const html = panel();
+  const section = html.slice(html.indexOf('aria-label="직원 연결"'), html.indexOf('aria-label="로그인"'));
+  for (const fact of ["김직원", "EMP-12", "연결회사", "인사팀"]) expect(section).toContain(fact);
+  expect(section).not.toContain("김계정");
 });
 test("approval sends a fresh assertion and the stored request reference", async () => {
   panel();

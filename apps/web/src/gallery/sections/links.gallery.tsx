@@ -2,6 +2,7 @@ import { tg } from "@console/i18n/gallery";
 import { Button } from "../../ui/button/button";
 import { DisabledReason } from "../../ui/disabled-reason/disabled-reason";
 import { Section } from "../Section";
+import { PersonRef } from "../../reference/person/ui/person-label";
 
 export const order = 990;
 
@@ -13,6 +14,7 @@ export default function Links() {
   return (
     <Section title={tg("section.links")}>
       <ul className="list-plain">
+        <li><PersonRef account={{ id: "gallery-account", employee_id: "gallery-person", employee_name: tg("sample.person", { n: 1 }), employee_number: "E-001", employee_company: tg("sample.company"), employee_org_unit: tg("sample.dept") }} /></li>
         <li className="row"><a href="#main">{tg("links.person")}</a><span className="muted">{tg("sample.position")}</span></li>
         <li><a href="#main">{tg("links.all")}</a></li>
       </ul>

@@ -6,6 +6,7 @@ import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
 import { personLabel, personName } from "../../../reference/person/present";
+import { PersonRef } from "../../../reference/person/ui/person-label";
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
 import { Banner } from "../../../ui/banner/banner";
@@ -99,10 +100,11 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
   return (
     <div className="page">
       <AccessHead />
-<QueryState q={readGroup([eff, grants])} back={{ to: "/access/grants", label: t("access.grant.title") }} layout="record">{() => <>      <>
+<QueryState q={readGroup([eff, grants])} back={{ to: "/access/grants", label: t("access.nav.grants") }} layout="record">{() => <>      <>
       <div className={s.titleRow}>
         <Link to="/access/grants" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.nav.grants")}</Link>
         {account ? <PersonHead a={account} ops={account.id === ctx.ops} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
+        {account && <PersonRef account={account} wrap />}
         <span className="grow" />
         {account && !eff.data!.is_ops && <Button variant="primary" onClick={() => setGranting(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
       </div>

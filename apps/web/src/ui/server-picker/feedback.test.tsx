@@ -56,4 +56,9 @@ for (const width of [1440, 390]) test(`only a page read reserves one feedback li
   await expectElement(search).toHaveAttribute("aria-invalid", "true");
   await expectElement(search).toHaveAccessibleDescription(t("common.read.failedReason"));
   expect(await page.locator("#after").boundingBox()).toEqual(before);
+  await search.press("ArrowDown");
+  await expectElement(page.getByRole("option", { includeHidden: true })).toHaveCount(0);
+  await expectElement(page.locator(".popover").getByText(t("common.read.failedReason"), { exact: true })).toHaveCount(1);
+  await expectElement(page.getByRole("option", { name: t("uiServerPicker.none"), exact: true })).toHaveCount(0);
+  await expectElement(page.getByRole("status")).toHaveText(t("common.read.failedReason"));
 });
