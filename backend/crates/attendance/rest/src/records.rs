@@ -2,6 +2,8 @@
 //! attendance edit key on every person they touch (re-checked per cell).
 
 use crate::audit;
+#[path = "records_access.rs"]
+mod access;
 
 use axum::Json;
 use axum::extract::{Path, State};
@@ -14,6 +16,7 @@ use console_attendance_application::records::{
 use console_attendance_application::records_read::{
     DayBoard, MonthGrid, PersonMonth, SavePreview, SaveReceipt,
 };
+use console_attendance_domain::records::Mark;
 use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
@@ -93,6 +96,9 @@ pub(crate) struct DaysQuery {
     issues_only: Option<bool>,
     no_schedule_only: Option<bool>,
     rows: Option<Rows>,
+    mark: Option<Mark>,
+    cursor: Option<Uuid>,
+    limit: Option<usize>,
 }
 
 async fn days(
@@ -101,7 +107,12 @@ async fn days(
     AttendanceQuery(q): AttendanceQuery<DaysQuery>,
 ) -> Result<Json<DayBoard>, RestError> {
     let p = principal(&s, &h).await?;
-    let c = caller(&p, READ)?;
+    let c = console_attendance_application::CallerScope {
+        org_id: *p.org_id.as_uuid(),
+        user_id: *p.user_id.as_uuid(),
+        branch_ids: vec![],
+        org_wide: false,
+    };
     let query = BoardQuery {
         date: Some(parse_date(&q.date, "date")?),
         workplace_id: q.workplace_id,
@@ -109,10 +120,21 @@ async fn days(
         issues_only: q.issues_only.unwrap_or(false),
         no_schedule_only: q.no_schedule_only.unwrap_or(false),
         all_rows: q.rows.is_some(),
+        mark: q.mark,
+        cursor: q.cursor,
+        limit: q.limit,
     };
+    let (org, actor) = (p.org_id, *p.user_id.as_uuid());
     let board = s
         .store
-        .day_board(&c, query)
+        .day_board_with_access(&c, query, move |tx| {
+            Box::pin(async move {
+                let facts = console_platform_authz::cedar_pbac::visible::load_facts(tx, org, actor)
+                    .await
+                    .map_err(access::unavailable)?;
+                access::board_access(facts, org).map(Some)
+            })
+        })
         .await
         .map_err(RestError::schedule)?;
     let rows = || board.groups.iter().flat_map(|group| &group.rows);
