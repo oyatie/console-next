@@ -105,22 +105,22 @@ describe("toolbar spot", () => {
     const { toolsSpot } = await import("./layout");
     const b = { node: {} as never, lod: "m" as const, x: 400, y: 200, w: 256, h: 56 };
     const L = { boxes: [b], lines: [], w: 1000, h: 1000, lod: "near" as const };
-    expect(toolsSpot(L, b, 1, undefined, undefined, { x: 0, y: 180, w: 1000, h: 500 })).toBe("below");
-    expect(toolsSpot(L, b, 1, undefined, undefined, { x: 400, y: 200, w: 256, h: 56 })).toBe("inside");
+    expect(toolsSpot(L, b, 1, undefined, undefined, { x: 0, y: 180, w: 1000, h: 500 }).side).toBe("below");
+    expect(toolsSpot(L, b, 1, undefined, undefined, { x: 400, y: 200, w: 256, h: 56 }).overlap).toBeGreaterThan(0);
   });
   test("above when clear, else a side that covers no box", async () => {
     const { toolsSpot } = await import("./layout");
     const b = { node: {} as never, lod: "m" as const, x: 400, y: 200, w: 192, h: 56 };
-    expect(toolsSpot({ boxes: [b], lines: [], w: 1000, h: 1000, lod: "near" }, b)).toBe("above");
+    expect(toolsSpot({ boxes: [b], lines: [], w: 1000, h: 1000, lod: "near" }, b).side).toBe("above");
     const over = { ...b, x: 380, y: 150, h: 40 };
-    expect(toolsSpot({ boxes: [b, over], lines: [], w: 1000, h: 1000, lod: "near" }, b)).toBe("below");
+    expect(toolsSpot({ boxes: [b, over], lines: [], w: 1000, h: 1000, lod: "near" }, b).side).toBe("below");
   });
   // Regression: a box at the stage's left edge drew its toolbar to the left, cut off by the canvas.
   test("never past the stage's edge", async () => {
     const { toolsSpot } = await import("./layout");
     const b = { node: {} as never, lod: "m" as const, x: 40, y: 40, w: 192, h: 56 };
     const below = { ...b, y: 110 };
-    expect(toolsSpot({ boxes: [b, below], lines: [], w: 1000, h: 1000, lod: "near" }, b)).toBe("right");
+    expect(toolsSpot({ boxes: [b, below], lines: [], w: 1000, h: 1000, lod: "near" }, b).side).toBe("right");
   });
   // Regression: zoomed out, the toolbar is scaled back up to its target size and covered the next box over.
   test("allows for the toolbar scaled back up on a zoomed-out chart", async () => {
@@ -128,17 +128,17 @@ describe("toolbar spot", () => {
     const b = { node: {} as never, lod: "m" as const, x: 600, y: 200, w: 192, h: 56 };
     const near = { ...b, x: 330, y: 140, w: 100, h: 40 };
     const L = { boxes: [b, near], lines: [], w: 1000, h: 1000, lod: "near" as const };
-    expect(toolsSpot(L, b)).toBe("above");
-    expect(toolsSpot(L, b, 1.4)).not.toBe("above");
+    expect(toolsSpot(L, b).side).toBe("above");
+    expect(toolsSpot(L, b, 1.4).side).not.toBe("above");
   });
-  // Regression: a tight stack hid the only mouse entry for adding another child.
-  test("falls back to its own corner when no outside side is clear", async () => {
+  // A crowded stack keeps the add action reachable with the least covered area.
+  test("scores the clamped fallback when no outside side is clear", async () => {
     const { toolsSpot } = await import("./layout");
     const b = { node: {} as never, lod: "m" as const, x: 300, y: 300, w: 192, h: 56 };
     const ring = [{ ...b, y: 234 }, { ...b, y: 366 }, { ...b, x: 500 }, { ...b, x: 100 }];
     const L = { boxes: [b, ...ring], lines: [], w: 1000, h: 1000, lod: "near" as const };
-    expect(toolsSpot(L, b)).toBe("inside");
-    expect(toolsSpot(L, b, 1.4)).toBe("inside");
+    expect(toolsSpot(L, b).overlap).toBeGreaterThan(0);
+    expect(toolsSpot(L, b, 1.4).overlap).toBeGreaterThan(0);
   });
 });
 

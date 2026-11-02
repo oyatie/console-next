@@ -36,7 +36,7 @@ const onScreen = (r: Rect, v: View, vp: { w: number; h: number }) =>
  */
 export function revealView(v: View, r: Rect, vp: { w: number; h: number }, i: Insets): View {
   const drawn = { x: r.x * v.zoom + v.x, y: r.y * v.zoom + v.y, w: r.w * v.zoom, h: r.h * v.zoom };
-  if (drawn.x >= 0 && drawn.y >= i.top && drawn.x + drawn.w <= vp.w && drawn.y + drawn.h <= vp.h - i.bottom && (!i.corner || !overlaps(drawn, i.corner))) return v;
+  if (drawn.x >= CLEAR && drawn.y >= i.top + CLEAR && drawn.x + drawn.w <= vp.w - CLEAR && drawn.y + drawn.h <= vp.h - i.bottom - CLEAR && (!i.corner || !overlaps(drawn, i.corner))) return v;
   const next = { ...v, x: vp.w / 2 - (r.x + r.w / 2) * v.zoom, y: (vp.h - i.bottom + i.top) / 2 - (r.y + r.h / 2) * v.zoom };
   const centred = { ...drawn, x: (vp.w - drawn.w) / 2, y: (vp.h - i.bottom + i.top - drawn.h) / 2 };
   if (i.corner && overlaps(centred, i.corner)) {
