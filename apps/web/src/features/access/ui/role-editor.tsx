@@ -91,7 +91,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
   const save = () => (problems ? setTried(true) : run.mutate(undefined));
   const holders = editing?.holder_count ?? 0;
   const who = useHolders(editing);
-  const effect = holders && !who.grants.isSuccess ? t(who.grants.isPending ? "common.loading" : "common.loadFailed.title") : !holders ? t("access.role.effect.none")
+  const effect = holders && !who.grants.isSuccess ? (who.grants.isPending ? t("common.loading") : undefined) : !holders ? t("access.role.effect.none")
     : !setup ? t("access.role.effect.live", { count: holders, names: who.names })
     : t(who.now ? "access.role.effect.setup" : "access.role.effect.golive", { count: holders, names: who.names });
   return (
@@ -117,7 +117,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
               const account = who.accounts.find(a => a.id === g.account_id);
               return <li key={g.account_id}>
                 <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, who.accounts)} peers={who.accounts} linked={false} wrap /></Link>
-                {account && <PersonRef account={account} wrap />}
+                {account && <PersonRef account={account} details={false} wrap />}
               </li>;
             })}
           </ul>}</QueryState> : <EmptyState title={t("access.role.effect.none")} reason={null} />}
