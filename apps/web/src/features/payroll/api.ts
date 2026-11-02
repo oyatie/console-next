@@ -2,9 +2,12 @@
 import { get } from "../../lib/query";
 import { api, unwrap, type components } from "@console/api";
 export { payGroupSchemas } from "@console/api";
-export type { PayGroup, PayrollRate, PayrollRates, PayrollRun } from "@console/api/pending";
+export type { PayGroup, PayrollRate, PayrollRates, PayrollRun, CreatePayrollRun, PayrollRunDetail } from "@console/api/pending";
+import type { CreatePayrollRun } from "@console/api/pending";
 export type CreatePayGroup = components["schemas"]["CreatePayGroup"];
 export const createPayGroup = (body: CreatePayGroup, key: string) => unwrap(api.POST("/api/v1/payroll/pay-groups", { body, headers: { "idempotency-key": key } }));
 export const payGroupsQuery = get("/api/v1/payroll/pay-groups");
 export const payrollRunsQuery = get("/api/v1/payroll/runs");
+export const payrollRunQuery = (id: string) => get("/api/v1/payroll/runs/{id}", { params: { path: { id } } });
+export const createPayrollRun = (body: CreatePayrollRun, key: string) => unwrap(api.POST("/api/v1/payroll/runs", { body, params: { header: { "idempotency-key": key } } }));
 export const payrollRatesQuery = (id: string) => get("/api/v1/payroll/reference/rates", { params: { query: { legal_entity_id: id } } });

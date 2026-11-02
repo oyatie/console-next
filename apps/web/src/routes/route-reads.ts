@@ -58,6 +58,8 @@ export const routeReads = {
   "/people/period-locks": { reads: ["GET /api/v1/period-locks"] },
   "/payroll": { reads: ["GET /api/v1/payroll/pay-groups", "GET /api/v1/payroll/runs"] },
   "/payroll/setup": { reads: ["GET /api/v1/payroll/pay-groups"], command: "POST /api/v1/payroll/pay-groups" },
+  "/payroll/runs/new": { reads: ["GET /api/v1/payroll/pay-groups"], command: "POST /api/v1/payroll/runs" },
+  "/payroll/runs/$id": { reads: ["GET /api/v1/payroll/runs/{id}", "GET /api/v1/payroll/pay-groups"] },
   "/payroll/reference": { reads: ["GET /api/v1/payroll/pay-groups", "GET /api/v1/payroll/reference/rates"] },
   "/statutory": { reads: ["GET /api/v1/statutory/workplaces"] },
 } as const satisfies Record<string, Reads>;

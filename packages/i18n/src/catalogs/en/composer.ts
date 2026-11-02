@@ -57,6 +57,7 @@ export const enComposer = {
   "composer.commit.next": "{label} · next employee",
   "composer.action.profile": "personnel data",
   "composer.action.payGroup": "pay group",
+  "composer.action.payrollRun": "payroll run",
   "composer.verb.approve": "Approve",
   "composer.verb.complete": "Complete",
   "composer.action.orgDetails": "department details",
