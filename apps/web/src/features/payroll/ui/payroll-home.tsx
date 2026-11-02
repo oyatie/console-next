@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
@@ -11,12 +11,18 @@ import { EmptyState } from "../../../ui/empty-state";
 import { LongTable } from "../../../ui/long-table/long-table";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { SetupRail } from "../../../ui/setup-rail/setup-rail";
+import { myAccessQuery } from "../../../reference/authz/api";
+import { accessRefusal } from "../../../reference/authz/domain/access";
 import { payGroupsQuery, payrollRunsQuery, type PayGroup } from "../api";
 import { payDateRule, periodRule, runStatus } from "../present";
 
 export function PayrollHome() {
   const groups = useQuery(payGroupsQuery);
-  return <Page floorplan="list" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
+  const access = useQuery(myAccessQuery);
+  const need = useRouter().routesByPath["/payroll/setup"].options.staticData?.access;
+  const add = access.data && need && (need === "signed-in" || accessRefusal(access.data, need) === null)
+    ? <Link to="/payroll/setup">{t("payroll.setup.add")}</Link> : undefined;
+  return <Page floorplan="list" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), tools: <>{add}<Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link></> }}>
     <QueryState q={groups} layout="list">{data => data.items.length ? <div className="form">
       {data.items.map(group => <Card key={group.id} title={group.name} meta={data.legal_entities.find(entity => entity.id === group.legal_entity_id)?.name}>
         <div className="form"><KeyValue readOnly items={[
@@ -25,13 +31,15 @@ export function PayrollHome() {
           { key: "variablePeriod", label: t("payroll.variablePeriod"), value: periodRule(group.variable_period) },
           { key: "proration", label: t("payroll.proration"), value: t(`payroll.rule.${group.proration}`) },
           { key: "channel", label: t("payroll.channel"), value: t(`payroll.rule.${group.channel}`) },
+          { key: "sensitive", label: t("payroll.sensitive"), value: t(group.sensitive === null ? "payroll.rule.unknown" : group.sensitive ? "payroll.rule.sensitive.true" : "payroll.rule.sensitive.false") },
+          { key: "payBasisAllowed", label: t("payroll.payBasisAllowed"), value: group.pay_basis_allowed?.map(basis => t(`payroll.rule.${basis}`)).join(" · ") ?? t("payroll.rule.unknown") },
         ]} />
         <GroupRuns group={group} />
         </div>
       </Card>)}
     </div> : <SetupRail title={t("payroll.setup.title")} summary={t("payroll.setup.reason")} groups={[{ key: "payroll", title: t("payroll.title"), steps: [
       { key: "entity", title: t("payroll.setup.entity"), state: data.legal_entities.length ? "done" : "todo", detail: t("payroll.setup.entityDetail") },
-      { key: "group", title: t("payroll.setup.group"), state: "todo", detail: t("payroll.setup.groupDetail") },
+      { key: "group", title: t("payroll.setup.group"), state: "todo", action: add, detail: t("payroll.setup.groupDetail") },
       { key: "reference", title: t("payroll.setup.reference"), state: "todo", action: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link>, detail: t("payroll.setup.referenceDetail") },
     ] }]} />}</QueryState>
   </Page>;

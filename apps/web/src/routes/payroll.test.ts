@@ -13,3 +13,12 @@ for (const path of ["/payroll", "/payroll/reference"]) test(`${path} declares pa
     ? { allOf: [groups, operationAccess["GET /api/v1/payroll/runs"]] }
     : { allOf: [groups, pending] });
 });
+
+test("/payroll/setup declares its generated read and create requirements", () => {
+  const router = createRouter({ routeTree });
+  const route = Object.values(router.routesById).find(candidate => candidate.fullPath === "/payroll/setup");
+  expect(route?.options.staticData?.access).toEqual({ allOf: [
+    operationAccess["GET /api/v1/payroll/pay-groups"],
+    operationAccess["POST /api/v1/payroll/pay-groups"],
+  ] });
+});
