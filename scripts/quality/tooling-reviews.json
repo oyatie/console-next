@@ -10908,5 +10908,155 @@
         "reason": "CI/supply chain only, used by .github/workflows/ci.yml; remove the cache steps and the build stays correct without them."
       }
     }
+  },
+  "ci-tool:oasdiff": {
+    "group": "CI/supply-chain tools",
+    "job": "Compare released and candidate OpenAPI contracts before admission",
+    "verdict": "keep",
+    "convention": "Explicit owner approval",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-11-03",
+      "ruling": "approve oasdiff + grype",
+      "source": "docs/quality/dependency-ruling-2026-11-03.md"
+    },
+    "alternatives": "Manual contract review; repository-native OpenAPI graph and compatibility rules",
+    "reason": "Explicit owner approval for CI/supply chain only; checksum-locked release versions.",
+    "evidence": [
+      "https://github.com/oasdiff/oasdiff",
+      "docs/quality/dependency-ruling-2026-11-03.md",
+      "deploy/versions.json"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/api-compat.yml"
+    ],
+    "approvedUses": [
+      {
+        "user": ".github/workflows/api-compat.yml",
+        "layer": "CI/supply chain"
+      }
+    ],
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "exitPlan": "Replace only after owner-approved compatibility/advisory refusal parity, then remove the tool pin and regenerate the register.",
+    "license": "Apache-2.0",
+    "maintainers": "oasdiff/oasdiff",
+    "securityProcess": "SHA-256 verified upstream release archives; nonzero tool exit refuses the required gate.",
+    "ruleMapping": "Only the listed workflow may invoke the tool in the CI/supply chain layer."
+  },
+  "ci-tool:grype": {
+    "group": "CI/supply-chain tools",
+    "job": "Refuse fixable High/Critical vulnerabilities in the published image SBOM",
+    "verdict": "keep",
+    "convention": "Explicit owner approval",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-11-03",
+      "ruling": "approve oasdiff + grype",
+      "source": "docs/quality/dependency-ruling-2026-11-03.md"
+    },
+    "alternatives": "Manual advisory review; repository-native package/advisory matching",
+    "reason": "Explicit owner approval for CI/supply chain only; checksum-locked release versions.",
+    "evidence": [
+      "https://github.com/anchore/grype",
+      "docs/quality/dependency-ruling-2026-11-03.md",
+      "deploy/versions.json"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/platform.yml"
+    ],
+    "approvedUses": [
+      {
+        "user": ".github/workflows/platform.yml",
+        "layer": "CI/supply chain"
+      }
+    ],
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "exitPlan": "Replace only after owner-approved compatibility/advisory refusal parity, then remove the tool pin and regenerate the register.",
+    "license": "Apache-2.0",
+    "maintainers": "anchore/grype",
+    "securityProcess": "SHA-256 verified upstream release archives; nonzero tool exit refuses the required gate.",
+    "ruleMapping": "Only the listed workflow may invoke the tool in the CI/supply chain layer."
+  },
+  "gate:scripts/check-commit-subjects.mjs": {
+    "group": "Domain contracts and quality gates",
+    "job": "Require public commit subject conventions",
+    "verdict": "keep",
+    "convention": "domain contract",
+    "class": "DOMAIN-CONTRACT",
+    "approval": null,
+    "alternatives": "Repository-specific contract; maintain the existing local gate.",
+    "reason": "Repository-specific invariants need custom enforcement; a generic tool is not equivalent.",
+    "evidence": [
+      "scripts/check-commit-subjects.mjs"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "exitPlan": "Replace only after invariant and refusal parity; remove the gate and its callers together.",
+    "securityProcess": "not independently verified; no delegated approval",
+    "ruleMapping": "Preserve the existing gate and its refusal fixtures.",
+    "license": "LicenseRef-Proprietary (repository code)",
+    "lastRelease": "repository snapshot",
+    "maintainers": "repository maintainers",
+    "footprint": "51 source lines; CI tooling only"
+  },
+  "gate:scripts/check-csv-cells.mjs": {
+    "group": "Domain contracts and quality gates",
+    "job": "Require spreadsheet cells to use the shared CSV safety helper",
+    "verdict": "keep",
+    "convention": "domain contract",
+    "class": "DOMAIN-CONTRACT",
+    "approval": null,
+    "alternatives": "Repository-specific contract; maintain the existing local gate.",
+    "reason": "Repository-specific invariants need custom enforcement; a generic tool is not equivalent.",
+    "evidence": [
+      "scripts/check-csv-cells.mjs"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "exitPlan": "Replace only after invariant and refusal parity; remove the gate and its callers together.",
+    "securityProcess": "not independently verified; no delegated approval",
+    "ruleMapping": "Preserve the existing gate and its refusal fixtures.",
+    "license": "LicenseRef-Proprietary (repository code)",
+    "lastRelease": "repository snapshot",
+    "maintainers": "repository maintainers",
+    "footprint": "54 source lines; CI tooling only"
+  },
+  "gate:scripts/check-script-reachability.mjs": {
+    "group": "Domain contracts and quality gates",
+    "job": "Require each local gate and script test to be reachable from required CI",
+    "verdict": "keep",
+    "convention": "domain contract",
+    "class": "DOMAIN-CONTRACT",
+    "approval": null,
+    "alternatives": "Repository-specific contract; maintain the existing local gate.",
+    "reason": "Repository-specific invariants need custom enforcement; a generic tool is not equivalent.",
+    "evidence": [
+      "scripts/check-script-reachability.mjs"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "exitPlan": "Replace only after invariant and refusal parity; remove the gate and its callers together.",
+    "securityProcess": "not independently verified; no delegated approval",
+    "ruleMapping": "Preserve the existing gate and its refusal fixtures.",
+    "license": "LicenseRef-Proprietary (repository code)",
+    "lastRelease": "repository snapshot",
+    "maintainers": "repository maintainers",
+    "footprint": "201 source lines; CI tooling only"
   }
 }

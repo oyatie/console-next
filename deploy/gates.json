@@ -1,0 +1,14 @@
+{
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "longBakePaths": ["apps/web/src/shell/**", "apps/web/src/features/auth/**", "backend/crates/platform/auth/**"],
+  "checks": {
+    "code-gates": [{"workflow": "ci.yml", "job": "backend", "step": "Backend code gates (release parity)"}],
+    "api-compat": [{"workflow": "api-compat.yml", "job": "api-compat"}],
+    "sbom": [{"workflow": "platform.yml", "job": "publish", "step": "SPDX SBOM"}],
+    "scan": [{"workflow": "platform.yml", "job": "scan"}],
+    "smoke": [
+      {"workflow": "platform.yml", "job": "smoke-amd64", "step": "Test native image"},
+      {"workflow": "platform.yml", "job": "smoke-arm64", "step": "Test native image"}
+    ]
+  }
+}
