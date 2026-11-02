@@ -4,7 +4,7 @@
 use console_hr_adapter_postgres::HrError;
 use console_hr_adapter_postgres::lifecycle::requests::BulkEmployeeLifecycleEventRequest;
 use console_hr_adapter_postgres::lifecycle::void::RescindLifecycleEventRequest;
-use console_kernel_core::BranchScope;
+use console_kernel_core::{BranchScope, Clock, FixedClock, Timestamp};
 use console_platform_authz::{Feature, Principal};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -200,8 +200,14 @@ async fn a_batch_undo_refuses_a_bad_reason_an_unknown_batch_and_a_second_undo(po
             .unwrap_err();
     assert_eq!(status(&again), (404, "not_found"));
     // An exhausted batch still hides its existence from a caller without a live grant.
-    sqlx::query("UPDATE access_grants SET valid_to=now()-interval '1 second' WHERE org_id=$1 AND account_id=$2")
-        .bind(f.org).bind(f.user).execute(&f.owner).await.unwrap();
+    let clock = FixedClock(Timestamp::now_utc());
+    sqlx::query("UPDATE access_grants SET valid_to=$3 WHERE org_id=$1 AND account_id=$2")
+        .bind(f.org)
+        .bind(f.user)
+        .bind(clock.now())
+        .execute(&f.owner)
+        .await
+        .unwrap();
     for batch_id in [batch, Uuid::new_v4()] {
         let denied =
             f.hr.rescind_lifecycle_batch(f.ops.clone(), batch_id, undo(true, "PLAN_WITHDRAWN"))

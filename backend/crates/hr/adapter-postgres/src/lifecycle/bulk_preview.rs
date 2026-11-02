@@ -2,7 +2,7 @@
 //! batch's exact counts before the commit, by the commit's own validation
 //! (`bulk_plan`), writing nothing and auditing nothing.
 
-use console_platform_authz::{Feature, Principal};
+use console_platform_authz::Principal;
 use console_platform_db::with_org_conn;
 use serde::Serialize;
 use serde_json::Value;
@@ -52,12 +52,7 @@ impl HrService {
         // comes if a 3,000-person preview ever contends with live writes.
         let plan = with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                super::action_refusals::require_tenant_permissions(
-                    tx,
-                    &principal,
-                    &[Feature::EmployeeDirectoryManage],
-                )
-                .await?;
+                super::action_refusals::require_bulk_permission(tx, &principal).await?;
                 let input = bulk_input(body)?;
                 let scheduled =
                     console_hr_domain::text::parse_yyyy_mm_dd(&input.transition.effective_date)?

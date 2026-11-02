@@ -84,6 +84,21 @@ impl DecisionFacts {
         }
     }
 
+    /// Nodes Cedar permits in this snapshot, for scope refusal evidence.
+    /// Unknown and dissolved nodes never appear.
+    ///
+    /// # Errors
+    /// An unknown action or a Cedar evaluation failure.
+    pub fn permitted_nodes(&self, action: &str) -> Result<Vec<NodeRef>, AccessEngineError> {
+        let mut nodes = Vec::new();
+        for node in self.paths.keys() {
+            if self.authorize(action, *node)? {
+                nodes.push(*node);
+            }
+        }
+        Ok(nodes)
+    }
+
     /// D1 filter on a UUID column containing this resource type's scope node.
     /// Every included node is a Cedar permit; Rust never interprets grant scope.
     /// Tenant permits still enumerate IDs, so an unknown node cannot slip in.

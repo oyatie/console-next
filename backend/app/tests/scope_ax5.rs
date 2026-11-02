@@ -13,6 +13,9 @@
 //! (`GET …/lifecycle-events`) is 403 and the roster shows only the people
 //! homed in the projected branch.
 
+#[path = "scope_ax5/preflight.rs"]
+mod preflight;
+
 use http::StatusCode;
 use serde_json::{Value, json};
 use sqlx::PgPool;

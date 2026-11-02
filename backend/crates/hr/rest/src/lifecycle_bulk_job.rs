@@ -9,13 +9,12 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Extension, Json, Router};
-use console_hr_adapter_postgres::authz::authorize_hr_org_wide;
 use console_hr_adapter_postgres::lifecycle::bulk_job::{
     BulkLifecycleJob, DriverSlot, RETRY_AFTER_SECS,
 };
 use console_hr_adapter_postgres::lifecycle::requests::BulkEmployeeLifecycleEventRequest;
 use console_hr_adapter_postgres::{HrError, HrService};
-use console_platform_authz::{Feature, Principal};
+use console_platform_authz::Principal;
 use console_platform_db::idempotency::{IDEMPOTENCY_KEY_HEADER, validate_idempotency_key};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -36,7 +35,6 @@ async fn job(
     Extension(principal): Extension<Principal>,
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<BulkLifecycleJob>, HrApiError> {
-    authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
     Ok(Json(service.bulk_lifecycle_job(&principal, job_id).await?))
 }
 
@@ -60,15 +58,12 @@ pub async fn create(
     headers: &HeaderMap,
     body: BulkEmployeeLifecycleEventRequest,
 ) -> Response {
-    let checked =
-        authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage).and_then(|()| {
-            validate_idempotency_key(
-                headers
-                    .get(IDEMPOTENCY_KEY_HEADER)
-                    .and_then(|v| v.to_str().ok()),
-            )
-            .map_err(HrError::validation)
-        });
+    let checked = validate_idempotency_key(
+        headers
+            .get(IDEMPOTENCY_KEY_HEADER)
+            .and_then(|v| v.to_str().ok()),
+    )
+    .map_err(HrError::validation);
     let idempotency_key = match checked {
         Ok(key) => key,
         Err(error) => return HrApiError(error).into_response(),
@@ -93,6 +88,9 @@ async fn accept(
     idempotency_key: String,
     body: Value,
 ) -> Response {
+    if let Err(error) = service.check_bulk_lifecycle_access(&principal).await {
+        return HrApiError(error).into_response();
+    }
     let slot = match DriverSlot::take() {
         Ok(slot) => slot,
         Err(error) => {

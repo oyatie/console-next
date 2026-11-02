@@ -19,6 +19,7 @@ async fn regression_a_job_batch_never_waits_on_a_second_connection(pool: PgPool)
     let acquire = std::time::Duration::from_secs(5);
     let runtime = perf::sized_role_pool(&pool, "console_rt", 1, acquire).await;
     let (ctx, org, admin) = perf::setup_with_runtime(&pool, runtime).await;
+    crate::lifecycle_grant::grant(&pool, org, *admin.as_uuid()).await;
     let people = [
         seed_employee(&pool, org, "일괄 1").await,
         seed_employee(&pool, org, "일괄 2").await,

@@ -5,6 +5,8 @@
 
 mod department;
 mod fixtures;
+#[path = "../support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 mod membership;
 mod register;
 #[path = "../support/mod.rs"]
@@ -152,6 +154,7 @@ async fn lifecycle_history_pages_by_cursor_newest_first(pool: PgPool) {
 async fn bulk_transfer_takes_a_unit_per_line_in_one_batch(pool: PgPool) {
     let t = tenant(&pool).await;
     let hr_user = user(&pool, t.org, None).await;
+    lifecycle_grant::grant(&pool, t.org, *hr_user.as_uuid()).await;
     let (north, south) = (
         site(&pool, t.org, *hr_user.as_uuid(), "North").await,
         site(&pool, t.org, *hr_user.as_uuid(), "South").await,
@@ -207,6 +210,7 @@ async fn bulk_transfer_takes_a_unit_per_line_in_one_batch(pool: PgPool) {
 async fn bulk_selection_by_query_minus_exclusions_checks_the_confirmed_count(pool: PgPool) {
     let t = tenant(&pool).await;
     let hr_user = user(&pool, t.org, None).await;
+    lifecycle_grant::grant(&pool, t.org, *hr_user.as_uuid()).await;
     let team = site(&pool, t.org, *hr_user.as_uuid(), "Team").await;
     let mut active = Vec::new();
     for n in 0..4 {

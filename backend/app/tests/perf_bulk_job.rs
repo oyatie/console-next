@@ -4,10 +4,16 @@
 //! batch exactly once (all or nothing), its outcome on `GET …/bulk/jobs/{id}`,
 //! audited progress steps — and every refusal answers with nothing written.
 
+#[path = "perf_bulk_job/counts.rs"]
+mod counts;
 #[path = "support/go_live.rs"]
 mod go_live;
+#[path = "../../crates/hr/adapter-postgres/tests/support/lifecycle_grant.rs"]
+mod lifecycle_grant;
 #[path = "perf_bulk_job/one_connection.rs"]
 mod one_connection;
+
+use counts::{jobs, transfers};
 #[path = "support/perf.rs"]
 mod perf;
 
@@ -28,27 +34,6 @@ pub(crate) fn transfer(ids: &[Uuid], unit: Uuid) -> Value {
     })
 }
 
-async fn count(pool: &PgPool, sql: &'static str, org: Uuid) -> i64 {
-    sqlx::query_scalar(sql)
-        .bind(org)
-        .fetch_one(pool)
-        .await
-        .unwrap()
-}
-
-async fn jobs(pool: &PgPool, org: Uuid) -> i64 {
-    count(
-        pool,
-        "SELECT count(*) FROM employee_lifecycle_bulk_jobs WHERE org_id = $1",
-        org,
-    )
-    .await
-}
-
-pub(crate) async fn transfers(pool: &PgPool, org: Uuid) -> i64 {
-    count(pool, "SELECT count(*) FROM employee_lifecycle_events WHERE org_id = $1 AND event_type = 'TRANSFER'", org).await
-}
-
 /// Reads the job until it leaves queued/running (the driver is a spawned task).
 async fn settled(ctx: &Ctx, token: &str, location: &str) -> Value {
     for _ in 0..200 {
@@ -67,6 +52,7 @@ async fn settled(ctx: &Ctx, token: &str, location: &str) -> Value {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_an_async_bulk_transfer_is_a_job_recorded_exactly_once(pool: PgPool) {
     let (ctx, org, admin) = setup(&pool).await;
+    lifecycle_grant::grant(&pool, org, *admin.as_uuid()).await;
     let people = [
         seed_employee(&pool, org, "일괄 1").await,
         seed_employee(&pool, org, "일괄 2").await,
@@ -148,6 +134,7 @@ async fn regression_an_async_bulk_transfer_is_a_job_recorded_exactly_once(pool: 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn async_bulk_refusals_write_nothing(pool: PgPool) {
     let (ctx, org, admin) = setup(&pool).await;
+    lifecycle_grant::grant(&pool, org, *admin.as_uuid()).await;
     let person = seed_employee(&pool, org, "일괄 1").await;
     let unit = seed_org_unit(&pool, org, admin, "정비2팀").await;
 
@@ -248,10 +235,22 @@ async fn async_bulk_refusals_write_nothing(pool: PgPool) {
     assert_eq!(body["error"]["code"], "bulk_lifecycle_busy");
     assert_eq!(headers.get("retry-after").unwrap(), "15");
     assert_eq!(jobs(&pool, org).await, 1);
+    let (status, _, body) = ctx
+        .send(
+            "POST",
+            BULK,
+            &ctx.roleless,
+            Some("job-key-busy-denied-0001"),
+            true,
+            Some(transfer(&[person], unit)),
+        )
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
     drop(held);
 
     // Another tenant's job is not found.
-    let (other, _, _) = setup(&pool).await;
+    let (other, other_org, other_admin) = setup(&pool).await;
+    lifecycle_grant::grant(&pool, other_org, *other_admin.as_uuid()).await;
     let (status, _, _) = other
         .send("GET", &location, &other.token, None, false, None)
         .await;

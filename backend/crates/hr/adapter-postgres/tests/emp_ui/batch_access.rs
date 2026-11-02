@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Batch withdrawal reports live Cedar scope refusals without recording a partial undo.
+use console_kernel_core::{Clock, FixedClock, Timestamp};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -45,11 +46,13 @@ async fn refuses_outside_scope(pool: PgPool, scheduled: bool) {
         .unwrap();
     let batch = uuid(&batch["batch_id"]);
     // Keep the principal's old tenant-wide role: live grants, not that stale role, decide.
+    let clock = FixedClock(Timestamp::now_utc());
     let tenant_grant: Uuid = sqlx::query_scalar(
-        "UPDATE access_grants SET valid_to=now()-interval '1 second' WHERE org_id=$1 AND account_id=$2 RETURNING id",
+        "UPDATE access_grants SET valid_to=$3 WHERE org_id=$1 AND account_id=$2 RETURNING id",
     )
     .bind(f.org)
     .bind(f.user)
+    .bind(clock.now())
     .fetch_one(&f.owner)
     .await
     .unwrap();
@@ -151,8 +154,14 @@ async fn refuses_without_lifecycle_grant(pool: PgPool, scheduled: bool) {
         .await
         .unwrap();
     let batch = uuid(&batch["batch_id"]);
-    sqlx::query("UPDATE access_grants SET valid_to=now()-interval '1 second' WHERE org_id=$1 AND account_id=$2")
-        .bind(f.org).bind(f.user).execute(&f.owner).await.unwrap();
+    let clock = FixedClock(Timestamp::now_utc());
+    sqlx::query("UPDATE access_grants SET valid_to=$3 WHERE org_id=$1 AND account_id=$2")
+        .bind(f.org)
+        .bind(f.user)
+        .bind(clock.now())
+        .execute(&f.owner)
+        .await
+        .unwrap();
     let before: Value = sqlx::query_scalar("SELECT jsonb_agg(to_jsonb(e) ORDER BY e.id) FROM employee_lifecycle_events e WHERE org_id=$1")
         .bind(f.org).fetch_one(&f.owner).await.unwrap();
     let people: Value = sqlx::query_scalar(

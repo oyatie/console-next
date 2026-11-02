@@ -4257,7 +4257,7 @@ export interface paths {
         };
         /**
          * A bulk appointment sent as a job (CAP-04)
-         * @description The job of a POST /api/v1/employees/lifecycle-events/bulk sent with Prefer respond-async. state is queued, running (phase checking, then recording; done of total), done (result is the batch response) or failed (error is the refusal, e.g. bulk_lifecycle_refused with its refusals, or bulk_job_interrupted when the server stopped before the batch was recorded; nothing was recorded, send it again). Requires employee_directory_manage tenant-wide.
+         * @description The job of a POST /api/v1/employees/lifecycle-events/bulk sent with Prefer respond-async. state is queued, running (phase checking, then recording; done of total), done (result is the batch response) or failed (error is the refusal, e.g. bulk_lifecycle_refused with its refusals, or bulk_job_interrupted when the server stopped before the batch was recorded; nothing was recorded, send it again). Requires lifecycle_manage tenant-wide.
          */
         get: operations["getBulkEmployeeLifecycleJob"];
         put?: never;
@@ -4279,7 +4279,7 @@ export interface paths {
         put?: never;
         /**
          * Preview a bulk appointment with the commit's own validation (BE-EMP-UI)
-         * @description The same body as POST /api/v1/employees/lifecycle-events/bulk, validated exactly as the commit validates it (per-kind rules, every employee locked and checked by the single-event rules, the two-year rule of a CONTRACT_RENEWAL), writing and auditing nothing. counts are exact for a commit now - refused > 0 means the commit answers 422 bulk_lifecycle_refused with the same refusals. No Idempotency-Key. Needs employee_directory_manage org-wide.
+         * @description The same body as POST /api/v1/employees/lifecycle-events/bulk, validated exactly as the commit validates it (per-kind rules, every employee locked and checked by the single-event rules, the two-year rule of a CONTRACT_RENEWAL), writing and auditing nothing. counts are exact for a commit now - refused > 0 means the commit answers 422 bulk_lifecycle_refused with the same refusals. No Idempotency-Key. Needs lifecycle_manage tenant-wide.
          */
         post: operations["previewBulkEmployeeLifecycleEvents"];
         delete?: never;
