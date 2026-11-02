@@ -17,6 +17,14 @@ test.each([403, 404, 405])("permanent HTTP %s has no retry prompt or raw fallbac
   expect(banner).not.toMatch(/다시 시도|http_\d+|diagnostic/);
 });
 
+test("a catalog-backed refusal keeps its diagnostic code non-translatable beside the explanation", async () => {
+  const code = "lifecycle.refuse.close_blocked";
+  const banner = await html(new ApiError(409, code, "internal diagnostic"));
+  expect(banner).toContain(t(code));
+  expect(banner).toContain(`<code translate="no">${code}</code>`);
+  expect(banner).not.toContain("internal diagnostic");
+});
+
 test.each(["org_change_sod_violation", "leave_decide_requester_forbidden", "sod_violation", "second_person_required"])("%s explains identity refusal and who can decide", async (code) => {
   const banner = await html(new ApiError(403, code, "internal diagnostic", [], undefined, true));
   expect(banner).toContain("다른 사람");
