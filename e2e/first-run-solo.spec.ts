@@ -7,7 +7,7 @@ import { clickCounter } from "./clicks";
 import { tenantOnboardSubmit, tenantSlugField, chooseRadio, firstSignIn, go, kstDate, routeReady, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { cellOf, officeSchedule, openMonth } from "./helpers/attendance-records";
 import { homeRail, registerBranch, registerEntity, registerWorkplace, startOperations, REGISTRATION_FIXTURES, brnDisplay } from "./setup-flows";
-import { addDepartments, box, findBox, findPressable } from "./structure-flows";
+import { addDepartments, findBox, findPressable } from "./structure-flows";
 import { rosterXlsx } from "./workbook";
 import { gradeJourney } from "./helpers/grade-fix";
 import { chooseWorkbook, payPeriod } from "./helpers/import";
@@ -107,8 +107,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await routeReady(admin);
     await expect(admin.getByRole("dialog")).toHaveCount(0);
     for (const [place, unit] of [["본사", "영업팀"], ["판교지점", "개발팀"]] as const) {
-      await findPressable(admin, place);
-      await c.click(box(admin, place));
+      await c.click(await findPressable(admin, place));
       await addDepartments(admin, place, [unit]);
     }
     await expectAccessible(admin, "setup org");
@@ -195,8 +194,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     // HR worker is never stuck waiting for an approver who does not exist); it stays on record with its reason.
     // On the chart the same gesture as in setup (select, A) opens the change sheet.
     await go(admin, "/org");
-    await findPressable(admin, "본사");
-    await c.click(box(admin, "본사"));
+    await c.click(await findPressable(admin, "본사"));
     await admin.keyboard.press("a");
     const proposal = admin.getByRole("dialog", { name: "부서 신설" });
     await proposal.getByLabel("부서 이름").fill("마케팅팀");

@@ -20,8 +20,7 @@ export async function openUnit(page: Page, name: string, c: C = plain) {
   // Already open (clicking its row again would close it).
   if (await panel(page, name).isVisible()) return panel(page, name);
   // The chart's find brings a unit inside a collapsed branch into view; selecting its box opens its panel.
-  await findPressable(page, name);
-  await c.click(box(page, name));
+  await c.click(await findPressable(page, name));
   await expect(panel(page, name)).toBeVisible();
   return panel(page, name);
 }

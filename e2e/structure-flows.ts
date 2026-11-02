@@ -46,18 +46,21 @@ export async function findBox(page: Page, name: string) {
 /**
  * Finds a unit and waits until its box takes a press: a re-read landing after the find (a unit just added) can lay the
  * chart out again and leave the box under a floating bar, as a person would see it move and find it again.
+ * Press the name: the hover action can cover the box's centre when the chart is zoomed out.
  */
 export async function findPressable(page: Page, name: string) {
+  // The name precedes any flags, which can repeat it (a workplace named 본점).
+  const target = box(page, name).getByText(name, { exact: true }).first();
   await expect(async () => {
     await findBox(page, name);
-    await box(page, name).click({ trial: true, timeout: 2_000 });
+    await target.click({ trial: true, timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
+  return target;
 }
 
 /** Brings a unit into view by name, wherever it sits, and selects its box. */
 export async function revealUnit(page: Page, name: string) {
-  await findPressable(page, name);
-  await box(page, name).click();
+  await (await findPressable(page, name)).click();
   await expect(box(page, name)).toBeFocused();
 }
 
