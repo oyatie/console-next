@@ -16,7 +16,7 @@ import { payDateRule, periodRule, runStatus } from "../present";
 
 export function PayrollHome() {
   const groups = useQuery(payGroupsQuery);
-  return <Page floorplan="list" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
+  return <Page floorplan="list" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), tools: <><Link to="/payroll/setup">{t("payroll.setup.add")}</Link><Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link></> }}>
     <QueryState q={groups} layout="list">{data => data.items.length ? <div className="form">
       {data.items.map(group => <Card key={group.id} title={group.name} meta={data.legal_entities.find(entity => entity.id === group.legal_entity_id)?.name}>
         <div className="form"><KeyValue readOnly items={[
@@ -25,6 +25,8 @@ export function PayrollHome() {
           { key: "variablePeriod", label: t("payroll.variablePeriod"), value: periodRule(group.variable_period) },
           { key: "proration", label: t("payroll.proration"), value: t(`payroll.rule.${group.proration}`) },
           { key: "channel", label: t("payroll.channel"), value: t(`payroll.rule.${group.channel}`) },
+          { key: "sensitive", label: t("payroll.sensitive"), value: t(group.sensitive === null ? "payroll.rule.unknown" : group.sensitive ? "payroll.rule.sensitive.true" : "payroll.rule.sensitive.false") },
+          { key: "payBasisAllowed", label: t("payroll.payBasisAllowed"), value: group.pay_basis_allowed?.map(basis => t(`payroll.rule.${basis}`)).join(" · ") ?? t("payroll.rule.unknown") },
         ]} />
         <GroupRuns group={group} />
         </div>
