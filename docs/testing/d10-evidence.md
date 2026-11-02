@@ -1,7 +1,9 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # D10 authorization evidence
 
-On dev pushes, the existing D7 evidence job also publishes `d10-evidence/authorization.json`. It lists every POST, PUT, PATCH and DELETE discovered by the access census, including unresolved handlers and operations from OpenAPI. It records Cedar action names enrolled in `ACTION_SCHEMAS` using the existing `Feature` wire names, authorization models, refusal-code test results, and whether a passing test proves refusal with no grant. No new PR gate or test run is added.
+On dev pushes, `d10-probes` runs the live write census on Chromium against the same E2E backend binary built by the backend job. It creates an operating tenant through the product UI and invites an account with access `none`. Each census write receives an empty JSON request from that account and an identical request from the ops account. Fixture IDs cover the legal entity, workplace, department, employee and role; other parameters receive fresh UUIDs. Unresolved paths remain unknown.
+
+The built-in JSON reporter publishes `d10-playwright`, including failed attempts. The existing D7 evidence job consumes it and publishes `d10-evidence/authorization.json`, retaining each operation's HTTP status, refusal code, support reference and ops-control status. The census also retains unresolved handlers and Cedar action names enrolled in `ACTION_SCHEMAS`. No dependency or PR gate is added.
 
 ```sh
 bash scripts/pull-d10-evidence.sh RUN_ID READER_DIR [REPO]
@@ -14,9 +16,9 @@ D10 L2 requires a passing no-grant refusal for every module write. L3 also requi
 The report contract for a live no-grant test is an inline Playwright JSON attachment named `write-probe`, content type `application/json`:
 
 ```json
-{"operation":"POST /api/v1/example","principal":"no-grant","http_status":403,"control_http_status":422}
+{"operation":"POST /api/v1/example","principal":"no-grant","http_status":403,"code":"missing_grant","control_http_status":422}
 ```
 
-The test must use an account invited with access `none`, assert refusal, and send an ops-account negative control for the same operation. A control returning 401 or 403 is a harness fault; only 2xx or other 4xx establishes that the probe reaches the operation. A no-grant 2xx is red; 401, validation failures, 404s and missing attachments are unknown. The producer also requires an executed passing test with no failed retries or report errors.
+The test must use an account invited with access `none`, assert refusal, and send an ops-account negative control for the same operation. Only 2xx or 4xx other than 401/403 establishes a usable control. The sweep requires at least one usable protected-write control. A no-grant 2xx is red and a 401 fails the harness; validation failures, 404s, transport faults, unusable controls, missing codes and missing attachments are unknown. The producer also requires an executed passing test with no failed retries or report errors.
 
-This slice adds the producer and reader. Existing reports contain no live write-probe attachments, so their writes correctly remain unknown. The live probe sweep and self-service exceptions are the next slice; this artifact does not claim those tests already exist. Static resolution follows unambiguous free-function calls using the existing Rust module/import resolver. Trait dispatch, dynamic action selection and standalone action bundles remain unresolved until their resolution has regression proof.
+`e2e/authz/self-service.json` names operations that need no role grant, with a reason per entry. They are still attempted and attached, excluded from the sweep's refusal assertion, and cannot supply no-grant proof or raise a module's score. A newly forbidden entry (403) fails the sweep so the catalog shrinks. Static resolution follows unambiguous free-function calls using the existing Rust module/import resolver. Trait dispatch, dynamic action selection and standalone action bundles remain unresolved until their resolution has regression proof.

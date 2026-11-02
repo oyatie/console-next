@@ -25,17 +25,17 @@ def probe_rows(report):
                             raise ValueError("write-probe requires an inline JSON attachment")
                         data = json.loads(base64.b64decode(attachment["body"], validate=True))
                         http, control = data.get("http_status"), data.get("control_http_status")
-                        valid = (data.get("principal") == "no-grant" and type(http) is int and type(control) is int
-                                 and 200 <= control < 500 and control not in (401, 403)
+                        valid = (data.get("principal") == "no-grant" and not data.get("self_service_reason") and type(http) is int and type(control) is int
+                                 and (200 <= control < 300 or 400 <= control < 500) and control not in (401, 403)
                                  and test["expectedStatus"] == "passed" and not report.get("errors"))
-                        state = "unknown"
-                        if valid:
-                            if 200 <= http < 300: state = "fail"
-                            elif http == 403:
-                                states = [d7.status(r["status"]) for r in test["results"]]
-                                state = "fail" if "fail" in states else "pass" if all(s == "pass" for s in states) else "unknown"
+                        state = "fail" if (data.get("principal") == "no-grant" and not data.get("self_service_reason")
+                                           and type(http) is int and 200 <= http < 300) else "unknown"
+                        if valid and http == 403 and isinstance(data.get("code"), str) and data["code"].strip():
+                            states = [d7.status(r["status"]) for r in test["results"]]
+                            state = "fail" if "fail" in states else "pass" if all(s == "pass" for s in states) else "unknown"
                         rows.append({"operation": data["operation"], "status": state,
                                      "principal": data.get("principal", "unknown"), "http_status": http, "control_http_status": control,
+                                     **{key: data.get(key) for key in ("code", "control_code", "support_ref", "error", "self_service_reason")},
                                      "title": "e2e/" + entry.get("file", "").replace("\\", "/").split("/e2e/")[-1].removeprefix("e2e/") + " › " + entry["title"]})
         for child in suite.get("suites", []): walk(child)
 
