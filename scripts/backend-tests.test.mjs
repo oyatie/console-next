@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -208,5 +208,28 @@ if (args[0] === 'metadata') {
       assert.match(result.stderr, /error: test binary compilation failed/);
       assert.match(result.stderr, /cargo nextest list failed \(101\)/);
     }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("Cargo diagnostics reach the job log before discovery exits", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "backend-stderr-"));
+  try {
+    writeFileSync(path.join(root, "cargo"), `#!${process.execPath}
+const fs = require('node:fs'), path = require('node:path');
+process.stderr.write('compiling test binaries\\n');
+setInterval(() => { if (fs.existsSync(path.join(process.env.FIXTURE_ROOT, 'ack'))) process.exit(101); }, 10);
+setTimeout(() => process.exit(94), 3000);
+`, { mode: 0o755 });
+    const child = spawn(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], {
+      env: { ...process.env, PATH: root, FIXTURE_ROOT: root }, stdio: ["ignore", "ignore", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.on("data", chunk => {
+      stderr += chunk;
+      if (stderr.includes("compiling test binaries")) writeFileSync(path.join(root, "ack"), "");
+    });
+    const status = await new Promise((resolve, reject) => { child.on("error", reject); child.on("close", resolve); });
+    assert.equal(status, 1, stderr);
+    assert.match(stderr, /cargo metadata --locked failed \(101\)/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

@@ -82,21 +82,55 @@ test("an over-budget spec fails planning with its name before a runner starts", 
   }), /STATES_SPEC_OVER_BUDGET.*states\/too-long\.spec\.ts.*301.*300/);
 });
 
-test("a plan beyond GitHub's matrix limit fails planning explicitly", async () => {
+test("a plan beyond the timeout at GitHub's matrix limit fails planning explicitly", async () => {
   const { planStates } = await load();
   const specs = Object.fromEntries(Array.from({ length: 257 }, (_, i) => [`mock/${i}.spec.ts`, { seconds: 260, tests: 1 }]));
-  assert.throws(() => planStates(report(Object.fromEntries(Object.keys(specs).map(f => [f, 1]))), { ...settings, specs }), /STATES_MATRIX_LIMIT/);
+  assert.throws(() => planStates(report(Object.fromEntries(Object.keys(specs).map(f => [f, 1]))), { ...settings, specs }), /STATES_TIMEOUT_LIMIT/);
 });
 
-test("the configured shard ceiling refuses runner fan-out without dropping specs", async () => {
-  const { planStates } = await load();
+test("the shard ceiling stretches the budget through whole-file packing without dropping specs", async () => {
+  const { planStates, filesForShard } = await load();
   const specs = Object.fromEntries([0, 1, 2].map(i => [`mock/${i}.spec.ts`, { seconds: 150, tests: 1 }]));
   const input = report(Object.fromEntries(Object.keys(specs).map(f => [f, 1])));
-  assert.throws(() => planStates(input, { ...settings, specs, maxShards: 2 }), /STATES_MATRIX_LIMIT/);
-  const plan = planStates(input, { ...settings, specs, maxShards: 3 });
-  assert.deepEqual(plan.shards.flatMap(s => s.files).sort(), Object.keys(specs).map(f => `e2e/${f}`).sort());
+  const plan = planStates(input, { ...settings, specs, maxShards: 2, timeoutSeconds: 600 });
+  assert.equal(plan.shards.length, 2);
+  assert.equal(plan.budgetSeconds, 340);
+  assert.deepEqual(plan.shards.flatMap(s => filesForShard(plan, s.id)).sort(), Object.keys(specs).map(f => `e2e/${f}`).sort());
   for (const maxShards of [0, -1, 1.5, "4", 257]) {
     assert.throws(() => planStates(input, { ...settings, specs, maxShards }), /STATES_INVALID_TIMINGS/);
+  }
+});
+
+test("the real suite allows 30 added tests and ten percent timing drift within the runner cap", async () => {
+  const { planStates, filesForShard } = await load();
+  const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--config=e2e/mock/playwright.config.ts", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+  assert.equal(result.status, 0, result.stderr);
+  const discovered = JSON.parse(result.stdout);
+  const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
+  for (const drift of [1, 1.1]) {
+    const input = { ...discovered, suites: [...discovered.suites, ...report({ "states/growth.spec.ts": 30 }).suites] };
+    const measured = { workers: timings.workers, specs: Object.fromEntries(Object.entries(timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * drift }])) };
+    const plan = planStates(input, timings, measured);
+    assert.ok(plan.shards.length <= timings.maxShards);
+    assert.ok(plan.budgetSeconds > timings.budgetSeconds && plan.budgetSeconds <= timings.timeoutSeconds);
+    assert.deepEqual(plan.shards.flatMap(s => filesForShard(plan, s.id)).sort(), input.suites.map(s => `e2e/${s.file}`).sort());
+  }
+  assert.ok(timings.timeoutSeconds < workflow.jobs.states["timeout-minutes"] * 60 - timings.startupSeconds);
+});
+
+test("planning refuses only when a spec or capped packing exceeds the execution timeout", async () => {
+  const { planStates, filesForShard } = await load();
+  const timings = { ...settings, maxShards: 2, timeoutSeconds: 1080 };
+  const specs = Object.fromEntries([0, 1].map(i => [`mock/${i}.spec.ts`, { seconds: 1040, tests: 1 }]));
+  const input = report(Object.fromEntries(Object.keys(specs).map(file => [file, 1])));
+  const plan = planStates(input, { ...timings, specs });
+  assert.equal(plan.budgetSeconds, timings.timeoutSeconds);
+  for (const shard of plan.shards) filesForShard(plan, shard.id);
+  assert.throws(() => planStates(report({ "mock/long.spec.ts": 1 }), { ...timings, specs: { "mock/long.spec.ts": { seconds: 1041, tests: 1 } } }), /STATES_SPEC_OVER_BUDGET.*1081.*1080/);
+  specs["mock/2.spec.ts"] = { seconds: 1040, tests: 1 };
+  assert.throws(() => planStates(report(Object.fromEntries(Object.keys(specs).map(file => [file, 1]))), { ...timings, specs }), /STATES_TIMEOUT_LIMIT/);
+  for (const timeoutSeconds of [0, -1, "1080", NaN, 299]) {
+    assert.throws(() => planStates(input, { ...timings, specs, timeoutSeconds }), /STATES_INVALID_TIMINGS/);
   }
 });
 
@@ -157,9 +191,9 @@ test("a repeated file is rejected even when shard IDs and budgets are valid", as
   assert.throws(() => refreshTimings(settings, repeated, [observed]), /STATES_INVALID_PLAN.*repeated spec/);
 });
 
-test("CI uses committed settings, takes only compatible artifact durations, and refreshes without overwriting settings", () => {
+test("CI uses committed settings and stretched budgets, takes compatible durations, and preserves settings", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "states-settings-"));
-  const committed = { budgetSeconds: 60, startupSeconds: 5, workers: 4, defaultTestSeconds: 20,
+  const committed = { budgetSeconds: 60, timeoutSeconds: 600, maxShards: 1, startupSeconds: 5, workers: 4, defaultTestSeconds: 20,
     specs: { "mock/a.spec.ts": { seconds: 2, tests: 1 } } };
   const observed = { ...report({ "mock/a.spec.ts": 3, "states/new.spec.ts": 2 }), config: { workers: committed.workers } };
   try {
@@ -174,27 +208,28 @@ fi
 exec "$REAL_NODE" "$@"
 `, { mode: 0o755 });
     writeFileSync(path.join(dir, "bin/npx"), '#!/bin/sh\nprintf "%s" "$TEST_REPORT"\n', { mode: 0o755 });
-    writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf "%s" "$TEST_REPORT" > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
+    writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$TEST_ARGS"\nprintf "%s" "$TEST_REPORT" > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
     const configFile = path.join(dir, "e2e/mock/timings.json");
     const original = JSON.stringify(committed);
     writeFileSync(configFile, original);
     const step = workflow.jobs["states-plan"].steps.find(s => s.id === "plan");
-    const env = { ...process.env, ...step.env, REAL_NODE: process.execPath, PATH: `${dir}/bin:${process.env.PATH}`, TEST_REPORT: JSON.stringify(observed),
+    const env = { ...process.env, ...step.env, REAL_NODE: process.execPath, TEST_ARGS: path.join(dir, "args"), PATH: `${dir}/bin:${process.env.PATH}`, TEST_REPORT: JSON.stringify(observed),
       PLAYWRIGHT_JSON_OUTPUT_FILE: path.join(dir, ".cache/states-reports/one.json") };
     const refresh = workflow.jobs["states-timings"].steps.find(s => s.run?.includes("states-shards.mjs refresh"));
     for (const workers of [committed.workers, 2]) {
       writeFileSync(path.join(dir, ".cache/states-timings/timings.json"), JSON.stringify({
         budgetSeconds: 900, startupSeconds: 80, defaultTestSeconds: 1000, workers,
-        specs: { "mock/a.spec.ts": { seconds: 9, tests: 1 } },
+        specs: { "mock/a.spec.ts": { seconds: 65, tests: 1 } },
       }));
       const planned = spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], { cwd: dir, env, encoding: "utf8" });
       assert.equal(planned.status, 0, planned.stderr);
       assert.deepEqual(JSON.parse(readFileSync(path.join(dir, step.env.E2E_MODULES_FILE), "utf8")), { modules: [{ routes: ["/login", "/setup-passkey"] }] });
       const plan = JSON.parse(readFileSync(path.join(dir, ".cache/states-plan/plan.json"), "utf8"));
-      assert.equal(plan.budgetSeconds, committed.budgetSeconds);
-      assert.equal(plan.shards[0].seconds, workers === committed.workers ? 34 : 27);
+      assert.equal(plan.budgetSeconds, workers === committed.workers ? 90 : committed.budgetSeconds);
+      assert.equal(plan.shards[0].seconds, workers === committed.workers ? 90 : 27);
       const ran = spawnSync(process.execPath, ["scripts/states-shards.mjs", "run", ".cache/states-plan/plan.json", "1"], { cwd: dir, env, encoding: "utf8" });
       assert.equal(ran.status, 0, ran.stderr);
+      assert.ok(readFileSync(env.TEST_ARGS, "utf8").split("\n").includes(`--global-timeout=${plan.budgetSeconds * 1000}`));
       const refreshed = spawnSync("bash", ["-e", "-o", "pipefail", "-c", refresh.run], { cwd: dir, env, encoding: "utf8" });
       assert.equal(refreshed.status, 0, refreshed.stderr);
       assert.equal(readFileSync(configFile, "utf8"), original);

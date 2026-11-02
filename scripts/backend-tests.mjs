@@ -122,8 +122,7 @@ function main() {
   for (const key of Object.keys(env)) if (key.endsWith("DATABASE_URL") || /^PG(HOST|PORT|USER|PASSWORD|DATABASE|SERVICE)/.test(key)) delete env[key];
   const options = { cwd: path.join(root, "backend"), env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 };
   const cargoJSON = (args) => {
-    const result = spawnSync("cargo", args, options);
-    if (result.stderr) process.stderr.write(result.stderr);
+    const result = spawnSync("cargo", args, { ...options, stdio: ["ignore", "pipe", "inherit"] });
     assert.ifError(result.error);
     assert.equal(result.status, 0, `cargo ${args.slice(0, 2).join(" ")} failed (${result.status ?? result.signal})`);
     return JSON.parse(result.stdout);

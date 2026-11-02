@@ -89,6 +89,8 @@ jobs:
           python3 scripts/d10_evidence_test.py
           python3 scripts/d8_evidence_test.py
       - name: Spreadsheet paste browser regression
+        env:
+          CONSOLE_WEB_PORT: '58743'
         run: npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.

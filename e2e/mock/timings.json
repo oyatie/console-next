@@ -1,5 +1,6 @@
 {
   "budgetSeconds": 600,
+  "timeoutSeconds": 1080,
   "maxShards": 4,
   "startupSeconds": 40,
   "workers": 2,
