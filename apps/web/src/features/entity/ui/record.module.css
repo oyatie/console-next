@@ -85,4 +85,3 @@
   .body { grid-template-columns: minmax(0, 1fr); padding: var(--space-4); }
 }
 .conflict { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--warn-bd); border-radius: var(--radius); background: var(--warn-bg); }
-.nameProblems { min-block-size: calc(2 * var(--target) + var(--space-6)); }

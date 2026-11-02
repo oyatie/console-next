@@ -15,22 +15,23 @@ export function VatCard({ e, act }: { e: LegalEntity; act: Act }) {
   const c = e.current;
   const f = entityFields(e);
   const rw = e.regular_workers;
+  const none = t("entityOps.info.none");
   return (
     <section className="card" aria-labelledby="vat-title">
       <div className={s.cardHead}><h2 id="vat-title" className={s.cardTitle}>{t("entityRecord.vat.title")}</h2></div>
       <div className={s.facts}>
         <FactRow label={t("entityRecord.vat.unit")}>
-          {c?.vat_unit_mode ? t(`entity.vat.${c.vat_unit_mode}`) : "—"}
+          {c?.vat_unit_mode ? t(`entity.vat.${c.vat_unit_mode}`) : none}
           {c?.vat_unit_mode_basis && <span className={s.sub}> {t(`entity.basis.${c.vat_unit_mode_basis}`)}</span>}
         </FactRow>
-        <FactRow label={t("entityRecord.vat.mainKsic")} action={f.mainKsic ? { kind: "fix", onPress: () => act.field(f.mainKsic!) } : null}>
-          {c?.main_ksic ? `KSIC ${c.main_ksic.code} · ${c.main_ksic.label}` : "—"}
+        <FactRow label={t("entityRecord.vat.mainKsic")} action={f.mainKsic ? { verb: "edit", onPress: () => act.field(f.mainKsic!) } : null}>
+          {c?.main_ksic ? `KSIC ${c.main_ksic.code} · ${c.main_ksic.label}` : none}
         </FactRow>
         <FactRow label={t("entityRecord.vat.priority")}>
-          {c?.priority_support ? t(c.priority_support === "YES" ? "entityRecord.vat.priorityYes" : "entityRecord.vat.priorityNo") : "—"}
+          {c?.priority_support ? t(c.priority_support === "YES" ? "entityRecord.vat.priorityYes" : "entityRecord.vat.priorityNo") : none}
           <span className={s.sub}> {t("entityRecord.vat.priorityBasis")}</span>
         </FactRow>
-        <FactRow label={t("entityRecord.field.largeGroup")} action={{ kind: "fix", onPress: () => act.field(f.largeGroup) }}>{f.largeGroup.current}</FactRow>
+        <FactRow label={t("entityRecord.field.largeGroup")} action={{ verb: "edit", onPress: () => act.field(f.largeGroup) }}>{f.largeGroup.current}</FactRow>
         <div className={s.wideCell}><RegularHeadcount r={rw} asOf={e.as_of} /></div>
       </div>
     </section>

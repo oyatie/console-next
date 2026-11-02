@@ -57,12 +57,12 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
               fit: true,
               cell: (w) => {
                 const r = registrationOf(e, w.registration_id);
-                if (!r?.current) return registrationTodo(w) ? <Muted>{t("workplace.registration.prompt")}</Muted> : <Chip tone="neutral">{w.not_registered_reason?.label ?? "—"}</Chip>;
+                if (!r?.current) return registrationTodo(w) ? <Muted>{t("workplace.registration.prompt")}</Muted> : <Chip tone="neutral">{w.not_registered_reason?.label ?? t("entityOps.info.none")}</Chip>;
                 const st = labeled(RECORD_STATUS, r.current.status);
                 return <Chip tone={st.tone}>{st.label}</Chip>;
               },
             },
-            { header: t("entityRecord.workplaces.col.address"), cell: (w) => <Muted>{addressLine(w.current?.address ?? registrationOf(e, w.registration_id)?.current?.business_address) || "—"}</Muted>, wide: true },
+            { header: t("entityRecord.workplaces.col.address"), cell: (w) => <Muted>{addressLine(w.current?.address ?? registrationOf(e, w.registration_id)?.current?.business_address) || t("entityOps.info.none")}</Muted>, wide: true },
             { header: t("entityRecord.workplaces.col.insurance"), cell: w => <InsuranceSummary insurance={w.insurance} />, fit: true },
             { header: <span className="sr-only">{t("entityRecord.workplaces.col.open")}</span>, cell: () => <ChevronRight size={14} aria-hidden />, fit: true },
           ]}

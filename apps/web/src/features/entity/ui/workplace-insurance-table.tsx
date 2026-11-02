@@ -37,8 +37,8 @@ function InsuranceTable({ e, w, act }: { e: LegalEntity; w: Workplace; act: Reac
           columns={[
             { header: t("orgStructure.ins.insurer"), cell: (r) => label(INSURER, r.insurer) },
             { header: t("workplace.field.status"), cell: (r) => { const st = labeled(INSURANCE_STATUS, r.status); return <Chip tone={st.tone}>{st.label}</Chip>; }, fit: true },
-            { header: t("workplace.field.mgmtNo"), cell: (r) => <span className="num">{r.mgmt_no?.display ?? "—"}</span> },
-            { header: t("workplace.field.establishedOn"), cell: (r) => <span className="num">{r.established_on ? fmtDate(r.established_on) : "—"}</span>, fit: true },
+            { header: t("workplace.field.mgmtNo"), cell: (r) => <span className="num">{r.mgmt_no?.display ?? t("entityOps.info.none")}</span> },
+            { header: t("workplace.field.establishedOn"), cell: (r) => <span className="num">{r.established_on ? fmtDate(r.established_on) : t("entityOps.info.none")}</span>, fit: true },
           ]}
         />
       ) : (

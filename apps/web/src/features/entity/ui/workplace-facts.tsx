@@ -25,7 +25,7 @@ import { WorkplaceMoveSheet } from "./workplace-move-sheet";
 import { WorkplaceStatusSheet } from "./workplace-status";
 import { Muted } from "../../../ui/muted/muted";
 
-type Open = { k: "info"; field: InfoKey } | { k: "move" | "status" | "attach" | "code" | "changeReg" } | { k: "kind" | "primary" };
+type Open = { k: "info"; field: InfoKey; clear?: boolean } | { k: "move" | "status" | "attach" | "code" | "changeReg" } | { k: "kind" | "primary" };
 
 export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Workplace; place?: Place; onAct?: (a: StructureAct) => void }) {
   const [state, setOpen] = useState<Open | null>(null);
@@ -42,21 +42,22 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
   const asof = useRecordLock() === "asof";
   const manage = !asof && !e.read_only && !w.read_only && w.can_manage;
   const why = w.closed_on ? t("workplace.closed.noEdit") : undefined;
-  const row = (label: string, value: ReactNode, o: Open, extra?: { add?: boolean }): Fact => ({
+  const row = (label: string, value: ReactNode, o: Open, extra?: { add?: boolean; correct?: boolean; clear?: boolean }): Fact => ({
     label,
     value,
     act: manage && (
       <RowActions
         field={label}
-        edit={extra?.add ? "add" : "edit"}
+        edit={extra?.correct ? "correct" : extra?.add ? "add" : "edit"}
         onEdit={() => (o.k === "kind" ? structure("wp-kind") : o.k === "primary" ? structure("wp-primary") : setOpen(o))}
         why={why}
-        path={setup ? "setup" : "revision"}
+        path={extra?.correct ? "correction" : setup ? "setup" : "revision"}
+        end={extra?.clear && !why && o.k === "info" ? { verb: "clear", onPress: () => setOpen({ ...o, clear: true }) } : undefined}
       />
     ),
   });
   const none = <Muted>{t("entityOps.info.none")}</Muted>;
-  const info = (field: InfoKey, value: string | null | undefined) => row(INFO_LABEL[field](), value || none, { k: "info", field });
+  const info = (field: InfoKey, value: string | null | undefined) => row(INFO_LABEL[field](), value || none, { k: "info", field }, { clear: field === "mail" && Boolean(value) });
   const reg = registrationOf(e, w.registration_id);
   const filing = registrationOf(e, w.filing_registration_id);
   const roles = [w.is_primary && t("workplace.primary"), w.is_head_office && t("workplace.headOffice")].filter(Boolean).join(" · ");
@@ -110,7 +111,7 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
       label: t("workplace.filing.entityBasis"),
       value: filing?.brn?.display ?? none,
     },
-    row(t("workplace.field.openedOn"), <span className="num">{c?.opened_on ? fmtDate(c.opened_on) : "—"}</span>, { k: "info", field: "openedOn" }),
+    row(t("workplace.field.openedOn"), <span className="num">{c?.opened_on ? fmtDate(c.opened_on) : none}</span>, { k: "info", field: "openedOn" }, { correct: true }),
     info("representative", c?.representative_name),
     info("product", c?.main_product),
     info("phone", c?.phone?.display),
@@ -132,7 +133,7 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
     <>
       <Facts rows={rows} />
       {open?.k === "code" && <WorkplaceCodeEdit w={w} onDone={close} />}
-      {open?.k === "info" && <WorkplaceEdit e={e} w={w} field={open.field} setup={setup} onClose={close} />}
+      {open?.k === "info" && <WorkplaceEdit e={e} w={w} field={open.field} clear={open.clear} setup={setup} onClose={close} />}
       {open?.k === "move" && <WorkplaceMoveSheet e={e} w={w} onClose={close} />}
       {open?.k === "status" && <WorkplaceStatusSheet e={e} w={w} onClose={close} />}
       {open?.k === "attach" && <AttachHost entityId={e.id} workplaceId={w.id} onClose={close} />}

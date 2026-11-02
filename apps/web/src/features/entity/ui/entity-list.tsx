@@ -8,7 +8,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
-import { Table } from "../../../ui/table";
+import { LongTable } from "../../../ui/long-table/long-table";
 import { checklistRef, entitiesAt } from "../../../reference/entity/api";
 import { todayKst } from "../../../lib/pure/today";
 import { headcount, primaryRegistration } from "../domain/view";
@@ -45,30 +45,37 @@ export function EntityList() {
         <AsOfBand asOf={as_of} knownAt={known_at} onChange={changeDate} />
         <QueryState q={list} layout="list">{d => d.items.length ? (
 
-            <Table
+            <LongTable
               label={t("entity.list.table")}
               rows={d.items}
               rowId={(e) => e.id}
-              onSelect={(id) => void nav({ to: "/org/entities/$id", params: { id }, search: { as_of, known_at } })}
+              total={d.items.length}
+              hasMore={false}
+              onLoadMore={() => undefined}
+              empty={null}
+              onRowAction={(id) => void nav({ to: "/org/entities/$id", params: { id }, search: { as_of, known_at } })}
               columns={[
-                { header: t("entity.col.name"), cell: (e) => <><EntityName entity={e} /><NameProblems e={e} /></> },
-                { header: t("entity.col.kind"), cell: (e) => (e.biz_kind ? label(BIZ_KIND, e.biz_kind) : t("entity.kindUnset")), fit: true },
-                { header: t("entity.col.brn"), cell: (e) => <code>{primaryRegistration(e)?.brn?.display ?? "—"}</code>, fit: true },
-                { header: t("entity.col.workplaces"), cell: (e) => <data className="num" value={e.workplaces.length}>{t("entity.count.workplaces", { count: e.workplaces.length })}</data>, fit: true },
-                { header: t("entity.col.people"), cell: (e) => <data className="num" value={headcount(e)}>{t("entity.count.people", { count: headcount(e) })}</data>, fit: true, wide: true },
+                { id: "name", rowHeader: true, card: "title", width: "3fr", header: t("entity.col.name"), cell: (e) => <><EntityName entity={e} /><NameProblems e={e} /></> },
+                { id: "kind", card: "fact", width: 140, header: t("entity.col.kind"), cell: (e) => (e.biz_kind ? label(BIZ_KIND, e.biz_kind) : t("entity.kindUnset")) },
+                { id: "brn", card: "fact", width: 160, header: t("entity.col.brn"), cell: (e) => <code>{primaryRegistration(e)?.brn?.display ?? t("entityOps.info.none")}</code> },
+                { id: "workplaces", card: "fact", width: 120, header: t("entity.col.workplaces"), cell: (e) => <data className="num" value={e.workplaces.length}>{t("entity.count.workplaces", { count: e.workplaces.length })}</data> },
+                { id: "people", card: "omit", width: 120, header: t("entity.col.people"), cell: (e) => <data className="num" value={headcount(e)}>{t("entity.count.people", { count: headcount(e) })}</data> },
                 {
+                  id: "status",
                   header: t("entity.col.status"),
-                  fit: true,
+                  card: "status",
+                  width: "2fr",
+                  minWidth: 180,
                   cell: (e) => {
                     const r = primaryRegistration(e);
                     const v = r ? verificationState(r) : null;
                     const attention = e.registrations.filter((x) => x.needs_confirmation).length + e.workplaces.filter((w) => w.needs_confirmation).length;
                     return (
-                      <span className="row">
+                      <div className="row">
                         {v ? <Chip tone={v.tone}>{v.label}</Chip> : <Chip tone="warn">{t("workplace.noRegistration")}</Chip>}
                         {e.needs_confirmation && <Chip tone="warn">{t("entity.needsConfirmation")}</Chip>}
                         {attention > 0 && <Chip tone="warn">{t("entity.attention", { count: attention })}</Chip>}
-                      </span>
+                      </div>
                     );
                   },
                 },

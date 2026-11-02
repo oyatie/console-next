@@ -69,5 +69,5 @@ function Foot({ c, name }: { c: WorkplaceAttach; name: string }) {
         <Lock size={14} aria-hidden /> {t(c.mode === null ? "entityOps.attach.pickWay" : c.since > c.today ? "entityOps.attach.future" : "entityOps.attach.fillFirst")}
       </span>
     );
-  return <span>{t(c.mode === "NOT_REQUIRED" ? "workplace.answer.consequence" : "entityOps.attach.consequence", { name, date: fmtDate(c.since) })}</span>;
+  return <>{t(c.mode === "NOT_REQUIRED" ? "workplace.answer.consequence" : "entityOps.attach.consequence", { name, date: fmtDate(c.since) })}</>;
 }

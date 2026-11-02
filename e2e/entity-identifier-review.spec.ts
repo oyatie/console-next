@@ -28,7 +28,7 @@ async function capture(page: Page, name: string) {
 
 /** The operating requester submits evidence, completes its passkey ceremony and follows the durable receipt. */
 async function requestCorrection(page: Page, value: string, tag: string) {
-  await page.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.crn") }), exact: true }).click();
+  await page.getByRole("button", { name: t("uiRecordActions.of", { field: t("entityRecord.field.crn"), verb: t("uiRecordVerbs.verb.correct") }), exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "법인등록번호 정정", exact: true });
   await sheet.getByLabel("올바른 번호").fill(value);
   await option(page, "정정 사유", "서류 판독 잘못").click();

@@ -21,11 +21,11 @@ export default function EntityRecordGallery() {
   return (
     <Section title={t("entityRecord.cert.title")}>
       <div className={s.facts}>
-        <FactRow no={1} label={t("entityRecord.field.corpName")} action={{ kind: "fix", onPress: noop }}>{tg("sample.company")}</FactRow>
-        <FactRow no={3} label={t("entityRecord.field.openedOn")} action={{ kind: "cor", onPress: noop }}>{fmtDate("2020-03-02")}</FactRow>
-        <FactRow label={t("entityRecord.field.brn")} action={{ kind: "lock", onPress: noop }}>{FORMATS.bizRegNo.display("0000000000")}</FactRow>
+        <FactRow no={1} label={t("entityRecord.field.corpName")} action={{ verb: "edit", onPress: noop }}>{tg("sample.company")}</FactRow>
+        <FactRow no={3} label={t("entityRecord.field.openedOn")} action={{ verb: "correct", onPress: noop }}>{fmtDate("2020-03-02")}</FactRow>
+        <FactRow label={t("entityRecord.field.brn")} action={{ verb: "correct", onPress: noop }}>{FORMATS.bizRegNo.display("0000000000")}</FactRow>
         <FactRow no={8} label={t("entityRecord.field.issueReason")}>{t("enum.issueReason.NEW")}</FactRow>
-        <FactRow no={7} label={t("entityRecord.field.businessTypes")} wide action={{ kind: "fix", onPress: noop }}>{tg("sample.teamLong")}</FactRow>
+        <FactRow no={7} label={t("entityRecord.field.businessTypes")} wide action={{ verb: "edit", onPress: noop }}>{tg("sample.teamLong")}</FactRow>
       </div>
       <CreateItem no={4}>
         <span className="field__label">{t("entityCreate.field.crn")}</span>

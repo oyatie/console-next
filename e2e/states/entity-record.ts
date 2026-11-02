@@ -12,7 +12,7 @@ export const entityRecordStates = ["populated", "long", "loading", "failed", "re
 type EntityRecordState = typeof entityRecordStates[number];
 export const entityRecordPath = `/org/entities/${id(4100)}`;
 
-function entityRecord(state: EntityRecordState): Entity {
+export function entityRecord(state: EntityRecordState): Entity {
   const workers: Entity["regular_workers"] = { status: "HOLD", value: null, basis: "LSA_DECREE_7_2", missing: [], live_headcount: 0 };
   return {
     id: id(4100), biz_kind: "CORPORATION", can_manage: true, founding: false, identity_locked: false, needs_confirmation: false,

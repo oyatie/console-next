@@ -109,7 +109,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await go(admin, "/org/entities");
   await admin.getByRole("row", { name: /혼자상사/ }).click();
   // After go-live the number is locked: its only verb is the identifier correction.
-  await admin.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.brn") }), exact: true }).click();
+  await admin.getByRole("button", { name: t("uiRecordActions.of", { field: t("entityRecord.field.brn"), verb: t("uiRecordVerbs.verb.correct") }), exact: true }).click();
   const brn = admin.getByRole("dialog", { name: "사업자등록번호 정정" });
   await expect(brn).toContainText("운영 계정이 정정합니다");
   await expect(brn).not.toContainText(/결재|승인된 예외/);

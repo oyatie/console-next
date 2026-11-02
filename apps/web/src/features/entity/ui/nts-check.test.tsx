@@ -31,6 +31,10 @@ const button = (key: Parameters<typeof t>[0]) => view.buttons.find((p) => p.chil
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => { view.data = history(); view.queryError = null; view.error = null; view.reviewing = false; view.pending = false; view.buttons = []; view.mutate.mockClear(); view.setReviewing.mockClear(); });
 
+test("an unavailable authority check states the fallback once", () => {
+  expect(t("nts.fallback")).toBe("사업자등록증을 증빙으로 첨부하십시오.");
+});
+
 test("an unchecked number offers status and explicit validation actions", () => {
   expect(html()).toContain(t("enum.verification.NONE"));
   expect(button("nts.action.status")).toBeDefined();

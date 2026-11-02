@@ -25,7 +25,7 @@ export function UnattachedWorkplaces({ entities }: { entities: readonly LegalEnt
       <ul className="list-plain">
         {rows.map(({ e, w }) => (
           <li key={w.id} className="row">
-            <span className="grow">{entityName(e)} · <b>{workplaceName(w)}</b></span>
+            <div className="grow">{entityName(e)} · <b>{workplaceName(w)}</b></div>
             {w.headcount > 0 && <Chip tone="neutral">{t("entityOps.attach.people", { count: w.headcount })}</Chip>}
             {w.can_manage && (
               <Button onClick={() => setOpen({ entityId: e.id, workplaceId: w.id })} aria-label={t("entityOps.attach.actionOf", { name: workplaceName(w) })}>

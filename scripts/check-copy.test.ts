@@ -627,3 +627,20 @@ test("entity field emptiness has one marker", () => {
     expect(checkTerms([{ id, text: "—" }], [])).toEqual([]);
   }
 });
+
+test("entity field surfaces read their empty marker from the catalog", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  for (const file of [
+    "apps/web/src/features/entity/ui/entity-list.tsx",
+    "apps/web/src/features/entity/ui/record-cert-card.tsx",
+    "apps/web/src/features/entity/ui/record-entity-fields.tsx",
+    "apps/web/src/features/entity/ui/record-registration-fields.tsx",
+    "apps/web/src/features/entity/ui/record-registry-card.tsx",
+    "apps/web/src/features/entity/ui/record-vat-card.tsx",
+    "apps/web/src/features/entity/ui/record-workplaces-card.tsx",
+    "apps/web/src/features/entity/ui/workplace-facts.tsx",
+    "apps/web/src/features/entity/ui/workplace-insurance-table.tsx",
+    "apps/web/src/features/entity/ui/workplaces-tab.tsx",
+    "apps/web/src/features/structure/ui/registry-view.tsx",
+  ]) expect(readFileSync(path.join(root, file), "utf8"), file).not.toMatch(/(["'`])—\1/);
+});

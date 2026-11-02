@@ -19,7 +19,8 @@ export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
   const f = entityFields(e);
   const people = officers(e);
   const corp = e.biz_kind === "CORPORATION";
-  const fix = { kind: "fix" as const };
+  const none = t("entityOps.info.none");
+  const fix = { verb: "edit" as const };
   return (
     <section className="card" aria-labelledby="registry-title">
       <div className={s.cardHead}>
@@ -28,24 +29,24 @@ export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
       </div>
       <div className={s.facts}>
         {/* The optional short and English names, each its own row and its own edit. */}
-        {(e.biz_kind === "INDIVIDUAL" || e.registrations.length === 0) && <FactRow label={f.name.label} wide action={{ kind: "fix", onPress: () => act.field(f.name) }}>{c?.name || "—"}</FactRow>}
-        <FactRow label={f.displayName.label} action={{ kind: "fix", onPress: () => act.field(f.displayName) }}>{c?.display_name || "—"}</FactRow>
-        <FactRow label={f.englishName.label} action={{ kind: "fix", onPress: () => act.field(f.englishName) }}>{c?.english_name || "—"}</FactRow>
+        {(e.biz_kind === "INDIVIDUAL" || e.registrations.length === 0) && <FactRow label={f.name.label} wide action={{ ...fix, onPress: () => act.field(f.name) }}>{c?.name || none}</FactRow>}
+        <FactRow label={f.displayName.label} action={{ ...fix, onPress: () => act.field(f.displayName) }}>{c?.display_name || none}</FactRow>
+        <FactRow label={f.englishName.label} action={{ ...fix, onPress: () => act.field(f.englishName) }}>{c?.english_name || none}</FactRow>
         {corp && (
-          <FactRow label={t("entityRecord.field.incorporatedOn")} action={{ kind: "cor", onPress: () => act.field(f.incorporatedOn) }}>
-            <span className="num">{c?.incorporated_on ? fmtDate(c.incorporated_on) : "—"}</span>
+          <FactRow label={t("entityRecord.field.incorporatedOn")} action={{ verb: "correct", onPress: () => act.field(f.incorporatedOn) }}>
+            <span className="num">{c?.incorporated_on ? fmtDate(c.incorporated_on) : none}</span>
           </FactRow>
         )}
         {corp && <FactRow label={t("entityRecord.field.capital")} action={{ ...fix, onPress: () => act.field(f.capital) }}><span className="num">{f.capital.current}</span></FactRow>}
         {corp && <FactRow label={t("entityRecord.field.fiscalMonth")} action={{ ...fix, onPress: () => act.field(f.fiscalMonth) }}>{f.fiscalMonth.current}</FactRow>}
-        <FactRow label={t("entityRecord.field.representationMode")} action={{ ...fix, onPress: () => act.field(f.representatives) }}>{c?.representation_mode ? label(REPRESENTATION, c.representation_mode) : "—"}</FactRow>
+        <FactRow label={t("entityRecord.field.representationMode")} action={{ ...fix, onPress: () => act.field(f.representatives) }}>{c?.representation_mode ? label(REPRESENTATION, c.representation_mode) : none}</FactRow>
         <FactRow label={t("entityRecord.field.mainPhone")} action={{ ...fix, onPress: () => act.field(f.mainPhone) }}><span className="num">{f.mainPhone.current}</span></FactRow>
         {corp && (
           <FactRow label={t("entityRecord.field.directors")} action={c?.directors ? { ...fix, onPress: () => act.field(f.directors) } : null}>
             {people.map((d, i) => (
               <span key={i} className={s.line}>{d.role ? label(DIRECTOR_ROLE, d.role) : t("entityRecord.field.representatives")} {d.name}{d.appointed_on && <span className={s.sub}> {t("entityRecord.registry.appointed", { date: fmtDate(d.appointed_on) })}</span>}</span>
             ))}
-            {c?.directors == null || c.representatives == null ? t("entity.field.restricted") : people.length === 0 ? "—" : null}
+            {c?.directors == null || c.representatives == null ? t("entity.field.restricted") : people.length === 0 ? none : null}
           </FactRow>
         )}
         <FactRow label={t("entityRecord.registry.notCollected")}>
@@ -54,7 +55,7 @@ export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
           <span className={`${s.line} ${s.sub}`}>{t("entityRecord.registry.noAddress")}</span>
         </FactRow>
         {/* company-05: the number a founding recorded, while no certificate shows it; last, so it never moves the facts above. */}
-        {corp && e.registrations.length === 0 && <FactRow label={t("entityRecord.field.crn")}><span className="num">{e.crn?.display ?? "—"}</span></FactRow>}
+        {corp && e.registrations.length === 0 && <FactRow label={t("entityRecord.field.crn")}><span className="num">{e.crn?.display ?? none}</span></FactRow>}
       </div>
     </section>
   );

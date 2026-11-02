@@ -115,6 +115,8 @@ test("refreshing cached dates reserves the ribbon until the new markers arrive",
 
 test("the selected date retains its slot when an earlier change arrives", () => {
   for (const changeDates of [[today], ["2020-03-02", today]]) {
-    expect(render({ changeDates })).toMatch(new RegExp(`style="grid-column:5" data-change-date="${today}"`));
+    const html = render({ changeDates });
+    expect(html).toMatch(new RegExp(`data-slot="5"[^>]*data-change-date="${today}"`));
+    expect(html).not.toContain("style=");
   }
 });

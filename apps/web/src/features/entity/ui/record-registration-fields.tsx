@@ -15,14 +15,15 @@ import type { FieldSpec } from "./record-revise-sheet";
 import { toAddr, toKr, type Addr } from "../domain/record-values";
 
 
-const dash = (s: string | null | undefined) => s || "—";
-const issuedText = (on: string | null | undefined, office: string | null | undefined) => [on && fmtDate(on), office].filter(Boolean).join(" · ") || "—";
+const empty = () => t("entityOps.info.none");
+const dash = (s: string | null | undefined) => s || empty();
+const issuedText = (on: string | null | undefined, office: string | null | undefined) => [on && fmtDate(on), office].filter(Boolean).join(" · ") || empty();
 const TAXES: NtsTaxType[] = ["01", "02", "07", "04", "05", "06"];
-const yn = (b: boolean | null | undefined) => (b == null ? "—" : t(b ? "entityRecord.unitTaxation.yes" : "entityRecord.unitTaxation.no"));
+const yn = (b: boolean | null | undefined) => (b == null ? empty() : t(b ? "entityRecord.unitTaxation.yes" : "entityRecord.unitTaxation.no"));
 /** An issue date before the opening date (the server refuses it: issued_before_opened). */
 const issuedBefore = (v: { opened: string; issued: string }) => Boolean(v.issued && v.opened && v.issued < v.opened);
 const names = (v: string) => v.split(/[,·]/).map((n) => n.trim()).filter(Boolean);
-export const typesText = (rows: readonly { sector: string; item: string }[]) => rows.map((b) => `${b.sector} · ${b.item}`).join(", ") || "—";
+export const typesText = (rows: readonly { sector: string; item: string }[]) => rows.map((b) => `${b.sector} · ${b.item}`).join(", ") || empty();
 
 /** One certificate's own facts the record page edits (spec S3 items 3, 5, 7, 9, 10, 11, taxpayer type, issue date and tax office). */
 export function registrationFields(r: BusinessRegistration) {
@@ -44,14 +45,14 @@ export function registrationFields(r: BusinessRegistration) {
     } satisfies FieldSpec<string>,
     classificationReason: text(t("entity.name.classificationReason"), "classification_reason", c?.classification_reason ?? ""),
     taxType: {
-      label: t("entityRecord.field.taxType"), group, owner, current: c?.tax_type ? label(TAX_TYPE, c.tax_type) : "—", initial: c?.tax_type ?? null,
+      label: t("entityRecord.field.taxType"), group, owner, current: c?.tax_type ? label(TAX_TYPE, c.tax_type) : empty(), initial: c?.tax_type ?? null,
       edit: (v, set) => <ChoiceField label={t("entityRecord.field.taxType")} required options={TAXES.map((x) => ({ value: x, label: label(TAX_TYPE, x) }))} value={v} onChange={(x) => set(x as NtsTaxType)} />,
-      show: (v) => (v ? label(TAX_TYPE, v) : "—"), patch: (v) => ({ tax_type: v! }), ready: (v) => v !== null && v !== c?.tax_type,
+      show: (v) => (v ? label(TAX_TYPE, v) : empty()), patch: (v) => ({ tax_type: v! }), ready: (v) => v !== null && v !== c?.tax_type,
     } satisfies FieldSpec<NtsTaxType | null>,
     // Correct-only. The certificate's issue date rides along: one before the new opening date is refused (issued_before_opened), so
     // the sheet says so before saving and lets both be corrected together instead of dead-ending on the refusal.
     openedOn: {
-      label: t("entityRecord.field.openedOn"), group, owner, corOnly: true, current: c?.opened_on ? fmtDate(c.opened_on) : "—", initial: { opened: c?.opened_on ?? "", issued: c?.cert_issued_on ?? "" },
+      label: t("entityRecord.field.openedOn"), group, owner, corOnly: true, current: c?.opened_on ? fmtDate(c.opened_on) : empty(), initial: { opened: c?.opened_on ?? "", issued: c?.cert_issued_on ?? "" },
       edit: (v, set) => (
         <>
           <DateField label={t("entityRecord.field.openedOn")} required value={v.opened} onChange={(opened) => set({ ...v, opened })} today={todayKst()} max={todayKst()} />
@@ -61,7 +62,7 @@ export function registrationFields(r: BusinessRegistration) {
           )}
         </>
       ),
-      show: (v) => (v.opened ? fmtDate(v.opened) : "—") + (v.issued !== (c?.cert_issued_on ?? "") ? ` · ${t("entityRecord.field.issuedOn")} ${v.issued ? fmtDate(v.issued) : "—"}` : ""),
+      show: (v) => (v.opened ? fmtDate(v.opened) : empty()) + (v.issued !== (c?.cert_issued_on ?? "") ? ` · ${t("entityRecord.field.issuedOn")} ${v.issued ? fmtDate(v.issued) : empty()}` : ""),
       patch: (v) => ({ opened_on: v.opened, cert_issued_on: v.issued || null }),
       ready: (v) => v.opened !== "" && v.opened <= todayKst() && (v.opened !== c?.opened_on || v.issued !== (c?.cert_issued_on ?? "")) && !issuedBefore(v),
     } satisfies FieldSpec<{ opened: string; issued: string }>,

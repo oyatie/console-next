@@ -67,7 +67,7 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
   slow = false;
 
   // (2) 개업연월일 정정 after a 발급일: the sheet holds the 발급일 too and says why before anything is sent.
-  await a.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.openedOn") }), exact: true }).click();
+  await a.getByRole("button", { name: t("uiRecordActions.of", { field: t("entityRecord.field.openedOn"), verb: t("uiRecordVerbs.verb.correct") }), exact: true }).click();
   const opened = sheet(a, "개업연월일 수정");
   await fillDate(opened, "2020-03-03", "개업연월일");
   await expect(opened.getByText("발급일이 개업일보다 앞섭니다")).toBeVisible();

@@ -18,8 +18,9 @@ import { directorsText, repsText } from "../present";
 import { latinName, personName } from "../../../reference/entity/domain/names";
 import type { FieldSpec } from "./record-revise-sheet";
 
-const dash = (s: string | null | undefined) => s || "—";
-const won = (n: number | null | undefined) => (n == null ? "—" : t("entity.won", { amount: fmtNumber(n) }));
+const empty = () => t("entityOps.info.none");
+const dash = (s: string | null | undefined) => s || empty();
+const won = (n: number | null | undefined) => (n == null ? empty() : t("entity.won", { amount: fmtNumber(n) }));
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
 /** The entity-level facts the record page edits (spec S3 registry and entity basics and the certificate's ①②⑥). */
@@ -64,9 +65,9 @@ export function entityFields(e: LegalEntity) {
       show: (v) => won(v ? Number(v) : null), patch: (v) => ({ capital_won: v ? Number(v) : null }), ready: (v) => (v ? Number(v) : null) !== (c?.capital_won ?? null),
     } satisfies FieldSpec<string>,
     fiscalMonth: {
-      label: t("entityRecord.field.fiscalMonth"), group: registry, owner: { kind: "entity" }, current: c?.fiscal_year_end_month ? t("entity.month", { m: c.fiscal_year_end_month }) : "—", initial: c?.fiscal_year_end_month ? String(c.fiscal_year_end_month) : null,
+      label: t("entityRecord.field.fiscalMonth"), group: registry, owner: { kind: "entity" }, current: c?.fiscal_year_end_month ? t("entity.month", { m: c.fiscal_year_end_month }) : empty(), initial: c?.fiscal_year_end_month ? String(c.fiscal_year_end_month) : null,
       edit: (v, set) => <ChoiceField label={t("entityRecord.field.fiscalMonth")} required options={MONTHS.map((m) => ({ value: m, label: t("entity.month", { m: Number(m) }) }))} value={v} onChange={set} />,
-      show: (v) => (v ? t("entity.month", { m: Number(v) }) : "—"), patch: (v) => ({ fiscal_year_end_month: v ? Number(v) : null }), ready: (v) => v !== null && Number(v) !== c?.fiscal_year_end_month,
+      show: (v) => (v ? t("entity.month", { m: Number(v) }) : empty()), patch: (v) => ({ fiscal_year_end_month: v ? Number(v) : null }), ready: (v) => v !== null && Number(v) !== c?.fiscal_year_end_month,
     } satisfies FieldSpec<string | null>,
     mainPhone: {
       label: t("entityRecord.field.mainPhone"), group: registry, owner: { kind: "entity" }, current: dash(c?.main_phone?.display), initial: c?.main_phone ? toDomestic(c.main_phone.value) : "",
@@ -75,14 +76,14 @@ export function entityFields(e: LegalEntity) {
     } satisfies FieldSpec<string>,
     // company-15/-19: the main industry as its KSIC code, typed as printed (no bundled list; the server marks it unchecked).
     mainKsic: {
-      label: t("entityRecord.vat.mainKsic"), group: registry, owner: { kind: "entity" }, current: c?.main_ksic ? `${c.main_ksic.code} · ${c.main_ksic.label}` : "—", initial: c?.main_ksic?.code ?? "",
+      label: t("entityRecord.vat.mainKsic"), group: registry, owner: { kind: "entity" }, current: c?.main_ksic ? `${c.main_ksic.code} · ${c.main_ksic.label}` : empty(), initial: c?.main_ksic?.code ?? "",
       edit: (v, set) => <Field label={t("entityRecord.vat.mainKsic")} required={false} hint={t("entityOps.code.typed")}>{(f) => <TextInput {...f} className="code" maxLength={6} value={v} onChange={(x) => set(x.target.value.trim().toUpperCase())} />}</Field>,
       show: (v) => dash(v), patch: (v) => ({ main_ksic: v ? { code: v } : null }), ready: (v) => v !== (c?.main_ksic?.code ?? "") && (v === "" || /^[A-U]?\d{2,5}$/.test(v)),
     } satisfies FieldSpec<string>,
     incorporatedOn: {
-      label: t("entityRecord.field.incorporatedOn"), group: registry, owner: { kind: "entity" }, corOnly: true, current: c?.incorporated_on ? fmtDate(c.incorporated_on) : "—", initial: c?.incorporated_on ?? "",
+      label: t("entityRecord.field.incorporatedOn"), group: registry, owner: { kind: "entity" }, corOnly: true, current: c?.incorporated_on ? fmtDate(c.incorporated_on) : empty(), initial: c?.incorporated_on ?? "",
       edit: (v, set) => <DateField label={t("entityRecord.field.incorporatedOn")} required value={v} onChange={set} today={todayKst()} max={todayKst()} />,
-      show: (v) => (v ? fmtDate(v) : "—"), patch: (v) => ({ incorporated_on: v || null }), ready: (v) => v !== "" && v !== c?.incorporated_on && v <= todayKst(),
+      show: (v) => (v ? fmtDate(v) : empty()), patch: (v) => ({ incorporated_on: v || null }), ready: (v) => v !== "" && v !== c?.incorporated_on && v <= todayKst(),
     } satisfies FieldSpec<string>,
     directors: {
       label: t("entityRecord.field.directors"), group: registry, owner: { kind: "entity" }, current: directorsText(c?.directors ?? []),
@@ -96,10 +97,10 @@ export function entityFields(e: LegalEntity) {
       dateHint: t("entityRecord.field.repsDateHint"),
     } satisfies FieldSpec<DirectorDraft[]>,
     largeGroup: {
-      label: t("entityRecord.field.largeGroup"), group: t("entityRecord.group.vat"), owner: { kind: "entity" }, current: c?.large_group_member == null ? "—" : t(c.large_group_member ? "entityRecord.largeGroup.yes" : "entityRecord.largeGroup.no"),
+      label: t("entityRecord.field.largeGroup"), group: t("entityRecord.group.vat"), owner: { kind: "entity" }, current: c?.large_group_member == null ? empty() : t(c.large_group_member ? "entityRecord.largeGroup.yes" : "entityRecord.largeGroup.no"),
       initial: c?.large_group_member == null ? null : c.large_group_member ? "Y" : "N",
       edit: (v, set) => <ChoiceField label={t("entityRecord.field.largeGroup")} required options={[{ value: "Y", label: t("entityRecord.largeGroup.yes") }, { value: "N", label: t("entityRecord.largeGroup.no") }]} value={v} onChange={set} />,
-      show: (v) => (v ? t(v === "Y" ? "entityRecord.largeGroup.yes" : "entityRecord.largeGroup.no") : "—"), patch: (v) => ({ large_group_member: v === "Y" }), ready: (v) => v !== null && (v === "Y") !== c?.large_group_member,
+      show: (v) => (v ? t(v === "Y" ? "entityRecord.largeGroup.yes" : "entityRecord.largeGroup.no") : empty()), patch: (v) => ({ large_group_member: v === "Y" }), ready: (v) => v !== null && (v === "Y") !== c?.large_group_member,
     } satisfies FieldSpec<string | null>,
   };
 }
