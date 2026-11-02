@@ -34,6 +34,7 @@ const attendance = createRoute({
     person: str(s.person),
     detail: s.detail === true || s.detail === "1" ? true : undefined,
     issues: s.issues === true || s.issues === "1" ? true : undefined,
+    mark: str(s.mark),
     unscheduled: s.unscheduled === true || s.unscheduled === "1" ? true : undefined,
   }),
   component: () => {

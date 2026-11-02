@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
+import { Chip } from "../../../ui/chip";
 import { Field, TextInput } from "../../../ui/field/field";
 import type { BoardRow } from "../api";
 import { ATTENDANCE_MARK, labeled } from "../../../lib/labels";
@@ -33,7 +34,7 @@ export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }:
         {row.own && <span className="muted"> {t("attendanceRecords.grid.ownTag")}</span>}
       </span>
       <DayBar day={row.day} />
-      <span>{mark && <strong>{t(`attendanceRecords.mark.${mark}`)} </strong>}{problemText(row)}</span>
+      <span>{mark && <strong>{t(`attendanceRecords.mark.${mark}`)} </strong>}{problemText(row)}{row.day.entry && <><br /><Chip>{t(`attendanceRecords.source.${row.day.entry.source}`)}</Chip></>}</span>
       {row.day.plan.kind === "NO_SCHEDULE" ? (
         <Button size="sm" onClick={onAssign}>{t("attendanceRecords.unscheduled.assign")}</Button>
       ) : inline ? (

@@ -27,7 +27,7 @@ import { OvertimeTab } from "./overtime-tab";
 
 export type View = "calendar" | "types" | "crews" | "holidays" | "public";
 export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close";
-export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean; unscheduled?: boolean };
+export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean; mark?: string; unscheduled?: boolean };
 
 const route = getRouteApi("/app/attendance");
 /** What the page has open over it: one sheet at a time (no sheet over a sheet). */

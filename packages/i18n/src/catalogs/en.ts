@@ -29,6 +29,7 @@ import { enAttendanceSchedule } from "./en/attendance-schedule";
 import { enAttendancePatterns } from "./en/attendance-patterns";
 import { enAttendanceHolidays } from "./en/attendance-holidays";
 import { enAttendanceCrews } from "./en/attendance-crews";
+import { enAttendanceOverview } from "./en/attendance-overview";
 import { enAttendanceRecords } from "./en/attendance-records";
 import { enImport } from "./en/import";
 import { enImportSheet } from "./en/import-sheet";
@@ -141,6 +142,7 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enAttendanceHolidays,
   ...enAttendanceCrews,
   ...enAttendanceRecords,
+  ...enAttendanceOverview,
   ...enImport,
   ...enImportRollback,
   ...enImportSheet,

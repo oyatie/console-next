@@ -7,12 +7,14 @@ import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { DockSheet } from "../../../ui/dock-sheet/dock-sheet";
 import { ItemList } from "../../../ui/item-list/item-list";
+import { Chip } from "../../../ui/chip";
+import { Table } from "../../../ui/table";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { Tabs } from "../../../ui/tabs/tabs";
 import { personMonthQuery, type Day, type Entry } from "../api";
 import { duration } from "../domain/minutes";
 import { closed } from "../domain/month-state";
-import { dateText, entryText, shiftText, refusalText } from "../present";
+import { clockText, dateText, entryText, shiftText, refusalText } from "../present";
 import { DayBar, DayBars } from "./day-bar";
 import { EntryForm } from "./entry-form";
 import { MarkChip } from "./mark-chip";
@@ -40,6 +42,7 @@ export function DayDock({ employeeId, date, own, onClose, onRewrite, onDone }: {
   const day = month.data?.days.find((d) => d.date === date);
   const history = (month.data?.history ?? []).filter((h) => h.date === date);
   const entry = day?.entry ?? null;
+  const sources = entry && !entry.undone && entry.kind !== "VOID" ? [entry] : [];
   if (mode !== "view" && entry) {
     return <EntryForm employeeId={employeeId} mode={mode} entry={entry} name={month.data?.name ?? ""} date={date} planKind={day?.plan.kind} onClose={() => setMode("view")} onDone={(m) => (setMode("view"), onDone(m))} />;
   }
@@ -72,7 +75,7 @@ export function DayDock({ employeeId, date, own, onClose, onRewrite, onDone }: {
             onSelect={setTab}
             items={(["day", "source", "history"] as const).map((id) => ({ id, label: t(`attendanceRecords.day.tab.${id}`) }))}
           >
-            {(id) => (id === "day" && day ? <DayPanel day={day} /> : id === "source" || id === "history" ? <History rows={id === "source" ? history.filter((h) => !h.entry.undone && h.entry.kind !== "VOID").slice(0, 1) : history.map((h) => h.entry)} /> : null)}
+            {(id) => (id === "day" && day ? <DayPanel day={day} /> : id === "source" || id === "history" ? <History rows={id === "source" ? sources : history.map((h) => h.entry)} /> : null)}
           </Tabs>
         )}
       </QueryState>
@@ -89,27 +92,34 @@ function DayPanel({ day }: { day: Day }) {
         items={[
           { key: "plan", label: t("attendanceRecords.day.plan"), value: day.plan.shift ? shiftText(day.plan.shift) : t(`attendance.dayKind.${day.plan.kind}`) },
           { key: "recorded", label: t("attendanceRecords.day.recorded"), value: day.entry ? entryText(day.entry.kind, day.entry.segments) : t("attendanceRecords.day.none") },
-          { key: "recognised", label: t("attendanceRecords.day.recognised"), value: t("attendanceRecords.day.recognisedValue", { recognised: duration(r.recognised), regular: duration(r.regular) }) },
+          { key: "recognised", label: t("attendanceRecords.day.recognised"), value: day.entry ? t("attendanceOverview.day.sourceBasis", { source: t(`attendanceRecords.source.${day.entry.source}`), recognised: duration(r.recognised), regular: duration(r.regular), open: duration(r.excess_open ?? r.early_unrecognised + r.late_unrecognised) }) : t("attendanceRecords.day.recognisedValue", { recognised: duration(r.recognised), regular: duration(r.regular) }) },
           { key: "outside", label: t("attendanceRecords.day.outside"), value: t("attendanceRecords.day.outsideValue", { outside: duration(r.outside_scheduled ?? r.approved + r.early_unrecognised + r.late_unrecognised), open: duration(r.excess_open ?? r.early_unrecognised + r.late_unrecognised) }) },
           { key: "notWorked", label: t("attendanceRecords.day.notWorked"), value: t("attendanceRecords.day.notWorkedValue", { late: r.late_in, early: r.early_out, away: r.away }) },
+          ...(!day.intervals ? [{ key: "minutes", label: t("attendanceOverview.day.minutes"), value: t("attendanceOverview.day.noMinutes") }] : []),
         ]}
       />
+      {day.intervals ? <Table label={t("attendanceOverview.day.minutes")} rows={day.intervals} rowId={i => `${i.start}-${i.end}-${i.category}`} columns={[
+        { header: t("attendanceOverview.day.interval"), card: "title", rowHeader: true, cell: i => t("attendancePatterns.shift.span", { start: clockText(i.start), end: clockText(i.end) }) },
+        { header: t("attendanceOverview.day.minuteCount"), card: "fact", cell: i => t("attendanceOverview.day.minuteValue", { count: i.minutes }) },
+        { header: t("attendance.col.kind"), card: "fact", cell: i => t(`attendanceOverview.interval.${i.category}`) },
+        { header: t("attendanceRecords.day.recognised"), card: "status", cell: i => t(i.recognised ? "attendanceOverview.day.counted" : "attendanceOverview.day.excluded") },
+        { header: t("attendanceOverview.day.reason"), card: "fact", cell: i => i.reason },
+      ]} /> : null}
       {day.marks.length > 0 && <div className="row">{day.marks.map((m) => <MarkChip key={m} mark={m} />)}</div>}
     </>
   );
 }
 
-function History({ rows }: { rows: Entry[] | { entry: Entry }[] }) {
-  const list = rows.map((x) => ("entry" in x ? x.entry : x));
-  if (!list.length) return <p className="muted">{t("attendanceRecords.day.noHistory")}</p>;
+function History({ rows }: { rows: Entry[] }) {
+  if (!rows.length) return <p className="muted">{t("attendanceRecords.day.noHistory")}</p>;
   return (
     <ItemList
       label={t("attendanceRecords.day.historyLabel")}
-      items={list.map((e) => ({
+      items={rows.map((e) => ({
         key: e.id,
         text: (
           <>
-            {e.kind === "VOID" || e.undone ? <s>{entryText(e.kind, e.segments)}</s> : entryText(e.kind, e.segments)} · {t(`attendanceRecords.source.${e.source}`)} · {t(`attendanceRecords.evidence.${e.evidence_kind}`)}
+            {e.kind === "VOID" || e.undone ? <s>{entryText(e.kind, e.segments)}</s> : entryText(e.kind, e.segments)} · <Chip>{t(`attendanceRecords.source.${e.source}`)}</Chip> · {t(`attendanceRecords.evidence.${e.evidence_kind}`)}
             {e.reason && <> · {e.reason}</>}
             {e.undone && <> · {t("attendanceRecords.day.undone")}</>}
           </>

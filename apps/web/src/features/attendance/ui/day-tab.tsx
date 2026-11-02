@@ -21,6 +21,7 @@ import { DayDetail } from "./day-detail";
 import { DayDock } from "./day-dock";
 import { DayBars } from "./day-bar";
 import { DayRow } from "./day-row";
+import { IssueGroups } from "./issue-groups";
 import { MonthStateBanner } from "./month-state-banner";
 import { SaveDock } from "./save-dock";
 import { ScopePicker } from "./scope-picker";
@@ -43,8 +44,8 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
-  // A different date has different notices above the ledger; reserve its grid instead of drawing the previous date's answer.
-  const board = useQuery({ ...dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined), placeholderData: previous => previous?.date === date ? previous : undefined });
+  // A changed date, scope or mark must not show rows and counts from the previous read.
+  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined, search.mark));
   const rows = useMemo(() => board.data?.groups.flatMap(g => g.rows) ?? [], [board.data]);
   const kindOf = usePlanKinds(rows, date);
   const store = useDrafts(`day:${date}`, rows);
@@ -71,7 +72,8 @@ export function DayTab({ head }: { head?: ReactNode }) {
           <span className={s.stepText}>{dateText(date)}</span>
           <IconButton size="sm" label={t("attendanceRecords.toolbar.nextDay")} onClick={() => go({ date: addDays(date, 1) })}><ChevronRight size={16} aria-hidden /></IconButton>
         </div>
-        <ToggleButton size="sm" pressed={!!search.issues} onClick={() => go({ issues: search.issues ? undefined : true })}>{t("attendanceRecords.board.issuesOnly")}</ToggleButton>
+        <ToggleButton size="sm" pressed={!!search.issues} onClick={() => go({ issues: search.issues ? undefined : true, mark: undefined })}>{t("attendanceRecords.board.issuesOnly")}</ToggleButton>
+        {search.mark && <Button size="sm" variant="ghost" onClick={() => go({ mark: undefined })}>{t("attendanceOverview.issues.clear")}</Button>}
         <ToggleButton size="sm" pressed={!!search.unscheduled} onClick={() => go({ unscheduled: search.unscheduled ? undefined : true })}>{t("attendanceRecords.unscheduled.only")}</ToggleButton>
         <ToggleButton size="sm" pressed={!search.detail} onClick={() => go({ detail: undefined })}>{t("attendanceRecords.board.simple")}</ToggleButton>
         <ToggleButton size="sm" pressed={!!search.detail} onClick={() => go({ detail: true })}>{t("attendanceRecords.board.detail")}</ToggleButton>
@@ -94,10 +96,11 @@ export function DayTab({ head }: { head?: ReactNode }) {
                     {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
                   </p>
                   {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
+                  {b.issue_groups && b.issue_groups.some(g => g.count > 0) && <IssueGroups groups={b.issue_groups} selected={search.mark} onSelect={mark => go({ mark, issues: true, unscheduled: undefined })} />}
                   {b.groups.length > 0 && <div className="muted"><strong>{t("attendanceRecords.grammar.label")}</strong><p id={grammarHintId}>{t("attendanceRecords.grammar.hint")}</p></div>}
                   {!b.groups.length ? (
                     search.issues || search.unscheduled ? (
-                      <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
+                      <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, mark: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
                     ) : (
                       <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
                     )

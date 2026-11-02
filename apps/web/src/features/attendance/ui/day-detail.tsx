@@ -4,6 +4,7 @@ import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Card } from "../../../ui/card/card";
+import { Chip } from "../../../ui/chip";
 import { LongTable, TableControl, type LongColumn } from "../../../ui/long-table/long-table";
 import { rowIdOf } from "../../../ui/long-table/row-keys";
 import { Table } from "../../../ui/table";
@@ -71,7 +72,7 @@ export function DayDetail({ board, store, grammarHintId, onAssign, onNote }: { b
     { id: "recorded", width: 160, header: t("attendanceRecords.detail.recorded"), cell: (r) => (r.day.entry ? entryText(r.day.entry.kind, r.day.entry.segments) : "–") },
     { id: "recognised", width: 160, header: t("attendanceRecords.detail.recognised"), cell: recognised },
     { id: "result", width: 160, header: t("attendanceRecords.detail.result"), cell: (r) => r.day.marks.filter(m => m !== "NO_SCHEDULE").map((m) => <MarkChip key={m} mark={m} />) },
-    { id: "source", width: 160, header: t("attendanceRecords.detail.source"), cell: (r) => (r.day.entry ? t(`attendanceRecords.source.${r.day.entry.source}`) : "–") },
+    { id: "source", width: 160, header: t("attendanceRecords.detail.source"), cell: (r) => (r.day.entry ? <Chip>{t(`attendanceRecords.source.${r.day.entry.source}`)}</Chip> : "–") },
   ];
   const acceptPaste = () => {
     if (!pasting) return;
