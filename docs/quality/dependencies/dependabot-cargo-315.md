@@ -4,15 +4,15 @@
 Reviewed 2026-11-02 against dev `42e2bb645` and [#315](https://github.com/oyatie/console-next/pull/315)
 head `f8a56ce5948e878f8d9a2b411787e70dbad5b050`.
 
-Disposition: **close-with-reason; Apalis needs its own migration slice**. No Cargo manifests,
-lockfiles, application behavior or dependency approvals change in this slice.
+Disposition: **close-with-reason; Apalis needs its own migration slice**. Keep the backend
+pins unchanged and adopt the compatible desktop patches separately, without changing dependency approvals.
 
 Ready-to-paste close reason:
 
 > Closing this mixed group: Apalis 1.0.0 needs an audited schema/ACL and adapter migration,
-> beyond a version bump. Stable Apalis updates are temporarily ignored until that migration
-> passes upgrade and runtime-role tests. Regenerate the Tauri 2.5.4 single-instance and
-> 2.6.3 deep-link patches separately; those patches remain eligible for Dependabot updates.
+> beyond a version bump. All Apalis updates are temporarily ignored until that migration
+> passes upgrade and runtime-role tests. The Tauri 2.5.4 single-instance and
+> 2.6.3 deep-link patches are adopted separately without the Apalis updates.
 
 ## Reproduced failure
 
@@ -47,8 +47,10 @@ and [1.0.0](https://crates.io/api/v1/crates/apalis-postgres/1.0.0/download) crat
 
 ## Follow-up and revisit trigger
 
-Keep the current exact prerelease pins. `.github/dependabot.yml` ignores versions
-`>=1.0.0` of `apalis`, `apalis-postgres` and `apalis-sql`; other Cargo bumps, including
+Keep the current exact prerelease pins. `.github/dependabot.yml` ignores all updates
+of `apalis`, `apalis-postgres` and `apalis-sql`, including prereleases: [#338](https://github.com/oyatie/console-next/pull/338)
+re-proposed `apalis` rc.12 and `apalis-postgres` rc.10 alongside `apalis-sql` rc.9,
+again resolving `apalis-core` to 1.0.0 and failing at the same imports. Other Cargo bumps, including
 both Tauri patches, remain enabled. Remove these ignores when a dedicated migration
 slice preserves existing queued jobs, idempotency, timers, restart/crash recovery,
 ledger tamper refusals and runtime-role isolation on both upgraded and fresh databases.
