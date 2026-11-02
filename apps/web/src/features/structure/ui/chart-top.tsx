@@ -2,6 +2,7 @@ import { ChevronRight, Maximize2, Search } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { TextInput } from "../../../ui/field/field";
+import { HeadcountBasis } from "../../../reference/org/ui/headcount-basis";
 import type { Depth } from "../domain/layout";
 import { pathTo, type ChartNode, type Structure } from "../domain/model";
 import type { ChartState } from "./use-chart-state";
@@ -35,6 +36,7 @@ export function ChartTop({ s, c, onFocus, onFind }: { s: Structure; c: ChartStat
         <Button variant="ghost" className={`${css.floatBtn} card`} onClick={() => onFocus(undefined)}><Maximize2 size={16} aria-hidden />{t("structure.top.all")}</Button>
       )}
       <span className="grow" />
+      <HeadcountBasis>{t("structure.headcount.total", { count: c.focus.headcount })}</HeadcountBasis>
       <div className={css.findWrap}>
         <label className={`${css.find} card`} htmlFor="structure-find">
           <Search size={16} aria-hidden />
@@ -82,7 +84,6 @@ export function FindStatus({ s, c }: { s: Structure; c: ChartState }) {
           <span className={css.findPer}>
             {[...c.hits.perEntity].map(([id, n]) => <span key={id}>{t("structure.find.perEntity", { name: s.byId.get(id)?.name ?? "", count: n })}</span>)}
           </span>
-          <span>{t("structure.find.keys")}</span>
         </>
       )}
     </p>

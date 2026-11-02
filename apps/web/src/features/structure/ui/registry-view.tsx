@@ -6,6 +6,7 @@ import { Button, ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { place } from "../../../ui/org-canvas/place";
+import { HeadcountBasis } from "../../../reference/org/ui/headcount-basis";
 import { type ChartNode, type Structure } from "../domain/model";
 import { registryRows, vacantHeads, type Level, type ListFilter } from "../domain/registry";
 import { temporalLabel, unitCounts } from "../present";
@@ -68,7 +69,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
         : n.kind === "dept" ? <HeadCell n={n} readOnly={s.readOnly} />
         : "—",
     },
-    { id: "people", width: 180, header: t("structure.list.people"), cell: (n) => <span className="num">{unitCounts(n)}</span> },
+    { id: "people", width: 180, header: <HeadcountBasis>{t("structure.list.people")}</HeadcountBasis>, cell: (n) => <span className="num">{unitCounts(n)}</span> },
     { id: "site", width: 160, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? "—" : "—" },
     { id: "chips", width: "2fr", minWidth: 160, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : "—" },
     ...(!s.readOnly ? [{ id: "order", width: 72, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),

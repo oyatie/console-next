@@ -36,12 +36,9 @@ export function OutlineView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Comm
           <span className="grow" />
           <Button variant="ghost" aria-label={t("structure.outline.close")} onClick={() => void navigate({ search: (q) => ({ ...q, view: undefined }) })}><X size={16} aria-hidden /></Button>
         </div>
-        <p className={css.intro}>{t("structure.outline.intro")}</p>
         <OutlineRows s={s} cmd={cmd} cursor={cursor} setCursor={setCursor} closed={closed} setClosed={setClosed} edit={edit} setEdit={setEdit} sel={sel} onSelect={onSelect} />
         <div className={css.foot}>
           {cmd.error ? <CommandError error={cmd.error} /> : cmd.last && <Receipt state="applied" message={cmd.last.message} undoing={cmd.undoing} onUndo={cmd.undo} onDismiss={cmd.dismiss} />}
-          <p className={css.keys}>{t("structure.outline.keys")}</p>
-          {at?.kind === "site" && edit?.kind === "new" && <p className={css.keys}>{t("structure.outline.tabInert")}</p>}
         </div>
       </section>
       {place && <ChartView key={place.id} quiet s={s} cmd={cmd} focusId={place.id} onFocus={() => undefined} sel={sel} onSelect={onSelect} />}

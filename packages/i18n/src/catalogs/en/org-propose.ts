@@ -28,7 +28,6 @@ export const enOrgPropose: Record<keyof typeof koOrgPropose, string> = {
   "orgPropose.ctx.moreNames": "{count, number} more",
   "orgPropose.ctx.none": "None",
   "orgPropose.ctx.chosenUnit": "the selected unit",
-  "orgPropose.ctx.headcountNote": "Counts are everyone who has not left (people on leave included)",
 
   "orgPropose.field.name": "{kind} name",
   "orgPropose.field.newName": "New name",

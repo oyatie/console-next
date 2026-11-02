@@ -3,13 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog } from "@console/i18n";
 import { FirstRun } from "./first-run";
-import { RootActions } from "./root-actions";
-import { SetupPanel } from "./setup-panel";
 import { SiteSlot } from "./site-slot";
 import { buildStructure } from "../domain/model";
 import { OutlineView } from "./outline-view";
 import type { Commands } from "./use-structure-commands";
-import type { Structure } from "../domain/model";
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useNavigate: () => vi.fn() }), Link: ({ children, to, hash, className }: { children: import("react").ReactNode; to: string; hash?: string; className?: string }) => <span data-href={`${to}${hash ? `#${hash}` : ""}`} className={className}>{children}</span> }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { steps: [] } }) }));
 beforeAll(() => loadCatalog("ko"));
@@ -19,14 +16,10 @@ test("first run has one primary action and leaves importing to the header", () =
   expect(html.match(/data-href=/g)).toHaveLength(1);
   expect(html).toContain('data-href="/org/entities/new"');
   expect(html).not.toMatch(/href="\/(org\/(import|paste)|people\/import)"/);
-});
-test("canvas and setup add no import entry beside the header menu", () => {
-  const root = renderToStaticMarkup(<RootActions box={{ x: 0, y: 0, w: 500, h: 100 } as never} setup zoom={1} visible={{ x: 0, y: 0, w: 500, h: 500 }} />);
-  const setup = renderToStaticMarkup(<SetupPanel s={{ root: { headcount: 0 }, counts: { entities: 1, sites: 1, depts: 0 } } as Structure} fixLink={() => null} />);
-  for (const html of [root, setup]) {
-    expect(html).not.toContain('data-href="/org#structure-import"');
-    expect(html).not.toMatch(/href="\/(org\/(import|paste)|people\/import)"/);
-  }
+  expect(html).not.toMatch(/<ol|<h3|되돌릴 수 있습니다|조직 구조는 법인/);
+  expect(html.match(/<h2/g)).toHaveLength(1);
+  expect(html).toContain('<h2 id="first-run-title"');
+  expect(html.match(/<span class="muted"/g)).toHaveLength(1);
 });
 
 test("a legal entity without workplaces offers only workplace creation in its slot", () => {

@@ -51,7 +51,6 @@ export function unitKit(units: Unit[], v: Values, open: Summary[], skip?: string
     rollup: (u: Unit) => counts.get(u.id) ?? u.headcount,
     then: v.date ? t("orgPropose.diff.then", { date: fmtDate(v.date) }) : t("orgPropose.diff.thenNoDate"),
     consequence: (middle?: string) => consequenceOf(v.date, middle, routed),
-    headcountNote: t("orgPropose.ctx.headcountNote"),
     /** Open changes already on this unit: a caution, the server does not refuse a second one yet. */
     onTarget: (u: Unit) => open.filter((c) => c.target.kind === "ORG_UNIT" && c.target.ref === u.id && c.id !== skip),
     /** A unit among `siblings` (under `parentId`) with the typed name, else an open create there or a rename using it. */

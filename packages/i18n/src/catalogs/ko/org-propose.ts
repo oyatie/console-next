@@ -27,7 +27,6 @@ export const koOrgPropose = {
   "orgPropose.ctx.moreNames": "외 {count, plural, other {#명}}",
   "orgPropose.ctx.none": "없음",
   "orgPropose.ctx.chosenUnit": "선택한 조직",
-  "orgPropose.ctx.headcountNote": "인원은 퇴직자를 제외한 인원입니다(휴직 포함)",
 
   "orgPropose.field.name": "{kind} 이름",
   "orgPropose.field.newName": "새 이름",

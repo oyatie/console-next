@@ -164,7 +164,7 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
     await expect(page.getByRole("group", { name: t("structure.views"), exact: true })).toBeVisible();
     await expect(page.getByRole("main").locator('[aria-busy="true"]').last()).toBeVisible();
     const phase = page.locator('.page__head [data-loading]');
-    await expect(phase).toHaveText(t("structure.effect.operating"));
+    await expect(phase).toHaveText(t("structure.phase.operatingChip"));
     await expect(phase).toBeHidden();
     expect(await geometry()).toEqual(populated);
     await expectStable(page, "org: loading head");
@@ -262,6 +262,16 @@ test("org: a short setup canvas keeps its workplace selectable @ui-state", async
     await find.press("Enter");
     await expect(site).toHaveAttribute("data-s", /\bnow\b/);
     await find.press("Escape");
+    const contained = await site.evaluate(el => {
+      const canvas = el.closest("section[aria-label]")!;
+      const style = getComputedStyle(canvas);
+      return { node: el.getBoundingClientRect().toJSON(), canvas: canvas.getBoundingClientRect().toJSON(),
+        tolerance: Math.max(parseFloat(style.borderLeftWidth), parseFloat(style.borderTopWidth), 1 / devicePixelRatio) };
+    });
+    expect(contained.node.x).toBeGreaterThanOrEqual(contained.canvas.x - contained.tolerance);
+    expect(contained.node.y).toBeGreaterThanOrEqual(contained.canvas.y - contained.tolerance);
+    expect(contained.node.right).toBeLessThanOrEqual(contained.canvas.right + contained.tolerance);
+    expect(contained.node.bottom).toBeLessThanOrEqual(contained.canvas.bottom + contained.tolerance);
     await site.click({ trial: true, timeout: 5000 });
     await site.click({ timeout: 5000 });
     await expect(site).toHaveAttribute("aria-selected", "true");

@@ -40,11 +40,17 @@ beforeEach(() => {
   state.error = new ApiError(503, "service_unavailable", "read failed", [], "structure-read-reference");
   Object.assign(state.dates, { data: undefined, error: new ApiError(503, "service_unavailable", "dates failed", [], "dates-read-reference"), status: "error", fetchStatus: "idle", isSuccess: false, isError: true, isFetching: false, isFetchedAfterMount: true });
 });
-const render = () => renderToStaticMarkup(<StructurePage fixLink={() => null} proposal={null} panel={() => null} sheets={null} />);
+const render = () => renderToStaticMarkup(<StructurePage proposal={null} panel={() => null} sheets={null} />);
 const retain = () => {
   state.s = buildStructure({ tenant_name: "조직", phase: "OPERATING", entities: [], unplaced: [] });
   state.s.root.children.push({ id: "entity", kind: "entity", name: "법인", headcount: 0, chips: [], depth: 1, children: [] });
 };
+
+test("the setup head leaves the phase label to the shell band", () => {
+  state.s = buildStructure({ tenant_name: "org", phase: "SETUP", entities: [], unplaced: [] });
+  state.error = null;
+  expect(render()).not.toContain(t("structure.phase.setupChip"));
+});
 
 test("failed change dates never claim previous, next or history is empty; one page error carries the reference", () => {
   const html = render();

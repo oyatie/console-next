@@ -6,7 +6,6 @@ import { loadCatalog, t } from "@console/i18n";
 import { RootActions } from "./root-actions";
 import { RegistryFilters } from "./registry-bar";
 import { FirstRun } from "./first-run";
-import { SetupPanel } from "./setup-panel";
 import type { Box } from "../domain/layout";
 import type { Structure } from "../domain/model";
 
@@ -36,11 +35,5 @@ test("the first-run canvas leaves bulk actions in the page import menu", () => {
   expect(html.match(/<span data-to=/g)).toHaveLength(1);
   expect(html).toContain('data-to="/org/entities/new"');
   expect((html.match(/<span data-to=[\s\S]*?<\/span>/g) ?? []).join("")).not.toMatch(/가져오기|붙여넣기/);
-});
-
-test.each([true, false])("the setup panel leaves bulk actions in the page import menu (first %s)", (first) => {
-  const html = renderToStaticMarkup(<SetupPanel first={first} s={{ root: { headcount: 0 }, counts: { entities: 0, sites: 0, depts: 0 } } as Structure} fixLink={() => null} />);
-  expect((html.match(/<span data-to=[\s\S]*?<\/span>/g) ?? []).join("")).not.toMatch(/가져오기|붙여넣기/);
-  if (!first) expect(html).toContain('data-to="/setup/go-live"');
 });
 
