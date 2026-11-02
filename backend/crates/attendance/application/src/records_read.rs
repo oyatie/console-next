@@ -145,6 +145,14 @@ pub struct Ledger {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct IssueGroup {
+    pub kind: Mark,
+    pub count: i64,
+    #[serde(with = "iso_date")]
+    pub earliest_date: Date,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct DayBoard {
     #[serde(with = "iso_date")]
     pub date: Date,
@@ -152,6 +160,9 @@ pub struct DayBoard {
     pub judged: bool,
     pub ledger: Ledger,
     pub marks: MarkCounts,
+    /// Counts for the authorized day scope, before row filters and pagination.
+    pub issue_groups: Vec<IssueGroup>,
+    pub next_cursor: Option<Uuid>,
     pub groups: Vec<BoardGroup>,
 }
 

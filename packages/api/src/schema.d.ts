@@ -15425,6 +15425,16 @@ export interface components {
             marks: components["schemas"]["AttendanceMark"][];
         };
         AttendanceDayBoard: {
+            /** @description Issue counts before row filters or pagination; earliest date is the requested day. */
+            issue_groups?: {
+                kind: components["schemas"]["AttendanceMark"];
+                /** Format: int64 */
+                count: number;
+                /** Format: date */
+                earliest_date: string;
+            }[];
+            /** Format: uuid */
+            next_cursor?: string | null;
             /** Format: date */
             date: string;
             judged: boolean;
@@ -33293,6 +33303,12 @@ export interface operations {
                 issues_only?: boolean;
                 /** @description show only people without a resolved schedule; counts remain for the whole scope */
                 no_schedule_only?: boolean;
+                /** @description only rows carrying this issue kind; aggregates remain for the entire authorized day scope */
+                mark?: components["schemas"]["AttendanceMark"];
+                /** @description exclusive employee UUID keyset cursor */
+                cursor?: components["schemas"]["Uuid"];
+                /** @description bound returned rows; omitted preserves the unpaged board */
+                limit?: number;
                 /** @description return every row without folding normal people; existing filters still apply */
                 rows?: "all";
             };

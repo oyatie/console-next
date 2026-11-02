@@ -1,3 +1,20 @@
 type: object
 required: [date, judged, ledger, marks, groups]
-properties: { date: { type: string, format: date }, judged: { type: boolean }, ledger: { $ref: '#/components/schemas/AttendanceLedger' }, marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }, groups: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardGroup' } } }
+# Additive fields stay optional for N-1 board fixtures; the server always returns them.
+properties:
+  issue_groups:
+    type: array
+    description: Issue counts before row filters or pagination; earliest date is the requested day.
+    items:
+      type: object
+      required: [kind, count, earliest_date]
+      properties:
+        kind: { $ref: '#/components/schemas/AttendanceMark' }
+        count: { type: integer, format: int64 }
+        earliest_date: { type: string, format: date }
+  next_cursor: { type: [string, 'null'], format: uuid }
+  date: { type: string, format: date }
+  judged: { type: boolean }
+  ledger: { $ref: '#/components/schemas/AttendanceLedger' }
+  marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }
+  groups: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardGroup' } }

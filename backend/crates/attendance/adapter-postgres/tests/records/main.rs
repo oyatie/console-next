@@ -8,6 +8,7 @@ mod conflict;
 mod detail;
 mod edits;
 mod grammar;
+mod issues;
 mod long_spans;
 mod recognition_reads;
 mod save;
