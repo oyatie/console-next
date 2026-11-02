@@ -39,7 +39,8 @@ export function planStates(report, timings, measured) {
   let budgetSeconds = Math.min(timeoutSeconds, Math.max(timings.budgetSeconds, Math.ceil(startupSeconds + Math.max(...seconds))));
   let jobs;
   try {
-    for (;;) {
+    const attempts = Math.ceil(timeoutSeconds - budgetSeconds) + 1;
+    for (let attempt = 0; attempt < attempts; attempt++) {
       jobs = plan([...counts.keys()].map(file => ({ project: "states", file, key: file })), durations,
         { target: budgetSeconds, boot: startupSeconds, workers, strict: true });
       if (jobs.length <= maxShards) break;
@@ -47,6 +48,7 @@ export function planStates(report, timings, measured) {
       // Whole specs may need more than the average load to fit within the runner cap.
       budgetSeconds = Math.min(timeoutSeconds, Math.max(budgetSeconds + 1, minimum));
     }
+    if (jobs.length > maxShards) refuse("STATES_TIMEOUT_LIMIT", `${attempts} planning attempts exhausted`);
   } catch (error) {
     throw new Error(error.message.replace(/^E2E_/, "STATES_"));
   }
@@ -121,8 +123,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       mkdirSync(path.dirname(list), { recursive: true });
       writeFileSync(list, files.map(f => f.slice(4)).join("\n"));
       const output = process.env.PLAYWRIGHT_JSON_OUTPUT_FILE ?? path.resolve(`.cache/states-report-${id}.json`);
-      const result = spawnSync("npm", ["run", "e2e:states", "--", `--test-list=${list}`, `--global-timeout=${Math.ceil(plan.budgetSeconds * 1000)}`], { stdio: "inherit", env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
-      if (result.status === 0) refreshTimings(readJson("e2e/mock/timings.json"), { ...plan, shards: [{ ...plan.shards[id - 1], id: 1 }] }, [readJson(output)]);
+      const timings = readJson("e2e/mock/timings.json");
+      validateTimings(timings);
+      const result = spawnSync("npm", ["run", "e2e:states", "--", `--test-list=${list}`, `--global-timeout=${Math.ceil((timings.timeoutSeconds ?? timings.budgetSeconds) * 1000)}`], { stdio: "inherit", env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
+      if (result.status === 0) refreshTimings(timings, { ...plan, shards: [{ ...plan.shards[id - 1], id: 1 }] }, [readJson(output)]);
       process.exitCode = result.status ?? 1;
     } else if (command === "refresh") {
       writeJson(third, refreshTimings(readJson(first), readJson(second), rest.map(readJson)));

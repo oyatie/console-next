@@ -128,7 +128,7 @@ test("planning refuses only when a spec or capped packing exceeds the execution 
   for (const shard of plan.shards) filesForShard(plan, shard.id);
   assert.throws(() => planStates(report({ "mock/long.spec.ts": 1 }), { ...timings, specs: { "mock/long.spec.ts": { seconds: 1041, tests: 1 } } }), /STATES_SPEC_OVER_BUDGET.*1081.*1080/);
   specs["mock/2.spec.ts"] = { seconds: 1040, tests: 1 };
-  assert.throws(() => planStates(report(Object.fromEntries(Object.keys(specs).map(file => [file, 1]))), { ...timings, specs }), /STATES_TIMEOUT_LIMIT/);
+  assert.throws(() => planStates(report(Object.fromEntries(Object.keys(specs).map(file => [file, 1]))), { ...timings, specs }), /STATES_TIMEOUT_LIMIT: 2 shards cannot fit within 1080s/);
   for (const timeoutSeconds of [0, -1, "1080", NaN, 299]) {
     assert.throws(() => planStates(input, { ...timings, specs, timeoutSeconds }), /STATES_INVALID_TIMINGS/);
   }
@@ -208,12 +208,12 @@ fi
 exec "$REAL_NODE" "$@"
 `, { mode: 0o755 });
     writeFileSync(path.join(dir, "bin/npx"), '#!/bin/sh\nprintf "%s" "$TEST_REPORT"\n', { mode: 0o755 });
-    writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$TEST_ARGS"\nprintf "%s" "$TEST_REPORT" > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
+    writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf "%s" "$TEST_REPORT" > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
     const configFile = path.join(dir, "e2e/mock/timings.json");
     const original = JSON.stringify(committed);
     writeFileSync(configFile, original);
     const step = workflow.jobs["states-plan"].steps.find(s => s.id === "plan");
-    const env = { ...process.env, ...step.env, REAL_NODE: process.execPath, TEST_ARGS: path.join(dir, "args"), PATH: `${dir}/bin:${process.env.PATH}`, TEST_REPORT: JSON.stringify(observed),
+    const env = { ...process.env, ...step.env, REAL_NODE: process.execPath, PATH: `${dir}/bin:${process.env.PATH}`, TEST_REPORT: JSON.stringify(observed),
       PLAYWRIGHT_JSON_OUTPUT_FILE: path.join(dir, ".cache/states-reports/one.json") };
     const refresh = workflow.jobs["states-timings"].steps.find(s => s.run?.includes("states-shards.mjs refresh"));
     for (const workers of [committed.workers, 2]) {
@@ -229,7 +229,6 @@ exec "$REAL_NODE" "$@"
       assert.equal(plan.shards[0].seconds, workers === committed.workers ? 90 : 27);
       const ran = spawnSync(process.execPath, ["scripts/states-shards.mjs", "run", ".cache/states-plan/plan.json", "1"], { cwd: dir, env, encoding: "utf8" });
       assert.equal(ran.status, 0, ran.stderr);
-      assert.ok(readFileSync(env.TEST_ARGS, "utf8").split("\n").includes(`--global-timeout=${plan.budgetSeconds * 1000}`));
       const refreshed = spawnSync("bash", ["-e", "-o", "pipefail", "-c", refresh.run], { cwd: dir, env, encoding: "utf8" });
       assert.equal(refreshed.status, 0, refreshed.stderr);
       assert.equal(readFileSync(configFile, "utf8"), original);
@@ -238,6 +237,26 @@ exec "$REAL_NODE" "$@"
       assert.equal(measured.workers, committed.workers);
       assert.deepEqual(measured.specs["mock/a.spec.ts"], { seconds: 3, tests: 3 });
     }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("a shard at 1.25x its estimate is left to the states job timeout", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "states-drift-"));
+  const estimatedSeconds = 80;
+  const timeoutSeconds = 120;
+  const observed = { ...report({ "mock/a.spec.ts": 1 }, estimatedSeconds * 1.25), config: { workers: settings.workers } };
+  const planned = { budgetSeconds: estimatedSeconds, testCounts: { "mock/a.spec.ts": 1 },
+    shards: [{ id: 1, files: ["e2e/mock/a.spec.ts"], seconds: estimatedSeconds }] };
+  try {
+    for (const folder of ["bin", "scripts", "e2e/mock", ".cache"]) mkdirSync(path.join(dir, folder), { recursive: true });
+    for (const file of ["states-shards.mjs", "e2e-timings.mjs"]) writeFileSync(path.join(dir, "scripts", file), readFileSync(new URL(file, import.meta.url)));
+    writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$TEST_ARGS"\nprintf "%s" "$TEST_REPORT" > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
+    writeFileSync(path.join(dir, "e2e/mock/timings.json"), JSON.stringify({ ...settings, budgetSeconds: estimatedSeconds, timeoutSeconds }));
+    writeFileSync(path.join(dir, ".cache/plan.json"), JSON.stringify(planned));
+    const env = { ...process.env, PATH: `${dir}/bin:${process.env.PATH}`, TEST_ARGS: path.join(dir, "args"), TEST_REPORT: JSON.stringify(observed) };
+    const result = spawnSync(process.execPath, ["scripts/states-shards.mjs", "run", ".cache/plan.json", "1"], { cwd: dir, env, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(readFileSync(env.TEST_ARGS, "utf8").trim().split("\n"), ["run", "e2e:states", "--", "--test-list=.cache/states-shard-1.txt", `--global-timeout=${timeoutSeconds * 1000}`]);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
