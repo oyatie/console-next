@@ -328,7 +328,7 @@ jobs:
         with:
           name: d10-backend
           path: backend/target/release/console-app
-          retention-days: 1
+          retention-days: ${{ github.event_name == 'push' && 90 || 1 }}
           if-no-files-found: error
       - *cache-collect
       - *cache-upload
@@ -405,11 +405,13 @@ jobs:
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
   home:
-    needs: [backend-release]
+    needs: [affected, backend-release]
+    if: ${{ !cancelled() && needs.affected.result == 'success' && (needs['backend-release'].result == 'success' || (github.event_name != 'push' && needs.affected.outputs.backend == 'false' && needs['backend-release'].result == 'skipped')) }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with: {egress-policy: audit}
@@ -422,8 +424,18 @@ jobs:
           npm ci --no-audit --no-fund
           npx playwright install --with-deps --only-shell chromium
           npm run build
+      - name: Find latest successful trusted dev backend
+        id: backend
+        if: needs['backend-release'].result == 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci-home-backend.mjs
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {name: d10-backend, path: .cache/home-backend}
+        with:
+          name: d10-backend
+          path: .cache/home-backend
+          run-id: ${{ steps.backend.outputs.run-id || github.run_id }}
+          github-token: ${{ github.token }}
       - run: chmod +x .cache/home-backend/console-app
       - name: Served 2,000-person Home budget
         env:
@@ -631,7 +643,7 @@ jobs:
           const jobs = JSON.parse(process.env.NEEDS);
           const push = process.env.GITHUB_EVENT_NAME === 'push';
           const backend = push || jobs.affected.outputs.backend !== 'false';
-          const backendJobs = ['backend', 'backend-gates', 'backend-tests', 'backend-release', 'home'];
+          const backendJobs = ['backend', 'backend-gates', 'backend-tests', 'backend-release'];
           for (const [name, job] of Object.entries(jobs)) {
             const optional = !push && (name === 'states-timings' || !backend && backendJobs.includes(name));
             if (job.result !== 'success' && !(optional && job.result === 'skipped')) {

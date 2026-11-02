@@ -58,8 +58,8 @@ test("dev write probes reuse the E2E backend and feed the existing evidence prod
   assert.ok(job, "a live D10 probe job is required");
   assert.match(job.if, /github.event_name == 'push'/);
   assert.match(job.if, /refs\/heads\/dev/);
-  assert.equal(job["runs-on"], ci.jobs.backend["runs-on"]);
-  assert.ok(job.needs.includes("backend"));
+  assert.equal(job["runs-on"], ci.jobs["backend-release"]["runs-on"]);
+  assert.ok(job.needs.includes("backend-release"));
   const execute = job.steps.find(s => s.run?.includes("authz/write-refusals.spec.ts"));
   assert.match(execute.run, /--project=parallel/);
   assert.equal(execute.env.E2E_REPORTER, "line,json");

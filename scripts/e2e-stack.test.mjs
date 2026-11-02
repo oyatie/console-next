@@ -36,14 +36,14 @@ test("the launcher and Playwright resolve the backend from the public checkout",
   assert.doesNotMatch(readFileSync(path.join(root, "playwright.config.ts"), "utf8"), /backend-mvp/);
 });
 
-test("Home CI always runs the served scale probe from the candidate's release artifact", () => {
+test("Home CI runs the served scale probe with the selected release artifact", () => {
   const { jobs } = yaml.load(readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8"));
   const home = jobs.home;
   assert.ok(home, "served Home must have its own required job");
-  assert.equal(home.if, undefined);
-  assert.deepEqual(home.needs, ["backend-release"]);
+  assert.match(home.if, /!cancelled\(\)/);
+  assert.deepEqual(home.needs, ["affected", "backend-release"]);
   assert.equal(home["runs-on"], jobs["backend-release"]["runs-on"]);
-  assert.deepEqual(home.permissions, { contents: "read" });
+  assert.deepEqual(home.permissions, { contents: "read", actions: "read" });
   assert.ok(home.steps[0].uses.startsWith("step-security/harden-runner@"));
   const build = jobs["backend-release"].steps.find(s => s.name === "Release backend for Home probe");
   assert.match(build.run, /cargo build .*--release.*e2e-test-support/);
@@ -51,7 +51,7 @@ test("Home CI always runs the served scale probe from the candidate's release ar
   assert.equal(upload.if, undefined, "candidate binary must be available on PRs and merge groups too");
   const download = home.steps.find(s => s.uses?.startsWith("actions/download-artifact@"));
   assert.equal(download.with.name, upload.with.name);
-  assert.equal(download.with["run-id"], undefined, "use this run's candidate, never another revision");
+  assert.equal(download.with["run-id"], "${{ steps.backend.outputs.run-id || github.run_id }}");
   const probe = home.steps.find(s => s.name === "Served 2,000-person Home budget");
   assert.equal(probe.if, undefined);
   assert.match(probe.run, /home-inbox\.spec\.ts.*--project=parallel/);

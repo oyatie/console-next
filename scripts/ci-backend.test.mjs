@@ -9,7 +9,6 @@ import yaml from "js-yaml";
 
 const ci = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
 const backendJobs = ["backend", "backend-gates", "backend-tests", "backend-release"];
-const backendDependents = [...backendJobs, "home"];
 const push = "github.event_name == 'push' && github.ref == 'refs/heads/dev'";
 
 for (const name of backendJobs) test(`${name} runs in parallel only for affected candidates and every dev push`, () => {
@@ -27,14 +26,63 @@ for (const name of backendJobs) test(`${name} runs in parallel only for affected
   assert.ok(!job.steps.some(s => s.with?.cache === "npm"));
 });
 
-test("Home waits only for the release artifact; every Rust check stays required", () => {
-  assert.deepEqual(ci.jobs.home.needs, ["backend-release"]);
+test("Home uses a release artifact on every candidate; every Rust check stays required", () => {
+  assert.deepEqual(ci.jobs.home.needs, ["affected", "backend-release"]);
   assert.deepEqual(ci.jobs["d10-probes"].needs, ["backend-release"]);
   for (const name of backendJobs) assert.ok(ci.jobs["ci-ok"].needs.includes(name), name);
   assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo fmt --check"));
   assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo clippy --workspace --all-targets --locked -- -D warnings"));
   assert.ok(ci.jobs["backend-gates"].steps.some(s => s.run === "cargo test --locked -p console-gate-migration-safety"));
   assert.ok(ci.jobs["backend-release"].steps.some(s => s.run === "cargo build --release --locked -p console-app --features e2e-test-support"));
+});
+
+test("Home runs after deliberate backend skips and requires the trusted dev artifact", () => {
+  const home = ci.jobs.home;
+  assert.match(home.if ?? "", /!cancelled\(\)/);
+  const condition = new Function("github", "needs", "cancelled", `return ${home.if.slice(3, -2)}`);
+  for (const event of ["pull_request", "merge_group", "push"]) for (const affected of ["true", "false", ""]) {
+    for (const result of ["success", "skipped", "failure", "cancelled"]) for (const cancelled of [false, true]) {
+      const needs = { affected: { result: "success", outputs: { backend: affected } }, "backend-release": { result } };
+      const allowed = !cancelled && (result === "success" || event !== "push" && affected === "false" && result === "skipped");
+      assert.equal(condition({ event_name: event }, needs, () => cancelled), allowed, `${event}/${affected}/${result}/${cancelled}`);
+      needs.affected.result = "failure";
+      assert.equal(condition({ event_name: event }, needs, () => cancelled), false);
+    }
+  }
+  assert.equal(home.permissions.actions, "read");
+  const lookup = home.steps.find(s => s.id === "backend");
+  assert.equal(lookup.if, "needs['backend-release'].result == 'skipped'");
+  assert.equal(lookup.run, "node scripts/ci-home-backend.mjs");
+  assert.equal(lookup.env.GH_TOKEN, "${{ github.token }}");
+  const download = home.steps.find(s => s.with?.name === "d10-backend");
+  assert.equal(download.with["run-id"], "${{ steps.backend.outputs.run-id || github.run_id }}");
+  assert.equal(download.with["github-token"], "${{ github.token }}");
+  assert.equal(download.with.path, ".cache/home-backend");
+  assert.ok(!download["continue-on-error"]);
+  assert.equal(ci.jobs["backend-release"].steps.find(s => s.with?.name === "d10-backend").with["retention-days"], "${{ github.event_name == 'push' && 90 || 1 }}");
+  const probe = home.steps.find(s => s.run?.includes("e2e/performance/home-inbox.spec.ts"));
+  assert.ok(probe && !probe.if && !probe["continue-on-error"]);
+  assert.equal(probe.env.CONSOLE_APP_BIN, ".cache/home-backend/console-app");
+  assert.ok(ci.jobs["ci-ok"].needs.includes("home"));
+});
+
+test("Home selects only the latest successful same-repository dev push", async () => {
+  const { trustedDevBackendRun } = await import("./ci-home-backend.mjs");
+  const env = { GITHUB_API_URL: "https://api.github.com", GITHUB_REPOSITORY: "sample/console", GITHUB_REPOSITORY_ID: "42", GH_TOKEN: "test-token" };
+  const trusted = { id: 12, event: "push", status: "completed", conclusion: "success", head_branch: "dev", repository: { id: 42 }, head_repository: { id: 42 } };
+  const rejected = [
+    { event: "pull_request" }, { status: "in_progress" }, { conclusion: "failure" }, { head_branch: "feature" },
+    { repository: { id: 99 } }, { head_repository: { id: 99 } }, { head_repository: null },
+  ].map(patch => ({ ...trusted, ...patch, id: 13 }));
+  const request = runs => async (url, options) => {
+    assert.equal(url, "https://api.github.com/repos/sample/console/actions/workflows/ci.yml/runs?branch=dev&event=push&status=success&per_page=100");
+    assert.equal(options.headers.Authorization, "Bearer test-token");
+    return { ok: true, json: async () => ({ workflow_runs: runs }) };
+  };
+  assert.equal(await trustedDevBackendRun(env, request([...rejected, trusted, { ...trusted, id: 11 }])), 12);
+  for (const run of rejected) await assert.rejects(trustedDevBackendRun(env, request([run])), /No successful trusted dev CI run/);
+  await assert.rejects(trustedDevBackendRun(env, request([])), /No successful trusted dev CI run/);
+  await assert.rejects(trustedDevBackendRun(env, async () => ({ ok: false, status: 403 })), /GitHub CI runs: HTTP 403/);
 });
 
 test("ci-ok accepts only deliberate skips and fails closed on missing classification", () => {
@@ -48,12 +96,12 @@ test("ci-ok accepts only deliberate skips and fails closed on missing classifica
     assert.equal(check().status, 0, check().stderr);
     for (const name of job.needs) for (const status of ["failure", "cancelled", "skipped"]) {
       needs[name].result = status;
-      const allowed = status === "skipped" && event !== "push" && (name === "states-timings" || affected === "false" && backendDependents.includes(name));
+      const allowed = status === "skipped" && event !== "push" && (name === "states-timings" || affected === "false" && backendJobs.includes(name));
       assert.equal(check().status, allowed ? 0 : 1, `${event}/${affected}/${name}/${status}`);
       needs[name].result = "success";
     }
     if (affected === "false" && event !== "push") {
-      for (const name of backendDependents) needs[name].result = "skipped";
+      for (const name of backendJobs) needs[name].result = "skipped";
       assert.equal(check().status, 0, check().stderr);
     }
   }

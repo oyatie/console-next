@@ -68,7 +68,7 @@ test("D7 evidence runs on dev pushes without adding a PR gate", async () => {
   assert.match(journey.run, /for browser in 0 1/);
   assert.match(journey.run, /\|\| failed=1/);
   assert.match(journey.env.E2E_REPORTER, /json/);
-  assert.deepEqual(home.needs, ["backend-release"]);
+  assert.deepEqual(home.needs, ["affected", "backend-release"]);
   assert.ok(ci.jobs["backend-tests"].steps.some(s => s.run === "node scripts/backend-tests.mjs"));
   const job = ci.jobs["d7-evidence"];
   const runner = steps => steps.find(s => s.uses?.startsWith("step-security/harden-runner@"))?.uses;
