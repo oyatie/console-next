@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { rosterWindowQuery } from "../api/roster";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
@@ -36,6 +38,7 @@ import { RosterExport } from "./roster-export";
 import { RosterFoot } from "./roster-foot";
 import { RosterHead } from "./roster-head";
 import { ExitTabs, VoidedList, type ExitView } from "./exit-tabs";
+import { RosterSavedViews } from "./roster-saved-views";
 
 const route = getRouteApi("/app/people");
 /** Focus that rests on a row this long counts as a stop (J/K held down does not read every person it passes). */
@@ -53,6 +56,8 @@ const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memo
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterPage({ manage, scoped = false, switcher, notice }: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode }) {
+  const window = useQuery(rosterWindowQuery);
+  const soonDays = window.data;
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const today = todayKst();
@@ -75,7 +80,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   const [rescinding, setRescinding] = useState(false);
   // The rescission sheet's reasons, read before its button shows, so nothing lands under the pointer when it opens.
   const rescindReady = useReasonCodesReady(batch ? "lifecycle_cancel" : null);
-  const r = useRoster({ status, review, unit, q, sort });
+  const r = useRoster({ status, review, unit, q, sort }, soonDays);
   const view = useRosterColumns();
   const can = useCan();
   const prefetch = usePrefetch();
@@ -193,9 +198,10 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   // read); a current view that is empty while others exist is the table's own empty state, with its way to them.
   if (search.export === "register") return <RegisterExport onClose={() => void navigate({ search: (prev) => ({ ...prev, export: undefined }), replace: true })} />;
   return (
-    <PageReadGate q={r.list}><div className={s.page}>
+    <PageReadGate q={window}><PageReadGate q={r.list}><div className={s.page}>
       <RosterHead
         manage={manage}
+        soonDays={soonDays}
         status={status}
         review={review}
         onView={(v) => setFilter({ status: v.status, review: v.review })}
@@ -207,15 +213,22 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
         status={status}
         review={review}
         unit={unit}
+        soonDays={soonDays}
         counts={r}
         onChange={setFilter}
         onReset={customFilters && (r.loading || r.rows.length > 0) ? reset : undefined}
         findSlot={setFindSlot}
         density={view.density}
         onDensity={view.setDensity}
-        tools={<RosterColumns shown={view.shown} onChange={view.set} density={view.density} onDensity={view.setDensity} />}
+        tools={<><RosterColumns shown={view.shown} onChange={view.set} density={view.density} onDensity={view.setDensity} />
+        <RosterSavedViews filters={{ status, review: joinReview(review), unit, sort }} onApply={filters => {
+          setSel(NO_SELECTION);
+          find("");
+          setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, sort: parseOrder(filters.sort) });
+          focusSoon("people-title");
+        }} /></>}
       />
-      <QueryState q={r.list} layout="list">{() => <>
+      <QueryState q={window} layout="list">{effectiveSoonDays => <QueryState q={r.list} layout="list">{() => <>
       <div className={s.notes}>
       {status === "EXITED" && <ExitTabs view={exitView} kept={r.status.totals.EXITED} onView={setExitView} />}
       {(notice || scoped) && <p className="muted" role={notice ? "note" : undefined}>{notice}{notice && scoped && " "}{scoped && t("roster.scope.branches")}</p>}
@@ -239,6 +252,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
               sort={sort}
               onSort={(nextSort) => setFilter({ sort: nextSort })}
               today={today}
+              soonDays={effectiveSoonDays}
               exited={status === "EXITED"}
               shown={view.shown}
               density={view.density}
@@ -279,7 +293,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
         )}
       />
       <PeopleJump />
-    </>}</QueryState>
-    </div></PageReadGate>
+    </>}</QueryState>}</QueryState>
+    </div></PageReadGate></PageReadGate>
   );
 }

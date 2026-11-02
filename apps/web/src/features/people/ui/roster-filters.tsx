@@ -8,7 +8,6 @@ import { Band } from "../../../ui/band/band";
 import { activeView, REVIEWS, headcount, statusesOf, toggleReview, type Review, type StatusView } from "../domain/roster";
 import type { Density } from "./use-roster-columns";
 import { RosterScope } from "./roster-scope";
-import { SOON_DAYS } from "./use-roster";
 import s from "./roster.module.css";
 
 type Totals<K extends string> = { totals: Record<K, number | undefined>; failed: boolean[] };
@@ -21,10 +20,11 @@ const n = (v: number | undefined, failed: boolean) => (failed ? <span title={t("
  * arithmetic on screen (active + on leave = headcount; starting soon counted apart; exit kept 3 years), then the to-do chips. A status chip
  * is one choice (pressed = shown); to-do chips toggle and combine with AND. Every count is the server's total.
  */
-export function RosterFilters({ status, review, unit, counts, onChange, onReset, findSlot, density, onDensity, tools }: {
+export function RosterFilters({ status, review, unit, soonDays, counts, onChange, onReset, findSlot, density, onDensity, tools }: {
   status: StatusView;
   review: readonly Review[];
   unit?: string;
+  soonDays?: number;
   counts: { status: Totals<StatusView>; review: Totals<Review> };
   onChange: (f: { status?: StatusView; review?: Review[]; unit?: string | null }) => void;
   onReset?: () => void;
@@ -77,10 +77,10 @@ export function RosterFilters({ status, review, unit, counts, onChange, onReset,
               countTone={r !== "contractSoon" ? "warn" : undefined}
               count={n(counts.review.totals[r], counts.review.failed[REVIEWS.indexOf(r)]!)}
               pressed={review.includes(r)}
-              title={t(`roster.review.${r}.title`, { days: SOON_DAYS })}
+              title={t(`roster.review.${r}.title`, { days: soonDays ?? "—" })}
               onClick={() => onChange({ review: toggleReview(review, r) })}
             >
-              {t(`roster.review.${r}`, { days: SOON_DAYS })}{" "}
+              {t(`roster.review.${r}`, { days: soonDays ?? "—" })}{" "}
             </ToggleButton>
           ))}
         </span>

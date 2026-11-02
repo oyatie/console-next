@@ -178,7 +178,6 @@
   "unused-export:apps/web/src/features/people/domain/presets.ts:Preset": 1,
   "unused-export:apps/web/src/features/people/domain/presets.ts:PresetId": 1,
   "unused-export:apps/web/src/features/people/domain/renew.ts:RenewPerson": 1,
-  "unused-export:apps/web/src/features/people/domain/roster.ts:addDays": 1,
   "unused-export:apps/web/src/features/people/domain/roster.ts:CURRENT": 1,
   "unused-export:apps/web/src/features/people/domain/roster.ts:RETENTION_YEARS": 1,
   "unused-export:apps/web/src/features/people/domain/roster.ts:Status": 1,

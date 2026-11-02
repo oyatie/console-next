@@ -1,4 +1,5 @@
 import { koGovernanceRefusals } from "./ko/governance";
+import { koDirectoryViews } from "./ko/directory-views";
 import { koAccountLinkRefusals } from "./ko/account_link";
 import { koPeriodUnlockRefusals } from "./ko/period_unlock";
 import { koLeaveRefusals } from "./ko/leave";
@@ -253,6 +254,7 @@ export const ko = {
   ...koCommon,
   ...koSupport,
   ...koSupportAccess,
+  ...koDirectoryViews,
 } as const;
 
 export type ScreenMessageId = keyof typeof ko;
