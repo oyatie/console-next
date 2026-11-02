@@ -7,7 +7,8 @@ use time::macros::date;
 use uuid::Uuid;
 
 use super::save::{cell, save, scheduled};
-use super::support::{key, seed, world};
+use super::support::{assign, key, office, seed, world};
+use console_attendance_domain::schedule::Level;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn issue_groups_preserve_scope_counts_before_filtering(owner: PgPool) {
@@ -39,9 +40,9 @@ async fn issue_groups_preserve_scope_counts_before_filtering(owner: PgPool) {
         assert_eq!(
             groups,
             vec![
-                (Mark::NoRecord, 1, day),
+                (Mark::NoRecord, 1, date!(2026 - 10 - 01)),
                 (Mark::MissingOut, 1, day),
-                (Mark::NoSchedule, 1, day)
+                (Mark::NoSchedule, 1, date!(2026 - 10 - 01))
             ]
         );
         let rows: Vec<_> = board.groups.iter().flat_map(|g| &g.rows).collect();
@@ -72,6 +73,78 @@ async fn issue_groups_preserve_scope_counts_before_filtering(owner: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn earliest_issue_uses_the_month_and_historical_roster_in_authorized_scope(owner: PgPool) {
+    let w = scheduled(owner).await;
+    let (pattern, _) = w
+        .store
+        .create_pattern(&w.hr(), &key(), office("서울 사무"))
+        .await
+        .unwrap();
+    w.store
+        .assign_schedule(
+            &w.hr(),
+            &key(),
+            assign(
+                Level::Workplace,
+                w.workplaces[1],
+                pattern.id,
+                date!(2026 - 01 - 01),
+            ),
+        )
+        .await
+        .unwrap();
+    w.store
+        .save_entries(
+            &w.hr(),
+            &key(),
+            save(vec![
+                cell(&w, 0, date!(2026 - 09 - 30), "9-"),
+                cell(&w, 0, date!(2026 - 10 - 02), "9-"),
+                cell(&w, 1, date!(2026 - 10 - 06), "9-"),
+                cell(&w, 2, date!(2026 - 10 - 01), "9-"),
+                cell(&w, 2, date!(2026 - 10 - 06), "9-"),
+            ]),
+        )
+        .await
+        .unwrap();
+    seed(
+        &w.owner,
+        format!(
+            "UPDATE employees SET exit_on='2026-10-03' WHERE id='{}'",
+            w.people[0]
+        ),
+    )
+    .await;
+    for (caller, workplace, expected) in [
+        (w.hr(), Some(w.workplaces[0]), Some(date!(2026 - 10 - 02))),
+        (w.seoul_hr(), None, Some(date!(2026 - 10 - 01))),
+    ] {
+        let board = w
+            .store
+            .day_board(
+                &caller,
+                BoardQuery {
+                    date: Some(date!(2026 - 10 - 06)),
+                    workplace_id: workplace,
+                    mark: Some(Mark::MissingOut),
+                    limit: Some(1),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        let group = board
+            .issue_groups
+            .iter()
+            .find(|g| g.kind == Mark::MissingOut);
+        assert_eq!(group.map(|g| g.earliest_date), expected);
+        if let Some(group) = group {
+            assert_eq!(group.count, 1, "counts still describe the requested day");
+        }
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn two_thousand_people_have_stable_uuid_pages_and_unpaged_counts(owner: PgPool) {
     let w = world(owner).await;
     seed(&w.owner, format!(
@@ -81,6 +154,25 @@ async fn two_thousand_people_have_stable_uuid_pages_and_unpaged_counts(owner: Pg
          SELECT '{org}', id, '{entity}', '{workplace}', '2020-01-02', 'HIRE', '{actor}', gen_random_uuid() FROM added;",
         org = w.org, entity = w.entity, workplace = w.workplaces[0], actor = w.admin,
     )).await;
+    for (limit, expected) in [(0, 1), (usize::MAX, 200)] {
+        let board = w
+            .store
+            .day_board(
+                &w.hr(),
+                BoardQuery {
+                    date: Some(date!(2026 - 10 - 06)),
+                    limit: Some(limit),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            board.groups.iter().map(|g| g.rows.len()).sum::<usize>(),
+            expected
+        );
+        assert!(board.next_cursor.is_some());
+    }
     let mut cursor = None;
     let mut seen = std::collections::BTreeSet::new();
     loop {

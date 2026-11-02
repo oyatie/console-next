@@ -1485,7 +1485,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first */
+        /**
+         * One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first
+         * @description Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and each person's dated workplace are authorized in the same fact snapshot.
+         */
         get: operations["readAttendanceDayBoard"];
         put?: never;
         post?: never;
@@ -15425,7 +15428,7 @@ export interface components {
             marks: components["schemas"]["AttendanceMark"][];
         };
         AttendanceDayBoard: {
-            /** @description Issue counts before row filters or pagination; earliest date is the requested day. */
+            /** @description Requested-day issue counts before row filters or pagination; earliest_date is the oldest matching issue in the authorized scope within that calendar month, through the requested day, including people who left earlier in the month. */
             issue_groups?: {
                 kind: components["schemas"]["AttendanceMark"];
                 /** Format: int64 */

@@ -76,8 +76,8 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
     assert_eq!(
         filtered["issue_groups"],
         json!([
-            {"kind": "NO_RECORD", "count": 1, "earliest_date": "2026-10-06"},
-            {"kind": "NO_SCHEDULE", "count": 1, "earliest_date": "2026-10-06"}
+            {"kind": "NO_RECORD", "count": 1, "earliest_date": "2026-10-01"},
+            {"kind": "NO_SCHEDULE", "count": 1, "earliest_date": "2026-10-01"}
         ])
     );
     assert_eq!(filtered["groups"][0]["rows"].as_array().unwrap().len(), 1);
@@ -118,6 +118,7 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
         ("&rows=all", 2, 0),
         ("&rows=all&no_schedule_only=true", 1, 0),
         ("&rows=all&issues_only=true", 1, 1),
+        ("&mark=NO_SCHEDULE", 1, 0),
     ] {
         let (status, board) = admin
             .call(
@@ -140,7 +141,7 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
         )
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    // A department grant must not widen to everyone at its workplace.
+    // Department-only admission stays aligned with the month, schedule and web gates.
     let reader =
         console_platform_test_support::seed_active_user(&pool, org, "MEMBER", "Scoped reader")
             .await;
@@ -178,10 +179,9 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
             None,
         )
         .await;
-    assert_eq!(status, StatusCode::OK, "{board}");
-    assert_eq!(board["ledger"]["people"], 1);
-    assert_eq!(board["issue_groups"], json!([]));
-    assert_eq!(board["groups"], json!([]));
+    assert_eq!(status, StatusCode::FORBIDDEN, "{board}");
+    assert_eq!(board["error"]["code"], "forbidden");
+    assert!(board.get("issue_groups").is_none());
     sqlx::query("UPDATE access_grants SET status='REVOKED',revoked_at=now(),revoked_by=$2 WHERE org_id=$1 AND account_id=$2")
         .bind(org).bind(reader.as_uuid()).execute(&pool).await.unwrap();
     let (status, denied) = scoped

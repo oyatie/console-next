@@ -21,6 +21,8 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+#[path = "scope_ax5/attendance.rs"]
+mod attendance;
 #[path = "support/go_live.rs"]
 mod go_live;
 #[path = "support/refusals.rs"]
@@ -38,7 +40,7 @@ const FORBIDDEN: StatusCode = StatusCode::FORBIDDEN;
 
 /// Pin the actual first reads before projecting these boundaries into the route contract.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn route_first_reads_keep_org_boundaries_and_admit_scoped_day_board(pool: PgPool) {
+async fn route_first_reads_keep_the_legacy_org_boundaries(pool: PgPool) {
     let mut w = world::world_with_lines(
         pool,
         json!([
@@ -84,17 +86,13 @@ async fn route_first_reads_keep_org_boundaries_and_admit_scoped_day_board(pool: 
             let (status, body) = reader.call("GET", &path, None).await;
             assert_eq!(
                 status,
-                if kind == "DEPARTMENT" && !path.starts_with("/api/v1/attendance/days?") {
+                if kind == "DEPARTMENT" {
                     FORBIDDEN
                 } else {
                     StatusCode::OK
                 },
                 "{kind} {path}: {body}"
             );
-            if kind == "DEPARTMENT" && path.starts_with("/api/v1/attendance/days?") {
-                assert_eq!(body["ledger"]["people"], 1);
-                assert_eq!(body["groups"][0]["rows"][0]["employee_id"], w.a1);
-            }
         }
     }
 }
