@@ -6,7 +6,7 @@ import { firstSignIn, go, registerEmployee } from "../flows";
 import { inviteAccount } from "../access-flows";
 import { bearerOf } from "../helpers/api";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
-import { attemptWrite, probePath } from "./write-probe";
+import { classifyWrite, probeWrites } from "./write-probe";
 
 const census = JSON.parse(execFileSync("node", ["scripts/d10-census.mjs"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 })) as { operation: string }[];
 const selfService = JSON.parse(readFileSync(new URL("./self-service.json", import.meta.url), "utf8")) as Record<string, string>;
@@ -50,24 +50,15 @@ test("every census write is measured with no grant and an ops control", { tag: [
   });
   const faults: string[] = [];
   let controls = 0;
-  for (const { operation } of census) {
-    const method = operation.split(" ")[0]!, path = probePath(operation, ids);
-    const control = await attemptWrite(send(opsToken), path, method);
-    const result = await attemptWrite(send(viewerToken), path, method);
+  for await (const { operation, result, control } of probeWrites(census.map(r => r.operation), ids, send(viewerToken), send(opsToken))) {
     const self_service_reason = selfService[operation];
-    const controlValid = (control.http_status >= 200 && control.http_status < 300 || control.http_status >= 400 && control.http_status < 500)
-      && ![401, 403].includes(control.http_status);
+    const { status, controlValid, fault } = classifyWrite(result, control, self_service_reason);
     if (controlValid && !self_service_reason) controls++;
     await info.attach("write-probe", { contentType: "application/json", body: Buffer.from(JSON.stringify({
-      operation, principal: "no-grant", ...result, control_http_status: control.http_status,
+      operation, principal: "no-grant", ...result, status, control_http_status: control.http_status,
       control_code: control.code, self_service_reason,
     })) });
-    if (self_service_reason) {
-      if (result.http_status === 403) faults.push(`${operation}: remove self-service exception (${result.code})`);
-    } else {
-      if (result.http_status === 401) faults.push(`${operation}: unauthenticated probe`);
-      if (result.http_status >= 200 && result.http_status < 300) faults.push(`${operation}: accepted without a grant`);
-    }
+    if (fault) faults.push(`${operation}: ${fault}`);
   }
   expect(controls, "ops must reach at least one protected write with the identical request").toBeGreaterThan(0);
   expect(faults, "unknown responses remain unscored; accepted writes and harness faults fail").toEqual([]);

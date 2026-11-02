@@ -72,7 +72,8 @@ test("D7 evidence runs on dev pushes without adding a PR gate", async () => {
   const runner = steps => steps.find(s => s.uses?.startsWith("step-security/harden-runner@"))?.uses;
   assert.equal(runner(job.steps), runner(ci.jobs.web.steps));
   assert.equal(job.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}");
-  assert.deepEqual(job.needs, ["backend", "states", "d10-probes"]);
+  assert.deepEqual(job.needs, ["backend", "states"]);
+  assert.ok(!job.steps.some(s => s.with?.name === "d10-playwright" || s.run?.includes("scripts/d10-")));
   assert.ok(job.steps.some(s => s.with?.name === "d7-evidence"));
   assert.ok(!ci.jobs["ci-ok"].needs.includes("d7-evidence"));
   assert.ok(!ci.jobs["ci-ok"].steps.some(s => s.run?.includes("needs.d7-evidence")));
