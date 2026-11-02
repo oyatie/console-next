@@ -1034,11 +1034,6 @@
    "reason": "The employee payroll screen will record contract wages before draft calculation.",
    "when": "2026-11-11"
   },
-  "POST /api/v1/payroll/pay-groups": {
-   "lane": "Payroll S2 PayGroup setup",
-   "reason": "The pay group setup sheet will save explicitly selected pay rules without defaults.",
-   "when": "2026-11-06"
-  },
   "POST /api/v1/payroll/runs/{id}/calculate": {
    "lane": "Payroll S6 계산·검토",
    "reason": "The calculation stage will calculate a run after attendance month close.",
