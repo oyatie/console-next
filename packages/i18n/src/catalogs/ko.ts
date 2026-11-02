@@ -39,6 +39,7 @@ import { koAttendanceSchedule } from "./ko/attendance-schedule";
 import { koAttendancePatterns } from "./ko/attendance-patterns";
 import { koAttendanceHolidays } from "./ko/attendance-holidays";
 import { koAttendanceCrews } from "./ko/attendance-crews";
+import { koAttendanceOverview } from "./ko/attendance-overview";
 import { koAttendanceRecords } from "./ko/attendance-records";
 import { koImport } from "./ko/import";
 import { koImportSheet } from "./ko/import-sheet";
@@ -155,6 +156,7 @@ export const ko = {
   ...koAttendanceHolidays,
   ...koAttendanceCrews,
   ...koAttendanceRecords,
+  ...koAttendanceOverview,
   ...koImport,
   ...koImportRollback,
   ...koImportSheet,

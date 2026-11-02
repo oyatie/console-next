@@ -15,7 +15,7 @@ vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
   data: state.load === "ready" ? { name: "Person", days: state.missingDay ? [] : [day], history: [], month_state: { state: "OPEN" } } : undefined,
 }) }));
 beforeAll(() => loadCatalog("ko"));
-beforeEach(() => { state.load = "ready"; state.missingDay = false; });
+beforeEach(() => { state.load = "ready"; state.missingDay = false; delete day.entry; day.marks = []; });
 const render = () => renderToStaticMarkup(<DayDock employeeId="person" date={day.date} own={false} onClose={() => {}} onRewrite={() => {}} onDone={() => {}} />);
 
 test("the person-day dock offers exactly the three served tabs", () => {
@@ -30,6 +30,10 @@ test("the person-day dock offers exactly the three served tabs", () => {
 test("a missing day never falls back to future-screen copy", () => {
   state.missingDay = true;
   expect(render()).not.toContain("주 52시간 판정 · 승인 내역: 연동 예정");
+});
+
+test("a day without interval judgments omits the minute breakdown entirely", () => {
+  expect(render()).not.toContain(t("attendanceOverview.day.minutes"));
 });
 
 test("loading keeps the loading state without tabs", () => {
@@ -58,4 +62,12 @@ test("paid excess is shown separately from regular time without using approval a
   expect(html).toContain("2:00 · 미승인 초과 2:00");
   expect(html).toContain("승인이 없어도 근로시간으로 인정 · 마감 전에 처리");
   expect(html).not.toContain("인정하지 않은 체류");
+});
+
+test("the source sentence leaves unapproved excess to its own row", () => {
+  day.entry = { id: "entry", batch_id: "batch", kind: "TIMES", segments: [{ start: 540, end: 1260 }], source: "MANUAL", evidence_kind: "PAPER_SHEET", undone: false, created_at: "2026-10-06T12:00:00Z", created_by_name: "담당자" };
+  day.recognition = { ...day.recognition, recognised: 600, regular: 480, outside_scheduled: 120, excess_open: 120 };
+  const html = render();
+  expect(html).toContain("수기 기록으로 10:00 인정 · 소정근로 내 8:00");
+  expect(html.match(/미승인 초과 2:00/g)).toHaveLength(1);
 });

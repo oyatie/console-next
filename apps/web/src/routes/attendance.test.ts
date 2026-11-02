@@ -9,3 +9,8 @@ test.each(["day", "month", "week", "schedule", "issues", "close", "overtime"])("
 test.each([undefined, "unknown", "leave"])("attendance falls back to month for %s", tab => {
   expect(validate({ tab }).tab ?? "month").toBe("month");
 });
+
+test("attendance preserves mark filters for server validation and drops non-strings", () => {
+  expect(validate({ tab: "day", mark: "MISSING_OUT", wp: "workplace" })).toMatchObject({ mark: "MISSING_OUT", wp: "workplace" });
+  expect(validate({ mark: ["MISSING_OUT"] })).not.toMatchObject({ mark: ["MISSING_OUT"] });
+});

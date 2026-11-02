@@ -8,18 +8,17 @@ import { fillSchedule, type Drafts } from "../domain/grid";
 import { DayTab } from "./day-tab";
 
 const stateQuery = vi.hoisted(() => vi.fn());
-const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"], people: 1, judged: true, ledgerGap: false, drafts: {} as Drafts, detail: false, placeholder: false, hidden: 0, load: "ready" as "ready" | "loading" | "error" }));
+const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"], mark: undefined as string | undefined, people: 1, judged: true, ledgerGap: false, drafts: {} as Drafts, detail: false, load: "ready" as "ready" | "loading" | "error" }));
 vi.mock("@tanstack/react-router", () => ({
-  getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06", detail: state.detail }), useNavigate: () => vi.fn() }),
+  getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06", detail: state.detail, mark: state.mark }), useNavigate: () => vi.fn() }),
   Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-href={to}>{children}</span>,
 }));
 vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: (options: unknown) => { stateQuery(options); return ({
-  isPlaceholderData: state.placeholder,
   isPending: state.load === "loading", isSuccess: state.load === "ready", error: state.load === "error" ? new Error("unavailable") : null,
   data: state.load === "ready" ? {
     date: "2026-10-06", judged: state.judged, marks: { blocking: 1, decision: 0 },
     ledger: { people: state.people, no_schedule: state.ledgerGap ? 0 : state.people, rest: 0, no_record: 0, missing_out: 0, absent: 0, outside: 0, trip: 0, late_or_early: 0, normal: 0, pending: 0 },
-    groups: state.people ? [{ workplace_id: "site", unit_id: "team", name: "Team", people: state.people, normal: 0, no_schedule: state.people, hidden: state.hidden, marks: { blocking: 1, decision: 0 },
+    groups: state.people ? [{ workplace_id: "site", unit_id: "team", name: "Team", people: state.people, normal: 0, no_schedule: state.people, hidden: 0, marks: { blocking: 1, decision: 0 },
       rows: [{ employee_id: "person", name: "Person", month_state: { state: "OPEN" }, day: { recognition: { recognised: 0 }, marks: state.marks, plan: { kind: "NO_SCHEDULE" } } }],
     }] : [],
   } : undefined,
@@ -37,8 +36,7 @@ beforeEach(() => {
   state.drafts = {};
   state.load = "ready";
   state.detail = false;
-  state.placeholder = false;
-  state.hidden = 0;
+  state.mark = undefined;
   stateQuery.mockClear();
 });
 
@@ -115,18 +113,17 @@ test("only the detailed board requests all rows, in a separate cache entry", () 
   expect(detail).not.toEqual(compact);
 });
 
-test("detail waits for the complete population instead of mounting folded placeholder rows", () => {
+test("a pending detail read never retains rows from the previous filter", () => {
   state.detail = true;
-  state.placeholder = true;
-  state.people = 2;
-  state.hidden = 1;
+  state.load = "loading";
   const html = renderToStaticMarkup(<DayTab />);
+  expect(stateQuery.mock.calls[0]![0]).not.toHaveProperty("placeholderData");
   expect(html).not.toContain(t("attendanceRecords.detail.label"));
   expect(html).toContain('role="status"');
 });
 
-test("a complete detail population stays rendered during a filter read", () => {
-  state.detail = true;
-  state.placeholder = true;
-  expect(renderToStaticMarkup(<DayTab />)).toContain(t("attendanceRecords.detail.label"));
+test("a shared mark URL keeps the board query within the supported contract", () => {
+  state.mark = "MISSING_OUT";
+  renderToStaticMarkup(<DayTab />);
+  expect(JSON.stringify(stateQuery.mock.calls[0]![0])).not.toContain("MISSING_OUT");
 });

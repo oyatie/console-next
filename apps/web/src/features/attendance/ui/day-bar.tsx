@@ -10,7 +10,9 @@ function tracks(day: Day) {
   const plan = day.plan.kind === "WORK" ? scheduledSpans(shift) : [];
   const rec = day.entry?.kind === "TIMES" ? day.entry.segments : [];
   const open = day.entry?.kind === "CLOCK_IN_ONLY" ? day.entry.segments[0]?.start : undefined;
-  return { scheduled: plan, recorded: rec, recognised: withoutBreaks(rec, shift?.breaks ?? []), open };
+  // Without interval judgments, a confirmed non-work total cannot locate the paid spans.
+  const recognised = day.intervals ? day.intervals.filter(i => i.recognised) : day.recognition.not_work ? [] : withoutBreaks(rec, shift?.breaks ?? []);
+  return { scheduled: plan, recorded: rec, recognised, open };
 }
 
 export function DayBars({ days, labels, children }: { days: readonly Day[]; labels: readonly string[]; children: ReactNode }) {

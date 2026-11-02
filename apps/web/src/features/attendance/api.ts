@@ -70,9 +70,12 @@ export const refusalCode = (e: unknown) => (e instanceof ApiError ? e.code : und
 export const failedWith = (e: unknown, status: number) => e instanceof ApiError && e.status === status;
 
 // --- records (S2): the day board, the month grid, one person's month, and the save path.
-export type DayBoard = S["AttendanceDayBoard"];
+// Pending response fields stay optional until interval judgments and scoped aggregates are served.
+type DayInterval = { start: number; end: number; minutes: number; category: "WORK" | "BREAK" | "WAIT" | "OVERTIME" | "NIGHT" | "HOLIDAY" | "NOT_WORK" | "DISPUTED"; recognised: boolean; reason: string };
+export type Day = S["AttendanceDay"] & { intervals?: DayInterval[] };
 export type BoardRow = S["AttendanceBoardRow"];
-export type Day = S["AttendanceDay"];
+export type IssueGroup = { kind: Mark; count: number; oldest_date: string };
+export type DayBoard = S["AttendanceDayBoard"] & { issue_groups?: IssueGroup[] };
 export type Entry = S["AttendanceEntry"];
 export type Mark = S["AttendanceMark"];
 export type GridRow = S["AttendanceGridRow"];
@@ -89,7 +92,7 @@ type CellPreview = S["AttendanceCellPreview"];
 export const dayBoardQuery = (date: string, workplace_id?: string, unit_id?: string, issues_only?: boolean, no_schedule_only?: boolean, rows?: "all") => {
   const query = { date, workplace_id, unit_id, issues_only: issues_only || undefined, no_schedule_only: no_schedule_only || undefined, rows };
   const board = get("/api/v1/attendance/days", { params: { query } });
-  return { ...board, queryFn: async () => {
+  return { ...board, queryFn: async (): Promise<DayBoard> => {
     try { return await board.queryFn(); }
     catch (error) {
       // N-1 servers reject unknown query fields; retry once with their existing request shape.

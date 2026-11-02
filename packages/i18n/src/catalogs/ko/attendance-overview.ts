@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+export const koAttendanceOverview = {
+  "attendanceOverview.issues.groups": "확인 필요 유형",
+  "attendanceOverview.issues.count": "건수",
+  "attendanceOverview.issues.oldest": "가장 오래된 날짜",
+  "attendanceOverview.issues.clear": "모든 확인 유형 보기",
+  "attendanceOverview.day.sourceBasis": "{source} 기록으로 {recognised} 인정 · 소정근로 내 {regular}",
+  "attendanceOverview.day.minutes": "분 단위 내역",
+  "attendanceOverview.day.interval": "시작–종료",
+  "attendanceOverview.day.minuteCount": "분",
+  "attendanceOverview.day.minuteValue": "{count, number}분",
+  "attendanceOverview.day.reason": "판정 근거",
+  "attendanceOverview.day.counted": "인정",
+  "attendanceOverview.day.excluded": "제외",
+  "attendanceOverview.interval.WORK": "근무",
+  "attendanceOverview.interval.BREAK": "휴게",
+  "attendanceOverview.interval.WAIT": "대기",
+  "attendanceOverview.interval.OVERTIME": "연장",
+  "attendanceOverview.interval.NIGHT": "야간",
+  "attendanceOverview.interval.HOLIDAY": "휴일",
+  "attendanceOverview.interval.NOT_WORK": "근로 아님",
+  "attendanceOverview.interval.DISPUTED": "확인 필요",
+};

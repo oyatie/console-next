@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+export const enAttendanceOverview = {
+  "attendanceOverview.issues.groups": "Review by kind",
+  "attendanceOverview.issues.count": "Count",
+  "attendanceOverview.issues.oldest": "Oldest date",
+  "attendanceOverview.issues.clear": "Show all review kinds",
+  "attendanceOverview.day.sourceBasis": "{recognised} recognised from {source} records · within schedule {regular}",
+  "attendanceOverview.day.minutes": "Minute breakdown",
+  "attendanceOverview.day.interval": "From–to",
+  "attendanceOverview.day.minuteCount": "Minutes",
+  "attendanceOverview.day.minuteValue": "{count, number} min",
+  "attendanceOverview.day.reason": "Basis",
+  "attendanceOverview.day.counted": "Recognised",
+  "attendanceOverview.day.excluded": "Excluded",
+  "attendanceOverview.interval.WORK": "Work",
+  "attendanceOverview.interval.BREAK": "Break",
+  "attendanceOverview.interval.WAIT": "Standby",
+  "attendanceOverview.interval.OVERTIME": "Overtime",
+  "attendanceOverview.interval.NIGHT": "Night",
+  "attendanceOverview.interval.HOLIDAY": "Holiday",
+  "attendanceOverview.interval.NOT_WORK": "Not work",
+  "attendanceOverview.interval.DISPUTED": "Needs review",
+};

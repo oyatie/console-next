@@ -27,3 +27,21 @@ test("clock-in without a plan is included in the shared axis and the text table"
   expect(html).toContain("퇴근 미기록");
   expect(html).not.toContain("NaN");
 });
+
+test("served intervals exclude confirmed non-work from recognition bars", () => {
+  const d = { ...day(540, 1080), entry: { kind: "TIMES", segments: [{ start: 540, end: 1200 }] },
+    intervals: [{ start: 540, end: 1080, minutes: 540, category: "WORK", recognised: true, reason: "근무" },
+      { start: 1080, end: 1200, minutes: 120, category: "NOT_WORK", recognised: false, reason: "개인 용무" }],
+  } as unknown as Day;
+  const html = renderToStaticMarkup(<DayBars days={[d]} labels={["직원"]}><DayBar day={d} /></DayBars>);
+  expect(html).toContain("09:00–18:00</td>");
+  expect(html).not.toContain("09:00–20:00</td></tr>");
+});
+
+test("a non-work total alone never guesses the location of recognised intervals", () => {
+  const d = { ...day(540, 1080), entry: { kind: "TIMES", segments: [{ start: 540, end: 1200 }] },
+    recognition: { ...day(540, 1080).recognition, recognised: 540, not_work: 120 },
+  } as Day;
+  const html = renderToStaticMarkup(<DayBars days={[d]} labels={["직원"]}><DayBar day={d} /></DayBars>);
+  expect(html).toContain('data-label="인정" title="없음"');
+});
