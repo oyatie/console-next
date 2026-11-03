@@ -88,7 +88,7 @@ export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }
         </FactRow>
         <FactRow no={1} label={name.label} wide action={fix(name)}>{name.current}</FactRow>
         <FactRow no={2} label={t(corp ? "entityRecord.field.representatives" : "entityRecord.field.owner")} action={fix(ef.representatives)}>{reps ? reps.join(", ") || none : t("entity.field.restricted")}</FactRow>
-        <FactRow no={3} label={t("entityRecord.field.openedOn")} action={{ verb: "correct", onPress: () => act.field(f.openedOn) }}><span className="num">{c?.opened_on ? fmtDate(c.opened_on) : none}</span></FactRow>
+        <FactRow no={3} label={t("entityRecord.field.openedOn")} action={{ verb: f.openedOn.empty ? "enter" : "correct", onPress: () => act.field(f.openedOn) }}><span className="num">{c?.opened_on ? fmtDate(c.opened_on) : none}</span></FactRow>
         {corp ? (
           <FactRow no={4} label={t("entityRecord.field.crn")} action={idAction("crn")}><span className="code">{e.crn?.display ?? none}</span></FactRow>
         ) : (

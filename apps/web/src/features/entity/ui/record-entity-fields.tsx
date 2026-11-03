@@ -81,7 +81,7 @@ export function entityFields(e: LegalEntity) {
       show: (v) => dash(v), patch: (v) => ({ main_ksic: v ? { code: v } : null }), ready: (v) => v !== (c?.main_ksic?.code ?? "") && (v === "" || /^[A-U]?\d{2,5}$/.test(v)),
     } satisfies FieldSpec<string>,
     incorporatedOn: {
-      label: t("entityRecord.field.incorporatedOn"), group: registry, owner: { kind: "entity" }, corOnly: true, current: c?.incorporated_on ? fmtDate(c.incorporated_on) : empty(), initial: c?.incorporated_on ?? "",
+      label: t("entityRecord.field.incorporatedOn"), group: registry, owner: { kind: "entity" }, corOnly: true, empty: !c?.incorporated_on, current: c?.incorporated_on ? fmtDate(c.incorporated_on) : empty(), initial: c?.incorporated_on ?? "",
       edit: (v, set) => <DateField label={t("entityRecord.field.incorporatedOn")} required value={v} onChange={set} today={todayKst()} max={todayKst()} />,
       show: (v) => (v ? fmtDate(v) : empty()), patch: (v) => ({ incorporated_on: v || null }), ready: (v) => v !== "" && v !== c?.incorporated_on && v <= todayKst(),
     } satisfies FieldSpec<string>,

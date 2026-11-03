@@ -194,6 +194,7 @@ export const koEntityRecord = {
   "entityRecord.revise.operatingNote": "운영 중이라 이력에 날짜와 함께 남습니다.",
   "entityRecord.revise.changed": "{field} 변경을 기록했습니다",
   "entityRecord.revise.corrected": "{field} 정정을 기록했습니다",
+  "entityRecord.revise.entered": "{field} 첫 입력을 기록했습니다",
   "entityRecord.id.field.brn": "사업자등록번호",
   "entityRecord.id.field.crn": "법인등록번호",
   "entityRecord.id.title": "{field} 정정",

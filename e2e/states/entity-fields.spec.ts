@@ -15,6 +15,11 @@ test.beforeAll(() => loadCatalog("ko"));
 
 test("correction-only field keeps one action verb from row to sheet @ui-state", async ({ page }) => {
   const fixture = await mockEntityRecord(page, "populated");
+  fixture.entity.current!.incorporated_on = "2020-01-02";
+  fixture.entity.registrations[0]!.current = {
+    version: 1, effective_from: "2026-01-01", before_first_record: false, trade_name: "주식회사 검증법인",
+    business_types: [], status: "CONTINUING", change_mode: "SETUP", opened_on: "2020-03-02",
+  };
   try {
     await page.goto(entityRecordPath);
     for (const key of ["openedOn", "incorporatedOn"] as const) {
@@ -24,6 +29,23 @@ test("correction-only field keeps one action verb from row to sheet @ui-state", 
       });
       await page.getByRole("button", { name: action, exact: true }).click();
       await expect(page.getByRole("dialog", { name: action, exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+test("an empty correction-only field opens its first entry @ui-state", async ({ page }) => {
+  const fixture = await mockEntityRecord(page, "populated");
+  try {
+    await page.goto(entityRecordPath);
+    for (const key of ["openedOn", "incorporatedOn"] as const) {
+      const field = t(`entityRecord.field.${key}`);
+      const action = t("uiRecordActions.of", { field, verb: t("composer.verb.enter") });
+      await page.getByRole("button", { name: action, exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: action, exact: true });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByText(t("entityOps.revise.firstEntry", { field }), { exact: true })).toBeVisible();
       await page.keyboard.press("Escape");
     }
     expect(fixture.unexpected).toEqual([]);
@@ -54,7 +76,7 @@ for (const surface of ["record", "workplace", "chart"] as const) for (const widt
       expect(await rows.evaluateAll(elements => elements.filter(row => [...row.querySelectorAll("button")].filter(button => button.textContent?.trim()).length > 1).map(row => row.textContent))).toEqual([]);
       for (const button of await buttons.all()) {
         const text = (await button.innerText()).trim();
-        if (text) expect([t("uiRecordActions.edit"), t("uiRecordVerbs.verb.correct")]).toContain(text);
+        if (text) expect([t("composer.verb.enter"), t("uiRecordActions.edit"), t("uiRecordVerbs.verb.correct")]).toContain(text);
         await expect(button).toHaveAccessibleName(/\S/);
       }
       if (surface === "record") {
@@ -65,7 +87,8 @@ for (const surface of ["record", "workplace", "chart"] as const) for (const widt
       }
       const openedField = t(surface === "record" ? "entityRecord.field.openedOn" : "workplace.field.openedOn");
       const opened = rows.filter({ has: page.getByText(openedField, { exact: true }) });
-      await expect(opened.getByRole("button", { name: t("uiRecordActions.of", { field: openedField, verb: t("uiRecordVerbs.verb.correct") }), exact: true })).toBeVisible();
+      await expect(opened.getByRole("button", { name: t("uiRecordActions.of", { field: openedField,
+        verb: t(surface === "record" ? "composer.verb.enter" : "uiRecordVerbs.verb.correct") }), exact: true })).toBeVisible();
       if (surface === "workplace") {
         const field = t("entityOps.info.mail");
         const mail = rows.filter({ has: page.getByText(field, { exact: true }) });
