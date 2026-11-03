@@ -10,8 +10,7 @@ import s from "./sheet-grid.module.css";
 import k from "./input.module.css";
 import m from "./window.module.css";
 
-const DEFAULT_VISIBLE = 25;
-const DEFAULT_OVERSCAN = 10;
+const DEFAULT_VISIBLE = 25, DEFAULT_OVERSCAN = 10;
 
 type At = { r: number; c: number };
 type SheetGridCell = {
@@ -182,8 +181,8 @@ export function SheetGrid<R>({
     const cell = columns[c]!.cell(rows[r]!, r);
     if (!cell.readOnly && e.key === "Enter" && cell.suggestion) return (e.preventDefault(), onCell(rows[r]!, c, cell.suggestion.value));
     if (!cell.readOnly && (e.key === "F2" || e.key === "Enter")) return (e.preventDefault(), begin(r, c, columns[c]!.options?.length ? "" : cell.value));
-    if (e.key === "Delete" || e.key === "Backspace") return (e.preventDefault(), clear(r, c));
-    // Anything else (a printable key, an IME's 「Process」) goes into the mounted input and starts editing on input.
+    if (e.key === "Backspace") return (e.preventDefault(), cell.readOnly ? undefined : (onCell(rows[r]!, c, ""), begin(r, c, "")));
+    if (e.key === "Delete") return (e.preventDefault(), clear(r, c));
   };
   const edit = (e: KeyboardEvent<HTMLInputElement>, r: number, c: number) => {
     // A key that ends an IME composition belongs to the composition; an Enter there applies once it has ended.

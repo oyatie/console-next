@@ -3,10 +3,25 @@ import type { Locator } from "@playwright/test";
 import { expect, test, mount } from "./grid-table-fixture.playwright";
 import { expectAxe } from "../../../../../../e2e/a11y";
 
-const excelHtml = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><body><!--StartFragment--><table>
-<tr><td style="mso-number-format:'\\@'">Seoul &amp; HQ</td><td style="mso-number-format:'\\@'">=SUM(A1:A2)</td></tr>
-<tr><td>two<br style="mso-data-placement:same-cell">lines</td><td style="mso-number-format:'\\@'">@literal</td></tr>
-</table><!--EndFragment--></body></html>`;
+// Synthetic because Excel is unavailable here; follows Microsoft's CF_HTML grammar:
+// https://learn.microsoft.com/en-us/windows/win32/dataxchg/html-clipboard-format
+function cfHtml(fragment: string) {
+  const start = "<!--StartFragment-->", end = "<!--EndFragment-->";
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta name="ProgId" content="Excel.Sheet"></head><body>${start}${fragment}${end}</body></html>`;
+  const template = "Version:1.0\r\nStartHTML:0000000000\r\nEndHTML:0000000000\r\nStartFragment:0000000000\r\nEndFragment:0000000000\r\n";
+  const bytes = (value: string) => new TextEncoder().encode(value).length;
+  const startHtml = bytes(template), endHtml = startHtml + bytes(html);
+  const startFragment = startHtml + bytes(html.slice(0, html.indexOf(start) + start.length));
+  const endFragment = startHtml + bytes(html.slice(0, html.indexOf(end)));
+  const offsets = [startHtml, endHtml, startFragment, endFragment].map((value) => String(value).padStart(10, "0"));
+  return template.replace(/0000000000/g, () => offsets.shift()!) + html;
+}
+
+const excelHtml = cfHtml(`<table>
+  <tr><td>Seoul headquarters people operations
+    team lead</td><td><span style="mso-spacerun:yes">&nbsp; Payroll&nbsp;&nbsp;</span>team</td><td>browser<br>break</td></tr>
+  <tr><td>two<br style="mso-data-placement:same-cell">lines</td><td style="mso-number-format:'\\@'">=SUM(A1:A2)</td><td>@literal</td></tr>
+</table>`);
 
 async function pasteClipboard(cell: Locator, values: Record<string, string>) {
   await cell.evaluate((element, contents) => {
@@ -49,14 +64,48 @@ for (const width of [1440, 390]) {
   });
 }
 
-test("Excel HTML wins over plain text and formula-looking values stay literal", async ({ page }) => {
+test("with no Excel available, Microsoft-documented CF_HTML collapses source whitespace and keeps same-cell breaks", async ({ page }) => {
   await mount(page, true);
-  await pasteClipboard(page.locator("#grid-0-1"), { "text/html": excelHtml, "text/plain": "wrong\twrong" });
-  await expect(page.locator("#grid-0-1")).toHaveText("Seoul & HQ");
+  await pasteClipboard(page.locator("#grid-0-0"), { "text/html": excelHtml, "text/plain": "Seoul headquarters people operations team lead\tPayroll team\tbrowser break\r\ntwo lines\t=SUM(A1:A2)\t@literal" });
+  expect(await page.locator("#grid-0-0").textContent()).toBe("Seoul headquarters people operations team lead");
+  expect(await page.locator("#grid-0-1").textContent()).toBe("Payroll team");
+  expect(await page.locator("#grid-0-2").textContent()).toBe("browser break");
+  expect(await page.locator("#grid-1-0").textContent()).toBe("two\nlines");
+  expect(await page.locator("#grid-1-1").textContent()).toBe("=SUM(A1:A2)");
+  expect(await page.locator("#grid-1-2").textContent()).toBe("@literal");
+  await expectAxe(page, "Excel CF_HTML paste", { include: "#gallery-grid-table" });
+});
+
+test("plain clipboard data is retained when normalized HTML adds nothing", async ({ page }) => {
+  await mount(page, true);
+  const preferred = await page.evaluate(async () => {
+    const module = "/src/ui/sheet-grid/clipboard.ts";
+    const { readClipboard } = await import(/* @vite-ignore */ module);
+    const data = new DataTransfer();
+    data.setData("text/plain", "Seoul HQ");
+    data.setData("text/html", "<table><tr><td>  Seoul\n  HQ  </td></tr></table>");
+    const plain = [["Seoul HQ"]];
+    return readClipboard(data, () => plain) === plain;
+  });
+  expect(preferred).toBe(true);
+});
+
+test("paste feedback updates an already-mounted live region beside GridPage", async ({ page }) => {
+  await mount(page, true, "page");
+  const status = page.locator("[data-paste-status]");
+  await expect(status).toHaveAttribute("role", "status");
+  await expect(status).toBeEmpty();
+  await pasteClipboard(page.locator("#grid-0-2"), { "text/plain": "kept\toutside" });
+  await expect(status).toContainText("1 outside the grid");
+  await expect(page.locator("[class*='verbs']")).not.toContainText("Not pasted");
+  await expectAxe(page, "GridPage paste notice", { include: "#gallery-grid-table" });
+});
+
+test("HTML still wins when its same-cell break adds information", async ({ page }) => {
+  await mount(page, true);
+  await pasteClipboard(page.locator("#grid-0-1"), { "text/html": "<table><tr><td>two<br style='mso-data-placement:same-cell'>lines</td><td>=SUM(A1:A2)</td></tr></table>", "text/plain": "two lines\t=SUM(A1:A2)" });
+  await expect(page.locator("#grid-0-1")).toHaveText("two\nlines");
   await expect(page.locator("#grid-0-2")).toHaveText("=SUM(A1:A2)");
-  await expect(page.locator("#grid-1-1")).toHaveText("two\nlines");
-  await expect(page.locator("#grid-1-2")).toHaveText("@literal");
-  await expectAxe(page, "Excel HTML paste", { include: "#gallery-grid-table" });
 });
 
 test("copy writes the selected rectangle as TSV and an HTML table", async ({ page }) => {
@@ -80,11 +129,15 @@ test("copy writes the selected rectangle as TSV and an HTML table", async ({ pag
 
 test("paste reports read-only and out-of-grid cells", async ({ page }) => {
   await mount(page, true, "table", true);
+  const status = page.locator("[data-paste-status]");
+  await expect(status).toHaveAttribute("role", "status");
+  await expect(status).toBeEmpty();
+  const readOnly = page.locator("#grid-0-1"), before = await readOnly.innerText();
   await pasteClipboard(page.locator("#grid-0-0"), { "text/plain": "kept\tblocked\tkept too\toutside" });
   await expect(page.locator("#grid-0-0")).toHaveText("kept");
-  await expect(page.locator("#grid-0-1")).toHaveText("");
-  await expect(page.locator("#grid-0-1")).toHaveAttribute("data-readonly", "true");
+  await expect(readOnly).toHaveText(before);
+  await expect(readOnly).toHaveAttribute("data-readonly", "true");
   await expect(page.locator("#grid-0-2")).toHaveText("kept too");
-  await expect(page.getByRole("status").filter({ hasText: "Not pasted" })).toContainText(/1 read-only.*1 outside/);
+  await expect(status).toContainText(/1 read-only.*1 outside/);
   await expectAxe(page, "partly refused grid paste", { include: "#gallery-grid-table" });
 });

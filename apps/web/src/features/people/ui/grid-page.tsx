@@ -187,12 +187,11 @@ function GridWorkspace() {
           </div>
           <div className={s.verbs}>
             <b>{t("bulkGrid.verbs")}</b>
-            <span className={s.note} hidden={!pasteNotice && fields.every((f) => f.cls === "now")} role={pasteNotice ? "status" : undefined}>
-              {pasteNotice ?? t("bulkGrid.verb.secondHint")}
-            </span>
+            <span className={s.note} hidden={fields.every((f) => f.cls === "now")}>{t("bulkGrid.verb.secondHint")}</span>
             <span className={s.verbChip}>{t("bulkGrid.verb.correct")}</span>
           </div>
           <div className={s.gridWrap} tabIndex={-1}>
+            <div className={s.note} role="status" data-paste-status>{pasteNotice}</div>
             <SheetGrid rows={shown} rowKey={(row) => row.id} columns={sheetColumns}
               leading={[{ key: "number", header: t("bulkGrid.col.number"), cell: (row) => row.number, className: "num" }, { key: "name", header: t("bulkGrid.col.name"), cell: (row) => row.name }]}
               tail={{ header: t("bulkGrid.col.status"), cell: (row) => {

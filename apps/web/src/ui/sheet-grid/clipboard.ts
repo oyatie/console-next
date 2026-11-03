@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 type ClipboardData = Pick<DataTransfer, "getData" | "setData">;
 
-/** Spreadsheet clipboard HTML is authoritative when it contains a table; plain text keeps the caller's TSV rules. */
+const whitespace = /[\t\n\f\r ]+/g;
+const sameCellBreak = (node: Node) => node.nodeName === "BR" && /(?:^|;)\s*mso-data-placement\s*:\s*same-cell\s*(?:;|$)/i.test((node as HTMLElement).getAttribute("style") ?? "");
+const cellText = (node: Node): string => Array.from(node.childNodes, (child) => child.nodeType === Node.TEXT_NODE
+  ? (child.textContent ?? "").replaceAll("\u00a0", " ").replace(whitespace, " ")
+  : child.nodeName === "BR" ? (sameCellBreak(child) ? "\n" : " ") : cellText(child)).join("");
+const sameBlock = (a: readonly (readonly string[])[], b: readonly (readonly string[])[]) =>
+  a.length === b.length && a.every((row, r) => row.length === b[r]?.length && row.every((value, c) => value === b[r]![c]));
+
+/** Spreadsheet HTML adds in-cell breaks; equivalent plain text keeps the caller's TSV rules. */
 export function readClipboard(data: ClipboardData, parseText: (text: string) => readonly (readonly string[])[]) {
+  const plain = parseText(data.getData("text/plain"));
   const table = new DOMParser().parseFromString(data.getData("text/html"), "text/html").querySelector("table");
-  if (!table) return parseText(data.getData("text/plain"));
-  const block = Array.from(table.rows, (row) => Array.from(row.cells, (cell) => {
-    const copy = cell.cloneNode(true) as HTMLTableCellElement;
-    copy.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
-    return (copy.textContent ?? "").replaceAll("\u00a0", " ");
-  }));
-  return block.length ? block : parseText(data.getData("text/plain"));
+  if (!table) return plain;
+  const block = Array.from(table.rows, (row) => Array.from(row.cells, (cell) =>
+    cellText(cell).split("\n").map((line) => line.replace(whitespace, " ").trim()).join("\n")));
+  return block.length && !sameBlock(block, plain) ? block : plain;
 }
 
 const quoteTsv = (value: string) => /["\t\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;

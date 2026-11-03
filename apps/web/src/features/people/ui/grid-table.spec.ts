@@ -252,7 +252,7 @@ test("F8 explains the error at row 1000 inside the scroller", async ({ page }) =
   await page.getByRole("grid").focus();
   await page.keyboard.press("F8");
   await expect(page.locator("#grid-999-2 input")).toBeFocused();
-  const tip = page.locator('#gallery-grid-table [role="status"]');
+  const tip = page.getByRole("grid").getByRole("status");
   await expect(tip).toContainText("1,000");
   await expect.poll(() => tip.evaluate((el) => {
     const bounds = el.getBoundingClientRect();

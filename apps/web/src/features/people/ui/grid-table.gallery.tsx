@@ -42,7 +42,7 @@ function PageFixture() {
 function TableFixture({ readOnly }: { readOnly: boolean }) {
   const [rows, setRows] = useState<GridRow[]>(() => people().map((employee, i) => ({
     id: employee.id, number: employee.employee_number, name: employee.name,
-    current: [t("bulkGrid.sex.MALE"), "", employee.job], typed: [undefined, undefined, undefined],
+    current: [t("bulkGrid.sex.MALE"), employee.name, employee.job], typed: [undefined, undefined, undefined],
     cells: [{ keep: true }, { keep: true }, i === 999 ? { bad: "server", code: "stale_record" } : { keep: true }],
   })));
   const [activeCell, setActiveCell] = useState<{ r: number; c: number } | null>(null);
@@ -64,7 +64,7 @@ function TableFixture({ readOnly }: { readOnly: boolean }) {
   return <div className={`${s.page} ${g.table}`}>
     <header className={g.before}>
       <Button id="filter-empty" onClick={() => setRows([])}>{tg("empty.title")}</Button>
-      {pasteResult && (pasteResult.readOnly > 0 || pasteResult.outside > 0) && <span role="status">{t("bulkGrid.paste.skipped", pasteResult)}</span>}
+      <span role="status" data-paste-status>{pasteResult && (pasteResult.readOnly > 0 || pasteResult.outside > 0) ? t("bulkGrid.paste.skipped", pasteResult) : null}</span>
     </header>
     <div id="scroller" className={`${s.gridWrap} ${g.scroller}`} tabIndex={-1}>
       <SheetGrid rows={rows} rowKey={(row) => row.id} columns={columns}
