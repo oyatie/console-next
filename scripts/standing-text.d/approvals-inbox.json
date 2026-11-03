@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/approvals/ui/approvals-page.tsx#ApprovalsPage": 20
+  },
+  "newScreens": {
+    "apps/web/src/features/approvals/ui/approvals-page.tsx#ApprovalsPage": {
+      "FACT": 5,
+      "REFUSAL": 13,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

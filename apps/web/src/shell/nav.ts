@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { Building, Building2, Clock, FileText, Home, KeyRound, ListChecks, ScrollText, Settings, Users, type LucideIcon } from "lucide-react";
+import { Building, Building2, ClipboardCheck, Clock, FileText, Home, KeyRound, ListChecks, ScrollText, Settings, Users, type LucideIcon } from "lucide-react";
 import type { StaticDataRouteOption } from "@tanstack/react-router";
 import type { MessageId } from "@console/i18n";
 import type { AllPaths } from "@console/api/pending";
 import type { AccessEffective } from "../reference/authz/api";
 import { accessRefusal } from "../reference/authz/domain/access";
 import { SETTINGS_VIEWS } from "./settings-views";
-import { moduleReady, PAYROLL_MODULE } from "../reference/onboarding/api";
+import { APPROVALS_MODULE, moduleReady, PAYROLL_MODULE } from "../reference/onboarding/api";
 
 type Modules = AllPaths["/api/v1/onboarding/modules"]["get"]["responses"][200]["content"]["application/json"];
 type NavLink = { to: string; label: MessageId; icon: LucideIcon; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
@@ -22,6 +22,9 @@ export const TENANT_NAV: readonly NavHub[] = [
     { to: "/", label: "shell.link.home", icon: Home },
     // Keep own requests reachable until the inbox page includes the requester's tab.
     REQUESTS,
+  ] },
+  { hub: "shell.hub.approvals", links: [
+    { to: "/approvals", label: "shell.link.approvals", icon: ClipboardCheck, module: APPROVALS_MODULE, requireReadiness: true },
   ] },
   { hub: "shell.hub.people", links: [
     { to: "/org", label: "shell.link.org", icon: Building2, module: "org" },

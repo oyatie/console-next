@@ -19,6 +19,7 @@ import { enFormat } from "./en/format";
 import { enAsof } from "./en/asof";
 import { enTimeline } from "./en/timeline";
 import { enHome } from "./en/home";
+import { enApprovals } from "./en/approvals";
 import { enOrg } from "./en/org";
 import { enPeople } from "./en/people";
 import { enExit } from "./en/exit";
@@ -139,6 +140,7 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enFormat,
   ...enAsof,
   ...enHome,
+  ...enApprovals,
   ...enOrg,
   ...enPeople,
   ...enExit,

@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeAll, expect, test, vi } from "vitest";
+import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { Button } from "../../../ui/button/button";
 import { TextInput } from "../../../ui/field/field";
 import { loadCatalog, t } from "@console/i18n";
@@ -10,12 +10,14 @@ import { ApiError, myAccessQuery, type AccessEffective } from "../api";
 import { accessRefusal, type AccessRequirement } from "../domain/access";
 import { AccessGate, PageReadGate, RouteGuard } from "./access-gate";
 import { entityReadAccess } from "../domain/feature-access";
+import { modulesQuery } from "../../onboarding/api";
 
 let routeAccess: AccessRequirement | "signed-in" | undefined;
+let routeModule: string | undefined;
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <>{children}</>,
   useMatches: ({ select }: { select: (matches: unknown[]) => unknown }) => select([
-    { staticData: {} }, { staticData: { access: "signed-in" } }, { staticData: { access: routeAccess } },
+    { staticData: {} }, { staticData: { access: "signed-in" } }, { staticData: { access: routeAccess, module: routeModule } },
   ]),
 }));
 
@@ -23,6 +25,7 @@ const access = (enforcement: string, kind: "TENANT" | "WORKPLACE" = "TENANT") =>
   is_ops: false, entries: [{ grant_id: "grant", role_name_ko: "held", domain: "org", level: "edit", enforcement, scope: { kind } }],
 }) as AccessEffective;
 beforeAll(() => loadCatalog("ko"));
+beforeEach(() => { routeModule = undefined; });
 
 test("Cedar action requirements consume only an explicit server permit", () => {
   const need = { action: "bulk_appointment" } as unknown as AccessRequirement;
@@ -118,6 +121,24 @@ test.each(["refused", "loading", "allowed", "signed-in"])("route guard %s decide
     } else expect(html).toContain('data-read-layout="list"');
   }
   client.clear();
+});
+
+test.each([
+  ["missing", [], false],
+  ["disabled", [{ key: "approvals", ready: false, unblock: null }], false],
+  ["ready", [{ key: "approvals", ready: true, unblock: null }], true],
+] as const)("a %s module answer gates the route before its page mounts", async (_state, modules, ready) => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  routeAccess = "signed-in";
+  routeModule = "approvals";
+  await client.fetchQuery({ ...modulesQuery, queryFn: async () => [...modules] });
+  const child = vi.fn(() => "approval inbox");
+  function Page() { return child(); }
+  try {
+    const html = renderToStaticMarkup(<QueryClientProvider client={client}><RouteGuard><Page /></RouteGuard></QueryClientProvider>);
+    expect(child).toHaveBeenCalledTimes(ready ? 1 : 0);
+    expect(html.includes("module_disabled")).toBe(!ready);
+  } finally { client.clear(); }
 });
 
 test.each(["PREPARED", "SCHEDULED", "ENDED", "REVOKED", "ROLE_INACTIVE", "SCOPE_UNAVAILABLE", "ACCOUNT_INACTIVE"])("%s cannot mount a form", enforcement => {

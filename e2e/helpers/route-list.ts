@@ -23,6 +23,7 @@ const paths = [
   "/access/roles/$roleId",
   "/access/roles/new",
   "/account",
+  "/approvals",
   "/attendance",
   "/audit/support-access",
   "/inbox",
