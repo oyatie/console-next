@@ -29,7 +29,6 @@ export const enHome: Partial<Record<keyof typeof koHome, string>> = {
   "home.inbox.foldCount": "{kind} · {count, number} items",
   "home.inbox.reviewCount": "{kind} {count, number}",
   "home.inbox.viewAll": "View all",
-  "home.inbox.rowActions": "Actions for {title}",
   "home.inbox.more": "Show more",
   "home.inbox.empty.title": "No work to do",
   "home.inbox.empty.reason": "Work matching this filter will appear here.",

@@ -66,12 +66,13 @@ test.each(ENGINES.flatMap((_, engine) => [1440, 390].map(width => ({ engine, wid
     await pw(rows).toHaveCount(22);
     expect(await rows.first().innerText()).toContain("오늘 퇴직");
     expect(await rows.nth(1).innerText()).toContain("이번 주 업무");
+    const next = page.getByRole("link", { name: "인사 확인하고 퇴직 처리", exact: true });
+    await pw(next).toBeVisible();
+    await next.click({ trial: true });
     if (width === 390) {
-      await pw(page.getByRole("table").first()).toHaveAttribute("aria-colcount", "6");
-      await pw(rows.first().getByRole("cell").last()).toHaveAttribute("aria-colindex", "6");
-      await page.getByRole("button", { name: "오늘 퇴직 작업", exact: true }).click();
-      await pw(page.getByRole("dialog").getByRole("link", { name: "인사 확인하고 퇴직 처리", exact: true })).toBeVisible();
-      await page.keyboard.press("Escape");
+      await pw(page.getByRole("table").first()).toHaveAttribute("aria-colcount", "5");
+      await pw(rows.first().getByRole("cell").last()).toHaveAttribute("aria-colindex", "5");
+      await pw(page.getByRole("button", { name: "오늘 퇴직 작업", exact: true })).toHaveCount(0);
     }
     await page.getByRole("button", { name: "4대보험 신고 · 2건", exact: true }).click();
     await pw(page.getByText("둘째 신고", { exact: true }).filter({ visible: true })).toBeVisible();

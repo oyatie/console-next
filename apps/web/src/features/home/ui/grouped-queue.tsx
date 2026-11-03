@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { Fragment, useRef, useState, type ReactNode } from "react";
-import { ChevronRight, Ellipsis } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { isMessageId, t, type MessageId } from "@console/i18n";
@@ -13,7 +13,6 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
-import { PopoverButton } from "../../../ui/popover/popover-button";
 import { Table, type Column } from "../../../ui/table";
 import { useCardLayout } from "../../../ui/long-table/use-card-layout";
 import { DEADLINE_BUCKETS, deadlineBucket } from "../domain/deadline-bucket";
@@ -22,6 +21,7 @@ import css from "./grouped-queue.module.css";
 
 type InboxItem = components["schemas"]["ActionInboxItem"];
 export type RowAction = (item: InboxItem) => ReactNode;
+type QueueColumn = Column<InboxItem> & { id: "task" | "subject" | "due" | "source" | "owner" | "actions" };
 const KIND_TEXT: Record<string, MessageId> = {
   registration_check: "nts.title",
   identifier_correction_waiting: "entityRecord.corrections.title", identifier_correction_decide: "entityRecord.corrections.title", identifier_correction_apply: "entityRecord.corrections.title", identifier_correction_review: "entityRecord.corrections.title",
@@ -75,8 +75,9 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
   const folded = new Map([...folds.values()].filter(rows => rows.length > 1).map(rows => [rows[0]!.id, rows]));
   const isFold = (item: InboxItem) => folded.get(item.id)?.[0] === item;
   const toggle = (id: string) => setExpanded(old => { const next = new Set(old); if (!next.delete(id)) next.add(id); return next; });
-  const columns: Column<InboxItem>[] = [
-    { header: t("home.inbox.column.task"), cell: item => <div id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
+  const controls = new Map(normalized.map(item => [item.id, recordAction(item, action)]));
+  const allColumns: QueueColumn[] = [
+    { id: "task", header: t("home.inbox.column.task"), cell: item => <div id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
       {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={() => toggle(item.id)}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</strong>}
       {item.kind === "account_security" && <div className="muted">{t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")}</div>}
       {item.context?.register?.missing_fields.map(key => REGISTER_FIELDS[key] && <Chip key={key}>{t(REGISTER_FIELDS[key]!.label)}</Chip>)}
@@ -84,37 +85,37 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
       {item.context?.reason && <div>{item.context.reason}</div>}
       {item.context?.command_id && <OutcomeLink id={item.context.command_id} />}
     </div> },
-    { header: t("home.inbox.column.subject"), cell: item => <Subject item={item} /> },
-    { header: t("home.inbox.column.due"), cell: item => item.due ? <>
+    { id: "subject", header: t("home.inbox.column.subject"), cell: item => <Subject item={item} /> },
+    { id: "due", header: t("home.inbox.column.due"), fit: true, cell: item => item.due ? <>
       {item.days_remaining != null && <DeadlineChip days={item.days_remaining} severity={item.dueTone === "danger" ? "over" : item.dueTone === "warn" ? "due" : "far"} />}
       <div className={compact ? "sr-only" : "muted num"}>{fmtDateTime(item.due)}</div>
       {item.kind === "org_change_apply" && item.days_remaining != null && item.days_remaining <= 0 && <div className="muted num">{t("home.due.since", { days: -item.days_remaining })}</div>}
     </> : null },
-    { header: t("home.inbox.column.source"), cell: item => {
+    { id: "source", header: t("home.inbox.column.source"), cell: item => {
       if (item.kind === "unplaced") return <Link to="/people/unplaced">{t(KIND_TEXT[item.kind]!)}</Link>;
       if (REVIEW_FILTER[item.kind]) return <Link to="/people" search={{ review: REVIEW_FILTER[item.kind], ...(item.kind === "lifecycle_apply_failed" ? { status: "all" } : {}) }}>{t(KIND_TEXT[item.kind]!)}</Link>;
       return t(RECORD_SOURCE[item.links[0]?.kind ?? ""] ?? "home.inbox.unknown");
     } },
-    { header: t("home.inbox.column.owner"), cell: item => item.who ? item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who) : item.who : null },
-    { header: <span className="sr-only">{t("home.inbox.column.actions")}</span>, cell: item => {
-      const control = isFold(item) ? null : recordAction(item, action);
-      return control && (compact
-        ? <PopoverButton trigger={<Ellipsis size={16} aria-hidden />} label={t("home.inbox.rowActions", { title: item.title })} title={item.title}>{() => control}</PopoverButton>
-        : <div className={css.actions}>{control}</div>);
+    { id: "owner", header: t("home.inbox.column.owner"), fit: true, cell: item => item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who!) : item.who },
+    { id: "actions", header: <span className="sr-only">{t("home.inbox.column.actions")}</span>, cell: item => {
+      const control = isFold(item) ? null : controls.get(item.id);
+      return control ? <div className={css.actions}>{control}</div> : null;
     } },
   ];
   const detail = (item: InboxItem) => isFold(item) && expanded.has(item.id) ? renderRows(folded.get(item.id)!.map(child => ({ ...child })), t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")) : null;
-  const renderRows = (rows: InboxItem[], name: string): ReactNode => compact
-    ? <div role="table" aria-label={name} aria-colcount={columns.length}>
+  const renderRows = (rows: InboxItem[], name: string): ReactNode => {
+    const columns = allColumns.filter(column => column.id === "due" ? rows.some(item => item.due) : column.id === "owner" ? rows.some(item => item.who) : column.id === "actions" ? rows.some(item => !isFold(item) && controls.get(item.id)) : true);
+    return compact ? <div role="table" aria-label={name} aria-colcount={columns.length}>
       <div role="rowgroup" className="sr-only"><div role="row">{columns.map((column, i) => <div role="columnheader" key={i}>{column.header}</div>)}</div></div>
       <div role="rowgroup">{rows.map(item => <Fragment key={item.id}>
         <div role="row" data-id={item.id} className={css.phoneRow}>
-          {columns.map((column, i) => <div role="cell" aria-colindex={i + 1} key={i} className={i > 1 && i < 5 ? "muted t-xs" : undefined}>{column.cell(item)}</div>)}
+          {columns.map((column, i) => <div role="cell" aria-colindex={i + 1} data-column={column.id} data-type={column.type} key={i} className={column.id === "due" || column.id === "source" || column.id === "owner" ? "muted t-xs" : undefined}>{column.cell(item)}</div>)}
         </div>
         {isFold(item) && expanded.has(item.id) && <div role="row"><div role="cell" aria-colspan={columns.length}>{detail(item)}</div></div>}
       </Fragment>)}</div>
     </div>
     : <Table detail={detail} label={name} rows={rows} rowId={item => item.id} columns={columns} />;
+  };
   return <div ref={surface} className={css.groups}>{DEADLINE_BUCKETS.map(bucket => {
     const rows = [...folds.values()].map(siblings => siblings[0]!).filter(item => deadlineBucket(item) === bucket);
     if (!rows.length) return null;

@@ -15,7 +15,8 @@ vi.mock("@tanstack/react-query", async original => ({
 function page(count: number, prefix = "preview"): components["schemas"]["ActionInboxResponse"] {
   return {
     items: Array.from({ length: count }, (_, i) => ({ id: `${prefix}-${i}`, kind: "register_review", lane: "turn", title: `${prefix}-${i}`, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [] })),
-    total: count, total_is_exact: true, next_cursor: "cursor", unavailable: [], available_filters: ["turn", "scheduled"], counts: {}, upcoming: [], has_work: true, quick_starts: [], as_of: "2026-10-27T00:00:00Z",
+    total: count, total_is_exact: true, next_cursor: "cursor", unavailable: [], available_filters: ["turn", "scheduled"],
+    counts: { turn: { total: count, total_is_exact: false }, scheduled: { total: 0, total_is_exact: true } }, upcoming: [], has_work: true, quick_starts: [], as_of: "2026-10-27T00:00:00Z",
   };
 }
 beforeAll(() => loadCatalog("ko"));
@@ -24,13 +25,14 @@ const html = () => {
   const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
   return renderToStaticMarkup(<RouterContextProvider router={router}><Home /></RouterContextProvider>);
 };
-test("Home shrinks the shared queue to the first page with no filters or cursor button", () => {
+test("Home keeps the first queue page with server lane counts and no cursor button", () => {
   const markup = html();
   expect(markup.match(/<tr data-id=/g)).toHaveLength(5);
   expect(markup).not.toContain("later-page");
   expect(markup).not.toContain(t("home.inbox.more"));
-  expect(markup).not.toContain(t("home.inbox.filter.scheduled"));
-  expect(markup).toContain('href="/inbox"');
+  expect(markup).toContain(t("home.inbox.filterCount.lower", { filter: t("home.inbox.filter.turn"), count: 7 }));
+  expect(markup).toContain(t("home.inbox.filterCount", { filter: t("home.inbox.filter.scheduled"), count: 0 }));
+  expect(markup).toContain('href="/inbox?tab=scheduled"');
 });
 
 test.each([

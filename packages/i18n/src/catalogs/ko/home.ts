@@ -28,7 +28,6 @@ export const koHome = {
   "home.inbox.foldCount": "{kind} · {count, number}건",
   "home.inbox.reviewCount": "{kind} {count, number}건",
   "home.inbox.viewAll": "모두 보기",
-  "home.inbox.rowActions": "{title} 작업",
   "home.inbox.more": "더 보기",
   "home.inbox.empty.title": "처리할 업무가 없습니다",
   "home.inbox.empty.reason": "선택한 조건에 맞는 업무가 생기면 여기에 표시합니다.",
