@@ -13,7 +13,8 @@ const served = process.env.E2E_SERVED === "1";
 const reuse = process.env.E2E_REUSE === "1" && !served;
 // E2E_XBROWSER=1 runs Firefox instead of Chromium (the INTEG gate's second leg; see projects).
 const xbrowser = process.env.E2E_XBROWSER === "1";
-const ordinaryOnly = process.env.E2E_PERF === "1" ? /@clock/ : /@clock|@perf/;
+const perfTag = /(?:^|\s)@perf(?=\s|$)/;
+const ordinaryOnly = process.env.E2E_PERF === "1" ? /@clock/ : [/@clock/, perfTag];
 const origin = served ? `http://localhost:${PORTS.backend}` : `http://localhost:${PORTS.web}`;
 const backendEnv = {
   CONSOLE_APP_BIN: process.env.CONSOLE_APP_BIN ?? "backend/target/debug/console-app",
@@ -50,7 +51,7 @@ export default defineConfig({
   expect: { timeout: process.env.E2E_PERF === "1" ? 30_000 : 5_000 },
   // Every test builds its own tenant through the product, so tests run side by side (one backend, one Vite).
   fullyParallel: true,
-  grepInvert: process.env.E2E_PERF === "1" ? undefined : /@perf/,
+  grepInvert: process.env.E2E_PERF === "1" ? undefined : perfTag,
   // Separate profiles own short-TTL sessions and backend-free screen state proofs.
   testIgnore: [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|states)\//, /\/layout\/layout\.spec\.ts$/, /\/perf\/.*\.test\.ts$/],
   workers: Number(process.env.E2E_WORKERS ?? (process.env.CI ? 2 : 4)),

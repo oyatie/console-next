@@ -69,3 +69,16 @@ export function assertBudget(row: ReturnType<typeof summarize>) {
   assert(row.status === "pass" && row.lcp_p95_ms !== null && row.lcp_p95_ms <= budget.ms && row.compliance >= budget.target && !row.n_plus_one.length,
     `${row.route} ${row.cache}: p95=${row.lcp_p95_ms ?? "unknown"}ms, compliance=${row.compliance}, N+1=${row.n_plus_one.join(", ")}, status=${row.status}`);
 }
+
+/** A failed activity read invalidates this pair; later routes must still be measured. */
+export async function reportActivity(page: Page): Promise<string[]> {
+  try {
+    const [response] = await Promise.all([
+      page.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === "/api/v1/users/me" && !!r.request().headers()["x-last-interaction"]),
+      page.keyboard.press("Shift"),
+    ]);
+    return response.status() === 200 ? [] : [`activity GET /api/v1/users/me ${response.status()}`];
+  } catch (error) {
+    return [`activity GET /api/v1/users/me: ${String(error).split("\n")[0]}`];
+  }
+}

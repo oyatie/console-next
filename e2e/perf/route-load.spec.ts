@@ -8,7 +8,7 @@ import { vendorPage } from "../flows";
 import { routeList } from "../helpers/route-list";
 import { budget } from "./budget";
 import { buildTenant } from "./fixture";
-import { assertBudget, measure, observePaint, summarize } from "./measurement";
+import { assertBudget, measure, observePaint, reportActivity, summarize } from "./measurement";
 
 test("native collector rejects a held read; unsupported LCP stays unknown", { tag: "@perf" }, async ({ page }) => {
   await page.addInitScript(observePaint);
@@ -34,7 +34,9 @@ test("native collector rejects a held read; unsupported LCP stays unknown", { ta
 });
 
 test("a previous document's event stream is outside the next load", { tag: "@perf" }, async ({ page }) => {
+  let activityStatus = 503;
   const server = createServer((request, response) => {
+    if (request.url === "/api/v1/users/me") { response.writeHead(activityStatus).end(); return; }
     if (request.url === "/api/v1/events") {
       response.writeHead(200, { "content-type": "text/event-stream" });
       response.write("data: ready\n\n");
@@ -45,7 +47,7 @@ test("a previous document's event stream is outside the next load", { tag: "@per
     if (request.url === "/wrong") { response.writeHead(302, { location: "/next" }).end(); return; }
     if (!["/old", "/next", "/bad", "/access/roles"].includes(request.url ?? "")) { response.writeHead(404).end(); return; }
     response.setHeader("content-type", "text/html");
-    response.end(`<!doctype html><main><h1>가상 직원 명부</h1></main><span hidden data-route-ready="${request.url === "/bad" ? "" : request.url}" data-route-key="sample"></span><script>history.replaceState({__TSR_key:'sample'},'');${request.url === "/old" ? "new EventSource('/api/v1/events');" : request.url === "/bad" ? "fetch('/api/v1/employees').then(() => document.querySelector('[data-route-ready]').dataset.routeReady='/bad');" : ""}</script>`);
+    response.end(`<!doctype html><main><h1>가상 직원 명부</h1></main><span hidden data-route-ready="${request.url === "/bad" ? "" : request.url}" data-route-key="sample"></span><script>history.replaceState({__TSR_key:'sample'},'');onkeydown=()=>fetch('/api/v1/users/me',{headers:{'x-last-interaction':String(Date.now())}});${request.url === "/old" ? "new EventSource('/api/v1/events');" : request.url === "/bad" ? "fetch('/api/v1/employees').then(() => document.querySelector('[data-route-ready]').dataset.routeReady='/bad');" : ""}</script>`);
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   try {
@@ -57,6 +59,17 @@ test("a previous document's event stream is outside the next load", { tag: "@per
     const sample = await measure(page, `${origin}/next`);
     expect(sample.errors).toEqual([]);
     expect(sample.requests).toEqual({});
+    const activityErrors = await reportActivity(page);
+    expect(activityErrors).toEqual(["activity GET /api/v1/users/me 503"]);
+    const row = summarize("/next", "warm", Array.from({ length: budget.samples }, () => ({ ...sample, errors: activityErrors })));
+    expect(row.status).toBe("unknown");
+    expect(() => assertBudget(row)).toThrow();
+    activityStatus = 200;
+    expect(await reportActivity(page)).toEqual([]);
+    await page.evaluate(() => { window.onkeydown = null; });
+    page.setDefaultTimeout(250);
+    expect(await reportActivity(page)).not.toEqual([]);
+    page.setDefaultTimeout(30_000);
     const refused = await measure(page, `${origin}/bad`);
     expect(refused.errors).toContain("GET /api/v1/employees 503");
     const redirected = await measure(page, `${origin}/access`);
@@ -141,10 +154,7 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
           }
           if (realm === "tenant" && !samples.cold.at(-1)?.errors.length && !samples.warm.at(-1)?.errors.length) {
             // Input ends native LCP observation: report real activity only after both samples are captured.
-            const activity = page.waitForResponse(r => r.request().method() === "GET"
-              && new URL(r.url()).pathname === "/api/v1/users/me" && !!r.request().headers()["x-last-interaction"]);
-            await page.keyboard.press("Shift");
-            expect((await activity).status()).toBe(200);
+            samples.warm.at(-1)!.errors.push(...await reportActivity(page));
           }
           states[realm] = await context!.storageState();
           await context!.close();
