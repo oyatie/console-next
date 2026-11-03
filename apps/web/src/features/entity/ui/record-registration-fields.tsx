@@ -52,7 +52,7 @@ export function registrationFields(r: BusinessRegistration) {
     // Correct-only. The certificate's issue date rides along: one before the new opening date is refused (issued_before_opened), so
     // the sheet says so before saving and lets both be corrected together instead of dead-ending on the refusal.
     openedOn: {
-      label: t("entityRecord.field.openedOn"), group, owner, corOnly: true, current: c?.opened_on ? fmtDate(c.opened_on) : empty(), initial: { opened: c?.opened_on ?? "", issued: c?.cert_issued_on ?? "" },
+      label: t("entityRecord.field.openedOn"), group, owner, corOnly: true, empty: !c?.opened_on, current: c?.opened_on ? fmtDate(c.opened_on) : empty(), initial: { opened: c?.opened_on ?? "", issued: c?.cert_issued_on ?? "" },
       edit: (v, set) => (
         <>
           <DateField label={t("entityRecord.field.openedOn")} required value={v.opened} onChange={(opened) => set({ ...v, opened })} today={todayKst()} max={todayKst()} />

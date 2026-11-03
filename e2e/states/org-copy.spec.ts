@@ -59,6 +59,10 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
 test("org: structure list becomes readable cards at 390px @ui-state", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   const fixture = await mockScreen(page, screens[2], "populated");
+  const tree = structure(3);
+  const site = tree.entities[0]!.children[0]!;
+  site.chips = ["suspended"];
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
   try {
     await page.goto("/org?view=list");
     const grid = page.getByRole("grid", { name: t("structure.list.label"), exact: true });
@@ -67,6 +71,7 @@ test("org: structure list becomes readable cards at 390px @ui-state", async ({ p
     await expect(grid.locator("dt").filter({ hasText: t("structure.list.code") }).first()).toBeVisible();
     await expect(grid.locator("dt").filter({ hasText: t("structure.list.people") }).first()).toHaveText(t("structure.list.people"));
     await expect(grid.locator("[data-row-id]").first().getByText(t("entityOps.info.none"), { exact: true })).toHaveCount(2);
+    await expect(grid.locator(`[data-row-id="${site.id}"]`).getByText(t("structure.chip.suspended"), { exact: true })).toBeVisible();
     for (const theme of ["light", "dark"]) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
       await page.screenshot({ path: test.info().outputPath(`structure-list-390-${theme}.png`), fullPage: true });

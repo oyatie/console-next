@@ -33,7 +33,7 @@ export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
         <FactRow label={f.displayName.label} action={{ ...fix, onPress: () => act.field(f.displayName) }}>{c?.display_name || none}</FactRow>
         <FactRow label={f.englishName.label} action={{ ...fix, onPress: () => act.field(f.englishName) }}>{c?.english_name || none}</FactRow>
         {corp && (
-          <FactRow label={t("entityRecord.field.incorporatedOn")} action={{ verb: "correct", onPress: () => act.field(f.incorporatedOn) }}>
+          <FactRow label={t("entityRecord.field.incorporatedOn")} action={{ verb: f.incorporatedOn.empty ? "enter" : "correct", onPress: () => act.field(f.incorporatedOn) }}>
             <span className="num">{c?.incorporated_on ? fmtDate(c.incorporated_on) : none}</span>
           </FactRow>
         )}

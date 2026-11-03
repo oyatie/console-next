@@ -194,6 +194,7 @@ export const enEntityRecord = {
   "entityRecord.revise.operatingNote": "Operating: it stays in the history with its date.",
   "entityRecord.revise.changed": "Recorded the change of {field}",
   "entityRecord.revise.corrected": "Recorded the correction of {field}",
+  "entityRecord.revise.entered": "Recorded the first entry of {field}",
   "entityRecord.id.field.brn": "business registration number",
   "entityRecord.id.field.crn": "corporate registration number",
   "entityRecord.id.title": "Correct the {field}",

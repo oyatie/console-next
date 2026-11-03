@@ -101,7 +101,7 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
     // Closes only once the record is read again: the next sheet opened from it must carry the newest version, or its
     // save is refused as stale (parity S3: a phone correction right after a representative change dead-ended).
     settle: true,
-    announce: () => t(verb === "cor" ? "entityRecord.revise.corrected" : "entityRecord.revise.changed", { field: spec.label }),
+    announce: () => t(spec.empty ? "entityRecord.revise.entered" : verb === "cor" ? "entityRecord.revise.corrected" : "entityRecord.revise.changed", { field: spec.label }),
     onSuccess: onClose,
   });
   const newText = spec.show(value);
@@ -109,6 +109,7 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
   const fresh = latest.isSuccess && latest.dataUpdatedAt > save.submittedAt;
   const owner = spec.owner.kind === "entity" ? { kind: "entity" as const, id: e.id } : { kind: "registration" as const, id: spec.owner.id };
   const read = owner.kind === "entity" ? readVersion(e) : (reg?.current?.version ?? 0);
+  const titleVerb = t(spec.empty ? "composer.verb.enter" : spec.corOnly ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit");
   // A change frame for this record while the sheet is open (an open sheet holds re-reads, so the frame itself is the signal).
   // A frame is only a hint (an earlier save's echo can arrive late): the record is read once, and the notice shows only when
   // it is past the version this sheet holds.
@@ -153,7 +154,7 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
       onClose={onClose}
       pending={save.isPending}
       size="lg"
-      title={t("uiRecordActions.of", { field: spec.label, verb: t(spec.corOnly ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit") })}
+      title={t("uiRecordActions.of", { field: spec.label, verb: titleVerb })}
       subtitle={<><span className={s.kicker}><Building2 size={14} aria-hidden /> {entityName(e)} · {spec.group} · {spec.label}</span>{t("entityRecord.revise.now", { value: spec.current, date: fmtDate(since) })}</>}
       notice={
         <>

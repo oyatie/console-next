@@ -4,8 +4,8 @@ import { Button } from "../../../ui/button/button";
 import { useRecordLock } from "./use-record-lock";
 import s from "./record.module.css";
 
-/** What a recorded fact offers: a normal edit, a governed correction, or nothing. */
-export type FactAction = { verb: "edit" | "correct"; onPress: () => void } | null;
+/** What a recorded fact offers: a first entry, normal edit, governed correction, or nothing. */
+export type FactAction = { verb: "enter" | "edit" | "correct"; onPress: () => void } | null;
 
 /**
  * One fact as the certificate prints it: its item number (when the certificate numbers it), name, value, and the
@@ -16,7 +16,7 @@ export function FactRow({ no, label, children, action: offered, wide }: { no?: n
   const lock = useRecordLock();
   const loading = lock === "loading";
   const action = lock && !loading ? null : offered;
-  const verb = action && t(action.verb === "correct" ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit");
+  const verb = action && t(action.verb === "enter" ? "composer.verb.enter" : action.verb === "correct" ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit");
   return (
     <div className={s.fact} data-wide={wide || undefined}>
       <span className={s.no} aria-hidden>{no ?? ""}</span>
