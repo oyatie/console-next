@@ -21,7 +21,7 @@ for (const readiness of ["ready", "not-ready", "refused"] as const) {
     } else {
       const body: components["schemas"]["OnboardingModules"] = await response.json();
       expect(body.filter(module => module.ready).map(module => module.key)).toEqual(readiness === "ready"
-        ? ["home", "org", "access", "people", "exits", "attendance", "statutory"] : ["home", "org", "access"]);
+        ? ["home", "org", "access", "people", "exits", "attendance", "statutory", "approvals"] : ["home", "org", "access"]);
       expect(body.find(module => module.key === "people")?.unblock).toBe(readiness === "ready" ? null : "create_legal_entity");
       expect(body.every(module => Object.keys(module).sort().join() === "key,ready,unblock")).toBe(true);
     }

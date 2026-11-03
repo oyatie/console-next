@@ -46,7 +46,7 @@ export const checklist: S["SetupChecklist"] = {
   summary: { people: 0, placed: 0, unplaced: 0, entity_unknown: 0, progress: 100 },
 };
 export const modules: Record<"ready" | "not-ready", S["OnboardingModules"]> = {
-  ready: (["home", "org", "access", "people", "exits", "attendance", "statutory"] as const)
+  ready: (["home", "org", "access", "people", "exits", "attendance", "statutory", "approvals"] as const)
     .map(key => ({ key, ready: true, unblock: null })),
   "not-ready": [
     ...(["home", "org", "access"] as const).map(key => ({ key, ready: true, unblock: null })),

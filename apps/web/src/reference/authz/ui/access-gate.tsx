@@ -9,6 +9,15 @@ import { PageHead } from "../../../ui/page-head/page-head";
 import { ReadSkeleton, type ReadLayout } from "../../../ui/skeleton/skeleton";
 import { accessRefusal, type AccessRequirement } from "../domain/access";
 import { ApiError, myAccessQuery } from "../api";
+import { moduleReady, modulesQuery, type ModuleKey } from "../../onboarding/api";
+
+function ModuleGate({ children, module }: { children: ReactNode; module: ModuleKey }) {
+  const modules = useQuery(modulesQuery);
+  const q = modules.data && !moduleReady(modules.data, module)
+    ? { ...modules, error: new ApiError(403, "module_disabled", "", [], undefined, false) }
+    : modules;
+  return <QueryState q={q} layout="list">{() => children}</QueryState>;
+}
 
 /** Form routes wait for their own grant, independently of onboarding and legacy role names. */
 export function AccessGate({ children, layout = "form", ...need }: AccessRequirement & { children: ReactNode; layout?: ReadLayout }) {
@@ -30,8 +39,9 @@ export function RouteGuard({ children }: { children: ReactNode }) {
     else main?.removeAttribute("data-floorplan");
   }, [route?.floorplan]);
   if (!need) throw new Error("Route must declare staticData.access");
+  const page = route.module ? <ModuleGate module={route.module}>{children}</ModuleGate> : children;
   return <Suspense fallback={<ReadSkeleton layout="list" />}>
-    {need === "signed-in" ? children : <AccessGate {...need} layout="list">{children}</AccessGate>}
+    {need === "signed-in" ? page : <AccessGate {...need} layout="list">{page}</AccessGate>}
   </Suspense>;
 }
 

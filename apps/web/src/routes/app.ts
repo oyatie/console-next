@@ -7,6 +7,7 @@ import { ensureEnrolling, ensureSession, leaveSignInWhenSignedIn } from "../lib/
 import { RouteFrame } from "../lib/react/route-ready";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
 import type { AccessRequirement } from "../reference/authz/domain/access";
+import type { ModuleKey } from "../reference/onboarding/api";
 import { FLOORPLANS, type Floorplan } from "../ui/page/floorplan";
 
 export { FLOORPLANS as ROUTE_FLOORPLANS };
@@ -15,6 +16,7 @@ declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
     access?: AccessRequirement | "signed-in";
     floorplan?: Floorplan;
+    module?: ModuleKey;
   }
 }
 

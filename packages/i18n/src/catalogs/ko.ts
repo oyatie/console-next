@@ -25,6 +25,7 @@ import { koFormat } from "./ko/format";
 import { koAsof } from "./ko/asof";
 import { koTimeline } from "./ko/timeline";
 import { koHome } from "./ko/home";
+import { koApprovals } from "./ko/approvals";
 import { koOrg } from "./ko/org";
 import { koPeople } from "./ko/people";
 import { koExit } from "./ko/exit";
@@ -144,6 +145,7 @@ export const ko = {
   ...koFormat,
   ...koAsof,
   ...koHome,
+  ...koApprovals,
   ...koOrg,
   ...koPeople,
   ...koExit,
