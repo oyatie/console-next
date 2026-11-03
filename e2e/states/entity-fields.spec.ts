@@ -13,6 +13,23 @@ import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
 
+test("correction-only field keeps one action verb from row to sheet @ui-state", async ({ page }) => {
+  const fixture = await mockEntityRecord(page, "populated");
+  try {
+    await page.goto(entityRecordPath);
+    for (const key of ["openedOn", "incorporatedOn"] as const) {
+      const action = t("uiRecordActions.of", {
+        field: t(`entityRecord.field.${key}`),
+        verb: t("uiRecordVerbs.verb.correct"),
+      });
+      await page.getByRole("button", { name: action, exact: true }).click();
+      await expect(page.getByRole("dialog", { name: action, exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
 for (const surface of ["record", "workplace", "chart"] as const) for (const width of [1440, 390]) {
   test(`entity fields: ${surface} has one edit per row and one empty marker (${width}px) @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

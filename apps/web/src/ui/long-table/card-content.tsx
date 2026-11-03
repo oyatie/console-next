@@ -9,7 +9,7 @@ export function CardContent<R>({ row, columns, titleId }: { row: R; columns: Lon
   const title = columns.findLast((column, index) => column.rowHeader && roles[index] === "title") ?? columns.find((_column, index) => roles[index] === "title");
   const fields = (role: typeof roles[number]) => columns.map((column, index) => roles[index] === role && (
     role === "fact" ? <div key={column.id} className={css.field}>
-      <dt className={css.term}>{column.header}</dt>
+      <dt className={css.term}>{column.cardHeader ?? column.header}</dt>
       <dd>{column.cell(row)}</dd>
     </div> : <div key={column.id} id={column === title ? titleId : undefined}>{column.cell(row)}</div>
   ));

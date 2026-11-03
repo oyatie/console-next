@@ -100,14 +100,15 @@ test("registration change: unchanged hold, unlink through the dated sheet @org",
   const before = await readEntity(page, id);
   const workplace = before.workplaces[0]!;
   await go(page, `/org/entities/${id}?wp=${workplace.id}`);
-  await page.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("workplace.field.regMode") }), exact: true }).click();
+  const registrationAction = t("uiRecordActions.of", { field: t("workplace.field.regMode"), verb: t("uiRecordActions.edit") });
+  await page.getByRole("button", { name: registrationAction, exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "본사 사업자등록 변경" });
   await expect(sheet.getByRole("button", { name: "등록 변경", exact: true })).toHaveAttribute("aria-disabled", "true");
   await option(page, "변경할 사업자등록", "등록증 연결 안 함").click();
   await sheet.getByRole("textbox", { name: "변경 사유" }).fill("연결 해제");
   const other = await page.context().newPage();
   await go(other, `/org/entities/${id}?wp=${workplace.id}`);
-  await other.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("workplace.field.regMode") }), exact: true }).click();
+  await other.getByRole("button", { name: registrationAction, exact: true }).click();
   const otherSheet = other.getByRole("dialog", { name: "본사 사업자등록 변경" });
   await option(other, "변경할 사업자등록", "등록증 연결 안 함").click();
   await otherSheet.getByRole("textbox", { name: "변경 사유" }).fill("연결 해제");

@@ -94,9 +94,9 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
                 <Button
                   variant="link"
                   onClick={() => setOpen({ k: "changeReg" })}
-                  aria-label={t("entityRecord.action.fixOf", { field: t("workplace.field.regMode") })}
+                  aria-label={t("uiRecordActions.of", { field: t("workplace.field.regMode"), verb: t("uiRecordActions.edit") })}
                 >
-                  {t("entityRecord.action.fix")}
+                  {t("uiRecordActions.edit")}
                 </Button>
               )}
               {manage && !why && !reg.closed_on && <Link to="/org/entities/$id" params={{ id: e.id }} search={{ as_of: e.as_of, known_at: e.known_at ?? undefined, wp: w.id, reissue: reg.id }} className="link" aria-label={t("entityReissue.actionOf", { brn: reg.brn?.display ?? "" })}>{t("entityReissue.action")}</Link>}

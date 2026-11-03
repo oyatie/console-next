@@ -1,7 +1,10 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, koDate, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // 사업자등록증 capture (gate U2, U3) with bundled reference lists and no outside lookup (decision #16): the 행정구역 list
 // is loaded and gives a hand-typed address its codes; lists without a verified or licensed source say so and never
@@ -58,7 +61,7 @@ test("capture: the district comes from the bundled list, other lists say they ar
   // The same entity registers by hand with nothing coded; its 상시근로자수 is derived, held for a labor attorney.
   // Wait for the list to render: its consent guard may still be loading while the URL already changed.
   await go(a, "/org/entities");
-  await expect(a.getByRole("heading", { name: "법인·사업장", exact: true })).toBeVisible();
+  await expect(a.getByRole("heading", { name: t("structure.title"), exact: true })).toBeVisible();
   await go(a, "/org/entities/new");
   await expect(a.getByLabel("법인명(단체명)")).toHaveValue("");
   await registerEntity(a, "캡처솔루션");

@@ -109,7 +109,6 @@ export const enEntityOps = {
   "entityOps.founding.save": "Record the incorporation",
   "entityOps.founding.done": "Recorded the incorporation of {name}",
   "entityOps.revise.firstEntry": "No {field} recorded yet · this is the first entry. Enter the appointment dates the registry prints.",
-  "entityOps.revise.saveFirst": "Enter",
   "entityOps.revise.firstConsequence": "{field} · {value}. A first entry, kept in the history.",
   "entityOps.wizard.createOnly": "Register the entity only",
   "entityOps.create.twin": "This entity already has a workplace named “{name}” ({address}). Pickers cannot tell the two apart; enter a different name.",

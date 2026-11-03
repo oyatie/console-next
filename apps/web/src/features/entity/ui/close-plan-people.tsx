@@ -23,8 +23,8 @@ export function PlanPeople({ view, draft, entity, date, onDraft }: { view: Close
   const one = (p: ClosePerson, plan: PersonPlan) => onDraft(planAll(draft, [p], plan));
   const columns: LongColumn<ClosePerson>[] = [
     { id: "name", header: t("workplace.close.col.name"), cell: (p) => p.name, rowHeader: true, width: "1fr" },
-    { id: "no", header: t("workplace.close.col.number"), cell: (p) => <span className="code">{p.employee_number ?? "—"}</span>, width: 110 },
-    { id: "unit", header: t("workplace.close.col.unit"), cell: (p) => (p.org_unit_id && units.get(p.org_unit_id)) || "—", width: "1fr" },
+    { id: "no", header: t("workplace.close.col.number"), cell: (p) => <span className="code">{p.employee_number ?? t("entityOps.info.none")}</span>, width: 110 },
+    { id: "unit", header: t("workplace.close.col.unit"), cell: (p) => (p.org_unit_id && units.get(p.org_unit_id)) || t("entityOps.info.none"), width: "1fr" },
     {
       id: "plan",
       header: t("workplace.close.col.plan"),

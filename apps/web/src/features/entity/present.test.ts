@@ -1,5 +1,5 @@
 import { beforeAll, expect, test } from "vitest";
-import { i18n, loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { entityInput, registrationInput, workplaceInput } from "./domain/view";
 import { changeLine, directorsText, fieldLabel, historyValue, kindName, kindTaken } from "./present";
@@ -24,7 +24,7 @@ test("regression (r3 company-24): history values read in Korean, never raw keys,
 
 test("regression (r3 company-26): an officer with no role yet reads as the name, never 「null」", () => {
   expect(directorsText([{ role: null as never, name: "이감사" }])).toBe("이감사");
-  expect(directorsText([{ role: null as never, name: "" }])).toBe("—");
+  expect(directorsText([{ role: null as never, name: "" }])).toBe(t("entityOps.info.none"));
 });
 
 const kinds = [

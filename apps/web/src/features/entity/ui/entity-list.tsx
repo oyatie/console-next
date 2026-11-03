@@ -56,10 +56,10 @@ export function EntityList() {
               onRowAction={(id) => void nav({ to: "/org/entities/$id", params: { id }, search: { as_of, known_at } })}
               columns={[
                 { id: "name", rowHeader: true, card: "title", width: "3fr", header: t("entity.col.name"), cell: (e) => <><EntityName entity={e} /><NameProblems e={e} /></> },
-                { id: "kind", card: "fact", width: 140, header: t("entity.col.kind"), cell: (e) => (e.biz_kind ? label(BIZ_KIND, e.biz_kind) : t("entity.kindUnset")) },
+                { id: "kind", card: "title", width: 140, header: t("entity.col.kind"), cell: (e) => (e.biz_kind ? label(BIZ_KIND, e.biz_kind) : t("entity.kindUnset")) },
                 { id: "brn", card: "fact", width: 160, header: t("entity.col.brn"), cell: (e) => <code>{primaryRegistration(e)?.brn?.display ?? t("entityOps.info.none")}</code> },
                 { id: "workplaces", card: "fact", width: 120, header: t("entity.col.workplaces"), cell: (e) => <data className="num" value={e.workplaces.length}>{t("entity.count.workplaces", { count: e.workplaces.length })}</data> },
-                { id: "people", card: "omit", width: 120, header: t("entity.col.people"), cell: (e) => <data className="num" value={headcount(e)}>{t("entity.count.people", { count: headcount(e) })}</data> },
+                { id: "people", card: "fact", width: 120, header: t("entity.col.people"), cell: (e) => <data className="num" value={headcount(e)}>{t("entity.count.people", { count: headcount(e) })}</data> },
                 {
                   id: "status",
                   header: t("entity.col.status"),

@@ -84,7 +84,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   expect(scopedCapabilities.capabilities).toEqual(expect.arrayContaining([expect.objectContaining({ feature: "org_change_apply", org_wide: false })]));
   expect(scopedCapabilities.capabilities.filter((capability) => ["legal_entity_manage", "org_change_apply"].includes(capability.feature)).every((capability) => !capability.org_wide)).toBe(true);
   await go(manager, "/org/entities");
-  await expect(manager.getByRole("heading", { name: "법인·사업장", exact: true })).toBeVisible();
+  await expect(manager.getByRole("heading", { name: t("structure.title"), exact: true })).toBeVisible();
   await expect(register(manager)).toBeHidden();
   await expect(manager.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeHidden();
   const notice = inbox(reviewer).getByRole("row").filter({ has: reviewer.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });

@@ -67,10 +67,11 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
   slow = false;
 
   // (2) 개업연월일 정정 after a 발급일: the sheet holds the 발급일 too and says why before anything is sent.
-  await a.getByRole("button", { name: t("uiRecordActions.of", { field: t("entityRecord.field.openedOn"), verb: t("uiRecordVerbs.verb.correct") }), exact: true }).click();
-  const opened = sheet(a, "개업연월일 수정");
+  const openedAction = t("uiRecordActions.of", { field: t("entityRecord.field.openedOn"), verb: t("uiRecordVerbs.verb.correct") });
+  await a.getByRole("button", { name: openedAction, exact: true }).click();
+  const opened = sheet(a, openedAction);
   await fillDate(opened, "2020-03-03", "개업연월일");
-  await expect(opened.getByText("발급일이 개업일보다 앞섭니다")).toBeVisible();
+  await expect(opened.getByText(t("entity.problem.issuedBeforeOpened"))).toBeVisible();
   await expect(opened.getByRole("button", { name: "정정 기록" })).toHaveAttribute("aria-disabled", "true");
   await fillDate(opened, "2020-03-03", "발급일");
   await expect(opened.getByRole("button", { name: "정정 기록" })).not.toHaveAttribute("aria-disabled", "true");
@@ -83,7 +84,7 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
   const refused = a.waitForResponse((r) => /business-registrations/.test(r.url()) && r.request().method() === "PUT");
   await opened.getByRole("button", { name: "정정 기록" }).click();
   expect((await refused).status()).toBe(422);
-  await expect(opened.getByRole("alert")).toContainText("발급일: 발급일이 개업연월일보다 앞섭니다");
+  await expect(opened.getByRole("alert")).toContainText(t("entity.refusal.issued_before_opened"));
   await expect(opened.getByRole("alert")).not.toContainText("요청을 처리하지 못했습니다");
   await expectAccessible(a, "S3 개업연월일 정정: refused by field");
   await a.unroute(/\/api\/v1\/business-registrations\/[0-9a-f-]{36}$/);
@@ -144,21 +145,27 @@ test("a real conflict shows what changed meanwhile and re-applies the value on t
   const refused = a.waitForResponse((r) => ENTITY_GET.test(r.url()) && r.request().method() === "PUT");
   await phone.getByRole("button", { name: "정정 기록" }).click();
   expect((await refused).status()).toBe(409);
-  await expect(phone.getByRole("alert")).toContainText("다른 사람이 먼저 이 법인을 변경해 저장해서");
-  const conflict = phone.getByRole("region", { name: "그사이 기록된 내용" });
-  await expect(conflict).toContainText(/대표전화: .*→ .*0199/);
-  await expect(conflict).toContainText("내 값: 02-555-0142");
+  await expect(phone.getByRole("alert")).toContainText(t("entityRecord.conflict.alert"));
+  const conflict = phone.getByRole("region", { name: t("entityRecord.conflict.title"), exact: true });
+  const competingPhone = conflict.locator("dl > div").filter({ hasText: t("entityRecord.field.mainPhone") }).first();
+  await expect(competingPhone.locator("dt")).toHaveText(t("entityRecord.field.mainPhone"));
+  await expect(competingPhone.locator("dd")).toContainText(/→ .*0199/);
+  await expect(conflict).toContainText(t("entityRecord.conflict.mine", { value: "02-555-0142" }));
   // Nothing is re-sent from the stale read: the foot's 기록 holds until the user chooses.
   await expect(phone.getByRole("button", { name: "정정 기록" })).toHaveAttribute("aria-disabled", "true");
   await expectAccessible(a, "S3 revise sheet: stale conflict");
-  await conflict.getByRole("button", { name: "바뀐 내용 위에 내 값 다시 적용" }).click();
-  await expect(phone.getByText(/바뀐 내용을 읽었습니다/)).toBeVisible();
+  await conflict.getByRole("button", { name: t("entityRecord.conflict.reapply"), exact: true }).click();
+  await expect(phone.getByText(t("entityRecord.conflict.reapplied"), { exact: true })).toBeVisible();
   await phone.getByRole("button", { name: "정정 기록" }).click();
   await expect(phone).toBeHidden();
   await expect(a.getByText("02-555-0142").first()).toBeVisible();
   // Both are in the history: the other person's 정정, then this one; the refused attempt wrote nothing.
   await a.getByRole("tab", { name: /^이력/ }).click();
   const items = a.locator("ol.timeline").first().locator("li");
-  await expect(items.nth(0)).toContainText(/대표전화: \S*0199 → \S*0142/);
-  await expect(items.nth(1)).toContainText(/대표전화: .*→ \S*0199/);
+  const latestPhone = items.nth(0).locator("dl > div").filter({ hasText: t("entityRecord.field.mainPhone") }).first();
+  const priorPhone = items.nth(1).locator("dl > div").filter({ hasText: t("entityRecord.field.mainPhone") }).first();
+  await expect(latestPhone.locator("dd")).toContainText(`${t("timeline.before")}02-555-0199`);
+  await expect(latestPhone.locator("dd")).toContainText(`${t("timeline.after")}02-555-0142`);
+  await expect(priorPhone.locator("dd")).toContainText(t("timeline.before"));
+  await expect(priorPhone.locator("dd")).toContainText(`${t("timeline.after")}02-555-0199`);
 });

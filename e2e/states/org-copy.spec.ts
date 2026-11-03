@@ -65,6 +65,8 @@ test("org: structure list becomes readable cards at 390px @ui-state", async ({ p
     await expect(grid).toHaveAttribute("data-layout", "cards");
     await expect(grid.getByRole("rowheader").first()).toBeVisible();
     await expect(grid.locator("dt").filter({ hasText: t("structure.list.code") }).first()).toBeVisible();
+    await expect(grid.locator("dt").filter({ hasText: t("structure.list.people") }).first()).toHaveText(t("structure.list.people"));
+    await expect(grid.locator("[data-row-id]").first().getByText(t("entityOps.info.none"), { exact: true })).toHaveCount(2);
     for (const theme of ["light", "dark"]) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
       await page.screenshot({ path: test.info().outputPath(`structure-list-390-${theme}.png`), fullPage: true });
@@ -85,6 +87,7 @@ test("org: entity list becomes readable cards at 390px @ui-state", async ({ page
     await expect(grid).toHaveAttribute("data-layout", "cards");
     await expect(grid.getByRole("rowheader")).toBeVisible();
     await expect(grid.locator("dt").filter({ hasText: t("entity.col.brn") })).toBeVisible();
+    await expect(grid.locator("dt").filter({ hasText: t("entity.col.people") })).toBeVisible();
     for (const theme of ["light", "dark"]) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
       await page.screenshot({ path: test.info().outputPath(`entity-list-390-${theme}.png`), fullPage: true });

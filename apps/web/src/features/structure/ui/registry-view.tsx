@@ -72,9 +72,9 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
         : n.kind === "dept" ? <HeadCell n={n} readOnly={s.readOnly} />
         : none,
     },
-    { id: "people", card: "fact", width: 180, header: <HeadcountBasis>{t("structure.list.people")}</HeadcountBasis>, cell: (n) => <span className="num">{unitCounts(n)}</span> },
+    { id: "people", card: "fact", cardHeader: t("structure.list.people"), width: 180, header: <HeadcountBasis>{t("structure.list.people")}</HeadcountBasis>, cell: (n) => <span className="num">{unitCounts(n)}</span> },
     { id: "site", card: "omit", width: 160, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? none : none },
-    { id: "chips", card: "status", width: "2fr", minWidth: 160, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : none },
+    { id: "chips", card: "omit", width: "2fr", minWidth: 160, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : none },
     ...(!s.readOnly ? [{ id: "order", card: "action" as const, width: 72, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
     ...(!s.readOnly ? [{ id: "add", card: "action" as const, width: 148, header: t("orgStructure.tab.actions"), cell: (n: ChartNode) => <AddUnit n={n} /> }] : []),
   ];

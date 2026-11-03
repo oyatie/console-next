@@ -60,6 +60,10 @@ test.each([
   [{ kind: "TRANSFER", mode: "revoke", count: 1 }, "전보 1명 철회"],
   [{ kind: "orgChange", mode: "withdraw" }, "조직 변경 회수"],
   [{ kind: "appointment", mode: "apply", count: 0 }, "발령 적용"],
+  [{ kind: "entityRecord", mode: "record" }, "기록"],
+  [{ kind: "entityChange", mode: "record" }, "변경 기록"],
+  [{ kind: "entityCorrection", mode: "record" }, "정정 기록"],
+  [{ kind: "entityRecord", mode: "enter" }, "입력"],
   [{ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" }, "직원 등록 1명 적용 · 다음 직원"],
 ] as const)("builds a single outcome label for %j", (action, expected) => {
   expect(commitLabel(action)).toBe(expected);

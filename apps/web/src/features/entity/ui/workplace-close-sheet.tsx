@@ -130,7 +130,7 @@ function Body({ e, view, place, onClose, onAct }: { e: LegalEntity; view: CloseP
               <Button size="sm" onClick={() => onAct("wp-primary")}>{t("workplace.primary.title")}</Button>
             </span>
           ) : (
-            <span>{t("workplace.close.rolesElsewhere", { name: workplaceName(e.workplaces.find((x) => x.is_primary && x.id !== w.id) ?? w) || "—" })}</span>
+            <span>{t("workplace.close.rolesElsewhere", { name: workplaceName(e.workplaces.find((x) => x.is_primary && x.id !== w.id) ?? w) || t("entityOps.info.none") })}</span>
           )}
         </div>
       </div>

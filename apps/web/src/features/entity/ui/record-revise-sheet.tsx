@@ -9,11 +9,10 @@ import { useCommand } from "../../../lib/react/command";
 import { Banner } from "../../../ui/banner/banner";
 import { EntityError } from "./entity-error";
 import { todayKst } from "../../../lib/pure/today";
-import { Button } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Chip } from "../../../ui/chip";
+import { Composer } from "../../../ui/composer/composer";
 import { DateField } from "../../../ui/date/date-field";
-import { Sheet } from "../../../ui/sheet/sheet";
 import { ENTITY_READS, entityQuery, isStale, readEntity, readVersion, reviseEntity, reviseRegistration } from "../api";
 import { dateOf, dayBefore, entityRevision, keepsOldPeriod, nextMonthFirst, registrationRevision, revProblem, scheduledFrom, type EntityPatch, type RegistrationPatch, type Verb, type When } from "../domain/revise";
 import { entityName } from "../../../reference/entity/domain/names";
@@ -149,12 +148,12 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
     </>
   );
   return (
-    <Sheet
+    <Composer
       open
       onClose={onClose}
       pending={save.isPending}
       size="lg"
-      title={t("entityRecord.revise.title", { field: spec.label })}
+      title={t("uiRecordActions.of", { field: spec.label, verb: t(spec.corOnly ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit") })}
       subtitle={<><span className={s.kicker}><Building2 size={14} aria-hidden /> {entityName(e)} · {spec.group} · {spec.label}</span>{t("entityRecord.revise.now", { value: spec.current, date: fmtDate(since) })}</>}
       notice={
         <>
@@ -163,14 +162,9 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
         </>
       }
       consequence={consequence}
-      actions={
-        <>
-          <Button onClick={onClose}>{t("entityRecord.cancel")}</Button>
-          <Button variant="primary" aria-disabled={!ready || stale || undefined} onClick={() => ready && !stale && save.mutate(undefined)} disabled={save.isPending}>
-            {t(spec.empty ? "entityOps.revise.saveFirst" : verb === "rev" ? "entityRecord.revise.saveRev" : verb === "cor" ? "entityRecord.revise.saveCor" : "entityRecord.revise.save")}
-          </Button>
-        </>
-      }
+      action={spec.empty ? { kind: "entityRecord", mode: "enter" } : verb === "rev" ? { kind: "entityChange", mode: "record" } : verb === "cor" ? { kind: "entityCorrection", mode: "record" } : { kind: "entityRecord", mode: "record" }}
+      incomplete={!ready || stale}
+      onSubmit={() => { if (ready && !stale) save.mutate(undefined); }}
     >
       {spec.empty ? (
         <p className="notice"><Info size={14} aria-hidden /> {t("entityOps.revise.firstEntry", { field: spec.label })}</p>
@@ -224,6 +218,6 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
       {/* worst-case-33 (#27): another tab or person saved this record while the sheet is open; say so before a save meets the
           conflict. Last in the body, so its arrival moves nothing on screen. */}
       {moved && !save.isPending && !save.error && !stale && !rebased && <Banner tone="warn" live="polite">{t("entityRecord.conflict.movedUnder", { time: fmtDateTime(moved) })}</Banner>}
-    </Sheet>
+    </Composer>
   );
 }

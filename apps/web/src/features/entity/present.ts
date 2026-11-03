@@ -157,7 +157,7 @@ type Director = NonNullable<LegalEntityState["directors"]>[number];
 /** Officers as one line: role and name, in printed order. */
 export const directorsText = (ds: readonly Pick<Director, "role" | "name">[]) =>
   // company-26: a row whose role is not chosen yet reads as its name alone, never "null <name>".
-  ds.filter((d) => d.name.trim()).map((d) => [d.role ? label(DIRECTOR_ROLE, d.role) : "", d.name].filter(Boolean).join(" ")).join(", ") || "—";
+  ds.filter((d) => d.name.trim()).map((d) => [d.role ? label(DIRECTOR_ROLE, d.role) : "", d.name].filter(Boolean).join(" ")).join(", ") || t("entityOps.info.none");
 
 export { kindLabel, kindName } from "../../reference/entity/present";
 const fold = (s: string) => s.normalize("NFC").trim().toLocaleLowerCase();
