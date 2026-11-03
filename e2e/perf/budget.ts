@@ -13,8 +13,10 @@ export function readBudget(value: unknown) {
   assert(Number.isFinite(objective.target) && objective.target > 0 && objective.target <= 1, "invalid LCP target");
   const shape = Object.fromEntries(["employees", "entities", "workplaces", "departments"].map(key => [key, Number(labels?.[key])])) as Record<"employees" | "entities" | "workplaces" | "departments", number>;
   const samples = Number(labels?.["samples-per-cache"]);
+  const run_ms = Number(labels?.["run-timeout-seconds"]) * 1000;
   assert(Object.values(shape).every(n => Number.isSafeInteger(n) && n > 0) && Number.isSafeInteger(samples) && samples >= 20, "invalid lab fixture or sample count");
-  return { ms: objective.value * 1000, target: objective.target, samples, shape };
+  assert(Number.isSafeInteger(run_ms) && run_ms > 0, "invalid lab deadline");
+  return { ms: objective.value * 1000, target: objective.target, samples, run_ms, shape };
 }
 
 export const budget = readBudget(readYaml(new URL("../../backend/app/slos/page-load.openslo.yaml", import.meta.url)));

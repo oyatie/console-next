@@ -44,8 +44,9 @@ test("a previous document's event stream is outside the next load", { tag: "@per
     }
     if (request.url === "/api/v1/employees") { response.writeHead(503).end(); return; }
     if (request.url === "/access") { response.writeHead(302, { location: "/access/roles" }).end(); return; }
+    if (request.url === "/people/requests") { response.writeHead(302, { location: "/requests" }).end(); return; }
     if (request.url === "/wrong") { response.writeHead(302, { location: "/next" }).end(); return; }
-    if (!["/old", "/next", "/bad", "/access/roles"].includes(request.url ?? "")) { response.writeHead(404).end(); return; }
+    if (!["/old", "/next", "/bad", "/access/roles", "/requests"].includes(request.url ?? "")) { response.writeHead(404).end(); return; }
     response.setHeader("content-type", "text/html");
     response.end(`<!doctype html><main><h1>가상 직원 명부</h1></main><span hidden data-route-ready="${request.url === "/bad" ? "" : request.url}" data-route-key="sample"></span><script>history.replaceState({__TSR_key:'sample'},'');onkeydown=()=>fetch('/api/v1/users/me',{headers:{'x-last-interaction':String(Date.now())}});${request.url === "/old" ? "new EventSource('/api/v1/events');" : request.url === "/bad" ? "fetch('/api/v1/employees').then(() => document.querySelector('[data-route-ready]').dataset.routeReady='/bad');" : ""}</script>`);
   });
@@ -72,10 +73,14 @@ test("a previous document's event stream is outside the next load", { tag: "@per
     page.setDefaultTimeout(30_000);
     const refused = await measure(page, `${origin}/bad`);
     expect(refused.errors).toContain("GET /api/v1/employees 503");
+    expect(await reportActivity(page)).toEqual([]);
     const redirected = await measure(page, `${origin}/access`);
     expect(redirected.errors).toEqual([]);
     expect(redirected.final_path).toBe("/access/roles");
     page.setDefaultTimeout(1000);
+    const appForward = await measure(page, `${origin}/people/requests`);
+    expect(appForward.errors).toEqual([]);
+    expect(appForward.final_path).toBe("/requests");
     const wrong = await measure(page, `${origin}/wrong`);
     expect(wrong.lcp_ms).toBeNull();
     expect(wrong.errors).not.toEqual([]);
@@ -105,7 +110,7 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
   let context: BrowserContext | undefined;
   try {
     const { admin, urls } = await test.step("Build the synthetic tenant through product controls", () => buildTenant(browser), { timeout: 1_200_000 });
-    test.setTimeout(7_200_000);
+    test.setTimeout(budget.run_ms);
     const vendor = await vendorPage(browser);
     const states = { tenant: await admin.context().storageState(), vendor: await vendor.context().storageState() };
     const origin = new URL(admin.url()).origin;
@@ -152,7 +157,7 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
             lastNavigation = Date.now();
             samples[cache].push(await measure(page, url));
           }
-          if (realm === "tenant" && !samples.cold.at(-1)?.errors.length && !samples.warm.at(-1)?.errors.length) {
+          if (realm === "tenant") {
             // Input ends native LCP observation: report real activity only after both samples are captured.
             samples.warm.at(-1)!.errors.push(...await reportActivity(page));
           }

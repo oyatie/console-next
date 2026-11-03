@@ -2,12 +2,13 @@
 import assert from "node:assert/strict";
 import type { Page, Request } from "@playwright/test";
 import { routeReady } from "../flows";
-import { redirectTargets } from "../helpers/route-list";
+import { routeList } from "../helpers/route-list";
 import { budget, readYaml } from "./budget";
 
 const contract = readYaml(new URL("../../backend/openapi/openapi.yaml", import.meta.url)) as { paths: Record<string, unknown> };
 const templates = Object.keys(contract.paths).sort((a, b) => a.split("{").length - b.split("{").length)
   .map(path => ({ path, re: new RegExp(`^${path.split(/(\{[^}]+\})/).map(p => p.startsWith("{") ? "[^/]+" : p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("")}$`) }));
+const appPaths = routeList.map(({ path }) => new RegExp(`^${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\$[A-Za-z]+/g, "[^/]+")}$`));
 export const templatePath = (path: string) => templates.find(t => t.re.test(path))?.path ?? path;
 export type Sample = { lcp_ms: number | null; ttfb_ms: number | null; longest_task_ms: number | null; ready_ms: number | null; final_path: string | null; requests: Record<string, number>; errors: string[] };
 export const percentile = (values: number[], p: number) => [...values].sort((a, b) => a - b)[Math.ceil(values.length * p) - 1] ?? null;
@@ -38,15 +39,23 @@ export async function measure(page: Page, url: string): Promise<Sample> {
   page.on("request", requested).on("requestfailed", failed).on("response", response);
   try {
     await page.goto(url, { waitUntil: "load", timeout: 30_000 });
-    await routeReady(page, redirectTargets[new URL(url, page.url()).pathname] ?? url);
-    await page.evaluate(() => document.fonts.ready);
-    // Let the committed screen paint and the buffered observer deliver its final candidate.
-    await page.evaluate(() => new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 100)))));
+    await routeReady(page);
+    const painted = async () => {
+      await document.fonts.ready;
+      await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 100))));
+    };
+    // A committed forwarding component may start another route's reads before its final paint.
+    await page.evaluate(painted);
+    await routeReady(page);
+    await page.evaluate(painted);
     const timing = await page.evaluate(() => {
       const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
       const data = (window as unknown as { __routeLoad: { lcp_ms: number | null; longest_task_ms: number | null } }).__routeLoad;
       return { ...data, ttfb_ms: navigation?.responseStart ?? null, ready_ms: performance.now(), final_path: location.pathname };
     });
+    if (timing.final_path !== new URL(url, page.url()).pathname && !appPaths.some(path => path.test(timing.final_path))) {
+      throw new Error(`unregistered destination ${timing.final_path}`);
+    }
     return { ...timing, requests, errors };
   } catch (error) {
     return { lcp_ms: null, ttfb_ms: null, longest_task_ms: null, ready_ms: null, final_path: null, requests, errors: [...errors, String(error).split("\n")[0]!] };

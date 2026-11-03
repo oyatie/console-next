@@ -23,6 +23,13 @@ test("p95 uses nearest rank without changing the raw samples", () => {
   expect(values[0]).toBe(20);
 });
 
+test("the configured lab deadline must be bounded and positive", () => {
+  const slo = readYaml(new URL("../../backend/app/slos/page-load.openslo.yaml", import.meta.url)) as { metadata: { labels: Record<string, string> } };
+  for (const value of ["0", "-1", "not-a-duration", "1e30"]) {
+    expect(() => readBudget({ ...slo, metadata: { ...slo.metadata, labels: { ...slo.metadata.labels, "run-timeout-seconds": value } } })).toThrow();
+  }
+});
+
 test("additional corporations keep unique, unallocated registration numbers", () => {
   const ids = Array.from({ length: budget.shape.entities }, (_, i) => registration(i));
   expect(new Set(ids.map(id => id.brn)).size).toBe(budget.shape.entities);
