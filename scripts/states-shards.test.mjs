@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -25,6 +25,26 @@ test("the module route inventory includes app floorplan declarations", () => {
     assert.equal(result.status, 0, result.stderr);
     const inventory = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(inventory.floorplans["/account"], "P-05");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("the module route inventory refuses an unknown floorplan", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "module-routes-unknown-"));
+  try {
+    mkdirSync(path.join(dir, "apps/web"), { recursive: true });
+    cpSync("apps/web/src", path.join(dir, "apps/web/src"), { recursive: true });
+    symlinkSync(path.resolve("node_modules"), path.join(dir, "node_modules"), "dir");
+    const app = path.join(dir, "apps/web/src/routes/app.ts");
+    const source = readFileSync(app, "utf8");
+    const planted = source.replace(
+      /path: "\/account", staticData: \{[^}]+\}/,
+      'path: "/account", staticData: { access: "signed-in", floorplan: "P-06" }',
+    );
+    assert.notEqual(planted, source, "account route plant was not applied");
+    writeFileSync(app, planted);
+    const result = spawnSync(process.execPath, [path.resolve("scripts/d8-module-routes.mjs"), path.join(dir, "modules.json")], { cwd: dir, encoding: "utf8" });
+    assert.notEqual(result.status, 0, result.stdout);
+    assert.match(result.stderr, /app route floorplans are unreadable/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

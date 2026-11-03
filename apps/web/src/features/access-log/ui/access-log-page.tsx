@@ -30,7 +30,7 @@ export function AccessLogPage() {
   const q = useInfiniteQuery(accessLogPages(search.period, !all));
   const first = q.data?.pages[0];
   const period = search.period ?? first?.period.from.slice(0, 7) ?? "";
-  return <Page floorplan="list" head={{ title: t("audit.title"), tabs: <AuditTabs /> }} q={q}
+  return <Page floorplan="P-01" head={{ title: t("audit.title"), tabs: <AuditTabs /> }} q={q}
     toolbar={<div className="form">
         <Field label={t("accessLog.period")} required={null}>{p => <TextInput {...p} type="month" value={period} onChange={e => void navigate({ search: s => ({ ...s, period: e.target.value || undefined }), replace: true })} />}</Field>
         <TabNav label={t("accessLog.views")} overflow="scroll">

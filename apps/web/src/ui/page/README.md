@@ -5,7 +5,7 @@
 or create support references. Pass the existing query result and server errors.
 
 ```tsx
-<Page floorplan="list" q={people} head={{
+<Page floorplan="P-01" q={people} head={{
   title: t("people.title"),
   titleId: "people-title",
   crumbs: <Crumbs items={ancestors} />,
@@ -21,8 +21,9 @@ or create support references. Pass the existing query result and server errors.
 
 For a page without a read, omit `q` and pass ordinary children. The `floorplan`
 attribute identifies the intended template; template-specific geometry is a
-later slice. The supported values are list, record, form, dashboard, wizard,
-settings and canvas. Existing `PageHead` callers keep their current props.
+later slice. The supported values are `P-01` list report, `P-02` object page,
+`P-03` worklist, `P-04` wizard, `P-05` settings page, and `canvas`. Existing
+`PageHead` callers keep their current props.
 
 `PageMain` is the shell's main landmark. A standalone `Page` renders main;
 inside `PageMain` it renders a div. Nested pages and PageHeads in their body

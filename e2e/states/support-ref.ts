@@ -89,6 +89,11 @@ export function supportReferenceTest(route: string, state: State) {
         floorplan: await frame.count() ? await frame.getAttribute("data-floorplan") : null,
         declared_floorplan: inventory.floorplans?.[route] ?? null,
       };
+      if (route === "/account") {
+        await expect(main).toHaveAttribute("data-floorplan", "P-05");
+        expect(observation.floorplan).toBeNull();
+      }
+      if (route === "/people") expect(observation.floorplan).toBe("P-01");
       const shown = state === "no-reference" ? count === 0 : count === 1 && observation.rendered_ref === reference
         && observation.display === reference.slice(0, 8) && observation.copy_count === 1;
       await info.attach("support-reference", { contentType: "application/json", body: Buffer.from(JSON.stringify({
