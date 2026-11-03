@@ -7,6 +7,9 @@ mod nullable_pay_groups;
 #[path = "module_readiness.rs"]
 mod module_readiness;
 
+#[path = "pay_group_idempotency.rs"]
+mod pay_group_idempotency;
+
 const GROUPS: &str = "/api/v1/payroll/pay-groups";
 
 async fn entity(pool: &PgPool, org: OrgId) -> Uuid {

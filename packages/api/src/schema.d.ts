@@ -52578,7 +52578,10 @@ export interface operations {
     createPayGroup: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Optional retry key, trimmed before use. For the same tenant and actor, a completed request with the same key and body replays the original 201 response under current Cedar access; a different body returns 409. Omit only for independent creates. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -52588,7 +52591,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Explicit pay group created for the permitted legal entity. */
+            /** @description Explicit pay group created for the permitted legal entity, or the original response replayed after current Cedar authorization. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -52599,7 +52602,14 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description Missing, malformed or invalid required choices; nothing is written (validation). */
+            /** @description The key was used with a different body (idempotency_key_reused), is still processing (command_processing), or the saved result cannot be disclosed under current access (command_applied). Refused commands remain settled (command_settled); no pay group is written. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing, malformed or invalid required choices (validation), or an invalid supplied Idempotency-Key (invalid_request_key); no pay group is written. */
             422: {
                 headers: {
                     [name: string]: unknown;
