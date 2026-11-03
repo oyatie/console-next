@@ -5,6 +5,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
+import { ATTENDANCE_MARK } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
 import { Button, IconButton, ToggleButton } from "../../../ui/button/button";
@@ -44,8 +45,9 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
+  const mark = ATTENDANCE_MARK.values.find(value => value === search.mark);
   // A changed date, scope or filter must not show rows and counts from the previous read.
-  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined));
+  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined, mark));
   const rows = useMemo(() => board.data?.groups.flatMap(g => g.rows) ?? [], [board.data]);
   const kindOf = usePlanKinds(rows, date);
   const store = useDrafts(`day:${date}`, rows);
@@ -95,7 +97,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                     {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
                   </p>
                   {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
-                  {b.issue_groups && b.issue_groups.some(g => g.count > 0) && <IssueGroups groups={b.issue_groups} selected={search.mark} onSelect={mark => go({ mark, issues: true, unscheduled: undefined })} />}
+                  {b.issue_groups && b.issue_groups.some(g => g.count > 0) && <IssueGroups groups={b.issue_groups} selected={mark} onSelect={selectedMark => go({ mark: selectedMark, issues: true, unscheduled: undefined })} />}
                   {b.groups.length > 0 && <div className="muted"><strong>{t("attendanceRecords.grammar.label")}</strong><p id={grammarHintId}>{t("attendanceRecords.grammar.hint")}</p></div>}
                   {!b.groups.length ? (
                     search.issues || search.unscheduled ? (

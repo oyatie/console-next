@@ -1,4 +1,5 @@
-import { ApiError, api, unwrap, type components } from "@console/api";
+import { ApiError, api, unwrap } from "@console/api";
+import type { components, operations } from "@console/api/schema";
 import { cursorPages, get } from "../../lib/query";
 import { addDays, isDate, nextMonday } from "../../ui/date/days";
 export { session } from "@console/api";
@@ -85,12 +86,13 @@ type SaveInput = S["AttendanceSaveInput"];
 export type SaveReceipt = S["AttendanceSaveReceipt"];
 export type Conflict = S["AttendanceConflict"];
 type CellPreview = S["AttendanceCellPreview"];
+type DayBoardQuery = operations["readAttendanceDayBoard"]["parameters"]["query"];
 
 
 // Reads. A save, undo, correction or void anywhere re-reads them (the prefix is invalidated; the live topic
 // `attendance_day` does the same for another HR worker's writes).
-export const dayBoardQuery = (date: string, workplace_id?: string, unit_id?: string, issues_only?: boolean, no_schedule_only?: boolean, rows?: "all") => {
-  const query = { date, workplace_id, unit_id, issues_only: issues_only || undefined, no_schedule_only: no_schedule_only || undefined, rows };
+export const dayBoardQuery = (date: DayBoardQuery["date"], workplace_id?: DayBoardQuery["workplace_id"], unit_id?: DayBoardQuery["unit_id"], issues_only?: DayBoardQuery["issues_only"], no_schedule_only?: DayBoardQuery["no_schedule_only"], rows?: DayBoardQuery["rows"], mark?: DayBoardQuery["mark"]) => {
+  const query = { date, workplace_id, unit_id, issues_only: issues_only || undefined, no_schedule_only: no_schedule_only || undefined, rows, ...(mark ? { mark } : {}) } satisfies DayBoardQuery;
   const board = get("/api/v1/attendance/days", { params: { query } });
   return { ...board, queryFn: async (): Promise<DayBoard> => {
     try { return await board.queryFn(); }

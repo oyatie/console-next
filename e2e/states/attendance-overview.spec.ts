@@ -30,8 +30,8 @@ for (const width of [1440, 390]) {
     await page.route(url => url.pathname === screen.read, route => {
       const url = new URL(route.request().url());
       reads.push(url);
-      if (url.searchParams.has("mark")) return route.fulfill({ status: 400, json: failure("invalid_query") });
-      return route.fulfill({ json: { ...attendanceDayBoard, ledger: { ...attendanceDayBoard.ledger, people: 39, late_or_early: 37, normal: 1 }, issue_groups: [{ kind: "LATE", count: 37, earliest_date: "2026-10-04" }, { kind: "NO_RECORD", count: 0, earliest_date: "2026-10-01" }], groups: attendanceDayBoard.groups.map(group => ({ ...group, people: 39, hidden: 37 })) } });
+      const selected = url.searchParams.get("mark");
+      return route.fulfill({ json: { ...attendanceDayBoard, ledger: { ...attendanceDayBoard.ledger, people: 39, late_or_early: 37, normal: 1 }, issue_groups: [{ kind: "LATE", count: 37, earliest_date: "2026-10-04" }, { kind: "NO_RECORD", count: 0, earliest_date: "2026-10-01" }], groups: attendanceDayBoard.groups.map(group => ({ ...group, people: 39, hidden: 37, rows: selected === "LATE" ? group.rows.filter(row => row.day.marks.includes("LATE")) : group.rows })) } });
     });
     await page.goto(`${screen.path}&wp=${id(4)}`);
     const groups = page.getByRole("grid", { name: "확인 필요 유형", exact: true });
@@ -40,18 +40,20 @@ for (const width of [1440, 390]) {
     await expect(groups.getByText(t("attendanceRecords.mark.NO_RECORD"), { exact: true })).toHaveCount(0);
     await groups.getByText(t("attendanceRecords.mark.LATE"), { exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get("mark")).toBe("LATE");
-    await expect(page.getByRole("link", { name: "근태직원 2", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "근태직원 1", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "근태직원 2", exact: true })).toHaveCount(0);
     await expect(groups).toBeVisible();
     expect(reads.at(-1)?.searchParams.get("workplace_id")).toBe(id(4));
     expect(reads.at(-1)?.searchParams.get("date")).toBe("2026-10-04");
+    expect(reads.at(-1)?.searchParams.get("mark")).toBe("LATE");
     await page.getByRole("button", { name: t("attendanceOverview.issues.clear"), exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.has("mark")).toBe(false);
+    await expect(page.getByRole("link", { name: "근태직원 2", exact: true })).toBeVisible();
     await groups.getByText(t("attendanceRecords.mark.LATE"), { exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get("mark")).toBe("LATE");
     await page.getByRole("button", { name: t("attendanceRecords.board.issuesOnly"), exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.has("mark")).toBe(false);
     await expect.poll(() => new URL(page.url()).searchParams.has("issues")).toBe(false);
-    expect(reads.every(url => !url.searchParams.has("mark"))).toBe(true);
     await fits(page, `overview-groups/${width}`);
     await expectAxe(page, `overview-groups/${width}`);
     expect(fixture.unexpected).toEqual([]);

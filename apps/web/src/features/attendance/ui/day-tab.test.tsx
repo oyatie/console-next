@@ -1,28 +1,39 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { Banner } from "../../../ui/banner/banner";
+import type { Button } from "../../../ui/button/button";
+import type { IssueGroup, Mark } from "../api";
 import { fillSchedule, type Drafts } from "../domain/grid";
 import { DayTab } from "./day-tab";
 
 const stateQuery = vi.hoisted(() => vi.fn());
-const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"], mark: undefined as string | undefined, people: 1, judged: true, ledgerGap: false, drafts: {} as Drafts, detail: false, load: "ready" as "ready" | "loading" | "error" }));
+const state = vi.hoisted(() => ({
+  marks: ["NO_SCHEDULE"] as Mark[], mark: undefined as Mark | undefined, issueGroups: [] as IssueGroup[], issues: false,
+  people: 1, judged: true, ledgerGap: false, drafts: {} as Drafts, detail: false, load: "ready" as "ready" | "loading" | "error",
+  buttons: [] as Parameters<typeof Button>[0][], navigate: vi.fn(),
+}));
 vi.mock("@tanstack/react-router", () => ({
-  getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06", detail: state.detail, mark: state.mark }), useNavigate: () => vi.fn() }),
+  getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06", detail: state.detail, mark: state.mark, issues: state.issues }), useNavigate: () => state.navigate }),
   Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-href={to}>{children}</span>,
 }));
 vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: (options: unknown) => { stateQuery(options); return ({
   isPending: state.load === "loading", isSuccess: state.load === "ready", error: state.load === "error" ? new Error("unavailable") : null,
   data: state.load === "ready" ? {
     date: "2026-10-06", judged: state.judged, marks: { blocking: 1, decision: 0 },
+    issue_groups: state.issueGroups,
     ledger: { people: state.people, no_schedule: state.ledgerGap ? 0 : state.people, rest: 0, no_record: 0, missing_out: 0, absent: 0, outside: 0, trip: 0, late_or_early: 0, normal: 0, pending: 0 },
     groups: state.people ? [{ workplace_id: "site", unit_id: "team", name: "Team", people: state.people, normal: 0, no_schedule: state.people, hidden: 0, marks: { blocking: 1, decision: 0 },
       rows: [{ employee_id: "person", name: "Person", month_state: { state: "OPEN" }, day: { recognition: { recognised: 0 }, marks: state.marks, plan: { kind: "NO_SCHEDULE" } } }],
     }] : [],
   } : undefined,
 }); } }));
+vi.mock("../../../ui/button/button", async original => {
+  const actual = await original<typeof import("../../../ui/button/button")>();
+  return { ...actual, Button: (props: Parameters<typeof Button>[0]) => { state.buttons.push(props); return <actual.Button {...props} />; } };
+});
 vi.mock("./use-drafts", () => ({ useDrafts: () => ({ drafts: state.drafts }) }));
 vi.mock("./scope-picker", () => ({ ScopePicker: () => null }));
 vi.mock("./day-row", () => ({ DayRow: () => null }));
@@ -37,6 +48,10 @@ beforeEach(() => {
   state.load = "ready";
   state.detail = false;
   state.mark = undefined;
+  state.issueGroups = [];
+  state.issues = false;
+  state.buttons = [];
+  state.navigate.mockClear();
   stateQuery.mockClear();
 });
 
@@ -122,8 +137,27 @@ test("a pending detail read never retains rows from the previous filter", () => 
   expect(html).toContain('role="status"');
 });
 
-test("a shared mark URL keeps the board query within the supported contract", () => {
+test("a selected review kind filters the board query", () => {
   state.mark = "MISSING_OUT";
   renderToStaticMarkup(<DayTab />);
-  expect(JSON.stringify(stateQuery.mock.calls[0]![0])).not.toContain("MISSING_OUT");
+  expect(JSON.stringify(stateQuery.mock.calls[0]![0])).toContain('"mark":"MISSING_OUT"');
+});
+
+test("review groups with only zero counts stay absent", () => {
+  state.issueGroups = [{ kind: "NO_RECORD", count: 0, earliest_date: "2026-10-01" }];
+  expect(renderToStaticMarkup(<DayTab />)).not.toContain(t("attendanceOverview.issues.groups"));
+});
+
+test("clearing a filtered empty state resets its review kind with every board filter", () => {
+  state.people = 0;
+  state.issues = true;
+  state.mark = "MISSING_OUT";
+  renderToStaticMarkup(<DayTab />);
+  const clear = state.buttons.find(button => button.children === t("attendanceRecords.empty.clear"));
+  expect(clear).toBeDefined();
+  clear!.onClick!({} as MouseEvent<HTMLButtonElement>);
+  const update = state.navigate.mock.calls[0]![0].search;
+  expect(update({ issues: true, mark: "MISSING_OUT", unscheduled: true, wp: "site", unit: "team" })).toEqual({
+    issues: undefined, mark: undefined, unscheduled: undefined, wp: undefined, unit: undefined,
+  });
 });
