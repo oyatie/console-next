@@ -34,6 +34,7 @@ test("navigation distinguishes go-live checks from the planned access review", (
   const html = renderToStaticMarkup(<AccessHead />);
   for (const label of ["역할", "부여 현황", "운영 시작 준비", "비상 관리자 계정"]) expect(html).toContain(label);
   expect(html).not.toContain("권한 검토");
+  expect(html).not.toContain('href="/access/review"');
 });
 
 test.each(["loading", "retrying", "failed", "refused", "first-failed", "first-refused"])("ops tab is absent when its read is %s, including stale data", status => {

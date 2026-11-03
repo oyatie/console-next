@@ -67,9 +67,14 @@ test("wrong-realm 401 has support-specific copy; unknown errors keep the shared 
 });
 test("the tenant sees purpose, scope, bounded duration, decisions and access records", () => {
   const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).toContain("supportAccess.title");
+  expect(html).not.toContain("audit.title");
   for (const text of ["HELP-123", session.reason, session.operator_label, "supportAccess.duration", "supportAccess.masked", "supportAccess.approve", "supportAccess.deny", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
   expect(html).toContain("max=\"30\"");
   expect(html).toContain("supportAccess.revealPersonal");
+});
+test("the support-access head has no navigation while it is the only served audit view", () => {
+  expect(renderToStaticMarkup(<SupportAccess />)).not.toContain("<nav");
 });
 test("approval and end commands use the shared authenticated API and retain their intent key", async () => {
   renderToStaticMarkup(<SupportAccess />);
@@ -162,6 +167,7 @@ test("a revoked approver cannot retain cached support details or controls after 
   state.error = new ApiError(403, "forbidden", "", []);
   const html = renderToStaticMarkup(<SupportAccess />);
   expect(html).not.toContain(session.operator_label);
+  expect(html).not.toContain("audit.nav");
   expect(html).not.toContain(">supportAccess.approve</button>");
   expect(html).not.toContain(">supportAccess.deny</button>");
 });

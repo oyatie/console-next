@@ -54,5 +54,14 @@ const account = createRoute({ getParentRoute: () => app, path: "/account", stati
 const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
   ? [createRoute({ getParentRoute: () => root, path: "/_gallery", component: lazyRouteComponent(screen(() => import("../gallery/gallery")), "Gallery") })]
   : [];
+// Mock-state builds keep unserved screens testable without publishing their routes.
+const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
+  createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
+  createRoute({
+    getParentRoute: () => app, path: "/audit/access-log", staticData: { access: "signed-in" },
+    validateSearch: (s: Record<string, unknown>): { period?: string; view?: "all" } => ({ period: str(s.period), view: s.view === "all" ? "all" : undefined }),
+    component: lazyRouteComponent(screen(() => import("../features/access-log/ui/access-log-page")), "AccessLogPage"),
+  }),
+] : [];
 
-export const frame = { signIn: [login, setupPasskey, ...dev], screens: [tenants, home, account, supportAccess] };
+export const frame = { signIn: [login, setupPasskey, ...dev], screens: [tenants, home, account, supportAccess, ...reviewStates] };

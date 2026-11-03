@@ -40,3 +40,13 @@ test("pay grants explain inactivity outside the narrow table cell until payroll 
     expect(html).not.toContain("aria-pressed");
   }
 });
+
+test("support approval is a server-catalogued authority with approval wording", () => {
+  const html = renderToStaticMarkup(<PermissionGrid domains={[
+    { domain: "vendor_support", grantable: true, levels: ["approve"], operations: [{ operation: "support_access::approve", level: "approve" }] },
+    { domain: "hr_basic", grantable: true, levels: ["approve"], operations: [{ operation: "hr_basic::approve", level: "approve" }] },
+  ]} value={{}} routed={undefined} onChange={() => {}} />);
+  expect(html).toContain('aria-label="vendor_support 승인"');
+  expect(html).toContain('aria-label="인사기본 결정"');
+  expect(html.match(/type="checkbox"/g)).toHaveLength(2);
+});

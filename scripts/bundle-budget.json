@@ -14,7 +14,9 @@
   "list": {
     "budget_kb": 300,
     "routes": [
+      "src/features/access-log/ui/access-log-page.tsx",
       "src/features/access/ui/access-routes.tsx",
+      "src/features/access/ui/access-review-page.tsx",
       "src/features/attendance/ui/attendance-page.tsx",
       "src/features/company-domain/ui/domain-page.tsx",
       "src/features/entity/ui/entity-routes.tsx",

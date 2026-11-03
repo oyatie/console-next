@@ -14,7 +14,7 @@ import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { Field, TextInput } from "../../../ui/field/field";
 import { KeyValue } from "../../../ui/key-value/key-value";
-import { PageHead } from "../../../ui/page-head/page-head";
+import { Page } from "../../../ui/page/page";
 import { Table } from "../../../ui/table";
 import { codeText, SUPPORT_SESSION_STATE } from "../../../lib/labels";
 import { EnumValue } from "../../../ui/enum-value";
@@ -65,14 +65,11 @@ export function SupportAccessIndicator() {
 export function SupportAccess() {
   const q = useQuery({ ...supportSessionsQuery, enabled: !!session.token });
   const visible = q.error instanceof ApiError && q.error.status === 403 ? { ...q, data: undefined } : q;
-  return <div className="page">
-    <PageHead title={t("supportAccess.title")} sub={t("supportAccess.description")} />
-    <Card flush>
-      <QueryState q={visible} own={supportRefusal} empty={(data) => !data.sessions.length ? <EmptyState title={t("supportAccess.emptyTitle")} reason={t("supportAccess.emptyReason")} /> : null}>
-        {(data) => <SessionsList data={data} />}
-      </QueryState>
-    </Card>
-  </div>;
+  return <Page floorplan="list" head={{ title: t("supportAccess.title") }} q={visible} own={supportRefusal}>
+    {data => <Card flush label={t("supportAccess.description")}>
+      {data.sessions.length ? <SessionsList data={data} /> : <EmptyState title={t("supportAccess.emptyTitle")} reason={t("supportAccess.emptyReason")} />}
+    </Card>}
+  </Page>;
 }
 
 function SessionsList({ data }: { data: Sessions }) {

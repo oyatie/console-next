@@ -24,6 +24,9 @@ import { enPeople } from "./en/people";
 import { enExit } from "./en/exit";
 import { enAccounts } from "./en/accounts";
 import { enAccess } from "./en/access";
+import { enAccessReview } from "./en/access-review";
+import { enAccessLog } from "./en/access-log";
+import { enAudit } from "./en/audit";
 import { enAccessCodes } from "./en/access-codes";
 import { enDenied } from "./en/denied";
 import { enAccessGrants } from "./en/access-grants";
@@ -141,6 +144,9 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enExit,
   ...enAccounts,
   ...enAccess,
+  ...enAccessReview,
+  ...enAccessLog,
+  ...enAudit,
   ...enAccessCodes,
   ...enDenied,
   ...enAccessGrants,
