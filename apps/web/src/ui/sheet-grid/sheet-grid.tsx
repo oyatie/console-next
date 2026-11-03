@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEv
 import { AlertTriangle } from "lucide-react";
 import { TextInput } from "../field/field";
 import { narrow } from "./choices";
+import { readClipboard, writeClipboard } from "./clipboard";
 import { at as rangeAt, indexOf, inRect, moveRange, rectIn, type Range } from "./range";
 import { gridViewport, useGridWindow } from "./use-grid-window";
 import s from "./sheet-grid.module.css";
@@ -18,7 +19,7 @@ type SheetGridCell = {
   value: string;
   previous?: ReactNode;
   changed?: boolean;
-  invalid?: boolean;
+  invalid?: boolean; readOnly?: boolean;
   error?: ReactNode;
   suggestion?: { value: string; content: ReactNode };
 };
@@ -35,6 +36,7 @@ type SheetGridTailColumn<R> = {
   header: ReactNode;
   cell: (row: R) => { tone: "changed" | "error" | "same"; content: ReactNode };
 };
+export type SheetGridPasteResult = { applied: number; readOnly: number; outside: number };
 
 const id = (r: number, c: number) => `grid-${r}-${c}`;
 const same = (a: At | null, r: number, c: number) => a?.r === r && a.c === c;
@@ -46,7 +48,7 @@ const pickable = <R,>(f: SheetGridColumn<R>, text: string) => narrow(choiceWords
  * so a printable key or an IME composition cannot lose its first character.
  */
 export function SheetGrid<R>({
-  rows, rowKey, columns, leading, tail, rowHeader, label, onCell, parsePaste, activeCell, onActiveChange,
+  rows, rowKey, columns, leading, tail, rowHeader, label, onCell, parsePaste, onPasteResult, activeCell, onActiveChange,
   visibleRows = DEFAULT_VISIBLE, overscan = DEFAULT_OVERSCAN,
 }: {
   rows: readonly R[];
@@ -58,6 +60,7 @@ export function SheetGrid<R>({
   label: string;
   onCell: (row: R, col: number, text: string) => void;
   parsePaste: (text: string) => readonly (readonly string[])[];
+  onPasteResult?: (result: SheetGridPasteResult) => void;
   activeCell?: At | null;
   onActiveChange?: (at: At | null) => void;
   visibleRows?: number;
@@ -98,10 +101,13 @@ export function SheetGrid<R>({
   };
   const fillDown = () => {
     const box = rectIn(selection, axes);
-    const focus = selection && indexOf(selection.focus, axes);
-    if (!box || !focus) return;
-    const value = shown(rows[box.top]!, box.top, focus.c);
-    for (let r = box.top + 1; r <= box.bottom; r++) onCell(rows[r]!, focus.c, value);
+    if (!box) return;
+    for (let c = box.left; c <= box.right; c++) for (let r = box.top + 1; r <= box.bottom; r++)
+      if (!columns[c]!.cell(rows[r]!, r).readOnly) onCell(rows[r]!, c, shown(rows[box.top]!, box.top, c));
+  };
+  const clear = (r: number, c: number) => {
+    const box = rectIn(selection, axes) ?? { top: r, bottom: r, left: c, right: c };
+    for (let ri = box.top; ri <= box.bottom; ri++) for (let ci = box.left; ci <= box.right; ci++) if (!columns[ci]!.cell(rows[ri]!, ri).readOnly) onCell(rows[ri]!, ci, "");
   };
   const begin = (r: number, c: number, text: string) => {
     const el = input.current;
@@ -174,9 +180,9 @@ export function SheetGrid<R>({
     if (e.key === "F8") return (e.preventDefault(), nextError(r, c));
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") return (e.preventDefault(), fillDown());
     const cell = columns[c]!.cell(rows[r]!, r);
-    if (e.key === "Enter" && cell.suggestion) return (e.preventDefault(), onCell(rows[r]!, c, cell.suggestion.value));
-    if (e.key === "F2" || e.key === "Enter") return (e.preventDefault(), begin(r, c, columns[c]!.options?.length ? "" : cell.value));
-    if (e.key === "Delete" || e.key === "Backspace") return (e.preventDefault(), onCell(rows[r]!, c, ""));
+    if (!cell.readOnly && e.key === "Enter" && cell.suggestion) return (e.preventDefault(), onCell(rows[r]!, c, cell.suggestion.value));
+    if (!cell.readOnly && (e.key === "F2" || e.key === "Enter")) return (e.preventDefault(), begin(r, c, columns[c]!.options?.length ? "" : cell.value));
+    if (e.key === "Delete" || e.key === "Backspace") return (e.preventDefault(), clear(r, c));
     // Anything else (a printable key, an IME's 「Process」) goes into the mounted input and starts editing on input.
   };
   const edit = (e: KeyboardEvent<HTMLInputElement>, r: number, c: number) => {
@@ -192,13 +198,27 @@ export function SheetGrid<R>({
   };
   const paste = (e: ClipboardEvent, r: number, c: number) => {
     if (editing) return;
-    const block = parsePaste(e.clipboardData.getData("text/plain"));
+    const block = readClipboard(e.clipboardData, parsePaste);
     if (!block.length) return;
     e.preventDefault();
+    const result: SheetGridPasteResult = { applied: 0, readOnly: 0, outside: 0 };
     block.forEach((line, dr) => line.forEach((v, dc) => {
       const row = rows[r + dr];
-      if (row && c + dc < columns.length && v.trim() !== "") onCell(row, c + dc, v);
+      if (v.trim() === "") return;
+      const column = columns[c + dc];
+      if (!row || !column) result.outside++;
+      else if (column.cell(row, r + dr).readOnly) result.readOnly++;
+      else { onCell(row, c + dc, v); result.applied++; }
     }));
+    onPasteResult?.(result);
+  };
+  const copy = (e: ClipboardEvent) => {
+    if (editing) return;
+    const box = rectIn(selection, axes) ?? (active && validActive ? { top: active.r, bottom: active.r, left: active.c, right: active.c } : null);
+    if (!box) return;
+    e.preventDefault();
+    writeClipboard(e.clipboardData, Array.from({ length: box.bottom - box.top + 1 }, (row, dr) =>
+      Array.from({ length: box.right - box.left + 1 }, (column, dc) => shown(rows[box.top + dr]!, box.top + dr, box.left + dc))));
   };
   const onGridKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement | null)?.tagName === "INPUT") return;
@@ -214,12 +234,12 @@ export function SheetGrid<R>({
       gridRef.current = element;
       element?.style.setProperty("--sheet-cols", String(columns.length));
       element?.style.setProperty("--sheet-lead-cols", String(leading.length));
-    }} className={`${s.grid} ${m.grid}`} role="grid" tabIndex={mounted ? -1 : 0} onKeyDown={onGridKeyDown}
+    }} className={`${s.grid} ${m.grid}`} role="grid" tabIndex={mounted ? -1 : 0} onKeyDown={onGridKeyDown} onCopy={copy}
       onFocus={(e) => e.target === e.currentTarget && !parkingFocus.current && !mounted && move(active?.r ?? 0, active?.c ?? 0)}
       aria-label={label} aria-rowcount={rows.length + 1} aria-colcount={colCount} aria-multiselectable>
       <div role="row" aria-rowindex={1} className={s.head}>
-        <span role="columnheader" aria-colindex={1} className={s.n}>{rowHeader}</span>
-        {leading.map((column, c) => <span key={column.key} role="columnheader" aria-colindex={c + 2}>{column.header}</span>)}
+        <span role="columnheader" aria-colindex={1} className={`${s.n} ${s.stickyRow}`}>{rowHeader}</span>
+        {leading.map((column, c) => <span key={column.key} role="columnheader" aria-colindex={c + 2} className={c === 0 ? s.stickyLead : undefined}>{column.header}</span>)}
         {columns.map((column, c) => <span key={column.key} role="columnheader" aria-colindex={editableStart + c} className={s.colHead}>{column.header}{column.meta && <span className={s.tag} data-tone={column.metaTone}>{column.meta}</span>}</span>)}
         <span role="columnheader" aria-colindex={colCount}>{tail.header}</span>
       </div>
@@ -229,8 +249,8 @@ export function SheetGrid<R>({
         const st = tail.cell(row);
         return (
           <div key={rowKey(row)} role="row" aria-rowindex={r + 2} className={`${s.row} ${m.row}`}>
-            <span role="rowheader" aria-colindex={1} className={s.n}>{r + 1}</span>
-            {leading.map((column, c) => <span key={column.key} role="gridcell" aria-colindex={c + 2} className={column.className}>{column.cell(row)}</span>)}
+            <span role="rowheader" aria-colindex={1} className={`${s.n} ${s.stickyRow}`}>{r + 1}</span>
+            {leading.map((column, c) => <span key={column.key} role="gridcell" aria-colindex={c + 2} className={`${column.className ?? ""} ${c === 0 ? s.stickyLead : ""}`}>{column.cell(row)}</span>)}
             {columns.map((f, c) => {
               const cell = f.cell(row, r);
               const changed = cell.changed;
@@ -243,10 +263,10 @@ export function SheetGrid<R>({
                 <span
                   key={f.key} id={id(r, c)} role="gridcell" aria-colindex={editableStart + c} aria-selected={inRect(rect, r, c)} tabIndex={-1}
                   aria-label={cellName} aria-invalid={bad || undefined} className={`${s.cell} ${k.cell}`}
-                  data-changed={changed || undefined} data-bad={bad || undefined} data-editing={isEditing || undefined}
+                  data-changed={changed || undefined} data-bad={bad || undefined} data-editing={isEditing || undefined} data-readonly={cell.readOnly || undefined}
                   onPaste={(e) => paste(e, r, c)}
                   onFocus={(e) => e.target === e.currentTarget && (same(active, r, c) ? input.current?.focus() : setActive({ r, c }))}
-                  onDoubleClick={() => (same(active, r, c) ? begin(r, c, cell.value) : undefined)}
+                  onDoubleClick={() => (same(active, r, c) && !cell.readOnly ? begin(r, c, cell.value) : undefined)}
                   onPointerDown={(e) => {
                     const next = rangeAt(rowKey(row), f.key);
                     setRange(e.shiftKey && selection && rect ? { anchor: selection.anchor, focus: next.focus } : next);
@@ -257,11 +277,11 @@ export function SheetGrid<R>({
                   {!isEditing && <span className={changed ? s.new : undefined}>{cell.value}</span>}
                   {same(active, r, c) && (
                     <TextInput
-                      ref={input} aria-label={cellName} className={isEditing ? k.edit : k.catch} autoComplete="off"
+                      ref={input} aria-label={cellName} className={isEditing ? k.edit : k.catch} autoComplete="off" readOnly={cell.readOnly}
                       role={choiceWords(f).length ? "combobox" : undefined} aria-expanded={choiceWords(f).length ? isEditing : undefined}
                       aria-controls={options.length ? listId : undefined} aria-activedescendant={options.length ? `${listId}-${Math.min(opt, options.length - 1)}` : undefined}
-                      onInput={(e) => (setTyped(e.currentTarget.value), setOpt(0), editingNow.current || startEditing(r, c))}
-                      onCompositionStart={() => editingNow.current || startEditing(r, c)}
+                      onInput={(e) => !cell.readOnly && (setTyped(e.currentTarget.value), setOpt(0), editingNow.current || startEditing(r, c))}
+                      onCompositionStart={() => !cell.readOnly && (editingNow.current || startEditing(r, c))}
                       onCompositionEnd={() => enterAfterIme.current && leave(true, { r: r + 1, c })}
                       onKeyDown={(e) => (editingNow.current ? edit(e, r, c) : nav(e, r, c))}
                       onBlur={() => editingNow.current && leave(true)}

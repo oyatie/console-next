@@ -16,6 +16,7 @@ export const koBulkGrid = {
   "bulkGrid.filter.same": "그대로 {n, number}",
   "bulkGrid.columns": "열 선택 · {n, number}",
   "bulkGrid.paste": "붙여넣기",
+  "bulkGrid.paste.skipped": "붙이지 못한 칸 · 읽기 전용 {readOnly, number} · 범위 밖 {outside, number}",
   "bulkGrid.fill": "아래로 채우기",
   "bulkGrid.verbs": "날짜 있는 칸은 열마다 어떻게 기록할지 정합니다",
   "bulkGrid.verb.correct": "잘못 적음 · 정정",

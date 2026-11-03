@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, mount, expectWindowAt } from "./grid-table-fixture.playwright";
+import { expectAxe } from "../../../../../../e2e/a11y";
+
+const imeText = "\u3131";
 
 test("Shift+Tab restores the active cell after its row scrolls out of the window", async ({ page }) => {
   await mount(page, true);
@@ -16,6 +19,82 @@ test("Shift+Tab restores the active cell after its row scrolls out of the window
   await expect(page.locator("#grid-7-1 input")).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(page.locator("#grid-8-1 input")).toBeFocused();
+});
+
+test("Korean IME composition events preserve the first character", async ({ page }) => {
+  await mount(page, true);
+  const cell = page.locator("#grid-0-2");
+  await cell.click();
+  const input = cell.locator("input");
+  await input.dispatchEvent("compositionstart", { data: "" });
+  await expect(cell).toHaveAttribute("data-editing", "true");
+  await input.dispatchEvent("compositionupdate", { data: imeText });
+  await page.keyboard.insertText(imeText);
+  await input.dispatchEvent("compositionend", { data: imeText });
+  await expect(input).toHaveValue(imeText);
+  await input.press("Enter");
+  await expect(cell).toHaveText(imeText);
+  await expect(page.locator("#grid-1-2 input")).toBeFocused();
+  await expectAxe(page, "Korean grid composition", { include: "#gallery-grid-table" });
+});
+
+test("a plain click collapses a rectangular selection", async ({ page }) => {
+  await mount(page, true);
+  await page.locator("#grid-0-0").click();
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Shift+ArrowDown");
+  await page.locator("#grid-2-2").click();
+  expect(await page.locator('[role="gridcell"][aria-selected="true"]').evaluateAll((cells) => cells.map((cell) => cell.id))).toEqual(["grid-2-2"]);
+  await expectAxe(page, "collapsed grid selection", { include: "#gallery-grid-table" });
+});
+
+test("Shift+click extends the anchor into a rectangle", async ({ page }) => {
+  await mount(page, true);
+  await page.locator("#grid-1-0").click();
+  await page.locator("#grid-2-1").click({ modifiers: ["Shift"] });
+  expect(await page.locator('[role="gridcell"][aria-selected="true"]').evaluateAll((cells) => cells.map((cell) => cell.id))).toEqual([
+    "grid-1-0", "grid-1-1", "grid-2-0", "grid-2-1",
+  ]);
+  await expectAxe(page, "pointer grid selection", { include: "#gallery-grid-table" });
+});
+
+test("Ctrl+D fills and Delete clears every column in the selection", async ({ page }) => {
+  await mount(page, true);
+  await page.locator("#grid-0-0").evaluate((cell) => {
+    const data = new DataTransfer();
+    data.setData("text/plain", "F\tHQ\nM\tRemote\nM\tBranch");
+    const event = new ClipboardEvent("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", { value: data });
+    cell.dispatchEvent(event);
+  });
+  await page.locator("#grid-0-0").click();
+  await page.locator("#grid-2-1").click({ modifiers: ["Shift"] });
+  await page.keyboard.press("Control+d");
+  for (const row of [0, 1, 2]) {
+    await expect(page.locator(`#grid-${row}-0`)).toHaveText("F");
+    await expect(page.locator(`#grid-${row}-1`)).toHaveText("HQ");
+  }
+  await page.keyboard.press("Delete");
+  for (const row of [0, 1, 2]) for (const col of [0, 1]) await expect(page.locator(`#grid-${row}-${col}`)).toHaveText("");
+  await expectAxe(page, "filled and cleared grid selection", { include: "#gallery-grid-table" });
+});
+
+test("row and employee numbers stay frozen at 390px", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await mount(page, true);
+  await page.locator("html").evaluate((element) => { element.dataset.theme = "dark"; });
+  const headers = page.getByRole("columnheader");
+  const firstRow = page.getByRole("row").nth(1);
+  const frozen = [headers.nth(0), headers.nth(1), firstRow.getByRole("rowheader"), firstRow.getByRole("gridcell").first()];
+  const before = await Promise.all(frozen.map((cell) => cell.evaluate((element) => element.getBoundingClientRect().left)));
+  const scrollLeft = await page.locator("#scroller").evaluate((element) => (element.scrollLeft = element.scrollWidth));
+  expect(scrollLeft).toBeGreaterThan(0);
+  for (const cell of frozen) await expect(cell).toHaveCSS("position", "sticky");
+  const after = await Promise.all(frozen.map((cell) => cell.evaluate((element) => element.getBoundingClientRect().left)));
+  expect(after.every((left, index) => Math.abs(left - before[index]!) <= 1)).toBe(true);
+  await expect(headers.nth(0)).toBeVisible();
+  await expect(headers.nth(1)).toBeVisible();
+  await expectAxe(page, "frozen grid identity columns", { include: "#gallery-grid-table" });
 });
 
 for (const width of [1440, 390]) {
