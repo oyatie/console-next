@@ -117,8 +117,12 @@ fn view(name: &str) -> Value {
     json!({"id": Uuid::new_v4(), "name": name, "filters": {"status":"ACTIVE", "review":"identity,failed", "unit":format!("le:{}", Uuid::new_v4()), "sort":"name"}})
 }
 async fn account(pool: &PgPool, h: &Harness) -> String {
+    account_with_id(pool, h).await.1
+}
+async fn account_with_id(pool: &PgPool, h: &Harness) -> (UserId, String) {
     let user = seed_active_user(pool, *OrgId::one().as_uuid(), "MEMBER", "Saved views").await;
-    h.token(OrgId::one(), user).await
+    let token = h.token(OrgId::one(), user).await;
+    (user, token)
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -143,13 +147,13 @@ async fn saved_views_persist_replay_and_audit_once(pool: PgPool) {
         h.call(&token, None, None).await,
         (StatusCode::OK, json!({"items":[body]}))
     );
-    let count: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM audit_events WHERE action = 'employee_view.create'",
+    let targets: Vec<String> = sqlx::query_scalar(
+        "SELECT target_id FROM audit_events WHERE action = 'employee_view.create'",
     )
-    .fetch_one(&pool)
+    .fetch_all(&pool)
     .await
     .unwrap();
-    assert_eq!(count, 1);
+    assert_eq!(targets, [key]);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -161,11 +165,9 @@ async fn saved_views_are_private_to_actor_and_tenant_even_on_replay(pool: PgPool
     seed_org_and_super_admin(&pool, *org.as_uuid(), "Private views").await;
     let foreign = seed_active_user(&pool, *org.as_uuid(), "MEMBER", "Foreign views").await;
     let foreign = h.token(org, foreign).await;
-    let body = view("내 명부");
-    let key = body["id"].as_str().unwrap();
     for (index, token) in [&first, &second, &foreign].into_iter().enumerate() {
-        let mut body = body.clone();
-        body["name"] = json!(format!("내 명부 {index}"));
+        let body = view(&format!("내 명부 {index}"));
+        let key = body["id"].as_str().unwrap();
         assert_eq!(
             h.call(token, None, None).await,
             (StatusCode::OK, json!({"items":[]}))
@@ -180,6 +182,54 @@ async fn saved_views_are_private_to_actor_and_tenant_even_on_replay(pool: PgPool
             (StatusCode::OK, body)
         );
     }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn saved_views_refuse_another_owners_view_id(pool: PgPool) {
+    let h = Harness::new(&pool).await;
+    let first = account(&pool, &h).await;
+    let second = account(&pool, &h).await;
+    let body = view("내 명부");
+    let key = body["id"].as_str().unwrap();
+    assert_eq!(
+        h.call(&first, Some(body.clone()), Some(key)).await.0,
+        StatusCode::CREATED
+    );
+    let (status, error) = h.call(&second, Some(body.clone()), Some(key)).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{error}");
+    assert_eq!(error["error"]["code"], "employee_view_owner_required");
+    assert_eq!(h.call(&second, None, None).await.1, json!({"items":[]}));
+    assert_eq!(h.call(&first, None, None).await.1, json!({"items":[body]}));
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn saved_view_limit_is_settings_owned_and_atomic(pool: PgPool) {
+    let h = Harness::new(&pool).await;
+    let (actor, token) = account_with_id(&pool, &h).await;
+    sqlx::query("INSERT INTO tenant_setting_overrides(org_id,key,value,set_by,reason_code) VALUES($1,'display.saved_views_max','1',$2,'TEST')")
+        .bind(OrgId::one().as_uuid()).bind(actor.as_uuid()).execute(&pool).await.unwrap();
+    let first = view("첫 보기");
+    let second = view("둘째 보기");
+    let (a, b) = tokio::join!(
+        h.call(&token, Some(first.clone()), first["id"].as_str()),
+        h.call(&token, Some(second.clone()), second["id"].as_str()),
+    );
+    let (stored, refused) = if a.0 == StatusCode::CREATED {
+        (first, b)
+    } else {
+        (second, a)
+    };
+    assert_eq!(refused.0, StatusCode::CONFLICT, "{}", refused.1);
+    assert_eq!(refused.1["error"]["code"], "employee_view_limit_reached");
+    assert_eq!(
+        h.call(&token, None, None).await.1,
+        json!({"items":[stored.clone()]})
+    );
+    assert_eq!(
+        h.call(&token, Some(stored.clone()), stored["id"].as_str())
+            .await,
+        (StatusCode::OK, stored)
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -237,50 +287,6 @@ async fn saved_views_refuse_bad_key_names_and_filters_without_writing(pool: PgPo
     }
     assert_eq!(h.call(&token, None, None).await.1, json!({"items":[]}));
     assert_eq!(h.call("", None, None).await.0, StatusCode::UNAUTHORIZED);
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn saved_views_concurrent_retries_and_duplicate_names_are_atomic(pool: PgPool) {
-    let h = Harness::new(&pool).await;
-    let token = account(&pool, &h).await;
-    let body = view("동시 저장");
-    let key = body["id"].as_str().unwrap();
-    let (a, b) = tokio::join!(
-        h.call(&token, Some(body.clone()), Some(key)),
-        h.call(&token, Some(body.clone()), Some(key))
-    );
-    let mut statuses = [a.0.as_u16(), b.0.as_u16()];
-    statuses.sort();
-    assert!(
-        statuses == [200, 201] || statuses == [201, 409],
-        "{statuses:?}"
-    );
-    assert_eq!(
-        h.call(&token, Some(body.clone()), Some(key)).await,
-        (StatusCode::OK, body.clone())
-    );
-    let a = view("중복 저장");
-    let b = view("중복 저장");
-    let (a, b) = tokio::join!(
-        h.call(&token, Some(a.clone()), a["id"].as_str()),
-        h.call(&token, Some(b.clone()), b["id"].as_str())
-    );
-    let mut statuses = [a.0.as_u16(), b.0.as_u16()];
-    statuses.sort();
-    assert_eq!(statuses, [201, 409]);
-    let refused = if a.0 == StatusCode::CONFLICT {
-        a.1
-    } else {
-        b.1
-    };
-    assert_eq!(refused["error"]["code"], "employee_view_name_taken");
-    assert_eq!(
-        h.call(&token, None, None).await.1["items"]
-            .as_array()
-            .unwrap()
-            .len(),
-        2
-    );
 }
 
 #[path = "employee_views/store.rs"]

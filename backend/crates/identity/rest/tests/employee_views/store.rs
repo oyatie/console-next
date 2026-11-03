@@ -2,6 +2,50 @@
 use super::*;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn saved_views_concurrent_retries_and_duplicate_names_are_atomic(pool: PgPool) {
+    let h = Harness::new(&pool).await;
+    let token = account(&pool, &h).await;
+    let body = view("동시 저장");
+    let key = body["id"].as_str().unwrap();
+    let (a, b) = tokio::join!(
+        h.call(&token, Some(body.clone()), Some(key)),
+        h.call(&token, Some(body.clone()), Some(key))
+    );
+    let mut statuses = [a.0.as_u16(), b.0.as_u16()];
+    statuses.sort();
+    assert!(
+        statuses == [200, 201] || statuses == [201, 409],
+        "{statuses:?}"
+    );
+    assert_eq!(
+        h.call(&token, Some(body.clone()), Some(key)).await,
+        (StatusCode::OK, body.clone())
+    );
+    let a = view("중복 저장");
+    let b = view("중복 저장");
+    let (a, b) = tokio::join!(
+        h.call(&token, Some(a.clone()), a["id"].as_str()),
+        h.call(&token, Some(b.clone()), b["id"].as_str())
+    );
+    let mut statuses = [a.0.as_u16(), b.0.as_u16()];
+    statuses.sort();
+    assert_eq!(statuses, [201, 409]);
+    let refused = if a.0 == StatusCode::CONFLICT {
+        a.1
+    } else {
+        b.1
+    };
+    assert_eq!(refused["error"]["code"], "employee_view_name_taken");
+    assert_eq!(
+        h.call(&token, None, None).await.1["items"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn saved_views_store_serializes_retries_and_rejects_changed_content(pool: PgPool) {
     use console_identity_adapter_postgres::IdempotentCreate;
     use console_identity_application::EmployeeView;

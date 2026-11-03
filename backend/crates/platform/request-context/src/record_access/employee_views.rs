@@ -5,13 +5,22 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 pub(super) async fn may_read(pool: &PgPool, principal: &Principal, id: &str) -> bool {
-    let Ok(owner) = Uuid::parse_str(id) else {
+    let Ok(view) = Uuid::parse_str(id) else {
         return false;
     };
     let org = principal.org_id;
     let actor = *principal.user_id.as_uuid();
     with_org_conn::<_, _, DbError>(pool, org, |tx| {
         Box::pin(async move {
+            let Some(owner): Option<Uuid> =
+                sqlx::query_scalar("SELECT user_id FROM employee_views WHERE org_id=$1 AND id=$2")
+                    .bind(org.as_uuid())
+                    .bind(view)
+                    .fetch_optional(tx.as_mut())
+                    .await?
+            else {
+                return Ok(false);
+            };
             let facts = load_facts(tx, org, actor)
                 .await
                 .map_err(|e| DbError::Sqlx(sqlx::Error::Protocol(e.to_string())))?;

@@ -12,7 +12,8 @@ use std::collections::HashSet;
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`, support-session ceilings,
 /// inbox settings, five NTS settings, the organization apply time, tenant erasure cooling period,
 /// two privacy reveal settings, the shared deadline display window, eleven access-review keys,
-/// the operational objection-review clock, the onboarding receipt window, and payroll activation.
+/// the operational objection-review clock, the onboarding receipt window, payroll activation,
+/// and the saved-view ceiling.
 const EXPECTED_KEYS: usize = 34
     + 17
     + 1
@@ -33,6 +34,7 @@ const EXPECTED_KEYS: usize = 34
     + 2
     + 1
     + 11
+    + 1
     + 1
     + 1
     + 1

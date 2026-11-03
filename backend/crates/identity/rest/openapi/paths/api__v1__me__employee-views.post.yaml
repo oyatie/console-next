@@ -29,9 +29,13 @@ responses:
       application/json:
         schema: {$ref: '#/components/schemas/EmployeeView'}
   '401': {$ref: '#/components/responses/Unauthorized'}
-  '403': {$ref: '#/components/responses/Forbidden'}
+  '403':
+    description: employee_view_owner_required when the supplied view id belongs to another account.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ErrorBody'}
   '409':
-    description: employee_view_name_taken for an existing name; idempotency_key_reused for changed content under the same id; command_in_progress while a concurrent request is still executing.
+    description: employee_view_name_taken for an existing name; employee_view_limit_reached at the settings-owned per-account cap; idempotency_key_reused for changed content under the same id; command_in_progress while a concurrent request is still executing.
     content:
       application/json:
         schema: {$ref: '#/components/schemas/ErrorBody'}

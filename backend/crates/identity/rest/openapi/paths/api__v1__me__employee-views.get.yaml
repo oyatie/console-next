@@ -17,4 +17,8 @@ responses:
               type: array
               items: {$ref: '#/components/schemas/EmployeeView'}
   '401': {$ref: '#/components/responses/Unauthorized'}
-  '403': {$ref: '#/components/responses/Forbidden'}
+  '403':
+    description: The caller's personal saved-view collection was refused. Clients hide this optional control and do not retry automatically.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ErrorBody'}

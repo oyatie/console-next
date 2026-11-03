@@ -48999,7 +48999,15 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            /** @description The caller's personal saved-view collection was refused. Clients hide this optional control and do not retry automatically. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     createEmployeeView: {
@@ -49036,8 +49044,16 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            /** @description employee_view_name_taken for an existing name; idempotency_key_reused for changed content under the same id; command_in_progress while a concurrent request is still executing. */
+            /** @description employee_view_owner_required when the supplied view id belongs to another account. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description employee_view_name_taken for an existing name; employee_view_limit_reached at the settings-owned per-account cap; idempotency_key_reused for changed content under the same id; command_in_progress while a concurrent request is still executing. */
             409: {
                 headers: {
                     [name: string]: unknown;

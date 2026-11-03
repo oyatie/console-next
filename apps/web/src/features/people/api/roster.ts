@@ -8,7 +8,7 @@ const viewsPath = "/api/v1/me/employee-views";
 export const employeeViewsQuery = read(viewsPath, async () => {
   try { return await unwrap(api.GET(viewsPath)); }
   catch (error) {
-    if (error instanceof ApiError && [404, 405].includes(error.status)) return null;
+    if (error instanceof ApiError && [403, 404, 405].includes(error.status)) return null;
     throw error;
   }
 });

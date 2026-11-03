@@ -6,6 +6,7 @@ macro_rules! display { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     HrContractSoonDays => "hr.contract_soon_days" = D::int(Days, Some(1), Some(365), 60, Higher);
     DeadlineDueSoonDays => "display.deadline_due_soon_days" = D::int(Days, Some(0), Some(365), 7, Neutral).governed(Governance::PlatformOnly);
     DisplayPageSize => "display.page_size" = D::int(Count, Some(1), Some(500), 100, Higher);
+    DisplaySavedViewsMax => "display.saved_views_max" = D::int(Count, Some(1), Some(100), 20, Higher);
     // Zero disables the post-go-live receipt.
     OnboardingReceiptDays => "onboarding.receipt_days" = D::int(Days, Some(0), Some(365), 7, Neutral).governed(Governance::PlatformOnly);
 ] $($rest)* } }; }
