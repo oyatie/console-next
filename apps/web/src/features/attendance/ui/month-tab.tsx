@@ -12,7 +12,7 @@ import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { Kbd } from "../../../ui/kbd/kbd";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { at, rectIn, rectSize, type Range } from "../../../ui/person-day-grid/range";
+import { at, rectIn, rectSize, type Range } from "../../../ui/sheet-grid/range";
 import { monthGridPages, type GridRow, type SaveReceipt } from "../api";
 import { cellKey, draftState, splitKey } from "../domain/grid";
 import { suggestFix } from "../domain/grammar";

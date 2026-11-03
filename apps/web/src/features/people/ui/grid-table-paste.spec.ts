@@ -19,6 +19,7 @@ for (const width of [1440, 390]) {
   test(`spreadsheet paste preserves quoted cell boundaries at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await mount(page, true);
+    await page.locator("html").evaluate((element, theme) => { element.dataset.theme = theme; }, width === 390 ? "dark" : "light");
     await page.locator("#grid-0-2").evaluate((cell) => {
       const clipboardData = new DataTransfer();
       clipboardData.setData("text/plain", '"HR\tlead\nPM"\r\n"HR, payroll"\r\n');
@@ -28,6 +29,6 @@ for (const width of [1440, 390]) {
     });
     await expect(page.locator("#grid-0-2")).toHaveText("HR\tlead\nPM");
     await expect(page.locator("#grid-1-2")).toHaveText("HR, payroll");
-    await expectAxe(page, `quoted paste ${width}`, { include: "#gallery-grid-table" });
+    await expectAxe(page, `quoted paste ${width} ${width === 390 ? "dark" : "light"}`, { include: "#gallery-grid-table" });
   });
 }

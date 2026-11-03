@@ -4,15 +4,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { Button } from "../../../ui/button/button";
+import { SheetGrid, type SheetGridColumn } from "../../../ui/sheet-grid/sheet-grid";
 import { unitsQuery } from "../../../reference/org/api";
 import { ROSTER_PAGE, rosterPageQuery } from "../api";
 import { registerFactsQuery } from "../api/record";
-import { DEFAULT_COLUMNS, GRID_FIELDS } from "../domain/grid";
-import { GridTable, type GridRow } from "./grid-table";
+import { DEFAULT_COLUMNS, GRID_FIELDS, parseTsv, type Cell } from "../domain/grid";
 import { GridPage } from "./grid-page";
 import { bulkSelection } from "./use-bulk-selection";
 import s from "./grid-page.module.css";
 import g from "./grid-table.gallery.module.css";
+
+type GridRow = { id: string; number: string; name: string; current: readonly string[]; typed: readonly (string | undefined)[]; cells: readonly Cell[] };
 
 const people = () => Array.from({ length: 2000 }, (_, i) => ({
   id: `emp-${i + 1}`, employee_number: String(i + 1).padStart(4, "0"), name: tg("sample.person", { n: i + 1 }),
@@ -45,23 +47,36 @@ function TableFixture() {
   })));
   const [activeCell, setActiveCell] = useState<{ r: number; c: number } | null>(null);
   const [activeChanges, setActiveChanges] = useState(0);
+  const fields = GRID_FIELDS.filter((field) => DEFAULT_COLUMNS.includes(field.key));
+  const columns: SheetGridColumn<GridRow>[] = fields.map((field, c) => ({
+    key: field.key, header: t(`bulkGrid.field.${field.key}`), meta: t(`bulkGrid.tag.${field.cls}`),
+    options: field.kind === "sex" ? [t("bulkGrid.sex.MALE"), t("bulkGrid.sex.FEMALE")] : [],
+    cell: (row, r) => {
+      const cell = row.cells[c]!;
+      const value = row.typed[c] ?? row.current[c] ?? "";
+      const invalid = "bad" in cell;
+      return { label: t("bulkGrid.cell", { row: r + 1, field: t(`bulkGrid.field.${field.key}`) }), value,
+        changed: row.typed[c] !== undefined && "send" in cell, previous: row.current[c] || t("bulkGrid.blank"), invalid,
+        error: invalid ? t("bulkGrid.err.server", { row: r + 1, field: t(`bulkGrid.field.${field.key}`), why: cell.bad === "server" ? cell.code : cell.bad }) : undefined };
+    },
+  }));
   return <div className={`${s.page} ${g.table}`}>
     <header className={g.before}>
       <Button id="filter-empty" onClick={() => setRows([])}>{tg("empty.title")}</Button>
     </header>
     <div id="scroller" className={`${s.gridWrap} ${g.scroller}`} tabIndex={-1}>
-      <GridTable rows={rows} columns={GRID_FIELDS.filter((f) => DEFAULT_COLUMNS.includes(f.key))}
-        label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })}
+      <SheetGrid rows={rows} rowKey={(row) => row.id} columns={columns}
+        leading={[{ key: "number", header: t("bulkGrid.col.number"), cell: (row) => row.number, className: "num" }, { key: "name", header: t("bulkGrid.col.name"), cell: (row) => row.name }]}
+        tail={{ header: t("bulkGrid.col.status"), cell: (row) => row.cells.some((cell) => "bad" in cell) ? { tone: "error", content: t("bulkGrid.status.error") } : { tone: "same", content: t("bulkGrid.status.same") } }}
+        rowHeader={t("bulkGrid.col.row")} label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} parsePaste={parseTsv}
         activeCell={activeCell} onActiveChange={(at) => { setActiveCell(at); setActiveChanges((n) => n + 1); }}
-        onCell={(id, col, text) => setRows((current) => current.map((row) => row.id === id ? { ...row, typed: row.typed.map((value, i) => i === col ? text : value) } : row))}
-        statusOf={(row) => row.cells.some((cell) => "bad" in cell) ? { tone: "error", text: t("bulkGrid.status.error") } : { tone: "same", text: t("bulkGrid.status.same") }}
-        fieldLabel={(f) => t(`bulkGrid.field.${f.key}`)} suggestionOf={() => undefined} />
+        onCell={(changedRow, col, text) => setRows((current) => current.map((row) => row.id === changedRow.id ? { ...row, typed: row.typed.map((value, i) => i === col ? text : value) } : row))} />
     </div>
     <Button id="after" data-active={JSON.stringify(activeCell)} data-active-changes={activeChanges}>{t("bulkGrid.back")}</Button>
   </div>;
 }
 
-export default function GridTableGallery() {
+export default function SheetGridGallery() {
   const params = new URLSearchParams(location.search);
   const bounded = params.get("bounded") !== "false";
   return <section id="gallery-grid-table" className={g.gallery} data-isolated={params.has("grid")} data-bounded={bounded}>

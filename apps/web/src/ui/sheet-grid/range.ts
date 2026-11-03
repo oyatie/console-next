@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Range selection over a rows × columns grid: pure, so the grid and its callers agree. A corner is a row's key and a
 // column's key, never an index: a re-sort, a filter, a live insert or a removal never moves a selection (or what is
 // typed into it) onto another row. Indexes are only today's drawing of it (`rectIn`).
@@ -29,7 +30,7 @@ export const rectSize = (x: Rect | null) => (x ? { people: x.bottom - x.top + 1,
 export const inRect = (x: Rect | null, r: number, c: number) => !!x && r >= x.top && r <= x.bottom && c >= x.left && c <= x.right;
 
 /** Move or extend a range by a key; null for a key the grid does not own. A focus no longer shown starts at the first cell. */
-export function moveRange(range: Range | null, key: string, shift: boolean, a: Axes, page = 10): Range | null {
+export function moveRange(range: Range | null, key: string, shift: boolean, a: Axes, page = 10, wholeGrid = false): Range | null {
   if (!a.rows.length || !a.cols.length) return null;
   const f = (range && indexOf(range.focus, a)) ?? { r: 0, c: 0 };
   const to =
@@ -37,8 +38,8 @@ export function moveRange(range: Range | null, key: string, shift: boolean, a: A
     : key === "ArrowDown" ? { r: f.r + 1, c: f.c }
     : key === "ArrowLeft" ? { r: f.r, c: f.c - 1 }
     : key === "ArrowRight" ? { r: f.r, c: f.c + 1 }
-    : key === "Home" ? { r: f.r, c: 0 }
-    : key === "End" ? { r: f.r, c: a.cols.length - 1 }
+    : key === "Home" ? { r: wholeGrid ? 0 : f.r, c: 0 }
+    : key === "End" ? { r: wholeGrid ? a.rows.length - 1 : f.r, c: a.cols.length - 1 }
     : key === "PageUp" ? { r: f.r - page, c: f.c }
     : key === "PageDown" ? { r: f.r + page, c: f.c }
     : null;

@@ -14,6 +14,10 @@ export const test = base.extend({
 });
 
 export async function mount(page: Page, bounded = false, variant = "table") {
+  if (variant === "page") await page.route("**/api/v1/access/me", (route) => route.fulfill({ json: {
+    is_ops: false,
+    entries: [{ grant_id: "grid-fixture", role_name_ko: "\uc778\uc0ac \ub2f4\ub2f9", domain: "hr_basic", level: "edit", enforcement: "ENFORCED", scope: { kind: "TENANT" } }],
+  } }));
   // Mount just this entry through the real dev route; unrelated galleries can open body portals.
   await page.route("**/src/gallery/gallery.tsx", (route) => route.fulfill({
     contentType: "text/javascript",

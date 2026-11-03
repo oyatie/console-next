@@ -15,12 +15,13 @@ import { Kbd } from "../../../ui/kbd/kbd";
 import { StepLine } from "../../../ui/step-line/step-line";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { SheetGrid, type SheetGridColumn } from "../../../ui/sheet-grid/sheet-grid";
 import { commitBulkCorrection, previewBulkCorrection } from "../api";
-import { DEFAULT_COLUMNS, GRID_FIELDS, TYPES, previewCounts, readCell, refusedCells, rowState, shownText, shownValue, type GridKey } from "../domain/grid";
+import { DEFAULT_COLUMNS, GRID_FIELDS, TYPES, parseTsv, previewCounts, readCell, refusedCells, rowState, shownText, shownValue, type Cell, type GridKey } from "../domain/grid";
+import { refusedText } from "../present";
 import { GridColumns } from "./grid-columns";
 import { GridDone } from "./grid-done";
 import { GridPreview } from "./grid-preview";
-import { GridTable, type GridRow } from "./grid-table";
 import { useBulkSelection } from "./use-bulk-selection";
 import { useGridData } from "./use-grid-data";
 import s from "./grid-page.module.css";
@@ -28,6 +29,7 @@ import s from "./grid-page.module.css";
 type Preview = components["schemas"]["BulkEmployeeCorrectionPreview"];
 type Result = components["schemas"]["BulkEmployeeCorrectionResult"];
 type Filter = "all" | "changed" | "error" | "same";
+type GridRow = { id: string; number: string; name: string; current: readonly string[]; typed: readonly (string | undefined)[]; cells: readonly Cell[] };
 const TYPE = { type: "employmentType", values: TYPES };
 
 /**
@@ -73,6 +75,27 @@ function GridWorkspace() {
     }) };
   });
   const states = rows.map((r) => rowState(r.cells, r.current, r.typed.map((x, c) => x ?? r.current[c]!)));
+  const sheetColumns: SheetGridColumn<GridRow>[] = fields.map((field, c) => ({
+    key: field.key,
+    header: fieldLabel(field.key),
+    meta: t(`bulkGrid.tag.${field.cls}`),
+    metaTone: field.cls === "second" ? "info" : "warn",
+    options: Object.values(words(field.key)),
+    cell: (row, r) => {
+      const cell = row.cells[c]!;
+      const value = row.typed[c] ?? row.current[c] ?? "";
+      const changed = row.typed[c] !== undefined && "send" in cell && row.typed[c]!.trim() !== row.current[c];
+      const invalid = "bad" in cell;
+      return {
+        label: t("bulkGrid.cell", { row: r + 1, field: fieldLabel(field.key) }), value, changed,
+        previous: row.current[c] || t("bulkGrid.blank"), invalid,
+        error: invalid ? (cell.bad === "server" ? t("bulkGrid.err.server", { row: r + 1, field: fieldLabel(field.key), why: refusedText(cell.code) })
+          : cell.bad !== "choice" ? t(`bulkGrid.err.${cell.bad}`, { row: r + 1, field: fieldLabel(field.key) })
+          : t("bulkGrid.err.choice", { row: r + 1, field: fieldLabel(field.key), value })) : undefined,
+        suggestion: invalid && cell.suggest ? { value: cell.suggest, content: t("bulkGrid.err.suggest", { value: cell.suggest }) } : undefined,
+      };
+    },
+  }));
   const count = (k: Filter) => states.filter((x) => (k === "all" ? true : k === "error" ? x.errors > 0 : k === "changed" ? x.changed > 0 && !x.errors : !x.changed && !x.errors)).length;
   const shown = rows.filter((_, i) => filter === "all" || (filter === "error" ? states[i]!.errors > 0 : filter === "changed" ? states[i]!.changed > 0 && !states[i]!.errors : !states[i]!.changed && !states[i]!.errors));
   const cellsBy = (cls: "now" | "second") => rows.reduce((n, r) => n + r.cells.filter((c, i) => "send" in c && fields[i]!.cls === cls && r.typed[i] !== r.current[i]).length, 0);
@@ -166,10 +189,14 @@ function GridWorkspace() {
             <span className={s.verbChip}>{t("bulkGrid.verb.correct")}</span>
           </div>
           <div className={s.gridWrap} tabIndex={-1}>
-            <GridTable rows={shown} columns={fields} activeCell={activeCell} onActiveChange={setActiveCell} label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} onCell={(id, ci, text) => (setTyped((x) => ({ ...x, [id]: { ...x[id], [fields[ci]!.key]: text } })), setMarks((m) => (m[id] ? { ...m, [id]: {} } : m)))} statusOf={(r) => {
-              const st = states[rows.indexOf(r)]!;
-              return st.errors ? { tone: "error", text: t("bulkGrid.status.error") } : st.changed ? { tone: "changed", text: t("bulkGrid.status.changed", { n: st.changed }) } : { tone: "same", text: t("bulkGrid.status.same") };
-            }} fieldLabel={(f) => fieldLabel(f.key)} suggestionOf={(cell) => ("bad" in cell ? cell.suggest : undefined)} />
+            <SheetGrid rows={shown} rowKey={(row) => row.id} columns={sheetColumns}
+              leading={[{ key: "number", header: t("bulkGrid.col.number"), cell: (row) => row.number, className: "num" }, { key: "name", header: t("bulkGrid.col.name"), cell: (row) => row.name }]}
+              tail={{ header: t("bulkGrid.col.status"), cell: (row) => {
+                const state = states[rows.indexOf(row)]!;
+                return state.errors ? { tone: "error", content: t("bulkGrid.status.error") } : state.changed ? { tone: "changed", content: t("bulkGrid.status.changed", { n: state.changed }) } : { tone: "same", content: t("bulkGrid.status.same") };
+              } }} rowHeader={t("bulkGrid.col.row")} activeCell={activeCell} onActiveChange={setActiveCell}
+              label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} parsePaste={parseTsv}
+              onCell={(row, ci, text) => (setTyped((x) => ({ ...x, [row.id]: { ...x[row.id], [fields[ci]!.key]: text } })), setMarks((m) => (m[row.id] ? { ...m, [row.id]: {} } : m)))} />
           </div>
         </>
       )}

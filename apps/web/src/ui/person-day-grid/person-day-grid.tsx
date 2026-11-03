@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "./range";
+import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "../sheet-grid/range";
 import s from "./person-day-grid.module.css";
 
 export type { Cell, Range };
