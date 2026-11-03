@@ -114,7 +114,7 @@ test("changing fixture modes resets selection and overlays without reloading the
 test("loading changes to the result count in the same live region", async () => {
   const input = await open("loading");
   await input.press("ArrowDown");
-  const status = page.getByRole("status");
+  const status = page.locator(".popover").getByRole("status");
   await expectElement(status).toHaveText("찾는 중");
   await page.evaluate(() => (window as unknown as { finishLoading: () => void }).finishLoading());
   await expectElement(status).toHaveText("2,000건");

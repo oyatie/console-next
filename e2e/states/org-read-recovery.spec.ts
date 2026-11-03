@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { structure } from "../mock/fixtures";
+import { failure, structure } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
@@ -36,6 +36,22 @@ test("org: a held date read keeps the chart mounted and busy @ui-state", async (
     await expect(page.getByRole("main").getByRole("link", { name: t("structure.tools.addEntity"), exact: true })).toHaveCount(0);
     expect(fixture.unexpected).toEqual([]);
   } finally { held.resolve(); await page.close(); fixture.release(); }
+});
+
+for (const width of [1440, 390]) test(`org: a failed dated read keeps an accessible chart at ${width}px @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  try {
+    await page.goto("/org");
+    const tree = page.getByRole("tree", { name: /조직도$/ });
+    await expect(tree).toBeVisible();
+    await mockRoute(page, "get", "/api/v1/org-structure", { status: 503, json: failure("service_unavailable") });
+    await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).selectOption("en");
+    await expect(page.locator('[data-dimmed="true"]')).toBeVisible({ timeout: 15_000 });
+    await expectAxe(page, `org/kept-error/${width}`);
+    await fits(page, `org/kept-error/${width}`);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
 });
 
 test("org: retrying failed empty reads restores first registration @ui-state", async ({ page }) => {

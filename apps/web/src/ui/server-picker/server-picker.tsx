@@ -48,13 +48,22 @@ export function ServerPicker(p: {
   const [suffix, setSuffix] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const hiddenBeforeOpen = useRef(new Set<Element>());
   useEffect(() => {
     if (!open) return;
     const body = input.current!.ownerDocument.body;
     const preserved = [...body.querySelectorAll<HTMLElement>("[inert]")];
+    // The list closes before focus leaves, so keep its non-modal surroundings exposed to assistive technology.
+    const exposePage = () => {
+      for (const el of body.querySelectorAll('[aria-hidden="true"]')) if (!hiddenBeforeOpen.current.has(el)) el.removeAttribute("aria-hidden");
+    };
+    exposePage();
+    const observer = new MutationObserver(exposePage);
+    observer.observe(body, { attributes: true, childList: true, subtree: true, attributeFilter: ["aria-hidden"] });
     // A picker inside a Sheet: when the Sheet itself unmounts (Back, route change) its overlay's inert must not return.
     const host = input.current!.closest('[role="dialog"]');
     return () => {
+      observer.disconnect();
       const restore = () => { for (const el of preserved) el.inert = true; };
       // A rapid reopen must snapshot the original restrictions before any microtask runs.
       restore();
@@ -98,7 +107,10 @@ export function ServerPicker(p: {
         items={p.options}
         inputValue={p.query}
         onInputChange={p.onQueryChange}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          if (next) hiddenBeforeOpen.current = new Set(input.current!.ownerDocument.querySelectorAll('[aria-hidden="true"]'));
+          setOpen(next);
+        }}
         selectedKey={pending ? pending.id : (p.value ?? null)}
         onSelectionChange={(k) => pick(k === null ? null : String(k))}
         menuTrigger={p.readOnly ? "manual" : "input"}

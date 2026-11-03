@@ -34,6 +34,7 @@ beforeAll(async () => {
             h(ModalOverlay, { isOpen: sheetOpen, onOpenChange: setSheetOpen }, h(Modal, null, h(Dialog, { 'aria-label': 'Sheet' }, picker))));
           return h('main', null,
             h('div', { inert: true }, h('button', { id: 'already-inert' }, 'Unavailable')),
+            h('span', { id: 'already-hidden', 'aria-hidden': 'true' }, 'Decorative'),
             h('button', { id: 'outside', onClick: () => setClicks(n => n + 1) }, 'Outside'),
             mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
               onQueryChange: setQuery, value, onChange: setValue,
@@ -58,10 +59,10 @@ test("an open picker passes axe in both themes and preserves existing inert rest
   const input = page.getByRole("combobox", { name: "Person" });
   await input.fill("Namesake");
   await page.getByRole("option").first().waitFor();
+  await expectElement(page.locator("#already-hidden")).toHaveAttribute("aria-hidden", "true");
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
-    // React Aria's virtual-focus combobox deliberately leaves hidden content in the tab order.
-    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).disableRules(["aria-hidden-focus"]).analyze();
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
   }
   await page.getByRole("option", { name: "Namesake · HR" }).click();
@@ -77,7 +78,7 @@ test("closing restores existing inert restrictions before the next microtask", a
   const input = page.getByRole("combobox", { name: "Person" });
   await input.fill("Namesake");
   await page.getByRole("option").first().waitFor();
-  await expectElement(page.locator("#outside")).toHaveAttribute("aria-hidden", "true");
+  await expectElement(page.locator("#outside")).not.toHaveAttribute("aria-hidden", "true");
   await page.locator("#already-inert").evaluate((el) => {
     const restricted = el.parentElement!;
     const combobox = document.querySelector('[role="combobox"]')!;

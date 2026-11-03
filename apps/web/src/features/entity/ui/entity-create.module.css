@@ -82,6 +82,17 @@
 .nextCard[aria-disabled="true"] { cursor: default; opacity: 0.6; }
 .note { display: flex; gap: var(--space-1); margin: 0; font-size: var(--text-xs); color: var(--steel); }
 
+@media (--phone) {
+  .head { flex-wrap: wrap; }
+  .vsep { display: none; }
+  .steps { order: 2; flex-basis: 100%; min-width: 0; flex-wrap: wrap; white-space: normal; }
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .rowsHead { display: none; }
+  .rowsLine { grid-template-columns: minmax(0, 1fr); }
+  .rowsLine > :first-child { justify-self: start; }
+}
+
 /* The quick sheet (spec S4-quick). */
 .kicker { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--steel); }
 

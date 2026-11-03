@@ -3,5 +3,5 @@
 .tools[data-ready="false"] { visibility: hidden; }
 .tools :global(.btn) { min-height: 28px; padding: 0 var(--space-2); font-size: var(--text-xs); border: 0; }
 .corner { position: absolute; top: 1px; right: 1px; z-index: 4; transform-origin: 100% 0; scale: var(--unzoom, 1); background: var(--surface); border-radius: var(--radius); }
-.corner :global(.btn) { min-height: 24px; padding: 0 var(--space-1); }
+.corner :global(.btn) { padding: 0 var(--space-1); }
 @media print { .tools, .corner { display: none; } }
