@@ -41,8 +41,9 @@ test("a previous document's event stream is outside the next load", { tag: "@per
       return;
     }
     if (request.url === "/api/v1/employees") { response.writeHead(503).end(); return; }
-    if (request.url === "/redirect") { response.writeHead(302, { location: "/next" }).end(); return; }
-    if (!["/old", "/next", "/bad"].includes(request.url ?? "")) { response.writeHead(404).end(); return; }
+    if (request.url === "/access") { response.writeHead(302, { location: "/access/roles" }).end(); return; }
+    if (request.url === "/wrong") { response.writeHead(302, { location: "/next" }).end(); return; }
+    if (!["/old", "/next", "/bad", "/access/roles"].includes(request.url ?? "")) { response.writeHead(404).end(); return; }
     response.setHeader("content-type", "text/html");
     response.end(`<!doctype html><main><h1>가상 직원 명부</h1></main><span hidden data-route-ready="${request.url === "/bad" ? "" : request.url}" data-route-key="sample"></span><script>history.replaceState({__TSR_key:'sample'},'');${request.url === "/old" ? "new EventSource('/api/v1/events');" : request.url === "/bad" ? "fetch('/api/v1/employees').then(() => document.querySelector('[data-route-ready]').dataset.routeReady='/bad');" : ""}</script>`);
   });
@@ -58,9 +59,13 @@ test("a previous document's event stream is outside the next load", { tag: "@per
     expect(sample.requests).toEqual({});
     const refused = await measure(page, `${origin}/bad`);
     expect(refused.errors).toContain("GET /api/v1/employees 503");
-    const redirected = await measure(page, `${origin}/redirect`);
+    const redirected = await measure(page, `${origin}/access`);
     expect(redirected.errors).toEqual([]);
-    expect(redirected.final_path).toBe("/next");
+    expect(redirected.final_path).toBe("/access/roles");
+    page.setDefaultTimeout(1000);
+    const wrong = await measure(page, `${origin}/wrong`);
+    expect(wrong.lcp_ms).toBeNull();
+    expect(wrong.errors).not.toEqual([]);
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

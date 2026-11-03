@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import type { Page, Request } from "@playwright/test";
 import { routeReady } from "../flows";
+import { redirectTargets } from "../helpers/route-list";
 import { budget, readYaml } from "./budget";
 
 const contract = readYaml(new URL("../../backend/openapi/openapi.yaml", import.meta.url)) as { paths: Record<string, unknown> };
@@ -37,7 +38,7 @@ export async function measure(page: Page, url: string): Promise<Sample> {
   page.on("request", requested).on("requestfailed", failed).on("response", response);
   try {
     await page.goto(url, { waitUntil: "load", timeout: 30_000 });
-    await routeReady(page);
+    await routeReady(page, redirectTargets[new URL(url, page.url()).pathname] ?? url);
     await page.evaluate(() => document.fonts.ready);
     // Let the committed screen paint and the buffered observer deliver its final candidate.
     await page.evaluate(() => new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 100)))));
