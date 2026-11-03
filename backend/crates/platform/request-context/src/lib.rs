@@ -79,6 +79,13 @@ pub struct RequestAuditContext {
     pub session_id: Option<uuid::Uuid>,
 }
 
+/// Default cap for authenticated request bodies. Routes with an established
+/// upload allowance pass their configured cap to [`with_request_context_body_limit`].
+pub const DEFAULT_REQUEST_BODY_BYTES: usize = 2 * 1024 * 1024;
+
+#[derive(Clone, Copy)]
+struct RequestBodyLimit(usize);
+
 /// Client address resolved by a trusted ingress boundary.
 ///
 /// Request-context middleware never interprets forwarding headers. The ingress
@@ -324,25 +331,48 @@ pub fn with_request_context<S>(
 where
     S: Clone + Send + Sync + 'static,
 {
-    router.layer(axum::middleware::from_fn(
-        move |request: Request, next: Next| {
-            let verifier = verifier.clone();
-            let pool = pool.clone();
-            async move {
-                let Some(verifier) = verifier.as_ref() else {
-                    return error_response(
-                        StatusCode::SERVICE_UNAVAILABLE,
-                        "JWT verification is not configured",
-                    );
-                };
-                let principal = match resolve_principal(verifier, &pool, request.headers()).await {
-                    Ok(principal) => principal,
-                    Err(err) => return error_response_for(&err),
-                };
-                privacy::run_tenant(&pool, verifier, principal, request, next).await
-            }
-        },
-    ))
+    with_request_context_body_limit(router, verifier, pool, DEFAULT_REQUEST_BODY_BYTES)
+}
+
+/// Apply tenant context with a route-owned request-body allowance.
+///
+/// Authentication and consent are resolved before command capture. The command
+/// boundary then enforces this cap before allocating the body or admitting an
+/// idempotent command; the route extractor keeps the same cap for its own read.
+pub fn with_request_context_body_limit<S>(
+    router: axum::Router<S>,
+    verifier: Option<JwtVerifier>,
+    pool: PgPool,
+    max_body_bytes: usize,
+) -> axum::Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
+    router
+        .layer(axum::middleware::from_fn(
+            move |mut request: Request, next: Next| {
+                let verifier = verifier.clone();
+                let pool = pool.clone();
+                async move {
+                    let Some(verifier) = verifier.as_ref() else {
+                        return error_response(
+                            StatusCode::SERVICE_UNAVAILABLE,
+                            "JWT verification is not configured",
+                        );
+                    };
+                    let principal =
+                        match resolve_principal(verifier, &pool, request.headers()).await {
+                            Ok(principal) => principal,
+                            Err(err) => return error_response_for(&err),
+                        };
+                    request
+                        .extensions_mut()
+                        .insert(RequestBodyLimit(max_body_bytes));
+                    privacy::run_tenant(&pool, verifier, principal, request, next).await
+                }
+            },
+        ))
+        .layer(axum::extract::DefaultBodyLimit::max(max_body_bytes))
 }
 
 // ---------------------------------------------------------------------------

@@ -8,8 +8,9 @@
 
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
+mod routes;
 
-use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, State};
+use axum::extract::{Multipart, Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -118,8 +119,6 @@ impl RegistryRestState {
 }
 
 pub fn router(state: RegistryRestState) -> Router {
-    let verifier = state.jwt_verifier.clone();
-    let pool = state.store.pool().clone();
     let router = Router::new()
         .route(
             EQUIPMENT_SUBSTITUTES_PATH_TEMPLATE,
@@ -143,15 +142,6 @@ pub fn router(state: RegistryRestState) -> Router {
         )
         .route(EQUIPMENT_LIST_PATH, get(list_equipment))
         .route(EQUIPMENT_PATH, post(create_equipment))
-        // The import route accepts a workbook upload, so it overrides axum's
-        // 2 MiB default body limit up to MAX_IMPORT_BYTES — a tower-level cap
-        // that rejects oversized uploads before the handler reads them. The
-        // streaming check in `read_xlsx_upload` enforces the same bound on the
-        // body itself (chunked transfer with no honest Content-Length).
-        .route(
-            EQUIPMENT_IMPORT_PATH,
-            post(import_master_list).layer(DefaultBodyLimit::max(MAX_IMPORT_BYTES)),
-        )
         .route(
             EQUIPMENT_TIMELINE_GRAPH_PATH_TEMPLATE,
             get(get_equipment_timeline_graph),
@@ -176,8 +166,8 @@ pub fn router(state: RegistryRestState) -> Router {
         .route(CUSTOMERS_PATH, post(create_customer))
         .route(SITES_PATH, post(create_site))
         .route(SITE_ID_PATH_TEMPLATE, axum::routing::patch(update_site))
-        .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+        .with_state(state.clone());
+    routes::with_import_limit(router, state)
 }
 
 #[derive(Debug, Deserialize)]

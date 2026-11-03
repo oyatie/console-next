@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, State};
+use axum::extract::{Multipart, Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post, put};
 use axum::{Extension, Json, Router};
@@ -216,6 +216,7 @@ pub fn router(state: HrState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.pool.clone();
     let lanes = state.clone();
+    let import_body_limit = max_import_body();
     let router = Router::new()
         .route(EMPLOYEES_PATH, get(list_employees).post(create_employee))
         .route(EMPLOYEE_DETAIL_PATH_TEMPLATE, get(get_employee_detail))
@@ -250,10 +251,6 @@ pub fn router(state: HrState) -> Router {
             post(draft_employee_exit_approval),
         )
         .route(
-            HR_ATTENDANCE_IMPORT_PREVIEW_PATH,
-            post(preview_attendance_import).layer(DefaultBodyLimit::max(max_import_body())),
-        )
-        .route(
             HR_ATTENDANCE_IMPORT_DRY_RUN_PATH_TEMPLATE,
             post(dry_run_attendance_import),
         )
@@ -270,14 +267,6 @@ pub fn router(state: HrState) -> Router {
             get(list_my_attendance_records).post(create_my_attendance_record),
         )
         .route(HR_ATTENDANCE_RECORDS_PATH, get(list_attendance_records))
-        .route(
-            EMPLOYEES_IMPORT_PATH,
-            post(import_employees).layer(DefaultBodyLimit::max(max_import_body())),
-        )
-        .route(
-            EMPLOYEES_IMPORT_PREVIEW_PATH,
-            post(preview_employee_import).layer(DefaultBodyLimit::max(max_import_body())),
-        )
         .route(
             EMPLOYEES_IMPORT_DRY_RUN_PATH_TEMPLATE,
             post(dry_run_employee_import),
@@ -309,7 +298,12 @@ pub fn router(state: HrState) -> Router {
         )
         .with_state(state);
     let router = lane_routes::merge(router, &lanes);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    let router = console_platform_request_context::with_request_context(
+        router,
+        verifier.clone(),
+        pool.clone(),
+    );
+    lane_routes::merge_import_uploads(router, &lanes, verifier, pool, import_body_limit)
 }
 
 #[derive(Debug, Serialize)]

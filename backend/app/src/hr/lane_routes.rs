@@ -6,16 +6,20 @@
 //! comes from the same request-context layer; their paths are registered as
 //! their own `CONFIGURED_ROUTE_SURFACES` entries.
 
-use axum::Router;
+use axum::{Router, routing::post};
 use console_hr_adapter_postgres::HrService;
 use console_hr_rest::{
     bulk_corrections, bulk_lifecycle, change_sets, checklist, contract, corrections, fixed_term,
     identity, intake, job_title, lifecycle_bulk_job, lifecycle_void, notices, profile, reconcile,
     register_facts, registration, requests,
 };
-use console_platform_auth::PasskeyService;
+use console_platform_auth::{JwtVerifier, PasskeyService};
+use sqlx::PgPool;
 
-use super::HrState;
+use super::{
+    EMPLOYEES_IMPORT_PATH, EMPLOYEES_IMPORT_PREVIEW_PATH, HR_ATTENDANCE_IMPORT_PREVIEW_PATH,
+    HrState, import_employees, preview_attendance_import, preview_employee_import,
+};
 
 impl HrState {
     /// The step-up verifier for the BW-18 corrections (see [`merge`]).
@@ -69,4 +73,29 @@ pub(super) fn merge(router: Router, state: &HrState) -> Router {
             .merge(bulk_corrections::router(hr.clone(), passkeys)),
         None => router,
     }
+}
+
+pub(super) fn merge_import_uploads(
+    router: Router,
+    state: &HrState,
+    verifier: Option<JwtVerifier>,
+    pool: PgPool,
+    max_body_bytes: usize,
+) -> Router {
+    let imports = Router::new()
+        .route(
+            HR_ATTENDANCE_IMPORT_PREVIEW_PATH,
+            post(preview_attendance_import),
+        )
+        .route(EMPLOYEES_IMPORT_PATH, post(import_employees))
+        .route(EMPLOYEES_IMPORT_PREVIEW_PATH, post(preview_employee_import))
+        .with_state(state.clone());
+    router.merge(
+        console_platform_request_context::with_request_context_body_limit(
+            imports,
+            verifier,
+            pool,
+            max_body_bytes,
+        ),
+    )
 }

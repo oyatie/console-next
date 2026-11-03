@@ -2,7 +2,7 @@
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1499
-app/src/hr.rs	3581
+app/src/hr.rs	3575
 app/src/objects.rs	2007
 app/src/office.rs	891
 app/src/workbench.rs	660
@@ -262,7 +262,7 @@ crates/registry/adapter-postgres/tests/create_rls_surfaces_as_runtime_role.rs	34
 crates/registry/adapter-postgres/tests/master_list_import.rs	644
 crates/registry/application/src/lib.rs	934
 crates/registry/domain/src/lib.rs	381
-crates/registry/rest/src/lib.rs	1805
+crates/registry/rest/src/lib.rs	1800
 crates/registry/rest/tests/equipment_admin.rs	1276
 crates/reporting/adapter-postgres/src/lib.rs	1810
 crates/reporting/adapter-postgres/tests/excel_exports.rs	623
