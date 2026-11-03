@@ -122,14 +122,22 @@ test("CI uses committed settings, takes only compatible artifact durations, and 
   try {
     for (const folder of ["bin", "scripts", "e2e/mock", ".cache/states-timings", ".cache/states-reports"]) mkdirSync(path.join(dir, folder), { recursive: true });
     for (const file of ["states-shards.mjs", "e2e-timings.mjs"]) writeFileSync(path.join(dir, "scripts", file), readFileSync(new URL(file, import.meta.url)));
+    writeFileSync(path.join(dir, "bin/node"), `#!/bin/sh
+if [ "$1" = "scripts/d8-module-routes.mjs" ]; then
+  mkdir -p "$(dirname "$2")"
+  printf '%s' '{"modules":[{"routes":["/login","/setup-passkey"]}]}' > "$2"
+  exit 0
+fi
+exec "$REAL_NODE" "$@"
+`, { mode: 0o755 });
     writeFileSync(path.join(dir, "bin/npx"), '#!/bin/sh\nprintf "%s" "$TEST_REPORT"\n', { mode: 0o755 });
     writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf "%s" "$TEST_REPORT" > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
     const configFile = path.join(dir, "e2e/mock/timings.json");
     const original = JSON.stringify(committed);
     writeFileSync(configFile, original);
-    const env = { ...process.env, PATH: `${dir}/bin:${process.env.PATH}`, TEST_REPORT: JSON.stringify(observed),
-      PLAYWRIGHT_JSON_OUTPUT_FILE: path.join(dir, ".cache/states-reports/one.json") };
     const step = workflow.jobs["states-plan"].steps.find(s => s.id === "plan");
+    const env = { ...process.env, ...step.env, REAL_NODE: process.execPath, PATH: `${dir}/bin:${process.env.PATH}`, TEST_REPORT: JSON.stringify(observed),
+      PLAYWRIGHT_JSON_OUTPUT_FILE: path.join(dir, ".cache/states-reports/one.json") };
     const refresh = workflow.jobs["states-timings"].steps.find(s => s.run?.includes("states-shards.mjs refresh"));
     for (const workers of [committed.workers, 2]) {
       writeFileSync(path.join(dir, ".cache/states-timings/timings.json"), JSON.stringify({
@@ -138,6 +146,7 @@ test("CI uses committed settings, takes only compatible artifact durations, and 
       }));
       const planned = spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], { cwd: dir, env, encoding: "utf8" });
       assert.equal(planned.status, 0, planned.stderr);
+      assert.deepEqual(JSON.parse(readFileSync(path.join(dir, step.env.E2E_MODULES_FILE), "utf8")), { modules: [{ routes: ["/login", "/setup-passkey"] }] });
       const plan = JSON.parse(readFileSync(path.join(dir, ".cache/states-plan/plan.json"), "utf8"));
       assert.equal(plan.budgetSeconds, committed.budgetSeconds);
       assert.equal(plan.shards[0].seconds, workers === committed.workers ? 34 : 27);
@@ -255,6 +264,7 @@ test("CI consumes the plan's matrix and exact file list and ci-ok requires plann
   const run = jobs.states.steps.find(s => s.run?.includes("scripts/states-shards.mjs run"));
   assert.ok(run);
   assert.match(run.run, /matrix\.shard/);
+  assert.equal(run.env.E2E_MODULES_FILE, jobs["states-plan"].steps.find(s => s.id === "plan").env.E2E_MODULES_FILE);
   assert.ok(jobs["ci-ok"].needs.includes("states-plan"));
   assert.ok(jobs["ci-ok"].needs.includes("states"));
   assert.match(jobs["ci-ok"].steps[0].run, /needs\['states-plan'\]\.result/);
