@@ -28,12 +28,55 @@ async fn bulk_appointment_decision_uses_live_tenant_grants_of_either_domain(pool
                 me["decisions"]["bulk_appointment"], allowed,
                 "{domain}: {me}"
             );
+            let (status, effective) = w
+                .call(
+                    Method::GET,
+                    &format!("/api/v1/access/accounts/{}/effective", w.hr.as_uuid()),
+                    w.ops,
+                    None,
+                )
+                .await;
+            assert_eq!(status, StatusCode::OK, "{effective}");
+            assert_eq!(
+                effective["decisions"]["bulk_appointment"], allowed,
+                "{domain}: {effective}"
+            );
             sqlx::query("UPDATE access_grants SET status = 'REVOKED', revoked_at = now(), revoked_by = $3 WHERE org_id = $1 AND account_id = $2 AND status <> 'REVOKED'")
                 .bind(w.org).bind(w.hr.as_uuid()).bind(w.ops.as_uuid()).execute(&w.owner).await.unwrap();
             let (_, revoked) = w.call(Method::GET, "/api/v1/access/me", w.hr, None).await;
             assert_eq!(revoked["decisions"]["bulk_appointment"], false, "{revoked}");
         }
     }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn inactive_account_has_no_projected_command_decisions(pool: PgPool) {
+    let mut w = world(pool).await;
+    let role = w
+        .role(
+            "인사 실무",
+            json!([{ "domain": "hr_basic", "levels": ["edit"] }]),
+        )
+        .await;
+    w.grant(json!([grant_op(w.hr, role, "TENANT", None, true)]))
+        .await;
+    sqlx::query("UPDATE users SET is_active = false WHERE org_id = $1 AND id = $2")
+        .bind(w.org)
+        .bind(w.hr.as_uuid())
+        .execute(&w.owner)
+        .await
+        .unwrap();
+
+    let (status, effective) = w
+        .call(
+            Method::GET,
+            &format!("/api/v1/access/accounts/{}/effective", w.hr.as_uuid()),
+            w.ops,
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{effective}");
+    assert_eq!(effective["decisions"], json!({}), "{effective}");
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
