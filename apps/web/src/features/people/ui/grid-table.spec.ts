@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, mount, expectWindowAt } from "./grid-table-fixture.playwright";
-import { bootKo } from "../../../../../../packages/i18n/src/catalogs/boot";
+import { expectAxe } from "../../../../../../e2e/a11y";
 
-const unicode = `${bootKo["app.name"]} 😀`;
+const unicode = "a \u3131";
 
 test("document scrolling renders the visible rows with the GridPage wrapper", async ({ page }) => {
   await mount(page);
@@ -93,13 +93,28 @@ for (const key of ["F2", "Enter", "typing"]) {
     await page.keyboard.press("Tab");
     if (key !== "typing") await page.keyboard.press(key);
     await expect.poll(() => page.locator("#grid-0-0 input").count()).toBe(1);
-    await page.keyboard.insertText(unicode);
+    await page.keyboard.type(unicode);
     await page.keyboard.press("Enter");
     expect(await page.locator("#grid-0-0").textContent()).toBe(unicode);
     expect(await page.locator("#grid-0-0").getAttribute("data-editing")).toBeNull();
     await expect.poll(() => page.locator("#grid-1-0 input").evaluate((el) => el === document.activeElement)).toBe(true);
+    await expectAxe(page, `${key} real typing`, { include: "#gallery-grid-table" });
   });
 }
+
+test("Shift+arrows expose a rectangular ARIA selection", async ({ page }) => {
+  await mount(page, true);
+  await page.locator("#grid-1-0").click();
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Shift+ArrowDown");
+  await expect(page.getByRole("grid")).toHaveAttribute("aria-multiselectable", "true");
+  await expect(page.locator("#grid-1-0")).toHaveAttribute("aria-colindex", "4");
+  await expect(page.locator("#grid-2-1")).toHaveAttribute("aria-colindex", "5");
+  expect(await page.locator('[role="gridcell"][aria-selected="true"]').evaluateAll((cells) => cells.map((cell) => cell.id))).toEqual([
+    "grid-1-0", "grid-1-1", "grid-2-0", "grid-2-1",
+  ]);
+  await expectAxe(page, "rectangular grid selection", { include: "#gallery-grid-table" });
+});
 
 test("ArrowDown preserves focus across the render boundary", async ({ page }) => {
   await mount(page, true);
@@ -210,7 +225,9 @@ test("GridPage First error reaches an unmounted stale_record refusal", async ({ 
 });
 
 test("GridPage keeps the last focused cell above the footer and its header in view", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
   await mount(page, true, "page");
+  await page.locator("html").evaluate((element) => { element.dataset.theme = "dark"; });
   await page.getByRole("grid").focus();
   await page.keyboard.press("Control+End");
   await expect.poll(() => page.locator("#grid-1999-2 input").evaluate((el) => el === document.activeElement)).toBe(true);
@@ -225,6 +242,8 @@ test("GridPage keeps the last focused cell above the footer and its header in vi
   expect(bounds.headerTop).toBeGreaterThanOrEqual(0);
   expect(bounds.headerBottom).toBeLessThanOrEqual(bounds.cellTop);
   expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expectAxe(page, "bulk correction grid at 390px in dark mode", { include: "#gallery-grid-table" });
 });
 
 

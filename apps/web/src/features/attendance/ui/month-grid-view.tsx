@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { PersonDayGrid, type DayColumn } from "../../../ui/person-day-grid/person-day-grid";
 import { Button } from "../../../ui/button/button";
-import { at, indexOf, rectIn, type Range } from "../../../ui/person-day-grid/range";
+import { at, indexOf, rectIn, type Range } from "../../../ui/sheet-grid/range";
 import type { GridRow } from "../api";
 import { cellShape } from "../domain/day";
 import { toneCounts } from "../present";

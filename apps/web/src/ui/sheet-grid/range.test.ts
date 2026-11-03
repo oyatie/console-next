@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
 import { at, indexOf, moveRange, rectIn, rectSize, spanIn } from "./range";
 
@@ -13,6 +14,7 @@ test("a range moves, extends with shift and stays inside the grid, by keys", () 
   expect(rectSize(rectIn(wide, a))).toEqual({ people: 2, days: 2, cells: 4 });
   expect(moveRange(start, "PageDown", false, a)!.focus).toEqual({ row: "e", col: "d2" });
   expect(moveRange(start, "Home", false, a)!.focus.col).toBe("d1");
+  expect(moveRange(start, "End", false, a, 10, true)!.focus).toEqual({ row: "e", col: "d4" });
   expect(moveRange(start, "x", false, a)).toBeNull();
 });
 

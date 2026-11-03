@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
-import { narrow } from "./grid-choices";
+import { narrow } from "./choices";
 
 // r3:records-17: typing narrows a choice column's options; nothing typed shows them all.
 test("typed text narrows the options, spaces aside", () => {

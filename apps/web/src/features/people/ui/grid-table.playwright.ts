@@ -15,7 +15,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "line",
-  use: { baseURL: origin, browserName: "chromium", viewport: { width: 1280, height: 800 }, locale: "en-US", timezoneId: "Asia/Seoul" },
+  use: { baseURL: origin, browserName: process.env.E2E_XBROWSER === "1" ? "firefox" : "chromium", viewport: { width: 1280, height: 800 }, locale: "en-US", timezoneId: "Asia/Seoul" },
   webServer: {
     command: "npm run dev -w @console/web -- --host 127.0.0.1",
     cwd: repo,
