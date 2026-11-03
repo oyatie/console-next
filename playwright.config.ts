@@ -13,6 +13,8 @@ const served = process.env.E2E_SERVED === "1";
 const reuse = process.env.E2E_REUSE === "1" && !served;
 // E2E_XBROWSER=1 runs Firefox instead of Chromium (the INTEG gate's second leg; see projects).
 const xbrowser = process.env.E2E_XBROWSER === "1";
+const perfTag = /(?:^|\s)@perf(?=\s|$)/;
+const ordinaryOnly = process.env.E2E_PERF === "1" ? /@clock/ : [/@clock/, perfTag];
 const origin = served ? `http://localhost:${PORTS.backend}` : `http://localhost:${PORTS.web}`;
 const backendEnv = {
   CONSOLE_APP_BIN: process.env.CONSOLE_APP_BIN ?? "backend/target/debug/console-app",
@@ -46,10 +48,12 @@ export default defineConfig({
   outputDir: OUTPUT_DIR,
   globalSetup: "./e2e/global-setup.ts",
   timeout: 120_000,
+  expect: { timeout: process.env.E2E_PERF === "1" ? 30_000 : 5_000 },
   // Every test builds its own tenant through the product, so tests run side by side (one backend, one Vite).
   fullyParallel: true,
+  grepInvert: process.env.E2E_PERF === "1" ? undefined : perfTag,
   // Separate profiles own short-TTL sessions and backend-free screen state proofs.
-  testIgnore: [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|states)\//, /\/layout\/layout\.spec\.ts$/],
+  testIgnore: [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|states)\//, /\/layout\/layout\.spec\.ts$/, /\/perf\/.*\.test\.ts$/],
   workers: Number(process.env.E2E_WORKERS ?? (process.env.CI ? 2 : 4)),
   // Every run records its passing tests' durations, which scripts/e2e-slot.mjs plans shards from. A sharded
   // e2e:agent run passes the caller's --reporter as E2E_REPORTER and collects one blob per job to merge.
@@ -61,9 +65,9 @@ export default defineConfig({
   // E2E_XBROWSER=1 is the Firefox leg alone: every spec creates its tenants under fixed identifiers, so two
   // engines cannot share one database. The clock specs and the gallery baselines stay Chromium-only.
   projects: xbrowser
-    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: /@clock/, testIgnore: /visual\.spec\.ts/ }]
+    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: ordinaryOnly, testIgnore: [/visual\.spec\.ts/, /\/perf\/.*\.test\.ts$/] }]
     : [
-        { name: "parallel", grepInvert: /@clock/ },
+        { name: "parallel", grepInvert: ordinaryOnly },
         // Date-moving tests (e2e/clock.ts) share the backend's one apply date: alone, one at a time, after the rest.
         { name: "clock", grep: /@clock/, workers: 1, dependencies: ["parallel"] },
       ],
@@ -76,7 +80,7 @@ export default defineConfig({
     baseURL: origin,
     locale: "ko-KR",
     timezoneId: "Asia/Seoul",
-    trace: process.env.CI ? "on-first-retry" : { mode: "retain-on-failure", screenshots: false },
+    trace: process.env.E2E_PERF === "1" ? "off" : process.env.CI ? "on-first-retry" : { mode: "retain-on-failure", screenshots: false },
   },
   webServer: [
     {

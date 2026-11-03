@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: console-page-load
+  displayName: Console page load at 2,000 employees
+  labels:
+    service: console-web
+    environment: lab
+    employees: "2000"
+    entities: "5"
+    workplaces: "40"
+    departments: "300"
+spec:
+  description: At least 99.5% of page loads have LCP at or below 2 seconds (owner decision 2026-10-15). Lab runs report cold and warm p95 separately; burst and field proof are separate objectives.
+  service: console-web
+  indicator:
+    metadata:
+      name: console-page-load-lcp
+    spec:
+      thresholdMetric:
+        metricSource:
+          type: Prometheus
+          spec:
+            query: console_page_load_lcp_seconds{environment="lab",employees="2000"}
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  budgetingMethod: Occurrences
+  objectives:
+    - displayName: LCP at or below 2 seconds
+      op: lte
+      value: 2
+      target: 0.995
