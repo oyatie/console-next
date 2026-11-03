@@ -73,6 +73,9 @@ test("the tenant sees purpose, scope, bounded duration, decisions and access rec
   expect(html).toContain("max=\"30\"");
   expect(html).toContain("supportAccess.revealPersonal");
 });
+test("the support-access head has no navigation while it is the only served audit view", () => {
+  expect(renderToStaticMarkup(<SupportAccess />)).not.toContain("<nav");
+});
 test("approval and end commands use the shared authenticated API and retain their intent key", async () => {
   renderToStaticMarkup(<SupportAccess />);
   await state.calls[0]!.run({ decision: "APPROVE", approved_duration_seconds: 900, reveal_classes: [] }, "intent-a");
