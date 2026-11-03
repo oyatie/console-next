@@ -935,7 +935,7 @@
       "model": "matrix",
       "file": "backend/app/src/action_inbox/legacy.rs",
       "kind": "reference",
-      "count": 4
+      "count": 2
     },
     {
       "model": "matrix",

@@ -6,11 +6,8 @@ use std::collections::BTreeMap;
 use console_kernel_core::OrgId;
 use console_platform_authz::Principal;
 use console_platform_authz::access::{
-    AccessSlice, Domain, Enforcement, Level, action_group, load_access_subject, load_tenant_phase,
-};
-use console_platform_authz::{
-    access::{NodeKind, NodeRef, cedar::BULK_APPOINTMENT},
-    cedar_pbac::visible::load_facts,
+    AccessSlice, Domain, Enforcement, Level, NodePath, action_group, cedar::BULK_APPOINTMENT,
+    load_access_subject, load_tenant_phase,
 };
 use console_platform_db::with_org_conn;
 use serde::Deserialize;
@@ -40,10 +37,9 @@ async fn effective_of(
     org: OrgId,
     account: Uuid,
 ) -> AccessResult<Value> {
-    let is_ops = store::account(tx, org, account)
+    let (account_active, is_ops) = store::account(tx, org, account)
         .await?
-        .ok_or_else(|| AccessError::not_found("account_not_found", "no such account"))?
-        .1;
+        .ok_or_else(|| AccessError::not_found("account_not_found", "no such account"))?;
     let now = OffsetDateTime::now_utc();
     let phase = load_tenant_phase(tx, org).await?;
     let subject = load_access_subject(tx, org, account, now).await?;
@@ -53,6 +49,15 @@ async fn effective_of(
         .map(|g| (g.grant_id, g.scope.clone()))
         .collect();
     let slice = AccessSlice::compile(&subject).ok();
+    let decisions = account_active
+        .then(|| {
+            slice
+                .as_ref()?
+                .allows(BULK_APPOINTMENT, &NodePath::tenant(org))
+                .ok()
+        })
+        .flatten()
+        .map_or_else(|| json!({}), |allowed| json!({BULK_APPOINTMENT: allowed}));
     let filter = ListFilter {
         account_id: Some(account),
         ..ListFilter::default()
@@ -107,7 +112,7 @@ async fn effective_of(
     }
     Ok(json!({
         "account_id": account, "is_ops": is_ops, "phase": phase.as_str(),
-        "as_of": rfc3339(now)?, "entries": entries,
+        "as_of": rfc3339(now)?, "entries": entries, "decisions": decisions,
     }))
 }
 
@@ -123,21 +128,7 @@ pub async fn account(s: &AccessService, p: Principal, account: Uuid) -> AccessRe
 pub async fn me(s: &AccessService, p: Principal) -> AccessResult<Value> {
     let me = *p.user_id.as_uuid();
     let out = with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
-        Box::pin(async move {
-            let mut out = effective_of(tx, p.org_id, me).await?;
-            let facts = load_facts(tx, p.org_id, me).await?;
-            let allowed = facts
-                .authorize(
-                    BULK_APPOINTMENT,
-                    NodeRef {
-                        kind: NodeKind::Tenant,
-                        id: *p.org_id.as_uuid(),
-                    },
-                )
-                .map_err(AccessError::internal)?;
-            out["decisions"] = json!({BULK_APPOINTMENT: allowed});
-            Ok(out)
-        })
+        Box::pin(async move { effective_of(tx, p.org_id, me).await })
     })
     .await?;
     Ok(out)
