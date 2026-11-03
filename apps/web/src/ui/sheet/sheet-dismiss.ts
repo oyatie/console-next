@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useBackBlock } from "../../lib/react/navigation-block";
 
 const FORM_CONTROL = "form, .form, input, select, textarea, [contenteditable=true]";
+const SEARCH_CONTROL = 'input[type="search"], [role="searchbox"]';
 
 /** One dismissal contract for modal and docked sheets. */
 export function useSheetDismiss<E extends HTMLElement>({ onClose, pending, dirty: dirtyProp }: { onClose: () => void; pending?: boolean; dirty?: boolean }) {
@@ -30,8 +31,8 @@ export function useSheetDismiss<E extends HTMLElement>({ onClose, pending, dirty
     disarm();
     onClose();
   }, [pending, onClose, dirty, isTop, arm, disarm]);
-  const onInput = () => {
-    if (!controlled) setChanged(true);
+  const onInput = (event: FormEvent) => {
+    if (!controlled && !(event.target as Element).matches(SEARCH_CONTROL)) setChanged(true);
     disarm();
   };
   const onBackdrop = () => {
@@ -44,6 +45,8 @@ export function useSheetDismiss<E extends HTMLElement>({ onClose, pending, dirty
   };
 
   useEffect(() => {
+    const layer = ref.current;
+    if (!layer) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return void (armedRef.current && disarm());
       const target = event.target as HTMLElement;
@@ -55,17 +58,16 @@ export function useSheetDismiss<E extends HTMLElement>({ onClose, pending, dirty
       event.stopPropagation();
       requestClose();
     };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
+    layer.addEventListener("keydown", onKeyDown);
+    return () => layer.removeEventListener("keydown", onKeyDown);
   }, [isTop, requestClose, disarm]);
 
   const blockBack = useCallback(() => {
     if (!isTop()) return false;
     if (pending) return true;
-    if (!dirty || armedRef.current) return false;
-    arm();
+    requestClose();
     return true;
-  }, [isTop, pending, dirty, arm]);
+  }, [isTop, pending, requestClose]);
   useBackBlock(dirty, blockBack);
 
   return { ref, dirty, armed, requestClose, onInput, onBackdrop };

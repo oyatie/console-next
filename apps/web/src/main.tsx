@@ -45,7 +45,6 @@ const router = createRouter({
   routeTree: routeTree,
   defaultPreload: "intent",
   scrollRestoration: true,
-  scrollToTopSelectors: ["#main"],
   defaultNotFoundComponent: () => (
     <main className="page">
       <EmptyState
@@ -58,6 +57,55 @@ const router = createRouter({
   // A render error, or a lazy chunk still missing after the one reload (lib/chunk-guard). The button fetches
   // index.html afresh: a plain reload may revalidate a stale cached one that names the same missing chunks.
   defaultErrorComponent: ({ error }) => <CrashScreen error={error} />,
+});
+
+const mainPositions = new Map<string, number>();
+let stopMainRestore: () => void = () => undefined;
+function restoreMain(key: string, top: number) {
+  stopMainRestore();
+  let main: HTMLElement | null = null;
+  const resize = new ResizeObserver(() => apply());
+  const mutation = new MutationObserver(() => { observe(); apply(); });
+  const events = ["keydown", "pointerdown", "touchstart", "wheel"] as const;
+  function stop() {
+    resize.disconnect();
+    mutation.disconnect();
+    if (main) for (const event of events) main.removeEventListener(event, stop);
+  }
+  function observe() {
+    resize.disconnect();
+    if (main) for (const child of main.children) resize.observe(child);
+  }
+  function bind() {
+    const marker = document.querySelector<HTMLElement>("[data-route-key]");
+    if (marker?.dataset.routeKey !== key || !marker.dataset.routeReady) return;
+    const next = document.getElementById("main");
+    if (!next || next === main) return;
+    main = next;
+    mutation.disconnect();
+    mutation.observe(main, { attributes: true, childList: true });
+    for (const event of events) main.addEventListener(event, stop);
+    observe();
+  }
+  function apply() {
+    bind();
+    if (!main) return;
+    main.scrollTop = top;
+    if (main.scrollTop === top) stop();
+  }
+  stopMainRestore = stop;
+  mutation.observe(document.body, { attributes: true, attributeFilter: ["data-route-key", "data-route-ready"], childList: true, subtree: true });
+  apply();
+}
+router.subscribe("onBeforeLoad", ({ fromLocation }) => {
+  const key = fromLocation?.state["__TSR_key"];
+  const main = document.getElementById("main");
+  if (key && main) mainPositions.set(key, main.scrollTop);
+});
+router.subscribe("onRendered", ({ fromLocation, toLocation }) => {
+  if (!fromLocation || fromLocation.pathname === toLocation.pathname) return;
+  const key = toLocation.state["__TSR_key"];
+  if (key) restoreMain(key, mainPositions.get(key) ?? 0);
 });
 declare module "@tanstack/react-router" {
   interface Register {

@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Skeleton } from "../skeleton/skeleton";
 import { useLiveHold } from "../../lib/live/hold";
+import { useCurrentSheetDraft } from "./sheet-draft";
 import { useSheetDismiss } from "./sheet-dismiss";
 import s from "./sheet.module.css";
 
@@ -46,7 +47,8 @@ export function Sheet(p: Props) {
 }
 
 function OpenSheet(p: Props) {
-  const { ref, dirty, armed, requestClose, onInput, onBackdrop } = useSheetDismiss<HTMLDivElement>(p);
+  const draft = useCurrentSheetDraft();
+  const { ref, dirty, armed, requestClose, onInput, onBackdrop } = useSheetDismiss<HTMLDivElement>({ ...p, dirty: draft?.dirty ?? p.dirty });
   return (
     <ModalOverlay className={s.overlay} isOpen onOpenChange={(open) => !open && requestClose()}
       isDismissable={false} isKeyboardDismissDisabled
@@ -64,6 +66,7 @@ function OpenSheet(p: Props) {
           <div className={s.body} inert={p.pending || p.locked || undefined} onInputCapture={onInput} onChangeCapture={onInput}>{p.loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("common.loading")} /> : p.children}</div>
           <div className={s.foot}>
             {p.notice}
+            {draft && (draft.problem || draft.restored) && <div role="status">{t(draft.problem ? "draft.unavailable" : "draft.restored")}{draft.restored && !draft.problem && <Button className="btn btn--ghost" onPress={draft.discard}>{t("draft.discard")}</Button>}</div>}
             {armed && dirty && <div role="status">{t("composer.unsaved")}</div>}
             <div className={s.consequence}>{p.consequence}</div>
             <div className={s.actions} inert={p.pending || undefined}>{p.actions}</div>
