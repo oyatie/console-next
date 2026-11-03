@@ -40,7 +40,6 @@ export const OrgCanvas = forwardRef<CanvasHandle, {
   /** Extra zoom-bar actions (collapse all). */
   tools?: ReactNode;
   minimap?: { rects: readonly MiniRect[]; userId?: string } | false;
-  dimmed?: boolean;
   label: string;
 }>(function OrgCanvas(p, ref) {
   const viewport = useRef<HTMLDivElement>(null);
@@ -74,7 +73,7 @@ export const OrgCanvas = forwardRef<CanvasHandle, {
   const drag = useRef<{ x: number; y: number } | null>(null);
 
   return (
-    <section ref={place({ "--unzoom": String(unzoomOf(view.zoom)) })} className={s.canvas} aria-label={p.label} data-dimmed={p.dimmed || undefined}>
+    <section ref={place({ "--unzoom": String(unzoomOf(view.zoom)) })} className={s.canvas} aria-label={p.label}>
       <div
         ref={viewport}
         className={s.viewport}

@@ -24,7 +24,9 @@ beforeAll(async () => {
           const [clicks, setClicks] = useState(0);
           const [mounted, setMounted] = useState(true);
           const [sheetOpen, setSheetOpen] = useState(true);
+          const [lateHidden, setLateHidden] = useState(false);
           window.closeSheet = () => setSheetOpen(false);
+          window.addHidden = () => setLateHidden(true);
           const picker = mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
             onQueryChange: setQuery, value, onChange: setValue,
             options: [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }] });
@@ -38,7 +40,9 @@ beforeAll(async () => {
             h('button', { id: 'outside', onClick: () => setClicks(n => n + 1) }, 'Outside'),
             mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
               onQueryChange: setQuery, value, onChange: setValue,
-              options: [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }] }),
+              options: query === 'Empty' ? [] : [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }],
+              escape: { kind: 'add', label: 'Add person', onAdd() {} } }),
+            lateHidden && h('span', { id: 'late-hidden', 'aria-hidden': 'true' }, 'Late decoration'),
             h('input', { id: 'after', 'aria-label': 'After' }),
             h('button', { id: 'unmount', onClick: () => setMounted(false) }, 'Unmount'),
             h('output', { id: 'selected' }, value), h('output', { id: 'clicks' }, clicks));
@@ -93,6 +97,19 @@ test("closing restores existing inert restrictions before the next microtask", a
   const restricted = page.locator("#already-inert").locator("..");
   await expectElement(restricted).toHaveJSProperty("inert", true);
   await expectElement(restricted).toHaveAttribute("data-exposed", "false");
+}, 10000);
+
+test("an open picker preserves its own and newly mounted decorative content", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  const input = page.getByRole("combobox", { name: "Person" });
+  await input.fill("Empty");
+  await expectElement(page.locator(".popover").getByText("People", { exact: true })).toHaveAttribute("aria-hidden", "true");
+  await expectElement(page.getByRole("button", { name: "Add person" }).locator("svg")).toHaveAttribute("aria-hidden", "true");
+  await page.evaluate(() => (window as unknown as { addHidden: () => void }).addHidden());
+  await expectElement(page.locator("#late-hidden")).toHaveAttribute("aria-hidden", "true");
+  await input.press("Tab");
+  await expectElement(input).toHaveAttribute("aria-expanded", "false");
+  await expectElement(page.locator("#late-hidden")).toHaveAttribute("aria-hidden", "true");
 }, 10000);
 
 test("a deliberately selected namesake without an employee number can be confirmed", async () => {

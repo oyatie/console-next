@@ -30,9 +30,9 @@ vi.mock("./use-structure", () => ({ useStructure: () => ({
   s: state.s, tree: { error: state.error },
   ready: { isPending: false, error: state.error, data: state.s ? true : undefined, refetch: state.refetch },
 }) }));
-vi.mock("./chart-view", () => ({ ChartView: ({ dimmed }: { dimmed: boolean }) => {
+vi.mock("./chart-view", () => ({ ChartView: () => {
   const label = "last good chart";
-  return <div data-dimmed={dimmed}>{label}</div>;
+  return <div>{label}</div>;
 } }));
 
 beforeAll(() => loadCatalog("ko"));
@@ -88,21 +88,22 @@ test("cached change dates are not presented as a successful empty answer after a
   expect(html).not.toContain(t("asof.noNext"));
 });
 
-test("a failed structure reread retains and dims the chart with one retry", () => {
+test("a failed structure reread retains the chart with one retry", () => {
   retain();
   const html = render();
-  expect(html).toContain('data-dimmed="true">last good chart');
+  expect(html).toContain("last good chart");
+  expect(html).not.toContain("data-dimmed");
   expect(html.split(t("common.retry"))).toHaveLength(2);
   expect(html).toContain("structure-read-reference");
   expect(html).not.toContain('data-to="/org/history"');
 });
 
-test("a change-date-only failure has one inline notice without dimming a fresh chart", () => {
+test("a change-date-only failure has one inline notice beside a fresh chart", () => {
   retain();
   state.error = null;
   const html = render();
   expect(html).toContain("dates-read-reference");
-  expect(html).toContain('data-dimmed="false">last good chart');
+  expect(html).toContain("last good chart");
   expect(html).not.toContain(t("common.read.stale"));
   expect(html).toContain(t("asof.error"));
   expect(html.split(t("common.retry"))).toHaveLength(2);
@@ -115,10 +116,10 @@ test("a successful empty date read still reports empty history", () => {
   const html = render();
   for (const key of ["asof.noPrevious", "asof.noNext", "asof.noChanges"] as const) expect(html).toContain(t(key));
   expect(html).not.toContain('role="alert"');
-  expect(html).toContain('data-dimmed="false">last good chart');
+  expect(html).toContain("last good chart");
 });
 
-test("pending change dates show a busy ribbon without an empty-history claim or dimming the chart", () => {
+test("pending change dates show a busy ribbon without an empty-history claim", () => {
   retain();
   state.error = null;
   Object.assign(state.dates, { error: null, status: "pending", fetchStatus: "fetching", isError: false, isFetching: true, isFetchedAfterMount: false });
@@ -126,5 +127,5 @@ test("pending change dates show a busy ribbon without an empty-history claim or 
   expect(html).toMatch(/role="group" aria-label="변경일" aria-busy="true"/);
   expect(html).not.toContain(t("asof.noChanges"));
   expect(html).not.toContain(t("common.read.stale"));
-  expect(html).toContain('data-dimmed="false">last good chart');
+  expect(html).toContain("last good chart");
 });

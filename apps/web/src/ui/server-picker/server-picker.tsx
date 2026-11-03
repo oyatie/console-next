@@ -5,6 +5,8 @@ import { t } from "@console/i18n";
 import { homonymOf, suffixMatches, SUFFIX } from "./homonym";
 import css from "./server-picker.module.css";
 
+const FOCUSABLE = 'a[href], area[href], audio[controls], button:not([disabled]), embed, iframe, input:not([disabled]):not([type="hidden"]), object, select:not([disabled]), summary, textarea:not([disabled]), video[controls], [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
+
 /** One server result. People carry `code` (employee number) and `status`, so a partial match or a namesake is never a guess. */
 export type PickerOption = { id: string; name: string; display?: ReactNode; code?: string; status?: ReactNode; context?: ReactNode };
 
@@ -47,23 +49,37 @@ export function ServerPicker(p: {
   const [pending, setPending] = useState<PickerOption>();
   const [suffix, setSuffix] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const hiddenBeforeOpen = useRef(new Set<Element>());
+  const released = useRef(new Set<Element>());
+  const outsideObserver = useRef<MutationObserver>(null);
+  const restoreOutside = () => {
+    for (const el of released.current) if (el.isConnected && !hiddenBeforeOpen.current.has(el) && !el.hasAttribute("aria-hidden")) el.setAttribute("aria-hidden", "true");
+    released.current.clear();
+  };
   useEffect(() => {
     if (!open) return;
-    const body = input.current!.ownerDocument.body;
+    const inputEl = input.current!;
+    const popoverEl = popover.current!;
+    const body = inputEl.ownerDocument.body;
     const preserved = [...body.querySelectorAll<HTMLElement>("[inert]")];
     // The list closes before focus leaves, so keep its non-modal surroundings exposed to assistive technology.
-    const exposePage = () => {
-      for (const el of body.querySelectorAll('[aria-hidden="true"]')) if (!hiddenBeforeOpen.current.has(el)) el.removeAttribute("aria-hidden");
+    const expose = (el: Element) => {
+      if (el.getAttribute("aria-hidden") !== "true" || hiddenBeforeOpen.current.has(el) || popoverEl.contains(el)) return;
+      if (!el.contains(inputEl) && !el.contains(popoverEl) && !el.matches(FOCUSABLE) && !el.querySelector(FOCUSABLE)) return;
+      released.current.add(el);
+      el.removeAttribute("aria-hidden");
     };
-    exposePage();
-    const observer = new MutationObserver(exposePage);
-    observer.observe(body, { attributes: true, childList: true, subtree: true, attributeFilter: ["aria-hidden"] });
+    for (const el of body.querySelectorAll('[aria-hidden="true"]')) expose(el);
+    const observer = new MutationObserver((changes) => { for (const change of changes) expose(change.target as Element); });
+    outsideObserver.current = observer;
+    observer.observe(body, { attributes: true, subtree: true, attributeFilter: ["aria-hidden"] });
     // A picker inside a Sheet: when the Sheet itself unmounts (Back, route change) its overlay's inert must not return.
     const host = input.current!.closest('[role="dialog"]');
     return () => {
       observer.disconnect();
+      if (outsideObserver.current === observer) outsideObserver.current = null;
       const restore = () => { for (const el of preserved) el.inert = true; };
       // A rapid reopen must snapshot the original restrictions before any microtask runs.
       restore();
@@ -108,7 +124,13 @@ export function ServerPicker(p: {
         inputValue={p.query}
         onInputChange={p.onQueryChange}
         onOpenChange={(next) => {
-          if (next) hiddenBeforeOpen.current = new Set(input.current!.ownerDocument.querySelectorAll('[aria-hidden="true"]'));
+          if (next) {
+            hiddenBeforeOpen.current = new Set(input.current!.ownerDocument.querySelectorAll('[aria-hidden="true"]'));
+            released.current.clear();
+          } else {
+            outsideObserver.current?.disconnect();
+            restoreOutside();
+          }
           setOpen(next);
         }}
         selectedKey={pending ? pending.id : (p.value ?? null)}
@@ -129,7 +151,7 @@ export function ServerPicker(p: {
         {(p.reserveError || p.error != null) && <div className={css.feedback} data-reserved={p.reserveError || undefined}>
           <FieldError className={css.error}>{p.error}</FieldError>
         </div>}
-        <Popover className={`popover ${css.pop}`}>
+        <Popover ref={popover} className={`popover ${css.pop}`}>
           <div className={css.group}>
             <span aria-hidden="true">{p.group}</span>
             <span role="status">{p.loading ? t("uiServerPicker.loading") : p.error ?? t("uiServerPicker.count", { count: p.total ?? p.options.length })}</span>

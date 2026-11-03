@@ -39,6 +39,7 @@
 .rows { border: 1px solid var(--border); border-radius: var(--radius); }
 .rowsHead, .rowsLine { display: grid; grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr) 36px; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); }
 .rowsHead { border-bottom: 1px solid var(--border-soft); font-size: var(--text-xs); color: var(--steel); }
+.rowLabel { display: none; }
 .rowsFoot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-2); font-size: var(--text-xs); }
 
 .directors { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; border: 0; }
@@ -90,7 +91,8 @@
   .grid { grid-template-columns: minmax(0, 1fr); }
   .rowsHead { display: none; }
   .rowsLine { grid-template-columns: minmax(0, 1fr); }
-  .rowsLine > :first-child { justify-self: start; }
+  .rowLabel { display: block; }
+  .rowsLine > :nth-child(2) { justify-self: start; }
 }
 
 /* The quick sheet (spec S4-quick). */

@@ -47,7 +47,8 @@ for (const width of [1440, 390]) test(`org: a failed dated read keeps an accessi
     await expect(tree).toBeVisible();
     await mockRoute(page, "get", "/api/v1/org-structure", { status: 503, json: failure("service_unavailable") });
     await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).selectOption("en");
-    await expect(page.locator('[data-dimmed="true"]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-read-region] [data-tone="warn"][role="status"]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("[data-dimmed]")).toHaveCount(0);
     await expectAxe(page, `org/kept-error/${width}`);
     await fits(page, `org/kept-error/${width}`);
     expect(fixture.unexpected).toEqual([]);

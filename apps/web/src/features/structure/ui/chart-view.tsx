@@ -37,10 +37,8 @@ import css from "./chart.module.css";
  * toolbar, inline add and rename, drag and M to move, the selection bar, and the receipt docked in the gutter.
  * During setup every change applies at once (undoable); after go-live the gestures open the governed proposal.
  */
-export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick, dimmed }: {
+export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick }: {
   s: Structure;
-  /** The tree shown is the last one read (a re-read failed). */
-  dimmed?: boolean;
   /** A unit picked from outside the chart: shown in place (its branch opened, the view panned), never by redrawing. */
   pick?: { id: string; n: number };
   cmd: Commands;
@@ -156,7 +154,6 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
         resetKey={c.focus.id}
         size={{ w: c.L.w, h: c.L.h }}
         keep={cursorBox}
-        dimmed={dimmed}
         lines={c.L.lines.map((l) => l.d)}
         top={drag.view ? (
           // While dragging, the top edge says what is moving and how a drop is judged (S2-chart-drag).

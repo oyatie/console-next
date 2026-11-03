@@ -23,6 +23,8 @@ for (const kind of ["CORPORATION", "INDIVIDUAL"] as const) for (const width of [
       const sector = page.getByRole("textbox", { name: t("entityCreate.business.sectorOf", { n: 1 }), exact: true });
       const item = page.getByRole("textbox", { name: t("entityCreate.business.itemOf", { n: 1 }), exact: true });
       const office = page.getByLabel(t("entityCreate.field.taxOffice"));
+      if (width === 390) for (const key of ["kind", "sector", "item", "ksic"] as const)
+        await expect(sector.locator("..").getByText(t(`entityCreate.business.${key}`), { exact: true })).toBeVisible();
       if (kind === "CORPORATION") {
         await office.focus();
         await expectAxe(page, `entity-create/tax-office/${width}`);
