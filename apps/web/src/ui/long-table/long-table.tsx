@@ -94,6 +94,8 @@ export function LongTable<R>(p: {
   countUnit?: "person";
   /** The scrolling element, for a caller that restores the scroll position. */
   scrollRef?: (el: HTMLElement | null) => void;
+  /** Stable router identity for restoring this virtualized scroller after Back/Forward. */
+  scrollRestorationId?: string;
 }) {
   const search = useRef<HTMLInputElement>(null);
   const region = useRef<HTMLElement>(null);
@@ -210,6 +212,7 @@ export function LongTable<R>(p: {
             p.scrollRef?.(el);
           }}
           aria-label={p.label}
+          data-scroll-restoration-id={p.scrollRestorationId}
           // React Aria derives these attributes from loaded rows; the server result includes unloaded rows.
           render={props => <div {...props} aria-rowcount={p.total === undefined ? (p.hasMore ? -1 : loaded.length + 1) : p.total === null ? -1 : p.total + 1} />}
           aria-describedby={p.caption ? captionId : undefined}

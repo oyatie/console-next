@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { Button, Form } from "../button/button";
 import { Checks } from "../choice/checks";
@@ -53,7 +53,6 @@ export function Composer(p: {
   const generatedId = useId();
   const id = p.formId ?? generatedId;
   const submitter = useRef<HTMLButtonElement>(null);
-  const [escapeArmed, setEscapeArmed] = useState(false);
   useEffect(() => {
     if (p.open === false) return;
     const key = (e: KeyboardEvent) => {
@@ -81,14 +80,7 @@ export function Composer(p: {
     })}
   </>;
   const body = p.onSubmit ? (
-    <Form id={id} className="form" noValidate onKeyDown={(event) => {
-      if (event.key !== "Escape") { if (escapeArmed) setEscapeArmed(false); return; }
-      const target = event.target as HTMLElement;
-      if (!p.dirty || p.layout === "page" || p.layout === "inline" || escapeArmed || event.defaultPrevented || event.nativeEvent.isComposing || target.closest('[role="listbox"]') || target.getAttribute("aria-expanded") === "true" || target.closest('[role="dialog"]') !== event.currentTarget.closest('[role="dialog"]')) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setEscapeArmed(true);
-    }} onSubmit={() => {
+    <Form id={id} className="form" noValidate onSubmit={() => {
       if (p.pending || p.loading || p.locked || p.blocked || p.recovery || p.onSubmit?.() !== false) return;
       requestAnimationFrame(() => document.getElementById(id)?.querySelector<HTMLElement>('[aria-invalid="true"], [data-invalid] input')?.focus());
     }}>
@@ -104,7 +96,7 @@ export function Composer(p: {
     {p.onClose && (p.layout === "page" || p.layout === "inline") && <Button variant="ghost" disabled={p.pending} onClick={p.onClose}>{t("composer.dismiss")}</Button>}
   </>}</div>;
   const routing = p.routing?.routed === false && <RoutingPreview routing={p.routing} />;
-  if (p.layout !== "page" && p.layout !== "inline") return <Sheet open kicker={p.kicker} title={p.title} subtitle={p.subtitle} onClose={() => p.onClose?.()} pending={p.pending} loading={p.loading} locked={p.locked} size={p.size} notice={<>{p.notice}{escapeArmed && p.dirty && <p role="status">{t("composer.unsaved")}</p>}</>} consequence={routing} actions={actions}>{body}</Sheet>;
+  if (p.layout !== "page" && p.layout !== "inline") return <Sheet open kicker={p.kicker} title={p.title} subtitle={p.subtitle} onClose={() => p.onClose?.()} pending={p.pending} loading={p.loading} locked={p.locked} size={p.size} notice={p.notice} consequence={routing} actions={actions} {...(p.dirty === undefined ? {} : { dirty: p.dirty })}>{body}</Sheet>;
   return <section className={`${s.page} ${p.layout === "page" ? s.fullPage : ""}`} data-composer-root aria-labelledby={p.layout === "page" ? `${id}-title` : undefined}>
     {p.layout === "page" ? <PageHead band title={p.title} titleId={`${id}-title`} crumbs={p.kicker} sub={p.subtitle} tools={p.tools} /> : <header className={s.head}>{p.kicker}<Heading className={s.heading} id={`${id}-title`}>{p.title}</Heading>{p.subtitle != null && <div>{p.subtitle}</div>}</header>}
     <div inert={p.pending || p.locked || undefined}>{body}</div>
