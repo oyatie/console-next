@@ -134,6 +134,10 @@ for (const state of states) for (const width of [1440, 390]) {
         await commit.click({ force: true });
         await expect(page.getByRole("dialog")).toHaveCount(0);
         const selectAll = table.locator("thead").getByRole("checkbox");
+        if (width === 390) {
+          await expect(selectAll).toBeVisible();
+          await expect(table.locator("tbody > tr").first()).toHaveCSS("display", "grid");
+        }
         await selectAll.check();
         await expect(table.locator('tbody input:checked')).toHaveCount(count);
         await expect(commit).toHaveText(`${count}곳 일괄 수정`);
@@ -148,8 +152,12 @@ for (const state of states) for (const width of [1440, 390]) {
         await fits(page, `workplace-bulk/${state}/${width}`);
         await expectAxe(page, `workplace-bulk/${state}/${width}`);
         await commit.click();
-        await expect(page.getByRole("dialog", { name: `사업장 ${count}곳 일괄 수정`, exact: true })).toBeVisible();
-        await page.getByRole("dialog").getByRole("button", { name: t("orgBulk.cancel"), exact: true }).click();
+        const dialog = page.getByRole("dialog", { name: `사업장 ${count}곳 일괄 수정`, exact: true });
+        await expect(dialog).toBeVisible();
+        if (width === 390) await expect(dialog.getByRole("table", { name: t("orgBulk.edit.rows"), exact: true }).locator("tbody > tr").first()).toHaveCSS("display", "table-row");
+        await fits(page, `workplace-bulk-sheet/${state}/${width}`);
+        await expectAxe(page, `workplace-bulk-sheet/${state}/${width}`);
+        await dialog.getByRole("button", { name: t("orgBulk.cancel"), exact: true }).click();
       }
       await fits(page, `workplace-bulk/${state}/${width}`);
       await expectAxe(page, `workplace-bulk/${state}/${width}`);

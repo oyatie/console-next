@@ -122,10 +122,10 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
       expect(target.width, "the board input is a pointer target").toBeGreaterThanOrEqual(24);
       expect(target.height, "the board input is a pointer target").toBeGreaterThanOrEqual(24);
       if (detail) {
-        await control.evaluate(el => el.closest<HTMLElement>('[role="gridcell"]')!.focus());
-        await expect(control, "entering an editable board cell focuses its input").toBeFocused();
+        await control.evaluate(el => el.closest<HTMLElement>('[role="gridcell"], [role="rowheader"]')!.focus());
+        await expect(control, "the editable board input remains the keyboard stop").toBeFocused();
         await page.keyboard.press("Shift+Tab");
-        expect(await control.evaluate(el => document.activeElement === el.closest('[role="gridcell"]')), "the cell adds no keyboard stop before its input").toBe(false);
+        expect(await control.evaluate(el => document.activeElement === el.closest('[role="gridcell"], [role="rowheader"]')), "the card or cell adds no keyboard stop before its input").toBe(false);
       }
     }
     const editable = inputs.last();

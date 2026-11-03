@@ -67,20 +67,20 @@ for (const width of [1440, 390]) {
       await page.locator("html").evaluate((el, theme) => { el.dataset.theme = theme; }, theme);
       await expect.poll(() => person.getByText(employee.name, { exact: true }).evaluate(el => {
         const name = el.getBoundingClientRect();
-        const cell = el.closest('[role="gridcell"]')!.getBoundingClientRect();
+        const cell = el.closest('[role="gridcell"], [role="rowheader"]')!.getBoundingClientRect();
         return name.top >= cell.top && name.bottom <= cell.bottom && name.left >= cell.left && name.right <= cell.right && el.scrollWidth <= el.clientWidth;
       }), { message: `the full linked name fits its cell in ${theme}` }).toBe(true);
       await fits(page, "account person references");
     }
     await expect(person).toHaveText(employee.name);
-    await expect(grid.getByRole("rowheader").getByRole("link")).toHaveCount(0);
+    await expect(grid.getByRole("rowheader").getByRole("link", { name: employee.name, exact: true })).toHaveCount(width === 390 ? 1 : 0);
     const section = page.getByRole("complementary", { name: "김계정", exact: true }).getByRole("region", { name: "직원 연결", exact: true });
     await expect(section.getByRole("link", { name: /김직원.*EMP-12.*연결회사.*인사팀/ })).toHaveAttribute("href", `/people/${employee.id}`);
     await expectAxe(page, "account person references");
     await fits(page, "account person references");
     await page.goto("/people?view=accounts");
     await expect(person).toBeVisible();
-    await expect(grid.getByRole("rowheader").getByRole("link")).toHaveCount(0);
+    await expect(grid.getByRole("rowheader").getByRole("link", { name: employee.name, exact: true })).toHaveCount(width === 390 ? 1 : 0);
     expect(f.unexpected).toEqual([]);
   });
 

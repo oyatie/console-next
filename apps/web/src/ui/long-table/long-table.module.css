@@ -42,3 +42,7 @@
 .table[data-state="empty"] { height: calc(var(--row-h) * 6); }
 .table[data-state="loading"] { height: calc(var(--row-h) * 9); }
 [data-density="compact"] .table[data-state="loading"] { height: calc(var(--space-6) * 9 + var(--space-1)); }
+@container list-table (max-width: 480px) {
+  .caption { flex-basis: 100%; }
+  .find { width: 100%; min-width: 0; }
+}

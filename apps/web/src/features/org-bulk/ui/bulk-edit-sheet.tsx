@@ -104,6 +104,7 @@ export function BulkEditSheet({ rows, entities, onClose }: { rows: EditRow[]; en
       )}
       <Table
         label={t("orgBulk.edit.rows")}
+        mobileLayout="rows"
         rows={state ? lines : rows.map((r) => ({ ...r, change: false, before: "EMPTY" as const, insurers: [], expectedVersion: 0 }))}
         rowId={(r) => r.id}
         columns={[

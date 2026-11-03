@@ -30,6 +30,7 @@ test("route navigation focuses h1 and announces the page title with the current 
   await page.goBack();
   await expect(page).toHaveTitle(peopleTitle);
   await expect(heading).toBeFocused();
+  // Programmatic navigation starts from the already managed heading, which must not acquire a keyboard ring.
   await expect(heading).toHaveCSS("outline-style", "none");
   await orgLink.focus();
   await page.keyboard.press("Tab");
@@ -42,6 +43,7 @@ test("route navigation focuses h1 and announces the page title with the current 
   await page.goBack();
   await expect(page).toHaveTitle(peopleTitle);
   await expect(heading).toBeFocused();
+  await expect(heading).toHaveCSS("outline-style", "none");
   // Same-page URL state must leave the user's control in charge of focus.
   const search = page.getByRole("searchbox").first();
   await search.fill("김");
@@ -79,6 +81,7 @@ test("a refused route presents its refusal heading without exposing the screen",
   await page.goto("/people");
   const refusal = page.getByRole("main").getByRole("heading", { name: "이 화면에 접근 권한이 없습니다", exact: true });
   await expect(refusal).toBeFocused();
+  await expect(refusal).toHaveCSS("outline-style", "none");
   await expect(page).toHaveTitle(`이 화면에 접근 권한이 없습니다 · ${user.tenant!.name} · Console`);
   await expect(page.getByRole("grid", { name: "직원", exact: true })).toHaveCount(0);
 });

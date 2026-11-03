@@ -7,9 +7,13 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
 // A page with a heading, an optional open dialog, and a frame clock; `focused` records who has focus.
 function page() {
   let queue: FrameRequestCallback[] = [];
-  const state = { focused: "", dialog: false, inMain: false };
+  const state = { focused: "", dialog: false, inMain: false, keyboard: false, sourceManaged: false, targetManaged: false };
   const input = new EventTarget();
-  const heading = { id: "history", textContent: "People", focus: () => (state.focused = "heading") };
+  const heading = {
+    id: "history", tagName: "H2", textContent: "People",
+    focus: () => (state.focused = "heading"),
+    toggleAttribute: (_: string, force: boolean) => (state.targetManaged = force),
+  };
   vi.stubGlobal("document", {
     addEventListener: input.addEventListener.bind(input),
     // Node's EventTarget requires the options object to remove capture listeners like a browser.
@@ -17,7 +21,11 @@ function page() {
     getElementById: (id: string) => (id === "history" ? heading : null),
     querySelectorAll: () => (state.dialog ? [{ contains: () => false }] : []),
     querySelector: (selector: string) => selector.includes("h1") ? heading : null,
-    activeElement: { closest: (selector: string) => selector === "main" && state.inMain ? {} : null },
+    activeElement: {
+      closest: (selector: string) => selector === "main" && state.inMain ? {} : null,
+      matches: (selector: string) => selector === ":focus-visible" && state.keyboard,
+      hasAttribute: (name: string) => name === "data-focus-managed" && state.sourceManaged,
+    },
   });
   vi.stubGlobal("MutationObserver", class { observe() {} disconnect() {} });
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
@@ -81,6 +89,16 @@ test("an explicit command landmark still takes focus from another element inside
   frame();
   frame();
   expect(state.focused).toBe("heading");
+});
+
+test("a managed heading does not pass a keyboard ring to the next managed heading", () => {
+  const { state, frame } = page();
+  state.keyboard = true;
+  state.sourceManaged = true;
+  focusSoon("history");
+  frame();
+  frame();
+  expect(state.targetManaged).toBe(true);
 });
 
 test("with no dialog the landmark gets focus on the second frame", () => {
