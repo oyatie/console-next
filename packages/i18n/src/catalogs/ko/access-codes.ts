@@ -39,6 +39,7 @@ export const koAccessCodes = {
   "accessCodes.domain.support_access.help": "공급사의 조회 지원 승인과 종료",
   "accessCodes.domain.tenant": "고객 계정 운영",
   "accessCodes.domain.tenant.help": "운영 시작",
+  "accessCodes.operation.support_access::approve": "승인",
   "accessCodes.level.view": "조회",
   "accessCodes.level.edit": "등록·수정",
   "accessCodes.level.approve": "확인·결정",

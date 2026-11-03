@@ -79,13 +79,15 @@ export const freshOnOpen = <R extends { isFetchedAfterMount: boolean; isError: b
  * Keyset pages of a list GET (`cursor` in, `next_cursor` out) as an infinite query: rows stay put while new ones
  * arrive (the attendance month grid). Keyed apart from the plain GET ("cursor").
  */
-export const cursorPages = <P extends Gettable>(path: P, query: object) => ({
+export const cursorRead = <T>(path: string, query: object, queryFn: (cursor: string | undefined) => Promise<T>) => ({
   queryKey: [path, { query }, "cursor"] as const,
-  queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
-    unwrap(api.GET(path, { params: { query: { ...query, cursor: pageParam } } } as never)) as Promise<Data<P>>,
+  queryFn: ({ pageParam }: { pageParam: string | undefined }) => queryFn(pageParam),
   initialPageParam: undefined as string | undefined,
-  getNextPageParam: (last: Data<P>) => (last as { next_cursor?: string | null }).next_cursor ?? undefined,
+  getNextPageParam: (last: T) => (last as { next_cursor?: string | null }).next_cursor ?? undefined,
 });
+
+export const cursorPages = <P extends Gettable>(path: P, query: object) => cursorRead<Data<P>>(path, query, cursor =>
+  unwrap(api.GET(path, { params: { query: { ...query, cursor } } } as never)) as Promise<Data<P>>);
 
 /** A query descriptor's cache entry was invalidated by a command since it was last read (it re-reads on next use). */
 export const isInvalidated = (qc: QueryClient, q: { queryKey: readonly unknown[] }) => qc.getQueryState(q.queryKey)?.isInvalidated ?? false;

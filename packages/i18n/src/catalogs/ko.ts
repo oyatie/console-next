@@ -30,6 +30,9 @@ import { koPeople } from "./ko/people";
 import { koExit } from "./ko/exit";
 import { koAccounts } from "./ko/accounts";
 import { koAccess } from "./ko/access";
+import { koAccessReview } from "./ko/access-review";
+import { koAccessLog } from "./ko/access-log";
+import { koAudit } from "./ko/audit";
 import { koAccessCodes } from "./ko/access-codes";
 import { koDenied } from "./ko/denied";
 import { koAccessGrants } from "./ko/access-grants";
@@ -146,6 +149,9 @@ export const ko = {
   ...koExit,
   ...koAccounts,
   ...koAccess,
+  ...koAccessReview,
+  ...koAccessLog,
+  ...koAudit,
   ...koAccessCodes,
   ...koDenied,
   ...koAccessGrants,

@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { ApiError } from "@console/api";
 import { queryDefaults } from "./react/query-defaults";
-import { freshOnOpen, get, invalidatePaths, invalidateWhere, navigationRead, queryPath, read, readIdentity, underPath } from "./query";
+import { cursorRead, freshOnOpen, get, invalidatePaths, invalidateWhere, navigationRead, queryPath, read, readIdentity, underPath } from "./query";
 
 test("a path prefix covers the path and everything under it, not a sibling that shares its text", () => {
   const employees = underPath("/api/v1/employees");
@@ -66,6 +66,19 @@ test("wrapped reads keep different run parameters in separate cache entries", as
   expect(await client.fetchQuery(at("first"))).toBe("first");
   expect(await client.fetchQuery(at("second"))).toBe("second");
   expect(readIdentity(at("first"))).not.toBe(readIdentity(at("second")));
+});
+
+test("a wrapped cursor read derives its key and passes the next cursor", async () => {
+  let seen: string | undefined;
+  const descriptor = cursorRead("/api/v1/example", { flagged: true }, async cursor => {
+    seen = cursor;
+    return { next_cursor: "next" };
+  });
+  expect(JSON.parse(readIdentity(descriptor))).toEqual(["/api/v1/example", { query: { flagged: true } }, "cursor"]);
+  const first = await descriptor.queryFn({ pageParam: undefined });
+  expect(descriptor.getNextPageParam(first)).toBe("next");
+  await descriptor.queryFn({ pageParam: "next" });
+  expect(seen).toBe("next");
 });
 
 test("background invalidation refreshes page facts while navigation facts wait for a successful command", async () => {

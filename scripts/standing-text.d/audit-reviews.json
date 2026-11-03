@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "apps/web/src/features/access-log/ui/access-log-page.tsx#AccessLogPage": 21,
+    "apps/web/src/features/access/ui/access-review-page.tsx#AccessReviewPage": 12
+  },
+  "newScreens": {
+    "apps/web/src/features/access-log/ui/access-log-page.tsx#AccessLogPage": {
+      "FACT": 18,
+      "REFUSAL": 1,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access/ui/access-review-page.tsx#AccessReviewPage": {
+      "FACT": 9,
+      "REFUSAL": 1,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

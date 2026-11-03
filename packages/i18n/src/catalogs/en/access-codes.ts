@@ -39,6 +39,7 @@ export const enAccessCodes: Partial<Record<keyof typeof koAccessCodes, string>> 
   "accessCodes.domain.support_access.help": "Approve and end vendor support reads",
   "accessCodes.domain.tenant": "Customer account operations",
   "accessCodes.domain.tenant.help": "Starting operations",
+  "accessCodes.operation.support_access::approve": "Approve",
   "accessCodes.level.view": "View",
   "accessCodes.level.edit": "Create & edit",
   "accessCodes.level.approve": "Confirm & decide",

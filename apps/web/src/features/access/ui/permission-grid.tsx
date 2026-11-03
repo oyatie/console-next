@@ -4,6 +4,7 @@ import { Table } from "../../../ui/table";
 import { approveWord, autoView, effective, liveColumns, liveLevels, sellable, toggle, type Chosen, type Level, type Routed } from "../domain/grid";
 import type { AccessCatalogDomain } from "../api";
 import { domainHelp, domainText, levelText } from "../present";
+import { codeText } from "../../../lib/labels";
 import s from "./access.module.css";
 
 /**
@@ -13,7 +14,12 @@ import s from "./access.module.css";
  */
 export function PermissionGrid({ domains, value, routed, payrollReady = false, onChange }: { domains: readonly AccessCatalogDomain[]; value: Chosen; routed: Routed; payrollReady?: boolean; onChange: (next: Chosen) => void }) {
   // #26 (governance-03): each cell names its domain's decision (exit confirm, exception decide), an approval only on a routed row.
-  const word = (d: AccessCatalogDomain, l: Level) => (l === "approve" ? t(`access.grid.approve.${approveWord(d.domain, routed)}`) : levelText(l));
+  const word = (d: AccessCatalogDomain, l: Level) => {
+    if (l !== "approve") return levelText(l);
+    const fallback = t(`access.grid.approve.${approveWord(d.domain, routed)}`);
+    const operation = d.operations.find(op => op.level === l)?.operation;
+    return operation ? codeText(`accessCodes.operation.${operation}`, fallback) : fallback;
+  };
   const cell = (d: AccessCatalogDomain, l: Level) => {
     if (!liveLevels(d, routed).includes(l)) return null;
     const chosen = value[d.domain] ?? [];

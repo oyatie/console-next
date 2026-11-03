@@ -50,4 +50,6 @@ test("route access exceptions can only shrink", () => {
 
 test("the E2E route walk equals the router's static paths", () => {
   expect(routeList.map(route => route.path).sort()).toEqual(appRoutes.map(route => route.fullPath).sort());
+  expect(router.routesByPath).not.toHaveProperty("/access/review");
+  expect(router.routesByPath).not.toHaveProperty("/audit/access-log");
 });
