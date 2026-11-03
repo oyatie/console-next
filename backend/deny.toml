@@ -10,20 +10,14 @@ yanked = "deny"
 # Must equal backend/.cargo/audit.toml; each line carries
 # '# expires YYYY-MM-DD: reason' (enforced by scripts/check-audit-ignores.mjs).
 ignore = [
-  # rsa: Marvin timing side-channel. Pulled via jsonwebtoken. The RS256 signing
-  # path IS exercised in production — the FCM push client mints Google service-
-  # account JWTs with from_rsa_pem/RS256 (platform/push). But Marvin is a side-
-  # channel in RSA *decryption* (PKCS#1 v1.5 unpadding) that requires an
-  # attacker-controlled ciphertext/decryption oracle; this service only *signs*
-  # (no RSA decryption) against Google's endpoint, so no such oracle is exposed
-  # and the advisory is not exploitable here. No fixed rsa release exists yet;
-  # revisit when jsonwebtoken can drop rsa or a patched version ships.
-  "RUSTSEC-2023-0071", # expires 2027-01-07: rsa Marvin is a decryption side channel; via jsonwebtoken we only sign (FCM RS256), no decryption oracle; no fixed rsa release
+  # rsa: retained in Cargo.lock by sqlx 0.8's optional MySQL dependency through
+  # apalis-postgres. It is absent from the resolved all-target feature graph,
+  # so no RSA implementation is compiled from this crate. No fixed rsa release
+  # exists; remove this exception when the jobs stack moves to sqlx 0.9.
+  "RUSTSEC-2023-0071", # expires 2027-01-07: rsa is lockfile-only via sqlx 0.8 optional MySQL metadata and absent from the all-target build graph; no fixed release
   # paste: unmaintained (not a vulnerability). Build-time proc-macro pulled
   # transitively by umya-spreadsheet (Excel export); no runtime attack surface.
   "RUSTSEC-2024-0436", # expires 2027-01-07: paste is unmaintained, not vulnerable; build-time proc-macro via umya-spreadsheet, no runtime surface
-  # Reviewed 2026-10-27; tracking and upgrade criteria: docs/security/rust-advisory-exceptions.md.
-  "RUSTSEC-2026-0387", # expires 2026-11-27: crypto-bigint 0.5 via elliptic-curve/p256/p384; timing risk accepted pending upstream adoption of fixed 0.7.6, no compatible patch
   "RUSTSEC-2026-0441", # expires 2027-02-05: pin-utils is unmaintained, not vulnerable; via async-imap (comms IMAP adapter, not in MVP), 0.12 still depends on it
 ]
 

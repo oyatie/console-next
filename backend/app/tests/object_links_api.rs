@@ -13,7 +13,7 @@ use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -28,7 +28,7 @@ const OTHER_ORG: Uuid = Uuid::from_u128(0x0b1e_0b1e_0b1e_0b1e_0b1e_0b1e_0b1e_0b1
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn create_list_delete_roundtrip_and_audit_events(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -229,7 +229,7 @@ async fn rls_cross_org_isolation_as_runtime_role(owner_pool: PgPool) {
 /// delete (proving the guard denies the outsider, not the owner).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn delete_link_denied_for_non_creator_non_manager(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -321,7 +321,7 @@ async fn delete_link_denied_for_non_creator_non_manager(pool: PgPool) {
 /// — proven by the roundtrip test's document->voucher link.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn create_link_requires_visible_endpoints(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

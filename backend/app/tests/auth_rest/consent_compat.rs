@@ -4,7 +4,7 @@ use super::*;
 /// N-1's version-only acknowledgement cannot prove acceptance of today's immutable documents.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn legacy_consent_refuses_unmappable_text_without_writing(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public = signing_key
         .verifying_key()

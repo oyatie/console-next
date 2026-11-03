@@ -7,7 +7,8 @@ with the same local invocation for reproducible proofs. It does not enter the ap
 | Tool | Layer | User | Approval | Exit plan |
 | --- | --- | --- | --- | --- |
 | `ci-tool:nextest` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-28: cargo-nextest approved as Rust tooling | Replace only with test discovery, isolation, failure propagation and JUnit parity. |
-| `actions/cache/restore`, `actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-29: cache actions approved; `approval.by = owner`; `authority = Owner` | Remove the cache steps; all checks still run on a cold build. |
+| `action:actions/cache/restore` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-29: cache actions approved; `approval.by = owner`; `authority = Owner` | Remove the cache steps; all checks continue with cold builds. |
+| `action:actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-29: cache actions approved; `approval.by = owner`; `authority = Owner` | Remove the cache steps; all checks continue with cold builds. |
 
 The owner approved the cache actions on 2026-10-29, following the 2026-10-28 directive:
 「caching should work following best practices both in github and locally」.

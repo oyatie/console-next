@@ -12,7 +12,7 @@ use console_workorder_adapter_postgres::PgWorkOrderStore;
 use console_workorder_rest::{MobileRestState, mobile_router};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -38,7 +38,7 @@ fn settings() -> JwtSettings {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn evidence_presign_without_object_storage_is_503_and_writes_nothing(pool: PgPool) {
     console_platform_request_context::scope_org(OrgId::one(), async move {
-        let key = SigningKey::random(&mut OsRng);
+        let key = SigningKey::generate();
         let private_pem = key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public_pem = key
             .verifying_key()
