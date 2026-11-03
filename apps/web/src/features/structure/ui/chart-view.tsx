@@ -37,7 +37,7 @@ import css from "./chart.module.css";
  * toolbar, inline add and rename, drag and M to move, the selection bar, and the receipt docked in the gutter.
  * During setup every change applies at once (undoable); after go-live the gestures open the governed proposal.
  */
-export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick, dimmed }: {
+export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick, dimmed, covered }: {
   s: Structure;
   /** The tree shown is the last one read (a re-read failed). */
   dimmed?: boolean;
@@ -51,6 +51,8 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
   onSelect: (ids: ReadonlySet<string>, gather?: boolean) => void;
   /** The receipt is shown elsewhere (the outline's foot). */
   quiet?: boolean;
+  /** A proposal covers the chart, so its floating controls leave the inert background. */
+  covered?: boolean;
 }) {
   const c = useChartState(s, focusId, onFocus, sel, onSelect);
   const [picked, setPicked] = useState(pick?.n);
@@ -112,7 +114,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
   const only = c.sel.size === 1 ? [...c.sel][0] : undefined;
   const hoverBox = hover && !drag.dragging ? c.shown.get(hover) : undefined;
   // The root's header carries its own entries (RootActions): no hover toolbar over it.
-  const toolsBoxes = drag.dragging || c.renaming ? [] : [...new Set([only, menu ?? hover])].flatMap((id) => {
+  const toolsBoxes = covered || drag.dragging || c.renaming ? [] : [...new Set([only, menu ?? hover])].flatMap((id) => {
     const b = id && id !== s.root.id ? c.shown.get(id) : undefined;
     return b ? [b] : [];
   });

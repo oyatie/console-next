@@ -10,12 +10,13 @@ import { StructurePage } from "./structure-page";
 
 const state = vi.hoisted(() => ({
   s: undefined as Structure | undefined,
+  search: {} as { act?: string },
   error: null as unknown,
   refetch: vi.fn(),
   dates: { data: undefined as { items: string[] } | undefined, error: null as unknown, status: "error", fetchStatus: "idle", isSuccess: false, isError: true, isFetching: false, isFetchedAfterMount: true, refetch: vi.fn() },
 }));
 vi.mock("@tanstack/react-router", () => ({
-  getRouteApi: () => ({ useSearch: () => ({}), useNavigate: () => vi.fn() }),
+  getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => vi.fn() }),
   useNavigate: () => vi.fn(),
   Link: ({ to, children }: { to: string; children: ReactNode }) => <span data-to={to}>{children}</span>,
 }));
@@ -30,14 +31,15 @@ vi.mock("./use-structure", () => ({ useStructure: () => ({
   s: state.s, tree: { error: state.error },
   ready: { isPending: false, error: state.error, data: state.s ? true : undefined, refetch: state.refetch },
 }) }));
-vi.mock("./chart-view", () => ({ ChartView: ({ dimmed }: { dimmed: boolean }) => {
+vi.mock("./chart-view", () => ({ ChartView: ({ dimmed, covered }: { dimmed: boolean; covered?: boolean }) => {
   const label = "last good chart";
-  return <div data-dimmed={dimmed}>{label}</div>;
+  return <div data-dimmed={dimmed} data-covered={covered || undefined}>{label}</div>;
 } }));
 
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   state.s = undefined;
+  state.search = {};
   state.error = new ApiError(503, "service_unavailable", "read failed", [], "structure-read-reference");
   Object.assign(state.dates, { data: undefined, error: new ApiError(503, "service_unavailable", "dates failed", [], "dates-read-reference"), status: "error", fetchStatus: "idle", isSuccess: false, isError: true, isFetching: false, isFetchedAfterMount: true });
 });
@@ -95,6 +97,13 @@ test("a failed structure reread retains and dims the chart with one retry", () =
   expect(html.split(t("common.retry"))).toHaveLength(2);
   expect(html).toContain("structure-read-reference");
   expect(html).not.toContain('data-to="/org/history"');
+});
+
+test("an open structure action removes floating controls from the covered chart", () => {
+  retain();
+  state.error = null;
+  state.search = { act: "dept-add" };
+  expect(render()).toContain('data-covered="true"');
 });
 
 test("a change-date-only failure has one inline notice without dimming a fresh chart", () => {

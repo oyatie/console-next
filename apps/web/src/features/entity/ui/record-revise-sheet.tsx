@@ -110,6 +110,7 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
   const owner = spec.owner.kind === "entity" ? { kind: "entity" as const, id: e.id } : { kind: "registration" as const, id: spec.owner.id };
   const read = owner.kind === "entity" ? readVersion(e) : (reg?.current?.version ?? 0);
   const titleVerb = t(spec.empty ? "composer.verb.enter" : spec.corOnly ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit");
+  const title = t("uiRecordActions.of", { field: spec.label, verb: titleVerb });
   // A change frame for this record while the sheet is open (an open sheet holds re-reads, so the frame itself is the signal).
   // A frame is only a hint (an earlier save's echo can arrive late): the record is read once, and the notice shows only when
   // it is past the version this sheet holds.
@@ -154,8 +155,8 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
       onClose={onClose}
       pending={save.isPending}
       size="lg"
-      title={t("uiRecordActions.of", { field: spec.label, verb: titleVerb })}
-      subtitle={<><span className={s.kicker}><Building2 size={14} aria-hidden /> {entityName(e)} · {spec.group} · {spec.label}</span>{t("entityRecord.revise.now", { value: spec.current, date: fmtDate(since) })}</>}
+      title={title}
+      subtitle={<><span className={s.kicker}><Building2 size={14} aria-hidden /> {entityName(e)} · {spec.group} · {spec.label}</span>{!spec.empty && t("entityRecord.revise.now", { value: spec.current, date: fmtDate(since) })}</>}
       notice={
         <>
           <EntityError error={save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "stale_revision" ? t("entityRecord.conflict.alert") : undefined)} />
@@ -201,8 +202,8 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
         </div>
       )}
       {verb && (
-        <section className={s.editor} aria-label={t("entityRecord.revise.newValue", { field: spec.label })}>
-          <h3 className={s.subhead}>{verb === "rev" && chosen ? t("entityRecord.revise.fromDate", { date: fmtDate(chosen), field: spec.label }) : t("entityRecord.revise.newValue", { field: spec.label })}</h3>
+        <section className={s.editor} aria-label={spec.empty ? title : t("entityRecord.revise.newValue", { field: spec.label })}>
+          <h3 className={s.subhead}>{spec.empty ? title : verb === "rev" && chosen ? t("entityRecord.revise.fromDate", { date: fmtDate(chosen), field: spec.label }) : t("entityRecord.revise.newValue", { field: spec.label })}</h3>
           {spec.edit(value, setValue)}
         </section>
       )}

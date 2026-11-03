@@ -53,8 +53,9 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
     mail_address: toKr(d.mail, c?.mail_address),
     opened_on: d.openedOn,
   };
-  // The opening date is when the place opened: a different one is a correction of what was typed, never a change.
-  const openedFixed = Boolean(base) && d.openedOn !== base?.opened_on;
+  const firstEntry = field === "openedOn" && !base?.opened_on;
+  // Once recorded, the opening date is when the place opened: a different one is a correction, never a change.
+  const openedFixed = Boolean(base?.opened_on && d.openedOn !== base.opened_on);
   const before = w.insurance.map((r) => ({ insurer: r.insurer, status: r.status === "ENDED" ? null : r.status, mgmtNo: r.mgmt_no?.value ?? "", establishedOn: r.established_on ?? "" }));
   const [ins, setIns] = useState<Pick<WorkplaceDraft, "insurance" | "rows">>(() => ({ insurance: "PER_INSURER", rows: before.length ? before : emptyWorkplace().rows }));
   const [from, setFrom] = useState("");
@@ -86,7 +87,7 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
   const valid = name.trim() !== "" && !(phone && !phoneE164(phone)) && !(d.fax && !phoneE164(d.fax)) && !(email && !validEmail(email)) && d.openedOn !== "" && (field !== "insurance" || insuranceUnserved || Object.keys(problems).length === 0);
   const ready = (contact || insured) && valid && from !== "" && reason !== null && (!openedFixed || reason === "ENTRY_CORRECTION");
   return (
-    <Dialog open title={t("uiRecordActions.of", { field: field === "insurance" ? t("workplace.field.insurance") : INFO_LABEL[field](), verb: t(clear ? "uiRecordActions.end.clear" : field === "openedOn" ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit") })} onClose={onClose}>
+    <Dialog open title={t("uiRecordActions.of", { field: field === "insurance" ? t("workplace.field.insurance") : INFO_LABEL[field](), verb: t(clear ? "uiRecordActions.end.clear" : firstEntry ? "composer.verb.enter" : field === "openedOn" ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit") })} onClose={onClose}>
       <Form className="form" onSubmit={() => ready && save.mutate(undefined)}>
         {field !== "insurance" ? (
           base && <InfoField only={field} d={d} set={set} today={today} openedFrom={c?.opened_on ?? ""} />
@@ -101,7 +102,7 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
         </div>
         {!(contact || insured) && <p className="muted">{t("entity.edit.nothing")}</p>}
         {openedFixed && reason !== "ENTRY_CORRECTION" && <p className="notice">{t("entityOps.info.openedIsCorrection")}</p>}
-        <PathNote path={field === "openedOn" ? "correction" : props.setup ? "setup" : openedFixed ? "correction" : "revision"} />
+        <PathNote path={firstEntry ? props.setup ? "setup" : "revision" : field === "openedOn" ? "correction" : props.setup ? "setup" : openedFixed ? "correction" : "revision"} />
         {!unserved(save.error) && <EntityError error={save.error} />}
         <div className="form__actions">
           <Button onClick={onClose}>{t("common.back")}</Button>
