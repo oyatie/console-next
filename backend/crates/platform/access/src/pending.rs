@@ -90,12 +90,23 @@ pub async fn activate_in_tx(
         "SELECT activates_at, activated_at FROM user_role_grants_pending WHERE org_id=$1 AND grant_id=$2 FOR UPDATE")
         .bind(org.as_uuid()).bind(grant).fetch_optional(tx.as_mut()).await?
         .ok_or_else(|| AccessError::not_found("grant_not_found", "no pending grant"))?;
+    // Credential recovery locks both accounts before grant facts. Match that
+    // order so activation cannot hold a grant row while waiting for an account.
+    sqlx::query_scalar::<_, Uuid>(
+        "SELECT u.id FROM users u JOIN access_grants g
+           ON g.org_id=u.org_id AND u.id IN (g.account_id,g.granted_by)
+          WHERE g.org_id=$1 AND g.id=$2 ORDER BY u.id FOR SHARE OF u",
+    )
+    .bind(org.as_uuid())
+    .bind(grant)
+    .fetch_all(tx.as_mut())
+    .await?;
     let row = sqlx::query(
         "SELECT g.account_id, g.granted_by, g.role_id, g.status, g.valid_to, r.status AS role_status,
                 u.is_active AS target_active
            FROM access_grants g JOIN access_roles r ON r.org_id=g.org_id AND r.id=g.role_id
            JOIN users u ON u.org_id=g.org_id AND u.id=g.account_id
-          WHERE g.org_id=$1 AND g.id=$2 FOR UPDATE OF g FOR SHARE OF r, u")
+          WHERE g.org_id=$1 AND g.id=$2 FOR UPDATE OF g FOR SHARE OF r")
         .bind(org.as_uuid()).bind(grant).fetch_one(tx.as_mut()).await?;
     if row.try_get::<String, _>("status")? == "REVOKED"
         || row

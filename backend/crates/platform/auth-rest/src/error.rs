@@ -92,6 +92,14 @@ impl RestError {
         }
     }
 
+    pub(crate) fn credential_reset_authority_required() -> Self {
+        Self {
+            status: StatusCode::FORBIDDEN,
+            code: "credential_reset_authority_required",
+            message: "not allowed to recover an account with broader access".to_owned(),
+        }
+    }
+
     /// 403 `passkey_required`: the caller's user has no enrolled passkey (an
     /// OTP-only first-login session, `requires_passkey_setup == true`).
     pub(crate) fn passkey_required() -> Self {

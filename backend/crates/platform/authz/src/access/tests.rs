@@ -71,6 +71,10 @@ pub(super) fn grant(scope: NodePath, lines: Vec<RoleLine>, branches: BranchScope
     }
 }
 
+fn all_grant(scope: NodePath, lines: Vec<RoleLine>) -> HeldGrant {
+    grant(scope, lines, BranchScope::All)
+}
+
 pub(super) fn subject(t: &Tree, is_ops: bool, grants: Vec<HeldGrant>) -> AccessSubject {
     AccessSubject {
         org: t.org,
@@ -100,11 +104,7 @@ fn the_schema_validates_and_names_every_offered_group() {
 #[test]
 fn a_legal_entity_grant_reaches_its_subtree_and_nothing_else() {
     let t = tree();
-    let g = grant(
-        t.le(t.le_a),
-        vec![line(Domain::HrBasic, &[Level::Edit])],
-        BranchScope::All,
-    );
+    let g = all_grant(t.le(t.le_a), vec![line(Domain::HrBasic, &[Level::Edit])]);
     let slice = AccessSlice::compile(&subject(&t, false, vec![g])).expect("compiles");
     let edit = Feature::EmployeeDirectoryManage.as_str();
     assert!(allows(&slice, edit, &t.le(t.le_a)));
@@ -149,11 +149,7 @@ fn a_legal_entity_grant_reaches_its_subtree_and_nothing_else() {
 #[test]
 fn a_view_only_line_never_edits_and_a_workplace_grant_stays_in_its_workplace() {
     let t = tree();
-    let g = grant(
-        t.wp_a1(),
-        vec![line(Domain::Org, &[Level::View])],
-        BranchScope::All,
-    );
+    let g = all_grant(t.wp_a1(), vec![line(Domain::Org, &[Level::View])]);
     let slice = AccessSlice::compile(&subject(&t, false, vec![g])).expect("compiles");
     assert!(allows(&slice, Feature::OrgChangeRead.as_str(), &t.wp_a1()));
     assert!(allows(
@@ -176,16 +172,8 @@ fn a_view_only_line_never_edits_and_a_workplace_grant_stays_in_its_workplace() {
 #[test]
 fn a_tenant_grant_reaches_every_node_and_several_grants_add_up() {
     let t = tree();
-    let wide = grant(
-        t.tenant(),
-        vec![line(Domain::Org, &[Level::View])],
-        BranchScope::All,
-    );
-    let narrow = grant(
-        t.le(t.le_b),
-        vec![line(Domain::Pay, &[Level::Export])],
-        BranchScope::All,
-    );
+    let wide = all_grant(t.tenant(), vec![line(Domain::Org, &[Level::View])]);
+    let narrow = all_grant(t.le(t.le_b), vec![line(Domain::Pay, &[Level::Export])]);
     let slice = AccessSlice::compile(&subject(&t, false, vec![wide, narrow])).expect("compiles");
     for at in [
         t.tenant(),
@@ -228,6 +216,53 @@ fn no_grant_is_default_deny_and_ops_is_break_glass() {
     }
 }
 
+#[test]
+fn grant_ceiling_requires_access_edit_and_every_target_line_at_each_scope() {
+    let t = tree();
+    let target = subject(
+        &t,
+        false,
+        vec![all_grant(
+            t.le(t.le_a),
+            vec![line(Domain::Pay, &[Level::View])],
+        )],
+    );
+    let missing_access = AccessSlice::compile(&subject(
+        &t,
+        false,
+        vec![all_grant(
+            t.le(t.le_a),
+            vec![line(Domain::Pay, &[Level::View])],
+        )],
+    ))
+    .expect("compiles");
+    assert!(!missing_access.can_grant_subject(&target).expect("decides"));
+
+    let matching = AccessSlice::compile(&subject(
+        &t,
+        false,
+        vec![all_grant(
+            t.le(t.le_a),
+            vec![
+                line(Domain::Access, &[Level::Edit]),
+                line(Domain::Pay, &[Level::View]),
+            ],
+        )],
+    ))
+    .expect("compiles");
+    assert!(matching.can_grant_subject(&target).expect("decides"));
+    assert!(
+        !matching
+            .can_grant_subject(&subject(&t, true, vec![]))
+            .expect("ops account denies")
+    );
+    assert!(
+        !matching
+            .can_grant_subject(&subject(&tree(), false, target.grants))
+            .expect("foreign tenant denies")
+    );
+}
+
 #[cfg(test)]
 mod platform_validation {
     use super::*;
@@ -236,13 +271,12 @@ mod platform_validation {
     fn a_validated_platform_slice_does_not_skip_validation_of_tenant_grants() {
         let t = tree();
         AccessSlice::compile(&subject(&t, true, vec![])).expect("platform policies validate");
-        let invalid = grant(
+        let invalid = all_grant(
             t.tenant(),
             vec![RoleLine {
                 domain: Domain::Sensitive,
                 levels: vec![Level::Approve],
             }],
-            BranchScope::All,
         );
         assert!(matches!(
             AccessSlice::compile(&subject(&t, false, vec![invalid])),
@@ -260,11 +294,7 @@ mod platform_validation {
 #[test]
 fn an_incomplete_or_foreign_chain_is_an_error_never_an_allow() {
     let t = tree();
-    let g = grant(
-        t.tenant(),
-        vec![line(Domain::Org, &[Level::View])],
-        BranchScope::All,
-    );
+    let g = all_grant(t.tenant(), vec![line(Domain::Org, &[Level::View])]);
     let slice = AccessSlice::compile(&subject(&t, false, vec![g])).expect("compiles");
     let orphan = NodePath(vec![n(NodeKind::Workplace, t.wp_a1)]);
     assert!(matches!(

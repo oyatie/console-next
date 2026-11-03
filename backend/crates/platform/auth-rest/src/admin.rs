@@ -21,6 +21,9 @@ use console_kernel_core::BranchId;
 use console_platform_authz::Action;
 use console_platform_authz::Feature;
 use console_platform_authz::Role;
+use console_platform_authz::access::{
+    AccessSlice, load_access_ceiling_subject, load_access_subject, lock_access_subject,
+};
 use console_platform_authz::authorize;
 use console_platform_authz::authorize_capability;
 use console_platform_authz::resolve_branch_scope_in_org;
@@ -169,13 +172,15 @@ pub(crate) async fn issue_admin_otp(
 /// path refuses a user who already has a passkey (409 `UserAlreadyHasPasskey`) and
 /// self-revoke refuses the last passkey, so neither can recover a locked-out user;
 /// this path deliberately overrides both — but ONLY for an admin, gated by the
-/// EXACT same authz/IDOR rules as `issue_admin_otp`:
+/// authz/IDOR rules of `issue_admin_otp` plus the target's Access ceiling:
 ///   * Authz: ADMIN / SUPER_ADMIN via the `SubordinateUserCreate` feature against
 ///     EVERY one of the target's real branches.
 ///   * IDOR / cross-org: the target is read via `load_user_auth_context_in_org`
 ///     armed with the CALLER's verified-token org, so a user in another tenant is
 ///     invisible (a generic 403, no enumeration). A non-SUPER_ADMIN caller can
 ///     never reset an EXECUTIVE / SUPER_ADMIN target.
+///   * Access: the caller can grant every current or scheduled target grant at
+///     its scope, decided by Cedar after the relevant account and grant locks.
 ///
 /// On success the OTP is shown once and the old passkeys fail login. Generic
 /// errors only (no enumeration). One's own account: 409 `last_sign_in_path`.
@@ -280,19 +285,54 @@ pub(crate) async fn admin_credential_reset(
         .await
         .map_err(|err| passkey_error(err, "passkey step-up failed"))?;
 
-    let now = OffsetDateTime::now_utc();
-    let issue = services
-        .bootstrap_credentials
-        .reset_credentials_for_user(
-            &state.pool,
-            principal.user_id,
-            body.user_id,
-            principal.org_id,
-            now,
-            DEFAULT_OTP_TTL,
-        )
-        .await
-        .map_err(RestError::from_provisioning)?;
+    let org = principal.org_id;
+    let actor = principal.user_id;
+    let target = body.user_id;
+    let bootstrap_credentials = services.bootstrap_credentials;
+    let issue = console_platform_db::with_audits::<_, _, RestError>(&state.pool, org, move |tx| {
+        Box::pin(async move {
+            let actor_id = *actor.as_uuid();
+            let mut accounts = [actor_id, target];
+            accounts.sort_unstable();
+            for account in accounts {
+                let active = console_platform_auth::lock_account_tx(tx, org, account)
+                    .await
+                    .map_err(console_platform_db::DbError::Sqlx)?;
+                if active != Some(true) {
+                    return Err(RestError::credential_reset_authority_required());
+                }
+            }
+            for account in accounts {
+                lock_access_subject(tx, org, account)
+                    .await
+                    .map_err(RestError::from_kernel)?;
+            }
+            let now = console_platform_auth::authentication_time_tx(tx, OffsetDateTime::now_utc())
+                .await
+                .map_err(console_platform_db::DbError::Sqlx)?;
+            let actor_access = load_access_subject(tx, org, actor_id, now)
+                .await
+                .map_err(RestError::from_kernel)?;
+            let target_access = load_access_ceiling_subject(tx, org, target, now)
+                .await
+                .map_err(RestError::from_kernel)?;
+            let authorized = AccessSlice::compile(&actor_access)
+                .and_then(|slice| slice.can_grant_subject(&target_access))
+                .map_err(|error| {
+                    tracing::warn!(%error, "credential reset Cedar decision refused");
+                    error
+                })
+                .unwrap_or(false);
+            if !authorized {
+                return Err(RestError::credential_reset_authority_required());
+            }
+            bootstrap_credentials
+                .reset_credentials_for_user_tx(tx, actor, target, org, now, DEFAULT_OTP_TTL)
+                .await
+                .map_err(RestError::from_provisioning)
+        })
+    })
+    .await?;
 
     Ok(Json(AdminCredentialResetResponse {
         user_id: issue.user_id,

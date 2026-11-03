@@ -1,5 +1,5 @@
 //! Load the [`AccessSubject`] of one account inside a tenant-armed transaction:
-//! the phase, the ops flag, and only the grants that count now, each with its
+//! the phase, the ops flag, and its current or still-live grants, each with its
 //! role version's lines, its scope chain and the branches it projects to.
 //! A 부서 grant's chain runs 부서 → … → the 사업장 it sits in → 법인 →
 //! tenant (AX-5); a chain that does not reach the tenant (a dissolved 부서, one
@@ -20,6 +20,37 @@ use super::model::{AccessSubject, GrantState, HeldGrant, NodeKind, NodePath, Nod
 
 pub(super) fn db(err: sqlx::Error) -> KernelError {
     KernelError::internal(format!("access grants unavailable: {err}"))
+}
+
+/// Keep a security-sensitive account decision stable against grant and role
+/// changes. Grant and role rows are locked before the trigger's advisory lock,
+/// matching grant-update order and covering inserts that race the row scan.
+///
+/// # Errors
+/// Returns an internal kernel error when the lock cannot be acquired.
+pub async fn lock_access_subject(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    account: Uuid,
+) -> Result<(), KernelError> {
+    sqlx::query_scalar::<_, Uuid>(
+        "SELECT g.id FROM access_grants g
+           JOIN access_roles r ON r.org_id=g.org_id AND r.id=g.role_id
+          WHERE g.org_id=$1 AND g.account_id=$2 AND g.status IN ('ACTIVE','PENDING')
+            AND (g.valid_to IS NULL OR clock_timestamp() < g.valid_to)
+          ORDER BY g.id FOR SHARE OF g, r",
+    )
+    .bind(org.as_uuid())
+    .bind(account)
+    .fetch_all(tx.as_mut())
+    .await
+    .map_err(db)?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('access_grants:' || $1::text, 0))")
+        .bind(account)
+        .execute(tx.as_mut())
+        .await
+        .map_err(db)?;
+    Ok(())
 }
 
 /// The tenant's phase (a missing row reads as OPERATING, kernel rule).
@@ -76,7 +107,7 @@ pub async fn load_access_subject(
     account: Uuid,
     now: Timestamp,
 ) -> Result<AccessSubject, KernelError> {
-    load_access_subject_inner(tx, org, account, now, false).await
+    load_access_subject_inner(tx, org, account, now, false, false).await
 }
 
 /// Load and compile an active account's request-sized Cedar facts.
@@ -89,9 +120,24 @@ pub async fn load_active_access_slice(
     account: Uuid,
     now: Timestamp,
 ) -> Result<AccessSlice, KernelError> {
-    let subject = load_access_subject_inner(tx, org, account, now, true).await?;
+    let subject = load_access_subject_inner(tx, org, account, now, true, false).await?;
     AccessSlice::compile(&subject)
         .map_err(|error| KernelError::internal(format!("access grants unavailable: {error}")))
+}
+
+/// Load every ACTIVE or PENDING grant that has not ended. Credential recovery
+/// uses this horizon because its replacement sign-in path outlives a scheduled
+/// grant's activation time.
+///
+/// # Errors
+/// Internal on a query failure (the caller fails closed).
+pub async fn load_access_ceiling_subject(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    account: Uuid,
+    now: Timestamp,
+) -> Result<AccessSubject, KernelError> {
+    load_access_subject_inner(tx, org, account, now, false, true).await
 }
 
 async fn load_access_subject_inner(
@@ -100,6 +146,7 @@ async fn load_access_subject_inner(
     account: Uuid,
     now: Timestamp,
     require_active: bool,
+    unexpired_horizon: bool,
 ) -> Result<AccessSubject, KernelError> {
     let phase = load_tenant_phase(tx, org).await?;
     let account_state: Option<(bool, bool)> =
@@ -116,17 +163,19 @@ async fn load_access_subject_inner(
     }
     let is_ops = account_state.is_some_and(|(ops, active)| ops && active);
     let rows = sqlx::query(
-        "SELECT g.id, g.role_id, r.version, r.status = 'ACTIVE' AS role_active, g.scope_kind,
+        "SELECT g.id, g.role_id, g.status, r.version, r.status = 'ACTIVE' AS role_active, g.scope_kind,
                 COALESCE(g.legal_entity_id, w.legal_entity_id) AS le_id, g.workplace_id, g.org_unit_id,
                 w.default_branch_id, g.valid_from, g.valid_to, g.effective_in_setup
            FROM access_grants g
            JOIN access_roles r ON r.org_id = g.org_id AND r.id = g.role_id
            LEFT JOIN workplaces w ON w.org_id = g.org_id AND w.id = g.workplace_id AND w.voided_at IS NULL
-          WHERE g.org_id = $1 AND g.account_id = $2 AND g.status = 'ACTIVE'
+          WHERE g.org_id = $1 AND g.account_id = $2
+            AND (g.status = 'ACTIVE' OR ($3 AND g.status = 'PENDING'))
             AND g.include_descendants",
     )
     .bind(org.as_uuid())
     .bind(account)
+    .bind(unexpired_horizon)
     .fetch_all(tx.as_mut())
     .await
     .map_err(db)?;
@@ -140,7 +189,14 @@ async fn load_access_subject_inner(
             valid_to: row.try_get("valid_to").map_err(db)?,
             effective_in_setup: row.try_get("effective_in_setup").map_err(db)?,
         };
-        if state.enforcement(phase, now) != super::model::Enforcement::Enforced {
+        let status: String = row.try_get("status").map_err(db)?;
+        let included = if unexpired_horizon {
+            state.valid_to.is_none_or(|to| now < to)
+        } else {
+            status == "ACTIVE"
+                && state.enforcement(phase, now) == super::model::Enforcement::Enforced
+        };
+        if !included {
             continue;
         }
         let kind_raw: String = row.try_get("scope_kind").map_err(db)?;

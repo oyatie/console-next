@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-#[path = "auth_rest/consent.rs"]
-mod consent;
+#[path = "auth_rest/mod.rs"]
+mod auth_rest_tests;
 
 #[path = "auth_fixtures/cookie_requests.rs"]
 mod cookie_requests;
