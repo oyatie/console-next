@@ -40,10 +40,10 @@ export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase
   const loading = setupPending || rereading || applying;
   return (
     <Card title={preview && !loading ? t("home.inbox.title") : undefined} titleId="inbox-title" label={t("home.inbox.title")} tools={first?.as_of ? <time dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time> : loading || inbox.isPending ? <Skeleton decorative bones={["short"]} /> : null}>
-      {!preview && !setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")}>
+      {!setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")}>
         {first.available_filters.map(key => {
           const count = first.counts[key];
-          return <Link key={key} to="/inbox" search={{ tab: key === "turn" ? undefined : key }} replace resetScroll={false} className={tabClass} aria-current={filter === key ? "page" : undefined} activeOptions={{ exact: true, includeSearch: true }}>
+          return <Link key={key} to="/inbox" search={{ tab: key === "turn" ? undefined : key }} replace={!preview} resetScroll={preview ? undefined : false} className={tabClass} aria-current={filter === key ? preview ? true : "page" : undefined} activeOptions={{ exact: true, includeSearch: true }}>
             {count ? t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total }) : t(`home.inbox.filter.${key}`)}
           </Link>;
         })}

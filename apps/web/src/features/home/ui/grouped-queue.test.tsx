@@ -16,9 +16,9 @@ const html = (items: Item[]) => renderToStaticMarkup(<QueryClientProvider client
 
 test("deadline groups put the D-day exit before undated reviews in the server item set", () => {
   const items = [
-    item("undated review"),
+    item("undated review", { links: [] }),
     item("later", { due: "2026-11-01T00:00:00Z", days_remaining: 9 }),
-    item("D-day exit", { kind: "hr_exit_confirm", due: "2026-10-23T00:00:00Z", days_remaining: 0, dueTone: "danger", links: [{ kind: "exit_case", id: "exit" }] }),
+    item("D-day exit", { kind: "hr_exit_confirm", due: "2026-10-23T00:00:00Z", days_remaining: 0, dueTone: "danger", who: "김담당", links: [{ kind: "exit_case", id: "exit" }] }),
     item("overdue", { due: "2026-10-22T00:00:00Z", days_remaining: -1 }),
   ];
   const markup = html(items);
@@ -27,11 +27,26 @@ test("deadline groups put the D-day exit before undated reviews in the server it
   for (const heading of ["기한 지남", "기한 임박", "그 뒤", "기한 없음"])
     expect(markup).toContain(`>${heading}</h3>`);
   expect(markup.match(/<table\b/g)).toHaveLength(4);
-  for (const heading of ["할 일", "대상", "기한", "출처", "담당"])
-    expect(markup).toContain(`>${heading}</th>`);
+  const table = (group: string) => {
+    const start = markup.indexOf(`>${group}</h3>`);
+    return markup.slice(start, markup.indexOf("</table>", start));
+  };
+  const groups = ["기한 지남", "기한 임박", "그 뒤", "기한 없음"];
+  for (const group of groups)
+    for (const heading of ["할 일", "대상", "출처"])
+      expect(table(group)).toContain(`>${heading}</th>`);
+  for (const group of groups.slice(0, 3)) {
+    expect(table(group)).toContain(">기한</th>");
+    expect(table(group)).toContain(">업무 처리</span>");
+  }
+  expect(table("기한 없음")).not.toContain(">기한</th>");
+  expect(table("기한 없음")).not.toContain(">업무 처리</span>");
+  expect(table("기한 임박")).toContain(">담당</th>");
+  for (const group of ["기한 지남", "그 뒤", "기한 없음"])
+    expect(table(group)).not.toContain(">담당</th>");
 });
 
-test("one subject node per item, and only registered record actions get a menu", () => {
+test("one subject node per item, and only registered records get an action", () => {
   const markup = html([
     item("한 번만 표시"), item("링크 없음", { links: [] }),
     item("미지원 링크", { links: [{ kind: "approval_run", id: "unregistered" }] }),
@@ -66,6 +81,18 @@ test("every record action is quiet rather than a primary row action", () => {
   ];
   expect(html(items)).not.toContain("btn--primary");
   expect(html(items)).not.toContain("담당 정보 없음");
+});
+
+test("the queue omits columns with no painted facts or actions", () => {
+  const sparse = html([item("sparse", { links: [] })]);
+  for (const heading of ["기한", "담당", "업무 처리"])
+    expect(sparse).not.toContain(`>${heading}<`);
+  for (const heading of ["할 일", "대상", "출처"])
+    expect(sparse).toContain(`>${heading}<`);
+
+  const complete = html([item("complete", { due: "2026-10-26T00:00:00Z", days_remaining: 3, who: "김담당" })]);
+  for (const heading of ["기한", "담당", "업무 처리"])
+    expect(complete).toContain(`>${heading}<`);
 });
 
 test("only server fold identities combine rows, keeping deadline and kind boundaries", () => {

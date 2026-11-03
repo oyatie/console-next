@@ -17,7 +17,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     const mock = await mockScreen(page, screens[0], "populated");
     const queue = inbox(8);
     queue.available_filters = ["turn", "scheduled", "waiting", "deadlines", "failures"];
-    queue.counts = { turn: { total: 31, total_is_exact: false } };
+    queue.counts = {
+      turn: { total: 31, total_is_exact: false }, scheduled: { total: 0, total_is_exact: true },
+      waiting: { total: 2, total_is_exact: true }, deadlines: { total: 1, total_is_exact: true }, failures: { total: 0, total_is_exact: true },
+    };
+    const scheduled = t("home.inbox.filterCount", { filter: t("home.inbox.filter.scheduled"), count: 0 });
     await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
       const query = new URL(request.url()).searchParams;
       const offset = query.has("cursor") ? 8 : 0;
@@ -27,25 +31,39 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.goto("/");
     const preview = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
     await expect(preview.locator("[data-id]")).toHaveCount(5);
-    await expect(preview.getByRole("navigation")).toHaveCount(0);
+    const homeTabs = preview.getByRole("navigation", { name: t("home.lanes"), exact: true });
+    await expect(homeTabs.getByRole("link")).toHaveCount(queue.available_filters.length);
+    await expect(homeTabs.getByRole("link").first()).toContainText("31+");
+    await expect(homeTabs.getByRole("link").first()).toHaveAttribute("aria-current", "true");
+    await expect(homeTabs.getByRole("link", { name: scheduled, exact: true })).toHaveAttribute("href", "/inbox?tab=scheduled");
+    await expect(preview.getByRole("columnheader", { name: t("home.inbox.column.due"), exact: true })).toHaveCount(0);
+    await expect(preview.getByRole("columnheader", { name: t("home.inbox.column.owner"), exact: true })).toHaveCount(0);
+    if (width === 390) await expect(preview.getByRole("link", { name: t("people.lifecycle.action.CONTRACT_RENEWAL"), exact: true }).first()).toBeVisible();
     await expect(preview.getByRole("button", { name: t("home.inbox.more"), exact: true })).toHaveCount(0);
+    await fits(page, `Home worklist at ${width}px`);
+    await expectAxe(page, `Home worklist at ${width}px ${theme}`);
+    await page.screenshot({ path: info.outputPath(`home-${width}-${theme}.png`), fullPage: true });
+    await homeTabs.getByRole("link", { name: scheduled, exact: true }).click();
+    await expect(page).toHaveURL(/\/inbox\?tab=scheduled$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
     await preview.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true }).click();
     await expect(page).toHaveURL(/\/inbox$/);
     await expect(page.getByRole("heading", { level: 1, name: t("home.inbox.title"), exact: true })).toBeVisible();
     const tabs = page.getByRole("navigation", { name: t("home.lanes"), exact: true });
     await expect(tabs.getByRole("link")).toHaveCount(queue.available_filters.length);
     await expect(tabs.getByRole("link").first()).toContainText("31+");
-    await expect(tabs.getByRole("link").nth(1)).not.toContainText("0");
+    await expect(tabs.getByRole("link").nth(1)).toContainText("0");
     await expect(preview.locator("[data-id]")).toHaveCount(8);
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     await preview.getByRole("button", { name: t("home.inbox.more"), exact: true }).click();
     await expect(preview.locator('[data-id="second-page"]')).toContainText("다음 페이지 직원");
-    await tabs.getByRole("link", { name: t("home.inbox.filter.scheduled"), exact: true }).click();
+    await tabs.getByRole("link", { name: scheduled, exact: true }).click();
     await expect(page).toHaveURL(/\?tab=scheduled$/);
-    await expect(tabs.getByRole("link", { name: t("home.inbox.filter.scheduled"), exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(tabs.getByRole("link", { name: scheduled, exact: true })).toHaveAttribute("aria-current", "page");
     await expect(preview.getByRole("heading", { name: t("home.inbox.empty.title"), exact: true })).toBeVisible();
     await page.reload();
-    await expect(tabs.getByRole("link", { name: t("home.inbox.filter.scheduled"), exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(tabs.getByRole("link", { name: scheduled, exact: true })).toHaveAttribute("aria-current", "page");
     expect(await page.locator("main").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     await page.screenshot({ path: info.outputPath(`inbox-${width}-${theme}.png`), fullPage: true });

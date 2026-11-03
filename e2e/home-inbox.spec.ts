@@ -77,11 +77,8 @@ test("Inbox ranks deadline rows before undated work and keeps a refused action w
   await atPhoneWidth(admin, async () => {
     await fits(admin, "업무함 기한 그룹");
     await walk(390);
-    const more = queue.getByRole("button", { name: "오늘 퇴직 작업", exact: true });
-    await more.click();
-    await expect(admin.getByRole("dialog", { name: "오늘 퇴직", exact: true }).getByRole("link", { name: "인사 확인하고 퇴직 처리", exact: true })).toBeVisible();
-    await admin.keyboard.press("Escape");
-    await expect(more).toBeFocused();
+    await expect(queue.getByRole("link", { name: "인사 확인하고 퇴직 처리", exact: true })).toBeVisible();
+    await expect(queue.getByRole("button", { name: "오늘 퇴직 작업", exact: true })).toHaveCount(0);
   });
   const refusedRow = rows.filter({ hasText: "부여 확인 대상" });
   await refusedRow.getByRole("button", { name: "부여 확인 대상 부여 확인 기록" }).click();
