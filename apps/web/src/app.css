@@ -19,7 +19,7 @@ body {
 button, input, select, textarea { font: inherit; color: inherit; }
 /* design-language §5.3: a 2 px --primary outline at offset 2 on every focusable element; composite controls keep --focus. */
 :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-h1[data-focus-managed]:focus { outline: none; }
+[data-focus-managed]:focus { outline: none; }
 .num { font-variant-numeric: tabular-nums; }
 .code { font-family: var(--font-mono); font-size: var(--text-sm); }
 .muted { color: var(--steel); }

@@ -72,6 +72,11 @@ test("org: structure list becomes readable cards at 390px @ui-state", async ({ p
     await expect(grid.locator("dt").filter({ hasText: t("structure.list.people") }).first()).toHaveText(t("structure.list.people"));
     await expect(grid.locator("[data-row-id]").first().getByText(t("entityOps.info.none"), { exact: true })).toHaveCount(2);
     await expect(grid.locator(`[data-row-id="${site.id}"]`).getByText(t("structure.chip.suspended"), { exact: true })).toBeVisible();
+    const region = grid.locator("xpath=ancestor::section");
+    const caption = region.getByText(t("structure.list.caption", { count: 5 }), { exact: true });
+    const find = region.getByRole("searchbox", { name: t("structure.find.placeholder"), exact: true });
+    const [captionBox, findBox] = await Promise.all([caption.boundingBox(), find.boundingBox()]);
+    expect(captionBox!.y + captionBox!.height).toBeLessThanOrEqual(findBox!.y);
     for (const theme of ["light", "dark"]) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
       await page.screenshot({ path: test.info().outputPath(`structure-list-390-${theme}.png`), fullPage: true });

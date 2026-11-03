@@ -174,7 +174,13 @@ describe.each([3, 2000])("department readiness with %i people", (count) => {
     await browserExpect(blocker).toBeVisible();
     const table = blocker.getByRole("grid");
     await browserExpect(table).toBeVisible();
-    await browserExpect(table.getByRole("columnheader", { name: "직원", exact: true })).toBeVisible();
+    if (width === 390) {
+      await browserExpect(table).toHaveAttribute("data-layout", "cards");
+      await browserExpect(table.getByRole("columnheader", { name: "직원", exact: true })).toHaveCount(0);
+    } else {
+      await browserExpect(table).toHaveAttribute("data-layout", "rows");
+      await browserExpect(table.getByRole("columnheader", { name: "직원", exact: true })).toBeVisible();
+    }
     await browserExpect(table.getByText(records[0]!.name, { exact: true })).toBeVisible();
     const nameCell = table.getByRole("rowheader", { name: records[0]!.name, exact: true });
     await browserExpect.poll(() => nameCell.evaluate((el) => el.scrollWidth <= el.clientWidth), { message: `${width} ${theme}: the full employee name fits its cell` }).toBe(true);

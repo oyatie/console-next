@@ -178,13 +178,15 @@ test.each([1440, 390])("without a sort handler no column or card control can sor
   expect(await page.getByRole("combobox", { name: "정렬", exact: true }).count()).toBe(0);
 });
 
-test("a narrow table without card columns keeps header sorting", async () => {
+test("a narrow table without card metadata keeps sorting in the card control", async () => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto(`http://127.0.0.1:${(server.httpServer!.address() as { port: number }).port}/long-table-test?rows`);
-  const name = page.getByRole("columnheader", { name: "이름", exact: true });
-  await name.click();
+  await page.locator('[role="grid"][data-layout="cards"]').waitFor();
+  const sort = page.getByRole("combobox", { name: "정렬", exact: true });
+  await sort.waitFor();
+  expect(await sort.inputValue()).toBe("name");
+  await page.getByRole("button", { name: "내림차순", exact: true }).click();
   await page.getByText("name:descending", { exact: true }).waitFor();
-  expect(await page.getByRole("combobox", { name: "정렬", exact: true }).count()).toBe(0);
 });
 
 test.each([1440, 390])("row ids can match column ids while callbacks and selection keep raw ids at %s px", async width => {

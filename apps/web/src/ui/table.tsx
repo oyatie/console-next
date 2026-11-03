@@ -51,7 +51,6 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   };
   const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
   const roles = cardRoles(columns);
-  const hasCards = columns.some(c => c.card);
   const widths = columnWidths(columns);
   const renderRows = (items: R[]) => items.map((r) => {
     const id = rowId(r);
@@ -80,7 +79,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     );
   });
   const table = (
-    <table ref={tableRef} className={`table ${hasCards ? cards.short : ""} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
+    <table ref={tableRef} className={`table ${cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
       <caption className="sr-only">{label}</caption>
       {columns.some(c => c.type) && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
       <thead>
@@ -94,5 +93,5 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
       )) : <tbody>{renderRows(rows)}</tbody>}
     </table>
   );
-  return hasCards ? <div className={cards.container}>{table}</div> : table;
+  return <div className={cards.container}>{table}</div>;
 }

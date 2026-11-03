@@ -29,7 +29,7 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await expect(linked.getByRole("link", { name: "김직원", exact: true })).toHaveAttribute("href", `/people/${id(900)}`);
     await expect(holders.getByRole("listitem").nth(1).getByText("ACC-0002", { exact: true })).toHaveCount(1);
     await expect(page.getByRole("table", { name: "역할 버전", exact: true }).getByRole("row")).toHaveCount(3);
-    await expect(page.getByRole("cell", { name: "인사 기초 조회", exact: true })).toBeVisible();
+    await expect(page.getByRole("table", { name: "역할 버전", exact: true }).getByText("인사 기초 조회", { exact: true })).toBeVisible();
     await expectAxe(page, "role holders and version");
     await fits(page, "role holders and version");
     expect(f.unexpected).toEqual([]);

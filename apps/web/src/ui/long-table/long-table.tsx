@@ -98,8 +98,7 @@ export function LongTable<R>(p: {
   const search = useRef<HTMLInputElement>(null);
   const region = useRef<HTMLElement>(null);
   const grid = useRef<HTMLElement | null>(null);
-  const hasCards = p.columns.some(c => c.card);
-  const cardLayout = useCardLayout(region, grid) && hasCards;
+  const cardLayout = useCardLayout(region, grid);
   const { sortDescriptor: sort, onSortChange } = p;
   const sortable = p.columns.filter(column => column.allowsSorting);
   const [cardHeight, setCardHeight] = useState<number>();
@@ -156,7 +155,7 @@ export function LongTable<R>(p: {
   const sel = p.selection;
   const selected = sel ? shownKeys(sel, loaded) : NONE;
   const titleId = (r: R) => `${captionId}-${encodeURIComponent(p.rowId(r))}-title`;
-  const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, cell: (r) => <CardContent row={r} columns={p.columns} titleId={titleId(r)} /> }] : p.columns;
+  const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, focusMode: p.columns.find(c => c.focusMode)?.focusMode, cell: (r) => <CardContent row={r} columns={p.columns} titleId={titleId(r)} /> }] : p.columns;
   const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...content] : content;
   const widths = columnWidths(cols);
   const slotted = p.findSlot !== undefined;
@@ -170,7 +169,7 @@ export function LongTable<R>(p: {
     </SearchField>
   );
   return (
-    <section ref={region} className={`${css.region} ${hasCards ? cards.container : ""}`} aria-label={p.label} data-density={density}
+    <section ref={region} className={`${css.region} ${cards.container}`} aria-label={p.label} data-density={density}
       onKeyDownCapture={(e) => {
         if (!cardLayout || e.key !== "Enter" || !p.onRowAction || !(e.target instanceof HTMLElement) || !e.target.matches('[role="row"], [role="rowheader"], [role="gridcell"]')) return;
         const id = rowIdOf(e.target);

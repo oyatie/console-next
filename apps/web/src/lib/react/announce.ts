@@ -66,7 +66,7 @@ const focusWhen = (allowed: () => boolean, ownsRestore: boolean, ...ids: string[
     if (quiet >= 2 && el) {
       stop();
       if (allowed()) {
-        if (el.tagName === "H1") {
+        if (/^H[1-6]$/.test(el.tagName)) {
           const source = document.activeElement;
           const keyboard = source?.matches(":focus-visible") && !source.hasAttribute("data-focus-managed");
           el.toggleAttribute("data-focus-managed", !keyboard);
