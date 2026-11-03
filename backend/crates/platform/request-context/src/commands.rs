@@ -1,12 +1,12 @@
 //! One HTTP intent -> one durable outcome. Only its business transaction says APPLIED.
-use super::{RequestAuditContext, conflict};
+use super::{DEFAULT_REQUEST_BODY_BYTES, RequestAuditContext, RequestBodyLimit, conflict};
 mod execute;
 mod response;
 use axum::{
     body::{Body, to_bytes},
     extract::Request,
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use console_kernel_core::{ActorKind, AuditCommandContext, AuditSource};
 use console_platform_authz::Principal;
@@ -137,11 +137,19 @@ pub(crate) async fn run(
     );
     let query = request.uri().query().map(str::to_owned);
     let fallback = target(request.uri().path());
+    let max_body_bytes = request
+        .extensions()
+        .get::<RequestBodyLimit>()
+        .map_or(DEFAULT_REQUEST_BODY_BYTES, |limit| limit.0);
     let (parts, body) = request.into_parts();
-    // The existing handler keeps its stricter body limit; capture itself is bounded.
-    let bytes = match to_bytes(body, 64 * 1024 * 1024).await {
+    let bytes = match to_bytes(body, max_body_bytes).await {
         Ok(bytes) => bytes,
-        Err(_) => return StatusCode::PAYLOAD_TOO_LARGE.into_response(),
+        Err(_) => {
+            metrics::counter!("request_body_limit_refusals_total").increment(1);
+            let support_reference = transport.trace.trace_id();
+            tracing::warn!(max_body_bytes, %support_reference, "request body refused before command admission");
+            return refusal(StatusCode::PAYLOAD_TOO_LARGE, "payload_too_large", None);
+        }
     };
     let mut fingerprint = fingerprint(&bytes);
     let query = query.unwrap_or_default();

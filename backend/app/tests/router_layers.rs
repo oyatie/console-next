@@ -143,6 +143,14 @@ async fn oversized_json_to_a_domain_route_is_rejected_413(pool: PgPool) {
     // R23: axum's plain-text rejections leave as the JSON error envelope.
     let error = json_body(response).await;
     assert_eq!(error["error"]["code"], "payload_too_large", "{error}");
+    let outcomes: i64 = sqlx::query_scalar("SELECT count(*) FROM command_outcomes")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        outcomes, 0,
+        "the request limit must refuse the body before command admission"
+    );
     let malformed = service.oneshot(post("{".to_owned())).await.unwrap();
     assert_eq!(malformed.status(), StatusCode::BAD_REQUEST);
     let error = json_body(malformed).await;
@@ -155,10 +163,9 @@ async fn json_body(response: axum::response::Response) -> serde_json::Value {
 }
 
 /// A body just over the 2 MiB default but under the 16 MiB import allowance is
-/// NOT rejected by the body limit on the import route: the per-route
-/// `DefaultBodyLimit::max(16 MiB)` (applied deeper, in `registry/rest`) wins
-/// over the 2 MiB global default applied on the merged router. The request is
-/// allowed past the limit layer and fails later for a content reason (not 413).
+/// NOT rejected by the body limit on the import route: its per-route allowance
+/// wins over the 2 MiB global default. The request is allowed past the limit
+/// layer and fails later for a content reason (not 413).
 // The equipment master-list import is the registry module (docs/ops/mvp-build.md).
 #[cfg(feature = "registry")]
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -176,6 +183,46 @@ async fn import_route_keeps_16_mib_allowance_over_global_2_mib(pool: PgPool) {
         public_pem,
     ));
 
+    let request = |payload: Vec<u8>| {
+        let boundary = "X-BOUNDARY";
+        let mut body: Vec<u8> = Vec::new();
+        body.extend_from_slice(
+            format!(
+                "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"m.xlsx\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+            )
+            .as_bytes(),
+        );
+        body.extend_from_slice(&payload);
+        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+        Request::builder()
+            .method("POST")
+            .uri("/api/v1/equipment/import")
+            .header(header::AUTHORIZATION, format!("Bearer {token}"))
+            .header(
+                header::CONTENT_TYPE,
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .body(Body::from(body))
+            .unwrap()
+    };
+
+    let refused = service
+        .clone()
+        .oneshot(request(vec![b'a'; 17 * 1024 * 1024]))
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    let error = json_body(refused).await;
+    assert_eq!(error["error"]["code"], "payload_too_large", "{error}");
+    let outcomes: i64 = sqlx::query_scalar("SELECT count(*) FROM command_outcomes")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        outcomes, 0,
+        "the route limit must refuse the body before command admission"
+    );
+
     // 3 MiB upload: over the 2 MiB global default, under 16 MiB. If the global
     // limit applied here it would be 413; instead the per-route 16 MiB wins.
     let payload = vec![b'a'; 3 * 1024 * 1024];
@@ -185,32 +232,7 @@ async fn import_route_keeps_16_mib_allowance_over_global_2_mib(pool: PgPool) {
         Err(console_registry_adapter_postgres::PgRegistryError::Workbook(_))
     ));
 
-    let boundary = "X-BOUNDARY";
-    let mut body: Vec<u8> = Vec::new();
-    body.extend_from_slice(
-        format!(
-            "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"m.xlsx\"\r\nContent-Type: application/octet-stream\r\n\r\n"
-        )
-        .as_bytes(),
-    );
-    body.extend_from_slice(&payload);
-    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
-
-    let response = service
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/v1/equipment/import")
-                .header(header::AUTHORIZATION, format!("Bearer {token}"))
-                .header(
-                    header::CONTENT_TYPE,
-                    format!("multipart/form-data; boundary={boundary}"),
-                )
-                .body(Body::from(body))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let response = service.oneshot(request(payload)).await.unwrap();
 
     assert_ne!(
         response.status(),

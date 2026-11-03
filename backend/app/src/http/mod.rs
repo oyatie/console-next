@@ -16,4 +16,4 @@ pub(crate) mod trace;
 /// Global request-body cap. Modest by design: the JSON APIs here carry small
 /// payloads, and large evidence uploads go straight to object storage via
 /// presigned URLs rather than through this process. Bounds memory per request.
-pub(crate) const MAX_REQUEST_BODY_BYTES: usize = 2 * 1024 * 1024;
+pub(crate) use console_platform_request_context::DEFAULT_REQUEST_BODY_BYTES as MAX_REQUEST_BODY_BYTES;

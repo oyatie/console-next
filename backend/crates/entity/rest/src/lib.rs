@@ -39,7 +39,6 @@ mod workplace_kind;
 use std::sync::Arc;
 
 use axum::Router;
-use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, patch, post};
 use console_entity_adapter_juso::JusoClient;
 use console_entity_adapter_postgres::{
@@ -191,6 +190,9 @@ pub fn router(state: EntityRestState) -> Router {
     use workplace_kind as k;
     let verifier = state.jwt_verifier.clone();
     let pool = state.store.pool().clone();
+    let documents = Router::new()
+        .route(DOCUMENTS_PATH, post(docs::upload))
+        .with_state(state.clone());
     let router = Router::new()
         .route(REGISTRATION_ORIGINAL_PATH, post(original::attach))
         .route(
@@ -272,10 +274,6 @@ pub fn router(state: EntityRestState) -> Router {
         .route(WORKPLACE_REVISIONS_PATH, get(records::workplace_history))
         .route(WORKPLACE_INSURANCE_PATH, put(records::revise_insurance))
         .route(LEGAL_ENTITY_DOCUMENTS_PATH, get(docs::list))
-        .route(
-            DOCUMENTS_PATH,
-            post(docs::upload).layer(DefaultBodyLimit::max(docs::UPLOAD_BODY_LIMIT)),
-        )
         .route(DOCUMENT_PATH, get(docs::get))
         .route(DOCUMENT_CONTENT_PATH, get(docs::content))
         .route(REF_LIST_CODES_PATH, get(reference::codes))
@@ -314,5 +312,13 @@ pub fn router(state: EntityRestState) -> Router {
         )
         .route(WORKPLACE_CLOSE_PLAN_CANCEL_PATH, post(close_plan::cancel))
         .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    console_platform_request_context::with_request_context(router, verifier.clone(), pool.clone())
+        .merge(
+            console_platform_request_context::with_request_context_body_limit(
+                documents,
+                verifier,
+                pool,
+                docs::UPLOAD_BODY_LIMIT,
+            ),
+        )
 }
