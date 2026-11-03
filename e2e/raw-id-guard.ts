@@ -21,11 +21,13 @@ function watchRawIds(ids: string[]) {
         report?.(token);
       }
   };
+  // Diagnostic identifiers are literal code, even when their spelling also names a catalog entry.
+  const literalCode = (text: Node) => text.parentElement?.closest('code[translate="no"]');
   const visit = (node: Node) => {
-    if (node.nodeType === Node.TEXT_NODE) return void (HIDDEN.has(node.parentElement?.tagName ?? "") || scan(node.textContent));
+    if (node.nodeType === Node.TEXT_NODE) return void (HIDDEN.has(node.parentElement?.tagName ?? "") || literalCode(node) || scan(node.textContent));
     if (node.nodeType !== Node.ELEMENT_NODE || HIDDEN.has((node as Element).tagName)) return;
     const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-    for (let text = walk.nextNode(); text; text = walk.nextNode()) if (!HIDDEN.has(text.parentElement?.tagName ?? "")) scan(text.textContent);
+    for (let text = walk.nextNode(); text; text = walk.nextNode()) if (!HIDDEN.has(text.parentElement?.tagName ?? "") && !literalCode(text)) scan(text.textContent);
   };
   new MutationObserver((records) => {
     for (const r of records) {
