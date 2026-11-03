@@ -65,7 +65,7 @@ export function SupportAccessIndicator() {
 export function SupportAccess() {
   const q = useQuery({ ...supportSessionsQuery, enabled: !!session.token });
   const visible = q.error instanceof ApiError && q.error.status === 403 ? { ...q, data: undefined } : q;
-  return <Page floorplan="list" head={{ title: t("supportAccess.title") }} q={visible} own={supportRefusal}>
+  return <Page floorplan="P-01" head={{ title: t("supportAccess.title") }} q={visible} own={supportRefusal}>
     {data => <Card flush label={t("supportAccess.description")}>
       {data.sessions.length ? <SessionsList data={data} /> : <EmptyState title={t("supportAccess.emptyTitle")} reason={t("supportAccess.emptyReason")} />}
     </Card>}

@@ -14,7 +14,7 @@ export function PayrollReference() {
   const groups = useQuery(payGroupsQuery);
   const { entity } = useSearch({ from: "/app/payroll/reference" });
   const navigate = useNavigate({ from: "/payroll/reference" });
-  return <Page floorplan="list" head={{ title: t("payroll.reference.title"), sub: t("payroll.reference.reason"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>
+  return <Page floorplan="P-01" head={{ title: t("payroll.reference.title"), sub: t("payroll.reference.reason"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>
     <QueryState q={groups} layout="list">{data => {
       const selected = data.legal_entities.find(row => row.id === entity);
       return <div className="form">

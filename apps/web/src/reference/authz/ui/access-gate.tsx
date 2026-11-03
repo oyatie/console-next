@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useLayoutEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useMatches } from "@tanstack/react-router";
 import { QueryState } from "../../../lib/react/query-state";
@@ -22,7 +22,13 @@ export function AccessGate({ children, layout = "form", ...need }: AccessRequire
 
 /** The leaf route decides before its page (or a nested sheet's parent page) mounts. */
 export function RouteGuard({ children }: { children: ReactNode }) {
-  const need = useMatches({ select: matches => matches.at(-1)?.staticData.access });
+  const route = useMatches({ select: matches => matches.at(-1)?.staticData });
+  const need = route?.access;
+  useLayoutEffect(() => {
+    const main = document.getElementById("main");
+    if (route?.floorplan) main?.setAttribute("data-floorplan", route.floorplan);
+    else main?.removeAttribute("data-floorplan");
+  }, [route?.floorplan]);
   if (!need) throw new Error("Route must declare staticData.access");
   return <Suspense fallback={<ReadSkeleton layout="list" />}>
     {need === "signed-in" ? children : <AccessGate {...need} layout="list">{children}</AccessGate>}

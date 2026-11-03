@@ -25,18 +25,18 @@ async function markup(children: ReactNode) {
 }
 
 test.each([false, true])("one main and one h1, standalone or in the shell: %s", async shell => {
-  const frame = <Page floorplan="list" head={{ title: "Employees", titleId: "title", crumbs: <Crumbs items={[<a key="home" href="/">{copy.home}</a>]} /> }}><p>{copy.body}</p></Page>;
+  const frame = <Page floorplan="P-01" head={{ title: "Employees", titleId: "title", crumbs: <Crumbs items={[<a key="home" href="/">{copy.home}</a>]} /> }}><p>{copy.body}</p></Page>;
   const html = await markup(shell ? <PageMain>{frame}</PageMain> : frame);
   expect(html.match(/<main\b/g)).toHaveLength(1);
   expect(html.match(/<h1\b/g)).toHaveLength(1);
   expect(html.match(/<nav\b/g)).toHaveLength(1);
-  expect(html).toContain('data-floorplan="list"');
+  expect(html).toContain('data-floorplan="P-01"');
   expect(html).toContain('id="title"');
 });
 
 test("an embedded page keeps its title below the document heading", async () => {
-  const html = await markup(<Page floorplan="record" head={{ title: "Record" }}>
-    <Page floorplan="form" head={{ title: "Correction" }}>{copy.fields}</Page>
+  const html = await markup(<Page floorplan="P-02" head={{ title: "Record" }}>
+    <Page floorplan="P-04" head={{ title: "Correction" }}>{copy.fields}</Page>
   </Page>);
   expect(html.match(/<main\b/g)).toHaveLength(1);
   expect(html.match(/<h1\b/g)).toHaveLength(1);
@@ -47,7 +47,7 @@ test.each(["loading", "empty", "failed", "refused", "populated"])("the %s read r
   const error = state === "failed" ? new ApiError(503, "service_unavailable", "", [], "read-reference")
     : state === "refused" ? new ApiError(403, "access_denied", "", [], "refusal-reference") : null;
   const read = { ...q, isPending: state === "loading", error, data: state === "loading" || state === "failed" ? undefined : state === "empty" ? [] : q.data };
-  const html = await markup(<Page floorplan="list" head={{ title: "Employees", primary: <button>{copy.register}</button> }} q={read}
+  const html = await markup(<Page floorplan="P-01" head={{ title: "Employees", primary: <button>{copy.register}</button> }} q={read}
     empty={rows => rows.length ? null : <p>{copy.empty}</p>}>
     {rows => <p>{rows.join(", ")}</p>}
   </Page>);

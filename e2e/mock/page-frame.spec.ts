@@ -26,7 +26,7 @@ for (const width of [1440, 1024, 390, 320]) for (const theme of ["light", "dark"
     const demo = page.locator("[data-page-gallery]");
     await expect(demo).toBeVisible();
     const states = demo.getByRole("group", { name: tg("section.states"), exact: true }).getByRole("button");
-    const frame = demo.locator('[data-floorplan="list"]');
+    const frame = demo.locator('[data-floorplan="P-01"]');
     await expect(frame.locator('[data-list-region="body"]')).toBeVisible();
     for (let i = 0; i < 7; i++) {
       await states.nth(i).click();

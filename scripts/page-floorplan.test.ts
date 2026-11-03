@@ -7,17 +7,17 @@ import { expect, test } from "vitest";
 import { floorplanFindings, pageSpacingFindings } from "./quality/ratchet.mjs";
 
 test.each([
-  '<><PageHead title="Extra" /><Page floorplan="list" head={{title:"List"}}>Body</Page></>',
-  '<Page floorplan="list" head={{title:"List"}}><h1>Extra</h1></Page>',
-  '<><Page floorplan="list" head={{title:"A"}}>A</Page><Page floorplan="record" head={{title:"B"}}>B</Page></>',
-  '<Sheet><PageHead title="Extra" /><Page floorplan="form" head={{title:"Form"}}>Body</Page></Sheet>',
+  '<><PageHead title="Extra" /><Page floorplan="P-01" head={{title:"List"}}>Body</Page></>',
+  '<Page floorplan="P-01" head={{title:"List"}}><h1>Extra</h1></Page>',
+  '<><Page floorplan="P-01" head={{title:"A"}}>A</Page><Page floorplan="P-02" head={{title:"B"}}>B</Page></>',
+  '<Sheet><PageHead title="Extra" /><Page floorplan="P-04" head={{title:"Form"}}>Body</Page></Sheet>',
 ])("the ratchet refuses two document headings: %s", jsx => {
   expect(floorplanFindings(`export const Screen = () => (${jsx});`).multipleH1).toBe(1);
 });
 
 test.each([
-  '<Page floorplan="list" head={{title:"List"}}><PageHead title="Section" /><Page floorplan="form" head={{title:"Form"}}>Body</Page></Page>',
-  '<PageHeadingLevel value={2}><PageHead title="Section" /><Page floorplan="form" head={{title:"Form"}}>Body</Page></PageHeadingLevel>',
+  '<Page floorplan="P-01" head={{title:"List"}}><PageHead title="Section" /><Page floorplan="P-04" head={{title:"Form"}}>Body</Page></Page>',
+  '<PageHeadingLevel value={2}><PageHead title="Section" /><Page floorplan="P-04" head={{title:"Form"}}>Body</Page></PageHeadingLevel>',
   '<ListPage q={q} head={{title:"List"}}>{rows => <div>{rows.length}</div>}</ListPage>',
 ])("secondary headings and templates pass: %s", jsx => {
   expect(floorplanFindings(`export const Screen = () => (${jsx});`)).toEqual({});
@@ -30,14 +30,14 @@ test("missing floorplans, legacy heads and raw module h1s remain counted", () =>
 });
 
 test("aliases cannot evade the heading ratchet", () => {
-  expect(floorplanFindings('import {Page as Frame} from "../ui/page/page"; import {PageHead as Head} from "../ui/page-head/page-head"; export const Screen = () => <><Head title="Extra" /><Frame floorplan="list" head={{title:"List"}}>Body</Frame></>;').multipleH1).toBe(1);
+  expect(floorplanFindings('import {Page as Frame} from "../ui/page/page"; import {PageHead as Head} from "../ui/page-head/page-head"; export const Screen = () => <><Head title="Extra" /><Frame floorplan="P-01" head={{title:"List"}}>Body</Frame></>;').multipleH1).toBe(1);
 });
 
 test("namespace imports cannot evade the heading ratchet", () => {
   const imports = 'import * as UI from "../ui/page/page"; import * as Heading from "../ui/page-head/page-head";';
-  expect(floorplanFindings(`${imports} export const Screen = () => <><Heading.PageHead title="Extra" /><UI.Page floorplan="list" head={{title:"List"}}>Body</UI.Page></>;`).multipleH1).toBe(1);
+  expect(floorplanFindings(`${imports} export const Screen = () => <><Heading.PageHead title="Extra" /><UI.Page floorplan="P-01" head={{title:"List"}}>Body</UI.Page></>;`).multipleH1).toBe(1);
   expect(floorplanFindings(`${imports} export const Screen = () => <Heading.PageHead title="Title" />;`).missingFloorplan).toBe(1);
-  expect(floorplanFindings(`${imports} export const Screen = () => <UI.Page floorplan="list" head={{title:"List"}}><Heading.PageHead title="Section" /></UI.Page>;`)).toEqual({});
+  expect(floorplanFindings(`${imports} export const Screen = () => <UI.Page floorplan="P-01" head={{title:"List"}}><Heading.PageHead title="Section" /></UI.Page>;`)).toEqual({});
 });
 
 test("another heading cannot hide inside an already indebted frame", () => {
@@ -60,7 +60,7 @@ test("the executable ratchet rejects a planted sibling heading and permits neste
   const root = mkdtempSync(join(tmpdir(), "floorplan-"));
   const screen = join(root, "apps/web/src/screen.tsx");
   const script = resolve("scripts/quality/ratchet.mjs");
-  const good = 'export const Screen = () => <Page floorplan="list" head={{title:"List"}}><PageHead title="Section" /></Page>;';
+  const good = 'export const Screen = () => <Page floorplan="P-01" head={{title:"List"}}><PageHead title="Section" /></Page>;';
   try {
     mkdirSync(join(root, "apps/web/src"), { recursive: true });
     writeFileSync(screen, good);
@@ -70,7 +70,7 @@ test("the executable ratchet rejects a planted sibling heading and permits neste
     git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "fixture");
     const run = () => spawnSync("node", [script, "--root", root], { encoding: "utf8", env: { ...process.env, QUALITY_BASE: "dev" } });
     expect(run().status).toBe(0);
-    writeFileSync(screen, 'export const Screen = () => <><PageHead title="Extra" /><Page floorplan="list" head={{title:"List"}}>Body</Page></>;');
+    writeFileSync(screen, 'export const Screen = () => <><PageHead title="Extra" /><Page floorplan="P-01" head={{title:"List"}}>Body</Page></>;');
     const bad = run();
     expect(bad.status).toBe(1);
     expect(bad.stderr).toContain("multipleH1");
@@ -138,7 +138,7 @@ test.each(["dev", "public/dev", "review-base"])("advancing %s cannot turn inheri
     writeFileSync(join(root, "lane.txt"), "lane work");
     commit("lane work");
     git("switch", "dev");
-    writeFileSync(screen, 'export const Screen = () => <Page floorplan="list" head={{title:"Title"}}>Body</Page>;');
+    writeFileSync(screen, 'export const Screen = () => <Page floorplan="P-01" head={{title:"Title"}}>Body</Page>;');
     commit("dev clears debt");
     if (ref !== "dev") git("update-ref", ref === "public/dev" ? "refs/remotes/public/dev" : "refs/heads/review-base", "HEAD");
     git("switch", "lane");

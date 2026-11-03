@@ -7,10 +7,14 @@ import { ensureEnrolling, ensureSession, leaveSignInWhenSignedIn } from "../lib/
 import { RouteFrame } from "../lib/react/route-ready";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
 import type { AccessRequirement } from "../reference/authz/domain/access";
+import { FLOORPLANS, type Floorplan } from "../ui/page/floorplan";
+
+export { FLOORPLANS as ROUTE_FLOORPLANS };
 
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
     access?: AccessRequirement | "signed-in";
+    floorplan?: Floorplan;
   }
 }
 
@@ -35,7 +39,7 @@ export const app = createRoute({ getParentRoute: () => root, id: "app", staticDa
 
 const tenants = createRoute({
   getParentRoute: () => app,
-  path: "/platform", staticData: { access: "signed-in" },
+  path: "/platform", staticData: { access: "signed-in", floorplan: "P-01" },
   beforeLoad: ensureSession,
   // The tenant, the search and the status view live in the URL, so a support ticket can link to them.
   validateSearch: (s: Record<string, unknown>): TenantsSearch => ({
@@ -45,10 +49,10 @@ const tenants = createRoute({
   }),
   component: lazyRouteComponent(screen(() => import("../features/platform/Tenants")), "Tenants"),
 });
-const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-access", staticData: { access: "signed-in" },validateSearch:(s: Record<string, unknown>): { review?: string } => ({ review: str(s.review) }),component:lazyRouteComponent(screen(()=>import("../features/support-access/ui/support-access")),"SupportAccess")});
+const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-access", staticData: { access: "signed-in", floorplan: "P-01" },validateSearch:(s: Record<string, unknown>): { review?: string } => ({ review: str(s.review) }),component:lazyRouteComponent(screen(()=>import("../features/support-access/ui/support-access")),"SupportAccess")});
 // Home with the setup checklist composed in (routes compose slices).
-const home = createRoute({ getParentRoute: () => app, path: "/", staticData: { access: "signed-in" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
-const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in" }, component: lazyRouteComponent(screen(() => import("../features/account/Account")), "Account") });
+const home = createRoute({ getParentRoute: () => app, path: "/", staticData: { access: "signed-in", floorplan: "P-03" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
+const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/account/Account")), "Account") });
 
 // Test builds keep the gallery for the preview suite; normal production builds drop its route and chunk.
 const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
@@ -56,9 +60,9 @@ const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
   : [];
 // Mock-state builds keep unserved screens testable without publishing their routes.
 const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
-  createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
+  createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
   createRoute({
-    getParentRoute: () => app, path: "/audit/access-log", staticData: { access: "signed-in" },
+    getParentRoute: () => app, path: "/audit/access-log", staticData: { access: "signed-in", floorplan: "P-01" },
     validateSearch: (s: Record<string, unknown>): { period?: string; view?: "all" } => ({ period: str(s.period), view: s.view === "all" ? "all" : undefined }),
     component: lazyRouteComponent(screen(() => import("../features/access-log/ui/access-log-page")), "AccessLogPage"),
   }),

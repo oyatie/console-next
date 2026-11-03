@@ -10,14 +10,22 @@ type Part = "a" | "b";
 
 // The inventory adds public routes; aliases share their simplest browser URL.
 const inventory = process.env.E2E_MODULES_FILE
-  ? (JSON.parse(readFileSync(process.env.E2E_MODULES_FILE, "utf8")) as { modules: { routes: string[] }[] }).modules.flatMap(module => module.routes)
-  : [];
-const routes = [...new Set([...routeList.map(route => route.path), ...inventory.filter(route => route.startsWith("/")).map(route => route.split("?")[0]!)])];
+  ? JSON.parse(readFileSync(process.env.E2E_MODULES_FILE, "utf8")) as { modules: { routes: string[] }[]; floorplans?: Record<string, string | null> }
+  : { modules: [], floorplans: {} };
+const routes = [...new Set([...routeList.map(route => route.path), ...inventory.modules.flatMap(module => module.routes).filter(route => route.startsWith("/")).map(route => route.split("?")[0]!)])];
 const middle = Math.ceil(routes.length / 2);
 const parts = { a: routes.slice(0, middle), b: routes.slice(middle) };
 const reference = id(99).replaceAll("-", "");
 const raw = "서버 내부 진단 원문";
 const expect = baseExpect.configure({ timeout: 20_000 });
+
+const routeToken = (route: string) => {
+  const pair = token();
+  if (!route.startsWith("/platform")) return pair;
+  const [header, body, signature] = pair.access_token.split(".");
+  const claims = JSON.parse(Buffer.from(body!, "base64url").toString()) as Record<string, unknown>;
+  return { ...pair, access_token: `${header}.${Buffer.from(JSON.stringify({ ...claims, platform: true })).toString("base64url")}.${signature}` };
+};
 
 export const supportReferenceRoutes = (part: Part) => parts[part];
 export const supportReferenceTitle = (route: string, state: State) => `${route}: ${state} support reference @ui-state`;
@@ -34,7 +42,7 @@ export function supportReferenceTest(route: string, state: State) {
       if (request.request().method() === "GET") injected++;
       await request.fulfill({ status: state === "refused" ? 403 : 503, json: body });
     });
-    await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: token() });
+    await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: routeToken(route) });
     await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: user });
     await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
     await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: checklist });
@@ -69,6 +77,7 @@ export function supportReferenceTest(route: string, state: State) {
       if (state === "no-reference") await expect(main.locator("[data-support-reference]")).toHaveCount(0);
     } finally {
       const references = main.locator("[data-support-reference]");
+      const frame = main.locator("[data-floorplan]").first();
       const count = await references.count();
       const observation = {
         route, state, support_ref: body.error.support_ref ?? null,
@@ -77,8 +86,14 @@ export function supportReferenceTest(route: string, state: State) {
         display: count === 1 ? await references.locator("code").textContent({ timeout: 1000 }).catch(() => null) : null,
         copy_count: await references.getByRole("button", { name: "지원 참조 번호 복사", exact: true }).count(),
         raw_server_text: (await main.textContent({ timeout: 1000 }).catch(() => ""))?.includes(raw) ?? false,
-        floorplan: await main.getAttribute("data-floorplan", { timeout: 1000 }).catch(() => null), declared_floorplan: null,
+        floorplan: await frame.count() ? await frame.getAttribute("data-floorplan") : null,
+        declared_floorplan: inventory.floorplans?.[route] ?? null,
       };
+      if (route === "/account") {
+        await expect(main).toHaveAttribute("data-floorplan", "P-05");
+        expect(observation.floorplan).toBeNull();
+      }
+      if (route === "/people") expect(observation.floorplan).toBe("P-01");
       const shown = state === "no-reference" ? count === 0 : count === 1 && observation.rendered_ref === reference
         && observation.display === reference.slice(0, 8) && observation.copy_count === 1;
       await info.attach("support-reference", { contentType: "application/json", body: Buffer.from(JSON.stringify({

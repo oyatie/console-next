@@ -35,7 +35,7 @@ export function People() {
   const { exitStatus } = route.useSearch();
   const { peopleAccess } = route.useRouteContext();
   const navigate = route.useNavigate();
-  return <Page floorplan="list" head={{ title: t("roster.head.title"), titleId: "people-title" }}>
+  return <Page floorplan="P-01" head={{ title: t("roster.head.title"), titleId: "people-title" }}>
     <PageTabs {...tabs} label={t("roster.head.title")} items={PEOPLE_TABS.map(({ id }) => ({ id, label: t(`roster.page.${id}`) }))}>
       {selected => <Suspense fallback={<ReadSkeleton layout="list" />}>
         {selected === "roster" && <AccessGate {...peopleAccess.roster} layout="list"><PeopleDirectory /></AccessGate>}

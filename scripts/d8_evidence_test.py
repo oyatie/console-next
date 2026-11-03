@@ -22,7 +22,7 @@ class SupportEvidenceTest(unittest.TestCase):
         self.time = datetime.now(timezone.utc).isoformat()
         self.row = {"route": "/sample", "state": "failed", "support_ref": "a" * 32, "reference_count": 1,
                     "status": "pass", "injected": 1, "settled": True, "rendered_ref": "a" * 32, "display": "a" * 8, "copy_count": 1,
-                    "raw_server_text": False, "floorplan": None, "declared_floorplan": None}
+                    "raw_server_text": False, "floorplan": "P-01", "declared_floorplan": "P-01"}
         self.report = {"stats": {"startTime": self.time}, "errors": [], "suites": [{"specs": [{
             "file": "states/support-ref-failed-a.spec.ts", "title": "reference", "tests": [{"expectedStatus": "passed",
             "projectName": "", "results": [{"status": "passed", "attachments": []}]}]}]}]}
@@ -65,6 +65,10 @@ class SupportEvidenceTest(unittest.TestCase):
         self.assertEqual(self.rows(row={**self.row, "status": "fail"})[0]["status"], "fail")
         with self.assertRaisesRegex(ValueError, "invalid state observation status"):
             self.rows(row={**self.row, "status": "forged"})
+
+    def test_floorplan_observation_preserves_disagreement_for_the_reader(self):
+        row = self.rows(row={**self.row, "declared_floorplan": "P-02"})[0]
+        self.assertEqual((row["floorplan"], row["declared_floorplan"]), ("P-01", "P-02"))
 
     def test_wrong_file_suffix_and_non_inline_attachments_are_refused(self):
         self.report["suites"][0]["specs"][0]["file"] = "notstates/support-ref-failed-a.spec.ts"

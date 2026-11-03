@@ -17,7 +17,7 @@ export function SettingsHub() {
 }
 
 export function SettingsHubView({ rows }: { rows: readonly SettingsView[] }) {
-  return <Page floorplan="settings" head={{ title: t("shell.link.settings") }}>
+  return <Page floorplan="P-05" head={{ title: t("shell.link.settings") }}>
     <Card title={t("shell.settings.basics")} flush>
       <nav aria-label={t("shell.settings.basics")}>
         <ul className={s.rows}>

@@ -4,11 +4,12 @@ import { QueryState } from "../../lib/react/query-state";
 import { PageReadGate } from "../../reference/authz/ui/access-gate";
 import { PageHead, type PageHeadProps } from "../page-head/page-head";
 import { PageHeadingLevel, PageScope } from "./page-scope";
+import type { Floorplan } from "./floorplan";
 import s from "./page.module.css";
 
 export type PageReadProps<T> = Pick<ComponentProps<typeof QueryState<T>>, "q" | "children" | "empty" | "own" | "back" | "removed" | "layout">;
 type PageProps<T> = {
-  floorplan: "list" | "record" | "form" | "dashboard" | "wizard" | "settings" | "canvas";
+  floorplan: Floorplan;
   head: PageHeadProps;
   /** Query controls stay mounted during reads; the existing refusal boundary removes them. */
   toolbar?: ReactNode;
