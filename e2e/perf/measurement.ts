@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import type { Page, Request } from "@playwright/test";
 import { routeReady } from "../flows";
 import { routeList } from "../helpers/route-list";
-import { budget, readYaml } from "./budget";
+import { budget } from "./budget";
 
-const contract = readYaml(new URL("../../backend/openapi/openapi.yaml", import.meta.url)) as { paths: Record<string, unknown> };
-const templates = Object.keys(contract.paths).sort((a, b) => a.split("{").length - b.split("{").length)
-  .map(path => ({ path, re: new RegExp(`^${path.split(/(\{[^}]+\})/).map(p => p.startsWith("{") ? "[^/]+" : p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("")}$`) }));
 const appPaths = routeList.map(({ path }) => new RegExp(`^${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\$[A-Za-z]+/g, "[^/]+")}$`));
-export const templatePath = (path: string) => templates.find(t => t.re.test(path))?.path ?? path;
-export type Sample = { lcp_ms: number | null; ttfb_ms: number | null; longest_task_ms: number | null; ready_ms: number | null; final_path: string | null; requests: Record<string, number>; errors: string[] };
+export const requestKey = (method: string, url: string, body: string | null) => {
+  const at = new URL(url);
+  return `${method} ${at.pathname}${at.search}${body ? ` body=${JSON.stringify(body)}` : ""}`;
+};
+export type Sample = { lcp_ms: number | null; ttfb_ms: number | null; longest_task_ms: number | null; ready_ms: number | null; final_path: string | null; requests: Record<string, number>; repeated_requests: string[]; errors: string[] };
 export const percentile = (values: number[], p: number) => [...values].sort((a, b) => a - b)[Math.ceil(values.length * p) - 1] ?? null;
 
 /** Installed before navigation; never substitute readiness, FCP or a shell timestamp for LCP. */
@@ -30,13 +30,29 @@ export function observePaint() {
 
 export async function measure(page: Page, url: string): Promise<Sample> {
   const requests: Record<string, number> = {}, errors: string[] = [];
-  const observed = new Set<Request>();
+  const observed = new Map<Request, string>(), active = new Map<Request, string>(), inflight = new Map<string, number>(), repeated = new Set<string>();
   const api = (r: Request) => new URL(r.url()).pathname.startsWith("/api/");
-  const key = (r: Request) => `${r.method()} ${templatePath(new URL(r.url()).pathname)}`;
-  const requested = (r: Request) => { if (api(r)) { observed.add(r); requests[key(r)] = (requests[key(r)] ?? 0) + 1; } };
-  const failed = (r: Request) => { if (observed.has(r)) errors.push(`${key(r)} failed`); };
-  const response = (r: import("@playwright/test").Response) => { if (observed.has(r.request()) && r.status() >= 400) errors.push(`${key(r.request())} ${r.status()}`); };
-  page.on("request", requested).on("requestfailed", failed).on("response", response);
+  const requested = (r: Request) => {
+    if (!api(r)) return;
+    const key = requestKey(r.method(), r.url(), r.postData());
+    observed.set(r, key);
+    requests[key] = (requests[key] ?? 0) + 1;
+    if (r.method() !== "GET" || r.headers()["x-last-interaction"]) return;
+    // shortcut: sequential duplicate reads are intentional refetches, instrument query intent if the lab must distinguish them.
+    if ((inflight.get(key) ?? 0) > 0) repeated.add(key);
+    inflight.set(key, (inflight.get(key) ?? 0) + 1);
+    active.set(r, key);
+  };
+  const finished = (r: Request) => {
+    const key = active.get(r);
+    if (!key) return;
+    const left = (inflight.get(key) ?? 1) - 1;
+    if (left) inflight.set(key, left); else inflight.delete(key);
+    active.delete(r);
+  };
+  const failed = (r: Request) => { const key = observed.get(r); if (key) errors.push(`${key} failed`); finished(r); };
+  const response = (r: import("@playwright/test").Response) => { const key = observed.get(r.request()); if (key && r.status() >= 400) errors.push(`${key} ${r.status()}`); };
+  page.on("request", requested).on("requestfinished", finished).on("requestfailed", failed).on("response", response);
   try {
     await page.goto(url, { waitUntil: "load", timeout: 30_000 });
     await routeReady(page);
@@ -56,18 +72,18 @@ export async function measure(page: Page, url: string): Promise<Sample> {
     if (timing.final_path !== new URL(url, page.url()).pathname && !appPaths.some(path => path.test(timing.final_path))) {
       throw new Error(`unregistered destination ${timing.final_path}`);
     }
-    return { ...timing, requests, errors };
+    return { ...timing, requests, repeated_requests: [...repeated], errors };
   } catch (error) {
-    return { lcp_ms: null, ttfb_ms: null, longest_task_ms: null, ready_ms: null, final_path: null, requests, errors: [...errors, String(error).split("\n")[0]!] };
+    return { lcp_ms: null, ttfb_ms: null, longest_task_ms: null, ready_ms: null, final_path: null, requests, repeated_requests: [...repeated], errors: [...errors, String(error).split("\n")[0]!] };
   } finally {
-    page.off("request", requested).off("requestfailed", failed).off("response", response);
+    page.off("request", requested).off("requestfinished", finished).off("requestfailed", failed).off("response", response);
   }
 }
 
 export function summarize(route: string, cache: "cold" | "warm", samples: Sample[]) {
   const complete = samples.length >= budget.samples && samples.every(s => s.lcp_ms !== null && s.lcp_ms > 0 && s.ttfb_ms !== null && s.ttfb_ms > 0 && !s.errors.length);
   const lcp = samples.flatMap(s => s.lcp_ms === null ? [] : [s.lcp_ms]);
-  const n_plus_one = [...new Set(samples.flatMap(s => Object.entries(s.requests).filter(([key, n]) => key.startsWith("GET ") && n > 1).map(([key]) => key)))];
+  const n_plus_one = [...new Set(samples.flatMap(s => s.repeated_requests))];
   const compliance = samples.length ? lcp.filter(n => n <= budget.ms).length / samples.length : 0;
   return { route, cache, environment: "live", ...budget.shape, status: complete ? "pass" : "unknown",
     lcp_p95_ms: percentile(lcp, 0.95), budget_ms: budget.ms, target: budget.target, compliance,

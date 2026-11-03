@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { describe, expect, test } from "vitest";
-import { budget, readBudget, readYaml } from "./budget";
+import { budget, readBudget, readHarness, readYaml } from "./budget";
 import { registration } from "./fixture";
-import { assertBudget, percentile, summarize, templatePath, type Sample } from "./measurement";
+import { assertBudget, percentile, requestKey, summarize, type Sample } from "./measurement";
 
-const sample: Sample = { lcp_ms: 100, ttfb_ms: 20, longest_task_ms: null, ready_ms: 110, final_path: "/sample", requests: {}, errors: [] };
+const sample: Sample = { lcp_ms: 100, ttfb_ms: 20, longest_task_ms: null, ready_ms: 110, final_path: "/sample", requests: {}, repeated_requests: [], errors: [] };
 const samples = () => Array.from({ length: budget.samples }, () => ({ ...sample }));
 
 test("the checked-in SLO owns the objective, compliance and fixture shape", () => {
@@ -23,10 +23,10 @@ test("p95 uses nearest rank without changing the raw samples", () => {
   expect(values[0]).toBe(20);
 });
 
-test("the configured lab deadline must be bounded and positive", () => {
-  const slo = readYaml(new URL("../../backend/app/slos/page-load.openslo.yaml", import.meta.url)) as { metadata: { labels: Record<string, string> } };
+test("the lab harness settings must be bounded and positive", () => {
+  const lab = readYaml(new URL("./lab.yaml", import.meta.url)) as { samples_per_cache: number; run_timeout_seconds: number };
   for (const value of ["0", "-1", "not-a-duration", "1e30"]) {
-    expect(() => readBudget({ ...slo, metadata: { ...slo.metadata, labels: { ...slo.metadata.labels, "run-timeout-seconds": value } } })).toThrow();
+    expect(() => readHarness({ ...lab, run_timeout_seconds: value })).toThrow();
   }
 });
 
@@ -37,9 +37,11 @@ test("additional corporations keep unique, unallocated registration numbers", ()
   expect(ids.every(id => id.brn.startsWith("000") && id.crn.startsWith("000"))).toBe(true);
 });
 
-test("request paths follow the contract and retain their row kind", () => {
-  expect(templatePath("/api/v1/employees/01900000-0000-7000-8000-000000000001")).toBe("/api/v1/employees/{id}");
-  expect(templatePath("/api/v1/employees/import/unplaced")).toBe("/api/v1/employees/import/unplaced");
+test("request keys retain the concrete URL and body", () => {
+  const first = "https://console.invalid/api/v1/employees/1?view=card";
+  expect(requestKey("GET", first, null)).toBe("GET /api/v1/employees/1?view=card");
+  expect(requestKey("GET", first, "first")).not.toBe(requestKey("GET", first, "second"));
+  expect(requestKey("GET", first, null)).not.toBe(requestKey("GET", first.replace("/1", "/2"), null));
 });
 
 describe("the budget gate cannot read missing or failed measurements as green", () => {
@@ -53,7 +55,7 @@ describe("the budget gate cannot read missing or failed measurements as green", 
     ["missing LCP", { lcp_ms: null }],
     ["held read", { lcp_ms: budget.ms + 500 }],
     ["failed read", { errors: ["GET /api/v1/employees 503"] }],
-    ["N+1 rows", { requests: { "GET /api/v1/employees/{id}": 30 } }],
+    ["repeated GET", { requests: { "GET /api/v1/employees/1": 2 }, repeated_requests: ["GET /api/v1/employees/1"] }],
   ] as [string, Partial<Sample>][]) {
     test(name, () => {
       const row = summarize("/people", "warm", samples().map(s => ({ ...s, ...change })));

@@ -11,8 +11,6 @@ metadata:
     entities: "5"
     workplaces: "40"
     departments: "300"
-    samples-per-cache: "20"
-    run-timeout-seconds: "10800"
 spec:
   description: At least 99.5% of page loads have LCP at or below 2 seconds (owner decision 2026-10-15). Lab runs report cold and warm p95 separately; burst and field proof are separate objectives.
   service: console-web

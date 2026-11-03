@@ -12,11 +12,19 @@ export function readBudget(value: unknown) {
   assert(objective?.op === "lte" && Number.isFinite(objective.value) && objective.value > 0, "invalid LCP objective");
   assert(Number.isFinite(objective.target) && objective.target > 0 && objective.target <= 1, "invalid LCP target");
   const shape = Object.fromEntries(["employees", "entities", "workplaces", "departments"].map(key => [key, Number(labels?.[key])])) as Record<"employees" | "entities" | "workplaces" | "departments", number>;
-  const samples = Number(labels?.["samples-per-cache"]);
-  const run_ms = Number(labels?.["run-timeout-seconds"]) * 1000;
-  assert(Object.values(shape).every(n => Number.isSafeInteger(n) && n > 0) && Number.isSafeInteger(samples) && samples >= 20, "invalid lab fixture or sample count");
-  assert(Number.isSafeInteger(run_ms) && run_ms > 0, "invalid lab deadline");
-  return { ms: objective.value * 1000, target: objective.target, samples, run_ms, shape };
+  assert(Object.values(shape).every(n => Number.isSafeInteger(n) && n > 0), "invalid lab fixture");
+  return { ms: objective.value * 1000, target: objective.target, shape };
 }
 
-export const budget = readBudget(readYaml(new URL("../../backend/app/slos/page-load.openslo.yaml", import.meta.url)));
+export function readHarness(value: unknown) {
+  const run = value as { samples_per_cache?: unknown; run_timeout_seconds?: unknown };
+  const samples = Number(run.samples_per_cache), run_ms = Number(run.run_timeout_seconds) * 1000;
+  assert(Number.isSafeInteger(samples) && samples >= 20, "invalid lab sample count");
+  assert(Number.isSafeInteger(run_ms) && run_ms > 0, "invalid lab deadline");
+  return { samples, run_ms };
+}
+
+export const budget = {
+  ...readBudget(readYaml(new URL("../../backend/app/slos/page-load.openslo.yaml", import.meta.url))),
+  ...readHarness(readYaml(new URL("./lab.yaml", import.meta.url))),
+};

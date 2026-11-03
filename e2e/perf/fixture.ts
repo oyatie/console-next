@@ -61,8 +61,9 @@ export async function buildTenant(browser: Browser) {
     if (await companySelect.count()) await companySelect.selectOption({ label: `주식회사 ${company}` });
     else await admin.getByRole("radiogroup", { name: pickName }).getByText(`주식회사 ${company}`, { exact: true }).click();
     await admin.getByRole("button", { name: "다음: 미리보기" }).click();
+    const applied = admin.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/org-structure/batches");
     await admin.getByRole("button", { name: `${departments.length}건 적용`, exact: true }).click();
-    await expect(admin.getByRole("status").filter({ hasText: "기록됨" })).toContainText(`부서 ${departments.length}개`, { timeout: 300_000 });
+    expect((await applied).status()).toBe(201);
     const rows = many(`000-${i + 1}`, budget.shape.employees / companies.length, units);
     for (let at = 0; at < rows.length; at += 200) {
       if (at === 0) await go(admin, "/people/import");

@@ -65,7 +65,7 @@ export default defineConfig({
   // E2E_XBROWSER=1 is the Firefox leg alone: every spec creates its tenants under fixed identifiers, so two
   // engines cannot share one database. The clock specs and the gallery baselines stay Chromium-only.
   projects: xbrowser
-    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: ordinaryOnly, testIgnore: /visual\.spec\.ts/ }]
+    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: ordinaryOnly, testIgnore: [/visual\.spec\.ts/, /\/perf\/.*\.test\.ts$/] }]
     : [
         { name: "parallel", grepInvert: ordinaryOnly },
         // Date-moving tests (e2e/clock.ts) share the backend's one apply date: alone, one at a time, after the rest.

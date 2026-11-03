@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+samples_per_cache: 20
+run_timeout_seconds: 10800

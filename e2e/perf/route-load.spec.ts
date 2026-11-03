@@ -8,7 +8,7 @@ import { vendorPage } from "../flows";
 import { routeList } from "../helpers/route-list";
 import { budget } from "./budget";
 import { buildTenant } from "./fixture";
-import { assertBudget, measure, observePaint, reportActivity, summarize } from "./measurement";
+import { assertBudget, measure, observePaint, reportActivity, summarize, type Sample } from "./measurement";
 
 test("native collector rejects a held read; unsupported LCP stays unknown", { tag: "@perf" }, async ({ page }) => {
   await page.addInitScript(observePaint);
@@ -31,6 +31,31 @@ test("native collector rejects a held read; unsupported LCP stays unknown", { ta
   if (supported) expect(sample.lcp_ms).toBeGreaterThan(budget.ms);
   else expect(sample.lcp_ms).toBeNull();
   expect(() => assertBudget(summarize("/people", "cold", Array.from({ length: budget.samples }, () => sample)))).toThrow();
+});
+
+test("request collector names only overlapping identical reads", { tag: "@perf" }, async ({ page }) => {
+  await page.addInitScript(observePaint);
+  const origin = "http://requests.invalid";
+  await page.route(`${origin}/measure`, route => route.fulfill({ contentType: "text/html", body: `<!doctype html><main>측정</main>
+    <span hidden data-route-ready="" data-route-key="sample"></span><script>
+      history.replaceState({__TSR_key:'sample'}, '');
+      Promise.all([
+        fetch('/api/v1/employees/1?view=card'), fetch('/api/v1/employees/1?view=card'), fetch('/api/v1/employees/2?view=card'),
+        fetch('/api/v1/users/me'), fetch('/api/v1/users/me', {headers:{'x-last-interaction':'intentional'}})
+      ]).then(() => fetch('/api/v1/employees/1?view=card')).then(() => document.querySelector('[data-route-ready]').dataset.routeReady='/measure');
+    </script>` }));
+  await page.route(`${origin}/api/**`, async route => {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    await route.fulfill({ json: {} });
+  });
+  const sample = await measure(page, `${origin}/measure`);
+  expect(sample.requests).toMatchObject({
+    "GET /api/v1/employees/1?view=card": 3,
+    "GET /api/v1/employees/2?view=card": 1,
+    "GET /api/v1/users/me": 2,
+  });
+  expect((sample as Sample & { repeated_requests?: string[] }).repeated_requests).toEqual(["GET /api/v1/employees/1?view=card"]);
+  expect(summarize("/measure", "warm", [sample]).n_plus_one).toEqual(["GET /api/v1/employees/1?view=card"]);
 });
 
 test("a previous document's event stream is outside the next load", { tag: "@perf" }, async ({ page }) => {
