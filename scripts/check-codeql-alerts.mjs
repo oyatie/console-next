@@ -7,6 +7,14 @@ import { pathToFileURL } from "node:url";
 const PAGE_SIZE = 100;
 const MAX_EXCEPTION_DAYS = 30;
 const SECURITY_SEVERITIES = ["high", "critical"];
+const RULE_LANGUAGES = new Map([
+  ["js/", "JavaScript"],
+  ["rust/", "Rust"],
+]);
+
+function ruleLanguage(rule) {
+  for (const [prefix, language] of RULE_LANGUAGES) if (rule.startsWith(prefix)) return language;
+}
 
 function validDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? "")) return false;
@@ -14,10 +22,10 @@ function validDate(value) {
   return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-export function rustAlertFailures(alerts, registry, today = new Date().toISOString().slice(0, 10)) {
+export function codeqlAlertFailures(alerts, registry, today = new Date().toISOString().slice(0, 10)) {
   const failures = [];
   const entries = Array.isArray(registry?.entries) ? registry.entries : [];
-  if (registry?.schema !== "codeql-rust-alert-exceptions-v1" || !Array.isArray(registry?.entries)) {
+  if (registry?.schema !== "codeql-alert-exceptions-v1" || !Array.isArray(registry?.entries)) {
     failures.push("exception registry has an invalid schema or entries list");
   }
   if (!validDate(today)) failures.push(`invalid gate date ${today}`);
@@ -29,11 +37,12 @@ export function rustAlertFailures(alerts, registry, today = new Date().toISOStri
       failures.push(`${label} must be an object`);
       continue;
     }
-    if (!Number.isInteger(entry.number) || entry.number <= 0) failures.push(`${label} has an invalid alert number`);
+    const validNumber = Number.isInteger(entry.number) && entry.number > 0;
+    if (!validNumber) failures.push(`${label} has an invalid alert number`);
     for (const field of ["rule", "path", "owner", "reason", "expires_on"]) {
       if (typeof entry[field] !== "string" || !entry[field].trim()) failures.push(`${label} missing ${field}`);
     }
-    if (typeof entry.rule === "string" && !entry.rule.startsWith("rust/")) failures.push(`${label} is not a Rust rule`);
+    if (typeof entry.rule === "string" && entry.rule && !ruleLanguage(entry.rule)) failures.push(`${label} has an unsupported CodeQL rule`);
     if (typeof entry.path === "string" && (entry.path.startsWith("/") || entry.path.split("/").includes(".."))) {
       failures.push(`${label} path must be repository-relative`);
     }
@@ -43,11 +52,12 @@ export function rustAlertFailures(alerts, registry, today = new Date().toISOStri
       if (expiry <= todayTime) failures.push(`${label} expired on ${entry.expires_on}`);
       if (expiry - todayTime > MAX_EXCEPTION_DAYS * 864e5) failures.push(`${label} exceeds ${MAX_EXCEPTION_DAYS}-day TTL`);
     }
-    if (byNumber.has(entry.number)) failures.push(`duplicate alert #${entry.number}`);
-    else byNumber.set(entry.number, entry);
+    if (validNumber && byNumber.has(entry.number)) failures.push(`duplicate alert #${entry.number}`);
+    else if (validNumber) byNumber.set(entry.number, entry);
   }
 
   if (!Array.isArray(alerts)) return [...failures, "code-scanning response is not an array"];
+  const matchedExceptions = new Set();
   for (const [index, alert] of alerts.entries()) {
     const number = alert?.number;
     const rule = alert?.rule?.id;
@@ -59,15 +69,20 @@ export function rustAlertFailures(alerts, registry, today = new Date().toISOStri
       failures.push(`malformed code-scanning alert at index ${index}`);
       continue;
     }
-    if (tool !== "CodeQL" || !rule.startsWith("rust/")) continue;
+    const language = ruleLanguage(rule);
+    if (tool !== "CodeQL" || !language) continue;
     if (!SECURITY_SEVERITIES.includes(severity)) {
-      failures.push(`unexpected Rust alert severity for #${number}: ${severity}`);
+      failures.push(`unexpected CodeQL alert severity for #${number}: ${severity}`);
       continue;
     }
     const allowed = byNumber.get(number);
-    if (!allowed) failures.push(`untriaged ${severity} Rust alert #${number}: ${rule} at ${path}`);
-    else if (allowed.rule !== rule || allowed.path !== path) failures.push(`exception #${number} no longer matches ${rule} at ${path}`);
+    if (!allowed) failures.push(`untriaged ${severity} ${language} alert #${number}: ${rule} at ${path}`);
+    else {
+      matchedExceptions.add(number);
+      if (allowed.rule !== rule || allowed.path !== path) failures.push(`exception #${number} no longer matches ${rule} at ${path}`);
+    }
   }
+  for (const number of byNumber.keys()) if (!matchedExceptions.has(number)) failures.push(`stale exception #${number}`);
   return failures;
 }
 
@@ -109,10 +124,10 @@ async function main() {
     process.env.GITHUB_REF,
     process.env.GH_TOKEN,
   );
-  const failures = rustAlertFailures(alerts, registry);
-  if (failures.length) throw new Error(`CodeQL Rust alert gate failed:\n- ${failures.join("\n- ")}`);
-  const count = alerts.filter((alert) => alert?.tool?.name === "CodeQL" && alert?.rule?.id?.startsWith("rust/")).length;
-  console.log(`CodeQL: ${count} open high/critical Rust alert(s), all triaged`);
+  const failures = codeqlAlertFailures(alerts, registry);
+  if (failures.length) throw new Error(`CodeQL alert gate failed:\n- ${failures.join("\n- ")}`);
+  const count = alerts.filter((alert) => alert?.tool?.name === "CodeQL" && ruleLanguage(alert?.rule?.id ?? "")).length;
+  console.log(`CodeQL: ${count} open high/critical JavaScript/Rust alert(s), all triaged`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
