@@ -17,7 +17,7 @@ use crate::util::parse_roles;
 use axum::Json;
 use axum::extract::State;
 use axum::http::HeaderMap;
-use console_kernel_core::BranchId;
+use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_authz::Action;
 use console_platform_authz::Feature;
 use console_platform_authz::Role;
@@ -27,7 +27,56 @@ use console_platform_authz::access::{
 use console_platform_authz::authorize;
 use console_platform_authz::authorize_capability;
 use console_platform_authz::resolve_branch_scope_in_org;
+use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
+use uuid::Uuid;
+
+async fn require_credential_authority_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: UserId,
+    target: Uuid,
+) -> Result<OffsetDateTime, RestError> {
+    let actor_id = *actor.as_uuid();
+    let mut accounts = [actor_id, target];
+    accounts.sort_unstable();
+    for account in accounts {
+        let active = console_platform_auth::lock_account_tx(tx, org, account)
+            .await
+            .map_err(console_platform_db::DbError::Sqlx)?;
+        if active != Some(true) {
+            return Err(RestError::credential_reset_authority_required());
+        }
+    }
+    for account in accounts {
+        if !lock_access_subject(tx, org, account)
+            .await
+            .map_err(RestError::from_kernel)?
+        {
+            return Err(RestError::credential_reset_authority_required());
+        }
+    }
+    let now = console_platform_auth::authentication_time_tx(tx, OffsetDateTime::now_utc())
+        .await
+        .map_err(console_platform_db::DbError::Sqlx)?;
+    let actor_access = load_access_subject(tx, org, actor_id, now)
+        .await
+        .map_err(RestError::from_kernel)?;
+    let target_access = load_access_ceiling_subject(tx, org, target, now)
+        .await
+        .map_err(RestError::from_kernel)?;
+    let authorized = AccessSlice::compile(&actor_access)
+        .and_then(|slice| slice.can_grant_subject(&target_access))
+        .map_err(|error| {
+            tracing::warn!(%error, "credential authority Cedar decision refused");
+            error
+        })
+        .unwrap_or(false);
+    if !authorized {
+        return Err(RestError::credential_reset_authority_required());
+    }
+    Ok(now)
+}
 
 /// IDOR hardening: authorization is bound to the TARGET user's real branch/role
 /// resolved from the database, NOT to the client-supplied `body.branch_id`. The
@@ -143,19 +192,20 @@ pub(crate) async fn issue_admin_otp(
         )
         .await
         .map_err(|err| passkey_error(err, "passkey step-up failed"))?;
-    let now = OffsetDateTime::now_utc();
-    let issue = services
-        .bootstrap_credentials
-        .issue_for_zero_credential_user(
-            &state.pool,
-            Some(principal.user_id),
-            body.user_id,
-            principal.org_id,
-            now,
-            ttl,
-        )
-        .await
-        .map_err(RestError::from_provisioning)?;
+    let org = principal.org_id;
+    let actor = principal.user_id;
+    let target = body.user_id;
+    let bootstrap_credentials = services.bootstrap_credentials;
+    let issue = console_platform_db::with_audits::<_, _, RestError>(&state.pool, org, move |tx| {
+        Box::pin(async move {
+            let now = require_credential_authority_tx(tx, org, actor, target).await?;
+            bootstrap_credentials
+                .issue_for_zero_credential_user_tx(tx, Some(actor), target, org, now, ttl)
+                .await
+                .map_err(RestError::from_provisioning)
+        })
+    })
+    .await?;
 
     Ok(Json(AdminIssueOtpResponse {
         user_id: issue.user_id,
@@ -291,41 +341,7 @@ pub(crate) async fn admin_credential_reset(
     let bootstrap_credentials = services.bootstrap_credentials;
     let issue = console_platform_db::with_audits::<_, _, RestError>(&state.pool, org, move |tx| {
         Box::pin(async move {
-            let actor_id = *actor.as_uuid();
-            let mut accounts = [actor_id, target];
-            accounts.sort_unstable();
-            for account in accounts {
-                let active = console_platform_auth::lock_account_tx(tx, org, account)
-                    .await
-                    .map_err(console_platform_db::DbError::Sqlx)?;
-                if active != Some(true) {
-                    return Err(RestError::credential_reset_authority_required());
-                }
-            }
-            for account in accounts {
-                lock_access_subject(tx, org, account)
-                    .await
-                    .map_err(RestError::from_kernel)?;
-            }
-            let now = console_platform_auth::authentication_time_tx(tx, OffsetDateTime::now_utc())
-                .await
-                .map_err(console_platform_db::DbError::Sqlx)?;
-            let actor_access = load_access_subject(tx, org, actor_id, now)
-                .await
-                .map_err(RestError::from_kernel)?;
-            let target_access = load_access_ceiling_subject(tx, org, target, now)
-                .await
-                .map_err(RestError::from_kernel)?;
-            let authorized = AccessSlice::compile(&actor_access)
-                .and_then(|slice| slice.can_grant_subject(&target_access))
-                .map_err(|error| {
-                    tracing::warn!(%error, "credential reset Cedar decision refused");
-                    error
-                })
-                .unwrap_or(false);
-            if !authorized {
-                return Err(RestError::credential_reset_authority_required());
-            }
+            let now = require_credential_authority_tx(tx, org, actor, target).await?;
             bootstrap_credentials
                 .reset_credentials_for_user_tx(tx, actor, target, org, now, DEFAULT_OTP_TTL)
                 .await

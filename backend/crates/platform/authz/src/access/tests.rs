@@ -238,6 +238,28 @@ fn grant_ceiling_requires_access_edit_and_every_target_line_at_each_scope() {
     .expect("compiles");
     assert!(!missing_access.can_grant_subject(&target).expect("decides"));
 
+    let access_only = AccessSlice::compile(&subject(
+        &t,
+        false,
+        vec![all_grant(
+            t.le(t.le_a),
+            vec![line(Domain::Access, &[Level::Edit])],
+        )],
+    ))
+    .expect("compiles");
+    assert!(!access_only.can_grant_subject(&target).expect("decides"));
+
+    let narrower = AccessSlice::compile(&subject(
+        &t,
+        false,
+        vec![
+            all_grant(t.le(t.le_a), vec![line(Domain::Access, &[Level::Edit])]),
+            all_grant(t.wp_a1(), vec![line(Domain::Pay, &[Level::View])]),
+        ],
+    ))
+    .expect("compiles");
+    assert!(!narrower.can_grant_subject(&target).expect("decides"));
+
     let matching = AccessSlice::compile(&subject(
         &t,
         false,

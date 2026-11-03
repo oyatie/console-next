@@ -41,15 +41,7 @@ async fn credential_reset_requires_authority_over_the_targets_access_grants(pool
     console_platform_test_support::seed_passkey(&pool, OrgId::one(), scheduled_target_id).await;
     console_platform_test_support::seed_passkey(&pool, OrgId::one(), pending_target_id).await;
 
-    let role_id: Uuid = sqlx::query_scalar(
-        "INSERT INTO access_roles (org_id,name_ko,status,version,created_by) \
-         VALUES ($1,'계정 복구 검증','ACTIVE',1,$2) RETURNING id",
-    )
-    .bind(OrgId::one().as_uuid())
-    .bind(admin_id.as_uuid())
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let role_id = seed_credential_role(&pool, admin_id, true).await;
     let pending_grant = Uuid::new_v4();
     sqlx::query(
         "INSERT INTO access_grants
@@ -72,26 +64,6 @@ async fn credential_reset_requires_authority_over_the_targets_access_grants(pool
     )
     .bind(OrgId::one().as_uuid())
     .bind(pending_grant)
-    .execute(&pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        "INSERT INTO access_role_versions \
-         (org_id,role_id,version,name_ko,status,change_mode,created_by) \
-         VALUES ($1,$2,1,'계정 복구 검증','ACTIVE','SETUP',$3)",
-    )
-    .bind(OrgId::one().as_uuid())
-    .bind(role_id)
-    .bind(admin_id.as_uuid())
-    .execute(&pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        "INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) \
-         VALUES ($1,$2,1,'access',ARRAY['edit']),($1,$2,1,'pay',ARRAY['view'])",
-    )
-    .bind(OrgId::one().as_uuid())
-    .bind(role_id)
     .execute(&pool)
     .await
     .unwrap();
@@ -142,6 +114,32 @@ async fn credential_reset_requires_authority_over_the_targets_access_grants(pool
             .unwrap();
     assert_eq!(codes, 0, "a refused reset mints no recovery code");
 
+    let access_only_role = seed_credential_role(&pool, admin_id, false).await;
+    sqlx::query(
+        "INSERT INTO access_grants \
+         (org_id,account_id,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by) \
+         VALUES ($1,$2,$3,'TENANT',now()-interval '1 day',true,'SETUP','TEST',$4)",
+    )
+    .bind(OrgId::one().as_uuid())
+    .bind(admin_id.as_uuid())
+    .bind(access_only_role)
+    .bind(target_id.as_uuid())
+    .execute(&pool)
+    .await
+    .unwrap();
+    let step_up = start_step_up_assertion(&service, &mut admin_key, &admin_credential).await;
+    let refused = post_raw(
+        service.clone(),
+        "/api/v1/auth/admin/credential-reset",
+        Some(&admin_access),
+        json!({ "user_id": target_id.as_uuid(), "step_up": step_up }),
+    )
+    .await;
+    assert_eq!(refused.status(), StatusCode::FORBIDDEN);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(refused.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert_eq!(body["error"]["code"], "credential_reset_authority_required");
+
     for planned_target in [scheduled_target_id, pending_target_id] {
         let step_up = start_step_up_assertion(&service, &mut admin_key, &admin_credential).await;
         let refused = post_raw(
@@ -157,6 +155,16 @@ async fn credential_reset_requires_authority_over_the_targets_access_grants(pool
                 .unwrap();
         assert_eq!(body["error"]["code"], "credential_reset_authority_required");
     }
+
+    let preserved: (i64, i64) = sqlx::query_as(
+        "SELECT (SELECT count(*) FROM auth_webauthn_credentials WHERE user_id=$1), \
+                (SELECT count(*) FROM auth_bootstrap_credentials WHERE user_id=$1)",
+    )
+    .bind(target_id.as_uuid())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(preserved, (1, 0));
 
     sqlx::query(
         "INSERT INTO access_grants \
@@ -181,17 +189,53 @@ async fn credential_reset_requires_authority_over_the_targets_access_grants(pool
     .await;
     assert_eq!(reset.user_id, *target_id.as_uuid());
 
-    let step_up = start_step_up_assertion(&service, &mut admin_key, &admin_credential).await;
-    let authority_deadline: OffsetDateTime = sqlx::query_scalar(
-        "UPDATE access_grants SET valid_to=clock_timestamp()+interval '3 seconds'
-          WHERE org_id=$1 AND account_id=$2 AND role_id=$3 RETURNING valid_to",
+    let dissolved = Uuid::new_v4();
+    sqlx::query("INSERT INTO org_units (org_id,id) VALUES ($1,$2)")
+        .bind(OrgId::one().as_uuid())
+        .bind(dissolved)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO org_unit_revisions \
+         (org_id,org_unit_id,version,command_id,actor_id,payload_digest,attributes,receipt) \
+         VALUES ($1,$2,1,$3,$4,$5,'{\"status\":\"dissolved\"}','{}')",
     )
     .bind(OrgId::one().as_uuid())
+    .bind(dissolved)
+    .bind(Uuid::new_v4())
     .bind(admin_id.as_uuid())
-    .bind(role_id)
-    .fetch_one(&pool)
+    .bind(vec![0u8; 32])
+    .execute(&pool)
     .await
     .unwrap();
+    sqlx::query(
+        "INSERT INTO access_grants \
+         (org_id,account_id,role_id,scope_kind,org_unit_id,valid_from,effective_in_setup,change_mode,reason_code,granted_by) \
+         VALUES ($1,$2,$3,'DEPARTMENT',$4,now()-interval '1 day',true,'SETUP','TEST',$5)",
+    )
+    .bind(OrgId::one().as_uuid())
+    .bind(scheduled_target_id.as_uuid())
+    .bind(role_id)
+    .bind(dissolved)
+    .bind(admin_id.as_uuid())
+    .execute(&pool)
+    .await
+    .unwrap();
+    let step_up = start_step_up_assertion(&service, &mut admin_key, &admin_credential).await;
+    let refused = post_raw(
+        service.clone(),
+        "/api/v1/auth/admin/credential-reset",
+        Some(&admin_access),
+        json!({ "user_id": scheduled_target_id.as_uuid(), "step_up": step_up }),
+    )
+    .await;
+    assert_eq!(refused.status(), StatusCode::FORBIDDEN);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(refused.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert_eq!(body["error"]["code"], "credential_reset_authority_required");
+
+    let step_up = start_step_up_assertion(&service, &mut admin_key, &admin_credential).await;
     let mut held = pool.begin().await.unwrap();
     sqlx::query("SELECT id FROM access_roles WHERE org_id=$1 AND id=$2 FOR UPDATE")
         .bind(OrgId::one().as_uuid())
@@ -199,51 +243,37 @@ async fn credential_reset_requires_authority_over_the_targets_access_grants(pool
         .fetch_one(held.as_mut())
         .await
         .unwrap();
-    let blocker: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
-        .fetch_one(held.as_mut())
+    sqlx::query("UPDATE access_roles SET status='RETIRED' WHERE org_id=$1 AND id=$2")
+        .bind(OrgId::one().as_uuid())
+        .bind(role_id)
+        .execute(held.as_mut())
         .await
         .unwrap();
-    let route = service.clone();
-    let access = admin_access.clone();
-    let target = *target_id.as_uuid();
-    let request = tokio::spawn(async move {
+    let refused = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
         post_raw(
-            route,
+            service.clone(),
             "/api/v1/auth/admin/credential-reset",
-            Some(&access),
-            json!({ "user_id": target, "step_up": step_up }),
-        )
-        .await
-    });
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        loop {
-            let waiting: bool = sqlx::query_scalar(
-                "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname=current_database()
-                 AND wait_event_type='Lock' AND $1=ANY(pg_blocking_pids(pid)))",
-            )
-            .bind(blocker)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-            if waiting {
-                break;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-        }
-    })
+            Some(&admin_access),
+            json!({ "user_id": target_id.as_uuid(), "step_up": step_up }),
+        ),
+    )
     .await
-    .expect("credential reset must reach the locked authority facts");
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        while OffsetDateTime::now_utc() < authority_deadline {
-            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .expect("the actor grant must expire while the authority facts remain locked");
+    .expect("recovery must refuse contested role facts without waiting");
     held.rollback().await.unwrap();
-    let refused = request.await.unwrap();
     assert_eq!(refused.status(), StatusCode::FORBIDDEN);
     let body: Value =
         serde_json::from_slice(&to_bytes(refused.into_body(), usize::MAX).await.unwrap()).unwrap();
     assert_eq!(body["error"]["code"], "credential_reset_authority_required");
+    for (account, expected) in [(target_id, (0, 1)), (scheduled_target_id, (1, 0))] {
+        let preserved: (i64, i64) = sqlx::query_as(
+            "SELECT (SELECT count(*) FROM auth_webauthn_credentials WHERE user_id=$1), \
+                    (SELECT count(*) FROM auth_bootstrap_credentials WHERE user_id=$1)",
+        )
+        .bind(account.as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(preserved, expected);
+    }
 }

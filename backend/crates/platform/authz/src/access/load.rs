@@ -23,8 +23,8 @@ pub(super) fn db(err: sqlx::Error) -> KernelError {
 }
 
 /// Keep a security-sensitive account decision stable against grant and role
-/// changes. Grant and role rows are locked before the trigger's advisory lock,
-/// matching grant-update order and covering inserts that race the row scan.
+/// changes. Row locks precede the trigger's advisory lock; contention or a grant
+/// committed during that wait refuses recovery instead of using unlocked facts.
 ///
 /// # Errors
 /// Returns an internal kernel error when the lock cannot be acquired.
@@ -32,25 +32,42 @@ pub async fn lock_access_subject(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     account: Uuid,
-) -> Result<(), KernelError> {
-    sqlx::query_scalar::<_, Uuid>(
+) -> Result<bool, KernelError> {
+    let locked = sqlx::query_scalar::<_, Uuid>(
         "SELECT g.id FROM access_grants g
            JOIN access_roles r ON r.org_id=g.org_id AND r.id=g.role_id
           WHERE g.org_id=$1 AND g.account_id=$2 AND g.status IN ('ACTIVE','PENDING')
             AND (g.valid_to IS NULL OR clock_timestamp() < g.valid_to)
-          ORDER BY g.id FOR SHARE OF g, r",
+          ORDER BY g.id FOR SHARE OF g, r NOWAIT",
     )
     .bind(org.as_uuid())
     .bind(account)
     .fetch_all(tx.as_mut())
-    .await
-    .map_err(db)?;
+    .await;
+    let locked = match locked {
+        Ok(locked) => locked,
+        // Never wait on a role owner whose step-up may need our Account lock.
+        Err(sqlx::Error::Database(error)) if error.code().as_deref() == Some("55P03") => {
+            return Ok(false);
+        }
+        Err(error) => return Err(db(error)),
+    };
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('access_grants:' || $1::text, 0))")
         .bind(account)
         .execute(tx.as_mut())
         .await
         .map_err(db)?;
-    Ok(())
+    sqlx::query_scalar(
+        "SELECT NOT EXISTS (SELECT 1 FROM access_grants
+          WHERE org_id=$1 AND account_id=$2 AND status IN ('ACTIVE','PENDING')
+            AND (valid_to IS NULL OR clock_timestamp() < valid_to) AND id <> ALL($3))",
+    )
+    .bind(org.as_uuid())
+    .bind(account)
+    .bind(&locked)
+    .fetch_one(tx.as_mut())
+    .await
+    .map_err(db)
 }
 
 /// The tenant's phase (a missing row reads as OPERATING, kernel rule).
