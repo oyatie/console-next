@@ -98,6 +98,7 @@ jobs:
           path: |-
             ~/.cargo/registry
             backend/target/*/.fingerprint
+            backend/target/*/build
             backend/target/*/deps
           key: db-tests-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
           restore-keys: db-tests-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-
@@ -119,13 +120,13 @@ jobs:
         run: node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
       - name: Check Rust cache budget
         id: cache-budget
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true'
+        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' }}
         env:
           RUST_CACHE_MAX_BYTES: '3221225472'
         run: |
           cache_archive="${RUNNER_TEMP}/db-tests-rust-cache.tar.zst"
           find "$HOME/.cargo/registry" -type f -print0 > "${RUNNER_TEMP}/db-tests-rust-cache-files"
-          find backend/target -type f \( -path 'backend/target/*/.fingerprint/*' -o -path 'backend/target/*/deps/*' \) -print0 >> "${RUNNER_TEMP}/db-tests-rust-cache-files"
+          find backend/target -type f \( -path 'backend/target/*/.fingerprint/*' -o -path 'backend/target/*/build/*' -o -path 'backend/target/*/deps/*' \) -print0 >> "${RUNNER_TEMP}/db-tests-rust-cache-files"
           tar --null -T "${RUNNER_TEMP}/db-tests-rust-cache-files" -cf - | zstd -q -T0 -3 -o "$cache_archive"
           cache_bytes="$(stat -c %s "$cache_archive")"
           echo "Rust cache candidate: ${cache_bytes} bytes / ${RUST_CACHE_MAX_BYTES} bytes." >> "$GITHUB_STEP_SUMMARY"
@@ -136,11 +137,12 @@ jobs:
             echo 'save=true' >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' && steps.cache-budget.outputs.save == 'true'
+        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' && steps.cache-budget.outputs.save == 'true' }}
         with:
           path: |-
             ~/.cargo/registry
             backend/target/*/.fingerprint
+            backend/target/*/build
             backend/target/*/deps
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0

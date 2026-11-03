@@ -36,7 +36,7 @@ published beside JUnit in the `backend-test-results-<shard>` artifacts. No basel
 
 Nextest shards run alongside clippy, gates and the release build, restoring the same trusted cache.
 The Rust cache covers both builds, keyed by runner OS/architecture, toolchain, manifests, lockfile and
-commit. Only successful pushes to dev save it; pull requests only restore it.
+commit. Only successful pushes to dev save it; pull requests and merge groups only restore it.
 Incremental compilation is disabled to limit cache size. A warm hosted run targets ten minutes including
 restore and upload; the first run or a changed dependency key builds cold and can exceed that target.
 Hosted summaries must establish the actual timing; the local cold proof took about seventeen minutes.

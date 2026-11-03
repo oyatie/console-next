@@ -265,16 +265,35 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   assert.deepEqual(restore.with.path.split("\n"), [
     "~/.cargo/registry",
     "backend/target/*/.fingerprint",
+    "backend/target/*/build",
     "backend/target/*/deps",
   ]);
   assert.match(restore.with.key, /hashFiles\('backend\/rust-toolchain\.toml', 'backend\/Cargo\.lock', 'backend\/\*\*\/Cargo\.toml'\)/);
   assert.equal(save.with.path, restore.with.path);
+  assert.match(save.if, /!cancelled\(\)/);
   assert.match(save.if, /github\.event_name == 'push'.*github\.ref == 'refs\/heads\/dev'.*matrix\.shard == 1/);
   const budget = job.steps.find((step) => step.name === "Check Rust cache budget");
   assert.equal(budget.env.RUST_CACHE_MAX_BYTES, "3221225472");
-  assert.match(budget.run, /find.*\.cargo\/registry.*find backend\/target.*\.fingerprint.*deps/s);
+  assert.match(budget.if, /!cancelled\(\)/);
+  assert.match(budget.run, /find.*\.cargo\/registry.*find backend\/target.*\.fingerprint.*build.*deps/s);
   assert.match(budget.run, /tar.*zstd.*stat -c %s/s);
-  assert.match(budget.run, /::warning::/);
+  const overBudget = budget.run.match(/if \(\( cache_bytes > RUST_CACHE_MAX_BYTES \)\); then(?<body>[\s\S]*?)\n\s*else/)?.groups?.body;
+  assert.ok(overBudget);
+  assert.match(overBudget, /::warning::/);
+  assert.match(overBudget, /save=false/);
+  assert.doesNotMatch(overBudget, /(?:^|\n)\s*(?:exit(?:\s|$)|false\s*$)/m);
+  const budgetRoot = mkdtempSync(path.join(tmpdir(), "rust-cache-budget-"));
+  try {
+    for (const cacheBytes of [99, 100, 101]) {
+      const output = path.join(budgetRoot, String(cacheBytes));
+      const decision = spawnSync("bash", ["-e", "-c", budget.run.slice(budget.run.indexOf("if (("))], { encoding: "utf8", env: {
+        ...process.env, cache_bytes: String(cacheBytes), RUST_CACHE_MAX_BYTES: "100", GITHUB_OUTPUT: output,
+      } });
+      assert.equal(decision.status, 0, decision.stdout + decision.stderr);
+      assert.equal(readFileSync(output, "utf8"), `save=${cacheBytes <= 100}\n`);
+      if (cacheBytes > 100) assert.match(decision.stdout, /::warning::/);
+    }
+  } finally { rmSync(budgetRoot, { recursive: true, force: true }); }
   assert.doesNotMatch(budget.run, /\btest\b.*RUST_CACHE_MAX_BYTES/);
   assert.match(save.if, /steps\.cache-budget\.outputs\.save == 'true'/);
   assert.equal(dbWorkflow.jobs["db-test-timings"].needs, "db-tests");
