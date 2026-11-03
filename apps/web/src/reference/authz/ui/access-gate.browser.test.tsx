@@ -10,6 +10,7 @@ const [fixture] = Object.values(import.meta.glob<string>("../../../lib/react/acc
 let server: ViteDevServer;
 let browser: Browser;
 const pages = new Map<string, Page>();
+const floorplans = { "/guarded": "P-01", "/tenant": "P-02", "/signed-in": "P-03" } as const;
 beforeAll(async () => {
   server = await createServer({
     configFile: false, cacheDir: ".cache/vite-access-gate-test",
@@ -43,6 +44,7 @@ test.each(["/guarded", "/signed-in", "/tenant"])("%s: delayed access and page co
   try {
     await page.goto(`${server.resolvedUrls!.local[0]}guard-test?route=${path}`);
     const shell = page.getByRole("navigation", { name: "본문" });
+    await browserExpect(page.getByRole("main")).toHaveAttribute("data-floorplan", floorplans[path as keyof typeof floorplans]);
     const loading = page.locator('[data-read-layout="list"]:visible');
     await browserExpect(shell).toBeVisible();
     const mounted = await shell.elementHandle();

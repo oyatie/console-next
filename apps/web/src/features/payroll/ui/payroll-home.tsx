@@ -22,7 +22,7 @@ export function PayrollHome() {
   const need = useRouter().routesByPath["/payroll/setup"].options.staticData?.access;
   const add = access.data && need && (need === "signed-in" || accessRefusal(access.data, need) === null)
     ? <Link to="/payroll/setup">{t("payroll.setup.add")}</Link> : undefined;
-  return <Page floorplan="list" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), primary: add, tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
+  return <Page floorplan="P-01" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), primary: add, tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
     <QueryState q={groups} layout="list">{data => data.items.length ? <div className="form">
       {data.items.map(group => <Card key={group.id} title={group.name} meta={data.legal_entities.find(entity => entity.id === group.legal_entity_id)?.name}>
         <div className="form"><KeyValue readOnly items={[

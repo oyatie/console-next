@@ -8,7 +8,7 @@ import { meQuery } from "./api";
 
 export function Home(props: Pick<NonNullable<ComponentProps<typeof InboxQueue>>, "setup" | "setupPending" | "action"> = {}) {
   const me = useQuery(meQuery);
-  return <Page floorplan="dashboard" head={{ title: me.data ? t("home.greeting", { name: me.data.display_name }) : t("home.title"), titleId: "home-title" }}>
+  return <Page floorplan="P-03" head={{ title: me.data ? t("home.greeting", { name: me.data.display_name }) : t("home.title"), titleId: "home-title" }}>
     <InboxQueue {...props} preview />
   </Page>;
 }

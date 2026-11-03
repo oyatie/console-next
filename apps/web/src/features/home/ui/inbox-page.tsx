@@ -16,7 +16,7 @@ export function InboxPage({ action }: { action?: RowAction }) {
   const filter = inboxFilter(tab.selected);
   const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter }), refetchOnMount: "always" });
   useLiveHold(!me.isPending && !!inbox.data?.pages.some(page => page.items.length > 0), true);
-  return <Page floorplan="list" head={{ title: t("home.inbox.title"), titleId: "inbox-title" }} q={me}>
+  return <Page floorplan="P-03" head={{ title: t("home.inbox.title"), titleId: "inbox-title" }} q={me}>
     {user => <InboxQueue filter={filter} action={action} setupPhase={user.tenant?.phase === "SETUP"} />}
   </Page>;
 }

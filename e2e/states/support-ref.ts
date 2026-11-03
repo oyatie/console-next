@@ -77,6 +77,7 @@ export function supportReferenceTest(route: string, state: State) {
       if (state === "no-reference") await expect(main.locator("[data-support-reference]")).toHaveCount(0);
     } finally {
       const references = main.locator("[data-support-reference]");
+      const frame = main.locator("[data-floorplan]").first();
       const count = await references.count();
       const observation = {
         route, state, support_ref: body.error.support_ref ?? null,
@@ -85,7 +86,7 @@ export function supportReferenceTest(route: string, state: State) {
         display: count === 1 ? await references.locator("code").textContent({ timeout: 1000 }).catch(() => null) : null,
         copy_count: await references.getByRole("button", { name: "지원 참조 번호 복사", exact: true }).count(),
         raw_server_text: (await main.textContent({ timeout: 1000 }).catch(() => ""))?.includes(raw) ?? false,
-        floorplan: await main.getAttribute("data-floorplan", { timeout: 1000 }).catch(() => null),
+        floorplan: await frame.count() ? await frame.getAttribute("data-floorplan") : null,
         declared_floorplan: inventory.floorplans?.[route] ?? null,
       };
       const shown = state === "no-reference" ? count === 0 : count === 1 && observation.rendered_ref === reference

@@ -12,7 +12,7 @@ export function ListPage<T>({ head, filters, toolbar, sheet, children, ...read }
   toolbar?: ReactNode;
   sheet?: ReactNode;
 }) {
-  return <Page floorplan="list" head={head} {...read} toolbar={shown(filters) || shown(toolbar) ? <div className={s.content}>
+  return <Page floorplan="P-01" head={head} {...read} toolbar={shown(filters) || shown(toolbar) ? <div className={s.content}>
     {shown(filters) && <div className={s.tools} data-list-region="filters">{filters}</div>}
     {shown(toolbar) && <div className={s.tools} data-list-region="toolbar">{toolbar}</div>}
   </div> : undefined} sheet={sheet}>

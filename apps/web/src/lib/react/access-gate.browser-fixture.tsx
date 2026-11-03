@@ -19,11 +19,11 @@ const Page = lazy(async () => {
 const root = createRootRoute({ component: () => <Suspense fallback={<p>{t("common.loading")}</p>}><Outlet /></Suspense> });
 const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, component: () => <>
   <nav aria-label={t("shell.main")}>{t("shell.main")}</nav>
-  <main><RouteGuard><Outlet /></RouteGuard></main>
+  <main id="main"><RouteGuard><Outlet /></RouteGuard></main>
 </> });
-const guarded = createRoute({ getParentRoute: () => app, path: "/guarded", staticData: { access: { domain: "org", level: "view" } }, component: Page });
-const tenant = createRoute({ getParentRoute: () => app, path: "/tenant", staticData: { access: { domain: "org", level: "view", tenant: true } }, component: Page });
-const signedIn = createRoute({ getParentRoute: () => app, path: "/signed-in", staticData: { access: "signed-in" }, component: Page });
+const guarded = createRoute({ getParentRoute: () => app, path: "/guarded", staticData: { access: { domain: "org", level: "view" }, floorplan: "P-01" }, component: Page });
+const tenant = createRoute({ getParentRoute: () => app, path: "/tenant", staticData: { access: { domain: "org", level: "view", tenant: true }, floorplan: "P-02" }, component: Page });
+const signedIn = createRoute({ getParentRoute: () => app, path: "/signed-in", staticData: { access: "signed-in", floorplan: "P-03" }, component: Page });
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 const router = createRouter({ routeTree: root.addChildren([app.addChildren([guarded, tenant, signedIn])]), history: createMemoryHistory({ initialEntries: [new URL(location.href).searchParams.get("route") ?? "/guarded"] }) });
 createRoot(document.getElementById("root")!).render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);

@@ -17,6 +17,17 @@ const report = (counts, seconds = 4) => ({
 const load = () => import("./states-shards.mjs");
 const workflow = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
 
+test("the module route inventory includes app floorplan declarations", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "module-routes-"));
+  try {
+    const output = path.join(dir, "modules.json");
+    const result = spawnSync(process.execPath, ["scripts/d8-module-routes.mjs", output], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    const inventory = JSON.parse(readFileSync(output, "utf8"));
+    assert.equal(inventory.floorplans["/account"], "P-05");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("greedy duration packing balances the fixture within 15% and covers every spec exactly once", async () => {
   const { planStates } = await load();
   const specs = Object.fromEntries([120, 110, 100, 90, 80, 70, 60, 50].map((seconds, i) => [`mock/${i}.spec.ts`, { seconds, tests: 1 }]));

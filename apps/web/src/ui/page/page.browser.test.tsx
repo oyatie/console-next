@@ -62,7 +62,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${server.resolvedUrls!.local[0]}page-test`);
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
-    const frame = page.locator('[data-floorplan="list"]');
+    const frame = page.locator('[data-floorplan="P-01"]');
     const title = frame.getByRole("heading", { level: 1, name: tg("pageHead.list"), exact: true });
     await element(title).toBeVisible();
     const states = page.getByRole("group", { name: tg("section.states"), exact: true }).getByRole("button");
@@ -115,7 +115,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 test.each([1440, 390])("a count arriving keeps the head, primary action and tabs in place at %spx", async width => {
   await page.setViewportSize({ width, height: 900 });
   await page.goto(`${server.resolvedUrls!.local[0]}page-test`);
-  const frame = page.locator('[data-floorplan="list"]');
+  const frame = page.locator('[data-floorplan="P-01"]');
   const states = page.getByRole("group", { name: tg("section.states"), exact: true }).getByRole("button");
   await states.nth(0).click();
   const primary = frame.getByRole("button", { name: tg("pageHead.add"), exact: true });

@@ -7,14 +7,14 @@ import { ensureEnrolling, ensureSession, leaveSignInWhenSignedIn } from "../lib/
 import { RouteFrame } from "../lib/react/route-ready";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
 import type { AccessRequirement } from "../reference/authz/domain/access";
+import { FLOORPLANS, type Floorplan } from "../ui/page/floorplan";
 
-export const ROUTE_FLOORPLANS = ["P-01", "P-02", "P-03", "P-04", "P-05", "canvas"] as const;
-type RouteFloorplan = (typeof ROUTE_FLOORPLANS)[number];
+export { FLOORPLANS as ROUTE_FLOORPLANS };
 
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
     access?: AccessRequirement | "signed-in";
-    floorplan?: RouteFloorplan;
+    floorplan?: Floorplan;
   }
 }
 

@@ -59,7 +59,7 @@ function FrameDemo() {
     }} empty={items => items.length ? null : <EmptyState title={tg("empty.title")} reason={tg("empty.reason")} />}
       sheet={<Sheet open={open} title={tg("sheet.title")} onClose={() => setOpen(false)} consequence={tg("sheet.consequence")} actions={<Button onClick={() => setOpen(false)}>{t("common.cancel")}</Button>}>
           <PageHead title={tg("sheet.subtitle")} />
-          <Page floorplan="form" head={{ title: tg("sheet.reason") }}>{tg("sheet.reasonHint")}</Page>
+          <Page floorplan="P-04" head={{ title: tg("sheet.reason") }}>{tg("sheet.reasonHint")}</Page>
         </Sheet>}>
       {items => <>
         <LongTable label={tg("pageHead.list")} columns={[{ id: "name", header: tg("pageHead.list"), rowHeader: true, card: "title", cell: row => row.name }]} rows={items} rowId={row => row.id} empty={null} hasMore={false} onLoadMore={() => {}} />

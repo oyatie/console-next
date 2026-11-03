@@ -25,7 +25,7 @@ test.each(["populated", "loading", "empty", "failed", "stale", "refused"])("the 
   const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><RouterProvider router={router} /></QueryClientProvider>);
   expect(html.match(/<h1\b/g)).toHaveLength(1);
   expect(html.match(/<main\b/g)).toHaveLength(1);
-  expect(html).toContain('data-floorplan="list"');
+  expect(html).toContain('data-floorplan="P-01"');
   for (const text of [copy.filters, copy.toolbar, copy.sheet]) {
     if (state === "refused") expect(html).not.toContain(text);
     else expect(html).toContain(text);
