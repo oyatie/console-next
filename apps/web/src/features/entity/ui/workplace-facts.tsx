@@ -42,13 +42,13 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
   const asof = useRecordLock() === "asof";
   const manage = !asof && !e.read_only && !w.read_only && w.can_manage;
   const why = w.closed_on ? t("workplace.closed.noEdit") : undefined;
-  const row = (label: string, value: ReactNode, o: Open, extra?: { add?: boolean; correct?: boolean; clear?: boolean }): Fact => ({
+  const row = (label: string, value: ReactNode, o: Open, extra?: { add?: boolean; enter?: boolean; correct?: boolean; clear?: boolean }): Fact => ({
     label,
     value,
     act: manage && (
       <RowActions
         field={label}
-        edit={extra?.correct ? "correct" : extra?.add ? "add" : "edit"}
+        edit={extra?.correct ? "correct" : extra?.enter ? "enter" : extra?.add ? "add" : "edit"}
         onEdit={() => (o.k === "kind" ? structure("wp-kind") : o.k === "primary" ? structure("wp-primary") : setOpen(o))}
         why={why}
         path={extra?.correct ? "correction" : setup ? "setup" : "revision"}
@@ -111,7 +111,7 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
       label: t("workplace.filing.entityBasis"),
       value: filing?.brn?.display ?? none,
     },
-    row(t("workplace.field.openedOn"), <span className="num">{c?.opened_on ? fmtDate(c.opened_on) : none}</span>, { k: "info", field: "openedOn" }, { correct: true }),
+    row(t("workplace.field.openedOn"), <span className="num">{c?.opened_on ? fmtDate(c.opened_on) : none}</span>, { k: "info", field: "openedOn" }, c?.opened_on ? { correct: true } : { enter: true }),
     info("representative", c?.representative_name),
     info("product", c?.main_product),
     info("phone", c?.phone?.display),

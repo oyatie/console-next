@@ -42,7 +42,7 @@ export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
         <FactRow label={t("entityRecord.field.representationMode")} action={{ ...fix, onPress: () => act.field(f.representatives) }}>{c?.representation_mode ? label(REPRESENTATION, c.representation_mode) : none}</FactRow>
         <FactRow label={t("entityRecord.field.mainPhone")} action={{ ...fix, onPress: () => act.field(f.mainPhone) }}><span className="num">{f.mainPhone.current}</span></FactRow>
         {corp && (
-          <FactRow label={t("entityRecord.field.directors")} action={c?.directors ? { ...fix, onPress: () => act.field(f.directors) } : null}>
+          <FactRow label={t("entityRecord.field.directors")} action={c?.directors ? { verb: f.directors.empty ? "enter" : "edit", onPress: () => act.field(f.directors) } : null}>
             {people.map((d, i) => (
               <span key={i} className={s.line}>{d.role ? label(DIRECTOR_ROLE, d.role) : t("entityRecord.field.representatives")} {d.name}{d.appointed_on && <span className={s.sub}> {t("entityRecord.registry.appointed", { date: fmtDate(d.appointed_on) })}</span>}</span>
             ))}

@@ -16,9 +16,11 @@ const fold = (s: string) => s.normalize("NFC").trim();
 
 /** Department naming uses one form; creation and renaming keep their own operation and sibling validation. */
 export function DeptNameComposer({ mode, place, onClose }: { mode: "create" | "rename"; place: Place; onClose: () => void }) {
-  const d = place.node;
+  // Keep the proposal's source tree: the command re-reads the applied tree before this sheet closes.
+  const [opened] = useState(place);
+  const d = opened.node;
   const creating = mode === "create";
-  const parent = creating ? d : place.parent!;
+  const parent = creating ? d : opened.parent!;
   const [name, setName] = useState(creating ? "" : d.name);
   const gov = useGovern();
   const value = fold(name);
@@ -35,7 +37,7 @@ export function DeptNameComposer({ mode, place, onClose }: { mode: "create" | "r
   }, gov);
   return <Composer
     size={creating ? "lg" : "md"}
-    kicker={<><Network size={14} aria-hidden />{creating ? t("orgUnit.gov.addKicker", { path: [place.workplace?.name, d.kind === "WORKPLACE" ? undefined : d.name].filter(Boolean).join(" › ") }) : [...place.path, d.name].join(" › ")}</>}
+    kicker={<><Network size={14} aria-hidden />{creating ? t("orgUnit.gov.addKicker", { path: [opened.workplace?.name, d.kind === "WORKPLACE" ? undefined : d.name].filter(Boolean).join(" › ") }) : [...opened.path, d.name].join(" › ")}</>}
     title={creating ? t("orgUnit.gov.addTitle") : t("orgUnit.rename.titleGoverned", { name: d.name })}
     onClose={onClose}
     pending={submit.isPending}

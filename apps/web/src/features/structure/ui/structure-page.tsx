@@ -100,7 +100,7 @@ export function StructurePage({ proposal, panel, sheets }: {
               : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
               : view === "list" ? <RegistryView s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
               : view === "outline" ? <OutlineView s={s} cmd={cmd} sel={sel} onSelect={select} />
-              : <ChartView key={focus ?? "tenant"} pick={jump} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
+              : <ChartView key={focus ?? "tenant"} pick={jump} covered={Boolean(act)} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
             }
 
         {proposing ? <aside className={css.side} aria-label={t("structure.side")}>{proposal}</aside>

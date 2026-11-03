@@ -7,6 +7,8 @@ import { mockRoute } from "../mock/route";
 import { orgPanelReads } from "../mock/org-work";
 import { id } from "../mock/fixtures";
 import { brnDisplay, REGISTRATION_FIXTURES } from "../setup-flows";
+import { routeReady } from "../flows";
+import { fillDate } from "../sheet";
 import { entityRecordPath, mockEntityRecord } from "./entity-record";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
@@ -35,19 +37,58 @@ test("correction-only field keeps one action verb from row to sheet @ui-state", 
   } finally { await page.close(); fixture.release(); }
 });
 
-test("an empty correction-only field opens its first entry @ui-state", async ({ page }) => {
+test("an empty correction-only field opens and announces its first entry @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
   const fixture = await mockEntityRecord(page, "populated");
+  fixture.entity.registrations[0]!.current = {
+    version: 1, effective_from: "2026-01-01", before_first_record: false, trade_name: "주식회사 검증법인",
+    business_types: [], status: "CONTINUING", change_mode: "SETUP",
+  };
+  await mockRoute(page, "put", "/api/v1/legal-entities/{entityId}", (request) => {
+    const body = request.postDataJSON() as { incorporated_on: string };
+    fixture.entity.current = { ...fixture.entity.current!, version: 2, incorporated_on: body.incorporated_on };
+    return { status: 200, json: { record: fixture.entity, warnings: [], change_mode: "SETUP" as const } };
+  });
   try {
     await page.goto(entityRecordPath);
-    for (const key of ["openedOn", "incorporatedOn"] as const) {
+    await routeReady(page);
+    await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+    for (const key of ["incorporatedOn", "openedOn"] as const) {
       const field = t(`entityRecord.field.${key}`);
       const action = t("uiRecordActions.of", { field, verb: t("composer.verb.enter") });
       await page.getByRole("button", { name: action, exact: true }).click();
       const dialog = page.getByRole("dialog", { name: action, exact: true });
       await expect(dialog).toBeVisible();
       await expect(dialog.getByText(t("entityOps.revise.firstEntry", { field }), { exact: true })).toBeVisible();
-      await page.keyboard.press("Escape");
+      await expect(dialog).not.toContainText(t("entityRecord.revise.now", { value: t("entityOps.info.none"), date: fmtDate("2026-01-01") }));
+      await expect(dialog.getByText(t("entityRecord.revise.newValue", { field }), { exact: true })).toHaveCount(0);
+      await expect(dialog.getByRole("region", { name: action, exact: true })).toBeVisible();
+      await fits(page, `entity fields/first entry/${key}/390/dark`);
+      await expectAxe(page, `entity fields/first entry/${key}/390/dark`);
+      if (key === "incorporatedOn") {
+        await fillDate(dialog, "2020-01-02", field);
+        await dialog.getByRole("button", { name: t("composer.verb.enter"), exact: true }).click();
+        const announced = t("entityRecord.revise.entered", { field });
+        await expect(page.getByRole("status").filter({ hasText: announced })).toHaveText(announced);
+      } else {
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+      }
     }
+    const directors = t("entityRecord.field.directors");
+    await expect(page.getByRole("button", { name: t("uiRecordActions.of", { field: directors, verb: t("composer.verb.enter") }), exact: true })).toBeVisible();
+
+    await page.goto(`${entityRecordPath}?wp=${id(4102)}`);
+    await routeReady(page);
+    await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+    const opened = t("workplace.field.openedOn");
+    const action = t("uiRecordActions.of", { field: opened, verb: t("composer.verb.enter") });
+    await page.getByRole("button", { name: action, exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: action, exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('[data-k="correction"]')).toHaveCount(0);
+    await fits(page, "entity fields/workplace first entry/390/dark");
+    await expectAxe(page, "entity fields/workplace first entry/390/dark");
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
@@ -88,7 +129,7 @@ for (const surface of ["record", "workplace", "chart"] as const) for (const widt
       const openedField = t(surface === "record" ? "entityRecord.field.openedOn" : "workplace.field.openedOn");
       const opened = rows.filter({ has: page.getByText(openedField, { exact: true }) });
       await expect(opened.getByRole("button", { name: t("uiRecordActions.of", { field: openedField,
-        verb: t(surface === "record" ? "composer.verb.enter" : "uiRecordVerbs.verb.correct") }), exact: true })).toBeVisible();
+        verb: t(surface === "workplace" ? "uiRecordVerbs.verb.correct" : "composer.verb.enter") }), exact: true })).toBeVisible();
       if (surface === "workplace") {
         const field = t("entityOps.info.mail");
         const mail = rows.filter({ has: page.getByText(field, { exact: true }) });
