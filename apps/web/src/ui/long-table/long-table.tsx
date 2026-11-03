@@ -233,9 +233,9 @@ export function LongTable<R>(p: {
           // Esc never drops a selection that took many clicks to build; the caller's Esc (closing a panel) runs.
           {...({ escapeKeyBehavior: "none" } as object)}
         >
-          <TableHeader className={css.head} columns={cols}>
+          <TableHeader className={`${css.head} ${cardLayout && !sel ? cards.visuallyHidden : ""}`} columns={cols}>
             {(c) => (
-              <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={css.th}>
+              <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout && c.id !== SELECT ? cards.visuallyHidden : ""}`}>
                 {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : <>{c.header}{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}

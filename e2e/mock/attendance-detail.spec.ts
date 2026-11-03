@@ -59,25 +59,20 @@ for (const width of [1440, 390]) test(`detail population, group headers and comp
   await expectAxe(page, `detail ${width}`);
   await fits(page, `detail ${width}`);
   if (width === 390) {
-    for (const label of [grids.first().getByRole("rowheader").first(), grids.first().getByRole("button", { name: "일정 지정", exact: true }).first()]) {
+    expect(await grids.evaluateAll(items => items.map(item => item.getAttribute("data-layout")))).toEqual(["cards", "cards"]);
+    for (const label of [grids.first().getByText("근태직원 1", { exact: true }), grids.first().getByRole("button", { name: "일정 지정", exact: true }).first()]) {
       expect(await label.evaluate(el => {
         const text = document.createRange();
         text.selectNodeContents(el);
         return text.getClientRects().length;
       })).toBe(1);
     }
-    expect(await grids.first().evaluate(scroller => {
-      scroller.scrollLeft = scroller.scrollWidth;
-      const scrolls = scroller.scrollWidth > scroller.clientWidth && scroller.scrollLeft > 0;
-      scroller.scrollLeft = 0;
-      return scrolls;
-    })).toBe(true);
+    expect(await grids.first().evaluate(scroller => scroller.scrollWidth <= scroller.clientWidth)).toBe(true);
   }
   await page.getByRole("button", { name: "일정 없음만", exact: true }).click();
   await expect(grids).toHaveCount(1);
   await expect(grids.first()).toHaveAttribute("aria-rowcount", "4");
   await expect(grids.first().getByRole("button", { name: "일정 지정", exact: true })).toHaveCount(3);
-  if (width === 390) await grids.first().evaluate(el => { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; });
   const input = grids.first().getByRole("textbox", { name: /^근태직원 1 입력/ });
   await input.click();
   await page.keyboard.type("+2");

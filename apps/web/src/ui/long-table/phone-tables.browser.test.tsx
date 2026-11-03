@@ -2,13 +2,12 @@
 import { resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { AxeBuilder } from "@axe-core/playwright";
-import { chromium, expect as visible, type Browser, type Page } from "@playwright/test";
+import { chromium, expect as visible, firefox, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 
 let server: ViteDevServer;
-let browser: Browser;
-let page: Page;
+let browser: Browser, page: Page;
 
 // Stratified pages and repeated end-jumps, fixed seed so the old blank-viewport failure is reproducible.
 const paging = (() => {
@@ -80,6 +79,12 @@ beforeAll(async () => {
             label: 'Editor', rows: rows.slice(0, 1), rowId: r => r.id,
             columns: columns.map(({card, ...column}) => ({...column, cell: r => column.id === 'Extra'
               ? h('input', {'aria-label': 'Editor value', value: 'Kept', readOnly: true}) : column.cell(r)}))}));
+          if (location.hash === '#forced-rows') return h('main', null, h('h1', null, 'Preview editor'), h(Table, {label: 'Preview editor', rows: rows.slice(0, 1), rowId: r => r.id, mobileLayout: 'rows', columns}));
+          if (location.hash === '#selection') return h('main', null, h('h1', null, 'Selection'), h(Table, {
+            label: 'Selection', rows: rows.slice(0, 1), rowId: r => r.id, columns: [{header: h('input', {type: 'checkbox', 'aria-label': 'Select all'}), fit: true,
+              cell: r => h('input', {type: 'checkbox', 'aria-label': 'Select ' + r.id})}, ...columns]}));
+          if (location.hash === '#stack') return h('main', null, h('h1', null, 'Stack'), h(LongTable, {
+            label: 'Stacked', caption: '2', find: {label: 'Find', onFind() {}}, rows: rows.slice(0, 2), columns, rowId: r => r.id, hasMore: false, onLoadMore() {}, empty: 'Empty'}));
           if (location.hash === '#roster') return h(QueryClientProvider, {client}, h('main', null,
             h('h1', null, 'People roster'), h(RosterTable, {label: 'Roster', today: '2026-01-01', density: 'compact', shown: OPTIONAL_COLUMNS,
               rows: [{id: 'roster-0', employee_number: 'MOB-ROSTER', name: '박모바일', company: '가상상사', org_unit: '아주긴가상지점소속부서', position: '사원', employment_type: 'REGULAR', status: 'ON_LEAVE', hire_date: '2025-01-01'}],
@@ -103,7 +108,7 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  browser = await chromium.launch();
+  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
   page = await (await browser.newContext()).newPage();
 }, 60_000);
 
@@ -116,6 +121,9 @@ test("390px cards expose identifiers, status, labelled facts and actions without
   const long = page.getByRole("grid", { name: "Long", exact: true });
   await visible(short.getByRole("row").filter({ hasText: "MOB-0" })).toHaveCSS("display", "grid");
   await visible(long).toHaveAttribute("data-layout", "cards");
+  await visible(long.getByRole("checkbox").first()).toBeVisible();
+  const cardCaption = await long.getByRole("columnheader", { name: "Long", exact: true }).boundingBox();
+  expect(Math.max(cardCaption!.width, cardCaption!.height)).toBeLessThanOrEqual(1);
   for (const table of [short, long]) {
     const row = table.getByRole("row").filter({ hasText: "MOB-0" });
     await visible(row.getByText("MOB-0", { exact: true })).toBeVisible();
@@ -148,9 +156,32 @@ test("390px cards expose identifiers, status, labelled facts and actions without
   await page.goto("about:blank");
   await page.goto(`${server.resolvedUrls!.local[0]}phone-tables#editor`);
   const editor = page.getByRole("table", { name: "Editor", exact: true });
-  await visible(editor.getByRole("row").last()).toHaveCSS("display", "grid");
-  expect(await editor.getByRole("row").last().locator("td").evaluateAll(cells => cells.every(cell => getComputedStyle(cell).display !== "none"))).toBe(true);
+  await visible(editor.getByRole("row").last()).toHaveCSS("display", "table-row");
+  await visible(editor.locator("xpath=..")).toHaveAttribute("tabindex", "0");
   await visible(editor.getByRole("textbox", { name: "Editor value" })).toBeVisible();
+}, 30_000);
+
+test("390px row editors opt out while selection cards keep the header checkbox", async () => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}phone-tables#forced-rows`);
+  const preview = page.getByRole("table", { name: "Preview editor", exact: true });
+  await visible(preview.getByRole("row").last()).toHaveCSS("display", "table-row");
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}phone-tables#selection`);
+  const selection = page.getByRole("table", { name: "Selection", exact: true });
+  await visible(selection.getByRole("row").last()).toHaveCSS("display", "grid");
+  await visible(selection.getByRole("checkbox", { name: "Select all", exact: true })).toBeVisible();
+  const nameHeader = await selection.getByRole("columnheader", { name: "Name", exact: true }).boundingBox();
+  expect(Math.max(nameHeader!.width, nameHeader!.height)).toBeLessThanOrEqual(1);
+}, 30_000);
+
+test("390px caption and search occupy separate rows", async () => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}phone-tables#stack`);
+  const [caption, find] = await Promise.all([page.getByText("2", { exact: true }).boundingBox(), page.getByRole("searchbox", { name: "Find", exact: true }).boundingBox()]);
+  expect(caption!.y + caption!.height).toBeLessThanOrEqual(find!.y);
 }, 30_000);
 
 test.each(["cards", "compact", "rows"])("paged 2,000-row %s at 390px never leave the viewport blank after loading", async (mode) => {
@@ -205,7 +236,6 @@ test.each(["cards", "compact", "rows"])("paged 2,000-row %s at 390px never leave
     expect(await grid.evaluate(el => el.scrollHeight)).toBeGreaterThan(resized * 2000 * 0.85);
   }).toPass();
 }, 30_000);
-
 test("container boundary, virtualization and keyboard state survive card/row changes; desktop widths return", async () => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`${server.resolvedUrls!.local[0]}phone-tables`);
@@ -250,8 +280,6 @@ test("the product roster renders both identifiers, status and every fact at 390p
   expect(await page.evaluate(() => document.scrollingElement!.scrollWidth)).toBeLessThanOrEqual(390);
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
 }, 30_000);
-
-
 test("tables without card metadata use complete cards at 390px and rows on desktop", async () => {
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 });

@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cardRoles, type CardColumn } from "./long-table/card-columns";
 import cards from "./long-table/table-cards.module.css";
 import { columnWidths, type ColumnType } from "./long-table/column-types";
@@ -17,7 +17,7 @@ const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide &&
  * Bounded lists use this native table; headcount lists use LongTable's server paging and virtualization.
  * Read states belong to the surrounding QueryState boundary; it removes content after a server refusal.
  */
-export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone, detail, groups, density }: {
+export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone, detail, groups, density, mobileLayout }: {
   label: string;
   rows: R[];
   columns: Column<R>[];
@@ -28,9 +28,26 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   detail?: (r: R) => ReactNode;
   groups?: { id: string; header: ReactNode; rows: R[] }[];
   density?: "regular" | "compact";
+  /** Keep row geometry on phones when an editing workflow depends on column alignment. */
+  mobileLayout?: "cards" | "rows";
 }) {
   const tableRef = useRef<HTMLTableElement>(null);
   const [active, setActive] = useState<string>();
+  const [hasEditor, setHasEditor] = useState(false);
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+    const measure = () => {
+      const field = table.querySelector('tbody :is(input:not([type="checkbox"]), select, textarea, [contenteditable]:not([contenteditable="false"]))');
+      const inlineCheck = table.querySelector('tbody input[type="checkbox"]') && !table.querySelector('thead input[type="checkbox"]');
+      setHasEditor(Boolean(field || inlineCheck));
+    };
+    const observer = new MutationObserver(measure);
+    observer.observe(table, { childList: true, subtree: true });
+    measure();
+    return () => observer.disconnect();
+  }, []);
+  const rowsOnPhone = mobileLayout === "rows" || hasEditor;
   const ids = (groups ? groups.flatMap(g => g.rows) : rows).map(rowId);
   const current = active && ids.includes(active) ? active : selected && ids.includes(selected) ? selected : ids[0];
   const key = (e: KeyboardEvent) => {
@@ -79,7 +96,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     );
   });
   const table = (
-    <table ref={tableRef} className={`table ${cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
+    <table ref={tableRef} className={`table ${rowsOnPhone ? cards.rows : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
       <caption className="sr-only">{label}</caption>
       {columns.some(c => c.type) && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
       <thead>
@@ -93,5 +110,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
       )) : <tbody>{renderRows(rows)}</tbody>}
     </table>
   );
-  return <div className={cards.container}>{table}</div>;
+  return <>
+    {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to scroll a wide row editor. */}
+    <div className={`${cards.container} ${rowsOnPhone ? cards.scroll : ""}`} tabIndex={rowsOnPhone ? 0 : undefined} role={rowsOnPhone ? "region" : undefined} aria-label={rowsOnPhone ? label : undefined}>{table}</div>
+  </>;
 }
