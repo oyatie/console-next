@@ -72,7 +72,7 @@ export function AsOfControl({ today, value, knownAt, onChange, changeDates, load
                 : <DisabledReason reason={t(loadingDates ? "common.loading" : "asof.noNext")} control={(p) => <Button {...p}>{t("asof.next")}</Button>} />}</span>}
             </div>
             {ribbon && <div className={`row ${styles.ribbon}`} role="group" aria-label={t("asof.ribbon")} aria-busy={loadingDates || undefined}>
-              {loadingDates ? <Skeleton bones={["line"]} label={t("asof.ribbon")} /> : dates.length ? markers.map((marker, i) => <ToggleButton key={marker} style={{ gridColumn: start + i - anchor + 5 }} data-change-date={marker} pressed={value === marker} onClick={() => choose(marker)}>{fmtDate(marker)}</ToggleButton>) : <span className="muted">{t("asof.noChanges")}</span>}
+              {loadingDates ? <Skeleton bones={["line"]} label={t("asof.ribbon")} /> : dates.length ? markers.map((marker, i) => <ToggleButton key={marker} data-slot={start + i - anchor + 5} data-change-date={marker} pressed={value === marker} onClick={() => choose(marker)}>{fmtDate(marker)}</ToggleButton>) : <span className="muted">{t("asof.noChanges")}</span>}
             </div>}
           </>;
         }}

@@ -28,7 +28,7 @@ export const enNts: Record<keyof typeof koNts, string> = {
   "nts.unavailable.KEY_EXPIRED": "Automatic check unavailable · integration key has expired",
   "nts.unavailable.KEY_REJECTED": "Automatic check unavailable · NTS rejected the integration key",
   "nts.unavailable.PROVIDER_DOWN": "Automatic check unavailable · NTS did not respond",
-  "nts.fallback": "Automatic checks are unavailable. Attach the original business registration certificate as evidence.",
+  "nts.fallback": "Attach the original business registration certificate as evidence.",
   "nts.attach": "Attach original",
   "nts.action.status": "Check again",
   "nts.action.validate": "Verify authenticity",

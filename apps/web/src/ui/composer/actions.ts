@@ -16,6 +16,9 @@ const ACTION_KINDS = {
   orgReassign: ["composer.action.orgReassign", "people"],
   orgDelete: ["composer.action.orgDelete", "units"],
   orgChange: ["composer.action.orgChange", "units"],
+  entityRecord: [null, "units"],
+  entityChange: ["composer.action.entityChange", "units"],
+  entityCorrection: ["composer.action.entityCorrection", "units"],
   appointment: ["composer.action.appointment", "people"],
   ONBOARD: ["composer.action.registration", "people"],
   OFFBOARD: ["composer.action.exit", "people"],
@@ -62,6 +65,8 @@ const ACTION_VERBS = {
   reject: "composer.verb.reject",
   save: "composer.verb.save",
   remove: "composer.verb.remove",
+  record: "composer.verb.record",
+  enter: "composer.verb.enter",
 } as const;
 
 export type ActionDescription = { kind: keyof typeof ACTION_KINDS; mode: keyof typeof ACTION_VERBS; count?: number; continuation?: "next" };
@@ -70,7 +75,7 @@ export const verbLabel = (mode: ActionDescription["mode"]): string => t(ACTION_V
 
 export function commitLabel({ kind, mode, count, continuation }: ActionDescription): string {
   const [noun, unit] = ACTION_KINDS[kind];
-  const label = t(count && count > 0 ? "composer.commit.count" : "composer.commit", {
+  const label = noun === null ? verbLabel(mode) : t(count && count > 0 ? "composer.commit.count" : "composer.commit", {
     action: t(noun), verb: verbLabel(mode), count: count ?? 0, unit: t(`composer.unit.${unit}`),
   });
   return continuation ? t("composer.commit.next", { label }) : label;

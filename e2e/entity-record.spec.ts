@@ -25,7 +25,7 @@ test("the record: 변경 from a date, 정정 of the period in force, 정정만, 
   await go(admin, "/org/entities/new");
   await registerEntity(admin, "새온정밀");
   await expect(admin.getByRole("region", { name: "사업자등록증" })).toBeVisible();
-  await expect(admin.getByText("진위 확인: 하지 않음").first()).toBeVisible();
+  await expect(admin.getByText(t("nts.state.unavailable"), { exact: true }).first()).toBeVisible();
   await expect(admin.getByRole("region", { name: "등기 · 법인 기본" })).toBeVisible();
   await expect(admin.getByRole("region", { name: "받지 않는 항목" })).toHaveCount(0);
   await expect(admin.getByText("개인정보 보호법 제24조의2")).toBeVisible();
@@ -70,8 +70,9 @@ test("the record: 변경 from a date, 정정 of the period in force, 정정만, 
   await expect(admin.getByText("02-555-0142").first()).toBeVisible();
 
   // 정정만: an opening date is only ever corrected, so the sheet skips the choice.
-  await admin.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.openedOn") }), exact: true }).click();
-  const opened = sheet(admin, "개업연월일 수정");
+  const openedAction = t("uiRecordActions.of", { field: t("entityRecord.field.openedOn"), verb: t("uiRecordVerbs.verb.correct") });
+  await admin.getByRole("button", { name: openedAction, exact: true }).click();
+  const opened = sheet(admin, openedAction);
   await expect(opened.getByText(/이 칸은 정정만 합니다/)).toBeVisible();
   await fillDate(opened, "2020-03-03", "개업연월일");
   await opened.getByRole("button", { name: "정정 기록" }).click();
@@ -79,7 +80,7 @@ test("the record: 변경 from a date, 정정 of the period in force, 정정만, 
 
   // 식별번호 정정 in setup: 변경 is shown disabled with why; reason, then 번호 정정 (spec §4 ceiling, from the record).
   const c = clickCounter();
-  await c.click(admin.getByRole("button", { name: "등록번호 수정", exact: true }));
+  await c.click(admin.getByRole("button", { name: t("uiRecordActions.of", { field: t("entityRecord.field.brn"), verb: t("uiRecordVerbs.verb.correct") }), exact: true }));
   const brn = sheet(admin, "사업자등록번호 정정");
   await expect(brn.getByText(/사업자등록번호는 바뀌지 않는 번호라 선택할 수 없습니다/)).toBeVisible();
   await expect(brn.getByText(/변경하지 않음 · 공단 통지서와 대조하십시오/)).toBeVisible();

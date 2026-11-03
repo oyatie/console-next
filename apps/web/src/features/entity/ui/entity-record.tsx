@@ -118,7 +118,7 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
           {(!lock || lock === "loading") && <Button variant="primary" disabled={lock === "loading"} onClick={() => setTab("certificates")}><PencilLine size={16} aria-hidden /> {t("entityRecord.action.editByCert")}</Button>}
         </>}
         sub={<>
-          <div className={s.nameProblems}><NameProblems e={e} onCertificate={() => setTab("certificates")} review={(r) => <NameReview key={r.id} e={e} review={r} editable={e.can_manage && !lock} />} /></div>
+          <NameProblems e={e} onCertificate={() => setTab("certificates")} review={(r) => <NameReview key={r.id} e={e} review={r} editable={e.can_manage && !lock} />} />
           <LockNotice e={e} lock={lock === "loading" ? null : lock} />
           {e.can_manage && <QueryState q={phaseQ} inline loading={<></>}>{() => null}</QueryState>}
         </>}

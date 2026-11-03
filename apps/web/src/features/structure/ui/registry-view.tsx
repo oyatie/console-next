@@ -30,6 +30,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
   // Every row starts open (the mockup's "all levels"); folding is per row.
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
   const open = { has: (id: string) => !closed.has(id) };
+  const none = t("entityOps.info.none");
   const rows = useMemo(() => registryRows(s, { level, q, filters, closed }), [s, level, q, filters, closed]);
   useEffect(() => { onVisibleRows?.(rows); }, [onVisibleRows, rows]);
   const toggle = (id: string) => setClosed((o) => (o.has(id) ? new Set([...o].filter((x) => x !== id)) : new Set([...o, id])));
@@ -37,6 +38,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
     {
       id: "name",
       rowHeader: true,
+      card: "title",
       width: "3fr",
       minWidth: 320,
       header: t("structure.list.name"),
@@ -58,22 +60,23 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
         );
       },
     },
-    { id: "code", width: 104, header: t("structure.list.code"), cell: (n) => (n.code ? <span className="code">{n.code}</span> : "—") },
+    { id: "code", card: "fact", width: 104, header: t("structure.list.code"), cell: (n) => (n.code ? <span className="code">{n.code}</span> : none) },
     // The head a level has: a legal entity's representatives, a department's head (a workplace's manager is not served).
     {
       id: "head",
+      card: "fact",
       width: 180,
       header: t("structure.list.head"),
       cell: (n) =>
-        n.kind === "entity" ? (n.reps ? t("structure.node.reps", { name: n.reps.first, more: n.reps.more }) : "—")
+        n.kind === "entity" ? (n.reps ? t("structure.node.reps", { name: n.reps.first, more: n.reps.more }) : none)
         : n.kind === "dept" ? <HeadCell n={n} readOnly={s.readOnly} />
-        : "—",
+        : none,
     },
-    { id: "people", width: 180, header: <HeadcountBasis>{t("structure.list.people")}</HeadcountBasis>, cell: (n) => <span className="num">{unitCounts(n)}</span> },
-    { id: "site", width: 160, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? "—" : "—" },
-    { id: "chips", width: "2fr", minWidth: 160, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : "—" },
-    ...(!s.readOnly ? [{ id: "order", width: 72, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
-    ...(!s.readOnly ? [{ id: "add", width: 148, header: t("orgStructure.tab.actions"), cell: (n: ChartNode) => <AddUnit n={n} /> }] : []),
+    { id: "people", card: "fact", cardHeader: t("structure.list.people"), width: 180, header: <HeadcountBasis>{t("structure.list.people")}</HeadcountBasis>, cell: (n) => <span className="num">{unitCounts(n)}</span> },
+    { id: "site", card: "omit", width: 160, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? none : none },
+    { id: "chips", card: "omit", width: "2fr", minWidth: 160, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : none },
+    ...(!s.readOnly ? [{ id: "order", card: "action" as const, width: 72, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
+    ...(!s.readOnly ? [{ id: "add", card: "action" as const, width: 148, header: t("orgStructure.tab.actions"), cell: (n: ChartNode) => <AddUnit n={n} /> }] : []),
   ];
   return (
     <div className={css.registry}>
@@ -89,7 +92,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
       </div>
       <LongTable
         label={t("structure.list.label")}
-        caption={t("structure.list.caption", { count: rows.length })}
+        caption={<span className={css.registryCaption}>{t("structure.list.caption", { count: rows.length })}</span>}
         columns={columns}
         rows={rows}
         rowId={(n) => n.id}

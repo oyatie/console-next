@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import type { ReactNode } from "react";
+
 type CardRole = "title" | "status" | "fact" | "action" | "omit";
 /** A list opts into narrow cards by declaring a card role; editing grids keep every control. */
-export type CardColumn = { card?: CardRole; rowHeader?: boolean; wide?: boolean };
+export type CardColumn = { card?: CardRole; cardHeader?: ReactNode; rowHeader?: boolean; wide?: boolean };
 const KEY_FACTS = 3;
 
 /** Existing row headers identify a card; secondary columns stay available in its record. */

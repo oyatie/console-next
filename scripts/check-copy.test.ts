@@ -1,6 +1,6 @@
 // Unused-catalog and word halves of the copy gate; `npm run lint` runs the gate itself on the real tree.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { globSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -626,4 +626,15 @@ test("entity field emptiness has one marker", () => {
     expect(checkTerms([{ id, text: "없음" }], [])).toContainEqual(expect.stringContaining("empty.표시"));
     expect(checkTerms([{ id, text: "—" }], [])).toEqual([]);
   }
+});
+
+test("non-legacy entity field surfaces read their empty marker from the catalog", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const legacySheets = new Set((JSON.parse(readFileSync(path.join(root, "scripts/composer-allow.json"), "utf8")) as { allow: string[] }).allow
+    .filter((entry) => entry.includes("parallel governed frame"))
+    .map((entry) => entry.split(": composer.verb:")[0]));
+  const files = globSync("apps/web/src/features/{entity,structure}/**/*.{ts,tsx}", { cwd: root })
+    .filter((file) => !/\.(?:gallery|test)\.tsx?$/.test(file) && !legacySheets.has(file));
+  expect(files.length).toBeGreaterThan(0);
+  for (const file of files) expect(readFileSync(path.join(root, file), "utf8"), file).not.toMatch(/(["'`])—\1/);
 });

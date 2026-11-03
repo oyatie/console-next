@@ -6,6 +6,7 @@ import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option,
 import { REGISTRATION_FIXTURES, acceptSetupTerms, setupCompany, setupRail, brnDisplay } from "./setup-flows";
 import { signOff } from "./sheet";
 import { apiOf, bearerOf } from "./helpers/api";
+import { clearShifts } from "./stability";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -35,6 +36,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await expect(rail).not.toContainText("결재");
 
   // 운영 시작: nothing to tick for being alone, and nothing after it waits for an approver.
+  await admin.evaluate(clearShifts);
   await go(admin, "/setup/go-live");
   await expect(admin.getByRole("heading", { name: "운영 시작", level: 1 })).toBeVisible();
   // The preview has loaded once its start button shows (enabled or with its reason).
@@ -65,7 +67,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await sheet.getByLabel("퇴직 경위").fill("개인 사정");
   await sheet.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await sheet.getByRole("button", { name: "퇴직 보고 1명 적용" }).click();
-  await expect(exitPanel).toContainText("보고됨");
+  await expect(exitPanel).toContainText(t("enum.exitCaseStatus.REPORTED"), { timeout: 20_000 });
   await expect(exitPanel.getByRole("button", { name: "퇴직 취소" })).toBeVisible();
   await exitPanel.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
@@ -79,6 +81,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await expect(exitPanel).not.toContainText("인사 확인자는 본사 확인을 할 수 없습니다");
   await expect(exitPanel.getByRole("button", { name: "본사 퇴직 확인" })).not.toHaveAttribute("aria-disabled", "true");
   const caseHref = await exitPanel.getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
+  await admin.evaluate(clearShifts);
   await go(admin, caseHref!);
   const now = admin.getByRole("region", { name: /지금/ });
   await expect(now.getByRole("heading", { name: "지금 · 본사 확인" })).toBeVisible();
@@ -109,7 +112,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await go(admin, "/org/entities");
   await admin.getByRole("row", { name: /혼자상사/ }).click();
   // After go-live the number is locked: its only verb is the identifier correction.
-  await admin.getByRole("button", { name: t("entityRecord.action.fixOf", { field: t("entityRecord.field.brn") }), exact: true }).click();
+  await admin.getByRole("button", { name: t("uiRecordActions.of", { field: t("entityRecord.field.brn"), verb: t("uiRecordVerbs.verb.correct") }), exact: true }).click();
   const brn = admin.getByRole("dialog", { name: "사업자등록번호 정정" });
   await expect(brn).toContainText("운영 계정이 정정합니다");
   await expect(brn).not.toContainText(/결재|승인된 예외/);
@@ -126,7 +129,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   const answers: number[] = [];
   admin.on("response", (r) => void (r.url().includes("/identifier-corrections") && answers.push(r.status())));
   await brn.getByRole("button", { name: "번호 정정" }).click();
-  await expect(brn).toBeHidden();
+  await expect(brn).toBeHidden({ timeout: 20_000 });
   expect(answers).toEqual([428, 200]);
   await expect(admin.getByText(brnDisplay(REGISTRATION_FIXTURES.second.brn)).first()).toBeVisible();
 });

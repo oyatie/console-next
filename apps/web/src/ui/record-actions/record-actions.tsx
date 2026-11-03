@@ -38,8 +38,8 @@ export function RowActions({ field, onEdit, edit = "edit", path, history, end, w
   /** The value's label as its row shows it. */
   field: string;
   onEdit?: () => void;
-  /** `add` for a list row's first entry. */
-  edit?: "edit" | "add";
+  /** `add` for a list row's first entry; `correct` for a fact that never changes freely. */
+  edit?: "edit" | "add" | "correct";
   path?: ChangePath;
   history?: () => void;
   end?: RowEnd;
@@ -49,7 +49,7 @@ export function RowActions({ field, onEdit, edit = "edit", path, history, end, w
   const items: MenuEntry[] = [];
   if (history) items.push({ id: "history", text: t("uiRecordActions.history"), label: <><History size={14} aria-hidden /> {t("uiRecordActions.history")}</> });
   if (end) items.push({ id: "end", text: t(`uiRecordActions.end.${end.verb}`), label: t(`uiRecordActions.end.${end.verb}`), why: end.why });
-  const verb = t(`uiRecordActions.${edit}`);
+  const verb = t(edit === "correct" ? "uiRecordVerbs.verb.correct" : `uiRecordActions.${edit}`);
   return (
     <span className={s.row}>
       {onEdit &&

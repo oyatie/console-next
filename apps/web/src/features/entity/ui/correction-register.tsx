@@ -29,7 +29,7 @@ import { OpenOriginal } from "./open-original";
 type Case = IdentifierCorrectionCase;
 const statusText = (r: Case) => label(IDENTIFIER_CORRECTION_STATUS, r.reviewed_at ? "REVIEWED" : r.status);
 const fieldText = (r: Case) => r.proposal ? t(`entityRecord.id.field.${r.proposal.field}`) : t("entityRecord.corrections.title");
-const valueText = (r: Case) => !r.proposal ? "—" : r.proposal.field === "crn" ? FORMATS.corpRegNo.display(r.proposal.value) : r.proposal.field === "brn" ? FORMATS.bizRegNo.display(r.proposal.value) : label(BIZ_KIND, r.proposal.value);
+const valueText = (r: Case) => !r.proposal ? t("entityOps.info.none") : r.proposal.field === "crn" ? FORMATS.corpRegNo.display(r.proposal.value) : r.proposal.field === "brn" ? FORMATS.bizRegNo.display(r.proposal.value) : label(BIZ_KIND, r.proposal.value);
 
 /** Org-wide readers only: branch-scoped entity viewers have no register read permission. */
 export function CorrectionRegister(props: { entityId?: string; correctionId?: string; onSelect?: (id: string | null) => void }) {
@@ -116,7 +116,7 @@ function CorrectionDetail({ id, row, onClose }: { id: string; row?: Case; onClos
               { key: "entity", label: t("entityRecord.corrections.subject"), value: item.entity_name },
               { key: "field", label: fieldText(item), value: valueText(item) },
               { key: "state", label: t("entityRecord.corrections.state"), value: statusText(item) },
-              { key: "requester", label: t("entityRecord.corrections.requester"), value: item.requester_name ?? "—" },
+              { key: "requester", label: t("entityRecord.corrections.requester"), value: item.requester_name ?? t("entityOps.info.none") },
               { key: "created", label: t("entityRecord.corrections.created"), value: fmtDateTimeShort(item.created_at) },
               { key: "due", label: t("entityRecord.corrections.due"), value: fmtDateTimeShort(item.review_due_at ?? item.expires_at) },
               ...(item.decision_note || item.review_note ? [{ key: "note", label: t("entityRecord.corrections.note"), value: item.review_note ?? item.decision_note }] : []),

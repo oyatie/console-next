@@ -76,7 +76,7 @@ export function CloseCorrectSheet({ e, onClose }: { e: LegalEntity; onClose: () 
         <section aria-labelledby="close-reopens">
           <h3 id="close-reopens">{t("entityOps.closeFix.reopens")}</h3>
           <ul>
-            {reopens.map((w) => <li key={w.id}>{w.current?.name ?? "—"}</li>)}
+            {reopens.map((w) => <li key={w.id}>{w.current?.name ?? t("entityOps.info.none")}</li>)}
             {certs > 0 && <li>{t("entityOps.closeFix.reopensCerts", { count: certs })}</li>}
           </ul>
           <p className="muted">{t("entityOps.closeFix.grantsStay")}</p>

@@ -46,7 +46,7 @@ export function WorkplaceCreateSheet({ e, kinds, setup, onClose, onSaved }: { e:
       actions={<Actions c={c} onClose={onClose} />}
     >
       <div className={css.two}>
-        <Field label={t("workplace.field.name")} required warning={twin ? t("entityOps.create.twin", { name: typed, address: addressLine(twin.current?.address) || "—" }) : undefined}>
+        <Field label={t("workplace.field.name")} required warning={twin ? t("entityOps.create.twin", { name: typed, address: addressLine(twin.current?.address) || t("entityOps.info.none") }) : undefined}>
           {(p) => <TextInput {...p} maxLength={200} placeholder={t("workplace.create.namePlaceholder")} value={c.w.name} onChange={(x) => c.set("name", x.target.value)} />}
         </Field>
         {!own && <DateField label={t("workplace.field.openedOn")} required={false} value={c.w.openedOn} onChange={(v) => c.set("openedOn", v)} today={c.today}  />}

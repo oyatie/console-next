@@ -6,6 +6,7 @@ import { screenAccess, structure } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { orgPanelReads } from "../mock/org-work";
+import { entityRecord } from "./entity-record";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -55,17 +56,44 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
   });
 }
 
-test("org: list retains visible column headers at 390px @ui-state", async ({ page }) => {
+test("org: structure list becomes readable cards at 390px @ui-state", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   const fixture = await mockScreen(page, screens[2], "populated");
   try {
     await page.goto("/org?view=list");
     const grid = page.getByRole("grid", { name: t("structure.list.label"), exact: true });
-    const heading = grid.getByRole("columnheader", { name: t("structure.list.name"), exact: true });
-    await expect(heading).toBeVisible();
-    await expect(heading).toBeInViewport();
+    await expect(grid).toHaveAttribute("data-layout", "cards");
     await expect(grid.getByRole("rowheader").first()).toBeVisible();
-    await fits(page, "org list/390");
+    await expect(grid.locator("dt").filter({ hasText: t("structure.list.code") }).first()).toBeVisible();
+    await expect(grid.locator("dt").filter({ hasText: t("structure.list.people") }).first()).toHaveText(t("structure.list.people"));
+    await expect(grid.locator("[data-row-id]").first().getByText(t("entityOps.info.none"), { exact: true })).toHaveCount(2);
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+      await page.screenshot({ path: test.info().outputPath(`structure-list-390-${theme}.png`), fullPage: true });
+      await fits(page, `org structure list/390/${theme}`);
+      await expectAxe(page, `org structure list/390/${theme}`);
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+test("org: entity list becomes readable cards at 390px @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await mockRoute(page, "get", "/api/v1/legal-entities", { status: 200, json: { items: [entityRecord("populated")] } });
+  try {
+    await page.goto("/org?tab=entities");
+    const grid = page.getByRole("grid", { name: t("entity.list.table"), exact: true });
+    await expect(grid).toHaveAttribute("data-layout", "cards");
+    await expect(grid.getByRole("rowheader")).toBeVisible();
+    await expect(grid.locator("dt").filter({ hasText: t("entity.col.brn") })).toBeVisible();
+    await expect(grid.locator("dt").filter({ hasText: t("entity.col.people") })).toBeVisible();
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+      await page.screenshot({ path: test.info().outputPath(`entity-list-390-${theme}.png`), fullPage: true });
+      await fits(page, `org entity list/390/${theme}`);
+      await expectAxe(page, `org entity list/390/${theme}`);
+    }
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

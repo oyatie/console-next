@@ -22,7 +22,7 @@ export const koNts = {
   "nts.unavailable.KEY_EXPIRED": "자동 확인 사용 불가 · 연동 키의 사용 기간이 지났습니다",
   "nts.unavailable.KEY_REJECTED": "자동 확인 사용 불가 · 국세청이 연동 키를 거절했습니다",
   "nts.unavailable.PROVIDER_DOWN": "자동 확인 사용 불가 · 국세청 응답을 받지 못했습니다",
-  "nts.fallback": "자동 확인을 사용할 수 없습니다. 사업자등록증을 증빙으로 첨부하십시오",
+  "nts.fallback": "사업자등록증을 증빙으로 첨부하십시오.",
   "nts.attach": "원본 첨부",
   "nts.original.title": "현재 사업자등록증 원본",
   "nts.original.consequence": "원본을 증빙으로 보관합니다. 등록증의 발급일과 기록한 내용은 그대로 유지됩니다.",

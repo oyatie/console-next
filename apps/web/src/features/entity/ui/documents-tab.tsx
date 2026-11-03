@@ -18,7 +18,7 @@ export function DocumentsTab({ docs }: { docs: EntityDocument[] }) {
         columns={[
           { header: t("entity.docs.col.kind"), cell: (x) => t(`entity.docs.kind.${x.kind}`), fit: true },
           { header: t("entity.docs.col.file"), cell: (x) => x.file_name },
-          { header: t("entity.docs.col.issued"), cell: (x) => <span className="num">{x.issued_on ? fmtDate(x.issued_on) : "—"}</span>, fit: true },
+          { header: t("entity.docs.col.issued"), cell: (x) => <span className="num">{x.issued_on ? fmtDate(x.issued_on) : t("entityOps.info.none")}</span>, fit: true },
           { header: t("entity.docs.col.uploaded"), cell: (x) => <span className="num">{fmtDateTime(x.uploaded_at)}</span>, fit: true, wide: true },
           { header: t("capture.docs.col.original"), cell: (x) => <OpenOriginal doc={x} />, fit: true },
           { header: t("entity.docs.col.retain"), cell: (x) => (x.retain_until ? <span className="num">{fmtDate(x.retain_until)}</span> : <Chip tone="info">{t("entity.docs.inUse")}</Chip>), fit: true },
