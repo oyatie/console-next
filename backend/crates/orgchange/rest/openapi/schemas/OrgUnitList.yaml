@@ -1,6 +1,12 @@
 type: object
 required: [items]
 properties:
+  draftableIds:
+    type: array
+    description: Current actor's Cedar-authorized org-unit IDs for drafting, including workplace own-unit IDs. Omission grants no destinations.
+    items:
+      type: string
+      format: uuid
   items:
     type: array
     description: Flat list — the COMPANY root first, then every SITE/DEPARTMENT/TEAM head (dissolved included). A

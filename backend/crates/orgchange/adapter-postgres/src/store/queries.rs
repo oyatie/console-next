@@ -4,7 +4,11 @@ impl PgOrgChangeStore {
     /// The caller's org tree as a flat list: the Company root, then every
     /// Site/Department/Team head (dissolved units included, marked so), in the
     /// chart's tree order. RLS confines it to the caller's tenant.
-    pub async fn list_org_units(&self) -> Result<OrgUnitListView, PgOrgChangeError> {
+    /// Read-only support sessions have no tenant actor and receive no draft destinations.
+    pub async fn list_org_units(
+        &self,
+        actor: Option<UserId>,
+    ) -> Result<OrgUnitListView, PgOrgChangeError> {
         let org = current_org().map_err(KernelError::from)?;
         with_org_conn(&self.pool, org, |tx| {
             Box::pin(async move {
@@ -26,7 +30,36 @@ impl PgOrgChangeStore {
                     let headcount = counts.get(&head.id).copied().unwrap_or(0);
                     items.push(head_view(head, org, headcount));
                 }
-                Ok(OrgUnitListView { items })
+                let mut draftable_ids = Vec::new();
+                if let Some(actor) = actor {
+                    let access = console_platform_authz::cedar_pbac::visible::load_facts(
+                        tx,
+                        org,
+                        *actor.as_uuid(),
+                    )
+                    .await?;
+                    for unit in &items {
+                        if unit.status == OrgUnitStatus::Active
+                            && super::draft_admission::allows(
+                                &access,
+                                org,
+                                actor,
+                                console_platform_authz::Feature::OrgChangeDraft,
+                                &OrgChangeTarget {
+                                    kind: TargetKind::OrgUnit,
+                                    target_ref: unit.id.to_string(),
+                                    label: unit.name.clone(),
+                                },
+                            )?
+                        {
+                            draftable_ids.push(unit.id);
+                        }
+                    }
+                }
+                Ok(OrgUnitListView {
+                    items,
+                    draftable_ids,
+                })
             })
         })
         .await

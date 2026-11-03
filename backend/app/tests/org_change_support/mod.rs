@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
+use sqlx::postgres::PgPoolOptions;
 #[path = "../../../test-support/org_change_fixtures.rs"]
 mod org_change_fixtures;
-pub(super) use org_change_fixtures::grant_org_approve;
+pub(super) use org_change_fixtures::{grant_org_approve, grant_org_levels};
 #[path = "../../../test-support/person_fixtures.rs"]
 mod person_fixtures;
 
@@ -119,4 +120,18 @@ pub(super) async fn assert_lifecycle_audit_spine(pool: &PgPool) {
         ],
         "exact audit spine and row counts; preflight is a READ and appends nothing"
     );
+}
+
+pub(super) async fn runtime_role_pool(owner: &PgPool) -> PgPool {
+    PgPoolOptions::new()
+        .max_connections(8)
+        .after_connect(|conn, _| {
+            Box::pin(async move {
+                sqlx::query("SET ROLE console_rt").execute(conn).await?;
+                Ok(())
+            })
+        })
+        .connect_with(owner.connect_options().as_ref().clone())
+        .await
+        .unwrap()
 }

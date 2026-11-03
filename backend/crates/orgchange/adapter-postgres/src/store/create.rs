@@ -60,6 +60,12 @@ impl PgOrgChangeStore {
                         .with_code("org_change.refuse.missing_grant").into());
                 }
                 validate_proposal(&command.proposal)?;
+                if !super::draft_admission::proposal_allows(
+                    &access, org, actor, console_platform_authz::Feature::OrgChangeDraft, &command.proposal,
+                )? {
+                    return Err(KernelError::forbidden("org-change draft permission required")
+                        .with_code("org_change.refuse.missing_grant").into());
+                }
                 if let Some(row) = sqlx::query(
                     "SELECT id, request_fingerprint FROM org_change_requests \
                      WHERE idempotency_key = $1",

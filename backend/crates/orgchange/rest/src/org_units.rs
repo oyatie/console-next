@@ -7,7 +7,11 @@ pub(crate) async fn list_org_units(
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
     allow_read(&p)?;
-    let units = s.store.list_org_units().await.map_err(RestError::store)?;
+    let units = s
+        .store
+        .list_org_units(p.support.is_none().then_some(p.user_id))
+        .await
+        .map_err(RestError::store)?;
     access_log::record(
         &s,
         &p,

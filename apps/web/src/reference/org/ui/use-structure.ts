@@ -20,5 +20,5 @@ export function useStructure(sel?: string, snapshot?: OrgStructure) {
     const gone = new Set((units.data?.items ?? []).filter((u) => u.status !== "ACTIVE").map((u) => u.id));
     return q.data ? placesOf(without(q.data, gone)) : new Map();
   }, [q.data, units.data, snapshot]);
-  return { q, places, at: locate(places, sel), setup: tree?.phase !== "OPERATING", tenant: tree?.tenant_name ?? "" };
+  return { q, units, places, at: locate(places, sel), setup: tree?.phase !== "OPERATING", tenant: tree?.tenant_name ?? "" };
 }

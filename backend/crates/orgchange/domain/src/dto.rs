@@ -260,6 +260,8 @@ pub struct OrgUnitHeadView {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrgUnitListView {
+    /// Cedar draft decisions for the current actor, projected for destination pickers.
+    pub draftable_ids: Vec<Uuid>,
     /// The Company root first, then every Site/Department head.
     pub items: Vec<OrgUnitHeadView>,
 }

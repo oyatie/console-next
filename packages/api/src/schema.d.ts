@@ -24906,6 +24906,8 @@ export interface components {
          */
         OrgUnitKind: "SITE" | "DEPARTMENT" | "TEAM";
         OrgUnitList: {
+            /** @description Current actor's Cedar-authorized org-unit IDs for drafting, including workplace own-unit IDs. Omission grants no destinations. */
+            draftableIds?: string[];
             /** @description Flat list — the COMPANY root first, then every SITE/DEPARTMENT/TEAM head (dissolved included). A tenant with no units yet returns just the root. */
             items: components["schemas"]["OrgUnitHead"][];
         };

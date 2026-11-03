@@ -5,6 +5,7 @@ import { expectAxe, fits } from "../a11y";
 import { orgPanelReads, orgWorkReads } from "../mock/org-work";
 import { id } from "../mock/fixtures";
 import { fmtDate } from "@console/i18n/format";
+import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { orgWorkScreens, type OrgWorkState } from "./org-work";
@@ -139,4 +140,32 @@ test("org: pending end reason appears on keyboard focus and hover @ui-state", as
     await page.close();
     fixture.release();
   }
+});
+
+for (const dark of [false, true]) test(`org move offers only server-permitted destinations at 390px ${dark ? "dark" : "light"}`, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await orgWorkReads(page, "operating");
+  await mockRoute(page, "get", "/api/v1/org-units", { status: 200, json: { items: [], draftableIds: [id(100), id(101)] } });
+  await page.goto(`/org/move?ids=${id(100)}`);
+  if (dark) await page.getByRole("button", { name: "어두운 화면으로 전환" }).click();
+  const tree = page.getByRole("treegrid", { name: "어디로" });
+  await expect(tree.getByRole("row", { name: /^검증부서 3/ })).toHaveCount(0);
+  await expect(tree.getByRole("row", { name: /^본사/ })).toHaveAttribute("aria-disabled", "true");
+  await tree.getByRole("row", { name: /^검증부서 2/ }).click();
+  const main = page.getByRole("main");
+  await main.getByRole("button", { name: /^오늘/ }).click();
+  await main.getByRole("textbox", { name: /^사유/ }).fill("부서 이동");
+  await expect(main.getByRole("button", { name: "부서 이동 1개 적용" })).toHaveCount(1);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", dark ? "dark" : "light");
+  await fits(page, "scoped move destinations");
+  expect(await main.getByRole("heading", { level: 1 }).evaluate(el => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return range.getClientRects().length;
+  })).toBeLessThanOrEqual(2);
+  await expectAxe(page, "scoped move destinations");
+  await tree.scrollIntoViewIfNeeded();
+  expect(fixture.unexpected).toEqual([]);
+  fixture.release();
 });

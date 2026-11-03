@@ -20,7 +20,7 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, search, children, ...props }: { to: string; search?: Record<string, string>; children: ReactNode }) => <span data-to={to} data-search={search && new URLSearchParams(search).toString()} {...props}>{children}</span>,
 }));
 vi.mock("../reference/authz/ui/access-gate", () => ({ AccessGate: ({ children }: { children: ReactNode }) => children }));
-vi.mock("../reference/org/ui/use-structure", () => ({ useStructure: () => ({ q: query(), places: fixture.data ? placesOf(fixture.data) : new Map(), setup: fixture.data?.phase !== "OPERATING", tenant: "검증 회사" }) }));
+vi.mock("../reference/org/ui/use-structure", () => ({ useStructure: () => ({ q: query(), units: { data: { items: [], draftableIds: [] }, isSuccess: true, refetch: vi.fn() }, places: fixture.data ? placesOf(fixture.data) : new Map(), setup: fixture.data?.phase !== "OPERATING", tenant: "검증 회사" }) }));
 vi.mock("../lib/react/command", () => ({ useCommand: () => ({ mutate: vi.fn(), isPending: false }) }));
 vi.mock("../features/org/ui/use-govern", () => ({ useGovern: () => ({ g: { date: "", reason: "" }, missing: [], routed: false }), useGovernSubmit: () => ({ mutate: vi.fn(), isPending: false }) }));
 

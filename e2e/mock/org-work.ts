@@ -13,6 +13,8 @@ export async function orgWorkReads(page: Page, state: string) {
   }));
   if (state !== "loading" && state !== "failed" && state !== "refused") {
     await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+    const units = (nodes: components["schemas"]["OrgStructureNode"][]): string[] => nodes.flatMap(n => [n.org_unit_id ?? n.id, ...units(n.children)]);
+    await mockRoute(page, "get", "/api/v1/org-units", { status: 200, json: { items: [], draftableIds: tree.entities.flatMap(e => units(e.children)) } });
   }
   return { tree, workplaceId: id(4) };
 }

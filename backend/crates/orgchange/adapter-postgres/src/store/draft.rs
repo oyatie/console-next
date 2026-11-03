@@ -28,6 +28,12 @@ impl PgOrgChangeStore {
             Box::pin(async move {
                 let (request, access) = super::draft_admission::lock(tx, org, actor, id).await?;
                 super::draft_admission::require(&access, org, actor, &request.target)?;
+                super::draft_admission::require_proposal(
+                    &access,
+                    org,
+                    actor,
+                    patch.proposal.as_deref().unwrap_or(&request.proposal),
+                )?;
                 // 예약 수정 (org-02): a scheduled change moves its date or reason.
                 if request.status == OrgChangeStatus::Approved {
                     let holds_apply = super::draft_admission::allows(
