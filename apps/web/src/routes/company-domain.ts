@@ -3,6 +3,6 @@ import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { app, screen } from "./app";
 export const companyDomainRoute = createRoute({
   getParentRoute: () => app,
-  path: "/settings/company-domain", staticData: { access: readRequirement("/settings/company-domain") },
+  path: "/settings/company-domain", staticData: { access: readRequirement("/settings/company-domain"), floorplan: "P-05" },
   component: lazyRouteComponent(screen(() => import("../features/company-domain/ui/domain-page").then((m) => ({ default: m.CompanyDomainPage })))),
 });

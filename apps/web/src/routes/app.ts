@@ -8,9 +8,13 @@ import { RouteFrame } from "../lib/react/route-ready";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
 import type { AccessRequirement } from "../reference/authz/domain/access";
 
+export const ROUTE_FLOORPLANS = ["P-01", "P-02", "P-03", "P-04", "P-05", "canvas"] as const;
+type RouteFloorplan = (typeof ROUTE_FLOORPLANS)[number];
+
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
     access?: AccessRequirement | "signed-in";
+    floorplan?: RouteFloorplan;
   }
 }
 
@@ -35,7 +39,7 @@ export const app = createRoute({ getParentRoute: () => root, id: "app", staticDa
 
 const tenants = createRoute({
   getParentRoute: () => app,
-  path: "/platform", staticData: { access: "signed-in" },
+  path: "/platform", staticData: { access: "signed-in", floorplan: "P-01" },
   beforeLoad: ensureSession,
   // The tenant, the search and the status view live in the URL, so a support ticket can link to them.
   validateSearch: (s: Record<string, unknown>): TenantsSearch => ({
@@ -45,10 +49,10 @@ const tenants = createRoute({
   }),
   component: lazyRouteComponent(screen(() => import("../features/platform/Tenants")), "Tenants"),
 });
-const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-access", staticData: { access: "signed-in" },validateSearch:(s: Record<string, unknown>): { review?: string } => ({ review: str(s.review) }),component:lazyRouteComponent(screen(()=>import("../features/support-access/ui/support-access")),"SupportAccess")});
+const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-access", staticData: { access: "signed-in", floorplan: "P-03" },validateSearch:(s: Record<string, unknown>): { review?: string } => ({ review: str(s.review) }),component:lazyRouteComponent(screen(()=>import("../features/support-access/ui/support-access")),"SupportAccess")});
 // Home with the setup checklist composed in (routes compose slices).
-const home = createRoute({ getParentRoute: () => app, path: "/", staticData: { access: "signed-in" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
-const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in" }, component: lazyRouteComponent(screen(() => import("../features/account/Account")), "Account") });
+const home = createRoute({ getParentRoute: () => app, path: "/", staticData: { access: "signed-in", floorplan: "P-03" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
+const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/account/Account")), "Account") });
 
 // Test builds keep the gallery for the preview suite; normal production builds drop its route and chunk.
 const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
