@@ -65,7 +65,14 @@ const focusWhen = (allowed: () => boolean, ownsRestore: boolean, ...ids: string[
     // Nothing to focus yet (the view that holds it is still rendering, e.g. a tab a navigation is opening): keep waiting.
     if (quiet >= 2 && el) {
       stop();
-      if (allowed()) el.focus();
+      if (allowed()) {
+        if (el.tagName === "H1") {
+          const source = document.activeElement;
+          const keyboard = source?.matches(":focus-visible") && !source.hasAttribute("data-focus-managed");
+          el.toggleAttribute("data-focus-managed", !keyboard);
+        }
+        el.focus();
+      }
       return;
     }
     if (++frames < MAX_FRAMES) requestAnimationFrame(tick);
