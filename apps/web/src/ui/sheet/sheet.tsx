@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Skeleton } from "../skeleton/skeleton";
 import { useLiveHold } from "../../lib/live/hold";
+import { useSheetDismiss } from "./sheet-dismiss";
 import s from "./sheet.module.css";
 
 /**
@@ -14,7 +15,7 @@ import s from "./sheet.module.css";
  * what the server said (a refusal, a lost response). `kicker` names where it applies, above the title. While `pending` it cannot be dismissed, by Esc, an outside
  * click or the close button, and its actions cannot be pressed again. `size="lg"` is for a table (bulk lines).
  */
-export function Sheet(p: {
+type Props = {
   open: boolean;
   /** A line above the title saying where the action applies (an icon and a path). */
   kicker?: ReactNode;
@@ -22,6 +23,8 @@ export function Sheet(p: {
   subtitle?: ReactNode;
   onClose: () => void;
   pending?: boolean;
+  /** An authoritative dirty state; without it, editing a form control marks this opening dirty. */
+  dirty?: boolean;
   /** The body is read-only (a lost response is being checked); the foot still acts. */
   locked?: boolean;
   /**
@@ -35,11 +38,20 @@ export function Sheet(p: {
   notice?: ReactNode;
   actions: ReactNode;
   children: ReactNode;
-}) {
+};
+
+export function Sheet(p: Props) {
   useLiveHold(p.open);
+  return p.open ? <OpenSheet {...p} /> : null;
+}
+
+function OpenSheet(p: Props) {
+  const { ref, dirty, armed, requestClose, onInput, onBackdrop } = useSheetDismiss<HTMLDivElement>(p);
   return (
-    <ModalOverlay className={s.overlay} isOpen={p.open} onOpenChange={(o) => !o && !p.pending && p.onClose()} isDismissable={!p.pending} isKeyboardDismissDisabled={p.pending}>
-      <Modal className={s.sheet} data-size={p.size ?? "md"}>
+    <ModalOverlay className={s.overlay} isOpen onOpenChange={(open) => !open && requestClose()}
+      isDismissable={false} isKeyboardDismissDisabled
+      onPointerDown={(event) => event.target === event.currentTarget && onBackdrop()}>
+      <Modal ref={ref} className={s.sheet} data-size={p.size ?? "md"} data-sheet-layer>
         <Dialog className={s.dialog}>
           <div className={s.head}>
             <div className={s.titles}>
@@ -47,11 +59,12 @@ export function Sheet(p: {
               <Heading slot="title" className={s.title}>{p.title}</Heading>
               {p.subtitle != null && <p className={s.subtitle}>{p.subtitle}</p>}
             </div>
-            <Button className="btn btn--ghost" aria-label={t("uiSheet.close")} isDisabled={p.pending} onPress={p.onClose}><X size={16} aria-hidden /></Button>
+            <Button className="btn btn--ghost" aria-label={t("uiSheet.close")} isDisabled={p.pending} onPress={requestClose}><X size={16} aria-hidden /></Button>
           </div>
-          <div className={s.body} inert={p.pending || p.locked || undefined}>{p.loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("common.loading")} /> : p.children}</div>
+          <div className={s.body} inert={p.pending || p.locked || undefined} onInputCapture={onInput} onChangeCapture={onInput}>{p.loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("common.loading")} /> : p.children}</div>
           <div className={s.foot}>
             {p.notice}
+            {armed && dirty && <div role="status">{t("composer.unsaved")}</div>}
             <div className={s.consequence}>{p.consequence}</div>
             <div className={s.actions} inert={p.pending || undefined}>{p.actions}</div>
           </div>

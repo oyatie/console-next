@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { rosterWindowQuery } from "../api/roster";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi, Link, useElementScrollRestoration, useLocation, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import { EmptyState } from "../../../ui/empty-state";
@@ -53,6 +53,25 @@ const FOCUS_SETTLE_MS = 150;
 let memory: { key: string; q: string; top: number; row: string | null } | null = null;
 const listened = new WeakSet<HTMLElement>();
 const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memory>>) => void (memory = { ...(memory?.key === key ? memory : { key, q, top: 0, row: null }), ...patch });
+
+function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTMLElement | null> }) {
+  const router = useRouter();
+  const key = useLocation({ select: location => location.state.__TSR_key });
+  const entry = useElementScrollRestoration({ id });
+  const applied = useRef<string | undefined>(undefined);
+  const [, setRendered] = useState(0);
+  useEffect(() => router.subscribe("onRendered", () => setRendered(value => value + 1)), [router]);
+  useEffect(() => {
+    if (!key || !entry || applied.current === key) return;
+    const frame = requestAnimationFrame(() => {
+      if (!grid.current) return;
+      applied.current = key;
+      grid.current.scrollTop = entry.scrollY;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [entry, grid, key]);
+  return null;
+}
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterPage({ manage, scoped = false, switcher, notice }: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode }) {
@@ -248,6 +267,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
       <div ref={split} className={s.split} data-open={Boolean(open)}>
         <Band className={s.tableWrap}>
           <>
+          <TableScrollRestoration id="people-roster" grid={scroller} />
           {/* Under a failed read the table stays (its search lives in the band above), empty rather than claiming nobody. */}
           <RosterTable
               sort={sort}
@@ -272,6 +292,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
               find={{ label: t("roster.find"), onFind: find, defaultValue: q }}
               findSlot={findSlot}
               scrollRef={scrollRef}
+              scrollRestorationId="people-roster"
               {...(manage && {
                 selection: sel,
                 onSelectionChange: setSel,

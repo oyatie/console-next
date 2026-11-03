@@ -11,7 +11,14 @@ import { VIEWS } from "../domain/roster";
 const state = vi.hoisted(() => ({ refused: false, settingsFailed: false, staleWindow: undefined as number | undefined, body: "roster rows", org: false, loading: false, empty: false, search: {} as { status?: string; review?: string; unit?: string; sort?: string } }));
 const table = vi.hoisted(() => vi.fn());
 const rosterRead = vi.hoisted(() => vi.fn());
-vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }), Link: () => null, useNavigate: () => vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({
+  getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }),
+  Link: () => null,
+  useNavigate: () => vi.fn(),
+  useRouter: () => ({ subscribe: vi.fn() }),
+  useLocation: () => undefined,
+  useElementScrollRestoration: () => undefined,
+}));
 vi.mock("@tanstack/react-query", async original => ({
   ...await original<typeof import("@tanstack/react-query")>(),
   useQuery: (options: { queryFn: unknown }) => options === rosterWindowQuery ? { data: state.settingsFailed ? state.staleWindow : 21, isPending: false, isError: state.settingsFailed, error: state.settingsFailed ? new ApiError(503, "service_unavailable", "") : null, refetch: vi.fn() } : options.queryFn === myAccessQuery.queryFn ? {

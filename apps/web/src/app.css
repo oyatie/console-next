@@ -77,7 +77,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top .top__menu { display: none; }
 .top__spacer { flex: 1; }
 /* The scroll container is also the containing block: an absolutely placed node inside (a visually hidden input) scrolls and clips with it instead of lengthening the document, which a focus would then scroll (E2-reveal). */
-.main { grid-area: main; overflow: auto; position: relative; }
+.main { grid-area: main; overflow: auto; overflow-anchor: none; position: relative; }
 .main:focus-visible { outline-offset: -2px; }
 .top__jump { flex: 0 1 600px; min-width: 0; justify-content: flex-start; color: var(--steel); font-weight: var(--fw-body); background: var(--muted); }
 .top__jumpText { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

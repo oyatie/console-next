@@ -44,6 +44,8 @@ const queryClient = new QueryClient({
 const router = createRouter({
   routeTree: routeTree,
   defaultPreload: "intent",
+  scrollRestoration: true,
+  scrollToTopSelectors: ["#main"],
   defaultNotFoundComponent: () => (
     <main className="page">
       <EmptyState

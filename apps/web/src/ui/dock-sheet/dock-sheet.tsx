@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { t } from "@console/i18n";
 import { useLiveHold } from "../../lib/live/hold";
 import { Sheet } from "../sheet/sheet";
+import { useSheetDismiss } from "../sheet/sheet-dismiss";
 import s from "./dock-sheet.module.css";
 import { useNarrow } from "./use-narrow";
 
@@ -13,6 +14,7 @@ type Props = {
   subtitle?: ReactNode;
   onClose: () => void;
   pending?: boolean;
+  dirty?: boolean;
   consequence: ReactNode;
   notice?: ReactNode;
   actions: ReactNode;
@@ -27,44 +29,35 @@ type Props = {
  */
 export function DockSheet(p: Props) {
   const small = useNarrow();
+  return !p.open ? null : small ? <Sheet {...p} /> : <WideDockSheet {...p} />;
+}
+
+function WideDockSheet(p: Props) {
   const head = useRef<HTMLHeadingElement>(null);
   const back = useRef<Element | null>(null);
   const id = useId();
-  useLiveHold(p.open && !small);
-  const box = useRef<HTMLElement>(null);
-  const { pending, onClose } = p;
+  useLiveHold(p.open);
+  const { ref, dirty, armed, requestClose, onInput } = useSheetDismiss<HTMLElement>(p);
   useEffect(() => {
-    if (!p.open || small) return;
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !pending && box.current?.contains(document.activeElement)) {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", esc);
-    return () => document.removeEventListener("keydown", esc);
-  }, [p.open, small, pending, onClose]);
-  useEffect(() => {
-    if (!p.open || small) return;
+    if (!p.open) return;
     back.current = document.activeElement;
     head.current?.focus();
     return () => (back.current as HTMLElement | null)?.focus?.();
-  }, [p.open, small]);
-  if (small) return <Sheet {...p} />;
-  if (!p.open) return null;
+  }, [p.open]);
   return (
-    <aside ref={box} className={s.dock} aria-labelledby={id}>
+    <aside ref={ref} className={s.dock} aria-labelledby={id} data-sheet-layer>
       <div className={s.head}>
         <div className={s.titles}>
           {p.kicker != null && <span className={s.kicker}>{p.kicker}</span>}
           <h2 id={id} ref={head} tabIndex={-1} className={s.title}>{p.title}</h2>
           {p.subtitle != null && <p className={s.subtitle}>{p.subtitle}</p>}
         </div>
-        <button type="button" className="btn btn--ghost" aria-label={t("uiSheet.close")} disabled={p.pending} onClick={p.onClose}><X size={16} aria-hidden /></button>
+        <button type="button" className="btn btn--ghost" aria-label={t("uiSheet.close")} disabled={p.pending} onClick={requestClose}><X size={16} aria-hidden /></button>
       </div>
-      <div className={s.body} inert={p.pending || undefined}>{p.children}</div>
+      <div className={s.body} inert={p.pending || undefined} onInputCapture={onInput} onChangeCapture={onInput}>{p.children}</div>
       <div className={s.foot}>
         {p.notice}
+        {armed && dirty && <div role="status">{t("composer.unsaved")}</div>}
         <div className={s.consequence}>{p.consequence}</div>
         <div className={s.actions} inert={p.pending || undefined}>{p.actions}</div>
       </div>

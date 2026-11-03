@@ -114,7 +114,10 @@ test("server refusal preserves all choices and cancel sends no additional comman
     await expect(sheet.getByRole("alert")).toContainText("forbidden");
     await expect(sheet.getByLabel(t("payroll.setup.name"), { exact: false })).toHaveValue("모의 신규 그룹");
     await expect(sheet.getByLabel(t("payroll.sensitive"), { exact: false })).toHaveValue("true");
-    await sheet.getByRole("button", { name: t("uiSheet.close"), exact: true }).click();
+    const close = sheet.getByRole("button", { name: t("uiSheet.close"), exact: true });
+    await close.click();
+    await expect(sheet.getByRole("status")).toHaveText(t("composer.unsaved"));
+    await close.click();
     await expect(sheet).toHaveCount(0);
     expect(writes).toBe(1);
     expect(fixture.unexpected).toEqual([]);
