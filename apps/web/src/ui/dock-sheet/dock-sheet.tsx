@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { t } from "@console/i18n";
 import { useLiveHold } from "../../lib/live/hold";
 import { Sheet } from "../sheet/sheet";
+import { useCurrentSheetDraft } from "../sheet/sheet-draft";
 import { useSheetDismiss } from "../sheet/sheet-dismiss";
 import s from "./dock-sheet.module.css";
 import { useNarrow } from "./use-narrow";
@@ -36,8 +37,9 @@ function WideDockSheet(p: Props) {
   const head = useRef<HTMLHeadingElement>(null);
   const back = useRef<Element | null>(null);
   const id = useId();
+  const draft = useCurrentSheetDraft();
   useLiveHold(p.open);
-  const { ref, dirty, armed, requestClose, onInput } = useSheetDismiss<HTMLElement>(p);
+  const { ref, dirty, armed, requestClose, onInput } = useSheetDismiss<HTMLElement>({ ...p, dirty: draft?.dirty ?? p.dirty });
   useEffect(() => {
     if (!p.open) return;
     back.current = document.activeElement;
@@ -57,6 +59,7 @@ function WideDockSheet(p: Props) {
       <div className={s.body} inert={p.pending || undefined} onInputCapture={onInput} onChangeCapture={onInput}>{p.children}</div>
       <div className={s.foot}>
         {p.notice}
+        {draft && (draft.problem || draft.restored) && <div role="status">{t(draft.problem ? "draft.unavailable" : "draft.restored")}{draft.restored && !draft.problem && <button type="button" className="btn btn--ghost" onClick={draft.discard}>{t("draft.discard")}</button>}</div>}
         {armed && dirty && <div role="status">{t("composer.unsaved")}</div>}
         <div className={s.consequence}>{p.consequence}</div>
         <div className={s.actions} inert={p.pending || undefined}>{p.actions}</div>
