@@ -1,5 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
+import { t } from "@console/i18n";
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { getRouteApi } from "@tanstack/react-router";
+import { QueryState } from "../../../lib/react/query-state";
+import { accountQuery } from "../api";
+import { AccessAccountContext } from "./use-access-context";
 import { BulkPage } from "./bulk-page";
 import { GrantsPage } from "./grants-page";
 import { PersonAccess } from "./person-access";
@@ -30,5 +35,10 @@ export function GrantsScreen() {
 
 const personRoute = getRouteApi("/app/access/people/$accountId");
 export function PersonScreen() {
-  return <PersonAccess accountId={personRoute.useParams().accountId} grant={personRoute.useSearch().grant} />;
+  const { accountId } = personRoute.useParams();
+  const { grant } = personRoute.useSearch();
+  const account = useQuery(accountQuery(accountId));
+  return <QueryState q={account} back={{ to: "/access/grants", label: t("access.nav.grants") }} layout="record">{data =>
+    <AccessAccountContext value={data}><PersonAccess accountId={accountId} grant={grant} /></AccessAccountContext>
+  }</QueryState>;
 }

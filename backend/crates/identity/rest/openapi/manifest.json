@@ -115,6 +115,9 @@
     "/api/v1/access/ops-usage": [
       "get"
     ],
+    "/api/v1/access/people/{id}": [
+      "get"
+    ],
     "/api/v1/access/requests": [
       "get",
       "post"
@@ -409,6 +412,7 @@
     "AccessGrantPreviewItem",
     "AccessGranters",
     "AccessLevel",
+    "AccessPerson",
     "AccessRequest",
     "AccessRequestReason",
     "AccessRole",

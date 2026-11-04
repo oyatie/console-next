@@ -29,7 +29,7 @@ const routes = [
   { path: `/org/changes/${record}`, read: `/api/v1/org-changes/${record}` },
   { path: `/people/notices/${record}`, read: `/api/v1/appointment-notices/${record}` },
   { path: `/access/roles/${record}`, read: `/api/v1/access/roles/${record}` },
-  { path: `/access/people/${record}`, read: `/api/v1/access/accounts/${record}/effective` },
+  { path: `/access/people/${record}`, read: `/api/v1/access/people/${record}` },
   { path: `/people/${record}/identifiers`, read: `/api/v1/employees/${record}` },
   { path: "/attendance", read: "/api/v1/attendance/month" },
   { path: "/statutory", read: "/api/v1/statutory/workplaces" },

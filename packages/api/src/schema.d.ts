@@ -1134,6 +1134,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/people/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an account for the access screens
+         * @description Requires tenant-wide access view through Cedar. Returns only access-screen labels, employee reference and account state, without phone or other contact details. Authorization precedes lookup; missing and foreign-tenant account IDs return the same not-found response.
+         */
+        get: operations["getAccessPerson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/requests": {
         parameters: {
             query?: never;
@@ -14655,6 +14675,27 @@ export interface components {
          * @enum {string}
          */
         AccessLevel: "view" | "edit" | "approve" | "export";
+        /** @description Access-screen account labels and state. Contact details and unrelated HR facts are excluded. */
+        AccessPerson: {
+            id: components["schemas"]["Uuid"];
+            display_name: string;
+            /** @description Account login label used to distinguish unlinked accounts; not a contact address. */
+            sign_in_id?: string | null;
+            /** Format: uuid */
+            employee_id: string | null;
+            employee_name: string | null;
+            employee_number: string | null;
+            employee_company: string | null;
+            employee_org_unit: string | null;
+            /** @enum {string} */
+            employee_link_status: "LINKED" | "UNLINKED";
+            roles: string[];
+            branch_ids: components["schemas"]["Uuid"][];
+            is_active: boolean;
+            is_tenant_ops: boolean;
+            has_passkey: boolean;
+            account_status: components["schemas"]["AccountStatus"];
+        };
         AccessRequest: {
             id: components["schemas"]["Uuid"];
             requested_by: components["schemas"]["Uuid"];
@@ -32570,6 +32611,49 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getAccessPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The requested account and its employee link. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessPerson"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Cedar denies access view. Error code access_denied. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     listAccessRequests: {

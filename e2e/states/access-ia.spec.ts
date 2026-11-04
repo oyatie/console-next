@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { failure, id, screenAccess, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
-import { accessScreens, mockAccessScreen } from "./access";
+import { accessPerson, accessScreens, mockAccessScreen } from "./access";
 
 for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) {
   test(`first use opens the role editor with keyboard checkboxes at ${width}px ${colorScheme}`, async ({ page }) => {
@@ -70,6 +70,7 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await page.emulateMedia({ colorScheme });
     const fixture = await mockAccessScreen(page, accessScreens[0], "populated");
     await mockRoute(page, "get", "/api/v1/users", { status: 200, json: { items: [{ ...user, id: id(20), display_name: "운영 계정" }], total: 1, limit: 200, offset: 0 } });
+    await mockRoute(page, "get", "/api/v1/access/people/{id}", { status: 200, json: accessPerson({ ...user, id: id(20), display_name: "운영 계정", is_tenant_ops: true }) });
     await mockRoute(page, "get", "/api/v1/access/accounts/{accountId}/effective", { status: 200, json: { ...screenAccess("/access/people/" + id(20)), account_id: id(20), is_ops: true } });
     await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: [] });
     await page.goto(`/access/people/${id(20)}?grant=true`);
@@ -151,6 +152,7 @@ for (const status of [403, 503] as const) test(`person access keeps the grants m
   const account = { ...user, id: id(100), display_name: "검증직원", employee_id: null, employee_number: null,
     employee_name: null, employee_company: null, employee_org_unit: null, sign_in_id: null };
   await mockRoute(page, "get", "/api/v1/users", { status: 200, json: { items: [account], total: 1, limit: 200, offset: 0 } });
+  await mockRoute(page, "get", "/api/v1/access/people/{id}", { status: 200, json: accessPerson(account) });
   await mockRoute(page, "get", "/api/v1/access/ops", { status, json: failure(status === 403 ? "forbidden" : "service_unavailable") });
   await mockRoute(page, "get", "/api/v1/access/accounts/{accountId}/effective", { status: 200, json: { ...screenAccess(`/access/people/${account.id}`), account_id: account.id } });
   await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: [] });

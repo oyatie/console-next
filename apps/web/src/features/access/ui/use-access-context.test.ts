@@ -2,6 +2,9 @@ import { afterEach, expect, test, vi } from "vitest";
 import { useAccessContext } from "./use-access-context";
 
 const state = vi.hoisted(() => ({ fetched: false, success: true, items: [] as { id: string }[] }));
+vi.mock("react", async importOriginal => ({
+  ...await importOriginal<typeof import("react")>(), useContext: () => undefined,
+}));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({ data: { items: state.items }, isFetchedAfterMount: state.fetched, isSuccess: state.success }),
 }));
