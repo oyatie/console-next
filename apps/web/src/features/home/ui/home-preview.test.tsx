@@ -64,14 +64,21 @@ test.each([
   expect(markup.includes(`aria-label="${t("home.attention.label")}"`)).toBe(visible);
 });
 
-test("Home keeps server-counted lane links when attention filters are absent", () => {
-  view.pages = [{ ...page(7), available_filters: ["turn", "scheduled", "waiting", "deadlines", "failures"], counts: {
+test.each([
+  { state: "absent", attention_filters: undefined },
+  { state: "empty", attention_filters: [] },
+])("Home keeps server-counted lane links when attention filters are $state", ({ attention_filters }) => {
+  view.pages = [{ ...page(7), attention_filters, available_filters: ["turn", "scheduled", "waiting", "deadlines", "failures"], counts: {
     turn: { total: 31, total_is_exact: false }, scheduled: { total: 0, total_is_exact: true },
     waiting: { total: 2, total_is_exact: true }, deadlines: { total: 1, total_is_exact: true }, failures: { total: 0, total_is_exact: true },
   } }];
   const markup = html();
   expect(markup).toContain(`aria-label="${t("home.lanes")}"`);
   expect(markup).not.toContain(`aria-label="${t("home.attention.label")}"`);
+  const lanes = markup.match(/<nav[^>]*>[\s\S]*?<\/nav>/)![0];
+  expect(lanes).not.toContain('href="/inbox"');
+  expect(lanes).not.toContain('aria-current="page"');
+  expect(lanes).toContain('aria-current="true"');
   for (const key of view.pages[0]!.available_filters) {
     const count = view.pages[0]!.counts[key]!;
     const label = t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total });

@@ -12,38 +12,46 @@ import { screens } from "../states/registry";
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`Home keeps live server lane counts without attention filters at ${width}px ${theme}`, async ({ page }, info) => {
-    await page.setViewportSize({ width, height: 900 });
-    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
-    const mock = await mockScreen(page, screens[0], "populated");
-    const queue = inbox(8);
-    queue.available_filters = ["turn", "scheduled", "waiting", "deadlines", "failures"];
-    queue.counts = {
-      turn: { total: 31, total_is_exact: false }, scheduled: { total: 0, total_is_exact: true },
-      waiting: { total: 2, total_is_exact: true }, deadlines: { total: 1, total_is_exact: true }, failures: { total: 0, total_is_exact: true },
-    };
-    await mockRoute(page, "get", "/api/v1/me/action-inbox", request => ({ status: 200, json: {
-      ...queue, items: new URL(request.url()).searchParams.get("filter") === "scheduled" ? [] : queue.items,
-    } }));
-    await page.goto("/");
-    const preview = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
-    await expect(preview.locator("[data-id]")).toHaveCount(5);
-    await expect(preview.getByRole("group", { name: t("home.attention.label"), exact: true })).toHaveCount(0);
-    const lanes = preview.getByRole("navigation", { name: t("home.lanes"), exact: true });
-    await expect(lanes.getByRole("link")).toHaveCount(queue.available_filters.length + 1);
-    for (const key of queue.available_filters) {
-      const count = queue.counts[key]!;
-      const label = t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total });
-      await expect(lanes.getByRole("link", { name: label, exact: true })).toHaveAttribute("href", `/inbox?tab=${key}`);
-    }
-    await fits(page, `Home live lanes at ${width}px ${theme}`);
-    await expectAxe(page, `Home live lanes at ${width}px ${theme}`);
-    await page.screenshot({ path: info.outputPath(`home-live-${width}-${theme}.png`), fullPage: true });
-    await lanes.getByRole("link", { name: /^예정/, exact: false }).click();
-    await expect(page).toHaveURL(/\/inbox\?tab=scheduled$/);
-    await expect(page.getByRole("heading", { name: t("home.inbox.empty.title"), exact: true })).toBeVisible();
-    expect(mock.unexpected).toEqual([]);
-  });
+  for (const attention_filters of [undefined, []]) {
+    test(`Home keeps live server lane counts with ${attention_filters ? "empty" : "absent"} attention filters at ${width}px ${theme}`, async ({ page }, info) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+      const mock = await mockScreen(page, screens[0], "populated");
+      const queue = inbox(8);
+      queue.available_filters = ["turn", "scheduled", "waiting", "deadlines", "failures"];
+      queue.counts = {
+        turn: { total: 31, total_is_exact: false }, scheduled: { total: 0, total_is_exact: true },
+        waiting: { total: 2, total_is_exact: true }, deadlines: { total: 1, total_is_exact: true }, failures: { total: 0, total_is_exact: true },
+      };
+      await mockRoute(page, "get", "/api/v1/me/action-inbox", request => ({ status: 200, json: {
+        ...queue, attention_filters, items: new URL(request.url()).searchParams.get("filter") === "scheduled" ? [] : queue.items,
+      } }));
+      await page.goto("/");
+      const preview = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
+      await expect(preview.locator("[data-id]")).toHaveCount(5);
+      await expect(preview.getByRole("group", { name: t("home.attention.label"), exact: true })).toHaveCount(0);
+      const lanes = preview.getByRole("navigation", { name: t("home.lanes"), exact: true });
+      for (const key of queue.available_filters) {
+        const count = queue.counts[key]!;
+        const label = t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total });
+        await expect(lanes.getByRole("link", { name: label, exact: true })).toHaveAttribute("href", `/inbox?tab=${key}`);
+      }
+      await fits(page, `Home live lanes at ${width}px ${theme}`);
+      await expectAxe(page, `Home live lanes at ${width}px ${theme}`);
+      await page.screenshot({ path: info.outputPath(`home-live-${width}-${theme}.png`), fullPage: true });
+      await lanes.getByRole("link", { name: t("home.inbox.filterCount", { filter: t("home.inbox.filter.scheduled"), count: 0 }), exact: true }).click();
+      await expect(page).toHaveURL(/\/inbox\?tab=scheduled$/);
+      await expect(page.getByRole("heading", { name: t("home.inbox.empty.title"), exact: true })).toBeVisible();
+      await page.goBack();
+      await expect(page).toHaveURL(/\/$/);
+      await expect(preview).toBeVisible();
+      await expect(lanes.getByRole("link")).toHaveCount(queue.available_filters.length);
+      await expect(lanes.locator('a[href="/inbox"]')).toHaveCount(0);
+      await expect(lanes.locator('[aria-current="page"]')).toHaveCount(0);
+      await expect(lanes.locator('a[href="/inbox?tab=turn"]')).toHaveAttribute("aria-current", "true");
+      expect(mock.unexpected).toEqual([]);
+    });
+  }
 
   test(`inbox shares Home rows and server URL filters at ${width}px ${theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });

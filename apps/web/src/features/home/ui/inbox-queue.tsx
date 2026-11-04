@@ -48,10 +48,10 @@ export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase
           {t(`home.attention.${key}`)}
         </ToggleButton>)}
       </div> : null}
-      {(!preview || !first?.attention_filters) && !setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")} overflow="scroll">
-        {(["all", ...first.available_filters] as InboxFilter[]).map(key => {
+      {(!preview || !first?.attention_filters?.length) && !setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")} overflow="scroll">
+        {(preview ? first.available_filters : ["all", ...first.available_filters] as InboxFilter[]).map(key => {
           const count = key === "all" ? (first.counts.all ?? (filter === "all" ? { total: first.total, total_is_exact: first.total_is_exact } : undefined)) : first.counts[key];
-          return <Link key={key} to="/inbox" search={{ tab: key === "all" ? undefined : key }} replace resetScroll={false} className={tabClass} aria-current={filter === key ? "page" : undefined} activeOptions={{ exact: true, includeSearch: true }}>
+          return <Link key={key} to="/inbox" search={{ tab: key === "all" ? undefined : key }} replace={!preview} resetScroll={preview ? undefined : false} className={tabClass} aria-current={filter === key ? (preview ? true : "page") : undefined} activeOptions={{ exact: true, includeSearch: true }}>
             {count ? t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total }) : t(`home.inbox.filter.${key}`)}
           </Link>;
         })}
