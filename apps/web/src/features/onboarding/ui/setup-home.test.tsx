@@ -169,3 +169,22 @@ test("a current blocked step keeps its own fix primary when it is not waiting on
   expect(row).toContain('href="/setup/go-live"');
   expect(row.match(/btn--primary/g)).toHaveLength(1);
 });
+
+test("each tracker row shows visible state, owner, and gated go-live blocker summary", () => {
+  const html = render(checklist([
+    step("entity", true, "org::edit", { state: "done" }),
+    step("employees", false, "hr_basic::edit", { state: "todo" }),
+    step("golive", true, "tenant_ops", { state: "blocked", remedy: "accept_terms", count: 2 }),
+  ]));
+  expect(html).not.toContain("sr-only");
+  const [entityRow, employeesRow, goliveRow] = rowsOf(html);
+  expect(entityRow).toContain(">완료<");
+  expect(entityRow).toContain("담당 · 조직 등록·수정 권한");
+  expect(employeesRow).toContain(">필요<");
+  expect(employeesRow).toContain("인사 정보 등록·수정 권한 필요");
+  expect(goliveRow).toContain(">차단<");
+  expect(goliveRow).toContain("담당 · 운영 계정");
+  expect(goliveRow).toContain("시작 전에 할 일 2건을 마치면 시작할 수 있습니다");
+  expect(goliveRow).toContain("고객 계정의 이용약관 동의가 필요합니다");
+  expect(goliveRow).toContain('href="/setup/go-live"');
+});

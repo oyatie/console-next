@@ -15,7 +15,7 @@ const ICON = { lock: Lock, route: Route, mismatch: GitCompareArrows, generic: Ba
  * sheet instead. The panel always names the refusal code, at least one person who can unblock it, and
  * at least one action, so a refusal is never a dead end. Map a problem to these props in lib/refusal.
  */
-export function BlockedPanel({ kind = "generic", title, domain = "work", code, supportRef, supportRefAt, children, ability, unblockers, actions }: {
+export function BlockedPanel({ kind = "generic", compact, title, domain = "work", code, supportRef, supportRefAt, owner, children, ability, unblockers, actions }: {
   kind?: BlockedKind;
   title: string;
   code: string;
@@ -26,13 +26,30 @@ export function BlockedPanel({ kind = "generic", title, domain = "work", code, s
   children?: ReactNode;
   /** The permission that can unblock it, e.g. period lock management. */
   ability?: string;
-  unblockers: readonly [Unblocker, ...Unblocker[]];
   /** The remedies: change the input, or ask an unblocker (an action that reaches them). */
   actions: ReactNode;
-}) {
+} & ({ compact: true; owner?: ReactNode; unblockers?: readonly Unblocker[] } | { compact?: false; owner?: never; unblockers: readonly [Unblocker, ...Unblocker[]] })) {
   const id = useId();
   const Icon = ICON[kind];
   const refusalCode = `${domain}.refuse.${code}`;
+  if (compact) {
+    return (
+      <section className={s.panel} data-compact="" role="alert" aria-labelledby={id}>
+        <div className={s.head}>
+          <Icon className={s.icon} size={16} aria-hidden />
+          <h3 id={id} className={s.title}>{title}</h3>
+          {owner != null && <small className={s.whoLabel}>{owner}</small>}
+          <div className={s.actions} role="group" aria-label={t("uiBlocker.remedies")}>{actions}</div>
+        </div>
+        <details className={s.reason}>
+          <summary>{t("uiBlocker.reason")}</summary>
+          <code className={s.code}>{refusalCode}</code>
+          <SupportReference reference={supportRef} at={supportRefAt} />
+        </details>
+        {children != null && <div className={s.compactBody}>{children}</div>}
+      </section>
+    );
+  }
   return (
     <section className={s.panel} role="alert" aria-labelledby={id}>
       <div className={s.head}>

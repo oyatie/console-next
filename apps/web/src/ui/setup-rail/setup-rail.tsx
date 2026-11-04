@@ -14,6 +14,7 @@ export type SetupStepView = {
   title: string;
   state: SetupState;
   detail?: ReactNode;
+  owner?: ReactNode;
   action?: ReactNode;
   remedy?: ReactNode;
   /** A secondary action, e.g. "later" for an optional step or an import alternative. */
@@ -22,6 +23,7 @@ export type SetupStepView = {
 export type SetupGroup = { key: string; title: string; steps: readonly SetupStepView[] };
 
 const ICON = { todo: Circle, done: CheckCircle2, attention: AlertTriangle, blocked: Ban } as const;
+const TONE = { todo: "info", done: "ok", attention: "warn", blocked: "neutral" } as const;
 
 // eslint-disable-next-line react/only-export-components -- Home and the rail share this current-step rule.
 export const currentStep = (steps: readonly Pick<SetupStepView, "key" | "state">[]) =>
@@ -73,15 +75,16 @@ export function SetupRail({ title, summary, groups }: { title: string; summary?:
                 return (
                   <li key={x.key} className={s.step} data-state={x.state} data-step tabIndex={-1} aria-current={x.key === current ? "step" : undefined}>
                     <Icon size={18} className={s.icon} aria-hidden />
-                    <span className={s.title}>
-                      {x.title}
-                      <span className="sr-only">{t(`uiSetupRail.state.${x.state}`)}</span>
-                    </span>
+                    <span className={s.title}>{x.title}</span>
+                    <span className={`chip chip--${TONE[x.state]} ${s.badge}`} data-step-state={x.state}>{t(`uiSetupRail.state.${x.state}`)}</span>
                     <span className={s.actions}>
                       {x.state === "blocked" ? x.remedy : x.state !== "done" && x.action}
                       {x.state !== "done" && x.secondary}
                     </span>
-                    <span className={s.detail}>{x.detail}</span>
+                    <div className={s.foot}>
+                      <span className={s.detail}>{x.detail}</span>
+                      {x.owner != null && <small className={s.owner} data-step-owner>{x.owner}</small>}
+                    </div>
                   </li>
                 );
               })}

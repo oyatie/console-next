@@ -197,3 +197,66 @@ describe.each([3, 2000])("department readiness with %i people", (count) => {
     assert.deepEqual(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id), [], `${width} ${theme}`);
   });
 });
+
+describe("resolved blocker collapse and receipt layout", () => {
+  let ctx: BrowserContext;
+  let page: Page;
+  beforeAll(async () => {
+    ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    page = await ctx.newPage();
+    let accepted = false;
+    await page.route("**/api/v1/onboarding/go-live/preview", (route) =>
+      route.fulfill({
+        json: {
+          phase: "SETUP",
+          digest: accepted ? "ready-digest" : "terms-blocked-digest",
+          line_digests: {},
+          blockers: accepted ? [] : [{ code: "terms_not_accepted", count: null, remedy: "accept_terms", records: [] }],
+          warnings: [],
+          becomes_governed: ["setup_undo_becomes_correction"],
+          breakdown: [{ kind: "legal_entity", id: "e1", legal_entity_id: "e1", name: "검증법인", people: 10, units: 2 }],
+          roles_becoming_active: [],
+          access_admin_holders: [{ id: "u1", name: "김담당" }],
+          hr_accounts_with_no_grant: [],
+          facts: {
+            entities: 1, workplaces: 1, staffed_workplaces_without_registration: 0, empty_workplaces_without_registration: 0,
+            org_units: 2, employees: 10, employees_starting_later: 0, setup_writes: 3,
+            prepared_grants: 0, grants_effective_in_setup: 1, hr_accounts_invited: 1, hr_accounts_enrolled: 1,
+          },
+        },
+      }),
+    );
+    await page.route("**/api/v1/onboarding/terms", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          json: {
+            version: "2026-10-01",
+            sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            body: Array.from({ length: 14 }, (_, i) => `제${i + 1}조 서비스 이용 약관 본문입니다.`).join("\n\n"),
+          },
+        });
+      } else {
+        accepted = true;
+        await route.fulfill({ status: 204 });
+      }
+    });
+    await page.goto(`${server.resolvedUrls!.local[0]}setup/go-live?locale=ko`);
+  }, 60_000);
+  afterAll(async () => { await ctx?.close(); });
+
+  test("accepting service terms collapses the resolved row without blank space while keeping the governed heading stable", async () => {
+    await page.getByRole("button", { name: "이용약관 읽기", exact: true }).click();
+    const accept = page.getByRole("button", { name: "고객 계정을 대표해 이용약관 동의", exact: true });
+    await browserExpect(accept).toBeVisible();
+    const governed = page.getByRole("heading", { name: "운영을 시작하면 바뀌는 것", level: 2 });
+    const beforeGoverned = (await governed.boundingBox())!.y;
+    await accept.click();
+    await browserExpect(accept).toBeHidden();
+    const resolved = page.getByText("해결함", { exact: true });
+    await browserExpect(resolved).toBeVisible();
+    const resolvedRowHeight = await resolved.evaluate((el) => el.closest("[data-blocker-row]")?.getBoundingClientRect().height ?? 999);
+    assert.ok(resolvedRowHeight < 80, `expected compact resolved row (<80px), got ${resolvedRowHeight}px`);
+    const afterGoverned = (await governed.boundingBox())!.y;
+    assert.ok(Math.abs(afterGoverned - beforeGoverned) < 2, `governed heading shifted by ${Math.abs(afterGoverned - beforeGoverned)}px`);
+  });
+});

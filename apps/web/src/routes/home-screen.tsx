@@ -3,10 +3,15 @@ import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Home } from "../features/home/Home";
 import { SetupHome } from "../features/onboarding/ui/setup-home";
+import { SetupReceipt } from "../features/onboarding/ui/setup-receipt";
 import { useLiveHold } from "../lib/live/hold";
 import { cursorPages } from "../lib/query";
 import { entitiesRef } from "../reference/entity/api";
 import { unitsQuery } from "../reference/org/api";
+import { readRequirement } from "./route-reads";
+
+const RECEIPT_NEED = readRequirement("/setup/go-live");
+const HISTORY_NEED = readRequirement("/org/history");
 
 /** Setup and operating work share the same server queue. */
 export function HomeScreen() {
@@ -19,5 +24,5 @@ export function HomeScreen() {
   const pending = !settled && !ready;
   if (!pending && !settled) setSettled(true);
   useLiveHold(!pending && !!inbox.data?.pages.some((page) => page.items.length > 0), true);
-  return <Home setup={(c) => <SetupHome c={c} />} setupPending={pending} action={inboxAction} />;
+  return <Home setup={(c) => <SetupHome c={c} />} receipt={!during ? <SetupReceipt receiptNeed={RECEIPT_NEED} historyNeed={HISTORY_NEED} /> : undefined} setupPending={pending} action={inboxAction} />;
 }

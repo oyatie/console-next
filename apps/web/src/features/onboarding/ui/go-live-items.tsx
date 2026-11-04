@@ -1,18 +1,20 @@
-import { useLayoutEffect, useRef, useState } from "react";
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GoLiveItem } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { codeText } from "../../../lib/labels";
+import { Banner } from "../../../ui/banner/banner";
 import { BlockedPanel } from "../../../ui/blocker/blocked-panel";
 import { buttonClass } from "../../../ui/button/button-class";
 import { SectionHead } from "../../../ui/card/section-head";
 import { Chip } from "../../../ui/chip";
 import { LongTable } from "../../../ui/long-table/long-table";
+import { KeyValue } from "../../../ui/key-value/key-value";
 import { signedInName } from "../api";
 import { recordFix, type GoLiveRecord } from "../domain/rail";
 import { AcceptTerms } from "./terms";
 import { AddPasskey } from "./add-passkey";
-import { KeyValue } from "../../../ui/key-value/key-value";
 import { FixLink } from "./fix-link";
 import s from "./go-live.module.css";
 
@@ -52,55 +54,42 @@ function Fixes({ x }: { x: GoLiveItem }) {
 }
 
 /**
- * What still blocks go-live, one BlockedPanel each: what, its code, who can clear it (the person signed in) and the fix for
- * each record it counts. A blocker cleared on this screen (the terms) stays listed as resolved, at the height its panel
- * had, so the preview's re-read never pulls what is below it up under a pointer.
+ * Compact blocker rows: what blocks go-live, its disclosed refusal code, owner, and direct remedy.
+ * Blockers cleared in place collapse cleanly to a single resolved row without blank space.
  */
 export function Blockers({ items, changed = [] }: { items: GoLiveItem[]; changed?: string[] }) {
   const [seen, setSeen] = useState(items);
-  const boxes = useRef(new Map<string, HTMLDivElement>());
-  const heights = useRef(new Map<string, number>());
-  const open = new Set(items.map((x) => x.code));
-  // Before paint: an open panel's height is kept; a resolved row's box holds it.
-  useLayoutEffect(() => {
-    const measure = () => {
-      for (const [code, el] of boxes.current) {
-        if (open.has(code)) heights.current.set(code, el.offsetHeight);
-        else el.style.minHeight = `${heights.current.get(code) ?? 0}px`;
-      }
-    };
-    measure();
-    // A lazy child read can grow a panel without rendering this parent.
-    const observer = new ResizeObserver(measure);
-    for (const [code, el] of boxes.current) if (open.has(code)) observer.observe(el);
-    return () => observer.disconnect();
-  });
   const fresh = items.filter((x) => !seen.some((y) => y.code === x.code));
   if (fresh.length > 0) setSeen([...seen, ...fresh]);
   if (seen.length === 0) return null;
-  const you = { name: signedInName() ?? t("setup.golive.you"), role: t("setup.golive.youRole") };
-  const box = (code: string) => (el: HTMLDivElement | null) => void (el ? boxes.current.set(code, el) : boxes.current.delete(code));
+  const owner = t("setup.owner", { owner: signedInName() ?? t("setup.golive.you") });
   return (
-    <section aria-labelledby="blockers">
+    <section aria-labelledby="blockers" className={s.stack}>
       <SectionHead level={2} id="blockers">{t("setup.golive.blockers")}</SectionHead>
-      {seen.map((x) => {
-        const current = items.find((y) => y.code === x.code);
-        return (
-          <div key={x.code} ref={box(x.code)} data-changed={changed.includes(x.code) || undefined}>
-            {changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>}
-            {current ? (
-              <BlockedPanel domain="onboarding" title={itemText(current)} code={x.code} unblockers={[you]} actions={hasEmployeeRecords(current) ? <FixLink code={current.remedy} /> : <Fixes x={current} />}>
-                {hasEmployeeRecords(current) && <EmployeeRecords x={current} />}
-              </BlockedPanel>
-            ) : (
-              <div className={`${s.resolved} row`}>
-                <strong>{itemText(x)}</strong>
-                <Chip tone="ok">{t("setup.golive.resolved")}</Chip>
-              </div>
-            )}
-          </div>
-        );
-      })}
+      <div className={s.blockerList}>
+        {seen.map((x) => {
+          const current = items.find((y) => y.code === x.code);
+          return (
+            <div key={x.code} data-blocker-row={x.code} data-changed={changed.includes(x.code) || undefined}>
+              {changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>}
+              {current ? (
+                <BlockedPanel
+                  compact
+                  domain="onboarding"
+                  code={current.code}
+                  title={itemText(current)}
+                  owner={owner}
+                  actions={hasEmployeeRecords(current) ? <FixLink code={current.remedy} /> : <Fixes x={current} />}
+                >
+                  {hasEmployeeRecords(current) ? <EmployeeRecords x={current} /> : undefined}
+                </BlockedPanel>
+              ) : (
+                <Banner tone="ok" title={itemText(x)} actions={<Chip tone="ok">{t("setup.golive.resolved")}</Chip>} />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -109,9 +98,13 @@ export function Blockers({ items, changed = [] }: { items: GoLiveItem[]; changed
 export function Warnings({ items, changed = [] }: { items: GoLiveItem[]; changed?: string[] }) {
   if (items.length === 0) return null;
   return (
-    <section aria-labelledby="warnings">
+    <section aria-labelledby="warnings" className={s.stack}>
       <SectionHead level={2} id="warnings">{t("setup.golive.warnings")}</SectionHead>
-      <KeyValue items={items.map((x) => ({ key: x.code, label: <>{changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>} {itemText(x)}</>, value: <Fixes x={x} /> }))} />
+      <div className={s.blockerList}>
+        {items.map((x) => (
+          <Banner key={x.code} tone="warn" title={<>{changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>}{itemText(x)}</>} actions={<Fixes x={x} />} />
+        ))}
+      </div>
     </section>
   );
 }
