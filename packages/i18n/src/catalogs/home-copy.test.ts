@@ -13,13 +13,6 @@ test.each(NO_PROMISE)("regression governance-07 / company-49: %s has no copy", (
   expect(Object.hasOwn(en, id)).toBe(false);
 });
 
-test.each([
-  "registration_check", "identifier_correction_waiting", "identifier_correction_decide", "identifier_correction_apply", "identifier_correction_review",
-  "support_access", "approval", "org_change", "org_change_waiting", "org_change_scheduled", "org_change_approve", "org_change_apply", "org_change_draft", "org_change_rejected", "org_change_settle",
-  "hr_exit", "hr_exit_confirm", "hr_exit_confirm_hq", "hr_exit_settle", "hr_lifecycle", "lifecycle_apply_failed", "hr_request", "register_review", "identity_review",
-  "contract_renewal", "insurance_filing", "period_unlock", "grant_notice", "dispatch", "support", "work", "payroll", "governance", "unknown",
-])("inbox kind %s has a reason in both catalogs", kind => {
-  const key = `home.inbox.reason.${kind}`;
-  expect(Object.hasOwn(ko, key)).toBe(true);
+test.each(Object.keys(ko).filter(key => key.startsWith("home.inbox.reason.")))("state reason %s has copy in both catalogs", key => {
   expect(Object.hasOwn(en, key)).toBe(true);
 });

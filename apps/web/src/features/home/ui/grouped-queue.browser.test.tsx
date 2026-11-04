@@ -76,7 +76,7 @@ test.each(ENGINES.flatMap((_, engine) => [1440, 390].map(width => ({ engine, wid
       await pw(page.getByRole("button", { name: "오늘 퇴직 작업", exact: true })).toHaveCount(0);
       const aging = rows.filter({ hasText: "오래된 계약" });
       await pw(aging).toContainText("12일째 대기");
-      await pw(aging).toContainText("계약 만료가 다가옵니다");
+      await pw(aging).not.toContainText("계약 만료가 다가옵니다");
       expect(await aging.getByRole("cell").evaluateAll(cells => cells.filter(cell => getComputedStyle(cell).display !== "none").map(cell => {
         const style = getComputedStyle(cell);
         return [cell.getAttribute("data-column"), style.gridColumnStart, style.gridRowStart, style.gridRowEnd];

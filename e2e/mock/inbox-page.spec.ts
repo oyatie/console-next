@@ -18,6 +18,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
       const mock = await mockScreen(page, screens[0], "populated");
       const queue = inbox(8);
+      queue.items = queue.items.map(item => ({ ...item, due: "2026-10-29T00:00:00Z" }));
       queue.available_filters = ["turn", "scheduled", "waiting", "deadlines", "failures"];
       queue.counts = {
         turn: { total: 31, total_is_exact: false }, scheduled: { total: 0, total_is_exact: true },
@@ -58,6 +59,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "populated");
     const queue = inbox(8);
+    queue.items = queue.items.map(item => ({ ...item, due: "2026-10-29T00:00:00Z" }));
     queue.available_filters = ["turn", "scheduled", "waiting", "deadlines", "failures"];
     queue.counts = {
       turn: { total: 31, total_is_exact: false }, scheduled: { total: 0, total_is_exact: true },
@@ -68,7 +70,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       { key: "approvals", total: 2, total_is_exact: true },
       { key: "today", total: 1, total_is_exact: true },
       { key: "overdue", total: 1, total_is_exact: false },
-    ];
+    ] as const;
     const scheduled = t("home.inbox.filterCount", { filter: t("home.inbox.filter.scheduled"), count: 0 });
     await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
       const query = new URL(request.url()).searchParams;
@@ -301,3 +303,37 @@ for (const width of [1440, 390]) for (const state of ["loading", "empty", "setup
     expect(mock.unexpected).toEqual([]);
   });
 }
+
+for (const width of [1440, 390]) test(`Home reserves the receipt above a refused inbox at ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 });
+  await mockScreen(page, screens[0], "refused");
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [{ key: "onboarding.receipt_days", value: 2, default: 2,
+    kind: { type: "int", unit: "days" }, looser_when: "higher", governance: "tenant",
+    legal_basis: null, version: "code_default", effective_from: null, scheduled: [], source: { layer: "code_default", scope_entity_id: null }, chain: [],
+  }] } });
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await held;
+    return { status: 200, json: { ...checklist, go_live_at: new Date().toISOString() } };
+  });
+  try {
+    await page.goto("/");
+    const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
+    await expect(queue.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
+    const before = (await queue.boundingBox())!.y;
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+      await page.screenshot({ path: info.outputPath(`home-receipt-pending-${width}-${theme}.png`), fullPage: true });
+    }
+    release();
+    await expect(page.getByText(t("setup.receipt.started.title"), { exact: true })).toBeVisible();
+    expect((await queue.boundingBox())!.y).toBe(before);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+      await fits(page, `Home receipt at ${width}px ${theme}`);
+      await expectAxe(page, `Home receipt at ${width}px ${theme}`);
+      await page.screenshot({ path: info.outputPath(`home-receipt-${width}-${theme}.png`), fullPage: true });
+    }
+  } finally { release(); }
+});

@@ -88,7 +88,7 @@ test("a row states why it needs attention, its age, and a resolving action", () 
   const markup = html([item("김계약", {
     kind: "contract_renewal", age_days: 12,
   })]);
-  expect(markup).toContain("계약 만료가 다가옵니다");
+  expect(markup).not.toContain("계약 만료가 다가옵니다");
   expect(markup).toContain("12일째 대기");
   expect(markup).toContain(">계약 조건 확인</a>");
   expect(markup).not.toContain(">계약 갱신</a>");
@@ -140,20 +140,30 @@ test("only server fold identities combine rows, keeping deadline and kind bounda
   expect(markup).not.toContain("second filing");
 });
 
-for (const locale of ["ko", "en"] as const) test(`row reasons come from the ${locale} catalog without a server reason`, async () => {
+for (const locale of ["ko", "en"] as const) test(`row reasons add state without repeating the ${locale} task title`, async () => {
   await loadCatalog(locale);
   i18n.set(locale);
   try {
-    const catalog = locale === "ko" ? (await import("../../../../../../packages/i18n/src/catalogs/ko")).ko : (await import("../../../../../../packages/i18n/src/catalogs/en")).en;
-    for (const [key, text] of Object.entries(catalog)) {
-      if (!key.startsWith("home.inbox.reason.")) continue;
-      const kind = key.slice("home.inbox.reason.".length);
-      expect(html([item(kind, { kind, links: [] })])).toContain(text);
-    }
-    expect(html([item("future", { kind: "future_kind" })])).toContain(t("home.inbox.reason.unknown"));
-    const markup = html([item("contract", { kind: "contract_renewal", context: { reason: "<추가 사유>" } })]);
+    for (const kind of ["identifier_correction_waiting", "identifier_correction_decide", "identifier_correction_apply", "identifier_correction_review", "approval", "org_change_waiting", "org_change_scheduled", "org_change_approve", "org_change_apply", "org_change_draft", "org_change_rejected", "org_change_settle", "hr_exit_confirm", "hr_exit_confirm_hq", "hr_exit_settle", "hr_request", "period_unlock"])
+      expect(html([item(kind, { kind, links: [] })])).toContain(t(`home.inbox.reason.${kind}` as Parameters<typeof t>[0]));
+    for (const kind of ["registration_check", "support_access", "org_change", "hr_exit", "hr_lifecycle", "lifecycle_apply_failed", "register_review", "identity_review", "unplaced", "insurance_filing", "grant_notice", "dispatch", "support", "work", "payroll", "governance", "unknown"])
+      expect(html([item(kind, { kind, links: [] })]).split("</td>")[0]).not.toContain('class="muted"');
+    expect(html([item("future", { kind: "future_kind" })]).split("</td>")[0]).not.toContain('class="muted"');
+    expect(html([item("undated", { kind: "contract_renewal" })])).not.toContain(t("home.inbox.reason.contract_renewal"));
+    const markup = html([item("contract", { kind: "contract_renewal", due: "2026-11-01T00:00:00Z", context: { reason: "<추가 사유>" } })]);
     expect(markup).toContain(t("home.inbox.reason.contract_renewal"));
     expect(markup).toContain("&lt;추가 사유&gt;");
     expect(markup).not.toContain("<추가 사유>");
   } finally { i18n.set("ko"); }
+});
+
+test.each(["대상 제목", "명부 항목 빠짐"])("context reason omits a repeated row title: %s", reason => {
+  const markup = html([item("대상 제목", { context: { reason } })]);
+  expect(markup.split("</td>")[0]).not.toContain('class="muted"');
+});
+
+test("identical state and context reasons appear once, and never repeat the subject", () => {
+  const reason = t("home.inbox.reason.approval");
+  expect(html([item("approval", { kind: "approval", context: { reason } })]).split("</td>")[0]!.match(new RegExp(reason, "g"))).toHaveLength(1);
+  expect(html([item(reason, { kind: "approval" })]).split("</td>")[0]).not.toContain('class="muted"');
 });
