@@ -1,5 +1,5 @@
 /* ui/person-day-grid: people × days with sticky header, sticky lead and tail columns, virtual rows. Tokens only. */
-.box { position: relative; overflow: auto; min-height: 0; max-height: 100%; }
+.box { position: relative; flex: 1; overflow: auto; min-height: 0; max-height: 100%; overscroll-behavior: contain; }
 .table:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .table thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--border); padding: var(--space-1) var(--space-2); font-weight: var(--fw-medium); color: var(--steel); }

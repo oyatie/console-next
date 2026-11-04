@@ -9,6 +9,7 @@ import { ATTENDANCE_MARK } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
 import { Button, IconButton, ToggleButton } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
@@ -86,16 +87,18 @@ export function DayTab({ head }: { head?: ReactNode }) {
 
       <QueryState q={board} own={refusalText} layout="grid">{b => {
         const ledger = ledgerParts(b.ledger);
+        const openCount = b.marks.blocking + b.marks.decision;
+        const blockingGroups = b.groups.filter((g) => g.marks.blocking > 0);
         return <>
             <div className={s.monthLayout} data-docked={save || open ? "" : undefined}>
-              <div className={s.dayLayout}>
+              <div className={s.dayLayout} role="region" aria-label={t("attendance.tab.day")}>
                 <div className={s.dayPage}>
                   <MonthStateBanner state={pageState(b.groups.flatMap((g) => g.rows.map((r) => r.month_state)))} month={date.slice(0, 7)} />
                   {!b.judged && <Banner tone="info">{t("attendanceRecords.board.notJudged")}</Banner>}
-                  <p className="num">
+                  {b.ledger.people > 0 && <p className="num">
                     {t("attendanceRecords.board.ledgerHead", { people: b.ledger.people })}{" "}
                     {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
-                  </p>
+                  </p>}
                   {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
                   {b.issue_groups && b.issue_groups.some(g => g.count > 0) && <IssueGroups groups={b.issue_groups} selected={mark} onSelect={selectedMark => go({ mark: selectedMark, issues: true, unscheduled: undefined })} />}
                   {b.groups.length > 0 && <div className="muted"><strong>{t("attendanceRecords.grammar.label")}</strong><p id={grammarHintId}>{t("attendanceRecords.grammar.hint")}</p></div>}
@@ -103,12 +106,24 @@ export function DayTab({ head }: { head?: ReactNode }) {
                     search.issues || search.unscheduled ? (
                       <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, mark: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
                     ) : (
-                      <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
+                      <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }} className={buttonClass("primary")}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
                     )
                   ) : search.detail ? (
                     <DayDetail board={b} store={store} grammarHintId={grammarHintId} onNote={setNote} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : (
-                    <DayBars days={rows.map(r => r.day)} labels={rows.map(r => `${r.name} ${r.employee_number ?? ""}`)}>{b.groups.map((g) => (
+                    <DayBars days={rows.map(r => r.day)} labels={rows.map(r => `${r.name} ${r.employee_number ?? ""}`)}>
+                      <div className={s.boardHeadDock} data-board-head aria-hidden>
+                        <Card density="dense">
+                          <div className={s.boardHead}>
+                            <div>{t("attendanceRecords.board.status")}</div>
+                            <div>{t("attendanceRecords.board.person")}</div>
+                            <div>{t("attendanceRecords.board.time")}</div>
+                            <div>{t("attendanceRecords.board.result")}</div>
+                            <div>{t("attendanceRecords.board.nextAction")}</div>
+                          </div>
+                        </Card>
+                      </div>
+                      {b.groups.map((g) => (
                       <Card
                         key={`${g.workplace_id}-${g.unit_id}`}
                         title={g.name}
@@ -122,11 +137,11 @@ export function DayTab({ head }: { head?: ReactNode }) {
                     ))}</DayBars>
                   )}
                 </div>
-                <Card title={t("attendanceRecords.rail.title")}>
-                  <Button variant="secondary" onClick={() => go({ issues: true, detail: undefined })}>{t("attendanceRecords.rail.process", { count: b.marks.blocking + b.marks.decision })}</Button>
-                  <ItemList
+                {b.ledger.people > 0 && <Card title={t("attendanceRecords.rail.title")}>
+                  {openCount > 0 && <Button variant="secondary" onClick={() => go({ issues: true, detail: undefined })}>{t("attendanceRecords.rail.process", { count: openCount })}</Button>}
+                  {blockingGroups.length > 0 && <ItemList
                     label={t("attendanceRecords.rail.groups")}
-                    items={b.groups.filter((g) => g.marks.blocking > 0).map((g) => ({
+                    items={blockingGroups.map((g) => ({
                       key: `${g.workplace_id}-${g.unit_id}`,
                       text: t("attendanceRecords.rail.groupLine", { name: g.name, blocking: g.marks.blocking }),
                       end: (
@@ -137,9 +152,9 @@ export function DayTab({ head }: { head?: ReactNode }) {
                         }}>{t("attendanceRecords.rail.asScheduled")}</Button> : g.no_schedule > 0 ? <Link to="/attendance" search={{ tab: "day", date, wp: g.workplace_id ?? undefined, unit: g.unit_id ?? undefined, unscheduled: true }}>{t("attendanceRecords.unscheduled.view", { count: g.no_schedule })}</Link> : undefined
                       ),
                     }))}
-                  />
+                  />}
                   <Button variant="ghost" onClick={() => window.print()}>{t("attendanceRecords.rail.print")}</Button>
-                </Card>
+                </Card>}
               </div>
               {save && <SaveDock drafts={store.drafts} rows={rows} kindOf={kindOf} month={date.slice(0, 7)} onClose={() => setSave(false)} onFocusCell={() => setSave(false)} onSaved={(r, keys) => (store.saved(keys), setSave(false), setNote(t("attendanceRecords.receipt.saved", { saved: r.saved, opens: r.opens.blocking + r.opens.decision })))} />}
               {!save && open && <DayDock employeeId={open.id} date={date} own={open.own} onClose={() => setOpen(null)} onRewrite={() => setOpen(null)} onDone={(m) => (setOpen(null), setNote(m))} />}

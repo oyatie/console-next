@@ -1,25 +1,36 @@
 /* features/attendance records (S2): layout only. Tokens only. */
+.boardPage { block-size: 100%; min-block-size: 0; overflow: hidden; }
 .monthPage, .dayPage { display: flex; flex-direction: column; gap: var(--space-3); min-height: 0; }
+.boardPage > .monthPage, .boardPage > .dayPage { flex: 1; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
 .stepper { display: inline-flex; align-items: center; gap: var(--space-1); }
 .stepText { min-width: calc(var(--space-6) * 4); text-align: center; }
 .selection { margin: 0; }
 /* The grid and a docked sheet side by side; the grid reflows (all four totals stay) rather than folding columns. */
-.monthLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-height: calc(var(--row-h) * 14); }
+.monthLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-height: 0; }
+.boardPage .monthLayout { flex: 1; height: 0; overflow: hidden; }
 .monthLayout[data-docked] { grid-template-columns: minmax(0, 1fr) var(--sheet-w); }
 @media (max-width: 960px) { .monthLayout[data-docked] { grid-template-columns: minmax(0, 1fr); } }
-.gridCol { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; min-height: 0; max-height: calc(100dvh - var(--topbar-h) * 5); }
+.gridCol { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; min-height: 0; overflow: hidden; }
 /* Day board: the board and the to-do rail. */
-.dayLayout { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--panel-w); gap: var(--space-4); align-items: start; }
+.dayLayout { min-width: 0; min-height: 0; height: 100%; overflow: auto; overscroll-behavior: contain; display: grid; grid-template-columns: minmax(0, 1fr) var(--panel-w); grid-auto-rows: max-content; gap: var(--space-4); align-items: start; }
 .monthLayout[data-docked] .dayLayout { grid-template-columns: minmax(0, 1fr); }
 .monthLayout[data-docked] .boardRow { grid-template-columns: var(--space-5) minmax(0, 1fr); }
 .monthLayout[data-docked] .boardRow > :nth-child(n + 3) { grid-column: 2; }
 @media (max-width: 1360px) { .dayLayout { grid-template-columns: minmax(0, 1fr); } }
-.boardRow { display: grid; grid-template-columns: var(--space-5) minmax(calc(var(--space-6) * 4), 1fr) minmax(calc(var(--space-6) * 6), 2fr) minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-3); align-items: center; }
+.boardHead, .boardRow { display: grid; grid-template-columns: var(--space-5) minmax(calc(var(--space-6) * 4), 1fr) minmax(calc(var(--space-6) * 6), 2fr) minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-3); align-items: center; }
+.boardHeadDock { position: sticky; top: 0; z-index: 2; }
 .boardRow > * { min-width: 0; overflow-wrap: normal; }
+.rowAction { display: flex; min-width: 0; align-items: flex-end; gap: var(--space-2); }
+.rowAction > :last-child { min-width: 0; }
+.actionLabel { display: none; }
 @media (max-width: 960px) {
   .boardRow { grid-template-columns: var(--space-5) minmax(0, 1fr); }
   .boardRow > :nth-child(n + 3) { grid-column: 2; }
+  .boardHead { grid-template-columns: var(--space-5) minmax(0, 1fr); }
+  .boardHead > :not(:nth-child(2)) { display: none; }
+  .rowAction { flex-direction: column; align-items: stretch; }
+  .actionLabel { display: block; }
 }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-end; }
 .strip { display: flex; flex-wrap: wrap; gap: var(--space-4); }

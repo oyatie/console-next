@@ -54,8 +54,8 @@ for (const width of [1440, 390]) test(`detail population, group headers and comp
   await expect(grids).toHaveCount(2);
   await expect(grids.nth(0)).toHaveAttribute("aria-rowcount", "4");
   await expect(grids.nth(1)).toHaveAttribute("aria-rowcount", "3");
-  await expect(page.getByRole("region", { name: "판교지점 › 영업1팀", exact: true })).toContainText("3명 · 정상 0 · 일정 없음 3");
-  await expect(page.getByRole("region", { name: "판교지점 › 지원팀", exact: true })).toContainText("2명 · 정상 2 · 일정 없음 0");
+  await expect(page.getByRole("region", { name: "판교지점 › 영업1팀", exact: true })).toContainText("3명 · 일정 없음 3");
+  await expect(page.getByRole("region", { name: "판교지점 › 지원팀", exact: true })).toContainText("2명 · 정상 2");
   await expectAxe(page, `detail ${width}`);
   await fits(page, `detail ${width}`);
   if (width === 390) {

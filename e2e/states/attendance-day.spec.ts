@@ -5,6 +5,7 @@ import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
 import { expectStable, recordShifts } from "../stability";
 import { id } from "../mock/fixtures";
+import { attendanceDayBoard } from "../mock/attendance-board";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
@@ -70,6 +71,50 @@ test("a held date read reserves the day panel without the previous date's notice
   expect(fixture.unexpected).toEqual([]);
 });
 
+for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`the day board has one vertical scroller, a sticky header and row actions at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme });
+  await page.setViewportSize({ width, height: 640 });
+  const fixture = await mockScreen(page, screen, "populated");
+  const base = attendanceDayBoard.groups[0]!.rows[0]!;
+  const count = 36;
+  const board: components["schemas"]["AttendanceDayBoard"] = {
+    ...attendanceDayBoard,
+    marks: { blocking: 0, decision: 0, info: 0 },
+    ledger: { ...attendanceDayBoard.ledger, people: count, normal: 0, no_record: 0, late_or_early: count },
+    groups: [{
+      ...attendanceDayBoard.groups[0]!, people: count, normal: 0, no_schedule: 0, marks: { blocking: 0, decision: 0, info: 0 }, hidden: 0,
+      rows: Array.from({ length: count }, (_, i) => ({
+        ...base, employee_id: id(800 + i), employee_number: `AT-${800 + i}`, name: `근태직원 ${i + 1}`,
+        day: { ...base.day, marks: ["LATE"], recognition: { ...base.day.recognition, late_in: 5 } },
+      })),
+    }],
+  };
+  await mockRoute(page, "get", "/api/v1/attendance/days", { status: 200, json: board });
+  await page.goto(screen.path);
+
+  const scroller = page.getByRole("region", { name: t("attendance.tab.day"), exact: true });
+  await expect(scroller).toBeVisible();
+  await expect(page.getByRole("group", { name: t("attendanceRecords.board.nextActionFor", { name: "근태직원 1" }), exact: true })).toBeVisible();
+  await expect(page.getByText(t("attendanceRecords.rail.process", { count: 0 }), { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/정상 0/)).toHaveCount(0);
+  await expect(page.getByText(/일정 없음 0/)).toHaveCount(0);
+  const scroll = await scroller.evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
+  const main = await page.locator("#main").evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
+  expect(scroll.scroll).toBeGreaterThan(scroll.client);
+  expect(main.scroll).toBeLessThanOrEqual(main.client + 1);
+  const sticky = await scroller.evaluate(el => {
+    const head = el.querySelector<HTMLElement>("[data-board-head]")!;
+    el.scrollTop = head.offsetTop + 64;
+    return { position: getComputedStyle(head).position, head: head.getBoundingClientRect().top, box: el.getBoundingClientRect().top };
+  });
+  expect(sticky.position).toBe("sticky");
+  expect(Math.abs(sticky.head - sticky.box)).toBeLessThanOrEqual(1);
+  await fits(page, `day-board/${width}/${colorScheme}`);
+  await expectAxe(page, `day-board/${width}/${colorScheme}`);
+  await testInfo.attach("day-board", { body: await page.screenshot(), contentType: "image/png" });
+  expect(fixture.unexpected).toEqual([]);
+});
+
 for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) test(`day board status and entry fields stay readable at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width, height: 900 });
@@ -114,6 +159,7 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     const inputs = detail ? page.getByRole("textbox", { name: /^근태직원 \d+ 입력/ }) : input;
     await expect(inputs.first()).toBeVisible();
     for (const control of await inputs.all()) {
+      await expect(control).not.toHaveAccessibleName(/선택 사항/);
       await expect(control).toHaveAccessibleDescription(t("attendanceRecords.grammar.hint"));
       const target = await control.evaluate(el => {
         const { width, height } = el.getBoundingClientRect();
@@ -137,6 +183,31 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await fits(page, `entry-hint/${detail}/${width}/${colorScheme}`);
     await expectAxe(page, `entry-hint/${detail}/${width}/${colorScheme}`);
   }
+  expect(fixture.unexpected).toEqual([]);
+});
+
+for (const height of [900, 640]) for (const dock of ["day", "save"]) for (const colorScheme of ["light", "dark"] as const) test(`the ${dock} dock keeps the rail below board rows at 1440x${height} ${colorScheme}`, async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme });
+  await page.setViewportSize({ width: 1440, height });
+  const fixture = await mockScreen(page, screen, "populated");
+  await page.goto(screen.path);
+  const input = page.getByRole("textbox", { name: /^근태직원 2 기록/ });
+  if (dock === "save") {
+    await input.fill("9-18");
+    await page.getByRole("button", { name: t("attendanceRecords.toolbar.save"), exact: true }).click();
+  } else await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
+  await expect(page.getByRole("complementary")).toBeVisible();
+  const rail = page.getByRole("region", { name: t("attendanceRecords.rail.title"), exact: true });
+  const lastRow = page.getByRole("group", { name: t("attendanceRecords.board.nextActionFor", { name: "근태직원 2" }), exact: true }).locator("..");
+  expect((await rail.boundingBox())!.y).toBeGreaterThanOrEqual((await lastRow.boundingBox())!.y + (await lastRow.boundingBox())!.height);
+  await input.scrollIntoViewIfNeeded();
+  expect(await input.evaluate(el => {
+    const box = el.getBoundingClientRect();
+    return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === el;
+  })).toBe(true);
+  await fits(page, `docked-day/${height}/${dock}/${colorScheme}`);
+  await expectAxe(page, `docked-day/${height}/${dock}/${colorScheme}`);
+  await testInfo.attach("docked-day-board", { body: await page.screenshot(), contentType: "image/png" });
   expect(fixture.unexpected).toEqual([]);
 });
 

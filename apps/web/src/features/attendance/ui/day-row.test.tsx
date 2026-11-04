@@ -18,6 +18,8 @@ test("board status words stay visible and inputs describe the shared format hint
   expect(html).not.toContain(t("attendanceRecords.grammar.hint"));
   expect(html).toContain(`aria-describedby="${grammarHintId}"`);
   expect(html).toContain('maxLength="40"');
+  expect(html).not.toContain(t("uiField.optional"));
+  expect(html).toContain(`role="group" aria-label="${t("attendanceRecords.board.nextActionFor", { name: row.name })}"`);
 });
 
 test.each(["LATE", "EARLY_OUT"] as const)("%s is named once in the status sentence", mark => {
