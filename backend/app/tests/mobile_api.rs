@@ -26,8 +26,7 @@ async fn mobile_sync_is_jwt_authorized_idempotent_and_reports_partial_failures(p
         .to_public_key_pem(LineEnding::LF)
         .unwrap();
     let branch_id = seed_branch(&pool, "Mobile Region", "Mobile Branch").await;
-    let mechanic = UserId::new();
-    let receptionist = UserId::new();
+    let (mechanic, receptionist) = (UserId::new(), UserId::new());
     seed_user_with_branch(&pool, mechanic, "MECHANIC", branch_id).await;
     seed_user_with_branch(&pool, receptionist, "RECEPTIONIST", branch_id).await;
     let equipment_id = seed_equipment(&pool, branch_id, "290").await;
@@ -43,7 +42,8 @@ async fn mobile_sync_is_jwt_authorized_idempotent_and_reports_partial_failures(p
     )
     .await
     .unwrap();
-    let service = build_router(app_state(pool.clone(), public_key_pem).unwrap());
+    let rt_pool = console_platform_test_support::runtime_role_pool(&pool).await;
+    let service = build_router(app_state(rt_pool, public_key_pem).unwrap());
     let missing_work_order_id = WorkOrderId::new();
     let body = json!({
         "sync_id": uuid::Uuid::new_v4(),
