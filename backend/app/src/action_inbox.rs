@@ -18,7 +18,7 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 use tracing::Instrument;
 
-mod error;
+pub(crate) mod error;
 mod request_register;
 mod response;
 use error::InboxError;

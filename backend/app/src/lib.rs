@@ -6,6 +6,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 pub mod action_inbox;
+mod approvals;
 mod audit_chain_signer;
 pub mod cedar_parity;
 #[cfg(all(feature = "dev-auth", not(debug_assertions)))]

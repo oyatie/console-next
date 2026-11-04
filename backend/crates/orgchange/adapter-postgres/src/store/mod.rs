@@ -4,7 +4,7 @@ mod create;
 mod decide;
 mod decision_admission;
 mod decision_facts;
-pub use decision_facts::step_decision_facts_in_tx;
+pub use decision_facts::{StepDecisionFacts, StepDecisionScope, step_decision_facts_in_tx};
 mod detail;
 mod draft;
 mod draft_admission;

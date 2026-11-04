@@ -11,6 +11,9 @@
     "/api/v1/appointment-notices/{id}": [
       "get"
     ],
+    "/api/v1/approvals": [
+      "get"
+    ],
     "/api/v1/change-requests": [
       "get",
       "post"
@@ -382,6 +385,8 @@
     "AppointmentNoticeLine",
     "AppointmentNoticePage",
     "AppointmentNoticeSummary",
+    "ApprovalDocument",
+    "ApprovalDocumentPage",
     "AttendanceImportApplyReport",
     "AttendanceImportColumn",
     "AttendanceImportDryRunSummary",

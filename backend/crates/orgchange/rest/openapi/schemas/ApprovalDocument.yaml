@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [id, box, title, summary, document_no, source, status, requester, requested_at, facts, route, viewer]
+properties:
+  id: {type: string}
+  box: {type: string, enum: [pending, upcoming, requested, reference, completed]}
+  title: {type: string}
+  summary: {type: string}
+  document_no: {type: string}
+  source:
+    type: object
+    required: [key, label]
+    properties:
+      key: {type: string}
+      label: {type: string}
+  status:
+    type: object
+    required: [key]
+    properties:
+      key: {$ref: '#/components/schemas/OrgChangeStatus'}
+  requester:
+    type: object
+    required: [id, name]
+    properties:
+      id: {type: string, format: uuid}
+      name: {type: string}
+  requested_at: {type: string, format: date-time}
+  facts:
+    type: array
+    items:
+      type: object
+      required: [key, label, value]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        value: {type: string}
+  route:
+    type: array
+    items:
+      type: object
+      required: [id, role_key, assignee, state]
+      properties:
+        id: {type: string, format: uuid}
+        role_key: {$ref: '#/components/schemas/OrgChangeApprovalRoleKey'}
+        assignee: {type: string}
+        state: {type: string, enum: [done, current, waiting, failed]}
+  viewer:
+    type: object
+    required: [kind, id]
+    properties:
+      kind: {type: string, enum: [org_change]}
+      id: {type: string, format: uuid}

@@ -4,7 +4,7 @@ use console_kernel_core::KernelError;
 use crate::http::error::{FieldError, MappedKernelError, error_response};
 
 #[derive(Debug)]
-pub(super) struct InboxError {
+pub(crate) struct InboxError {
     status: axum::http::StatusCode,
     code: &'static str,
     message: String,

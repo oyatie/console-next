@@ -24,6 +24,9 @@
 //! `SQLX_OFFLINE=true`; missing cache entries fail the build explicitly.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod locking_snapshot;
+pub use locking_snapshot::with_org_locking_snapshot;
+
 mod audit_batch_tx;
 mod audit_snapshot;
 pub mod audit_tx;

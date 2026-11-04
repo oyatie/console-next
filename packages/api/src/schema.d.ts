@@ -1394,6 +1394,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List visible approval documents
+         * @description Projects canonical org-change records. Cedar approval_document_list filters every box, count, facet and focus under one snapshot. Assigned upcoming and reference relationships are not stored by this source. Search and source apply to counts before descending created-at/UUID keyset paging.
+         */
+        get: operations["listApprovalDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attendance/batches/{batch_id}/undo": {
         parameters: {
             query?: never;
@@ -15090,6 +15110,64 @@ export interface components {
             /** Format: date-time */
             issued_at: string;
             line_count: number;
+        };
+        ApprovalDocument: {
+            id: string;
+            /** @enum {string} */
+            box: "pending" | "upcoming" | "requested" | "reference" | "completed";
+            title: string;
+            summary: string;
+            document_no: string;
+            source: {
+                key: string;
+                label: string;
+            };
+            status: {
+                key: components["schemas"]["OrgChangeStatus"];
+            };
+            requester: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            };
+            /** Format: date-time */
+            requested_at: string;
+            facts: {
+                key: string;
+                label: string;
+                value: string;
+            }[];
+            route: {
+                /** Format: uuid */
+                id: string;
+                role_key: components["schemas"]["OrgChangeApprovalRoleKey"];
+                assignee: string;
+                /** @enum {string} */
+                state: "done" | "current" | "waiting" | "failed";
+            }[];
+            viewer: {
+                /** @enum {string} */
+                kind: "org_change";
+                /** Format: uuid */
+                id: string;
+            };
+        };
+        ApprovalDocumentPage: {
+            items: components["schemas"]["ApprovalDocument"][];
+            focused: components["schemas"]["ApprovalDocument"] | null;
+            counts: {
+                pending: number;
+                upcoming: number;
+                requested: number;
+                reference: number;
+                completed: number;
+            };
+            sources: {
+                key: string;
+                label: string;
+                count: number;
+            }[];
+            next_cursor: string | null;
         };
         /** @description A typed approval task over an ontology object. The source-specific payloads are mutually exclusive; `source` selects which payload is populated. */
         ApprovalItem: {
@@ -33152,6 +33230,38 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    listApprovalDocuments: {
+        parameters: {
+            query: {
+                box: "pending" | "upcoming" | "requested" | "reference" | "completed";
+                q?: string;
+                source?: string;
+                /** @description Canonical document ID; hidden and missing documents both return null. */
+                focus?: string;
+                /** @description Opaque next-page position. */
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized page and counts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDocumentPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     undoAttendanceBatch: {

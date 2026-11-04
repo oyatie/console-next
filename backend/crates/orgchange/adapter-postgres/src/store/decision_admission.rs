@@ -11,12 +11,13 @@ pub(super) async fn admit(
     request: &RequestRow,
     command: &StepDecisionCommand,
 ) -> Result<(), PgOrgChangeError> {
-    let facts = super::step_decision_facts_in_tx(tx, org, actor, Some(id))
-        .await?
-        .into_iter()
-        .next()
-        .ok_or_else(|| KernelError::not_found("org change not found"))?
-        .1;
+    let facts =
+        super::step_decision_facts_in_tx(tx, org, actor, super::StepDecisionScope::Request(id))
+            .await?
+            .into_iter()
+            .next()
+            .ok_or_else(|| KernelError::not_found("org change not found"))?
+            .decision;
     if !facts.holds_permission {
         org_change_step_decide::enforce(
             &actor.to_string(),
