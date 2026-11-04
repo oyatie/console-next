@@ -8,8 +8,8 @@ import { PrivacyRequestForm } from "./privacy-request";
 export default function PrivacyRequestsGallery() {
   return <><Section title={t("account.privacy.file")}><PrivacyRequestForm onFiled={() => {}} options={{
     subject_user_id: "00000000-0000-4000-8000-000000000001", as_of: "2026-11-05",
-    controllers: [{ code: "OPERATOR", label: t("account.privacy.controller.OPERATOR"), description: tg("blocker.ceoRole") }],
-    kinds: [{ code: "ACCESS", label: t("account.privacy.kind.ACCESS"), description: tg("reason.label"), due_on: "2026-11-15", without_delay: false }],
+    controllers: [{ code: "OPERATOR" }],
+    kinds: [{ code: "ACCESS", due_on: "2026-11-15", without_delay: false }],
     detail_max_length: 2000, reply_email_masked: null,
   }} /></Section><Section title={t("account.privacy.title")}><PrivacyRequestsView items={[{
     id: "rights-gallery", receipt_no: "RR-001", controller_label: tg("blocker.ceoRole"),

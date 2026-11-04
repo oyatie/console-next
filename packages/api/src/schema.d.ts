@@ -11600,6 +11600,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/rights-requests/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Filing choices and statutory clock previews for the authenticated subject */
+        get: operations["privacyRightsRequestOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/production/capacity-slots": {
         parameters: {
             query?: never;
@@ -55130,6 +55147,54 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    privacyRightsRequestOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Code-only choices admitted by Cedar; dates resolved as of the server KST date. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        subject_user_id: string;
+                        /** Format: date */
+                        as_of: string;
+                        controllers: {
+                            /** @enum {string} */
+                            code: "TENANT" | "OPERATOR";
+                        }[];
+                        kinds: {
+                            /** @enum {string} */
+                            code: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                            /** Format: date */
+                            due_on: string | null;
+                            without_delay: boolean;
+                        }[];
+                        detail_max_length: number;
+                        reply_email_masked: string | null;
+                    };
+                };
+            };
+            /** @description Query parameters are not accepted. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             503: components["responses"]["ServiceUnavailable"];
         };
     };

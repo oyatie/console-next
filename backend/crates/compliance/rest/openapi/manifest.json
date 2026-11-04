@@ -69,6 +69,9 @@
     "/api/v1/privacy/rights-requests/mine": [
       "get"
     ],
+    "/api/v1/privacy/rights-requests/options": [
+      "get"
+    ],
     "/api/v1/statutory/insurance-filings": [
       "get",
       "post"

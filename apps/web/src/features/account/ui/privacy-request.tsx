@@ -41,9 +41,9 @@ export function PrivacyRequestForm({ options, onFiled }: { options: PrivacyFilin
   const dates = chosen.flatMap(kind => kind.due_on ? [kind.due_on] : []).sort();
   return <div className={s.form}>
     {draft.problem || draft.restored ? <output>{t(draft.problem ? "draft.unavailable" : "draft.restored")}</output> : null}
-    <ChoiceField label={t("account.privacy.information")} required options={options.controllers.map(item => ({ value: item.code, label: item.label, description: item.description, disabled: command.isPending ? t("common.loading") : undefined }))}
+    <ChoiceField label={t("account.privacy.information")} required options={options.controllers.map(item => ({ value: item.code, label: t(`account.privacy.information.${item.code}`), description: t(`account.privacy.controller.${item.code}`), disabled: command.isPending ? t("common.loading") : undefined }))}
       value={controller || null} onChange={value => { draft.set({ ...draft.value, controller: value }); }} />
-    <Checks label={t("account.privacy.kinds")} items={options.kinds.map(kind => ({ id: kind.code, label: `${kind.label} · ${kind.description}` }))}
+    <Checks label={t("account.privacy.kinds")} items={options.kinds.map(kind => ({ id: kind.code, label: `${t(`account.privacy.kind.${kind.code}`)} · ${t(`account.privacy.consequence.${kind.code}`)}` }))}
       value={kinds} isDisabled={command.isPending} onChange={value => { draft.set({ ...draft.value, kinds: value.join(",") }); }} />
     <Field label={t("account.privacy.detail")} required={false} hint={t("account.privacy.detailHint")}>
       {control => <TextArea {...control} maxLength={options.detail_max_length} value={detail} disabled={command.isPending}

@@ -39,15 +39,10 @@ pub async fn file(
     if input.controller == Controller::Tenant && employee.is_none() {
         return Err(refuse("no_employee_record"));
     }
-    if input.detail.chars().count() > 2000 {
+    if input.detail.chars().count() > detail_max_length(tx, org).await? {
         return Err(refuse("detail_too_long"));
     }
-    // shortcut: these kinds have no register yet, admit them when their register exists.
-    if input
-        .kinds
-        .iter()
-        .any(|k| matches!(k, Kind::AutomatedDecision | Kind::Transmission))
-    {
+    if input.kinds.iter().any(|kind| !Kind::FILING.contains(kind)) {
         return Err(refuse("request_kind_unavailable"));
     }
     let now = OffsetDateTime::now_utc();
@@ -135,4 +130,20 @@ pub async fn filing_hash(pool: &PgPool, input: &Filing) -> Result<String, PgComp
             .fetch_one(pool)
             .await?,
     )
+}
+
+/// Shared registry limit for both the preview and authoritative filing validation.
+pub async fn detail_max_length(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+) -> Result<usize, PgComplianceError> {
+    use console_platform_db::settings_read::{SettingKey, resolve_in_tx};
+    let key = SettingKey::PrivacyRightsDetailMaxLength;
+    let values = resolve_in_tx(tx.as_mut(), org, &[key], None, Timestamp::now_utc()).await?;
+    values
+        .get(&key)
+        .and_then(|value| value.as_ref().ok())
+        .and_then(|value| value.value.as_int())
+        .and_then(|value| usize::try_from(value).ok())
+        .ok_or_else(|| KernelError::internal("privacy request detail limit unavailable").into())
 }
