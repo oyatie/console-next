@@ -11,11 +11,11 @@ test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(s => s.key === "attendance-day")!;
 const entry = { id: id(800), batch_id: id(801), kind: "TIMES", segments: [{ start: 540, end: 1200 }], source: "MANUAL", evidence_kind: "PAPER_SHEET", undone: false, created_at: AT, created_by_name: "근태담당" };
 const intervals = [
-  { start: 540, end: 720, minutes: 180, category: "WORK", recognised: true, reason: "소정 근무" },
-  { start: 720, end: 780, minutes: 60, category: "BREAK", recognised: false, reason: "근무 일정의 휴게" },
-  { start: 780, end: 1080, minutes: 300, category: "WORK", recognised: true, reason: "소정 근무" },
-  { start: 1080, end: 1140, minutes: 60, category: "OVERTIME", recognised: true, reason: "사전 승인 없는 근로" },
-  { start: 1140, end: 1200, minutes: 60, category: "NOT_WORK", recognised: false, reason: "개인 용무로 확인" },
+  { start: 540, end: 720, minutes: 180, category: "WORK", recognised: true, reason_code: "SCHEDULED_WORK", rule_version: "ATTENDANCE_RECOGNITION_V1" },
+  { start: 720, end: 780, minutes: 60, category: "BREAK", recognised: false, reason_code: "SCHEDULED_BREAK", rule_version: "ATTENDANCE_RECOGNITION_V1" },
+  { start: 780, end: 1080, minutes: 300, category: "WORK", recognised: true, reason_code: "SCHEDULED_WORK", rule_version: "ATTENDANCE_RECOGNITION_V1" },
+  { start: 1080, end: 1140, minutes: 60, category: "OVERTIME", recognised: true, reason_code: "OPEN_OVERTIME", rule_version: "ATTENDANCE_RECOGNITION_V1" },
+  { start: 1140, end: 1200, minutes: 60, category: "NOT_WORK", recognised: false, reason_code: "CONFIRMED_NOT_WORK", rule_version: "ATTENDANCE_RECOGNITION_V1" },
 ];
 const day = { ...attendancePerson.days[0]!, entry, intervals,
   plan: { kind: "WORK", holiday_work: false, shift: { start: 540, end: 1080, breaks: [{ start: 720, end: 780 }] } },
@@ -59,7 +59,8 @@ for (const width of [1440, 390]) {
     expect(fixture.unexpected).toEqual([]);
   });
 
-  test(`day minutes and source chips explain recognition at ${width}px`, async ({ page }) => {
+  for (const colorScheme of ["light", "dark"] as const) test(`day minutes and source chips explain recognition at ${width}px in ${colorScheme}`, async ({ page }) => {
+    await page.addInitScript(theme => localStorage.setItem("console.theme", theme), colorScheme);
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screen, "populated");
     await page.route(url => url.pathname === screen.read, route => route.fulfill({ json: { ...attendanceDayBoard, groups: [{ ...attendanceDayBoard.groups[0], rows: [{ ...attendanceDayBoard.groups[0]!.rows[0], day }] }] } }));
@@ -68,15 +69,19 @@ for (const width of [1440, 390]) {
     await expect(page.getByText(t("attendanceRecords.source.MANUAL"), { exact: true })).toBeVisible();
     await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
     const dock = page.getByRole(width === 1440 ? "complementary" : "dialog");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
     const minutes = dock.getByRole("table", { name: "분 단위 내역", exact: true });
     await expect(dock.getByRole("heading", { name: "분 단위 내역", exact: true })).toBeVisible();
     await expect(minutes.locator("tbody tr")).toHaveCount(5);
-    await expect(minutes).toContainText("개인 용무로 확인");
+    await expect(minutes).toContainText("근로 아님으로 확인");
+    await expect(minutes).not.toContainText("CONFIRMED_NOT_WORK");
     await expect(minutes).toContainText("60분");
     await expect(dock.getByText(/미승인 초과 1:00/)).toHaveCount(1);
     const bars = dock.getByRole("table", { name: t("uiShiftBar.table"), exact: true });
     await expect(bars.locator("tbody td").last()).toContainText("18:00–19:00");
     await expect(bars.locator("tbody td").last()).not.toContainText("20:00");
+    await fits(page, `overview-minutes/${width}/${colorScheme}`);
+    await expectAxe(page, `overview-minutes/${width}/${colorScheme}`);
     await dock.getByRole("tab", { name: t("attendanceRecords.day.tab.source"), exact: true }).click();
     await expect(dock.getByText(t("attendanceRecords.source.MANUAL"), { exact: true })).toHaveClass(/chip/);
     await fits(page, `overview-drawer/${width}`);
@@ -137,7 +142,7 @@ for (const state of ["empty", "failed", "refused", "loading"] as const) for (con
       }
       const minutes = dock.getByRole("table", { name: "분 단위 내역", exact: true });
       await expect(minutes.locator("tbody tr")).toHaveCount(5);
-      await expect(minutes).toContainText("개인 용무로 확인");
+      await expect(minutes).toContainText("근로 아님으로 확인");
       await expect(dock.getByText(/미승인 초과 1:00/)).toHaveCount(1);
     }
     expect(fixture.unexpected).toEqual([]);

@@ -102,7 +102,7 @@ function DayPanel({ day }: { day: Day }) {
         { header: t("attendanceOverview.day.minuteCount"), card: "fact", cell: i => t("attendanceOverview.day.minuteValue", { count: i.minutes }) },
         { header: t("attendance.col.kind"), card: "fact", cell: i => t(`attendanceOverview.interval.${i.category}`) },
         { header: t("attendanceRecords.day.recognised"), card: "status", cell: i => t(i.recognised ? "attendanceOverview.day.counted" : "attendanceOverview.day.excluded") },
-        { header: t("attendanceOverview.day.reason"), card: "fact", cell: i => i.reason },
+        { header: t("attendanceOverview.day.reason"), card: "fact", cell: i => t(`attendanceOverview.reason.${i.reason_code}`) },
       ]} /></> : null}
       {day.marks.length > 0 && <div className="row">{day.marks.map((m) => <MarkChip key={m} mark={m} />)}</div>}
     </>

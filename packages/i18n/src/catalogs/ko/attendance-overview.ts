@@ -20,4 +20,12 @@ export const koAttendanceOverview = {
   "attendanceOverview.interval.HOLIDAY": "휴일",
   "attendanceOverview.interval.NOT_WORK": "근로 아님",
   "attendanceOverview.interval.DISPUTED": "확인 필요",
+  "attendanceOverview.reason.SCHEDULED_WORK": "소정 근무",
+  "attendanceOverview.reason.SCHEDULED_BREAK": "근무 일정의 휴게",
+  "attendanceOverview.reason.PRIOR_APPROVED_OVERTIME": "사전 승인된 연장근로",
+  "attendanceOverview.reason.POST_APPROVED_OVERTIME": "사후 승인된 연장근로",
+  "attendanceOverview.reason.OPEN_OVERTIME": "사전 승인 없는 근로",
+  "attendanceOverview.reason.HOLIDAY_WORK": "휴일 근로",
+  "attendanceOverview.reason.CONFIRMED_NOT_WORK": "근로 아님으로 확인",
+  "attendanceOverview.reason.SCHEDULE_MISSING": "근무 일정 없음",
 };
