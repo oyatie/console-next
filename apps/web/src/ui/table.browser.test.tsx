@@ -19,7 +19,7 @@ beforeAll(async () => {
       name: "table-test",
       resolveId: id => id === "/table-test.js" ? "\0table-test" : undefined,
       load: id => id === "\0table-test" ? `
-        import { createElement as h, useState } from 'react';
+        import { createElement as h, useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
         import { Check } from '/apps/web/src/ui/button/button.tsx';
         import { Card } from '/apps/web/src/ui/card/card.tsx';
@@ -28,11 +28,26 @@ beforeAll(async () => {
         const wideCols = ['Name', 'Entity', 'Current', 'After', 'Notes'].map((header, i) => ({
           header, cell: r => i === 0 ? r.name : 'Long column value that clips on phones ' + i,
         }));
+        window.cellMounts = 0;
+        function EditCell({ name }) {
+          const [editing, setEditing] = useState(false);
+          useEffect(() => { window.cellMounts++; }, []);
+          return editing ? h('input', { 'aria-label': 'Rename ' + name, defaultValue: name })
+            : h('button', { onClick: () => setEditing(true) }, 'Edit ' + name);
+        }
         function MobileCases() {
           const [nestedEditor, setNestedEditor] = useState(false);
           window.toggleNestedEditor = setNestedEditor;
           const mode = location.hash.slice(1);
           const item = [{ id: 'MOB-0', name: 'MOB-0' }];
+          if (mode === 'stateful' || mode === 'focus') return h('main', null, h(Table, {
+            label: 'Inline editing', rows: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], rowId: r => r.id, columns: [
+              { header: 'Name', cell: r => r.name },
+              { header: 'Edit', cell: r => mode === 'stateful' ? h(EditCell, { name: r.name })
+                : r.id === 'a' ? (nestedEditor ? h('input', { 'aria-label': 'Nested editor' }) : r.name)
+                : h('button', null, 'Keep focus') },
+            ],
+          }));
           if (mode.startsWith('empty')) return h('main', null, h(Card, { title: 'Permissions', flush: true }, h(Table, { label: 'Empty permissions', rows: [], mobileLayout: mode === 'empty-rows' ? 'rows' : undefined, rowId: r => r.id, columns: [{ header: 'Domain', cell: r => r.name }] })));
           if (mode === 'forced-rows') return h('main', null, h(Table, { label: 'Preview rows', rows: item, rowId: r => r.id, mobileLayout: 'rows', columns: wideCols }));
           if (mode === 'editor') return h('main', null, h(Table, { label: 'Editor', rows: item, rowId: r => r.id, columns: [
@@ -210,3 +225,33 @@ test("selection cards, contenteditable=false and dynamic nested editors switch b
   await page.evaluate(() => (window as unknown as { toggleNestedEditor: (on: boolean) => void }).toggleNestedEditor(false));
   await expectElement(dynamic.locator("tbody > tr").first()).toHaveCSS("display", "grid");
 });
+
+for (const width of [1440, 390]) {
+  test(`stateful cells stay mounted when an inline editor opens at ${width}px`, async () => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("about:blank");
+    await page.goto(`${server.resolvedUrls!.local[0]}table-test#stateful`);
+    await page.getByRole("button", { name: "Edit A", exact: true }).click();
+    const editor = page.getByRole("textbox", { name: "Rename A", exact: true });
+    await expectElement(editor).toBeVisible();
+    await editor.fill("Renamed");
+    await expectElement(editor).toBeFocused();
+    await expectElement(editor).toHaveValue("Renamed");
+    expect(await page.evaluate(() => (window as unknown as { cellMounts: number }).cellMounts)).toBe(2);
+  });
+
+  test(`focus survives editors appearing and disappearing in another row at ${width}px`, async () => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("about:blank");
+    await page.goto(`${server.resolvedUrls!.local[0]}table-test#focus`);
+    const button = page.getByRole("button", { name: "Keep focus", exact: true });
+    const editor = page.getByRole("textbox", { name: "Nested editor", exact: true });
+    for (const show of [true, false]) {
+      await button.focus();
+      await page.evaluate(on => (window as unknown as { toggleNestedEditor: (on: boolean) => void }).toggleNestedEditor(on), show);
+      await expectElement(editor).toHaveCount(show ? 1 : 0);
+      await expectElement(page.locator("tbody > tr").first()).toHaveCSS("display", width === 390 && !show ? "grid" : "table-row");
+      await expectElement(button).toBeFocused();
+    }
+  });
+}

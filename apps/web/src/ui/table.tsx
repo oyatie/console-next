@@ -57,7 +57,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     const resize = new ResizeObserver(sync);
     resize.observe(table);
     if (containerRef.current) resize.observe(containerRef.current);
-    const scroller = rowsOnPhone ? scrollerRef.current : null;
+    const scroller = scrollerRef.current;
     if (scroller) resize.observe(scroller);
     scroller?.addEventListener("scroll", sync, { passive: true });
     sync();
@@ -66,7 +66,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
       resize.disconnect();
       scroller?.removeEventListener("scroll", sync);
     };
-  }, [rowsOnPhone]);
+  }, []);
   const ids = (groups ? groups.flatMap(g => g.rows) : rows).map(rowId);
   const current = active && ids.includes(active) ? active : selected && ids.includes(selected) ? selected : ids[0];
   const key = (e: KeyboardEvent) => {
@@ -86,14 +86,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     tableRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next)}"]`)?.focus();
   };
   const scrollableReadOnly = rowsOnPhone && scrollState.overflows && !onSelect && !scrollState.focusable;
-  const scrollKeys = (e: KeyboardEvent<HTMLTableElement>) => {
-    if (e.target !== tableRef.current) return;
-    const delta = e.key === "ArrowRight" ? 64 : e.key === "ArrowLeft" ? -64 : 0;
-    if (!delta || !scrollerRef.current) return;
-    e.preventDefault();
-    scrollerRef.current.scrollLeft += delta;
-  };
-  const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : scrollableReadOnly ? ({ onKeyDown: scrollKeys } as const) : {};
+  const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
   const roles = cardRoles(columns);
   const widths = columnWidths(columns);
   const renderRows = (items: R[]) => items.map((r) => {
@@ -140,7 +133,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   );
   return (
     <div ref={containerRef} className={cards.container}>
-      {rowsOnPhone ? <div ref={scrollerRef} className={cards.scroll}>{table}</div> : table}
+      <div ref={scrollerRef} className={rowsOnPhone ? cards.scroll : undefined}>{table}</div>
       {rowsOnPhone && scrollState.clipped && <span className={cards.scrollCue} data-scroll-cue aria-hidden="true" />}
     </div>
   );
