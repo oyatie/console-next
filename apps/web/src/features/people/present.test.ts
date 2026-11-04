@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog } from "@console/i18n";
 import type { LifecycleEvent } from "./api";
-import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, placeText } from "./present";
+import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, pasteSkippedText, placeText } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -86,4 +86,20 @@ test("placement paths lead with the one 법인명, its 약칭 secondary, whateve
   const option = { unit, entity: "주식회사 가나테크", entityRecord: entity, entityId: "e", workplaceId: "w", site: "본사" };
   expect(placeText([unit] as never, option as never)).toBe("주식회사 가나테크 · GANATECH › 본사");
   expect(placeText([unit] as never, { ...option, entityRecord: undefined } as never)).toBe("법인 미확인 › 본사");
+});
+
+test("pasteSkippedText names only non-zero skipped counts and matches the paste verb", async () => {
+  expect(pasteSkippedText(null)).toBeNull();
+  expect(pasteSkippedText({ readOnly: 0, outside: 0 })).toBeNull();
+  expect(pasteSkippedText({ readOnly: 2, outside: 0 })).toBe("붙여넣지 못한 칸 · 읽기 전용 2칸");
+  expect(pasteSkippedText({ readOnly: 0, outside: 1 })).toBe("붙여넣지 못한 칸 · 범위 밖 1칸");
+  expect(pasteSkippedText({ readOnly: 2, outside: 1 })).toBe("붙여넣지 못한 칸 · 읽기 전용 2칸 · 범위 밖 1칸");
+  try {
+    await loadCatalog("en");
+    i18n.set("en");
+    expect(pasteSkippedText({ readOnly: 0, outside: 1 })).toBe("Not pasted · 1 outside the grid");
+    expect(pasteSkippedText({ readOnly: 1, outside: 1 })).toBe("Not pasted · 1 read-only · 1 outside the grid");
+  } finally {
+    i18n.set("ko");
+  }
 });

@@ -45,6 +45,9 @@ test("a plain click collapses a rectangular selection", async ({ page }) => {
   await page.keyboard.press("Shift+ArrowDown");
   await page.locator("#grid-2-2").click();
   expect(await page.locator('[role="gridcell"][aria-selected="true"]').evaluateAll((cells) => cells.map((cell) => cell.id))).toEqual(["grid-2-2"]);
+  await page.locator("#grid-1-1").click({ modifiers: ["Shift"] });
+  await page.locator("#grid-1-1").click();
+  expect(await page.locator('[role="gridcell"][aria-selected="true"]').evaluateAll((cells) => cells.map((cell) => cell.id))).toEqual(["grid-1-1"]);
   await expectAxe(page, "collapsed grid selection", { include: "#gallery-grid-table" });
 });
 
@@ -131,6 +134,9 @@ test("read-only cells refuse edit keys, typing and synthetic input", async ({ pa
     await expect(cell).not.toHaveAttribute("data-editing", "true");
     await expect(cell).toHaveText(value);
   }
+  await cell.dblclick();
+  await expect(cell).not.toHaveAttribute("data-editing", "true");
+  await expect(cell).toHaveText(value);
   await page.keyboard.insertText("changed");
   await expect(input).toHaveValue("");
   await input.evaluate((element) => {
@@ -142,6 +148,12 @@ test("read-only cells refuse edit keys, typing and synthetic input", async ({ pa
   await input.evaluate((element) => { (element as HTMLInputElement).value = ""; });
   await input.dispatchEvent("compositionstart", { data: imeText });
   await expect(cell).not.toHaveAttribute("data-editing", "true");
+  const suggested = page.locator("#grid-1-1");
+  const suggestedValue = await suggested.innerText();
+  await suggested.click();
+  await suggested.locator("input").press("Enter");
+  await expect(suggested).not.toHaveAttribute("data-editing", "true");
+  await expect(suggested).toHaveText(suggestedValue);
   await expectAxe(page, "read-only grid cell", { include: "#gallery-grid-table" });
 });
 

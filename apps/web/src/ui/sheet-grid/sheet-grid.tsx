@@ -35,7 +35,7 @@ type SheetGridTailColumn<R> = {
   header: ReactNode;
   cell: (row: R) => { tone: "changed" | "error" | "same"; content: ReactNode };
 };
-export type SheetGridPasteResult = { applied: number; readOnly: number; outside: number };
+type SheetGridPasteResult = { applied: number; readOnly: number; outside: number };
 
 const id = (r: number, c: number) => `grid-${r}-${c}`;
 const same = (a: At | null, r: number, c: number) => a?.r === r && a.c === c;
@@ -132,7 +132,7 @@ export function SheetGrid<R>({
     setTyped("");
     if (to) move(to.r, to.c);
   };
-  const { first, last, rowHeight, viewportRows, setScrollTop } = useGridWindow(gridRef, rows.length, visibleRows, overscan, (top, bottom) => {
+  const { first, last, rowHeight, viewportRows, setScrollTop } = useGridWindow(gridRef, rows.length, visibleRows, overscan, validActive ? active!.r : null, (top, bottom) => {
     if (input.current && document.activeElement === input.current) {
       const bounds = input.current.getBoundingClientRect();
       if (bounds.bottom <= top || bounds.top >= bottom) {

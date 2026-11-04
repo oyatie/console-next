@@ -3,12 +3,15 @@ import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
+import { announce } from "../../../lib/react/announce";
+import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
-import { SheetGrid, type SheetGridColumn, type SheetGridPasteResult } from "../../../ui/sheet-grid/sheet-grid";
+import { SheetGrid, type SheetGridColumn } from "../../../ui/sheet-grid/sheet-grid";
 import { unitsQuery } from "../../../reference/org/api";
 import { ROSTER_PAGE, rosterPageQuery } from "../api";
 import { registerFactsQuery } from "../api/record";
 import { DEFAULT_COLUMNS, GRID_FIELDS, parseTsv, type Cell } from "../domain/grid";
+import { pasteSkippedText } from "../present";
 import { GridPage } from "./grid-page";
 import { bulkSelection } from "./use-bulk-selection";
 import s from "./grid-page.module.css";
@@ -47,7 +50,7 @@ function TableFixture({ readOnly }: { readOnly: boolean }) {
   })));
   const [activeCell, setActiveCell] = useState<{ r: number; c: number } | null>(null);
   const [activeChanges, setActiveChanges] = useState(0);
-  const [pasteResult, setPasteResult] = useState<SheetGridPasteResult | null>(null);
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const fields = GRID_FIELDS.filter((field) => DEFAULT_COLUMNS.includes(field.key));
   const columns: SheetGridColumn<GridRow>[] = fields.map((field, c) => ({
     key: field.key, header: t(`bulkGrid.field.${field.key}`), meta: t(`bulkGrid.tag.${field.cls}`),
@@ -58,20 +61,21 @@ function TableFixture({ readOnly }: { readOnly: boolean }) {
       const invalid = "bad" in cell;
       return { label: t("bulkGrid.cell", { row: r + 1, field: t(`bulkGrid.field.${field.key}`) }), value, readOnly: readOnly && c === 1,
         changed: row.typed[c] !== undefined && "send" in cell, previous: row.current[c] || t("bulkGrid.blank"), invalid,
-        error: invalid ? t("bulkGrid.err.server", { row: r + 1, field: t(`bulkGrid.field.${field.key}`), why: cell.bad === "server" ? cell.code : cell.bad }) : undefined };
+        error: invalid ? t("bulkGrid.err.server", { row: r + 1, field: t(`bulkGrid.field.${field.key}`), why: cell.bad === "server" ? cell.code : cell.bad }) : undefined,
+        suggestion: readOnly && r === 1 && c === 1 ? { value: row.current[2]!, content: t("bulkGrid.err.suggest", { value: row.current[2]! }) } : undefined };
     },
   }));
   return <div className={`${s.page} ${g.table}`}>
     <header className={g.before}>
       <Button id="filter-empty" onClick={() => setRows([])}>{tg("empty.title")}</Button>
-      <span role="status" data-paste-status>{pasteResult && (pasteResult.readOnly > 0 || pasteResult.outside > 0) ? t("bulkGrid.paste.skipped", pasteResult) : null}</span>
     </header>
+    {pasteNotice && <Banner tone="warn" placement="page" title={pasteNotice} />}
     <div id="scroller" className={`${s.gridWrap} ${g.scroller}`} tabIndex={-1}>
       <SheetGrid rows={rows} rowKey={(row) => row.id} columns={columns}
         leading={[{ key: "number", header: t("bulkGrid.col.number"), cell: (row) => row.number, className: "num" }, { key: "name", header: t("bulkGrid.col.name"), cell: (row) => row.name }]}
         tail={{ header: t("bulkGrid.col.status"), cell: (row) => row.cells.some((cell) => "bad" in cell) ? { tone: "error", content: t("bulkGrid.status.error") } : { tone: "same", content: t("bulkGrid.status.same") } }}
         rowHeader={t("bulkGrid.col.row")} label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} parsePaste={parseTsv}
-        onPasteResult={setPasteResult}
+        onPasteResult={(next) => { const notice = pasteSkippedText(next); setPasteNotice(notice); if (notice) announce(notice); }}
         activeCell={activeCell} onActiveChange={(at) => { setActiveCell(at); setActiveChanges((n) => n + 1); }}
         onCell={(changedRow, col, text) => setRows((current) => current.map((row) => row.id === changedRow.id ? { ...row, typed: row.typed.map((value, i) => i === col ? text : value) } : row))} />
     </div>

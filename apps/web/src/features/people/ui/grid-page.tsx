@@ -5,9 +5,11 @@ import { Columns3, ClipboardPaste, X } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { label } from "../../../lib/labels";
+import { announce } from "../../../lib/react/announce";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
+import { Banner } from "../../../ui/banner/banner";
 import { Button, IconButton, ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
@@ -15,10 +17,10 @@ import { Kbd } from "../../../ui/kbd/kbd";
 import { StepLine } from "../../../ui/step-line/step-line";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { PageHead } from "../../../ui/page-head/page-head";
-import { SheetGrid, type SheetGridColumn, type SheetGridPasteResult } from "../../../ui/sheet-grid/sheet-grid";
+import { SheetGrid, type SheetGridColumn } from "../../../ui/sheet-grid/sheet-grid";
 import { commitBulkCorrection, previewBulkCorrection } from "../api";
 import { DEFAULT_COLUMNS, GRID_FIELDS, TYPES, parseTsv, previewCounts, readCell, refusedCells, rowState, shownText, shownValue, type Cell, type GridKey } from "../domain/grid";
-import { refusedText } from "../present";
+import { pasteSkippedText, refusedText } from "../present";
 import { GridColumns } from "./grid-columns";
 import { GridDone } from "./grid-done";
 import { GridPreview } from "./grid-preview";
@@ -50,8 +52,7 @@ function GridWorkspace() {
   const [typed, setTyped] = useState<Record<string, Partial<Record<GridKey, string>>>>({});
   const [filter, setFilter] = useState<Filter>("all");
   const [activeCell, setActiveCell] = useState<{ r: number; c: number } | null>(null);
-  const [pasteResult, setPasteResult] = useState<SheetGridPasteResult | null>(null);
-  const pasteNotice = pasteResult && (pasteResult.readOnly > 0 || pasteResult.outside > 0) ? t("bulkGrid.paste.skipped", pasteResult) : null;
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const [step, setStep] = useState<"edit" | "check" | "done">("edit");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -190,8 +191,8 @@ function GridWorkspace() {
             <span className={s.note} hidden={fields.every((f) => f.cls === "now")}>{t("bulkGrid.verb.secondHint")}</span>
             <span className={s.verbChip}>{t("bulkGrid.verb.correct")}</span>
           </div>
+          {pasteNotice && <Banner tone="warn" placement="page" title={pasteNotice} />}
           <div className={s.gridWrap} tabIndex={-1}>
-            <div className={s.note} role="status" data-paste-status>{pasteNotice}</div>
             <SheetGrid rows={shown} rowKey={(row) => row.id} columns={sheetColumns}
               leading={[{ key: "number", header: t("bulkGrid.col.number"), cell: (row) => row.number, className: "num" }, { key: "name", header: t("bulkGrid.col.name"), cell: (row) => row.name }]}
               tail={{ header: t("bulkGrid.col.status"), cell: (row) => {
@@ -199,7 +200,7 @@ function GridWorkspace() {
                 return state.errors ? { tone: "error", content: t("bulkGrid.status.error") } : state.changed ? { tone: "changed", content: t("bulkGrid.status.changed", { n: state.changed }) } : { tone: "same", content: t("bulkGrid.status.same") };
               } }} rowHeader={t("bulkGrid.col.row")} activeCell={activeCell} onActiveChange={setActiveCell}
               label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} parsePaste={parseTsv}
-              onPasteResult={setPasteResult}
+              onPasteResult={(next) => { const notice = pasteSkippedText(next); setPasteNotice(notice); if (notice) announce(notice); }}
               onCell={(row, ci, text) => (setTyped((x) => ({ ...x, [row.id]: { ...x[row.id], [fields[ci]!.key]: text } })), setMarks((m) => (m[row.id] ? { ...m, [row.id]: {} } : m)))} />
           </div>
         </>
