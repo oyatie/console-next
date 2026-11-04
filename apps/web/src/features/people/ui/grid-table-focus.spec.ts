@@ -100,6 +100,9 @@ test("Backspace clears only the active cell and enters edit", async ({ page }) =
   await expect(page.locator("#grid-0-1")).toHaveText("HQ");
   await expect(page.locator("#grid-1-0")).toHaveText("M");
   await page.keyboard.press("Escape");
+  await expect(page.locator("#grid-1-1")).toHaveText("Remote");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Tab");
   await expect(page.locator("#grid-1-1")).toHaveText("");
   await expectAxe(page, "Backspace cell edit", { include: "#gallery-grid-table" });
 });
@@ -126,6 +129,8 @@ test("read-only cells refuse edit keys, typing and synthetic input", async ({ pa
   const value = await cell.innerText();
   await cell.click();
   await expect(cell).toHaveAttribute("data-readonly", "true");
+  await expect(cell).toHaveAttribute("aria-readonly", "true");
+  await expect(page.locator("#grid-0-0")).not.toHaveAttribute("aria-readonly", "true");
   await expect(cell).toHaveCSS("cursor", "not-allowed");
   expect(await cell.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(await page.locator("#grid-0-0").evaluate((element) => getComputedStyle(element).backgroundColor));
   await expect(input).toHaveAttribute("readonly", "");
@@ -152,6 +157,9 @@ test("read-only cells refuse edit keys, typing and synthetic input", async ({ pa
   const suggestedValue = await suggested.innerText();
   await suggested.click();
   await suggested.locator("input").press("Enter");
+  await expect(suggested).not.toHaveAttribute("data-editing", "true");
+  await expect(suggested).toHaveText(suggestedValue);
+  await suggested.dblclick();
   await expect(suggested).not.toHaveAttribute("data-editing", "true");
   await expect(suggested).toHaveText(suggestedValue);
   await expectAxe(page, "read-only grid cell", { include: "#gallery-grid-table" });
@@ -191,6 +199,16 @@ test("row and employee numbers stay frozen at 390px", async ({ page }) => {
   expect(after.every((left, index) => Math.abs(left - before[index]!) <= 1)).toBe(true);
   await expect(headers.nth(0)).toBeVisible();
   await expect(headers.nth(1)).toBeVisible();
+  const gutter = await firstRow.getByRole("rowheader").evaluate((element) => {
+    const scroller = document.getElementById("scroller")!;
+    const edge = scroller.getBoundingClientRect().left + scroller.clientLeft;
+    const cell = element.getBoundingClientRect();
+    const visible = document.elementFromPoint(edge + 1, cell.top + cell.height / 2);
+    return { gap: cell.left - edge, scrolledCellInGutter: visible?.closest('[role="gridcell"]') !== null };
+  });
+  expect(gutter.gap).toBeLessThanOrEqual(1);
+  expect(gutter.scrolledCellInGutter).toBe(false);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expectAxe(page, "frozen grid identity columns", { include: "#gallery-grid-table" });
 });
 

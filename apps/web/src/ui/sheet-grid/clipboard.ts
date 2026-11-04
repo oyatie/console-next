@@ -17,13 +17,31 @@ const cellLines = (node: Node) => {
 const sameBlock = (a: readonly (readonly string[])[], b: readonly (readonly string[])[]) =>
   a.length === b.length && a.every((row, r) => row.length === b[r]?.length && row.every((value, c) => value === b[r]![c]));
 
-/** Spreadsheet HTML adds in-cell breaks; equivalent plain text keeps the caller's TSV rules. */
+/** Spreadsheet HTML can add in-cell breaks; plain text retains exact whitespace when shapes agree. */
 export function readClipboard(data: ClipboardData, parseText: (text: string) => readonly (readonly string[])[]) {
   const plain = parseText(data.getData("text/plain"));
   const table = new DOMParser().parseFromString(data.getData("text/html"), "text/html").querySelector("table");
-  if (!table) return plain;
-  const block = Array.from(table.rows, (row) => Array.from(row.cells, cellLines));
-  return block.length && !sameBlock(block, plain) ? block : plain;
+  if (!table?.rows.length) return plain;
+  const block: string[][] = Array.from(table.rows, () => []);
+  Array.from(table.rows).forEach((row, r) => {
+    let c = 0;
+    for (const cell of row.cells) {
+      while (block[r]![c] !== undefined) c++;
+      const height = cell.rowSpan || row.parentElement!.children.length - row.sectionRowIndex;
+      for (let dr = 0; dr < height && r + dr < block.length; dr++)
+        for (let dc = 0; dc < cell.colSpan; dc++) block[r + dr]![c + dc] = "";
+      block[r]![c] = cellLines(cell);
+      c += cell.colSpan;
+    }
+  });
+  const width = Math.max(...block.map((row) => row.length));
+  const html = block.map((row) => Array.from({ length: width }, (_, c) => row[c] ?? ""));
+  if (plain.length !== html.length || plain.some((row) => row.length !== width)) return html;
+  const merged = plain.map((row, r) => row.map((value, c) => {
+    const formatted = html[r]![c]!;
+    return formatted.split("\n").length > value.split("\n").length ? formatted : value;
+  }));
+  return sameBlock(merged, plain) ? plain : merged;
 }
 
 const quoteTsv = (value: string) => /["\t\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;

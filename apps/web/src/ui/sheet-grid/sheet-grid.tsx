@@ -181,7 +181,7 @@ export function SheetGrid<R>({
     const cell = columns[c]!.cell(rows[r]!, r);
     if (!cell.readOnly && e.key === "Enter" && cell.suggestion) return (e.preventDefault(), onCell(rows[r]!, c, cell.suggestion.value));
     if (!cell.readOnly && (e.key === "F2" || e.key === "Enter")) return (e.preventDefault(), begin(r, c, columns[c]!.options?.length ? "" : cell.value));
-    if (e.key === "Backspace") return (e.preventDefault(), cell.readOnly ? undefined : (onCell(rows[r]!, c, ""), begin(r, c, "")));
+    if (e.key === "Backspace") return (e.preventDefault(), cell.readOnly ? undefined : begin(r, c, ""));
     if (e.key === "Delete") return (e.preventDefault(), clear(r, c));
   };
   const edit = (e: KeyboardEvent<HTMLInputElement>, r: number, c: number) => {
@@ -261,7 +261,8 @@ export function SheetGrid<R>({
               return (
                 <span
                   key={f.key} id={id(r, c)} role="gridcell" aria-colindex={editableStart + c} aria-selected={inRect(rect, r, c)} tabIndex={-1}
-                  aria-label={cellName} aria-invalid={bad || undefined} className={`${s.cell} ${k.cell}`}
+                  // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- WAI-ARIA 1.2 supports aria-readonly on gridcell; the bundled role metadata omits it.
+                  aria-label={cellName} aria-readonly={cell.readOnly || undefined} aria-invalid={bad || undefined} className={`${s.cell} ${k.cell}`}
                   data-changed={changed || undefined} data-bad={bad || undefined} data-editing={isEditing || undefined} data-readonly={cell.readOnly || undefined}
                   onPaste={(e) => paste(e, r, c)}
                   onFocus={(e) => e.target === e.currentTarget && (same(active, r, c) ? input.current?.focus() : setActive({ r, c }))}

@@ -29,3 +29,6 @@
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .next { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
 .next li { display: flex; align-items: center; gap: var(--space-2); }
+@media (--phone) {
+  .gridWrap { margin-inline: var(--space-5); padding-inline: 0; }
+}

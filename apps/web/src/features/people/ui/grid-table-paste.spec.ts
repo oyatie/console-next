@@ -187,6 +187,60 @@ test("copy and paste round-trip preserves in-cell line breaks", async ({ page })
   await expectAxe(page, "multiline copy-paste round-trip", { include: "#gallery-grid-table" });
 });
 
+for (const value of ["a  b", " leading", "in\tcell", "  line 1\nline 2"]) {
+  test(`copy and paste round-trip preserves exact whitespace ${JSON.stringify(value)}`, async ({ page }) => {
+    await mount(page, true);
+    await pasteClipboard(page.locator("#grid-0-1"), { "text/plain": `"${value}"` });
+    expect(await page.locator("#grid-0-1").textContent()).toBe(value);
+    await page.locator("#grid-0-1").click();
+    const copied = await page.locator("#grid-0-1").evaluate((cell) => {
+      const data = new DataTransfer();
+      const event = new ClipboardEvent("copy", { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "clipboardData", { value: data });
+      cell.dispatchEvent(event);
+      return { "text/plain": data.getData("text/plain"), "text/html": data.getData("text/html") };
+    });
+    await pasteClipboard(page.locator("#grid-1-1"), copied);
+    expect(await page.locator("#grid-1-1").textContent()).toBe(value);
+  });
+}
+
+test("merged HTML cells reserve blank columns and rows", async ({ page }) => {
+  await mount(page, true);
+  const cells = await page.evaluate(async () => {
+    const module = "/src/ui/sheet-grid/clipboard.ts";
+    const { readClipboard } = await import(/* @vite-ignore */ module);
+    const data = new DataTransfer();
+    data.setData("text/html", '<table><tr><td colspan="2" rowspan="2">merged</td><td>right</td></tr><tr><td>below</td></tr><tr><td>end</td></tr></table>');
+    return { htmlOnly: readClipboard(data, () => []), mismatched: readClipboard(data, () => [["merged", "right"], ["below"], ["end"]]) };
+  });
+  const expanded = [["merged", "", "right"], ["", "", "below"], ["end", "", ""]];
+  expect(cells).toEqual({ htmlOnly: expanded, mismatched: expanded });
+  await pasteClipboard(page.locator("#grid-0-0"), {
+    "text/plain": "merged\t\tright",
+    "text/html": '<table><tr><td colspan="2">merged</td><td>right</td></tr></table>',
+  });
+  expect(await page.locator("#grid-0-0").textContent()).toBe("merged");
+  expect(await page.locator("#grid-0-1").textContent()).not.toBe("right");
+  expect(await page.locator("#grid-0-2").textContent()).toBe("right");
+});
+
+test("plain quoted multiline cells survive HTML with a bare br", async ({ page }) => {
+  await mount(page, true);
+  await pasteClipboard(page.locator("#grid-0-1"), {
+    "text/plain": '"line 1\nline 2"\t  spaced',
+    "text/html": "<table><tr><td>line 1<br>line 2</td><td> spaced</td></tr></table>",
+  });
+  expect(await page.locator("#grid-0-1").textContent()).toBe("line 1\nline 2");
+  expect(await page.locator("#grid-0-2").textContent()).toBe("  spaced");
+  await pasteClipboard(page.locator("#grid-1-1"), {
+    "text/plain": 'two lines\t"  exact\tspacing"',
+    "text/html": "<table><tr><td>two<br style='mso-data-placement:same-cell'>lines</td><td> exact spacing</td></tr></table>",
+  });
+  expect(await page.locator("#grid-1-1").textContent()).toBe("two\nlines");
+  expect(await page.locator("#grid-1-2").textContent()).toBe("  exact\tspacing");
+});
+
 test("paste reports read-only and out-of-grid cells", async ({ page }) => {
   await mount(page, true, "table", true);
   const announcer = page.locator('.sr-only[role="status"]');
