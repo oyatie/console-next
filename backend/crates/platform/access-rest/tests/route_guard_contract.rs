@@ -3,10 +3,79 @@
 //! Pin the server projection consumed by the console's route guard.
 mod support;
 
+use std::sync::{Arc, Mutex};
+
 use axum::http::{Method, StatusCode};
 use serde_json::json;
 use sqlx::PgPool;
 use support::{grant_op, world};
+use tracing::{
+    Event, Metadata, Subscriber,
+    field::{Field, Visit},
+    instrument::WithSubscriber,
+    span::{Attributes, Id, Record},
+};
+
+#[derive(Clone, Default)]
+struct Events(Arc<Mutex<Vec<String>>>);
+struct Fields(String);
+impl Visit for Fields {
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        self.0.push_str(&format!("{}={value:?} ", field.name()));
+    }
+}
+impl Subscriber for Events {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        metadata.target() == "console_platform_access::effective"
+    }
+    fn new_span(&self, _: &Attributes<'_>) -> Id {
+        Id::from_u64(1)
+    }
+    fn record(&self, _: &Id, _: &Record<'_>) {}
+    fn record_follows_from(&self, _: &Id, _: &Id) {}
+    fn enter(&self, _: &Id) {}
+    fn exit(&self, _: &Id) {}
+    fn event(&self, event: &Event<'_>) {
+        let mut fields = Fields(String::new());
+        event.record(&mut fields);
+        self.0.lock().unwrap().push(fields.0);
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn invalid_cedar_decision_logs_the_request_support_reference_and_stays_closed(pool: PgPool) {
+    let mut w = world(pool).await;
+    let role = w
+        .role(
+            "broken role",
+            json!([{ "domain": "hr_basic", "levels": ["edit"] }]),
+        )
+        .await;
+    w.grant(json!([grant_op(w.hr, role, "TENANT", None, true)]))
+        .await;
+    sqlx::query("INSERT INTO access_role_lines(org_id,role_id,version,domain,levels) VALUES($1,$2,1,'sensitive',ARRAY['approve'])")
+        .bind(w.org).bind(role).execute(&w.owner).await.unwrap();
+    const TRACE_ID: &str = "4bf92f3577b34da6a3ce929d0e0e4736";
+    let events = Events::default();
+    let (status, me) = w
+        .call_with_trace(
+            Method::GET,
+            "/api/v1/access/me",
+            w.hr,
+            None,
+            &format!("00-{TRACE_ID}-00f067aa0ba902b7-01"),
+        )
+        .with_subscriber(events.clone())
+        .await;
+    assert_eq!(status, StatusCode::OK, "{me}");
+    assert_eq!(me["decisions"], json!({}), "{me}");
+    let events = events.0.lock().unwrap().join("\n");
+    assert!(
+        events.contains("Cedar access decision failed closed"),
+        "{events}"
+    );
+    assert!(events.contains(TRACE_ID), "{events}");
+}
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn bulk_appointment_decision_uses_live_tenant_grants_of_either_domain(pool: PgPool) {

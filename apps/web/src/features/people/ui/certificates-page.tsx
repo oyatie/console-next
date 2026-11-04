@@ -4,7 +4,6 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
-import { useCan } from "../../../reference/authz/ui/use-can";
 import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -28,7 +27,7 @@ const route = getRouteApi("/app/people/certificates");
 export function CertificatesPage() {
   const { employee } = route.useSearch();
   const nav = useNavigate();
-  const can = useCan();
+  const settings = useQuery({ ...certificateSettingsQuery, retry: false });
   const [configure, setConfigure] = useState(false);
   const q = useInfiniteQuery({ ...certificatesQuery(employee), initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => certificatesQuery(employee, pageParam).queryFn(),
@@ -36,7 +35,7 @@ export function CertificatesPage() {
   });
   return <div className="page">
     <PageHead title={t("empDoc.certificate.register")} crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} />}
-      tools={can("org_change_apply", "all") && <Button id="certificate-settings" onClick={() => setConfigure(!configure)}>{t("empDoc.certificate.settings")}</Button>} />
+      tools={settings.data?.can_manage === true && <Button id="certificate-settings" onClick={() => setConfigure(!configure)}>{t("empDoc.certificate.settings")}</Button>} />
     {employee && <p><Link to="/people/$id" params={{ id: employee }} search={{}}>{t("empDoc.certificate.employee")}</Link> · <Link to="/people/certificates" search={{}}>{t("empDoc.certificate.all")}</Link></p>}
     {configure && <Settings onClose={() => setConfigure(false)} />}
     <Card label={t("empDoc.certificate.register")} flush>

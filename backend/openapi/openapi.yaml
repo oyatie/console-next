@@ -36390,6 +36390,7 @@ components:
       required:
         - settings
         - seal_max_bytes
+        - can_manage
       properties:
         settings:
           type: array
@@ -36398,6 +36399,8 @@ components:
         seal_max_bytes:
           type: integer
           minimum: 1
+        can_manage:
+          type: boolean
     CertificateSnapshot:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

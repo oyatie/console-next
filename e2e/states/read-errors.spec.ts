@@ -178,6 +178,7 @@ for (const screen of ["support", "certificates", "rollback-reasons", "passkey-po
       await mockRoute(page, "get", "/api/v1/support-sessions/active", () => failing ? fail() : { status: 200, json: { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } });
     } else if (screen === "certificates") {
       path = "/people/certificates";
+      await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: { settings: [], seal_max_bytes: 100000, can_manage: false } });
       await mockRoute(page, "get", "/api/v1/hr/certificates", request => new URL(request.url()).searchParams.has("cursor")
         ? failing ? fail() : { status: 200, json: { items: [certificate(11)], next_cursor: null } }
         : { status: 200, json: { items: [certificate(10)], next_cursor: "next-page" } });

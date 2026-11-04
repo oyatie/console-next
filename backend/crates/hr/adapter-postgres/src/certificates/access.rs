@@ -3,12 +3,16 @@ use crate::{
     HrError,
     authz::{hr_may_person, hr_reach},
 };
-use console_platform_authz::{Feature, Principal, cedar_pbac::actions::certificates};
+use console_platform_authz::{
+    Feature, Principal,
+    access::{AccessSlice, NodePath, load_active_access_slice},
+    cedar_pbac::actions::certificates,
+};
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
 pub(super) fn feature(action: &str) -> Feature {
-    if action.starts_with("certificate_settings") {
+    if action == certificates::SETTINGS_MANAGE {
         Feature::OrgChangeApply
     } else {
         Feature::EmployeeDirectoryManage
@@ -22,7 +26,7 @@ pub(super) fn decide(principal: &Principal, action: &str, holds: bool) -> Result
         &principal.org_id.to_string(),
         holds,
     )
-    .unwrap_or(false);
+    .map_err(|error| HrError::internal(format!("certificate permission unavailable: {error}")))?;
     tracing::info!(
         action,
         allowed,
@@ -30,6 +34,70 @@ pub(super) fn decide(principal: &Principal, action: &str, holds: bool) -> Result
         "certificate authorization"
     );
     if allowed {
+        Ok(())
+    } else {
+        Err(super::refused(
+            http::StatusCode::FORBIDDEN,
+            "certificate_forbidden",
+            "certificate permission is required in this scope",
+        ))
+    }
+}
+
+pub(super) struct TenantFacts {
+    slice: AccessSlice,
+}
+
+pub(super) async fn tenant_facts(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: &Principal,
+) -> Result<TenantFacts, HrError> {
+    let slice = load_active_access_slice(
+        tx,
+        principal.org_id,
+        *principal.user_id.as_uuid(),
+        time::OffsetDateTime::now_utc(),
+    )
+    .await
+    .map_err(|error| {
+        if error.status_code() == http::StatusCode::FORBIDDEN.as_u16() {
+            super::refused(
+                http::StatusCode::FORBIDDEN,
+                "certificate_forbidden",
+                "certificate permission is required in this scope",
+            )
+        } else {
+            HrError::from_kernel(error)
+        }
+    })?;
+    Ok(TenantFacts { slice })
+}
+
+pub(super) fn tenant_decision(
+    facts: &TenantFacts,
+    principal: &Principal,
+    action: &str,
+) -> Result<bool, HrError> {
+    let tenant = NodePath::tenant(principal.org_id);
+    let holds = facts.slice.allows(action, &tenant).map_err(|error| {
+        HrError::internal(format!("certificate permission unavailable: {error}"))
+    })?;
+    certificates::decide(
+        action,
+        &principal.user_id.to_string(),
+        &principal.org_id.to_string(),
+        &principal.org_id.to_string(),
+        holds,
+    )
+    .map_err(|error| HrError::internal(format!("certificate permission unavailable: {error}")))
+}
+
+pub(super) fn require_tenant(
+    facts: &TenantFacts,
+    principal: &Principal,
+    action: &str,
+) -> Result<(), HrError> {
+    if tenant_decision(facts, principal, action)? {
         Ok(())
     } else {
         Err(super::refused(

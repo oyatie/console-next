@@ -9,7 +9,12 @@ pub async fn grant(pool: &PgPool, org: Uuid, actor: Uuid) {
 
 #[allow(dead_code)]
 pub async fn grant_hr_basic(pool: &PgPool, org: Uuid, actor: Uuid, levels: &[&str]) {
-    grant_for(pool, org, actor, "hr_basic", levels).await;
+    grant_domain(pool, org, actor, "hr_basic", levels).await;
+}
+
+#[allow(dead_code)]
+pub async fn grant_domain(pool: &PgPool, org: Uuid, actor: Uuid, domain: &str, levels: &[&str]) {
+    grant_for(pool, org, actor, domain, levels).await;
 }
 
 async fn grant_for(pool: &PgPool, org: Uuid, actor: Uuid, domain: &str, levels: &[&str]) {

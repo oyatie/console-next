@@ -11,6 +11,7 @@ import { accessRefusal, type AccessRequirement } from "../domain/access";
 import { AccessGate, PageReadGate, RouteGuard } from "./access-gate";
 import { entityReadAccess } from "../domain/feature-access";
 import { modulesQuery } from "../../onboarding/api";
+import { requirementText } from "../present";
 
 let routeAccess: AccessRequirement | "signed-in" | undefined;
 let routeModule: string | undefined;
@@ -32,6 +33,13 @@ test("Cedar action requirements consume only an explicit server permit", () => {
   for (const is_ops of [false, true]) for (const decision of [true, false, undefined]) {
     const held = { ...access("ENFORCED"), is_ops, decisions: decision === undefined ? {} : { bulk_appointment: decision } };
     expect(accessRefusal(held, need)).toBe(decision === true ? null : "access_denied");
+  }
+});
+
+test("the bulk refusal names both grants that can satisfy it", () => {
+  const text = requirementText({ action: "bulk_appointment" });
+  for (const id of ["accessCodes.domain.hr_basic", "accessCodes.domain.appointment", "accessCodes.level.edit", "access.scope.tenant"] as const) {
+    expect(text).toContain(t(id));
   }
 });
 

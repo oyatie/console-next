@@ -82,9 +82,16 @@ pub fn schema_source() -> String {
         ));
     }
     src.push_str(&format!(
-        "action \"{BULK_APPOINTMENT}\" in [\"{}\", \"{}\"] {APPLIES}\n",
+        "action \"{BULK_APPOINTMENT}\" in [\"{}\", \"{}\"] {APPLIES}\n\
+         action \"{}\" in [\"{}\", \"{}\"] {APPLIES}\n\
+         action \"{}\" in [\"{}\"] {APPLIES}\n",
         action_group(Domain::HrBasic, super::catalog::Level::Edit),
         action_group(Domain::Appointment, super::catalog::Level::Edit),
+        crate::cedar_pbac::actions::certificates::SETTINGS_READ,
+        action_group(Domain::HrBasic, super::catalog::Level::Edit),
+        action_group(Domain::Org, super::catalog::Level::Edit),
+        crate::cedar_pbac::actions::certificates::SETTINGS_MANAGE,
+        action_group(Domain::Org, super::catalog::Level::Edit),
     ));
     src
 }

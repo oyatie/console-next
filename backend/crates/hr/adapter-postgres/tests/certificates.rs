@@ -7,6 +7,9 @@ mod actions;
 mod fixture;
 #[path = "certificates/issuance.rs"]
 mod issuance;
+#[path = "support/lifecycle_grant.rs"]
+#[allow(dead_code)]
+mod lifecycle_grant;
 #[path = "certificates/refusals.rs"]
 mod refusals;
 

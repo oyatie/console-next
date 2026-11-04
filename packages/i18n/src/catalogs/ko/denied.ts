@@ -1,7 +1,7 @@
 // Korean source for `denied.` ids: the one refused state every screen shares (people-self-38, governance-18,
 // worst-case-44). Rules: the header of ../ko.ts and GUIDE.md.
 export const koDenied = {
-  "denied.action.bulk_appointment": "일괄 발령 · 전체 권한",
+  "denied.action.bulk_appointment": "「인사기본 · 등록·수정 · 전체」 또는 「발령 · 등록·수정 · 전체」",
   "denied.scopeKind.LEGAL_ENTITY": "법인 범위",
   "denied.scopeKind.WORKPLACE": "사업장 범위",
   "denied.scopeKind.DEPARTMENT": "부서 범위",

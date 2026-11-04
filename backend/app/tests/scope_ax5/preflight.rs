@@ -100,3 +100,31 @@ async fn appointment_only_holder_previews_and_commits_without_hr_basic(pool: PgP
         .await;
     assert_eq!((status, code(&body)), (StatusCode::NOT_FOUND, "not_found"));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn scoped_appointment_only_holder_names_the_tenant_boundary(pool: PgPool) {
+    let mut w = world::world_with_lines(
+        pool,
+        json!([
+            {"domain":"appointment","levels":["edit"]}
+        ]),
+    )
+    .await;
+    let caller = w.holder("LEGAL_ENTITY", Some(&w.le_a.clone())).await;
+    let (status, body) = caller.call("POST", "/api/v1/employees/lifecycle-events/bulk/preview", Some(json!({
+        "event_type":"PROMOTE","employee_ids":[w.a1],"effective_date":"2027-03-01","to_position":"과장","comment":"정기 인사"
+    }))).await;
+    assert_eq!(
+        (status, code(&body)),
+        (StatusCode::FORBIDDEN, "scope_tenant_wide_only"),
+        "{body}"
+    );
+    assert!(
+        body["error"]["refusals"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|node| node["kind"] == "LEGAL_ENTITY" && node["node_id"] == w.le_a),
+        "{body}"
+    );
+}

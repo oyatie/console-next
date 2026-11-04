@@ -11,8 +11,7 @@ const source = file => readFileSync(new URL(`backend/crates/${file}`, root), "ut
 const upper = value => value.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase();
 
 /** Scope names come from OpenAPI; reach and branch projection come from the server. */
-export function operationAccess() {
-  const spec = yaml.load(readFileSync(new URL("backend/openapi/openapi.yaml", root), "utf8"));
+export function operationAccess(spec = yaml.load(readFileSync(new URL("backend/openapi/openapi.yaml", root), "utf8"))) {
   const kinds = spec.components.schemas.AccessScopeKind.enum;
   const branches = source("platform/authz/src/access/load.rs");
   const projected = [...branches.matchAll(/NodeKind::(\w+) => (?:BranchScope::All|\{)/g)].map(([, kind]) => upper(kind));

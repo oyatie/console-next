@@ -9,13 +9,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use console_kernel_core::{BranchId, BranchScope, KernelError, OrgId, TenantPhase, Timestamp};
-use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
+use sqlx::{Postgres, Row, Transaction};
 use uuid::Uuid;
 
 use super::catalog::{Domain, Level};
+use super::cedar::AccessSlice;
+pub use super::dept::dept_path;
+pub(crate) use super::dept::dept_paths;
 use super::model::{AccessSubject, GrantState, HeldGrant, NodeKind, NodePath, NodeRef, RoleLine};
 
-fn db(err: sqlx::Error) -> KernelError {
+pub(super) fn db(err: sqlx::Error) -> KernelError {
     KernelError::internal(format!("access grants unavailable: {err}"))
 }
 
@@ -73,16 +76,45 @@ pub async fn load_access_subject(
     account: Uuid,
     now: Timestamp,
 ) -> Result<AccessSubject, KernelError> {
+    load_access_subject_inner(tx, org, account, now, false).await
+}
+
+/// Load and compile an active account's request-sized Cedar facts.
+///
+/// # Errors
+/// Refuses a missing or inactive account; database and Cedar failures are internal.
+pub async fn load_active_access_slice(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    account: Uuid,
+    now: Timestamp,
+) -> Result<AccessSlice, KernelError> {
+    let subject = load_access_subject_inner(tx, org, account, now, true).await?;
+    AccessSlice::compile(&subject)
+        .map_err(|error| KernelError::internal(format!("access grants unavailable: {error}")))
+}
+
+async fn load_access_subject_inner(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    account: Uuid,
+    now: Timestamp,
+    require_active: bool,
+) -> Result<AccessSubject, KernelError> {
     let phase = load_tenant_phase(tx, org).await?;
-    let is_ops: bool = sqlx::query_scalar(
-        "SELECT is_tenant_ops AND is_active FROM users WHERE org_id = $1 AND id = $2",
-    )
-    .bind(org.as_uuid())
-    .bind(account)
-    .fetch_optional(tx.as_mut())
-    .await
-    .map_err(db)?
-    .unwrap_or(false);
+    let account_state: Option<(bool, bool)> =
+        sqlx::query_as("SELECT is_tenant_ops, is_active FROM users WHERE org_id = $1 AND id = $2")
+            .bind(org.as_uuid())
+            .bind(account)
+            .fetch_optional(tx.as_mut())
+            .await
+            .map_err(db)?;
+    if require_active && !account_state.is_some_and(|(_, active)| active) {
+        return Err(KernelError::forbidden(
+            "access facts require an active account",
+        ));
+    }
+    let is_ops = account_state.is_some_and(|(ops, active)| ops && active);
     let rows = sqlx::query(
         "SELECT g.id, g.role_id, r.version, r.status = 'ACTIVE' AS role_active, g.scope_kind,
                 COALESCE(g.legal_entity_id, w.legal_entity_id) AS le_id, g.workplace_id, g.org_unit_id,
@@ -145,103 +177,6 @@ pub async fn load_access_subject(
         is_ops,
         phase,
         grants: held,
-    })
-}
-
-/// The chain of a 부서: itself and its parent 부서 up to the 사업장 it sits
-/// in (the nearest unit with an open placement on a live 사업장), then that
-/// 법인 and the tenant. A dissolved 부서, or one under no 사업장, yields a
-/// chain without the tenant: the grant still compiles, and the engine refuses
-/// every decision on it (GR-27, fail closed).
-///
-/// # Errors
-/// Internal on a query failure.
-pub async fn dept_path(
-    tx: &mut Transaction<'_, Postgres>,
-    org: OrgId,
-    unit: Uuid,
-) -> Result<NodePath, KernelError> {
-    Ok(dept_paths(tx, org, Some(unit))
-        .await?
-        .remove(&unit)
-        .map_or_else(|| NodePath(Vec::new()), |department| department.current))
-}
-
-pub(crate) struct DepartmentPath {
-    pub current: NodePath,
-    pub placement: Option<NodePath>,
-}
-
-/// The same canonical chains in one query; `None` loads every department.
-pub(crate) async fn dept_paths(
-    tx: &mut Transaction<'_, Postgres>,
-    org: OrgId,
-    unit: Option<Uuid>,
-) -> Result<BTreeMap<Uuid, DepartmentPath>, KernelError> {
-    let rows = sqlx::query(
-        "WITH RECURSIVE heads AS (SELECT DISTINCT ON (org_unit_id) org_unit_id, attributes \
-            FROM org_unit_revisions WHERE org_id = $1 ORDER BY org_unit_id, version DESC), \
-         up AS (SELECT org_unit_id AS root, org_unit_id, attributes, 0 AS depth FROM heads WHERE ($2::uuid IS NULL OR org_unit_id = $2) \
-            UNION ALL SELECT u.root, h.org_unit_id, h.attributes, u.depth + 1 FROM heads h \
-            JOIN up u ON h.org_unit_id::text = u.attributes->>'parent_id' WHERE u.depth < 64) \
-         SELECT up.root, up.org_unit_id, up.attributes->>'status' = 'dissolved' AS dissolved, \
-                p.workplace_id, COALESCE(p.represents_workplace, false) AS represents, w.legal_entity_id \
-           FROM up LEFT JOIN org_unit_placements p ON p.org_id = $1 AND p.org_unit_id = up.org_unit_id \
-                AND p.valid_to IS NULL AND p.workplace_id IS NOT NULL \
-           LEFT JOIN workplaces w ON w.org_id = $1 AND w.id = p.workplace_id AND w.voided_at IS NULL \
-          ORDER BY up.root, up.depth",
-    )
-    .bind(org.as_uuid())
-    .bind(unit)
-    .fetch_all(tx.as_mut())
-    .await
-    .map_err(db)?;
-    let mut grouped: BTreeMap<Uuid, Vec<PgRow>> = BTreeMap::new();
-    for row in rows {
-        grouped
-            .entry(row.try_get("root").map_err(db)?)
-            .or_default()
-            .push(row);
-    }
-    grouped
-        .into_iter()
-        .map(|(id, rows)| Ok((id, path_from_rows(&rows, org)?)))
-        .collect()
-}
-
-fn path_from_rows(rows: &[PgRow], org: OrgId) -> Result<DepartmentPath, KernelError> {
-    let mut path = Vec::new();
-    let mut dissolved_root = None;
-    let mut placement = None;
-    for (i, row) in rows.iter().enumerate() {
-        let id: Uuid = row.try_get("org_unit_id").map_err(db)?;
-        let dissolved: Option<bool> = row.try_get("dissolved").map_err(db)?;
-        if i == 0 && dissolved == Some(true) {
-            // Keep the placement for employees without reviving this department's grants.
-            dissolved_root = Some(NodeRef {
-                kind: NodeKind::Department,
-                id,
-            });
-        }
-        let wp: Option<Uuid> = row.try_get("workplace_id").map_err(db)?;
-        let le: Option<Uuid> = row.try_get("legal_entity_id").map_err(db)?;
-        let represents: bool = row.try_get("represents").map_err(db)?;
-        if !(represents && wp.is_some()) {
-            path.push(NodeRef {
-                kind: NodeKind::Department,
-                id,
-            });
-        }
-        if let (Some(wp), Some(le)) = (wp, le) {
-            let resolved = scope_path(org, NodeKind::Workplace, Some(wp), Some(le));
-            path.extend(resolved.0.iter().copied());
-            placement = Some(resolved);
-            break;
-        }
-    }
-    Ok(DepartmentPath {
-        current: dissolved_root.map_or(NodePath(path), |node| NodePath(vec![node])),
-        placement,
     })
 }
 

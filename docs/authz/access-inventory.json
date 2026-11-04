@@ -1533,12 +1533,6 @@
     },
     {
       "model": "web-grants",
-      "file": "apps/web/src/features/people/ui/certificates-page.tsx",
-      "kind": "control-guard",
-      "count": 2
-    },
-    {
-      "model": "web-grants",
       "file": "apps/web/src/features/people/ui/exit-block.tsx",
       "kind": "control-guard",
       "count": 2
