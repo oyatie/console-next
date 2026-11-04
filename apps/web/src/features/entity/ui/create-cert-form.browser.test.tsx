@@ -28,12 +28,16 @@ beforeAll(async () => {
         import { loadCatalog } from '@console/i18n';
         import { CertForm } from '/apps/web/src/features/entity/ui/create-cert-form.tsx';
         import { emptyDraft } from '/apps/web/src/features/entity/domain/draft.ts';
+        import s from '/apps/web/src/features/entity/ui/entity-create.module.css';
         import '/apps/web/src/app.css';
         configure(webPlatform);
         await loadCatalog('ko');
         function Demo() {
-          const [draft, setDraft] = useState(() => ({ ...emptyDraft(), bizKind: new URLSearchParams(location.search).get('kind') }));
-          return h(CertForm, { c: { draft, put: (key, value) => setDraft(d => ({ ...d, [key]: value })), problems: {}, brnClasses: [], today: '2026-10-27', crnWarn: false } });
+          const params = new URLSearchParams(location.search);
+          const [draft, setDraft] = useState(() => ({ ...emptyDraft(), bizKind: params.get('kind'),
+            businessAddress: params.has('address') ? { road: '검증로 123', zip: '06236', detail: '', verified: false } : null }));
+          const form = h(CertForm, { c: { draft, put: (key, value) => setDraft(d => ({ ...d, [key]: value })), problems: {}, brnClasses: [], today: '2026-10-27', crnWarn: false } });
+          return params.has('frame') ? h('div', { className: s.page }, h('div', { className: s.body }, h('section', { className: 'card ' + s.main }, h('div', { className: s.cardBody }, form)))) : form;
         }
         createRoot(document.getElementById('root')).render(h(QueryClientProvider, { client: new QueryClient() }, h(Demo)));
       ` : undefined,
@@ -64,4 +68,13 @@ test.each(["CORPORATION", "INDIVIDUAL"])("%s: choosing Y then N preserves every 
       ["aria-describedby", "aria-errormessage"].flatMap(attr => (input.getAttribute(attr) ?? "").split(/\s+/).filter(id => id && !document.getElementById(id))),
     ))).toEqual([]);
   }
+});
+
+test("the corporation certificate fits its 390px page column with a wider fallback font", async () => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}cert-test?kind=CORPORATION&address=1&frame=1`);
+  await page.locator("html").evaluate((html) => { html.dataset.fontFallback = ""; });
+  const address = page.getByRole("button", { name: "주소 다시 찾기" }).locator("..");
+  const overflow = await address.locator("span").first().evaluate((lines) => lines.scrollWidth - lines.clientWidth);
+  expect(overflow).toBe(0);
 });

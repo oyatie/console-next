@@ -24,9 +24,13 @@ export function BusinessRows({ rows, onChange }: { rows: BusinessTypeDraft[]; on
       </div>
       {rows.map((r, i) => (
         <div key={i} className={s.rowsLine}>
-          <Chip tone="neutral">{t(i === 0 ? "entityCreate.business.main" : "entityCreate.business.sub")}</Chip>
+          <div className={`${s.rowLabel} muted`}>{t("entityCreate.business.kind")}</div>
+          <Chip tone="neutral" className={s.rowKind}>{t(i === 0 ? "entityCreate.business.main" : "entityCreate.business.sub")}</Chip>
+          <div className={`${s.rowLabel} muted`}>{t("entityCreate.business.sector")}</div>
           <TextInput aria-label={t("entityCreate.business.sectorOf", { n: i + 1 })} value={r.sector} onChange={(e) => setRow(i, { sector: e.target.value })} />
+          <div className={`${s.rowLabel} muted`}>{t("entityCreate.business.item")}</div>
           <TextInput aria-label={t("entityCreate.business.itemOf", { n: i + 1 })} value={r.item} onChange={(e) => setRow(i, { item: e.target.value })} />
+          <div className={`${s.rowLabel} muted`}>{t("entityCreate.business.ksic")}</div>
           <RefPick listKey="ksic" label={t("entityCreate.business.ksicOf", { n: i + 1 })} required={false} value={r.ksic} onChange={(ksic) => setRow(i, { ksic })} />
           {i > 0 ? (
             <Button variant="ghost" aria-label={t("entityCreate.business.remove", { n: i + 1 })} onClick={() => onChange(rows.filter((_, j) => j !== i))}><X size={16} aria-hidden /></Button>
