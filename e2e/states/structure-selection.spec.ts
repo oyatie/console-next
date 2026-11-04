@@ -122,7 +122,7 @@ for (const view of ["chart", "outline", "list", "panel"]) {
 
 for (const view of ["chart", "panel"]) for (const outcome of ["draft", "preflight_blocked", "invalid_change"]) test(`org: inline ${view} ${outcome} without a note keeps the next action honest @ui-state`, async ({ page }) => {
   const { fixture, workplace, dept } = await operating(page);
-  const draft = { ...orgChange("draft"), effectiveDate: "2026-11-04" };
+  const draft = { ...orgChange("draft"), kind: "NEW" as const, reason: "NEW", effectiveDate: "2026-11-04" };
   let submitted = 0;
   const payloads: unknown[] = [];
   await page.route("**/api/v1/org-changes", route => {
@@ -148,12 +148,16 @@ for (const view of ["chart", "panel"]) for (const outcome of ["draft", "prefligh
     } else {
       await expect(page).toHaveURL(new RegExp(`/org/changes/${draft.id}\\?done=drafted${outcome === "preflight_blocked" ? "&unsent=true" : "$"}`));
     }
+    if (outcome !== "invalid_change") {
+      const proposal = page.getByRole("region", { name: t("orgChange.proposal"), exact: true });
+      await expect(proposal.locator("dd").first()).toHaveText(t("orgUnit.gov.reasonNew"));
+      await expect(proposal.getByText("NEW", { exact: true })).toHaveCount(0);
+    }
     expect(submitted).toBe(outcome === "draft" ? 0 : 1);
     expect(payloads).toEqual([expect.objectContaining({ kind: "NEW", reason: "NEW", effectiveDate: "2026-11-04" })]);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
-
 
 for (const view of ["chart", "outline"] as const) test(`org: inline ${view} editor stays readable at 390px @ui-state`, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -400,4 +404,30 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await expectAxe(page, "org inline edit/1440/light");
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
+});
+
+for (const state of ["held", "failed"] as const) test(`org: ${state} approval settings require a note before inline submission @ui-state`, async ({ page }) => {
+  const { fixture, workplace, dept } = await operating(page);
+  let release = () => {};
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/v1/settings", async route => {
+    if (state === "held") await held;
+    await route.fulfill({ status: 503, json: { error: { code: "unavailable", message: "Unavailable" } } });
+  });
+  const writes: unknown[] = [];
+  await page.route("**/api/v1/org-changes", route => {
+    if (route.request().method() !== "POST") return route.fallback();
+    writes.push(route.request().postDataJSON());
+    return route.fulfill({ status: 422, json: { error: { code: "invalid_change", message: "Change refused" } } });
+  });
+  try {
+    const name = await edit(page, "chart", workplace.name, dept.name);
+    await name.fill("미래팀");
+    await expect(page.getByRole("button", { name: `${t("orgUnit.gov.reason")} · ${t("orgUnit.gov.reasonRequired")}`, exact: true })).toBeVisible();
+    await name.press("Enter");
+    const note = page.getByRole("dialog", { name: t("orgUnit.gov.reason"), exact: true }).getByRole("textbox");
+    await expect(note).toBeFocused();
+    expect(writes).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { release(); await page.close(); fixture.release(); }
 });

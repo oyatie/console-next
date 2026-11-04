@@ -92,7 +92,6 @@ export const koOrgChange = {
   "orgChange.date.nextMonday": "다음 주 월요일",
   "orgChange.date.today": "오늘",
   "orgChange.reason": "사유",
-  "orgChange.reason.required": "사유를 입력하십시오",
   "orgChange.errors": "오류 {count, plural, other {#건}} · 첫 오류로 이동했습니다",
   "orgChange.escConfirm": "작성 중인 내용이 있습니다 · 한 번 더 누르면 닫습니다",
   // Sections

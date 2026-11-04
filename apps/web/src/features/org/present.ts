@@ -3,7 +3,7 @@
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
-import { APPROVAL_ROLE, ORG_CHANGE_STATUS, UNIT_KIND, actor, label, labeled } from "../../lib/labels";
+import { APPROVAL_ROLE, ORG_CHANGE_KIND, ORG_CHANGE_STATUS, UNIT_KIND, actor, label, labeled } from "../../lib/labels";
 import { labelTitle, opsTitle, subjectOf, type Names } from "./domain/change-title";
 import { todayKst } from "../../lib/pure/today";
 import { addDays, daysBetween, nextWeekday } from "../../ui/date/days";
@@ -15,6 +15,10 @@ type Step = components["schemas"]["OrgChangeApprovalStep"];
 type Item = components["schemas"]["OrgChangeSettlementItem"];
 
 export { dissolvedName, type Names } from "./domain/change-title";
+
+// shortcut: the API stores a kind code in reason for note-free changes; use reasonCode + note once served.
+export const reasonNote = (d: Pick<Detail, "kind" | "reason">): string => d.reason === d.kind ? "" : d.reason;
+export const reasonText = (d: Pick<Detail, "kind" | "reason">): string => reasonNote(d) || label(ORG_CHANGE_KIND, d.kind);
 
 /**
  * The change as a short phrase, the same in the list, the record and its receipts: what its ops do when it has them

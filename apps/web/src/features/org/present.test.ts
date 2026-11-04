@@ -2,7 +2,7 @@ import { beforeAll, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { awaitingRedraft, changeRail, changeTitle, datePresets, eventTitle, nextStep, type Names } from "./present";
+import { awaitingRedraft, changeRail, changeTitle, datePresets, eventTitle, nextStep, reasonNote, reasonText, type Names } from "./present";
 
 type Detail = components["schemas"]["OrgChangeDetail"];
 type Step = components["schemas"]["OrgChangeApprovalStep"];
@@ -141,4 +141,17 @@ test("the shown apply time comes from the server instant and includes its zone",
   const label = changeRail(d).steps.at(-1)?.label;
   expect(label).toContain("02:30 KST");
   expect(label).not.toContain("00:05");
+});
+
+test.each(["NEW", "REORG", "DISSOLVE"] as const)("a %s reason code reads as its label and is not an editable note", kind => {
+  const d = change({ kind, reason: kind });
+  expect(reasonText(d)).toBe(t(`enum.orgChangeKind.${kind}`));
+  expect(reasonText(d)).not.toBe(kind);
+  expect(reasonNote(d)).toBe("");
+});
+
+test.each(["조직 운영 계획", "REORG"])("a written reason stays verbatim: %s", reason => {
+  const d = change({ kind: "NEW", reason });
+  expect(reasonText(d)).toBe(reason);
+  expect(reasonNote(d)).toBe(reason);
 });

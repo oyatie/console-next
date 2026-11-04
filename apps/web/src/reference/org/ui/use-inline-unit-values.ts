@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { todayKst } from "../../../lib/pure/today";
 import { isDate } from "../../../ui/date/days";
-import { usePolicyRouted } from "../../settings/ui/use-policy-routed";
+import { settingsQuery } from "../../settings/api";
+import { policyRouted } from "../../settings/domain/policy";
 import { defaultEffectiveDate } from "../api";
 
 /** Inline edits carry a change-kind reason; only approval-routed changes need a written note. */
@@ -10,8 +12,8 @@ export function useInlineUnitValues(setup: boolean, asOf?: string, kind: "create
   const today = todayKst();
   const [values, set] = useState(() => ({ effectiveDate: defaultEffectiveDate(today, asOf), reason: "" }));
   const [reasonOpen, setReasonOpen] = useState(false);
-  const routed = usePolicyRouted("org_structure");
-  const required = !setup && routed;
+  const policy = useQuery(settingsQuery);
+  const required = !setup && (!policy.isSuccess || policyRouted(policy.data.items, "org_structure"));
   const missingReason = required && !values.reason.trim();
   const valid = setup || (isDate(values.effectiveDate) && values.effectiveDate >= today && !missingReason);
   const attempt = () => {
