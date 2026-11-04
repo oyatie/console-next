@@ -34,12 +34,7 @@ async fn attention_approvals_reuse_cedar_refusals_and_page_past_other_work(pool:
     assert_eq!(first.status, StatusCode::OK, "{}", first.json);
     assert_eq!(first.json["items"].as_array().unwrap().len(), 1);
     assert_eq!(first.json["items"][0]["age_days"], 12);
-    assert!(
-        first.json["items"][0]["reason"]
-            .as_str()
-            .unwrap()
-            .contains("결재")
-    );
+    assert!(first.json["items"][0].get("reason").is_none());
     let cursor = first.json["next_cursor"].as_str().unwrap();
     let query = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("attention", "approvals")
@@ -48,6 +43,10 @@ async fn attention_approvals_reuse_cedar_refusals_and_page_past_other_work(pool:
         .finish();
     let next = get(service.clone(), &format!("{PATH}?{query}"), &token).await;
     assert_eq!(next.status, StatusCode::OK);
+    assert_eq!(
+        next.json["attention_filters"],
+        first.json["attention_filters"]
+    );
     let ids: BTreeSet<_> = [&first.json, &next.json]
         .into_iter()
         .flat_map(|p| p["items"].as_array().unwrap())

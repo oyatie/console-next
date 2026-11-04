@@ -19201,8 +19201,9 @@ paths:
           Home attention view over the same authorized work. Approvals are pending
           decisions; today means an actionable source deadline on today's Korean
           calendar date; overdue means that source deadline has expired (including
-          statutory-register deadlines). Takes precedence over filter=all or
-          filter=turn for Home; other saved views require attention to be omitted.
+          statutory-register deadlines). All preserves filter=all or filter=turn;
+          the other attention views take precedence. Counts honor filter=turn
+          for Home; other saved views require attention to be omitted.
       - name: filter
         in: query
         required: false
@@ -33609,9 +33610,6 @@ components:
       - lane
       - days_remaining
       properties:
-        reason:
-          type: string
-          description: Display-ready Korean reason from source facts, falling back to the current task's action.
         age_days:
           type: integer
           minimum: 0
@@ -33856,8 +33854,10 @@ components:
           description: >-
             Home counts over the same authorized source read, independent of the
             selected attention view. Subset counts are lower bounds for bounded or
-            continued source prefixes; unavailable sources make every count inexact.
-            All uses source totals. No additional full-tenant scan is performed.
+            continued source prefixes; only contributing sources affect subset exactness.
+            Unavailable sources make every count inexact. All uses source totals, or
+            the turn count when filter=turn. Continuation pages report whole-inbox
+            counts under the same admission boundary.
           items:
             type: object
             required: [key, total, total_is_exact]

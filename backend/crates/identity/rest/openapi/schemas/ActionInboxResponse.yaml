@@ -17,8 +17,10 @@ properties:
     description: >-
       Home counts over the same authorized source read, independent of the
       selected attention view. Subset counts are lower bounds for bounded or
-      continued source prefixes; unavailable sources make every count inexact.
-      All uses source totals. No additional full-tenant scan is performed.
+      continued source prefixes; only contributing sources affect subset exactness.
+      Unavailable sources make every count inexact. All uses source totals, or
+      the turn count when filter=turn. Continuation pages report whole-inbox
+      counts under the same admission boundary.
     items:
       type: object
       required: [key, total, total_is_exact]

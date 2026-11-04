@@ -105,7 +105,6 @@ pub trait ActionInboxSourcePort: Send + Sync {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ActionInboxItem {
-    pub reason: String,
     pub age_days: i64,
     pub fold_key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -174,12 +173,23 @@ pub async fn list_action_inbox(
     query: ListActionInboxQuery,
     now: OffsetDateTime,
 ) -> Result<ActionInboxPage, KernelError> {
+    list_action_inbox_at(port, query, now, None).await
+}
+
+pub(crate) async fn list_action_inbox_at(
+    port: &dyn ActionInboxSourcePort,
+    query: ListActionInboxQuery,
+    now: OffsetDateTime,
+    admission: Option<OffsetDateTime>,
+) -> Result<ActionInboxPage, KernelError> {
     let cursor = query
         .cursor
         .as_deref()
         .map(|raw| parse_cursor(raw, now))
         .transpose()?;
-    let as_of = cursor.as_ref().map_or(now, |cursor| cursor.as_of);
+    let as_of = cursor
+        .as_ref()
+        .map_or(admission.unwrap_or(now), |cursor| cursor.as_of);
     let limit = query
         .limit
         .unwrap_or(DEFAULT_PAGE_LIMIT)
@@ -197,11 +207,17 @@ pub async fn list_action_inbox(
         async move { (source, port.list_source_page(source, query).await) }
     }))
     .await;
+    let mut incomplete = Vec::new();
     let mut pages = Vec::new();
     let mut unavailable = Vec::new();
     for (source, outcome) in outcomes {
         match outcome {
-            Ok(page) => pages.push(page),
+            Ok(page) => {
+                if !page.total_is_exact || page.has_more {
+                    incomplete.push(source);
+                }
+                pages.push(page);
+            }
             Err(_) => unavailable.push(source),
         }
     }
@@ -213,6 +229,11 @@ pub async fn list_action_inbox(
         limit,
         port.deadline_due_soon_days()?,
     );
+    for count in &mut page.attention_filters {
+        if count.key != Attention::All {
+            count.total_is_exact = count.key.is_exact(&incomplete, cursor.is_none());
+        }
+    }
     if !unavailable.is_empty() {
         page.total_is_exact = false;
         for count in &mut page.attention_filters {

@@ -110,8 +110,18 @@ async fn attention_counts_and_aging_are_scoped_and_keysets_admit_no_late_rows(po
         .bind(org).execute(&pool).await.unwrap();
     let full = read(&ctx, "attention=all&limit=200").await;
     let home = read(&ctx, "attention=all&filter=turn&limit=200").await;
-    assert_eq!(home["items"], full["items"]);
-    assert_eq!(home["attention_filters"], full["attention_filters"]);
+    assert!(
+        home["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|i| i["lane"] == "turn")
+    );
+    assert_eq!(
+        count(&home, "all"),
+        &json!({"key":"all", "total":home["counts"]["turn"]["total"], "total_is_exact":home["counts"]["turn"]["total_is_exact"]})
+    );
+
     let identities: Vec<_> = full["items"]
         .as_array()
         .unwrap()
@@ -121,11 +131,11 @@ async fn attention_counts_and_aging_are_scoped_and_keysets_admit_no_late_rows(po
     assert_eq!(identities.len(), 3);
     for item in identities {
         assert_eq!(item["age_days"], 12);
-        assert!(item["reason"].as_str().is_some_and(|s| !s.is_empty()));
+        assert!(item.get("reason").is_none());
     }
     let mut page = read(&ctx, "attention=all&limit=1").await;
-    assert_eq!(count(&page, "all")["total_is_exact"], false);
-    assert!(page["items"][0]["context"]["review_count"].is_null());
+    assert_eq!(count(&page, "all")["total_is_exact"], true);
+    assert_eq!(page["items"][0]["context"]["review_count"], 3);
     let expected = full["total"].as_u64().unwrap();
     sqlx::query("INSERT INTO employees (org_id,company,name,source_filename,source_sheet,source_row,source_key,identity_review_required) VALUES ($1,'회사','나중 직원','console','people',4,'late',true)")
         .bind(org).execute(&pool).await.unwrap();
@@ -214,16 +224,16 @@ async fn attention_counts_for_two_thousand_items_keep_the_existing_read_budget(p
         assert!(peak < probe.pool.options().get_max_connections() as usize);
         samples.push(start.elapsed());
         acquisitions.push(probe.acquisitions());
-        assert!(
-            count(&page, "all")["total"].as_u64().unwrap()
-                < count(&empty, "all")["total"].as_u64().unwrap() + 2000
+        assert_eq!(
+            count(&page, "all")["total"].as_u64().unwrap(),
+            count(&empty, "all")["total"].as_u64().unwrap() + 2000
         );
         assert!(
             count(&page, "all")["total"].as_u64().unwrap()
                 >= count(&small, "all")["total"].as_u64().unwrap()
         );
-        assert_eq!(count(&page, "all")["total_is_exact"], false);
-        assert_eq!(count(&page, "approvals")["total_is_exact"], false);
+        assert_eq!(count(&page, "all")["total_is_exact"], true);
+        assert_eq!(count(&page, "approvals")["total_is_exact"], true);
     }
     samples.sort();
     eprintln!(
@@ -235,4 +245,47 @@ async fn attention_counts_for_two_thousand_items_keep_the_existing_read_budget(p
         acquisitions.iter().all(|n| *n <= budget),
         "counts must share the existing source read"
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn attention_all_keeps_turn_filter_and_excludes_waiting_and_scheduled(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    for (n, status) in [(1, "IN_APPROVAL"), (2, "APPROVED")] {
+        sqlx::query("INSERT INTO org_change_requests (org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,proposal,drafted_by,idempotency_key,request_fingerprint) VALUES ($1,$2,'REORG',$3,'REGION','region','Region',CURRENT_DATE+7,'Review','[]',$4,$5,repeat('a',64))")
+            .bind(org).bind(format!("OC-2026-{n:04}")).bind(status).bind(user.as_uuid()).bind(uuid::Uuid::new_v4().to_string()).execute(&pool).await.unwrap();
+    }
+    let all = read(&ctx, "attention=all&limit=200").await;
+    for lane in ["waiting", "scheduled"] {
+        assert!(
+            all["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|i| i["lane"] == lane),
+            "{all}"
+        );
+    }
+    let home = read(&ctx, "attention=all&filter=turn&limit=200").await;
+    assert!(
+        home["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|i| i["lane"] == "turn"),
+        "{home}"
+    );
+    assert_eq!(count(&home, "all")["total"], all["counts"]["turn"]["total"]);
+    assert_eq!(
+        count(&home, "all")["total_is_exact"],
+        all["counts"]["turn"]["total_is_exact"]
+    );
+    for attention in ["approvals", "today", "overdue"] {
+        let view = read(
+            &ctx,
+            &format!("attention={attention}&filter=turn&limit=200"),
+        )
+        .await;
+        assert_eq!(view["attention_filters"], home["attention_filters"]);
+    }
 }

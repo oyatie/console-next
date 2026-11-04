@@ -15,9 +15,6 @@ required:
 - lane
 - days_remaining
 properties:
-  reason:
-    type: string
-    description: Display-ready Korean reason from source facts, falling back to the current task's action.
   age_days:
     type: integer
     minimum: 0

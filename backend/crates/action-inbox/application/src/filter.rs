@@ -28,6 +28,40 @@ pub enum InboxFilter {
 }
 
 impl InboxFilter {
+    pub(crate) fn includes_source(self, source: crate::ActionInboxSource) -> bool {
+        use crate::ActionInboxSource as S;
+        match self {
+            InboxFilter::Waiting => matches!(source, S::OrgChange | S::EntityCorrections),
+            InboxFilter::Scheduled => source == S::OrgChange,
+            InboxFilter::Failures => source == S::HrLifecycle,
+            InboxFilter::Approvals => matches!(
+                source,
+                S::Workflow
+                    | S::OrgChange
+                    | S::Payroll
+                    | S::Governance
+                    | S::PeriodUnlock
+                    | S::SupportAccess
+                    | S::EntityCorrections
+            ),
+            InboxFilter::Deadlines | InboxFilter::Today | InboxFilter::Overdue => !matches!(
+                source,
+                S::HrIdentity
+                    | S::HrUnplaced
+                    | S::HrBranch
+                    | S::HrRegister
+                    | S::HrRequests
+                    | S::HrLifecycle
+                    | S::Setup
+                    | S::GrantNotice
+                    | S::Payroll
+                    | S::Governance
+                    | S::RegistrationChecks
+            ),
+            _ => true,
+        }
+    }
+
     fn includes(self, item: &ActionInboxItem) -> bool {
         match self {
             Self::All => true,
@@ -47,6 +81,60 @@ impl InboxFilter {
 /// the last returned row. Resolved rows disappear and new inserts stay beyond
 /// the admission instant. Inexact counts explicitly describe a prefix only.
 pub async fn list_filtered_action_inbox(
+    port: &dyn ActionInboxSourcePort,
+    query: ListActionInboxQuery,
+    filter: InboxFilter,
+    now: OffsetDateTime,
+) -> Result<ActionInboxPage, KernelError> {
+    let summary = if let Some(raw) = query.cursor.as_deref() {
+        let as_of = parse_cursor(raw, now)?.as_of;
+        let limit = query
+            .limit
+            .unwrap_or(crate::DEFAULT_PAGE_LIMIT)
+            .clamp(1, MAX_PAGE_LIMIT);
+        Some(
+            crate::list_action_inbox_at(
+                port,
+                ListActionInboxQuery {
+                    limit: Some(if filter == InboxFilter::All {
+                        limit
+                    } else {
+                        limit.saturating_add(1).min(MAX_PAGE_LIMIT)
+                    }),
+                    cursor: None,
+                },
+                now,
+                Some(as_of),
+            )
+            .await?,
+        )
+    } else {
+        None
+    };
+    let mut page = list_view(port, query, filter, now).await?;
+    if let Some(summary) = summary {
+        page.attention_filters = summary.attention_filters;
+        page.counts = summary.counts;
+        page.upcoming = summary.upcoming;
+        for source in summary.unavailable {
+            if !page.unavailable.contains(&source) {
+                page.unavailable.push(source);
+            }
+        }
+        if !page.unavailable.is_empty() {
+            page.total_is_exact = false;
+            for count in page.counts.values_mut() {
+                count.total_is_exact = false;
+            }
+            for count in &mut page.attention_filters {
+                count.total_is_exact = false;
+            }
+        }
+    }
+    Ok(page)
+}
+
+async fn list_view(
     port: &dyn ActionInboxSourcePort,
     query: ListActionInboxQuery,
     filter: InboxFilter,
@@ -160,38 +248,7 @@ impl ActionInboxSourcePort for ViewPort<'_> {
         source: crate::ActionInboxSource,
         mut query: crate::ActionInboxSourceQuery,
     ) -> crate::ActionInboxSourceFuture<'_> {
-        use crate::ActionInboxSource as S;
-        let included = match self.filter {
-            InboxFilter::Waiting => matches!(source, S::OrgChange | S::EntityCorrections),
-            InboxFilter::Scheduled => source == S::OrgChange,
-            InboxFilter::Failures => source == S::HrLifecycle,
-            InboxFilter::Approvals => matches!(
-                source,
-                S::Workflow
-                    | S::OrgChange
-                    | S::Payroll
-                    | S::Governance
-                    | S::PeriodUnlock
-                    | S::SupportAccess
-                    | S::EntityCorrections
-            ),
-            InboxFilter::Deadlines | InboxFilter::Today | InboxFilter::Overdue => !matches!(
-                source,
-                S::HrIdentity
-                    | S::HrUnplaced
-                    | S::HrBranch
-                    | S::HrRegister
-                    | S::HrRequests
-                    | S::HrLifecycle
-                    | S::Setup
-                    | S::GrantNotice
-                    | S::Payroll
-                    | S::Governance
-                    | S::RegistrationChecks
-            ),
-            _ => true,
-        };
-        if included {
+        if self.filter.includes_source(source) {
             query.filter = self.filter;
             self.port.list_source_page(source, query)
         } else {
@@ -287,6 +344,20 @@ mod tests {
             (InboxFilter::Scheduled, &[S::OrgChange][..]),
             (InboxFilter::Failures, &[S::HrLifecycle][..]),
             (InboxFilter::Deadlines, &deadlines[..]),
+            (InboxFilter::Today, &deadlines[..]),
+            (InboxFilter::Overdue, &deadlines[..]),
+            (
+                InboxFilter::Approvals,
+                &[
+                    S::Workflow,
+                    S::OrgChange,
+                    S::Payroll,
+                    S::Governance,
+                    S::PeriodUnlock,
+                    S::SupportAccess,
+                    S::EntityCorrections,
+                ][..],
+            ),
         ] {
             let port = RecordingPort::default();
             let view = ViewPort {
@@ -340,7 +411,6 @@ mod tests {
 
     fn item(lane: &'static str, due_tone: &'static str, kind: &str) -> ActionInboxItem {
         ActionInboxItem {
-            reason: String::new(),
             age_days: 0,
             fold_key: String::new(),
             context: None,

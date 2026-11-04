@@ -14929,8 +14929,6 @@ export interface components {
         };
         /** @description One unified actionable item. Field names mirror the overview prototype's items[] shape. Source-partial fields (site/who/due/submitted) are absent when the originating source does not carry them. */
         ActionInboxItem: {
-            /** @description Display-ready Korean reason from source facts, falling back to the current task's action. */
-            reason?: string;
             /** @description Korean calendar days since this item's own creation, using the database clock; never the tenant's age. */
             age_days?: number;
             /** @description Server identity of kind, subject and source case (insurance group when present); never derived from display text. */
@@ -15018,7 +15016,7 @@ export interface components {
             label?: string;
         };
         ActionInboxResponse: {
-            /** @description Home counts over the same authorized source read, independent of the selected attention view. Subset counts are lower bounds for bounded or continued source prefixes; unavailable sources make every count inexact. All uses source totals. No additional full-tenant scan is performed. */
+            /** @description Home counts over the same authorized source read, independent of the selected attention view. Subset counts are lower bounds for bounded or continued source prefixes; only contributing sources affect subset exactness. Unavailable sources make every count inexact. All uses source totals, or the turn count when filter=turn. Continuation pages report whole-inbox counts under the same admission boundary. */
             attention_filters?: {
                 /** @enum {string} */
                 key: "all" | "approvals" | "today" | "overdue";
@@ -49125,7 +49123,7 @@ export interface operations {
     listMyActionInbox: {
         parameters: {
             query?: {
-                /** @description Home attention view over the same authorized work. Approvals are pending decisions; today means an actionable source deadline on today's Korean calendar date; overdue means that source deadline has expired (including statutory-register deadlines). Takes precedence over filter=all or filter=turn for Home; other saved views require attention to be omitted. */
+                /** @description Home attention view over the same authorized work. Approvals are pending decisions; today means an actionable source deadline on today's Korean calendar date; overdue means that source deadline has expired (including statutory-register deadlines). All preserves filter=all or filter=turn; the other attention views take precedence. Counts honor filter=turn for Home; other saved views require attention to be omitted. */
                 attention?: "all" | "approvals" | "today" | "overdue";
                 /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
                 filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures";

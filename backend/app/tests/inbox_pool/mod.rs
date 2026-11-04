@@ -56,7 +56,7 @@ pub async fn context(owner: &PgPool, org: Uuid, user: UserId) -> (http::Ctx, Pro
     let pool = PgPoolOptions::new()
         .min_connections(8)
         .max_connections(8)
-        .acquire_timeout(Duration::from_secs(1))
+        .acquire_timeout(Duration::from_secs(10))
         .after_connect(|conn, _| {
             Box::pin(async move {
                 sqlx::query("SET ROLE console_rt").execute(conn).await?;

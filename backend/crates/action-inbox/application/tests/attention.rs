@@ -88,13 +88,14 @@ fn attention_metadata_uses_each_items_facts_and_counts_before_page_truncation() 
     ))
     .unwrap();
     assert_eq!(value["items"][0]["age_days"], 12);
-    assert_eq!(value["items"][0]["reason"], "기록된 요청 사유");
+    assert!(value["items"][0].get("reason").is_none());
+    assert_eq!(value["items"][0]["context"]["reason"], "기록된 요청 사유");
     assert_eq!(value["attention_filters"][0]["total"], 20);
     assert_eq!(value["attention_filters"][1]["total_is_exact"], false);
 }
 
 #[test]
-fn aging_is_calendar_days_and_clamped_at_zero_and_reasons_survive_missing_context() {
+fn aging_is_calendar_days_and_clamped_at_zero_without_display_copy() {
     let now = OffsetDateTime::parse(
         "2026-11-04T15:00:00Z",
         &time::format_description::well_known::Rfc3339,
@@ -122,12 +123,7 @@ fn aging_is_calendar_days_and_clamped_at_zero_and_reasons_survive_missing_contex
         );
         let value: Value = serde_json::to_value(page).unwrap();
         assert_eq!(value["items"][0]["age_days"], age);
-        assert!(
-            value["items"][0]["reason"]
-                .as_str()
-                .unwrap()
-                .contains("결재")
-        );
+        assert!(value["items"][0].get("reason").is_none());
     }
 }
 

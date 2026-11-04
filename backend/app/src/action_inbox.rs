@@ -90,7 +90,10 @@ async fn list_action_inbox(
             KernelError::validation("attention cannot be combined with a saved filter").into(),
         );
     }
-    let filter = query.attention.map_or(query.filter, Attention::filter);
+    let filter = match query.attention {
+        Some(Attention::All) | None => query.filter,
+        Some(attention) => attention.filter(),
+    };
     // The snapshot instant comes from the database clock, the same clock that
     // stamps `created_at` on every source row. An app-host clock lagging the DB
     // would hide rows created in the lag window (`created_at <= as_of`).
@@ -136,7 +139,7 @@ async fn list_action_inbox(
         setup_created_at: created_at,
         deadline_due_soon_days,
     };
-    let page = run_action_inbox(
+    let mut page = run_action_inbox(
         &sources,
         ListActionInboxQuery {
             limit: query.limit,
@@ -146,6 +149,16 @@ async fn list_action_inbox(
         now,
     )
     .await?;
+    if query.filter == InboxFilter::Turn
+        && let Some(turn) = page.counts.get("turn")
+        && let Some(all) = page
+            .attention_filters
+            .iter_mut()
+            .find(|count| count.key == Attention::All)
+    {
+        all.total = turn.total;
+        all.total_is_exact = turn.total_is_exact;
+    }
     response::project(&sources, page, filter, query.cursor.is_none(), now)
 }
 

@@ -15,7 +15,7 @@ test("Home attention shares the authorized worklist and preserves item aging", {
   await pressRegister(page);
   expect((await registered).status()).toBe(201);
   type Inbox = {
-    items: { id: string; title: string; reason: string; age_days: number }[];
+    items: { id: string; title: string; kind: string; lane: string; context?: { review_count?: number; reason?: string }; age_days: number }[];
     attention_filters: { key: string; total: number; total_is_exact: boolean }[];
     next_cursor: string | null;
   };
@@ -23,7 +23,7 @@ test("Home attention shares the authorized worklist and preserves item aging", {
   expect(all.attention_filters.map(c => c.key)).toEqual(["all", "approvals", "today", "overdue"]);
   expect(all.items.some(i => i.title === "업무확인직원")).toBe(true);
   for (const item of all.items) {
-    expect(item.reason.length).toBeGreaterThan(0);
+    expect(item).not.toHaveProperty("reason");
     expect(item.age_days).toBeGreaterThanOrEqual(0);
   }
   for (const filter of ["approvals", "today", "overdue"]) {
@@ -34,6 +34,10 @@ test("Home attention shares the authorized worklist and preserves item aging", {
   const first = await api<Inbox>("/api/v1/me/action-inbox?attention=all&limit=1");
   expect(first.next_cursor).not.toBeNull();
   const second = await api<Inbox>(`/api/v1/me/action-inbox?attention=all&limit=1&cursor=${encodeURIComponent(first.next_cursor!)}`);
+  expect(second.attention_filters).toEqual(first.attention_filters);
+  const home = await api<Inbox>("/api/v1/me/action-inbox?filter=turn&attention=all&limit=200");
+  expect(home.items.every(item => item.lane === "turn")).toBe(true);
+  expect(home.attention_filters.find(count => count.key === "all")?.total).toBe(home.items.length);
   expect(second.items[0]!.id).not.toBe(first.items[0]!.id);
   await page.context().close();
 });

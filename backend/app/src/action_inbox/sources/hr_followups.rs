@@ -88,25 +88,10 @@ pub(crate) async fn page(
             let boundary = |q: &mut sqlx::QueryBuilder<sqlx::Postgres>| {
                 q.push(" AND e.created_at <= ").push_bind(query.as_of);
             };
-            let mut count = counted_employees(
-                if query.require_exact_total {
-                    "SELECT count(*)"
-                } else {
-                    "SELECT 1"
-                },
-                &filters,
-            );
+            let mut count = counted_employees("SELECT count(*)", &filters);
             boundary(&mut count);
-            let total = if query.require_exact_total {
-                let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
-                usize::try_from(total).unwrap_or(0)
-            } else {
-                count
-                    .push(" LIMIT ")
-                    .push_bind(i64::try_from(query.limit.saturating_add(1)).unwrap_or(i64::MAX));
-                count.build().fetch_all(tx.as_mut()).await?.len()
-            };
-            let total_is_exact = query.require_exact_total || total <= query.limit;
+            let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
+            let total = usize::try_from(total).unwrap_or(0);
             let due = if contract {
                 "((p.contract_end_date + TIME '23:59:59.999999') AT TIME ZONE 'Asia/Seoul')"
             } else {
@@ -140,7 +125,7 @@ pub(crate) async fn page(
                 .into_iter()
                 .take(query.limit)
                 .map(|(id, name, created_at, due)| ActionInboxSourceItem {
-                    context: total_is_exact.then(|| serde_json::json!({ "review_count": total })),
+                    context: Some(serde_json::json!({ "review_count": total })),
                     id: format!("{namespace}:{id}"),
                     kind: kind.into(),
                     ref_code: String::new(),
@@ -162,7 +147,7 @@ pub(crate) async fn page(
             Ok(ActionInboxSourcePage {
                 items,
                 total,
-                total_is_exact,
+                total_is_exact: true,
                 has_more,
             })
         })

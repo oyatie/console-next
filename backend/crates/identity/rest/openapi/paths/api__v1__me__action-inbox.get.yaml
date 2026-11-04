@@ -36,8 +36,9 @@ parameters:
     Home attention view over the same authorized work. Approvals are pending
     decisions; today means an actionable source deadline on today's Korean
     calendar date; overdue means that source deadline has expired (including
-    statutory-register deadlines). Takes precedence over filter=all or
-    filter=turn for Home; other saved views require attention to be omitted.
+    statutory-register deadlines). All preserves filter=all or filter=turn;
+    the other attention views take precedence. Counts honor filter=turn
+    for Home; other saved views require attention to be omitted.
 - name: filter
   in: query
   required: false
