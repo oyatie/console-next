@@ -57,7 +57,7 @@ async fn list(
         },
     )
     .await
-    .map_err(|e| KernelError::internal(e.to_string()))?;
+    .map_err(db)?;
     Ok(Json(result))
 }
 fn decode_cursor(value: &str) -> Result<(OffsetDateTime, Uuid), KernelError> {
@@ -68,4 +68,10 @@ fn decode_cursor(value: &str) -> Result<(OffsetDateTime, Uuid), KernelError> {
         ))
     });
     parsed.ok_or_else(|| KernelError::validation("invalid approval cursor"))
+}
+
+fn db(error: impl std::fmt::Display) -> KernelError {
+    tracing::error!(error = %error, "approval projection unavailable");
+    KernelError::internal("approval projection unavailable")
+        .with_code("approvals.projection_unavailable")
 }

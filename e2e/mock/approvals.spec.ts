@@ -10,12 +10,12 @@ test.beforeAll(() => loadCatalog("ko"));
 
 const item = {
   id: "approval-1", box: "pending", title: "영업 조직 개편안", summary: "영업1팀과 영업2팀을 하나의 조직으로 합칩니다.", document_no: "AP-2026-001",
-  source: { key: "org_change", label: "조직 변경" }, status: { key: "waiting", label: "내 결재 대기", tone: "warn" },
+  source: { key: "org_change", label: "조직 변경" }, status: { key: "IN_APPROVAL" },
   requester: { id: "account-1", name: "김기안", role: "인사팀" }, requested_at: "2026-11-03T01:00:00Z", due_at: "2026-11-05T01:00:00Z",
   facts: [{ key: "effective", label: "시행일", value: "2026. 11. 10." }],
   route: [
-    { id: "draft", label: "기안", assignee: "김기안", state: "done", meta: "11. 3. 10:00" },
-    { id: "approve", label: "인사팀장 결재", assignee: "박결재", state: "current", meta: "내 차례" },
+    { id: "first", role_key: "hr", assignee: "김기안", state: "done", meta: "11. 3. 10:00" },
+    { id: "approve", role_key: "executive", assignee: "박결재", state: "current", meta: "내 차례" },
   ],
   viewer: { kind: "org_change", id: "change-1" },
 } as const;
@@ -57,6 +57,9 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
     await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
     const panel = page.locator("[data-side-panel]");
     await expect(panel.getByRole("heading", { name: "영업 조직 개편안", exact: true })).toBeVisible();
+    await expect(panel.getByText(t("enum.orgChangeStatus.IN_APPROVAL"), { exact: true })).toBeVisible();
+    await expect(panel.getByText(/hr|executive|IN_APPROVAL/, { exact: true })).toHaveCount(0);
+    await expect(panel.getByText(new RegExp(t("enum.approvalRole.executive")))).toBeVisible();
     await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveAttribute("href", "/approvals/approval-1");
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-preview.png`), fullPage: true });

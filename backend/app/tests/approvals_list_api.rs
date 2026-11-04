@@ -62,6 +62,9 @@ async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {
     assert_eq!(first["items"][0]["source"]["key"], "org_change");
     assert_eq!(first["items"][0]["route"].as_array().unwrap().len(), 2);
     assert_eq!(first["items"][0]["route"][0]["state"], "current");
+    assert_eq!(first["items"][0]["route"][0]["role_key"], "hr");
+    assert_eq!(first["items"][0]["status"], json!({"key":"IN_APPROVAL"}));
+    assert!(first["items"][0]["route"][0].get("label").is_none());
     assert_eq!(first["sources"][0]["count"], 3);
     let cursor = first["next_cursor"].as_str().unwrap();
     let second = get(
@@ -176,7 +179,88 @@ async fn completed_documents_only_reach_requesters_and_route_participants(pool: 
         .unwrap();
     let page = get(&checker_ctx, "box=completed&q=OC-2026-0002").await;
     assert_eq!(page["items"][0]["route"][0]["state"], "failed");
-    assert_eq!(page["items"][0]["status"]["tone"], "danger");
+    assert_eq!(page["items"][0]["status"]["key"], "REJECTED");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn unrouted_approved_changes_and_cancelled_drafts_are_not_approval_documents(pool: PgPool) {
+    let (org, maker, checker) = setup(&pool).await;
+    let mut ids = Vec::new();
+    for (index, status) in ["APPROVED", "CANCELLED"].into_iter().enumerate() {
+        let id = document(&pool, org, maker, &format!("OC-2026-{index:04}")).await;
+        sqlx::query("DELETE FROM org_change_approval_steps WHERE request_id=$1")
+            .bind(id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE org_change_requests SET status=$2 WHERE id=$1")
+            .bind(id)
+            .bind(status)
+            .execute(&pool)
+            .await
+            .unwrap();
+        ids.push(id);
+    }
+    for (user, role) in [(maker, "SUPER_ADMIN"), (checker, "EXECUTIVE")] {
+        let ctx = http::ctx(&pool, org, user, &[role], None).await;
+        for box_name in ["pending", "upcoming", "requested", "reference", "completed"] {
+            for id in &ids {
+                let page = get(&ctx, &format!("box={box_name}&focus=org_change:{id}")).await;
+                assert_eq!(page["items"], json!([]));
+                assert_eq!(page["sources"], json!([]));
+                assert!(page["focused"].is_null());
+                assert!(page["counts"].as_object().unwrap().values().all(|v| v == 0));
+            }
+        }
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn view_only_reader_cannot_receive_another_persons_pending_approval(pool: PgPool) {
+    let (org, maker, checker) = setup(&pool).await;
+    let other = document(&pool, org, maker, "OC-2026-0001").await;
+    let own = document(&pool, org, checker, "OC-2026-0002").await;
+    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,role_id,2,name_ko,status,change_mode,created_by FROM access_role_versions WHERE version=1 AND role_id IN (SELECT role_id FROM access_grants WHERE account_id=$1)")
+        .bind(checker.as_uuid()).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,role_id,2,'org',ARRAY['view'] FROM access_grants WHERE account_id=$1")
+        .bind(checker.as_uuid()).execute(&pool).await.unwrap();
+    sqlx::query("UPDATE access_roles SET version=2 WHERE id IN (SELECT role_id FROM access_grants WHERE account_id=$1)")
+        .bind(checker.as_uuid()).execute(&pool).await.unwrap();
+    let ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    let requested = get(&ctx, "box=requested").await;
+    assert_eq!(requested["items"][0]["id"], format!("org_change:{own}"));
+    assert_eq!(
+        requested["counts"]["requested"], 1,
+        "read remains permitted"
+    );
+    for box_name in ["pending", "upcoming", "reference", "completed"] {
+        let page = get(&ctx, &format!("box={box_name}&focus=org_change:{other}")).await;
+        assert_eq!(page["items"], json!([]));
+        assert_eq!(page["counts"]["pending"], 0);
+        assert!(page["focused"].is_null());
+        assert_eq!(page["sources"], json!([]));
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn projection_failures_return_a_code_without_database_details(pool: PgPool) {
+    let (org, maker, checker) = setup(&pool).await;
+    document(&pool, org, maker, "OC-2026-0001").await;
+    let ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    sqlx::query("ALTER TABLE org_units RENAME TO unavailable_org_units")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (status, body) = ctx.call("GET", "/api/v1/approvals?box=pending", None).await;
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR, "{body}");
+    assert_eq!(body["error"]["code"], "approvals.projection_unavailable");
+    assert_eq!(body["error"]["message"], "internal server error");
+    assert!(
+        body["error"]["support_ref"]
+            .as_str()
+            .is_some_and(|s| !s.is_empty())
+    );
+    assert!(!body.to_string().contains("org_units"));
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn same_person_alias_and_unbound_approvers_have_no_pending_documents(pool: PgPool) {

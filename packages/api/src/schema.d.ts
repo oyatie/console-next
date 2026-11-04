@@ -15123,10 +15123,7 @@ export interface components {
                 label: string;
             };
             status: {
-                key: string;
-                label: string;
-                /** @enum {string} */
-                tone: "neutral" | "warn" | "danger";
+                key: components["schemas"]["OrgChangeStatus"];
             };
             requester: {
                 /** Format: uuid */
@@ -15143,7 +15140,7 @@ export interface components {
             route: {
                 /** Format: uuid */
                 id: string;
-                label: string;
+                role_key: components["schemas"]["OrgChangeApprovalRoleKey"];
                 assignee: string;
                 /** @enum {string} */
                 state: "done" | "current" | "waiting" | "failed";

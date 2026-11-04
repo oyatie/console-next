@@ -97,12 +97,12 @@ pub(crate) async fn page(
     let (rows, total) = with_org_conn::<_, _, AppError>(pool, org, move |tx| {
         Box::pin(async move {
             let approve: Vec<Uuid> = console_orgchange_adapter_postgres::step_decision_facts_in_tx(
-                tx, org, principal.user_id, None,
+                tx, org, principal.user_id, console_orgchange_adapter_postgres::StepDecisionScope::OpenQueue,
             ).await.map_err(|e| AppError::Internal(e.to_string()))?
-                .into_iter().filter_map(|(id, facts)| {
+                .into_iter().filter_map(|row| {
                     console_platform_authz::cedar_pbac::actions::org_change_step_decide::enforce(
-                        &principal.user_id.to_string(), &org.to_string(), &org.to_string(), facts,
-                    ).is_ok().then_some(id)
+                        &principal.user_id.to_string(), &org.to_string(), &org.to_string(), row.decision,
+                    ).is_ok().then_some(row.id)
                 }).collect();
             let apply = apply_others
                 || (draft

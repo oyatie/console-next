@@ -34044,11 +34044,9 @@ components:
             label: {type: string}
         status:
           type: object
-          required: [key, label, tone]
+          required: [key]
           properties:
-            key: {type: string}
-            label: {type: string}
-            tone: {type: string, enum: [neutral, warn, danger]}
+            key: {$ref: '#/components/schemas/OrgChangeStatus'}
         requester:
           type: object
           required: [id, name]
@@ -34069,10 +34067,10 @@ components:
           type: array
           items:
             type: object
-            required: [id, label, assignee, state]
+            required: [id, role_key, assignee, state]
             properties:
               id: {type: string, format: uuid}
-              label: {type: string}
+              role_key: {$ref: '#/components/schemas/OrgChangeApprovalRoleKey'}
               assignee: {type: string}
               state: {type: string, enum: [done, current, waiting, failed]}
         viewer:

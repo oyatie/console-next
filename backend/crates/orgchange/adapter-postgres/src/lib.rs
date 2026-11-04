@@ -71,8 +71,8 @@ pub use ports::*;
 use preflight::*;
 use rows::*;
 use schedule_time::*;
-pub use store::step_decision_facts_in_tx;
 use store::*;
+pub use store::{StepDecisionFacts, StepDecisionScope, step_decision_facts_in_tx};
 pub use types::*;
 use util::*;
 
