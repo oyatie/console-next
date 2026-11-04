@@ -5,6 +5,7 @@
 //! which writes through `with_audit`.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod mobile_sync_authz;
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
 
@@ -1150,7 +1151,7 @@ impl RestError {
         Self {
             status: status_for_error_kind(error.kind),
             kind: error.kind,
-            code_override: None,
+            code_override: error.code,
             message: error.message,
         }
     }
@@ -1254,8 +1255,7 @@ async fn sync_batch<S>(
 where
     S: S3ObjectStore + Clone + Send + Sync + 'static,
 {
-    let principal = mobile_principal_from_headers(&state, &headers).await?;
-    let device_hash = device_hash_from_headers(&headers)?;
+    let (principal, device_hash) = mobile_sync_authz::admit(&state, &headers).await?;
     let sync_id = normalize_non_empty(body.sync_id, "sync_id")?;
     if body.operations.is_empty() {
         return Err(RestError::from_kernel(KernelError::validation(

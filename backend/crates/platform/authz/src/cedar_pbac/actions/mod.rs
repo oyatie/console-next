@@ -20,6 +20,7 @@ pub mod org_unit_manage;
 pub mod reason_code_manage;
 pub mod settings_manage;
 pub mod support_session;
+pub mod work_order_start;
 
 use super::action_schema::ActionSchema;
 
@@ -34,6 +35,7 @@ pub const ACTION_SCHEMAS: &[ActionSchema] = &[
     org_unit_manage::SCHEMA,
     settings_manage::SCHEMA,
     reason_code_manage::SCHEMA,
+    work_order_start::SCHEMA,
 ];
 
 // Self-contained single-action bundles (`ActionBundle`) for actions whose
