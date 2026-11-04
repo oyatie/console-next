@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { ComboBox, FieldError, Input, ListBox, ListBoxItem, Popover, Label, Button } from "react-aria-components";
 import { ChevronDown } from "lucide-react";
 import type { components } from "@console/api/schema";
@@ -6,6 +7,7 @@ import { UNIT_KIND, label } from "../../../lib/labels";
 import { unitPath } from "../present";
 import s from "../../../ui/field/field.module.css";
 import { Muted } from "../../../ui/muted/muted";
+import { useNonModalSurroundings } from "../../../ui/use-non-modal-surroundings";
 
 type Unit = components["schemas"]["OrgUnitHead"];
 
@@ -21,15 +23,18 @@ export function UnitPicker({ units, options, value, onChange, labelText = t("org
   /** Named on a commit attempt without a unit; the input is then marked invalid, so the form can focus it. */
   error?: string;
 }) {
+  const input = useRef<HTMLInputElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
+  const onOpenChange = useNonModalSurroundings(input, popover);
   return (
-    <ComboBox className="field" selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} isRequired={required} isInvalid={error != null}>
+    <ComboBox onOpenChange={onOpenChange} className="field" selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} isRequired={required} isInvalid={error != null}>
       <Label className="field__label">{labelText}</Label>
       <div className="combo">
-        <Input className="field__input combo__input" placeholder={t("org.unit.picker.search")} />
+        <Input ref={input} className="field__input combo__input" placeholder={t("org.unit.picker.search")} />
         <Button className="combo__button" aria-label={t("org.unit.picker.open")}><ChevronDown size={16} aria-hidden /></Button>
       </div>
       <FieldError className={s.error}>{error}</FieldError>
-      <Popover className="popover">
+      <Popover ref={popover} className="popover">
         <ListBox className="listbox">
           {(u: Unit) => (
             <ListBoxItem id={u.id} textValue={u.name} className="listbox__item">

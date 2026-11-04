@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { ComboBox, Input, Label, ListBox, ListBoxItem, Popover } from "react-aria-components";
 import { MapPin, Search } from "lucide-react";
 import { t } from "@console/i18n";
 import { Field, Marker, TextInput } from "../field/field";
+import { useNonModalSurroundings } from "../use-non-modal-surroundings";
 import fieldCss from "../field/field.module.css";
 import css from "../server-picker/server-picker.module.css";
 import s from "./address-field.module.css";
@@ -60,18 +61,25 @@ export function AddressField({ label, required, value, onChange, query, onQueryC
       </div>
     );
   if (typing) return <Manual label={label} required={required} onDone={onChange} unavailable={problem === "unavailable"} compare={compare} onSearch={problem === "unavailable" ? undefined : () => setManual(false)} />;
+  return <AddressSearch {...{ label, required, onChange, query, onQueryChange, hits, loading, problem, error, compare }} onManual={() => setManual(true)} />;
+}
+
+function AddressSearch({ label, required, onChange, query, onQueryChange, hits, loading, problem, error, compare, onManual }: Omit<ComponentProps<typeof AddressField>, "value" | "printed" | "children"> & { compare: ReactNode; onManual: () => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
+  const onOpenChange = useNonModalSurroundings(input, popover);
   return (
     <div className={s.wrap}>
-      <ComboBox className={`field ${css.picker}`} items={hits} inputValue={query} onInputChange={onQueryChange} onSelectionChange={(k) => {
+      <ComboBox onOpenChange={onOpenChange} className={`field ${css.picker}`} items={hits} inputValue={query} onInputChange={onQueryChange} onSelectionChange={(k) => {
         const h = hits.find((x) => x.key === k);
         if (h) onChange({ key: h.key, road: h.road, jibun: h.jibun, zip: h.zip, detail: "", verified: true });
       }} menuTrigger="input" allowsEmptyCollection isRequired={required} isInvalid={error != null}>
         <Label className={fieldCss.label}>{label}<Marker required={required} /></Label>
         <div className={css.input}>
           <Search aria-hidden="true" className={css.icon} />
-          <Input className="field__input" />
+          <Input ref={input} className="field__input" />
         </div>
-        <Popover className={`popover ${css.pop}`}>
+        <Popover ref={popover} className={`popover ${css.pop}`}>
           <ListBox className="listbox" renderEmptyState={() => <div className={css.empty}>{loading ? t("uiAddressField.loading") : problem === "narrow" ? t("uiAddressField.narrow") : t("uiAddressField.none")}</div>}>
             {(h: AddressHit) => (
               <ListBoxItem id={h.key} textValue={h.road} className={`listbox__item ${css.option}`}>
@@ -86,7 +94,7 @@ export function AddressField({ label, required, value, onChange, query, onQueryC
       <span className={s.sub}>{problem === "narrow" ? t("uiAddressField.narrow") : t("uiAddressField.hint")}</span>
       {compare}
       {error != null && <p className={s.error}>{error}</p>}
-      <button type="button" className={`link ${s.link}`} onClick={() => setManual(true)}>{t("uiAddressField.manual")}</button>
+      <button type="button" className={`link ${s.link}`} onClick={onManual}>{t("uiAddressField.manual")}</button>
     </div>
   );
 }

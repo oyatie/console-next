@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useRef, type ComponentProps, type ReactNode } from "react";
 import { ComboBox, Input, Label, ListBox, ListBoxItem, Popover, Text } from "react-aria-components";
 import { Search } from "lucide-react";
 import { t } from "@console/i18n";
 import fieldCss from "../field/field.module.css";
 import { Marker } from "../field/field";
+import { useNonModalSurroundings } from "../use-non-modal-surroundings";
 import css from "../server-picker/server-picker.module.css";
 import s from "./code-picker.module.css";
 
@@ -18,7 +19,7 @@ export type CodeList = { title: string; version?: string; loaded: boolean };
  * the certificate, or a code typed with format checks only), and the code is assigned once the list loads. With no
  * fallback the field may stay empty until then.
  */
-export function CodePicker({ label, required, list, query, onQueryChange, options, value, onChange, loading, fallback, error, showCode = true }: {
+export function CodePicker(props: {
   label: string;
   required: boolean;
   list: CodeList;
@@ -32,6 +33,7 @@ export function CodePicker({ label, required, list, query, onQueryChange, option
   error?: ReactNode;
   showCode?: boolean;
 }) {
+  const { label, required, list, fallback } = props;
   if (!list.loaded)
     return (
       <div className={s.unloaded} role="group" aria-label={label}>
@@ -40,8 +42,16 @@ export function CodePicker({ label, required, list, query, onQueryChange, option
         {fallback}
       </div>
     );
+  return <CodeSearch {...props} />;
+}
+
+function CodeSearch({ label, required, list, query, onQueryChange, options, value, onChange, loading, error, showCode = true }: ComponentProps<typeof CodePicker>) {
+  const input = useRef<HTMLInputElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
+  const onOpenChange = useNonModalSurroundings(input, popover);
   return (
     <ComboBox
+      onOpenChange={onOpenChange}
       className={`field ${css.picker}`}
       items={options}
       inputValue={query}
@@ -61,10 +71,10 @@ export function CodePicker({ label, required, list, query, onQueryChange, option
       <Label className={fieldCss.label}>{label}<Marker required={required} /></Label>
       <div className={css.input}>
         <Search aria-hidden="true" className={css.icon} />
-        <Input className="field__input" />
+        <Input ref={input} className="field__input" />
       </div>
       {error != null && <Text slot="errorMessage" className={s.error}>{error}</Text>}
-      <Popover className={`popover ${css.pop}`}>
+      <Popover ref={popover} className={`popover ${css.pop}`}>
         <ListBox className="listbox" renderEmptyState={() => <div className={css.empty}>{loading ? t("uiCodePicker.loading") : t("uiCodePicker.none")}</div>}>
           {(o: CodeOption) => (
             <ListBoxItem id={o.code} textValue={showCode ? `${o.code} ${o.label}` : o.label} className={`listbox__item ${css.option}`}>
