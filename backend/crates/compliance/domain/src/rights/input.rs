@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::{Controller, Kind};
+
 use serde::{Deserialize, Serialize};
 
 /// Self-service filing; the server supplies subject, channel, identity and receipt date.
@@ -10,4 +11,15 @@ pub struct Filing {
     pub kinds: Vec<Kind>,
     #[serde(default)]
     pub detail: String,
+}
+
+impl Kind {
+    // Automated decisions and transmission have no supported filing register yet.
+    pub const FILING: &[Self] = &[
+        Self::Access,
+        Self::Correction,
+        Self::Deletion,
+        Self::Suspension,
+        Self::Withdrawal,
+    ];
 }

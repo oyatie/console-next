@@ -24,16 +24,6 @@ pub enum Kind {
     AutomatedDecision,
     Transmission,
 }
-impl Kind {
-    // Automated decisions and transmission have no supported filing register yet.
-    pub const FILING: &[Self] = &[
-        Self::Access,
-        Self::Correction,
-        Self::Deletion,
-        Self::Suspension,
-        Self::Withdrawal,
-    ];
-}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Controller {
