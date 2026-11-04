@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { SupportLookup } from "../../../lib/react/support-lookup";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { buttonClass } from "../../../ui/button/button-class";
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
 import { claims, meQuery, operatorMeQuery, passkeysQuery, type Me } from "../api";
@@ -27,7 +29,7 @@ export function MePage({ locale }: { locale: ReactNode }) {
   const reads = readGroup([keys, me]);
   return (
     <div className={`page ${s.column}`}>
-      <PageHead title={t("account.title")} />
+      <PageHead title={t("account.title")} tools={<Link to="/account/privacy" className={buttonClass("secondary")}>{t("account.privacy.title")}</Link>} />
       <QueryState q={reads} layout="record">{() => <>
           <ProfileCard locale={locale} me={me} />
           <PasskeysCard ops={vendor ? false : me.data?.is_tenant_ops} passkeys={keys} />

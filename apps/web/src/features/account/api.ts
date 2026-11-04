@@ -1,6 +1,6 @@
 import { api, assertBoundPasskey, assertPasskey, consentDocuments, consentStatus, logout, registerPasskey, session, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
-import { get, read } from "../../lib/query";
+import { cursorPages, get, read } from "../../lib/query";
 import { landed } from "../../lib/react/landed";
 import { forgetDomains } from "../../auth/sign-in-id";
 
@@ -10,6 +10,7 @@ export const passkeysQuery = get("/api/v1/auth/passkeys");
 export const passkeyLabelPolicyQuery = get("/api/v1/auth/passkeys/policy");
 /** Tenant accounts only: a platform token is another world, where this read answers 404. */
 export const meQuery = get("/api/v1/users/me");
+export const privacyRequestPages = cursorPages("/api/v1/privacy/rights-requests/mine", {});
 export const operatorMeQuery = get("/api/platform/users/me");
 /** Only this user changes their own consent: no polling of the auth endpoint. */
 export const consentDocumentsQuery = read("/api/v1/onboarding/terms", consentDocuments);

@@ -17,6 +17,7 @@
       "src/features/access-log/ui/access-log-page.tsx",
       "src/features/access/ui/access-routes.tsx",
       "src/features/access/ui/access-review-page.tsx",
+      "src/features/account/ui/privacy-requests.tsx",
       "src/features/approvals/ui/approvals-page.tsx",
       "src/features/attendance/ui/attendance-page.tsx",
       "src/features/company-domain/ui/domain-page.tsx",
