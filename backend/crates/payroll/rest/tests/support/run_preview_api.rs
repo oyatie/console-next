@@ -3,7 +3,7 @@ use super::super::*;
 
 const PREVIEW: &str = "/api/v1/payroll/runs/preview";
 
-async fn setup(pool: &PgPool) -> (axum::Router, String, Uuid, UserId, Uuid) {
+pub(super) async fn setup(pool: &PgPool) -> (axum::Router, String, Uuid, UserId, Uuid) {
     let org = OrgId::one();
     let actor = UserId::new();
     seed_user(pool, actor, *org.as_uuid(), "SUPER_ADMIN").await;
@@ -29,11 +29,11 @@ async fn setup(pool: &PgPool) -> (axum::Router, String, Uuid, UserId, Uuid) {
     )
 }
 
-fn uri(group: Uuid, kind: &str) -> String {
+pub(super) fn uri(group: Uuid, kind: &str) -> String {
     format!("{PREVIEW}?pay_group_id={group}&kind={kind}")
 }
 
-fn refusal(response: JsonResponse, status: StatusCode, code: &str) {
+pub(super) fn refusal(response: JsonResponse, status: StatusCode, code: &str) {
     assert_eq!(response.status, status, "{}", response.json);
     assert_eq!(response.json["error"]["code"], code);
 }
@@ -74,7 +74,7 @@ async fn preview_derives_all_kinds_without_writing_a_run(pool: PgPool) {
 async fn preview_selects_first_gap_per_group_and_kind_and_ignores_void(pool: PgPool) {
     let (service, token, group, _, _) = setup(&pool).await;
     // rls-arming: ok owner seeds occupied months; all preview reads use console_rt.
-    sqlx::query("INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,period_start,period_end,source_label) SELECT $1,$2,'REGULAR',d,d,d,'occupied-'||n FROM generate_series(0,2) n CROSS JOIN LATERAL (SELECT (date_trunc('month',entity_today())+n*interval '1 month')::date d) dates WHERE n<>1")
+    sqlx::query("INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) SELECT $1,$2,'REGULAR',d,d,d,d,d,d,'occupied-'||n FROM generate_series(0,2) n CROSS JOIN LATERAL (SELECT (date_trunc('month',entity_today())+n*interval '1 month')::date d) dates WHERE n<>1")
         .bind(OrgId::one().as_uuid()).bind(group).execute(&pool).await.unwrap();
     let regular = get(service.clone(), &uri(group, "REGULAR"), &token).await;
     assert_eq!(regular.status, StatusCode::OK, "{}", regular.json);
@@ -180,5 +180,25 @@ async fn missing_holiday_year_refuses_preview(pool: PgPool) {
         get(service, &uri(group, "REGULAR"), &token).await,
         StatusCode::SERVICE_UNAVAILABLE,
         "holiday_calendar_missing",
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn referenced_weekend_and_holiday_date_each_adjust_the_pay_date(pool: PgPool) {
+    let (service, token, group, _, _) = setup(&pool).await;
+    let initial = get(service.clone(), &uri(group, "REGULAR"), &token).await;
+    let first = initial.json["pay_date"].as_str().unwrap();
+    // rls-arming: ok owner mutates reference rows; the request still reads as console_rt.
+    sqlx::query("UPDATE access_log_review_calendar SET weekend_isodays=ARRAY[extract(isodow FROM $1::text::date)::smallint]")
+        .bind(first).execute(&pool).await.unwrap();
+    let weekend = get(service.clone(), &uri(group, "REGULAR"), &token).await;
+    let second = weekend.json["pay_date"].as_str().unwrap();
+    assert!(second < first, "PREVIOUS must honor the referenced weekend");
+    sqlx::query("INSERT INTO attendance_public_holidays(holiday_date,name,kind,basis,edition) VALUES ($1::text::date,'테스트 휴일','NATIONAL','테스트 근거','test')")
+        .bind(second).execute(&pool).await.unwrap();
+    let holiday = get(service, &uri(group, "REGULAR"), &token).await;
+    assert!(
+        holiday.json["pay_date"].as_str().unwrap() < second,
+        "PREVIOUS must honor the exact referenced holiday date"
     );
 }

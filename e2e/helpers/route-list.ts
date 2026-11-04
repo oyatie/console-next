@@ -66,6 +66,7 @@ const paths = [
   "/payroll/employees/$employeeId",
   "/payroll/reference",
   "/payroll/runs/$id",
+  "/payroll/runs/new",
   "/payroll/setup",
   "/platform",
   "/requests",

@@ -3,6 +3,8 @@ use super::*;
 
 #[path = "nullable_pay_groups.rs"]
 mod nullable_pay_groups;
+#[path = "run_create_api.rs"]
+mod run_create_api;
 #[path = "run_preview_api.rs"]
 mod run_preview_api;
 

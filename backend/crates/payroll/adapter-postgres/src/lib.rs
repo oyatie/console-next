@@ -12,6 +12,7 @@
 
 pub mod lifecycle;
 pub mod pay_groups;
+pub use pay_groups::run_preview::PayrollRunSummary;
 /// `ObjectKey::PayRun`'s canonical write port, plus the one
 /// `payroll_draft_runs` statement that used to live in
 /// `console-workflow-runtime-adapter-postgres`.
@@ -36,28 +37,6 @@ pub use my_lines::list_my_lines_in_tx;
 
 const DEFAULT_LIMIT: i64 = 100;
 const MAX_LIMIT: i64 = 500;
-
-#[derive(Debug, Clone, Serialize)]
-pub struct PayrollRunSummary {
-    pub id: Uuid,
-    pub period_start: Date,
-    pub period_end: Date,
-    pub source_label: String,
-    pub status: String,
-    pub calculation_enabled: bool,
-    pub created_by: Option<Uuid>,
-    pub approved_by: Option<Uuid>,
-    pub approved_at: Option<OffsetDateTime>,
-    pub close_receipt: Option<serde_json::Value>,
-    pub submitted_by: Option<Uuid>,
-    pub submitted_at: Option<OffsetDateTime>,
-    pub decided_by: Option<Uuid>,
-    pub decided_at: Option<OffsetDateTime>,
-    pub decision_reason: Option<String>,
-    pub approval_ref: Option<Uuid>,
-    pub created_at: OffsetDateTime,
-    pub updated_at: OffsetDateTime,
-}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PayrollRunPage {
@@ -352,13 +331,17 @@ pub async fn list_runs_in_tx(
         .await?;
     let rows = sqlx::query(
         r#"
-        SELECT id, period_start, period_end, source_label, status,
-               calculation_enabled, created_by, approved_by, approved_at,
-               close_receipt, submitted_by, submitted_at, decided_by, decided_at,
-               decision_reason, approval_ref,
-               created_at, updated_at
-        FROM payroll_draft_runs
-        ORDER BY period_start DESC, period_end DESC, id DESC
+        SELECT r.id, g.legal_entity_id, r.pay_group_id, r.kind,
+               to_char(r.attribution_month, 'YYYY-MM') AS attribution_month,
+               r.pay_date, r.period_start, r.period_end,
+               r.variable_period_start, r.variable_period_end,
+               r.source_label, r.status, r.calculation_enabled, r.created_by,
+               r.approved_by, r.approved_at, r.close_receipt, r.submitted_by,
+               r.submitted_at, r.decided_by, r.decided_at, r.decision_reason,
+               r.approval_ref, r.created_at, r.updated_at
+        FROM payroll_draft_runs r
+        LEFT JOIN pay_groups g ON g.org_id=r.org_id AND g.id=r.pay_group_id
+        ORDER BY r.period_start DESC, r.period_end DESC, r.id DESC
         LIMIT $1 OFFSET $2
         "#,
     )
@@ -461,13 +444,17 @@ async fn fetch_run_row(
 ) -> Result<Option<sqlx::postgres::PgRow>, PgPayrollError> {
     Ok(sqlx::query(
         r#"
-        SELECT id, period_start, period_end, source_label, status,
-               calculation_enabled, created_by, approved_by, approved_at,
-               close_receipt, submitted_by, submitted_at, decided_by, decided_at,
-               decision_reason, approval_ref,
-               created_at, updated_at, legal_basis, source_summary
-        FROM payroll_draft_runs
-        WHERE id = $1
+        SELECT r.id, g.legal_entity_id, r.pay_group_id, r.kind,
+               to_char(r.attribution_month, 'YYYY-MM') AS attribution_month,
+               r.pay_date, r.period_start, r.period_end,
+               r.variable_period_start, r.variable_period_end,
+               r.source_label, r.status, r.calculation_enabled, r.created_by,
+               r.approved_by, r.approved_at, r.close_receipt, r.submitted_by,
+               r.submitted_at, r.decided_by, r.decided_at, r.decision_reason,
+               r.approval_ref, r.created_at, r.updated_at, r.legal_basis, r.source_summary
+        FROM payroll_draft_runs r
+        LEFT JOIN pay_groups g ON g.org_id=r.org_id AND g.id=r.pay_group_id
+        WHERE r.id = $1
         "#,
     )
     .bind(run_id)
@@ -478,8 +465,15 @@ async fn fetch_run_row(
 fn run_summary_from_row(row: &sqlx::postgres::PgRow) -> Result<PayrollRunSummary, PgPayrollError> {
     Ok(PayrollRunSummary {
         id: row.try_get("id")?,
+        legal_entity_id: row.try_get("legal_entity_id")?,
+        pay_group_id: row.try_get("pay_group_id")?,
+        kind: row.try_get("kind")?,
+        attribution_month: row.try_get("attribution_month")?,
+        pay_date: row.try_get("pay_date")?,
         period_start: row.try_get("period_start")?,
         period_end: row.try_get("period_end")?,
+        variable_period_start: row.try_get("variable_period_start")?,
+        variable_period_end: row.try_get("variable_period_end")?,
         source_label: row.try_get("source_label")?,
         status: row.try_get("status")?,
         calculation_enabled: row.try_get("calculation_enabled")?,

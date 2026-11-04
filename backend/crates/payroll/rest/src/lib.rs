@@ -121,16 +121,6 @@ impl std::fmt::Debug for PayrollRestState {
     }
 }
 
-impl PayrollRestState {
-    #[must_use]
-    pub fn new(store: PgPayrollStore, jwt_verifier: Option<JwtVerifier>) -> Self {
-        Self {
-            store,
-            jwt_verifier,
-        }
-    }
-}
-
 pub fn router(state: PayrollRestState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.store.pool().clone();

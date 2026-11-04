@@ -1,16 +1,26 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { payGroups } from "../mock/payroll";
 import { AT, failure, id, screenAccess } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
-import { payrollScreens } from "./payroll";
+import { payrollRunCreateScreen, payrollScreens } from "./payroll";
 import { expectAxe, fits } from "../a11y";
 import type { PayrollRunDetail } from "@console/api/pending";
 
 test.beforeAll(() => loadCatalog("ko"));
-const run = { id: id(880), legal_entity_id: payGroups.items[2]!.legal_entity_id, pay_group_id: payGroups.items[2]!.id, source_label: "모의 급여 상세", period_start: "2026-10-01", period_end: "2026-10-31", status: "STAGED" as const, calculation_enabled: false, created_at: AT, updated_at: AT };
+const run = { id: id(880), legal_entity_id: payGroups.items[2]!.legal_entity_id, pay_group_id: payGroups.items[2]!.id, kind: "REGULAR" as const, attribution_month: "2026-10", pay_date: "2026-10-25", source_label: "모의 급여 상세", period_start: "2026-10-01", period_end: "2026-10-31", variable_period_start: "2026-09-16", variable_period_end: "2026-10-15", status: "STAGED" as const, calculation_enabled: false, created_at: AT, updated_at: AT };
 const detail: PayrollRunDetail = { run, legal_basis: {}, source_summary: {}, lines: [], lines_total: 0, lines_limit: 50, lines_offset: 0, exceptions_open: 0, exceptions_total: 0, calculation: null, disbursement: null, payslip_delivery: null };
+const preview = { legal_entity_id: payGroups.items[0]!.legal_entity_id, pay_group_id: payGroups.items[0]!.id, kind: "REGULAR" as const, attribution_month: "2026-11", pay_date: "2026-11-25", pay_date_clamped: false, period_start: "2026-11-01", period_end: "2026-11-30", variable_period_start: "2026-10-16", variable_period_end: "2026-11-15" };
+const created = { ...run, ...preview, id: id(881), source_label: "모의 급여 그룹 1 · 2026-11 · REGULAR", status: "BLOCKED_LEGAL_GATE" as const };
+
+async function chooseRegular(page: Page) {
+  await page.getByRole("radio", { name: payGroups.items[0]!.name, exact: true }).locator("xpath=ancestor::label[1]").click();
+  await page.getByRole("radio", { name: t("payroll.create.kind.REGULAR"), exact: true }).locator("xpath=ancestor::label[1]").click();
+  await expect(page.getByRole("main")).toContainText(preview.attribution_month);
+  await expect(page.getByRole("main")).toContainText(fmtDate(preview.pay_date));
+}
 
 for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`home run links open their read-only stages at ${width}px ${colorScheme}`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
@@ -79,14 +89,60 @@ for (const state of ["loading", "failed", "refused", "missing"] as const) test(`
   } finally { await page.close(); release(); fixture.release(); }
 });
 
-for (const state of ["empty", "populated"] as const) test(`home has no run creation entry after ${state} groups load with edit access`, async ({ page }) => {
+for (const state of ["empty", "populated"] as const) test(`home offers run creation after ${state} groups load with edit access`, async ({ page }) => {
   const fixture = await mockScreen(page, payrollScreens[0], state);
   await page.route("**/api/v1/access/me", route => route.fulfill({ json: screenAccess("/payroll/setup") }));
   try {
     await page.goto("/payroll");
     const main = page.getByRole("main");
     await expect(main.getByRole("region", { name: state === "empty" ? t("payroll.setup.title") : payGroups.items[0]!.name, exact: true })).toBeVisible();
-    await expect(main.locator('a[href="/payroll/runs/new"]')).toHaveCount(0);
+    await expect(main.getByRole("link", { name: t("payroll.create.title"), exact: true })).toHaveAttribute("href", "/payroll/runs/new");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`run creation previews derived facts and submits at ${width}px ${colorScheme}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.emulateMedia({ colorScheme });
+  const fixture = await mockScreen(page, payrollRunCreateScreen, "populated");
+  let submitted: unknown;
+  await page.route(url => url.pathname === "/api/v1/payroll/runs/preview", route => route.fulfill({ json: preview }));
+  await page.route(url => url.pathname === "/api/v1/payroll/runs" && url.search === "", async route => {
+    if (route.request().method() !== "POST") return route.fallback();
+    expect(route.request().headers()["idempotency-key"]).toBeTruthy();
+    submitted = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: created });
+  });
+  await page.route(`**/api/v1/payroll/runs/${created.id}`, route => route.fulfill({ json: { ...detail, run: created } }));
+  try {
+    await page.goto("/payroll/runs/new");
+    await chooseRegular(page);
+    await fits(page, `payroll-run-create/${width}`);
+    await expectAxe(page, `payroll-run-create/${width}`);
+    await page.screenshot({ path: test.info().outputPath(`create-${width}.png`) });
+    await page.getByRole("button", { name: t("payroll.create.submit"), exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/payroll/runs/${created.id}$`));
+    expect(submitted).toEqual({ pay_group_id: preview.pay_group_id, kind: preview.kind });
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+for (const [status, code] of [[409, "regular_run_exists"], [409, "idempotency_key_reused"], [403, "forbidden"], [422, "validation"]] as const) test(`run creation shows permanent ${code} without retry wording @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.emulateMedia({ colorScheme: "dark" });
+  const fixture = await mockScreen(page, payrollRunCreateScreen, "populated");
+  await page.route(url => url.pathname === "/api/v1/payroll/runs/preview", route => route.fulfill({ json: preview }));
+  await page.route(url => url.pathname === "/api/v1/payroll/runs", route => route.request().method() === "POST"
+    ? route.fulfill({ status, json: failure(code) }) : route.fallback());
+  try {
+    await page.goto("/payroll/runs/new");
+    await chooseRegular(page);
+    await page.getByRole("button", { name: t("payroll.create.submit"), exact: true }).click();
+    await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: t("requestOutcome.check"), exact: true })).toHaveCount(0);
+    await fits(page, `payroll-run-create/${code}`);
+    await expectAxe(page, `payroll-run-create/${code}`);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

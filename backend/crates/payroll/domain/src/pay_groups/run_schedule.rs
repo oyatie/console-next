@@ -25,6 +25,17 @@ fn calendar_error(_: impl std::fmt::Display) -> KernelError {
     KernelError::validation("run schedule is outside the supported calendar")
 }
 
+/// Every run kind owns an independent month sequence: regular, off-cycle and
+/// correction runs all use the first month at or after today not already used
+/// by that kind for the pay group.
+pub fn next_attribution_month(today: Date, occupied: &[Date]) -> Result<Date, KernelError> {
+    let mut month = today.replace_day(1).map_err(calendar_error)?;
+    while occupied.contains(&month) {
+        month = shift_month(month, 1)?;
+    }
+    Ok(month)
+}
+
 fn period(month: Date, rule: PeriodRule) -> Result<(Date, Date), KernelError> {
     let day = match rule.start_day {
         PeriodStart::First => 1,

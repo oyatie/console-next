@@ -40,7 +40,7 @@ export function checkApiSchema({ repo, ref = "HEAD", out, runtimeOut, write = fa
     if (runtimeOut) {
       const document = yaml.load(spec.stdout);
       const schemas = document.components.schemas;
-      const selected = Object.fromEntries(["PayGroupRules", "PayGroupPeriodRule", "PayGroupPayBases"].map(name => {
+      const selected = Object.fromEntries(["PayGroupRules", "PayGroupPeriodRule", "PayGroupPayBases", "PayrollRunKind"].map(name => {
         if (!schemas[name]) throw new Error(`Missing runtime schema: ${name}`);
         return [name, schemas[name]];
       }));

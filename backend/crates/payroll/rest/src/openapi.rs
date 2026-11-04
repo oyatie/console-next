@@ -59,10 +59,16 @@ const PATHS: &[PathItem] = &[
     },
     PathItem {
         path: "/api/v1/payroll/runs",
-        operations: &[Operation {
-            method: "get",
-            body: include_str!("../openapi/paths/api__v1__payroll__runs.get.yaml"),
-        }],
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__payroll__runs.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__v1__payroll__runs.post.yaml"),
+            },
+        ],
     },
     PathItem {
         path: "/api/v1/payroll/runs/preview",
@@ -190,6 +196,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "CreatePayGroup",
         body: include_str!("../openapi/schemas/CreatePayGroup.yaml"),
+    },
+    NamedYaml {
+        name: "CreatePayrollRun",
+        body: include_str!("../openapi/schemas/CreatePayrollRun.yaml"),
     },
     NamedYaml {
         name: "DecidePayrollRunRequest",

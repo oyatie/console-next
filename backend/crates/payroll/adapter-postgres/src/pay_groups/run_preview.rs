@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use console_kernel_core::{KernelError, OrgId, UserId};
-use console_payroll_domain::pay_groups::run_schedule::derive_schedule;
+use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
+use console_payroll_domain::pay_groups::run_schedule::{derive_schedule, next_attribution_month};
 use console_platform_authz::{Feature, cedar_pbac::visible::load_facts};
-use console_platform_db::with_org_conn;
+use console_platform_db::{with_audit, with_org_conn};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction, types::Json};
-use time::{Date, Weekday};
+use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{PgPayrollError, PgPayrollStore, pay_groups::PayGroup};
@@ -19,6 +19,17 @@ pub enum RunKind {
     OffCycle,
     Correction,
     ExitSettlement,
+}
+
+impl RunKind {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Regular => "REGULAR",
+            Self::OffCycle => "OFF_CYCLE",
+            Self::Correction => "CORRECTION",
+            Self::ExitSettlement => "EXIT_SETTLEMENT",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -47,6 +58,45 @@ pub struct RunPreview {
     pub variable_period_end: Date,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct PayrollRunSummary {
+    pub id: Uuid,
+    pub legal_entity_id: Option<Uuid>,
+    pub pay_group_id: Option<Uuid>,
+    pub kind: Option<String>,
+    pub attribution_month: Option<String>,
+    #[serde(with = "date::option")]
+    pub pay_date: Option<Date>,
+    #[serde(with = "date")]
+    pub period_start: Date,
+    #[serde(with = "date")]
+    pub period_end: Date,
+    #[serde(with = "date::option")]
+    pub variable_period_start: Option<Date>,
+    #[serde(with = "date::option")]
+    pub variable_period_end: Option<Date>,
+    pub source_label: String,
+    pub status: String,
+    pub calculation_enabled: bool,
+    pub created_by: Option<Uuid>,
+    pub approved_by: Option<Uuid>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub approved_at: Option<OffsetDateTime>,
+    pub close_receipt: Option<serde_json::Value>,
+    pub submitted_by: Option<Uuid>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub submitted_at: Option<OffsetDateTime>,
+    pub decided_by: Option<Uuid>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub decided_at: Option<OffsetDateTime>,
+    pub decision_reason: Option<String>,
+    pub approval_ref: Option<Uuid>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub updated_at: OffsetDateTime,
+}
+
 impl PgPayrollStore {
     pub async fn preview_run(
         &self,
@@ -57,6 +107,82 @@ impl PgPayrollStore {
         let loader = self.clone();
         with_org_conn(&self.pool, org, move |tx| {
             Box::pin(async move { loader.derive_run_in_tx(tx, org, actor, &input).await })
+        })
+        .await
+    }
+
+    pub async fn create_run(
+        &self,
+        org: OrgId,
+        actor: UserId,
+        input: RunRequest,
+    ) -> Result<PayrollRunSummary, PgPayrollError> {
+        let id = Uuid::new_v4();
+        let audit = AuditEvent::new(
+            Some(actor),
+            AuditAction::new("payroll.run_create")?,
+            "payroll_draft_run",
+            id.to_string(),
+            TraceContext::generate(),
+            OffsetDateTime::now_utc(),
+        )
+        .with_org(org);
+        let loader = self.clone();
+        with_audit(&self.pool, audit, move |tx| {
+            Box::pin(async move {
+                let preview = loader.derive_run_in_tx(tx, org, actor, &input).await?;
+                let group_name: String = sqlx::query_scalar(
+                    "SELECT name FROM pay_groups WHERE org_id=$1 AND id=$2",
+                )
+                .bind(org.as_uuid())
+                .bind(input.pay_group_id)
+                .fetch_one(tx.as_mut())
+                .await?;
+                let source_label = format!(
+                    "{group_name} · {} · {}",
+                    preview.attribution_month,
+                    input.kind.as_str()
+                );
+                let inserted = sqlx::query(
+                    "INSERT INTO payroll_draft_runs(org_id,id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label,created_by)
+                     VALUES ($1,$2,$3,$4,($5||'-01')::date,$6,$7,$8,$9,$10,$11,$12)",
+                )
+                .bind(org.as_uuid())
+                .bind(id)
+                .bind(input.pay_group_id)
+                .bind(input.kind.as_str())
+                .bind(&preview.attribution_month)
+                .bind(preview.pay_date)
+                .bind(preview.period_start)
+                .bind(preview.period_end)
+                .bind(preview.variable_period_start)
+                .bind(preview.variable_period_end)
+                .bind(source_label)
+                .bind(actor.as_uuid())
+                .execute(tx.as_mut())
+                .await;
+                if let Err(error) = inserted {
+                    let constraint = error.as_database_error().and_then(|db| db.constraint());
+                    if matches!(input.kind, RunKind::Regular)
+                        && matches!(
+                            constraint,
+                            Some("payroll_regular_run_month_key")
+                                | Some("payroll_draft_runs_org_id_period_start_period_end_source_la_key")
+                        )
+                    {
+                        return Err(KernelError::conflict(
+                            "a regular run already exists for this pay group and attribution month",
+                        )
+                        .with_code("regular_run_exists")
+                        .into());
+                    }
+                    return Err(error.into());
+                }
+                let row = crate::fetch_run_row(tx, id)
+                    .await?
+                    .ok_or_else(|| KernelError::internal("created payroll run was not readable"))?;
+                crate::run_summary_from_row(&row)
+            })
         })
         .await
     }
@@ -84,10 +210,37 @@ impl PgPayrollStore {
         .fetch_one(tx.as_mut())
         .await?
         .0;
-        let kind = serde_json::to_value(input.kind)
-            .map_err(|_| KernelError::internal("run kind serialization failed"))?;
-        let month: Date = sqlx::query_scalar("SELECT d::date FROM generate_series(date_trunc('month',entity_today()),date_trunc('month',entity_today())+(SELECT count(*) FROM payroll_draft_runs WHERE org_id=$1 AND pay_group_id=$2 AND kind=$3)*interval '1 month',interval '1 month') d WHERE NOT EXISTS(SELECT 1 FROM payroll_draft_runs WHERE org_id=$1 AND pay_group_id=$2 AND kind=$3 AND attribution_month=d::date AND status<>'VOID') ORDER BY d LIMIT 1")
-            .bind(org.as_uuid()).bind(group.id).bind(kind.as_str()).fetch_one(tx.as_mut()).await?;
+        let today: Date = sqlx::query_scalar("SELECT entity_today()")
+            .fetch_one(tx.as_mut())
+            .await?;
+        let occupied: Vec<Date> = sqlx::query_scalar(
+            "SELECT attribution_month FROM payroll_draft_runs
+             WHERE org_id=$1 AND pay_group_id=$2 AND kind=$3 AND status<>'VOID'
+             ORDER BY attribution_month",
+        )
+        .bind(org.as_uuid())
+        .bind(group.id)
+        .bind(input.kind.as_str())
+        .fetch_all(tx.as_mut())
+        .await?;
+        let month = next_attribution_month(today, &occupied)?;
+        let weekends: Vec<i16> = sqlx::query_scalar(
+            "SELECT c.weekend_isodays FROM pay_groups g
+             JOIN legal_entities e ON e.org_id=g.org_id AND e.id=g.legal_entity_id
+             LEFT JOIN workplaces w ON w.org_id=e.org_id AND w.id=e.primary_workplace_id
+             JOIN lifecycle_country_packs p ON p.time_zone=COALESCE(w.time_zone,e.time_zone)
+               OR (COALESCE(w.time_zone,e.time_zone) IS NULL AND p.is_default)
+             JOIN access_log_review_calendar c ON c.time_zone=p.time_zone
+             WHERE g.org_id=$1 AND g.id=$2",
+        )
+        .bind(org.as_uuid())
+        .bind(group.id)
+        .fetch_optional(tx.as_mut())
+        .await?
+        .ok_or_else(|| {
+            KernelError::unavailable("work calendar is not loaded")
+                .with_code("holiday_calendar_missing")
+        })?;
         let holidays: Vec<Date> = sqlx::query_scalar(
             "SELECT holiday_date FROM attendance_public_holidays ORDER BY holiday_date",
         )
@@ -105,10 +258,8 @@ impl PgPayrollStore {
                             .with_code("holiday_calendar_missing"),
                     );
                 }
-                Ok(
-                    !matches!(day.weekday(), Weekday::Saturday | Weekday::Sunday)
-                        && !holidays.contains(&day),
-                )
+                let iso_day = i16::from(day.weekday().number_days_from_monday()) + 1;
+                Ok(!weekends.contains(&iso_day) && !holidays.contains(&day))
             },
         )?;
         Ok(RunPreview {

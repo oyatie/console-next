@@ -23,10 +23,14 @@ test("/payroll/setup declares its generated read and create requirements", () =>
   ] });
 });
 
-test("run creation is not registered before its generated command is available", () => {
+test("run creation declares its generated preview and command requirements", () => {
   const router = createRouter({ routeTree });
   const route = Object.values(router.routesById).find(candidate => String(candidate.fullPath) === "/payroll/runs/new");
-  expect(route).toBeUndefined();
+  expect(route?.options.staticData?.access).toEqual({ allOf: [
+    operationAccess["GET /api/v1/payroll/pay-groups"],
+    operationAccess["GET /api/v1/payroll/runs/preview"],
+  ] });
+  expect(operationAccess["POST /api/v1/payroll/runs"]).toEqual(operationAccess["GET /api/v1/payroll/runs/preview"]);
 });
 test("the run page declares its generated detail and group requirements", () => {
   const router = createRouter({ routeTree });

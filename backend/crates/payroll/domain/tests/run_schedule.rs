@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used)]
-use console_payroll_domain::pay_groups::{run_schedule::derive_schedule, *};
+use console_payroll_domain::pay_groups::{
+    run_schedule::{derive_schedule, next_attribution_month},
+    *,
+};
 use time::{Date, Month, macros::date};
 
 fn period(start_day: PeriodStart, month_offset: i8) -> PeriodRule {
@@ -60,6 +63,19 @@ fn month_end(month: Date) -> Date {
         .unwrap()
         .previous_day()
         .unwrap()
+}
+
+#[test]
+fn every_kind_uses_its_own_first_unoccupied_month_sequence() {
+    let today = date!(2026 - 11 - 19);
+    assert_eq!(
+        next_attribution_month(today, &[]).unwrap(),
+        date!(2026 - 11 - 01)
+    );
+    assert_eq!(
+        next_attribution_month(today, &[date!(2026 - 11 - 01), date!(2027 - 01 - 01)]).unwrap(),
+        date!(2026 - 12 - 01)
+    );
 }
 
 #[test]

@@ -6,13 +6,13 @@ use axum::{
     Json, Router,
     extract::State,
     http::{HeaderMap, StatusCode},
-    routing::get,
+    routing::{get, post},
 };
 use console_payroll_adapter_postgres::pay_groups::{CreatePayGroup, PayGroup, PayGroupPage};
 use console_platform_authz::{Feature, Principal, cedar_pbac::visible};
 use console_platform_db::{command_outcomes::CommandOutcome, with_org_conn};
 use console_platform_request_context::record_access::{self, outcome::ReadFuture};
-pub(crate) use run_preview::preview;
+pub(crate) use run_preview::{create as create_run, preview};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -21,7 +21,9 @@ use crate::{PayrollRestState, RestError, principal_from_headers};
 pub const PAYROLL_PAY_GROUPS_PATH: &str = "/api/v1/payroll/pay-groups";
 
 pub(crate) fn router() -> Router<PayrollRestState> {
-    Router::new().route(PAYROLL_PAY_GROUPS_PATH, get(list).post(create))
+    Router::new()
+        .route(PAYROLL_PAY_GROUPS_PATH, get(list).post(create))
+        .route(crate::PAYROLL_RUNS_PATH, post(create_run))
 }
 
 pub(crate) fn with_replay_context(
@@ -40,19 +42,33 @@ fn read_outcome<'a>(
     outcome: &'a mut CommandOutcome,
 ) -> ReadFuture<'a> {
     Box::pin(async move {
-        if outcome.command != format!("POST {PAYROLL_PAY_GROUPS_PATH}") {
-            return record_access::all_readable(pool, principal, &outcome.touched).await;
-        }
         let Some(id) = outcome
             .result
             .as_ref()
             .and_then(|result| result["id"].as_str())
             .and_then(|id| Uuid::parse_str(id).ok())
         else {
+            return record_access::all_readable(pool, principal, &outcome.touched).await;
+        };
+        let (target_type, pay_group_id) = match outcome.command.as_str() {
+            command if command == format!("POST {PAYROLL_PAY_GROUPS_PATH}") => {
+                ("pay_group", Some(id))
+            }
+            command if command == format!("POST {}", crate::PAYROLL_RUNS_PATH) => (
+                "payroll_draft_run",
+                outcome
+                    .result
+                    .as_ref()
+                    .and_then(|result| result["pay_group_id"].as_str())
+                    .and_then(|id| Uuid::parse_str(id).ok()),
+            ),
+            _ => return record_access::all_readable(pool, principal, &outcome.touched).await,
+        };
+        let Some(pay_group_id) = pay_group_id else {
             return false;
         };
         if !outcome.touched.as_array().is_some_and(|items| {
-            items.len() == 1 && items[0]["type"] == "pay_group" && items[0]["id"] == id.to_string()
+            items.len() == 1 && items[0]["type"] == target_type && items[0]["id"] == id.to_string()
         }) {
             return false;
         }
@@ -68,7 +84,7 @@ fn read_outcome<'a>(
                     Ok(facts
                         .visible_pay_groups(tx, Feature::PayrollRunManage, &store)
                         .await?
-                        .contains(&id))
+                        .contains(&pay_group_id))
                 })
             },
         )

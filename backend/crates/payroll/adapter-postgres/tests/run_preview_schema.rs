@@ -23,7 +23,7 @@ async fn regular_identity_is_unique_per_group_month_and_void_releases_it(pool: P
         .execute(tx.as_mut())
         .await
         .unwrap();
-    let insert = "INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,period_start,period_end,source_label) VALUES ($1,$2,$3,'2026-11-01','2026-11-01','2026-11-30',$4)";
+    let insert = "INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$2,$3,'2026-11-01','2026-11-25','2026-11-01','2026-11-30','2026-10-16','2026-11-15',$4)";
     sqlx::query(insert)
         .bind(org.as_uuid())
         .bind(group)
@@ -97,7 +97,7 @@ async fn run_identity_refuses_foreign_groups_incomplete_facts_and_unknown_kinds(
             .execute(tx.as_mut())
             .await
             .unwrap();
-        let error = sqlx::query("INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,period_start,period_end,source_label) VALUES ($1,$2,$3,$4::text::date,'2026-11-01','2026-11-30','invalid')")
+        let error = sqlx::query("INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$2,$3,$4::text::date,'2026-11-25','2026-11-01','2026-11-30','2026-10-16','2026-11-15','invalid')")
             .bind(org.as_uuid()).bind(group).bind(kind).bind(month).execute(tx.as_mut()).await.unwrap_err();
         assert_eq!(
             error.as_database_error().unwrap().code().as_deref(),
