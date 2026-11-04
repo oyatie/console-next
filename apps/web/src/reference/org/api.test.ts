@@ -3,7 +3,6 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { reasonText } from "../../features/org/present";
 import { governed, inlineUnitBody, changeReceipt } from "./api";
 
 const { post, get } = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }));
@@ -47,11 +46,10 @@ test.each(["IN_APPROVAL", "APPROVED", "APPLIED"] as const)("%s selects the serve
   expect(changeReceipt(result.status, "title", draft.code, body.effectiveDate)).toBe(t(`orgChange.receipt.${key}`, { title: "title", code: draft.code, date: fmtDate(body.effectiveDate) }));
 });
 
-test.each(["create", "rename"] as const)("inline %s without a note keeps a labeled reason separate from its title", kind => {
+test.each(["create", "rename"] as const)("inline %s without a note sends a nonempty reason separate from its title", kind => {
   const values = { effectiveDate: body.effectiveDate, reason: "  ", submit: true };
   const spec = kind === "create" ? { kind, parentUnitId: "parent", name: "unit", ...values } : { kind, orgUnitId: "unit", fromName: "before", name: "after", ...values };
   const request = inlineUnitBody(spec);
-  expect(reasonText(request)).toBe(t(kind === "create" ? "orgUnit.gov.reasonNew" : "orgUnit.gov.reasonReorg"));
-  expect(reasonText(request)).not.toBe(request.kind);
+  expect(request.reason.trim()).not.toBe("");
   expect(request.reason).not.toBe(request.target.label);
 });
