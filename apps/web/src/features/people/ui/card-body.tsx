@@ -57,8 +57,6 @@ export function CardBar({ c, current, onJump }: { c: Card; current: string; onJu
 /** The personnel card tab (E2): the register strip, the eight sections and the spine. */
 export function CardBody({ c, quick, act, onAct, onTab, onJump }: { c: Card; quick: Quick; act?: string; onAct: (act: string) => void; onTab: (t: CardTab) => void; onJump: (id: string) => void }) {
   const [contract, setContract] = useState<ContractEdit>(null);
-  // A sheet over the record (G5): the record reflows to one column beside it and the field being changed is in view, tinted.
-  const sheet = Boolean(act) && !act!.startsWith("exit.");
   const hl = act?.startsWith("fix:") ? act.slice(4) : undefined;
   useEffect(() => {
     const row = hl ? document.getElementById(`f-${hl}`) : null;
@@ -81,7 +79,7 @@ export function CardBody({ c, quick, act, onAct, onTab, onJump }: { c: Card; qui
     );
   return (
     <>
-      <div className={s.rec} data-one={sheet || undefined}>
+      <div className={s.rec}>
         <div className={s.main}>
           <RegisterStrip c={c} onJump={jump} />
           <SecPersonal c={c} quick={quick} onFix={fix} />
@@ -93,7 +91,7 @@ export function CardBody({ c, quick, act, onAct, onTab, onJump }: { c: Card; qui
           <SecRestricted c={c} />
           <SecDocs />
         </div>
-        {!sheet && <CardSpine c={c} onAct={onAct} onLedger={() => onTab("ledger")} onHistory={() => onTab("events")} />}
+        <CardSpine c={c} onAct={onAct} onLedger={() => onTab("ledger")} onHistory={() => onTab("events")} />
       </div>
     </>
   );

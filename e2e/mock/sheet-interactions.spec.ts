@@ -338,3 +338,71 @@ test("a real Sheet draft survives confirmed close and reopen", async ({ page }) 
     expect(fixture.unexpected).toEqual([]);
   } finally { fixture.release(); }
 });
+
+
+test("Escape inside a clean wide DockSheet closes it", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/_gallery?entry=dock-sheet");
+  const dock = page.getByRole("complementary", { name: tg("dockSheet.title"), exact: true });
+  await dock.getByRole("heading").focus();
+  await page.keyboard.press("Escape");
+  await expect(dock).toHaveCount(0);
+});
+
+test("a committed picker change clears an armed Sheet prompt", async ({ page }) => {
+  const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+  await page.goto(lifecycleSheetScreens[0].path);
+  const sheet = page.getByRole("dialog");
+  const picker = sheet.getByRole("combobox").first();
+  await picker.fill("인사");
+  await page.getByRole("option", { name: /인사팀/ }).first().click();
+  await page.keyboard.press("Escape");
+  const prompt = sheet.getByText(t("composer.unsaved"), { exact: true });
+  await expect(prompt).toBeVisible();
+  await picker.locator("..").getByRole("button").click();
+  await page.getByRole("option", { name: /재무팀/ }).first().click();
+  await expect(prompt).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(prompt).toBeVisible();
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("Escape on an expanded picker leaves a dirty Sheet unarmed", async ({ page }) => {
+  const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+  await page.goto(lifecycleSheetScreens[0].path);
+  const sheet = page.getByRole("dialog");
+  await sheet.getByRole("textbox", { name: /^사유/ }).fill("배치 검토");
+  const picker = sheet.getByRole("combobox").first();
+  await picker.fill("인사");
+  await expect(page.getByRole("option", { name: /인사팀/ }).first()).toBeVisible();
+  await picker.press("Escape");
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await expect(sheet.getByText(t("composer.unsaved"), { exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(sheet.getByText(t("composer.unsaved"), { exact: true })).toBeVisible();
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("Escape from a listbox with DOM focus leaves a dirty Sheet unarmed", async ({ page }) => {
+  const sheet = await openFormSheet(page);
+  const draft = sheet.getByRole("textbox", { name: tg("sheet.reason") });
+  await draft.fill("배치 검토");
+  // A picker may put DOM focus in its list instead of retaining virtual focus on its combobox.
+  await draft.evaluate(element => {
+    const list = document.createElement("div");
+    list.setAttribute("role", "listbox");
+    list.setAttribute("aria-label", "선택 목록");
+    const option = document.createElement("div");
+    option.setAttribute("role", "option");
+    option.tabIndex = 0;
+    option.textContent = "선택지";
+    list.append(option);
+    element.parentElement!.append(list);
+  });
+  await sheet.getByRole("option", { name: "선택지", exact: true }).focus();
+  await page.keyboard.press("Escape");
+  await expect(sheet.getByRole("status")).toHaveCount(0);
+  await draft.focus();
+  await page.keyboard.press("Escape");
+  await expect(sheet.getByRole("status")).toHaveText(t("composer.unsaved"));
+});
