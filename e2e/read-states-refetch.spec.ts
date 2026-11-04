@@ -71,6 +71,11 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
       const wait = new Promise<void>(done => { release = done; });
       let requested = false;
       await page.route("**/api/**", async route => {
+        if (row.path === "/inbox" && route.request().method() === "GET" && new URL(route.request().url()).pathname === "/api/v1/users/me") {
+          const response = await route.fetch();
+          const data = await response.json();
+          return route.fulfill({ response, json: { ...data, tenant: { ...data.tenant, phase: "OPERATING" } } });
+        }
         if (route.request().method() !== "GET" || new URL(route.request().url()).pathname !== read) return route.continue();
         if (held && (!("select" in row) || first || new URL(route.request().url()).searchParams.get("role_id") === role.id)) { requested = true; await wait; }
         if (row.path === "/inbox") {
