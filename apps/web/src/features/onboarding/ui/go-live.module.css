@@ -1,8 +1,19 @@
-/* A blocker resolved on this screen keeps its row's height (the alert's padding and border around a button), so
-   the preview's re-read never pulls the start button up under a pointer. */
-.resolved { min-height: calc(var(--row-h) - var(--space-1) + 2 * var(--space-3) + 2px); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); font-size: var(--text-sm); }
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Onboarding go-live layout, inline terms reader, and receipt rows. Tokens only. */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+@media (min-width: 960px) {
+  .layout { grid-template-columns: minmax(0, 2fr) minmax(calc(var(--panel-w) * 0.65), 1fr); }
+}
+
+.body { display: flex; flex-direction: column; gap: var(--space-4); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.blockerList { display: flex; flex-direction: column; gap: var(--space-2); }
+.warningList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.receiptHead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.homeReceipt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.homeReceiptMeta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
+.homeReceiptActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
 .termsText { white-space: pre-wrap; overflow-wrap: anywhere; }
-
 /* Lazy text and its skeleton occupy one scroll area, so the actions below keep their place. */
-.termsRead { height: min(50dvh, calc(var(--row-h) * 8)); overflow: auto; }
+.termsRead { max-height: min(45dvh, calc(var(--row-h) * 7)); overflow: auto; padding: var(--space-3); }

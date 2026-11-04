@@ -74,17 +74,22 @@ export function SetupHome({ c }: { c: Checklist }) {
     const detail = s.remedy
       ? codeText(`setup.remedy.${s.remedy}`, s.remedy, { count: s.count ?? 0 })
       : s.key === "org" && s.skippable && s.state === "todo" ? t(direct ? "setup.org.placementDirect" : "setup.org.placementDept") : s.key === "passkey" && s.state !== "done" ? t("setup.passkey.why") : undefined;
+    const blockedCount = s.key === "golive" && s.state === "blocked" && (s.count ?? 0) > 0
+      ? t("setup.golive.blocked", { count: s.count ?? 0 })
+      : undefined;
+    const line = [blockedCount, detail].filter(Boolean).join(" · ");
+    const perm = codeText(`setup.permission.${s.needs}`, s.needs);
     return {
       key: s.key,
       title: codeText(`setup.step.${s.key}`, s.key),
       state: s.state,
+      owner: s.can_act ? t("setup.owner", { owner: perm }) : <Chip tone="warn">{t("setup.permissionNeeded", { permission: perm })}</Chip>,
       detail: waiting ? <Chip>{t("setup.waiting", { step: t(waiting) })}</Chip> : <>
         <small>{codeText(`setup.why.${s.key}`, "")}</small>
         {s.key === "roles" && <><Chip>{t("setup.roles.prepared")}</Chip>
           {(s.skippable || s.remedy === "roles_skipped") && <Chip>{t("setup.skip.rolesConsequence")}</Chip>}</>}
         {s.key === "employees" && <Chip tone="warn">{t("setup.stats.unplacedCount", { count: s.counts.unplaced })} · {t("setup.stats.unknownCount", { count: s.counts.entity_unknown })}</Chip>}
-        {detail && <><br /><span>{detail}</span></>}
-        {!s.can_act && <Chip tone="warn">{t("setup.permissionNeeded", { permission: codeText(`setup.permission.${s.needs}`, s.needs) })}</Chip>}
+        {line && <><br /><span>{line}</span></>}
       </>,
       // Done with something to look at: the action is the fix (when it has a screen), not the step's first act again.
       action: s.can_act && !waiting ? (s.state === "attention" && fixFor(s.remedy) ? <FixLink code={s.remedy} /> : action(s)) : undefined,

@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { failure, inbox, LONG_NAME } from "../mock/fixtures";
+import { checklist as operatingChecklist, failure, inbox, LONG_NAME, screenAccess, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { homeSetupCases, homeSetupChecklist, homeSetupScreen } from "./home-setup";
@@ -42,7 +42,11 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
         await expect(rail.getByRole("heading", { level: 3 })).toHaveCount(0);
         const rows = rail.locator("[data-step]");
         await expect(rows).toHaveCount(checklist.steps.length);
-        for (const [index, step] of checklist.steps.entries()) await expect(rows.nth(index)).toContainText(t(`setup.step.${step.key}` as Parameters<typeof t>[0]));
+        for (const [index, step] of checklist.steps.entries()) {
+          await expect(rows.nth(index)).toContainText(t(`setup.step.${step.key}` as Parameters<typeof t>[0]));
+          await expect(rows.nth(index).locator("[data-step-state]")).toBeVisible();
+          await expect(rows.nth(index)).toContainText("담당 ·");
+        }
         const progress = rail.getByRole("progressbar", { name: t("setup.title"), exact: true });
         await expect(progress).toHaveAttribute("aria-valuenow", String(checklist.done));
         await expect(progress).toHaveAttribute("aria-valuemax", String(checklist.total));
@@ -87,4 +91,47 @@ for (const width of [1440, 390]) test(`setup rail gallery at ${width}px`, async 
   expect(await rail.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
   expect(fixture.unexpected).toEqual([]);
   fixture.release();
+});
+
+for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width}px @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockScreen(page, homeSetupScreen, "empty");
+  const startedAt = new Date().toISOString();
+  await mockRoute(page, "get", "/api/v1/users/me", {
+    status: 200,
+    json: { ...user, is_tenant_ops: true, tenant: { name: "화면 검증 회사", phase: "OPERATING", go_live_at: startedAt } },
+  });
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/", "OPERATING"), is_ops: true } });
+  await mockRoute(page, "get", "/api/v1/settings", {
+    status: 200,
+    json: {
+      can_change: false,
+      items: [{
+        key: "onboarding.receipt_days", kind: { type: "int", unit: "days" }, default: 7, value: 7,
+        looser_when: "neutral", governance: "tenant", legal_basis: null, version: "code_default",
+        effective_from: null, scheduled: [], source: { layer: "code_default", scope_entity_id: null }, chain: [],
+      }],
+    },
+  });
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", {
+    status: 200,
+    json: { ...operatingChecklist, phase: "OPERATING", go_live_at: startedAt, done: 8, total: 8 },
+  });
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(0) });
+  try {
+    await page.goto("/");
+    const main = page.getByRole("main");
+    await expect(main.getByRole("region", { name: /운영 준비|^시작$/ })).toHaveCount(0);
+    await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: "운영 시작 기록 보기", exact: true })).toHaveAttribute("href", "/setup/go-live");
+    await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: t("setup.bulk.history"), exact: true })).toHaveAttribute("href", "/org/history");
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      await fits(page, `home-setup/receipt/${width}/${theme}`);
+      await expectAxe(page, `home-setup/receipt/${width}/${theme}`);
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    await page.close();
+    fixture.release();
+  }
 });

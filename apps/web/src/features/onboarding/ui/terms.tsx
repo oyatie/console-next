@@ -18,7 +18,7 @@ export function AcceptTerms() {
   const run = useCommand({ run: () => acceptTerms(q.data!.version, q.data!.sha256), invalidates: SETUP_READS, announce: () => t("setup.terms.done") });
   return <>
     {!open && <Button onClick={() => setOpen(true)}>{t("setup.terms.read")}</Button>}
-    {open && <div className={s.termsRead}>
+    {open && <div className={s.termsRead} data-terms-read="">
       <QueryState q={q} own={onboardingError}>{data => <section aria-labelledby="service-terms-title">
         <SectionHead level={3} id="service-terms-title">{t("setup.terms.title")}</SectionHead>
         <KeyValue items={[

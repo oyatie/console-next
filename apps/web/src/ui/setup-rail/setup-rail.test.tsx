@@ -51,3 +51,35 @@ test("multiple groups retain their headings", () => {
   const out = html(<SetupRail title="Setup" groups={[{ key: "a", title: "First", steps: [] }, { key: "b", title: "Second", steps: [] }]} />);
   expect(out.match(/<h3/g)).toHaveLength(2);
 });
+
+test("each step renders a visible state badge and optional owner metadata while keeping title first", () => {
+  const out = html(
+    <SetupRail
+      title="운영 준비"
+      groups={[{
+        key: "setup",
+        title: "운영 준비",
+        steps: [
+          { key: "entity", title: "법인 등록", state: "done", owner: "담당 · 조직 등록·수정 권한" },
+          { key: "workplace", title: "사업장 등록", state: "todo", owner: "담당 · 조직 등록·수정 권한" },
+          { key: "org", title: "조직 구성", state: "attention", owner: "담당 · 조직 등록·수정 권한" },
+          { key: "golive", title: "운영 시작", state: "blocked", owner: "담당 · 운영 계정" },
+        ],
+      }]}
+    />,
+  );
+  expect(out).not.toContain("sr-only");
+  expect(out).toContain(">완료<");
+  expect(out).toContain(">필요<");
+  expect(out).toContain(">확인<");
+  expect(out).toContain(">차단<");
+  expect(out).toContain("담당 · 조직 등록·수정 권한");
+  expect(out).toContain("담당 · 운영 계정");
+  const rows = [...out.matchAll(/<li[^>]*data-step[^>]*>[\s\S]*?<\/li>/g)].map((m) => m[0]);
+  expect(rows.map((row) => row.match(/<span[^>]*>([^<]+)/)![1])).toEqual([
+    "법인 등록",
+    "사업장 등록",
+    "조직 구성",
+    "운영 시작",
+  ]);
+});

@@ -29,7 +29,7 @@ vi.mock("../../../lib/react/command", async (original) => ({ ...(await original<
   error: state.commandError, isPending: false, submittedAt: state.submitted, mutate: state.mutate,
 }) }));
 beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
-afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.data.blockers = []; state.data.facts.org_units = 2; state.mutate.mockClear(); });
+afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.data.phase = "SETUP"; state.data.digest = "preview"; state.data.blockers = []; state.data.facts.org_units = 2; state.mutate.mockClear(); });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/setup/go-live"] }) });
 const render = () => renderToStaticMarkup(<RouterContextProvider router={router}><GoLive /></RouterContextProvider>);
 
@@ -110,4 +110,31 @@ test("preview_stale marks changed lines, waits for a fresh read, then re-arms wi
   expect(fresh).not.toContain("새 운영 시작 미리보기를 읽고 있습니다");
   expect(fresh).toContain('<button type="button" class="btn btn--primary">운영 시작</button>');
   expect(state.mutate).not.toHaveBeenCalled();
+});
+
+test("blockers render as compact alert rows with reason disclosure and without repeated unblocker lists", () => {
+  state.data.blockers = [
+    { code: "terms_not_accepted", count: null, remedy: "accept_terms", records: [] },
+    { code: "no_department", count: 0, remedy: "add_department", records: [] },
+  ];
+  const html = render();
+  expect(html.match(/role="alert"/g)).toHaveLength(2);
+  expect(html).toContain("onboarding.refuse.terms_not_accepted");
+  expect(html).toContain("onboarding.refuse.no_department");
+  expect(html).toContain("이유 보기");
+  expect(html).not.toContain("해결할 수 있는 사람");
+  expect(html).not.toContain("지금 로그인한 사람");
+});
+
+test("operating phase renders the go-live receipt with digest and history link instead of an already_operating blocker", () => {
+  state.data.phase = "OPERATING";
+  state.data.digest = "sha256:receipt-digest-01";
+  state.data.blockers = [{ code: "already_operating", count: null, remedy: null, records: [] }];
+  const html = render();
+  expect(html).toContain("운영을 시작했습니다");
+  expect(html).toContain("sha256:receipt-digest-01");
+  expect(html).toContain('href="/org/history"');
+  expect(html).not.toContain("이미 운영 중입니다");
+  expect(html).not.toContain('aria-disabled="true"');
+  expect(html).not.toContain(">운영 시작</button>");
 });

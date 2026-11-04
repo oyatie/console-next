@@ -19,3 +19,14 @@ test.each(["terms_not_accepted", "already_operating"])("%s stays hidden until th
   expect(await page.locator("details").innerText()).toContain("00000000");
   expect(await page.locator("body").innerText()).toContain("문서 내용을 확인해 주세요");
 });
+
+test("compact blocker row renders owner and remedies on one row without repeating an unblocker list", async () => {
+  const title = "서비스 이용약관 동의가 필요합니다", owner = "담당 · 박대표", action = "약관 읽기";
+  const html = renderToStaticMarkup(<BlockedPanel compact domain="onboarding" title={title} code="terms_not_accepted" owner={owner} actions={<button>{action}</button>} />);
+  await page.setContent(`<main>${html}</main>`);
+  expect(await page.getByRole("alert").getAttribute("data-compact")).toBe("");
+  expect(await page.locator("body").innerText()).toContain(owner);
+  expect(await page.locator("body").innerText()).not.toContain("terms_not_accepted");
+  await page.getByText("이유 보기", { exact: true }).click();
+  expect(await page.locator("details").innerText()).toContain("onboarding.refuse.terms_not_accepted");
+});
