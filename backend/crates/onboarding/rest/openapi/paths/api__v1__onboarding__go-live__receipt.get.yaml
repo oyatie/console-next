@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- onboarding
+operationId: getGoLiveReceipt
+summary: Read the stored receipt of the tenant's start of operations
+description: Cedar permits live ops holders or tenant-wide org, hr_basic or access editors. The timestamp, actor, digest and facts are read from the go-live record, never recomputed. Historical go-lives may have a null facts_snapshot. Tenants without a recorded go-live return go_live_receipt_not_found.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The immutable record stored when operations began.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/GoLiveReceipt'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Cedar refused the receipt read.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: go_live_receipt_not_found — no recorded go-live (including pre-console operating tenants).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -106,6 +106,16 @@ async fn department_complete(owner: PgPool) {
         matches!(&err,console_onboarding_adapter_postgres::PgOnboardingError::Refused{fields,..} if fields == &["people_without_department"])
     );
     refused(&owner, &a, before, err, "go_live_blocked").await;
+    let absent: Option<serde_json::Value> =
+        sqlx::query_scalar("SELECT go_live_facts_snapshot FROM tenant_phase WHERE org_id=$1")
+            .bind(org)
+            .fetch_one(&owner)
+            .await
+            .unwrap();
+    assert!(
+        absent.is_none(),
+        "a refused go-live cannot leave a receipt snapshot"
+    );
     let hr = HrService::new(store.pool().clone());
     let reader = || {
         Principal::new(
@@ -158,7 +168,16 @@ async fn department_complete(owner: PgPool) {
         0
     );
     store
-        .go_live(&a, current.digest, false, true)
+        .go_live(&a, current.digest.clone(), false, true)
         .await
         .unwrap();
+    let stored: (String, serde_json::Value) = sqlx::query_as(
+        "SELECT go_live_preview_digest, go_live_facts_snapshot FROM tenant_phase WHERE org_id=$1",
+    )
+    .bind(org)
+    .fetch_one(&owner)
+    .await
+    .unwrap();
+    assert_eq!(stored.0, current.digest);
+    assert_eq!(stored.1, serde_json::to_value(current.facts).unwrap());
 }

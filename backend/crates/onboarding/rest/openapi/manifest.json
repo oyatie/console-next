@@ -1,6 +1,7 @@
 {
   "source": "console-onboarding-rest",
   "paths": {
+    "/api/v1/onboarding/go-live/receipt": ["get"],
     "/api/v1/onboarding/modules": ["get"],
     "/api/v1/onboarding/checklist": [
       "get"
@@ -20,6 +21,7 @@
     ]
   },
   "schemas": [
+    "GoLiveReceipt",
     "OnboardingModules",
     "GoLivePreview",
     "GoLivePreviewItem",

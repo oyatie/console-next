@@ -9734,6 +9734,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/onboarding/go-live/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the stored receipt of the tenant's start of operations
+         * @description Cedar permits live ops holders or tenant-wide org, hr_basic or access editors. The timestamp, actor, digest and facts are read from the go-live record, never recomputed. Historical go-lives may have a null facts_snapshot. Tenants without a recorded go-live return go_live_receipt_not_found.
+         */
+        get: operations["getGoLiveReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/onboarding/modules": {
         parameters: {
             query?: never;
@@ -21805,6 +21825,14 @@ export interface components {
                  */
                 legal_entity_id: string;
             }[];
+        };
+        GoLiveReceipt: {
+            /** Format: date-time */
+            go_live_at: string;
+            go_live_by: components["schemas"]["Uuid"];
+            preview_digest: string;
+            /** @description Facts captured under the go-live lock before the phase transition. Null for historical receipts without a stored snapshot; never replaced with current facts. */
+            facts_snapshot: components["schemas"]["SetupFacts"] | null;
         };
         GoLiveRequest: {
             /** @description The preview digest the actor confirmed. */
@@ -50622,6 +50650,45 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description Not permitted. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getGoLiveReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The immutable record stored when operations began. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoLiveReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Cedar refused the receipt read. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description go_live_receipt_not_found — no recorded go-live (including pre-console operating tenants). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

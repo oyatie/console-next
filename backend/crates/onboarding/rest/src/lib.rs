@@ -7,6 +7,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod error;
+mod go_live_read;
 use error::RestError;
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
@@ -26,6 +27,7 @@ use uuid::Uuid;
 pub const CHECKLIST_PATH: &str = "/api/v1/onboarding/checklist";
 pub const MODULES_PATH: &str = "/api/v1/onboarding/modules";
 pub const GO_LIVE_PREVIEW_PATH: &str = "/api/v1/onboarding/go-live/preview";
+pub const GO_LIVE_RECEIPT_PATH: &str = "/api/v1/onboarding/go-live/receipt";
 pub const GO_LIVE_PATH: &str = "/api/v1/onboarding/go-live";
 pub const TERMS_PATH: &str = "/api/v1/onboarding/terms";
 pub const STEP_SKIP_PATH: &str = "/api/v1/onboarding/steps/{step}/skip";
@@ -34,6 +36,7 @@ pub const ONBOARDING_ROUTE_PATHS: &[&str] = &[
     CHECKLIST_PATH,
     MODULES_PATH,
     GO_LIVE_PREVIEW_PATH,
+    GO_LIVE_RECEIPT_PATH,
     GO_LIVE_PATH,
     TERMS_PATH,
     STEP_SKIP_PATH,
@@ -75,7 +78,8 @@ pub fn router(state: OnboardingRestState) -> Router {
     let router = Router::new()
         .route(CHECKLIST_PATH, get(checklist))
         .route(MODULES_PATH, get(modules))
-        .route(GO_LIVE_PREVIEW_PATH, get(go_live_preview))
+        .route(GO_LIVE_PREVIEW_PATH, get(go_live_read::preview))
+        .route(GO_LIVE_RECEIPT_PATH, get(go_live_read::receipt))
         .route(GO_LIVE_PATH, post(go_live))
         .route(TERMS_PATH, post(accept_terms))
         .route(STEP_SKIP_PATH, post(skip_step))
@@ -139,14 +143,6 @@ async fn modules(
         }
     }
     Ok(Json(modules).into_response())
-}
-
-async fn go_live_preview(
-    State(s): State<OnboardingRestState>,
-    h: HeaderMap,
-) -> Result<Response, RestError> {
-    let a = actor(&s, &h).await?;
-    Ok(Json(s.store.preview(&a).await?).into_response())
 }
 
 #[derive(Debug, Deserialize)]

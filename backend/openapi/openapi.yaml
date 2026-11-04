@@ -20918,6 +20918,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/onboarding/go-live/receipt:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+      - onboarding
+      operationId: getGoLiveReceipt
+      summary: Read the stored receipt of the tenant's start of operations
+      description: Cedar permits live ops holders or tenant-wide org, hr_basic or access editors. The timestamp, actor, digest and facts are read from the go-live record, never recomputed. Historical go-lives may have a null facts_snapshot. Tenants without a recorded go-live return go_live_receipt_not_found.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: The immutable record stored when operations began.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoLiveReceipt'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cedar refused the receipt read.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: go_live_receipt_not_found — no recorded go-live (including pre-console operating tenants).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/onboarding/modules:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -46075,6 +46106,24 @@ components:
                 type: string
                 format: uuid
                 description: Legal entity id; the nil UUID denotes an employee whose legal entity is unknown.
+    GoLiveReceipt:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [go_live_at, go_live_by, preview_digest, facts_snapshot]
+      properties:
+        go_live_at:
+          type: string
+          format: date-time
+        go_live_by:
+          $ref: '#/components/schemas/Uuid'
+        preview_digest:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        facts_snapshot:
+          description: Facts captured under the go-live lock before the phase transition. Null for historical receipts without a stored snapshot; never replaced with current facts.
+          oneOf:
+          - $ref: '#/components/schemas/SetupFacts'
+          - type: 'null'
     GoLiveRequest:
       type: object
       required:

@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [go_live_at, go_live_by, preview_digest, facts_snapshot]
+properties:
+  go_live_at:
+    type: string
+    format: date-time
+  go_live_by:
+    $ref: '#/components/schemas/Uuid'
+  preview_digest:
+    type: string
+    pattern: '^[a-f0-9]{64}$'
+  facts_snapshot:
+    description: Facts captured under the go-live lock before the phase transition. Null for historical receipts without a stored snapshot; never replaced with current facts.
+    oneOf:
+    - $ref: '#/components/schemas/SetupFacts'
+    - type: 'null'
