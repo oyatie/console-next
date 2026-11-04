@@ -32,6 +32,16 @@ test("a drafter withdraws a routed change after go-live and keeps its chain on r
   expect(before.status).toBe("IN_APPROVAL");
   expect(before.version).toEqual(expect.any(String));
   expect(before.approvalSteps).not.toHaveLength(0);
+  const inboxRead = await api("/me/action-inbox?filter=waiting");
+  expect(inboxRead.status()).toBe(200);
+  const queue = await inboxRead.json() as components["schemas"]["ActionInboxResponse"];
+  const pending = queue.items.find(item => item.id === `org_change:${before.id}`);
+  expect(pending).toMatchObject({ version: before.version, can_decide: false, cannot_reason: expect.any(String) });
+  for (const decision of ["APPROVED", "REJECTED"]) {
+    const denied = await api(`/org-changes/${before.id}/approval-steps/${before.approvalSteps[0]!.id}/decision`, "POST", { decision });
+    expect([403, 409]).toContain(denied.status());
+    expect(await codeOf(denied)).toBe(pending!.cannot_reason);
+  }
   const draft = await api("/org-changes", "POST", {
     kind: before.kind, target: before.target, effectiveDate: before.effectiveDate,
     reason: "초안 취소 검증", proposal: before.proposal,

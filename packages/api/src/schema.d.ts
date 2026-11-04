@@ -15046,6 +15046,12 @@ export interface components {
                 grants?: components["schemas"]["AccessEffectiveEntry"][];
                 is_ops?: boolean;
             };
+            /** @description Opaque command version for pending org-change approval rows; changes after any step decision. */
+            version?: string;
+            /** @description Present on pending org-change approval rows; evaluated by the command's Cedar action and batch fact loader. Commands recheck current facts. */
+            can_decide?: boolean;
+            /** @description Command refusal code when can_decide is false; absent when allowed. */
+            cannot_reason?: string;
         };
         /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current browser-linkable kinds are approval_run, work_order, and support_ticket. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
         ActionInboxLink: {
