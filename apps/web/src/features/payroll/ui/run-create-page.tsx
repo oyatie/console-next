@@ -20,10 +20,12 @@ import {
   type CreatePayrollRun,
 } from "../api";
 
-const kinds = payGroupSchemas.PayrollRunKind.enum;
+const kinds = payGroupSchemas.PayrollRunKind.enum.filter(kind => kind === "REGULAR");
 const refusal = (code: string) => ({
   regular_run_exists: t("payroll.create.refuse.regular_run_exists"),
   forbidden: t("payroll.create.refuse.forbidden"),
+  run_kind_unsupported: t("payroll.create.refuse.run_kind_unsupported"),
+  phase_not_operating: t("payroll.create.refuse.phase_not_operating"),
 }[code]);
 
 export function PayrollRunCreatePage() {
@@ -33,7 +35,7 @@ export function PayrollRunCreatePage() {
   const input = payGroupId && kind ? { pay_group_id: payGroupId, kind } : null;
   return <Page floorplan="P-04" head={{ title: t("payroll.create.title"), sub: t("payroll.create.reason"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>
     <QueryState q={groups} layout="form">{data => data.items.length ? <div className="form">
-      <ChoiceField label={t("payroll.group")} required options={data.items.map(group => ({ value: group.id, label: group.name }))} value={payGroupId} onChange={setPayGroupId} />
+      <ChoiceField label={t("payroll.group")} required options={data.items.map(group => ({ value: group.id, label: `${group.name} · ${data.legal_entities.find(entity => entity.id === group.legal_entity_id)?.name ?? t("payroll.entityUnnamed")}` }))} value={payGroupId} onChange={setPayGroupId} />
       <ChoiceField label={t("payroll.create.kind")} required options={kinds.map(value => ({ value, label: t(`payroll.create.kind.${value}`) }))} value={kind} onChange={value => setKind(value as CreatePayrollRun["kind"])} />
       {input && <RunPreview input={input} />}
     </div> : <EmptyState title={t("payroll.create.noGroups")} reason={t("payroll.create.noGroupsReason")} actions={<Link to="/payroll/setup">{t("payroll.setup.add")}</Link>} />}</QueryState>

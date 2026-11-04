@@ -20,7 +20,9 @@ pub use pay_group::{PayGroupFact, PayGroupFactLoader};
 
 #[path = "visible_payroll_module.rs"]
 mod payroll_module;
-pub use payroll_module::{PayrollModuleFactLoader, require_payroll_module};
+pub use payroll_module::{
+    PayrollModuleFactLoader, require_payroll_module, require_payroll_run_creation,
+};
 
 use crate::access::{
     AccessEngineError, AccessSlice, NodeKind, NodePath, NodeRef, load_access_subject, scope_path,

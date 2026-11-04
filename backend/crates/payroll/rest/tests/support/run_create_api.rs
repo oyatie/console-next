@@ -140,3 +140,95 @@ async fn concurrent_regular_run_for_the_same_derived_month_is_coded(pool: PgPool
         .unwrap();
     assert_eq!(count, 1);
 }
+
+async fn refuses_unsupported_kind(pool: PgPool, kind: &str) {
+    let (service, token, group, _, _) = setup(&pool).await;
+    refusal(
+        get(service.clone(), &uri(group, kind), &token).await,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "run_kind_unsupported",
+    );
+    refusal(
+        create(service, &token, group, kind, &Uuid::new_v4().to_string()).await,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "run_kind_unsupported",
+    );
+    // rls-arming: ok owner checks that refused kinds persist no run.
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM payroll_draft_runs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn off_cycle_requires_an_explicit_attribution_month(pool: PgPool) {
+    refuses_unsupported_kind(pool, "OFF_CYCLE").await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn correction_requires_a_past_attribution_month(pool: PgPool) {
+    refuses_unsupported_kind(pool, "CORRECTION").await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn exit_settlement_requires_a_person_and_exit_package(pool: PgPool) {
+    refuses_unsupported_kind(pool, "EXIT_SETTLEMENT").await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn same_named_groups_create_independent_regular_runs(pool: PgPool) {
+    let (service, token, group, actor, _) = setup(&pool).await;
+    let entity = pay_groups_api::entity(&pool, OrgId::one()).await;
+    pay_view::grant_manage(&pool, OrgId::one(), actor, Some(entity)).await;
+    pay_view::grant_sensitive(&pool, OrgId::one(), actor, Some(entity), "edit").await;
+    let other = PgPayrollStore::new(runtime_role_pool(&pool).await)
+        .create_pay_group(
+            OrgId::one(),
+            actor,
+            serde_json::from_value(pay_groups_api::input(entity)).unwrap(),
+        )
+        .await
+        .unwrap();
+    for group in [group, other.id] {
+        let response = create(
+            service.clone(),
+            &token,
+            group,
+            "REGULAR",
+            &Uuid::new_v4().to_string(),
+        )
+        .await;
+        assert_eq!(response.status, StatusCode::CREATED, "{}", response.json);
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn setup_tenant_cannot_create_a_run(pool: PgPool) {
+    let (service, token, group, _, _) = setup(&pool).await;
+    // rls-arming: ok owner changes tenant lifecycle; the request uses console_rt.
+    sqlx::query("DELETE FROM tenant_phase WHERE org_id=$1")
+        .bind(OrgId::one().as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO tenant_phase(org_id,phase) VALUES ($1,'SETUP') ON CONFLICT(org_id) DO UPDATE SET phase='SETUP'")
+        .bind(OrgId::one().as_uuid()).execute(&pool).await.unwrap();
+    refusal(
+        create(
+            service,
+            &token,
+            group,
+            "REGULAR",
+            &Uuid::new_v4().to_string(),
+        )
+        .await,
+        StatusCode::CONFLICT,
+        "phase_not_operating",
+    );
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM payroll_draft_runs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+}

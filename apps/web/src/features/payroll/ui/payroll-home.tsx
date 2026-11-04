@@ -14,7 +14,7 @@ import { SetupRail } from "../../../ui/setup-rail/setup-rail";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { accessRefusal } from "../../../reference/authz/domain/access";
 import { payGroupsQuery, payrollRunsQuery, type PayGroup } from "../api";
-import { payDateRule, periodRule, runStatus } from "../present";
+import { payDateRule, periodRule, runStatus, runName } from "../present";
 
 export function PayrollHome() {
   const groups = useQuery(payGroupsQuery);
@@ -54,7 +54,7 @@ function GroupRuns({ group }: { group: PayGroup }) {
     const rows = data.items.filter(run => run.pay_group_id === group.id && run.legal_entity_id === group.legal_entity_id);
     return rows.length ? <LongTable label={t("payroll.runs", { name: group.name })} empty={null} rows={rows} rowId={run => run.id} hasMore={false} onLoadMore={() => {}} columns={[
       { id: "period", header: t("payroll.period"), cell: run => `${fmtDate(run.period_start)} – ${fmtDate(run.period_end)}`, rowHeader: true },
-      { id: "name", header: t("payroll.runName"), cell: run => <Link to="/payroll/runs/$id" params={{ id: run.id }}>{run.source_label}</Link> },
+      { id: "name", header: t("payroll.runName"), cell: run => <Link to="/payroll/runs/$id" params={{ id: run.id }}>{runName(run, group)}</Link> },
       { id: "status", header: t("payroll.status"), card: "status", cell: run => <Chip>{runStatus(run.status)}</Chip> },
     ]} /> : <EmptyState title={t("payroll.noRuns")} reason={t("payroll.noRunsReason")} />;
   }}</QueryState>;

@@ -24,6 +24,6 @@ responses:
         schema: {$ref: '#/components/schemas/PayrollRunSummary'}
   '401': {$ref: '#/components/responses/Unauthorized'}
   '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
-  '409': {description: regular_run_exists for an occupied regular group/month; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay.}
-  '422': {description: Missing, malformed or extra fields, an invalid run kind, or invalid_request_key.}
+  '409': {description: phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay.}
+  '422': {description: run_kind_unsupported for non-REGULAR kinds; Missing, malformed or extra fields, an invalid run kind, or invalid_request_key.}
   '503': {description: holiday_calendar_missing when the applicable calendar is unavailable; or unavailable Cedar facts.}

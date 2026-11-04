@@ -9,13 +9,13 @@ import { Chip } from "../../../ui/chip";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { StepLine } from "../../../ui/step-line/step-line";
 import { payGroupsQuery, payrollRunQuery, type PayGroup, type PayrollRun } from "../api";
-import { runStatus, runStages } from "../present";
+import { runStatus, runStages, runName } from "../present";
 
 export function PayrollRunPage() {
   const { id } = useParams({ from: "/app/payroll/runs/$id" });
   const detail = useQuery(payrollRunQuery(id));
   const groups = useQuery(payGroupsQuery);
-  return <Page floorplan="P-02" head={{ title: !detail.isError && detail.data?.run.source_label || t("payroll.runName"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>
+  return <Page floorplan="P-02" head={{ title: !detail.isError && detail.data && runName(detail.data.run, groups.data?.items.find(group => group.id === detail.data.run.pay_group_id)) || t("payroll.runName"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>
     <QueryState q={detail} layout="list" back={{ to: "/payroll", label: t("payroll.title") }}>{data => <QueryState q={groups} layout="list">{choices => <RunHeader run={data.run} group={choices.items.find(group => group.id === data.run.pay_group_id && group.legal_entity_id === data.run.legal_entity_id)} entity={choices.legal_entities.find(entity => entity.id === data.run.legal_entity_id)?.name} />}</QueryState>}</QueryState>
   </Page>;
 }

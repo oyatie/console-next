@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_payroll_domain::pay_groups::run_schedule::{derive_schedule, next_attribution_month};
-use console_platform_authz::{Feature, cedar_pbac::visible::load_facts};
+use console_platform_authz::{
+    Feature,
+    cedar_pbac::visible::{load_facts, require_payroll_run_creation},
+};
 use console_platform_db::{with_audit, with_org_conn};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction, types::Json};
@@ -131,6 +134,7 @@ impl PgPayrollStore {
         with_audit(&self.pool, audit, move |tx| {
             Box::pin(async move {
                 let preview = loader.derive_run_in_tx(tx, org, actor, &input).await?;
+                require_payroll_run_creation(tx, org, *actor.as_uuid()).await?;
                 let group_name: String = sqlx::query_scalar(
                     "SELECT name FROM pay_groups WHERE org_id=$1 AND id=$2",
                 )
@@ -163,13 +167,7 @@ impl PgPayrollStore {
                 .await;
                 if let Err(error) = inserted {
                     let constraint = error.as_database_error().and_then(|db| db.constraint());
-                    if matches!(input.kind, RunKind::Regular)
-                        && matches!(
-                            constraint,
-                            Some("payroll_regular_run_month_key")
-                                | Some("payroll_draft_runs_org_id_period_start_period_end_source_la_key")
-                        )
-                    {
+                    if constraint == Some("payroll_regular_run_month_key") {
                         return Err(KernelError::conflict(
                             "a regular run already exists for this pay group and attribution month",
                         )
@@ -201,6 +199,13 @@ impl PgPayrollStore {
             .contains(&input.pay_group_id)
         {
             return Err(KernelError::forbidden("run preparation requires pay-group pay:edit and sensitive:edit for sensitive groups").into());
+        }
+        if !matches!(input.kind, RunKind::Regular) {
+            return Err(
+                KernelError::validation("only regular payroll runs are supported")
+                    .with_code("run_kind_unsupported")
+                    .into(),
+            );
         }
         let group = sqlx::query_scalar::<_, Json<PayGroup>>(
             "SELECT to_jsonb(g) FROM pay_groups g WHERE org_id=$1 AND id=$2",

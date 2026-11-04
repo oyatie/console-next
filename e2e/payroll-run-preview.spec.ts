@@ -27,7 +27,7 @@ test("payroll run preview derives rules without creating a run", { tag: ["@hr", 
     });
     expect(response.status()).toBe(201);
     const group = await response.json();
-    for (const kind of ["REGULAR", "OFF_CYCLE", "CORRECTION", "EXIT_SETTLEMENT"]) {
+    for (const kind of ["REGULAR"]) {
       const path = `/payroll/runs/preview?pay_group_id=${group.id}&kind=${kind}`;
       const preview = await api(path);
       expect(preview.status()).toBe(200);
@@ -42,6 +42,18 @@ test("payroll run preview derives rules without creating a run", { tag: ["@hr", 
       expect(denied.status()).toBe(403);
       expect(await codeOf(denied)).toBe("forbidden");
     }
+    for (const kind of ["OFF_CYCLE", "CORRECTION", "EXIT_SETTLEMENT"]) {
+      for (const response of [
+        await api(`/payroll/runs/preview?pay_group_id=${group.id}&kind=${kind}`),
+        await api("/payroll/runs", "POST", { pay_group_id: group.id, kind }),
+      ]) {
+        expect(response.status()).toBe(422);
+        expect(await codeOf(response)).toBe("run_kind_unsupported");
+      }
+    }
+    const setupCreate = await api("/payroll/runs", "POST", { pay_group_id: group.id, kind: "REGULAR" });
+    expect(setupCreate.status()).toBe(409);
+    expect(await codeOf(setupCreate)).toBe("phase_not_operating");
     const invalid = await api(`/payroll/runs/preview?pay_group_id=${group.id}&kind=BONUS`);
     expect(invalid.status()).toBe(422);
     expect(await codeOf(invalid)).toBe("validation");

@@ -7,6 +7,12 @@ pub(super) async fn setup(pool: &PgPool) -> (axum::Router, String, Uuid, UserId,
     let org = OrgId::one();
     let actor = UserId::new();
     seed_user(pool, actor, *org.as_uuid(), "SUPER_ADMIN").await;
+    // rls-arming: ok owner prepares an operating tenant for operational run tests.
+    sqlx::query("UPDATE tenant_phase SET phase='OPERATING' WHERE org_id=$1")
+        .bind(org.as_uuid())
+        .execute(pool)
+        .await
+        .unwrap();
     let entity = pay_groups_api::entity(pool, org).await;
     pay_view::grant_manage(pool, org, actor, Some(entity)).await;
     let clearance = pay_view::grant_sensitive(pool, org, actor, Some(entity), "edit").await;
@@ -39,9 +45,9 @@ pub(super) fn refusal(response: JsonResponse, status: StatusCode, code: &str) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn preview_derives_all_kinds_without_writing_a_run(pool: PgPool) {
+async fn preview_derives_regular_without_writing_a_run(pool: PgPool) {
     let (service, token, group, _, _) = setup(&pool).await;
-    for kind in ["REGULAR", "OFF_CYCLE", "CORRECTION", "EXIT_SETTLEMENT"] {
+    for kind in ["REGULAR"] {
         let response = get(service.clone(), &uri(group, kind), &token).await;
         assert_eq!(response.status, StatusCode::OK, "{}", response.json);
         assert_eq!(response.json["pay_group_id"], json!(group));
@@ -71,7 +77,7 @@ async fn preview_derives_all_kinds_without_writing_a_run(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn preview_selects_first_gap_per_group_and_kind_and_ignores_void(pool: PgPool) {
+async fn preview_selects_first_gap_per_group_and_ignores_void(pool: PgPool) {
     let (service, token, group, _, _) = setup(&pool).await;
     // rls-arming: ok owner seeds occupied months; all preview reads use console_rt.
     sqlx::query("INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) SELECT $1,$2,'REGULAR',d,d,d,d,d,d,'occupied-'||n FROM generate_series(0,2) n CROSS JOIN LATERAL (SELECT (date_trunc('month',entity_today())+n*interval '1 month')::date d) dates WHERE n<>1")
@@ -85,15 +91,10 @@ async fn preview_selects_first_gap_per_group_and_kind_and_ignores_void(pool: PgP
             .await
             .unwrap();
     assert_eq!(regular.json["attribution_month"], expected);
-    let other_kind = get(service.clone(), &uri(group, "OFF_CYCLE"), &token).await;
-    assert!(other_kind.json["attribution_month"].as_str().unwrap() < expected.as_str());
     let (other_service, other_token, other_group, _, _) = setup(&pool).await;
     let other = get(other_service, &uri(other_group, "REGULAR"), &other_token).await;
     assert_eq!(other.status, StatusCode::OK, "{}", other.json);
-    assert_eq!(
-        other.json["attribution_month"],
-        other_kind.json["attribution_month"]
-    );
+    assert!(other.json["attribution_month"].as_str().unwrap() < expected.as_str());
     // rls-arming: ok owner voids occupied rows, freeing their attribution month.
     sqlx::query("UPDATE payroll_draft_runs SET status='VOID'")
         .execute(&pool)
@@ -102,7 +103,7 @@ async fn preview_selects_first_gap_per_group_and_kind_and_ignores_void(pool: PgP
     let voided = get(service, &uri(group, "REGULAR"), &token).await;
     assert_eq!(
         voided.json["attribution_month"],
-        other_kind.json["attribution_month"]
+        other.json["attribution_month"]
     );
 }
 

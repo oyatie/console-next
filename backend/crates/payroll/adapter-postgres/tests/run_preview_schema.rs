@@ -73,7 +73,7 @@ async fn regular_identity_is_unique_per_group_month_and_void_releases_it(pool: P
         .await
         .unwrap();
     // Legacy staging keeps its original natural key and needs no group defaults.
-    sqlx::query("INSERT INTO payroll_draft_runs(org_id,period_start,period_end,source_label) VALUES ($1,'2026-11-01','2026-11-30','legacy') ON CONFLICT(org_id,period_start,period_end,source_label) DO UPDATE SET source_label=EXCLUDED.source_label")
+    sqlx::query("INSERT INTO payroll_draft_runs(org_id,period_start,period_end,source_label) VALUES ($1,'2026-11-01','2026-11-30','legacy') ON CONFLICT(org_id,period_start,period_end,source_label) WHERE pay_group_id IS NULL DO UPDATE SET source_label=EXCLUDED.source_label")
         .bind(org.as_uuid()).execute(tx.as_mut()).await.unwrap();
 }
 
@@ -104,5 +104,27 @@ async fn run_identity_refuses_foreign_groups_incomplete_facts_and_unknown_kinds(
             Some(code)
         );
         tx.rollback().await.unwrap();
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn same_named_group_runs_do_not_share_the_legacy_label_key(pool: PgPool) {
+    let org = OrgId::one();
+    let first = group(&pool, org).await;
+    // rls-arming: ok owner creates an identical group under another legal entity.
+    let second: Uuid = sqlx::query_scalar("WITH entity AS (INSERT INTO legal_entities(org_id,id,needs_confirmation,created_change_mode) VALUES ($1,$2,true,'MIGRATION') RETURNING id) INSERT INTO pay_groups(org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,proration,channel,sensitive,pay_basis_allowed) SELECT g.org_id,$4,e.id,g.name,g.pay_date_rule,g.base_period,g.variable_period,g.proration,g.channel,g.sensitive,g.pay_basis_allowed FROM pay_groups g CROSS JOIN entity e WHERE g.id=$3 RETURNING id")
+        .bind(org.as_uuid()).bind(Uuid::new_v4()).bind(first).bind(Uuid::new_v4()).fetch_one(&pool).await.unwrap();
+    let runtime = runtime_role_pool(&pool).await;
+    let mut tx = runtime.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    for kind in ["REGULAR", "OFF_CYCLE"] {
+        for group in [first, second] {
+            sqlx::query("INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$2,$3,'2026-11-01','2026-11-25','2026-11-01','2026-11-30','2026-10-16','2026-11-15','모의 급여 · 2026-11 · '||$3)")
+                .bind(org.as_uuid()).bind(group).bind(kind).execute(tx.as_mut()).await.unwrap();
+        }
     }
 }

@@ -53444,14 +53444,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description regular_run_exists for an occupied regular group/month; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay. */
+            /** @description phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Missing */
+            /** @description run_kind_unsupported for non-REGULAR kinds; Missing */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -53496,7 +53496,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description validation for missing group or invalid kind. */
+            /** @description run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind. */
             422: {
                 headers: {
                     [name: string]: unknown;
