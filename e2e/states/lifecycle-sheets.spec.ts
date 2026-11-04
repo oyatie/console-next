@@ -255,13 +255,14 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 
-  for (const allowed of [true, false, undefined]) test(`certificate settings refusal ${allowed} ${width} ${theme} @ui-state`, async ({ page }) => {
+  for (const allowed of [true, false, undefined]) test(`certificate settings refusal ${allowed} ${width} ${theme} @ui-state`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "post", "/api/v1/hr/certificates", { status: 422, json: failure("certificate_settings_required") });
     const settings = { settings: [], seal_max_bytes: 100000, can_manage: allowed };
-    await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: settings });
+    // The undefined case pins fail-closed behavior for an older response missing the new projection.
+    await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: settings as never });
     await page.goto(`/people/${id(4000)}?act=cert`);
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });
@@ -271,11 +272,12 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await sheet.getByRole("button", { name: t("empDoc.cert.commit"), exact: true }).click();
     const refusal = sheet.getByRole("alert");
     await expect(refusal).toContainText(t("empDoc.certificate.error.certificate_settings_required"));
-    const remedy = sheet.getByRole("link", { name: t("empDoc.certificate.settings"), exact: true });
+    const remedy = refusal.getByRole("link", { name: t("empDoc.certificate.settings"), exact: true });
     if (allowed) await expect(remedy).toHaveAttribute("href", `/people/certificates?employee=${id(4000)}#certificate-settings`);
     else await expect(remedy).toHaveCount(0);
     await fits(page, `certificate-refusal/${width}/${theme}`);
     await expectAxe(page, `certificate-refusal/${width}/${theme}`);
+    if (allowed) await page.screenshot({ path: info.outputPath("certificate-refusal.png"), fullPage: true });
     expect(fixture.unexpected).toEqual([]);
   });
 

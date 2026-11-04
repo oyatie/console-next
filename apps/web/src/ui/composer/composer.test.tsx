@@ -64,6 +64,7 @@ test.each([
   [{ kind: "entityChange", mode: "record" }, "변경 기록"],
   [{ kind: "entityCorrection", mode: "record" }, "정정 기록"],
   [{ kind: "entityRecord", mode: "enter" }, "입력"],
+  [{ kind: "certificate", mode: "issue" }, "발급"],
   [{ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" }, "직원 등록 1명 적용 · 다음 직원"],
 ] as const)("builds a single outcome label for %j", (action, expected) => {
   expect(commitLabel(action)).toBe(expected);

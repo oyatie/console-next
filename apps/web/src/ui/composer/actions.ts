@@ -17,6 +17,7 @@ const ACTION_KINDS = {
   orgDelete: ["composer.action.orgDelete", "units"],
   orgChange: ["composer.action.orgChange", "units"],
   entityRecord: [null, "units"],
+  certificate: [null, "units"],
   entityChange: ["composer.action.entityChange", "units"],
   entityCorrection: ["composer.action.entityCorrection", "units"],
   appointment: ["composer.action.appointment", "people"],
@@ -67,6 +68,7 @@ const ACTION_VERBS = {
   remove: "composer.verb.remove",
   record: "composer.verb.record",
   enter: "composer.verb.enter",
+  issue: "empDoc.cert.commit",
 } as const;
 
 export type ActionDescription = { kind: keyof typeof ACTION_KINDS; mode: keyof typeof ACTION_VERBS; count?: number; continuation?: "next" };

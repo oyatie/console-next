@@ -16795,6 +16795,7 @@ export interface components {
         CertificateSettingsView: {
             settings: components["schemas"]["CertificateSettings"][];
             seal_max_bytes: number;
+            can_manage: boolean;
         };
         CertificateSnapshot: {
             name: string;

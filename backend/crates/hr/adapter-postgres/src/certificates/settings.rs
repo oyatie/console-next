@@ -34,6 +34,7 @@ pub struct CertificateSettingsRequest {
 pub struct CertificateSettingsView {
     pub settings: Vec<CertificateSettings>,
     pub seal_max_bytes: usize,
+    pub can_manage: bool,
 }
 
 pub(super) async fn load(
@@ -49,11 +50,12 @@ impl HrService {
         &self,
         p: Principal,
     ) -> Result<CertificateSettingsView, HrError> {
-        access::capability(&p, "certificate_settings_read")?;
-        crate::authz::authorize_hr_org_wide(&p, access::feature("certificate_settings_read"))?;
         with_org_conn::<_,_,HrError>(&self.pool,p.org_id,move|tx|Box::pin(async move {
+            let facts = access::tenant_facts(tx, &p).await?;
+            access::require_tenant(&facts, &p, console_platform_authz::cedar_pbac::actions::certificates::SETTINGS_READ)?;
+            let can_manage = access::tenant_decision(&facts, &p, console_platform_authz::cedar_pbac::actions::certificates::SETTINGS_MANAGE)?;
             let settings=sqlx::query_as("SELECT c.legal_entity_id,c.prefix,c.width,c.seal_text,c.seal_id,s.png AS seal_png,c.version FROM hr_certificate_entity_settings c LEFT JOIN hr_certificate_seals s ON s.org_id=c.org_id AND s.id=c.seal_id WHERE c.org_id=$1 ORDER BY c.legal_entity_id").bind(p.org_id.as_uuid()).fetch_all(tx.as_mut()).await?;
-            Ok(CertificateSettingsView{settings,seal_max_bytes:super::seal::MAX_BYTES})
+            Ok(CertificateSettingsView{settings,seal_max_bytes:super::seal::MAX_BYTES,can_manage})
         })).await
     }
     pub async fn set_certificate_settings(
@@ -61,17 +63,15 @@ impl HrService {
         p: Principal,
         b: CertificateSettingsRequest,
     ) -> Result<CertificateSettings, HrError> {
-        access::capability(&p, "certificate_settings_manage")?;
-        crate::authz::authorize_hr_org_wide(&p, access::feature("certificate_settings_manage"))?;
-        super::seal::validate(b.seal_png.as_deref())?;
-        let prefix = validation::text(&b.prefix, 40)?;
-        let seal = validation::text(&b.seal_text, 200)?;
-        if !(1..=12).contains(&b.width) || b.expected_version < 0 {
-            return Err(super::invalid(
-                "width must be 1..12 and version nonnegative",
-            ));
-        }
         with_audits::<_,_,HrError>(&self.pool,p.org_id,move|tx|Box::pin(async move {
+            let facts = access::tenant_facts(tx, &p).await?;
+            access::require_tenant(&facts, &p, console_platform_authz::cedar_pbac::actions::certificates::SETTINGS_MANAGE)?;
+            super::seal::validate(b.seal_png.as_deref())?;
+            let prefix = validation::text(&b.prefix, 40)?;
+            let seal = validation::text(&b.seal_text, 200)?;
+            if !(1..=12).contains(&b.width) || b.expected_version < 0 {
+                return Err(super::invalid("width must be 1..12 and version nonnegative"));
+            }
             let exists:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM legal_entities WHERE org_id=$1 AND id=$2)").bind(p.org_id.as_uuid()).bind(b.legal_entity_id).fetch_one(tx.as_mut()).await?;
             if !exists {return Err(super::not_found());}
             let seal_id=super::seal::store(tx,*p.org_id.as_uuid(),b.seal_png.as_deref()).await?;

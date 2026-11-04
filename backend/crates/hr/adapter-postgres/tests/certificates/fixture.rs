@@ -28,7 +28,7 @@ impl World {
             .execute(&owner)
             .await
             .unwrap();
-        sqlx::query("INSERT INTO users(id,org_id,display_name,roles) VALUES($1,$2,'Issuer',ARRAY['SUPER_ADMIN'])").bind(user.as_uuid()).bind(org.as_uuid()).execute(&owner).await.unwrap();
+        sqlx::query("INSERT INTO users(id,org_id,display_name,roles,is_tenant_ops) VALUES($1,$2,'Issuer',ARRAY['SUPER_ADMIN'],true)").bind(user.as_uuid()).bind(org.as_uuid()).execute(&owner).await.unwrap();
         let employee = sqlx::query_scalar("INSERT INTO employees(org_id,company,name,hire_date,position,source_filename,source_sheet,source_row,source_key) VALUES($1,'Test employer','정하늘','2020-01-02','사원','test','test',1,$2) RETURNING id").bind(org.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(&owner).await.unwrap();
         let entity = Self::entity(&owner, *org.as_uuid(), "Test employer").await;
         sqlx::query("INSERT INTO employment_assignments(org_id,employee_id,legal_entity_id,valid_from,cause,command_id) VALUES($1,$2,$3,'2020-01-02','MIGRATION',gen_random_uuid())").bind(org.as_uuid()).bind(employee).bind(entity).execute(&owner).await.unwrap();

@@ -4,6 +4,7 @@ additionalProperties: false
 required:
   - settings
   - seal_max_bytes
+  - can_manage
 properties:
   settings:
     type: array
@@ -12,3 +13,5 @@ properties:
   seal_max_bytes:
     type: integer
     minimum: 1
+  can_manage:
+    type: boolean

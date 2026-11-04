@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::fixture::World;
 use console_hr_adapter_postgres::certificates::CertificateListQuery;
-use console_kernel_core::BranchScope;
+use console_kernel_core::{BranchScope, UserId};
 use console_platform_authz::{Principal, Role};
 use sqlx::PgPool;
 use std::collections::BTreeSet;
@@ -49,8 +49,17 @@ async fn every_certificate_route_refuses_a_lower_grant_and_foreign_document(pool
     w.configure().await;
     let first = w.issue(&Uuid::new_v4().to_string()).await;
     let id = Uuid::parse_str(first["id"].as_str().unwrap()).unwrap();
+    let lower_id = UserId::new();
+    sqlx::query(
+        "INSERT INTO users(id,org_id,display_name,roles) VALUES($1,$2,'Reader',ARRAY['MEMBER'])",
+    )
+    .bind(lower_id.as_uuid())
+    .bind(w.actor.org_id.as_uuid())
+    .execute(&w.owner)
+    .await
+    .unwrap();
     let lower = Principal::new(
-        w.actor.user_id,
+        lower_id,
         w.actor.org_id,
         BTreeSet::from([Role::Member]),
         BranchScope::All,

@@ -3,13 +3,15 @@
 use super::{ActionBundle, Fact};
 use std::sync::OnceLock;
 
+pub const SETTINGS_READ: &str = "certificate_settings_read";
+pub const SETTINGS_MANAGE: &str = "certificate_settings_manage";
 pub const ACTIONS: &[&str] = &[
     "certificate_read",
     "certificate_issue",
     "certificate_void",
     "certificate_reissue",
-    "certificate_settings_read",
-    "certificate_settings_manage",
+    SETTINGS_READ,
+    SETTINGS_MANAGE,
 ];
 fn bundles() -> Result<&'static [ActionBundle], String> {
     static BUNDLES: OnceLock<Result<Vec<ActionBundle>, String>> = OnceLock::new();

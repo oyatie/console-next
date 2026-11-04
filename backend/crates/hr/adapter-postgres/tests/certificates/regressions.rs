@@ -1,9 +1,84 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::fixture::World;
+use crate::lifecycle_grant;
 use console_hr_adapter_postgres::certificates::CertificateListQuery;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn settings_project_live_manage_permission_without_widening_read(pool: PgPool) {
+    let w = World::new(pool).await;
+    assert!(
+        w.hr.certificate_settings(w.actor.clone())
+            .await
+            .unwrap()
+            .can_manage
+    );
+    let mut handover = w.owner.begin().await.unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=false WHERE org_id=$1 AND id=$2")
+        .bind(w.actor.org_id.as_uuid())
+        .bind(w.actor.user_id.as_uuid())
+        .execute(handover.as_mut())
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO users(id,org_id,display_name,roles,is_tenant_ops) \
+         VALUES ($1,$2,'other ops',ARRAY['SUPER_ADMIN'],true)",
+    )
+    .bind(Uuid::new_v4())
+    .bind(w.actor.org_id.as_uuid())
+    .execute(handover.as_mut())
+    .await
+    .unwrap();
+    handover.commit().await.unwrap();
+    lifecycle_grant::grant_hr_basic(
+        &w.owner,
+        *w.actor.org_id.as_uuid(),
+        *w.actor.user_id.as_uuid(),
+        &["edit"],
+    )
+    .await;
+    let settings = w.hr.certificate_settings(w.actor.clone()).await.unwrap();
+    assert!(!settings.can_manage);
+    assert_eq!(
+        w.hr.set_certificate_settings(w.actor.clone(), w.settings())
+            .await
+            .unwrap_err()
+            .code,
+        "certificate_forbidden"
+    );
+    sqlx::query("UPDATE access_grants SET status='REVOKED', revoked_at=now(), revoked_by=granted_by WHERE org_id=$1 AND account_id=$2")
+        .bind(w.actor.org_id.as_uuid())
+        .bind(w.actor.user_id.as_uuid())
+        .execute(&w.owner)
+        .await
+        .unwrap();
+    assert_eq!(
+        w.hr.certificate_settings(w.actor.clone())
+            .await
+            .unwrap_err()
+            .code,
+        "certificate_forbidden"
+    );
+    lifecycle_grant::grant_domain(
+        &w.owner,
+        *w.actor.org_id.as_uuid(),
+        *w.actor.user_id.as_uuid(),
+        "org",
+        &["edit"],
+    )
+    .await;
+    assert!(
+        w.hr.certificate_settings(w.actor.clone())
+            .await
+            .unwrap()
+            .can_manage
+    );
+    w.hr.set_certificate_settings(w.actor.clone(), w.settings())
+        .await
+        .unwrap();
+}
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn issuer_is_the_assignment_entity_and_each_entity_can_issue(pool: PgPool) {

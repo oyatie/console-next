@@ -271,7 +271,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | web-grants | apps/web/src/features/people/ui/account-panel.tsx | control-guard | 2 |
 | web-grants | apps/web/src/features/people/ui/accounts-list.tsx | control-guard | 2 |
 | web-grants | apps/web/src/features/people/ui/card-page.tsx | control-guard | 3 |
-| web-grants | apps/web/src/features/people/ui/certificates-page.tsx | control-guard | 2 |
 | web-grants | apps/web/src/features/people/ui/exit-block.tsx | control-guard | 2 |
 | web-grants | apps/web/src/features/people/ui/exit-confirm.tsx | control-guard | 3 |
 | web-grants | apps/web/src/features/people/ui/exit-facts.tsx | control-guard | 2 |
