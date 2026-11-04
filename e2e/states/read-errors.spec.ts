@@ -105,7 +105,9 @@ for (const fault of ["503", "network"] as const) for (const reference of [false,
 });
 
 const outageRoutes = ["/org", "/org/entities", `/org/entities/${id(10)}`, `/org/changes/${id(3000)}`, "/org/move",
-  "/statutory", "/people", `/people/${id(100)}`, "/people/bulk", "/access/roles", "/attendance"];
+  "/statutory", "/people", `/people/${id(100)}`, "/people/bulk", "/access/roles", "/access/grants", "/access/ready", "/attendance", "/audit/support-access"];
+const singleCardOutage = (path: string) =>
+  path.startsWith("/org") || path.startsWith("/access") || path.startsWith("/attendance") || path === "/audit/support-access";
 for (const path of outageRoutes) for (const reference of [false, true]) {
   test(`${path}: one outage with ${reference ? "a server reference" : "no reference"} @ui-state`, async ({ page }) => {
     const fixture = await mockScreen(page, screens[2], "populated");
@@ -124,7 +126,7 @@ for (const path of outageRoutes) for (const reference of [false, true]) {
       const main = page.getByRole("main");
       const failed = main.getByRole("alert").filter({ has: page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true }) });
       // Other page owners remove their own duplicate cards; this slice asserts the shell on those routes.
-      if (path.startsWith("/org")) {
+      if (singleCardOutage(path)) {
         await expect(failed).toHaveCount(1, { timeout: 20_000 });
         await expect(main.getByRole("alert")).toHaveCount(1);
         await expect(main.locator("[data-support-reference]")).toHaveCount(reference ? 1 : 0);
@@ -142,13 +144,13 @@ for (const path of outageRoutes) for (const reference of [false, true]) {
   });
 }
 
-for (const path of outageRoutes.filter(path => path.startsWith("/org"))) {
+for (const path of outageRoutes.filter(singleCardOutage)) {
   test(`${path}: the owning page shows one card when its reads and checklist fail @ui-state`, async ({ page }) => {
     const fixture = await mockScreen(page, screens[2], "populated");
     const shellReads = ["/api/v1/access/me", "/api/v1/users/me", "/api/v1/me/authz", "/api/v1/onboarding/modules", "/api/v1/support-sessions/active"];
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
     await page.route(url => url.pathname.startsWith("/api/"), route => route.request().method() !== "GET" || shellReads.includes(new URL(route.request().url()).pathname)
-      ? route.fallback() : route.fulfill({ status: 503, json: { error: { code: "service_unavailable" } } }));
+      ? route.fallback() : route.fulfill({ status: 503, json: { error: { code: "service_unavailable", support_ref: id(98), support_ref_at: AT } } }));
     try {
       await page.goto(path);
       const main = page.getByRole("main");
@@ -157,6 +159,38 @@ for (const path of outageRoutes.filter(path => path.startsWith("/org"))) {
       await expect(main.locator('[aria-busy="true"]').filter({ visible: true })).toHaveCount(0, { timeout: 20_000 });
       await expect(main.getByRole("alert")).toHaveCount(1);
       await expect(main.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
+      await expect(main.locator(`[data-support-reference="${id(98)}"]`)).toBeVisible();
+      await expect(main.getByText("사업장 전체 0곳", { exact: true })).toHaveCount(0);
+      await expect(main.getByRole("button", { name: "권한 부여", exact: true })).toHaveCount(0);
+      await expect(main.getByRole("link", { name: /^(역할 추가|여러 사람에게 부여|운영 시작으로)$/ })).toHaveCount(0);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
+for (const path of ["/attendance", "/access/roles", "/access/grants", "/audit/support-access"] as const) {
+  test(`${path}: active support and page read outage shows one card and retries together @ui-state`, async ({ page }) => {
+    const fixture = await mockScreen(page, screens[2], "populated");
+    const shellReads = ["/api/v1/access/me", "/api/v1/users/me", "/api/v1/me/authz", "/api/v1/onboarding/modules"];
+    await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
+    let supportAttempts = 0;
+    await page.route(url => url.pathname.startsWith("/api/"), route => {
+      const pathname = new URL(route.request().url()).pathname;
+      if (pathname === "/api/v1/support-sessions/active") supportAttempts++;
+      return route.request().method() !== "GET" || shellReads.includes(pathname)
+        ? route.fallback()
+        : route.fulfill({ status: 503, json: { error: { code: "service_unavailable", support_ref: id(98), support_ref_at: AT } } });
+    });
+    try {
+      await page.goto(path);
+      const main = page.getByRole("main");
+      await expect(main.getByRole("alert")).toHaveCount(1, { timeout: 20_000 });
+      await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
+      await expect(main.locator(`[data-support-reference="${id(98)}"]`)).toBeVisible();
+      const before = supportAttempts;
+      await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
+      await expect.poll(() => supportAttempts).toBeGreaterThan(before);
+      await expect(main.getByRole("alert")).toHaveCount(1);
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });

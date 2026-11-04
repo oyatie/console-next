@@ -12,14 +12,14 @@ import { grantsQuery, meQuery, opsQuery, rolesQuery } from "../api";
  * The access page head: title, the phase line (grants wait for go-live while SETUP lasts) and the served views, the
  * first two with their counts (mockup M1). A person's access sits under the grants view. `sub` is the view's lede.
  */
-export function AccessHead({ actions, sub }: { actions?: ReactNode; sub?: ReactNode }) {
+export function AccessHead({ actions, sub, failed: pageFailed = false }: { actions?: ReactNode; sub?: ReactNode; failed?: boolean }) {
   const me = useQuery(meQuery);
   const roles = useQuery(rolesQuery);
   const grants = useQuery(grantsQuery());
   const ops = useQuery(opsQuery);
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const phase = me.data?.phase;
-  const failed = !!(me.error || roles.error || grants.error);
+  const phase = !me.error ? me.data?.phase : undefined;
+  const failed = pageFailed || !!(me.error || roles.error || grants.error);
   const opsAccount = !ops.error ? ops.data?.account_id : undefined;
   return (
     <PageHead

@@ -83,13 +83,14 @@ export function BulkPage() {
     { id: "pk", header: t("access.col.passkey"), width: 96, cell: (a: Account) => <Chip tone={a.has_passkey ? "ok" : "neutral"}>{t(a.has_passkey ? "access.account.passkey.yes" : "access.account.passkey.no")}</Chip> },
   ];
   const role = ctx.roles.find((r) => r.id === d.line.role_id);
+  const pageRead = readGroup([ctx.q, tree]);
   return (
     <div className="page">
-      <AccessHead />
+      <AccessHead failed={Boolean(pageRead.error)} />
       <div className={s.titleRow}>
         <h2 className="page__title">{t(preview ? "access.bulk.title.preview" : "access.bulk.title")}</h2>
       </div>
-<QueryState q={readGroup([ctx.q, tree])} layout="form">{() => <>      {done && <Banner live="polite">{done}{apply.data?.operation_id && <Link to="/requests/$id" params={{id:apply.data.operation_id}}>{t("requestOutcome.open")}</Link>}</Banner>}
+<QueryState q={pageRead} layout="form">{() => <>      {done && <Banner live="polite">{done}{apply.data?.operation_id && <Link to="/requests/$id" params={{id:apply.data.operation_id}}>{t("requestOutcome.open")}</Link>}</Banner>}
       {preview ? (
         <BulkPreview
           preview={preview.p}
@@ -108,7 +109,7 @@ export function BulkPage() {
           onApply={() => apply.mutate(undefined)}
         />
       ) : (
-        <QueryState q={ctx.accountsQ}>{() => <div className={s.editor}>
+        <div className={s.editor}>
           <Card flush>
             {/* One toolbar (mockup M5): find by name or number, narrow by placement, or to people who can sign in. */}
             <div className={s.filters}>
@@ -143,7 +144,7 @@ export function BulkPage() {
               ) : <Button variant="primary" className={s.wide} disabled={check.isPending} onClick={previewPicked}>{t("access.bulk.preview", { count: ids.length })}</Button>}
             </BulkForm>
           )}
-        </div>}</QueryState>
+        </div>
       )}
       {picking && ctx.cat.data && (
         <ScopeSheet

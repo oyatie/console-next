@@ -76,15 +76,16 @@ export function GrantsPage({ role }: { role?: string }) {
         count: new Set(grants.data?.items.map(g => g.account_id)).size,
       })
     : t("access.grants.count", { count: grants.data?.items.length ?? 0 });
+  const pageRead = readGroup([ctx.q, grants]);
   return (
     <div className={`page ${s.grants}`}>
-      <AccessHead actions={<>
+      <AccessHead failed={Boolean(pageRead.error)} actions={pageRead.error ? undefined : <>
         <Button ref={grantAction} variant="primary" onClick={() => setPicking(true)}>{t("access.grant.title")}</Button>
         <Link to="/access/grants/bulk" className={buttonClass()}><Users size={16} aria-hidden />{t("access.bulk.open")}</Link>
       </>} />
       {done && <Banner live="polite">{done}</Banner>}
       {saved && <GrantUndo message={saved.message} grants={saved.grants} operationId={saved.operationId} onDone={(m) => (setSaved(null), setDone(m))} onDismiss={() => setSaved(null)} />}
-      <QueryState q={readGroup([ctx.q, grants])} layout="list">{() => <Card
+      <QueryState q={pageRead} layout="list">{() => <Card
         title={grants.isPlaceholderData ? undefined : title}
         tools={selectedRole && (role
           ? <Link to="/access/grants" className={buttonClass("ghost")} onClick={resetFilters}>{t("accessGrants.reset")}</Link>
@@ -128,7 +129,7 @@ export function GrantsPage({ role }: { role?: string }) {
             )}
       </Card>}</QueryState>
       {/* Last on the page: it appears once its read lands, so it moves nothing above it. */}
-      <AccessRequests accounts={ctx.accounts} onGrant={setGranting} />
+      {!pageRead.error && <AccessRequests accounts={ctx.accounts} onGrant={setGranting} />}
       {picking && <Dialog open title={t("access.grants.new")} onClose={() => setPicking(false)}>
         <QueryState q={ctx.q} layout="list">{() => <AccountPick
           accounts={ctx.accounts} ops={ctx.ops} loading={ctx.accountsQ.isFetching}

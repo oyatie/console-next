@@ -52,12 +52,14 @@ export function ReadinessPage() {
   const grants = useQuery(grantsQuery());
   const manages = new Set(ctx.roles.filter((r) => r.lines.some((l) => l.domain === "access" && l.levels.includes("edit"))).map((r) => r.id));
   const opsName = personName(ctx.accounts.find((a) => a.id === ctx.ops)?.display_name);
+  const pageRead = readGroup([ctx.q, grants]);
   return (
       <div className="page">
       <AccessHead
-        actions={ctx.setup ? <Link to="/setup/go-live" className={buttonClass("primary")}><ArrowRight size={16} aria-hidden />{t("access.ready.goLive")}</Link> : undefined}
+        failed={Boolean(pageRead.error)}
+        actions={!pageRead.error && !pageRead.isPending && ctx.setup ? <Link to="/setup/go-live" className={buttonClass("primary")}><ArrowRight size={16} aria-hidden />{t("access.ready.goLive")}</Link> : undefined}
       />
-      <QueryState q={readGroup([ctx.q, grants])} layout="list">
+      <QueryState q={pageRead} layout="list">
         {() => {
           const g = grants.data!;
           const checks = readiness(

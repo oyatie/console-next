@@ -48,7 +48,7 @@ export function RolesPage() {
   const live = grants.data?.items ?? [];
   return (
     <div className="page">
-      <AccessHead actions={roles.data?.items.length ? <Link to="/access/roles/new" className={buttonClass("primary")}><Plus size={16} aria-hidden />{t("access.roles.create")}</Link> : undefined} />
+      <AccessHead failed={Boolean(roles.error)} actions={!roles.error && roles.data?.items.length ? <Link to="/access/roles/new" className={buttonClass("primary")}><Plus size={16} aria-hidden />{t("access.roles.create")}</Link> : undefined} />
 <QueryState q={roles} layout="list">{d => <>      {done && <Banner live="polite">{done}</Banner>}
       {d.items.length ? (
           <>

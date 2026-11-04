@@ -97,16 +97,19 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
   const roots = (tree.data?.entities ?? []) as OrgNode[];
   const held = grants.data?.items ?? [];
   const one = eff.data && new Set(eff.data.entries.map((e) => e.enforcement)).size === 1 ? eff.data.entries[0]?.enforcement : undefined;
+  const pageRead = readGroup([eff, grants]);
   return (
     <div className="page">
-      <AccessHead />
-<QueryState q={readGroup([eff, grants])} back={{ to: "/access/grants", label: t("access.nav.grants") }} layout="record">{() => <>      <>
+      <AccessHead failed={Boolean(pageRead.error)} />
+<QueryState q={pageRead} back={{ to: "/access/grants", label: t("access.nav.grants") }} layout="record">{() => {
+      const e = eff.data!;
+      return <>      <>
       <div className={s.titleRow}>
         <Link to="/access/grants" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.nav.grants")}</Link>
         {account ? <PersonHead a={account} ops={account.id === ctx.ops} details={!account.employee_id} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
         {account && <PersonRef account={account} wrap />}
         <span className="grow" />
-        {account && !eff.data!.is_ops && <Button variant="primary" onClick={() => setGranting(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
+        {account && !e.is_ops && <Button variant="primary" onClick={() => setGranting(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
       </div>
       {done && <Banner live="polite">{done}{operationId && <p><Link to="/requests/$id" params={{ id: operationId }}>{t("requestOutcome.open")}</Link></p>}</Banner>}
         <div className={s.editor}>
@@ -115,13 +118,9 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
             meta={one === "PREPARED" ? <Chip tone="info">{t("access.person.fromGoLive")}</Chip> : one && one !== "ENFORCED" && <EnforcementChip e={one} />}
             flush
           >
-            <QueryState q={eff}>
-              {(e) =>
-                e.is_ops ? <div className={s.pad}><Banner>{t("access.person.ops")}</Banner></div>
-                : e.entries.length ? <CanDo entries={e.entries} order={order} grants={held} roots={roots} />
-                : <EmptyState title={t("access.person.none", { name: name ?? t("people.label.unnamed") })} reason={t(e.phase === "SETUP" ? "access.person.none.setup" : "access.person.none.reason")} />
-              }
-            </QueryState>
+            {e.is_ops ? <div className={s.pad}><Banner>{t("access.person.ops")}</Banner></div>
+              : e.entries.length ? <CanDo entries={e.entries} order={order} grants={held} roots={roots} />
+              : <EmptyState title={t("access.person.none", { name: name ?? t("people.label.unnamed") })} reason={t(e.phase === "SETUP" ? "access.person.none.setup" : "access.person.none.reason")} />}
           </Card>
           <Card title={t("access.grants.count", { count: held.length })} flush>
             {held.length ? (
@@ -149,7 +148,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
       )}
       <GrantChange key={changing ? `${changing.g.id}:${changing.mode}` : "none"} grant={changing?.g ?? null} mode={changing?.mode} onClose={() => setChanging(null)} onDone={(m) => (setChanging(null), setDone(m), setOperationId(undefined))} />
       </>
-    </>}</QueryState>
+    </>; }}</QueryState>
     </div>
   );
 }

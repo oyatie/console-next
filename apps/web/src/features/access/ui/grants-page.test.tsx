@@ -19,7 +19,7 @@ vi.mock("./use-access-context", () => ({ useAccessContext: () => ({
 }) }));
 vi.mock("./use-org-roots", () => ({ useOrgRoots: () => [] }));
 vi.mock("./access-head", () => ({ AccessHead: ({ actions }: { actions: ReactNode }) => <header>{actions}</header> }));
-vi.mock("./access-requests", () => ({ AccessRequests: () => null }));
+vi.mock("./access-requests", () => ({ AccessRequests: () => <section data-requests-stub /> }));
 vi.mock("./grant-change", () => ({ GrantChange: () => null }));
 
 beforeAll(() => loadCatalog("ko"));
@@ -31,11 +31,11 @@ const row = (id: string, account: string): AccessGrant => ({
   effective_in_setup: false, enforcement: "ENFORCED", reason_code: "OTHER", granted_by: "ops", granted_at: "2026-10-01T00:00:00Z",
 });
 
-test("failed grants read has no zero count, empty claim or list filters", () => {
+test("failed grants read has no zero count, empty claim, header writes, open requests or list filters", () => {
   state.error = new ApiError(503, "service_unavailable", "private server detail");
   const html = render();
   expect(html).toContain("불러오지 못했습니다");
-  for (const text of ["부여 0건", "부여가 없습니다", "이름·사번·역할 찾기", "일 안에 끝나는 부여", "private server detail"])
+  for (const text of ["부여 0건", "부여가 없습니다", "권한 부여", "여러 사람에게 부여", "data-requests-stub", "이름·사번·역할 찾기", "일 안에 끝나는 부여", "private server detail"])
     expect(html).not.toContain(text);
 });
 
