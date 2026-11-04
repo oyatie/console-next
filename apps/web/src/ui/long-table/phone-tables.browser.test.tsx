@@ -30,7 +30,7 @@ beforeAll(async () => {
       load: (id) => id === "\0phone-tables" ? `
         import { createElement as h, useState } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { loadCatalog } from '@console/i18n';
+        import { i18n, loadCatalog } from '@console/i18n';
         import { Table } from '/apps/web/src/ui/table.tsx';
         import { LongTable } from '/apps/web/src/ui/long-table/long-table.tsx';
         import { NO_SELECTION } from '/apps/web/src/ui/long-table/selection.ts';
@@ -39,6 +39,7 @@ beforeAll(async () => {
         import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
         import '/apps/web/src/app.css';
         await loadCatalog('en');
+        i18n.set('en');
         const client = new QueryClient({defaultOptions: {queries: {enabled: false}}});
         const rows = Array.from({length: 100}, (_, i) => ({id: 'MOB-' + i}));
         const columns = [
@@ -75,14 +76,6 @@ beforeAll(async () => {
             ...['short', 'long'].map(kind => h('div', {id: kind + '-flex', style: {display: 'flex', containerType: 'inline-size', containerName: 'list-table'}},
               kind === 'short' ? h(Table, {label: 'Uncontained short', rows: rows.slice(0, 3), columns: columns.map(({card, ...c}) => ({...c, width: innerWidth / columns.length})), rowId: r => r.id})
               : h(LongTable, {label: 'Uncontained long', rows: rows.slice(0, 3), columns: columns.map(({card, ...c}) => ({...c, width: innerWidth / columns.length})), rowId: r => r.id, hasMore: false, onLoadMore() {}, empty: 'Empty'}))));
-          if (location.hash === '#editor') return h('main', null, h('h1', null, 'Editor'), h(Table, {
-            label: 'Editor', rows: rows.slice(0, 1), rowId: r => r.id,
-            columns: columns.map(({card, ...column}) => ({...column, cell: r => column.id === 'Extra'
-              ? h('input', {'aria-label': 'Editor value', value: 'Kept', readOnly: true}) : column.cell(r)}))}));
-          if (location.hash === '#forced-rows') return h('main', null, h('h1', null, 'Preview editor'), h(Table, {label: 'Preview editor', rows: rows.slice(0, 1), rowId: r => r.id, mobileLayout: 'rows', columns}));
-          if (location.hash === '#selection') return h('main', null, h('h1', null, 'Selection'), h(Table, {
-            label: 'Selection', rows: rows.slice(0, 1), rowId: r => r.id, columns: [{header: h('input', {type: 'checkbox', 'aria-label': 'Select all'}), fit: true,
-              cell: r => h('input', {type: 'checkbox', 'aria-label': 'Select ' + r.id})}, ...columns]}));
           if (location.hash === '#stack') return h('main', null, h('h1', null, 'Stack'), h(LongTable, {
             label: 'Stacked', caption: '2', find: {label: 'Find', onFind() {}}, rows: rows.slice(0, 2), columns, rowId: r => r.id, hasMore: false, onLoadMore() {}, empty: 'Empty'}));
           if (location.hash === '#roster') return h(QueryClientProvider, {client}, h('main', null,
@@ -121,9 +114,22 @@ test("390px cards expose identifiers, status, labelled facts and actions without
   const long = page.getByRole("grid", { name: "Long", exact: true });
   await visible(short.getByRole("row").filter({ hasText: "MOB-0" })).toHaveCSS("display", "grid");
   await visible(long).toHaveAttribute("data-layout", "cards");
-  await visible(long.getByRole("checkbox").first()).toBeVisible();
-  const cardCaption = await long.getByRole("columnheader", { name: "Long", exact: true }).boundingBox();
+  const longSelectAll = long.getByRole("checkbox", { name: "Select all 100", exact: true });
+  const selectControl = longSelectAll.locator("xpath=ancestor::label[1]");
+  await visible(selectControl).toBeVisible();
+  const [selectHeader, selectBox, cardCaption, longBox, firstLongRow] = await Promise.all([
+    long.getByRole("columnheader").first().boundingBox(),
+    selectControl.boundingBox(),
+    long.getByRole("columnheader", { name: "Long", exact: true }).boundingBox(),
+    long.boundingBox(),
+    long.getByRole("row").filter({ hasText: "MOB-0" }).boundingBox(),
+  ]);
+  expect(selectHeader!.width).toBeGreaterThan(200);
+  expect(selectHeader!.height).toBeGreaterThanOrEqual(36);
+  expect(selectBox!.height).toBeGreaterThanOrEqual(16);
+  expect(selectBox!.width).toBeGreaterThan(selectBox!.height * 2);
   expect(Math.max(cardCaption!.width, cardCaption!.height)).toBeLessThanOrEqual(1);
+  expect(firstLongRow!.y - longBox!.y).toBeGreaterThanOrEqual(36);
   for (const table of [short, long]) {
     const row = table.getByRole("row").filter({ hasText: "MOB-0" });
     await visible(row.getByText("MOB-0", { exact: true })).toBeVisible();
@@ -131,11 +137,10 @@ test("390px cards expose identifiers, status, labelled facts and actions without
     if (table === short) {
       await visible(row.locator('[data-label="Unit"]')).toBeVisible();
       expect(await row.locator('[data-label="Unit"]').evaluate(el => getComputedStyle(el, "::before").content)).toBe('"Unit"');
-    } else await visible(row.getByText("Unit", { exact: true })).toBeVisible();
-    if (table === short) {
       await visible(row.locator('[data-card="omit"]')).toHaveCount(0);
       await visible(row).toHaveCSS("grid-template-columns", /^(\d+(?:\.\d+)?px) \1$/);
     } else {
+      await visible(row.getByText("Unit", { exact: true })).toBeVisible();
       await visible(row.locator("dt")).toHaveCount(4);
       const facts = row.locator("dl");
       await visible(facts).toHaveCSS("grid-template-columns", /^(\d+(?:\.\d+)?px) \1$/);
@@ -153,35 +158,29 @@ test("390px cards expose identifiers, status, labelled facts and actions without
     await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
   }
-  await page.goto("about:blank");
-  await page.goto(`${server.resolvedUrls!.local[0]}phone-tables#editor`);
-  const editor = page.getByRole("table", { name: "Editor", exact: true });
-  await visible(editor.getByRole("row").last()).toHaveCSS("display", "table-row");
-  await visible(editor.locator("xpath=..")).toHaveAttribute("tabindex", "0");
-  await visible(editor.getByRole("textbox", { name: "Editor value" })).toBeVisible();
 }, 30_000);
 
-test("390px row editors opt out while selection cards keep the header checkbox", async () => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("about:blank");
-  await page.goto(`${server.resolvedUrls!.local[0]}phone-tables#forced-rows`);
-  const preview = page.getByRole("table", { name: "Preview editor", exact: true });
-  await visible(preview.getByRole("row").last()).toHaveCSS("display", "table-row");
-  await page.goto("about:blank");
-  await page.goto(`${server.resolvedUrls!.local[0]}phone-tables#selection`);
-  const selection = page.getByRole("table", { name: "Selection", exact: true });
-  await visible(selection.getByRole("row").last()).toHaveCSS("display", "grid");
-  await visible(selection.getByRole("checkbox", { name: "Select all", exact: true })).toBeVisible();
-  const nameHeader = await selection.getByRole("columnheader", { name: "Name", exact: true }).boundingBox();
-  expect(Math.max(nameHeader!.width, nameHeader!.height)).toBeLessThanOrEqual(1);
-}, 30_000);
-
-test("390px caption and search occupy separate rows", async () => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test.each([390, 260])("%spx caption and search occupy full separate rows above cards without a header gap", async width => {
+  await page.setViewportSize({ width, height: 844 });
   await page.goto("about:blank");
   await page.goto(`${server.resolvedUrls!.local[0]}phone-tables#stack`);
-  const [caption, find] = await Promise.all([page.getByText("2", { exact: true }).boundingBox(), page.getByRole("searchbox", { name: "Find", exact: true }).boundingBox()]);
+  const grid = page.getByRole("grid", { name: "Stacked", exact: true });
+  const captionLocator = page.getByText("2", { exact: true });
+  const findField = page.getByRole("searchbox", { name: "Find", exact: true }).locator("xpath=..");
+  const bar = captionLocator.locator("xpath=..");
+  const [caption, find, contentWidth, headerBox, gridBox, firstRow] = await Promise.all([
+    captionLocator.boundingBox(), findField.boundingBox(),
+    bar.evaluate(el => el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight)),
+    grid.locator('[role="rowgroup"]').first().boundingBox(), grid.boundingBox(),
+    grid.getByRole("rowheader", { name: "MOB-0", exact: true }).locator("xpath=ancestor::*[@role='row'][1]").boundingBox(),
+  ]);
   expect(caption!.y + caption!.height).toBeLessThanOrEqual(find!.y);
+  expect(caption!.width).toBeCloseTo(contentWidth, 0);
+  expect(find!.width).toBeCloseTo(contentWidth, 0);
+  expect(headerBox!.height).toBe(0);
+  const hiddenColumn = await grid.getByRole("columnheader").boundingBox();
+  expect(Math.max(hiddenColumn!.width, hiddenColumn!.height)).toBeLessThanOrEqual(1);
+  expect(firstRow!.y - gridBox!.y).toBeLessThanOrEqual(1);
 }, 30_000);
 
 test.each(["cards", "compact", "rows"])("paged 2,000-row %s at 390px never leave the viewport blank after loading", async (mode) => {

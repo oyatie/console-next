@@ -5,14 +5,14 @@ import { focusSoon, useRoutePresentation } from "./announce";
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useEffect: vi.fn() }));
 
 // A page with a heading, an optional open dialog, and a frame clock; `focused` records who has focus.
-function page() {
+function page(tagName = "H2") {
   let queue: FrameRequestCallback[] = [];
-  const state = { focused: "", dialog: false, inMain: false, keyboard: false, sourceManaged: false, targetManaged: false };
+  const state = { focused: "", dialog: false, inMain: false, keyboard: false, sourceManaged: false, targetManaged: undefined as boolean | undefined, managedCalls: 0 };
   const input = new EventTarget();
   const heading = {
-    id: "history", tagName: "H2", textContent: "People",
+    id: "history", tagName, textContent: "People",
     focus: () => (state.focused = "heading"),
-    toggleAttribute: (_: string, force: boolean) => (state.targetManaged = force),
+    toggleAttribute: (_: string, force: boolean) => { state.managedCalls++; state.targetManaged = force; },
   };
   vi.stubGlobal("document", {
     addEventListener: input.addEventListener.bind(input),
@@ -99,6 +99,25 @@ test("a managed heading does not pass a keyboard ring to the next managed headin
   frame();
   frame();
   expect(state.targetManaged).toBe(true);
+});
+
+test.each(["H1", "H2", "H6"])("heading %s marks managed focus only when keyboard focus was not visible", (tag) => {
+  const { state, frame } = page(tag);
+  state.keyboard = true;
+  focusSoon("history");
+  frame();
+  frame();
+  expect(state.managedCalls).toBe(1);
+  expect(state.targetManaged).toBe(false);
+});
+
+test.each(["DIV", "H0", "H7", "AUTH2", "H10"])("non-heading %s takes focus without toggling managed heading state", (tag) => {
+  const { state, frame } = page(tag);
+  focusSoon("history");
+  frame();
+  frame();
+  expect(state.focused).toBe("heading");
+  expect(state.managedCalls).toBe(0);
 });
 
 test("with no dialog the landmark gets focus on the second frame", () => {

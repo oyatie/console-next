@@ -1,6 +1,16 @@
-/* ui/action-bar: consequence above the actions (the sheet foot, inline). Tokens only. */
+/* ui/action-bar: consequence above the actions (the sheet foot, inline); sticky pins a full-page foot to the viewport bottom. Tokens only. */
 .bar { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
-.bar[data-sticky] { position: sticky; bottom: 0; z-index: 5; padding: var(--space-3) var(--space-5); border-top-color: var(--border); background: var(--canvas); }
+.bar[data-sticky] { position: sticky; bottom: 0; z-index: 5; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); margin-top: auto; padding: var(--space-3) var(--space-5); border-top-color: var(--border); background: var(--surface); }
+:global(.page) > .bar[data-sticky] { margin-inline: calc(var(--space-5) * -1); margin-bottom: calc(var(--space-5) * -1); }
+.bar[data-sticky] > :not(.consequence):not(.actions) { flex-basis: 100%; }
+.bar[data-sticky] > .consequence { flex: 1 1 calc(var(--card-w) / 2); min-width: 0; }
+.bar[data-sticky] > .actions { margin-inline-start: auto; }
 .consequence { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
 .consequence b, .consequence strong { font-weight: var(--fw-strong); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+.actions > span:has(> [aria-disabled="true"]):not([class*="disclosure"]) { display: contents; }
+.actions > span:has(> [aria-disabled="true"]):not([class*="disclosure"]) > :last-child { flex-basis: 100%; justify-content: flex-end; text-align: end; }
+@media (max-width: 767px) {
+  .bar[data-sticky] { padding-inline: var(--space-4); }
+  .bar[data-sticky] > .actions { flex-basis: 100%; }
+}

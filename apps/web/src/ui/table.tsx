@@ -31,23 +31,42 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   /** Keep row geometry on phones when an editing workflow depends on column alignment. */
   mobileLayout?: "cards" | "rows";
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const [active, setActive] = useState<string>();
   const [hasEditor, setHasEditor] = useState(false);
+  const [scrollState, setScrollState] = useState({ overflows: false, clipped: false, focusable: false });
+  const rowsOnPhone = mobileLayout === "rows" || hasEditor;
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
-    const measure = () => {
+    const sync = () => {
       const field = table.querySelector('tbody :is(input:not([type="checkbox"]), select, textarea, [contenteditable]:not([contenteditable="false"]))');
       const inlineCheck = table.querySelector('tbody input[type="checkbox"]') && !table.querySelector('thead input[type="checkbox"]');
-      setHasEditor(Boolean(field || inlineCheck));
+      const editor = Boolean(field || inlineCheck);
+      setHasEditor(editor);
+      const scroller = scrollerRef.current;
+      const overflows = Boolean(scroller && scroller.scrollWidth > scroller.clientWidth + 1);
+      const clipped = Boolean(overflows && scroller && scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1);
+      const focusable = editor || Boolean(table.querySelector('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+      setScrollState(prev => prev.overflows === overflows && prev.clipped === clipped && prev.focusable === focusable ? prev : { overflows, clipped, focusable });
     };
-    const observer = new MutationObserver(measure);
+    const observer = new MutationObserver(sync);
     observer.observe(table, { childList: true, subtree: true });
-    measure();
-    return () => observer.disconnect();
+    const resize = new ResizeObserver(sync);
+    resize.observe(table);
+    if (containerRef.current) resize.observe(containerRef.current);
+    const scroller = scrollerRef.current;
+    if (scroller) resize.observe(scroller);
+    scroller?.addEventListener("scroll", sync, { passive: true });
+    sync();
+    return () => {
+      observer.disconnect();
+      resize.disconnect();
+      scroller?.removeEventListener("scroll", sync);
+    };
   }, []);
-  const rowsOnPhone = mobileLayout === "rows" || hasEditor;
   const ids = (groups ? groups.flatMap(g => g.rows) : rows).map(rowId);
   const current = active && ids.includes(active) ? active : selected && ids.includes(selected) ? selected : ids[0];
   const key = (e: KeyboardEvent) => {
@@ -66,6 +85,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     setActive(next);
     tableRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next)}"]`)?.focus();
   };
+  const scrollableReadOnly = rowsOnPhone && scrollState.overflows && !onSelect && !scrollState.focusable;
   const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
   const roles = cardRoles(columns);
   const widths = columnWidths(columns);
@@ -96,7 +116,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     );
   });
   const table = (
-    <table ref={tableRef} className={`table ${rowsOnPhone ? cards.rows : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Overflowing read-only tables without focusable cells need keyboard scroll access.
+    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
       <caption className="sr-only">{label}</caption>
       {columns.some(c => c.type) && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
       <thead>
@@ -110,8 +131,10 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
       )) : <tbody>{renderRows(rows)}</tbody>}
     </table>
   );
-  return <>
-    {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to scroll a wide row editor. */}
-    <div className={`${cards.container} ${rowsOnPhone ? cards.scroll : ""}`} tabIndex={rowsOnPhone ? 0 : undefined} role={rowsOnPhone ? "region" : undefined} aria-label={rowsOnPhone ? label : undefined}>{table}</div>
-  </>;
+  return (
+    <div ref={containerRef} className={cards.container}>
+      <div ref={scrollerRef} className={rowsOnPhone ? cards.scroll : undefined}>{table}</div>
+      {rowsOnPhone && scrollState.clipped && <span className={cards.scrollCue} data-scroll-cue aria-hidden="true" />}
+    </div>
+  );
 }

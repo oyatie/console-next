@@ -64,33 +64,34 @@ export function GoLive() {
           const sole = p.warnings.some((w) => w.code === "sole_holder");
           const start = <Button variant="primary" disabled={run.isPending || refreshing} onClick={() => run.mutate(undefined)}>{t("setup.golive.start")}</Button>;
           return (
-            <section className="card panel form">
-              <StatRow items={[
-                { key: "entities", label: t("setup.golive.details.legal_entity"), value: fmtNumber(f.entities) },
-                { key: "workplaces", label: t("setup.golive.details.workplace"), value: fmtNumber(f.workplaces) },
-                { key: "registration-todo", label: t("setup.golive.registrationTodo"), value: fmtNumber(f.staffed_workplaces_without_registration + f.empty_workplaces_without_registration) },
-                { key: "units", label: t("setup.golive.details.units"), value: fmtNumber(f.org_units) },
-                { key: "people", label: t("setup.stats.people"), value: fmtNumber(f.employees) },
-                { key: "later", label: t("setup.golive.later"), value: fmtNumber(f.employees_starting_later) },
-                { key: "writes", label: t("setup.bulk.history"), value: fmtNumber(f.setup_writes) },
-              ]} />
-              <Blockers items={p.blockers} changed={changed} />
-              <Warnings items={p.warnings} changed={changed} />
-              <GoLiveDetails p={p} changed={changed} />
-              <section aria-labelledby="governed">
-                <SectionHead level={2} id="governed">{t("setup.golive.governed")}</SectionHead>
-                <ul className="steps-plain">{p.becomes_governed.map((code) => <li key={code}>{codeText(`setup.golive.becomes.${code}`, code)}</li>)}</ul>
+            <>
+              <section className="card panel form">
+                <StatRow items={[
+                  { key: "entities", label: t("setup.golive.details.legal_entity"), value: fmtNumber(f.entities) },
+                  { key: "workplaces", label: t("setup.golive.details.workplace"), value: fmtNumber(f.workplaces) },
+                  { key: "registration-todo", label: t("setup.golive.registrationTodo"), value: fmtNumber(f.staffed_workplaces_without_registration + f.empty_workplaces_without_registration) },
+                  { key: "units", label: t("setup.golive.details.units"), value: fmtNumber(f.org_units) },
+                  { key: "people", label: t("setup.stats.people"), value: fmtNumber(f.employees) },
+                  { key: "later", label: t("setup.golive.later"), value: fmtNumber(f.employees_starting_later) },
+                  { key: "writes", label: t("setup.bulk.history"), value: fmtNumber(f.setup_writes) },
+                ]} />
+                <Blockers items={p.blockers} changed={changed} />
+                <Warnings items={p.warnings} changed={changed} />
+                <GoLiveDetails p={p} changed={changed} />
+                <section aria-labelledby="governed">
+                  <SectionHead level={2} id="governed">{t("setup.golive.governed")}</SectionHead>
+                  <ul className="steps-plain">{p.becomes_governed.map((code) => <li key={code}>{codeText(`setup.golive.becomes.${code}`, code)}</li>)}</ul>
+                </section>
               </section>
-              {sole && <Check checked={ack} onChange={setAck}>{t("setup.golive.soleHolder")}</Check>}
               <ActionBar
+                sticky
                 notice={<CommandError error={run.error} own={onboardingError}>{changed.length > 0 && <ul>{changed.map((code) => <li key={code}>{codeText(`setup.golive.changed.${code}`, codeText(`setup.golive.item.${code}`, t("setup.golive.changed")))}</li>)}</ul>}</CommandError>}
-                consequence={<>{t("setup.golive.becomes.setup_undo_becomes_correction")} · {t("setup.golive.oneWay")}</>}
+                consequence={<>{sole && <Check checked={ack} onChange={setAck}>{t("setup.golive.soleHolder")}</Check>}{t("setup.golive.becomes.setup_undo_becomes_correction")} · {t("setup.golive.oneWay")}</>}
                 actions={
                   <>
                     <Link to="/" className="btn">{t("common.back")}</Link>
                     {p.blockers.length > 0 || (sole && !ack) || refreshing ? (
                       <DisabledReason
-                        layout="inline"
                         reason={refreshing ? t("setup.golive.refreshing") : p.blockers.length > 0 ? t("setup.golive.blocked", { count: p.blockers.length }) : t("setup.golive.ackNeeded")}
                         control={(c) => <Button variant="primary" {...c}>{t("setup.golive.start")}</Button>}
                       />
@@ -100,7 +101,7 @@ export function GoLive() {
                   </>
                 }
               />
-            </section>
+            </>
           );
         }}
       </QueryState>
