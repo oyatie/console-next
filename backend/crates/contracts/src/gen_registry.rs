@@ -5827,6 +5827,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/access/access-log",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__access-log.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/accounts/{accountId}/effective",
         operations: &[Operation {
             method: "get",
@@ -6893,6 +6902,14 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AccessLevel",
         body: include_str!("../../identity/rest/openapi/schemas/AccessLevel.yaml"),
+    },
+    NamedYaml {
+        name: "AccessLogEvent",
+        body: include_str!("../../identity/rest/openapi/schemas/AccessLogEvent.yaml"),
+    },
+    NamedYaml {
+        name: "AccessLogPage",
+        body: include_str!("../../identity/rest/openapi/schemas/AccessLogPage.yaml"),
     },
     NamedYaml {
         name: "AccessPerson",

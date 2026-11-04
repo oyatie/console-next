@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [event_id, created_at, occurred_at, actor_id, actor_name, principal_type, action, target_type, subject_count, ip, outcome, export_purpose, row_count, flags]
+properties:
+  event_id:
+    type: string
+    format: uuid
+  created_at:
+    type: string
+    format: date-time
+  occurred_at:
+    type: string
+    format: date-time
+  actor_id:
+    type: [string, 'null']
+    format: uuid
+  actor_name:
+    type: string
+  principal_type:
+    type: string
+  action:
+    type: string
+  target_type:
+    type: string
+  subject_count:
+    type: integer
+    minimum: 0
+  ip:
+    type: [string, 'null']
+  outcome:
+    type: string
+    enum: [ALLOWED, DENIED]
+  export_purpose:
+    type: [string, 'null']
+  row_count:
+    type: [integer, 'null']
+  flags:
+    type: array
+    uniqueItems: true
+    items:
+      type: string
+      enum: [download, download_repeat, off_hours, bulk_subjects, sensitive_read, repeated_denial]

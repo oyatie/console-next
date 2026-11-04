@@ -921,6 +921,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/access-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tenant access records with monthly flag totals
+         * @description Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period and flagged filter. Defaults to the current month in the configured review time zone. Read failures return no records if their access record cannot be stored.
+         */
+        get: operations["listAccessLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/accounts/{accountId}/effective": {
         parameters: {
             query?: never;
@@ -14725,6 +14745,46 @@ export interface components {
          * @enum {string}
          */
         AccessLevel: "view" | "edit" | "approve" | "export";
+        AccessLogEvent: {
+            /** Format: uuid */
+            event_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            occurred_at: string;
+            /** Format: uuid */
+            actor_id: string | null;
+            actor_name: string;
+            principal_type: string;
+            action: string;
+            target_type: string;
+            subject_count: number;
+            ip: string | null;
+            /** @enum {string} */
+            outcome: "ALLOWED" | "DENIED";
+            export_purpose: string | null;
+            row_count: number | null;
+            flags: ("download" | "download_repeat" | "off_hours" | "bulk_subjects" | "sensitive_read" | "repeated_denial")[];
+        };
+        AccessLogPage: {
+            period: {
+                /** Format: date */
+                from: string;
+                /** Format: date */
+                to: string;
+                time_zone: string;
+                closed: boolean;
+            };
+            totals: {
+                events: number;
+                flagged: number;
+                by_flag: {
+                    [key: string]: number;
+                };
+            };
+            items: components["schemas"]["AccessLogEvent"][];
+            next_cursor: string | null;
+        };
         /** @description Access-screen account labels and state. Contact details and unrelated HR facts are excluded. */
         AccessPerson: {
             id: components["schemas"]["Uuid"];
@@ -32472,6 +32532,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TargetChangeRequestSummary"];
+                };
+            };
+        };
+    };
+    listAccessLog: {
+        parameters: {
+            query?: {
+                period?: string;
+                flagged?: boolean;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Monthly totals and one keyset page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description period_invalid, limit_out_of_range or cursor_invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };

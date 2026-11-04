@@ -14,6 +14,7 @@ use console_platform_access::AccessService;
 use console_platform_auth::JwtVerifier;
 
 pub const ACCESS_CATALOG_PATH: &str = "/api/v1/access/catalog";
+pub const ACCESS_LOG_PATH: &str = "/api/v1/access/access-log";
 pub const ACCESS_ROLES_PATH: &str = "/api/v1/access/roles";
 pub const ACCESS_ROLE_PATH: &str = "/api/v1/access/roles/{roleId}";
 pub const ACCESS_ROLE_STATUS_PATH: &str = "/api/v1/access/roles/{roleId}/status";
@@ -33,6 +34,7 @@ pub const ACCESS_GRANTERS_PATH: &str = "/api/v1/access/granters";
 /// Every route this face serves (the app's surface registry).
 pub const ACCESS_ROUTE_PATHS: &[&str] = &[
     ACCESS_CATALOG_PATH,
+    ACCESS_LOG_PATH,
     ACCESS_ROLES_PATH,
     ACCESS_ROLE_PATH,
     ACCESS_ROLE_STATUS_PATH,
@@ -73,6 +75,7 @@ pub fn router(state: AccessRestState) -> Router {
     let pool = state.service.pool().clone();
     let router = Router::new()
         .route(ACCESS_CATALOG_PATH, get(catalog::get_catalog))
+        .route(ACCESS_LOG_PATH, get(h::access_log))
         .route(ACCESS_ROLES_PATH, get(h::list_roles).post(h::create_role))
         .route(
             ACCESS_ROLE_PATH,

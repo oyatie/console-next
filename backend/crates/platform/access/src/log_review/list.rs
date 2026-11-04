@@ -32,6 +32,19 @@ pub struct Prepared {
 }
 
 impl Prepared {
+    pub(super) fn period(&self, period: &str) -> AccessResult<Value> {
+        let from = period_day(period)?;
+        let to = Date::from_calendar_date(
+            from.year() + i32::from(from.month() == Month::December),
+            from.month().next(),
+            1,
+        )
+        .map_err(AccessError::internal)?;
+        Ok(
+            json!({"from":from.to_string(),"to":to.to_string(),"time_zone":self.rules.time_zone,
+            "closed":self.to <= OffsetDateTime::now_utc()}),
+        )
+    }
     pub(super) async fn due(
         &self,
         conn: &mut PgConnection,
@@ -85,7 +98,7 @@ events AS (
      (a.occurred_at AT TIME ZONE r.time_zone)::date=ANY(r.holidays)) AS off_hours
  FROM audit_events a CROSS JOIN rules r
  WHERE a.org_id=$1 AND a.created_at >= $2 AND a.created_at < $3
-   AND a.after_snap ? 'self_read'
+   AND a.after_snap ? 'self_read' AND ($7::timestamptz IS NULL OR a.created_at < $7)
 "#;
 
 // The only flag predicates; wire codes come from FLAG_CODES in predicate order.
@@ -123,12 +136,16 @@ pub(super) fn period_day(period: &str) -> AccessResult<Date> {
     {
         return Err(invalid());
     }
-    Date::from_calendar_date(
+    let day = Date::from_calendar_date(
         year.parse().map_err(|_| invalid())?,
         Month::try_from(month.parse::<u8>().map_err(|_| invalid())?).map_err(|_| invalid())?,
         1,
     )
-    .map_err(|_| invalid())
+    .map_err(|_| invalid())?;
+    if day.year() == Date::MAX.year() && day.month() == Month::December {
+        return Err(invalid());
+    }
+    Ok(day)
 }
 
 /// Calculate the frozen evidence once; no review is created by this projection.
@@ -139,12 +156,22 @@ pub async fn prepare_in_tx(
     org: OrgId,
     period: &str,
 ) -> AccessResult<Prepared> {
+    prepare(conn, org, period, true, None).await
+}
+
+pub(super) async fn prepare(
+    conn: &mut PgConnection,
+    org: OrgId,
+    period: &str,
+    require_closed: bool,
+    as_of: Option<OffsetDateTime>,
+) -> AccessResult<Prepared> {
     let day = period_day(period)?;
     let rules = Rules::load(conn, org).await?;
     let (from,to,closed): (OffsetDateTime,OffsetDateTime,bool) = sqlx::query_as(
         "SELECT f,t,t<=now() FROM (SELECT $1::date::timestamp AT TIME ZONE $2 AS f,($1::date+interval '1 month') AT TIME ZONE $2 AS t) b")
         .bind(day).bind(&rules.time_zone).fetch_one(&mut *conn).await?;
-    if !closed {
+    if require_closed && !closed {
         return Err(AccessError::invalid(
             "period_not_closed",
             "period is still open",
@@ -170,6 +197,7 @@ pub async fn prepare_in_tx(
         .bind(json!(rules))
         .bind(SENSITIVE_READS)
         .bind(FLAG_CODES)
+        .bind(as_of)
         .fetch_one(conn)
         .await?;
     Ok(Prepared {
@@ -193,12 +221,28 @@ pub async fn page_in_tx(
     limit: i64,
     flagged: bool,
 ) -> AccessResult<Vec<FlaggedEvent>> {
+    page_at(conn, prepared, cursor, limit, flagged, None).await
+}
+
+pub(super) fn validate_limit(limit: i64) -> AccessResult<()> {
     if !(1..=super::MAX_PAGE_SIZE).contains(&limit) {
         return Err(AccessError::invalid(
             "limit_out_of_range",
             format!("limit must be 1..{}", super::MAX_PAGE_SIZE),
         ));
     }
+    Ok(())
+}
+
+pub(super) async fn page_at(
+    conn: &mut PgConnection,
+    prepared: &Prepared,
+    cursor: Option<(OffsetDateTime, Uuid)>,
+    limit: i64,
+    flagged: bool,
+    as_of: Option<OffsetDateTime>,
+) -> AccessResult<Vec<FlaggedEvent>> {
+    validate_limit(limit)?;
     if flagged {
         let start = cursor.map_or(0, |c| {
             prepared
@@ -216,7 +260,8 @@ pub async fn page_in_tx(
     let mut rows: Vec<FlaggedEvent> = sqlx::query_as(
         "SELECT id AS event_id,created_at,ARRAY[]::text[] AS flags FROM audit_events \
          WHERE org_id=$1 AND created_at >= $2 AND created_at < $3 AND after_snap ? 'self_read' \
-         AND ($4::timestamptz IS NULL OR (created_at,id)>($4,$5)) ORDER BY created_at,id LIMIT $6",
+         AND ($4::timestamptz IS NULL OR (created_at,id)>($4,$5)) \
+         AND ($7::timestamptz IS NULL OR created_at < $7) ORDER BY created_at,id LIMIT $6",
     )
     .bind(prepared.org.as_uuid())
     .bind(prepared.from)
@@ -224,6 +269,7 @@ pub async fn page_in_tx(
     .bind(cursor.map(|c| c.0))
     .bind(cursor.map(|c| c.1))
     .bind(limit)
+    .bind(as_of)
     .fetch_all(conn)
     .await?;
     for row in &mut rows {

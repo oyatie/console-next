@@ -325,6 +325,13 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/access/access-log",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__access__access-log.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/accounts/{accountId}/effective",
         operations: &[Operation {
             method: "get",
@@ -1225,6 +1232,14 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AccessLevel",
         body: include_str!("../openapi/schemas/AccessLevel.yaml"),
+    },
+    NamedYaml {
+        name: "AccessLogEvent",
+        body: include_str!("../openapi/schemas/AccessLogEvent.yaml"),
+    },
+    NamedYaml {
+        name: "AccessLogPage",
+        body: include_str!("../openapi/schemas/AccessLogPage.yaml"),
     },
     NamedYaml {
         name: "AccessPerson",
