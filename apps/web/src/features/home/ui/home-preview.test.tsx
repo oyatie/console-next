@@ -30,7 +30,6 @@ test("Home keeps the first queue page without duplicating the full inbox views",
   expect(markup.match(/<tr data-id=/g)).toHaveLength(5);
   expect(markup).not.toContain("later-page");
   expect(markup).not.toContain(t("home.inbox.more"));
-  expect(markup).not.toContain(`aria-label="${t("home.lanes")}"`);
   expect(markup).toContain(`href="/inbox">${t("home.inbox.viewInbox")}`);
 });
 
@@ -63,4 +62,20 @@ test.each([
   const markup = html();
   expect(markup.includes('href="/inbox"')).toBe(visible);
   expect(markup.includes(`aria-label="${t("home.attention.label")}"`)).toBe(visible);
+});
+
+test("Home keeps server-counted lane links when attention filters are absent", () => {
+  view.pages = [{ ...page(7), available_filters: ["turn", "scheduled", "waiting", "deadlines", "failures"], counts: {
+    turn: { total: 31, total_is_exact: false }, scheduled: { total: 0, total_is_exact: true },
+    waiting: { total: 2, total_is_exact: true }, deadlines: { total: 1, total_is_exact: true }, failures: { total: 0, total_is_exact: true },
+  } }];
+  const markup = html();
+  expect(markup).toContain(`aria-label="${t("home.lanes")}"`);
+  expect(markup).not.toContain(`aria-label="${t("home.attention.label")}"`);
+  for (const key of view.pages[0]!.available_filters) {
+    const count = view.pages[0]!.counts[key]!;
+    const label = t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total });
+    expect(markup).toContain(`href="/inbox?tab=${key}"`);
+    expect(markup).toContain(label);
+  }
 });
