@@ -21,6 +21,7 @@ export function AccountMenu({ id, name, onLogout }: { id: string; name: string; 
         <Popover className={menu.pop} placement="bottom end">
           <Menu className={menu.menu} aria-label={t("shell.account")}>
             <MenuItem className={menu.item} href="/account">{t("shell.account")}</MenuItem>
+            <MenuItem className={menu.item} href="/account/privacy">{t("account.privacy.title")}</MenuItem>
             <SubmenuTrigger>
               <MenuItem className={menu.item} textValue={t("shell.locale")}>{t("shell.locale")}<ChevronRight size={14} aria-hidden /></MenuItem>
               <Popover className={menu.pop} placement="bottom end">

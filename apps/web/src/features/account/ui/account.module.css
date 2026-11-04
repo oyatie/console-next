@@ -7,3 +7,4 @@
 @media (max-width: 767px) { .nowrap.nowrap.nowrap { white-space: normal; } }
 
 .notice { white-space: pre-wrap; overflow-wrap: anywhere; }
+.form { display: flex; flex-direction: column; gap: var(--space-4); }

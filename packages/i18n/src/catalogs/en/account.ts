@@ -99,4 +99,11 @@ export const enAccount: Partial<Record<keyof typeof koAccount, string>> = {
   "account.privacy.retentionPending": "【확인 필요】 Retention period not set",
   "account.privacy.empty.title": "No rights requests received",
   "account.privacy.more": "Load more requests",
+  "account.privacy.file": "New rights request",
+  "account.privacy.information": "Which information",
+  "account.privacy.detailHint": "Items and period to review",
+  "account.privacy.reply": "Reply: in-app notice",
+  "account.privacy.deadline": "We will notify you of the result by {date}",
+  "account.privacy.identity": "Verify your identity with a passkey when submitting",
+  "account.privacy.submit": "Submit request",
 };

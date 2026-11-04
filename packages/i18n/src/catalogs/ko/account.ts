@@ -102,4 +102,11 @@ export const koAccount = {
   "account.privacy.retentionPending": "【확인 필요】 보존 기간 미정",
   "account.privacy.empty.title": "접수한 권리 요구가 없습니다",
   "account.privacy.more": "요구 내역 더 보기",
+  "account.privacy.file": "새 권리 요구",
+  "account.privacy.information": "어떤 정보",
+  "account.privacy.detailHint": "확인할 항목 · 기간",
+  "account.privacy.reply": "회신: 앱 내 통지",
+  "account.privacy.deadline": "{date}까지 결과를 알립니다",
+  "account.privacy.identity": "접수할 때 패스키로 본인을 확인합니다",
+  "account.privacy.submit": "요구 접수",
 } as const;

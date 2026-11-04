@@ -9,7 +9,7 @@ import type { ApprovalDecision, ApprovalDecisionReceipt, ApprovalDocument } from
 export type { ApprovalDecision, ApprovalDocument, ApprovalItem, ApprovalPage, ApprovalQuery, ApprovalViewer } from "./approvals";
 import type { PayrollPaths } from "./payroll";
 import type { PrivacyPaths } from "./privacy";
-export type { PrivacyRightsReceipt, PrivacyRightsPage } from "./privacy";
+export type { PrivacyRightsReceipt, PrivacyRightsPage, PrivacyFiling, PrivacyFilingOptions } from "./privacy";
 export type { PayGroup, PayGroups, PayrollRate, PayrollRates, PayrollRun, PayrollRunDetail } from "./payroll";
 import type { StatutoryPaths } from "./statutory";
 export type { FilingTask, FilingPage, RegisterPage, RecordFiling, FilingFacts, FilingReason, FilingCitation } from "./statutory";
