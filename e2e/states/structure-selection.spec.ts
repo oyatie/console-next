@@ -120,7 +120,7 @@ for (const view of ["chart", "outline", "list", "panel"]) {
   });
 }
 
-for (const view of ["chart", "panel"]) for (const outcome of ["draft", "preflight_blocked", "invalid_change"]) test(`org: inline ${view} ${outcome} keeps the next action honest @ui-state`, async ({ page }) => {
+for (const view of ["chart", "panel"]) for (const outcome of ["draft", "preflight_blocked", "invalid_change"]) test(`org: inline ${view} ${outcome} without a note keeps the next action honest @ui-state`, async ({ page }) => {
   const { fixture, workplace, dept } = await operating(page);
   const draft = { ...orgChange("draft"), effectiveDate: "2026-11-04" };
   let submitted = 0;
@@ -138,7 +138,7 @@ for (const view of ["chart", "panel"]) for (const outcome of ["draft", "prefligh
   try {
     const name = await edit(page, view, workplace.name, dept.name);
     await name.fill("미래팀");
-    await reason(page);
+    await expect(page.getByRole("button", { name: `${t("orgUnit.gov.reason")} · ${t("orgUnit.gov.reasonNew")}`, exact: true })).toBeVisible();
     if (outcome === "draft") await page.getByRole("button", { name: t("composer.saveDraft"), exact: true }).click();
     else await name.press("Enter");
     if (outcome === "invalid_change") {
@@ -149,7 +149,7 @@ for (const view of ["chart", "panel"]) for (const outcome of ["draft", "prefligh
       await expect(page).toHaveURL(new RegExp(`/org/changes/${draft.id}\\?done=drafted${outcome === "preflight_blocked" ? "&unsent=true" : "$"}`));
     }
     expect(submitted).toBe(outcome === "draft" ? 0 : 1);
-    expect(payloads).toEqual([expect.objectContaining({ reason: "조직 운영 계획", effectiveDate: "2026-11-04" })]);
+    expect(payloads).toEqual([expect.objectContaining({ kind: "NEW", reason: "NEW", effectiveDate: "2026-11-04" })]);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
