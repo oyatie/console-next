@@ -638,3 +638,9 @@ test("non-legacy entity field surfaces read their empty marker from the catalog"
   expect(files.length).toBeGreaterThan(0);
   for (const file of files) expect(readFileSync(path.join(root, file), "utf8"), file).not.toMatch(/(["'`])—\1/);
 });
+
+test("the shared approval decision card is canonical while local copies remain refused", () => {
+  const file = "apps/web/src/features/approvals/ui/approval-viewer.tsx";
+  expect(checkComposer(file, 'import { ApprovalCard } from "../../../ui/approval-card/approval-card"; <ApprovalCard />')).toEqual([]);
+  expect(checkComposer(file, 'import { ApprovalCard } from "./approval-card"; <ApprovalCard />').join("\n")).toContain("parallel governed frame");
+});

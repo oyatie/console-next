@@ -3,7 +3,8 @@ import { useState } from "react";
 import { t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { Section } from "../../../gallery/Section";
-import type { ApprovalItem } from "../api";
+import type { ApprovalDocument, ApprovalItem } from "../api";
+import { ApprovalDocumentView } from "./approval-viewer";
 import { ApprovalInboxView } from "./approvals-page";
 
 export const order = 127;
@@ -15,7 +16,19 @@ const item: ApprovalItem = {
   route: [{ id: "draft", label: tg("form.submit"), assignee: tg("blocker.ceo"), state: "done" }, { id: "approve", label: tg("reason.label"), assignee: tg("blocker.exec"), state: "current" }],
   viewer: { kind: "org_change", id: "change-1" },
 };
+const document: ApprovalDocument = {
+  ...item,
+  body: [{ key: "change", label: tg("blocker.routeTitle"), value: tg("blocker.routeBody") }],
+  revision: 1,
+  fingerprint: "sha256:approval-gallery-r1",
+  consequence: tg("blocker.routeBody"),
+  opinion_max: 1000,
+  my_actions: { kind: "none" },
+};
 export default function ApprovalsGallery() {
   const [selected, setSelected] = useState(false);
-  return <Section title={t("approvals.title")}><ApprovalInboxView items={[item]} selected={selected ? item : undefined} onSelect={() => setSelected(true)} onClose={() => setSelected(false)} /></Section>;
+  return <Section title={t("approvals.title")}>
+    <ApprovalInboxView items={[item]} selected={selected ? item : undefined} onSelect={() => setSelected(true)} onClose={() => setSelected(false)} />
+    <ApprovalDocumentView document={document} />
+  </Section>;
 }

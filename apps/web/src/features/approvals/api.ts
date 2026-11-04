@@ -1,40 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { api, unwrap } from "@console/api";
 import { read } from "../../lib/query";
-import type { ApprovalBox } from "./domain/inbox";
 
-export type ApprovalViewer =
-  | { kind: "org_change" | "employee" | "exit_case" | "support_session" | "change_request" | "period_lock" | "statutory"; id: string }
-  | { kind: "account"; id?: string };
+import type { ApprovalDecision, ApprovalQuery, ApprovalPage } from "@console/api/pending";
+export type { ApprovalViewer, ApprovalItem, ApprovalDocument, ApprovalDecision } from "@console/api/pending";
 
-export type ApprovalItem = {
-  id: string;
-  box: ApprovalBox;
-  title: string;
-  summary: string;
-  document_no?: string | null;
-  source: { key: string; label: string };
-  status: { key: string; label: string; tone: "ok" | "warn" | "danger" | "info" | "neutral" };
-  requester?: { id: string; name: string; role?: string | null } | null;
-  requested_at: string;
-  due_at?: string | null;
-  facts: { key: string; label: string; value: string }[];
-  route: { id: string; label: string; assignee?: string | null; state: "done" | "current" | "waiting" | "failed"; meta?: string | null }[];
-  viewer?: ApprovalViewer | null;
-};
-
-type ApprovalPage = {
-  items: ApprovalItem[];
-  focused?: ApprovalItem | null;
-  counts: Record<ApprovalBox, number>;
-  sources: { key: string; label: string; count: number }[];
-  next_cursor?: string | null;
-};
-
-type ApprovalQuery = { box: ApprovalBox; q?: string; source?: string; focus?: string; cursor?: string };
-type UntypedGet = (path: string, init: { params: { query: ApprovalQuery } }) => Promise<{ data?: ApprovalPage; error?: unknown; response: Response }>;
-const getUntyped = api.GET as unknown as UntypedGet;
-const page = (query: ApprovalQuery) => unwrap(getUntyped("/api/v1/approvals", { params: { query } }));
+const page = (query: ApprovalQuery) => unwrap(api.GET("/api/v1/approvals", { params: { query } }));
 
 /** Canonical approval projection; queue membership, facets and preview fields are server decisions. */
 export const approvalPages = (query: Omit<ApprovalQuery, "cursor">) => ({
@@ -43,3 +14,7 @@ export const approvalPages = (query: Omit<ApprovalQuery, "cursor">) => ({
   initialPageParam: undefined as string | undefined,
   getNextPageParam: (last: ApprovalPage) => last.next_cursor ?? undefined,
 });
+
+export const approvalDocumentQuery = (id: string) => read("/api/v1/approvals/{id}", () => unwrap(api.GET("/api/v1/approvals/{id}", { params: { path: { id } } })), { id });
+export const decideApproval = (id: string, body: ApprovalDecision, key: string) =>
+  unwrap(api.POST("/api/v1/approvals/{id}/decision", { params: { path: { id } }, headers: { "Idempotency-Key": key }, body }));

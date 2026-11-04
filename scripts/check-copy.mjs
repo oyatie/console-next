@@ -55,6 +55,10 @@ export function checkComposer(file, text) {
   classify(source);
   const governed = /\b(?:Composer|LifecycleFrame|ApprovalCard|recordLifecycleEvent|correctEmployee|changeEmployeeNumber|useRegister|useBulkCommand|useLifecycleCommand|useExitCommand|changeCommands)\b/.test(text) || (write && (sheet || governedBody));
   if (!governed) return [];
+  const sharedApprovalCard = source.statements.some(node => ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
+    && /(?:^|\/)ui\/approval-card\/approval-card$/.test(node.moduleSpecifier.text)
+    && node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)
+    && node.importClause.namedBindings.elements.some(binding => binding.name.text === "ApprovalCard" && (binding.propertyName?.text ?? binding.name.text) === "ApprovalCard"));
   const problems = [];
   const visit = (node) => {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
@@ -62,7 +66,7 @@ export function checkComposer(file, text) {
       const attributes = node.attributes.properties.filter(ts.isJsxAttribute);
       const attr = (name) => attributes.find((a) => a.name.getText(source) === name)?.initializer?.getText(source) ?? "";
       const refuse = (why) => problems.push(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}: composer.verb: ${why}; use Composer's typed action and canonical dismiss [${digest(node.getText(source))}]`);
-      if (["LifecycleFrame", "ApprovalCard", "Sheet"].includes(tag)) refuse("parallel governed frame");
+      if (["LifecycleFrame", "Sheet"].includes(tag) || (tag === "ApprovalCard" && !sharedApprovalCard)) refuse("parallel governed frame");
       if (tag === "Composer" && attributes.some((a) => ["commit", "dismissLabel", "actions"].includes(a.name.getText(source)))) refuse("per-screen commit/dismiss label");
       if (tag === "Button" || tag === "button") {
         if ((/^["']submit["']$/.test(attr("type")) || (governed && /\.(?:mutate|submit)\(/.test(attr("onClick")))) && !node.parent.getText(source).includes("commitLabel(")) refuse("per-screen commit control");

@@ -45,7 +45,7 @@ export function ApprovalCard(p: ReturnProps & {
   /** The reason field for the open form (codes + memo). */
   reason: (form: Form) => ReactNode;
   /** The reason field is complete (a code; "other" with a memo). */
-  reasonComplete: boolean;
+  reasonComplete: boolean | ((form: Form) => boolean);
   /** What is missing while it is not, beside the commit (defaults to choosing a reason code). */
   reasonMissing?: ReactNode;
   onApprove: () => void;
@@ -63,12 +63,32 @@ export function ApprovalCard(p: ReturnProps & {
   next?: ReactNode;
 }) {
   const [form, setForm] = useState<Form>();
+  const rejectButton = useRef<HTMLButtonElement>(null);
+  const returnButton = useRef<HTMLButtonElement>(null);
+  const lastForm = useRef<Form>(undefined);
+  const cardBox = useRef<HTMLElement>(null);
   const formHead = useRef<HTMLHeadingElement>(null);
   const id = useId();
   useEffect(() => {
-    if (form) formHead.current?.focus();
+    if (form) {
+      lastForm.current = form;
+      formHead.current?.focus();
+    } else if (lastForm.current) (lastForm.current === "return" ? returnButton : rejectButton).current?.focus();
   }, [form]);
   const busy = p.pending !== undefined;
+  const complete = typeof p.reasonComplete === "function" ? Boolean(form && p.reasonComplete(form)) : p.reasonComplete;
+  useEffect(() => {
+    const box = cardBox.current;
+    if (!form || !box || busy) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setForm(undefined);
+    };
+    box.addEventListener("keydown", escape);
+    return () => box.removeEventListener("keydown", escape);
+  }, [form, busy]);
 
   if (p.receipt) {
     return (
@@ -83,7 +103,7 @@ export function ApprovalCard(p: ReturnProps & {
   }
 
   return (
-    <article className={`card ${css.card}`} aria-busy={busy || undefined}>
+    <article ref={cardBox} className={`card ${css.card}`} aria-busy={busy || undefined}>
       {p.progress && <div className={css.progress}>{p.progress}</div>}
       <div className={css.body}>
         <div className={css.eyebrow}>{p.eyebrow}</div>
@@ -101,11 +121,11 @@ export function ApprovalCard(p: ReturnProps & {
           <div className={css.bar}>
             <Button className="btn" isDisabled={busy} onPress={() => setForm(undefined)}>{t("uiApprovalCard.back")}</Button>
             <span className={css.spacer} />
-            {!p.reasonComplete && <span id={`${id}-why`} className={css.why}>{p.reasonMissing ?? t("uiApprovalCard.reasonMissing")}</span>}
+            {!complete && <span id={`${id}-why`} className={css.why}>{p.reasonMissing ?? t("uiApprovalCard.reasonMissing")}</span>}
             <Button
               className={`btn ${form === "reject" ? "btn--danger" : "btn--primary"}`}
-              isDisabled={!p.reasonComplete || busy}
-              aria-describedby={p.reasonComplete ? `${id}-then` : `${id}-why`}
+              isDisabled={!complete || busy}
+              aria-describedby={complete ? `${id}-then` : `${id}-why`}
               onPress={form === "reject" ? p.onReject : p.onReturn}
             >
               {form === "reject" ? p.rejectLabel : p.returnLabel}
@@ -119,8 +139,8 @@ export function ApprovalCard(p: ReturnProps & {
             {p.approveBlocked && <span id={`${id}-blocked`} className={`${css.why} ${css.whyLine}`}>{p.approveBlocked}</span>}
             {p.meta && <span className={css.meta}>{p.meta}</span>}
             <span className={css.spacer} />
-            <Button className="btn" isDisabled={busy} onPress={() => setForm("reject")}>{t("uiApprovalCard.reject")}</Button>
-            {p.onReturn && <Button className="btn" isDisabled={busy} onPress={() => setForm("return")}>{t("uiApprovalCard.return")}</Button>}
+            <Button ref={rejectButton} className="btn" isDisabled={busy} onPress={() => setForm("reject")}>{t("uiApprovalCard.reject")}</Button>
+            {p.onReturn && <Button ref={returnButton} className="btn" isDisabled={busy} onPress={() => setForm("return")}>{t("uiApprovalCard.return")}</Button>}
             <Button
               className="btn btn--primary"
               isDisabled={Boolean(p.approveBlocked) || busy}

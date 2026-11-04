@@ -52,6 +52,7 @@
     "budget_kb": 252,
     "routes": [
       "src/features/account/Account.tsx",
+      "src/features/approvals/ui/approval-viewer.tsx",
       "src/features/org/OrgChange.tsx",
       "src/features/payroll/ui/run-page.tsx",
       "src/features/people/ui/card-page.tsx",

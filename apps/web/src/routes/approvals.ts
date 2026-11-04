@@ -15,3 +15,11 @@ export const approvalsRoute = createRoute({
   },
   component: lazyRouteComponent(screen(() => import("../features/approvals/ui/approvals-page")), "ApprovalsPage"),
 });
+
+export const approvalViewerRoute = createRoute({
+  getParentRoute: () => app,
+  path: "/approvals/$approvalId",
+  staticData: { access: "signed-in", module: APPROVALS_MODULE, floorplan: "P-02" },
+  remountDeps: ({ params }) => params.approvalId,
+  component: lazyRouteComponent(screen(() => import("../features/approvals/ui/approval-viewer")), "ApprovalViewerPage"),
+});
