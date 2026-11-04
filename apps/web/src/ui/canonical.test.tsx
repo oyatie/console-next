@@ -103,6 +103,8 @@ test("the page head has the one h1; crumbs mark only the current place and hide 
 test("the action bar states the consequence before the actions", () => {
   const bar = html(<ActionBar consequence={x} actions={y} />);
   expect(bar.indexOf(">x<")).toBeLessThan(bar.indexOf(">y<"));
+  expect(bar).not.toContain("data-sticky");
+  expect(html(<ActionBar sticky actions={y} />)).toContain('data-sticky="true"');
   expect(html(<ActionBar actions={y} />)).not.toContain(">x<");
 });
 
