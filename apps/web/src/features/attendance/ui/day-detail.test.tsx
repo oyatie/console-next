@@ -64,6 +64,7 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   await visible(grids.nth(0)).toHaveAttribute("aria-rowcount", "3");
   await visible(grids.nth(1)).toHaveAttribute("aria-rowcount", "4");
   const input = page.getByRole("textbox", { name: /^0-0 입력/ });
+  await visible(input).toHaveAccessibleName(t("attendanceRecords.detail.inputFor", { name: "0-0" }));
   // Enter the grid as a user: fill() alone starts React Aria's deferred virtual row focus.
   if (entry === "pointer") await input.click();
   else {

@@ -26,6 +26,27 @@ export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }:
   const typed = draft ? (start !== undefined ? draft.value.slice(draft.value.indexOf("-") + 1) : draft.value) : "";
   const state = draft ? draftState(draft, row.day.plan.kind) : null;
   const inline = !row.own && !closed(row.month_state) && (mark === "MISSING_OUT" || mark === "NO_RECORD");
+  const action = row.day.plan.kind === "NO_SCHEDULE" ? (
+    <Button size="sm" onClick={onAssign}>{t("attendanceRecords.unscheduled.assign")}</Button>
+  ) : inline ? (
+    <Field label={t(start !== undefined ? "attendanceRecords.board.out" : "attendanceRecords.board.record", { name: row.name })} required={null} error={state && !state.ok ? refusalText(state.code) : undefined}>
+      {(p) => (
+        <TextInput
+          {...p}
+          aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")}
+          value={typed}
+          maxLength={40}
+          placeholder={undefined}
+          onChange={(e) => {
+            const v = e.target.value.trim();
+            onDraft(v ? (start !== undefined ? `${clock(start)}-${v}` : v) : null);
+          }}
+        />
+      )}
+    </Field>
+  ) : (
+    <Button size="sm" onClick={onOpen}>{t("attendanceRecords.board.open")}</Button>
+  );
   return (
     <div className={s.boardRow}>
       <span aria-hidden>{tone ? GLYPH[tone] : ""}</span>
@@ -35,27 +56,10 @@ export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }:
       </span>
       <DayBar day={row.day} />
       <span>{mark && <strong>{t(`attendanceRecords.mark.${mark}`)} </strong>}{problemText(row)}{row.day.entry && <><br /><Chip>{t(`attendanceRecords.source.${row.day.entry.source}`)}</Chip></>}</span>
-      {row.day.plan.kind === "NO_SCHEDULE" ? (
-        <Button size="sm" onClick={onAssign}>{t("attendanceRecords.unscheduled.assign")}</Button>
-      ) : inline ? (
-        <Field label={t(start !== undefined ? "attendanceRecords.board.out" : "attendanceRecords.board.record", { name: row.name })} required={false} error={state && !state.ok ? refusalText(state.code) : undefined}>
-          {(p) => (
-            <TextInput
-              {...p}
-              aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")}
-              value={typed}
-              maxLength={40}
-              placeholder={undefined}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                onDraft(v ? (start !== undefined ? `${clock(start)}-${v}` : v) : null);
-              }}
-            />
-          )}
-        </Field>
-      ) : (
-        <Button size="sm" onClick={onOpen}>{t("attendanceRecords.board.open")}</Button>
-      )}
+      <div className={s.rowAction} role="group" aria-label={t("attendanceRecords.board.nextActionFor", { name: row.name })}>
+        <div className={`${s.actionLabel} muted`}>{t("attendanceRecords.board.nextAction")}</div>
+        {action}
+      </div>
     </div>
   );
 }

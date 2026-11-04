@@ -8,6 +8,7 @@ import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
 import { Button, IconButton } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { Kbd } from "../../../ui/kbd/kbd";
@@ -136,14 +137,14 @@ export function MonthTab({ head }: { head?: ReactNode }) {
             search.wp || search.unit ? (
               <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.empty.filteredReason")} actions={<Button onClick={() => go({ wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
             ) : (
-              <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
+              <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }} className={buttonClass("primary")}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
             )
           ) : (
             <>
+              <MonthGridView rows={rows} total={total} days={days} store={store} range={range} onRange={(r) => (setNote(null), setRange(r))} act={act} />
               {rows.every((r) => r.cells.every((c) => c.plan_kind === "NO_SCHEDULE")) && (
                 <Banner tone="warn" actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>}>{t("attendanceRecords.noSchedule")}</Banner>
               )}
-              <MonthGridView rows={rows} total={total} days={days} store={store} range={range} onRange={(r) => (setNote(null), setRange(r))} act={act} />
               {grid.hasNextPage && <Button onClick={() => void grid.fetchNextPage()} disabled={grid.isFetchingNextPage}>{t("attendanceRecords.more", { shown: rows.length, total })}</Button>}
             </>
           )}

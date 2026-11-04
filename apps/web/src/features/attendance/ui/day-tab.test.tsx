@@ -12,20 +12,20 @@ import { DayTab } from "./day-tab";
 const stateQuery = vi.hoisted(() => vi.fn());
 const state = vi.hoisted(() => ({
   marks: ["NO_SCHEDULE"] as Mark[], mark: undefined as Mark | undefined, issueGroups: [] as IssueGroup[], issues: false,
-  people: 1, judged: true, ledgerGap: false, drafts: {} as Drafts, detail: false, load: "ready" as "ready" | "loading" | "error",
+  people: 1, blocking: 1, judged: true, ledgerGap: false, drafts: {} as Drafts, detail: false, load: "ready" as "ready" | "loading" | "error",
   buttons: [] as Parameters<typeof Button>[0][], navigate: vi.fn(),
 }));
 vi.mock("@tanstack/react-router", () => ({
   getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06", detail: state.detail, mark: state.mark, issues: state.issues }), useNavigate: () => state.navigate }),
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-href={to}>{children}</span>,
+  Link: ({ children, to, className }: { children: ReactNode; to: string; className?: string }) => <span data-href={to} className={className}>{children}</span>,
 }));
 vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: (options: unknown) => { stateQuery(options); return ({
   isPending: state.load === "loading", isSuccess: state.load === "ready", error: state.load === "error" ? new Error("unavailable") : null,
   data: state.load === "ready" ? {
-    date: "2026-10-06", judged: state.judged, marks: { blocking: 1, decision: 0 },
+    date: "2026-10-06", judged: state.judged, marks: { blocking: state.blocking, decision: 0 },
     issue_groups: state.issueGroups,
     ledger: { people: state.people, no_schedule: state.ledgerGap ? 0 : state.people, rest: 0, no_record: 0, missing_out: 0, absent: 0, outside: 0, trip: 0, late_or_early: 0, normal: 0, pending: 0 },
-    groups: state.people ? [{ workplace_id: "site", unit_id: "team", name: "Team", people: state.people, normal: 0, no_schedule: state.people, hidden: 0, marks: { blocking: 1, decision: 0 },
+    groups: state.people ? [{ workplace_id: "site", unit_id: "team", name: "Team", people: state.people, normal: 0, no_schedule: state.people, hidden: 0, marks: { blocking: state.blocking, decision: 0 },
       rows: [{ employee_id: "person", name: "Person", month_state: { state: "OPEN" }, day: { recognition: { recognised: 0 }, marks: state.marks, plan: { kind: "NO_SCHEDULE" } } }],
     }] : [],
   } : undefined,
@@ -42,6 +42,7 @@ beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   state.marks = ["NO_SCHEDULE"];
   state.people = 1;
+  state.blocking = 1;
   state.judged = true;
   state.ledgerGap = false;
   state.drafts = {};
@@ -61,6 +62,16 @@ test("a successful empty board hides its toolbar and names schedule assignment",
   expect(html).not.toContain('role="toolbar"');
   expect(html).toContain(t("attendanceRecords.empty.toSchedule"));
   expect(html).toContain('data-href="/attendance"');
+  expect(html).toContain('class="btn btn--primary"');
+  expect(html).not.toContain(t("attendanceRecords.board.ledgerHead", { people: 0 }));
+  expect(html).not.toContain(t("attendanceRecords.rail.title"));
+});
+
+test("a settled board omits zero-valued next steps", () => {
+  state.blocking = 0;
+  const html = renderToStaticMarkup(<DayTab />);
+  expect(html).not.toContain(t("attendanceRecords.rail.process", { count: 0 }));
+  expect(html).not.toContain(t("attendanceRecords.rail.groups"));
 });
 
 test("populated boards keep navigation and filters without save controls until a draft exists", () => {

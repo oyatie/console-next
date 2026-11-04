@@ -21,7 +21,7 @@ vi.mock("react", async (original) => {
 });
 vi.mock("@tanstack/react-router", () => ({
   getRouteApi: () => ({ useSearch: () => ({ month: "2026-10" }), useNavigate: () => vi.fn() }),
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-href={to}>{children}</span>,
+  Link: ({ children, to, className }: { children: ReactNode; to: string; className?: string }) => <span data-href={to} className={className}>{children}</span>,
 }));
 vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useInfiniteQuery: () => ({
   isPending: state.load === "loading", isSuccess: state.load === "ready", isError: state.load === "error",
@@ -81,6 +81,7 @@ test("a successful empty month hides its toolbar and keeps schedule assignment",
   const html = render();
   expect(html).not.toContain('role="toolbar"');
   expect(html).toContain(t("attendanceRecords.empty.toSchedule"));
+  expect(html).toContain('class="btn btn--primary"');
 });
 
 test.each(["loading", "error"] as const)("%s preserves the existing toolbar behavior", (load) => {

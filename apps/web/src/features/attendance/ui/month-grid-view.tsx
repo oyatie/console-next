@@ -243,7 +243,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
       ]}
       days={columns}
       tail={[
-        { key: "rec", header: t("attendanceRecords.total.recognised"), width: "total", cell: (r) => duration(r.totals.recognised) },
+        { key: "rec", header: t("attendanceRecords.total.recognised"), width: "total", cell: (r) => (r.totals.recognised ? duration(r.totals.recognised) : "–") },
         { key: "prem", header: t("attendanceRecords.total.approved"), width: "total", cell: (r) => {
           const minutes = r.totals.outside_scheduled ?? r.totals.approved + r.totals.unrecognised;
           return minutes ? duration(minutes) : "–";

@@ -24,6 +24,7 @@ import { PublicHolidaysView } from "./public-holidays-view";
 import { IssuesTab } from "./issues-tab";
 import { CloseTab } from "./close-tab";
 import { OvertimeTab } from "./overtime-tab";
+import styles from "./records.module.css";
 
 export type View = "calendar" | "types" | "crews" | "holidays" | "public";
 export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close";
@@ -65,7 +66,8 @@ export function PersonPage() {
 
 function AttendanceLayout({ children }: { children: (head: ReactNode) => ReactNode }) {
   const search = route.useSearch();
-  return <div className="page"><AttendanceHead tab={search.tab ?? "month"} />{children(null)}</div>;
+  const board = !search.person && ((search.tab ?? "month") === "month" || search.tab === "day");
+  return <div className={board ? `page ${styles.boardPage}` : "page"}><AttendanceHead tab={search.tab ?? "month"} />{children(null)}</div>;
 }
 
 /**
