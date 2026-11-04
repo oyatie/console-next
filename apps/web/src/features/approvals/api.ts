@@ -23,6 +23,36 @@ export type ApprovalItem = {
   viewer?: ApprovalViewer | null;
 };
 
+type ApprovalReason = {
+  codes: { code: string; label: string }[];
+  other: string;
+  memo_max: number;
+};
+type ApprovalReasonAction = { consequence: string; reason: ApprovalReason };
+
+/** The server chooses the exact action variant after Cedar and SoD evaluation. */
+type ApprovalActions =
+  | { kind: "approve"; return?: ApprovalReasonAction; reject: ApprovalReasonAction }
+  | { kind: "none" };
+
+export type ApprovalDocument = ApprovalItem & {
+  body: { key: string; label: string; value: string }[];
+  revision: number;
+  fingerprint: string;
+  consequence: string;
+  opinion_max: number;
+  my_actions: ApprovalActions;
+};
+
+export type ApprovalDecision = {
+  decision: "APPROVE" | "RETURN" | "REJECT";
+  seen_fingerprint: string;
+  opinion: string;
+  reason_code?: string;
+  note?: string;
+};
+type ApprovalDecisionReceipt = { message: string };
+
 type ApprovalPage = {
   items: ApprovalItem[];
   focused?: ApprovalItem | null;
@@ -33,8 +63,13 @@ type ApprovalPage = {
 
 type ApprovalQuery = { box: ApprovalBox; q?: string; source?: string; focus?: string; cursor?: string };
 type UntypedGet = (path: string, init: { params: { query: ApprovalQuery } }) => Promise<{ data?: ApprovalPage; error?: unknown; response: Response }>;
+type UntypedDetailGet = (path: string) => Promise<{ data?: ApprovalDocument; error?: unknown; response: Response }>;
+type UntypedPost = (path: string, init: { headers: { "Idempotency-Key": string }; body: ApprovalDecision }) => Promise<{ data?: ApprovalDecisionReceipt; error?: unknown; response: Response }>;
 const getUntyped = api.GET as unknown as UntypedGet;
+const getDetailUntyped = api.GET as unknown as UntypedDetailGet;
+const postUntyped = api.POST as unknown as UntypedPost;
 const page = (query: ApprovalQuery) => unwrap(getUntyped("/api/v1/approvals", { params: { query } }));
+const documentPath = (id: string) => `/api/v1/approvals/${encodeURIComponent(id)}`;
 
 /** Canonical approval projection; queue membership, facets and preview fields are server decisions. */
 export const approvalPages = (query: Omit<ApprovalQuery, "cursor">) => ({
@@ -43,3 +78,7 @@ export const approvalPages = (query: Omit<ApprovalQuery, "cursor">) => ({
   initialPageParam: undefined as string | undefined,
   getNextPageParam: (last: ApprovalPage) => last.next_cursor ?? undefined,
 });
+
+export const approvalDocumentQuery = (id: string) => read("/api/v1/approvals/{id}", () => unwrap(getDetailUntyped(documentPath(id))), { id });
+export const decideApproval = (id: string, body: ApprovalDecision, key: string) =>
+  unwrap(postUntyped(`${documentPath(id)}/decision`, { headers: { "Idempotency-Key": key }, body }));

@@ -20,25 +20,12 @@ import { SidePanel } from "../../../ui/side-panel/side-panel";
 import { Table } from "../../../ui/table";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { tabClass } from "../../../ui/tabs/tab-class";
-import { approvalPages, type ApprovalItem, type ApprovalViewer } from "../api";
+import { approvalPages, type ApprovalItem } from "../api";
 import { APPROVAL_BOXES, type ApprovalBox } from "../domain/inbox";
 import s from "./approvals-page.module.css";
 
 const route = getRouteApi("/app/approvals");
 const ALL_SOURCES = "all";
-
-function ViewerLink({ viewer }: { viewer?: ApprovalViewer | null }) {
-  const text = t("approvals.open");
-  if (!viewer) return null;
-  if (viewer.kind === "org_change") return <Link className={buttonClass("primary")} to="/org/changes/$id" params={{ id: viewer.id }}>{text}</Link>;
-  if (viewer.kind === "employee") return <Link className={buttonClass("primary")} to="/people/$id" params={{ id: viewer.id }} search={{}}>{text}</Link>;
-  if (viewer.kind === "exit_case") return <Link className={buttonClass("primary")} to="/people/exits/$id" params={{ id: viewer.id }} search={{}}>{text}</Link>;
-  if (viewer.kind === "support_session") return <Link className={buttonClass("primary")} to="/audit/support-access" search={{ review: viewer.id }}>{text}</Link>;
-  if (viewer.kind === "change_request") return <Link className={buttonClass("primary")} to="/requests/$id" params={{ id: viewer.id }}>{text}</Link>;
-  if (viewer.kind === "period_lock") return <Link className={buttonClass("primary")} to="/people/period-locks" search={{ review: viewer.id }}>{text}</Link>;
-  if (viewer.kind === "statutory") return <Link className={buttonClass("primary")} to="/statutory" search={{ event: viewer.id }}>{text}</Link>;
-  return <Link className={buttonClass("primary")} to="/account">{text}</Link>;
-}
 
 export function ApprovalInboxView({ items, selected, onSelect, onClose, hasNext, loadingMore, onMore, emptyTitle }: {
   items: ApprovalItem[];
@@ -66,7 +53,7 @@ export function ApprovalInboxView({ items, selected, onSelect, onClose, hasNext,
     {selected && <SidePanel
       open title={selected.title} crumb={selected.document_no} onClose={onClose}
       chips={<><Chip>{selected.source.label}</Chip><Chip tone={selected.status.tone}>{selected.status.label}</Chip></>}
-      openLink={<ViewerLink viewer={selected.viewer} />}
+      openLink={<Link className={buttonClass("primary")} to="/approvals/$approvalId" params={{ approvalId: selected.id }}>{t("approvals.open")}</Link>}
       returnFocus={() => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(selected.id)}"]`)}
     >
       <div className={s.preview}>

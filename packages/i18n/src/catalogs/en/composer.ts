@@ -52,6 +52,7 @@ export const enComposer = {
   "composer.verb.withdraw": "Withdraw",
   "composer.verb.cancel": "Cancel",
   "composer.verb.revoke": "Revoke",
+  "composer.verb.return": "Request changes",
   "composer.verb.reject": "Reject",
   "composer.verb.save": "Save",
   "composer.verb.remove": "Delete",

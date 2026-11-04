@@ -57,7 +57,7 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
     await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
     const panel = page.locator("[data-side-panel]");
     await expect(panel.getByRole("heading", { name: "영업 조직 개편안", exact: true })).toBeVisible();
-    await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
+    await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveAttribute("href", "/approvals/approval-1");
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-preview.png`), fullPage: true });
     await expectAxe(page, `approval inbox ${width}px ${theme}`);
