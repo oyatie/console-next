@@ -22,7 +22,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const)
       account_id: account.id, is_ops: false, phase: "OPERATING", as_of: AT, entries: [],
     } });
     await page.goto(`/access/people/${account.id}`);
-    await expect(page.getByRole("link", { name: "김직원", exact: true })).toHaveAttribute("href", `/people/${id(900)}`);
+    await expect(page.getByRole("link", { name: /김직원.*ACC-0001.*연결회사.*인사팀/ })).toHaveAttribute("href", `/people/${id(900)}`);
     await expect(page.getByText(/ACC-0001 · 연결회사 · 인사팀/)).toHaveCount(1);
     expect(reads).toBeGreaterThan(0);
     await expectAxe(page, "access account detail");

@@ -22,7 +22,7 @@ export function AccountText({ a, peers }: { a: Account; peers?: readonly PersonI
 }
 
 /** A person at the head of a sheet or page (mockups M4, M6): initial, name, then employee number, placement and whether they can sign in. */
-export function PersonHead({ a, ops, title }: { a: Account; ops?: boolean; title?: ReactNode }) {
+export function PersonHead({ a, ops, title, details = true }: { a: Account; ops?: boolean; title?: ReactNode; details?: boolean }) {
   const label = personLabel(a);
   const state = ops ? t("access.account.ops") : t(a.has_passkey ? "access.account.passkey" : "access.account.noPasskey");
   return (
@@ -30,7 +30,7 @@ export function PersonHead({ a, ops, title }: { a: Account; ops?: boolean; title
       <Avatar name={label.name} />
       <span className={s.who}>
         {title ?? <strong className={s.name}>{label.name}</strong>}
-        <span className="muted">{[label.detail, state].filter(Boolean).join(" · ")}</span>
+        <span className="muted">{[details && label.detail, state].filter(Boolean).join(" · ")}</span>
       </span>
     </span>
   );
