@@ -71,15 +71,21 @@ export function Shell() {
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
   const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data | null }>();
   const modulesFault = modules.isError && !isAnswer(modules.error);
+  const supportFault = support.isError && !isAnswer(support.error);
+  const hasSupportNotice = Boolean(support.data && (support.data.sessions?.length || (support.data.can_approve && support.data.pending_count)));
   const [pageFailures, setPageFailures] = useState(0);
   const registerFailure = useMemo(() => () => {
     setPageFailures(count => count + 1);
     return () => setPageFailures(count => count - 1);
   }, []);
   const { refetch: refetchModules } = modules;
-  const recovery = useMemo(() => ({ register: registerFailure, retry: () => {
+  const { refetch: refetchSupport } = support;
+  const retryShell = useMemo(() => () => {
     if (modulesFault) void refetchModules({ cancelRefetch: false });
-  } }), [registerFailure, modulesFault, refetchModules]);
+    if (supportFault) void refetchSupport({ cancelRefetch: false });
+  }, [modulesFault, refetchModules, supportFault, refetchSupport]);
+  const recovery = useMemo(() => ({ register: registerFailure, retry: retryShell }), [registerFailure, retryShell]);
+  const bannerRecovery = useMemo(() => ({ register: () => () => {}, retry: retryShell }), [retryShell]);
   const answered = ready && access.isSuccess && [support, me].every(q => !(q.isError && !isAnswer(q.error)));
   // Late readiness reads reveal entries on the next navigation, never between inputs.
   // A cold fault has no readiness snapshot; its first answer can recover immediately after retry.
@@ -189,14 +195,16 @@ export function Shell() {
       </header>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
       <PageMain className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
-        <ReadFailureContext.Provider value={recovery}>
         <SessionRecovery>
         <ChangeNotice key={pathname} />
         <HeldNotice />
-        {!platform && <DomainNotice />}{!platform && !(access.isError && support.isError && !support.data) && <ActiveSupportBanner />}
-        <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Outlet /></PhaseBand>}</RouteGuard>
-        </SessionRecovery>
+        <ReadFailureContext.Provider value={bannerRecovery}>
+          {!platform && <DomainNotice />}{!platform && !((access.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
         </ReadFailureContext.Provider>
+        <ReadFailureContext.Provider value={recovery}>
+          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Outlet /></PhaseBand>}</RouteGuard>
+        </ReadFailureContext.Provider>
+        </SessionRecovery>
       </PageMain>
       {jump && (
         <Suspense fallback={null}>

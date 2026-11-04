@@ -5,6 +5,7 @@
 .toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
 .stepper { display: inline-flex; align-items: center; gap: var(--space-1); }
 .stepText { min-width: calc(var(--space-6) * 4); text-align: center; }
+.scopeSelect { min-inline-size: calc(var(--space-6) * 6); }
 .selection { margin: 0; }
 /* The grid and a docked sheet side by side; the grid reflows (all four totals stay) rather than folding columns. */
 .monthLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-height: 0; }

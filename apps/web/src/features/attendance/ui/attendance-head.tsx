@@ -15,7 +15,7 @@ import type { Tab } from "./attendance-page";
  */
 export function AttendanceHead({ tab }: { tab: Tab }) {
   const org = useQuery(orgStructureRef);
-  const phase = org.data?.phase;
+  const phase = !org.error ? org.data?.phase : undefined;
   return (
     <PageHead
       title={t("attendance.title")}

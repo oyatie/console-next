@@ -39,7 +39,7 @@ export function CrewsView({ tree, onAssign, onDone }: { tree: ScheduleTree; onAs
         meta={t("attendanceCrews.crews.meta")}
         flush
         tools={
-          <>
+          !q.error && <>
             {picked.length > 0 && <Button size="sm" onClick={() => onAssign(targets(picked))}>{t("attendanceCrews.crews.assignPicked", { count: picked.length })}</Button>}
             <Button size="sm" variant={active.length ? "secondary" : "primary"} onClick={() => setOpen("crew")}><Plus size={16} aria-hidden /> {t("attendanceCrews.crews.add")}</Button>
           </>

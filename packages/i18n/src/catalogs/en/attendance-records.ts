@@ -15,6 +15,7 @@ export const enAttendanceRecords: Partial<Record<keyof typeof koAttendanceRecord
   "attendanceRecords.empty.clear": "Reset filters",
   "attendanceRecords.scope.unavailable": "The selected workplace is unavailable",
   "attendanceRecords.scope.label": "Unit",
+  "attendanceRecords.scope.allUnknown": "All workplaces",
   "attendanceRecords.scope.all": "All {count, number} workplaces",
   "attendanceRecords.scope.place": "{name} · {count, number}",
   "attendanceRecords.toolbar.label": "Attendance tools",
