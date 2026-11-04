@@ -14929,6 +14929,10 @@ export interface components {
         };
         /** @description One unified actionable item. Field names mirror the overview prototype's items[] shape. Source-partial fields (site/who/due/submitted) are absent when the originating source does not carry them. */
         ActionInboxItem: {
+            /** @description Display-ready Korean reason from source facts, falling back to the current task's action. */
+            reason?: string;
+            /** @description Korean calendar days since this item's own creation, using the database clock; never the tenant's age. */
+            age_days?: number;
             /** @description Server identity of kind, subject and source case (insurance group when present); never derived from display text. */
             fold_key?: string;
             /** @description "{kind}:{uuid}" — source-namespaced so ids never collide. */
@@ -14958,7 +14962,7 @@ export interface components {
             context?: {
                 /** @description Optional physical work site, separate from the statutory placement path. */
                 worksite_name?: string;
-                /** @description Total visible records for this review kind, under the same reach and snapshot. */
+                /** @description Exact visible total for this review kind under the same reach and snapshot; omitted for bounded counts. */
                 review_count?: number;
                 register?: {
                     missing_fields: string[];
@@ -15014,6 +15018,13 @@ export interface components {
             label?: string;
         };
         ActionInboxResponse: {
+            /** @description Home counts over the same authorized source read, independent of the selected attention view. Subset counts are lower bounds for bounded or continued source prefixes; unavailable sources make every count inexact. All uses source totals. No additional full-tenant scan is performed. */
+            attention_filters?: {
+                /** @enum {string} */
+                key: "all" | "approvals" | "today" | "overdue";
+                total: number;
+                total_is_exact: boolean;
+            }[];
             items: components["schemas"]["ActionInboxItem"][];
             /** @description Live visible item count across sources admitted by as_of; inspect total_is_exact before treating it as authoritative. */
             total: number;
@@ -49114,6 +49125,8 @@ export interface operations {
     listMyActionInbox: {
         parameters: {
             query?: {
+                /** @description Home attention view over the same authorized work. Approvals are pending decisions; today means an actionable source deadline on today's Korean calendar date; overdue means that source deadline has expired (including statutory-register deadlines). Takes precedence over filter=all or filter=turn for Home; other saved views require attention to be omitted. */
+                attention?: "all" | "approvals" | "today" | "overdue";
                 /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
                 filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures";
                 /** @description Page size, clamped server-side to 1..=200. */
@@ -49136,8 +49149,17 @@ export interface operations {
                     "application/json": components["schemas"]["ActionInboxResponse"];
                 };
             };
+            /** @description An unknown attention or saved-filter value was supplied. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
             401: components["responses"]["Unauthorized"];
-            /** @description The action-inbox cursor is malformed. */
+            /** @description The cursor is malformed or attention was combined with a saved filter other than all or turn. */
             422: {
                 headers: {
                     [name: string]: unknown;

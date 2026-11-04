@@ -18,6 +18,11 @@ pub(super) fn project_item(
         ("wait", "neutral")
     };
     ActionInboxItem {
+        reason: crate::attention::reason(&item),
+        age_days: (now.to_offset(time::macros::offset!(+9)).date()
+            - item.created_at.to_offset(time::macros::offset!(+9)).date())
+        .whole_days()
+        .max(0),
         fold_key: crate::fold::key(&item),
         context: item.context,
         lane,

@@ -19190,6 +19190,19 @@ paths:
       security:
       - bearerAuth: []
       parameters:
+      - name: attention
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [all, approvals, today, overdue]
+          default: all
+        description: >-
+          Home attention view over the same authorized work. Approvals are pending
+          decisions; today means an actionable source deadline on today's Korean
+          calendar date; overdue means that source deadline has expired (including
+          statutory-register deadlines). Takes precedence over filter=all or
+          filter=turn for Home; other saved views require attention to be omitted.
       - name: filter
         in: query
         required: false
@@ -19222,8 +19235,14 @@ paths:
                 $ref: '#/components/schemas/ActionInboxResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: An unknown attention or saved-filter value was supplied.
+          content:
+            text/plain:
+              schema:
+                type: string
         '422':
-          description: The action-inbox cursor is malformed.
+          description: The cursor is malformed or attention was combined with a saved filter other than all or turn.
           content:
             application/json:
               schema:
@@ -33590,6 +33609,13 @@ components:
       - lane
       - days_remaining
       properties:
+        reason:
+          type: string
+          description: Display-ready Korean reason from source facts, falling back to the current task's action.
+        age_days:
+          type: integer
+          minimum: 0
+          description: Korean calendar days since this item's own creation, using the database clock; never the tenant's age.
         fold_key:
           type: string
           description: Server identity of kind, subject and source case (insurance group when present); never derived from display text.
@@ -33694,7 +33720,7 @@ components:
             review_count:
               type: integer
               minimum: 0
-              description: Total visible records for this review kind, under the same reach and snapshot.
+              description: Exact visible total for this review kind under the same reach and snapshot; omitted for bounded counts.
             register:
               type: object
               required: [missing_fields]
@@ -33825,6 +33851,25 @@ components:
       - quick_starts
       - as_of
       properties:
+        attention_filters:
+          type: array
+          description: >-
+            Home counts over the same authorized source read, independent of the
+            selected attention view. Subset counts are lower bounds for bounded or
+            continued source prefixes; unavailable sources make every count inexact.
+            All uses source totals. No additional full-tenant scan is performed.
+          items:
+            type: object
+            required: [key, total, total_is_exact]
+            properties:
+              key:
+                type: string
+                enum: [all, approvals, today, overdue]
+              total:
+                type: integer
+                minimum: 0
+              total_is_exact:
+                type: boolean
         items:
           type: array
           items:

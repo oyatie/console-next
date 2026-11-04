@@ -25,6 +25,19 @@ description: >-
 security:
 - bearerAuth: []
 parameters:
+- name: attention
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [all, approvals, today, overdue]
+    default: all
+  description: >-
+    Home attention view over the same authorized work. Approvals are pending
+    decisions; today means an actionable source deadline on today's Korean
+    calendar date; overdue means that source deadline has expired (including
+    statutory-register deadlines). Takes precedence over filter=all or
+    filter=turn for Home; other saved views require attention to be omitted.
 - name: filter
   in: query
   required: false
@@ -57,8 +70,14 @@ responses:
           $ref: '#/components/schemas/ActionInboxResponse'
   '401':
     $ref: '#/components/responses/Unauthorized'
+  '400':
+    description: An unknown attention or saved-filter value was supplied.
+    content:
+      text/plain:
+        schema:
+          type: string
   '422':
-    description: The action-inbox cursor is malformed.
+    description: The cursor is malformed or attention was combined with a saved filter other than all or turn.
     content:
       application/json:
         schema:

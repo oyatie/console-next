@@ -7,7 +7,7 @@ use axum::routing::get;
 use axum::{Extension, Json, Router};
 use console_action_inbox_application::{
     ActionInboxSource, ActionInboxSourceFuture, ActionInboxSourcePage, ActionInboxSourcePort,
-    ActionInboxSourceQuery, InboxFilter, ListActionInboxQuery,
+    ActionInboxSourceQuery, Attention, InboxFilter, ListActionInboxQuery,
     list_filtered_action_inbox as run_action_inbox,
 };
 use console_kernel_core::KernelError;
@@ -77,6 +77,7 @@ struct ActionInboxQuery {
     cursor: Option<String>,
     #[serde(default)]
     filter: InboxFilter,
+    attention: Option<Attention>,
 }
 
 async fn list_action_inbox(
@@ -84,6 +85,12 @@ async fn list_action_inbox(
     Extension(principal): Extension<Principal>,
     Query(query): Query<ActionInboxQuery>,
 ) -> Result<Json<serde_json::Value>, InboxError> {
+    if query.attention.is_some() && !matches!(query.filter, InboxFilter::All | InboxFilter::Turn) {
+        return Err(
+            KernelError::validation("attention cannot be combined with a saved filter").into(),
+        );
+    }
+    let filter = query.attention.map_or(query.filter, Attention::filter);
     // The snapshot instant comes from the database clock, the same clock that
     // stamps `created_at` on every source row. An app-host clock lagging the DB
     // would hide rows created in the lag window (`created_at <= as_of`).
@@ -135,11 +142,11 @@ async fn list_action_inbox(
             limit: query.limit,
             cursor: query.cursor.clone(),
         },
-        query.filter,
+        filter,
         now,
     )
     .await?;
-    response::project(&sources, page, query.filter, query.cursor.is_none(), now)
+    response::project(&sources, page, filter, query.cursor.is_none(), now)
 }
 
 /// Temporary composition-root adapter. This intentionally proves the inward

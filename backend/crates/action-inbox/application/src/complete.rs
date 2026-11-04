@@ -73,6 +73,7 @@ pub async fn list_complete_action_inbox(
                     return Err(CompleteActionInboxError::TotalDrift);
                 }
                 return Ok(ActionInboxPage {
+                    attention_filters: crate::attention::counts(&items, true),
                     unavailable: Vec::new(),
                     counts: crate::filter::counts(&items, true),
                     upcoming: Vec::new(),
