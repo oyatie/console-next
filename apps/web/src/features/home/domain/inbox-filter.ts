@@ -9,7 +9,7 @@ export const inboxFilter = (value: unknown): InboxFilter => INBOX_FILTERS.find(f
 
 const ATTENTION_FILTERS = ["all", "approvals", "today", "overdue"] as const;
 export type AttentionFilter = typeof ATTENTION_FILTERS[number];
-export type AttentionInboxItem = components["schemas"]["ActionInboxItem"] & { reason?: string; age_days?: number | null };
+export type AttentionInboxItem = components["schemas"]["ActionInboxItem"] & { age_days?: number | null };
 export type AttentionInboxResponse = Omit<components["schemas"]["ActionInboxResponse"], "items"> & {
   items: AttentionInboxItem[];
   attention_filters?: { key: AttentionFilter; total: number; total_is_exact: boolean }[];

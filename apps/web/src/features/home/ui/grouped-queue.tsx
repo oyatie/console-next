@@ -79,13 +79,13 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
   const allColumns: QueueColumn[] = [
     { id: "task", header: t("home.inbox.column.task"), cell: item => <div id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
       {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={() => toggle(item.id)}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</strong>}
-      {item.kind === "account_security" && <div className="muted">{t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")}</div>}
+      <div className="muted">{item.kind === "account_security" ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why") : codeText(`home.inbox.reason.${item.kind}`, t("home.inbox.reason.unknown"))}</div>
       {(() => {
         const labels = [...new Set((item.context?.register?.missing_fields ?? []).flatMap(key => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!.label] : []))];
         return labels.length > 0 && <div className="row">{labels.map((id, i) => <Fragment key={id}>{i > 0 && " "}<Chip>{t(id)}</Chip></Fragment>)}</div>;
       })()}
       {item.context?.drafter && <div className="muted">{t("home.decide.drafter", { name: item.context.drafter })}</div>}
-      {(item.reason ?? item.context?.reason) && <div className="muted">{item.reason ?? item.context?.reason}</div>}
+      {item.context?.reason && <div className="muted">{item.context.reason}</div>}
       {item.context?.command_id && <OutcomeLink id={item.context.command_id} />}
     </div> },
     { id: "subject", header: t("home.inbox.column.subject"), cell: item => <Subject item={item} /> },

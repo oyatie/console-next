@@ -5,12 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import { beforeAll, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
-import { loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { inboxFilter } from "../domain/inbox-filter";
 import { GroupedQueue } from "./grouped-queue";
 
 beforeAll(() => loadCatalog("ko"));
-type Item = components["schemas"]["ActionInboxItem"] & { reason?: string; age_days?: number | null };
+type Item = components["schemas"]["ActionInboxItem"] & { age_days?: number | null };
 const item = (id: string, extra: Partial<Item> & { fold_key?: string } = {}): Item => ({ id, kind: "register_review", lane: "turn", title: id, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id }], ...extra });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
 const html = (items: Item[]) => renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><RouterContextProvider router={router}><GroupedQueue items={items} /></RouterContextProvider></QueryClientProvider>);
@@ -86,9 +86,9 @@ test("every record action is quiet rather than a primary row action", () => {
 
 test("a row states why it needs attention, its age, and a resolving action", () => {
   const markup = html([item("김계약", {
-    kind: "contract_renewal", reason: "결재 차례입니다", age_days: 12,
+    kind: "contract_renewal", age_days: 12,
   })]);
-  expect(markup).toContain("결재 차례입니다");
+  expect(markup).toContain("계약 만료가 다가옵니다");
   expect(markup).toContain("12일째 대기");
   expect(markup).toContain(">계약 조건 확인</a>");
   expect(markup).not.toContain(">계약 갱신</a>");
@@ -138,4 +138,22 @@ test("only server fold identities combine rows, keeping deadline and kind bounda
   expect(markup).toContain('aria-expanded="false"');
   expect(markup).toContain("4대보험 신고 · 2건");
   expect(markup).not.toContain("second filing");
+});
+
+for (const locale of ["ko", "en"] as const) test(`row reasons come from the ${locale} catalog without a server reason`, async () => {
+  await loadCatalog(locale);
+  i18n.set(locale);
+  try {
+    const catalog = locale === "ko" ? (await import("../../../../../../packages/i18n/src/catalogs/ko")).ko : (await import("../../../../../../packages/i18n/src/catalogs/en")).en;
+    for (const [key, text] of Object.entries(catalog)) {
+      if (!key.startsWith("home.inbox.reason.")) continue;
+      const kind = key.slice("home.inbox.reason.".length);
+      expect(html([item(kind, { kind, links: [] })])).toContain(text);
+    }
+    expect(html([item("future", { kind: "future_kind" })])).toContain(t("home.inbox.reason.unknown"));
+    const markup = html([item("contract", { kind: "contract_renewal", context: { reason: "<추가 사유>" } })]);
+    expect(markup).toContain(t("home.inbox.reason.contract_renewal"));
+    expect(markup).toContain("&lt;추가 사유&gt;");
+    expect(markup).not.toContain("<추가 사유>");
+  } finally { i18n.set("ko"); }
 });

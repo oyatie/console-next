@@ -75,11 +75,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const offset = query.has("cursor") ? 8 : 0;
       const attentionKey = query.get("attention");
       const items = query.get("filter") === "scheduled" ? [] : attentionKey === "approvals" ? queue.items.slice(0, 2) : attentionKey === "today" ? queue.items.slice(2, 3) : attentionKey === "overdue" ? queue.items.slice(3, 4) : queue.items;
-      return { status: 200, json: { ...queue, attention_filters: attention, items: offset ? [{ ...queue.items[0]!, id: "second-page", title: "다음 페이지 직원", reason: "결재 차례입니다", age_days: 12 }] : items.map(item => ({ ...item, reason: "결재 차례입니다", age_days: 12 })), next_cursor: offset || !items.length ? null : "next" } };
+      return { status: 200, json: { ...queue, attention_filters: attention, items: offset ? [{ ...queue.items[0]!, id: "second-page", title: "다음 페이지 직원", age_days: 12 }] : items.map((item, index) => ({ ...item, age_days: 12, ...(index === 0 ? { context: { reason: "추가 확인 사유" } } : {}) })), next_cursor: offset || !items.length ? null : "next" } };
     });
     await page.goto("/");
     const preview = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
     await expect(preview.locator("[data-id]")).toHaveCount(5);
+    await expect(preview.locator("[data-id]").first()).toContainText("계약 만료가 다가옵니다");
+    await expect(preview.locator("[data-id]").first()).toContainText("추가 확인 사유");
     const attentionFilters = preview.getByRole("group", { name: "확인 필요", exact: true });
     await expect(attentionFilters.getByRole("button")).toHaveCount(4);
     await expect(attentionFilters.getByRole("button", { name: /^전체\s*8$/ })).toHaveAttribute("aria-pressed", "true");
@@ -118,6 +120,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(tabs.getByRole("link").nth(2)).toContainText("0");
     if (width === 390) expect(new Set(await tabs.getByRole("link").evaluateAll(links => links.map(link => Math.round(link.getBoundingClientRect().top)))).size).toBe(1);
     await expect(preview.locator("[data-id]")).toHaveCount(8);
+    await expect(preview.locator("[data-id]").first()).toContainText("계약 만료가 다가옵니다");
+    await expect(preview.locator("[data-id]").first()).toContainText("추가 확인 사유");
+    await page.screenshot({ path: info.outputPath(`inbox-populated-${width}-${theme}.png`), fullPage: true });
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     await preview.getByRole("button", { name: t("home.inbox.more"), exact: true }).click();
     await expect(preview.locator('[data-id="second-page"]')).toContainText("다음 페이지 직원");

@@ -9,7 +9,7 @@ import { browserTestOptimizeDeps } from "../../../lib/browser-test";
 // Firefox runs with the cross-browser suite (E2E_XBROWSER=1); CI installs Chromium only.
 const ENGINES = process.env.E2E_XBROWSER === "1" ? [chromium, firefox] : [chromium];
 
-type Item = components["schemas"]["ActionInboxItem"] & { reason?: string; age_days?: number | null };
+type Item = components["schemas"]["ActionInboxItem"] & { age_days?: number | null };
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", title: id, ref: "", lane: "turn", urg: "wait", dueTone: "neutral", days_remaining: null, done: false, links: [], ...extra });
 let server: ViteDevServer;
 const sessions: { browser: Browser; page: Page }[] = [];
@@ -57,7 +57,7 @@ test.each(ENGINES.flatMap((_, engine) => [1440, 390].map(width => ({ engine, wid
       item("오늘 퇴직", { kind: "hr_exit_confirm", due: "2026-10-26T00:00:00Z", days_remaining: 0, dueTone: "danger", links: [{ kind: "exit_case", id: "exit" }] }),
       item("긴 역할", { kind: "grant_notice", title: "RegionalOperationsReviewer".repeat(4), links: [{ kind: "access", id: "long-role" }], who: "박사원" }),
       item("보안 점검", { kind: "account_security", links: [{ kind: "account", id: "member" }], context: { is_ops: true } }),
-      item("오래된 계약", { kind: "contract_renewal", reason: "결재 차례입니다", age_days: 12, links: [{ kind: "employee", id: "contract" }] }),
+      item("오래된 계약", { kind: "contract_renewal", age_days: 12, links: [{ kind: "employee", id: "contract" }] }),
       item("첫 신고", { kind: "insurance_filing", fold_key: "insurance:person:case", links: [{ kind: "statutory", id: "case" }] }),
       item("둘째 신고", { kind: "insurance_filing", fold_key: "insurance:person:case", links: [{ kind: "statutory", id: "case" }] }),
       item("미지원 링크", { links: [{ kind: "approval_run", id: "run" }] }),
@@ -76,6 +76,7 @@ test.each(ENGINES.flatMap((_, engine) => [1440, 390].map(width => ({ engine, wid
       await pw(page.getByRole("button", { name: "오늘 퇴직 작업", exact: true })).toHaveCount(0);
       const aging = rows.filter({ hasText: "오래된 계약" });
       await pw(aging).toContainText("12일째 대기");
+      await pw(aging).toContainText("계약 만료가 다가옵니다");
       expect(await aging.getByRole("cell").evaluateAll(cells => cells.filter(cell => getComputedStyle(cell).display !== "none").map(cell => {
         const style = getComputedStyle(cell);
         return [cell.getAttribute("data-column"), style.gridColumnStart, style.gridRowStart, style.gridRowEnd];
