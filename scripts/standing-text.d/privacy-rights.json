@@ -1,6 +1,7 @@
 {
   "baseline": {
-    "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyRequests": 13
+    "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyRequests": 13,
+    "apps/web/src/features/account/ui/privacy-request.tsx#PrivacyRequest": 28
   },
   "newScreens": {
     "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyRequests": {
@@ -9,6 +10,14 @@
       "EMPTY": 1,
       "LEGAL": 1,
       "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/account/ui/privacy-request.tsx#PrivacyRequest": {
+      "FACT": 15,
+      "REFUSAL": 9,
+      "EMPTY": 1,
+      "LEGAL": 2,
+      "RECEIPT": 1,
       "EXPLANATION": 0
     }
   }

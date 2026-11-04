@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { accountReads } from "./account";
 import { mockScreen } from "./screen";
+import { user } from "./fixtures";
 import { screens } from "../states/registry";
 
 const receipt = {
@@ -19,11 +20,17 @@ function wireReceipt(id = receipt.id, receipt_no = receipt.receipt_no): componen
     receipt: { controller: "TENANT", received_on: "2026-11-01", identity_at: receipt.received_at },
     kinds: { ACCESS: { due: { on: "2026-11-11", without_delay: false, rule: null }, decisions: [] } } };
 }
+async function filingOptions(page: Page) {
+  await page.route("**/api/v1/privacy/rights-requests/options", route => route.fulfill({ json: {
+    subject_user_id: user.id, as_of: "2026-11-05", controllers: [], kinds: [], detail_max_length: 2000, reply_email_masked: null,
+  } }));
+}
 test.beforeAll(() => loadCatalog("ko"));
 for (const width of [1440, 390]) for (const state of ["populated", "empty", "loading", "failed", "refused", "decided", "without-delay", "clock-unknown"] as const) {
   test(`privacy requests: ${state} at ${width}px @ui-state`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screens[0], "populated");
+    await filingOptions(page);
     let release!: () => void;
     const held = new Promise<void>(resolve => { release = resolve; });
     await page.route("**/api/v1/privacy/rights-requests/mine*", async route => {
@@ -75,13 +82,14 @@ for (const width of [1440, 390]) for (const state of ["populated", "empty", "loa
   });
 }
 
-for (const width of [1440, 390]) test(`account keeps unfinished rights filing hidden at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) test(`account links to rights filing at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screens[0], "populated");
+    await filingOptions(page);
   await accountReads(page, "save-unchanged");
   await page.goto("/account");
   await expect(page.getByRole("heading", { name: t("account.title"), exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: t("account.privacy.title"), exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: t("account.privacy.title"), exact: true })).toHaveAttribute("href", "/account/privacy");
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((element, value) => { element.dataset.theme = value; }, theme);
     await fits(page, `account/${width}/${theme}`);
@@ -92,6 +100,7 @@ for (const width of [1440, 390]) test(`account keeps unfinished rights filing hi
 
 test("rights history loads the server cursor without losing earlier receipts", async ({ page }) => {
   const fixture = await mockScreen(page, screens[0], "populated");
+    await filingOptions(page);
   const cursors: (string | null)[] = [];
   await page.route("**/api/v1/privacy/rights-requests/mine*", route => {
     const cursor = new URL(route.request().url()).searchParams.get("cursor");

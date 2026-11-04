@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
-import { ApiError } from "@console/api";
 import { ReadReference } from "../../../lib/react/read-reference";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
@@ -14,13 +13,16 @@ import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { SidePanel } from "../../../ui/side-panel/side-panel";
 import { Table } from "../../../ui/table";
-import { privacyRequestPages } from "../api";
+import { ApiError, privacyRequestPages } from "../api";
 import { PrivacyReceipt } from "./privacy-receipt";
+import { PrivacyRequest } from "./privacy-request";
 import s from "./account.module.css";
 
-export function PrivacyRequestsView({ items }: { items: PrivacyRightsReceipt[] }) {
-  const [selectedId, select] = useState<string>();
-  const selected = items.find(item => item.id === selectedId);
+export function PrivacyRequestsView({ items, filed }: { items: PrivacyRightsReceipt[]; filed?: PrivacyRightsReceipt }) {
+  const [selectedId, select] = useState<string | undefined>(filed?.id);
+  const [seen, setSeen] = useState(filed);
+  if (filed !== seen) { setSeen(filed); select(filed?.id); }
+  const selected = items.find(item => item.id === selectedId) ?? (filed?.id === selectedId ? filed : undefined);
   return <div className="split" data-open={Boolean(selected)}>
     <Card label={t("account.privacy.list")} flush>
       {items.length ? <Table label={t("account.privacy.list")} rows={items} rowId={item => item.id} selected={selected?.id} onSelect={select} columns={[
@@ -41,6 +43,7 @@ export function PrivacyRequestsView({ items }: { items: PrivacyRightsReceipt[] }
 
 export function PrivacyRequests() {
   const q = useInfiniteQuery(privacyRequestPages);
+  const [filed, setFiled] = useState<PrivacyRightsReceipt>();
   const head = { title: t("account.privacy.title") };
   if (q.error instanceof ApiError && q.error.status === 403) return <Page floorplan="P-01" head={head}>
     <EmptyState alert title={t("account.privacy.refused.title")} reason={t("account.privacy.refused")}
@@ -48,7 +51,8 @@ export function PrivacyRequests() {
   </Page>;
   return <Page floorplan="P-01" head={head} q={q} layout="list">
     {data => <>
-      <PrivacyRequestsView items={data.pages.flatMap(page => page.items)} />
+      <PrivacyRequest onFiled={setFiled} />
+      <PrivacyRequestsView filed={filed} items={data.pages.flatMap(page => page.items)} />
       {q.hasNextPage && <div className={s.pad}><Button disabled={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>{t("account.privacy.more")}</Button></div>}
     </>}
   </Page>;
