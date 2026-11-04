@@ -25,6 +25,7 @@ export async function mount(page: Page, bounded = false, variant = "table", read
   }));
   await page.goto(`/_gallery?grid=${variant}&bounded=${bounded}&readonly=${readOnly}`);
   await page.locator("#gallery-grid-table").getByRole("grid").waitFor();
+  if (variant === "page") await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
 }
 
 export async function expectWindowAt(page: Page, row: number) {
