@@ -89,7 +89,7 @@ test("account-only namesakes are distinguishable before bulk selection and each 
   await expect(options).toHaveCount(2);
   await expect(options.filter({ hasText: "w••••1234@" })).toHaveCount(1);
   await expect(options.filter({ hasText: "w••••5678@" })).toHaveCount(1);
-  await expectAccessible(admin, "namesake account picker", { openPicker: true });
+  await expectAccessible(admin, "namesake account picker");
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).press("Escape");
   await expect(admin.getByRole("listbox")).toHaveCount(0);
   await expect(admin.getByRole("dialog", { name: "권한 부여할 사람", exact: true })).toBeVisible();

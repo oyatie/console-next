@@ -61,10 +61,10 @@ async function fixture(page: Page, delay?: number) {
 test("account search uses server matches and counts, and selecting opens the existing account panel", async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
-  await expect(page.getByRole("option")).toHaveCount(50);
-  await expect(page.getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(1);
+  await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(50);
+  await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(1);
   await expect(page.getByText("처음 50건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오.", { exact: true })).toBeVisible();
-  await page.getByRole("option", { name: /검색계정 2 PICK-2/ }).click();
+  await page.getByRole("listbox").getByRole("option", { name: /검색계정 2 PICK-2/ }).click();
   await expect(page).toHaveURL(new RegExp(`sel=${accounts[1]!.id}`));
   await expect(page.getByRole("complementary", { name: "검색계정 2", exact: true })).toBeVisible();
   await expect(f.search).toBeFocused();
@@ -77,9 +77,9 @@ test("account search uses server matches and counts, and selecting opens the exi
 test("Tab after hovering and editing preserves the query until a result is explicitly focused", async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
-  await page.getByRole("option", { name: /검색계정 2 PICK-2/ }).hover();
+  await page.getByRole("listbox").getByRole("option", { name: /검색계정 2 PICK-2/ }).hover();
   await f.search.fill("검색계정 3");
-  await expect(page.getByRole("option", { name: /검색계정 3 PICK-3/ })).toBeVisible();
+  await expect(page.getByRole("listbox").getByRole("option", { name: /검색계정 3 PICK-3/ })).toBeVisible();
   await f.search.press("Tab");
   await expect(f.search).toHaveValue("검색계정 3");
   expect(new URL(page.url()).searchParams.has("sel")).toBe(false);
@@ -100,13 +100,13 @@ test("account search debounces typing and waits for IME composition to end", asy
   expect(f.searches).toEqual([]);
   await page.clock.fastForward(2000);
   await expect.poll(() => f.searches).toEqual(["PICK"]);
-  await expect(page.getByRole("option")).toHaveCount(50);
+  await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(50);
   await f.search.dispatchEvent("compositionstart");
   for (const text of ["ㄱ", "거", "검", "검색"]) {
     await f.search.fill(text);
     await page.clock.fastForward(1000);
     expect(f.searches).toEqual(["PICK"]);
-    await expect(page.getByRole("option", { name: /검색계정/ })).toHaveCount(0);
+    await expect(page.getByRole("listbox").getByRole("option", { name: /검색계정/ })).toHaveCount(0);
   }
   await f.search.dispatchEvent("compositionend", { data: "검색" });
   await page.clock.fastForward(2000);
@@ -118,7 +118,7 @@ test("account search debounces typing and waits for IME composition to end", asy
 test("Tab preserves keyboard selection and never commits an unmatched hovered result", async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
-  await page.getByRole("option", { name: /검색계정 2 PICK-2/ }).hover();
+  await page.getByRole("listbox").getByRole("option", { name: /검색계정 2 PICK-2/ }).hover();
   await f.search.press("Tab");
   expect(new URL(page.url()).searchParams.has("sel")).toBe(false);
   await f.search.focus();
@@ -132,15 +132,15 @@ test("Tab preserves keyboard selection and never commits an unmatched hovered re
 test("a failed background account refetch drops the previous total as well as the choices", async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
-  await expect(page.getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(1);
+  await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(1);
   f.failRefetch();
   await page.evaluate(() => window.dispatchEvent(new Event("picker-refetch")));
   await expect(f.search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
-  await expect(page.getByRole("option", { name: /검색계정/ })).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: /^0건$/ })).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: "잠시 뒤 다시 시도하십시오." })).toBeVisible();
+  await expect(page.getByRole("listbox").getByRole("option", { name: /검색계정/ })).toHaveCount(0);
+  await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^0건$/ })).toHaveCount(0);
+  await expect(page.locator(".popover").getByRole("status").filter({ hasText: "잠시 뒤 다시 시도하십시오." })).toBeVisible();
   await expect(page.locator(".popover").getByText("잠시 뒤 다시 시도하십시오.", { exact: true })).toHaveCount(1);
-  await expect(page.getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(0);
+  await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(0);
   await expect(page.getByText("처음 50건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오.", { exact: true })).toHaveCount(0);
   expect(f.unexpected).toEqual([]);
 });
@@ -149,25 +149,25 @@ test("pending, empty and failed account searches keep focus and never offer stal
   const f = await fixture(page);
   try {
     await f.search.fill("이전이름");
-    await expect(page.getByRole("option")).toHaveCount(50);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(50);
     await f.search.fill("대기");
-    await expect(page.getByRole("status").filter({ hasText: /^찾는 중$/ })).toHaveCount(1);
-    await expect(page.getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(0);
-    await expect(page.getByRole("option", { name: /검색계정/ })).toHaveCount(0);
+    await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^찾는 중$/ })).toHaveCount(1);
+    await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(0);
+    await expect(page.getByRole("listbox").getByRole("option", { name: /검색계정/ })).toHaveCount(0);
     await expect(f.search).toBeFocused();
     f.release();
-    await expect(page.getByRole("option")).toHaveCount(50);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(50);
     await f.search.fill("없음");
-    await expect(page.getByRole("status").filter({ hasText: /^0건$/ })).toHaveCount(1);
-    await expect(page.getByRole("option", { name: /검색계정/ })).toHaveCount(0);
+    await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^0건$/ })).toHaveCount(1);
+    await expect(page.getByRole("listbox").getByRole("option", { name: /검색계정/ })).toHaveCount(0);
     await f.search.fill("실패");
     await expect(f.search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
-    await expect(page.getByRole("option", { name: /검색계정/ })).toHaveCount(0);
+    await expect(page.getByRole("listbox").getByRole("option", { name: /검색계정/ })).toHaveCount(0);
     await expect(f.search).toBeFocused();
     await f.search.press("Tab");
     await expect(page.getByRole("main").getByRole("button", { name: "다시 불러오기", exact: true })).toBeVisible();
     await f.search.fill("복구");
-    await expect(page.getByRole("option")).toHaveCount(50);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(50);
     expect(f.unexpected).toEqual([]);
   } finally { f.release(); }
 });

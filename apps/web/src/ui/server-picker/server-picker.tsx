@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Button, ComboBox, FieldError, Input, Label, ListBox, ListBoxItem, Popover, Text, TextField } from "react-aria-components";
 import { Plus, Search, Send } from "lucide-react";
 import { t } from "@console/i18n";
 import { homonymOf, suffixMatches, SUFFIX } from "./homonym";
+import { useNonModalSurroundings } from "../use-non-modal-surroundings";
 import css from "./server-picker.module.css";
 
 /** One server result. People carry `code` (employee number) and `status`, so a partial match or a namesake is never a guess. */
@@ -47,21 +48,8 @@ export function ServerPicker(p: {
   const [pending, setPending] = useState<PickerOption>();
   const [suffix, setSuffix] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const body = input.current!.ownerDocument.body;
-    const preserved = [...body.querySelectorAll<HTMLElement>("[inert]")];
-    // A picker inside a Sheet: when the Sheet itself unmounts (Back, route change) its overlay's inert must not return.
-    const host = input.current!.closest('[role="dialog"]');
-    return () => {
-      const restore = () => { for (const el of preserved) el.inert = true; };
-      // A rapid reopen must snapshot the original restrictions before any microtask runs.
-      restore();
-      // On unmount, React Aria's child cleanup runs after ours and clears inert with aria-hidden.
-      queueMicrotask(() => { if (!host || host.isConnected) restore(); });
-    };
-  }, [open]);
+  const popover = useRef<HTMLDivElement>(null);
+  const onOpenChange = useNonModalSurroundings(input, popover);
   const homonyms = homonymOf(p.options, pending);
   const pick = (key: string | null) => {
     if (p.readOnly || p.disabledReason) return;
@@ -98,7 +86,7 @@ export function ServerPicker(p: {
         items={p.options}
         inputValue={p.query}
         onInputChange={p.onQueryChange}
-        onOpenChange={setOpen}
+        onOpenChange={onOpenChange}
         selectedKey={pending ? pending.id : (p.value ?? null)}
         onSelectionChange={(k) => pick(k === null ? null : String(k))}
         menuTrigger={p.readOnly ? "manual" : "input"}
@@ -117,7 +105,7 @@ export function ServerPicker(p: {
         {(p.reserveError || p.error != null) && <div className={css.feedback} data-reserved={p.reserveError || undefined}>
           <FieldError className={css.error}>{p.error}</FieldError>
         </div>}
-        <Popover className={`popover ${css.pop}`}>
+        <Popover ref={popover} className={`popover ${css.pop}`}>
           <div className={css.group}>
             <span aria-hidden="true">{p.group}</span>
             <span role="status">{p.loading ? t("uiServerPicker.loading") : p.error ?? t("uiServerPicker.count", { count: p.total ?? p.options.length })}</span>

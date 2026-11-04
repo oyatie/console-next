@@ -17,7 +17,11 @@
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 16px 16px;
 }
-.canvas[data-dimmed] .stage { opacity: 0.55; }
+.canvas[data-dimmed] {
+  border-color: var(--control-border);
+  border-style: dashed;
+  background-color: var(--muted);
+}
 .viewport { position: relative; flex: 1; overflow: hidden; touch-action: none; cursor: grab; }
 .viewport:active { cursor: grabbing; }
 .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }

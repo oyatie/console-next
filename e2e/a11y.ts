@@ -10,13 +10,13 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
  * after the screen has settled (an expect(...).toBeVisible() on its content). The screen's
  * layout stability is checked first (e2e/stability.ts).
  */
-export async function expectAccessible(page: Page, context: string, options: { openPicker?: boolean } = {}) {
+export async function expectAccessible(page: Page, context: string) {
   await expectStable(page, context);
-  await expectAxe(page, context, options);
+  await expectAxe(page, context);
 }
 
 /** State matrices scan the settled state; live journeys also check arrival shifts through expectAccessible. */
-export async function expectAxe(page: Page, context: string, options: { openPicker?: boolean; include?: string } = {}) {
+export async function expectAxe(page: Page, context: string, options: { include?: string } = {}) {
   const html = page.locator("html");
   const original = await html.getAttribute("data-theme");
   const found: string[] = [];
@@ -24,8 +24,6 @@ export async function expectAxe(page: Page, context: string, options: { openPick
     await html.evaluate((el, t) => (el.dataset.theme = t), theme);
     const scan = new AxeBuilder({ page }).withTags(TAGS);
     if (options.include) scan.include(options.include);
-    // React Aria's virtual-focus combobox deliberately leaves hidden content in the tab order.
-    if (options.openPicker) scan.disableRules(["aria-hidden-focus"]);
     const { violations } = await scan.analyze();
     for (const v of violations.filter((v) => v.impact === "serious" || v.impact === "critical"))
       found.push(`[${theme}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);

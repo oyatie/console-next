@@ -24,7 +24,13 @@ beforeAll(async () => {
           const [clicks, setClicks] = useState(0);
           const [mounted, setMounted] = useState(true);
           const [sheetOpen, setSheetOpen] = useState(true);
+          const [lateHidden, setLateHidden] = useState(false);
+          const [lateAction, setLateAction] = useState(false);
+          const [appHidden, setAppHidden] = useState(false);
           window.closeSheet = () => setSheetOpen(false);
+          window.addHidden = () => setLateHidden(true);
+          window.addAction = () => setLateAction(true);
+          window.setAppHidden = setAppHidden;
           const picker = mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
             onQueryChange: setQuery, value, onChange: setValue,
             options: [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }] });
@@ -34,10 +40,15 @@ beforeAll(async () => {
             h(ModalOverlay, { isOpen: sheetOpen, onOpenChange: setSheetOpen }, h(Modal, null, h(Dialog, { 'aria-label': 'Sheet' }, picker))));
           return h('main', null,
             h('div', { inert: true }, h('button', { id: 'already-inert' }, 'Unavailable')),
+            h('section', { id: 'already-hidden', 'aria-hidden': 'true' }, h('button', { tabIndex: -1 }, 'Intentionally unavailable')),
             h('button', { id: 'outside', onClick: () => setClicks(n => n + 1) }, 'Outside'),
-            mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
-              onQueryChange: setQuery, value, onChange: setValue,
-              options: [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }] }),
+            h('section', { id: 'app-visibility', 'aria-hidden': appHidden || undefined },
+              mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
+                onQueryChange: setQuery, value, onChange: setValue,
+                options: query === 'Empty' ? [] : [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }],
+                escape: { kind: 'add', label: 'Add person', onAdd() {} } })),
+            lateHidden && h('span', { id: 'late-hidden', 'aria-hidden': 'true' }, 'Late decoration'),
+            lateAction && h('section', { id: 'late-action' }, h('button', null, 'Late action')),
             h('input', { id: 'after', 'aria-label': 'After' }),
             h('button', { id: 'unmount', onClick: () => setMounted(false) }, 'Unmount'),
             h('output', { id: 'selected' }, value), h('output', { id: 'clicks' }, clicks));
@@ -58,10 +69,10 @@ test("an open picker passes axe in both themes and preserves existing inert rest
   const input = page.getByRole("combobox", { name: "Person" });
   await input.fill("Namesake");
   await page.getByRole("option").first().waitFor();
+  await expectElement(page.locator("#already-hidden")).toHaveAttribute("aria-hidden", "true");
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
-    // React Aria's virtual-focus combobox deliberately leaves hidden content in the tab order.
-    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).disableRules(["aria-hidden-focus"]).analyze();
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
   }
   await page.getByRole("option", { name: "Namesake · HR" }).click();
@@ -77,7 +88,7 @@ test("closing restores existing inert restrictions before the next microtask", a
   const input = page.getByRole("combobox", { name: "Person" });
   await input.fill("Namesake");
   await page.getByRole("option").first().waitFor();
-  await expectElement(page.locator("#outside")).toHaveAttribute("aria-hidden", "true");
+  await expectElement(page.locator("#outside")).not.toHaveAttribute("aria-hidden", "true");
   await page.locator("#already-inert").evaluate((el) => {
     const restricted = el.parentElement!;
     const combobox = document.querySelector('[role="combobox"]')!;
@@ -93,6 +104,90 @@ test("closing restores existing inert restrictions before the next microtask", a
   await expectElement(restricted).toHaveJSProperty("inert", true);
   await expectElement(restricted).toHaveAttribute("data-exposed", "false");
 }, 10000);
+
+test("an open picker preserves its own and newly mounted decorative content", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  const input = page.getByRole("combobox", { name: "Person" });
+  await input.fill("Empty");
+  await expectElement(page.locator(".popover").getByText("People", { exact: true })).toHaveAttribute("aria-hidden", "true");
+  await expectElement(page.getByRole("button", { name: "Add person" }).locator("svg")).toHaveAttribute("aria-hidden", "true");
+  await page.evaluate(() => (window as unknown as { addHidden: () => void }).addHidden());
+  await expectElement(page.locator("#late-hidden")).toHaveAttribute("aria-hidden", "true");
+  await input.press("Tab");
+  await expectElement(input).toHaveAttribute("aria-expanded", "false");
+  await expectElement(page.locator("#late-hidden")).toHaveAttribute("aria-hidden", "true");
+}, 10000);
+
+test("an open picker preserves a pre-hidden action", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  const input = page.getByRole("combobox", { name: "Person" });
+  await input.fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  await expectElement(page.locator("#already-hidden")).toHaveAttribute("aria-hidden", "true");
+  await expectElement(page.getByRole("button", { name: "Intentionally unavailable" })).toHaveCount(0);
+}, 10000);
+
+test("an action mounted after the picker opens remains accessible", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  await page.getByRole("combobox", { name: "Person" }).fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  await page.evaluate(() => (window as unknown as { addAction: () => void }).addAction());
+  const action = page.getByRole("button", { name: "Late action" });
+  await expectElement(action).toBeVisible();
+  await expectElement(page.locator("#late-action")).not.toHaveAttribute("aria-hidden", "true");
+  const { violations } = await new AxeBuilder({ page }).withRules(["aria-hidden-focus"]).analyze();
+  expect(violations).toEqual([]);
+}, 10000);
+
+test("an action hidden by the application while the picker is open stays hidden on close", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  const input = page.getByRole("combobox", { name: "Person" });
+  await input.fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  await page.evaluate(() => (window as unknown as { addAction: () => void }).addAction());
+  const region = page.locator("#late-action");
+  const action = region.locator("button");
+  await action.evaluate((el) => el.setAttribute("aria-hidden", "true"));
+  await expectElement(action).toHaveAttribute("aria-hidden", "false");
+  await input.press("Tab");
+  await expectElement(input).toHaveAttribute("aria-expanded", "false");
+  await expectElement(action).toHaveAttribute("aria-hidden", "true");
+  await expectElement(region).not.toHaveAttribute("aria-hidden");
+}, 10000);
+
+test("application-owned visibility changes survive picker close", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  const input = page.getByRole("combobox", { name: "Person" });
+  const region = page.locator("#app-visibility");
+  const setHidden = (hidden: boolean) => page.evaluate(value =>
+    (window as unknown as { setAppHidden: (next: boolean) => void }).setAppHidden(value), hidden);
+
+  await input.fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  await setHidden(true);
+  await expectElement(region).not.toHaveAttribute("aria-hidden", "true");
+  await input.press("Tab");
+  await expectElement(region).toHaveAttribute("aria-hidden", "true");
+
+  await setHidden(false);
+  await input.press("ArrowDown");
+  await page.getByRole("option").first().waitFor();
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  await setHidden(true);
+  await expectElement(region).not.toHaveAttribute("aria-hidden", "true");
+  await setHidden(false);
+  await region.evaluate((el) => {
+    el.dataset.rehidden = "false";
+    new MutationObserver(() => {
+      if (el.getAttribute("aria-hidden") === "true") el.dataset.rehidden = "true";
+    }).observe(el, { attributes: true, attributeFilter: ["aria-hidden"] });
+  });
+  await input.press("Tab");
+  await expectElement(page.locator('[role="combobox"]')).toHaveAttribute("aria-expanded", "false");
+  await expectElement(region).not.toHaveAttribute("aria-hidden", "true");
+  await expectElement(region).toHaveAttribute("data-rehidden", "false");
+}, 15000);
 
 test("a deliberately selected namesake without an employee number can be confirmed", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);

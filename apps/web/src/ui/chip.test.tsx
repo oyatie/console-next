@@ -7,3 +7,8 @@ test.each(["ok", "warn", "danger", "info", "neutral"] as const)("%s chips retain
   const label = "State";
   expect(html(<Chip tone={tone}>{label}</Chip>)).toBe(`<span class="chip chip--${tone}">${label}</span>`);
 });
+
+test("chips forward an optional layout class", () => {
+  const label = "Main";
+  expect(html(<Chip className="slot">{label}</Chip>)).toBe(`<span class="chip chip--neutral slot">${label}</span>`);
+});
