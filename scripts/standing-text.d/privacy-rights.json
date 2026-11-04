@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyRequests": 13
+  },
+  "newScreens": {
+    "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyRequests": {
+      "FACT": 8,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 1,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}
