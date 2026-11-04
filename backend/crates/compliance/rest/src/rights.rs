@@ -14,11 +14,12 @@ use console_platform_auth::{
 };
 use console_platform_authz::cedar_pbac::visible::load_facts;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 pub const PATH: &str = "/api/v1/privacy/rights-requests";
 pub const MINE: &str = "/api/v1/privacy/rights-requests/mine";
-pub const ROUTE_PATHS: &[&str] = &[PATH, MINE];
+pub const OPTIONS: &str = "/api/v1/privacy/rights-requests/options";
+pub const ROUTE_PATHS: &[&str] = &[PATH, MINE, OPTIONS];
 
 pub fn router(state: ComplianceRestState) -> Router {
     let verifier = state.jwt_verifier.clone();
@@ -26,6 +27,7 @@ pub fn router(state: ComplianceRestState) -> Router {
     console_platform_request_context::with_request_context(
         Router::new()
             .route(MINE, get(mine))
+            .route(OPTIONS, get(options))
             .route(PATH, post(file))
             .with_state(state),
         verifier,
@@ -165,4 +167,65 @@ async fn file(
     .map_err(store_error)?;
     tx.commit().await.map_err(unavailable)?;
     Ok(Json(result))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OptionsQuery {}
+
+async fn options(
+    State(state): State<ComplianceRestState>,
+    headers: HeaderMap,
+    Query(_): Query<OptionsQuery>,
+) -> Result<Json<Value>, RestError> {
+    use console_compliance_domain::rights::{Kind, due};
+    use time::{OffsetDateTime, UtcOffset};
+    let actor = principal_from_headers(&state, &headers).await?;
+    let mut tx = rights::begin(state.store.pool(), actor.org_id)
+        .await
+        .map_err(unavailable)?;
+    let subject = *actor.user_id.as_uuid();
+    let facts = load_facts(&mut tx, actor.org_id, subject)
+        .await
+        .map_err(unavailable)?;
+    if !facts
+        .authorize_privacy_request_read(subject)
+        .map_err(unavailable)?
+    {
+        return Err(RestError::new(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "privacy request read refused",
+        ));
+    }
+    let mut controllers = Vec::new();
+    for controller in [Controller::Tenant, Controller::Operator] {
+        if facts
+            .authorize_privacy_request(subject, controller == Controller::Tenant)
+            .map_err(unavailable)?
+        {
+            controllers.push(json!({"code":controller}));
+        }
+    }
+    let today = OffsetDateTime::now_utc()
+        .to_offset(UtcOffset::from_hms(9, 0, 0).map_err(unavailable)?)
+        .date();
+    let register =
+        console_compliance_adapter_postgres::statutory::load_statutory_register(tx.as_mut())
+            .await
+            .map_err(unavailable)?;
+    let kinds = Kind::FILING.iter().map(|kind| {
+        let clock = due(*kind, today, &register).map_err(unavailable)?;
+        Ok(json!({"code":kind, "due_on":clock.as_ref().and_then(|c| c.on).map(|on| on.to_string()),
+            "without_delay":clock.is_some_and(|c| c.without_delay)}))
+    }).collect::<Result<Vec<_>, RestError>>()?;
+    let detail_max_length = rights::detail_max_length(&mut tx, actor.org_id)
+        .await
+        .map_err(unavailable)?;
+    tx.commit().await.map_err(unavailable)?;
+    // Accounts have sign-in IDs, not delivery email addresses; do not substitute employee contact data.
+    Ok(Json(
+        json!({"subject_user_id":subject,"as_of":today.to_string(),"controllers":controllers,
+        "kinds":kinds,"detail_max_length":detail_max_length,"reply_email_masked":null}),
+    ))
 }

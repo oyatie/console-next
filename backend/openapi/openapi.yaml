@@ -25479,6 +25479,49 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/options:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: privacyRightsRequestOptions
+      summary: Filing choices and statutory clock previews for the authenticated subject
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Code-only choices admitted by Cedar; dates resolved as of the server KST date.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [subject_user_id, as_of, controllers, kinds, detail_max_length, reply_email_masked]
+                properties:
+                  subject_user_id: { type: string, format: uuid }
+                  as_of: { type: string, format: date }
+                  controllers:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [code]
+                      properties:
+                        code: { type: string, enum: [TENANT, OPERATOR] }
+                  kinds:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [code, due_on, without_delay]
+                      properties:
+                        code: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                        due_on: { type: string, format: date, nullable: true }
+                        without_delay: { type: boolean }
+                  detail_max_length: { type: integer, minimum: 1 }
+                  reply_email_masked: { type: string, nullable: true }
+        '400': { description: Query parameters are not accepted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/production/capacity-slots:
     get:
       operationId: listProductionCapacitySlots

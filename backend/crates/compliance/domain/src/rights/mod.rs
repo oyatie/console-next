@@ -24,6 +24,16 @@ pub enum Kind {
     AutomatedDecision,
     Transmission,
 }
+impl Kind {
+    // Automated decisions and transmission have no supported filing register yet.
+    pub const FILING: &[Self] = &[
+        Self::Access,
+        Self::Correction,
+        Self::Deletion,
+        Self::Suspension,
+        Self::Withdrawal,
+    ];
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Controller {
@@ -250,7 +260,7 @@ impl RightsRequest {
         Ok(())
     }
 }
-fn due(kind: Kind, on: Date, register: &StatutoryRegister) -> Result<Option<Due>, KernelError> {
+pub fn due(kind: Kind, on: Date, register: &StatutoryRegister) -> Result<Option<Due>, KernelError> {
     let code = match kind {
         Kind::Access => Some(codes::PIPA_ACCESS_RESPONSE_DAYS),
         Kind::Correction | Kind::Deletion => Some(codes::PIPA_CORRECTION_RESPONSE_DAYS),

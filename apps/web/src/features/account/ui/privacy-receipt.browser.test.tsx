@@ -33,8 +33,8 @@ beforeAll(async () => {
           const yours={controller:guard==='controller'?'TENANT':'OPERATOR',kinds:guard==='empty'?'':guard==='kind'?'DELETION':'ACCESS',detail:guard==='length'?'long':''};
           sessionStorage.setItem(draftKey(session.principal,'/account/privacy','new','privacy-request'),JSON.stringify({base,yours}));
           createRoot(document.getElementById('root')).render(h(QueryClientProvider,{client:new QueryClient()},h(PrivacyRequestForm,{onFiled:()=>{},options:{
-            subject_user_id:'subject',as_of:'2026-11-05',controllers:[{code:'OPERATOR',label:'내 계정 정보',description:'서비스 운영사'}],
-            kinds:[{code:'ACCESS',label:'열람',description:'기록 확인',due_on:null,without_delay:false}],detail_max_length:3,reply_email_masked:null
+            subject_user_id:'subject',as_of:'2026-11-05',controllers:[{code:'OPERATOR'}],
+            kinds:[{code:'ACCESS',due_on:null,without_delay:false}],detail_max_length:3,reply_email_masked:null
           }})));
         } else {
         const closed = location.search.includes('closed');

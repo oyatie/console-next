@@ -9,10 +9,10 @@ import { user } from "./fixtures";
 
 const options = {
   subject_user_id: user.id, as_of: "2026-11-05",
-  controllers: [{ code: "OPERATOR", label: "내 계정 정보", description: "서비스 운영사" }],
+  controllers: [{ code: "OPERATOR" }],
   kinds: [
-    { code: "ACCESS", label: "열람", description: "기록된 정보를 확인합니다", due_on: "2026-11-22", without_delay: false },
-    { code: "WITHDRAWAL", label: "동의 철회", description: "동의한 처리를 중단합니다", due_on: null, without_delay: true },
+    { code: "ACCESS", due_on: "2026-11-22", without_delay: false },
+    { code: "WITHDRAWAL", due_on: null, without_delay: true },
   ],
   detail_max_length: 2000, reply_email_masked: "j***@example.test",
 };
@@ -54,6 +54,7 @@ for (const width of [390, 1440]) test(`filing uses registered choices and deadli
   await expect(page.getByRole("button", { name: "요구 접수", exact: true })).toBeDisabled();
   await fill(page);
   await expect(page.getByText(/2026\. 11\. 22\./)).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "열람 · 기록된 정보를 확인합니다", exact: true })).toBeVisible();
   await expect(page.getByText(options.reply_email_masked, { exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /내용/ })).toHaveAttribute("maxlength", "2000");
   for (const theme of ["light", "dark"]) {
@@ -113,4 +114,12 @@ for (const code of ["passkey_step_up_failed", "no_employee_record", "request_kin
   await page.reload();
   await expect(page.getByRole("textbox", { name: /내용/ })).toHaveValue("로그인 기록");
   expect(fixture.unexpected).toEqual([]);
+});
+
+test("code-only options use the English catalog after a language change", async ({ page }) => {
+  await filing(page);
+  await page.getByRole("combobox", { name: "언어", exact: true }).selectOption("en");
+  await expect(page.getByRole("radio", { name: /My account information/ })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Access · View your recorded information", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Consent withdrawal · Withdraw consent to information processing", exact: true })).toBeVisible();
 });
