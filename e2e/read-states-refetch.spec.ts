@@ -6,7 +6,7 @@ import { SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows
 import { openAsOf } from "./dates";
 
 const cases = [
-  { path: "/", read: "/api/v1/me/action-inbox", button: /^기다리는 중/ },
+  { path: "/inbox", read: "/api/v1/me/action-inbox", button: /^기다리는 중/ },
   { path: "/statutory?tab=register", read: "/api/v1/statutory/workplaces", date: true },
   { path: "/statutory", read: "/api/v1/statutory/insurance-filings", button: "처리 내역" },
   { path: "/statutory", read: "/api/v1/statutory/insurance-filings", search: "이름·사번 검색" },
@@ -73,7 +73,7 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
       await page.route("**/api/**", async route => {
         if (route.request().method() !== "GET" || new URL(route.request().url()).pathname !== read) return route.continue();
         if (held && (!("select" in row) || first || new URL(route.request().url()).searchParams.get("role_id") === role.id)) { requested = true; await wait; }
-        if (row.path === "/") {
+        if (row.path === "/inbox") {
           const response = await route.fetch();
           const data = await response.json();
           // Expose the real inbox's filter chrome even when this new tenant has no waiting work.
@@ -121,7 +121,8 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           await control.click();
           await page.getByRole("option", { name: role.name_ko, exact: true }).click();
         } else {
-          control = main.getByRole("button", { name: row.button, exact: typeof row.button === "string" });
+          const name = { name: row.button, exact: typeof row.button === "string" };
+          control = main.getByRole("button", name).or(main.getByRole("link", name));
           await control.focus();
           await control.press("Enter");
         }

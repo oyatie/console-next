@@ -8,7 +8,7 @@ import type { Checklist } from "@console/api/pending";
 import { loadCatalog, t } from "@console/i18n";
 import type { Button } from "../../../ui/button/button";
 import { InboxQueue } from "./inbox-queue";
-import type { InboxFilter } from "../domain/inbox-filter";
+import { type InboxFilter } from "../domain/inbox-filter";
 import { cursorPages, readIdentity } from "../../../lib/query";
 
 type Item = components["schemas"]["ActionInboxItem"];
@@ -40,7 +40,7 @@ vi.mock("../../../ui/button/button", async (original) => {
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", lane: "turn", title: id, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id }], ...extra });
 const page = (items: Item[], extra: Partial<Page> = {}): Page => ({ items, total: items.length, total_is_exact: true, next_cursor: null, unavailable: [], available_filters: ["turn", "waiting", "scheduled", "deadlines", "failures"], counts: {}, upcoming: [], has_work: true, quick_starts: [], as_of: "2026-10-23T00:00:00Z", ...extra });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
-const html = (setupPending = false) => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => InboxQueue({ filter: view.filter, setupPending, preview: !!view.list.data?.pages[0]?.setup, setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (row: Item) => row.context?.command ? createElement("button", { "data-command": row.context.command, "data-record": row.links[0]?.id }, row.context.command) : row.kind === "account_security" ? createElement("button", null, t("account.passkey.add")) : null }))));
+const html = (setupPending = false, preview = !!view.list.data?.pages[0]?.setup) => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => InboxQueue({ filter: view.filter, setupPending, preview, setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (row: Item) => row.context?.command ? createElement("button", { "data-command": row.context.command, "data-record": row.links[0]?.id }, row.context.command) : row.kind === "account_security" ? createElement("button", null, t("account.passkey.add")) : null }))));
 const click = (label: string) => view.buttons.find((button) => button.children === label || typeof button.children === "string" && button.children.startsWith(label + " "))!.onClick!({} as MouseEvent<HTMLButtonElement>);
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
@@ -54,7 +54,7 @@ test("Home reads all work through the unified inbox and renders its record verb"
   expect(view.reads.filter((path) => path !== "/api/v1/users/me")).toEqual([]);
   expect(markup).toContain("명부 확인");
   expect(markup).toContain('href="/people/');
-  expect(markup).toContain(t("home.inbox.reason.register"));
+  expect(markup).toContain(t("home.review.register"));
   expect(view.options).toMatchObject({ refetchOnMount: "always" });
 });
 
@@ -147,11 +147,16 @@ test("an unregistered record kind stays readable without a guessed destination",
   expect(markup).not.toContain('href="/people/');
 });
 
-test("each filter shows its server count and an inexact lower bound", () => {
+test("each filter shows its server count and an inexact lower bound without inventing an all count on filtered views", () => {
   view.list.data = { pages: [page([item("work")], { counts: { turn: { total: 7, total_is_exact: true }, waiting: { total: 2, total_is_exact: false } } })] };
   const markup = html();
   expect(markup).toContain(`${t("home.inbox.filter.turn")} 7`);
   expect(markup).toContain(`${t("home.inbox.filter.waiting")} 2+`);
+  view.filter = "scheduled";
+  view.list.data = { pages: [page([], { total: 0, counts: { turn: { total: 7, total_is_exact: true }, scheduled: { total: 0, total_is_exact: true } } })] };
+  const filtered = html();
+  expect(filtered).toContain(`>${t("home.inbox.filter.all")}</a>`);
+  expect(filtered).not.toContain(`${t("home.inbox.filter.all")} 0`);
 });
 test("one failed source keeps healthy rows, names the outage and offers retry with its support reference", () => {
   view.list.data = { pages: [page([item("healthy work")], { total_is_exact: false, unavailable: [{ source: "hr_register", support_reference: "0123456789abcdef0123456789abcdef" }] })] };
@@ -171,7 +176,7 @@ test("no work grant shows the honest account page without dead filters", () => {
 });
 test("empty turn offers permitted starts, next scheduled work and the as-of stamp", () => {
   view.list.data = { pages: [page([], { quick_starts: ["register", "import", "org", "invite"], upcoming: [item("next change", { kind: "org_change_scheduled", lane: "scheduled", links: [{ kind: "org_change", id: "next" }] })] })] };
-  const markup = html();
+  const markup = html(false, true);
   for (const key of ["register", "import", "org", "invite"] as const) expect(markup).toContain(t(`home.tiles.${key}`));
   expect(markup).toContain("next change");
   expect(markup).toContain(t("home.next.title"));
@@ -197,14 +202,11 @@ test("the server can offer a personal view without work capabilities", () => {
   expect(html()).toContain(t("home.inbox.filter.waiting"));
 });
 
-test.each(["approve", "effectuate"] as const)("server command %s reaches the inline control beside the record link", (command) => {
+test.each(["approve", "effectuate"] as const)("server command %s reaches the inline control beside a distinct record link", (command) => {
   view.list.data = { pages: [page([item("org", { kind: command === "approve" ? "org_change_approve" : "org_change_apply", links: [{kind:"org_change",id:"record"}], context: { command, drafter:"drafter", reason:"reason" } })])] };
   const markup = html();
-  expect(markup).toContain(`data-command="${command}"`);
-  expect(markup).toContain('data-record="record"');
-  expect(markup).toContain('href="/org/changes/record"');
-  expect(markup).toContain("drafter");
-  expect(markup).toContain("reason");
+  for (const part of [`data-command="${command}"`, 'data-record="record"', 'href="/org/changes/record"', `>${t("home.decide.review")}</a>`, "drafter", "reason"]) expect(markup).toContain(part);
+  expect(markup).not.toContain(`>${t("org.change.effectuate")}</a>`);
 });
 test("waiting work retains its durable outcome link", () => {
   view.list.data = { pages: [page([item("waiting", { kind:"org_change_waiting",lane:"waiting",context:{command_id:"outcome"} })])] };
@@ -235,7 +237,8 @@ test.each([["birth", "birth", "s1"], ["job", "job", "s2"], ["hire", "contract", 
   view.list.data = { pages: [page([item("register", { context: { register: { missing_fields: [field] } } })])] };
   const markup = html();
   expect(markup).toContain(`href="/people/register#${block}"`);
-  expect(markup).toContain(`${t("home.inbox.reason.register")} · ${t(`empCard.reg.item.${label}`)} · ${t("home.inbox.enter")}`);
+  expect(markup).toContain(">빠진 정보 입력</a>");
+  expect(markup).not.toContain(`${t("home.review.register")} · ${t(`empCard.reg.item.${label}`)} · 입력`);
 });
 test("account security retains inline second-passkey registration and account navigation", () => {
   view.list.data = { pages: [page([item("security", {kind:"account_security",links:[{kind:"account",id:"me"}],context:{is_ops:true}})])] };
@@ -295,20 +298,4 @@ test("a failed support-approval source keeps its own retry label", () => {
   const markup = html();
   expect(markup).toContain(t("home.inbox.unavailable", { part: t("home.part.support") }));
   expect(markup).toContain("support-reference");
-});
-
-test.each([
-  ["identifier_correction_waiting", "PENDING", "정정 요청 · 사후 검토 확인", "waiting"],
-  ["identifier_correction_decide", "PENDING", "정정 요청 검토", "turn"],
-  ["identifier_correction_apply", "APPROVED", "승인된 정정 적용", "turn"],
-  ["identifier_correction_review", "RECORDED", "사후 검토 기록", "turn"],
-] as const)("Home renders labelled correction context and its record verb for %s", (kind, status, verb, lane) => {
-  view.list.data = { pages: [page([item("correction", { kind, lane, title: "번호검토주식회사", who: "김요청", links: [{ kind: "identifier_correction", id: "case" }], context: { correction: { status } } })])] };
-  const markup = html();
-  expect(markup).toContain("번호검토주식회사");
-  expect(markup).toContain("요청자: 김요청");
-  expect(markup).toContain("처리 상태: " + t(`entityRecord.corrections.status.${status}`));
-  expect(markup).toContain(verb);
-  expect(markup).toContain('href="/org/entities?correction=case#identifier-corrections"');
-  expect(markup).not.toContain(`<strong>${t("home.inbox.unknown")}</strong>`);
 });

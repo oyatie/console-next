@@ -2,7 +2,6 @@
 import { Fragment, useRef, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import type { components } from "@console/api/schema";
 import { isMessageId, t, type MessageId } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { APPROVAL_ROLE, INSURER, LIFECYCLE_EVENT, codeText, label } from "../../../lib/labels";
@@ -16,10 +15,11 @@ import { Chip } from "../../../ui/chip";
 import { Table, type Column } from "../../../ui/table";
 import { useCardLayout } from "../../../ui/long-table/use-card-layout";
 import { DEADLINE_BUCKETS, deadlineBucket } from "../domain/deadline-bucket";
+import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { GrantNotice } from "./grant-notices";
 import css from "./grouped-queue.module.css";
 
-type InboxItem = components["schemas"]["ActionInboxItem"];
+type InboxItem = AttentionInboxItem;
 export type RowAction = (item: InboxItem) => ReactNode;
 type QueueColumn = Column<InboxItem> & { id: "task" | "subject" | "due" | "source" | "owner" | "actions" };
 const KIND_TEXT: Record<string, MessageId> = {
@@ -38,8 +38,8 @@ const VERB_TEXT: Record<string, MessageId> = {
   org_change_approve: "home.decide.review", org_change_apply: "org.change.effectuate", org_change_draft: "home.mine.edit",
   org_change_rejected: "home.mine.rejection", org_change_settle: "home.mine.settle",
   hr_exit_confirm: "exit.action.confirm_exit", hr_exit_confirm_hq: "exit.action.confirm_exit_hq", hr_exit_settle: "exit.action.prepare_settlement",
-  lifecycle_apply_failed: "home.failed.review", hr_lifecycle: "home.failed.review", contract_renewal: "people.lifecycle.action.CONTRACT_RENEWAL",
-  insurance_filing: "statutory.open", identity_review: "home.failed.review", unplaced: "home.inbox.place", register_review: "home.inbox.enter",
+  lifecycle_apply_failed: "home.failed.review", hr_lifecycle: "home.failed.review", contract_renewal: "home.inbox.action.contract",
+  insurance_filing: "statutory.open", identity_review: "home.failed.review", unplaced: "home.inbox.place", register_review: "home.inbox.action.register",
   support_access: "supportAccess.review", period_unlock: "periodLocks.request.review", hr_request: "home.requests.review",
 };
 const REVIEW_FILTER: Record<string, string> = { unplaced: "unplaced", register_review: "register", identity_review: "identity", lifecycle_apply_failed: "failed" };
@@ -80,23 +80,26 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
     { id: "task", header: t("home.inbox.column.task"), cell: item => <div id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
       {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={() => toggle(item.id)}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</strong>}
       {item.kind === "account_security" && <div className="muted">{t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")}</div>}
-      {item.context?.register?.missing_fields.map(key => REGISTER_FIELDS[key] && <Chip key={key}>{t(REGISTER_FIELDS[key]!.label)}</Chip>)}
+      {(() => {
+        const labels = [...new Set((item.context?.register?.missing_fields ?? []).flatMap(key => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!.label] : []))];
+        return labels.length > 0 && <div className="row">{labels.map((id, i) => <Fragment key={id}>{i > 0 && " "}<Chip>{t(id)}</Chip></Fragment>)}</div>;
+      })()}
       {item.context?.drafter && <div className="muted">{t("home.decide.drafter", { name: item.context.drafter })}</div>}
-      {item.context?.reason && <div>{item.context.reason}</div>}
+      {(item.reason ?? item.context?.reason) && <div className="muted">{item.reason ?? item.context?.reason}</div>}
       {item.context?.command_id && <OutcomeLink id={item.context.command_id} />}
     </div> },
     { id: "subject", header: t("home.inbox.column.subject"), cell: item => <Subject item={item} /> },
-    { id: "due", header: t("home.inbox.column.due"), fit: true, cell: item => item.due ? <>
+    { id: "due", header: t("home.inbox.column.due"), width: "datetime", cell: item => item.due ? <>
       {item.days_remaining != null && <DeadlineChip days={item.days_remaining} severity={item.dueTone === "danger" ? "over" : item.dueTone === "warn" ? "due" : "far"} />}
       <div className={compact ? "sr-only" : "muted num"}>{fmtDateTime(item.due)}</div>
       {item.kind === "org_change_apply" && item.days_remaining != null && item.days_remaining <= 0 && <div className="muted num">{t("home.due.since", { days: -item.days_remaining })}</div>}
-    </> : null },
-    { id: "source", header: t("home.inbox.column.source"), cell: item => {
+    </> : item.age_days != null ? <div className="muted num">{t("home.inbox.aging", { days: item.age_days })}</div> : null },
+    { id: "source", header: t("home.inbox.column.source"), width: "code", cell: item => {
       if (item.kind === "unplaced") return <Link to="/people/unplaced">{t(KIND_TEXT[item.kind]!)}</Link>;
       if (REVIEW_FILTER[item.kind]) return <Link to="/people" search={{ review: REVIEW_FILTER[item.kind], ...(item.kind === "lifecycle_apply_failed" ? { status: "all" } : {}) }}>{t(KIND_TEXT[item.kind]!)}</Link>;
       return t(RECORD_SOURCE[item.links[0]?.kind ?? ""] ?? "home.inbox.unknown");
     } },
-    { id: "owner", header: t("home.inbox.column.owner"), fit: true, cell: item => item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who!) : item.who },
+    { id: "owner", header: t("home.inbox.column.owner"), width: "code", cell: item => item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who!) : item.who },
     { id: "actions", header: <span className="sr-only">{t("home.inbox.column.actions")}</span>, cell: item => {
       const control = isFold(item) ? null : controls.get(item.id);
       return control ? <div className={css.actions}>{control}</div> : null;
@@ -104,7 +107,7 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
   ];
   const detail = (item: InboxItem) => isFold(item) && expanded.has(item.id) ? renderRows(folded.get(item.id)!.map(child => ({ ...child })), t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")) : null;
   const renderRows = (rows: InboxItem[], name: string): ReactNode => {
-    const columns = allColumns.filter(column => column.id === "due" ? rows.some(item => item.due) : column.id === "owner" ? rows.some(item => item.who) : column.id === "actions" ? rows.some(item => !isFold(item) && controls.get(item.id)) : true);
+    const columns = allColumns.filter(column => column.id === "due" ? rows.some(item => item.due || item.age_days != null) : column.id === "owner" ? rows.some(item => item.who) : column.id === "actions" ? rows.some(item => !isFold(item) && controls.get(item.id)) : true);
     return compact ? <div role="table" aria-label={name} aria-colcount={columns.length}>
       <div role="rowgroup" className="sr-only"><div role="row">{columns.map((column, i) => <div role="columnheader" key={i}>{column.header}</div>)}</div></div>
       <div role="rowgroup">{rows.map(item => <Fragment key={item.id}>
@@ -148,7 +151,7 @@ function recordAction(item: InboxItem, action?: RowAction) {
   if (!link) return null;
   const unlock = item.context?.unlock;
   const fields = (item.context?.register?.missing_fields ?? []).flatMap((key) => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!] : []);
-  const text = item.kind === "register_review" ? [t("home.inbox.reason.register"), ...new Set(fields.map((field) => t(field.label))), t("home.inbox.enter")].join(" · ") : t(VERB_TEXT[item.kind] ?? "home.inbox.open", unlock ? { domain: domainText(unlock.domain), period: periodText(unlock) } : {});
+  const text = t(VERB_TEXT[item.kind] ?? "home.inbox.open", unlock ? { domain: domainText(unlock.domain), period: periodText(unlock) } : {});
   const className = buttonClass("secondary", { size: "sm" });
   const inline = action?.(item);
   switch (link.kind) {
@@ -158,7 +161,7 @@ function recordAction(item: InboxItem, action?: RowAction) {
       return <Link to="/org/entities/$id" params={{ id }} search={{ nts: registrationId }} className={className}>{text}</Link>;
     }
     case "identifier_correction": return <Link to="/org/entities" search={{ correction: link.id }} hash="identifier-corrections" className={className}>{text}</Link>;
-    case "org_change": return <>{inline}<Link to="/org/changes/$id" params={{ id: link.id }} className={buttonClass(inline ? "ghost" : "secondary", { size: "sm" })}>{text}</Link></>;
+    case "org_change": return <>{inline}<Link to="/org/changes/$id" params={{ id: link.id }} className={buttonClass(inline ? "ghost" : "secondary", { size: "sm" })}>{inline && item.kind === "org_change_apply" ? t("home.decide.review") : text}</Link></>;
     case "employee": return <Link to="/people/$id" params={{ id: link.id }} search={item.kind === "contract_renewal" ? { act: "CONTRACT_RENEWAL" } : item.kind === "unplaced" ? { act: "TRANSFER" } : {}} hash={item.kind === "register_review" ? fields[0]?.block ?? "register" : undefined} className={className}>{text}</Link>;
     case "support_session": return <Link to="/audit/support-access" search={{ review: link.id }} className={className}>{text}</Link>;
     case "change_request": return <Link to="/people/requests" search={{ sel: link.id }} className={className}>{text}</Link>;

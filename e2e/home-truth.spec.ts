@@ -78,6 +78,10 @@ test("Home keeps healthy work through a source failure, retries it, and asks a r
     healthyTitle = body.items[0]!.title;
     await route.fulfill({ response, json: {
       ...body, has_work: true, unavailable: [{ source: "hr_requests", support_reference: supportReference }], total_is_exact: false,
+      attention_filters: [
+        { key: "all", total: body.total, total_is_exact: false }, { key: "approvals", total: 0, total_is_exact: true },
+        { key: "today", total: body.total, total_is_exact: false }, { key: "overdue", total: 0, total_is_exact: true },
+      ],
       counts: Object.fromEntries(Object.entries(body.counts).map(([key, count]) => [key, { ...count, total_is_exact: false }])),
     } });
   });
@@ -91,7 +95,7 @@ test("Home keeps healthy work through a source failure, retries it, and asks a r
   await expect(inbox.getByRole("heading", { name: "불러오지 못했습니다", exact: true })).toHaveCount(0);
   await expect(inbox.getByRole("heading", { name: "처리할 업무가 없습니다" })).toHaveCount(0);
   await expect(inbox.getByRole("heading", { name: "이 계정으로 처리할 업무가 없습니다" })).toHaveCount(0);
-  await expect(inbox.getByRole("group", { name: "업무 구분" }).getByRole("button")).toHaveCount(5);
+  await expect(inbox.getByRole("group", { name: "확인 필요" }).getByRole("button")).toHaveCount(4);
   await walkHome(admin, "partial", info);
 
   fail = false;
@@ -166,7 +170,7 @@ test("an account with no work grant gets an honest home, and 기간 잠금 refus
   await expect(inbox.getByRole("link", { name: "내 계정", exact: true })).toHaveAttribute("href", "/account");
   await expect(inbox.getByRole("button", { name: "패스키 등록", exact: true })).toBeVisible();
   await expect(inbox).not.toContainText("이임원");
-  await expect(inbox.getByRole("group", { name: "업무 구분" }).getByRole("button")).toHaveCount(0);
+  await expect(inbox.getByRole("group", { name: "확인 필요" }).getByRole("button")).toHaveCount(0);
   await expect(inbox.getByRole("link", { name: "직원 등록", exact: true })).toHaveCount(0);
   await expect(exec.getByRole("button", { name: "로그아웃" })).toHaveCount(1);
   await walkHome(exec, "no-grant", info);

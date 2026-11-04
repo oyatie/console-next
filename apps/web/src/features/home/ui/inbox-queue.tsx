@@ -4,11 +4,11 @@ import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { Checklist } from "@console/api/pending";
 import { t, type MessageId } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { liveApplying } from "../../../lib/live/live";
 import { cursorPages } from "../../../lib/query";
 import { QueryState } from "../../../lib/react/query-state";
-import { Button } from "../../../ui/button/button";
+import { Button, ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
 import { Banner } from "../../../ui/banner/banner";
@@ -18,7 +18,8 @@ import { Card } from "../../../ui/card/card";
 import { TabNav } from "../../../ui/tabs/tabs";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { Skeleton } from "../../../ui/skeleton/skeleton";
-import type { InboxFilter } from "../domain/inbox-filter";
+import { isAttentionFilter, type AttentionFilter, type AttentionInboxResponse, type InboxFilter } from "../domain/inbox-filter";
+import css from "./inbox-queue.module.css";
 
 // Keep the Home preview short enough for the first viewport; full paging belongs to /inbox.
 const HOME_PREVIEW_ROWS = 5;
@@ -30,26 +31,33 @@ const SOURCE_TEXT: Record<string, MessageId> = {
 };
 /** Every surface reads this server queue; filters, ownership and deadlines stay with its sources. */
 export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase = false, setupPending = false, action }: { preview?: boolean; filter?: InboxFilter; setup?: (c: Checklist) => ReactNode; setupPhase?: boolean; setupPending?: boolean; action?: RowAction } = {}) {
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter }), placeholderData: keepPreviousData, refetchOnMount: "always" });
+  const [attention, setAttention] = useState<AttentionFilter>("all");
+  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", preview ? { filter, attention } : { filter }), placeholderData: keepPreviousData, refetchOnMount: "always" });
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
   if (!rereading && !inbox.isPending && !caughtUp) setCaughtUp(true);
-  const first = inbox.data?.pages[0];
+  const first = inbox.data?.pages[0] as AttentionInboxResponse | undefined;
   const applying = useSyncExternalStore(liveApplying.subscribe, liveApplying.get, liveApplying.get);
   const loading = setupPending || rereading || applying;
+  const tools = preview ? (first?.as_of ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time> : loading || inbox.isPending ? <Skeleton decorative bones={["short"]} /> : null) : undefined;
   return (
-    <Card title={preview && !loading ? t("home.inbox.title") : undefined} titleId="inbox-title" label={t("home.inbox.title")} tools={first?.as_of ? <time dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time> : loading || inbox.isPending ? <Skeleton decorative bones={["short"]} /> : null}>
-      {!setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")}>
-        {first.available_filters.map(key => {
-          const count = first.counts[key];
-          return <Link key={key} to="/inbox" search={{ tab: key === "turn" ? undefined : key }} replace={!preview} resetScroll={preview ? undefined : false} className={tabClass} aria-current={filter === key ? preview ? true : "page" : undefined} activeOptions={{ exact: true, includeSearch: true }}>
+    <Card title={preview && !loading ? t("home.inbox.title") : undefined} titleId={preview ? "inbox-title" : undefined} label={t("home.inbox.title")} tools={tools}>
+      {preview && !setupPhase && !first?.setup && (first?.has_work || !!first?.available_filters.length) && first?.attention_filters?.length ? <div role="group" aria-label={t("home.attention.label")} className={css.attention}>
+        {first.attention_filters.filter(({ key }) => isAttentionFilter(key)).map(({ key, total, total_is_exact }) => <ToggleButton key={key} look="chip" pressed={attention === key} count={`${fmtNumber(total)}${total_is_exact ? "" : "+"}`} onClick={() => setAttention(key)}>
+          {t(`home.attention.${key}`)}
+        </ToggleButton>)}
+      </div> : null}
+      {!preview && !setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")} overflow="scroll">
+        {(["all", ...first.available_filters] as InboxFilter[]).map(key => {
+          const count = key === "all" ? (first.counts.all ?? (filter === "all" ? { total: first.total, total_is_exact: first.total_is_exact } : undefined)) : first.counts[key];
+          return <Link key={key} to="/inbox" search={{ tab: key === "all" ? undefined : key }} replace resetScroll={false} className={tabClass} aria-current={filter === key ? "page" : undefined} activeOptions={{ exact: true, includeSearch: true }}>
             {count ? t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total }) : t(`home.inbox.filter.${key}`)}
           </Link>;
         })}
       </TabNav>}
       <QueryState q={loading ? { ...inbox, isPending: true, data: undefined } : inbox} layout="list">{(data) => {
-          const pages = data.pages;
+          const pages = data.pages as AttentionInboxResponse[];
           const checklist = pages[0]?.setup;
           const rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
           const head = pages[0];
@@ -61,7 +69,7 @@ export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase
             </Banner>)}
             {checklist && setup?.(checklist)}
             {!checklist && !head?.has_work && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
-            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} /> : !checklist && head?.has_work && <QuietQueue page={head} filter={filter} partial={unavailable.length > 0} />}
+            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} /> : !checklist && head?.has_work && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
             {!preview && inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
           </>;
         }}</QueryState>

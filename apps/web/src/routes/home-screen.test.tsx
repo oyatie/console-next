@@ -50,7 +50,7 @@ beforeEach(() => {
 test("the first inbox and its setup references hold Home until its first complete paint", () => {
   expect(render()).toContain('data-pending="true"');
   expect(state.hold).toHaveBeenLastCalledWith(false, true);
-  expect(state.options && readIdentity(state.options)).toBe(readIdentity(cursorPages("/api/v1/me/action-inbox", { filter: "turn" })));
+  expect(state.options && readIdentity(state.options)).toBe(readIdentity(cursorPages("/api/v1/me/action-inbox", { filter: "turn", attention: "all" })));
   expect(state.options).toMatchObject({ refetchOnMount: "always" });
   expect(state.reads.every((read) => !read.enabled)).toBe(true);
   landed(checklist);

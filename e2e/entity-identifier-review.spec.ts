@@ -114,7 +114,8 @@ test("identifier correction: a second person approves, requester applies, and a 
   await detail(admin).getByRole("button", { name: "돌아가기", exact: true }).click();
 
   await go(admin, "/");
-  await inbox(admin).getByRole("button", { name: /^기다리는 중/ }).click();
+  await inbox(admin).getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
+  await inbox(admin).getByRole("link", { name: /^기다리는 중/ }).click();
   const waiting = inbox(admin).getByRole("row").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
   await expect(waiting).toContainText("처리 상태: 승인 대기", { timeout: 20_000 });
   await expect(waiting.getByRole("link", { name: "정정 요청 · 사후 검토 확인", exact: true })).toBeVisible();
@@ -140,7 +141,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await detail(reviewer).getByRole("button", { name: "돌아가기", exact: true }).click();
 
   await expect(waiting).toBeHidden({ timeout: 20_000 });
-  await inbox(admin).getByRole("button", { name: /^내 차례/ }).click();
+  await inbox(admin).getByRole("link", { name: /^내 차례/ }).click();
   const apply = inbox(admin).getByRole("row").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
   await expect(apply).toContainText("처리 상태: 승인됨 · 적용 대기");
   await capture(admin, "requester-approved-home");
