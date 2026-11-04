@@ -12,6 +12,7 @@ import { useChangeNote } from "../../../reference/org/ui/use-change-note";
 import { receiptAction } from "../../../ui/receipt/receipt-action";
 import { Button } from "../../../ui/button/button";
 import { drawnAt, pathTo, type ChartNode, type Structure } from "../domain/model";
+import { EDITOR_SIZE } from "../domain/layout";
 import { collapseSelection, movable } from "../domain/rules";
 import { ChartBoxes } from "./chart-boxes";
 import { ChartEditors } from "./chart-editors";
@@ -72,12 +73,13 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
   const g = useStructureGestures(s, c, cmd, { move: setMoving, remove: setDeleting, onFocus });
   const drag = useDragMove(s, c.sel, (nodes, target) => g.moveTo(nodes, target));
 
-  // An open add box comes into view clear of the floating bars (its field must not sit under the zoom bar).
-  const ghost = c.L.boxes.find((b) => b.ghost);
+  // An open editor comes into view clear of the floating bars (its field must not sit under the zoom bar).
+  const editing = c.L.boxes.find((b) => b.ghost) ?? (c.renaming ? c.shown.get(c.renaming) : undefined);
+  const editor = editing && { ...editing, w: Math.max(editing.w, EDITOR_SIZE.w), h: Math.max(editing.h, EDITOR_SIZE.h) };
   useLayoutEffect(() => {
-    if (ghost) canvas.current?.reveal(ghost);
+    if (editor) canvas.current?.reveal(editor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ghost?.x, ghost?.y]);
+  }, [editor?.x, editor?.y, c.renaming]);
 
   // The keyboard cursor follows into view, and DOM focus moves with it while it is on a box (never out of a field).
   // A find's result inside a compact workplace is shown by the tile it sits in.
@@ -157,7 +159,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
         label={t("structure.chart.label")}
         resetKey={c.focus.id}
         size={{ w: c.L.w, h: c.L.h }}
-        keep={cursorBox}
+        keep={editor ?? cursorBox}
         dimmed={dimmed}
         lines={c.L.lines.map((l) => l.d)}
         top={drag.view ? (

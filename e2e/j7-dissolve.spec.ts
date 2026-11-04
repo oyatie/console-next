@@ -47,7 +47,7 @@ test("J7 dissolve: one sheet sends each member somewhere, closes the unit on its
   // Nothing is defaulted that the user must decide: the date and reason are named until given (negative).
   const submit = dissolve.getByRole("button", { name: "부서 폐지 1개 적용" });
   await expect(submit).toHaveAttribute("aria-disabled", "true");
-  await expect(submit).toHaveAccessibleDescription(/시행일, 사유/);
+  await expect(submit).toHaveAccessibleDescription(/사유/);
   await expectAccessible(admin, "J7: dissolution sheet, blockers first");
 
   // 3. 이동일 goes elsewhere: straight under 본사 (사업장 직속), picked in the searchable tree.

@@ -27,10 +27,10 @@ export function WorkplaceActions({ place, setup, onAct }: { place: Place; setup:
   return (
     <Actions>
       {adding ? (
-        <div><DeptNameInline parent={n} onDone={() => setAdding(false)} /></div>
+        <div><DeptNameInline parent={n} setup={setup} onDone={() => setAdding(false)} /></div>
       ) : (
         <ActionRow
-          control={(d) => <Button variant="primary" id="act-dept-add" className={css.actBtn} aria-describedby={d} onClick={() => (setup ? setAdding(true) : go("dept-add"))}><Plus size={16} aria-hidden />{t("orgUnit.add.action")}</Button>}
+          control={(d) => <Button variant="primary" id="act-dept-add" className={css.actBtn} aria-describedby={d} onClick={() => setAdding(true)}><Plus size={16} aria-hidden />{t("orgUnit.add.action")}</Button>}
           why={setup ? t("orgUnit.add.whyWorkplace", { name: n.name }) : t("orgUnit.add.whyGoverned")}
         />
       )}

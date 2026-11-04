@@ -21,7 +21,8 @@ for (const width of [1440, 390]) {
       await page.goto("/org");
       const control = page.getByRole("region", { name: t("asof.label"), exact: true });
       const trigger = control.getByRole("button", { name: new RegExp(`^${t("asof.label")} · `) });
-      await expect(trigger).toContainText(fmtDate("2026-11-02"));
+      await expect(trigger).toHaveClass(/\bbtn--chip\b/);
+      await expect(trigger).toContainText(`${t("asof.label")} · ${t("asof.today")} · ${fmtDate("2026-11-02")}`);
       await expect(control.getByRole("textbox")).toHaveCount(0);
       await expect(page.getByRole("button", { name: t("asof.advanced"), exact: true })).toHaveCount(0);
       await trigger.click();
@@ -31,6 +32,7 @@ for (const width of [1440, 390]) {
       await picker.getByRole("button", { name: t("asof.previous"), exact: true }).click();
       await expect(page).toHaveURL(/as_of=2026-10-01/);
       await expect(trigger).toContainText(fmtDate("2026-10-01"));
+      await expect(trigger).not.toContainText(t("asof.today"));
       await trigger.click();
       await picker.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).click();
       const calendar = page.getByRole("dialog", { name: t("uiDate.calendar.label"), exact: true });
@@ -58,7 +60,7 @@ for (const width of [1440, 390]) {
       await expect(trigger).toBeFocused();
       await control.getByRole("button", { name: t("asof.returnToday"), exact: true }).click();
       await expect(page).not.toHaveURL(/as_of=/);
-      await expect(trigger).toContainText(fmtDate("2026-11-02"));
+      await expect(trigger).toContainText(`${t("asof.label")} · ${t("asof.today")} · ${fmtDate("2026-11-02")}`);
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });
@@ -92,6 +94,7 @@ test("org: empty date fields use a Korean placeholder and presets show one resol
     await expect(page.getByRole("textbox").first()).toHaveAttribute("placeholder", "연도. 월. 일.");
     await orgPanelReads(page);
     await page.goto(`/org?act=dept-add&sel=${id(4)}`);
+    await expect(page.getByRole("textbox", { name: new RegExp(`^${t("orgUnit.gov.date")}`) })).not.toHaveValue("");
     const presets = page.getByRole("group", { name: t("uiDate.presets", { label: t("orgUnit.gov.date") }), exact: true });
     await expect(presets).toBeVisible();
     expect(await presets.innerText()).not.toMatch(/\d{4}\. \d{2}\. \d{2}\.\).*\d{4}\./);

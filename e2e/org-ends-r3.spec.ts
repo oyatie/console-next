@@ -83,11 +83,8 @@ test("regression: after a change the chart keeps its boxes and draws the result 
   // org-22: a new 부서 today under 재무팀; back on the chart it is drawn, under its parent, without opening anything.
   const fin = await openUnit(admin, "재무팀");
   await fin.getByRole("button", { name: "부서 추가" }).click();
-  const add = sheet(admin, "부서 신설");
-  await add.getByLabel("부서 이름").fill("결산파트");
-  await add.getByRole("button", { name: /^오늘/ }).click();
-  await add.getByLabel("사유").fill("결산 기능 분리");
-  await add.getByRole("button", { name: "부서 신설 1개 적용" }).click();
+  await fin.getByRole("textbox", { name: /^재무팀 아래 새 부서 이름/ }).fill("결산파트");
+  await fin.getByRole("button", { name: "부서 추가", exact: true }).click();
   await expect(admin.getByRole("status").filter({ hasText: "결산파트 신설을 반영했습니다" })).toBeVisible();
   await expect(box(admin, "결산파트")).toBeVisible();
   await shot(admin, "after-org-22-chart-shows-result");

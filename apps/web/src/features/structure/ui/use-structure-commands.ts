@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useMutationState } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
+import { submitInlineUnitChange, type InlineUnitSpec } from "../../../reference/org/api";
+import { noteChange } from "../../../reference/org/ui/use-change-note";
 import { applyBatch, reorder, STRUCTURE_READS, undoBatch, type ReorderRequest, type SetupOp } from "../api";
 
 /**
@@ -17,6 +20,7 @@ type Change = { ops: SetupOp[]; message: string; onDone?: (unitIds: string[]) =>
  * `error` for the screen to show beside where it happened.
  */
 export function useStructureCommands(readOnly = false) {
+  const nav = useNavigate();
   const [last, setLast] = useState<Applied | null>(null);
   // org-13: the receipt belongs to the latest action. Any other command that lands after it (a delete from the panel's
   // sheet, a close, a person moved) ends it, so its undo never reverses an earlier change silently. Ours are known by
@@ -57,24 +61,31 @@ export function useStructureCommands(readOnly = false) {
       setLast(before ? { message: o.message, back: { ...parent, children: before, expected_children: r.children } } : null);
     },
   });
+  const governed = useCommand({
+    run: (c: InlineUnitSpec, key: string) => submitInlineUnitChange(key, c),
+    invalidates: [...STRUCTURE_READS, "/api/v1/org-changes"],
+    awaitFirstRead: true,
+    onSuccess: (r, c) => {
+      if (r.sent !== "sent") return void nav({ to: "/org/changes/$id", params: { id: r.id }, search: { done: "drafted", unsent: true } });
+      noteChange({ id: r.id, code: r.code, message: r.message });
+      return c.kind === "create" ? c.onDone?.(r.createdUnitIds) : c.onDone?.();
+    },
+  });
   return {
     readOnly,
-    apply: (c: Change) => {
-      if (readOnly) return;
-      own.current.add(c);
-      change.mutate(c);
-    },
+    apply: (c: Change) => !readOnly && (own.current.add(c), change.mutate(c)),
+    propose: (c: InlineUnitSpec) => !readOnly && (own.current.add(c), governed.mutate(c)),
     order: (body: ReorderRequest, message: string) => {
       if (readOnly) return;
       const o = { body, message };
       own.current.add(o);
       order.mutate(o);
     },
-    pending: change.isPending || undo.isPending || order.isPending,
-    error: change.error ?? undo.error ?? order.error,
+    pending: change.isPending || undo.isPending || order.isPending || governed.isPending,
+    error: change.error ?? undo.error ?? order.error ?? governed.error,
     /** The change the server refused, as it was asked (a stale one is offered again from where things are now). */
     failed: change.error ? change.variables : undefined,
-    reset: () => (change.reset(), undo.reset(), order.reset()),
+    reset: () => (change.reset(), undo.reset(), order.reset(), governed.reset()),
     last,
     undo: () => !readOnly && last && !last.undone && (own.current.add(last), undo.mutate(last)),
     undoing: undo.isPending,

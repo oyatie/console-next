@@ -1,5 +1,5 @@
 import { ENTITY_PHASE, labeled } from "../../../lib/labels";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { Lock, Network, Plus } from "lucide-react";
 import { t } from "@console/i18n";
@@ -35,11 +35,10 @@ export function BulkMovePage() {
   const { ids } = route.useSearch();
   const chosen = (ids ?? "").split(",").filter(Boolean);
   const st = useStructure();
-  const inFlight = useRef(false);
-  const latchedPlaces = useRef(st.places);
-  if (!inFlight.current) latchedPlaces.current = st.places;
+  const [inFlight, setInFlight] = useState(false);
+  const [places, setPlaces] = useState(st.places);
+  if (!inFlight && places !== st.places) setPlaces(st.places);
   const { setup, tenant: company } = st;
-  const places = latchedPlaces.current;
   const draftable = new Set(st.units.data?.draftableIds ?? []);
   const canDraft = (n: Node) => draftable.has(unitIdOf(n));
   const showTarget = (n: Node) => canDraft(n) || descendants(n).some(canDraft);
@@ -65,7 +64,7 @@ export function BulkMovePage() {
   const moveTitle = () =>
     roots.length === 1 ? t("orgChange.title.move", { name: roots[0]!.name, parent: target!.node.name }) : t("orgChange.title.moveMany", { name: roots[0]!.name, count: roots.length - 1, parent: target!.node.name });
   const submit = useGovernSubmit(() => ({ kind: "REORG", target: { kind: "ORG_UNIT", ref: roots[0]!.id, label: moveTitle() }, proposal: plan!.govOps(company) }), gov);
-  if (!run.isPending && !submit.isPending && (run.isError || submit.isError)) inFlight.current = false;
+  if (inFlight && !run.isPending && !submit.isPending && (run.isError || submit.isError)) setInFlight(false);
   const count = roots.length + carried.length;
   const total = roots.reduce((n, r) => n + 1 + descendants(r).length, 0);
   const here = (n: Node) => roots.every((r) => places.get(r.id)?.parent?.id === n.id);
@@ -86,9 +85,9 @@ export function BulkMovePage() {
       onClose={close}
       pending={run.isPending || submit.isPending}
       action={{ kind: "orgMove", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count }}
-      onSubmit={available ? () => { if (blockers.length === 0) { inFlight.current = true; if (setup) run.mutate(undefined); else submit.mutate(true); } } : undefined}
+      onSubmit={available ? () => { if (blockers.length === 0) { setInFlight(true); if (setup) run.mutate(undefined); else submit.mutate(true); } } : undefined}
       blocked={available && blockers.length ? { reason: blockers.join(", ") } : undefined}
-      onSaveDraft={available && !setup && blockers.length === 0 ? () => { inFlight.current = true; submit.mutate(false); } : undefined}
+      onSaveDraft={available && !setup && blockers.length === 0 ? () => { setInFlight(true); submit.mutate(false); } : undefined}
       notice={<CommandError error={run.error ?? submit.error} />}
       sections={{
         preflight: available && (blockers.length || carried.length) ? <>

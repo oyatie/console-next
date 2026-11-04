@@ -46,15 +46,13 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   const due = kstDate(3);
   const team = await openUnit(admin, "대량팀");
   await team.getByRole("button", { name: "이름 변경" }).click();
-  const rename = sheet(admin, "대량팀 이름 변경");
-  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("대량미래팀");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(due);
-  await rename.getByRole("textbox", { name: /^사유/ }).fill("전체 구성원을 유지하는 이름 변경");
+  await team.getByRole("textbox", { name: /^대량팀의 새 이름/ }).fill("대량미래팀");
+  await team.getByRole("textbox", { name: /^적용일/ }).fill(due);
   const submitted = admin.waitForResponse((r) => r.request().method() === "POST"
     && /^\/api\/v1\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
-  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
+  await team.getByRole("button", { name: "이름 변경", exact: true }).click();
   expect((await submitted).status(), "scheduled rename refused").toBe(200);
-  await expect(rename).toBeHidden({ timeout: 30_000 });
+  await expect(team.getByRole("textbox", { name: /^대량팀의 새 이름/ })).toBeHidden({ timeout: 30_000 });
   const control = admin.getByRole("region", { name: "기준일", exact: true });
   const picker = await openAsOf(admin);
   await expect(picker.getByRole("group", { name: "변경일" }).locator(`[data-change-date="${due}"]`)).toBeVisible();

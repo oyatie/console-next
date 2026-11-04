@@ -44,7 +44,7 @@ export const koOrgPropose = {
   "orgPropose.field.parent.hint": "현재 상위 조직: {path}",
   "orgPropose.field.to": "이동할 조직",
   "orgPropose.field.to.excluded": "폐지가 진행 중인 조직({names})은 목록에 없습니다",
-  "orgPropose.field.date": "시행일",
+  "orgPropose.field.date": "적용일",
   "orgPropose.field.date.beforeToday": "오늘이나 그 뒤의 날짜를 선택하십시오",
   "orgPropose.field.reason": "사유",
   "orgPropose.field.reason.example.create": "교육·평가 업무를 맡을 전담 조직이 필요합니다",

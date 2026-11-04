@@ -24,30 +24,18 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   const { admin } = await tenantWithExecutive(browser, "hcm", "한결물산");
   const c = clickCounter();
 
-  // A structure change from its sheet: the effective date has no default, so one deliberate pick («오늘», applied right
-  // away), and its reason. With no 결재 (decisions #26, the default) a change dated today applies at submit.
-  async function apply(dialog: string, reason: string) {
-    const selected = new URL(admin.url()).searchParams.get("sel");
-    const s = admin.getByRole("dialog", { name: dialog });
-    await c.click(s.getByRole("button", { name: /^오늘/ }));
-    await s.getByLabel("사유").fill(reason);
-    await c.click(s.getByRole("button", { name: "부서 신설 1개 적용" }));
-    // org-19: the press keeps the user on the chart; the receipt names this change (an earlier one may still be announced).
-    await expect(admin.getByRole("dialog", { name: dialog })).toBeHidden();
-    await expect(admin.getByRole("status").filter({ hasText: "반영했습니다" }).first()).toBeAttached();
-    await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(selected);
-    await expect(admin.getByRole("complementary")).toBeVisible();
-  }
-
   // 1-2. A department under the 사업장 registered in setup, from its box on the chart (select, A). A 사업장 itself is
   // the 법인's own record, added from its 법인, never an org change (decisions #21, ENT-KIND MR-20).
   await go(admin, "/org");
   await c.click(box(admin, "본점"));
   await expectAccessible(admin, "org chart with a workplace selected");
   await admin.keyboard.press("a");
-  await expectAccessible(admin, "new department sheet");
-  await admin.getByRole("dialog", { name: "부서 신설" }).getByLabel("부서 이름").fill("인사부");
-  await apply("부서 신설", "인사 기능 신설");
+  await expectAccessible(admin, "new department inline");
+  const hqAdd = admin.getByRole("textbox", { name: "본점 아래 새 부서 이름", exact: true });
+  await hqAdd.fill("인사부");
+  await hqAdd.press("Enter");
+  await expect(admin.getByRole("status").filter({ hasText: "반영했습니다" }).first()).toBeAttached();
+  await hqAdd.press("Escape");
   expect(c.done("add a department")).toBeLessThanOrEqual(5);
 
   // 3. (Regions and branches are retired, decisions #18: the 사업장's own branch is everyone's home branch.)
@@ -76,8 +64,11 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await go(admin, "/org");
   await revealUnit(admin, "인사부");
   await admin.keyboard.press("a");
-  await admin.getByRole("dialog", { name: "부서 신설" }).getByLabel("부서 이름").fill("채용팀");
-  await apply("부서 신설", "채용 전담");
+  const hrAdd = admin.getByRole("textbox", { name: "인사부 아래 새 부서 이름", exact: true });
+  await hrAdd.fill("채용팀");
+  await hrAdd.press("Enter");
+  await expect(admin.getByRole("status").filter({ hasText: "채용팀 신설을 반영했습니다" })).toBeVisible();
+  await hrAdd.press("Escape");
   c.done("add a sub-department");
 
   await go(admin, "/people");

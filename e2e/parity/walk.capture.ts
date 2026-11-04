@@ -86,13 +86,11 @@ test("parity: organisation chart, outline, department and operating act", async 
   await go(a, "/org");
   await revealUnit(a, "본사");
   await a.keyboard.press("a");
-  const s = a.getByRole("dialog", { name: "부서 신설" });
-  await expect(s).toBeVisible();
-  await s.getByLabel("부서 이름").fill("운영팀");
-  await s.getByRole("button", { name: /^오늘/ }).click();
-  await s.getByLabel("사유").fill("운영 기능 신설");
-  await capture(a, "org", ["S6-dept-add-op", "S14-preflight"], "Actual one-act draft and preview; no explicit per-person destination graph.");
-  await s.getByRole("button", { name: "부서 신설 1개 적용" }).click();
+  const name = a.getByRole("textbox", { name: "본사 아래 새 부서 이름", exact: true });
+  await expect(name).toBeVisible();
+  await name.fill("운영팀");
+  await capture(a, "org", ["S6-dept-add-op", "S14-preflight"], "Actual inline add with effective-date chip; no explicit per-person destination graph.");
+  await name.press("Enter");
   await expect(a.getByRole("status").filter({ hasText: "운영팀 신설을 반영했습니다" }).first()).toBeVisible();
   await capture(a, "org", ["S14-success", "S2-chart-moved"], "Actual applied org act and receipt; create act, not a move fixture.");
 });

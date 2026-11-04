@@ -33,26 +33,29 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
   };
 
   const add = (n: ChartNode) => {
-    if (readOnly) return;
+    if (!canEdit) return;
     if (n.kind === "tenant") return void navigate({ to: "/org/entities/new" });
     if (n.kind === "entity") return void navigate({ to: "/org/entities/$id/workplaces/new", params: { id: n.id } });
-    if (!setup) return propose(n, "create");
     c.toggle(n.id, true);
     c.setAdding(n.id);
   };
-  const create = (parentId: string, name: string) => {
-    if (readOnly) return;
+  const create = (parentId: string, name: string, effectiveDate: string, done?: () => void) => {
+    if (!canEdit) return;
     const p = s.byId.get(parentId);
     if (!p) return;
+    if (!setup) {
+      return cmd.propose({ kind: "create", parentUnitId: p.unitId ?? p.id, name, effectiveDate, onDone: (ids) => { done?.(); if (ids[0]) { c.setCursor(ids[0]); void nav({ search: (q) => ({ ...q, sel: ids[0], act: undefined }) }); } } });
+    }
     const op: SetupOp = { op: "CREATE", name, ...(p.kind === "site" ? { workplace_id: p.id } : { parent_org_unit_id: p.id }) };
     // The new box comes into view (the add box stays open under it for the next name).
-    cmd.apply({ ops: [op], message: t("structure.receipt.created", { name }), onDone: (ids) => ids[0] && c.setCursor(ids[0]) });
+    cmd.apply({ ops: [op], message: t("structure.receipt.created", { name }), onDone: (ids) => { done?.(); if (ids[0]) c.setCursor(ids[0]); } });
   };
-  const rename = (n: ChartNode) => (readOnly || n.kind !== "dept" ? undefined : setup ? c.setRenaming(n.id) : propose(n, "rename"));
-  const saveName = (id: string, name: string) => {
-    if (readOnly) return;
+  const rename = (n: ChartNode) => (!canEdit || n.kind !== "dept" ? undefined : c.setRenaming(n.id));
+  const saveName = (id: string, name: string, effectiveDate: string) => {
+    if (!canEdit) return;
     const n = s.byId.get(id);
     if (!n) return;
+    if (!setup) return cmd.propose({ kind: "rename", orgUnitId: n.id, fromName: n.name, name, effectiveDate, onDone: () => c.setRenaming(null) });
     c.setRenaming(null);
     cmd.apply({ ops: [{ op: "RENAME", ...pin(n), name }], message: t("structure.receipt.renamed", { from: n.name, name }) });
   };

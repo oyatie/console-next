@@ -117,12 +117,10 @@ test("no anchor on any route renders the browser's default link style", { tag: [
   await expect(admin.getByRole("region", { name: "퇴직", exact: true })).toContainText("보고됨");
   // An org change (its record is /org/changes/$id) and a role (the roles list links /access/roles/$roleId).
   // The company structure chart (cs-chart) replaced the org tree's rows: the unit's box opens its panel.
-  await (await openUnit(admin, "본사")).getByRole("button", { name: "부서 추가" }).click();
-  const add = admin.getByRole("dialog", { name: "부서 신설" });
-  await add.getByLabel("부서 이름").fill("총무부");
-  await add.getByRole("button", { name: /^오늘/ }).click();
-  await add.getByLabel("사유").fill("총무 기능 신설");
-  await add.getByRole("button", { name: "부서 신설 1개 적용" }).click();
+  const hq = await openUnit(admin, "본사");
+  await hq.getByRole("button", { name: "부서 추가" }).click();
+  await hq.getByRole("textbox", { name: /^본사 아래 새 부서 이름/ }).fill("총무부");
+  await hq.getByRole("button", { name: "부서 추가", exact: true }).click();
   // The user stays on the chart; the receipt links the change's record (org-19).
   await admin.getByRole("status").getByRole("link", { name: /^OC-\d{4}-\d{4} 기록 보기$/ }).click();
   await expect(admin).toHaveURL(/\/org\/changes\/[0-9a-f-]+/);

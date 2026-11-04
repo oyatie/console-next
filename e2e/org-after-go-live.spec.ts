@@ -11,7 +11,7 @@ test("a proposal typed right after go-live keeps what was typed", { tag: "@org" 
   await go(admin, "/org");
   await box(admin, "본점").click();
   await admin.keyboard.press("a");
-  const name = admin.getByRole("dialog", { name: "부서 신설" }).getByLabel("부서 이름");
+  const name = admin.getByRole("textbox", { name: "본점 아래 새 부서 이름", exact: true });
   await name.fill("총무부");
   await expect(box(admin, "본점")).toBeVisible();
   await expect(name).toHaveValue("총무부");

@@ -77,7 +77,7 @@ const parentBefore = { id: 'site', kind: 'site', name: '본사', headcount: 0, c
                   parent: applied ? parentAfter : parentBefore,
                   pending: applied,
                   onSubmit: () => {},
-                  onCancel: () => {},
+                  onCancel: () => { window.cancelled = true; },
                 }),
                 h(DeptDetails, {
                   node: applied ? deptAfter : deptBefore,
@@ -133,6 +133,17 @@ beforeAll(async () => {
 afterAll(async () => {
   await harness.browser?.close();
   await harness.stop?.();
+});
+
+test("the inline name input keeps focus and Escape while a save is pending", async () => {
+  const page = harness.page!;
+  await page.goto(`${harness.baseUrl}relayout`);
+  const input = page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: "본사" }), exact: true });
+  await input.fill("개발팀");
+  await page.evaluate(() => (window as unknown as { applyRefetch: () => void }).applyRefetch());
+  expect(await input.evaluate(el => el === document.activeElement)).toBe(true);
+  await input.press("Escape");
+  expect(await page.evaluate(() => (window as unknown as { cancelled?: boolean }).cancelled)).toBe(true);
 });
 
 test("refetched structure reads during settle do not flash duplicate-name alerts or nothing-changed blocks", async () => {

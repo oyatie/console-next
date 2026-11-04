@@ -137,11 +137,9 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   // Scheduled rename and creation share a future change-date marker, while today's tree stays unchanged.
   const sales = await openUnit(admin, "영업팀");
   await sales.getByRole("button", { name: "이름 변경" }).click();
-  const rename = sheet(admin, "영업팀 이름 변경");
-  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("국내영업팀");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(due);
-  await rename.getByRole("textbox", { name: /^사유/ }).fill("영업 조직 이름 정리");
-  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
+  await sales.getByRole("textbox", { name: /^영업팀의 새 이름/ }).fill("국내영업팀");
+  await sales.getByRole("textbox", { name: /^적용일/ }).fill(due);
+  await sales.getByRole("button", { name: "이름 변경", exact: true }).click();
   const receipt = admin.getByRole("status").filter({
     has: admin.getByRole("link", { name: /^OC-\d{4}-\d{4} 기록 보기$/ }),
   });
@@ -149,17 +147,20 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   const renameCode = (await receipt.getByRole("link", { name: /기록 보기$/ }).innerText()).match(/OC-\d{4}-\d{4}/)![0];
   await revealUnit(admin, "본사");
   await admin.keyboard.press("a");
-  const create = sheet(admin, "부서 신설");
-  await create.getByLabel("부서 이름").fill("미래팀");
-  await create.getByRole("textbox", { name: /^시행일/ }).fill(due);
-  await create.getByLabel("사유").fill("미래 사업 준비");
-  await create.getByRole("button", { name: "부서 신설 1개 예약" }).click();
+  await admin.getByRole("button", { name: /^적용일 · / }).click();
+  const datePop = admin.getByRole("dialog", { name: "적용일", exact: true });
+  await datePop.getByRole("textbox", { name: /^적용일/ }).fill(due);
+  await datePop.getByRole("textbox", { name: /^적용일/ }).press("Enter");
+  const createInput = admin.getByRole("textbox", { name: "본사 아래 새 부서 이름", exact: true });
+  await createInput.fill("미래팀");
+  await createInput.press("Enter");
   await expect(receipt).toContainText("미래팀 신설");
   const createCode = (await receipt.getByRole("link", { name: /기록 보기$/ }).innerText()).match(/OC-\d{4}-\d{4}/)![0];
+  await createInput.press("Escape");
   const ending = await openUnit(admin, "종료팀");
   await ending.getByRole("button", { name: "부서 폐지", exact: true }).click();
   const dissolve = sheet(admin, "종료팀 폐지");
-  await dissolve.getByRole("textbox", { name: /^시행일/ }).fill(due);
+  await dissolve.getByRole("textbox", { name: /^적용일/ }).fill(due);
   await dissolve.getByLabel("사유").fill("한시 조직 종료");
   await dissolve.getByRole("button", { name: "부서 폐지 1개 예약" }).click();
   await expect(receipt).toContainText("종료팀 폐지");
@@ -200,7 +201,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   const proposal = admin.getByRole("dialog", { name: "본사 아래에 부서 신설", exact: true });
   await expect(proposal).toBeVisible();
   await expect(proposal.getByRole("term").filter({ hasText: "상위 조직" }).locator("xpath=following-sibling::dd[1]")).toContainText("본사");
-  await expect(proposal.getByRole("textbox", { name: /^시행일/ })).toHaveValue(koDate(due));
+  await expect(proposal.getByRole("textbox", { name: /^적용일/ })).toHaveValue(koDate(due));
   await proposal.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(proposal).toHaveCount(0);
   expect(draftWrites).toEqual([]);

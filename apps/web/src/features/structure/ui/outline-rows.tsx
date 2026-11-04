@@ -3,7 +3,11 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import { ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
+import { todayKst } from "../../../lib/pure/today";
+import { defaultEffectiveDate } from "../../../reference/org/api";
+import { EffectiveDateChip } from "../../../reference/org/ui/effective-date-chip";
 import { Button } from "../../../ui/button/button";
+import { isDate } from "../../../ui/date/days";
 import { AddUnit } from "./add-unit";
 import { TextInput } from "../../../ui/field/field";
 import { place } from "../../../ui/org-canvas/place";
@@ -63,24 +67,25 @@ export function OutlineRows(p: {
     else if (key === "ArrowRight") p.setCursor((n.children[0] ?? n).id);
     else if (key === "ArrowLeft" && opened) fold(false);
     else if (key === "ArrowLeft") p.setCursor(n.parentId && n.parentId !== s.root.id ? n.parentId : n.id);
-    else if (key === "Enter" && g.setup) {
+    else if (key === "Enter" && g.canEdit) {
       if (n.kind === "site") p.setEdit({ kind: "new", parent: n.id });
       else if (n.kind === "dept" && n.parentId) p.setEdit({ kind: "new", parent: n.parentId });
-    } else if (key === "F2" && g.setup && n.kind === "dept") p.setEdit({ kind: "rename", id: n.id });
+    } else if (key === "F2" && g.canEdit && n.kind === "dept") p.setEdit({ kind: "rename", id: n.id });
     else if (key === " ") p.onSelect(new Set([n.id]));
     else return;
     e.preventDefault();
   };
 
   const input = (parent: ChartNode, renaming?: ChartNode) => (
-    <NewName
+    <InlineUnitInput
       parent={parent}
+      setup={g.setup}
+      asOf={s.asOf}
       pending={p.cmd.pending}
       renaming={renaming}
-      onSave={(name, done) => {
-        if (!renaming) return g.create(parent, name, done);
-        g.rename(renaming, name);
-        p.setEdit(null);
+      onSave={(name, date, done) => {
+        if (!renaming) return g.create(parent, name, date, done);
+        g.rename(renaming, name, date, () => { done(); p.setEdit(null); });
       }}
       onIndent={(dir) => {
         if (renaming || edit?.kind !== "new") return;
@@ -119,15 +124,15 @@ export function OutlineRows(p: {
               <span className={css.name} ref={place({ "padding-left": (n.depth - 1) * 24 })}>
                 <GripVertical size={14} aria-hidden className={css.grip} />
                 {n.children.length ? (!p.closed.has(n.id) ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />) : <span className={css.sp} />}
-                {renaming ? input(s.byId.get(n.parentId!)!, n) : <span className={n.kind === "dept" ? undefined : css.strong}>{n.kind === "entity" ? <EntityName name={n.name} alias={n.alias} /> : n.name}</span>}
+                {renaming ? input(s.byId.get(n.parentId!)!, n) : <span className={n.kind === "dept" ? undefined : css.strong} onDoubleClick={() => g.canEdit && n.kind === "dept" && p.setEdit({ kind: "rename", id: n.id })}>{n.kind === "entity" ? <EntityName name={n.name} alias={n.alias} /> : n.name}</span>}
                 {temporalLabel(n) && <Chip>{temporalLabel(n)}</Chip>}
               </span>
               <span className={css.level}>{t(`structure.level.${n.kind}`)}</span>
               <span className="num">{t("common.headcount", { count: n.headcount })}</span>
-              {!s.readOnly && <AddUnit n={n} onAdd={g.setup ? () => { p.setCursor(n.id); p.setClosed(new Set([...p.closed].filter((id) => id !== n.id))); p.setEdit({ kind: "new", parent: n.id }); } : undefined} />}
+              {!s.readOnly && <AddUnit n={n} onAdd={g.canEdit ? () => { p.setCursor(n.id); p.setClosed(new Set([...p.closed].filter((id) => id !== n.id))); p.setEdit({ kind: "new", parent: n.id }); } : undefined} />}
             </div>
             {newHere && (
-              <div className={css.row} data-new role="none">
+              <div className={css.row} data-new role="treeitem" aria-level={newParent.depth + 1} aria-label={t("structure.outline.newUnder", { parent: newParent.name })}>
                 <span className={css.name} ref={place({ "padding-left": newParent.depth * 24 })}>{input(newParent)}</span>
                 <span className={css.level}>{t("structure.outline.newUnder", { parent: newParent.name })}</span>
                 <span className="num">{fmtNumber(0)}</span>
@@ -145,14 +150,17 @@ const pathHas = (s: Structure, n: ChartNode, id: string): boolean => {
   return false;
 };
 
-function NewName({ parent, renaming, pending, onSave, onIndent, onDone }: { parent: ChartNode; renaming?: ChartNode; pending: boolean; onSave: (name: string, done: () => void) => void; onIndent: (dir: 1 | -1) => void; onDone: () => void }) {
+export function InlineUnitInput({ parent, renaming, setup = true, asOf, pending, onSave, onIndent, onDone }: { parent: ChartNode; renaming?: ChartNode; setup?: boolean; asOf?: string; pending: boolean; onSave: (name: string, effectiveDate: string, done: () => void) => void; onIndent?: (dir: 1 | -1) => void; onDone: () => void }) {
+  const today = todayKst();
+  const [date, setDate] = useState(() => defaultEffectiveDate(today, asOf));
   const [baseParent, setBaseParent] = useState(parent);
   const [baseRenaming] = useState(renaming);
   if (!pending && baseParent !== parent) setBaseParent(parent);
   const [name, setName] = useState(baseRenaming?.name ?? "");
   const trimmed = name.trim();
   const clash = trimmed && nameClash(baseParent, trimmed, baseRenaming?.id);
-  const save = () => { if (trimmed && !clash && !pending) onSave(trimmed, () => setName("")); };
+  const dateOk = setup || (isDate(date) && date >= today);
+  const save = () => !trimmed || clash || pending || !dateOk ? undefined : baseRenaming && trimmed === baseRenaming.name ? onDone() : onSave(trimmed, date, () => setName(""));
   return (
     <span className={css.edit}>
       <TextInput
@@ -162,7 +170,7 @@ function NewName({ parent, renaming, pending, onSave, onIndent, onDone }: { pare
           el.focus();
         }}
         className={css.input}
-        aria-label={renaming ? t("structure.edit.renameLabel", { name: renaming.name }) : t("structure.edit.addLabel", { parent: parent.name })}
+        aria-label={baseRenaming ? t("structure.edit.renameLabel", { name: baseRenaming.name }) : t("structure.edit.addLabel", { parent: baseParent.name })}
         aria-invalid={clash ? true : undefined}
         value={name}
         readOnly={pending}
@@ -171,12 +179,13 @@ function NewName({ parent, renaming, pending, onSave, onIndent, onDone }: { pare
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === "Escape") return onDone();
-          if (e.key === "Tab") return (e.preventDefault(), onIndent(e.shiftKey ? -1 : 1));
+          if (e.key === "Tab" && onIndent) return (e.preventDefault(), onIndent(e.shiftKey ? -1 : 1));
           if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) save();
         }}
       />
+      <EffectiveDateChip setup={setup} today={today} value={date} onChange={setDate} />
       {clash && <span role="alert">{t("structure.edit.clash", { name: trimmed })}</span>}
-      <Button size="sm" variant="primary" onClick={save} disabled={pending}>{t(renaming ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
+      <Button size="sm" variant="primary" onClick={save} disabled={pending || !dateOk}>{t(baseRenaming ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
       <Button size="sm" variant="ghost" onClick={onDone}>{t("structure.cancel")}</Button>
     </span>
   );
