@@ -73,3 +73,38 @@ for (const kind of ["CORPORATION", "INDIVIDUAL"] as const) for (const width of [
     }
   });
 }
+
+for (const picker of ["code", "address"] as const) for (const width of [1440, 390]) {
+  test(`entity-create: open ${picker} list exposes its surroundings at ${width}px @ui-state`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockEntityCreate(page);
+    await mockRoute(page, "get", "/api/v1/ref/lists/{key}/codes", request => {
+      const key = new URL(request.url()).pathname.split("/").at(-2)!;
+      return { status: 200, json: { list: { key, status: key === "tax_office" ? "LOADED" as const : "NOT_LOADED" as const }, items: key === "tax_office" ? [{ code: "123", label: "검증세무서" }] : [] } };
+    });
+    await mockRoute(page, "get", "/api/v1/ref/address-search", { status: 200, json: { status: "OK", total: 1, items: [
+      { source: "JUSO", road_addr_part1: "서울특별시 종로구 검증로 123", jibun_addr: "서울특별시 종로구 검증동 123", zip_no: "03154", si_nm: "서울특별시", bd_mgt_sn: "1111010100100010000030843" },
+    ] } });
+    try {
+      await page.goto(`/org/entities/new?kind=CORPORATION&name=${encodeURIComponent("검증사업자")}`);
+      const input = page.getByRole("combobox", { name: t(picker === "code" ? "entityCreate.field.taxOffice" : "entityCreate.field.businessAddress") });
+      await input.scrollIntoViewIfNeeded();
+      await input.focus();
+      await page.evaluate(() => document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
+      await input.fill("검증");
+      await expect(page.getByRole("listbox").getByRole("option").first()).toBeVisible();
+      await expectAxe(page, `entity-create/${picker}-list/${width}`);
+      await fits(page, `entity-create/${picker}-list/${width}`);
+      const bounds = (await page.getByRole("listbox").boundingBox())!;
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      for (const theme of ["light", "dark"]) {
+        await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+        await page.screenshot({ path: info.outputPath(`${picker}-${width}-${theme}.png`) });
+      }
+      await input.press("Tab");
+      await expect(input).toHaveAttribute("aria-expanded", "false");
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
