@@ -26,7 +26,6 @@
   .split { flex-direction: column; }
   .pane { width: auto; }
   .colhead, .row > .level, .row[data-new] > :not(:first-child) { display: none; }
-  .row { display: flex; flex-wrap: wrap; padding-block: var(--space-2); }
+  .row { display: flex; flex-wrap: wrap; justify-content: space-between; min-height: var(--row-h); align-items: center; }
   .name { flex-basis: 100%; }
-  .row > :last-child { margin-left: auto; }
 }
