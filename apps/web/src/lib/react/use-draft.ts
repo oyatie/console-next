@@ -6,11 +6,10 @@ import { session } from "@console/api";
 import { draftKey, registerDraft, activeDrafts as active } from "./draft-owner";
 export { draftKey, syncDraftPrincipal } from "./draft-owner";
 
-export type DraftFields = Record<string, string | null>;
+type Fields = Record<string, string | null>;
 type Problem = "unreadable" | "unavailable" | null;
-export type DraftOptions<T extends DraftFields> = { route: string; record: string; form: string; initial: T; text: (value: T) => string };
 
-export function readDraft<T extends DraftFields>(key: string, initial: T): { base: T; yours: T; restored: boolean; problem: Problem } {
+export function readDraft<T extends Fields>(key: string, initial: T): { base: T; yours: T; restored: boolean; problem: Problem } {
   const empty = { base: initial, yours: initial, restored: false };
   try {
     const raw = sessionStorage.getItem(key);
@@ -19,7 +18,7 @@ export function readDraft<T extends DraftFields>(key: string, initial: T): { bas
     const valid = (value: unknown): value is T => Boolean(value && typeof value === "object" && !Array.isArray(value)
       && Object.keys(value).length === Object.keys(initial).length
       && Object.entries(initial).every(([k, v]) => Object.hasOwn(value, k)
-        && (typeof (value as DraftFields)[k] === "string" || (v === null && (value as DraftFields)[k] === null))));
+        && (typeof (value as Fields)[k] === "string" || (v === null && (value as Fields)[k] === null))));
     if (stored && typeof stored === "object" && "base" in stored && "yours" in stored && valid(stored.base) && valid(stored.yours)) {
       return { base: stored.base, yours: stored.yours, restored: true, problem: null };
     }
@@ -35,7 +34,7 @@ export function recoveryDraftText() {
 }
 
 /** Per-tab base + input, owned by an account, route, record and form. */
-export function useDraft<T extends DraftFields>(opts: DraftOptions<T>) {
+export function useDraft<T extends Fields>(opts: { route: string; record: string; form: string; initial: T; text: (value: T) => string }) {
   const format = opts.text;
   const principal = useSyncExternalStore(session.subscribe, () => session.principal);
   const key = draftKey(principal ?? "", opts.route, opts.record, opts.form);

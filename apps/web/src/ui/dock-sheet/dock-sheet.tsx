@@ -39,7 +39,7 @@ function WideDockSheet(p: Props) {
   const id = useId();
   const draft = useCurrentSheetDraft();
   useLiveHold(p.open);
-  const { ref, dirty, armed, requestClose, onInput } = useSheetDismiss<HTMLElement>({ ...p, dirty: draft?.dirty ?? p.dirty });
+  const { ref, dirty, armed, requestClose, onInput } = useSheetDismiss<HTMLElement>({ ...p, dirty: draft?.dirty ?? p.dirty, nativeEscape: true });
   useEffect(() => {
     if (!p.open) return;
     back.current = document.activeElement;

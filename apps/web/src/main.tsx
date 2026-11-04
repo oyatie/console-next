@@ -67,7 +67,9 @@ function restoreMain(key: string, top: number) {
   const resize = new ResizeObserver(() => apply());
   const mutation = new MutationObserver(() => { observe(); apply(); });
   const events = ["keydown", "pointerdown", "touchstart", "wheel"] as const;
+  const timer = window.setTimeout(stop, 3000);
   function stop() {
+    window.clearTimeout(timer);
     resize.disconnect();
     mutation.disconnect();
     if (main) for (const event of events) main.removeEventListener(event, stop);

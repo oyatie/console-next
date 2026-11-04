@@ -67,6 +67,7 @@ function CodeSearch({ label, required, list, query, onQueryChange, options, valu
       allowsEmptyCollection
       isRequired={required}
       isInvalid={error != null}
+      data-form-value={value ?? ""}
     >
       <Label className={fieldCss.label}>{label}<Marker required={required} /></Label>
       <div className={css.input}>

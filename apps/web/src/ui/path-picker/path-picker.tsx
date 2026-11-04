@@ -29,7 +29,7 @@ export function PathPicker({ options, value, onChange, placeholder, label, inval
   const onOpenChange = useNonModalSurroundings(input, popover);
   const chosen = options.find((o) => o.id === value);
   return (
-    <ComboBox onOpenChange={onOpenChange} className={s.picker} aria-label={label} selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} allowsEmptyCollection isInvalid={invalid} data-chosen={chosen ? true : undefined}>
+    <ComboBox onOpenChange={onOpenChange} className={s.picker} aria-label={label} selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} allowsEmptyCollection isInvalid={invalid} data-chosen={chosen ? true : undefined} data-form-value={value}>
       <div className={s.box}>
         {icon != null && <span className={s.icon}>{icon}</span>}
         <Input ref={input} className={s.input} placeholder={placeholder} />
