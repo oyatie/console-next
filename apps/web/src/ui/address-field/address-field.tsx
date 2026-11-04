@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { ComboBox, Input, Label, ListBox, ListBoxItem, Popover } from "react-aria-components";
 import { MapPin, Search } from "lucide-react";
 import { t } from "@console/i18n";
@@ -36,9 +36,6 @@ export function AddressField({ label, required, value, onChange, query, onQueryC
   error?: ReactNode;
   children?: ReactNode;
 }) {
-  const input = useRef<HTMLInputElement>(null);
-  const popover = useRef<HTMLDivElement>(null);
-  const onOpenChange = useNonModalSurroundings(input, popover);
   const [manual, setManual] = useState(false);
   const typing = manual || problem === "unavailable";
   const compare = printed != null && <span className={s.printed}>{t("uiAddressField.printed")} {printed}</span>;
@@ -64,6 +61,13 @@ export function AddressField({ label, required, value, onChange, query, onQueryC
       </div>
     );
   if (typing) return <Manual label={label} required={required} onDone={onChange} unavailable={problem === "unavailable"} compare={compare} onSearch={problem === "unavailable" ? undefined : () => setManual(false)} />;
+  return <AddressSearch {...{ label, required, onChange, query, onQueryChange, hits, loading, problem, error, compare }} onManual={() => setManual(true)} />;
+}
+
+function AddressSearch({ label, required, onChange, query, onQueryChange, hits, loading, problem, error, compare, onManual }: Omit<ComponentProps<typeof AddressField>, "value" | "printed" | "children"> & { compare: ReactNode; onManual: () => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
+  const onOpenChange = useNonModalSurroundings(input, popover);
   return (
     <div className={s.wrap}>
       <ComboBox onOpenChange={onOpenChange} className={`field ${css.picker}`} items={hits} inputValue={query} onInputChange={onQueryChange} onSelectionChange={(k) => {
@@ -90,7 +94,7 @@ export function AddressField({ label, required, value, onChange, query, onQueryC
       <span className={s.sub}>{problem === "narrow" ? t("uiAddressField.narrow") : t("uiAddressField.hint")}</span>
       {compare}
       {error != null && <p className={s.error}>{error}</p>}
-      <button type="button" className={`link ${s.link}`} onClick={() => setManual(true)}>{t("uiAddressField.manual")}</button>
+      <button type="button" className={`link ${s.link}`} onClick={onManual}>{t("uiAddressField.manual")}</button>
     </div>
   );
 }
