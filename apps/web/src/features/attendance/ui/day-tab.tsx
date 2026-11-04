@@ -112,7 +112,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                     <DayDetail board={b} store={store} grammarHintId={grammarHintId} onNote={setNote} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : (
                     <DayBars days={rows.map(r => r.day)} labels={rows.map(r => `${r.name} ${r.employee_number ?? ""}`)}>
-                      <div className={s.boardHeadDock} data-board-head aria-hidden>
+                      <div className={s.boardHeadDock} data-board-head>
                         <Card density="dense">
                           <div className={s.boardHead}>
                             <div>{t("attendanceRecords.board.status")}</div>
