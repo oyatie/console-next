@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Privacy-rights clocks and append-only decisions; authorization belongs to Cedar.
+mod input;
+mod reason;
 #[cfg(test)]
 mod tests;
 use crate::statutory::{StatutoryRegister, StatutoryRule, StatutoryUnit, codes, filing};
 use console_kernel_core::KernelError;
-use serde::Serialize;
+pub use input::Filing;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
+time::serde::format_description!(wire_date, Date, "[year]-[month]-[day]");
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Kind {
     Access,
@@ -20,7 +24,7 @@ pub enum Kind {
     AutomatedDecision,
     Transmission,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Controller {
     Tenant,
@@ -46,6 +50,7 @@ pub enum AgentKind {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IdentityMethod {
     SignedIn,
+    Passkey,
     IdDocumentSeen,
     KnownContact,
     AgentMandate,
@@ -59,8 +64,10 @@ pub struct Receipt {
     /// Required for both legal representatives and authorized agents (영 §45②).
     pub mandate_received: bool,
     pub identity_method: IdentityMethod,
+    #[serde(with = "time::serde::rfc3339")]
     pub identity_at: OffsetDateTime,
     /// Controller's receipt date in KST, including off-app receipt.
+    #[serde(with = "wire_date")]
     pub received_on: Date,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -79,11 +86,13 @@ pub struct Decision {
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct RecordedDecision {
+    #[serde(with = "wire_date")]
     pub on: Date,
     pub decision: Decision,
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct Due {
+    #[serde(with = "wire_date::option")]
     pub on: Option<Date>,
     pub without_delay: bool,
     /// The exact register row, including its HOLD/review disposition.
@@ -154,7 +163,9 @@ impl RightsRequest {
             })
             .collect::<Result<BTreeMap<_, _>, KernelError>>()?;
         if kinds.is_empty() {
-            return Err(KernelError::validation("request_kind_required"));
+            return Err(
+                KernelError::validation("request_kind_required").with_code("request_kind_required")
+            );
         }
         Ok(Self {
             receipt,
@@ -291,18 +302,4 @@ fn clock(on: Date, value: Option<u16>, rule: Option<StatutoryRule>) -> Result<Du
         without_delay,
         rule,
     })
-}
-
-impl Kind {
-    /// Wire domains are identifiers; the settings code_lists roster owns their codes.
-    pub fn reason_domain(self, outcome: Outcome) -> Option<&'static str> {
-        match (self, outcome) {
-            (Self::Access, Outcome::Postponed) => Some("privacy_postpone_access"),
-            (_, Outcome::Granted | Outcome::Postponed) => None,
-            (Self::Access, _) => Some("privacy_refusal_access"),
-            (Self::Deletion, _) => Some("privacy_refusal_deletion"),
-            (Self::Suspension | Self::Withdrawal, _) => Some("privacy_refusal_suspension"),
-            _ => None,
-        }
-    }
 }

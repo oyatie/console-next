@@ -39,6 +39,7 @@ properties:
           - SUPPORT_SESSION
           - PII_REVEAL
           - PII_RECORD
+          - PRIVACY_REQUEST
       object_id:
         $ref: '#/components/schemas/Uuid'
       reason_key:

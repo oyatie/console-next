@@ -16,7 +16,7 @@ pub const OPENAPI_FRAGMENT: Fragment = Fragment {
     external_schemas: EXTERNAL_SCHEMAS,
 };
 
-const EXTERNAL_SCHEMAS: &[&str] = &["Timestamp", "Uuid"];
+const EXTERNAL_SCHEMAS: &[&str] = &["MobilePasskeyStepUpEnvelope", "Timestamp", "Uuid"];
 
 const PATHS: &[PathItem] = &[
     PathItem {
@@ -198,6 +198,20 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__location__arrival-events.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__privacy__rights-requests.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/mine",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__privacy__rights-requests__mine.get.yaml"),
         }],
     },
     PathItem {
@@ -456,6 +470,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ObligationType",
         body: include_str!("../openapi/schemas/ObligationType.yaml"),
+    },
+    NamedYaml {
+        name: "PrivacyRightsReceipt",
+        body: include_str!("../openapi/schemas/PrivacyRightsReceipt.yaml"),
     },
     NamedYaml {
         name: "RecordInsuranceFiling",

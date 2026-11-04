@@ -53,6 +53,9 @@ test.each([false, true])("receipt uses the server clock and leaves unresolved re
     await browserExpect(page.getByText(closed ? "작성한 내용 없음" : "계정 기록", { exact: true })).toBeVisible();
     await browserExpect(page.getByText("【확인 필요】 보존 기간 미정", { exact: true })).toBeVisible();
     await browserExpect(page.getByText("2일 지남", { exact: true })).toHaveCount(closed ? 0 : 1);
+    await browserExpect(page.getByText("상태", { exact: true })).toBeVisible();
+    await browserExpect(page.getByText("접수", { exact: true })).toBeVisible();
+    if (!closed) await browserExpect(page.getByText("2026. 11. 11.", { exact: true })).toBeVisible();
     if (closed) {
       await browserExpect(page.getByText("다른 사람의 권익 침해", { exact: true })).toBeVisible();
       await browserExpect(page.getByText("제삼자 정보 제외", { exact: true })).toBeVisible();

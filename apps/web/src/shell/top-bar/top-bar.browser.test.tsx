@@ -99,12 +99,12 @@ test("tenant phase links home only during SETUP and preserves the full tenant na
   await element(page.getByRole("link", { name: "설정 단계", exact: true })).toHaveCount(0);
 });
 
-test("account menu includes the self-service rights path and logout action", async () => {
+test("account menu keeps unfinished rights filing hidden and includes logout", async () => {
   await open();
   await page.getByRole("button", { name: "남궁가나다라마바사 전체 이름" }).click();
-  expect(await page.getByRole("menuitem").allTextContents()).toEqual(["내 계정", "개인정보 권리 행사", "언어", "화면 테마", "로그아웃"]);
+  expect(await page.getByRole("menuitem").allTextContents()).toEqual(["내 계정", "언어", "화면 테마", "로그아웃"]);
   await element(page.getByRole("menuitem", { name: "내 계정", exact: true })).toHaveAttribute("href", "/account");
-  await element(page.getByRole("menuitem", { name: "개인정보 권리 행사", exact: true })).toHaveAttribute("href", "/account/privacy");
+  await element(page.getByRole("menuitem", { name: "개인정보 권리 행사", exact: true })).toHaveCount(0);
   await page.getByRole("menuitem", { name: "로그아웃", exact: true }).click();
   await element(page.locator("body")).toHaveAttribute("data-logout", "yes");
 });
