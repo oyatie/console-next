@@ -4,7 +4,7 @@ import { go, koDate, kstDate, option, registerEmployee } from "./flows";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
 import { openTenant } from "./helpers/tenant";
 import { setupCompany, startOperations } from "./setup-flows";
-import { box, findBox, leaveScreen, revealUnit } from "./structure-flows";
+import { inlineUnitDetails, box, findBox, leaveScreen, revealUnit } from "./structure-flows";
 import { openAsOf } from "./dates";
 
 // One tenant, one signed-in ops account, no seeded records or API writes: dates and knowledge stay separate
@@ -138,7 +138,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   const sales = await openUnit(admin, "영업팀");
   await sales.getByRole("button", { name: "이름 변경" }).click();
   await sales.getByRole("textbox", { name: /^영업팀의 새 이름/ }).fill("국내영업팀");
-  await sales.getByRole("textbox", { name: /^적용일/ }).fill(due);
+  await inlineUnitDetails(admin, sales, due);
   await sales.getByRole("button", { name: "이름 변경", exact: true }).click();
   const receipt = admin.getByRole("status").filter({
     has: admin.getByRole("link", { name: /^OC-\d{4}-\d{4} 기록 보기$/ }),
@@ -153,6 +153,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await datePop.getByRole("textbox", { name: /^적용일/ }).press("Enter");
   const createInput = admin.getByRole("textbox", { name: "본사 아래 새 부서 이름", exact: true });
   await createInput.fill("미래팀");
+  await inlineUnitDetails(admin, admin);
   await createInput.press("Enter");
   await expect(receipt).toContainText("미래팀 신설");
   const createCode = (await receipt.getByRole("link", { name: /기록 보기$/ }).innerText()).match(/OC-\d{4}-\d{4}/)![0];

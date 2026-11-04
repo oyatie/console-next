@@ -1,3 +1,4 @@
+import type { InlineUnitValues } from "../../../reference/org/api";
 import type { Structure } from "../domain/model";
 import type { ChartState } from "./use-chart-state";
 import { NameBox } from "./name-box";
@@ -17,8 +18,8 @@ export function ChartEditors({ s, c, zoom, visible, pending, onAdd, onRename }: 
   batch?: string;
   c: ChartState;
   pending: boolean;
-  onAdd: (parentId: string, name: string, effectiveDate: string, done: () => void) => void;
-  onRename: (id: string, name: string, effectiveDate: string) => void;
+  onAdd: (parentId: string, name: string, values: InlineUnitValues, done: () => void) => void;
+  onRename: (id: string, name: string, values: InlineUnitValues) => void;
 }) {
   if (s.readOnly) return null;
   const setup = s.phase === "SETUP";

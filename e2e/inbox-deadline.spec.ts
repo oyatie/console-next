@@ -1,3 +1,4 @@
+import { inlineUnitDetails } from "./structure-flows";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api/schema";
@@ -24,7 +25,7 @@ test("scheduled system actions keep a neutral deadline under the registered wind
   await unit.getByRole("button", { name: "이름 변경" }).click();
   const renameInput = unit.getByRole("textbox", { name: new RegExp(`^${SETUP_DEPARTMENT}의 새 이름`) });
   await renameInput.fill("기한확인팀");
-  await unit.getByRole("textbox", { name: /^적용일/ }).fill(kstDate(3));
+  await inlineUnitDetails(admin, unit, kstDate(3));
   const saved = admin.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/org-changes");
   await unit.getByRole("button", { name: "이름 변경", exact: true }).click();
   const response = await saved;

@@ -6,7 +6,7 @@ import { many, plain, workbook } from "./helpers/import-layouts";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
 import { openTenant } from "./helpers/tenant";
 import { setupCompany, startOperations } from "./setup-flows";
-import { box, findBox, leaveScreen } from "./structure-flows";
+import { inlineUnitDetails, box, findBox, leaveScreen } from "./structure-flows";
 import { openAsOf } from "./dates";
 
 // The 2,000-person fixture enters through the normal workbook UI, with one ops account and no API writes.
@@ -47,7 +47,7 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   const team = await openUnit(admin, "대량팀");
   await team.getByRole("button", { name: "이름 변경" }).click();
   await team.getByRole("textbox", { name: /^대량팀의 새 이름/ }).fill("대량미래팀");
-  await team.getByRole("textbox", { name: /^적용일/ }).fill(due);
+  await inlineUnitDetails(admin, team, due);
   const submitted = admin.waitForResponse((r) => r.request().method() === "POST"
     && /^\/api\/v1\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
   await team.getByRole("button", { name: "이름 변경", exact: true }).click();

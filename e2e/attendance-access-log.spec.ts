@@ -1,3 +1,4 @@
+import { inlineUnitDetails } from "./structure-flows";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
@@ -149,7 +150,7 @@ test("attendance reads commit one access row naming the people returned", { tag:
   await operatingPanel.getByRole("button", { name: "이름 변경" }).click();
   const renameInput = operatingPanel.getByRole("textbox", { name: new RegExp(`^${SETUP_DEPARTMENT}의 새 이름`) });
   await renameInput.fill("접속기록 부서");
-  await operatingPanel.getByRole("textbox", { name: /^적용일/ }).fill(kstDate(3));
+  await inlineUnitDetails(admin, operatingPanel, kstDate(3));
   await operatingPanel.getByRole("button", { name: "이름 변경", exact: true }).click();
   await expect(renameInput).toBeHidden();
   await go(admin, "/account");

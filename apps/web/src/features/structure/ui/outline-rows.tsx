@@ -1,13 +1,12 @@
+import { useInlineUnitValues } from "../../../reference/org/ui/use-inline-unit-values";
+import type { InlineUnitValues } from "../../../reference/org/api";
 import { EntityName } from "../../../reference/entity/ui/entity-name";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
-import { todayKst } from "../../../lib/pure/today";
-import { defaultEffectiveDate } from "../../../reference/org/api";
-import { EffectiveDateChip } from "../../../reference/org/ui/effective-date-chip";
+import { InlineUnitFields } from "../../../reference/org/ui/inline-unit-fields";
 import { Button } from "../../../ui/button/button";
-import { isDate } from "../../../ui/date/days";
 import { AddUnit } from "./add-unit";
 import { TextInput } from "../../../ui/field/field";
 import { place } from "../../../ui/org-canvas/place";
@@ -129,7 +128,7 @@ export function OutlineRows(p: {
               </span>
               <span className={css.level}>{t(`structure.level.${n.kind}`)}</span>
               <span className="num">{t("common.headcount", { count: n.headcount })}</span>
-              {!s.readOnly && <AddUnit n={n} onAdd={g.canEdit ? () => { p.setCursor(n.id); p.setClosed(new Set([...p.closed].filter((id) => id !== n.id))); p.setEdit({ kind: "new", parent: n.id }); } : undefined} />}
+              {g.canEdit && <AddUnit n={n} onAdd={g.canEdit ? () => { p.setCursor(n.id); p.setClosed(new Set([...p.closed].filter((id) => id !== n.id))); p.setEdit({ kind: "new", parent: n.id }); } : undefined} />}
             </div>
             {newHere && (
               <div className={css.row} data-new role="treeitem" aria-level={newParent.depth + 1} aria-label={t("structure.outline.newUnder", { parent: newParent.name })}>
@@ -150,17 +149,18 @@ const pathHas = (s: Structure, n: ChartNode, id: string): boolean => {
   return false;
 };
 
-export function InlineUnitInput({ parent, renaming, setup = true, asOf, pending, onSave, onIndent, onDone }: { parent: ChartNode; renaming?: ChartNode; setup?: boolean; asOf?: string; pending: boolean; onSave: (name: string, effectiveDate: string, done: () => void) => void; onIndent?: (dir: 1 | -1) => void; onDone: () => void }) {
-  const today = todayKst();
-  const [date, setDate] = useState(() => defaultEffectiveDate(today, asOf));
+export function InlineUnitInput({ parent, renaming, setup = true, asOf, pending, onSave, onIndent, onDone }: { parent: ChartNode; renaming?: ChartNode; setup?: boolean; asOf?: string; pending: boolean; onSave: (name: string, values: InlineUnitValues, done: () => void) => void; onIndent?: (dir: 1 | -1) => void; onDone: () => void }) {
+  const state = useInlineUnitValues(setup, asOf);
   const [baseParent, setBaseParent] = useState(parent);
   const [baseRenaming] = useState(renaming);
   if (!pending && baseParent !== parent) setBaseParent(parent);
   const [name, setName] = useState(baseRenaming?.name ?? "");
   const trimmed = name.trim();
   const clash = trimmed && nameClash(baseParent, trimmed, baseRenaming?.id);
-  const dateOk = setup || (isDate(date) && date >= today);
-  const save = () => !trimmed || clash || pending || !dateOk ? undefined : baseRenaming && trimmed === baseRenaming.name ? onDone() : onSave(trimmed, date, () => setName(""));
+  const save = (send = true) => {
+    if (baseRenaming && trimmed === baseRenaming.name) return onDone();
+    if (trimmed && !clash && !pending && state.valid) onSave(trimmed, { ...state.values, submit: send }, () => setName(""));
+  };
   return (
     <span className={css.edit}>
       <TextInput
@@ -183,9 +183,9 @@ export function InlineUnitInput({ parent, renaming, setup = true, asOf, pending,
           if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) save();
         }}
       />
-      <EffectiveDateChip setup={setup} today={today} value={date} onChange={setDate} />
+      <InlineUnitFields setup={setup} state={state} pending={pending} onDraft={() => save(false)} />
       {clash && <span role="alert">{t("structure.edit.clash", { name: trimmed })}</span>}
-      <Button size="sm" variant="primary" onClick={save} disabled={pending || !dateOk}>{t(baseRenaming ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
+      <Button size="sm" variant="primary" onClick={() => save()} disabled={pending || !state.valid}>{t(baseRenaming ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
       <Button size="sm" variant="ghost" onClick={onDone}>{t("structure.cancel")}</Button>
     </span>
   );

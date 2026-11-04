@@ -1,6 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { awaitingRedraft, changeRail, changeTitle, datePresets, eventTitle, nextStep, type Names } from "./present";
 
 type Detail = components["schemas"]["OrgChangeDetail"];
@@ -106,9 +107,9 @@ test("history drops the server's system reasons except a cancellation's (D2)", (
   expect(eventTitle({ ...e, action: "create", reason: "Dissolve org unit" })).toEqual({ title: "김인사님이 조직 변경을 작성했습니다", detail: undefined });
   // decisions #26: a submit under approval.policy none records the change; nothing is 상신 (regression: org-03).
   expect(eventTitle({ ...e, action: "submit", fromStatus: "DRAFT", toStatus: "APPROVED", reason: "approval.policy=none" }).title).toBe("김인사님이 조직 변경을 기록했습니다");
-  expect(eventTitle({ ...e, action: "reschedule", reason: "effectiveDate=2026-11-09" }).title).toBe("김인사님이 시행일을 변경했습니다 · 2026. 11. 09.");
+  expect(eventTitle({ ...e, action: "reschedule", reason: "effectiveDate=2026-11-09" }).title).toBe(t("orgChange.event.reschedule", { actor: e.actorName, date: fmtDate("2026-11-09") }));
   expect(eventTitle({ ...e, action: "cancel", fromStatus: "APPROVED", reason: "일정 변경" })).toEqual({ title: "김인사님이 예약을 취소했습니다", detail: "일정 변경" });
-  expect(eventTitle({ ...e, action: "effectuate.refused", reason: "transfer_cross_entity" })).toEqual({ title: "시행일에 반영하지 못했습니다", detail: "transfer_cross_entity" });
+  expect(eventTitle({ ...e, action: "effectuate.refused", reason: "transfer_cross_entity" })).toEqual({ title: t("orgChange.event.refused"), detail: "transfer_cross_entity" });
   expect(eventTitle({ ...e, action: "cancel", reason: "중복" })).toEqual({ title: "김인사님이 조직 변경을 취소했습니다", detail: "중복" });
   expect(eventTitle({ ...e, action: "step.decide", reason: "finance:REJECTED" }).title).toBe("김인사님이 재무 결재를 반려했습니다");
   expect(eventTitle({ ...e, action: "submit", toStatus: "IN_APPROVAL" }).title).toBe("김인사님이 조직 변경을 상신했습니다");

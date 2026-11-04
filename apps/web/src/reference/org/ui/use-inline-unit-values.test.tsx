@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { renderToStaticMarkup } from "react-dom/server";
+import { expect, test, vi } from "vitest";
+import { useInlineUnitValues } from "./use-inline-unit-values";
+
+const state = vi.hoisted(() => ({ date: "2026-11-04", reason: "Growth" }));
+vi.mock("../../../lib/pure/today", () => ({ todayKst: () => "2026-11-04" }));
+vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useState: () => [{ effectiveDate: state.date, reason: state.reason }, vi.fn()] }));
+
+test.each([
+  [false, "2026-11-03", "Growth", false],
+  [false, "", "Growth", false],
+  [false, "2026-11-04", "   ", false],
+  [false, "2026-11-04", "Growth", true],
+  [false, "2026-12-01", "Growth", true],
+  [true, "", "", true],
+])("setup=%s date=%s reason=%s is valid=%s", (setup, date, reason, valid) => {
+  state.date = date;
+  state.reason = reason;
+  function Probe() {
+    expect(useInlineUnitValues(setup).valid).toBe(valid);
+    return null;
+  }
+  renderToStaticMarkup(<Probe />);
+});

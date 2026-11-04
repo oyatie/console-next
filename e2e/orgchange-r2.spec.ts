@@ -5,7 +5,7 @@ import { withLifecycleDate } from "./clock";
 import { go, kstDate, registerEmployee } from "./flows";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
 import { registerBranch, startOperations, tenantInSetup } from "./setup-flows";
-import { box } from "./structure-flows";
+import { inlineUnitDetails, box } from "./structure-flows";
 import { openHistory } from "./record";
 import { holdRead } from "./helpers/read";
 
@@ -132,7 +132,7 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   const s1 = await openUnit(admin, "영업1팀");
   await s1.getByRole("button", { name: "이름 변경" }).click();
   await s1.getByRole("textbox", { name: /^영업1팀의 새 이름/ }).fill("국내영업팀");
-  await s1.getByRole("textbox", { name: /^적용일/ }).fill(due);
+  await inlineUnitDetails(admin, s1, due);
   await s1.getByRole("button", { name: "이름 변경", exact: true }).click();
   await expect(receipt(admin)).toContainText("영업1팀 → 국내영업팀 이름 변경");
   await expect(admin.getByRole("link", { name: "예정 1건" })).toBeVisible();

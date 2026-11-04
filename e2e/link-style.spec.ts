@@ -1,3 +1,4 @@
+import { inlineUnitDetails } from "./structure-flows";
 import { readdirSync, readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -120,6 +121,7 @@ test("no anchor on any route renders the browser's default link style", { tag: [
   const hq = await openUnit(admin, "본사");
   await hq.getByRole("button", { name: "부서 추가" }).click();
   await hq.getByRole("textbox", { name: /^본사 아래 새 부서 이름/ }).fill("총무부");
+  await inlineUnitDetails(admin, hq);
   await hq.getByRole("button", { name: "부서 추가", exact: true }).click();
   // The user stays on the chart; the receipt links the change's record (org-19).
   await admin.getByRole("status").getByRole("link", { name: /^OC-\d{4}-\d{4} 기록 보기$/ }).click();

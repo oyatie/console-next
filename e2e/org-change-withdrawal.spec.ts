@@ -5,7 +5,7 @@ import { go } from "./flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { setupCompany, startOperations } from "./setup-flows";
-import { revealUnit } from "./structure-flows";
+import { inlineUnitDetails, revealUnit } from "./structure-flows";
 
 test("a drafter withdraws a routed change after go-live and keeps its chain on record", async ({ browser }) => {
   test.setTimeout(300_000);
@@ -25,6 +25,7 @@ test("a drafter withdraws a routed change after go-live and keeps its chain on r
   await admin.keyboard.press("a");
   const name = admin.getByRole("textbox", { name: "본점 아래 새 부서 이름", exact: true });
   await name.fill("회수검증부");
+  await inlineUnitDetails(admin, admin);
   const submitted = admin.waitForResponse((r) => r.request().method() === "POST" && /\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
   await name.press("Enter");
   const before = await (await submitted).json() as components["schemas"]["OrgChangeDetail"];

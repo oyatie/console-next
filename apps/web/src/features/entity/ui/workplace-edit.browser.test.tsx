@@ -72,7 +72,7 @@ beforeAll(async () => {
           export const fieldIssues = () => [];
           export const addressQuery = () => read('/api/v1/regions', async () => ({ items: [] }));
           export const codesQuery = () => read('/api/v1/branches', async () => ({ items: [] }));
-          export const reviseInsurance = async () => ({});
+          export const reviseInsurance = async () => { window.insuranceWrites = (window.insuranceWrites ?? 0) + 1; return {}; };
           export const reviseWorkplace = async (_key, workplaceId, body) => {
             window.savedBody = { workplaceId, body };
             return {};
@@ -216,4 +216,7 @@ test("revising another workplace field when openedOn is unchanged allows CONTACT
   expect(await dialog.getByText(t("entityOps.info.openedIsCorrection")).count()).toBe(0);
   const saveButton = dialog.getByRole("button", { name: t("entity.edit.save"), exact: true });
   expect(await saveButton.getAttribute("aria-disabled")).toBeNull();
+  await saveButton.click();
+  await page.waitForFunction(() => (window as unknown as { closedFlag?: boolean }).closedFlag);
+  expect(await page.evaluate(() => (window as unknown as { insuranceWrites?: number }).insuranceWrites ?? 0)).toBe(0);
 });

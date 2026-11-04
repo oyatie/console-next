@@ -127,6 +127,7 @@ test("a dismissible operating receipt may explain the recorded transition, while
 });
 
 test.each([
+  ["term.orgEffectiveDate", "orgChange.list.col.effective", "시행일", "적용일"],
   ["term.이력", "org.tab.history", "변경 내역", "변경 이력"],
   ["term.미배치", "people.status", "소속 지점 미지정", "미배치"],
   ["term.대기", "home.tab.mine", "내 차례", "대기"],

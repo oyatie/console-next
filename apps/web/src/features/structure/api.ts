@@ -3,7 +3,7 @@
 // with phase_not_setup → submit_org_change and the governed path takes over.
 import { api, ApiError, session, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
-import { get, type PathPrefix } from "../../lib/query";
+import { get } from "../../lib/query";
 
 export { entitiesRef, orgStructureRef as structureQuery, checklistRef } from "../../reference/entity/api";
 
@@ -13,9 +13,6 @@ export type Receipt = S["OrgSetupReceipt"];
 export type ReorderRequest = S["ReorderStructureRequest"];
 export { reorder } from "../../reference/org/api";
 const once = (key: string) => ({ "Idempotency-Key": key });
-
-/** Everything a structure change may alter: the tree, the entity reads it is enriched from, the checklist. */
-export const STRUCTURE_READS: PathPrefix[] = ["/api/v1/org-structure", "/api/v1/org-units", "/api/v1/legal-entities", "/api/v1/onboarding"];
 
 /** Create, rename, move and dissolve department in one transaction (all or nothing; a stale pin names its op). */
 export const applyBatch = (key: string, ops: SetupOp[]) =>

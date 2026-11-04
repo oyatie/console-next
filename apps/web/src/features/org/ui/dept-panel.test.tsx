@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import type { Node, Place } from "../../../reference/org/domain/structure";
+import { UnitEdit } from "../../../reference/org/ui/use-unit-edit";
 import { DeptPanel } from "./dept-panel";
 
 const { counts } = vi.hoisted(() => ({ counts: vi.fn(() => "shared-unit-counts") }));
@@ -20,7 +21,7 @@ const child: Node = { id: "child", kind: "DEPARTMENT", name: "품질팀", childr
 const node: Node = { ...child, id: "unit", name: "본사", children: [child], headcount: 148, direct_headcount: 12, code: "HQ" };
 const parent: Node = { ...child, id: "workplace", kind: "WORKPLACE", name: "서울 사업장" };
 const place: Place = { node, parent, entity: { ...parent, kind: "LEGAL_ENTITY", name: "법인" }, workplace: parent, path: [parent.name] };
-const render = (setup: boolean, readOnly = false) => renderToStaticMarkup(<DeptPanel place={place} setup={setup} readOnly={readOnly} onClose={() => undefined} />);
+const render = (setup: boolean, readOnly = false) => renderToStaticMarkup(<UnitEdit.Provider value={true}><DeptPanel place={place} setup={setup} readOnly={readOnly} onClose={() => undefined} /></UnitEdit.Provider>);
 
 test.each([true, false])("department vacancy has a direct appoint action, with one rename and one details action (setup %s)", setup => {
   const html = render(setup);

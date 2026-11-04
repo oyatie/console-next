@@ -1,6 +1,8 @@
 import { useNavigate, getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { useCan } from "../../../reference/authz/ui/use-can";
+import { useUnitEdit } from "../../../reference/org/ui/use-unit-edit";
+import type { InlineUnitValues } from "../../../reference/org/api";
 import type { SetupOp } from "../api";
 import type { ChartNode, Structure } from "../domain/model";
 import { orderStep, parentOf, placeAfter, reorderedByDrag, transfers } from "../domain/rules";
@@ -11,6 +13,12 @@ import type { Commands } from "./use-structure-commands";
 const route = getRouteApi("/app/org");
 const pin = (n: ChartNode) => ({ org_unit_id: n.id, expected_version: n.version ?? 1 });
 
+/** One server-derived draft decision, shared by the structure page's editing surfaces. */
+export function useStructureEdit(setup: boolean, readOnly = false) {
+  const can = useCan();
+  return !readOnly && (setup || can("org_change_draft"));
+}
+
 /**
  * What each gesture does in the current phase. In setup a change is one batch, applied at once and
  * undoable. After go-live the same gesture opens the structure sheet for that unit (`?act=`: an org change with its
@@ -20,10 +28,9 @@ const pin = (n: ChartNode) => ({ org_unit_id: n.id, expected_version: n.version 
 export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands, ui: { move: (n: ChartNode[]) => void; remove: (n: ChartNode[]) => void; onFocus: (id: string | undefined) => void }) {
   const navigate = useNavigate();
   const nav = route.useNavigate();
-  const can = useCan();
   const setup = s.phase === "SETUP";
   const readOnly = s.readOnly || cmd.readOnly;
-  const canEdit = !readOnly && (setup || can("org_change_draft"));
+  const canEdit = useUnitEdit(setup, readOnly);
   const propose = (n: ChartNode, act: "create" | "rename" | "move" | "dissolve") => {
     if (readOnly) return;
     if (act === "move") return void navigate({ to: "/org/move", search: { ids: n.id } });
@@ -39,23 +46,23 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     c.toggle(n.id, true);
     c.setAdding(n.id);
   };
-  const create = (parentId: string, name: string, effectiveDate: string, done?: () => void) => {
+  const create = (parentId: string, name: string, values: InlineUnitValues, done?: () => void) => {
     if (!canEdit) return;
     const p = s.byId.get(parentId);
     if (!p) return;
     if (!setup) {
-      return cmd.propose({ kind: "create", parentUnitId: p.unitId ?? p.id, name, effectiveDate, onDone: (ids) => { done?.(); if (ids[0]) { c.setCursor(ids[0]); void nav({ search: (q) => ({ ...q, sel: ids[0], act: undefined }) }); } } });
+      return cmd.propose({ kind: "create", parentUnitId: p.unitId ?? p.id, name, ...values, onDone: (ids) => { done?.(); if (ids[0]) { c.setCursor(ids[0]); void nav({ search: (q) => ({ ...q, sel: ids[0], act: undefined }) }); } } });
     }
     const op: SetupOp = { op: "CREATE", name, ...(p.kind === "site" ? { workplace_id: p.id } : { parent_org_unit_id: p.id }) };
     // The new box comes into view (the add box stays open under it for the next name).
     cmd.apply({ ops: [op], message: t("structure.receipt.created", { name }), onDone: (ids) => { done?.(); if (ids[0]) c.setCursor(ids[0]); } });
   };
   const rename = (n: ChartNode) => (!canEdit || n.kind !== "dept" ? undefined : c.setRenaming(n.id));
-  const saveName = (id: string, name: string, effectiveDate: string) => {
+  const saveName = (id: string, name: string, values: InlineUnitValues) => {
     if (!canEdit) return;
     const n = s.byId.get(id);
     if (!n) return;
-    if (!setup) return cmd.propose({ kind: "rename", orgUnitId: n.id, fromName: n.name, name, effectiveDate, onDone: () => c.setRenaming(null) });
+    if (!setup) return cmd.propose({ kind: "rename", orgUnitId: n.id, fromName: n.name, name, ...values, onDone: () => c.setRenaming(null) });
     c.setRenaming(null);
     cmd.apply({ ops: [{ op: "RENAME", ...pin(n), name }], message: t("structure.receipt.renamed", { from: n.name, name }) });
   };

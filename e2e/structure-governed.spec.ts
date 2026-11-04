@@ -4,7 +4,7 @@ import { clickCounter } from "./clicks";
 import { chooseRadio, kstDate, registerEmployee } from "./flows";
 import { addDepts, openUnit, quickWorkplace, sheet } from "./helpers/structure";
 import { startOperations, tenantInSetup } from "./setup-flows";
-import { box, leaveScreen } from "./structure-flows";
+import { inlineUnitDetails, box, leaveScreen } from "./structure-flows";
 import { expectComposer } from "./helpers/composer";
 
 // 운영 중 (final spec D12, S5-close, S6-add-governed, S6-dissolve-governed, S8-governed): the same actions open a
@@ -45,6 +45,7 @@ test("operating: new department and dissolution proposals, a governed move, dele
   await expect(admin.getByRole("dialog")).toHaveCount(0);
   const addName = main.getByRole("textbox", { name: /^본점 아래 새 부서 이름/ });
   await addName.fill("마케팅팀");
+  await inlineUnitDetails(admin, main);
   await expect(addName).not.toHaveAttribute("aria-invalid", "true");
   await expectAccessible(admin, "new department proposal");
   await c.click(main.getByRole("button", { name: "부서 추가", exact: true }));
@@ -103,7 +104,7 @@ test("operating: new department and dissolution proposals, a governed move, dele
   const marketing = await openUnit(admin, "마케팅팀");
   await marketing.getByRole("button", { name: "이름 변경", exact: true }).click();
   await marketing.getByRole("textbox", { name: /^마케팅팀의 새 이름/ }).fill("브랜드마케팅팀");
-  await marketing.getByRole("textbox", { name: /^적용일/ }).fill(kstDate(3));
+  await inlineUnitDetails(admin, marketing, kstDate(3));
   await marketing.getByRole("button", { name: "이름 변경", exact: true }).click();
   await expect(marketing.getByRole("textbox", { name: /^마케팅팀의 새 이름/ })).toBeHidden();
   await expect(marketing.locator("#dept-history").getByRole("link", { name: /마케팅팀 → 브랜드마케팅팀/ })).toBeVisible();

@@ -26,28 +26,57 @@ export const applySetup = (key: string, ops: SetupOp[]) => unwrap(api.POST("/api
 export const reorder = (key: string, body: ReorderRequest) => unwrap(api.PUT("/api/v1/org-structure/order", { params: { header: { "Idempotency-Key": key } }, body }));
 
 export const defaultEffectiveDate = (today: string, asOf?: string): string => {
-  const q = asOf ?? (globalThis.location ? new URLSearchParams(globalThis.location.search).get("as_of") ?? undefined : undefined);
+  const q = asOf;
   return q && isDate(q) && q > today ? q : today;
 };
 
-export type InlineUnitSpec =
-  | { kind: "create"; parentUnitId: string; name: string; effectiveDate: string; onDone?: (unitIds: string[]) => void }
-  | { kind: "rename"; orgUnitId: string; fromName: string; name: string; effectiveDate: string; onDone?: () => void };
+export type InlineUnitValues = { effectiveDate: string; reason: string; submit: boolean };
+export type InlineUnitSpec = InlineUnitValues & (
+  | { kind: "create"; parentUnitId: string; name: string; onDone?: (unitIds: string[]) => void }
+  | { kind: "rename"; orgUnitId: string; fromName: string; name: string; onDone?: () => void });
 
-export async function submitInlineUnitChange(key: string, spec: InlineUnitSpec) {
+/** The proposal describes the edit; its reason is always entered by the user. */
+export function inlineUnitBody(spec: InlineUnitSpec): components["schemas"]["CreateOrgChangeRequest"] {
   const title = spec.kind === "create" ? t("orgChange.title.create", { name: spec.name }) : t("orgChange.title.rename", { from: spec.fromName, to: spec.name });
-  const body: components["schemas"]["CreateOrgChangeRequest"] = spec.kind === "create"
-    ? { kind: "NEW", target: { kind: "ORG_UNIT", ref: spec.parentUnitId, label: spec.name }, proposal: [{ op: "CREATE_ORG_UNIT", kind: "DEPARTMENT", parentId: spec.parentUnitId, name: spec.name }], effectiveDate: spec.effectiveDate, reason: title }
-    : { kind: "REORG", target: { kind: "ORG_UNIT", ref: spec.orgUnitId, label: title }, proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: spec.orgUnitId, name: spec.name }], effectiveDate: spec.effectiveDate, reason: title };
-  const draft = await unwrap(api.POST("/api/v1/org-changes", { params: { header: { "Idempotency-Key": key } }, body }));
-  let sent: "sent" | "unsent" = "sent";
+  return spec.kind === "create"
+    ? { kind: "NEW", target: { kind: "ORG_UNIT", ref: spec.parentUnitId, label: spec.name }, proposal: [{ op: "CREATE_ORG_UNIT", kind: "DEPARTMENT", parentId: spec.parentUnitId, name: spec.name }], effectiveDate: spec.effectiveDate, reason: spec.reason.trim() }
+    : { kind: "REORG", target: { kind: "ORG_UNIT", ref: spec.orgUnitId, label: title }, proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: spec.orgUnitId, name: spec.name }], effectiveDate: spec.effectiveDate, reason: spec.reason.trim() };
+}
+
+export const changeReceipt = (status: string, title: string, code: string, date: string) =>
+  t(status === "IN_APPROVAL" ? "orgChange.receipt.routedChart" : status === "APPROVED" ? "orgChange.receipt.scheduled" : "orgChange.receipt.applied", { title, code, date: fmtDate(date) });
+
+type S = components["schemas"];
+const once = (key: string) => ({ "Idempotency-Key": key });
+const at = (id: string) => ({ path: { id } });
+
+/** Drafts any org change in one write: its ops, date and reason together. */
+export const draftChange = (key: string, body: S["CreateOrgChangeRequest"]) => unwrap(api.POST("/api/v1/org-changes", { params: { header: once(key) }, body }));
+/** Sets a draft's date and reason (the region and branch drafting URLs take neither). */
+export const dateDraft = (id: string, body: { effectiveDate: string; reason: string }) => unwrap(api.PATCH("/api/v1/org-changes/{id}", { params: at(id), body }));
+const submitChange = (id: string) => unwrap(api.POST("/api/v1/org-changes/{id}/submit", { params: at(id) }));
+export const readChange = (id: string) => api.GET("/api/v1/org-changes/{id}", { params: at(id) });
+/**
+ * Submits a draft: "unsent" when its preflight blocks it (the draft stays, its page shows why). Submit takes
+ * no Idempotency-Key, so after a lost response or a 409 the change itself says whether it already went.
+ */
+export async function submitDraft(id: string): Promise<"sent" | "unsent"> {
   try {
-    await landed(() => unwrap(api.POST("/api/v1/org-changes/{id}/submit", { params: { path: { id: draft.id } } })), () => api.GET("/api/v1/org-changes/{id}", { params: { path: { id: draft.id } } }), (d) => d.status !== "DRAFT" && d.status !== "PRECHECKED");
+    await landed(() => submitChange(id), () => readChange(id), (d) => d.status !== "DRAFT" && d.status !== "PRECHECKED");
+    return "sent";
   } catch (e) {
-    if (e instanceof ApiError && e.code === "preflight_blocked") sent = "unsent";
-    else throw e;
+    if (e instanceof ApiError && e.code === "preflight_blocked") return "unsent";
+    throw e;
   }
-  const detail = sent === "sent" ? await unwrap(api.GET("/api/v1/org-changes/{id}", { params: { path: { id: draft.id } } })) : draft;
-  const message = detail.status === "IN_APPROVAL" ? t("orgChange.receipt.routedChart", { title, code: draft.code }) : detail.status === "APPROVED" ? t("orgChange.receipt.scheduled", { title, code: draft.code, date: fmtDate(spec.effectiveDate) }) : t("orgChange.receipt.applied", { title, code: draft.code });
-  return { id: draft.id, code: draft.code, sent, message, createdUnitIds: detail.created_unit_ids ?? [] };
+}
+
+/**
+ * One proposal for a structure change after go-live: drafted with its ops, date and reason, then submitted unless
+ * only saved. "unsent": its preflight blocks it; the draft stays and its record says why.
+ */
+export async function governed(key: string, body: S["CreateOrgChangeRequest"], submit: boolean) {
+  const draft = await draftChange(key, body);
+  const sent = submit ? await submitDraft(draft.id) : ("saved" as const);
+  const result = sent === "sent" ? await unwrap(readChange(draft.id)) : draft;
+  return { id: draft.id, code: draft.code, sent, select: result.created_unit_ids?.[0], status: result.status };
 }

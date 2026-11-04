@@ -19,6 +19,7 @@ beforeAll(async () => {
       load: id => id === "\0name-box-test" ? `
         import React, {useState} from 'react'; import {createRoot} from 'react-dom/client';
         import {loadCatalog} from '@console/i18n';
+        import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
         import {NameBox} from '/apps/web/src/features/structure/ui/name-box.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
@@ -32,7 +33,8 @@ beforeAll(async () => {
             React.createElement('button',{onClick:()=>{setBatch(batch+1);setPending(false)}},'Finish save'),
             React.createElement('button',{onClick:()=>setPending(false)},'Refuse save'));
         }
-        createRoot(document.getElementById('root')).render(React.createElement(Fixture));
+        const client=new QueryClient({defaultOptions:{queries:{retry:false,queryFn:async()=>({items:[]})}}});
+        createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client},React.createElement(Fixture)));
       ` : undefined }],
   });
   await server.listen();
@@ -50,7 +52,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     const field = page.getByRole("textbox", { name: "본사 아래 새 부서 이름" });
     await field.fill("개발팀");
     await field.press("Enter");
-    await expect(field).toBeDisabled();
+    await expect(field).toHaveAttribute("readonly", "");
     await page.getByRole("button", { name: "Refresh tree" }).click();
     await expect(field).toHaveValue("개발팀");
     await expect(field).not.toHaveAttribute("aria-invalid", "true");
@@ -64,7 +66,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await field.fill("인사팀");
     await page.getByRole("button", { name: "부서 추가", exact: true }).click();
     await page.getByRole("button", { name: "Refuse save" }).click();
-    await expect(field).toBeEnabled();
+    await expect(field).not.toHaveAttribute("readonly");
     await expect(field).toHaveValue("인사팀");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });

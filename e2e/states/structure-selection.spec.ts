@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
 import { authz, id, screenAccess, structure } from "../mock/fixtures";
 import { orgPanelReads } from "../mock/org-work";
+import { orgChange } from "../mock/org-changes";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { box, findBox, revealUnit } from "../structure-flows";
@@ -12,6 +13,140 @@ import { screens } from "./registry";
 import { expectAxe, fits } from "../a11y";
 
 test.beforeAll(() => loadCatalog("ko"));
+
+async function reason(page: Page) {
+  await page.getByRole("button", { name: t("orgUnit.gov.reason"), exact: true }).click();
+  const pop = page.getByRole("dialog", { name: t("orgUnit.gov.reason"), exact: true });
+  await pop.getByRole("textbox").fill("조직 운영 계획");
+  await pop.getByRole("textbox").press("Escape");
+}
+
+async function operating(page: Page, allowed = true) {
+  await page.clock.setFixedTime(new Date("2026-11-04T12:00:00+09:00"));
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await orgPanelReads(page);
+  const tree = structure(1);
+  tree.phase = "OPERATING";
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/org", "OPERATING"), is_ops: true } });
+  await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities.filter(c => c.feature !== "org_change_draft"), ...(allowed ? [{ feature: "org_change_draft", permission: "allow" as const, branch_scope: { kind: "all" as const }, org_wide: true, scoped: false }] : [])] } });
+  return { fixture, workplace: tree.entities[0]!.children[0]!, dept: tree.entities[0]!.children[0]!.children[0]! };
+}
+
+async function edit(page: Page, view: string, workplace: string, dept: string, rename = false) {
+  await page.goto(`/org?view=${view === "panel" ? "chart" : view}`);
+  if (view === "chart" || view === "panel") {
+    await revealUnit(page, rename || view === "panel" ? dept : workplace);
+    if (view === "panel") await page.getByRole("complementary", { name: dept, exact: true }).getByRole("button", { name: t(rename ? "orgUnit.rename.action" : "orgUnit.add.child"), exact: true }).click();
+    else if (rename) await page.keyboard.press("F2");
+    else await page.getByRole("toolbar", { name: t("structure.tools.label", { name: workplace }), exact: true }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
+  } else if (view === "outline") {
+    const tree = page.getByRole("tree", { name: t("structure.outline.label"), exact: true });
+    if (rename) await tree.getByText(dept, { exact: true }).dblclick();
+    else await tree.getByRole("treeitem", { name: new RegExp(`^${workplace}\\s`) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
+  } else if (rename) await page.getByRole("button", { name: `${dept} ${t("orgUnit.rename.action")}`, exact: true }).click();
+  else await page.getByRole("row", { name: new RegExp(workplace) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
+  const label = view === "panel" ? t(rename ? "orgUnit.rename.label" : "orgUnit.add.label", rename ? { name: dept } : { parent: dept }) : t(rename ? "structure.edit.renameLabel" : "structure.edit.addLabel", rename ? { name: dept } : { parent: workplace });
+  return page.getByRole("textbox", { name: new RegExp(`^${label}`) });
+}
+
+for (const view of ["chart", "outline", "list", "panel"]) {
+  test(`org: ${view} refuses past 적용일 and blank reason, preserves same-name rename @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const { fixture, workplace, dept } = await operating(page);
+    const writes: unknown[] = [];
+    await page.route("**/api/v1/org-changes", route => {
+      if (route.request().method() !== "POST") return route.fallback();
+      writes.push(route.request().postDataJSON());
+      return route.fulfill({ status: 422, json: { error: { code: "invalid_change", message: "Invalid change" } } });
+    });
+    try {
+      let name = await edit(page, view, workplace.name, dept.name, true);
+      await reason(page);
+      await name.press("Enter");
+      expect(writes).toEqual([]);
+      if (await name.isVisible()) await name.press("Escape");
+      name = await edit(page, view, workplace.name, dept.name);
+      await name.fill("미래팀");
+      const editor = view === "panel" ? page.getByRole("complementary", { name: dept.name, exact: true }) : name.locator("..");
+      const save = editor.getByRole("button", { name: t("orgUnit.add.save"), exact: true });
+      await expect(save).toBeDisabled();
+      await name.press("Enter");
+      await reason(page);
+      await page.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true }).click();
+      const date = page.getByRole("dialog", { name: t("orgUnit.gov.date"), exact: true }).getByRole("textbox", { name: new RegExp(`^${t("orgUnit.gov.date")}`) });
+      await date.fill("20261103");
+      await date.press("Tab");
+      await page.keyboard.press("Escape");
+      await expect(save).toBeDisabled();
+      await name.press("Enter");
+      await expect(name).toHaveValue("미래팀");
+      expect(writes).toEqual([]);
+      for (const theme of ["light", "dark"]) {
+        await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+        await fits(page, `${view}/guard/390/${theme}`);
+        await expectAxe(page, `${view}/guard/390/${theme}`);
+      }
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+
+  test(`org: ${view} hides edit affordances without the draft decision @ui-state`, async ({ page }) => {
+    const { fixture, workplace, dept } = await operating(page, false);
+    try {
+      await page.goto(`/org?view=${view === "panel" ? "chart" : view}`);
+      if (view === "panel" || view === "chart") {
+        await revealUnit(page, dept.name);
+        if (view === "chart") await page.keyboard.press("F2");
+        const panel = page.getByRole("complementary", { name: dept.name, exact: true });
+        await expect(panel.getByRole("button", { name: t("orgUnit.rename.action"), exact: true })).toHaveCount(0);
+        await expect(panel.getByRole("button", { name: t("orgUnit.add.child"), exact: true })).toHaveCount(0);
+      } else {
+        const surface = page.getByRole(view === "list" ? "grid" : "tree", { name: t(view === "list" ? "structure.list.label" : "structure.outline.label"), exact: true });
+        await expect(surface.getByText(workplace.name, { exact: true }).first()).toBeVisible();
+        await expect(surface.getByRole("button", { name: t("structure.tools.addDept"), exact: true })).toHaveCount(0);
+        await surface.getByText(dept.name, { exact: true }).dblclick();
+      }
+      await expect(page.getByRole("textbox", { name: /이름/ })).toHaveCount(0);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
+for (const outcome of ["draft", "preflight_blocked", "invalid_change"]) test(`org: inline ${outcome} keeps the next action honest @ui-state`, async ({ page }) => {
+  const { fixture, workplace, dept } = await operating(page);
+  const draft = { ...orgChange("draft"), effectiveDate: "2026-11-04" };
+  let submitted = 0;
+  const payloads: unknown[] = [];
+  await page.route("**/api/v1/org-changes", route => {
+    if (route.request().method() !== "POST") return route.fallback();
+    payloads.push(route.request().postDataJSON());
+    return route.fulfill({ status: 201, json: draft });
+  });
+  await page.route(`**/api/v1/org-changes/${draft.id}`, route => route.fulfill({ json: draft }));
+  await page.route(`**/api/v1/org-changes/${draft.id}/submit`, route => {
+    submitted++;
+    return route.fulfill({ status: outcome === "preflight_blocked" ? 409 : 422, json: { error: { code: outcome, message: "Change refused" } } });
+  });
+  try {
+    const name = await edit(page, "chart", workplace.name, dept.name);
+    await name.fill("미래팀");
+    await reason(page);
+    if (outcome === "draft") await page.getByRole("button", { name: t("composer.saveDraft"), exact: true }).click();
+    else await name.press("Enter");
+    if (outcome === "invalid_change") {
+      await expect(page.getByRole("alert")).toBeVisible();
+      await expect(name).toHaveValue("미래팀");
+      await expect(page).toHaveURL(/\/org(?:\?|$)/);
+    } else {
+      await expect(page).toHaveURL(new RegExp(`/org/changes/${draft.id}\\?done=drafted${outcome === "preflight_blocked" ? "&unsent=true" : "$"}`));
+    }
+    expect(submitted).toBe(outcome === "draft" ? 0 : 1);
+    expect(payloads).toEqual([expect.objectContaining({ reason: "조직 운영 계획", effectiveDate: "2026-11-04" })]);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
 
 for (const view of ["chart", "outline"] as const) test(`org: inline ${view} editor stays readable at 390px @ui-state`, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -106,6 +241,7 @@ for (const width of [1440, 390]) test(`org: multi-selection actions remain acces
 });
 
 test("org: post-go-live inline + add and rename in place carry 적용일 (default 오늘, changeable) without a dialog @ui-state", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.clock.setFixedTime(new Date("2026-11-04T12:00:00+09:00"));
   const fixture = await mockScreen(page, screens[2], "populated");
@@ -157,11 +293,13 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await expect(addInput).toBeFocused();
     await expect(page.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true })).toBeVisible();
 
+    await reason(page);
     await addInput.fill("전략팀");
     await addInput.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(1);
     expect(createdPayloads[0]).toMatchObject({
       kind: "NEW",
+      reason: "조직 운영 계획",
       effectiveDate: "2026-11-04",
       proposal: [{ op: "CREATE_ORG_UNIT", kind: "DEPARTMENT", name: "전략팀" }],
     });
@@ -191,6 +329,7 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const renameInput = page.getByRole("textbox", { name: t("structure.edit.renameLabel", { name: dept.name }), exact: true });
     await expect(renameInput).toBeVisible();
+    await reason(page);
     await renameInput.fill("플랫폼팀");
     await renameInput.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(3);
@@ -204,10 +343,13 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     const panel = page.getByRole("complementary", { name: "플랫폼팀", exact: true });
     await panel.getByRole("button", { name: t("orgUnit.rename.action"), exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    const panelDate = panel.getByRole("textbox", { name: new RegExp(`^${t("orgUnit.gov.date")}`) });
+    await panel.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true }).click();
+    const panelDate = page.getByRole("dialog", { name: t("orgUnit.gov.date"), exact: true }).getByRole("textbox", { name: new RegExp(`^${t("orgUnit.gov.date")}`) });
     await expect(panelDate).toHaveValue(fmtDate("2026-11-04"));
     await panelDate.fill("20261215");
+    await panelDate.press("Enter");
     const panelName = panel.getByRole("textbox", { name: new RegExp(`^${t("orgUnit.rename.label", { name: "플랫폼팀" })}`) });
+    await reason(page);
     await panelName.fill("코어플랫폼팀");
     await panelName.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(4);
@@ -223,6 +365,7 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await outlineTree.getByRole("treeitem", { name: new RegExp(`^${workplace.name}\\s`) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const outlineAdd = page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: workplace.name }), exact: true });
+    await reason(page);
     await outlineAdd.fill("아웃라인팀");
     await expectAxe(page, "org operating outline editor");
     await outlineAdd.press("Enter");
@@ -235,6 +378,7 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await page.getByRole("row", { name: new RegExp(workplace.name) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const listAdd = page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: workplace.name }), exact: true });
+    await reason(page);
     await listAdd.fill("목록팀");
     await listAdd.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(6);
@@ -243,6 +387,7 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await page.getByRole("button", { name: `코어플랫폼팀 ${t("orgUnit.rename.action")}`, exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const listRename = page.getByRole("textbox", { name: t("structure.edit.renameLabel", { name: "코어플랫폼팀" }), exact: true });
+    await reason(page);
     await listRename.fill("목록개편팀");
     await listRename.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(7);

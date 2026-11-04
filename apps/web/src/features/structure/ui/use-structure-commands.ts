@@ -3,9 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMutationState } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
-import { submitInlineUnitChange, type InlineUnitSpec } from "../../../reference/org/api";
+import { governed, inlineUnitBody, changeReceipt, STRUCTURE_READS, type InlineUnitSpec } from "../../../reference/org/api";
 import { noteChange } from "../../../reference/org/ui/use-change-note";
-import { applyBatch, reorder, STRUCTURE_READS, undoBatch, type ReorderRequest, type SetupOp } from "../api";
+import { applyBatch, reorder, undoBatch, type ReorderRequest, type SetupOp } from "../api";
 
 /**
  * `moved`: the units a move landed and where they came from (each box is marked "just moved" until the receipt goes).
@@ -61,31 +61,32 @@ export function useStructureCommands(readOnly = false) {
       setLast(before ? { message: o.message, back: { ...parent, children: before, expected_children: r.children } } : null);
     },
   });
-  const governed = useCommand({
-    run: (c: InlineUnitSpec, key: string) => submitInlineUnitChange(key, c),
-    invalidates: [...STRUCTURE_READS, "/api/v1/org-changes"],
+  const proposal = useCommand({
+    run: (c: InlineUnitSpec, key: string) => governed(key, inlineUnitBody(c), c.submit),
+    invalidates: STRUCTURE_READS,
     awaitFirstRead: true,
     onSuccess: (r, c) => {
-      if (r.sent !== "sent") return void nav({ to: "/org/changes/$id", params: { id: r.id }, search: { done: "drafted", unsent: true } });
-      noteChange({ id: r.id, code: r.code, message: r.message });
-      return c.kind === "create" ? c.onDone?.(r.createdUnitIds) : c.onDone?.();
+      if (r.sent !== "sent") return void nav({ to: "/org/changes/$id", params: { id: r.id }, search: { done: "drafted", unsent: r.sent === "unsent" || undefined } });
+      const title = c.kind === "create" ? t("orgChange.title.create", { name: c.name }) : t("orgChange.title.rename", { from: c.fromName, to: c.name });
+      noteChange({ id: r.id, code: r.code, message: changeReceipt(r.status, title, r.code, c.effectiveDate) });
+      return c.kind === "create" ? c.onDone?.(r.select ? [r.select] : []) : c.onDone?.();
     },
   });
   return {
     readOnly,
     apply: (c: Change) => !readOnly && (own.current.add(c), change.mutate(c)),
-    propose: (c: InlineUnitSpec) => !readOnly && (own.current.add(c), governed.mutate(c)),
+    propose: (c: InlineUnitSpec) => !readOnly && (own.current.add(c), proposal.mutate(c)),
     order: (body: ReorderRequest, message: string) => {
       if (readOnly) return;
       const o = { body, message };
       own.current.add(o);
       order.mutate(o);
     },
-    pending: change.isPending || undo.isPending || order.isPending || governed.isPending,
-    error: change.error ?? undo.error ?? order.error ?? governed.error,
+    pending: change.isPending || undo.isPending || order.isPending || proposal.isPending,
+    error: change.error ?? undo.error ?? order.error ?? proposal.error,
     /** The change the server refused, as it was asked (a stale one is offered again from where things are now). */
     failed: change.error ? change.variables : undefined,
-    reset: () => (change.reset(), undo.reset(), order.reset(), governed.reset()),
+    reset: () => (change.reset(), undo.reset(), order.reset(), proposal.reset()),
     last,
     undo: () => !readOnly && last && !last.undone && (own.current.add(last), undo.mutate(last)),
     undoing: undo.isPending,

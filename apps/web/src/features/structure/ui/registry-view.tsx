@@ -104,7 +104,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
               <PencilLine size={14} aria-hidden />
             </Button>
           )}
-          <AddUnit n={n} onAdd={g.canEdit ? () => { setClosed((o) => new Set([...o].filter((x) => x !== n.id))); setEdit({ kind: "new", parent: n.id }); } : undefined} />
+          {g.canEdit && <AddUnit n={n} onAdd={() => { setClosed((o) => new Set([...o].filter((x) => x !== n.id))); setEdit({ kind: "new", parent: n.id }); }} />}
         </span>
       ),
     }] : []),
