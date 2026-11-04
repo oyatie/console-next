@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { WorkplaceSheetProps } from "../../../reference/org/ui/use-structure-slots";
 import { kindsQuery, workplaceEndQuery } from "../api";
@@ -38,7 +38,10 @@ export function WorkplaceSheet({ act, at, setup, onClose, onSelect, onAct }: Wor
 /** The workplace's end-options read, fresh on open: whether it is deleted (never used) or closed. */
 function EndHost({ id, children }: { id: string; children: (erase: boolean) => ReactNode }) {
   const end = useQuery({ ...workplaceEndQuery(id), refetchOnMount: "always" });
-  return end.data ? <>{children(end.data.delete.allowed)}</> : null;
+  const [erase, setErase] = useState<boolean>();
+  if (end.data && erase === undefined) setErase(end.data.delete.allowed);
+  const resolved = erase ?? end.data?.delete.allowed;
+  return resolved !== undefined ? <>{children(resolved)}</> : null;
 }
 
 function CreateHost({ entityId, setup, onClose, onSaved }: { entityId: string; setup: boolean; onClose: () => void; onSaved: (id: string, another: boolean) => void }) {

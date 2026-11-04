@@ -146,9 +146,12 @@ const pathHas = (s: Structure, n: ChartNode, id: string): boolean => {
 };
 
 function NewName({ parent, renaming, pending, onSave, onIndent, onDone }: { parent: ChartNode; renaming?: ChartNode; pending: boolean; onSave: (name: string, done: () => void) => void; onIndent: (dir: 1 | -1) => void; onDone: () => void }) {
-  const [name, setName] = useState(renaming?.name ?? "");
+  const [baseParent, setBaseParent] = useState(parent);
+  const [baseRenaming] = useState(renaming);
+  if (!pending && baseParent !== parent) setBaseParent(parent);
+  const [name, setName] = useState(baseRenaming?.name ?? "");
   const trimmed = name.trim();
-  const clash = trimmed && nameClash(parent, trimmed, renaming?.id);
+  const clash = trimmed && nameClash(baseParent, trimmed, baseRenaming?.id);
   const save = () => { if (trimmed && !clash && !pending) onSave(trimmed, () => setName("")); };
   return (
     <span className={css.edit}>

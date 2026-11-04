@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Lock, MapPin } from "lucide-react";
 import type { LegalEntity, WorkplaceKind } from "@console/api/pending";
 import { t } from "@console/i18n";
@@ -31,8 +31,10 @@ export function WorkplaceCreateSheet({ e, kinds, setup, onClose, onSaved }: { e:
   const head = e.workplaces.find((w) => w.id === e.head_office_workplace_id);
   const own = c.mode === "NEW" || c.mode === "EXISTING";
   // org-18: a sibling with the same name is named as it is typed (two identical names cannot be told apart in pickers).
+  const [workplaces, setWorkplaces] = useState(e.workplaces);
+  if (!c.save.isPending && workplaces !== e.workplaces) setWorkplaces(e.workplaces);
   const typed = c.w.name.trim();
-  const twin = typed ? e.workplaces.find((x) => !x.closed_on && x.current?.name.trim() === typed) : undefined;
+  const twin = typed ? workplaces.find((x) => !x.closed_on && x.current?.name.trim() === typed) : undefined;
   return (
     <Sheet
       open

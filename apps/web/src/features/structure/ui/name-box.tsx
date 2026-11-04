@@ -22,6 +22,7 @@ export function NameBox({ box, parent, renaming, pending, onSubmit, onCancel }: 
   onSubmit: (name: string) => void;
   onCancel: () => void;
 }) {
+  const [openedParent] = useState(parent);
   const [name, setName] = useState(renaming?.name ?? "");
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -30,12 +31,12 @@ export function NameBox({ box, parent, renaming, pending, onSubmit, onCancel }: 
   }, []);
   const trimmed = name.trim();
   // The refreshed tree can contain our new name before the save finishes and opens an empty box.
-  const clash = !pending && trimmed && nameClash(parent, trimmed, renaming?.id);
-  const label = renaming ? t("structure.edit.renameLabel", { name: renaming.name }) : t("structure.edit.addLabel", { parent: parent.name });
+  const clash = !pending && trimmed && nameClash(openedParent, trimmed, renaming?.id);
+  const label = renaming ? t("structure.edit.renameLabel", { name: renaming.name }) : t("structure.edit.addLabel", { parent: openedParent.name });
   const submit = () => { if (trimmed && !clash && !pending) onSubmit(trimmed); };
   return (
     <OrgNode level="dept" box={box} states={["edit"]} className={css.nameBox}>
-      <span className={css.nameKicker}>{renaming ? t("structure.edit.renameKicker") : t("structure.edit.addKicker", { parent: parent.name })}</span>
+      <span className={css.nameKicker}>{renaming ? t("structure.edit.renameKicker") : t("structure.edit.addKicker", { parent: openedParent.name })}</span>
       <TextInput
         ref={input}
         aria-label={label}

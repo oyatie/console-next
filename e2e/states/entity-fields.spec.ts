@@ -49,6 +49,14 @@ test("an empty correction-only field opens and announces its first entry @ui-sta
     fixture.entity.current = { ...fixture.entity.current!, version: 2, incorporated_on: body.incorporated_on };
     return { status: 200, json: { record: fixture.entity, warnings: [], change_mode: "SETUP" as const } };
   });
+  let savedWorkplace: Record<string, unknown> | undefined;
+  await mockRoute(page, "put", "/api/v1/workplaces/{workplaceId}", (request) => {
+    const body = request.postDataJSON() as Record<string, unknown> & { opened_on?: string };
+    savedWorkplace = body;
+    fixture.entity.workplaces[0]!.current!.opened_on = body.opened_on ?? null;
+    fixture.entity.workplaces[0]!.current!.version += 1;
+    return { status: 200, json: { record: fixture.entity.workplaces[0]!, warnings: [], change_mode: "SETUP" as const } };
+  });
   try {
     await page.goto(entityRecordPath);
     await routeReady(page);
@@ -62,7 +70,8 @@ test("an empty correction-only field opens and announces its first entry @ui-sta
       await expect(dialog.getByText(t("entityOps.revise.firstEntry", { field }), { exact: true })).toBeVisible();
       await expect(dialog).not.toContainText(t("entityRecord.revise.now", { value: t("entityOps.info.none"), date: fmtDate("2026-01-01") }));
       await expect(dialog.getByText(t("entityRecord.revise.newValue", { field }), { exact: true })).toHaveCount(0);
-      await expect(dialog.getByRole("region", { name: action, exact: true })).toBeVisible();
+      await expect(dialog.getByRole("region", { name: action, exact: true })).toHaveCount(0);
+      await expect(dialog.getByRole("region", { name: t("entityOps.revise.firstValue", { field }), exact: true })).toBeVisible();
       await fits(page, `entity fields/first entry/${key}/390/dark`);
       await expectAxe(page, `entity fields/first entry/${key}/390/dark`);
       if (key === "incorporatedOn") {
@@ -87,8 +96,21 @@ test("an empty correction-only field opens and announces its first entry @ui-sta
     const dialog = page.getByRole("dialog", { name: action, exact: true });
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('[data-k="correction"]')).toHaveCount(0);
+    await expect(dialog.getByRole("textbox", { name: new RegExp(`^${t("entity.edit.from")}`) })).toHaveCount(0);
+    await expect(dialog.getByRole("radiogroup", { name: new RegExp(t("entity.edit.reason")) })).toHaveCount(0);
     await fits(page, "entity fields/workplace first entry/390/dark");
     await expectAxe(page, "entity fields/workplace first entry/390/dark");
+    await fillDate(dialog, "2020-03-02", opened);
+    await dialog.getByRole("button", { name: t("composer.verb.enter"), exact: true }).click();
+    await expect(dialog).toBeHidden();
+    const entered = t("entityRecord.revise.entered", { field: opened });
+    await expect(page.getByRole("status").filter({ hasText: entered })).toHaveText(entered);
+    expect(savedWorkplace).toMatchObject({
+      opened_on: "2020-03-02",
+      effective_from: "2026-01-01",
+      reason_code: "ENTRY_CORRECTION",
+      expected_version: 1,
+    });
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

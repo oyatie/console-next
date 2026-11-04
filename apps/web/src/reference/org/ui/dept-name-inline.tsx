@@ -17,20 +17,23 @@ const fold = (s: string) => s.normalize("NFC").trim();
  * is caught as it is typed (I-5). Enter saves (adding keeps the field open for the next one); Esc closes it.
  */
 export function DeptNameInline({ parent, unit, onDone }: { parent: Node; unit?: Node; onDone: () => void }) {
-  const [name, setName] = useState(unit?.name ?? "");
-  const taken = depts(parent).some((c) => c.id !== unit?.id && fold(c.name) === fold(name));
-  const same = unit !== undefined && fold(name) === fold(unit.name);
+  const [baseUnit] = useState(unit);
+  const [baseParent, setBaseParent] = useState(parent);
+  const [name, setName] = useState(baseUnit?.name ?? "");
   const save = useCommand({
     run: (n: string, key: string) =>
-      applySetup(key, [unit ? { op: "RENAME", org_unit_id: unit.id, expected_version: unit.version, name: n } : { op: "CREATE", name: n, ...parentRef(parent) }]),
+      applySetup(key, [baseUnit ? { op: "RENAME", org_unit_id: baseUnit.id, expected_version: baseUnit.version, name: n } : { op: "CREATE", name: n, ...parentRef(baseParent) }]),
     invalidates: STRUCTURE_READS,
     awaitFirstRead: true,
-    announce: (_, n) => (unit ? t("orgUnit.rename.done", { from: unit.name, name: n }) : t("orgUnit.add.done", { name: n, parent: parent.name })),
-    onSuccess: () => (unit ? onDone() : setName("")),
+    announce: (_, n) => (baseUnit ? t("orgUnit.rename.done", { from: baseUnit.name, name: n }) : t("orgUnit.add.done", { name: n, parent: baseParent.name })),
+    onSuccess: () => (baseUnit ? onDone() : setName("")),
   });
+  if (!save.isPending && baseParent !== parent) setBaseParent(parent);
+  const taken = depts(baseParent).some((c) => c.id !== baseUnit?.id && fold(c.name) === fold(name));
+  const same = baseUnit !== undefined && fold(name) === fold(baseUnit.name);
   const box = useFocusInside<HTMLSpanElement>();
   const submit = () => fold(name) && !taken && !same && save.mutate(fold(name));
-  const label = unit ? t("orgUnit.rename.label", { name: unit.name }) : t("orgUnit.add.label", { parent: parent.name });
+  const label = baseUnit ? t("orgUnit.rename.label", { name: baseUnit.name }) : t("orgUnit.add.label", { parent: baseParent.name });
   return (
     <span ref={box} className={css.stack}>
       <Form className={css.stack} onSubmit={submit}>

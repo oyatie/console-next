@@ -20,7 +20,8 @@ import { Muted } from "../../../ui/muted/muted";
  * department merge (S6-merge): the target tree hides other legal entity and disables the unit's own subtree; the right side shows
  * the totals and the target's workplace after. Setup applies at once; after go-live it is one proposal.
  */
-export function DeptMergeSheet({ place, places, setup, company, onClose, onDone }: { place: Place; places: Map<string, Place>; setup: boolean; company: string; onClose: () => void; onDone: (target: string) => void }) {
+export function DeptMergeSheet({ place: initialPlace, places: initialPlaces, setup, company, onClose, onDone }: { place: Place; places: Map<string, Place>; setup: boolean; company: string; onClose: () => void; onDone: (target: string) => void }) {
+  const [{ place, places }] = useState({ place: initialPlace, places: initialPlaces });
   const a = place.node;
   const ei = useEiUnit(place.entity.id);
   const [to, setTo] = useState<string | null>(null);
