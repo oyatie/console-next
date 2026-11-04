@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { problemOf } from "../api";
+import { freshOnOpen } from "../../../lib/query";
+import { QueryState } from "../../../lib/react/query-state";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
@@ -27,21 +29,26 @@ export function CertificateSheet({ c, onClose }: { c: Card; onClose: () => void 
     onSuccess: (doc) => void nav({ to: "/people/certificates/$certificateId", params: { certificateId: doc.id } }),
   });
   const needsSettings = problemOf(issue.error)?.code === "certificate_settings_required";
-  const settings = useQuery({ ...certificateSettingsQuery, enabled: needsSettings, retry: false, refetchOnMount: "always" });
-  const settingsRemedy = needsSettings && settings.isSuccess && settings.isFetchedAfterMount && settings.data.can_manage === true
+  const settings = freshOnOpen(useQuery({ ...certificateSettingsQuery, retry: false, refetchOnMount: "always" }));
+  const current = settings.isSuccess && settings.data !== undefined;
+  const configured = current && settings.data.settings.some((row) => row.legal_entity_id === c.e.legal_entity_id);
+  const settingsRemedy = current && settings.data.can_manage === true
     ? <Link to="/people/certificates" search={{ employee: c.e.id }} hash="certificate-settings">{t("empDoc.certificate.settings")}</Link>
     : null;
-  const ready = Boolean(kind && items.length && purpose.trim());
+  const ready = Boolean(configured && kind && items.length && purpose.trim());
+  const settingsReason = t("empDoc.certificate.error.certificate_settings_required");
   return <Composer open pending={issue.isSending} locked={issue.isChecking} kicker={<Who c={c} />} title={t("empDoc.cert.title")} onClose={onClose}
     action={{ kind: "certificate", mode: "issue" }} incomplete={!ready} dirty={Boolean(kind || items.length || purpose.trim())}
-    notice={<CommandError error={issue.error} own={certificateError}>{settingsRemedy}</CommandError>}
-    consequence={<><b>{kind ? t("empDoc.cert.cons", { kind: t(`empDoc.cert.kind.${kind}`), count: items.length }) : t("empDoc.cert.pick")}</b><span>{t("empDoc.certificate.issueEffect")}</span></>}
+    notice={<CommandError error={issue.error} own={certificateError}>{needsSettings && settingsRemedy}</CommandError>}
+    blocked={current && !configured ? { reason: settingsReason } : undefined}
+    consequence={configured ? <><b>{kind ? t("empDoc.cert.cons", { kind: t(`empDoc.cert.kind.${kind}`), count: items.length }) : t("empDoc.cert.pick")}</b><span>{t("empDoc.certificate.issueEffect")}</span></> : undefined}
     onSubmit={() => { if (kind && ready && !issue.isPending) issue.mutate({ employee_id: c.e.id, kind, items, purpose: purpose.trim() }); }}>
+    <QueryState q={settings} own={certificateError} inline>{() => configured ? <>
     <ChipChoice label={t("empDoc.cert.kind")} options={(["EMPLOYMENT", "CAREER", "EXIT"] as const).map((k) => ({ value: k, label: t(`empDoc.cert.kind.${k}`), disabled: k === "EXIT" ? c.e.status !== "EXITED" : k === "EMPLOYMENT" && c.e.status === "EXITED" }))} value={kind} onChange={(v) => { if (v === "EMPLOYMENT" || v === "CAREER" || v === "EXIT") setKind(v); }} />
-    <p>{t("empDoc.cert.request")}</p>
     <Checks label={t("empDoc.cert.items")} items={ITEMS.map((k) => ({ id: k, label: t(`empDoc.cert.item.${k}`) }))} value={items} onChange={(v) => setItems(v.filter((x): x is typeof ITEMS[number] => ITEMS.some((i) => i === x)))} />
     <Field label={t("empDoc.certificate.purpose")} required>{(p) => <TextInput {...p} maxLength={200} value={purpose} onChange={(e) => setPurpose(e.target.value)} />}</Field>
     <Banner>{t("empDoc.cert.always", { entity: c.place.entity })}</Banner>
+    </> : <Banner tone="warn" actions={settingsRemedy}>{settingsReason}</Banner>}</QueryState>
     <Link to="/people/certificates" search={{ employee: c.e.id }}>{t("empDoc.certificate.register")}</Link>
   </Composer>;
 }

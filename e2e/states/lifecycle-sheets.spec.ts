@@ -9,6 +9,7 @@ import { moveDetail, unplacedTarget } from "../mock/lifecycle-sheets";
 import { mockRoute } from "../mock/route";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
 import { dateBox, todayPreset } from "../sheet";
+import { certificateSettings } from "../mock/certificates";
 
 for (const width of [1440, 390]) {
   for (const state of [403, 503, "loading"] as const) {
@@ -260,7 +261,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
     await mockRoute(page, "post", "/api/v1/hr/certificates", { status: 422, json: failure("certificate_settings_required") });
-    const settings = { settings: [], seal_max_bytes: 100000, can_manage: allowed };
+    const settings = { settings: [certificateSettings], seal_max_bytes: 100000, can_manage: allowed };
     // The undefined case pins fail-closed behavior for an older response missing the new projection.
     await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: settings as never });
     await page.goto(`/people/${id(4000)}?act=cert`);
