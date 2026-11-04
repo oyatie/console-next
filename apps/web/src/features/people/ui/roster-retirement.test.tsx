@@ -19,7 +19,7 @@ test.each([true, false])("the roster peek agrees with the card's next retirement
   const exit = { id: "exit", event_type: "TERMINATE", effective_date: "2026-10-31" };
   const employee = { id: "person", name: "경계직원", status: "ACTIVE", next_event: exit };
   state.card = { e: employee, d: { employee, classification: {}, allowed_events: [], allowed_scheduled_events: [] }, planned: planned ? exit : undefined, register: {}, title: () => undefined, place: { path: [] } } as unknown as Card;
-  const html = renderToStaticMarkup(<RosterPanel id="person" today="2026-10-31" onClose={() => {}} />);
+  const html = renderToStaticMarkup(<RosterPanel id="person" today="2026-10-31" />);
   expect(html).toContain("2026. 11. 01. 퇴직 예정");
   expect(html).not.toContain("2026. 10. 31.");
 });
@@ -27,7 +27,7 @@ test.each([true, false])("the roster peek agrees with the card's next retirement
 function peek(workplace: string | null, worksite: string | null) {
   const employee = { id: "person", name: "배치직원", status: "ACTIVE", workplace_id: workplace, worksite_name: worksite, home_branch_name: "폐지 지점", home_branch_review_required: true };
   state.card = { e: employee, d: { employee, classification: {}, allowed_events: [], allowed_scheduled_events: [] }, register: {}, title: () => undefined, place: { entity: "가나다 법인", workplace: "본사", path: ["개발본부"] } } as unknown as Card;
-  return renderToStaticMarkup(<RosterPanel id="person" today="2026-10-25" onClose={() => {}} />);
+  return renderToStaticMarkup(<RosterPanel id="person" today="2026-10-25" />);
 }
 
 test("peek shows the assignment path and physical worksite separately without a branch", () => {

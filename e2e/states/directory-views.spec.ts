@@ -264,7 +264,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await fits(page, `directory peek ${width} ${theme}`);
     await expectAxe(page, `directory peek ${width} ${theme}`);
     await test.info().attach("peek", { body: await page.screenshot({ path: test.info().outputPath("peek.png"), fullPage: true }), contentType: "image/png" });
-    await peek.getByRole("button", { name: t("roster.panel.close"), exact: true }).click();
+    await peek.getByRole("button", { name: width < 640 ? t("common.back") : t("roster.panel.close"), exact: true }).click();
     await expect(peek).toBeHidden();
     await page.goto("/_gallery?entry=roster-saved-views");
     await open();

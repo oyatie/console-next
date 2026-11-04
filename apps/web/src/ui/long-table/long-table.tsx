@@ -243,7 +243,7 @@ export function LongTable<R>(p: {
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
               <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout ? (c.id === SELECT ? css.selectHead : cards.visuallyHidden) : ""}`}>
-                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}><Box />{cardLayout && toggleLabel}</Checkbox> : <>{c.header}{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
+                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}><Box />{cardLayout && toggleLabel}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
           </TableHeader>

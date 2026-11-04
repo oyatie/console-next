@@ -90,6 +90,7 @@ const people = createRoute({
     exitStatus: parseExitFilter(s.exitStatus),
     placement: s.placement === "unplaced" ? "unplaced" : undefined,
     sel: str(s.sel),
+    sel2: str(s.sel2),
     view: s.view === "accounts" ? "accounts" : undefined,
     unit: str(s.unit),
     status: str(s.status),

@@ -44,6 +44,8 @@ export const koRoster = {
   "roster.selection.dropHidden": "보이지 않는 {count, number}명 제외",
   "roster.changed": "목록이 바뀌었습니다 · 새로 고침",
   "roster.panel.close": "직원 상세 닫기",
+  "roster.panel.unit": "소속 부서 상세",
+  "roster.panel.openOrg": "조직도에서 열기",
   "roster.next.return": "복귀 예정 · {date} · {rel}",
   "roster.scope.branches": "내 지점에 속한 직원만 보입니다. 수정할 내용은 인사카드에서 인사팀에 요청합니다.",
   "roster.export.layout": "내보낼 명부",

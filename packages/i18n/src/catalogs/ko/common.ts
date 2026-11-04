@@ -2,6 +2,8 @@
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const koCommon = {
   "common.more": "더 보기",
+  "common.closeRelated": "연관 항목 닫기",
+  "common.resizeColumn": "열 너비 조절",
   "common.steps": "진행 단계",
   "common.headcount": "{count, number}명",
   "common.page.label": "페이지 이동",

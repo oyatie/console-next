@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { type RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Building2, X } from "lucide-react";
+import { Building2 } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtKrw } from "@console/i18n/format";
@@ -32,16 +33,12 @@ type Detail = components["schemas"]["EmployeeDetail"];
  * present or missing (values masked: a peek never reveals), and the ways on: the record (Enter) and the actions the
  * server offers now. Read only; J/K follow the list, Esc closes.
  */
-export function RosterPanel({ id, today, onClose }: { id: string; today: string; onClose: () => void }) {
+export function RosterPanel({ id, today, unitTriggerRef, onOpenUnit }: { id: string; today: string; unitTriggerRef?: RefObject<HTMLButtonElement | null>; onOpenUnit?: (unitId: string) => void }) {
   const detail = useQuery(employeeQuery(id));
-  return (
-    <aside className={`card ${s.peek}`} aria-label={t("people.panel")}>
-      <QueryState q={detail}>{(d) => <Peek d={d} today={today} onClose={onClose} />}</QueryState>
-    </aside>
-  );
+  return <QueryState q={detail}>{(d) => <Peek d={d} today={today} unitTriggerRef={unitTriggerRef} onOpenUnit={onOpenUnit} />}</QueryState>;
 }
 
-function Peek({ d, today, onClose }: { d: Detail; today: string; onClose: () => void }) {
+function Peek({ d, today, unitTriggerRef, onOpenUnit }: { d: Detail; today: string; unitTriggerRef?: RefObject<HTMLButtonElement | null>; onOpenUnit?: (unitId: string) => void }) {
   const c = useCard(d);
   const navigate = useNavigate();
   const e = d.employee;
@@ -59,7 +56,15 @@ function Peek({ d, today, onClose }: { d: Detail; today: string; onClose: () => 
   const acts: MenuEntry[] = verbs.map((v) => ({ id: v, text: t(`people.lifecycle.action.${v}`), label: t(`people.lifecycle.action.${v}`) }));
   return (
     <>
-      <div className={s.peekCrumb}><Building2 size={13} aria-hidden /> {place}</div>
+      {e.org_unit_id && onOpenUnit ? (
+        <div>
+          <Button ref={unitTriggerRef} size="sm" variant="ghost" onClick={() => onOpenUnit(e.org_unit_id!)}>
+            <Building2 size={13} aria-hidden /> {place}
+          </Button>
+        </div>
+      ) : (
+        <div className={s.peekCrumb}><Building2 size={13} aria-hidden /> {place}</div>
+      )}
       <div className={s.peekHead}>
         <Avatar name={e.name} />
         <div className="grow">
@@ -67,7 +72,6 @@ function Peek({ d, today, onClose }: { d: Detail; today: string; onClose: () => 
           <span className={s.peekSub}>{sub}</span>
         </div>
         <StatusChip status={e.status} />
-        <Button variant="ghost" onClick={onClose} aria-label={t("roster.panel.close")}><X size={16} aria-hidden /></Button>
       </div>
       <div className="row">
         <Link className="btn btn--primary" to="/people/$id" params={{ id: e.id }}>{t("people.panel.open")} <Kbd k="Enter" /></Link>

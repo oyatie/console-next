@@ -19,21 +19,27 @@ beforeAll(async () => {
       load: id => id === "\0top-bar-test" ? `
         import React, { useSyncExternalStore } from 'react';
         import { createRoot } from 'react-dom/client';
+        import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
         import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
         import { i18n, loadCatalog } from '@console/i18n';
+        import { setLocale } from '/apps/web/src/shell/locale.ts';
         import { TenantHead } from '/apps/web/src/shell/top-bar/tenant-head.tsx';
+        import { NeedsMeMenu } from '/apps/web/src/shell/top-bar/needs-me.tsx';
         import { AccountMenu } from '/apps/web/src/shell/top-bar/account-menu.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
+        await setLocale('ko');
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         const tenant = { name: '이름이 아주 긴 고객 계정 이름 전체', phase: location.hash === '#operating' ? 'OPERATING' : 'SETUP', go_live_at: null };
         const root = createRootRoute({ component: () => React.createElement('main', null,
           React.createElement('header', { className: 'top' },
             React.createElement(TenantHead, { tenant }),
+            React.createElement(NeedsMeMenu, { id: 'test-needs-me' }),
             React.createElement(AccountMenu, { id: 'test-account', name: '남궁가나다라마바사 전체 이름', onLogout: () => document.body.dataset.logout = 'yes' }))) });
         const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ['/'] }) });
         function App() {
           const locale = useSyncExternalStore(i18n.subscribe, () => i18n.locale);
-          return React.createElement(RouterProvider, { router, key: locale });
+          return React.createElement(QueryClientProvider, { client }, React.createElement(RouterProvider, { router, key: locale }));
         }
         createRoot(document.getElementById('root')).render(React.createElement(App));
       ` : undefined }],
@@ -41,6 +47,22 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
+  await page.route("**/api/v1/me/action-inbox**", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      as_of: "2026-11-04T09:00:00Z",
+      has_work: true,
+      available_filters: ["turn"],
+      counts: { turn: { total: 3, total_is_exact: true } },
+      unavailable: [],
+      next_cursor: null,
+      items: [
+        { id: "task-1", kind: "org_change_approve", title: "인사팀 신설 승인", due: "2026-11-06T09:00:00Z", days_remaining: 2, dueTone: "warn", links: [{ kind: "org_change", id: "00000000-0000-4000-8000-000000000001" }] },
+        { id: "task-2", kind: "contract_renewal", title: "김민수 근로계약 갱신", due: null, days_remaining: null, links: [{ kind: "employee", id: "00000000-0000-4000-8000-000000000002" }] },
+      ],
+    }),
+  }));
   await page.route("**/top-bar-test", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Top bar</title><div id="root"></div><script type="module" src="/top-bar-test.js"></script></html>' }));
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
@@ -106,4 +128,37 @@ test.each(["dark", "light"])("theme radio selects %s on the document", async the
   await page.getByRole("menuitemradio", { name: theme === "dark" ? "어두운 화면" : "밝은 화면", exact: true }).click();
   await element(page.locator("html")).toHaveAttribute("data-theme", theme);
   await element(page.getByRole("button", { name: "남궁가나다라마바사 전체 이름" })).toBeFocused();
+});
+
+test.each([1440, 390])("needs-me badge shows turn count, opens task panel with /inbox link, and closes on Escape at %spx", async width => {
+  await page.setViewportSize({ width, height: 900 });
+  await open();
+  const trigger = page.getByRole("button", { name: "대기 업무 3건", exact: true });
+  await element(trigger).toBeVisible();
+  await element(trigger.locator("[data-count]")).toHaveText("3");
+  await element(trigger.getByText("업무함", { exact: true })).toBeVisible({ visible: width > 640 });
+  expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
+
+  await trigger.click();
+  const panel = page.getByRole("dialog", { name: "대기 업무", exact: true });
+  await element(panel).toBeVisible();
+  await element(panel.getByRole("link", { name: "업무함에서 모두 보기", exact: true })).toHaveAttribute("href", "/inbox");
+  await element(panel.getByRole("link", { name: /인사팀 신설 승인/ })).toHaveAttribute("href", "/org/changes/00000000-0000-4000-8000-000000000001");
+  await page.keyboard.press("Escape");
+  await element(panel).toHaveCount(0);
+  await element(trigger).toBeFocused();
+});
+
+test("needs-me badge omits count pill when 0 items need action and renders empty state", async () => {
+  await page.route("**/api/v1/me/action-inbox**", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ as_of: "2026-11-04T09:00:00Z", has_work: false, available_filters: [], counts: { turn: { total: 0, total_is_exact: true } }, unavailable: [], next_cursor: null, items: [] }),
+  }));
+  await open();
+  const trigger = page.getByRole("button", { name: "대기 업무", exact: true });
+  await element(trigger).toBeVisible();
+  await element(trigger.locator("[data-count]")).toHaveCount(0);
+  await trigger.click();
+  await element(page.getByRole("dialog", { name: "대기 업무", exact: true }).getByText("처리할 업무가 없습니다", { exact: true })).toBeVisible();
 });

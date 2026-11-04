@@ -43,6 +43,8 @@ export const enRoster = {
   "roster.selection.dropHidden": "Exclude the {count, number} not shown",
   "roster.changed": "The list changed · Refresh",
   "roster.panel.close": "Close employee details",
+  "roster.panel.unit": "Placement details",
+  "roster.panel.openOrg": "Open in org structure",
   "roster.next.return": "Expected back · {date} · {rel}",
   "roster.scope.branches": "Only your branches’ employees are shown. Ask HR for changes from an employee’s HR card.",
   "roster.export.layout": "Register format",
