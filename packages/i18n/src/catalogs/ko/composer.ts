@@ -52,7 +52,6 @@ export const koComposer = {
   "composer.verb.withdraw": "회수",
   "composer.verb.cancel": "취소",
   "composer.verb.revoke": "철회",
-  "composer.verb.return": "보완 요청",
   "composer.verb.reject": "반려",
   "composer.verb.save": "저장",
   "composer.verb.remove": "삭제",

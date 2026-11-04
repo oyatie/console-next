@@ -36,7 +36,7 @@ beforeAll(async () => {
       name: "approvals-view-test",
       resolveId: id => id === "/approvals-view-test.js" ? "\0approvals-view-test" : undefined,
       load: id => id === "\0approvals-view-test" ? `
-        import React,{useState} from 'react'; import {createRoot} from 'react-dom/client';
+        import React,{useState} from 'react'; import {QueryClient,QueryClientProvider} from '@tanstack/react-query'; import {createRoot} from 'react-dom/client';
         import {createMemoryHistory,createRootRoute,createRoute,createRouter,Outlet,RouterProvider} from '@tanstack/react-router';
         import {loadCatalog} from '@console/i18n';
         import {ApprovalInboxView} from '/apps/web/src/features/approvals/ui/approvals-page.tsx';
@@ -49,7 +49,7 @@ beforeAll(async () => {
         const destination=createRoute({getParentRoute:()=>root,path:'/org/changes/$id',component:()=>null});
         const approval=createRoute({getParentRoute:()=>root,path:'/approvals/$approvalId',component:()=>React.createElement(ApprovalDocumentView,{document:approvalDocument})});
         const router=createRouter({routeTree:root.addChildren([inbox,destination,approval]),history:createMemoryHistory({initialEntries:[new URL(location.href).searchParams.get('route')??'/']})});
-        await router.load(); createRoot(document.getElementById('root')).render(React.createElement(RouterProvider,{router}));
+        await router.load(); createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client:new QueryClient()},React.createElement(RouterProvider,{router})));
       ` : undefined,
       configureServer: vite => { vite.middlewares.use((req, res, next) => {
         if (req.url?.split("?")[0] !== "/approvals-view-test") return next();
@@ -93,9 +93,12 @@ test.each(ENGINES.map((_, engine) => ({ engine })))("document viewer remains usa
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${server.resolvedUrls!.local[0]}approvals-view-test?route=${encodeURIComponent("/approvals/approval-1")}`);
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
-    await expect(page.getByRole("region", { name: "결정 요약", exact: true })).toContainText("시행일");
+    await expect(page.getByRole("region", { name: "문서 정보", exact: true })).toContainText("시행일");
     await expect(page.getByRole("region", { name: "결재선", exact: true })).toContainText("인사팀장 결재");
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
+    const chain = page.getByRole("region", { name: "결재선", exact: true });
+    const body = page.getByRole("region", { name: "문서 내용", exact: true });
+    expect((await chain.boundingBox())!.y).toBeLessThan((await body.boundingBox())!.y);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
     expect(await page.locator("main").evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
   }

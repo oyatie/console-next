@@ -1,11 +1,11 @@
 {
   "baseline": {
-    "apps/web/src/features/approvals/ui/approval-viewer.tsx#ApprovalViewerPage": 28
+    "apps/web/src/features/approvals/ui/approval-viewer.tsx#ApprovalViewerPage": 32
   },
   "newScreens": {
     "apps/web/src/features/approvals/ui/approval-viewer.tsx#ApprovalViewerPage": {
-      "FACT": 12,
-      "REFUSAL": 10,
+      "FACT": 14,
+      "REFUSAL": 12,
       "EMPTY": 0,
       "LEGAL": 0,
       "RECEIPT": 6,

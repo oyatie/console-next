@@ -63,7 +63,6 @@ const ACTION_VERBS = {
   withdraw: "composer.verb.withdraw",
   cancel: "composer.verb.cancel",
   revoke: "composer.verb.revoke",
-  return: "composer.verb.return",
   reject: "composer.verb.reject",
   save: "composer.verb.save",
   remove: "composer.verb.remove",
