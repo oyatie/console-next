@@ -22,7 +22,7 @@ export function UnitPicker({ units, options, value, onChange, labelText = t("org
   error?: string;
 }) {
   return (
-    <ComboBox className="field" selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} isRequired={required} isInvalid={error != null}>
+    <ComboBox className="field" selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} isRequired={required} isInvalid={error != null} data-form-value={value}>
       <Label className="field__label">{labelText}</Label>
       <div className="combo">
         <Input className="field__input combo__input" placeholder={t("org.unit.picker.search")} />

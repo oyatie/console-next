@@ -3,8 +3,11 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { expectAxe } from "../a11y";
-import { routeReady } from "../flows";
+import { go, routeReady } from "../flows";
+import { AT, id, user } from "./fixtures";
 import { mockLifecycleSheets } from "./lifecycle-sheets";
+import { orgPanelReads } from "./org-work";
+import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { attendanceBoardScreens } from "../states/attendance";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
@@ -56,18 +59,42 @@ test("a clean Sheet closes immediately, while a form ignores its backdrop", asyn
   await expect(draft).toHaveValue("배경을 눌러도 남는 내용");
 });
 
-test("a search input does not make a Sheet dirty", async ({ page }) => {
+test("a search input and a reverted value leave a Sheet clean", async ({ page }) => {
   const sheet = await openFormSheet(page);
-  const search = await sheet.evaluateHandle(element => {
+  await sheet.evaluate(element => {
     const input = document.createElement("input");
     input.type = "search";
     input.setAttribute("aria-label", "목록 검색");
     element.querySelector("textarea")!.parentElement!.append(input);
-    return input;
   });
-  await search.asElement()!.fill("검색어");
+  await sheet.getByRole("searchbox", { name: "목록 검색" }).fill("검색어");
+  const draft = sheet.getByRole("textbox", { name: tg("sheet.reason") });
+  await draft.fill("검토 중인 내용");
+  await draft.fill("");
   await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);
+});
+
+test("uncommitted combobox filter text in 직원 등록 closes cleanly, while a committed pick asks", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[1], "populated");
+  await mockLifecycleSheets(page, lifecycleSheetScreens[0]);
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
+  await page.goto("/people/new");
+  const probe = page.getByRole("dialog", { name: t("register.title"), exact: true });
+  const placement = probe.getByRole("combobox", { name: t("register.place.label"), exact: true });
+  await placement.fill("부산");
+  await expect(page.getByRole("option", { name: /부산사업장/ }).first()).toBeVisible();
+  await placement.press("Escape");
+  await probe.getByRole("button", { name: t("uiSheet.close"), exact: true }).last().click();
+  await expect(probe).toBeHidden();
+
+  await go(page, `/people/${id(4000)}?act=TRANSFER`);
+  const transfer = page.getByRole("dialog");
+  await transfer.getByRole("combobox").first().fill("인사");
+  await page.getByRole("option", { name: /인사팀/ }).first().click();
+  await page.keyboard.press("Escape");
+  await expect(transfer.getByText(t("composer.unsaved"), { exact: true })).toBeVisible();
+  expect(fixture.unexpected).toEqual([]);
 });
 
 test("Escape outside a dock leaves it open and reaches the page", async ({ page }) => {
@@ -96,6 +123,12 @@ test("Back asks before leaving a dirty Sheet", async ({ page }) => {
   await page.evaluate(() => history.back());
   await expect(page).toHaveURL(href);
   await expect(sheet.getByRole("status")).toHaveText(t("composer.unsaved"));
+  await expect(draft).toHaveValue("뒤로 가도 남는 내용");
+  await page.evaluate(() => history.back());
+  await expect(page).not.toHaveURL(href);
+  await expect(page).not.toHaveURL(/sel=/);
+  await expect(sheet).toHaveCount(0);
+  await showFormSheet(page);
   await expect(draft).toHaveValue("뒤로 가도 남는 내용");
 });
 
@@ -126,9 +159,10 @@ test("Escape dismissal cannot reach a dirty lower Sheet", async ({ page }) => {
 
 test("Back closes a clean top Sheet and keeps a dirty lower draft", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/_gallery");
-  await page.locator('[data-panel-trigger="populated"]').evaluate((button: HTMLElement) => button.click());
+  await page.goto("/_gallery#prior");
+  await go(page, "/_gallery");
   const href = page.url();
+  await page.locator('[data-panel-trigger="populated"]').evaluate((button: HTMLElement) => button.click());
   const lower = page.getByRole("dialog", { name: tg("dockSheet.title"), exact: true });
   const lowerDraft = await lower.getByText(tg("dockSheet.body"), { exact: true }).evaluateHandle(element => {
     const input = document.createElement("input");
@@ -147,6 +181,49 @@ test("Back closes a clean top Sheet and keeps a dirty lower draft", async ({ pag
   await page.evaluate(() => history.back());
   await expect(page).toHaveURL(href);
   await expect(lower.getByRole("status")).toHaveText(t("composer.unsaved"));
+});
+
+test("Back from a URL-opened Sheet (PUSH onClose) leaves no dead history entry", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await orgPanelReads(page);
+  await mockLifecycleSheets(page, lifecycleSheetScreens[0]);
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
+  await go(page, "/");
+  await go(page, "/people/new");
+  await expect(page.getByRole("dialog", { name: t("register.title"), exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await routeReady(page, "/");
+  await expect(page.getByRole("dialog", { name: t("register.title"), exact: true })).toHaveCount(0);
+  await go(page, "/org?tab=entities");
+  await page.getByRole("link", { name: t("entityQuick.title"), exact: true }).first().click();
+  await expect(page).toHaveURL(/add=true/);
+  await expect(page.getByRole("dialog", { name: t("entityQuick.title"), exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/org\?tab=entities$/);
+  await expect(page.getByRole("dialog", { name: t("entityQuick.title"), exact: true })).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await routeReady(page, "/");
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("Back from a URL-opened Sheet (REPLACE onClose) leaves no dead history entry", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await mockLifecycleSheets(page, lifecycleSheetScreens[0]);
+  await go(page, "/");
+  const cardPath = `/people/${id(4000)}`;
+  await go(page, cardPath);
+  await page.getByRole("button", { name: "부서 전보로", exact: true }).click();
+  await expect(page).toHaveURL(/act=TRANSFER/);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${cardPath}$`));
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await routeReady(page, "/");
+  expect(fixture.unexpected).toEqual([]);
 });
 
 test("Back restores the shell scroller on a non-table screen", async ({ page }) => {
@@ -218,7 +295,7 @@ test("Back reapplies the shell position after slow content grows", async ({ page
   const fixture = await mockScreen(page, screens[2], "populated");
   await page.goto("/org");
   await routeReady(page, "/org");
-  await page.addStyleTag({ content: "#main::after { content: ''; display: block; height: var(--restore-height, 1800px); }" });
+  await page.addStyleTag({ content: "#main > [data-read-region] { display: block; min-height: var(--restore-height, 1800px); }" });
   const main = page.locator("#main");
   await expect.poll(() => main.evaluate(element => element.scrollHeight - element.clientHeight)).toBeGreaterThan(1000);
   await main.evaluate(element => { element.scrollTop = 1000; });
@@ -228,12 +305,12 @@ test("Back reapplies the shell position after slow content grows", async ({ page
   await page.locator('a[href="/"]').first().evaluate((element: HTMLElement) => element.click());
   await expect(page).toHaveURL(/\/$/);
   await routeReady(page, "/");
-  await main.evaluate((element: HTMLElement) => element.style.setProperty("--restore-height", "0px"));
+  await page.evaluate(() => document.documentElement.style.setProperty("--restore-height", "0px"));
   await page.goBack();
   await expect(page).toHaveURL(/\/org$/);
   await routeReady(page, "/org");
   await expect.poll(() => main.evaluate(element => element.scrollTop)).not.toBe(top);
-  await main.evaluate((element: HTMLElement) => element.style.setProperty("--restore-height", "1800px"));
+  await page.evaluate(() => document.documentElement.style.setProperty("--restore-height", "1800px"));
   await expect.poll(() => main.evaluate(element => element.scrollTop)).toBe(top);
   expect(fixture.unexpected).toEqual([]);
 });
@@ -255,6 +332,8 @@ test("a real Sheet draft survives confirmed close and reopen", async ({ page }) 
     await expect(sheet.getByLabel(t("attendanceCrews.crews.name"), { exact: false })).toHaveValue("초안 교대조");
     await expect(sheet.getByLabel(t("attendanceCrews.crews.workplace"), { exact: false })).not.toHaveValue("");
     await expect(sheet.getByRole("status")).toContainText(t("draft.restored"));
+    await page.keyboard.press("Escape");
+    await expect(sheet.getByText(t("composer.unsaved"), { exact: true })).toBeVisible();
     await expectAxe(page, "restored Sheet draft", { include: "[role=dialog]" });
     expect(fixture.unexpected).toEqual([]);
   } finally { fixture.release(); }

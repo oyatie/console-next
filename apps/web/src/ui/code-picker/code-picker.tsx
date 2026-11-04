@@ -57,6 +57,7 @@ export function CodePicker({ label, required, list, query, onQueryChange, option
       allowsEmptyCollection
       isRequired={required}
       isInvalid={error != null}
+      data-form-value={value ?? ""}
     >
       <Label className={fieldCss.label}>{label}<Marker required={required} /></Label>
       <div className={css.input}>

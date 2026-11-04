@@ -25,7 +25,7 @@ export function PathPicker({ options, value, onChange, placeholder, label, inval
 }) {
   const chosen = options.find((o) => o.id === value);
   return (
-    <ComboBox className={s.picker} aria-label={label} selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} allowsEmptyCollection isInvalid={invalid} data-chosen={chosen ? true : undefined}>
+    <ComboBox className={s.picker} aria-label={label} selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} allowsEmptyCollection isInvalid={invalid} data-chosen={chosen ? true : undefined} data-form-value={value}>
       <div className={s.box}>
         {icon != null && <span className={s.icon}>{icon}</span>}
         <Input className={s.input} placeholder={placeholder} />

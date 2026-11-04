@@ -56,7 +56,7 @@ const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memo
 
 function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTMLElement | null> }) {
   const router = useRouter();
-  const key = useLocation({ select: location => location.state.__TSR_key });
+  const key = useLocation({ select: location => location.state["__TSR_key"] });
   const entry = useElementScrollRestoration({ id });
   const applied = useRef<string | undefined>(undefined);
   const [, setRendered] = useState(0);

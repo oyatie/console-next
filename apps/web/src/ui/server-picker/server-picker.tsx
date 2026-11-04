@@ -107,6 +107,7 @@ export function ServerPicker(p: {
         isDisabled={Boolean(p.disabledReason)}
         isReadOnly={p.readOnly}
         isInvalid={p.error != null || undefined}
+        data-form-value={p.value ?? ""}
       >
         <Label className="field__label">{p.label}</Label>
         <div className={css.input}>

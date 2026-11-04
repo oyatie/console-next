@@ -24,7 +24,7 @@ type Props = {
   subtitle?: ReactNode;
   onClose: () => void;
   pending?: boolean;
-  /** An authoritative dirty state; without it, editing a form control marks this opening dirty. */
+  /** An authoritative dirty state; without it, committed form values are compared with this opening. */
   dirty?: boolean;
   /** The body is read-only (a lost response is being checked); the foot still acts. */
   locked?: boolean;
@@ -51,7 +51,7 @@ function OpenSheet(p: Props) {
   const { ref, dirty, armed, requestClose, onInput, onBackdrop } = useSheetDismiss<HTMLDivElement>({ ...p, dirty: draft?.dirty ?? p.dirty });
   return (
     <ModalOverlay className={s.overlay} isOpen onOpenChange={(open) => !open && requestClose()}
-      isDismissable={false} isKeyboardDismissDisabled
+      isDismissable={false} isKeyboardDismissDisabled={Boolean(p.pending || (dirty && !armed))}
       onPointerDown={(event) => event.target === event.currentTarget && onBackdrop()}>
       <Modal ref={ref} className={s.sheet} data-size={p.size ?? "md"} data-sheet-layer>
         <Dialog className={s.dialog}>

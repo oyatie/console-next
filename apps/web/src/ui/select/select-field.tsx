@@ -22,7 +22,7 @@ export function SelectField({ label, hideLabel = false, options, value, onChange
   required?: boolean;
 }) {
   return (
-    <Select className={s.select} value={value} onChange={(k) => k != null && onChange(String(k))} isRequired={required} isInvalid={error != null} placeholder={placeholder}>
+    <Select className={s.select} value={value} onChange={(k) => k != null && onChange(String(k))} isRequired={required} isInvalid={error != null} placeholder={placeholder} data-form-value={value ?? ""}>
       <Label className={hideLabel ? "sr-only" : s.label}>{label}</Label>
       <Button className={s.trigger}>
         {icon}
