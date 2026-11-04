@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Button, ComboBox, FieldError, Input, Label, ListBox, ListBoxItem, Popover, Text, TextField } from "react-aria-components";
 import { Plus, Search, Send } from "lucide-react";
 import { t } from "@console/i18n";
 import { homonymOf, suffixMatches, SUFFIX } from "./homonym";
+import { useNonModalSurroundings } from "../use-non-modal-surroundings";
 import css from "./server-picker.module.css";
-
-const FOCUSABLE = 'a[href], area[href], audio[controls], button:not([disabled]), embed, iframe, input:not([disabled]):not([type="hidden"]), object, select:not([disabled]), summary, textarea:not([disabled]), video[controls], [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
 
 /** One server result. People carry `code` (employee number) and `status`, so a partial match or a namesake is never a guess. */
 export type PickerOption = { id: string; name: string; display?: ReactNode; code?: string; status?: ReactNode; context?: ReactNode };
@@ -50,50 +49,7 @@ export function ServerPicker(p: {
   const [suffix, setSuffix] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const popover = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const hiddenBeforeOpen = useRef(new Set<Element>());
-  const restoreHidden = useRef(new Set<Element>());
-  const outsideObserver = useRef<MutationObserver>(null);
-  const restoreOutside = () => {
-    for (const el of restoreHidden.current) el.setAttribute("aria-hidden", "true");
-    restoreHidden.current.clear();
-  };
-  useEffect(() => {
-    if (!open) return;
-    const inputEl = input.current!;
-    const popoverEl = popover.current!;
-    const body = inputEl.ownerDocument.body;
-    const preserved = [...body.querySelectorAll<HTMLElement>("[inert]")];
-    // The list closes before focus leaves, so keep its non-modal surroundings exposed to assistive technology.
-    const expose = (el: Element) => {
-      if (el.getAttribute("aria-hidden") !== "true" || hiddenBeforeOpen.current.has(el)) return;
-      if (!el.contains(inputEl) && !el.contains(popoverEl) && !el.matches(FOCUSABLE) && !el.querySelector(FOCUSABLE)) return;
-      restoreHidden.current.add(el);
-      // Keep a value for an app-owned removal to mutate, so the observer can cancel restoration.
-      el.setAttribute("aria-hidden", "false");
-    };
-    for (const el of body.querySelectorAll('[aria-hidden="true"]')) expose(el);
-    const observer = new MutationObserver((changes) => {
-      for (const change of changes) {
-        const el = change.target as Element;
-        if (change.oldValue === "false" && el.getAttribute("aria-hidden") !== "true") restoreHidden.current.delete(el);
-        expose(el);
-      }
-    });
-    outsideObserver.current = observer;
-    observer.observe(body, { attributes: true, attributeOldValue: true, subtree: true, attributeFilter: ["aria-hidden"] });
-    // A picker inside a Sheet: when the Sheet itself unmounts (Back, route change) its overlay's inert must not return.
-    const host = input.current!.closest('[role="dialog"]');
-    return () => {
-      observer.disconnect();
-      if (outsideObserver.current === observer) outsideObserver.current = null;
-      const restore = () => { for (const el of preserved) el.inert = true; };
-      // A rapid reopen must snapshot the original restrictions before any microtask runs.
-      restore();
-      // On unmount, React Aria's child cleanup runs after ours and clears inert with aria-hidden.
-      queueMicrotask(() => { if (!host || host.isConnected) restore(); });
-    };
-  }, [open]);
+  const onOpenChange = useNonModalSurroundings(input, popover);
   const homonyms = homonymOf(p.options, pending);
   const pick = (key: string | null) => {
     if (p.readOnly || p.disabledReason) return;
@@ -130,15 +86,7 @@ export function ServerPicker(p: {
         items={p.options}
         inputValue={p.query}
         onInputChange={p.onQueryChange}
-        onOpenChange={(next) => {
-          if (next) {
-            hiddenBeforeOpen.current = new Set(input.current!.ownerDocument.querySelectorAll('[aria-hidden="true"]'));
-          } else {
-            outsideObserver.current?.disconnect();
-            restoreOutside();
-          }
-          setOpen(next);
-        }}
+        onOpenChange={onOpenChange}
         selectedKey={pending ? pending.id : (p.value ?? null)}
         onSelectionChange={(k) => pick(k === null ? null : String(k))}
         menuTrigger={p.readOnly ? "manual" : "input"}

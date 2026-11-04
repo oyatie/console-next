@@ -262,7 +262,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(peek.getByRole("heading", { level: 2 })).toContainText("검증직원 1");
     await expect(peek.getByRole("link", { name: new RegExp(t("people.panel.open")) })).toHaveAttribute("href", `/people/${id(100)}`);
     await fits(page, `directory peek ${width} ${theme}`);
-    await expectAxe(page, `directory peek ${width} ${theme}`, { include: `aside[aria-label="${t("people.panel")}"]` });
+    await expectAxe(page, `directory peek ${width} ${theme}`);
     await test.info().attach("peek", { body: await page.screenshot({ path: test.info().outputPath("peek.png"), fullPage: true }), contentType: "image/png" });
     await peek.getByRole("button", { name: t("roster.panel.close"), exact: true }).click();
     await expect(peek).toBeHidden();
