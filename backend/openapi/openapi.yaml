@@ -3398,6 +3398,34 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/approvals:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [org]
+      operationId: listApprovalDocuments
+      summary: List visible approval documents
+      security: [{bearerAuth: []}]
+      description: >-
+        Projects canonical org-change records. Cedar approval_document_list filters every box, count, facet and focus
+        under one snapshot. Assigned upcoming and reference relationships are not stored by this source.
+        Search and source apply to counts before descending created-at/UUID keyset paging.
+      parameters:
+      - {name: box, in: query, required: true, schema: {type: string, enum: [pending, upcoming, requested, reference, completed]}}
+      - {name: q, in: query, schema: {type: string}}
+      - {name: source, in: query, schema: {type: string}}
+      - {name: focus, in: query, schema: {type: string}, description: Canonical document ID; hidden and missing documents both return null.}
+      - {name: cursor, in: query, schema: {type: string}, description: Opaque next-page position.}
+      - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200':
+          description: Authorized page and counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalDocumentPage'
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
   /api/v1/attendance/batches/{batch_id}/undo:
     post:
       tags: [attendance]
@@ -33998,6 +34026,87 @@ components:
           format: date-time
         line_count:
           type: integer
+    ApprovalDocument:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [id, box, title, summary, document_no, source, status, requester, requested_at, facts, route, viewer]
+      properties:
+        id: {type: string}
+        box: {type: string, enum: [pending, upcoming, requested, reference, completed]}
+        title: {type: string}
+        summary: {type: string}
+        document_no: {type: string}
+        source:
+          type: object
+          required: [key, label]
+          properties:
+            key: {type: string}
+            label: {type: string}
+        status:
+          type: object
+          required: [key, label, tone]
+          properties:
+            key: {type: string}
+            label: {type: string}
+            tone: {type: string, enum: [neutral, warn, danger]}
+        requester:
+          type: object
+          required: [id, name]
+          properties:
+            id: {type: string, format: uuid}
+            name: {type: string}
+        requested_at: {type: string, format: date-time}
+        facts:
+          type: array
+          items:
+            type: object
+            required: [key, label, value]
+            properties:
+              key: {type: string}
+              label: {type: string}
+              value: {type: string}
+        route:
+          type: array
+          items:
+            type: object
+            required: [id, label, assignee, state]
+            properties:
+              id: {type: string, format: uuid}
+              label: {type: string}
+              assignee: {type: string}
+              state: {type: string, enum: [done, current, waiting, failed]}
+        viewer:
+          type: object
+          required: [kind, id]
+          properties:
+            kind: {type: string, enum: [org_change]}
+            id: {type: string, format: uuid}
+    ApprovalDocumentPage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [items, focused, counts, sources, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/ApprovalDocument'}}
+        focused: {oneOf: [{$ref: '#/components/schemas/ApprovalDocument'}, {type: 'null'}]}
+        counts:
+          type: object
+          required: [pending, upcoming, requested, reference, completed]
+          properties:
+            pending: {type: integer, minimum: 0}
+            upcoming: {type: integer, minimum: 0}
+            requested: {type: integer, minimum: 0}
+            reference: {type: integer, minimum: 0}
+            completed: {type: integer, minimum: 0}
+        sources:
+          type: array
+          items:
+            type: object
+            required: [key, label, count]
+            properties:
+              key: {type: string}
+              label: {type: string}
+              count: {type: integer, minimum: 0}
+        next_cursor: {type: [string, 'null']}
     ApprovalItem:
       type: object
       description: A typed approval task over an ontology object. The source-specific payloads are mutually exclusive; `source`

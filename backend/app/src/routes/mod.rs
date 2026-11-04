@@ -249,6 +249,10 @@ pub fn build_router(state: AppState) -> Router {
                 state.config.db_pool.inbox_source_concurrency,
             );
             let r = r.merge(crate::action_inbox::router(inbox.clone()));
+            let r = r.merge(crate::approvals::router(
+                pool.clone(),
+                state.jwt_verifier.clone(),
+            ));
             // Workflow studio and the workspace.
             #[cfg(feature = "workspace")]
             let r = workflow::mount_workspace(r, &deps, inbox.read_permits.clone());

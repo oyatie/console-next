@@ -2,6 +2,12 @@ use super::RouteSource;
 
 pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
     RouteSource {
+        name: "approval document app router",
+        surface: "approvals",
+        source: include_str!("../../src/approvals.rs"),
+        ignored_route_refs: &[],
+    },
+    RouteSource {
         name: "support reference app router",
         surface: "support-reference",
         source: include_str!("../../src/http/support_reference.rs"),

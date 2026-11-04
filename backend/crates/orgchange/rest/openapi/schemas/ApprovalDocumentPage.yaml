@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [items, focused, counts, sources, next_cursor]
+properties:
+  items: {type: array, items: {$ref: '#/components/schemas/ApprovalDocument'}}
+  focused: {oneOf: [{$ref: '#/components/schemas/ApprovalDocument'}, {type: 'null'}]}
+  counts:
+    type: object
+    required: [pending, upcoming, requested, reference, completed]
+    properties:
+      pending: {type: integer, minimum: 0}
+      upcoming: {type: integer, minimum: 0}
+      requested: {type: integer, minimum: 0}
+      reference: {type: integer, minimum: 0}
+      completed: {type: integer, minimum: 0}
+  sources:
+    type: array
+    items:
+      type: object
+      required: [key, label, count]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        count: {type: integer, minimum: 0}
+  next_cursor: {type: [string, 'null']}
