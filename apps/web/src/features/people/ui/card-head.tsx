@@ -30,6 +30,7 @@ import { BindingReviewChip } from "./binding-evidence";
 import { EmployeeWarnings } from "./employee-warnings";
 import type { Card } from "./use-card";
 import s from "./card.module.css";
+import { EmployeePayLink } from "../../../reference/payroll/ui/employee-pay-link";
 
 export type CardTab = "card" | "events" | "docs" | "ledger" | "access";
 
@@ -145,6 +146,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
             <Button onClick={() => onAct("multi")}><Pencil size={16} aria-hidden /> {t("empCard.verb.correct")}</Button>
             <Button onClick={() => onAct("print")}><Printer size={16} aria-hidden /> {t("empCard.verb.print")}</Button>
             <Button onClick={() => onAct("cert")}><FileText size={16} aria-hidden /> {t("empCard.verb.cert")}</Button>
+            <EmployeePayLink employeeId={e.id} />
             <MenuButton label={t("empCard.verb.more")} icon={<MoreHorizontal size={16} aria-hidden />} caret={false} items={more} onAction={onAct} />
           </div>
         )}

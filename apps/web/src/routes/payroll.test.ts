@@ -36,3 +36,9 @@ test("the run page declares its generated detail and group requirements", () => 
     operationAccess["GET /api/v1/payroll/pay-groups"],
   ] });
 });
+
+test("employee payroll declares the generated draft and wage requirements", () => {
+  const router = createRouter({ routeTree });
+  const route = Object.values(router.routesById).find(candidate => String(candidate.fullPath) === "/payroll/employees/$employeeId");
+  expect(route?.options.staticData?.access).toEqual(operationAccess["GET /api/v1/payroll/employees/{employeeId}/payslip-draft"]);
+});

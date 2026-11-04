@@ -4,6 +4,7 @@ import { t } from "@console/i18n";
 /** Action nouns and verbs are catalog data; screens describe intent, never build frame copy. */
 const ACTION_KINDS = {
   directoryView: ["directoryViews.noun", "units"],
+  contractWage: ["payroll.employee.wage", "units"],
   payGroup: ["composer.action.payGroup", "units"],
   orgHead: ["composer.action.orgHead", "units"],
   orgDetails: ["composer.action.orgDetails", "units"],
