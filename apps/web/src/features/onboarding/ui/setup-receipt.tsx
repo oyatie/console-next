@@ -10,7 +10,6 @@ import { accessRefusal, type AccessRequirement } from "../../../reference/authz/
 import { settingsQuery } from "../../../reference/settings/api";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
-import { Chip } from "../../../ui/chip";
 import { phaseBand, receiptDuration } from "../domain/phase";
 import { useSetupChecklist } from "./use-setup";
 import s from "./go-live.module.css";
@@ -46,9 +45,8 @@ export function SetupReceipt({ receiptNeed, historyNeed }: { receiptNeed: Access
       <Card look="outline" density="dense">
         <div className={s.homeReceipt}>
           <div className={s.homeReceiptMeta}>
-            <Chip tone="ok">{t("setup.receipt.started.title")}</Chip>
-            <time dateTime={data.go_live_at}>{t("setup.golive.done", { at: fmtDateTime(data.go_live_at) })}</time>
-            {summary && <small>{summary}</small>}
+            <time dateTime={data.go_live_at}>{t("setup.receipt.startedAt")} · {fmtDateTime(data.go_live_at)}</time>
+            {summary && <small>{t("setup.receipt.current")} · {summary}</small>}
           </div>
           <div className={s.homeReceiptActions}>
             {canOpenReceipt && <Link to="/setup/go-live" className={buttonClass()}>{t("setup.receipt.open")}</Link>}

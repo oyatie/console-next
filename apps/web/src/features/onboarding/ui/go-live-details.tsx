@@ -33,12 +33,12 @@ export function GoLiveDetails({ p, changed = [] }: { p: GoLivePreview; changed?:
       ]} /> : <KeyValue items={[{ key: "none", label: t("setup.golive.details.place"), value: t("setup.golive.details.none") }]} />}
     </section>
     <section aria-labelledby="setup-roles">
-      <SectionHead level={2} id="setup-roles">{t("setup.golive.details.roles")}{mark("roles_becoming_active")}</SectionHead>
+      <SectionHead level={2} id="setup-roles">{t(p.phase === "OPERATING" ? "setup.receipt.roles" : "setup.golive.details.roles")}{mark("roles_becoming_active")}</SectionHead>
       <KeyValue items={[
         { key: "grants", label: t("setup.golive.details.role"), value: p.roles_becoming_active.length ? grantsSummary : `${grantsSummary} · ${t("setup.golive.details.noPrepared")}` },
         { key: "accounts", label: t("setup.golive.details.holders"), value: t("setup.golive.details.accounts", { invited: p.facts.hr_accounts_invited, enrolled: p.facts.hr_accounts_enrolled }) },
       ]} />
-      {p.roles_becoming_active.length > 0 && <Table label={t("setup.golive.details.roles")} rows={p.roles_becoming_active} rowId={(r) => `${r.role_id}:${r.scope_kind}:${r.scope_id}`} columns={[
+      {p.roles_becoming_active.length > 0 && <Table label={t(p.phase === "OPERATING" ? "setup.receipt.roles" : "setup.golive.details.roles")} rows={p.roles_becoming_active} rowId={(r) => `${r.role_id}:${r.scope_kind}:${r.scope_id}`} columns={[
         { header: t("setup.golive.details.role"), cell: (r) => r.role },
         { header: t("setup.golive.details.holders"), cell: (r) => r.holders.map((a) => a.name).join(", ") },
         { header: t("setup.golive.details.scope"), cell: (r) => r.scope_kind === "TENANT" ? t("setup.golive.details.all") : r.scope },

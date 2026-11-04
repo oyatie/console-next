@@ -124,6 +124,7 @@ for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width
     await expect(main.getByRole("region", { name: /운영 준비|^시작$/ })).toHaveCount(0);
     await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: "운영 시작 기록 보기", exact: true })).toHaveAttribute("href", "/setup/go-live");
     await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: t("setup.bulk.history"), exact: true })).toHaveAttribute("href", "/org/history");
+    await expect(main.getByText(t("setup.receipt.started.title"), { exact: true })).toHaveCount(1);
     for (const theme of ["light", "dark"]) {
       await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
       await fits(page, `home-setup/receipt/${width}/${theme}`);

@@ -28,7 +28,7 @@ import s from "./go-live.module.css";
 
 /**
  * The one-way start of operations (design §5.4, ideal-v2 §4): compact blockers with direct fixes, what to look at, and
- * what becomes governed afterwards; once operating, this screen renders the immutable go-live receipt.
+ * what becomes governed afterwards; once operating, this screen separates the recorded start time from current values.
  */
 export function GoLive() {
   const q = freshOnOpen(useQuery(goLivePreviewQuery));
@@ -74,24 +74,26 @@ export function GoLive() {
             { key: "writes", label: t("setup.bulk.history"), value: fmtNumber(f.setup_writes) },
           ];
           const governed = (
-            <Card title={t("setup.golive.governed")} titleId="governed">
+            <Card title={t(operating ? "setup.receipt.governed" : "setup.golive.governed")} titleId="governed">
               <div className={s.stack}>
-                <ul className="steps-plain">{p.becomes_governed.map((code) => <li key={code}>{codeText(`setup.golive.becomes.${code}`, code)}</li>)}</ul>
-                <KeyValue items={[
-                  ...(startedAt ? [{ key: "startedAt", label: t("setup.receipt.startedAt"), value: <time dateTime={startedAt}>{fmtDateTime(startedAt)}</time> }] : []),
-                  { key: "digest", label: t("setup.receipt.digest"), value: <code className={s.termsText}>{p.digest}</code> },
-                ]} />
+                <ul className="steps-plain">{p.becomes_governed.map((code) => {
+                  const text = codeText(`setup.golive.becomes.${code}`, code);
+                  return <li key={code}>{operating ? codeText(`setup.receipt.applied.${code}`, text) : text}</li>;
+                })}</ul>
+                {startedAt && <KeyValue items={[
+                  { key: "startedAt", label: t("setup.receipt.startedAt"), value: <time dateTime={startedAt}>{fmtDateTime(startedAt)}</time> },
+                ]} />}
               </div>
             </Card>
           );
           if (p.phase === "OPERATING") {
             return (
               <>
-                <Card>
+                <Card title={t("setup.receipt.current")}>
                   <div className={s.stack}>
                     <div className={s.receiptHead}>
                       <Chip tone="ok">{t("setup.receipt.started.title")}</Chip>
-                      {startedAt && <time dateTime={startedAt}>{t("setup.golive.done", { at: fmtDateTime(startedAt) })}</time>}
+                      {startedAt && <time dateTime={startedAt}>{t("setup.receipt.startedAt")} · {fmtDateTime(startedAt)}</time>}
                     </div>
                     <StatRow items={stats} />
                   </div>

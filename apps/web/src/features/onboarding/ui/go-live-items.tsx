@@ -100,13 +100,11 @@ export function Warnings({ items, changed = [] }: { items: GoLiveItem[]; changed
   return (
     <section aria-labelledby="warnings" className={s.stack}>
       <SectionHead level={2} id="warnings">{t("setup.golive.warnings")}</SectionHead>
-      <ul className={s.warningList}>
+      <div className={s.blockerList}>
         {items.map((x) => (
-          <li key={x.code}>
-            <Banner tone="warn" title={<>{changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>}{itemText(x)}</>} actions={<Fixes x={x} />} />
-          </li>
+          <Banner key={x.code} tone="warn" title={<>{changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>}{itemText(x)}</>} actions={<Fixes x={x} />} />
         ))}
-      </ul>
+      </div>
     </section>
   );
 }

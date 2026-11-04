@@ -8,12 +8,11 @@
 .body { display: flex; flex-direction: column; gap: var(--space-4); }
 .stack { display: flex; flex-direction: column; gap: var(--space-3); }
 .blockerList { display: flex; flex-direction: column; gap: var(--space-2); }
-.warningList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .receiptHead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
 .homeReceipt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
 .homeReceiptMeta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
 .homeReceiptActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
 .termsText { white-space: pre-wrap; overflow-wrap: anywhere; }
-/* Lazy text and its skeleton occupy one scroll area, so the actions below keep their place. */
-.termsRead { max-height: min(45dvh, calc(var(--row-h) * 7)); overflow: auto; padding: var(--space-3); }
+/* Keep long terms readable without moving the page actions out of view. */
+.termsRead { max-height: min(45dvh, calc(var(--row-h) * 7)); overflow: auto; }

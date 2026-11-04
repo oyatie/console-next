@@ -84,10 +84,11 @@ for (const state of states) for (const width of [1440, 390]) {
         await expect(start).toHaveCount(0);
       } else if (state === "receipt") {
         await expect(main.getByText(t("setup.receipt.started.title"), { exact: true })).toBeVisible();
-        await expect(main.getByText("digest-receipt", { exact: true })).toBeVisible();
+        await expect(main.getByText("digest-receipt", { exact: true })).toHaveCount(0);
         await expect(main.getByRole("link", { name: t("setup.bulk.history"), exact: true })).toHaveAttribute("href", "/org/history");
         await expect(main.getByText(t("setup.golive.item.already_operating"), { exact: true })).toHaveCount(0);
         await expect(start).toHaveCount(0);
+        await expect(main.getByRole("heading", { name: t("setup.receipt.current"), exact: true })).toBeVisible();
         for (const theme of ["light", "dark"]) {
           await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
           await fits(page, `go-live/${state}/${width}/${theme}`);

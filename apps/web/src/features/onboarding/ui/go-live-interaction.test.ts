@@ -199,9 +199,11 @@ describe.each([3, 2000])("department readiness with %i people", (count) => {
 });
 
 describe("resolved blocker collapse and receipt layout", () => {
-  test("accepting service terms collapses the resolved row without blank space while keeping the governed heading stable", async () => {
-    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    const page = await ctx.newPage();
+  let ctx: BrowserContext;
+  let page: Page;
+  beforeAll(async () => {
+    ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    page = await ctx.newPage();
     let accepted = false;
     await page.route("**/api/v1/onboarding/go-live/preview", (route) =>
       route.fulfill({
@@ -238,23 +240,23 @@ describe("resolved blocker collapse and receipt layout", () => {
         await route.fulfill({ status: 204 });
       }
     });
-    try {
-      await page.goto(`${server.resolvedUrls!.local[0]}setup/go-live?locale=ko`);
-      await page.getByRole("button", { name: "이용약관 읽기", exact: true }).click();
-      const accept = page.getByRole("button", { name: "고객 계정을 대표해 이용약관 동의", exact: true });
-      await browserExpect(accept).toBeVisible();
-      const governed = page.getByRole("heading", { name: "운영을 시작하면 바뀌는 것", level: 2 });
-      const beforeGoverned = (await governed.boundingBox())!.y;
-      await accept.click();
-      await browserExpect(accept).toBeHidden();
-      const resolved = page.getByText("해결함", { exact: true });
-      await browserExpect(resolved).toBeVisible();
-      const resolvedRowHeight = await resolved.evaluate((el) => el.closest("[data-blocker-row]")?.getBoundingClientRect().height ?? 999);
-      assert.ok(resolvedRowHeight < 80, `expected compact resolved row (<80px), got ${resolvedRowHeight}px`);
-      const afterGoverned = (await governed.boundingBox())!.y;
-      assert.ok(Math.abs(afterGoverned - beforeGoverned) < 2, `governed heading shifted by ${Math.abs(afterGoverned - beforeGoverned)}px`);
-    } finally {
-      await ctx.close();
-    }
+    await page.goto(`${server.resolvedUrls!.local[0]}setup/go-live?locale=ko`);
+  }, 60_000);
+  afterAll(async () => { await ctx?.close(); });
+
+  test("accepting service terms collapses the resolved row without blank space while keeping the governed heading stable", async () => {
+    await page.getByRole("button", { name: "이용약관 읽기", exact: true }).click();
+    const accept = page.getByRole("button", { name: "고객 계정을 대표해 이용약관 동의", exact: true });
+    await browserExpect(accept).toBeVisible();
+    const governed = page.getByRole("heading", { name: "운영을 시작하면 바뀌는 것", level: 2 });
+    const beforeGoverned = (await governed.boundingBox())!.y;
+    await accept.click();
+    await browserExpect(accept).toBeHidden();
+    const resolved = page.getByText("해결함", { exact: true });
+    await browserExpect(resolved).toBeVisible();
+    const resolvedRowHeight = await resolved.evaluate((el) => el.closest("[data-blocker-row]")?.getBoundingClientRect().height ?? 999);
+    assert.ok(resolvedRowHeight < 80, `expected compact resolved row (<80px), got ${resolvedRowHeight}px`);
+    const afterGoverned = (await governed.boundingBox())!.y;
+    assert.ok(Math.abs(afterGoverned - beforeGoverned) < 2, `governed heading shifted by ${Math.abs(afterGoverned - beforeGoverned)}px`);
   });
 });

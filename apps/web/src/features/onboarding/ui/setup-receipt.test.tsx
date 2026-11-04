@@ -106,7 +106,9 @@ test("renders post-go-live receipt link and setup history link on Home within th
   vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
   try {
     const html = render();
-    expect(html).toContain("에 운영을 시작했습니다");
+    expect(html).toContain("시작 시각");
+    expect(html).not.toContain("운영을 시작했습니다");
+    expect(html).toContain("현재");
     expect(html).toContain('href="/setup/go-live"');
     expect(html).toContain("운영 시작 기록 보기");
     expect(html).toContain('href="/org/history"');

@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
   fetching: false, fetched: true, mutate: vi.fn(),
   data: {
     phase: "SETUP", digest: "preview", line_digests: {}, blockers: [] as GoLiveItem[],
-    warnings: [{ code: "sole_holder", count: 0, remedy: null, records: [] }], becomes_governed: [],
+    warnings: [{ code: "sole_holder", count: 0, remedy: null, records: [] }], becomes_governed: [] as string[],
     breakdown: [{ kind: "workplace", id: "site", legal_entity_id: "entity", name: "Head Office", people: 1982, units: 31 }], roles_becoming_active: [], access_admin_holders: [], hr_accounts_with_no_grant: [],
     facts: { entities: 1, workplaces: 1, staffed_workplaces_without_registration: 1, empty_workplaces_without_registration: 2, org_units: 2, employees: 2000, employees_starting_later: 0,
       setup_writes: 4, prepared_grants: 1, grants_effective_in_setup: 0, hr_accounts_invited: 1, hr_accounts_enrolled: 1 },
@@ -29,7 +29,7 @@ vi.mock("../../../lib/react/command", async (original) => ({ ...(await original<
   error: state.commandError, isPending: false, submittedAt: state.submitted, mutate: state.mutate,
 }) }));
 beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
-afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.data.phase = "SETUP"; state.data.digest = "preview"; state.data.blockers = []; state.data.facts.org_units = 2; state.mutate.mockClear(); });
+afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.data.phase = "SETUP"; state.data.digest = "preview"; state.data.blockers = []; state.data.becomes_governed = []; state.data.facts.org_units = 2; state.mutate.mockClear(); });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/setup/go-live"] }) });
 const render = () => renderToStaticMarkup(<RouterContextProvider router={router}><GoLive /></RouterContextProvider>);
 
@@ -126,15 +126,26 @@ test("blockers render as compact alert rows with reason disclosure and without r
   expect(html).not.toContain("지금 로그인한 사람");
 });
 
-test("operating phase renders the go-live receipt with digest and history link instead of an already_operating blocker", () => {
+test("operating phase renders the go-live receipt with current values and history link instead of an already_operating blocker", () => {
   state.data.phase = "OPERATING";
   state.data.digest = "sha256:receipt-digest-01";
+  state.data.becomes_governed = ["setup_undo_becomes_correction", "exits_leave_payroll_available"];
   state.data.blockers = [{ code: "already_operating", count: null, remedy: null, records: [] }];
   const html = render();
   expect(html).toContain("운영을 시작했습니다");
-  expect(html).toContain("sha256:receipt-digest-01");
+  expect(html).not.toContain("sha256:receipt-digest-01");
+  expect(html).toContain("현재");
+  expect(html).not.toContain("운영을 시작하면 바뀌는 것");
+  expect(html).not.toContain("운영 시작부터 적용되는 역할");
+  expect(html).toContain("퇴직, 휴직, 급여 확정을 사용할 수 있습니다");
+  expect(html).not.toContain("할 수 있게 됩니다");
   expect(html).toContain('href="/org/history"');
   expect(html).not.toContain("이미 운영 중입니다");
   expect(html).not.toContain('aria-disabled="true"');
   expect(html).not.toContain(">운영 시작</button>");
+});
+
+test("the setup preview keeps its command digest off screen", () => {
+  state.data.digest = "sha256:preview-only";
+  expect(render()).not.toContain("sha256:preview-only");
 });
