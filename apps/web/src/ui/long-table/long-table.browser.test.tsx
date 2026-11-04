@@ -4,12 +4,14 @@ import { resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
 import { expect as dom, firefox } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
 
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await createServer({
     configFile: false, cacheDir: ".cache/long-table-test", logLevel: "error",
     define: { "process.env.VIRT_ON": "true" }, optimizeDeps: browserTestOptimizeDeps,
@@ -32,18 +34,19 @@ beforeAll(async () => {
           const [sort,setSort]=useState({column:'name',direction:'ascending'});
           const [selection,setSelection]=useState(NO_SELECTION);
           const collision=location.search.startsWith('?collision');
-          const rows=editing ? [{id:'a',name:'Alpha'},{id:'b',name:'Beta'},{id:'ko',name:'ㄱ가상'}] : collision ? ['name','__select','__card','row:name'].map((id,i)=>({id,name:'가상'+i,note:id}))
+          const keyboardOpen=location.search==='?keyboard-open';
+          const rows=editing ? [{id:'a',name:'Alpha'},{id:'b',name:'Beta'},{id:'ko',name:'ㄱ가상'}] : collision||keyboardOpen ? ['name','__select','__card','row:name'].map((id,i)=>({id,name:'가상'+i,note:id}))
             : [{id:'a',name:'가상가',note:'첫째'},{id:'b',name:'가상나',note:'둘째'}];
           return React.createElement(LongTable,{
             label:'정렬 검증',rows,rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
             editable:location.search==='?typing-editable',
             caption:sort.column+':'+sort.direction,
             sortDescriptor:sort,onSortChange:location.search==='?readonly'?undefined:setSort,
-            ...(collision ? {...(location.search==='?collision' ? {selection,onSelectionChange:s=>{setSelection(s);document.body.dataset.selection=JSON.stringify(s.kind==='ids'?[...s.ids]:[...s.excluded]);}} : {}),
-              rowKeys:{},onRowAction:id=>document.body.dataset.action=id,
+            ...(collision||keyboardOpen ? {...(location.search==='?collision' ? {selection,onSelectionChange:s=>{setSelection(s);document.body.dataset.selection=JSON.stringify(s.kind==='ids'?[...s.ids]:[...s.excluded]);}} : {}),
+              rowKeys:keyboardOpen?{onOpen:id=>document.body.dataset.keyboardOpen=id}:{},...(keyboardOpen?{}:{onRowAction:id=>document.body.dataset.action=id}),
               onRowFocus:id=>document.body.dataset.focus=id,onRowHover:id=>document.body.dataset.hover=id} : {}),
             columns:[{id:'name',header:'이름',card:editing||location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,cell:r=>r.name},
-              {id:'note',header:'메모',allowsSorting:true,cell:r=>editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
+              {id:'note',header:'메모',allowsSorting:true,focusMode:location.search==='?typing-child'?'child':undefined,cell:r=>editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
               {id:'fixed',header:'고정',cell:()=>'-'}]
           });
         }
@@ -195,6 +198,18 @@ test.each([1440, 390])("row ids can match column ids while callbacks and selecti
   const rows = page.getByRole("row").filter({ has: page.getByRole("rowheader") });
   await rows.nth(3).waitFor();
   expect(await rows.count()).toBe(4);
+  const toggleAll = page.getByRole("checkbox").first();
+  const toggleText = t("uiLongTable.selection.toggleAll", { count: 4, unit: "item" });
+  await dom(toggleAll).toHaveAttribute("aria-label", toggleText);
+  if (width === 390) {
+    const toggleControl = toggleAll.locator("xpath=ancestor::label[1]");
+    const selectHeader = await page.getByRole("columnheader").first().boundingBox();
+    expect(selectHeader!.width).toBeGreaterThan(200);
+    expect(selectHeader!.height).toBeGreaterThanOrEqual(36);
+    await dom(toggleControl).toContainText(toggleText);
+    const box = await toggleControl.boundingBox();
+    expect(box!.width).toBeGreaterThan(box!.height * 2);
+  }
   for (const [i, id] of ["name", "__select", "__card", "row:name"].entries()) {
     const row = rows.nth(i);
     await row.hover();
@@ -221,4 +236,23 @@ test("native row actions receive the caller's id", async () => {
   const row = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "가상0", exact: true }) });
   await row.click();
   await expect.poll(() => page.locator("body").getAttribute("data-action")).toBe("name");
+});
+
+test("O opens through rowKeys when the table has no row action", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`http://127.0.0.1:${(server.httpServer!.address() as { port: number }).port}/long-table-test?keyboard-open`);
+  const row = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "가상0", exact: true }) });
+  await row.focus();
+  await row.press("o");
+  await expect.poll(() => page.locator("body").getAttribute("data-keyboard-open")).toBe("name");
+});
+
+test("card mode preserves child focusMode on the synthesized card column at 390 px", async () => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`http://127.0.0.1:${(server.httpServer!.address() as { port: number }).port}/long-table-test?typing-child`);
+  await page.locator('[role="grid"][data-layout="cards"]').waitFor();
+  const row = page.getByRole("row").filter({ hasText: "Alpha" });
+  await row.focus();
+  await page.keyboard.press("ArrowRight");
+  await dom(page.getByRole("textbox", { name: "Alpha 메모", exact: true })).toBeFocused();
 });

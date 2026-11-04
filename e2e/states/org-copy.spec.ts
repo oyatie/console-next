@@ -88,21 +88,25 @@ test("org: structure list becomes readable cards at 390px @ui-state", async ({ p
 });
 
 test("org: entity list becomes readable cards at 390px @ui-state", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 900 });
   const fixture = await mockScreen(page, screens[2], "populated");
   await mockRoute(page, "get", "/api/v1/legal-entities", { status: 200, json: { items: [entityRecord("populated")] } });
   try {
-    await page.goto("/org?tab=entities");
-    const grid = page.getByRole("grid", { name: t("entity.list.table"), exact: true });
-    await expect(grid).toHaveAttribute("data-layout", "cards");
-    await expect(grid.getByRole("rowheader")).toBeVisible();
-    await expect(grid.locator("dt").filter({ hasText: t("entity.col.brn") })).toBeVisible();
-    await expect(grid.locator("dt").filter({ hasText: t("entity.col.people") })).toBeVisible();
-    for (const theme of ["light", "dark"]) {
-      await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
-      await page.screenshot({ path: test.info().outputPath(`entity-list-390-${theme}.png`), fullPage: true });
-      await fits(page, `org entity list/390/${theme}`);
-      await expectAxe(page, `org entity list/390/${theme}`);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/org?tab=entities");
+      const grid = page.getByRole("grid", { name: t("entity.list.table"), exact: true });
+      if (width === 390) {
+        await expect(grid).toHaveAttribute("data-layout", "cards");
+        await expect(grid.locator("dt").filter({ hasText: t("entity.col.brn") })).toBeVisible();
+        await expect(grid.locator("dt").filter({ hasText: t("entity.col.people") })).toBeVisible();
+      }
+      await expect(grid.getByRole("rowheader")).toBeVisible();
+      for (const theme of ["light", "dark"]) {
+        await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+        await page.screenshot({ path: test.info().outputPath(`entity-list-${width}-${theme}.png`), fullPage: true });
+        await fits(page, `org entity list/${width}/${theme}`);
+        await expectAxe(page, `org entity list/${width}/${theme}`);
+      }
     }
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }

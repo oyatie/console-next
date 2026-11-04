@@ -148,12 +148,16 @@ export function LongTable<R>(p: {
     return () => (el.removeEventListener("focusin", focus), keys?.());
   }, [hasFind, hasRowKeys]);
   const density = p.density ?? "regular";
-  const layout = useMemo(() => cardLayout && cardHeight ? { ...LAYOUT[density], estimatedRowHeight: cardHeight }
-    : p.editable ? { ...LAYOUT[density], estimatedRowHeight: LAYOUT[density].estimatedRowHeight * 2 } : LAYOUT[density], [cardLayout, cardHeight, density, p.editable]);
+  const layout = useMemo(() => ({
+    ...LAYOUT[density],
+    headingHeight: cardLayout && !p.selection ? 0 : LAYOUT[density].headingHeight,
+    estimatedRowHeight: cardLayout && cardHeight ? cardHeight : p.editable ? LAYOUT[density].estimatedRowHeight * 2 : LAYOUT[density].estimatedRowHeight,
+  }), [cardLayout, cardHeight, density, p.editable, p.selection]);
   const loaded = p.rows.map(p.rowId);
   const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;
   const selected = sel ? shownKeys(sel, loaded) : NONE;
+  const toggleLabel = t("uiLongTable.selection.toggleAll", { count: loaded.length, unit: p.countUnit ?? "item" });
   const titleId = (r: R) => `${captionId}-${encodeURIComponent(p.rowId(r))}-title`;
   const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, focusMode: p.columns.find(c => c.focusMode)?.focusMode, cell: (r) => <CardContent row={r} columns={p.columns} titleId={titleId(r)} /> }] : p.columns;
   const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...content] : content;
@@ -233,10 +237,10 @@ export function LongTable<R>(p: {
           // Esc never drops a selection that took many clicks to build; the caller's Esc (closing a panel) runs.
           {...({ escapeKeyBehavior: "none" } as object)}
         >
-          <TableHeader className={`${css.head} ${cardLayout && !sel ? cards.visuallyHidden : ""}`} columns={cols}>
+          <TableHeader className={css.head} columns={cols}>
             {(c) => (
-              <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout && c.id !== SELECT ? cards.visuallyHidden : ""}`}>
-                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : <>{c.header}{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
+              <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout ? (c.id === SELECT ? css.selectHead : cards.visuallyHidden) : ""}`}>
+                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}><Box />{cardLayout && toggleLabel}</Checkbox> : <>{c.header}{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
           </TableHeader>

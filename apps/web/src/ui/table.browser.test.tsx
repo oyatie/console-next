@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
+import { chromium, expect as expectElement, firefox, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 
@@ -21,9 +21,42 @@ beforeAll(async () => {
       load: id => id === "\0table-test" ? `
         import { createElement as h, useState } from 'react';
         import { createRoot } from 'react-dom/client';
+        import { Check } from '/apps/web/src/ui/button/button.tsx';
+        import { Card } from '/apps/web/src/ui/card/card.tsx';
         import { Table } from '/apps/web/src/ui/table.tsx';
         import '/apps/web/src/app.css';
+        const wideCols = ['Name', 'Entity', 'Current', 'After', 'Notes'].map((header, i) => ({
+          header, cell: r => i === 0 ? r.name : 'Long column value that clips on phones ' + i,
+        }));
+        function MobileCases() {
+          const [nestedEditor, setNestedEditor] = useState(false);
+          window.toggleNestedEditor = setNestedEditor;
+          const mode = location.hash.slice(1);
+          const item = [{ id: 'MOB-0', name: 'MOB-0' }];
+          if (mode.startsWith('empty')) return h('main', null, h(Card, { title: 'Permissions', flush: true }, h(Table, { label: 'Empty permissions', rows: [], mobileLayout: mode === 'empty-rows' ? 'rows' : undefined, rowId: r => r.id, columns: [{ header: 'Domain', cell: r => r.name }] })));
+          if (mode === 'forced-rows') return h('main', null, h(Table, { label: 'Preview rows', rows: item, rowId: r => r.id, mobileLayout: 'rows', columns: wideCols }));
+          if (mode === 'editor') return h('main', null, h(Table, { label: 'Editor', rows: item, rowId: r => r.id, columns: [
+            ...wideCols.slice(0, 4), { header: 'Edit', cell: () => h('input', { 'aria-label': 'Editor value', defaultValue: 'Kept' }) },
+          ] }));
+          if (mode === 'inline-check') return h('main', null, h(Table, { label: 'Inline check', rows: item, rowId: r => r.id, columns: [
+            { header: 'Enabled', cell: r => h('input', { type: 'checkbox', 'aria-label': 'Enable ' + r.id }) }, ...wideCols,
+          ] }));
+          if (mode === 'selection') return h('main', null, h(Table, { label: 'Selection', rows: item, rowId: r => r.id, columns: [
+            { header: h(Check, { checked: false, onChange() {}, 'aria-label': 'Select all 1' }, 'Select all 1'), fit: true,
+              cell: r => h(Check, { checked: false, onChange() {}, 'aria-label': 'Select ' + r.id }) }, ...wideCols,
+          ] }));
+          if (mode === 'editable-false') return h('main', null, h(Table, { label: 'Static contenteditable', rows: item, rowId: r => r.id, columns: [
+            { header: 'Name', cell: r => h('span', { contentEditable: 'false' }, r.name) }, ...wideCols.slice(1),
+          ] }));
+          if (mode === 'editable-true') return h('main', null, h(Table, { label: 'Rich editor', rows: item, rowId: r => r.id, columns: [
+            { header: 'Name', cell: r => h('span', { contentEditable: 'true', suppressContentEditableWarning: true }, r.name) }, ...wideCols.slice(1),
+          ] }));
+          return h('main', null, h(Table, { label: 'Dynamic', rows: item, rowId: r => r.id, columns: [
+            { header: 'Name', cell: r => h('span', null, nestedEditor ? h('input', { 'aria-label': 'Nested editor', defaultValue: r.name }) : r.name) }, ...wideCols.slice(1),
+          ] }));
+        }
         function App() {
+          if (location.hash) return h(MobileCases);
           const [rows, setRows] = useState([{ id: 'first', name: 'Short', count: '0' }]);
           const [grouped, setGrouped] = useState(false);
           const [selected, setSelected] = useState();
@@ -45,15 +78,15 @@ beforeAll(async () => {
       ` : undefined,
       configureServer: vite => {
         vite.middlewares.use((req, res, next) => {
-          if (req.url !== "/table-test") return next();
+          if (req.url?.split("?")[0] !== "/table-test") return next();
           res.setHeader("Content-Type", "text/html");
-          res.end('<html lang="en"><title>Table</title><div id="root"></div><script type="module" src="/table-test.js"></script></html>');
+          res.end('<html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Table</title><div id="root"></div><script type="module" src="/table-test.js"></script></html>');
         });
       },
     }],
   });
   await server.listen();
-  browser = await chromium.launch();
+  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
   page = await browser.newPage();
 }, 60_000);
 
@@ -93,4 +126,87 @@ test("grouped tables preserve row detail, tone and keyboard selection across nat
   await expectElement(last).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowDown");
   await expectElement(first).toBeFocused();
+});
+
+test("editing tables never add wrapper tab stops or duplicate regions at any width", async () => {
+  for (const [hash, label] of [["editor", "Editor"], ["inline-check", "Inline check"], ["editable-true", "Rich editor"]] as const) {
+    await page.goto("about:blank");
+    await page.goto(`${server.resolvedUrls!.local[0]}table-test#${hash}`);
+    const table = page.getByRole("table", { name: label, exact: true });
+    const wrapper = table.locator("xpath=..");
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      await expectElement(table.locator("tbody > tr").first()).toHaveCSS("display", "table-row");
+      for (const attr of ["tabindex", "role", "aria-label"]) {
+        await expectElement(wrapper).not.toHaveAttribute(attr, /.+/);
+        await expectElement(table).not.toHaveAttribute(attr, /.+/);
+      }
+      await expectElement(page.getByRole("region", { name: label, exact: true })).toHaveCount(0);
+    }
+  }
+});
+
+test("an empty table caption does not create an unfocusable scroll region in a flush card", async () => {
+  for (const width of [1440, 390]) for (const mode of ["empty", "empty-rows"]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("about:blank");
+    await page.goto(`${server.resolvedUrls!.local[0]}table-test#${mode}`);
+    const body = page.getByRole("region", { name: "Permissions", exact: true }).locator("[data-flush]");
+    await expectElement(body.getByRole("table", { name: "Empty permissions", exact: true })).toHaveCount(1);
+    const overflow = await body.evaluate(el => ({ x: el.scrollWidth - el.clientWidth, y: el.scrollHeight - el.clientHeight }));
+    expect(overflow).toEqual({ x: 0, y: 0 });
+  }
+});
+
+test("read-only forced-row tables expose keyboard scroll and a clipping cue only while clipped", async () => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}table-test#forced-rows`);
+  const table = page.getByRole("table", { name: "Preview rows", exact: true });
+  const scroller = table.locator("xpath=..");
+  const cue = page.locator("[data-scroll-cue]");
+  for (const attr of ["tabindex", "role", "aria-label"]) await expectElement(scroller).not.toHaveAttribute(attr, /.+/);
+  await expectElement(page.getByRole("region", { name: "Preview rows", exact: true })).toHaveCount(0);
+  await expectElement(table).toHaveAttribute("tabindex", "0");
+  await expectElement(cue).toBeVisible();
+  expect(await page.evaluate(() => document.scrollingElement!.scrollWidth)).toBeLessThanOrEqual(390);
+  await table.focus();
+  await table.press("ArrowRight");
+  await expect.poll(() => scroller.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+  await scroller.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+  await expectElement(cue).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 844 });
+  await expectElement(table).not.toHaveAttribute("tabindex", /.+/);
+  await expectElement(cue).toHaveCount(0);
+});
+
+test("selection cards, contenteditable=false and dynamic nested editors switch between cards and rows", async () => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}table-test#selection`);
+  const selection = page.getByRole("table", { name: "Selection", exact: true });
+  await expectElement(selection.locator("tbody > tr").first()).toHaveCSS("display", "grid");
+  const selectAllLabel = selection.getByText("Select all 1", { exact: true });
+  await expectElement(selectAllLabel).toBeVisible();
+  const labelBox = await selectAllLabel.boundingBox();
+  expect(labelBox!.width).toBeGreaterThan(labelBox!.height * 2);
+  const hiddenHead = await selection.getByRole("columnheader", { name: "Name", exact: true }).boundingBox();
+  expect(Math.max(hiddenHead!.width, hiddenHead!.height)).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 1440, height: 844 });
+  const desktopLabel = await selectAllLabel.boundingBox();
+  expect(Math.max(desktopLabel!.width, desktopLabel!.height)).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}table-test#editable-false`);
+  await expectElement(page.getByRole("table", { name: "Static contenteditable", exact: true }).locator("tbody > tr").first()).toHaveCSS("display", "grid");
+
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}table-test#dynamic`);
+  const dynamic = page.getByRole("table", { name: "Dynamic", exact: true });
+  await expectElement(dynamic.locator("tbody > tr").first()).toHaveCSS("display", "grid");
+  await page.evaluate(() => (window as unknown as { toggleNestedEditor: (on: boolean) => void }).toggleNestedEditor(true));
+  await expectElement(dynamic.locator("tbody > tr").first()).toHaveCSS("display", "table-row");
+  await page.evaluate(() => (window as unknown as { toggleNestedEditor: (on: boolean) => void }).toggleNestedEditor(false));
+  await expectElement(dynamic.locator("tbody > tr").first()).toHaveCSS("display", "grid");
 });

@@ -45,6 +45,7 @@ export function BulkEditPage() {
             e.workplaces.filter((w) => !w.closed_on).map((w) => ({ id: w.id, name: w.current?.name ?? "", entity: entityName(e), entityId: e.id, insurance: w.insurance, kindCode: w.kind_code })),
           );
           const rows = all.filter((r) => chosen.has(r.id));
+          const toggleLabel = t("uiLongTable.selection.toggleAll", { count: all.length, unit: "item" });
           const toggle = (id: string, on: boolean) => setChosen((x) => (on ? new Set([...x, id]) : new Set([...x].filter((y) => y !== id))));
           return (
             <>
@@ -56,7 +57,7 @@ export function BulkEditPage() {
                     rows={all}
                     rowId={r => r.id}
                     columns={[
-                      { header: <Check checked={rows.length === all.length} onChange={on => setChosen(new Set(on ? all.map(r => r.id) : []))} aria-label={t("uiLongTable.selection.selectAll", { total: all.length, unit: "item" })} />,
+                      { header: <Check checked={rows.length === all.length} onChange={on => setChosen(new Set(on ? all.map(r => r.id) : []))} aria-label={toggleLabel}>{toggleLabel}</Check>,
                         cell: r => <Check checked={chosen.has(r.id)} onChange={on => toggle(r.id, on)} aria-label={t("orgBulk.import.sitePath", { entity: r.entity, name: r.name })} />, fit: true },
                       { header: t("orgBulk.edit.col.site"), cell: r => <strong>{r.name}</strong> },
                       { header: t("orgBulk.import.role.entity"), cell: r => r.entity },
