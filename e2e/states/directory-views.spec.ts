@@ -284,3 +284,60 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 }
+
+for (const width of [1440, 390]) {
+  test(`account picker states remain accessible at ${width}px in both themes @ui-state`, async ({ page }, testInfo) => {
+    testInfo.setTimeout(90_000);
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, screens[1], "populated");
+    let release: (() => void) | undefined;
+    await page.route("**/api/v1/directory/people?*", async route => {
+      const search = new URL(route.request().url()).searchParams.get("search") ?? "";
+      if (search === "보류") await new Promise<void>(resolve => { release = resolve; });
+      if (search === "실패") return route.fulfill({ status: 503, json: failure("service_unavailable") });
+      const count = search === "없음" ? 0 : search === "넓음" || !search ? 60 : 3;
+      const items = Array.from({ length: Math.min(count, 3) }, (_, n) => ({ ...user, id: id(7000 + n), display_name: `검색계정 ${n + 1}` }));
+      return route.fulfill({ json: { items, total: count, offset: 0, limit: 100, next_cursor: null } });
+    });
+    try {
+      await page.goto("/people?view=accounts");
+      const search = page.getByRole("combobox", { name: t("accounts.search.label"), exact: true });
+      await search.fill("넓음");
+      await expect(page.getByText(t("uiServerPicker.narrow", { count: 3 }), { exact: true })).toBeVisible();
+      await expectAxe(page, `account-search/truncated/${width}`);
+
+      await search.fill("건수");
+      await expect(page.getByText(t("uiServerPicker.count", { count: 3 }), { exact: true })).toBeVisible();
+      await expectAxe(page, `account-search/count/${width}`);
+
+      await search.dispatchEvent("compositionstart");
+      await search.fill("조합");
+      await expect(page.getByText(t("uiServerPicker.loading"), { exact: true }).first()).toBeVisible();
+      await expectAxe(page, `account-search/composing/${width}`);
+      await search.dispatchEvent("compositionend");
+
+      await search.fill("보류");
+      await expect.poll(() => release).toBeTruthy();
+      await expect(page.getByText(t("uiServerPicker.loading"), { exact: true }).first()).toBeVisible();
+      await expectAxe(page, `account-search/loading/${width}`);
+      release?.();
+      await expect(page.getByText(t("uiServerPicker.count", { count: 3 }), { exact: true })).toBeVisible();
+
+      await search.fill("없음");
+      await expect(page.getByText(t("uiServerPicker.none"), { exact: true })).toBeVisible();
+      await expectAxe(page, `account-search/empty/${width}`);
+
+      const failed = page.waitForResponse(response => new URL(response.url()).searchParams.get("search") === "실패");
+      await search.fill("실패");
+      await failed;
+      await expect(search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
+      await expectAxe(page, `account-search/failed/${width}`);
+      await fits(page, `account-search/${width}`);
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      release?.();
+      await page.close();
+      fixture.release();
+    }
+  });
+}
