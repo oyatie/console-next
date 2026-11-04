@@ -9,6 +9,7 @@ pub mod exception_decide;
 pub mod legal_entity_manage;
 pub mod privacy_request_decide;
 pub mod privacy_request_file;
+pub mod purchase_request_read;
 // --- lane: BE-EMP-UI ---
 pub mod job_title_manage;
 // --- lane: CRUD ---
@@ -36,6 +37,7 @@ pub const ACTION_SCHEMAS: &[ActionSchema] = &[
     settings_manage::SCHEMA,
     reason_code_manage::SCHEMA,
     work_order_start::SCHEMA,
+    purchase_request_read::SCHEMA,
 ];
 
 // Self-contained single-action bundles (`ActionBundle`) for actions whose

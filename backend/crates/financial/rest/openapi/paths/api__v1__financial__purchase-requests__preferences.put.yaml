@@ -1,3 +1,4 @@
+x-console-authz: {"engine": "cedar", "permission": "PurchaseRequestRead", "action": "purchase_request_read", "scope": "self"}
 tags:
   - financial
 operationId: savePurchaseRequestPreferences
@@ -19,5 +20,7 @@ responses:
           $ref: '#/components/schemas/PurchaseFeaturePreferences'
   '401':
     $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
   '422':
     $ref: '#/components/responses/ValidationError'

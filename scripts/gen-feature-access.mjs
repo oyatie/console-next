@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { actionRegistry } from "./d10-census.mjs";
 
 const root = new URL("../", import.meta.url);
 export const output = new URL("apps/web/src/reference/authz/domain/feature-access.ts", root);
@@ -12,6 +13,8 @@ const upper = value => value.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase();
 
 /** Scope names come from OpenAPI; reach and branch projection come from the server. */
 export function operationAccess(spec = yaml.load(readFileSync(new URL("backend/openapi/openapi.yaml", root), "utf8"))) {
+  const enrolled = new Map([...actionRegistry(file => source(`platform/authz/src/${file}`))
+    .matchAll(/Self::(\w+)\s*=>\s*"([^"]+)"/g)].map(([, feature, action]) => [feature, action]));
   const kinds = spec.components.schemas.AccessScopeKind.enum;
   const branches = source("platform/authz/src/access/load.rs");
   const projected = [...branches.matchAll(/NodeKind::(\w+) => (?:BranchScope::All|\{)/g)].map(([, kind]) => upper(kind));
@@ -29,6 +32,12 @@ export function operationAccess(spec = yaml.load(readFileSync(new URL("backend/o
   return Object.fromEntries(Object.entries(spec.paths).flatMap(([path, methods]) => Object.entries(methods).flatMap(([method, op]) => {
     const auth = op["x-console-authz"];
     if (!auth) return [];
+    if (auth.engine === "cedar" && auth.action && auth.permission) {
+      if (enrolled.get(auth.permission) !== auth.action || !["self", "tenant"].includes(auth.scope))
+        throw new Error(`Invalid Cedar action contract: ${method} ${path}`);
+      // These actions require server facts and cannot be projected into a browser grant rule.
+      return [];
+    }
     if (auth.action) {
       if (auth.permission || auth.scope !== "tenant" || !Object.hasOwn(spec.components.schemas.AccessEffective.properties.decisions.properties, auth.action))
         throw new Error(`Invalid Cedar action contract: ${method} ${path}`);

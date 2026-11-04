@@ -1,3 +1,4 @@
+x-console-authz: {"engine": "cedar", "permission": "WorkOrderStart", "action": "work_order_start", "scope": "tenant"}
 tags:
   - sync
 operationId: replayOfflineSyncBatch

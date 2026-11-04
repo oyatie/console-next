@@ -6,6 +6,19 @@ import yaml from "js-yaml";
 import { actionRegistry, censusRows } from "./d10-census.mjs";
 import { scanRustSyntax } from "./check-request-body-contract.mjs";
 
+test("workspace preferences and offline sync name their enrolled Cedar actions", () => {
+  for (const [fragment, permission, action] of [
+    ["financial/rest/openapi/paths/api__v1__financial__purchase-requests__preferences.put.yaml", "PurchaseRequestRead", "purchase_request_read"],
+    ["workorder/rest/openapi/paths/api__v1__sync.post.yaml", "WorkOrderStart", "work_order_start"],
+  ]) {
+    const contract = yaml.load(readFileSync(new URL(`../backend/crates/${fragment}`, import.meta.url), "utf8"));
+    assert.equal(contract["x-console-authz"]?.engine, "cedar");
+    assert.equal(contract["x-console-authz"]?.permission, permission);
+    assert.equal(contract["x-console-authz"]?.action, action);
+    assert.ok(contract.responses["403"]);
+  }
+});
+
 test("every write survives, with registered actions from its own handler only", () => {
   const rest = [
     { method: "POST", path: "/sample", handler: "create", handlerFile: "sample.rs", models: ["Cedar"] },
