@@ -78,3 +78,17 @@ test("the corporation certificate fits its 390px page column with a wider fallba
   const overflow = await address.locator("span").first().evaluate((lines) => lines.scrollWidth - lines.clientWidth);
   expect(overflow).toBe(0);
 });
+
+test("the head-office address search fits the phone column despite its intrinsic input width", async () => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}cert-test?kind=CORPORATION&frame=1`);
+  const address = page.getByRole("combobox", { name: /본점 소재지/ });
+  // Native input widths vary with the browser's font metrics.
+  await address.evaluate(input => input.setAttribute("size", "40"));
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((html, value) => { html.dataset.theme = value; }, theme);
+    expect(await address.evaluate(input =>
+      input.parentElement!.scrollWidth - input.parentElement!.clientWidth,
+    )).toBe(0);
+  }
+});
