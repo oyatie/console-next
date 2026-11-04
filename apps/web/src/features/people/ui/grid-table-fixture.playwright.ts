@@ -13,7 +13,7 @@ export const test = base.extend({
   },
 });
 
-export async function mount(page: Page, bounded = false, variant = "table") {
+export async function mount(page: Page, bounded = false, variant = "table", readOnly = false) {
   if (variant === "page") await page.route("**/api/v1/access/me", (route) => route.fulfill({ json: {
     is_ops: false,
     entries: [{ grant_id: "grid-fixture", role_name_ko: "\uc778\uc0ac \ub2f4\ub2f9", domain: "hr_basic", level: "edit", enforcement: "ENFORCED", scope: { kind: "TENANT" } }],
@@ -23,8 +23,9 @@ export async function mount(page: Page, bounded = false, variant = "table") {
     contentType: "text/javascript",
     body: 'export { default as Gallery } from "/src/features/people/ui/grid-table.gallery.tsx";',
   }));
-  await page.goto(`/_gallery?grid=${variant}&bounded=${bounded}`);
+  await page.goto(`/_gallery?grid=${variant}&bounded=${bounded}&readonly=${readOnly}`);
   await page.locator("#gallery-grid-table").getByRole("grid").waitFor();
+  if (variant === "page") await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
 }
 
 export async function expectWindowAt(page: Page, row: number) {

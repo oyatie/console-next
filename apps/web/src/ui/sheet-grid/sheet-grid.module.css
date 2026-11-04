@@ -12,6 +12,8 @@
 .cell[data-changed] { background: var(--warn-bg); }
 .cell[data-bad] { background: var(--danger-bg); outline: 2px solid var(--danger-solid); outline-offset: -2px; color: var(--danger-tx); }
 .cell[aria-selected="true"] { background: var(--primary-soft); }
+.cell[data-readonly] { background: var(--muted); color: var(--steel); cursor: not-allowed; }
+.cell[data-readonly] input { cursor: not-allowed; }
 .old { color: var(--steel); text-decoration: line-through; font-size: var(--text-xs); text-overflow: ellipsis; overflow: hidden; max-width: 45%; }
 .new { font-weight: var(--fw-strong); }
 .input { width: 100%; height: calc(var(--target) - var(--space-1)); }
@@ -19,3 +21,10 @@
 .status[data-tone="error"] { color: var(--danger-tx); }
 .status[data-tone="same"] { color: var(--steel); }
 .tip { position: absolute; bottom: var(--space-2); right: var(--space-2); max-width: calc(100% - 2 * var(--space-2)); display: flex; flex-direction: column; gap: var(--space-1); margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--ink); color: var(--surface); font-size: var(--text-sm); box-shadow: var(--shadow-pop); }
+@media (--phone) {
+  .grid { --sheet-key-col: calc(var(--space-6) * 2.5); width: max-content; min-width: 100%; grid-template-columns: var(--sheet-key-col) repeat(var(--sheet-lead-cols), var(--sheet-key-col)) repeat(var(--sheet-cols), minmax(calc(var(--space-6) * 4), 1fr)) calc(var(--space-6) * 3); }
+  .stickyRow, .stickyLead { position: sticky; z-index: 2; background: var(--surface); }
+  .stickyRow { left: 0; }
+  .stickyLead { left: var(--sheet-key-col); }
+  .head > .stickyRow, .head > .stickyLead { z-index: 3; background: var(--canvas); }
+}

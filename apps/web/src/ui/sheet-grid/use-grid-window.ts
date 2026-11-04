@@ -12,7 +12,7 @@ export const gridViewport = (grid: HTMLDivElement) => {
 };
 
 export function useGridWindow(
-  gridRef: RefObject<HTMLDivElement | null>, count: number, minimum: number, overscan: number,
+  gridRef: RefObject<HTMLDivElement | null>, count: number, minimum: number, overscan: number, activeRow: number | null,
   onViewport: (top: number, bottom: number) => void,
 ) {
   const [rowHeight, setRowHeight] = useState(1), [scrollTop, setScrollTop] = useState(0);
@@ -21,29 +21,36 @@ export function useGridWindow(
   const first = Math.max(0, Math.min(count - windowSize, Math.floor(scrollTop / rowHeight) - Math.floor(overscan / 2)));
   const last = Math.min(count, first + windowSize);
 
-  const onScroll = useEffectEvent((minimumRows: number, rowCount: number) => {
+  const onScroll = useEffectEvent((minimumRows: number, rowCount: number, resized = false) => {
     const grid = gridRef.current;
     if (!grid) return;
     const height = parseFloat(getComputedStyle(grid).getPropertyValue("--row-h"));
-    const { top, bottom, rowsTop } = gridViewport(grid);
-    onViewport(top, bottom);
+    const { scroller, top, bottom, rowsTop } = gridViewport(grid);
+    if (resized && activeRow !== null && grid.contains(document.activeElement) && document.activeElement !== grid) {
+      const cellTop = rowsTop + activeRow * height;
+      const delta = cellTop < top ? cellTop - top : Math.max(0, cellTop + height - bottom);
+      if (delta) scroller.scrollBy({ top: delta, behavior: "instant" });
+    }
+    const next = gridViewport(grid);
+    onViewport(next.top, next.bottom);
     setRowHeight(height);
-    setScrollTop(Math.max(0, Math.min(rowCount * height, top - rowsTop)));
-    setViewportRows(Math.max(minimumRows, Math.ceil((bottom - top) / height) + 1));
+    setScrollTop(Math.max(0, Math.min(rowCount * height, next.top - next.rowsTop)));
+    setViewportRows(Math.max(minimumRows, Math.ceil((next.bottom - next.top) / height) + 1));
   });
   useLayoutEffect(() => {
     const update = () => onScroll(minimum, count);
+    const onResize = () => onScroll(minimum, count, true);
     update();
-    const observer = new ResizeObserver(update);
+    const observer = new ResizeObserver(onResize);
     observer.observe(gridRef.current!.firstElementChild!.firstElementChild!);
     observer.observe(gridRef.current!.parentElement!);
     // Scroll does not bubble; capture also observes the document and any scrollable ancestor.
     window.addEventListener("scroll", update, { passive: true, capture: true });
-    window.addEventListener("resize", update);
+    window.addEventListener("resize", onResize);
     return () => {
       observer.disconnect();
       window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
+      window.removeEventListener("resize", onResize);
     };
   }, [gridRef, minimum, count]);
 
