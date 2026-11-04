@@ -82,7 +82,7 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           const response = await route.fetch();
           const data = await response.json();
           // Expose the real inbox's filter chrome even when this new tenant has no waiting work.
-          return route.fulfill({ response, json: { ...data, setup: null, has_work: true, available_filters: ["turn", "waiting"] } });
+          return route.fulfill({ response, json: { ...data, setup: null, has_work: true, available_filters: ["turn", "waiting"] } }).catch(() => {});
         }
         await route.continue();
       });
