@@ -35,12 +35,13 @@ export type InlineUnitSpec = InlineUnitValues & (
   | { kind: "create"; parentUnitId: string; name: string; onDone?: (unitIds: string[]) => void }
   | { kind: "rename"; orgUnitId: string; fromName: string; name: string; onDone?: () => void });
 
-/** The proposal describes the edit; its reason is always entered by the user. */
+/** A written note stays separate from the title; otherwise the API change kind is the reason code. */
 export function inlineUnitBody(spec: InlineUnitSpec): components["schemas"]["CreateOrgChangeRequest"] {
   const title = spec.kind === "create" ? t("orgChange.title.create", { name: spec.name }) : t("orgChange.title.rename", { from: spec.fromName, to: spec.name });
-  return spec.kind === "create"
+  const body: components["schemas"]["CreateOrgChangeRequest"] = spec.kind === "create"
     ? { kind: "NEW", target: { kind: "ORG_UNIT", ref: spec.parentUnitId, label: spec.name }, proposal: [{ op: "CREATE_ORG_UNIT", kind: "DEPARTMENT", parentId: spec.parentUnitId, name: spec.name }], effectiveDate: spec.effectiveDate, reason: spec.reason.trim() }
     : { kind: "REORG", target: { kind: "ORG_UNIT", ref: spec.orgUnitId, label: title }, proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: spec.orgUnitId, name: spec.name }], effectiveDate: spec.effectiveDate, reason: spec.reason.trim() };
+  return { ...body, reason: body.reason || body.kind };
 }
 
 export const changeReceipt = (status: string, title: string, code: string, date: string) =>

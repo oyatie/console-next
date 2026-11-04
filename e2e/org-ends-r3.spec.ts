@@ -84,6 +84,7 @@ test("regression: after a change the chart keeps its boxes and draws the result 
   const fin = await openUnit(admin, "재무팀");
   await fin.getByRole("button", { name: "부서 추가" }).click();
   await fin.getByRole("textbox", { name: /^재무팀 아래 새 부서 이름/ }).fill("결산파트");
+  await expect(fin.getByRole("button", { name: "부서 추가", exact: true })).toBeEnabled();
   await fin.getByRole("button", { name: "부서 추가", exact: true }).click();
   await expect(admin.getByRole("status").filter({ hasText: "결산파트 신설을 반영했습니다" })).toBeVisible();
   await expect(box(admin, "결산파트")).toBeVisible();

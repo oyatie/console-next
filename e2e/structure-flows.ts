@@ -74,7 +74,7 @@ export const leaveScreen = (page: Page) => page.evaluate(clearShifts);
 /** The inline editor's shared controls, after go-live. */
 export async function inlineUnitDetails(page: Page, scope: Page | Locator, date?: string) {
   await loadCatalog("ko");
-  await scope.getByRole("button", { name: t("orgUnit.gov.reason"), exact: true }).click();
+  await scope.getByRole("button", { name: new RegExp(`^${t("orgUnit.gov.reason")} · `) }).click();
   const reason = page.getByRole("dialog", { name: t("orgUnit.gov.reason"), exact: true }).getByRole("textbox");
   await reason.fill("조직 운영 계획");
   await reason.press("Escape");

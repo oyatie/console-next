@@ -45,3 +45,11 @@ test.each(["IN_APPROVAL", "APPROVED", "APPLIED"] as const)("%s selects the serve
   const key = status === "IN_APPROVAL" ? "routedChart" : status === "APPROVED" ? "scheduled" : "applied";
   expect(changeReceipt(result.status, "title", draft.code, body.effectiveDate)).toBe(t(`orgChange.receipt.${key}`, { title: "title", code: draft.code, date: fmtDate(body.effectiveDate) }));
 });
+
+test.each(["create", "rename"] as const)("inline %s without a note records the change kind, never its title", kind => {
+  const values = { effectiveDate: body.effectiveDate, reason: "  ", submit: true };
+  const spec = kind === "create" ? { kind, parentUnitId: "parent", name: "unit", ...values } : { kind, orgUnitId: "unit", fromName: "before", name: "after", ...values };
+  const request = inlineUnitBody(spec);
+  expect(request.reason).toBe(request.kind);
+  expect(request.reason).not.toBe(request.target.label);
+});

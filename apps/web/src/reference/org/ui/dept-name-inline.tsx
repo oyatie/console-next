@@ -12,7 +12,6 @@ import { applySetup, governed, inlineUnitBody, changeReceipt, STRUCTURE_READS } 
 import { depts, parentRef, unitIdOf, type Node } from "../domain/structure";
 import { noteChange } from "./use-change-note";
 import { InlineUnitFields } from "./inline-unit-fields";
-import { useUnitEdit } from "./use-unit-edit";
 import css from "./structure.module.css";
 
 const fold = (s: string) => s.normalize("NFC").trim();
@@ -25,8 +24,7 @@ const fold = (s: string) => s.normalize("NFC").trim();
 export function DeptNameInline({ parent, unit, setup = true, onDone }: { parent: Node; unit?: Node; setup?: boolean; onDone: () => void }) {
   const nav = useNavigate();
   const search = useSearch({ strict: false }) as { as_of?: string };
-  const state = useInlineUnitValues(setup, search.as_of);
-  const canEdit = useUnitEdit(setup);
+  const state = useInlineUnitValues(setup, search.as_of, unit ? "rename" : "create");
   const [baseUnit] = useState(unit);
   const [baseParent, setBaseParent] = useState(parent);
   const [name, setName] = useState(baseUnit?.name ?? "");
@@ -48,7 +46,7 @@ export function DeptNameInline({ parent, unit, setup = true, onDone }: { parent:
   const taken = depts(baseParent).some((c) => c.id !== baseUnit?.id && fold(c.name) === fold(name));
   const same = baseUnit !== undefined && fold(name) === fold(baseUnit.name);
   const box = useFocusInside<HTMLSpanElement>();
-  const submit = (send = true) => fold(name) && !taken && !same && canEdit && state.valid && save.mutate({ name: fold(name), submit: send });
+  const submit = (send = true) => fold(name) && !taken && !same && state.attempt() && save.mutate({ name: fold(name), submit: send });
   const label = baseUnit ? t("orgUnit.rename.label", { name: baseUnit.name }) : t("orgUnit.add.label", { parent: baseParent.name });
   return (
     <span ref={box} className={css.stack}>
@@ -62,7 +60,7 @@ export function DeptNameInline({ parent, unit, setup = true, onDone }: { parent:
         </Field>
         <InlineUnitFields setup={setup} state={state} pending={save.isPending} onDraft={() => submit(false)} />
         <span className="row">
-          <Button type="submit" variant="primary" disabled={save.isPending || !state.valid || !canEdit}>{t(unit ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
+          <Button aria-description={state.missingReason ? t("orgUnit.gov.reasonForApproval") : undefined} type="submit" variant="primary" disabled={save.isPending || !state.valid}>{t(unit ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
           <Button variant="ghost" onClick={onDone}>{t("orgStructure.cancel")}</Button>
         </span>
       </Form>

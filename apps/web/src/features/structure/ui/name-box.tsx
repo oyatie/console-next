@@ -27,7 +27,7 @@ export function NameBox({ box, parent, renaming, setup = true, asOf, pending, on
   onSubmit: (name: string, values: InlineUnitValues, done: () => void) => void;
   onCancel: () => void;
 }) {
-  const state = useInlineUnitValues(setup, asOf);
+  const state = useInlineUnitValues(setup, asOf, renaming ? "rename" : "create");
   const [baseParent, setBaseParent] = useState(parent);
   if (!pending && baseParent !== parent) setBaseParent(parent);
   const [baseRenaming] = useState(renaming);
@@ -43,7 +43,7 @@ export function NameBox({ box, parent, renaming, setup = true, asOf, pending, on
   const label = baseRenaming ? t("structure.edit.renameLabel", { name: baseRenaming.name }) : t("structure.edit.addLabel", { parent: baseParent.name });
   const submit = (send = true) => {
     if (baseRenaming && trimmed === baseRenaming.name) return onCancel();
-    if (trimmed && !clash && !pending && state.valid) onSubmit(trimmed, { ...state.values, submit: send }, () => setName(""));
+    if (trimmed && !clash && !pending && state.attempt()) onSubmit(trimmed, { ...state.values, submit: send }, () => setName(""));
   };
   return (
     <OrgNode level="dept" box={{ ...box, w: Math.max(box.w, EDITOR_SIZE.w), h: Math.max(box.h, EDITOR_SIZE.h) }} states={["edit"]} className={css.nameBox}>
@@ -67,7 +67,7 @@ export function NameBox({ box, parent, renaming, setup = true, asOf, pending, on
       />
       <div className="row">
         <InlineUnitFields setup={setup} state={state} pending={pending} onDraft={() => submit(false)} />
-        <Button size="sm" variant="primary" disabled={pending || !state.valid} onClick={() => submit()}>{t(baseRenaming ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
+        <Button aria-description={state.missingReason ? t("orgUnit.gov.reasonForApproval") : undefined} size="sm" variant="primary" disabled={pending || !state.valid} onClick={() => submit()}>{t(baseRenaming ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
         <Button size="sm" variant="ghost" onClick={onCancel}>{t("structure.cancel")}</Button>
       </div>
       <span id="name-box-hint" className={clash ? css.nameError : css.nameHint} role={clash ? "alert" : undefined}>

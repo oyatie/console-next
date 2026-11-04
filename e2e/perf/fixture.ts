@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { inlineUnitDetails } from "../structure-flows";
 import { expect, type Browser, type Page } from "@playwright/test";
 import { bizRegNoChecksumOk, corpRegNoChecksumOk } from "../../apps/web/src/lib/pure/formats";
 import { chooseRadio, go, kstDate } from "../flows";
@@ -178,7 +179,7 @@ async function recordRoutes(admin: Page, urls: Record<string, string>, depts: st
   await selected.getByRole("button", { name: "이름 변경" }).click();
   const renameInput = selected.getByRole("textbox", { name: new RegExp(`^${depts.at(-1)!}의 새 이름`) });
   await renameInput.fill("가상미래부서");
-  await selected.getByRole("textbox", { name: /^적용일/ }).fill(kstDate(14));
+  await inlineUnitDetails(admin, selected, kstDate(14));
   const change = admin.waitForResponse(r => r.request().method() === "POST" && /\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
   await selected.getByRole("button", { name: "이름 변경", exact: true }).click();
   expect((await change).status()).toBe(200);

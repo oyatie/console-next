@@ -90,6 +90,7 @@ test("parity: organisation chart, outline, department and operating act", async 
   await expect(name).toBeVisible();
   await name.fill("운영팀");
   await capture(a, "org", ["S6-dept-add-op", "S14-preflight"], "Actual inline add with effective-date chip; no explicit per-person destination graph.");
+  await expect(a.getByRole("button", { name: "사유 · 신설", exact: true })).toBeVisible();
   await name.press("Enter");
   await expect(a.getByRole("status").filter({ hasText: "운영팀 신설을 반영했습니다" }).first()).toBeVisible();
   await capture(a, "org", ["S14-success", "S2-chart-moved"], "Actual applied org act and receipt; create act, not a move fixture.");

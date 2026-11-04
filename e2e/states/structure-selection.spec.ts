@@ -15,7 +15,7 @@ import { expectAxe, fits } from "../a11y";
 test.beforeAll(() => loadCatalog("ko"));
 
 async function reason(page: Page) {
-  await page.getByRole("button", { name: t("orgUnit.gov.reason"), exact: true }).click();
+  await page.getByRole("button", { name: new RegExp(`^${t("orgUnit.gov.reason")}(?: · |$)`) }).click();
   const pop = page.getByRole("dialog", { name: t("orgUnit.gov.reason"), exact: true });
   await pop.getByRole("textbox").fill("조직 운영 계획");
   await pop.getByRole("textbox").press("Escape");
@@ -51,9 +51,10 @@ async function edit(page: Page, view: string, workplace: string, dept: string, r
 }
 
 for (const view of ["chart", "outline", "list", "panel"]) {
-  test(`org: ${view} refuses past 적용일 and blank reason, preserves same-name rename @ui-state`, async ({ page }) => {
+  test(`org: ${view} requires a note for approval, refuses past 적용일, preserves same-name rename @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const { fixture, workplace, dept } = await operating(page);
+    await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [{ key: "approval.policy.org_structure", kind: { type: "code", allowed: ["route", "none"] }, default: "none", value: "route", looser_when: "neutral", governance: "tenant", legal_basis: null, version: "code_default", effective_from: null, scheduled: [], source: { layer: "code_default", scope_entity_id: null }, chain: [] }] } });
     const writes: unknown[] = [];
     await page.route("**/api/v1/org-changes", route => {
       if (route.request().method() !== "POST") return route.fallback();
@@ -71,8 +72,14 @@ for (const view of ["chart", "outline", "list", "panel"]) {
       const editor = view === "panel" ? page.getByRole("complementary", { name: dept.name, exact: true }) : name.locator("..");
       const save = editor.getByRole("button", { name: t("orgUnit.add.save"), exact: true });
       await expect(save).toBeDisabled();
+      await expect(save).toHaveAccessibleDescription(t("orgUnit.gov.reasonForApproval"));
+      await expect(page.getByRole("button", { name: `${t("orgUnit.gov.reason")} · ${t("orgUnit.gov.reasonRequired")}`, exact: true })).toBeVisible();
       await name.press("Enter");
-      await reason(page);
+      const reasonPop = page.getByRole("dialog", { name: t("orgUnit.gov.reason"), exact: true });
+      await expect(reasonPop.getByRole("textbox")).toBeFocused();
+      await reasonPop.getByRole("textbox").fill("조직 운영 계획");
+      await reasonPop.getByRole("textbox").press("Escape");
+      await expect(page.getByRole("button", { name: `${t("orgUnit.gov.reason")} · ${t("orgUnit.gov.reasonFilled")}`, exact: true })).toBeVisible();
       await page.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true }).click();
       const date = page.getByRole("dialog", { name: t("orgUnit.gov.date"), exact: true }).getByRole("textbox", { name: new RegExp(`^${t("orgUnit.gov.date")}`) });
       await date.fill("20261103");
@@ -113,7 +120,7 @@ for (const view of ["chart", "outline", "list", "panel"]) {
   });
 }
 
-for (const outcome of ["draft", "preflight_blocked", "invalid_change"]) test(`org: inline ${outcome} keeps the next action honest @ui-state`, async ({ page }) => {
+for (const view of ["chart", "panel"]) for (const outcome of ["draft", "preflight_blocked", "invalid_change"]) test(`org: inline ${view} ${outcome} keeps the next action honest @ui-state`, async ({ page }) => {
   const { fixture, workplace, dept } = await operating(page);
   const draft = { ...orgChange("draft"), effectiveDate: "2026-11-04" };
   let submitted = 0;
@@ -129,7 +136,7 @@ for (const outcome of ["draft", "preflight_blocked", "invalid_change"]) test(`or
     return route.fulfill({ status: outcome === "preflight_blocked" ? 409 : 422, json: { error: { code: outcome, message: "Change refused" } } });
   });
   try {
-    const name = await edit(page, "chart", workplace.name, dept.name);
+    const name = await edit(page, view, workplace.name, dept.name);
     await name.fill("미래팀");
     await reason(page);
     if (outcome === "draft") await page.getByRole("button", { name: t("composer.saveDraft"), exact: true }).click();
@@ -293,13 +300,12 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await expect(addInput).toBeFocused();
     await expect(page.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true })).toBeVisible();
 
-    await reason(page);
     await addInput.fill("전략팀");
     await addInput.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(1);
     expect(createdPayloads[0]).toMatchObject({
       kind: "NEW",
-      reason: "조직 운영 계획",
+      reason: "NEW",
       effectiveDate: "2026-11-04",
       proposal: [{ op: "CREATE_ORG_UNIT", kind: "DEPARTMENT", name: "전략팀" }],
     });
@@ -329,12 +335,12 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const renameInput = page.getByRole("textbox", { name: t("structure.edit.renameLabel", { name: dept.name }), exact: true });
     await expect(renameInput).toBeVisible();
-    await reason(page);
     await renameInput.fill("플랫폼팀");
     await renameInput.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(3);
     expect(createdPayloads[2]).toMatchObject({
       kind: "REORG",
+      reason: "REORG",
       effectiveDate: "2026-11-04",
       proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: dept.id, name: "플랫폼팀" }],
     });
@@ -349,12 +355,12 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await panelDate.fill("20261215");
     await panelDate.press("Enter");
     const panelName = panel.getByRole("textbox", { name: new RegExp(`^${t("orgUnit.rename.label", { name: "플랫폼팀" })}`) });
-    await reason(page);
     await panelName.fill("코어플랫폼팀");
     await panelName.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(4);
     expect(createdPayloads[3]).toMatchObject({
       kind: "REORG",
+      reason: "REORG",
       effectiveDate: "2026-12-15",
       proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: dept.id, name: "코어플랫폼팀" }],
     });
@@ -365,12 +371,11 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await outlineTree.getByRole("treeitem", { name: new RegExp(`^${workplace.name}\\s`) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const outlineAdd = page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: workplace.name }), exact: true });
-    await reason(page);
     await outlineAdd.fill("아웃라인팀");
     await expectAxe(page, "org operating outline editor");
     await outlineAdd.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(5);
-    expect(createdPayloads[4]).toMatchObject({ kind: "NEW", effectiveDate: "2026-11-04", proposal: [{ op: "CREATE_ORG_UNIT", name: "아웃라인팀" }] });
+    expect(createdPayloads[4]).toMatchObject({ kind: "NEW", reason: "NEW", effectiveDate: "2026-11-04", proposal: [{ op: "CREATE_ORG_UNIT", name: "아웃라인팀" }] });
     await outlineAdd.press("Escape");
 
     // List view: inline + add and inline rename button during OPERATING without a dialog.
@@ -378,20 +383,18 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     await page.getByRole("row", { name: new RegExp(workplace.name) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const listAdd = page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: workplace.name }), exact: true });
-    await reason(page);
     await listAdd.fill("목록팀");
     await listAdd.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(6);
-    expect(createdPayloads[5]).toMatchObject({ kind: "NEW", effectiveDate: "2026-11-04", proposal: [{ op: "CREATE_ORG_UNIT", name: "목록팀" }] });
+    expect(createdPayloads[5]).toMatchObject({ kind: "NEW", reason: "NEW", effectiveDate: "2026-11-04", proposal: [{ op: "CREATE_ORG_UNIT", name: "목록팀" }] });
     await listAdd.press("Escape");
     await page.getByRole("button", { name: `코어플랫폼팀 ${t("orgUnit.rename.action")}`, exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const listRename = page.getByRole("textbox", { name: t("structure.edit.renameLabel", { name: "코어플랫폼팀" }), exact: true });
-    await reason(page);
     await listRename.fill("목록개편팀");
     await listRename.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(7);
-    expect(createdPayloads[6]).toMatchObject({ kind: "REORG", effectiveDate: "2026-11-04", proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: dept.id, name: "목록개편팀" }] });
+    expect(createdPayloads[6]).toMatchObject({ kind: "REORG", reason: "REORG", effectiveDate: "2026-11-04", proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: dept.id, name: "목록개편팀" }] });
 
     await fits(page, "org inline edit/1440/light");
     await expectAxe(page, "org inline edit/1440/light");

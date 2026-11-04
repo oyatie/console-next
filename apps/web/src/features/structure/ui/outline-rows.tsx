@@ -150,7 +150,7 @@ const pathHas = (s: Structure, n: ChartNode, id: string): boolean => {
 };
 
 export function InlineUnitInput({ parent, renaming, setup = true, asOf, pending, onSave, onIndent, onDone }: { parent: ChartNode; renaming?: ChartNode; setup?: boolean; asOf?: string; pending: boolean; onSave: (name: string, values: InlineUnitValues, done: () => void) => void; onIndent?: (dir: 1 | -1) => void; onDone: () => void }) {
-  const state = useInlineUnitValues(setup, asOf);
+  const state = useInlineUnitValues(setup, asOf, renaming ? "rename" : "create");
   const [baseParent, setBaseParent] = useState(parent);
   const [baseRenaming] = useState(renaming);
   if (!pending && baseParent !== parent) setBaseParent(parent);
@@ -159,7 +159,7 @@ export function InlineUnitInput({ parent, renaming, setup = true, asOf, pending,
   const clash = trimmed && nameClash(baseParent, trimmed, baseRenaming?.id);
   const save = (send = true) => {
     if (baseRenaming && trimmed === baseRenaming.name) return onDone();
-    if (trimmed && !clash && !pending && state.valid) onSave(trimmed, { ...state.values, submit: send }, () => setName(""));
+    if (trimmed && !clash && !pending && state.attempt()) onSave(trimmed, { ...state.values, submit: send }, () => setName(""));
   };
   return (
     <span className={css.edit}>
@@ -185,7 +185,7 @@ export function InlineUnitInput({ parent, renaming, setup = true, asOf, pending,
       />
       <InlineUnitFields setup={setup} state={state} pending={pending} onDraft={() => save(false)} />
       {clash && <span role="alert">{t("structure.edit.clash", { name: trimmed })}</span>}
-      <Button size="sm" variant="primary" onClick={() => save()} disabled={pending || !state.valid}>{t(baseRenaming ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
+      <Button aria-description={state.missingReason ? t("orgUnit.gov.reasonForApproval") : undefined} size="sm" variant="primary" onClick={() => save()} disabled={pending || !state.valid}>{t(baseRenaming ? "orgUnit.rename.save" : "orgUnit.add.save")}</Button>
       <Button size="sm" variant="ghost" onClick={onDone}>{t("structure.cancel")}</Button>
     </span>
   );

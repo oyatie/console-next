@@ -33,6 +33,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await expectAccessible(admin, "new department inline");
   const hqAdd = admin.getByRole("textbox", { name: "본점 아래 새 부서 이름", exact: true });
   await hqAdd.fill("인사부");
+  await expect(admin.getByRole("button", { name: "사유 · 신설", exact: true })).toBeVisible();
   await hqAdd.press("Enter");
   await expect(admin.getByRole("status").filter({ hasText: "반영했습니다" }).first()).toBeAttached();
   await hqAdd.press("Escape");
@@ -66,6 +67,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await admin.keyboard.press("a");
   const hrAdd = admin.getByRole("textbox", { name: "인사부 아래 새 부서 이름", exact: true });
   await hrAdd.fill("채용팀");
+  await expect(admin.getByRole("button", { name: "사유 · 신설", exact: true })).toBeVisible();
   await hrAdd.press("Enter");
   await expect(admin.getByRole("status").filter({ hasText: "채용팀 신설을 반영했습니다" })).toBeVisible();
   await hrAdd.press("Escape");
