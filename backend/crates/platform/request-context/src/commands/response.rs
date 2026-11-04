@@ -10,6 +10,7 @@ use uuid::Uuid;
 pub(super) fn replay_status(status: StatusCode, path: &str) -> StatusCode {
     if (status == StatusCode::ACCEPTED && path == "/api/v1/employees/lifecycle-events/bulk")
         || path == "/api/v1/legal-entities"
+        || path.starts_with("/api/v1/payroll/")
         || (path.starts_with("/api/v1/work-orders/") && path.ends_with("/settlement"))
         || (path.starts_with("/api/v1/support/tickets/") && path.ends_with("/acceptance"))
     {
@@ -148,6 +149,12 @@ mod tests {
             replay_status(StatusCode::CREATED, "/api/v1/support/tickets/id/acceptance"),
             StatusCode::CREATED
         );
+        for path in ["/api/v1/payroll/pay-groups", "/api/v1/payroll/runs"] {
+            assert_eq!(
+                replay_status(StatusCode::CREATED, path),
+                StatusCode::CREATED
+            );
+        }
         for command in [
             "POST /api/v1/equipment-3r/rental-cases",
             "POST /api/v1/logistics/asns/id/receipts",

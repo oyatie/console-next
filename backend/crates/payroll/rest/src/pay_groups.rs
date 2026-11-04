@@ -12,9 +12,9 @@ use console_payroll_adapter_postgres::pay_groups::{CreatePayGroup, PayGroup, Pay
 use console_platform_authz::{Feature, Principal, cedar_pbac::visible};
 use console_platform_db::{command_outcomes::CommandOutcome, with_org_conn};
 use console_platform_request_context::record_access::{self, outcome::ReadFuture};
+pub(crate) use run_preview::preview;
 use sqlx::PgPool;
 use uuid::Uuid;
-pub(crate) use run_preview::preview;
 
 use crate::{PayrollRestState, RestError, principal_from_headers};
 
@@ -74,7 +74,6 @@ fn read_outcome<'a>(
         )
         .await
         .unwrap_or(false);
-        outcome.response_status = Some(StatusCode::CREATED.as_u16() as i16);
         console_platform_authz::cedar_pbac::actions::command_outcome::decide(
             &actor.to_string(),
             &org.to_string(),
