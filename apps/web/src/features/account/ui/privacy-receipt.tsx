@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { Card } from "../../../ui/card/card";
@@ -16,9 +16,7 @@ export function PrivacyReceipt({ request }: { request: PrivacyRightsReceipt }) {
       { key: "kinds", label: t("account.privacy.kinds"), value: request.kinds.map(kind => kind.label).join(" · ") },
       { key: "status", label: t("account.privacy.status"), value: request.status.label },
       { key: "received", label: t("account.privacy.received"), value: fmtDateTime(request.received_at) },
-      { key: "due", label: t("account.privacy.due"), value: request.clock
-        ? <DeadlineChip days={request.clock.days_left} severity={request.clock.severity}>{fmtDateTime(request.clock.due_at)}</DeadlineChip>
-        : t("account.privacy.noClock") },
+      { key: "due", label: t("account.privacy.due"), value: <>{request.clock && <DeadlineChip days={request.clock.days_left} severity={request.clock.severity}>{fmtDate(request.clock.due_at)}</DeadlineChip>}{request.without_delay && t("account.privacy.withoutDelay")}{!request.clock && !request.without_delay && t("account.privacy.noClock")}</> },
       { key: "detail", label: t("account.privacy.detail"), value: <span className={s.notice}>{request.detail || t("account.privacy.noDetail")}</span> },
       ...(request.notified_at ? [{ key: "notified", label: t("account.privacy.notified"), value: fmtDateTime(request.notified_at) }] : []),
     ]} />

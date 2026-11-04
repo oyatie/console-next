@@ -111,3 +111,21 @@ fn privacy_filing_is_self_only_and_hr_requires_a_linked_employee() {
         }
     }
 }
+
+#[test]
+fn runtime_privacy_bundles_refuse_other_subjects_and_missing_hr_links() {
+    for own in [true, false] {
+        assert_eq!(
+            privacy_request_file::read("actor", "org", own).unwrap(),
+            own
+        );
+        for hr in [true, false] {
+            for linked in [true, false] {
+                assert_eq!(
+                    privacy_request_file::decide("actor", "org", own, hr, linked).unwrap(),
+                    own && (!hr || linked)
+                );
+            }
+        }
+    }
+}

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-/** Requested self-service projection; labels and clocks are resolved by the server's registers. */
+/** Receipt view model; the wire API uses the generated per-kind domain contract. */
 export type PrivacyRightsReceipt = {
   id: string;
   receipt_no: string;
@@ -10,6 +10,7 @@ export type PrivacyRightsReceipt = {
   status: { code: string; label: string; tone: "neutral" | "info" | "ok" | "warn" | "danger" };
   /** Null once closed, or when the statutory register cannot establish a deadline. */
   clock: { due_at: string; days_left: number; severity: "far" | "due" | "over" } | null;
+  without_delay?: boolean;
   outcomes: { kind_label: string; outcome_label: string; reason_label: string | null; note: string | null }[];
   notified_at: string | null;
   objection_method: string | null;
@@ -17,12 +18,6 @@ export type PrivacyRightsReceipt = {
 };
 export type PrivacyRightsPage = { items: PrivacyRightsReceipt[]; next_cursor: string | null };
 
-export type PrivacyPaths = {
-  /** Cedar scopes this read to the subject, in the current realm; no grant is needed in the client. */
-  "/api/v1/privacy/rights-requests/mine": {
-    get: {
-      parameters: { query?: { cursor?: string } };
-      responses: { 200: { headers: Record<string, unknown>; content: { "application/json": PrivacyRightsPage } } };
-    };
-  };
-};
+/** The wire contract is generated from the existing rights domain. */
+export type PrivacyPaths = Pick<import("../schema").paths,
+  "/api/v1/privacy/rights-requests/mine" | "/api/v1/privacy/rights-requests">;
