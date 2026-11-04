@@ -4,7 +4,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use console_platform_authz::{
     Feature, Principal,
-    access::{NodeKind, NodeRef, cedar::BULK_APPOINTMENT},
+    access::{
+        AccessSlice, NodeKind, NodePath, NodeRef, cedar::BULK_APPOINTMENT, load_active_access_slice,
+    },
     cedar_pbac::{
         actions::lifecycle_event::{self, EventFacts},
         visible::{DecisionFacts, load_facts},
@@ -51,10 +53,40 @@ pub(super) fn permission_denied() -> HrError {
     ))
 }
 
+async fn live_slice(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: &Principal,
+) -> Result<AccessSlice, HrError> {
+    load_active_access_slice(
+        tx,
+        principal.org_id,
+        *principal.user_id.as_uuid(),
+        time::OffsetDateTime::now_utc(),
+    )
+    .await
+    .map_err(HrError::from_kernel)
+}
+
+fn tenant_allows(
+    slice: &AccessSlice,
+    principal: &Principal,
+    action: &str,
+) -> Result<bool, HrError> {
+    slice
+        .allows(action, &NodePath::tenant(principal.org_id))
+        .map_err(|error| {
+            HrError::internal(format!("lifecycle permission facts unavailable: {error}"))
+        })
+}
+
 pub(super) async fn require_bulk_permission(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
 ) -> Result<(), HrError> {
+    let slice = live_slice(tx, principal).await?;
+    if tenant_allows(&slice, principal, BULK_APPOINTMENT)? {
+        return Ok(());
+    }
     let access = load_facts(tx, principal.org_id, *principal.user_id.as_uuid())
         .await
         .map_err(HrError::from_kernel)?;
@@ -81,11 +113,14 @@ pub(super) async fn require_tenant_permissions(
     features: &[Feature],
 ) -> Result<(), HrError> {
     let org = principal.org_id;
-    let access = load_facts(tx, org, *principal.user_id.as_uuid())
-        .await
-        .map_err(HrError::from_kernel)?;
+    let slice = live_slice(tx, principal).await?;
     for feature in features {
-        require_tenant_permission_any(&access, principal, &[feature.as_str()])?;
+        if !tenant_allows(&slice, principal, feature.as_str())? {
+            let access = load_facts(tx, org, *principal.user_id.as_uuid())
+                .await
+                .map_err(HrError::from_kernel)?;
+            return require_tenant_permission_any(&access, principal, &[feature.as_str()]);
+        }
     }
     Ok(())
 }
@@ -140,6 +175,19 @@ async fn load_permission(
 ) -> Result<bool, HrError> {
     let org = principal.org_id;
     let actor = *principal.user_id.as_uuid();
+    let slice = live_slice(tx, principal).await?;
+    for feature in APPOINTMENT_KEYS {
+        if tenant_allows(&slice, principal, feature.as_str())? {
+            let exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM person_employees_current WHERE org_id = $1 AND id = $2)",
+            )
+            .bind(org.as_uuid())
+            .bind(employee)
+            .fetch_one(tx.as_mut())
+            .await?;
+            return Ok(exists);
+        }
+    }
     let access = load_facts(tx, org, actor)
         .await
         .map_err(HrError::from_kernel)?;

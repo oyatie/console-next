@@ -14,6 +14,9 @@ mod go_live;
 mod lifecycle_grant;
 #[path = "perf_bulk_job/one_connection.rs"]
 mod one_connection;
+#[allow(dead_code)]
+#[path = "../../crates/hr/adapter-postgres/tests/support/trail_queries.rs"]
+mod trail_queries;
 
 use counts::{jobs, transfers};
 #[path = "support/perf.rs"]

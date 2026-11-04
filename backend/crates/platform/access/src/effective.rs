@@ -6,8 +6,8 @@ use std::collections::BTreeMap;
 use console_kernel_core::OrgId;
 use console_platform_authz::Principal;
 use console_platform_authz::access::{
-    AccessSlice, Domain, Enforcement, Level, NodePath, action_group, cedar::BULK_APPOINTMENT,
-    load_access_subject, load_tenant_phase,
+    AccessEngineError, AccessSlice, Domain, Enforcement, Level, NodePath, action_group,
+    cedar::BULK_APPOINTMENT, load_access_subject, load_tenant_phase,
 };
 use console_platform_db::with_org_conn;
 use serde::Deserialize;
@@ -26,6 +26,19 @@ use crate::roles_store::lines_of;
 
 fn rfc3339(t: OffsetDateTime) -> AccessResult<String> {
     t.format(&Rfc3339).map_err(AccessError::internal)
+}
+
+fn fail_closed_decision<T>(
+    result: Result<T, AccessEngineError>,
+    support_reference: Option<&str>,
+) -> Option<T> {
+    match result {
+        Ok(value) => Some(value),
+        Err(error) => {
+            tracing::error!(%error, ?support_reference, "Cedar access decision failed closed");
+            None
+        }
+    }
 }
 
 /// One row per live grant × domain × level. An ENFORCED row is re-decided by
@@ -48,13 +61,15 @@ async fn effective_of(
         .iter()
         .map(|g| (g.grant_id, g.scope.clone()))
         .collect();
-    let slice = AccessSlice::compile(&subject).ok();
+    let support_ref = console_platform_request_context::current_audit_context()
+        .map(|context| context.trace.trace_id().to_owned());
+    let slice = fail_closed_decision(AccessSlice::compile(&subject), support_ref.as_deref());
     let decisions = account_active
         .then(|| {
-            slice
+            let decision = slice
                 .as_ref()?
-                .allows(BULK_APPOINTMENT, &NodePath::tenant(org))
-                .ok()
+                .allows(BULK_APPOINTMENT, &NodePath::tenant(org));
+            fail_closed_decision(decision, support_ref.as_deref())
         })
         .flatten()
         .map_or_else(|| json!({}), |allowed| json!({BULK_APPOINTMENT: allowed}));
@@ -81,8 +96,11 @@ async fn effective_of(
                             held.get(&grant.id)
                                 .zip(slice.as_ref())
                                 .is_some_and(|(path, s)| {
-                                    s.allows(&action_group(line.domain, *level), path)
-                                        .unwrap_or(false)
+                                    fail_closed_decision(
+                                        s.allows(&action_group(line.domain, *level), path),
+                                        support_ref.as_deref(),
+                                    )
+                                    .unwrap_or(false)
                                 });
                         if cedar {
                             "ENFORCED"

@@ -19,9 +19,10 @@ for (const surface of surfaces) for (const width of [1440, 390]) for (const them
   test(`hr_basic editor opens ${surface.path} at ${width}px in ${theme} @ui-state`, async ({ page }, info) => {
     const state = await mockScreen(page, screens[1], "populated");
     const access = screenAccess("/people/new");
+    let decision = true;
     expect(access.entries.some(entry => entry.domain === "hr_basic" && entry.level === "edit")).toBe(true);
     expect(access.entries.some(entry => entry.domain === "appointment")).toBe(false);
-    await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...access, decisions: { bulk_appointment: true } } });
+    await mockRoute(page, "get", "/api/v1/access/me", () => ({ status: 200, json: { ...access, decisions: { bulk_appointment: decision } } }));
     await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { items: [], can_manage: false } });
     await mockRoute(page, "get", "/api/v1/reason-codes", request => ({ status: 200, json: { domain: new URL(request.url()).searchParams.get("domain")!, items: [] } }));
     await mockRoute(page, "get", "/api/v1/appointment-notices", { status: 200, json: { items: [], next_cursor: null } });
@@ -35,7 +36,16 @@ for (const surface of surfaces) for (const width of [1440, 390]) for (const them
       await expect(main.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toHaveCount(0);
       await fits(page, `${surface.path} ${width} ${theme}`);
       await expectAxe(page, surface.path);
-      await page.screenshot({ path: info.outputPath("access.png"), fullPage: true });
+      await page.screenshot({ path: info.outputPath("access-allowed.png"), fullPage: true });
+      decision = false;
+      await page.reload();
+      const refusal = page.getByRole("main").getByRole("region", { name: t("common.denied.title.plain"), exact: true });
+      for (const id of ["accessCodes.domain.hr_basic", "accessCodes.domain.appointment", "accessCodes.level.edit", "access.scope.tenant"] as const) {
+        await expect(refusal).toContainText(t(id));
+      }
+      await fits(page, `${surface.path} refused ${width} ${theme}`);
+      await expectAxe(page, `${surface.path} refused`);
+      await page.screenshot({ path: info.outputPath("access-refused.png"), fullPage: true });
       expect(state.unexpected).toEqual([]);
     } finally { await page.close(); state.release(); }
   });

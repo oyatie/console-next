@@ -194,12 +194,39 @@ impl World {
         user: UserId,
         body: Option<Value>,
     ) -> (StatusCode, Value) {
+        self.call_request(method, uri, user, body, None).await
+    }
+
+    pub async fn call_with_trace(
+        &self,
+        method: Method,
+        uri: &str,
+        user: UserId,
+        body: Option<Value>,
+        traceparent: &str,
+    ) -> (StatusCode, Value) {
+        self.call_request(method, uri, user, body, Some(traceparent))
+            .await
+    }
+
+    async fn call_request(
+        &self,
+        method: Method,
+        uri: &str,
+        user: UserId,
+        body: Option<Value>,
+        traceparent: Option<&str>,
+    ) -> (StatusCode, Value) {
         let token = self.token(user).await;
-        let mut request = Request::builder()
+        let mut builder = Request::builder()
             .method(method)
             .uri(uri)
             .header(header::AUTHORIZATION, format!("Bearer {token}"))
-            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::CONTENT_TYPE, "application/json");
+        if let Some(traceparent) = traceparent {
+            builder = builder.header("traceparent", traceparent);
+        }
+        let mut request = builder
             .body(body.map_or_else(Body::empty, |b| Body::from(b.to_string())))
             .unwrap();
         request
