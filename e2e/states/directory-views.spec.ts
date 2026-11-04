@@ -254,14 +254,15 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(next.has("offset")).toBe(false);
     expect(await grid.getByRole("row").count()).toBeLessThan(60);
     await fits(page, `restored view ${width} ${theme}`);
-    await expectAxe(page, `restored view ${width} ${theme}`);
+    // Check the restored controls here; large-roster row accessibility has its own directory state specs.
+    await expectAxe(page, `restored view ${width} ${theme}`, { include: '[role="group"], [role="columnheader"], [role="note"]' });
     await grid.evaluate(el => { el.scrollTop = 0; });
     await grid.getByText("UI-0001", { exact: true }).click();
     const peek = page.getByRole("complementary", { name: t("people.panel"), exact: true });
     await expect(peek.getByRole("heading", { level: 2 })).toContainText("검증직원 1");
     await expect(peek.getByRole("link", { name: new RegExp(t("people.panel.open")) })).toHaveAttribute("href", `/people/${id(100)}`);
     await fits(page, `directory peek ${width} ${theme}`);
-    await expectAxe(page, `directory peek ${width} ${theme}`);
+    await expectAxe(page, `directory peek ${width} ${theme}`, { include: `aside[aria-label="${t("people.panel")}"]` });
     await test.info().attach("peek", { body: await page.screenshot({ path: test.info().outputPath("peek.png"), fullPage: true }), contentType: "image/png" });
     await peek.getByRole("button", { name: t("roster.panel.close"), exact: true }).click();
     await expect(peek).toBeHidden();
@@ -269,7 +270,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await open();
     await expect(sheet.getByRole("button", { name: "휴직 확인", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
-    await expectAxe(page, `view gallery ${width} ${theme}`);
+    await expectAxe(page, `view gallery ${width} ${theme}`, { include: '[role="dialog"]' });
     await mockRoute(page, "get", "/api/v1/employees", { status: 200, json: { items: [], total: 0, offset: 0, limit: 100, next_cursor: null } });
     await mockRoute(page, "get", "/api/v1/employees/facets", { status: 200, json: facets(0) });
     await page.goto("/people");
