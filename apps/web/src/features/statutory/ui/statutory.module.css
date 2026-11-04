@@ -1,3 +1,5 @@
 .scroll { width: 100%; min-width: 0; overflow-x: auto; }
 .scroll table { min-width: 100%; }
+.filingWindow { min-width: 0; overflow-wrap: anywhere; }
+.citation { max-width: 100%; white-space: normal; }
 .workplace { min-height: max(calc(var(--target) + var(--text-sm) * var(--lh-base) + var(--space-1)), calc(var(--space-5) * 2 + var(--text-body) * var(--lh-base))); }
