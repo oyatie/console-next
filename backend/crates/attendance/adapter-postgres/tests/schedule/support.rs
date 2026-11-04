@@ -2,14 +2,19 @@
 //! branch, 생산부 › 생산1팀 under 평택, and people placed there.
 #![allow(dead_code)]
 
-use console_attendance_adapter_postgres::{PgAttendanceStore, ScheduleStoreError};
+use std::{future::Future, pin::Pin};
+
+use console_attendance_adapter_postgres::{
+    BoardQuery, BoardReadAccess, BoardReadTarget, GridQuery, PgAttendanceStore, ScheduleStoreError,
+};
 use console_attendance_application::CallerScope;
+use console_attendance_application::records_read::{DayBoard, MonthGrid, PersonMonth};
 use console_attendance_application::schedule::{AssignInput, AssignTarget, PatternInput};
 use console_attendance_domain::schedule::Level;
 use console_kernel_core::OrgId;
 use console_platform_test_support::{runtime_role_pool, seed_branch, seed_user};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 use time::{Date, Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -169,6 +174,87 @@ pub async fn world(owner: PgPool) -> World {
 
 pub fn key() -> String {
     format!("att-s1-{}", Uuid::new_v4().simple())
+}
+
+type TestAccessFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<BoardReadAccess, ScheduleStoreError>> + Send + 'a>>;
+
+fn read_access(
+    caller: &CallerScope,
+) -> impl for<'a> FnOnce(&'a mut Transaction<'_, Postgres>) -> TestAccessFuture<'a> + Send + 'static
+{
+    let caller = caller.clone();
+    move |tx| {
+        Box::pin(async move {
+            let workplaces: Vec<Uuid> = if caller.org_wide {
+                Vec::new()
+            } else {
+                sqlx::query_scalar(
+                    "SELECT id FROM workplaces WHERE default_branch_id = ANY($1::uuid[])",
+                )
+                .bind(&caller.branch_ids)
+                .fetch_all(tx.as_mut())
+                .await?
+            };
+            let access: BoardReadAccess = Box::new(move |target| {
+                Ok(caller.org_wide
+                    || match target {
+                        BoardReadTarget::Scope(_, id) => workplaces.contains(&id),
+                        BoardReadTarget::Person {
+                            workplace: Some(id),
+                        } => workplaces.contains(&id),
+                        BoardReadTarget::Person { workplace: None } => false,
+                    })
+            });
+            Ok(access)
+        })
+    }
+}
+
+pub trait TestReads {
+    fn day_board<'a>(
+        &'a self,
+        caller: &'a CallerScope,
+        query: BoardQuery,
+    ) -> impl Future<Output = Result<DayBoard, ScheduleStoreError>> + Send + 'a;
+    fn month_grid<'a>(
+        &'a self,
+        caller: &'a CallerScope,
+        query: GridQuery,
+    ) -> impl Future<Output = Result<MonthGrid, ScheduleStoreError>> + Send + 'a;
+    fn person_month<'a>(
+        &'a self,
+        caller: &'a CallerScope,
+        employee: Uuid,
+        month: String,
+    ) -> impl Future<Output = Result<PersonMonth, ScheduleStoreError>> + Send + 'a;
+}
+
+impl TestReads for PgAttendanceStore {
+    fn day_board<'a>(
+        &'a self,
+        caller: &'a CallerScope,
+        query: BoardQuery,
+    ) -> impl Future<Output = Result<DayBoard, ScheduleStoreError>> + Send + 'a {
+        self.day_board_with_access(caller, query, read_access(caller))
+    }
+
+    fn month_grid<'a>(
+        &'a self,
+        caller: &'a CallerScope,
+        query: GridQuery,
+    ) -> impl Future<Output = Result<MonthGrid, ScheduleStoreError>> + Send + 'a {
+        self.month_grid_with_access(caller, query, read_access(caller))
+    }
+
+    fn person_month<'a>(
+        &'a self,
+        caller: &'a CallerScope,
+        employee: Uuid,
+        month: String,
+    ) -> impl Future<Output = Result<PersonMonth, ScheduleStoreError>> + Send + 'a {
+        self.person_month_with_access(caller, employee, month, read_access(caller))
+    }
 }
 
 /// 주 5일 09–18, 휴게 12–13, 토 휴무, 일 주휴.

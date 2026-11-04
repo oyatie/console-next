@@ -30,8 +30,8 @@ test("clock-in without a plan is included in the shared axis and the text table"
 
 test("served intervals exclude confirmed non-work from recognition bars", () => {
   const d = { ...day(540, 1080), entry: { kind: "TIMES", segments: [{ start: 540, end: 1200 }] },
-    intervals: [{ start: 540, end: 1080, minutes: 540, category: "WORK", recognised: true, reason: "근무" },
-      { start: 1080, end: 1200, minutes: 120, category: "NOT_WORK", recognised: false, reason: "개인 용무" }],
+    intervals: [{ start: 540, end: 1080, minutes: 540, category: "WORK", recognised: true, reason_code: "SCHEDULED_WORK", rule_version: "ATTENDANCE_RECOGNITION_V1" },
+      { start: 1080, end: 1200, minutes: 120, category: "NOT_WORK", recognised: false, reason_code: "CONFIRMED_NOT_WORK", rule_version: "ATTENDANCE_RECOGNITION_V1" }],
   } as unknown as Day;
   const html = renderToStaticMarkup(<DayBars days={[d]} labels={["직원"]}><DayBar day={d} /></DayBars>);
   expect(html).toContain("09:00–18:00</td>");

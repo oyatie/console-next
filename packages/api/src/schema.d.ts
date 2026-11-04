@@ -1768,7 +1768,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The 월간 근무표 — people × days, 100 people a page by keyset, with the four totals per row */
+        /**
+         * The 월간 근무표 — people × days, 100 people a page by keyset, with the four totals per row
+         * @description Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and every person's dated workplace use one fact snapshot.
+         */
         get: operations["readAttendanceMonthGrid"];
         put?: never;
         post?: never;
@@ -1820,7 +1823,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One person's month (개인 근태 카드) — every day with its plan, entry, recognition and marks, and the entry history (잠정 until closed) */
+        /**
+         * One person's month (개인 근태 카드) — every day with its plan, entry, recognition and marks, and the entry history (잠정 until closed)
+         * @description Cedar EmployeeDirectoryRead authorizes every dated workplace in the requested month from one fact snapshot.
+         */
         get: operations["readAttendancePersonMonth"];
         put?: never;
         post?: never;
@@ -15549,6 +15555,7 @@ export interface components {
             plan: components["schemas"]["AttendancePlan"];
             entry?: components["schemas"]["AttendanceEntry"];
             recognition: components["schemas"]["AttendanceRecognition"];
+            intervals?: components["schemas"]["AttendanceInterval"][];
             marks: components["schemas"]["AttendanceMark"][];
         };
         AttendanceDayBoard: {
@@ -15837,6 +15844,18 @@ export interface components {
             limit: number;
             /** Format: int64 */
             offset: number;
+        };
+        /** @description One contiguous interval from the versioned attendance recognition rule. */
+        AttendanceInterval: {
+            start: number;
+            end: number;
+            minutes: number;
+            /** @enum {string} */
+            category: "WORK" | "BREAK" | "WAIT" | "OVERTIME" | "NIGHT" | "HOLIDAY" | "NOT_WORK" | "DISPUTED";
+            recognised: boolean;
+            /** @enum {string} */
+            reason_code: "SCHEDULED_WORK" | "SCHEDULED_BREAK" | "PRIOR_APPROVED_OVERTIME" | "POST_APPROVED_OVERTIME" | "OPEN_OVERTIME" | "HOLIDAY_WORK" | "CONFIRMED_NOT_WORK" | "SCHEDULE_MISSING";
+            rule_version: string;
         };
         AttendanceLayerSummary: {
             layer_id: components["schemas"]["Uuid"];
@@ -33529,6 +33548,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttendanceDayBoard"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -34011,6 +34031,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttendanceMonthGrid"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];

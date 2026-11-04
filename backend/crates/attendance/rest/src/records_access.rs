@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! The board's set, filter and count decisions use one Cedar snapshot.
+//! Attendance read set, filter and count decisions use one Cedar snapshot.
 use console_attendance_adapter_postgres::{BoardReadAccess, BoardReadTarget, ScheduleStoreError};
 use console_attendance_domain::schedule::Level;
 use console_kernel_core::OrgId;
@@ -11,7 +11,7 @@ pub(super) fn unavailable(_: impl std::fmt::Display) -> ScheduleStoreError {
     ScheduleStoreError::Corrupt("attendance read access")
 }
 
-pub(super) fn board_access(
+pub(super) fn read_access(
     facts: DecisionFacts,
     org: OrgId,
 ) -> Result<BoardReadAccess, ScheduleStoreError> {
@@ -49,3 +49,18 @@ pub(super) fn board_access(
         facts.authorize(action, node).map_err(unavailable)
     }))
 }
+
+macro_rules! load {
+    ($org:expr, $actor:expr) => {{
+        let (org, actor) = ($org, $actor);
+        move |tx| {
+            Box::pin(async move {
+                let facts = console_platform_authz::cedar_pbac::visible::load_facts(tx, org, actor)
+                    .await
+                    .map_err($crate::records::access::unavailable)?;
+                $crate::records::access::read_access(facts, org)
+            })
+        }
+    }};
+}
+pub(super) use load;

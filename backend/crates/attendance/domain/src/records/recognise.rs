@@ -2,6 +2,7 @@
 //! Approvals classify worked minutes; they never gate recognition.
 
 use crate::schedule::{DayKind, Shift, Window};
+use serde::Serialize;
 
 const SPAN: usize = 2880;
 const WORDS: usize = SPAN / 64;
@@ -60,6 +61,10 @@ impl Minutes {
     pub fn count(self) -> u32 {
         self.0.iter().map(|w| w.count_ones()).sum()
     }
+    fn contains(self, minute: u16) -> bool {
+        let minute = usize::from(minute);
+        minute < SPAN && self.0[minute / 64] & (1 << (minute % 64)) != 0
+    }
     /// Minutes before `at` / from `at` on.
     #[must_use]
     pub fn before(self, at: u16) -> Self {
@@ -84,7 +89,46 @@ pub fn scheduled(shift: &Shift) -> Minutes {
     .minus(Minutes::of(&shift.breaks))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub const RECOGNITION_RULE_VERSION: &str = "ATTENDANCE_RECOGNITION_V1";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum IntervalCategory {
+    Work,
+    Break,
+    Wait,
+    Overtime,
+    Night,
+    Holiday,
+    NotWork,
+    Disputed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum IntervalReason {
+    ScheduledWork,
+    ScheduledBreak,
+    PriorApprovedOvertime,
+    PostApprovedOvertime,
+    OpenOvertime,
+    HolidayWork,
+    ConfirmedNotWork,
+    ScheduleMissing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct RecognitionInterval {
+    pub start: u16,
+    pub end: u16,
+    pub minutes: u32,
+    pub category: IntervalCategory,
+    pub recognised: bool,
+    pub reason_code: IntervalReason,
+    pub rule_version: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Recognition {
     pub recorded: u32,
     pub recognised: u32,
@@ -108,6 +152,66 @@ pub struct Recognition {
     pub early_out: u32,
     pub away: u32,
     pub approval_unused: u32,
+    pub intervals: Vec<RecognitionInterval>,
+}
+
+fn intervals(
+    recorded: &[Window],
+    shift: Option<&Shift>,
+    day: DayKind,
+    prior_windows: &[Window],
+    post_windows: &[Window],
+    not_work_windows: &[Window],
+) -> Vec<RecognitionInterval> {
+    use IntervalCategory as C;
+    use IntervalReason as R;
+
+    let r = Minutes::of(recorded);
+    if r.count() == 0 {
+        return Vec::new();
+    }
+    let prior = Minutes::of(prior_windows);
+    let post = Minutes::of(post_windows);
+    let scheduled = shift
+        .filter(|_| day == DayKind::Work)
+        .map(scheduled)
+        .unwrap_or_default();
+    let breaks = shift.map(|x| Minutes::of(&x.breaks)).unwrap_or_default();
+    let excluded = r.minus(breaks).and(Minutes::of(not_work_windows));
+    let mut out: Vec<RecognitionInterval> = Vec::new();
+    for start in 0..SPAN as u16 {
+        if !r.contains(start) {
+            continue;
+        }
+        let (category, reason) = if breaks.contains(start) {
+            (C::Break, R::ScheduledBreak)
+        } else if excluded.contains(start) {
+            (C::NotWork, R::ConfirmedNotWork)
+        } else if day == DayKind::NoSchedule {
+            (C::Disputed, R::ScheduleMissing)
+        } else if day != DayKind::Work {
+            (C::Holiday, R::HolidayWork)
+        } else if scheduled.contains(start) {
+            (C::Work, R::ScheduledWork)
+        } else if prior.contains(start) {
+            (C::Overtime, R::PriorApprovedOvertime)
+        } else if post.contains(start) {
+            (C::Overtime, R::PostApprovedOvertime)
+        } else {
+            (C::Overtime, R::OpenOvertime)
+        };
+        if let Some(last) = out.last_mut()
+            && last.end == start
+            && last.category == category
+            && last.reason_code == reason
+        {
+            last.end += 1;
+            last.minutes += 1;
+        } else {
+            out.push(RecognitionInterval::new(start, start + 1, category, reason));
+        }
+    }
+    out
 }
 
 /// Confirmed `not_work` windows exclude presence without work. Prior approval
@@ -184,6 +288,14 @@ pub fn recognise(
         early_out,
         away,
         approval_unused: a.minus(s).minus(breaks).minus(recognised).count(),
+        intervals: intervals(
+            recorded,
+            shift,
+            day,
+            prior_approved,
+            post_approved,
+            not_work,
+        ),
     }
 }
 

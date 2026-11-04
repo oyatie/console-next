@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use console_attendance_application::records_read::{EntryRead, IssueGroup};
-use console_attendance_domain::records::Mark;
+use console_attendance_domain::records::{EntryKind, Mark};
 use time::{Date, Duration};
 use uuid::Uuid;
 
@@ -31,11 +31,25 @@ pub(super) fn earliest(
             if !permitted(&p)? {
                 continue;
             }
+            let entry = entries.get(&(p.id, day));
+            if entry.is_some_and(|entry| entry.kind == EntryKind::ClockInOnly)
+                && remaining.remove(&Mark::MissingOut)
+                && let Some(group) = issues.get_mut(&Mark::MissingOut)
+            {
+                group.earliest_date = day;
+            }
+            if remaining.is_empty() {
+                break;
+            }
+            // Missing-out is entry-shaped; recognition cannot add it.
+            if remaining.len() == 1 && remaining.contains(&Mark::MissingOut) {
+                continue;
+            }
             let e = evaluate_day(
                 u,
                 &p,
                 day,
-                entries.get(&(p.id, day)),
+                entry,
                 &[],
                 today,
                 settings.for_entity(p.legal_entity_id)?,

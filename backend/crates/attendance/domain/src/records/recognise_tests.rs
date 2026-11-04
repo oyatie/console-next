@@ -145,6 +145,64 @@ fn two_unapproved_hours_are_paid_on_top_of_regular_work() {
 }
 
 #[test]
+fn recognition_emits_the_interval_decomposition_once() {
+    let shift = Shift {
+        start: 540,
+        end: 1080,
+        breaks: vec![w(720, 780)],
+    };
+    let r = recognise(
+        &[w(540, 1200)],
+        Some(&shift),
+        DayKind::Work,
+        &[],
+        &[],
+        &[w(1140, 1200)],
+    );
+    assert_eq!(
+        r.intervals,
+        vec![
+            RecognitionInterval::new(
+                540,
+                720,
+                IntervalCategory::Work,
+                IntervalReason::ScheduledWork
+            ),
+            RecognitionInterval::new(
+                720,
+                780,
+                IntervalCategory::Break,
+                IntervalReason::ScheduledBreak
+            ),
+            RecognitionInterval::new(
+                780,
+                1080,
+                IntervalCategory::Work,
+                IntervalReason::ScheduledWork
+            ),
+            RecognitionInterval::new(
+                1080,
+                1140,
+                IntervalCategory::Overtime,
+                IntervalReason::OpenOvertime
+            ),
+            RecognitionInterval::new(
+                1140,
+                1200,
+                IntervalCategory::NotWork,
+                IntervalReason::ConfirmedNotWork
+            ),
+        ]
+    );
+    assert_eq!(r.intervals.iter().map(|i| i.minutes).sum::<u32>(), 660);
+    assert!(
+        r.intervals
+            .iter()
+            .all(|i| i.rule_version == RECOGNITION_RULE_VERSION)
+    );
+}
+
+#[test]
 fn approvals_classify_only_paid_excess_without_double_counting() {
     let shift = factory();
     let r = recognise(

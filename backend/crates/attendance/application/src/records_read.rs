@@ -2,7 +2,7 @@
 //! one person's month (A7), the save preview and receipt.
 
 use console_attendance_domain::close::MonthState;
-use console_attendance_domain::records::{EntryKind, Mark, Recognition};
+use console_attendance_domain::records::{EntryKind, Mark, Recognition, RecognitionInterval};
 use console_attendance_domain::schedule::{DayKind, Window};
 use serde::Serialize;
 use time::{Date, OffsetDateTime};
@@ -92,6 +92,7 @@ pub struct DayRead {
     pub plan: PlanRead,
     pub entry: Option<EntryRead>,
     pub recognition: RecognitionRead,
+    pub intervals: Vec<RecognitionInterval>,
     pub marks: Vec<Mark>,
 }
 

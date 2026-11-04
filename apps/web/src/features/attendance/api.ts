@@ -71,9 +71,7 @@ export const refusalCode = (e: unknown) => (e instanceof ApiError ? e.code : und
 export const failedWith = (e: unknown, status: number) => e instanceof ApiError && e.status === status;
 
 // --- records (S2): the day board, the month grid, one person's month, and the save path.
-// Pending interval judgments stay optional until served.
-type DayInterval = { start: number; end: number; minutes: number; category: "WORK" | "BREAK" | "WAIT" | "OVERTIME" | "NIGHT" | "HOLIDAY" | "NOT_WORK" | "DISPUTED"; recognised: boolean; reason: string };
-export type Day = S["AttendanceDay"] & { intervals?: DayInterval[] };
+export type Day = S["AttendanceDay"];
 export type BoardRow = S["AttendanceBoardRow"];
 export type DayBoard = S["AttendanceDayBoard"];
 export type IssueGroup = NonNullable<DayBoard["issue_groups"]>[number];

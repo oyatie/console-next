@@ -20,4 +20,12 @@ export const enAttendanceOverview = {
   "attendanceOverview.interval.HOLIDAY": "Holiday",
   "attendanceOverview.interval.NOT_WORK": "Not work",
   "attendanceOverview.interval.DISPUTED": "Needs review",
+  "attendanceOverview.reason.SCHEDULED_WORK": "Scheduled work",
+  "attendanceOverview.reason.SCHEDULED_BREAK": "Scheduled break",
+  "attendanceOverview.reason.PRIOR_APPROVED_OVERTIME": "Overtime approved in advance",
+  "attendanceOverview.reason.POST_APPROVED_OVERTIME": "Overtime approved afterwards",
+  "attendanceOverview.reason.OPEN_OVERTIME": "Work without prior approval",
+  "attendanceOverview.reason.HOLIDAY_WORK": "Holiday work",
+  "attendanceOverview.reason.CONFIRMED_NOT_WORK": "Confirmed non-work",
+  "attendanceOverview.reason.SCHEDULE_MISSING": "No work schedule",
 };

@@ -14,6 +14,7 @@ export const operationAccess = {
   "GET /api/v1/appointment-notices/candidates": {"domain":"hr_basic","level":"edit","tenant":true,"scopes":["TENANT"]},
   "GET /api/v1/attendance/days": {"domain":"hr_basic","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "GET /api/v1/attendance/month": {"domain":"hr_basic","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/attendance/people/{employee_id}/month": {"domain":"hr_basic","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "GET /api/v1/attendance/schedule/tree": {"domain":"hr_basic","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "GET /api/v1/directory/people": {"domain":"hr_basic","level":"view"},
   "GET /api/v1/employee-number-rules": {"domain":"hr_basic","level":"edit"},

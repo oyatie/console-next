@@ -1,3 +1,4 @@
 type: object
+# Additive for N-1 fixtures; the server always returns intervals.
 required: [date, plan, recognition, marks]
-properties: { date: { type: string, format: date }, plan: { $ref: '#/components/schemas/AttendancePlan' }, entry: { $ref: '#/components/schemas/AttendanceEntry', nullable: true }, recognition: { $ref: '#/components/schemas/AttendanceRecognition' }, marks: { type: array, items: { $ref: '#/components/schemas/AttendanceMark' } } }
+properties: { date: { type: string, format: date }, plan: { $ref: '#/components/schemas/AttendancePlan' }, entry: { $ref: '#/components/schemas/AttendanceEntry', nullable: true }, recognition: { $ref: '#/components/schemas/AttendanceRecognition' }, intervals: { type: array, items: { $ref: '#/components/schemas/AttendanceInterval' } }, marks: { type: array, items: { $ref: '#/components/schemas/AttendanceMark' } } }

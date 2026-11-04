@@ -9,7 +9,10 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
-use console_attendance_adapter_postgres::{BoardQuery, GridQuery, ScheduleStoreError};
+use console_attendance_adapter_postgres::{
+    BoardQuery, GridQuery, RECORDS_PAGE_LIMIT, ScheduleStoreError,
+};
+use console_attendance_application::CallerScope;
 use console_attendance_application::records::{
     CorrectInput, PreviewInput, SaveInput, UndoInput, VoidInput,
 };
@@ -17,11 +20,12 @@ use console_attendance_application::records_read::{
     DayBoard, MonthGrid, PersonMonth, SavePreview, SaveReceipt,
 };
 use console_attendance_domain::records::Mark;
+use console_platform_authz::Principal;
 use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::schedule::{Body, READ, WRITE, caller};
+use crate::schedule::{Body, WRITE, caller};
 use crate::{AttendanceQuery, AttendanceRestState, RestError, idempotency, parse_date, principal};
 
 pub const DAYS_PATH: &str = "/api/v1/attendance/days";
@@ -32,6 +36,22 @@ pub const ENTRIES_PATH: &str = "/api/v1/attendance/entries";
 pub const BATCH_UNDO_PATH: &str = "/api/v1/attendance/batches/{batch_id}/undo";
 pub const ENTRY_CORRECT_PATH: &str = "/api/v1/attendance/entries/{entry_id}/correct";
 pub const ENTRY_VOID_PATH: &str = "/api/v1/attendance/entries/{entry_id}/void";
+
+fn read_scope(p: &Principal) -> CallerScope {
+    CallerScope {
+        org_id: *p.org_id.as_uuid(),
+        user_id: *p.user_id.as_uuid(),
+        branch_ids: vec![],
+        org_wide: false,
+    }
+}
+
+fn read_limit(limit: Option<usize>) -> Result<Option<usize>, RestError> {
+    if limit.is_some_and(|limit| !(1..=RECORDS_PAGE_LIMIT).contains(&limit)) {
+        return Err(RestError::malformed_query());
+    }
+    Ok(limit)
+}
 
 pub(crate) fn router() -> axum::Router<AttendanceRestState> {
     axum::Router::new()
@@ -107,12 +127,7 @@ async fn days(
     AttendanceQuery(q): AttendanceQuery<DaysQuery>,
 ) -> Result<Json<DayBoard>, RestError> {
     let p = principal(&s, &h).await?;
-    let c = console_attendance_application::CallerScope {
-        org_id: *p.org_id.as_uuid(),
-        user_id: *p.user_id.as_uuid(),
-        branch_ids: vec![],
-        org_wide: false,
-    };
+    let c = read_scope(&p);
     let query = BoardQuery {
         date: Some(parse_date(&q.date, "date")?),
         workplace_id: q.workplace_id,
@@ -122,19 +137,12 @@ async fn days(
         all_rows: q.rows.is_some(),
         mark: q.mark,
         cursor: q.cursor,
-        limit: q.limit,
+        limit: read_limit(q.limit)?,
     };
     let (org, actor) = (p.org_id, *p.user_id.as_uuid());
     let board = s
         .store
-        .day_board_with_access(&c, query, move |tx| {
-            Box::pin(async move {
-                let facts = console_platform_authz::cedar_pbac::visible::load_facts(tx, org, actor)
-                    .await
-                    .map_err(access::unavailable)?;
-                access::board_access(facts, org).map(Some)
-            })
-        })
+        .day_board_with_access(&c, query, access::load!(org, actor))
         .await
         .map_err(RestError::schedule)?;
     let rows = || board.groups.iter().flat_map(|group| &group.rows);
@@ -168,17 +176,18 @@ async fn month(
     AttendanceQuery(q): AttendanceQuery<MonthQuery>,
 ) -> Result<Json<MonthGrid>, RestError> {
     let p = principal(&s, &h).await?;
-    let c = caller(&p, READ)?;
+    let c = read_scope(&p);
     let query = GridQuery {
         month: q.month,
         workplace_id: q.workplace_id,
         unit_id: q.unit_id,
         cursor: q.cursor,
-        limit: q.limit.unwrap_or(100),
+        limit: read_limit(q.limit)?.unwrap_or(100),
     };
+    let (org, actor) = (p.org_id, *p.user_id.as_uuid());
     let grid = s
         .store
-        .month_grid(&c, query)
+        .month_grid_with_access(&c, query, access::load!(org, actor))
         .await
         .map_err(RestError::schedule)?;
     let subjects = grid
@@ -216,10 +225,11 @@ async fn person_month(
     AttendanceQuery(q): AttendanceQuery<PersonMonthQuery>,
 ) -> Result<Json<PersonMonth>, RestError> {
     let p = principal(&s, &h).await?;
-    let c = caller(&p, READ)?;
+    let c = read_scope(&p);
+    let (org, actor) = (p.org_id, *p.user_id.as_uuid());
     let detail = s
         .store
-        .person_month(&c, id, q.month)
+        .person_month_with_access(&c, id, q.month, access::load!(org, actor))
         .await
         .map_err(RestError::schedule)?;
     audit::read(

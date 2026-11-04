@@ -6,6 +6,7 @@ use console_attendance_application::records_read::{
 };
 use console_kernel_core::OrgId;
 use console_platform_db::with_org_conn;
+use sqlx::{Postgres, Transaction};
 use time::{Date, Duration, Month};
 use uuid::Uuid;
 
@@ -13,9 +14,10 @@ use super::day::{add, day_read, evaluate_day, grid_cell};
 use super::entries::{current, history};
 use super::roster::{load_members, own_employee};
 use super::thresholds::RecordSettings;
+use super::{BoardAccessFuture, BoardReadTarget, RECORDS_PAGE_LIMIT};
 use crate::PgAttendanceStore;
 use crate::schedule::org::load_org;
-use crate::schedule::preview::{branch_of, visible};
+use crate::schedule::preview::branch_of;
 use crate::schedule::universe::{Universe, today_kst};
 use crate::schedule::{Closes, ScheduleStoreError, codes};
 
@@ -45,11 +47,17 @@ pub struct GridQuery {
 }
 
 impl PgAttendanceStore {
-    pub async fn month_grid(
+    pub async fn month_grid_with_access<F>(
         &self,
         caller: &CallerScope,
         q: GridQuery,
-    ) -> Result<MonthGrid, ScheduleStoreError> {
+        load_access: F,
+    ) -> Result<MonthGrid, ScheduleStoreError>
+    where
+        F: for<'a> FnOnce(&'a mut Transaction<'_, Postgres>) -> BoardAccessFuture<'a>
+            + Send
+            + 'static,
+    {
         let caller = caller.clone();
         with_org_conn::<_, _, ScheduleStoreError>(
             &self.pool,
@@ -60,32 +68,46 @@ impl PgAttendanceStore {
                     let today = today_kst();
                     let org = load_org(tx).await?;
                     let u = Universe::load(tx, org, (first.year(), first.year())).await?;
-                    super::authorize_filters(&caller, &u, q.workplace_id, q.unit_id)?;
+                    let access = load_access(tx).await?;
+                    super::authorize_filters(&u, q.workplace_id, q.unit_id, &access)?;
                     let own = own_employee(tx, caller.user_id).await?;
                     // A person belongs to the page when placed in scope on some day of the month.
-                    let in_scope = |p: &crate::schedule::org::Person| {
-                        visible(&caller, &u, p)
-                            && q.workplace_id.is_none_or(|w| p.workplace_id == Some(w))
-                            && q.unit_id.is_none_or(|x| {
-                                p.unit.is_some_and(|unit| {
-                                    u.org.chain(unit).iter().any(|(c, _)| *c == x)
+                    let in_scope =
+                        |p: &crate::schedule::org::Person| -> Result<_, ScheduleStoreError> {
+                            Ok(q.workplace_id.is_none_or(|w| p.workplace_id == Some(w))
+                                && q.unit_id.is_none_or(|x| {
+                                    p.unit.is_some_and(|unit| {
+                                        u.org.chain(unit).iter().any(|(c, _)| *c == x)
+                                    })
                                 })
-                            })
-                    };
+                                && access(BoardReadTarget::Person {
+                                    workplace: p.workplace_id,
+                                })?)
+                        };
                     let days: Vec<Date> = (0..=(last - first).whole_days())
                         .map(|i| first + Duration::days(i))
                         .collect();
-                    let members: Vec<_> = load_members(tx, first, last, None)
-                        .await?
-                        .into_iter()
-                        .filter(|m| days.iter().any(|d| m.on(*d).is_some_and(|p| in_scope(&p))))
-                        .collect();
+                    let mut members = Vec::new();
+                    for member in load_members(tx, first, last, None).await? {
+                        let mut visible = false;
+                        for day in &days {
+                            if let Some(person) = member.on(*day)
+                                && in_scope(&person)?
+                            {
+                                visible = true;
+                                break;
+                            }
+                        }
+                        if visible {
+                            members.push(member);
+                        }
+                    }
                     let total = i64::try_from(members.len()).unwrap_or(i64::MAX);
                     let start = q
                         .cursor
                         .and_then(|c| members.iter().position(|m| m.id == c).map(|i| i + 1))
                         .unwrap_or(0);
-                    let limit = q.limit.clamp(1, 200);
+                    let limit = q.limit.clamp(1, RECORDS_PAGE_LIMIT);
                     let page: Vec<_> = members.into_iter().skip(start).take(limit + 1).collect();
                     let next_cursor = (page.len() > limit).then(|| page[limit - 1].id.to_string());
                     let page = &page[..page.len().min(limit)];
@@ -153,12 +175,18 @@ impl PgAttendanceStore {
         .await
     }
 
-    pub async fn person_month(
+    pub async fn person_month_with_access<F>(
         &self,
         caller: &CallerScope,
         employee: Uuid,
         month: String,
-    ) -> Result<PersonMonth, ScheduleStoreError> {
+        load_access: F,
+    ) -> Result<PersonMonth, ScheduleStoreError>
+    where
+        F: for<'a> FnOnce(&'a mut Transaction<'_, Postgres>) -> BoardAccessFuture<'a>
+            + Send
+            + 'static,
+    {
         let caller = caller.clone();
         with_org_conn::<_, _, ScheduleStoreError>(
             &self.pool,
@@ -169,6 +197,7 @@ impl PgAttendanceStore {
                     let today = today_kst();
                     let org = load_org(tx).await?;
                     let u = Universe::load(tx, org, (first.year(), first.year())).await?;
+                    let access = load_access(tx).await?;
                     let m = load_members(tx, first, last, Some(&[employee]))
                         .await?
                         .pop()
@@ -182,7 +211,9 @@ impl PgAttendanceStore {
                     let mut d = first;
                     while d <= last {
                         if let Some(p) = m.on(d) {
-                            if !visible(&caller, &u, &p) {
+                            if !access(BoardReadTarget::Person {
+                                workplace: p.workplace_id,
+                            })? {
                                 return Err(ScheduleStoreError::Forbidden);
                             }
                             branches.push(branch_of(&u, &p));

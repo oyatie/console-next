@@ -22,7 +22,7 @@ use super::roster::{load_members, own_employee};
 use super::thresholds::RecordSettings;
 use crate::PgAttendanceStore;
 use crate::schedule::org::{OrgModel, Person, load_org};
-use crate::schedule::preview::{branch_of, visible};
+use crate::schedule::preview::branch_of;
 use crate::schedule::universe::{Universe, today_kst};
 use crate::schedule::{Closes, ScheduleStoreError};
 
@@ -47,7 +47,7 @@ pub enum BoardReadTarget {
 pub type BoardReadAccess =
     Box<dyn Fn(BoardReadTarget) -> Result<bool, ScheduleStoreError> + Send + Sync>;
 pub type BoardAccessFuture<'a> =
-    Pin<Box<dyn Future<Output = Result<Option<BoardReadAccess>, ScheduleStoreError>> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = Result<BoardReadAccess, ScheduleStoreError>> + Send + 'a>>;
 
 pub(crate) fn group_name(org: &OrgModel, p: &Person) -> String {
     let site = p
@@ -96,15 +96,6 @@ fn classify(l: &mut Ledger, judged: bool, row: &BoardRow) {
 }
 
 impl PgAttendanceStore {
-    pub async fn day_board(
-        &self,
-        caller: &CallerScope,
-        q: BoardQuery,
-    ) -> Result<DayBoard, ScheduleStoreError> {
-        self.day_board_with_access(caller, q, |_| Box::pin(async { Ok(None) }))
-            .await
-    }
-
     pub async fn day_board_with_access<F>(
         &self,
         caller: &CallerScope,
@@ -127,32 +118,7 @@ impl PgAttendanceStore {
                     let org = load_org(tx).await?;
                     let u = Universe::load(tx, org, (date.year(), date.year())).await?;
                     let access = load_access(tx).await?;
-                    if let Some(access) = &access {
-                        for (kind, id) in [
-                            (Level::Workplace, q.workplace_id),
-                            (Level::Department, q.unit_id),
-                        ] {
-                            if let Some(id) = id {
-                                let workplace = match kind {
-                                    Level::Workplace => {
-                                        u.org.workplaces.contains_key(&id).then_some(id)
-                                    }
-                                    Level::Department => u.org.workplace_of_unit(id),
-                                    _ => None,
-                                }
-                                .ok_or(
-                                    ScheduleStoreError::NotFound(
-                                        crate::schedule::codes::SCOPE_NOT_FOUND,
-                                    ),
-                                )?;
-                                if !access(BoardReadTarget::Scope(Level::Workplace, workplace))? {
-                                    return Err(ScheduleStoreError::Forbidden);
-                                }
-                            }
-                        }
-                    } else {
-                        super::authorize_filters(&caller, &u, q.workplace_id, q.unit_id)?;
-                    }
+                    super::authorize_filters(&u, q.workplace_id, q.unit_id, &access)?;
                     let own = own_employee(tx, caller.user_id).await?;
                     let first = date
                         .replace_day(1)
@@ -169,13 +135,9 @@ impl PgAttendanceStore {
                         {
                             return Ok(false);
                         }
-                        if let Some(access) = &access {
-                            access(BoardReadTarget::Person {
-                                workplace: p.workplace_id,
-                            })
-                        } else {
-                            Ok(visible(&caller, &u, p))
-                        }
+                        access(BoardReadTarget::Person {
+                            workplace: p.workplace_id,
+                        })
                     };
                     let mut people = Vec::new();
                     for p in members.iter().filter_map(|m| m.on(date)) {

@@ -101,6 +101,16 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{invalid}");
     assert_eq!(invalid["error"]["code"], "invalid_query");
+    for path in [
+        "/api/v1/attendance/days?date=2026-10-06&limit=0",
+        "/api/v1/attendance/days?date=2026-10-06&limit=201",
+        "/api/v1/attendance/month?month=2026-10&limit=0",
+        "/api/v1/attendance/month?month=2026-10&limit=201",
+    ] {
+        let (status, invalid) = admin.call("GET", path, None).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{path}: {invalid}");
+        assert_eq!(invalid["error"]["code"], "invalid_query");
+    }
 
     let (status, saved) = admin
         .call(
@@ -113,6 +123,49 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
         )
         .await;
     assert!(status.is_success(), "{saved}");
+    let (status, board) = admin
+        .call(
+            "GET",
+            "/api/v1/attendance/days?date=2026-10-06&rows=all",
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{board}");
+    let day = board["groups"][0]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["employee_id"] == people[1])
+        .unwrap()["day"]
+        .clone();
+    assert_eq!(
+        day["intervals"],
+        json!([
+            {"start": 540, "end": 720, "minutes": 180, "category": "WORK", "recognised": true, "reason_code": "SCHEDULED_WORK", "rule_version": "ATTENDANCE_RECOGNITION_V1"},
+            {"start": 720, "end": 780, "minutes": 60, "category": "BREAK", "recognised": false, "reason_code": "SCHEDULED_BREAK", "rule_version": "ATTENDANCE_RECOGNITION_V1"},
+            {"start": 780, "end": 1080, "minutes": 300, "category": "WORK", "recognised": true, "reason_code": "SCHEDULED_WORK", "rule_version": "ATTENDANCE_RECOGNITION_V1"}
+        ])
+    );
+    let (status, person_month) = admin
+        .call(
+            "GET",
+            &format!(
+                "/api/v1/attendance/people/{}/month?month=2026-10",
+                people[1]
+            ),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{person_month}");
+    assert_eq!(
+        person_month["days"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|item| item["date"] == "2026-10-06")
+            .unwrap()["intervals"],
+        day["intervals"]
+    );
     for (query, expected_rows, expected_hidden) in [
         ("", 1, 1),
         ("&rows=all", 2, 0),
@@ -182,6 +235,19 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
     assert_eq!(status, StatusCode::FORBIDDEN, "{board}");
     assert_eq!(board["error"]["code"], "forbidden");
     assert!(board.get("issue_groups").is_none());
+    for path in [
+        "/api/v1/attendance/month?month=2026-10".to_owned(),
+        format!(
+            "/api/v1/attendance/people/{}/month?month=2026-10",
+            people[1]
+        ),
+    ] {
+        let (status, denied) = scoped.call("GET", &path, None).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{path}: {denied}");
+        assert_eq!(denied["error"]["code"], "forbidden");
+        assert!(denied.get("days").is_none());
+        assert!(denied.get("rows").is_none());
+    }
     sqlx::query("UPDATE access_grants SET status='REVOKED',revoked_at=now(),revoked_by=$2 WHERE org_id=$1 AND account_id=$2")
         .bind(org).bind(reader.as_uuid()).execute(&pool).await.unwrap();
     let (status, denied) = scoped
