@@ -157,13 +157,15 @@ for (const locale of ["ko", "en"] as const) test(`row reasons add state without 
   } finally { i18n.set("ko"); }
 });
 
+const taskCell = (markup: string) => markup.match(/<td\b[^>]*>(.*?)<\/td>/s)![1]!;
+
 test.each(["대상 제목", "명부 항목 빠짐"])("context reason omits a repeated row title: %s", reason => {
   const markup = html([item("대상 제목", { context: { reason } })]);
-  expect(markup.split("</td>")[0]).not.toContain('class="muted"');
+  expect(taskCell(markup).split(reason)).toHaveLength(reason === "대상 제목" ? 1 : 2);
 });
 
 test("identical state and context reasons appear once, and never repeat the subject", () => {
   const reason = t("home.inbox.reason.approval");
   expect(html([item("approval", { kind: "approval", context: { reason } })]).split("</td>")[0]!.match(new RegExp(reason, "g"))).toHaveLength(1);
-  expect(html([item(reason, { kind: "approval" })]).split("</td>")[0]).not.toContain('class="muted"');
+  expect(taskCell(html([item(reason, { kind: "approval", context: { reason } })]))).not.toContain(reason);
 });
