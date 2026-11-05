@@ -28,7 +28,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   detail?: (r: R) => ReactNode;
   groups?: { id: string; header: ReactNode; rows: R[] }[];
   density?: "regular" | "compact";
-  /** Keep row geometry on phones when an editing workflow depends on column alignment. */
+  /** Override the automatic phone layout: rows preserve column alignment, cards keep inline forms in view. */
   mobileLayout?: "cards" | "rows";
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,7 +37,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   const [active, setActive] = useState<string>();
   const [hasEditor, setHasEditor] = useState(false);
   const [scrollState, setScrollState] = useState({ overflows: false, clipped: false, focusable: false });
-  const rowsOnPhone = mobileLayout === "rows" || hasEditor;
+  const rowsOnPhone = mobileLayout === "rows" || (mobileLayout !== "cards" && hasEditor);
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
