@@ -86,12 +86,18 @@ test("import progress reaches the screen before any employee is committed", { ta
   const { run_id: run } = await (await previewed).json() as { run_id: string };
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
-  // Hold the second settle chunk long enough to observe the independently committed progress event.
-  psql(unique(slug), `CREATE FUNCTION pause_import_progress() RETURNS trigger LANGUAGE plpgsql AS $$
+  // Hold each chunk until the browser has observed the preceding committed counter.
+  psql(unique(slug), `CREATE TABLE import_progress_gate (chunk int PRIMARY KEY, released boolean NOT NULL DEFAULT false);
+INSERT INTO import_progress_gate(chunk) VALUES (1),(2);
+GRANT SELECT ON import_progress_gate TO console_rt;
+CREATE FUNCTION pause_import_progress() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF NEW.action='employee.import.settle' AND NEW.target_id='${run}' AND
-   (SELECT count(*) FROM public.audit_events WHERE target_id=NEW.target_id AND action='employee.import.settle')=2 THEN
-  PERFORM pg_sleep(15);
+ IF NEW.action='employee.import.settle' AND NEW.target_id='${run}' THEN
+  WHILE EXISTS (SELECT 1 FROM public.import_progress_gate WHERE chunk=
+    (SELECT count(*) FROM public.audit_events WHERE target_id=NEW.target_id AND action='employee.import.settle')
+    AND NOT released) LOOP
+   PERFORM pg_sleep(0.05);
+  END LOOP;
  END IF;
  RETURN NEW;
 END $$;
@@ -99,16 +105,29 @@ CREATE TRIGGER pause_import_progress AFTER INSERT ON audit_events FOR EACH ROW E
   try {
     await admin.getByRole("button", { name: /^명부 반영: 신규 300명/ }).click();
     const progress = admin.getByRole("progressbar", { name: "명부 반영 중" });
-    await shotSet(admin, "import-started");
-    await forgetResize(admin);
+    await expect(progress).toHaveText(/0행\s*\/\s*300행/, { timeout: 60_000 });
+    psql(unique(slug), "UPDATE import_progress_gate SET released=true WHERE chunk=1;");
     await expect(progress).toHaveText(/100행\s*\/\s*300행/, { timeout: 60_000 });
     expect(await headcount(api), "progress must not expose the uncommitted roster").toBe(0);
     await atPhoneWidth(admin, () => fits(admin, "live import progress"));
-    await shotSet(admin, "import-live-progress");
-    await forgetResize(admin);
+    // Capture the job itself: the full 300-row preview exceeds Firefox's screenshot height limit.
+    if (process.env.STRUCT_SHOTS) {
+      const card = admin.locator('[aria-labelledby="import-job"]');
+      for (const width of [1440, 390]) {
+        await admin.setViewportSize({ width, height: 900 });
+        for (const theme of ["light", "dark"]) {
+          await admin.locator("html").evaluate((el, mode) => { el.dataset.theme = mode; }, theme);
+          await fits(admin, "live import progress");
+          await card.screenshot({ path: `${process.env.STRUCT_SHOTS}/import-live-progress--${width}-${theme}.png` });
+        }
+      }
+    }
+    psql(unique(slug), "UPDATE import_progress_gate SET released=true WHERE chunk=2;");
     await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });
     expect(await headcount(api)).toBe(300);
   } finally {
-    psql(unique(slug), "DROP TRIGGER pause_import_progress ON audit_events; DROP FUNCTION pause_import_progress();");
+    psql(unique(slug), "UPDATE import_progress_gate SET released=true;");
+    await expect.poll(async () => (await (await api(`/employees/import/${run}/apply`)).json()).state, { timeout: 60_000 }).toMatch(/^(done|failed)$/);
+    psql(unique(slug), "DROP TRIGGER pause_import_progress ON audit_events; DROP FUNCTION pause_import_progress(); DROP TABLE import_progress_gate;");
   }
 });

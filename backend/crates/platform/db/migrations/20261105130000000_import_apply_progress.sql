@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
--- migration-class: expand
+-- migration-class: contract — Register progress in the existing realtime topic map.
+-- contract-of: 0312
 -- Counts commit independently of the atomic employee import transaction.
 SET LOCAL lock_timeout = '2s';
 CREATE TABLE import_apply_progress (
@@ -23,3 +24,6 @@ CREATE POLICY org_isolation ON import_apply_progress
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::UUID);
 REVOKE ALL ON import_apply_progress FROM PUBLIC, console_rt;
 GRANT SELECT, INSERT, UPDATE ON import_apply_progress TO console_rt;
+
+INSERT INTO realtime_topic_map (target_type, action, resource_type, carries_id)
+VALUES ('data_import_run', 'data_import.apply.progress', 'import_run', true);

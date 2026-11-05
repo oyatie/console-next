@@ -266,8 +266,11 @@ impl HrService {
                         job: Some(job.clone()),
                     };
                     settle_chunk(org, actor, run_id, chunk)(tx).await?;
-                    if !last {
-                        apply_progress::publish(&progress_pool, org, job.clone()).await?;
+                    if !last
+                        && let Err(error) = apply_progress::publish(&progress_pool, org, job.clone()).await
+                    {
+                        tracing::warn!(org = %org, run = %run_id, code = error.code, "import apply progress could not be published");
+                        metrics::counter!("hr_import_apply_progress_failures_total").increment(1);
                     }
                 }
                 let report = read_job(tx, *org.as_uuid(), run_id).await?
