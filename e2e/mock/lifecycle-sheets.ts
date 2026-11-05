@@ -45,6 +45,7 @@ export const moveDetail: S["EmployeeDetail"] = {
 /** Supporting reads stay with this lane; the shared mockScreen owns the authenticated shell. */
 export async function mockLifecycleSheets(page: Page, screen: Screen) {
   if (screen.key !== "lifecycle-sheet" && screen.key !== "lifecycle-menu") return;
+  await mockRoute(page, "get", "/api/v1/hr/certificates/precondition", { status: 200, json: { settings_configured: true, reason_code: null } });
   const onLeave = screen.key === "lifecycle-menu";
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities, { feature: "employee_directory_manage", permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false }] } });
   await mockRoute(page, "get", "/api/v1/employees/{id}", { status: 200, json: onLeave ? { ...moveDetail, employee: { ...moveDetail.employee, status: "ON_LEAVE" }, allowed_events: [] } : moveDetail });

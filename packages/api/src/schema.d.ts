@@ -7299,6 +7299,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hr/certificates/precondition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read certificate setup readiness for one employee
+         * @description The certificate_issue Cedar action uses canonical live person and access facts. Returns no settings or seal payload.
+         */
+        get: operations["getCertificatePrecondition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hr/certificates/{id}": {
         parameters: {
             query?: never;
@@ -14630,6 +14650,8 @@ export interface components {
         AccessEffective: {
             /** @description Server Cedar decisions for tenant-wide commands. Missing decisions never admit a command. */
             decisions?: {
+                /** @description Existing certificate_settings_manage Cedar action over the tenant; no settings payload. */
+                certificate_settings_manage?: boolean;
                 /** @description Either hr_basic edit or appointment edit over the tenant, decided by the bulk_appointment Cedar action. */
                 bulk_appointment?: boolean;
             };
@@ -17031,6 +17053,11 @@ export interface components {
                 replaces_id: string | null;
             }[];
             next_cursor: string | null;
+        };
+        CertificatePrecondition: {
+            settings_configured: boolean;
+            /** @enum {string|null} */
+            reason_code: "certificate_settings_required" | "certificate_facts_missing" | null;
         };
         CertificateSettings: {
             prefix: string;
@@ -45375,6 +45402,39 @@ export interface operations {
             };
             /** @description certificate_invalid or validation; no business side effect */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getCertificatePrecondition: {
+        parameters: {
+            query: {
+                employee_id: components["schemas"]["Uuid"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settings readiness only; issuance rechecks the facts in its transaction. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificatePrecondition"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Employee absent or belongs to another tenant. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

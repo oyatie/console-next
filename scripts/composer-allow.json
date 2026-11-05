@@ -122,8 +122,6 @@
     "apps/web/src/features/people/ui/account-sign-in-id.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [147c75d9f4e17982743e]",
     "apps/web/src/features/people/ui/certificate-page.tsx: composer.verb: parallel governed frame; use Composer's typed action and canonical dismiss [7d10cb0f665b55a857ed]",
     "apps/web/src/features/people/ui/certificate-page.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [ae489cbc16a4486c721b]",
-    "apps/web/src/features/people/ui/certificates-page.tsx: composer.verb: parallel governed frame; use Composer's typed action and canonical dismiss [180110cc0d4216d082fc]",
-    "apps/web/src/features/people/ui/certificates-page.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [7a18b076a510cf11175f]",
     "apps/web/src/features/people/ui/grid-page.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [1ef12c2a7fad870b2194]",
     "apps/web/src/features/people/ui/grid-page.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [b49ed58c4a867876a0c7]",
     "apps/web/src/features/people/ui/masked-value.tsx: composer.verb: noncanonical dismiss label; use Composer's typed action and canonical dismiss [54a0c0a57344c98dbc32]",

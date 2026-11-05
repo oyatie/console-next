@@ -9,6 +9,7 @@ use console_platform_authz::access::{
     AccessEngineError, AccessSlice, Domain, Enforcement, Level, NodePath, action_group,
     cedar::BULK_APPOINTMENT, load_access_subject, load_tenant_phase,
 };
+use console_platform_authz::cedar_pbac::actions::certificates::SETTINGS_MANAGE;
 use console_platform_db::with_org_conn;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -64,15 +65,17 @@ async fn effective_of(
     let support_ref = console_platform_request_context::current_audit_context()
         .map(|context| context.trace.trace_id().to_owned());
     let slice = fail_closed_decision(AccessSlice::compile(&subject), support_ref.as_deref());
-    let decisions = account_active
-        .then(|| {
-            let decision = slice
-                .as_ref()?
-                .allows(BULK_APPOINTMENT, &NodePath::tenant(org));
-            fail_closed_decision(decision, support_ref.as_deref())
-        })
-        .flatten()
-        .map_or_else(|| json!({}), |allowed| json!({BULK_APPOINTMENT: allowed}));
+    let mut decisions = serde_json::Map::new();
+    if account_active && let Some(slice) = slice.as_ref() {
+        for action in [BULK_APPOINTMENT, SETTINGS_MANAGE] {
+            if let Some(allowed) = fail_closed_decision(
+                slice.allows(action, &NodePath::tenant(org)),
+                support_ref.as_deref(),
+            ) {
+                decisions.insert(action.to_owned(), json!(allowed));
+            }
+        }
+    }
     let filter = ListFilter {
         account_id: Some(account),
         ..ListFilter::default()

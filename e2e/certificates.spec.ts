@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { soloTenant, apiAs, faultNext } from "./chaos";
@@ -6,6 +7,8 @@ import { go, kstDate, firstSignIn, chooseRadio } from "./flows";
 import { inviteAccount } from "./access-flows";
 import { setupCompany } from "./setup-flows";
 import { fillRegister, pressRegister, openRegistered } from "./helpers/register";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("a solo HR operator configures, issues, recovers a lost answer, reissues and voids a certificate", async ({ browser }) => {
   const admin = await soloTenant(browser, "certificates", "증명서시험");
@@ -19,10 +22,9 @@ test("a solo HR operator configures, issues, recovers a lost answer, reissues an
   await admin.getByLabel(/^일련번호 자릿수/).fill("6");
   await admin.getByLabel(/^직인 표기/).fill("증명서시험 대표이사");
   const saved = admin.waitForResponse((r) => r.url().endsWith("/api/v1/hr/certificate-settings") && r.request().method() === "PUT");
-  await admin.getByRole("button", { name: "설정 저장" }).click();
+  await admin.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
   expect((await saved).status()).toBe(200);
-  await expectAccessible(admin, "certificate issuer settings");
-  await admin.getByRole("dialog").getByRole("button", { name: "닫기", exact: true }).click();
+  await expect(admin.getByRole("dialog")).toBeHidden();
   await expectAccessible(admin, "certificate register after settings save");
 
   await go(admin, "/people/new");
@@ -77,7 +79,8 @@ test("a solo HR operator configures, issues, recovers a lost answer, reissues an
   const lowerCall = apiCaller(lower);
   await lower.reload();
   await go(lower, "/people/certificates");
-  await expect(lower.getByText("이 범위의 증명서 권한이 없습니다. 권한 관리자에게 요청하십시오.")).toBeVisible();
+  await expect(lower.getByRole("button", { name: t("common.denied.request"), exact: true })).toBeVisible();
+  await expect(lower.getByRole("button", { name: t("empDoc.certificate.settings"), exact: true })).toHaveCount(0);
   const certificateId = page.items[0]!.id;
   for (const [method, path, body] of [
     ["GET", "/api/v1/hr/certificates", undefined],

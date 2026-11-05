@@ -36,7 +36,7 @@ export function FileDrop({ label, hint, accept, maxBytes, multiple = false, onFi
     const wrong = files.find((f) => !accept.some((a) => a.mime === f.type || f.name.toLowerCase().endsWith(a.ext)));
     const big = files.find((f) => f.size > maxBytes);
     if (wrong) return setRefused(t("uiFileDrop.wrongType", { name: wrong.name, types }));
-    if (big) return setRefused(t("uiFileDrop.tooLarge", { name: big.name, mb: fmtNumber(Math.floor(maxBytes / 1048576)) }));
+    if (big) return setRefused(t("uiFileDrop.tooLarge", { name: big.name, mb: fmtNumber(maxBytes / 1048576) }));
     setRefused(null);
     onFiles(files);
   };
@@ -61,7 +61,7 @@ export function FileDrop({ label, hint, accept, maxBytes, multiple = false, onFi
       >
         <FileUp size={24} aria-hidden className={s.icon} />
         <span className={s.label} id={`${id}-l`}>{label}</span>
-        <span className={s.hint}>{busy ?? hint ?? t("uiFileDrop.hint", { types, mb: fmtNumber(Math.floor(maxBytes / 1048576)) })}</span>
+        <span className={s.hint}>{busy ?? hint ?? t("uiFileDrop.hint", { types, mb: fmtNumber(maxBytes / 1048576) })}</span>
         <button type="button" className="btn btn--primary" disabled={busy != null} onClick={() => input.current?.click()} aria-describedby={`${id}-l`}>
           {t(multiple ? "uiFileDrop.pickMany" : "uiFileDrop.pick")}
         </button>
