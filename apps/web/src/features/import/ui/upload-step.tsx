@@ -34,6 +34,7 @@ export function UploadStep({ paste = false, onPreview }: { paste?: boolean; onPr
   const [mode, setMode] = useState<"file" | "paste">(paste ? "paste" : "file");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [pickedName, setPickedName] = useState("");
   const chosen = useRef<File | null>(null);
   const [kind, setKind] = useState<WorkbookKind | null>(null);
   const upload = useCommand({ forget: true, run: async () => {
@@ -46,6 +47,7 @@ export function UploadStep({ paste = false, onPreview }: { paste?: boolean; onPr
     chosen.current = f;
     upload.reset();
     setFile(f);
+    setPickedName(f.name);
     setKind(null);
     try {
       const detected = await sniff(f);
@@ -73,7 +75,7 @@ export function UploadStep({ paste = false, onPreview }: { paste?: boolean; onPr
           {(f) => <TextArea {...f} value={text} onChange={(e) => { if (upload.isPending) return; setText(e.target.value); upload.reset(); }} spellCheck={false} />}
         </Field> : <>
         <FileDrop label={t("import.file")} accept={FORMATS} maxBytes={MAX_BYTES} onFiles={(f) => void choose(f)} busy={upload.isPending ? t("import.reading") : undefined}>
-          {file && <p className="muted">{t("import.chosen", { name: chosen.current?.name ?? file.name })}</p>}
+          {file && <p className="muted">{t("import.chosen", { name: pickedName })}</p>}
         </FileDrop>
         </>}
         {problem && <FileProblem kind={problem} />}
