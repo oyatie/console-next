@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { EntitySetupResult, LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { BIZ_KIND, REPRESENTATION, label } from "../../../lib/labels";
-import { readDelimited, readXlsx, type Sheet } from "../../../lib/sheet-file";
+import { decodeSheetText, readDelimited, readXlsx, type Sheet } from "../../../lib/sheet-file";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
@@ -52,7 +52,7 @@ function EntityBulkEditor({ paste, canAct }: { paste: boolean; canAct: boolean }
     setSheets(data); setSheet(0); setHeader(0); setRows(null); setDry(null); setDone(null);
     setColumns(guessEntityColumns(data[0]?.rows[0] ?? [], words));
   };
-  const read = useCommand({ run: async (file: File) => /\.xlsx$/i.test(file.name) ? readXlsx(await file.arrayBuffer()) : [{ name: file.name, rows: readDelimited(await file.text()) }], onSuccess: load, forget: true });
+  const read = useCommand({ run: async (file: File) => /\.xlsx$/i.test(file.name) ? readXlsx(await file.arrayBuffer()) : [{ name: file.name, rows: readDelimited(decodeSheetText(await file.arrayBuffer()).text) }], onSuccess: load, forget: true });
   const missing = rows?.reduce((n, r) => n + bulkGaps(r, heads).length, 0) ?? 0;
   const revising = rows?.some((r) => r.op === "REVISE_ENTITY" || r.op === "REVISE_WORKPLACE");
   const ops = useMemo(() => missing ? [] : (rows ?? []).map((row) => entityRowOp(row, heads)), [rows, heads, missing]);

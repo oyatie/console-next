@@ -13,13 +13,13 @@ export const enImport: Partial<Record<keyof typeof koImport, string>> = {
   "import.step.dryrun": "Dry run",
   "import.step.done": "Applied",
 
-  "import.file": "Employee roster Excel file",
+  "import.file": "Employee roster file (.xlsx, .csv)",
   "import.chosen": "Selected file: {name}",
   "import.reading": "Reading the file",
   "import.protected.title": "This file is password- or DRM-protected",
   "import.protected.body": "A locked file cannot be read. Open it in Excel and remove the password (File › Info › Protect Workbook › Encrypt with Password), or save a copy with its document protection (DRM) removed as an Excel Workbook (.xlsx), then import it again.",
-  "import.unreadable.title": "This cannot be read as an .xlsx file",
-  "import.unreadable.body": "The file is named .xlsx but holds another format or is damaged. Open it in Excel, save it again as an Excel Workbook (.xlsx), then upload it.",
+  "import.unreadable.title": "The roster file could not be read",
+  "import.unreadable.body": "This .xlsx or CSV (UTF-8, CP949 or EUC-KR) file could not be read. If it opens, copy the employee rows and use “Paste a list” above.",
   "import.preview": "Preview roster",
   "import.block.file": "Select a file",
 

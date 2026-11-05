@@ -16,13 +16,13 @@ export const koImport = {
   "import.step.done": "반영 완료",
 
   // Upload
-  "import.file": "직원 명부 엑셀 파일",
+  "import.file": "직원 명부 파일 (.xlsx, .csv)",
   "import.chosen": "선택한 파일: {name}",
   "import.reading": "파일을 읽는 중입니다",
   "import.protected.title": "암호나 문서 보안(DRM)이 걸린 파일입니다",
   "import.protected.body": "잠긴 파일은 읽을 수 없습니다. 엑셀에서 파일을 열어 암호를 해제하거나(파일 › 정보 › 통합 문서 보호 › 암호 설정) 문서 보안(DRM)을 해제한 사본을 Excel 통합 문서(.xlsx)로 저장해 다시 가져오십시오.",
-  "import.unreadable.title": ".xlsx 파일로 읽을 수 없습니다",
-  "import.unreadable.body": "이름만 .xlsx이고 내용은 다른 형식이거나 손상된 파일입니다. 엑셀에서 열어 Excel 통합 문서(.xlsx)로 다시 저장한 다음 올리십시오.",
+  "import.unreadable.title": "명부 파일을 읽을 수 없습니다",
+  "import.unreadable.body": ".xlsx 또는 CSV(UTF-8·CP949·EUC-KR) 파일을 읽지 못했습니다. 파일이 열리면 직원 목록을 복사해 위의 「목록 붙여넣기」로 가져오십시오.",
   "import.preview": "명부 미리보기",
   "import.block.file": "파일을 선택하십시오",
 

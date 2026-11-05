@@ -19,7 +19,7 @@ import { entityPrefix, importPlan } from "../domain/import-plan";
 import { entityOps, openQuestions, orgOps, ready, emptyAnswers, wpRef, type SiteAnswers } from "../domain/ops";
 import { planCounts } from "../domain/plan";
 import { entityValues, openPicks, rowEntity, workplaceValues, type Pick } from "../domain/values";
-import { readDelimited, readXlsx, type Sheet } from "../../../lib/sheet-file";
+import { decodeSheetText, readDelimited, readXlsx, type Sheet } from "../../../lib/sheet-file";
 import { BulkHead } from "./bulk-head";
 import { CommittedReceipt } from "./committed";
 import { ImportColumns } from "./import-columns";
@@ -41,7 +41,7 @@ const MAX_BYTES = 10 * 1048576;
 
 async function readFile(f: File): Promise<Sheet[]> {
   if (/\.xlsx$/i.test(f.name)) return (await readXlsx(await f.arrayBuffer())).filter((x) => x.rows.length > 0);
-  return [{ name: f.name, rows: readDelimited(await f.text()) }];
+  return [{ name: f.name, rows: readDelimited(decodeSheetText(await f.arrayBuffer()).text) }];
 }
 
 /** S7 org sheet import: file → columns → values (exact names only) → preview → apply, one undo for the whole import. */

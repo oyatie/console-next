@@ -33,7 +33,7 @@ export function FileDrop({ label, hint, accept, maxBytes, multiple = false, onFi
   const take = (list: FileList | null) => {
     const files = [...(list ?? [])].slice(0, multiple ? undefined : 1);
     if (files.length === 0) return;
-    const wrong = files.find((f) => !accept.some((a) => a.mime === f.type));
+    const wrong = files.find((f) => !accept.some((a) => a.mime === f.type || f.name.toLowerCase().endsWith(a.ext)));
     const big = files.find((f) => f.size > maxBytes);
     if (wrong) return setRefused(t("uiFileDrop.wrongType", { name: wrong.name, types }));
     if (big) return setRefused(t("uiFileDrop.tooLarge", { name: big.name, mb: fmtNumber(Math.floor(maxBytes / 1048576)) }));

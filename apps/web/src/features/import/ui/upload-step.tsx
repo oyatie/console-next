@@ -7,7 +7,7 @@ import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { pastedWorkbook } from "../../../lib/sheet-paste";
+import { csvWorkbook, pastedWorkbook } from "../../../lib/sheet-paste";
 import { FileDrop } from "../../../ui/file-drop/file-drop";
 import { MAX_BYTES, preview, refusedKind, sniff } from "../api";
 import type { ImportPreview } from "../domain/contract";
@@ -17,7 +17,7 @@ import { importError } from "../present";
 /** What was uploaded: kept in memory so a remapped sheet or an expired run is read again without choosing the file twice. */
 export type Source = { file: File; start: string; end: string };
 
-const XLSX = [{ mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ext: ".xlsx" }] as const;
+const FORMATS = [{ mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ext: ".xlsx" }, { mime: "text/csv", ext: ".csv" }] as const;
 
 /** Why a chosen file cannot be read, in words that say how to get a readable copy (G9: never a dead end). */
 function FileProblem({ kind }: { kind: Exclude<WorkbookKind, "xlsx"> }) {
@@ -34,6 +34,7 @@ export function UploadStep({ paste = false, onPreview }: { paste?: boolean; onPr
   const [mode, setMode] = useState<"file" | "paste">(paste ? "paste" : "file");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [pickedName, setPickedName] = useState("");
   const chosen = useRef<File | null>(null);
   const [kind, setKind] = useState<WorkbookKind | null>(null);
   const upload = useCommand({ forget: true, run: async () => {
@@ -46,9 +47,18 @@ export function UploadStep({ paste = false, onPreview }: { paste?: boolean; onPr
     chosen.current = f;
     upload.reset();
     setFile(f);
+    setPickedName(f.name);
     setKind(null);
-    const detected = await sniff(f);
-    if (chosen.current === f) setKind(detected);
+    try {
+      const detected = await sniff(f);
+      const source = detected === "unreadable" && /\.csv$/i.test(f.name) ? await csvWorkbook(f) : f;
+      if (chosen.current === f) {
+        setFile(source);
+        setKind(source === f ? detected : "xlsx");
+      }
+    } catch {
+      if (chosen.current === f) setKind("unreadable");
+    }
   };
   // The server tells an unreadable workbook apart too (an upload that skipped the sniff, or a wrapper it missed).
   const refused = refusedKind(upload.error);
@@ -64,8 +74,8 @@ export function UploadStep({ paste = false, onPreview }: { paste?: boolean; onPr
         {mode === "paste" ? <Field label={t("setup.paste.input")} required>
           {(f) => <TextArea {...f} value={text} onChange={(e) => { if (upload.isPending) return; setText(e.target.value); upload.reset(); }} spellCheck={false} />}
         </Field> : <>
-        <FileDrop label={t("import.file")} accept={XLSX} maxBytes={MAX_BYTES} onFiles={(f) => void choose(f)} busy={upload.isPending ? t("import.reading") : undefined}>
-          {file && <p className="muted">{t("import.chosen", { name: file.name })}</p>}
+        <FileDrop label={t("import.file")} accept={FORMATS} maxBytes={MAX_BYTES} onFiles={(f) => void choose(f)} busy={upload.isPending ? t("import.reading") : undefined}>
+          {file && <p className="muted">{t("import.chosen", { name: pickedName })}</p>}
         </FileDrop>
         </>}
         {problem && <FileProblem kind={problem} />}
