@@ -2,7 +2,6 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
-pub mod rights;
 mod state;
 pub use openapi::OPENAPI_FRAGMENT;
 pub use state::ComplianceRestState;

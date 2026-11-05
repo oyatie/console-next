@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Tenant-session self-service privacy rights. Intake administration is separate.
-use super::{ComplianceRestState, RestError, principal_from_headers};
+use crate::http::error::ApiError;
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{Query, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     routing::{get, post},
 };
 use console_compliance_adapter_postgres::rights;
-use console_compliance_domain::rights::{Controller, Filing};
+use console_compliance_adapter_postgres::rights::{Controller, Filing, Kind, due};
 use console_platform_auth::{
     MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind,
 };
+use console_platform_authz::Principal;
 use console_platform_authz::cedar_pbac::visible::load_facts;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -21,16 +22,28 @@ pub const MINE: &str = "/api/v1/privacy/rights-requests/mine";
 pub const OPTIONS: &str = "/api/v1/privacy/rights-requests/options";
 pub const ROUTE_PATHS: &[&str] = &[PATH, MINE, OPTIONS];
 
-pub fn router(state: ComplianceRestState) -> Router {
-    let verifier = state.jwt_verifier.clone();
-    let pool = state.store.pool().clone();
+#[derive(Clone)]
+struct PrivacyState {
+    store: console_compliance_adapter_postgres::PgComplianceStore,
+    passkey_step_up: Option<console_platform_auth::PasskeyService>,
+}
+
+pub(crate) fn router(
+    pool: sqlx::PgPool,
+    jwt_verifier: Option<console_platform_auth::JwtVerifier>,
+    passkey_step_up: Option<console_platform_auth::PasskeyService>,
+) -> Router {
+    let state = PrivacyState {
+        store: console_compliance_adapter_postgres::PgComplianceStore::new(pool.clone()),
+        passkey_step_up,
+    };
     console_platform_request_context::with_request_context(
         Router::new()
             .route(MINE, get(mine))
             .route(OPTIONS, get(options))
             .route(PATH, post(file))
             .with_state(state),
-        verifier,
+        jwt_verifier,
         pool,
     )
 }
@@ -42,18 +55,22 @@ struct Page {
 #[serde(deny_unknown_fields)]
 struct File {
     controller: Controller,
-    kinds: Vec<console_compliance_domain::rights::Kind>,
+    kinds: Vec<Kind>,
     #[serde(default)]
     detail: String,
     step_up: Option<MobilePasskeyStepUpEnvelope>,
 }
-fn unavailable(_: impl std::fmt::Display) -> RestError {
-    RestError::unavailable("privacy request storage unavailable")
+fn unavailable(_: impl std::fmt::Display) -> ApiError {
+    ApiError::new(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "unavailable",
+        "privacy request storage unavailable",
+    )
 }
-fn store_error(error: console_compliance_adapter_postgres::PgComplianceError) -> RestError {
+fn store_error(error: console_compliance_adapter_postgres::PgComplianceError) -> ApiError {
     use console_compliance_adapter_postgres::PgComplianceError;
     match error {
-        PgComplianceError::Domain(e) => RestError::new(
+        PgComplianceError::Domain(e) => ApiError::new(
             StatusCode::UNPROCESSABLE_ENTITY,
             e.code.unwrap_or("request_invalid"),
             e.message,
@@ -62,11 +79,10 @@ fn store_error(error: console_compliance_adapter_postgres::PgComplianceError) ->
     }
 }
 async fn mine(
-    State(state): State<ComplianceRestState>,
-    headers: HeaderMap,
+    State(state): State<PrivacyState>,
+    Extension(actor): Extension<Principal>,
     Query(page): Query<Page>,
-) -> Result<Json<Value>, RestError> {
-    let actor = principal_from_headers(&state, &headers).await?;
+) -> Result<Json<Value>, ApiError> {
     let mut tx = rights::begin(state.store.pool(), actor.org_id)
         .await
         .map_err(unavailable)?;
@@ -77,7 +93,7 @@ async fn mine(
         .authorize_privacy_request_read(*actor.user_id.as_uuid())
         .map_err(unavailable)?
     {
-        return Err(RestError::new(
+        return Err(ApiError::new(
             StatusCode::FORBIDDEN,
             "forbidden",
             "privacy request read refused",
@@ -90,22 +106,24 @@ async fn mine(
     Ok(Json(page))
 }
 async fn file(
-    State(state): State<ComplianceRestState>,
-    headers: HeaderMap,
+    State(state): State<PrivacyState>,
+    Extension(actor): Extension<Principal>,
     Json(body): Json<File>,
-) -> Result<Json<Value>, RestError> {
-    let actor = principal_from_headers(&state, &headers).await?;
+) -> Result<Json<Value>, ApiError> {
     let step_up = body.step_up.ok_or_else(|| {
-        RestError::new(
+        ApiError::new(
             StatusCode::FORBIDDEN,
             "passkey_step_up_required",
             "a fresh passkey assertion is required",
         )
     })?;
-    let verifier = state
-        .passkey_step_up
-        .as_ref()
-        .ok_or_else(|| RestError::unavailable("passkey verification unavailable"))?;
+    let verifier = state.passkey_step_up.as_ref().ok_or_else(|| {
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "unavailable",
+            "passkey verification unavailable",
+        )
+    })?;
     let input = Filing {
         controller: body.controller,
         kinds: body.kinds,
@@ -127,7 +145,7 @@ async fn file(
         )
         .await
         .map_err(|_| {
-            RestError::new(
+            ApiError::new(
                 StatusCode::FORBIDDEN,
                 "passkey_step_up_failed",
                 "passkey verification failed",
@@ -144,7 +162,7 @@ async fn file(
         .authorize_privacy_request(*actor.user_id.as_uuid(), hr)
         .map_err(unavailable)?
     {
-        return Err(RestError::new(
+        return Err(ApiError::new(
             StatusCode::UNPROCESSABLE_ENTITY,
             "no_employee_record",
             "no linked employee record",
@@ -174,13 +192,11 @@ async fn file(
 struct OptionsQuery {}
 
 async fn options(
-    State(state): State<ComplianceRestState>,
-    headers: HeaderMap,
+    State(state): State<PrivacyState>,
+    Extension(actor): Extension<Principal>,
     Query(_): Query<OptionsQuery>,
-) -> Result<Json<Value>, RestError> {
-    use console_compliance_domain::rights::{Kind, due};
+) -> Result<Json<Value>, ApiError> {
     use time::{OffsetDateTime, UtcOffset};
-    let actor = principal_from_headers(&state, &headers).await?;
     let mut tx = rights::begin(state.store.pool(), actor.org_id)
         .await
         .map_err(unavailable)?;
@@ -192,7 +208,7 @@ async fn options(
         .authorize_privacy_request_read(subject)
         .map_err(unavailable)?
     {
-        return Err(RestError::new(
+        return Err(ApiError::new(
             StatusCode::FORBIDDEN,
             "forbidden",
             "privacy request read refused",
@@ -218,7 +234,7 @@ async fn options(
         let clock = due(*kind, today, &register).map_err(unavailable)?;
         Ok(json!({"code":kind, "due_on":clock.as_ref().and_then(|c| c.on).map(|on| on.to_string()),
             "without_delay":clock.is_some_and(|c| c.without_delay)}))
-    }).collect::<Result<Vec<_>, RestError>>()?;
+    }).collect::<Result<Vec<_>, ApiError>>()?;
     let detail_max_length = rights::detail_max_length(&mut tx, actor.org_id)
         .await
         .map_err(unavailable)?;

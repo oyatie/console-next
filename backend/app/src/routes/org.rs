@@ -18,12 +18,10 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     let (state, pool) = (deps.state, deps.pool);
     router
         .merge(
-            console_compliance_rest::rights::router(
-                console_compliance_rest::ComplianceRestState::new(
-                    console_compliance_adapter_postgres::PgComplianceStore::new(pool.clone()),
-                    state.jwt_verifier.clone(),
-                )
-                .with_passkey_step_up(state.policy_step_up.clone()),
+            crate::privacy::router(
+                pool.clone(),
+                state.jwt_verifier.clone(),
+                state.policy_step_up.clone(),
             )
             .layer(axum::Extension(
                 console_platform_request_context::record_access::outcome::Reader(
