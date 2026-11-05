@@ -889,11 +889,9 @@ async fn callback_handler(
     match handle_callback(&state, &query, &headers, &body).await {
         Ok(()) => Json(json!({ "error": 0 })).into_response(),
         Err(err) => {
-            // The ONLYOFFICE contract wants a JSON `error` body, not an HTTP
-            // status, so DocumentServer surfaces the failure to the user and
-            // retries. We keep the diagnostic in the log, not the wire.
+            // Keep the DocumentServer error body while exposing the refusal status.
             tracing::warn!(error = %err.message, code = err.code, "office callback rejected");
-            Json(json!({ "error": 1 })).into_response()
+            (err.status, Json(json!({ "error": 1, "code": err.code }))).into_response()
         }
     }
 }

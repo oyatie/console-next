@@ -9614,7 +9614,7 @@ export interface paths {
         put?: never;
         /**
          * DocumentServer force-save callback (machine, JWT-verified)
-         * @description The unauthenticated (no user principal) machine callback from DocumentServer. Verified by the ONLYOFFICE JWT plus a host-issued callback token binding it to (org, document). On status 2 (ready to save) or 6 (force-save) the produced document is fetched and stored as an IMMUTABLE new version (idempotent per editing-session key). Always responds with the ONLYOFFICE error-code JSON body (error 0 on success), never an HTTP error status.
+         * @description The unauthenticated (no user principal) machine callback from DocumentServer. Verified by the ONLYOFFICE JWT plus a host-issued callback token binding it to (org, document). On status 2 (ready to save) or 6 (force-save) the produced document is fetched and stored as an IMMUTABLE new version (idempotent per editing-session key). Responds with the ONLYOFFICE error-code JSON body (error 0 on success); rejected callbacks use the corresponding HTTP error status and include a stable machine-readable code.
          */
         post: operations["officeCallback"];
         delete?: never;
@@ -50532,14 +50532,80 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Always 200. `error` is 0 on success/ignore, non-zero on a rejected callback. */
+            /** @description Callback accepted or ignored; error is 0. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        error: number;
+                        /** @enum {integer} */
+                        error: 0;
+                    };
+                };
+            };
+            /** @description A callback token is invalid or expired, or the DocumentServer token is missing. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {integer} */
+                        error: 1;
+                        code: string;
+                    };
+                };
+            };
+            /** @description The verified callback is not a valid save request. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {integer} */
+                        error: 1;
+                        code: string;
+                    };
+                };
+            };
+            /** @description The callback could not be recorded. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {integer} */
+                        error: 1;
+                        code: string;
+                    };
+                };
+            };
+            /** @description Document storage or fetching failed. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {integer} */
+                        error: 1;
+                        code: string;
+                    };
+                };
+            };
+            /** @description Office configuration, document storage or the database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {integer} */
+                        error: 1;
+                        code: string;
                     };
                 };
             };
