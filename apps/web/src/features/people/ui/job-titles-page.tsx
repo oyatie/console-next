@@ -33,7 +33,7 @@ export function JobTitlesPage() {
     { header: t("titles.col.label"), cell: (x) => x.label, wide: true },
     { header: t("titles.col.rank"), cell: (x) => (x.grade_rank === null ? t("titles.unranked") : <span className="num">{x.grade_rank}</span>), fit: true },
     { header: t("titles.col.state"), cell: (x) => <EnumValue e={JOB_TITLE_STATUS} value={x.active ? "active" : "inactive"} />, fit: true },
-    ...(manage ? [{ header: t("titles.col.actions"), cell: (x: JobTitle) => <Toggle x={x} />, fit: true }] : []),
+    ...(manage ? [{ header: t("titles.col.actions"), cell: (x: JobTitle) => <Toggle x={x} />, card: "action" as const, fit: true }] : []),
   ];
   return (
     <div className="page">
@@ -48,7 +48,7 @@ export function JobTitlesPage() {
           <AddTitle manage={manage} />
           <section className="card" aria-labelledby="titles-list">
             <h2 id="titles-list" className="panel__title">{t("titles.list")}</h2>
-            {titles.data!.items.length ? <Table label={t("titles.list")} rows={titles.data!.items} rowId={(x) => x.id} columns={columns} /> : <EmptyState title={t("titles.none.title")} reason={t(manage ? "titles.none.manage" : "titles.none.read")} />}
+            {titles.data!.items.length ? <Table mobileLayout="cards" label={t("titles.list")} rows={titles.data!.items} rowId={(x) => x.id} columns={columns} /> : <EmptyState title={t("titles.none.title")} reason={t(manage ? "titles.none.manage" : "titles.none.read")} />}
           </section>
         </>
       }
