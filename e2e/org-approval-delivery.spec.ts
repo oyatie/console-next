@@ -24,7 +24,8 @@ for (const routeFirst of [false, true]) test(`an invited approver opens a routed
   await admin.reload();
   await go(admin, "/org");
   await revealUnit(admin, "본점");
-  await admin.keyboard.press("a");
+  await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBeTruthy();
+  await go(admin, `/org?sel=${new URL(admin.url()).searchParams.get("sel")}&act=dept-add`);
   const card = admin.getByRole("dialog", { name: "부서 신설", exact: true });
   await card.getByLabel("부서 이름").fill("결재전달부");
   await card.getByRole("button", { name: /^오늘/ }).click();
