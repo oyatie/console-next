@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
 import { en } from "./en";
 import { ko } from "./ko";
@@ -10,4 +11,8 @@ const NO_PROMISE = ["setup.remedy.security_contact_store_pending", "setup.golive
 test.each(NO_PROMISE)("regression governance-07 / company-49: %s has no copy", (id) => {
   expect(Object.hasOwn(ko, id)).toBe(false);
   expect(Object.hasOwn(en, id)).toBe(false);
+});
+
+test.each(Object.keys(ko).filter(key => key.startsWith("home.inbox.reason.")))("state reason %s has copy in both catalogs", key => {
+  expect(Object.hasOwn(en, key)).toBe(true);
 });

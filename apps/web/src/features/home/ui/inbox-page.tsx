@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { fmtDateTime } from "@console/i18n/format";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { meQuery } from "../api";
 import type { RowAction } from "./grouped-queue";
 import { InboxQueue } from "./inbox-queue";
@@ -14,9 +15,11 @@ export function InboxPage({ action }: { action?: RowAction }) {
   const me = freshOnOpen(useQuery({ ...meQuery, refetchOnMount: "always" }));
   const tab = useTabSearch(INBOX_FILTERS.map(id => ({ id })));
   const filter = inboxFilter(tab.selected);
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter }), refetchOnMount: "always" });
+  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter }), placeholderData: keepPreviousData, refetchOnMount: "always" });
+  const first = inbox.data?.pages[0];
+  const asOf = !me.isPending && me.data?.tenant?.phase !== "SETUP" && !first?.setup && !inbox.error ? first?.as_of : undefined;
   useLiveHold(!me.isPending && !!inbox.data?.pages.some(page => page.items.length > 0), true);
-  return <Page floorplan="P-03" head={{ title: t("home.inbox.title"), titleId: "inbox-title" }} q={me}>
+  return <Page floorplan="P-03" head={{ title: t("home.inbox.title"), titleId: "inbox-title", tools: asOf ? <time className="muted t-sm" dateTime={asOf}>{t("home.asOf", { time: fmtDateTime(asOf) })}</time> : undefined }} q={me}>
     {user => <InboxQueue filter={filter} action={action} setupPhase={user.tenant?.phase === "SETUP"} />}
   </Page>;
 }

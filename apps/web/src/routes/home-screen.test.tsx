@@ -14,6 +14,9 @@ const state = vi.hoisted(() => ({
   inbox: { data: undefined as { pages: { setup?: Checklist; items: Item[] }[] } | undefined, isPending: true, isError: false, isFetching: true, isFetchedAfterMount: false },
   entities: { isSuccess: false, isFetching: true, isError: false },
   units: { isSuccess: false, isFetching: true, isError: false },
+  phase: { isPending: false, isFetching: false, isError: false },
+  access: { isPending: false, isFetching: false, isError: false },
+  settings: { isPending: false, isFetching: false, isError: false },
   options: undefined as ReturnType<typeof cursorPages> | undefined,
   action: undefined as Action | undefined,
   reads: [] as { path: string; enabled: boolean }[], hold: vi.fn(),
@@ -24,14 +27,18 @@ vi.mock("@tanstack/react-query", async (original) => ({
   useInfiniteQuery: (options: ReturnType<typeof cursorPages>) => { state.options = options; return state.inbox; },
   useQuery: (options: Parameters<typeof readIdentity>[0] & { enabled: boolean }) => {
     const path = String(JSON.parse(readIdentity(options))[0]);
+    if (path === "/api/v1/access/me") return state.access;
+    if (path === "/api/v1/settings") return state.settings;
     state.reads.push({ path, enabled: options.enabled });
     return path === "/api/v1/org-units" ? state.units : state.entities;
   },
 }));
+vi.mock("../features/onboarding/ui/use-setup", () => ({ useSetupChecklist: () => ({ phaseQ: state.phase }) }));
+vi.mock("../ui/skeleton/skeleton", () => ({ ReadSkeleton: () => createElement("div", { "data-pending": "true" }) }));
 vi.mock("../lib/live/hold", () => ({ useLiveHold: (on: boolean, notice: boolean) => state.hold(on, notice) }));
 vi.mock("../features/home/Home", () => ({ Home: ({ setupPending, setup, action }: { setupPending?: boolean; setup: (c: Checklist) => ReactNode; action?: Action }) => {
   state.action = action;
-  return createElement("div", { "data-pending": String(setupPending) }, !setupPending && setup({ total: 2 } as Checklist));
+  return createElement("div", { "data-pending": String(!!setupPending) }, !setupPending && setup({ total: 2 } as Checklist));
 } }));
 vi.mock("../features/onboarding/ui/setup-home", () => ({ SetupHome: ({ c }: { c: Checklist }) => createElement("div", { "data-testid": "setup" }, c.total) }));
 vi.mock("../features/org/ui/inbox-command", () => ({ InboxCommand: ({ id, command }: { id: string; command: string }) => createElement("div", { "data-command": command, "data-record": id }) }));
@@ -41,6 +48,9 @@ const render = () => { state.reads = []; return renderToStaticMarkup(<HomeScreen
 const landed = (setup?: Checklist) => { state.inbox = { data: { pages: [{ setup, items: [] }] }, isPending: false, isError: false, isFetching: false, isFetchedAfterMount: true }; };
 beforeEach(() => {
   vi.clearAllMocks();
+  state.phase = { isPending: false, isFetching: false, isError: false };
+  state.access = { isPending: false, isFetching: false, isError: false };
+  state.settings = { isPending: false, isFetching: false, isError: false };
   state.settled = false; state.options = undefined; state.action = undefined;
   state.inbox = { data: undefined, isPending: true, isError: false, isFetching: true, isFetchedAfterMount: false };
   state.entities = { isSuccess: false, isFetching: true, isError: false };
@@ -50,7 +60,7 @@ beforeEach(() => {
 test("the first inbox and its setup references hold Home until its first complete paint", () => {
   expect(render()).toContain('data-pending="true"');
   expect(state.hold).toHaveBeenLastCalledWith(false, true);
-  expect(state.options && readIdentity(state.options)).toBe(readIdentity(cursorPages("/api/v1/me/action-inbox", { filter: "turn" })));
+  expect(state.options && readIdentity(state.options)).toBe(readIdentity(cursorPages("/api/v1/me/action-inbox", { filter: "turn", attention: "all" })));
   expect(state.options).toMatchObject({ refetchOnMount: "always" });
   expect(state.reads.every((read) => !read.enabled)).toBe(true);
   landed(checklist);
@@ -127,4 +137,21 @@ test("only painted queue rows need a live hold", () => {
   state.inbox.data!.pages[0]!.items = [item()];
   render();
   expect(state.hold).toHaveBeenLastCalledWith(true, true);
+});
+
+test.each(["phase", "access", "settings"] as const)("Home waits for its first %s read even when the inbox is refused", (source) => {
+  landed(); state.inbox.isError = true;
+  state[source] = { isPending: true, isFetching: false, isError: false };
+  expect(render()).toContain('data-pending="true"');
+  state[source] = { isPending: false, isFetching: false, isError: true };
+  expect(render()).toContain('data-pending="false"');
+});
+
+test.each(["phase", "access", "settings"] as const)("Home waits for a cached %s refresh only before its first paint", (source) => {
+  landed(); state[source].isFetching = true;
+  expect(render()).toContain('data-pending="true"');
+  state[source].isFetching = false;
+  expect(render()).toContain('data-pending="false"');
+  state[source].isFetching = true;
+  expect(render()).toContain('data-pending="false"');
 });
