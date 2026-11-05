@@ -52,7 +52,7 @@ export function GoLive() {
   });
   const changed = run.error instanceof ApiError && run.error.code === "preview_stale"
     ? (Array.isArray(run.error.details.changed_codes) ? run.error.details.changed_codes.filter((c): c is string => typeof c === "string") : []) : [];
-  const refreshing = q.isFetching || (run.error instanceof ApiError && run.error.code === "preview_stale" && q.dataUpdatedAt <= run.submittedAt);
+  const refreshing = q.isError || q.isFetching || (run.error instanceof ApiError && run.error.code === "preview_stale" && q.dataUpdatedAt <= run.submittedAt);
   const operating = q.data?.phase === "OPERATING";
   return (
     <div className="page">
@@ -138,7 +138,7 @@ export function GoLive() {
                     <Link to="/" className={buttonClass()}>{t("common.back")}</Link>
                     {p.blockers.length > 0 || (sole && !ack) || refreshing ? (
                       <DisabledReason
-                        reason={refreshing ? t("setup.golive.refreshing") : p.blockers.length > 0 ? t("setup.golive.blocked", { count: p.blockers.length }) : t("setup.golive.ackNeeded")}
+                        reason={q.isError ? t("setup.golive.refreshFailed") : refreshing ? t("setup.golive.refreshing") : p.blockers.length > 0 ? t("setup.golive.blocked", { count: p.blockers.length }) : t("setup.golive.ackNeeded")}
                         control={(c) => <Button variant="primary" {...c}>{t("setup.golive.start")}</Button>}
                       />
                     ) : (
