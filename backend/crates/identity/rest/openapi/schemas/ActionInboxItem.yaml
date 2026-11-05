@@ -15,6 +15,10 @@ required:
 - lane
 - days_remaining
 properties:
+  age_days:
+    type: integer
+    minimum: 0
+    description: Korean calendar days since this item's own creation, using the database clock; never the tenant's age.
   fold_key:
     type: string
     description: Server identity of kind, subject and source case (insurance group when present); never derived from display text.
@@ -119,7 +123,7 @@ properties:
       review_count:
         type: integer
         minimum: 0
-        description: Total visible records for this review kind, under the same reach and snapshot.
+        description: Exact visible total for this review kind under the same reach and snapshot; omitted for bounded counts.
       register:
         type: object
         required: [missing_fields]
