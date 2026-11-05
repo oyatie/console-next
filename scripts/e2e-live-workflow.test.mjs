@@ -56,3 +56,26 @@ test("the service image is the repository's pinned E2E Postgres image", () => {
   for (const name of ["chromium", "firefox"])
     assert.equal(workflow.jobs[name].services.postgres.image, compose.services.postgres.image);
 });
+
+test("route load publishes failed measurements against the served synthetic tenant on dev and nightly", () => {
+  const workflow = yaml.load(read(".github/workflows/e2e-live.yml"));
+  const job = workflow.jobs["route-load"];
+  assert.ok(job, "route-load needs a scheduled producer");
+  assert.deepEqual(job.needs, ["build"]);
+  assert.equal(job.env.E2E_SERVED, "1");
+  assert.equal(job.env.E2E_PREBUILT, "1");
+  assert.equal(job.env.E2E_PERF, "1");
+  assert.equal(job.env.E2E_WORKERS, "1");
+  assert.equal(job.services.postgres.image, workflow.jobs.chromium.services.postgres.image);
+  assert.ok(job.steps.some(step => step.uses?.startsWith("actions/download-artifact@") && step.with.name === "e2e-live-runtime"));
+  const probe = job.steps.find(step => step.run?.includes("e2e/perf/route-load.spec.ts"));
+  assert.match(probe.run, /--project=parallel/);
+  assert.match(probe.run, /--retries=0/);
+  assert.equal(probe.env.CONSOLE_DEV_POSTGRES_CONTAINER, "${{ job.services.postgres.id }}");
+  const upload = job.steps.find(step => step.with?.name === "route-load-evidence");
+  assert.equal(upload.if, "${{ always() }}");
+  assert.equal(upload.with.path, "${{ runner.temp }}/route-load/route-load.json");
+  assert.equal(upload.with["if-no-files-found"], "error");
+  assert.equal(job.env.PERF_EVIDENCE_DIR, "${{ runner.temp }}/route-load");
+  assert.ok(!job.steps.some(step => step.run?.includes("cargo build")), "reuse the candidate binary");
+});
