@@ -11,9 +11,10 @@ npm run e2e:states -- --grep 'people: loading at 390'
 ```
 
 CI plans duration-balanced shards before running this suite with Chromium headless
-shell. `timings.json` owns the five-minute shard budget, startup headroom, worker
-count and conservative default for unmeasured tests. The ten-minute global timeout
-and zero retries remain a final guard. A spec exceeding the planning budget fails
+shell. `timings.json` owns the ten-minute target, four-shard cap, startup headroom,
+worker count and conservative default for unmeasured tests. The planner stretches
+the target only within the 1080-second execution limit; the states job has a
+20-minute timeout and zero retries. A spec exceeding the execution limit fails
 with `STATES_SPEC_OVER_BUDGET` and its path; split that spec before rerunning.
 
 `states-plan` lists the runnable specs and packs whole files longest first. Every
@@ -27,9 +28,12 @@ and overlay the latest same-repository dev artifact's spec durations only when i
 worker count matches. Otherwise the committed snapshot and conservative defaults
 apply. Partial, failed, duplicate or mismatched reports cannot refresh measurements.
 CI never overwrites the committed configuration. Local measurements must not
-overwrite CI's trusted artifact. The bootstrap snapshot records 22 fully completed specs (242
-cases) from a local Chromium measurement on 2026-10-30; remaining specs use the
-conservative default until the first successful dev refresh.
+overwrite CI's trusted artifact. The committed snapshot comes from the complete
+[2026-11-05 dev states results](https://github.com/oyatie/console-next/actions/runs/42000672437):
+90 specs, 1428 passing tests, two workers. It is reproduced by `refreshTimings`
+from every shard report and matches that run's `states-timings` artifact. Only
+new specs or added cases use the conservative default. The planner regression
+adds 30 tests and 10% timing drift without extending the execution limit.
 
 Use the existing `E2E_SLOT` / `CONSOLE_WEB_PORT` environment variables to isolate
 concurrent runs. The config builds the web app once, then starts Vite preview on

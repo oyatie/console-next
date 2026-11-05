@@ -107,6 +107,7 @@ test("the real suite allows 30 added tests and ten percent timing drift within t
   assert.equal(result.status, 0, result.stderr);
   const discovered = JSON.parse(result.stdout);
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
+  assert.equal(timings.timeoutSeconds, 1080, "suite growth must fit without extending the execution timeout");
   for (const drift of [1, 1.1]) {
     const input = { ...discovered, suites: [...discovered.suites, ...report({ "states/growth.spec.ts": 30 }).suites] };
     const measured = { workers: timings.workers, specs: Object.fromEntries(Object.entries(timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * drift }])) };
