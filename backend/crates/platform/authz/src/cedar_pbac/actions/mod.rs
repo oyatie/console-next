@@ -3,6 +3,7 @@
 //! its own `permit`/`forbid` rules. A lane adds its `mod` line and one registry
 //! line below; INTEG merges them. The `action_schema` tests gate every entry.
 
+pub(crate) mod access_request_write;
 pub mod certificates;
 pub mod change_request_decide;
 pub mod exception_decide;

@@ -71,6 +71,25 @@ async fn one(tx: &mut Transaction<'_, Postgres>, org: OrgId, id: Uuid) -> Access
     out(&row)
 }
 
+async fn admit_write(
+    tx: &mut Transaction<'_, Postgres>,
+    p: &Principal,
+    operation: &str,
+    requester: Option<Uuid>,
+) -> AccessResult<()> {
+    let facts =
+        console_platform_authz::cedar_pbac::visible::load_facts(tx, p.org_id, *p.user_id.as_uuid())
+            .await?;
+    let allowed = facts
+        .authorize_access_request_write(operation, requester, p.support.is_some())
+        .map_err(AccessError::internal)?;
+    if allowed {
+        Ok(())
+    } else {
+        Err(AccessError::access_denied())
+    }
+}
+
 /// File a request (201), or answer the open one for the same screen (200).
 pub async fn create(
     s: &AccessService,
@@ -105,6 +124,7 @@ pub async fn create(
     }
     with_audits::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
         Box::pin(async move {
+            admit_write(tx, &p, "CREATE", None).await?;
             let open: Option<Uuid> = sqlx::query_scalar(
                 "SELECT id FROM access_requests WHERE org_id = $1 AND requested_by = $2 \
                   AND status = 'OPEN' AND lower(btrim(screen)) = lower($3)",
@@ -176,15 +196,7 @@ pub async fn close(s: &AccessService, p: Principal, id: Uuid, body: Close) -> Ac
             .await?;
             let (by, current) =
                 row.ok_or_else(|| AccessError::not_found("access_request_not_found", "no such request"))?;
-            let mine = by == *p.user_id.as_uuid();
-            let allowed = if status == "WITHDRAWN" {
-                mine
-            } else {
-                Actor::load(tx, &p).await?.require_some_access(Level::Edit).is_ok()
-            };
-            if !allowed {
-                return Err(AccessError::access_denied());
-            }
+            admit_write(tx, &p, &status, Some(by)).await?;
             if current != "OPEN" {
                 return Err(AccessError::conflict("access_request_closed", "the request is already closed"));
             }
