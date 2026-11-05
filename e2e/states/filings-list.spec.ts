@@ -17,7 +17,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[2], "populated");
-    await mockFilings(page);
+    await mockFilings(page, { ...filingTask, lifecycle_case_id: id(8300) });
     try {
       await page.goto("/statutory");
       await expect(page.getByText(filingTask.name, { exact: true })).toBeVisible();
@@ -29,6 +29,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       for (const value of [filingTask.employee_number!, filingTask.workplace_name!, t("statutory.NPS"), t("statutory.ACQUIRE"), fmtDate(filingTask.effective_date), t("statutory.days", { days: 3 })]) {
         await expect(row).toContainText(value);
       }
+      await expect(row.getByRole("link", { name: t("lifecycle.trail.openCase"), exact: true })).toHaveAttribute("href", /case%3A/);
       await expect(row.getByRole("button", { name: t("statutory.record"), exact: true })).toBeVisible();
       const basis = row.getByText(t("statutory.basis"), { exact: true });
       await expect(row.getByText(t("statutory.hold"), { exact: true })).not.toBeVisible();
@@ -110,7 +111,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       ))));
       await info.attach("row-heights", { body: JSON.stringify(heights), contentType: "application/json" });
       if (width === 1440) {
-        await expect.soft(filingRow(page, t("statutory.NPS"), t("statutory.ACQUIRE"))).toHaveCount(2);
+        await expect.soft(rows).toHaveCount(2);
         expect.soft(heights[0]).toBeLessThanOrEqual(65);
         expect.soft(heights[1]).toBeLessThanOrEqual(137);
         const reason = await row.evaluate((element, text) => {
@@ -140,3 +141,41 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+
+for (const sameEmployee of [false, true]) test(`filing actions remain reachable after searching ${sameEmployee ? "one employee’s filings" : "a virtualized list"} @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await mockFilings(page);
+  const tasks = Array.from({ length: 30 }, (_, index) => ({
+    ...filingTask, event_id: id(8400 + index), employee_id: id(8500 + index), name: sameEmployee ? "신고직원" : `신고직원${index}`,
+    employee_number: sameEmployee ? "FILING-0" : `FILING-${index}`, basis: { ...filingTask.basis!, applicability_citations: Array(3).fill(filingTask.basis!.citation) },
+  }));
+  const target = { ...tasks.at(-1)!, kind: "LOSE" };
+  tasks[tasks.length - 1] = target;
+  const searches: string[] = [];
+  await mockRoute(page, "get", "/api/v1/statutory/insurance-filings", request => {
+    const search = new URL(request.url()).searchParams.get("search") ?? "";
+    searches.push(search);
+    const items = tasks.filter(task => !search || task.employee_number === search);
+    return { status: 200, json: { items, total: items.length, pending: items.length, next: null } };
+  });
+  try {
+    await page.goto("/statutory");
+    const grid = page.getByRole("grid", { name: t("statutory.insurance"), exact: true });
+    await expect(grid).toContainText(tasks[0]!.name);
+    await expect(grid.getByRole("gridcell", { name: `${t("statutory.NPS")} · ${t("statutory.LOSE")}`, exact: true })).toHaveCount(0);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const row = await filingRow(page, t("statutory.NPS"), t("statutory.LOSE"), target.employee_number!);
+      await expect(row).toBeVisible();
+      await row.getByRole("button", { name: t("statutory.record"), exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toContainText(target.name);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+    }
+    expect(searches).toContain(target.employee_number);
+    await expect(page.getByRole("searchbox", { name: t("statutory.search") })).toHaveValue(target.employee_number!);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

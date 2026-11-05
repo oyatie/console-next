@@ -18,13 +18,13 @@ export const filingTask: FilingTask = {
   total_remuneration_won: null, is_request: false, acquired_on: null, loss_options: [],
 };
 
-export async function mockFilings(page: Page) {
+export async function mockFilings(page: Page, task: FilingTask = filingTask) {
   const queries: URLSearchParams[] = [];
   await mockRoute(page, "get", "/api/v1/statutory/workplaces", { status: 200, json: [{ id: id(4), name: "본사", entity_name: "예시회사" }] });
   await mockRoute(page, "get", "/api/v1/statutory/insurance-filings", request => {
     const query = new URL(request.url()).searchParams;
     queries.push(query);
-    const items = query.get("search") ? [] : query.get("state") === "DONE" ? [{ ...filingTask, completed_on: "2026-09-02", receipt_number: "RECEIPT-001", record_action: "COMPLETE" }] : [filingTask];
+    const items = query.get("search") ? [] : query.get("state") === "DONE" ? [{ ...task, completed_on: "2026-09-02", receipt_number: "RECEIPT-001", record_action: "COMPLETE" }] : [task];
     return { status: 200, json: { items, total: items.length, pending: items.length, next: null } };
   });
   return queries;
