@@ -57,8 +57,23 @@ test("the service image is the repository's pinned E2E Postgres image", () => {
     assert.equal(workflow.jobs[name].services.postgres.image, compose.services.postgres.image);
 });
 
-test("route load publishes failed measurements against the served synthetic tenant on dev and nightly", () => {
-  const workflow = yaml.load(read(".github/workflows/e2e-live.yml"));
+test("route load runs only nightly or manually without delaying live E2E", () => {
+  const live = yaml.load(read(".github/workflows/e2e-live.yml"));
+  const workflow = yaml.load(read(".github/workflows/route-load.yml"));
+  assert.deepEqual(Object.keys(workflow.on).sort(), ["schedule", "workflow_dispatch"]);
+  assert.ok(workflow.on.schedule.length);
+  assert.equal(live.jobs["route-load"], undefined);
+  assert.equal(workflow.concurrency.group, "route-load-${{ github.ref }}");
+  assert.notEqual(workflow.concurrency.group, live.concurrency.group);
+  assert.equal(workflow.concurrency["cancel-in-progress"], false);
+  const build = workflow.jobs.build;
+  assert.ok(build.steps.some(step => step.run?.includes("cargo build --release --locked -p console-app --features full,e2e-test-support")));
+  assert.ok(build.steps.some(step => step.run === "npm run build"));
+  assert.ok(build.steps.some(step => step.with?.name === "e2e-live-runtime"));
+});
+
+test("route load publishes failed measurements against the served synthetic tenant", () => {
+  const workflow = yaml.load(read(".github/workflows/route-load.yml"));
   const job = workflow.jobs["route-load"];
   assert.ok(job, "route-load needs a scheduled producer");
   assert.deepEqual(job.needs, ["build"]);
@@ -66,7 +81,8 @@ test("route load publishes failed measurements against the served synthetic tena
   assert.equal(job.env.E2E_PREBUILT, "1");
   assert.equal(job.env.E2E_PERF, "1");
   assert.equal(job.env.E2E_WORKERS, "1");
-  assert.equal(job.services.postgres.image, workflow.jobs.chromium.services.postgres.image);
+  const compose = yaml.load(read("deploy/dev/compose.e2e.yml"));
+  assert.equal(job.services.postgres.image, compose.services.postgres.image);
   assert.ok(job.steps.some(step => step.uses?.startsWith("actions/download-artifact@") && step.with.name === "e2e-live-runtime"));
   const probe = job.steps.find(step => step.run?.includes("e2e/perf/route-load.spec.ts"));
   assert.match(probe.run, /--project=parallel/);
@@ -76,6 +92,7 @@ test("route load publishes failed measurements against the served synthetic tena
   assert.equal(upload.if, "${{ always() }}");
   assert.equal(upload.with.path, "${{ runner.temp }}/route-load/route-load.json");
   assert.equal(upload.with["if-no-files-found"], "error");
-  assert.equal(job.env.PERF_EVIDENCE_DIR, "${{ runner.temp }}/route-load");
+  assert.equal(probe.env.PERF_EVIDENCE_DIR, "${{ runner.temp }}/route-load");
+  assert.equal(job.env.PERF_EVIDENCE_DIR, undefined, "runner context is only available at step scope");
   assert.ok(!job.steps.some(step => step.run?.includes("cargo build")), "reuse the candidate binary");
 });
