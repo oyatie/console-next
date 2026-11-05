@@ -13,6 +13,9 @@
 //! would mask a broken read path (rls-verify-as-runtime-role).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+#[path = "group_admin_tenant_context/recovery.rs"]
+mod recovery;
+
 use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode, header};
 use console_kernel_core::{OrgId, UserId};
