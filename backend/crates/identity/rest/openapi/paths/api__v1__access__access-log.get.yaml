@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [access]
+operationId: listAccessLog
+summary: Tenant access records with monthly flag totals
+description: Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period and flagged filter. Defaults to the current month in the configured review time zone. Read failures return no records if their access record cannot be stored.
+security:
+- bearerAuth: []
+parameters:
+- name: period
+  in: query
+  schema:
+    type: string
+    pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+- name: flagged
+  in: query
+  schema:
+    type: boolean
+    default: false
+- name: cursor
+  in: query
+  schema:
+    type: string
+- name: limit
+  in: query
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 200
+    default: 200
+responses:
+  '200':
+    description: Monthly totals and one keyset page.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessLogPage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: access_denied or scope_tenant_wide_only.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: period_invalid, limit_out_of_range or cursor_invalid.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

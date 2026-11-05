@@ -177,6 +177,7 @@ pub async fn performance(pool: PgPool, sparse: bool) {
         .bind(None::<time::OffsetDateTime>)
         .bind(None::<Uuid>)
         .bind(50_i64)
+        .bind(None::<time::OffsetDateTime>)
         .fetch_one(tx.as_mut())
         .await
         .unwrap();

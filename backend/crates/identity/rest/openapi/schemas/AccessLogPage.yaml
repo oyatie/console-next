@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [period, totals, items, next_cursor]
+properties:
+  period:
+    type: object
+    required: [from, to, time_zone, closed]
+    properties:
+      from:
+        type: string
+        format: date
+      to:
+        type: string
+        format: date
+      time_zone:
+        type: string
+      closed:
+        type: boolean
+  totals:
+    type: object
+    required: [events, flagged, by_flag]
+    properties:
+      events:
+        type: integer
+        minimum: 0
+      flagged:
+        type: integer
+        minimum: 0
+      by_flag:
+        type: object
+        additionalProperties:
+          type: integer
+          minimum: 0
+  items:
+    type: array
+    maxItems: 200
+    items:
+      $ref: '#/components/schemas/AccessLogEvent'
+  next_cursor:
+    type: [string, 'null']

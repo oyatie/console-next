@@ -85,6 +85,9 @@
       "get",
       "patch"
     ],
+    "/api/v1/access/access-log": [
+      "get"
+    ],
     "/api/v1/access/accounts/{accountId}/effective": [
       "get"
     ],
@@ -416,6 +419,8 @@
     "AccessGrantPreviewItem",
     "AccessGranters",
     "AccessLevel",
+    "AccessLogEvent",
+    "AccessLogPage",
     "AccessPerson",
     "AccessRequest",
     "AccessRequestReason",

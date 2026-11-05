@@ -14,6 +14,16 @@ use crate::error::ApiResult;
 type P = Extension<Principal>;
 type S = State<AccessRestState>;
 
+pub(crate) async fn access_log(
+    State(s): S,
+    Extension(p): P,
+    Query(q): Query<console_platform_access::log_review::feed::Query>,
+) -> ApiResult<Json<Value>> {
+    Ok(Json(
+        console_platform_access::log_review::feed::get(&s.service, p, q).await?,
+    ))
+}
+
 pub(crate) async fn list_roles(
     State(s): S,
     Extension(p): P,
