@@ -15016,7 +15016,7 @@ export interface components {
             label?: string;
         };
         ActionInboxResponse: {
-            /** @description Home counts over the same authorized source read, independent of the selected attention view. Subset counts are lower bounds for bounded or continued source prefixes; only contributing sources affect subset exactness. Unavailable sources make every count inexact. All uses source totals, or the turn count when filter=turn. Continuation pages report whole-inbox counts under the same admission boundary. */
+            /** @description Home counts over the same authorized source read, independent of the selected attention view. Subset counts are lower bounds for bounded or continued source prefixes; only contributing sources affect subset exactness. Unavailable sources make every count inexact. All uses source totals, or the turn count when filter=turn. Counts are authoritative on the first page only; continuation pages describe source prefixes, not the whole inbox. */
             attention_filters?: {
                 /** @enum {string} */
                 key: "all" | "approvals" | "today" | "overdue";
@@ -15037,7 +15037,7 @@ export interface components {
                 source: string;
                 support_reference: string;
             }[];
-            /** @description Counts from the same server traversal. Inexact values are lower bounds. */
+            /** @description Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. */
             counts: {
                 [key: string]: {
                     total: number;

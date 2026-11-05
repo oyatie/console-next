@@ -34,7 +34,6 @@ test("Home attention shares the authorized worklist and preserves item aging", {
   const first = await api<Inbox>("/api/v1/me/action-inbox?attention=all&limit=1");
   expect(first.next_cursor).not.toBeNull();
   const second = await api<Inbox>(`/api/v1/me/action-inbox?attention=all&limit=1&cursor=${encodeURIComponent(first.next_cursor!)}`);
-  expect(second.attention_filters).toEqual(first.attention_filters);
   const home = await api<Inbox>("/api/v1/me/action-inbox?filter=turn&attention=all&limit=200");
   expect(home.items.every(item => item.lane === "turn")).toBe(true);
   expect(home.attention_filters.find(count => count.key === "all")?.total).toBe(home.items.length);

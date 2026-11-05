@@ -43,10 +43,6 @@ async fn attention_approvals_reuse_cedar_refusals_and_page_past_other_work(pool:
         .finish();
     let next = get(service.clone(), &format!("{PATH}?{query}"), &token).await;
     assert_eq!(next.status, StatusCode::OK);
-    assert_eq!(
-        next.json["attention_filters"],
-        first.json["attention_filters"]
-    );
     let ids: BTreeSet<_> = [&first.json, &next.json]
         .into_iter()
         .flat_map(|p| p["items"].as_array().unwrap())

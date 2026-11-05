@@ -86,60 +86,6 @@ pub async fn list_filtered_action_inbox(
     filter: InboxFilter,
     now: OffsetDateTime,
 ) -> Result<ActionInboxPage, KernelError> {
-    let summary = if let Some(raw) = query.cursor.as_deref() {
-        let as_of = parse_cursor(raw, now)?.as_of;
-        let limit = query
-            .limit
-            .unwrap_or(crate::DEFAULT_PAGE_LIMIT)
-            .clamp(1, MAX_PAGE_LIMIT);
-        Some(
-            crate::list_action_inbox_at(
-                port,
-                ListActionInboxQuery {
-                    limit: Some(if filter == InboxFilter::All {
-                        limit
-                    } else {
-                        limit.saturating_add(1).min(MAX_PAGE_LIMIT)
-                    }),
-                    cursor: None,
-                },
-                now,
-                Some(as_of),
-            )
-            .await?,
-        )
-    } else {
-        None
-    };
-    let mut page = list_view(port, query, filter, now).await?;
-    if let Some(summary) = summary {
-        page.attention_filters = summary.attention_filters;
-        page.counts = summary.counts;
-        page.upcoming = summary.upcoming;
-        for source in summary.unavailable {
-            if !page.unavailable.contains(&source) {
-                page.unavailable.push(source);
-            }
-        }
-        if !page.unavailable.is_empty() {
-            page.total_is_exact = false;
-            for count in page.counts.values_mut() {
-                count.total_is_exact = false;
-            }
-            for count in &mut page.attention_filters {
-                count.total_is_exact = false;
-            }
-        }
-    }
-    Ok(page)
-}
-
-async fn list_view(
-    port: &dyn ActionInboxSourcePort,
-    query: ListActionInboxQuery,
-    filter: InboxFilter,
-    now: OffsetDateTime,
-) -> Result<ActionInboxPage, KernelError> {
     if filter == InboxFilter::All {
         return list_action_inbox(port, query, now).await;
     }

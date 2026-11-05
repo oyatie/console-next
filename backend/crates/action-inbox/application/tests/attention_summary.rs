@@ -3,13 +3,15 @@
 use console_action_inbox_application::*;
 use time::{Duration, OffsetDateTime};
 
-struct Sources;
+#[derive(Default)]
+struct Sources(std::cell::Cell<usize>);
 impl ActionInboxSourcePort for Sources {
     fn list_source_page(
         &self,
         source: ActionInboxSource,
         query: ActionInboxSourceQuery,
     ) -> ActionInboxSourceFuture<'_> {
+        self.0.set(self.0.get() + 1);
         Box::pin(async move {
             let kinds: &[&str] = match source {
                 ActionInboxSource::Workflow => &["approval"],
@@ -57,9 +59,14 @@ impl ActionInboxSourcePort for Sources {
         })
     }
 }
-fn read(filter: InboxFilter, cursor: Option<String>, limit: usize) -> ActionInboxPage {
+fn read(
+    sources: &Sources,
+    filter: InboxFilter,
+    cursor: Option<String>,
+    limit: usize,
+) -> ActionInboxPage {
     let mut future = std::pin::pin!(list_filtered_action_inbox(
-        &Sources,
+        sources,
         ListActionInboxQuery {
             limit: Some(limit),
             cursor
@@ -77,7 +84,7 @@ fn read(filter: InboxFilter, cursor: Option<String>, limit: usize) -> ActionInbo
 }
 #[test]
 fn unrelated_incomplete_sources_do_not_make_approval_counts_inexact() {
-    let page = read(InboxFilter::All, None, 3);
+    let page = read(&Sources::default(), InboxFilter::All, None, 3);
     let count = page
         .attention_filters
         .iter()
@@ -87,20 +94,22 @@ fn unrelated_incomplete_sources_do_not_make_approval_counts_inexact() {
     assert!(count.total_is_exact);
     assert!(page.attention_filters[2].total_is_exact);
     assert!(page.attention_filters[3].total_is_exact);
-    let bounded = read(InboxFilter::All, None, 1);
+    let bounded = read(&Sources::default(), InboxFilter::All, None, 1);
     assert!(!bounded.attention_filters[1].total_is_exact);
 }
 #[test]
-fn continuation_summaries_cover_the_whole_inbox_for_every_view() {
-    for filter in [InboxFilter::All, InboxFilter::Turn, InboxFilter::Waiting] {
-        let first = read(filter, None, 1);
-        let next = read(filter, Some(first.next_cursor.unwrap()), 1);
-        assert_eq!(
-            next.attention_filters, first.attention_filters,
-            "{filter:?}"
-        );
+fn continuation_pages_read_each_source_once() {
+    for filter in [InboxFilter::All, InboxFilter::Turn] {
+        let sources = Sources::default();
+        let first = read(&sources, filter, None, 1);
+        sources.0.set(0);
+        let next = read(&sources, filter, Some(first.next_cursor.unwrap()), 1);
+        assert_eq!(sources.0.get(), ActionInboxSource::ALL.len(), "{filter:?}");
+        assert_eq!(next.items.len(), 1);
+        assert_ne!(next.items[0].id, first.items[0].id);
     }
 }
+
 #[test]
 fn every_approval_kind_and_only_approval_kinds_contribute() {
     for kind in [

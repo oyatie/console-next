@@ -245,6 +245,25 @@ async fn attention_counts_for_two_thousand_items_keep_the_existing_read_budget(p
         acquisitions.iter().all(|n| *n <= budget),
         "counts must share the existing source read"
     );
+    for query in [
+        "limit=50",
+        "filter=turn&limit=50",
+        "filter=turn&attention=all&limit=50",
+    ] {
+        let first = read(&ctx, query).await;
+        let cursor = first["next_cursor"].as_str().unwrap();
+        let continuation = url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("cursor", cursor)
+            .finish();
+        probe.reset();
+        let next = read(&ctx, &format!("{query}&{continuation}")).await;
+        assert!(!next["items"].as_array().unwrap().is_empty());
+        assert!(
+            probe.acquisitions() <= budget,
+            "cursor page must share the existing source read: {query}, leases={}, budget={budget}",
+            probe.acquisitions()
+        );
+    }
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

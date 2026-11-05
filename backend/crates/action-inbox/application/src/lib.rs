@@ -173,23 +173,12 @@ pub async fn list_action_inbox(
     query: ListActionInboxQuery,
     now: OffsetDateTime,
 ) -> Result<ActionInboxPage, KernelError> {
-    list_action_inbox_at(port, query, now, None).await
-}
-
-pub(crate) async fn list_action_inbox_at(
-    port: &dyn ActionInboxSourcePort,
-    query: ListActionInboxQuery,
-    now: OffsetDateTime,
-    admission: Option<OffsetDateTime>,
-) -> Result<ActionInboxPage, KernelError> {
     let cursor = query
         .cursor
         .as_deref()
         .map(|raw| parse_cursor(raw, now))
         .transpose()?;
-    let as_of = cursor
-        .as_ref()
-        .map_or(admission.unwrap_or(now), |cursor| cursor.as_of);
+    let as_of = cursor.as_ref().map_or(now, |cursor| cursor.as_of);
     let limit = query
         .limit
         .unwrap_or(DEFAULT_PAGE_LIMIT)

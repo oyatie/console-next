@@ -33856,8 +33856,8 @@ components:
             selected attention view. Subset counts are lower bounds for bounded or
             continued source prefixes; only contributing sources affect subset exactness.
             Unavailable sources make every count inexact. All uses source totals, or
-            the turn count when filter=turn. Continuation pages report whole-inbox
-            counts under the same admission boundary.
+            the turn count when filter=turn. Counts are authoritative on the first page
+            only; continuation pages describe source prefixes, not the whole inbox.
           items:
             type: object
             required: [key, total, total_is_exact]
@@ -33902,7 +33902,7 @@ components:
                 type: string
         counts:
           type: object
-          description: Counts from the same server traversal. Inexact values are lower bounds.
+          description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds.
           additionalProperties:
             type: object
             required: [total, total_is_exact]
