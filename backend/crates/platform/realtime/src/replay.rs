@@ -9,7 +9,7 @@ use console_messenger_application::MessageQuery;
 use console_platform_db::with_org_conn;
 use console_platform_request_context::scope_org;
 
-use crate::event::MessageCursor;
+use crate::event::{MessageCursor, ResetData, ResetReason};
 use crate::hub::{ConnectionDeliveryState, ReplayPlan};
 use crate::messenger_sql::{
     REALTIME_MESSAGE_GROUP_BY, message_select_builder, message_summary_from_row, push_scope_filter,
@@ -27,7 +27,7 @@ impl PgRealtimeHub {
         plan: ReplayPlan,
     ) {
         let mut remaining = self.config.max_replay_rows;
-        let result = tokio::time::timeout(self.config.replay_timeout, async {
+        let mut result = tokio::time::timeout(self.config.replay_timeout, async {
             if let Some(last_message_id) = plan.last_message_id {
                 self.replay_after(connection_id, &principal, last_message_id, &mut remaining)
                     .await?;
@@ -46,10 +46,27 @@ impl PgRealtimeHub {
         .await
         .unwrap_or(Err(RealtimeError::ReplayLimitExceeded));
 
-        if let Err(err) = result {
-            if matches!(err, RealtimeError::ReplayLimitExceeded) {
-                self.replay_limit_hit();
+        if matches!(result, Err(RealtimeError::ReplayLimitExceeded)) {
+            self.replay_limit_hit();
+            if plan.change_stream {
+                result = tokio::time::timeout(SOCKET_IO_TIMEOUT, async {
+                    let reset = RealtimeEvent::Reset {
+                        data: ResetData {
+                            reason: ResetReason::Pruned,
+                        },
+                    };
+                    if self.send_replay_event(connection_id, reset).await? {
+                        self.replay_changes(connection_id, &principal, None, &mut remaining)
+                            .await?;
+                        self.finish_replay(connection_id).await?;
+                    }
+                    Ok(())
+                })
+                .await
+                .unwrap_or(Err(RealtimeError::ReadTimedOut));
             }
+        }
+        if let Err(err) = result {
             tracing::warn!(error = %err, "realtime replay failed");
             let resume_after = self.replay_resume_after(connection_id).await;
             self.disconnect_connection(connection_id, DisconnectReason::ReplayFailed, resume_after)

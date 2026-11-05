@@ -5,6 +5,7 @@
 mod common;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use common::*;
 use console_kernel_core::{BranchScope, OrgId};
@@ -109,17 +110,11 @@ async fn replay_counts_rows_even_when_the_reader_cannot_see_them(pool: PgPool) {
             },
         )
         .await;
-    let notice = tokio::time::timeout(std::time::Duration::from_secs(5), connection.disconnect())
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(notice.reason, DisconnectReason::ReplayFailed);
-    assert!(
-        connection.recv().await.is_none(),
-        "budget exhaustion must not advance the hello cursor"
-    );
+    reset(&mut connection).await;
+    let head = hello(&mut connection).await;
+    assert!(head > 0);
     assert_eq!(hub.limit_hits(), [0, 0, 1]);
-    assert_eq!(hub.connection_count().await, 0);
+    assert_live(&hub, &mut connection).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -142,7 +137,7 @@ async fn replay_deadline_cancels_waiting_database_work(pool: PgPool) {
             StreamFrom::default(),
         )
         .await;
-    let notice = tokio::time::timeout(std::time::Duration::from_secs(1), connection.disconnect())
+    let notice = tokio::time::timeout(std::time::Duration::from_secs(7), connection.disconnect())
         .await
         .unwrap()
         .unwrap();
@@ -150,6 +145,138 @@ async fn replay_deadline_cancels_waiting_database_work(pool: PgPool) {
     assert_eq!(hub.limit_hits(), [0, 0, 1]);
     assert_eq!(hub.connection_count().await, 0);
     lock.rollback().await.unwrap();
+}
+
+async fn reset(connection: &mut console_platform_realtime::RealtimeConnection) {
+    match next(connection).await {
+        RealtimeEvent::Reset { data } => assert_eq!(data.reason, ResetReason::Pruned),
+        other => panic!("expected reset, got {other:?}"),
+    }
+}
+
+async fn assert_live(
+    hub: &PgRealtimeHub,
+    connection: &mut console_platform_realtime::RealtimeConnection,
+) {
+    let event = RealtimeEvent::PrivacyConsent { accepted: true };
+    hub.dispatch_local_for_test(OrgId::one(), event.clone())
+        .await
+        .unwrap();
+    assert_eq!(next(connection).await, event);
+    assert_eq!(hub.connection_count().await, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn an_overlapping_burst_resets_on_reconnect_and_keeps_live_changes(pool: PgPool) {
+    let org = OrgId::one();
+    let hub = Arc::new(PgRealtimeHub::new(
+        runtime_role_pool(&pool).await,
+        RealtimeHubConfig {
+            max_replay_rows: 2,
+            ..Default::default()
+        },
+    ));
+    let bridge = Arc::clone(&hub).start_postgres_listener().await.unwrap();
+    let principal = reader(org, HR, BranchScope::All);
+    let mut connection = hub
+        .connect_stream(principal.clone(), StreamFrom::default())
+        .await;
+    let mut cursor = hello(&mut connection).await;
+    for _ in 0..3 {
+        commit(
+            &pool,
+            org,
+            vec![event(
+                org,
+                ("legal_entity", &uuid::Uuid::new_v4().to_string()),
+                "legal_entity.create",
+                None,
+            )],
+        )
+        .await;
+        change(&next(&mut connection).await);
+    }
+    hub.remove_connection(connection.id()).await;
+    let head: i64 = sqlx::query_scalar("SELECT MAX(seq) FROM resource_changes")
+        // rls-arming: ok the sqlx::test owner observes the audit trigger
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    for _ in 0..2 {
+        connection = hub
+            .connect_stream(
+                principal.clone(),
+                StreamFrom {
+                    last_event_id: Some(cursor),
+                    ..Default::default()
+                },
+            )
+            .await;
+        reset(&mut connection).await;
+        cursor = hello(&mut connection).await;
+        assert_eq!(cursor, head);
+        hub.remove_connection(connection.id()).await;
+    }
+    connection = hub
+        .connect_stream(
+            principal,
+            StreamFrom {
+                last_event_id: Some(cursor),
+                ..Default::default()
+            },
+        )
+        .await;
+    reset(&mut connection).await;
+    assert_eq!(hello(&mut connection).await, head);
+    let id = uuid::Uuid::new_v4().to_string();
+    commit(
+        &pool,
+        org,
+        vec![event(
+            org,
+            ("legal_entity", &id),
+            "legal_entity.create",
+            None,
+        )],
+    )
+    .await;
+    let (seq, kind, live_id) = change(&next(&mut connection).await);
+    assert!(seq > head);
+    assert_eq!(kind, "legal_entity");
+    assert_eq!(live_id.as_deref(), Some(id.as_str()));
+    assert_eq!(hub.limit_hits(), [0, 0, 3]);
+    assert_eq!(hub.connection_count().await, 1);
+    bridge.shutdown();
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_replay_deadline_resets_then_reads_head_and_resumes_live(pool: PgPool) {
+    let hub = Arc::new(PgRealtimeHub::new(
+        runtime_role_pool(&pool).await,
+        RealtimeHubConfig {
+            replay_timeout: Duration::from_millis(50),
+            ..Default::default()
+        },
+    ));
+    let mut lock = pool.begin().await.unwrap();
+    sqlx::query("LOCK TABLE resource_changes IN ACCESS EXCLUSIVE MODE")
+        .execute(&mut *lock)
+        .await
+        .unwrap();
+    let mut connection = hub
+        .connect_stream(
+            reader(OrgId::one(), HR, BranchScope::All),
+            StreamFrom {
+                last_event_id: Some(0),
+                ..Default::default()
+            },
+        )
+        .await;
+    reset(&mut connection).await;
+    lock.rollback().await.unwrap();
+    assert_eq!(hello(&mut connection).await, 0);
+    assert_eq!(hub.limit_hits(), [0, 0, 1]);
+    assert_live(&hub, &mut connection).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
