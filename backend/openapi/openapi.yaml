@@ -141,6 +141,10 @@ paths:
                     type: array
                     items:
                       type: object
+                      required: [occurred_at]
+                      properties:
+                        occurred_at:
+                          $ref: '#/components/schemas/Timestamp'
                       additionalProperties: true
                   limit:
                     type: integer
@@ -16230,11 +16234,19 @@ paths:
                 required:
                 - payroll
                 properties:
+                  imports:
+                    type: object
+                    properties:
+                      latest_import_at:
+                        $ref: '#/components/schemas/Timestamp'
+                    additionalProperties: true
                   payroll:
                     type: object
                     required:
                     - active_close_runs
                     properties:
+                      latest_updated_at:
+                        $ref: '#/components/schemas/Timestamp'
                       active_close_runs:
                         type: integer
                         format: int64
