@@ -153,6 +153,11 @@ async fn pending_grant_clock_cancellation_and_revocation_are_safe(pool: PgPool) 
     .await
     .unwrap();
     assert!(due > now);
+    let wire: String = sqlx::query_scalar("SELECT after_snap->>'activates_at' FROM audit_events WHERE action='access.grant.pending' AND target_id=$1")
+        .bind(row.id.to_string()).fetch_one(tx.as_mut()).await.unwrap();
+    assert!(wire.ends_with('Z'), "{wire}");
+    OffsetDateTime::parse(&wire, &time::format_description::well_known::Rfc3339).unwrap();
+
     let granted: i64 = sqlx::query_scalar("SELECT count(*) FROM authz_grant_ledger WHERE org_id=$1 AND grant_ref=$2 AND event='GRANTED'")
         .bind(org.as_uuid()).bind(row.id.to_string()).fetch_one(tx.as_mut()).await.unwrap();
     assert_eq!(granted, 0, "a pending grant has never held a capability");
