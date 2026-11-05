@@ -26,7 +26,8 @@
 .viewport:active { cursor: grabbing; }
 .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .layer { pointer-events: none; }
-.layer > * { pointer-events: auto; }
+/* Decorative children keep their own hit testing regardless of lazy stylesheet order. */
+:where(.layer) > * { pointer-events: auto; }
 .lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 .lines path { fill: none; stroke: var(--chart-connector); stroke-width: 1; }
 .lines path.ok { stroke: var(--chart-drop-ok); stroke-width: 2; stroke-dasharray: 5 4; }

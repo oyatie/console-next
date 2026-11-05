@@ -29,6 +29,8 @@ export const koCommon = {
   "common.failed.code.workplace_kind_not_found": "그 사업장 종류가 없습니다. 목록을 다시 열어 선택하십시오.",
   "common.failed.code.children_changed": "그사이 다른 사람이 하위 목록을 변경했습니다. 다시 열어 순서를 정하십시오.",
   "common.failed.code.org_unit_has_members": "아직 퇴직하지 않은 직원이 이 부서나 그 아래에 있어 삭제하지 않았습니다. 직원을 먼저 다른 부서로 발령하십시오.",
+  "common.failed.code.org_change_scheduled_content": "예약된 조직 변경의 내용은 변경할 수 없어 저장하지 않았습니다. 시행일이나 사유만 수정하거나, 예약을 취소하고 새 변경을 작성하십시오.",
+  "common.failed.code.org_change_scheduled_locked": "예약을 수정하거나 취소할 시행 권한이 없어 저장하지 않았습니다. 시행 담당자에게 처리를 요청하십시오.",
   "common.failed.code.undo_conflict": "이 변경 뒤에 같은 조직이 또 바뀌어 되돌리지 않았습니다. 나중 변경부터 되돌리십시오.",
   "common.failed.code.undo_unit_in_use": "새로 추가한 부서에 그 뒤 직원이나 하위 부서가 들어와 되돌리지 않았습니다. 직원은 먼저 발령하고 하위 부서는 이동하십시오.",
   "common.failed.code.batch_not_undoable": "되돌리기는 다시 되돌릴 수 없습니다. 필요하면 같은 변경을 새로 하십시오.",
