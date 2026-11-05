@@ -97,6 +97,7 @@ const npm = {id: 3, key: 'node-cache-Linux-x64-npm-lock', size_in_bytes: 200};
 const current = {id: 4, key: 'index-console-platform-arm64-1-5a70b200#1', size_in_bytes: 100};
 
 test('failed or skipped cache prune writes a visible summary warning', () => {
+  assert.equal(workflow.jobs['prune-image-cache']['continue-on-error'], true);
   const steps = workflow.jobs['prune-image-cache'].steps;
   const cleanup = steps.find(step => step.with?.script?.includes('pruneImageCache'));
   const dir = mkdtempSync(join(tmpdir(), 'image-cache-failure-'));

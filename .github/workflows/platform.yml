@@ -44,6 +44,7 @@ jobs:
 
   prune-image-cache:
     if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
