@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-export const filingRow = (page: Page, insurer: string, kind: string) => page.getByRole("row").filter({has:page.getByRole("cell",{name:`${insurer} · ${kind}`,exact:true})});
+export const filingRow = (page: Page, insurer: string, kind: string) => page.getByRole("row").filter({has:page.getByRole("gridcell",{name:`${insurer} · ${kind}`,exact:true})});
 
 export async function selectFilingFact(page: Page, dialog: Locator, label: string, option: string) {
   const control = dialog.getByRole("button", { name: new RegExp(`(?:^|\\s)${label}(?:\\s|$)`) });

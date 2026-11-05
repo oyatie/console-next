@@ -1,5 +1,9 @@
 .scroll { width: 100%; min-width: 0; overflow-x: auto; }
 .scroll table { min-width: 100%; }
-.filingWindow { min-width: 0; overflow-wrap: anywhere; }
+.filings [role="grid"][data-layout="rows"] :is([role="gridcell"], [role="rowheader"]) { height: auto; min-height: var(--row-h); white-space: normal; align-items: start; }
+.filingWindow { min-width: 0; }
+.dateGroup { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.dateGroup > div { flex-wrap: nowrap; }
+.filingWindow .basis { display: list-item; list-style-position: inside; width: fit-content; }
 .citation { max-width: 100%; white-space: normal; }
 .workplace { min-height: max(calc(var(--target) + var(--text-sm) * var(--lh-base) + var(--space-1)), calc(var(--space-5) * 2 + var(--text-body) * var(--lh-base))); }

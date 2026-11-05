@@ -11,15 +11,15 @@ const Citation = ({ value }: { value: FilingCitation }) => <dl className="facts"
 /** A filing's window opens at the earliest day; the legal deadline and its basis come from the register. */
 export function FilingWindow({ task }: { task: FilingTask }) {
   const penalty = task.basis?.penalty;
-  return <div className={`form ${s.filingWindow}`}>
+  return <div className={s.filingWindow}>
     {task.opens_in_days != null && task.opens_in_days > 0 && <Chip>{t("statutory.preparing")}</Chip>}
     <div className="row">
-      {task.opens_on && <>{t("statutory.opens")} <time dateTime={task.opens_on}>{fmtDate(task.opens_on)}</time> · </>}
-      {t("statutory.deadline")} <FilingDeadline task={task} review={false} />
+      {task.opens_on && <div className={s.dateGroup}>{t("statutory.opens")} <time dateTime={task.opens_on}>{fmtDate(task.opens_on)}</time></div>}
+      <div className={s.dateGroup}>{t("statutory.deadline")} <FilingDeadline task={task} review={false} /></div>
     </div>
     {!task.basis && task.deadline_status === "HOLD" && <p>{t("statutory.hold")}</p>}
     {!task.basis && task.dates?.conservative && <p>{t("statutory.conservative")}</p>}
-    {task.basis && <details><summary className={buttonClass("ghost", { size: "sm" })}>{t("statutory.basis")}</summary>
+    {task.basis && <details><summary className={buttonClass("ghost", { size: "sm", className: s.basis })}>{t("statutory.basis")}</summary>
       {task.deadline_status === "HOLD" && <p>{t("statutory.hold")}</p>}
       {task.dates?.conservative && <p>{t("statutory.conservative")}</p>}
       <Citation value={task.basis.citation} />
