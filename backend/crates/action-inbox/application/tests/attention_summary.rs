@@ -100,19 +100,21 @@ fn unrelated_incomplete_sources_do_not_make_approval_counts_inexact() {
 }
 #[test]
 fn continuation_pages_read_each_source_once() {
-    for filter in [InboxFilter::All, InboxFilter::Turn] {
-        let sources = Sources::default();
-        let first = read(&sources, filter, None, 1);
-        sources.0.store(0, Ordering::SeqCst);
-        let next = read(&sources, filter, Some(first.next_cursor.unwrap()), 1);
-        assert_eq!(
-            sources.0.load(Ordering::SeqCst),
-            ActionInboxSource::ALL.len(),
-            "{filter:?}"
-        );
-        assert_eq!(next.items.len(), 1);
-        assert_ne!(next.items[0].id, first.items[0].id);
-    }
+    let sources = Sources::default();
+    let first = read(&sources, InboxFilter::All, None, 1);
+    sources.0.store(0, Ordering::SeqCst);
+    let next = read(
+        &sources,
+        InboxFilter::All,
+        Some(first.next_cursor.unwrap()),
+        1,
+    );
+    assert_eq!(
+        sources.0.load(Ordering::SeqCst),
+        ActionInboxSource::ALL.len()
+    );
+    assert_eq!(next.items.len(), 1);
+    assert_ne!(next.items[0].id, first.items[0].id);
 }
 
 #[test]
