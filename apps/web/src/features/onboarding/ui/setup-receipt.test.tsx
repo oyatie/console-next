@@ -6,6 +6,7 @@ import { loadCatalog } from "@console/i18n";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { operationAccess } from "../../../reference/authz/domain/operation-access";
 import { settingsQuery } from "../../../reference/settings/api";
+import { goLiveReceiptQuery } from "../api";
 import { SetupReceipt } from "./setup-receipt";
 
 const RECEIPT_NEED = operationAccess["GET /api/v1/onboarding/go-live/preview"];
@@ -59,7 +60,7 @@ vi.mock("../ui/use-setup", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: (opts: { queryKey: readonly unknown[] }) => {
+  useQuery: (opts: { queryFn?: unknown }) => {
     if (opts === myAccessQuery) {
       return {
         data: {
@@ -80,7 +81,7 @@ vi.mock("@tanstack/react-query", () => ({
         },
       };
     }
-    if (opts.queryKey[0] === "/api/v1/onboarding/go-live/receipt") return { data: {
+    if (opts.queryFn === goLiveReceiptQuery.queryFn) return { data: {
       go_live_at: state.goLiveAt, facts_snapshot_version: 1,
       facts_snapshot: { entities: 7, workplaces: 3, org_units: 8, employees: 23 },
     } };

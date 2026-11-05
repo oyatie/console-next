@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, loadCatalog } from "@console/i18n";
 import type { GoLiveItem } from "@console/api/pending";
-import { ApiError } from "../api";
+import { ApiError, goLiveReceiptQuery } from "../api";
 import { GoLive } from "./go-live";
 
 const state = vi.hoisted(() => ({
@@ -23,7 +23,7 @@ vi.mock("react", async (original) => {
   const react = await original<typeof import("react")>();
   return { ...react, useState: (initial: unknown) => initial === false ? [true, vi.fn()] : react.useState(initial) };
 });
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: (opts: { queryKey: readonly unknown[] }) => opts.queryKey[0] === "/api/v1/onboarding/go-live/receipt" ? {
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: (opts: { queryFn?: unknown }) => opts.queryFn === goLiveReceiptQuery.queryFn ? {
   data: state.receiptError ? undefined : { go_live_at: "2026-11-04T09:00:00Z", preview_digest: "recorded-digest", facts_snapshot: state.snapshot, facts_snapshot_version: state.snapshot ? 1 : null },
   isPending: false, isError: !!state.receiptError, error: state.receiptError, refetch: vi.fn(),
 } : ({
