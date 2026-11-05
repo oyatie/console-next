@@ -31,6 +31,12 @@ action {action} appliesTo {{ principal: [Subject], resource: [Resource],
         let policies = format!(
             r#"{}
 permit(principal, action == Action::"{action}", resource) when {{ context.holds_permission }};
+forbid(principal, action == Action::"{action}", resource) when {{
+  principal.roles.contains("ADMIN") &&
+  !principal.roles.contains("EXECUTIVE") &&
+  !principal.roles.contains("SUPER_ADMIN") &&
+  !context.holds_permission
+}};
 forbid(principal, action, resource) unless {{ principal.org == resource.org }};"#,
             generate_policies(feature)
         );
@@ -62,6 +68,7 @@ mod tests {
                 assert_eq!(
                     allowed(feature, "u", "o", &roles, false),
                     permission_for(role, feature) == PermissionLevel::Allow
+                        && !(role == Role::Admin && feature == Feature::OrgChangeDraft)
                 );
                 assert!(allowed(feature, "u", "o", &roles, true));
             }

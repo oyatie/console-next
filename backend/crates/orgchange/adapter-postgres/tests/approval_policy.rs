@@ -200,12 +200,12 @@ async fn seed_branch(pool: &PgPool, org: OrgId) -> Uuid {
     .unwrap()
 }
 
-/// The org-change holder (the store takes the actor; REST does the authz).
+/// A tenant-wide org-change holder; scoped ADMIN behavior is covered by draft_refusals.
 async fn seed_user(pool: &PgPool, org: OrgId) -> UserId {
     let user = UserId::new();
     sqlx::query(
         "INSERT INTO users (id, display_name, roles, is_active, org_id) \
-         VALUES ($1, 'd26', ARRAY['ADMIN'], true, $2)",
+         VALUES ($1, 'd26', ARRAY['SUPER_ADMIN'], true, $2)",
     )
     .bind(*user.as_uuid())
     .bind(*org.as_uuid())

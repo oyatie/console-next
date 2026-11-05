@@ -12,10 +12,10 @@ import s from "./target-tree.module.css";
  * disabled, with its reason as text (`why`); other entities are not listed at all. `workplaces` says whether a
  * workplace itself can be chosen (a move can, a merge cannot).
  */
-export function TargetTree({ label, entity, show, why, right, workplaces, value, onChange, hint }: {
+export function TargetTree({ label, entity, show, why, right, workplaces, value, onChange, hint, selectable = () => true }: {
   label: string;
   entity: Node;
-  /** Which departments are listed (their sub-departments with them). */
+  /** Visible nodes, including ancestors needed to reach a selectable descendant. */
   show: (n: Node) => boolean;
   why: (n: Node) => string | undefined;
   right: (n: Node) => string;
@@ -23,18 +23,19 @@ export function TargetTree({ label, entity, show, why, right, workplaces, value,
   value: string | null;
   onChange: (id: string) => void;
   hint?: ReactNode;
+  selectable?: (n: Node) => boolean;
 }) {
   const [query, setQuery] = useState("");
   const searchId = useId();
   const q = query.trim().normalize("NFC");
   // A searched name keeps its whole path visible; everything else under it goes.
   const hit = (n: Node): boolean => !q || n.name.normalize("NFC").includes(q) || depts(n).filter(show).some(hit);
-  const sites = entity.children.filter((w) => w.kind === "WORKPLACE" && !w.chips.includes("closed") && hit(w));
+  const sites = entity.children.filter((w) => w.kind === "WORKPLACE" && !w.chips.includes("closed") && (show(w) || depts(w).some(show)) && hit(w));
   const kids = (n: Node): Node[] => (n.kind === "LEGAL_ENTITY" ? sites : depts(n).filter((c) => show(c) && hit(c)));
   const all = [entity, ...sites.flatMap(function walk(n: Node): Node[] { return [n, ...kids(n).flatMap(walk)]; })];
   const [expanded, setExpanded] = useState(() => new Set(all.map((n) => n.id)));
   const reason = (n: Node) => (n.kind === "LEGAL_ENTITY" ? undefined : why(n));
-  const disabled = new Set(all.filter((n) => n.kind === "LEGAL_ENTITY" || (n.kind === "WORKPLACE" && !workplaces) || reason(n)).map((n) => n.id));
+  const disabled = new Set(all.filter((n) => !selectable(n) || n.kind === "LEGAL_ENTITY" || (n.kind === "WORKPLACE" && !workplaces) || reason(n)).map((n) => n.id));
   return (
     <div className={s.box}>
       <span className="field__label">{label}</span>

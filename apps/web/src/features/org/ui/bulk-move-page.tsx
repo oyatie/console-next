@@ -13,7 +13,7 @@ import { Composer } from "../../../ui/composer/composer";
 import { Dialog } from "../../../ui/dialog";
 import { applySetup, STRUCTURE_READS } from "../../../reference/org/api";
 import { bulkPlan, type Resolution } from "../domain/bulk-move";
-import { collapse, descendants, targetsFor, type Node } from "../../../reference/org/domain/structure";
+import { collapse, descendants, targetsFor, unitIdOf, type Node } from "../../../reference/org/domain/structure";
 import { BulkMoveTable } from "./bulk-move-table";
 import { useEiUnit } from "../../../reference/entity/ui/use-ei-unit";
 import { GovernFields } from "./govern-fields";
@@ -36,6 +36,9 @@ export function BulkMovePage() {
   const chosen = (ids ?? "").split(",").filter(Boolean);
   const st = useStructure();
   const { places, setup, tenant: company } = st;
+  const draftable = new Set(st.units.data?.draftableIds ?? []);
+  const canDraft = (n: Node) => draftable.has(unitIdOf(n));
+  const showTarget = (n: Node) => canDraft(n) || descendants(n).some(canDraft);
   const nav = useNavigate();
   const { roots, carried } = collapse(places, chosen);
   const { entity, excluded } = targetsFor(places, roots);
@@ -72,9 +75,9 @@ export function BulkMovePage() {
     <Composer
       layout="page"
       title={count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count || chosen.length })}
-      kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...(first ? first.path : [])].join(" › ")}</span>}
+      kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...(first ? first.path : [])].join(" › ")}{available && entity && <Chip tone={labeled(ENTITY_PHASE, setup ? "setup" : "operating").tone}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip>}</span>}
       subtitle={first && t("bulkMove.titleSub", { m: total })}
-      tools={available && entity && <><AddMore entity={entity} chosen={chosen} /><Chip tone={labeled(ENTITY_PHASE, setup ? "setup" : "operating").tone}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip></>}
+      tools={available && entity && <AddMore entity={entity} chosen={chosen} canDraft={canDraft} show={showTarget} />}
       onClose={close}
       pending={run.isPending || submit.isPending}
       action={{ kind: "orgMove", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count }}
@@ -94,12 +97,13 @@ export function BulkMovePage() {
         approvals: available && !setup && gov.routed ? t("orgPropose.route") : null,
       }}
     >
-      <QueryState q={st.q} layout="form">{() => !first || !entity ? <Unmovable mixed={roots.length > 1} /> : <div className={s.cols}>
+      <QueryState q={st.q} layout="form">{() => !first || !entity ? <Unmovable mixed={roots.length > 1} /> : <QueryState q={st.units} layout="form">{() => <div className={s.cols}>
         <section className={`card ${s.col}`} aria-label={t("bulkMove.where")}>
           <TargetTree
             label={t("bulkMove.where")}
             entity={entity}
-            show={() => true}
+            show={showTarget}
+            selectable={canDraft}
             why={(n) => excluded.has(n.id) ? t("bulkMove.addTaken") : here(n) ? t("orgUnit.target.here") : undefined}
             right={(n) => (n.kind === "WORKPLACE" ? t("orgUnit.target.depts", { count: descendants(n).length }) : "")}
             workplaces
@@ -122,7 +126,7 @@ export function BulkMovePage() {
           <TreeLegend tags={["movedIn", "movedRenamed", "merged"]} />
           {plan && <MiniTree label={t("bulkMove.after", { site: target!.workplace!.name })} root={plan.after} />}
         </section>
-      </div>}</QueryState>
+      </div>}</QueryState>}</QueryState>
     </Composer>
   );
 }
@@ -131,11 +135,11 @@ export function BulkMovePage() {
  * Adds another department of the same entity to what moves (the keyboard twin of Shift+click on the chart), through the
  * canonical searchable tree (org-21): only department not chosen yet can be picked.
  */
-function AddMore({ entity, chosen }: { entity: Node; chosen: string[] }) {
+function AddMore({ entity, chosen, canDraft, show }: { entity: Node; chosen: string[]; canDraft: (n: Node) => boolean; show: (n: Node) => boolean }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const taken = new Set(chosen);
-  if (!entity.children.some((w) => descendants(w).some((n) => !taken.has(n.id)))) return null;
+  if (!entity.children.some((w) => descendants(w).some((n) => !taken.has(n.id) && canDraft(n)))) return null;
   return (
     <>
       <Button aria-haspopup="dialog" onClick={() => setOpen(true)}><Plus size={16} aria-hidden />{t("bulkMove.addMore")}</Button>
@@ -143,7 +147,8 @@ function AddMore({ entity, chosen }: { entity: Node; chosen: string[] }) {
         <TargetTree
           label={t("bulkMove.addMore")}
           entity={entity}
-          show={() => true}
+          show={show}
+          selectable={canDraft}
           why={(n) => (taken.has(n.id) ? t("bulkMove.addTaken") : undefined)}
           right={(n) => (n.kind === "DEPARTMENT" ? t("orgStructure.peopleCount", { count: n.headcount }) : "")}
           workplaces={false}

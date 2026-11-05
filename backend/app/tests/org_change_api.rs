@@ -16,13 +16,12 @@ use p256::elliptic_curve::rand_core::OsRng;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime, macros::offset};
 use tower::ServiceExt;
 use uuid::Uuid;
 
 mod org_change_support;
-use org_change_support::seed_user;
+use org_change_support::{runtime_role_pool, seed_user};
 
 /// `(org_id, actor, anomaly, reason)` as read back from `audit_events` — every
 /// column is nullable in the table, so the row shape is wide enough that
@@ -57,6 +56,7 @@ async fn assert_legacy_org_setup_mutations_create_governed_drafts_without_direct
     let parent_region = seed_region(pool, org, "legacy-proposal-parent").await;
     let admin_branch = seed_branch(pool, org, parent_region, "legacy-proposal-admin").await;
     let admin = seed_user_in_branch(pool, org, "ADMIN", admin_branch).await;
+    org_change_support::grant_org_levels(pool, admin, &["view", "edit"]).await;
     let admin_token = keys.token(pool, admin, org, &["ADMIN"]).await;
     let count = |table: &'static str| async move {
         let sql = match table {
@@ -778,6 +778,7 @@ async fn dissolve_applies_on_its_date_behind_the_referential_net(pool: PgPool) {
     let resident = seed_user_in_branch(&pool, org, "MEMBER", branch).await;
     let drafter = seed_user(&pool, org, "ADMIN").await;
     let approver = seed_user(&pool, org, "EXECUTIVE").await;
+    org_change_support::grant_org_levels(&pool, drafter, &["view", "edit"]).await;
     let draft_token = keys.token(&pool, drafter, org, &["ADMIN"]).await;
     let exec_token = keys.token(&pool, approver, org, &["EXECUTIVE"]).await;
 
@@ -1068,6 +1069,7 @@ async fn authorization_denies_without_leakage_and_conceals_other_tenants(pool: P
     let _resident = seed_user_in_branch(&pool, org, "MEMBER", branch).await;
     let drafter = seed_user(&pool, org, "ADMIN").await;
     let member = seed_user(&pool, org, "MEMBER").await;
+    org_change_support::grant_org_levels(&pool, drafter, &["view", "edit"]).await;
     let draft_token = keys.token(&pool, drafter, org, &["ADMIN"]).await;
     let member_token = keys.token(&pool, member, org, &["MEMBER"]).await;
 
@@ -1096,7 +1098,7 @@ async fn authorization_denies_without_leakage_and_conceals_other_tenants(pool: P
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "member draft: {denied}");
 
-    // Approve floor is higher than draft floor: ADMIN drafts but cannot decide.
+    // An org-edit grant permits drafting without granting approval.
     let (status, created) = send(
         &rt,
         &keys,
@@ -1375,6 +1377,7 @@ async fn effectuate_is_frozen_inside_a_locked_period_and_records_the_attempt(poo
     let frozen_branch = seed_branch(&pool, org, region, "동결지점").await;
     let drafter = seed_user(&pool, org, "ADMIN").await;
     let approver = seed_user(&pool, org, "EXECUTIVE").await;
+    org_change_support::grant_org_levels(&pool, drafter, &["view", "edit"]).await;
     let draft_token = keys.token(&pool, drafter, org, &["ADMIN"]).await;
     let exec_token = keys.token(&pool, approver, org, &["EXECUTIVE"]).await;
 
@@ -1704,20 +1707,6 @@ impl Keys {
         )
         .await
     }
-}
-
-async fn runtime_role_pool(owner: &PgPool) -> PgPool {
-    PgPoolOptions::new()
-        .max_connections(8)
-        .after_connect(|conn, _| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(owner.connect_options().as_ref().clone())
-        .await
-        .unwrap()
 }
 
 async fn send(

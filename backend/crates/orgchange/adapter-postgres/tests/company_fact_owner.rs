@@ -19,8 +19,11 @@ async fn legacy_legal_name_cannot_replace_the_tenant_root_or_its_history(owner: 
         .bind(org.as_uuid()).bind(actor.as_uuid()).execute(&owner).await.unwrap();
     let store = PgOrgChangeStore::new(runtime_role_pool(&owner).await);
     console_platform_request_context::scope_org(org, async {
-        let tree = store.list_org_units().await.unwrap();
+        let tree = store.list_org_units(Some(actor)).await.unwrap();
         assert_eq!(tree.items[0].name, "Org tenant-display");
+        let read_only = store.list_org_units(None).await.unwrap();
+        assert_eq!(read_only.items, tree.items);
+        assert!(read_only.draftable_ids.is_empty());
         let root = store.get_org_unit(*org.as_uuid()).await.unwrap();
         assert_eq!(root.head.name, "Org tenant-display");
         assert!(
