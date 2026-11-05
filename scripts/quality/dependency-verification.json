@@ -55,6 +55,15 @@
     "checked": "2026-10-26",
     "note": "docs/quality/dependencies/zod.md"
   },
+  "package.json:overrides:@stryker-mutator/core:minimatch": {
+    "requirement": "11.0.1",
+    "version": "11.0.1",
+    "registry": "https://registry.npmjs.org/minimatch/11.0.1",
+    "checked": "2026-11-05",
+    "note": "docs/quality/dependencies/stryker-minimatch.md",
+    "reason": "Stryker pins minimatch to the vulnerable 10.x range; 11.0.1 fixes GHSA-g3hv-75wg-m249.",
+    "removalCondition": "Remove once Stryker depends on minimatch >=11.0.1 and the regenerated lockfile and mutation run pass without the override."
+  },
   "package.json:overrides:typed-rest-client:qs": {
     "requirement": "6.16.1",
     "version": "6.16.1",

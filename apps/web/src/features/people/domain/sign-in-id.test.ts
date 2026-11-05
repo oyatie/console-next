@@ -37,3 +37,21 @@ test("an invite suggests the romanised name, else the employee number, else noth
   expect(suggestLogin("홍", "E-000123")).toBe("e-000123");
   expect(suggestLogin("홍", null)).toBe("");
 });
+
+test("employee-number suggestions trim only edge separators and keep the login rule", () => {
+  for (const [number, expected] of [
+    ["._-E-000123-_.", "e-000123"], ["E.1", "e.1"], ["E_1", "e_1"],
+    ["E/1", "e-1"], ["._-", ""], ["", ""], ["E--1", ""],
+    ["a".repeat(32), "a".repeat(32)], ["a".repeat(33), ""],
+  ]) expect(suggestLogin("", number), number).toBe(expected);
+});
+
+test("long employee numbers complete within the suggestion budget", () => {
+  const separators = "-".repeat(100_000);
+  const start = performance.now();
+  expect(suggestLogin("", `${separators}x`)).toBe("x");
+  expect(suggestLogin("", `e${separators}x`)).toBe("");
+  expect(suggestLogin("", `x${separators}`)).toBe("x");
+  expect(suggestLogin("", separators)).toBe("");
+  expect(performance.now() - start).toBeLessThan(500);
+});

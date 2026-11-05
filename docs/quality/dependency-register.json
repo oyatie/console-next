@@ -49467,6 +49467,67 @@
     },
     {
       "kind": "npm",
+      "name": "minimatch",
+      "direct": true,
+      "uses": [
+        {
+          "file": "package.json",
+          "user": "console-react",
+          "layer": "build/tooling",
+          "override": "@stryker-mutator/core > minimatch"
+        }
+      ],
+      "callsites": [
+        "package.json:48",
+        "scripts/dependency-overrides.test.ts:15",
+        "scripts/dependency-ruling.test.ts:14"
+      ],
+      "evidence": [
+        "package-lock.json",
+        "https://registry.npmjs.org/minimatch",
+        "docs/quality/dependencies/stryker-minimatch.md",
+        "https://github.com/advisories/GHSA-g3hv-75wg-m249"
+      ],
+      "group": "Test/lint tooling",
+      "job": "Security override for Stryker's existing glob matcher",
+      "verdict": "keep",
+      "class": "STANDARD",
+      "approval": {
+        "by": "owner",
+        "on": "2026-11-05",
+        "ruling": "Patch only Stryker's existing minimatch dependency to 11.0.1",
+        "source": "docs/quality/dependencies/stryker-minimatch.md"
+      },
+      "architectureRecord": "docs/architecture/frontend-module-map.md",
+      "approvedUsers": [
+        "console-react"
+      ],
+      "approvedUses": [
+        {
+          "user": "console-react",
+          "layer": "build/tooling"
+        }
+      ],
+      "allowedLayers": [
+        "build/tooling"
+      ],
+      "layer": "build/tooling",
+      "alternatives": "Wait for Stryker to update its matcher; maintain a local matcher fork",
+      "reason": "Scoped remediation of GHSA-g3hv-75wg-m249 in the existing mutation-testing toolchain.",
+      "license": "BlueOak-1.0.0",
+      "exitPlan": "Remove the override once Stryker depends on minimatch >=11.0.1 and lockfile and mutation checks pass without it.",
+      "securityProcess": "Upstream advisory and patched registry artifact verified",
+      "ruleMapping": "Preserve Stryker glob discovery and mutation-test execution.",
+      "allowedUsers": [
+        "console-react"
+      ],
+      "observedLayers": [
+        "build/tooling"
+      ],
+      "layerFindings": []
+    },
+    {
+      "kind": "npm",
       "name": "openapi-fetch",
       "direct": true,
       "uses": [

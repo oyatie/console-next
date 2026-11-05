@@ -69,10 +69,17 @@ export function romanizeName(name: string): string | null {
   return latin && !loginProblem(latin) ? latin : null;
 }
 
+function trimLoginSeparators(value: string): string {
+  let start = 0, end = value.length;
+  while (start < end && "._-".includes(value[start]!)) start++;
+  while (end > start && "._-".includes(value[end - 1]!)) end--;
+  return value.slice(start, end);
+}
+
 /** What an invite suggests: the romanised name, else the employee number, else nothing (the server's default). */
 export function suggestLogin(name: string, employeeNumber?: string | null): string {
   const romanized = romanizeName(name);
   if (romanized && romanized.length <= LOGIN_MAX) return romanized;
-  const number = normalizeLogin(employeeNumber ?? "").replace(/[^a-z0-9._-]+/g, "-").replace(/^[._-]+|[._-]+$/g, "");
+  const number = trimLoginSeparators(normalizeLogin(employeeNumber ?? "").replace(/[^a-z0-9._-]+/g, "-"));
   return number && !loginProblem(number) ? number : "";
 }
