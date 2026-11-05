@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { components } from "@console/api";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 // eslint-disable-next-line no-restricted-imports -- Go-live synchronizes the server-confirmed phase before navigation.
@@ -21,7 +20,7 @@ import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { StatRow } from "../../../ui/key-value/key-value";
-import { goLive, goLivePreviewQuery, goLiveReceiptQuery, SETUP_READS } from "../api";
+import { goLive, goLivePreviewQuery, goLiveReceiptQuery, SETUP_READS, type GoLiveFactsSnapshot } from "../api";
 import { Blockers, Warnings } from "./go-live-items";
 import { onboardingError } from "../present";
 import { GoLiveDetails } from "./go-live-details";
@@ -63,8 +62,7 @@ export function GoLive() {
       </div>
       <QueryState q={q}>
         {(p) => {
-          const f = p.facts;
-          const stats = (f: components["schemas"]["GoLiveFactsSnapshotV1"]) => [
+          const stats = (f: GoLiveFactsSnapshot) => [
             { key: "entities", label: t("setup.golive.details.legal_entity"), value: fmtNumber(f.entities) },
             { key: "workplaces", label: t("setup.golive.details.workplace"), value: fmtNumber(f.workplaces) },
             { key: "registration-todo", label: t("setup.golive.registrationTodo"), value: fmtNumber(f.staffed_workplaces_without_registration + f.empty_workplaces_without_registration) },
@@ -120,7 +118,7 @@ export function GoLive() {
           const start = <Button variant="primary" disabled={run.isPending || refreshing} onClick={() => run.mutate(undefined)}>{t("setup.golive.start")}</Button>;
           return (
             <>
-              <Card><StatRow items={stats(f)} /></Card>
+              <Card><StatRow items={stats(p.facts)} /></Card>
               <div className={s.layout}>
                 <Card>
                   <div className={s.body}>
