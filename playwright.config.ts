@@ -47,6 +47,7 @@ export default defineConfig({
   testDir: "e2e",
   outputDir: OUTPUT_DIR,
   globalSetup: "./e2e/global-setup.ts",
+  forbidOnly: !!process.env.CI,
   timeout: 120_000,
   expect: { timeout: process.env.E2E_PERF === "1" ? 30_000 : 5_000 },
   // Every test builds its own tenant through the product, so tests run side by side (one backend, one Vite).

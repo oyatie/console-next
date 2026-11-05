@@ -1,15 +1,24 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Known live test failures
 
-| Test | Observed failure | Follow-up |
-| --- | --- | --- |
-| `e2e/person-pickers.spec.ts:28` — namesake selection | Reproduced on `9342d4fb9` in Chromium. The first attendance person search scores 0.0487 against the 0.02 layout-shift budget. As the server results populate the open `ServerPicker`, its popup grows from 229 to 291 px high and flips from below the field to above it (top 491 → 240 px); the footer also reflows. | Stabilize popup placement while search results change, preserving readable person labels and namesake confirmation. Reproduce with `CONSOLE_APP_BIN=<prebuilt binary> npx playwright test e2e/person-pickers.spec.ts --project=parallel`. The spec remains enabled. |
-| `e2e/j6-bulk.spec.ts` — roster after registration | The roster filter band, row-height control and column picker move 4 px about 88 ms after input on `/people/new`. The accessibility stability assertion catches this arrival shift. | Keep the stability assertion enabled; fix the controls' layout during registration. |
-| `e2e/j6-bulk.spec.ts` — paste commit landing | After a paste batch is recorded, the sheet closes onto the appointments tab's empty bulk workspace instead of the updated roster. The immediate result-row assertions fail. | Return to the recorded result after commit; preserve the assertions without navigating back to the roster in the test. |
-| `e2e/life.spec.ts:118` — fixed-term renewal | At line 126, the one-year preset has `aria-disabled="true"` because it exceeds the two-year limit. Clicking it times out. | Enter an over-limit date through the supported date field; preserve the disabled preset. |
-| `e2e/lifecycle-trail.spec.ts:232` — intercompany transfer | Correction returned HTTP 409 with `lifecycle_void_unsupported`; rescind preview returned HTTP 200 without changing the transfer. The linked-case dialog then remained loading beyond the five-second wait at line 298. A focused rerun passed. | Investigate the intermittent linked-case read delay and rerun the full journey. |
-| `e2e/lifecycle-trail.spec.ts:304` — hire case close | The raw-copy guard's false positive is fixed: `CommandError` marks diagnostic codes with `<code translate="no">`, which the guard preserves literally. Adjacent explanations and unmarked code remain checked. Forced HTTP 409 state tests cover the translated sentence, diagnostic code and blocking-item remedy in both browsers at desktop/phone widths and light/dark themes. | A genuine `lifecycle.refuse.close_blocked` refusal can still keep the case open. Inspect and complete the remaining blocking items before expecting closure; the live journey still needs a successful rerun. |
-| `e2e/lifecycle-trail.spec.ts:334` — workplace appointment, today preset | The test retains a dialog locator named `전보` across a target change that can rename it `전근`; state tests cover the rename and today selection at 1440/390 px in light/dark themes. A live rerun passed today selection but failed at line 365 with zero filing preview rows. Its requests first included `variant=WORKPLACE_CHANGE`, then lost that variant when the effective date was selected. | Keep the shared date preset. Inspect target-selection persistence and the workplace-change variant, and follow the sheet's derived name when locating it and its submit action. |
+Focused evidence on 2026-11-03 used frontend `76de1ad50`, backend `a5125793d`, the served Chromium shape,
+one worker, and CI retry/flaky semantics. It produced 4 passes, 1 owned fixme skip and these 6 failures;
+every retry failed earlier in tenant bootstrap, so the first-attempt product failure remains the evidence.
+The table also retains the separately observed bulk-registration failures.
+
+| Test | Owner | Observed failure | Follow-up |
+| --- | --- | --- | --- |
+| `e2e/person-pickers.spec.ts:28` — namesake selection | `@jason931225` | The picker stability check scored 0.0552 against the 0.02 budget. The attendance popup contributed 0.0473 when it grew from 229 to 291 px and flipped from below the field to above it; moving controls on `/people/new` contributed another 0.0064. | Stabilize popup placement while results change and keep the people-list controls fixed. Preserve readable labels and namesake confirmation. |
+| `e2e/j6-bulk.spec.ts` — roster after registration | Unassigned | The roster filter band, row-height control and column picker move 4 px about 88 ms after input on `/people/new`. The accessibility stability assertion catches this arrival shift. | Keep the stability assertion enabled; fix the controls' layout during registration. |
+| `e2e/j6-bulk.spec.ts` — paste commit landing | Unassigned | After a paste batch is recorded, the sheet closes onto the appointments tab's empty bulk workspace instead of the updated roster. The immediate result-row assertions fail. | Return to the recorded result after commit; preserve the assertions without navigating back to the roster in the test. |
+| `e2e/life.spec.ts:12` — stale lifecycle sheet | `@jason931225` | The history list shifted by 0.0293 while stale-change rows settled. A status notice then covered the `발령` action until the 120-second timeout. | Stabilize history-row insertion and keep notices from covering record actions. |
+| `e2e/life.spec.ts:118` — fixed-term renewal | `@jason931225` | At line 126, the one-year preset has `aria-disabled="true"` and the title says it exceeds the two-year limit. Clicking it times out. | Enter an over-limit date through the supported date field; preserve the disabled preset. |
+| `e2e/lifecycle-trail.spec.ts:304` — hire case close | `@jason931225` | The people-list controls moved during the attestation audit. After passkey confirmation, the `증빙 확인 완료` dialog stayed visible, so the journey never reached case closure or the former raw-ID assertion. The raw-copy guard's false positive is fixed: `CommandError` marks diagnostic codes with `<code translate="no">`, which the guard preserves literally. Adjacent explanations and unmarked code remain checked. Forced HTTP 409 state tests cover the translated sentence, diagnostic code and blocking-item remedy in both browsers at desktop/phone widths and light/dark themes. | Keep the list controls fixed and close the dialog after successful attestation, then re-evaluate the later close refusal. A genuine `lifecycle.refuse.close_blocked` refusal can still keep the case open. Inspect and complete the remaining blocking items before expecting closure; the live journey still needs a successful rerun. |
+| `e2e/lifecycle-trail.spec.ts:334` — workplace appointment | `@jason931225` | The target change can rename the retained `전보` dialog to `전근`; the today-preset locator then waited until the 240-second timeout. The filing preview was not reached. | Follow the sheet's derived name after target selection, then verify target persistence, the today preset and the workplace-change filing variant. |
+| `e2e/access-roles.spec.ts:121` — access after go-live | `@jason931225` | The journey still expects the former `인사` heading and fails before proving the roster. It also recorded a moving role-table control while a role was deleted. | Complete the Cedar-backed People access hand-off below, update the stale heading locator and stabilize the role row. |
+
+The previously listed `e2e/lifecycle-trail.spec.ts:232` intercompany-transfer journey passed in this focused run
+and is no longer a current red; keep measuring it for the earlier intermittent linked-case delay.
 
 Reproduce with `CONSOLE_APP_BIN` pointing to the built backend:
 
@@ -23,8 +32,8 @@ npm run e2e:agent -- e2e/lifecycle-trail.spec.ts e2e/life.spec.ts \
 
 ## Access roles after go-live
 
-- Owner: People access. Review by 2026-11-09.
-- Spec: `e2e/access-roles.spec.ts:121`, Chromium, base `14217620e`.
+- Owner: `@jason931225` (People access). Review by 2026-11-09.
+- Spec: `e2e/access-roles.spec.ts:121`, Chromium, frontend `76de1ad50`, backend `a5125793d`.
 - Reproduce: `CONSOLE_APP_BIN=<console-app binary> E2E_AGENT=1 E2E_SLOT=<isolated slot> E2E_WORKERS=1 npx playwright test e2e/access-roles.spec.ts --project=parallel`.
 - Immediate cause: the assertion expects the former heading `인사`; `People` now renders `roster.head.title` (`직원`).
 - Changing only that assertion would hide a product defect. The base trace shows the worker's `/api/v1/access/me` returning ENFORCED `hr_basic/view` and `org/view` grants over LEGAL_ENTITY after go-live, while `/people` renders `access_denied` and never requests `/api/v1/employees`.

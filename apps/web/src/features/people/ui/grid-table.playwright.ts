@@ -11,6 +11,7 @@ export default defineConfig({
   testDir: ".",
   testMatch: ["grid-table.spec.ts", "grid-table-focus.spec.ts", "grid-table-paste.spec.ts"],
   outputDir: path.join(repo, "node_modules/.cache/grid-playwright"),
+  forbidOnly: !!process.env.CI,
   // Both specs must share a worker to cover per-test locale and error-guard setup.
   workers: 1,
   retries: 0,

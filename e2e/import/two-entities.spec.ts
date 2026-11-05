@@ -142,4 +142,5 @@ test("an HR admin imports 300 people across two legal entities, answers each unp
 
 // BW-10 item 9: an applied run is rolled back within 7 days by a second person. No backend serves the run record or
 // the rollback yet (backend-followups #21 (a)); the panel is built (ui/rollback-panel.tsx) and not mounted.
+// fixme: owner=@jason931225; reason=applied import rollback has no served API; expires=2026-11-17
 test.fixme("a second person rolls an applied import back within 7 days (BW-10 item 9, not served)", async () => {});
