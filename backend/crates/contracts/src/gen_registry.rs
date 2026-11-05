@@ -9004,15 +9004,6 @@ const ONBOARDING_FRAGMENT_EXTERNAL: &[&str] = &[
 
 const ONBOARDING_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
-        path: "/api/v1/onboarding/modules",
-        operations: &[Operation {
-            method: "get",
-            body: include_str!(
-                "../../onboarding/rest/openapi/paths/api__v1__onboarding__modules.get.yaml"
-            ),
-        }],
-    },
-    PathItem {
         path: "/api/v1/onboarding/checklist",
         operations: &[Operation {
             method: "get",
@@ -9036,6 +9027,24 @@ const ONBOARDING_FRAGMENT_PATHS: &[PathItem] = &[
             method: "get",
             body: include_str!(
                 "../../onboarding/rest/openapi/paths/api__v1__onboarding__go-live__preview.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/onboarding/go-live/receipt",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../onboarding/rest/openapi/paths/api__v1__onboarding__go-live__receipt.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/onboarding/modules",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../onboarding/rest/openapi/paths/api__v1__onboarding__modules.get.yaml"
             ),
         }],
     },
@@ -9069,8 +9078,8 @@ const ONBOARDING_FRAGMENT_PATHS: &[PathItem] = &[
 
 const ONBOARDING_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
-        name: "OnboardingModules",
-        body: include_str!("../../onboarding/rest/openapi/schemas/OnboardingModules.yaml"),
+        name: "GoLiveFactsSnapshotV1",
+        body: include_str!("../../onboarding/rest/openapi/schemas/GoLiveFactsSnapshotV1.yaml"),
     },
     NamedYaml {
         name: "GoLivePreview",
@@ -9081,12 +9090,20 @@ const ONBOARDING_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../onboarding/rest/openapi/schemas/GoLivePreviewItem.yaml"),
     },
     NamedYaml {
+        name: "GoLiveReceipt",
+        body: include_str!("../../onboarding/rest/openapi/schemas/GoLiveReceipt.yaml"),
+    },
+    NamedYaml {
         name: "GoLiveRequest",
         body: include_str!("../../onboarding/rest/openapi/schemas/GoLiveRequest.yaml"),
     },
     NamedYaml {
         name: "GoLiveResult",
         body: include_str!("../../onboarding/rest/openapi/schemas/GoLiveResult.yaml"),
+    },
+    NamedYaml {
+        name: "OnboardingModules",
+        body: include_str!("../../onboarding/rest/openapi/schemas/OnboardingModules.yaml"),
     },
     NamedYaml {
         name: "SetupFacts",

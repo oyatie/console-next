@@ -9734,6 +9734,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/onboarding/go-live/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the stored receipt of the tenant's start of operations
+         * @description Cedar action onboarding_go_live_receipt_read permits live ops holders or tenant-wide org, hr_basic or access editors. The timestamp, actor, digest and facts are read from the go-live record, never recomputed. Historical go-lives may have a null facts_snapshot. Tenants without a recorded go-live return go_live_receipt_not_found.
+         */
+        get: operations["getGoLiveReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/onboarding/modules": {
         parameters: {
             query?: never;
@@ -21741,6 +21761,96 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        GoLiveFactsSnapshotV1: {
+            phase_is_setup: boolean;
+            terms_accepted: boolean;
+            org_step_skipped: boolean;
+            security_contact_recorded: boolean;
+            security_contact_store_available: boolean;
+            employees_step_deferred: boolean;
+            /** Format: int64 */
+            entities: number;
+            /** Format: int64 */
+            entities_needing_confirmation: number;
+            /** Format: int64 */
+            registrations: number;
+            /** Format: int64 */
+            registrations_needing_confirmation: number;
+            /** Format: int64 */
+            registrations_unverified: number;
+            /** Format: int64 */
+            entities_without_primary_workplace: number;
+            /** Format: int64 */
+            workplaces: number;
+            /** Format: int64 */
+            workplaces_incomplete: number;
+            /** Format: int64 */
+            staffed_workplaces_without_registration: number;
+            /** Format: int64 */
+            empty_workplaces_without_registration: number;
+            /** Format: int64 */
+            org_units: number;
+            /**
+             * Format: int64
+             * @description Active accounts the access engine lets decide an org change over the whole tenant, the ops account and the caller included; 0 unless org changes route.
+             */
+            org_change_approvers: number;
+            /** Format: int64 */
+            other_eligible_holders: number;
+            /** @description approval.policy.org_structure = route (decisions */
+            org_change_routed: boolean;
+            /**
+             * Format: int64
+             * @description People employed today (재직 or 휴직); never a 입사 예정, a 퇴직 or a cancelled registration.
+             */
+            employees: number;
+            /**
+             * Format: int64
+             * @description 입사 예정 people, shown apart from the headcount.
+             */
+            employees_starting_later: number;
+            /** Format: int64 */
+            unmapped_assignments: number;
+            /** Format: int64 */
+            insurance_not_established_with_people: number;
+            /** Format: int64 */
+            insurance_numbers_pending: number;
+            /** Format: int64 */
+            org_changes_in_approval: number;
+            /** Format: int64 */
+            setup_writes: number;
+            /**
+             * Format: int64
+             * @description The caller's own passkeys; with one, a lost device ends the account.
+             */
+            own_passkeys: number;
+            /**
+             * Format: int64
+             * @description People employed today without a live department; counted from blocker records.
+             */
+            people_without_department?: number;
+            /** Format: int64 */
+            unresolved_departments?: number;
+            /** Format: int64 */
+            unplaced_people: number;
+            /** Format: int64 */
+            entity_unknown_people: number;
+            /** Format: int64 */
+            tenant_roles: number;
+            /** Format: int64 */
+            grants_effective_in_setup: number;
+            /** Format: int64 */
+            prepared_grants: number;
+            /** Format: int64 */
+            non_ops_grants: number;
+            /** Format: int64 */
+            hr_accounts_invited: number;
+            /** Format: int64 */
+            hr_accounts_enrolled: number;
+            /** Format: int64 */
+            access_admin_holders: number;
+            roles_step_skipped: boolean;
+        };
         GoLivePreview: {
             /** @enum {string} */
             phase: "SETUP" | "OPERATING";
@@ -21805,6 +21915,16 @@ export interface components {
                  */
                 legal_entity_id: string;
             }[];
+        };
+        GoLiveReceipt: {
+            /** Format: date-time */
+            go_live_at: string;
+            go_live_by: components["schemas"]["Uuid"];
+            preview_digest: string;
+            /** @description Facts captured under the go-live lock before the phase transition. Null for historical receipts without a stored snapshot; never replaced with current facts. */
+            facts_snapshot: components["schemas"]["GoLiveFactsSnapshotV1"] | null;
+            /** @description Schema version of the stored facts. Version 1 is frozen independently of the live preview; legacy receipts without facts also report 1. */
+            facts_snapshot_version: number;
         };
         GoLiveRequest: {
             /** @description The preview digest the actor confirmed. */
@@ -50622,6 +50742,45 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description Not permitted. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getGoLiveReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The immutable record stored when operations began. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoLiveReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Cedar refused the receipt read. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description go_live_receipt_not_found — no recorded go-live (including pre-console operating tenants). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

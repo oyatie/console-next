@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { checklist as operatingChecklist, failure, inbox, LONG_NAME, screenAccess, user } from "../mock/fixtures";
+import { checklist as operatingChecklist, failure, id, inbox, LONG_NAME, screenAccess, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { homeSetupCases, homeSetupChecklist, homeSetupScreen } from "./home-setup";
@@ -117,6 +117,9 @@ for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width
     status: 200,
     json: { ...operatingChecklist, phase: "OPERATING", go_live_at: startedAt, done: 8, total: 8 },
   });
+  await mockRoute(page, "get", "/api/v1/onboarding/go-live/receipt", { status: 200, json: {
+    go_live_at: startedAt, go_live_by: id(1), preview_digest: "a".repeat(64), facts_snapshot: null, facts_snapshot_version: 1,
+  } });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(0) });
   try {
     await page.goto("/");
@@ -124,10 +127,11 @@ for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width
     await expect(main.getByRole("region", { name: /운영 준비|^시작$/ })).toHaveCount(0);
     await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: "운영 시작 기록 보기", exact: true })).toHaveAttribute("href", "/setup/go-live");
     await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: t("setup.bulk.history"), exact: true })).toHaveAttribute("href", "/org/history");
-    await expect(main.getByText(t("setup.receipt.started.title"), { exact: true })).toHaveCount(1);
+    await expect(main.locator("[data-setup-receipt]").getByText(t("setup.receipt.unrecorded"), { exact: true })).toBeVisible();
     for (const theme of ["light", "dark"]) {
       await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
       await fits(page, `home-setup/receipt/${width}/${theme}`);
+      await page.screenshot({ path: test.info().outputPath(`home-${width}-${theme}.png`), fullPage: true });
       await expectAxe(page, `home-setup/receipt/${width}/${theme}`);
     }
     expect(fixture.unexpected).toEqual([]);

@@ -1,7 +1,6 @@
 {
   "source": "console-onboarding-rest",
   "paths": {
-    "/api/v1/onboarding/modules": ["get"],
     "/api/v1/onboarding/checklist": [
       "get"
     ],
@@ -9,6 +8,12 @@
       "post"
     ],
     "/api/v1/onboarding/go-live/preview": [
+      "get"
+    ],
+    "/api/v1/onboarding/go-live/receipt": [
+      "get"
+    ],
+    "/api/v1/onboarding/modules": [
       "get"
     ],
     "/api/v1/onboarding/steps/{step}/skip": [
@@ -20,11 +25,13 @@
     ]
   },
   "schemas": [
-    "OnboardingModules",
+    "GoLiveFactsSnapshotV1",
     "GoLivePreview",
     "GoLivePreviewItem",
+    "GoLiveReceipt",
     "GoLiveRequest",
     "GoLiveResult",
+    "OnboardingModules",
     "SetupFacts",
     "TermsAcceptanceRequest",
     "TermsDocument"

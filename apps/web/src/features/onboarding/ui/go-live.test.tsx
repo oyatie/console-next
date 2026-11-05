@@ -3,10 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, loadCatalog } from "@console/i18n";
 import type { GoLiveItem } from "@console/api/pending";
-import { ApiError } from "../api";
+import { ApiError, goLiveReceiptQuery } from "../api";
 import { GoLive } from "./go-live";
 
 const state = vi.hoisted(() => ({
+  receiptError: null as unknown,
+  snapshot: { entities: 7, workplaces: 3, staffed_workplaces_without_registration: 0, empty_workplaces_without_registration: 0, org_units: 8, employees: 42, employees_starting_later: 0, setup_writes: 9 } as object | null,
   readError: null as unknown, commandError: null as unknown, updated: 100, submitted: 200,
   fetching: false, fetched: true, mutate: vi.fn(),
   data: {
@@ -21,7 +23,10 @@ vi.mock("react", async (original) => {
   const react = await original<typeof import("react")>();
   return { ...react, useState: (initial: unknown) => initial === false ? [true, vi.fn()] : react.useState(initial) };
 });
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: () => ({
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: (opts: { queryFn?: unknown }) => opts.queryFn === goLiveReceiptQuery.queryFn ? {
+  data: state.receiptError ? undefined : { go_live_at: "2026-11-04T09:00:00Z", preview_digest: "recorded-digest", facts_snapshot: state.snapshot, facts_snapshot_version: state.snapshot ? 1 : null },
+  isPending: false, isError: !!state.receiptError, error: state.receiptError, refetch: vi.fn(),
+} : ({
   data: state.data, isPending: false, error: state.readError, refetch: vi.fn(),
   dataUpdatedAt: state.updated, isFetching: state.fetching, isFetchedAfterMount: state.fetched, isError: state.readError !== null,
 }) }));
@@ -29,7 +34,7 @@ vi.mock("../../../lib/react/command", async (original) => ({ ...(await original<
   error: state.commandError, isPending: false, submittedAt: state.submitted, mutate: state.mutate,
 }) }));
 beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
-afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.data.phase = "SETUP"; state.data.digest = "preview"; state.data.blockers = []; state.data.becomes_governed = []; state.data.facts.org_units = 2; state.mutate.mockClear(); });
+afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.receiptError = null; state.snapshot = { entities: 7, workplaces: 3, staffed_workplaces_without_registration: 0, empty_workplaces_without_registration: 0, org_units: 8, employees: 42, employees_starting_later: 0, setup_writes: 9 }; state.data.phase = "SETUP"; state.data.digest = "preview"; state.data.blockers = []; state.data.becomes_governed = []; state.data.facts.org_units = 2; state.mutate.mockClear(); });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/setup/go-live"] }) });
 const render = () => renderToStaticMarkup(<RouterContextProvider router={router}><GoLive /></RouterContextProvider>);
 
@@ -126,7 +131,7 @@ test("blockers render as compact alert rows with reason disclosure and without r
   expect(html).not.toContain("지금 로그인한 사람");
 });
 
-test("operating phase renders the go-live receipt with current values and history link instead of an already_operating blocker", () => {
+test("operating phase renders the go-live receipt with recorded values and history link instead of an already_operating blocker", () => {
   state.data.phase = "OPERATING";
   state.data.digest = "sha256:receipt-digest-01";
   state.data.becomes_governed = ["setup_undo_becomes_correction", "exits_leave_payroll_available"];
@@ -134,7 +139,10 @@ test("operating phase renders the go-live receipt with current values and histor
   const html = render();
   expect(html).toContain("운영을 시작했습니다");
   expect(html).not.toContain("sha256:receipt-digest-01");
-  expect(html).toContain("현재");
+  expect(html).toContain("운영 시작 당시");
+  expect(html).toContain(">42<");
+  expect(html).not.toContain(">2,000<");
+  expect(html).toContain('dateTime="2026-11-04T09:00:00Z"');
   expect(html).not.toContain("운영을 시작하면 바뀌는 것");
   expect(html).not.toContain("운영 시작부터 적용되는 역할");
   expect(html).toContain("퇴직, 휴직, 급여 확정을 사용할 수 있습니다");
@@ -149,3 +157,16 @@ test("the setup preview keeps its command digest off screen", () => {
   state.data.digest = "sha256:preview-only";
   expect(render()).not.toContain("sha256:preview-only");
 });
+
+for (const locale of ["ko", "en"] as const) {
+  test(`legacy and missing receipts are honest in ${locale}`, () => {
+    i18n.set(locale);
+    state.data.phase = "OPERATING";
+    state.snapshot = null;
+    const html = render();
+    expect(html).toContain(locale === "ko" ? "운영 시작 당시의 수치는 기록되지 않았습니다" : "Counts at the start of operations were not recorded");
+    expect(html).not.toContain(">2,000<");
+    state.receiptError = new ApiError(404, "go_live_receipt_not_found", "missing");
+    expect(render()).toContain(locale === "ko" ? "저장된 운영 시작 기록이 없습니다" : "No stored start record is available");
+  });
+}

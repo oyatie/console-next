@@ -41,6 +41,9 @@ pub enum AccessEngineError {
 const APPLIES: &str =
     "appliesTo { principal: [Account], resource: [Tenant, LegalEntity, Workplace, Dept] };";
 
+/// Tenant-wide setup editors and the live ops holder may read historical setup facts.
+pub const GO_LIVE_RECEIPT_READ: &str = "onboarding_go_live_receipt_read";
+
 pub const BULK_APPOINTMENT: &str = "bulk_appointment";
 
 const PLATFORM_POLICIES: [(&str, &str); 2] = [
@@ -92,6 +95,12 @@ pub fn schema_source() -> String {
         action_group(Domain::Org, super::catalog::Level::Edit),
         crate::cedar_pbac::actions::certificates::SETTINGS_MANAGE,
         action_group(Domain::Org, super::catalog::Level::Edit),
+    ));
+    src.push_str(&format!(
+        "action \"{GO_LIVE_RECEIPT_READ}\" in [\"{}\", \"{}\", \"{}\"] {APPLIES}\n",
+        action_group(Domain::Org, super::catalog::Level::Edit),
+        action_group(Domain::HrBasic, super::catalog::Level::Edit),
+        action_group(Domain::Access, super::catalog::Level::Edit),
     ));
     src
 }

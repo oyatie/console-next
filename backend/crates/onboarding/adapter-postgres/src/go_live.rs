@@ -78,11 +78,12 @@ impl PgOnboardingStore {
                 );
                 require_ready(&current, failing, cedar)?;
                 let go_live_at: time::OffsetDateTime = sqlx::query_scalar(
-                    "UPDATE tenant_phase SET phase = 'OPERATING', go_live_at = now(), go_live_by = $1, go_live_preview_digest = $2 \
+                    "UPDATE tenant_phase SET phase = 'OPERATING', go_live_at = now(), go_live_by = $1, go_live_preview_digest = $2, go_live_facts_snapshot = $3, go_live_facts_snapshot_version = 1 \
                      WHERE org_id = NULLIF(current_setting('app.current_org', true), '')::uuid RETURNING go_live_at",
                 )
                 .bind(*actor.user.as_uuid())
                 .bind(&digest)
+                .bind(json!(f))
                 .fetch_one(tx.as_mut())
                 .await?;
                 sqlx::query("UPDATE legal_entities SET identity_locked_at = now() WHERE identity_locked_at IS NULL AND voided_at IS NULL")

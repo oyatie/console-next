@@ -6,6 +6,7 @@ import { loadCatalog } from "@console/i18n";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { operationAccess } from "../../../reference/authz/domain/operation-access";
 import { settingsQuery } from "../../../reference/settings/api";
+import { goLiveReceiptQuery } from "../api";
 import { SetupReceipt } from "./setup-receipt";
 
 const RECEIPT_NEED = operationAccess["GET /api/v1/onboarding/go-live/preview"];
@@ -59,7 +60,7 @@ vi.mock("../ui/use-setup", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: (opts: unknown) => {
+  useQuery: (opts: { queryFn?: unknown }) => {
     if (opts === myAccessQuery) {
       return {
         data: {
@@ -80,6 +81,10 @@ vi.mock("@tanstack/react-query", () => ({
         },
       };
     }
+    if (opts.queryFn === goLiveReceiptQuery.queryFn) return { data: {
+      go_live_at: state.goLiveAt, facts_snapshot_version: 1,
+      facts_snapshot: { entities: 7, workplaces: 3, org_units: 8, employees: 23 },
+    } };
     return { data: undefined };
   },
 }));
@@ -108,11 +113,13 @@ test("renders post-go-live receipt link and setup history link on Home within th
     const html = render();
     expect(html).toContain("시작 시각");
     expect(html).not.toContain("운영을 시작했습니다");
-    expect(html).toContain("현재");
+    expect(html).toContain("운영 시작 당시");
+    expect(html).not.toContain("현재");
     expect(html).toContain('href="/setup/go-live"');
     expect(html).toContain("운영 시작 기록 보기");
     expect(html).toContain('href="/org/history"');
-    expect(html).toContain("42");
+    expect(html).toContain("23");
+    expect(html).not.toContain("42");
     expect(html).not.toMatch(/aria-label="운영 준비"/);
   } finally {
     vi.useRealTimers();
@@ -134,6 +141,22 @@ test("omits unauthorized receipt links and hides outside the configured receipt 
     vi.setSystemTime(new Date("2026-11-08T12:00:00Z"));
     state.updatedAt = Date.parse("2026-11-08T12:00:00Z");
     expect(render()).toBe("");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("a history-only viewer cannot see a cached receipt summary", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+  try {
+    state.isOps = false;
+    state.entries = [{ domain: "org", level: "view", enforcement: "ENFORCED", scope: { kind: "TENANT", include_descendants: false }, grant_id: "grant", role_id: "role", role_name_ko: "Reader", valid_from: "2026-11-01T00:00:00Z", caveats: [] }];
+    const html = render();
+    expect(html).toContain('href="/org/history"');
+    expect(html).not.toContain('href="/setup/go-live"');
+    expect(html).not.toContain("운영 시작 당시");
+    expect(html).not.toContain("23");
   } finally {
     vi.useRealTimers();
   }
