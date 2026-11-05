@@ -609,11 +609,6 @@
    "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/payroll/employees/{employeeId}/payslip-draft": {
-   "lane": "Payroll S4 직원 급여",
-   "reason": "The employee payroll screen will preview draft payslips with statutory citations.",
-   "when": "2026-11-11"
-  },
   "GET /api/v1/payroll/payslips/me": {
    "lane": "Payroll S7 교부",
    "reason": "The payslip delivery journey will let employees read their issued payslips.",
@@ -1018,11 +1013,6 @@
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
-  },
-  "POST /api/v1/payroll/employees/{employeeId}/contract-wages": {
-   "lane": "Payroll S4 직원 급여",
-   "reason": "The employee payroll screen will record contract wages before draft calculation.",
-   "when": "2026-11-11"
   },
   "POST /api/v1/payroll/runs/{id}/calculate": {
    "lane": "Payroll S6 계산·검토",

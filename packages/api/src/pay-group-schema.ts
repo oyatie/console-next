@@ -128,5 +128,41 @@ export const payGroupSchemas = {
         "HOURLY"
       ]
     }
+  },
+  "ContractWage": {
+    "type": "object",
+    "required": [
+      "effective_from",
+      "wage_kind",
+      "amount_won",
+      "monthly_standard_hours"
+    ],
+    "properties": {
+      "effective_from": {
+        "type": "string",
+        "format": "date"
+      },
+      "wage_kind": {
+        "type": "string",
+        "enum": [
+          "MONTHLY",
+          "HOURLY"
+        ]
+      },
+      "amount_won": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1
+      },
+      "monthly_standard_hours": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 400
+      },
+      "source_note": {
+        "type": "string",
+        "maxLength": 500
+      }
+    }
   }
 } as const;

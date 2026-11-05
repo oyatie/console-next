@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/payroll/ui/employee-pay-page.tsx#EmployeePayPage": 31
+  },
+  "newScreens": {
+    "apps/web/src/features/payroll/ui/employee-pay-page.tsx#EmployeePayPage": {
+      "FACT": 20,
+      "REFUSAL": 6,
+      "EMPTY": 3,
+      "LEGAL": 1,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    }
+  }
+}
