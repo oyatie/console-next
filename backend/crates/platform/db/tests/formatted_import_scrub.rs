@@ -10,6 +10,11 @@ async fn formatted_values_are_scrubbed_atomically_and_idempotently(pool: PgPool)
     let migrator = sqlx::migrate!("./migrations");
     migrator.run_to(20261105010000000, &pool).await.unwrap();
     let org = Uuid::new_v4();
+    let key = "filename:９００１０１－１２３４５６７.xlsx|row:2";
+    let decisions = json!({
+        "exclusions": {key: {"reason_code": "DUPLICATE", "note": "900101 1234567"}},
+        "employee_numbers": {key: "2026000123"}
+    });
     sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, 'Import cleanup')")
         .bind(org)
         .bind(org.to_string())
@@ -18,9 +23,10 @@ async fn formatted_values_are_scrubbed_atomically_and_idempotently(pool: PgPool)
         .unwrap();
     sqlx::query("ALTER TABLE data_import_runs DISABLE TRIGGER trg_data_import_runs_employee_hr_command_only")
         .execute(&pool).await.unwrap();
-    let run: Uuid = sqlx::query_scalar("INSERT INTO data_import_runs (org_id, entity_type, status, source_filename, source_format, source_sha256, mapping_profile, dry_run_summary, apply_summary, apply_job, rollback_job) VALUES ($1, 'employee_hr', 'PREVIEWED', $2, 'xlsx', repeat('a',64), $3, $3, $3, $3, $3) RETURNING id")
+    let run: Uuid = sqlx::query_scalar("INSERT INTO data_import_runs (org_id, entity_type, status, source_filename, source_format, source_sha256, mapping_profile, dry_run_summary, apply_summary, apply_job, rollback_job, dry_run_decisions) VALUES ($1, 'employee_hr', 'PREVIEWED', $2, 'xlsx', repeat('a',64), $3, $4, $3, $3, $3, $5) RETURNING id")
         .bind(org).bind("９００１０１－１２３４５６７.xlsx")
         .bind(json!({"company":"900101 1234567", "keep":"본사"}))
+        .bind(json!({"company":"900101 1234567", "keep":"본사", "decisions":decisions})).bind(decisions)
         .fetch_one(&pool).await.unwrap();
     sqlx::query(
         "ALTER TABLE data_import_runs ENABLE TRIGGER trg_data_import_runs_employee_hr_command_only",
@@ -51,7 +57,6 @@ async fn formatted_values_are_scrubbed_atomically_and_idempotently(pool: PgPool)
     {
         cells[format!("formatted_{at}")] = json!(text);
     }
-    let key = "filename:９００１０１－１２３４５６７.xlsx|row:2";
     let row: (Uuid, time::OffsetDateTime) = sqlx::query_as("INSERT INTO data_import_rows (org_id, run_id, source_sheet, source_row, source_key, row_status, raw_row, canonical_row) VALUES ($1,$2,'명부',2,$3,'CANDIDATE',$4,$5) RETURNING id, created_at")
         .bind(org).bind(run).bind(key).bind(&cells)
         .bind(json!({"name":"김가", "source_key":key, "source_filename":"people.xlsx", "source_sheet":"명부", "source_row":2, "canonical":cells}))
@@ -197,12 +202,7 @@ async fn formatted_values_are_scrubbed_atomically_and_idempotently(pool: PgPool)
     assert_eq!(phone, (stored_key.clone(), "+821012345678".into()));
     assert_eq!(org_unit, "본사");
     assert_eq!(updated, employee.1);
-    let stored_run: Value =
-        sqlx::query_scalar("SELECT to_jsonb(r) FROM data_import_runs r WHERE id=$1")
-            .bind(run)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let stored_run = &snapshot["runs"][0];
     assert!(
         stored_run["source_filename"]
             .as_str()
@@ -210,6 +210,12 @@ async fn formatted_values_are_scrubbed_atomically_and_idempotently(pool: PgPool)
             .starts_with("redacted-")
     );
     assert_eq!(stored_run["status"], "PREVIEWED");
+    let decisions = &stored_run["dry_run_decisions"];
+    assert_eq!(decisions, &stored_run["dry_run_summary"]["decisions"]);
+    assert_eq!(
+        decisions,
+        &json!({"exclusions": {stored_key.clone(): {"reason_code": "DUPLICATE", "note": stored_run["mapping_profile"]["company"]}}, "employee_numbers": {stored_key.clone(): "2026000123"}})
+    );
     for column in [
         "mapping_profile",
         "dry_run_summary",
@@ -270,10 +276,6 @@ async fn formatted_values_are_scrubbed_atomically_and_idempotently(pool: PgPool)
         );
     }
     // Replaying the SQL is stronger than SQLx's already-applied migration check.
-    let migration = migrator
-        .iter()
-        .find(|m| m.version == 20261106000000000)
-        .unwrap();
     let mut tx = pool.begin().await.unwrap();
     sqlx::raw_sql(sqlx::AssertSqlSafe(migration.sql.as_ref()))
         .execute(&mut *tx)

@@ -112,7 +112,7 @@ BEGIN
         ('data_import_rows', ARRAY['source_sheet','source_key'],
             ARRAY['canonical_row','validation'], ARRAY['raw_row']),
         ('data_import_runs', ARRAY['source_filename'],
-            ARRAY['mapping_profile','dry_run_summary','apply_summary','apply_job','rollback_job'], ARRAY[]::text[]),
+            ARRAY['mapping_profile','dry_run_summary','dry_run_decisions','apply_summary','apply_job','rollback_job'], ARRAY[]::text[]),
         ('employees', ARRAY['name','company','employee_number','org_unit','job','position',
             'worksite_name','worksite_address','source_filename','source_sheet','source_key'],
             ARRAY['source_metadata'], ARRAY['raw_row']),
