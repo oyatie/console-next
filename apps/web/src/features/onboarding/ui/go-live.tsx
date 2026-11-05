@@ -91,11 +91,11 @@ export function GoLive() {
                     <div className={s.stack}>
                       <div className={s.receiptHead}>
                         <Chip tone="ok">{t("setup.receipt.started.title")}</Chip>
-                        <time dateTime={record.go_live_at}>{t("setup.receipt.startedAt")} · {fmtDateTime(record.go_live_at)}</time>
+                        <time dateTime={record.go_live_at}>{fmtDateTime(record.go_live_at)}</time>
                       </div>
-                      {record.facts_snapshot === null ? <p>{t("setup.receipt.unrecorded")}</p>
-                        : record.facts_snapshot_version === 1 ? <StatRow items={stats(record.facts_snapshot)} />
-                        : <p>{t("setup.receipt.unsupported")}</p>}
+                      {record.facts_snapshot !== null && record.facts_snapshot_version === 1
+                        ? <StatRow items={stats(record.facts_snapshot)} />
+                        : <p>{t(record.facts_snapshot === null ? "setup.receipt.unrecorded" : "setup.receipt.unsupported")}</p>}
                     </div>
                   </Card>}
                 </QueryState>
