@@ -15628,12 +15628,14 @@ export interface components {
         };
         AttendanceClosePreflight: {
             month: string;
+            /** @description org denotes organization-wide scope; otherwise the branch UUID. */
             branch_scope: string;
             checks: components["schemas"]["AttendanceCloseCheck"][];
             can_close: boolean;
         };
         AttendanceCloseRequest: {
             month: string;
+            /** @description Omit or pass null for organization-wide scope; otherwise pass the branch UUID. Responses serialize organization-wide scope as org. */
             branch_scope?: components["schemas"]["Uuid"];
             attest?: boolean | null;
         };
@@ -16051,7 +16053,9 @@ export interface components {
         AttendanceMonthClose: {
             id: components["schemas"]["Uuid"];
             month: string;
+            /** @description org denotes organization-wide scope; otherwise the branch UUID. */
             branch_scope: string;
+            /** @description Immutable preflight checks captured at close time; later exception or leave changes do not update them. */
             checks: components["schemas"]["AttendanceCloseCheck"][];
             attested_by: components["schemas"]["Uuid"];
             /**
@@ -16068,12 +16072,19 @@ export interface components {
             amendments: components["schemas"]["AttendanceCloseAmendment"][];
         };
         AttendanceMonthCloseItem: {
+            /** @description org denotes organization-wide scope; otherwise the branch UUID. Matches the stored close scope, or the requested scope for an open row. */
             branch_scope: string;
             closed: boolean;
             close?: components["schemas"]["AttendanceMonthClose"];
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Open exception count. Frozen from close.checks at close time when closed is true; current preflight count otherwise.
+             */
             open_exceptions: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Pending leave count. Frozen from close.checks at close time when closed is true; current preflight count otherwise.
+             */
             pending_leave: number;
         };
         AttendanceMonthGrid: {
