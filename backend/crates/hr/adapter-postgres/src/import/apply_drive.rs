@@ -14,6 +14,7 @@ use crate::import::apply::{Checked, apply_failure, check_and_build, conflict};
 use crate::import::apply_job::{
     ApplyJob, DriverSlot, STALE_AFTER_SECS, progress_audit, read_job, write_job,
 };
+use crate::import::apply_progress;
 use crate::import::apply_report::final_report;
 use crate::import::settle::{Chunk, SETTLE_CHUNK_ROWS, settle_chunk, settle_keys};
 use crate::import::types::{EmployeeImportApplyRequest, EmployeeImportReport};
@@ -110,6 +111,7 @@ impl HrService {
                         ..ApplyJob::queued(run_id, &digest, principal.user_id)
                     },
                 };
+                apply_progress::reset(tx, org_uuid, &started).await?;
                 write_job(tx, org_uuid, &started).await?;
                 let audit = progress_audit(org, &started)?;
                 Ok((Started::Job(started), vec![audit]))
@@ -121,7 +123,14 @@ impl HrService {
     /// The run's job (`GET …/apply`); 404 if no apply was started.
     pub async fn apply_job(&self, org: OrgId, run_id: Uuid) -> Result<ApplyJob, HrError> {
         with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
-            Box::pin(async move { read_job(tx, *org.as_uuid(), run_id).await })
+            Box::pin(async move {
+                match read_job(tx, *org.as_uuid(), run_id).await? {
+                    Some(job) => apply_progress::overlay(tx, *org.as_uuid(), job)
+                        .await
+                        .map(Some),
+                    None => Ok(None),
+                }
+            })
         })
         .await?
         .ok_or_else(|| {
@@ -143,6 +152,9 @@ impl HrService {
                     .is_some_and(|stored| stored.state == "done")
                 {
                     return Ok(((), Vec::new()));
+                }
+                if job.state == "applying" {
+                    apply_progress::reset(tx, *org.as_uuid(), &job).await?;
                 }
                 write_job(tx, *org.as_uuid(), &job).await?;
                 let audit = progress_audit(org, &job)?;
@@ -167,7 +179,13 @@ impl HrService {
         org: OrgId,
         run_id: Uuid,
     ) -> Result<EmployeeImportReport, HrError> {
-        let job = self.apply_job(org, run_id).await?;
+        let job = with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
+            Box::pin(async move { read_job(tx, *org.as_uuid(), run_id).await })
+        })
+        .await?
+        .ok_or_else(|| {
+            HrError::from_kernel(KernelError::not_found("no apply was started for this run"))
+        })?;
         let mut context = AuditCommandContext::for_actor(Some(UserId::from_uuid(job.requested_by)));
         context.org_id = Some(org);
         context.source = AuditSource::Import;
@@ -205,6 +223,7 @@ impl HrService {
             Ok(token) => token,
             Err(error) => return Err(self.fail(org, failure_job, error).await),
         };
+        let progress_pool = self.pool.clone();
         let applied = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 import_apply::require(tx, org, *actor.as_uuid()).await.map_err(HrError::from_kernel)?;
@@ -247,6 +266,9 @@ impl HrService {
                         job: Some(job.clone()),
                     };
                     settle_chunk(org, actor, run_id, chunk)(tx).await?;
+                    if !last {
+                        apply_progress::publish(&progress_pool, org, job.clone()).await?;
+                    }
                 }
                 let report = read_job(tx, *org.as_uuid(), run_id).await?
                     .and_then(|job| job.report)

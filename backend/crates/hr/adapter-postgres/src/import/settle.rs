@@ -247,7 +247,9 @@ pub fn settle_chunk(
             {
                 report.register_gaps = Some(register_gaps_in(tx, org_uuid, run_id).await?);
             }
-            if let Some(job) = &job {
+            if let Some(job) = &job
+                && last
+            {
                 write_job(tx, org_uuid, job).await?;
                 audits.push(progress_audit(org, job)?);
             }

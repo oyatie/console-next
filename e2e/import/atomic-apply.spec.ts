@@ -69,3 +69,46 @@ CREATE TRIGGER fail_import_settle AFTER INSERT ON audit_events FOR EACH ROW EXEC
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();
   expect(await headcount(api)).toBe(2);
 });
+
+test("import progress reaches the screen before any employee is committed", { tag: ["@hr"] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  const slug = "progressimport";
+  const admin = await openTenant(browser, slug, "이관진행검증");
+  await setupCompany(admin, "이관진행검증", "본점");
+  const api = apiOf(admin, bearerOf(admin));
+  await go(admin, "/people/import");
+  await chooseWorkbook(admin, "진행명부.xlsx", await workbook([{ name: "명부", lines: [
+    ["사번", "성명", "입사일", "고용형태"],
+    ...Array.from({ length: 300 }, (_, n) => [`PR-${n}`, `검증직원${n}`, "2020-03-02", "정규직"]),
+  ] }]));
+  const previewed = admin.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/import/preview"));
+  await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  const { run_id: run } = await (await previewed).json() as { run_id: string };
+  await admin.getByRole("button", { name: "모의 반영 실행" }).click();
+  await settled(admin);
+  // Hold the second settle chunk long enough to observe the independently committed progress event.
+  psql(unique(slug), `CREATE FUNCTION pause_import_progress() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.action='employee.import.settle' AND NEW.target_id='${run}' AND
+   (SELECT count(*) FROM public.audit_events WHERE target_id=NEW.target_id AND action='employee.import.settle')=2 THEN
+  PERFORM pg_sleep(15);
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER pause_import_progress AFTER INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION pause_import_progress();`);
+  try {
+    await admin.getByRole("button", { name: /^명부 반영: 신규 300명/ }).click();
+    const progress = admin.getByRole("progressbar", { name: "명부 반영 중" });
+    await shotSet(admin, "import-started");
+    await forgetResize(admin);
+    await expect(progress).toHaveText(/100행\s*\/\s*300행/, { timeout: 60_000 });
+    expect(await headcount(api), "progress must not expose the uncommitted roster").toBe(0);
+    await atPhoneWidth(admin, () => fits(admin, "live import progress"));
+    await shotSet(admin, "import-live-progress");
+    await forgetResize(admin);
+    await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });
+    expect(await headcount(api)).toBe(300);
+  } finally {
+    psql(unique(slug), "DROP TRIGGER pause_import_progress ON audit_events; DROP FUNCTION pause_import_progress();");
+  }
+});
