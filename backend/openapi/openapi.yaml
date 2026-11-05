@@ -14180,6 +14180,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
     put:
+      x-console-authz: {"engine": "cedar", "permission": "PurchaseRequestRead", "action": "purchase_request_read", "scope": "self"}
       tags:
         - financial
       operationId: savePurchaseRequestPreferences
@@ -14201,6 +14202,8 @@ paths:
                 $ref: '#/components/schemas/PurchaseFeaturePreferences'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
   /api/v1/financial/purchase-requests/{purchaseRequestId}:
@@ -28639,6 +28642,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/sync:
     post:
+      x-console-authz: {"engine": "cedar", "permission": "WorkOrderStart", "action": "work_order_start", "scope": "tenant"}
       tags:
         - sync
       operationId: replayOfflineSyncBatch

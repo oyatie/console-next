@@ -38,7 +38,7 @@ async fn issue_token(
     pool: &PgPool,
     issuer: &JwtIssuer,
     subject: UserId,
-    role: &str,
+    roles: &[&str],
     branch: BranchId,
 ) -> String {
     console_platform_test_support::issue_session_token(
@@ -47,7 +47,7 @@ async fn issue_token(
         AccessTokenInput {
             subject,
             org_id: OrgId::one(),
-            roles: vec![role.to_owned()],
+            roles: roles.iter().map(|role| (*role).to_owned()).collect(),
             branches: vec![branch],
             platform: false,
             support: None,
@@ -106,8 +106,9 @@ async fn zero_grant_member_is_refused_before_claiming_sync_batch(pool: PgPool) {
         let equipment = seed_equipment(&pool, branch, "502").await;
         let work_order =
             seed_assigned_work_order(&pool, branch, equipment, receptionist, mechanic).await;
-        let member_token = issue_token(&pool, &issuer, member, "MEMBER", branch).await;
-        let mechanic_token = issue_token(&pool, &issuer, mechanic, "MECHANIC", branch).await;
+        let member_token = issue_token(&pool, &issuer, member, &["MEMBER"], branch).await;
+        let mechanic_token = issue_token(&pool, &issuer, mechanic, &["MECHANIC"], branch).await;
+        let earlier_token = issue_token(&pool, &issuer, mechanic, &[], branch).await;
         let verifier =
             JwtVerifier::from_es256_public_pem(jwt_settings(), public_pem.as_bytes()).unwrap();
         let runtime_pool = runtime_role_pool(&pool).await;
@@ -138,9 +139,13 @@ async fn zero_grant_member_is_refused_before_claiming_sync_batch(pool: PgPool) {
         .unwrap();
         assert_eq!(claimed, 0, "refused callers must not claim sync batch rows");
 
-        let (status, allowed) = post_sync(service, &mechanic_token, &body).await;
+        let (status, allowed) = post_sync(service.clone(), &mechanic_token, &body).await;
         assert_eq!(status, StatusCode::OK, "{allowed}");
         assert_eq!(allowed["results"][0]["status"], "APPLIED");
+
+        let (status, replay) = post_sync(service, &earlier_token, &body).await;
+        assert_eq!(status, StatusCode::OK, "{replay}");
+        assert_eq!(replay["results"][0]["status"], "APPLIED");
     })
     .await;
 }

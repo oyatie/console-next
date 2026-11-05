@@ -2,7 +2,9 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
+mod purchase_preferences;
 pub use openapi::OPENAPI_FRAGMENT;
+use purchase_preferences::save_purchase_preferences;
 
 use axum::body::Bytes;
 use axum::extract::{Path, RawQuery, State};
@@ -684,25 +686,6 @@ async fn get_purchase_preferences(
     let preferences = state
         .store
         .purchase_feature_preferences(principal.user_id, "purchase_requests")
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(preferences))
-}
-
-async fn save_purchase_preferences(
-    State(state): State<FinancialRestState>,
-    headers: HeaderMap,
-    Json(body): Json<SavePurchasePreferencesRequest>,
-) -> Result<impl IntoResponse, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    let preferences = state
-        .store
-        .save_purchase_feature_preferences(
-            principal.user_id,
-            "purchase_requests",
-            body.schema_version,
-            body.preferences,
-        )
         .await
         .map_err(RestError::from_store)?;
     Ok(Json(preferences))
@@ -1551,7 +1534,7 @@ impl RestError {
         Self {
             status: status_for_error_kind(error.kind),
             kind: error.kind,
-            code_override: None,
+            code_override: error.code,
             message: error.message,
         }
     }

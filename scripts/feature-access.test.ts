@@ -19,3 +19,16 @@ test("an unknown Cedar action makes generation fail closed", () => {
   spec.paths["/api/v1/employees/lifecycle-events/bulk"].post["x-console-authz"].action = "missing_action";
   expect(() => operationAccess(spec)).toThrow("Invalid Cedar action contract: post /api/v1/employees/lifecycle-events/bulk");
 });
+
+test("server-fact actions validate enrollment without projecting a browser grant", () => {
+  const spec = yaml.load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
+  const operation = spec.paths["/api/v1/sync"].post;
+  operation["x-console-authz"] = { engine: "cedar", permission: "WorkOrderStart", action: "work_order_start", scope: "tenant" };
+  expect(operationAccess(spec)["POST /api/v1/sync"]).toBeUndefined();
+  for (const invalid of [{ action: "missing_action" }, { permission: "Login" }, { scope: "any" }]) {
+    const saved = operation["x-console-authz"];
+    operation["x-console-authz"] = { ...saved, ...invalid };
+    expect(() => operationAccess(spec)).toThrow("Invalid Cedar action contract: post /api/v1/sync");
+    operation["x-console-authz"] = saved;
+  }
+});
