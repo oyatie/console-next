@@ -939,9 +939,9 @@ impl From<MonthCloseRead> for MonthCloseDto {
                 })
                 .collect(),
             attested_by: v.attested_by.to_string(),
-            attested_at: v.attested_at.to_string(),
+            attested_at: self_service::rfc3339(v.attested_at),
             period_lock_id: v.period_lock_id.map(|i| i.to_string()),
-            closed_at: v.closed_at.to_string(),
+            closed_at: self_service::rfc3339(v.closed_at),
             amendments: v
                 .amendments
                 .into_iter()
@@ -949,7 +949,7 @@ impl From<MonthCloseRead> for MonthCloseDto {
                     id: a.id.to_string(),
                     reason: a.reason,
                     actor: a.actor.to_string(),
-                    created_at: a.created_at.to_string(),
+                    created_at: self_service::rfc3339(a.created_at),
                 })
                 .collect(),
         }
@@ -1068,7 +1068,7 @@ async fn amend_close(
             id: v.id.to_string(),
             reason: v.reason,
             actor: v.actor.to_string(),
-            created_at: v.created_at.to_string(),
+            created_at: self_service::rfc3339(v.created_at),
         })
         .map(Json)
         .map_err(RestError::store)

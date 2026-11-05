@@ -38,12 +38,12 @@ export async function attendanceReadState(page: Page, screen: typeof attendanceS
     await expect(table).toHaveCount(0);
   } else {
     await expect(table).toBeVisible();
-    if (state === "empty") await expect(table.getByText(t(`attendance.${screen.tab}.empty`), { exact: true })).toBeVisible();
+    if (state === "empty" && screen.key !== "attendance-close") await expect(table.getByText(t(`attendance.${screen.tab}.empty`), { exact: true })).toBeVisible();
     else if (screen.key === "attendance-close") {
-      if (width === 1440) await expect(table.getByRole("columnheader")).toHaveText([t("attendance.col.workplace"), t("attendance.col.state"), t("attendance.tab.issues"), t("attendance.close.pendingLeave"), t("attendance.close.closedAt"), t("attendanceRecords.month.locks")]);
+      if (width === 1440) await expect(table.getByRole("columnheader")).toHaveText([t("attendance.col.workplace"), t("attendance.col.state"), t("attendance.tab.issues"), t("attendance.close.pendingLeave"), t("attendance.close.closedAt"), t("attendance.close.periodLock")]);
       await expect(table.getByText("본사", { exact: true })).toBeVisible();
-      await expect(table.getByText(t("attendance.count", { count: 7 }), { exact: true })).toBeVisible();
-      await expect(table.getByText(t("attendance.close.closed"), { exact: true })).toBeVisible();
+      await expect(table.getByText(t("attendance.count", { count: state === "empty" ? 0 : 7 }), { exact: true }).first()).toBeVisible();
+      await expect(table.getByText(t("attendance.close.open"), { exact: true })).toBeVisible();
     } else if (screen.key === "attendance-overtime") {
       await expect(table.getByText(t("attendance.hours", { hours: 32.5 }), { exact: true })).toBeVisible();
       await expect(table.getByText(t("attendance.hours", { hours: 1.5 }), { exact: true })).toBeVisible();

@@ -54,11 +54,20 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   // The close board reads saved facts; the close itself is committed at the API.
   const close = await api("/attendance/closes", "POST", { month: lastMonth, attest: true });
   expect(close.status()).toBe(201);
-  const closeRecord = await close.json() as { closed_at: string; period_lock_id: string };
+  const receipt = await close.json();
+  const boardResponse = await api(`/attendance/closes?month=${lastMonth}`);
+  expect(boardResponse.status()).toBe(200);
+  const board = await boardResponse.json();
+  expect(board.items).toHaveLength(1);
+  const closeRecord = board.items[0].close as { closed_at: string; attested_at: string; period_lock_id: string };
+  expect(receipt.closed_at).toBe(closeRecord.closed_at);
+  expect(receipt.attested_at).toBe(closeRecord.attested_at);
+  expect(Number.isFinite(Date.parse(closeRecord.closed_at))).toBe(true);
   await go(admin, `/attendance?tab=close&month=${lastMonth}`);
   const closeBoard = admin.getByRole("grid", { name: "월 마감", exact: true });
   await expect(closeBoard.getByRole("columnheader", { name: "휴가 승인 대기", exact: true })).toBeVisible();
   await expect(closeBoard.locator("time")).toHaveAttribute("datetime", closeRecord.closed_at);
+  await expect(closeBoard.locator("time")).not.toHaveText(/^[—–]$/);
   await expect(closeBoard.getByRole("link", { name: "기간 잠금 해제 요청", exact: true })).toHaveAttribute("href", `${LOCKS}?unlock=${closeRecord.period_lock_id}`);
 
   // Closed: read-only with the one way to change it; typing leaves no draft, and the server refuses a save.

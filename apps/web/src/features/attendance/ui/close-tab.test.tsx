@@ -51,14 +51,16 @@ test("pending leave remains separate from open exceptions", () => {
 });
 
 test("a served close exposes its timestamp and exact period-lock destination", () => {
-  state.items[0] = { ...state.items[0]!, closed: true, close: {
-    id: "close", month: "2026-10", branch_scope: "branch", checks: [], attested_by: "actor",
+  state.items[0] = { ...state.items[0]!, branch_scope: "org", closed: true, close: {
+    id: "close", month: "2026-10-01", branch_scope: "org", checks: [], attested_by: "actor",
     attested_at: "2026-11-02T01:00:00Z", closed_at: "2026-11-02T01:00:00Z", period_lock_id: "lock", amendments: [],
   } };
   const html = render();
   expect(html).toContain(fmtDateTime(state.items[0]!.close!.closed_at));
   expect(html).toContain('href="/people/period-locks?unlock=lock"');
   expect(html).toContain(t("attendanceRecords.month.requestUnlock"));
+  expect(html).toContain("기간 잠금");
+  expect(html).not.toContain(t("attendanceRecords.month.locks"));
 });
 
 test("missing close details or lock ids never invent a timestamp or unlock link", () => {

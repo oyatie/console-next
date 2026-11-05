@@ -29,7 +29,7 @@ export function CloseTab() {
           { id: "issues", header: t("attendance.tab.issues"), card: "fact", cell: row => t("attendance.count", { count: row.open_exceptions }) },
           { id: "leave", header: t("attendance.close.pendingLeave"), card: "fact", cell: row => t("attendance.count", { count: row.pending_leave }) },
           { id: "closedAt", header: t("attendance.close.closedAt"), card: "fact", cell: row => row.close ? <time dateTime={row.close.closed_at}>{fmtDateTime(row.close.closed_at)}</time> : "–" },
-          { id: "lock", header: t("attendanceRecords.month.locks"), card: "action", cell: row => row.close?.period_lock_id ? <Link to="/people/period-locks" search={{ unlock: row.close.period_lock_id }}>{t("attendanceRecords.month.requestUnlock")}</Link> : null },
+          { id: "lock", header: t("attendance.close.periodLock"), card: "action", cell: row => row.close?.period_lock_id ? <Link to="/people/period-locks" search={{ unlock: row.close.period_lock_id }}>{t("attendanceRecords.month.requestUnlock")}</Link> : null },
         ]} />
     </>;
   }}</QueryState></>;
