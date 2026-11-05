@@ -33,6 +33,7 @@ export function discoverEnvironments(root = '.') {
 }
 
 export function assertPromotion({sha, repository, run, jobs, gatesResult, currentRevision}, root = '.') {
+  if (Array.isArray(jobs)) jobs = jobs.filter(job => job?.name !== 'prune-image-cache');
   assert.ok(typeof repository === 'string' && repository.length > 0 && run?.event === 'push' &&
     run.head_branch === 'dev' && run.head_repository?.full_name === repository,
   'PROMOTE_FORK: require a dev push in this repository');
@@ -46,6 +47,7 @@ export function assertPromotion({sha, repository, run, jobs, gatesResult, curren
   'PROMOTE_NOT_GREEN: require completed successful jobs for this platform run and SHA');
   const workflow = load(readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8'));
   for (const [name, job] of Object.entries(workflow.jobs)) {
+    if (name === 'prune-image-cache') continue;
     const matrix = job.strategy?.matrix;
     if (!matrix) {
       assert.ok(jobs.some(actual => actual.name === name || actual.name.startsWith(`${name} / `)),

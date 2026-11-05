@@ -153,6 +153,21 @@ test('green exact-SHA platform proof admits first, descendant and repeated promo
   }
 });
 
+for (const conclusion of ['success', 'failure', 'skipped', 'cancelled', 'neutral', null]) {
+  test(`cache cleanup ${conclusion} does not gate promotion or mask failed release gates`, async () => {
+    const {assertPromotion} = await api();
+    const input = proof();
+    input.jobs.push({id:100, name:'prune-image-cache', run_id:42, head_sha:sha,
+      status:conclusion === null ? 'in_progress' : 'completed', conclusion});
+    assert.doesNotThrow(() => assertPromotion(input, historyRoot));
+    input.gatesResult = 'fail';
+    assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_GATES/);
+    input.gatesResult = 'pass';
+    input.jobs[0].conclusion = 'failure';
+    assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_NOT_GREEN/);
+  });
+}
+
 for (const conclusion of ['failure', 'skipped', 'cancelled', 'neutral', null]) {
   test(`PROMOTE_NOT_GREEN: refuses a ${conclusion} platform job`, async () => {
     const {assertPromotion} = await api();
