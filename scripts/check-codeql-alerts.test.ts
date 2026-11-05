@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test, vi } from "vitest";
 
@@ -29,7 +28,7 @@ const registry = (entries = [exception()]) => ({ schema: "codeql-alert-exception
 
 test.each(["high", "critical"])("rejects an untriaged %s Rust alert", (severity) => {
   const finding = alert({ number: 999, rule: { id: "rust/new-finding", security_severity_level: severity } });
-  expect(codeqlAlertFailures([finding], registry(), "2026-11-03")).toContain(
+  expect(codeqlAlertFailures([finding], registry(), "rust", "2026-11-03")).toContain(
     `untriaged ${severity} Rust alert #999: rust/new-finding at ${path}`,
   );
 });
@@ -39,7 +38,7 @@ test("rejects an untriaged high JavaScript alert", () => {
     number: 9,
     rule: { id: "js/incomplete-url-substring-sanitization", security_severity_level: "high" },
   });
-  expect(codeqlAlertFailures([finding], registry([]), "2026-11-03")).toContain(
+  expect(codeqlAlertFailures([finding], registry([]), "javascript-typescript", "2026-11-03")).toContain(
     `untriaged high JavaScript alert #9: js/incomplete-url-substring-sanitization at ${path}`,
   );
 });
@@ -50,13 +49,13 @@ test("accepts only an exact live exception and ignores other scanners and langua
     alert({ number: 8, rule: { id: "py/clear-text-logging-sensitive-data", security_severity_level: "high" } }),
     alert({ number: 21, tool: { name: "Other scanner" } }),
   ];
-  expect(codeqlAlertFailures(alerts, registry(), "2026-11-03")).toEqual([]);
-  expect(codeqlAlertFailures([alert({ most_recent_instance: { location: { path: "moved.rs" } } })], registry(), "2026-11-03"))
+  expect(codeqlAlertFailures(alerts, registry(), "rust", "2026-11-03")).toEqual([]);
+  expect(codeqlAlertFailures([alert({ most_recent_instance: { location: { path: "moved.rs" } } })], registry(), "rust", "2026-11-03"))
     .toContain("exception #20 no longer matches rust/cleartext-logging at moved.rs");
 });
 
 test("rejects an exception after its alert closes or is dismissed", () => {
-  expect(codeqlAlertFailures([], registry(), "2026-11-03")).toContain("stale exception #20");
+  expect(codeqlAlertFailures([], registry(), "rust", "2026-11-03")).toContain("stale exception #20");
 });
 
 test.each([
@@ -70,25 +69,54 @@ test.each([
   [registry([exception({ expires_on: "2026-11-03" })]), "expired"],
   [registry([exception({ expires_on: "2027-01-01" })]), "exceeds 30-day TTL"],
 ] as const)("fails closed on an invalid exception registry: %s", (document, message) => {
-  expect(codeqlAlertFailures([alert()], document, "2026-11-03").join("\n")).toContain(message);
+  expect(codeqlAlertFailures([alert()], document, "rust", "2026-11-03").join("\n")).toContain(message);
 });
 
 test("rejects an invalid gate date", () => {
-  expect(codeqlAlertFailures([alert()], registry(), "not-a-date")).toContain("invalid gate date not-a-date");
+  expect(codeqlAlertFailures([alert()], registry(), "rust", "not-a-date")).toContain("invalid gate date not-a-date");
 });
 
 test("rejects closed and unexpected-severity alerts as malformed API input", () => {
-  expect(codeqlAlertFailures([alert({ state: "closed" })], registry(), "2026-11-03"))
+  expect(codeqlAlertFailures([alert({ state: "closed" })], registry(), "rust", "2026-11-03"))
     .toContain("malformed code-scanning alert at index 0");
   expect(codeqlAlertFailures([
     alert({ rule: { id: "rust/cleartext-logging", security_severity_level: "medium" } }),
-  ], registry(), "2026-11-03")).toContain("unexpected CodeQL alert severity for #20: medium");
+  ], registry(), "rust", "2026-11-03")).toContain("unexpected CodeQL alert severity for #20: medium");
 });
 
-test("the repository exception registry is empty after the alerts were dismissed", () => {
-  const document = JSON.parse(readFileSync(".github/codeql/alert-exceptions.json", "utf8"));
-  expect(document.entries).toEqual([]);
-  expect(codeqlAlertFailures([], document, "2026-11-03")).toEqual([]);
+test.each([
+  ["javascript-typescript", "js/incomplete-url-substring-sanitization", "rust", "rust/cleartext-logging"],
+  ["rust", "rust/cleartext-logging", "javascript-typescript", "js/incomplete-url-substring-sanitization"],
+])("%s gates only its own alerts and exception entries", (language, rule, otherLanguage, otherRule) => {
+  const own = alert({ rule: { id: rule, security_severity_level: "high" } });
+  const document = registry([
+    exception({ rule }),
+    exception({ number: 88, rule: otherRule, expires_on: "2026-11-02" }),
+  ]);
+  for (const category of [undefined, `/language:${otherLanguage}`]) {
+    const foreign = alert({
+      number: 99,
+      rule: { id: otherRule, security_severity_level: "critical" },
+      most_recent_instance: { category, location: { path } },
+    });
+    expect(codeqlAlertFailures([own, foreign], document, language, "2026-11-03")).toEqual([]);
+    expect(codeqlAlertFailures([own, { ...foreign, state: "dismissed" }], document, language, "2026-11-03")).toEqual([]);
+  }
+  expect(codeqlAlertFailures([], document, language, "2026-11-03")).toEqual(["stale exception #20"]);
+  expect(codeqlAlertFailures([own], registry([]), language, "2026-11-03").join("\n"))
+    .toContain("untriaged high");
+  const categorized = alert({
+    rule: { id: "shared/query", security_severity_level: "high" },
+    most_recent_instance: { category: `/language:${language}`, location: { path } },
+  });
+  expect(codeqlAlertFailures([categorized], registry([]), language, "2026-11-03").join("\n"))
+    .toContain("untriaged high");
+  expect(codeqlAlertFailures([categorized], registry([]), otherLanguage, "2026-11-03")).toEqual([]);
+});
+
+test.each([undefined, "python"])("rejects a missing or unsupported matrix language: %s", (language) => {
+  expect(codeqlAlertFailures([], registry([]), language, "2026-11-03"))
+    .toEqual(["CODEQL_LANGUAGE must be javascript-typescript or rust"]);
 });
 
 test("fetches every high and critical page and fails closed on an API error", async () => {

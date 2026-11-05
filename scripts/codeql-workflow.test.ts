@@ -48,6 +48,7 @@ test("CodeQL covers PR merge commits, merge groups and gated dev Rust scans", ()
     name: "Refuse untriaged high or critical JavaScript/Rust alerts",
     if: "${{ github.event_name == 'push' && (matrix.language == 'javascript-typescript' || matrix.language == 'rust') }}",
     env: {
+      CODEQL_LANGUAGE: "${{ matrix.language }}",
       CODEQL_ALERT_EXCEPTIONS: ".github/codeql/alert-exceptions.json",
       GH_TOKEN: "${{ github.token }}",
     },

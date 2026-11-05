@@ -8,12 +8,18 @@ const PAGE_SIZE = 100;
 const MAX_EXCEPTION_DAYS = 30;
 const SECURITY_SEVERITIES = ["high", "critical"];
 const RULE_LANGUAGES = new Map([
-  ["js/", "JavaScript"],
-  ["rust/", "Rust"],
+  ["js/", "javascript-typescript"],
+  ["rust/", "rust"],
 ]);
 
 function ruleLanguage(rule) {
   for (const [prefix, language] of RULE_LANGUAGES) if (rule.startsWith(prefix)) return language;
+}
+
+function alertLanguage(alert) {
+  const category = alert?.most_recent_instance?.category;
+  if (typeof category === "string" && category.startsWith("/language:")) return category.slice("/language:".length);
+  return typeof alert?.rule?.id === "string" ? ruleLanguage(alert.rule.id) : undefined;
 }
 
 function validDate(value) {
@@ -22,7 +28,8 @@ function validDate(value) {
   return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-export function codeqlAlertFailures(alerts, registry, today = new Date().toISOString().slice(0, 10)) {
+export function codeqlAlertFailures(alerts, registry, language, today = new Date().toISOString().slice(0, 10)) {
+  if (![...RULE_LANGUAGES.values()].includes(language)) return ["CODEQL_LANGUAGE must be javascript-typescript or rust"];
   const failures = [];
   const entries = Array.isArray(registry?.entries) ? registry.entries : [];
   if (registry?.schema !== "codeql-alert-exceptions-v1" || !Array.isArray(registry?.entries)) {
@@ -37,6 +44,8 @@ export function codeqlAlertFailures(alerts, registry, today = new Date().toISOSt
       failures.push(`${label} must be an object`);
       continue;
     }
+    const entryLanguage = typeof entry.rule === "string" ? ruleLanguage(entry.rule) : undefined;
+    if (entryLanguage && entryLanguage !== language) continue;
     const validNumber = Number.isInteger(entry.number) && entry.number > 0;
     if (!validNumber) failures.push(`${label} has an invalid alert number`);
     for (const field of ["rule", "path", "owner", "reason", "expires_on"]) {
@@ -59,6 +68,8 @@ export function codeqlAlertFailures(alerts, registry, today = new Date().toISOSt
   if (!Array.isArray(alerts)) return [...failures, "code-scanning response is not an array"];
   const matchedExceptions = new Set();
   for (const [index, alert] of alerts.entries()) {
+    const findingLanguage = alertLanguage(alert);
+    if (findingLanguage && findingLanguage !== language) continue;
     const number = alert?.number;
     const rule = alert?.rule?.id;
     const severity = alert?.rule?.security_severity_level;
@@ -69,14 +80,13 @@ export function codeqlAlertFailures(alerts, registry, today = new Date().toISOSt
       failures.push(`malformed code-scanning alert at index ${index}`);
       continue;
     }
-    const language = ruleLanguage(rule);
-    if (tool !== "CodeQL" || !language) continue;
+    if (tool !== "CodeQL" || findingLanguage !== language) continue;
     if (!SECURITY_SEVERITIES.includes(severity)) {
       failures.push(`unexpected CodeQL alert severity for #${number}: ${severity}`);
       continue;
     }
     const allowed = byNumber.get(number);
-    if (!allowed) failures.push(`untriaged ${severity} ${language} alert #${number}: ${rule} at ${path}`);
+    if (!allowed) failures.push(`untriaged ${severity} ${language === "rust" ? "Rust" : "JavaScript"} alert #${number}: ${rule} at ${path}`);
     else {
       matchedExceptions.add(number);
       if (allowed.rule !== rule || allowed.path !== path) failures.push(`exception #${number} no longer matches ${rule} at ${path}`);
@@ -124,10 +134,11 @@ async function main() {
     process.env.GITHUB_REF,
     process.env.GH_TOKEN,
   );
-  const failures = codeqlAlertFailures(alerts, registry);
+  const language = process.env.CODEQL_LANGUAGE;
+  const failures = codeqlAlertFailures(alerts, registry, language);
   if (failures.length) throw new Error(`CodeQL alert gate failed:\n- ${failures.join("\n- ")}`);
-  const count = alerts.filter((alert) => alert?.tool?.name === "CodeQL" && ruleLanguage(alert?.rule?.id ?? "")).length;
-  console.log(`CodeQL: ${count} open high/critical JavaScript/Rust alert(s), all triaged`);
+  const count = alerts.filter((alert) => alert?.tool?.name === "CodeQL" && alertLanguage(alert) === language).length;
+  console.log(`CodeQL: ${count} open high/critical ${language} alert(s), all triaged`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
