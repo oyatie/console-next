@@ -76,6 +76,24 @@ BEGIN
 END;
 $$;
 
+-- Immutable history is reported for a separate owner decision, never rewritten.
+DO $$
+DECLARE
+    revisions bigint;
+    reviews bigint;
+BEGIN
+    SELECT count(*) INTO revisions FROM person_revisions
+     WHERE attributes IS DISTINCT FROM pg_temp.import_scrub(attributes, false)
+        OR receipt IS DISTINCT FROM pg_temp.import_scrub(receipt, false);
+    SELECT count(*) INTO reviews FROM person_binding_reviews
+     WHERE evidence IS DISTINCT FROM pg_temp.import_scrub(evidence, false);
+    IF revisions + reviews > 0 THEN
+        RAISE NOTICE 'import scrub: % person_revisions and % person_binding_reviews rows hold restricted plaintext; owner decision needed',
+            revisions, reviews;
+    END IF;
+END;
+$$;
+
 -- Only these existing import writer guards are paused, inside the migration
 -- transaction; audit records and their protections remain untouched.
 ALTER TABLE data_import_rows DISABLE TRIGGER trg_data_import_rows_no_update;
@@ -116,6 +134,8 @@ BEGIN
         END LOOP;
         EXECUTE format('UPDATE public.%I SET %s WHERE %s', spec.table_name, sets, predicates);
     END LOOP;
+    -- Run updates queue deferred audit checks even when their status is unchanged.
+    SET CONSTRAINTS ALL IMMEDIATE;
 END;
 $$;
 
