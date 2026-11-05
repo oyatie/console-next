@@ -1,11 +1,11 @@
 {
   "baseline": {
-    "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyRequests": 13,
+    "apps/web/src/features/account/Account.tsx#PrivacyRequests": 13,
     "apps/web/src/features/account/ui/privacy-request.tsx#PrivacyRequest": 29,
-    "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyIntake": 11
+    "apps/web/src/features/account/Account.tsx#PrivacyIntake": 11
   },
   "newScreens": {
-    "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyRequests": {
+    "apps/web/src/features/account/Account.tsx#PrivacyRequests": {
       "FACT": 8,
       "REFUSAL": 1,
       "EMPTY": 1,
@@ -21,7 +21,7 @@
       "RECEIPT": 1,
       "EXPLANATION": 0
     },
-    "apps/web/src/features/account/ui/privacy-requests.tsx#PrivacyIntake": {
+    "apps/web/src/features/account/Account.tsx#PrivacyIntake": {
       "FACT": 8,
       "REFUSAL": 0,
       "EMPTY": 0,

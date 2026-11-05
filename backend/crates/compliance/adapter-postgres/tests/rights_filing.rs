@@ -28,9 +28,33 @@ async fn filing_is_atomic_keyset_paged_and_uses_the_register(pool: PgPool) {
         .unwrap();
     let register = store.statutory_register().await.unwrap();
     let input = filing("OPERATOR", &["ACCESS", "WITHDRAWAL"], "My account");
+    let before: time::OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap();
     let record = rights::file(&mut tx, org, user, None, &input, &register)
         .await
         .unwrap();
+    let after: time::OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap();
+    let filed_at = time::OffsetDateTime::parse(
+        record["receipt"]["identity_at"].as_str().unwrap(),
+        &time::format_description::well_known::Rfc3339,
+    )
+    .unwrap();
+    assert!(
+        (before..=after).contains(&filed_at),
+        "filing must use the database wall clock, not the app or transaction-start clock: {before} <= {filed_at} <= {after}"
+    );
+    assert_eq!(
+        record["receipt"]["received_on"],
+        filed_at
+            .to_offset(time::macros::offset!(+9))
+            .date()
+            .to_string()
+    );
     let due = &record["kinds"]["ACCESS"]["due"]["on"];
     let received = time::Date::parse(
         record["receipt"]["received_on"].as_str().unwrap(),
@@ -138,4 +162,73 @@ async fn filing_refusals_leave_no_request_or_audit(pool: PgPool) {
             .await
             .unwrap();
     assert_eq!(count, 0);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn filing_tracks_the_database_clock_in_both_skew_directions(pool: PgPool) {
+    let org = OrgId::new();
+    let user = seed_org_and_super_admin(&pool, *org.as_uuid(), "privacy-clock").await;
+    // Override only this test database's clock lookup, without changing either host's clock.
+    sqlx::raw_sql(
+        "CREATE SCHEMA filing_clock;
+         CREATE FUNCTION filing_clock.clock_timestamp() RETURNS timestamptz
+         LANGUAGE sql VOLATILE AS $$
+           SELECT pg_catalog.clock_timestamp() + current_setting('test.filing_clock_offset')::interval
+         $$;
+         GRANT USAGE ON SCHEMA filing_clock TO console_rt;",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let rt = runtime_role_pool(&pool).await;
+    let register = PgComplianceStore::new(rt.clone())
+        .statutory_register()
+        .await
+        .unwrap();
+    let mut observed = Vec::new();
+    for offset in ["-2 days", "2 days"] {
+        let mut tx = rights::begin(&rt, org).await.unwrap();
+        sqlx::query("SET LOCAL search_path=filing_clock,pg_catalog,public")
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        sqlx::query("SELECT set_config('test.filing_clock_offset',$1,true)")
+            .bind(offset)
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        let before: time::OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap();
+        let record = rights::file(
+            &mut tx,
+            org,
+            user,
+            None,
+            &filing("OPERATOR", &["ACCESS"], ""),
+            &register,
+        )
+        .await
+        .unwrap();
+        let after: time::OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap();
+        let filed_at = time::OffsetDateTime::parse(
+            record["receipt"]["identity_at"].as_str().unwrap(),
+            &time::format_description::well_known::Rfc3339,
+        )
+        .unwrap();
+        observed.push((offset, (before..=after).contains(&filed_at)));
+        assert_eq!(
+            record["receipt"]["received_on"],
+            filed_at
+                .to_offset(time::macros::offset!(+9))
+                .date()
+                .to_string()
+        );
+        tx.rollback().await.unwrap();
+    }
+    assert_eq!(observed, [("-2 days", true), ("2 days", true)]);
 }
