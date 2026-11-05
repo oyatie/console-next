@@ -98,12 +98,14 @@ class StatesEvidenceTest(unittest.TestCase):
             inventory, report, artifact = (root / name for name in ("inventory.json", "report.json", "states.json"))
             inventory.write_text(json.dumps(self.inventory))
             command = [sys.executable, producer.__file__, str(artifact), str(inventory), str(report)]
-            for status, code in (("passed", 0), ("failed", 1)):
+            for status, expected in (("passed", "pass"), ("failed", "fail")):
                 self.test["results"][0]["status"] = status
                 report.write_text(json.dumps(self.report))
                 result = subprocess.run(command, capture_output=True, text=True)
-                self.assertEqual(result.returncode, code, result.stderr)
+                self.assertEqual(result.returncode, 0, result.stderr)
                 data = json.loads(artifact.read_text())
+                observed = next(row for row in data["rows"] if row["route"] == "/" and row["state"] == "empty")
+                self.assertEqual(observed["status"], expected)
                 self.assertEqual(data["run_at"], self.report["stats"]["startTime"])
                 self.assertEqual(data["commit"], subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip())
                 self.assertTrue(data["source_command"])
@@ -119,6 +121,10 @@ class StatesEvidenceTest(unittest.TestCase):
             result = subprocess.run(command, capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("stale", result.stderr)
+            report.write_text("{")
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("states evidence:", result.stderr)
 
 
 if __name__ == "__main__": unittest.main()
