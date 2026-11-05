@@ -87,15 +87,13 @@ export function GoLive() {
             return (
               <>
                 <QueryState q={receipt} own={onboardingError}>
-                  {(record) => <Card title={t("setup.receipt.recorded")}>
+                  {(record) => <Card title={t(record.facts_snapshot === null ? "setup.receipt.unrecorded" : record.facts_snapshot_version === 1 ? "setup.receipt.recorded" : "setup.receipt.unsupported")}>
                     <div className={s.stack}>
                       <div className={s.receiptHead}>
                         <Chip tone="ok">{t("setup.receipt.started.title")}</Chip>
                         <time dateTime={record.go_live_at}>{fmtDateTime(record.go_live_at)}</time>
                       </div>
-                      {record.facts_snapshot !== null && record.facts_snapshot_version === 1
-                        ? <StatRow items={stats(record.facts_snapshot)} />
-                        : <p>{t(record.facts_snapshot === null ? "setup.receipt.unrecorded" : "setup.receipt.unsupported")}</p>}
+                      {record.facts_snapshot !== null && record.facts_snapshot_version === 1 && <StatRow items={stats(record.facts_snapshot)} />}
                     </div>
                   </Card>}
                 </QueryState>

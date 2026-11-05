@@ -100,7 +100,7 @@ for (const state of states) for (const width of [1440, 390]) {
         await expect(main.getByRole("link", { name: t("setup.bulk.history"), exact: true })).toHaveAttribute("href", "/org/history");
         await expect(main.getByText(t("setup.golive.item.already_operating"), { exact: true })).toHaveCount(0);
         await expect(start).toHaveCount(0);
-        await expect(main.getByRole("heading", { name: t("setup.receipt.recorded"), exact: true })).toBeVisible();
+        await expect(main.getByRole("heading", { name: t(state === "legacy-receipt" ? "setup.receipt.unrecorded" : state === "unknown-receipt" ? "setup.receipt.unsupported" : "setup.receipt.recorded"), exact: true })).toBeVisible();
         if (state === "legacy-receipt" || state === "unknown-receipt") {
           await expect(main.getByText(t(state === "legacy-receipt" ? "setup.receipt.unrecorded" : "setup.receipt.unsupported"), { exact: true })).toBeVisible();
         } else {
