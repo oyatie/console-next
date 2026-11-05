@@ -32,7 +32,7 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         const draft=${JSON.stringify(draft)}; const root=createRoot(document.getElementById('root'));
-        window.draw=(mode)=>root.render(React.createElement(PayslipDraftView,{data:{...draft,issuable:true,contract:mode==='no-source'?{...draft.contract,source_note:''}:draft.contract,deductions:draft.deductions.map(row=>({...row,blocked_by:mode==='blocked'?'unresolved':null,instrument:{...row.instrument,url:mode==='held'?'':row.instrument.url}}))}}));
+        window.draw=(mode)=>root.render(React.createElement(PayslipDraftView,{data:{...draft,issuable:true,gross_won:mode==='unsafe'?Number.MAX_SAFE_INTEGER+1:draft.gross_won,minimum_wage_check:{...draft.minimum_wage_check,instrument:{...draft.minimum_wage_check.instrument,url:mode==='held'?'':draft.minimum_wage_check.instrument.url},hourly_floor_won:mode==='unsafe'?1.5:draft.minimum_wage_check.hourly_floor_won,passes:mode==='below'?false:mode==='incomparable'?null:true},blockers:[...draft.blockers,...(mode==='below'?['최저임금 미달: raw backend sentence']:[])],contract:mode==='no-source'?{...draft.contract,source_note:''}:draft.contract,deductions:draft.deductions.map(row=>({...row,blocked_by:mode==='blocked'?'unresolved':null,share_instrument:mode==='held'?{...row.instrument,url:''}:null,instrument:{...row.instrument,url:mode==='held'?'':row.instrument.url}}))}}));
         window.drawLink=async(allowed,ready)=>{
           const client=new QueryClient({defaultOptions:{queries:{staleTime:Infinity}}});
           window.linkSettled=()=>client.getQueryCache().getAll().length===2&&client.getQueryCache().getAll().every(q=>q.state.status==='success');
@@ -65,9 +65,9 @@ test("draft never claims completeness and only shows sourced, settled amounts", 
   await dom(page.getByText("원천징수 미계산", { exact: true })).toHaveCount(1);
   await dom(page.getByText("34,567원", { exact: true })).toHaveCount(0);
   for (const mode of ["cited", "blocked", "no-source"]) {
-    await page.evaluate(mode => (window as unknown as { draw: (mode: string) => void }).draw(mode), mode);
-    await dom(page.getByText("34,567원", { exact: true })).toHaveCount(mode === "blocked" ? 0 : 1);
-    await dom(page.getByText("3,456,789원", { exact: true })).toHaveCount(mode === "no-source" ? 0 : 1);
+    await page.evaluate(value => (window as unknown as { draw: (value: string) => void }).draw(value), mode);
+    await dom(page.getByRole("region", { name: "공제 초안과 근거", exact: true }).getByText("34,567원", { exact: true })).toHaveCount(mode === "blocked" ? 0 : 2);
+    await dom(page.getByText("3,456,789원", { exact: true })).toHaveCount(mode === "no-source" ? 0 : 3);
     await dom(page.getByText("확인 불가 · 원천징수 미계산", { exact: true })).toBeVisible();
   }
   expect(errors).toEqual([]);
@@ -95,4 +95,36 @@ test("an incomplete contract focuses its first invalid fact", async () => {
   await form.getByRole("button", { name: commitLabel({ kind: "contractWage", mode: "save" }), exact: false }).click();
   await dom(form.locator("input:invalid").first()).toBeFocused();
   expect(writes).toEqual([]);
+});
+
+test("blockers list retains attendance and cites the typed minimum-wage failure", async () => {
+  for (const [mode, label] of [["below", "최저임금에 미달합니다."], ["incomparable", "최저임금을 비교할 수 없습니다."]] as const) {
+    await page.evaluate(value => (window as unknown as { draw: (value: string) => void }).draw(value), mode);
+    const blockers = page.getByRole("list", { name: "확인 필요 사항" });
+    await dom(blockers.getByText("근태 기록이 충분하지 않습니다.", { exact: true })).toBeVisible();
+    const minimum = blockers.getByRole("listitem").filter({ hasText: label });
+    await dom(minimum).toBeVisible();
+    await dom(minimum.getByRole("link")).toHaveAttribute("href", "https://example.com/payroll-source");
+    await dom(minimum).toContainText("2026. 01. 01.");
+    await dom(page.getByText(/raw backend sentence/)).toHaveCount(0);
+  }
+});
+test("held instruments render once per citation cell on mobile", async () => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("held"));
+  const deductions = page.getByRole("region", { name: "공제 초안과 근거", exact: true });
+  await dom(deductions.getByText("근거 확인 필요근거 확인 필요", { exact: true })).toHaveCount(0);
+  await dom(deductions.getByText("근거 확인 필요", { exact: true })).toHaveCount(4);
+  const minimum = page.getByRole("region", { name: "최저임금 확인", exact: true });
+  await dom(minimum.getByRole("link")).toHaveCount(0);
+  await dom(minimum.getByText("12,345원", { exact: true })).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 720 });
+});
+
+test("draft facts hold unsafe amounts", async () => {
+  await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("cited"));
+  await dom(page.getByText("12,345원", { exact: true })).toBeVisible();
+  await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("unsafe"));
+  await dom(page.getByText("9,007,199,254,740,992원", { exact: true })).toHaveCount(0);
+  await dom(page.getByText("1.5원", { exact: true })).toHaveCount(0);
 });
