@@ -7,6 +7,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { Page } from "../../../ui/page/page";
 import { EmptyState } from "../../../ui/empty-state";
 import { Form, Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Field, TextInput } from "../../../ui/field/field";
 import { DateInput } from "../../../ui/date/date-input";
 import { payslipDraftQuery } from "../api";
@@ -19,7 +20,7 @@ export function EmployeePayPage() {
   const navigate = route.useNavigate();
   const [period, setPeriod] = useState(search.period ?? "");
   const [payDate, setPayDate] = useState(search.pay_date ?? "");
-  return <Page floorplan="P-02" head={{ title: t("payroll.employee.title"), tools: <Link to="/people/$id" params={{ id: employeeId }}>{t("payroll.employee.person")}</Link> }}>
+  return <Page floorplan="P-02" head={{ title: t("payroll.employee.title"), tools: <Link to="/people" search={{ sel: employeeId }} className={buttonClass()}>{t("payroll.employee.person")}</Link> }}>
     <Form className="form" aria-label={t("payroll.employee.preview")} onSubmit={() => void navigate({ search: { period, pay_date: payDate } })}>
       <div className="grid-3"><Field label={t("payroll.period")} required>{control => <TextInput {...control} type="month" value={period} onChange={event => setPeriod(event.target.value)} />}</Field>
       <Field label={t("payroll.setup.day")} required>{control => <DateInput {...control} value={payDate} onChange={setPayDate} />}</Field></div>

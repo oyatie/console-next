@@ -37,7 +37,11 @@ export const contractCited = (contract: PayslipDraft["contract"]) => !!contract?
 type Deduction = NonNullable<PayslipDraft["deductions"]>[number];
 export const deductionSourcesCited = (row: Deduction) => instrumentCited(row.instrument, row.provenance_ko) && (!row.share_instrument || instrumentCited(row.share_instrument, row.provenance_ko));
 export const deductionCited = (row: Deduction) => !row.blocked_by && Number.isSafeInteger(row.employee_won) && deductionSourcesCited(row);
-export const insuranceCited = (data: PayslipDraft) => !!data.deductions?.some(row => !row.employer_only) && data.deductions.every(row => row.employer_only || deductionCited(row));
+export function insuranceCited(data: PayslipDraft) {
+  const rows = data.deductions?.filter(row => !row.employer_only) ?? [];
+  return rows.length > 0 && rows.every(deductionCited) && Number.isSafeInteger(data.total_employee_insurance_won)
+    && rows.reduce((sum, row) => sum + row.employee_won!, 0) === data.total_employee_insurance_won;
+}
 type MinimumWageBlocker = "MINIMUM_WAGE_BELOW_FLOOR" | "MINIMUM_WAGE_NOT_COMPARABLE";
 export function draftBlockers(data: PayslipDraft): string[] {
   // shortcut: the API still sends minimum-wage prose; remove the mapping when it emits codes.
