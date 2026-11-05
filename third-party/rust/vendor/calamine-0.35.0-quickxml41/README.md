@@ -1,7 +1,8 @@
 # calamine
 
-Repository patch: quick-xml 0.41 compatibility and zip >=9.0.5 for
-GHSA-m665-v7pm-7grj; see [patch notes](../README.md).
+Repository patch: quick-xml 0.41 compatibility, zip >=9.0.5 for
+GHSA-m665-v7pm-7grj, and shared-string allocation independent of the untrusted
+`uniqueCount` hint; see [patch notes](../README.md).
 
 An Excel/OpenDocument Spreadsheets file reader/deserializer, in pure Rust.
 
