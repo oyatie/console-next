@@ -3856,6 +3856,14 @@ fn push_attendance_branch_filter(builder: &mut QueryBuilder<Postgres>, branch_id
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
+    #[cfg(feature = "test-postgres")]
+    mod attendance_grants {
+        include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/auth_fixtures/attendance_grants.rs"
+        ));
+    }
+
     #[cfg(not(feature = "test-postgres"))]
     use console_hr_adapter_postgres::authz::authorize_home_branch_transition;
     use console_hr_adapter_postgres::authz::{
@@ -4288,6 +4296,17 @@ mod tests {
         let report: Value = serde_json::from_slice(&body).map_err(|error| error.to_string())?;
         assert_eq!(report["inserted"], 1);
 
+        attendance_grants::grant(
+            &pool,
+            OrgId::from_uuid(org_id),
+            UserId::from_uuid(actor_id),
+            None,
+        )
+        .await;
+        let state = HrState::new(
+            console_platform_test_support::runtime_role_pool(&pool).await,
+            None,
+        );
         let csv = "사번,성명,지점,근무일,출근,퇴근,주민번호,연락처,메모\n\
                    E-1001,홍길동,본사,2026-06-01,09:00,18:00,850505-2345678,010-5555-6666,6602021234567\n";
         let multipart = Multipart::from_request(upload("근태.csv", csv.as_bytes().to_vec())?, &())
