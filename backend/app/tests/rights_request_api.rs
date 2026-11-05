@@ -36,7 +36,7 @@ async fn rights_requests_are_self_only_and_filing_requires_step_up(pool: PgPool)
         uri,
         Some(&bearer),
         Some(json!({
-            "controller":"OPERATOR","kinds":["ACCESS"],"detail":"Account records"
+            "controller":"TENANT","kinds":["ACCESS"],"detail":"Account records"
         })),
     )
     .await;
@@ -71,22 +71,34 @@ async fn rights_filing_passkey_binding_replay_and_refusals(pool: PgPool) {
     let (service, issuer) = router(&pool).await;
     let svc = passkey_service();
     let mut actor = admin_in(&pool, &svc, &issuer, org, "Subject").await;
+    let employee: Uuid = sqlx::query_scalar("INSERT INTO employees(org_id,company,name,source_filename,source_sheet,source_row,source_key) VALUES($1,'Privacy','Subject','privacy.xlsx','People',1,'subject') RETURNING id")
+        .bind(org.as_uuid()).fetch_one(&pool).await.unwrap();
+    sqlx::query("UPDATE users SET employee_id=$2 WHERE id=$1")
+        .bind(actor.id)
+        .bind(employee)
+        .execute(&pool)
+        .await
+        .unwrap();
     let uri = "/api/v1/privacy/rights-requests";
     for (input, expected) in [
         (
-            json!({"controller":"OPERATOR","kinds":["ACCESS"],"detail":"My account"}),
+            json!({"controller":"OPERATOR","kinds":["ACCESS"],"detail":"Account"}),
+            Some("request_controller_unavailable"),
+        ),
+        (
+            json!({"controller":"TENANT","kinds":["ACCESS"],"detail":"My account"}),
             None,
         ),
         (
-            json!({"controller":"OPERATOR","kinds":[],"detail":""}),
+            json!({"controller":"TENANT","kinds":[],"detail":""}),
             Some("request_kind_required"),
         ),
         (
-            json!({"controller":"OPERATOR","kinds":["AUTOMATED_DECISION"],"detail":""}),
+            json!({"controller":"TENANT","kinds":["AUTOMATED_DECISION"],"detail":""}),
             Some("request_kind_unavailable"),
         ),
         (
-            json!({"controller":"OPERATOR","kinds":["ACCESS"],"detail":"a".repeat(2001)}),
+            json!({"controller":"TENANT","kinds":["ACCESS"],"detail":"a".repeat(2001)}),
             Some("detail_too_long"),
         ),
     ] {

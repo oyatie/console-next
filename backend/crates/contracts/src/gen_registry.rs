@@ -1983,6 +1983,15 @@ const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__id.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/statutory/insurance-filings",
         operations: &[
             Operation {

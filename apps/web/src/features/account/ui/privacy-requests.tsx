@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
 import { ReadReference } from "../../../lib/react/read-reference";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { Page } from "../../../ui/page/page";
+import { KeyValue } from "../../../ui/key-value/key-value";
+import { get } from "../../../lib/query";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { Button } from "../../../ui/button/button";
@@ -13,10 +16,21 @@ import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { SidePanel } from "../../../ui/side-panel/side-panel";
 import { Table } from "../../../ui/table";
-import { ApiError, privacyRequestPages } from "../api";
+import { ApiError, privacyReceipt, privacyRequestPages } from "../api";
 import { PrivacyReceipt } from "./privacy-receipt";
 import { PrivacyRequest } from "./privacy-request";
 import s from "./account.module.css";
+
+export function PrivacyIntake() {
+  const { id } = useParams({ from: "/app/account/privacy/intake/$id" });
+  const q = useQuery(get("/api/v1/privacy/rights-requests/{id}", { params: { path: { id } } }));
+  return <Page floorplan="P-01" head={{ title: t("account.privacy.intake") }} q={q} layout="record">
+    {data => <>
+      <KeyValue readOnly items={[{ key: "subject", label: t("account.privacy.subject"), value: data.subject_name }]} />
+      <PrivacyReceipt request={privacyReceipt(data.request, data.as_of)} />
+    </>}
+  </Page>;
+}
 
 export function PrivacyRequestsView({ items, filed }: { items: PrivacyRightsReceipt[]; filed?: PrivacyRightsReceipt }) {
   const [selectedId, select] = useState<string | undefined>(filed?.id);

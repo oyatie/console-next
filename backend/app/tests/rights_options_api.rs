@@ -36,7 +36,7 @@ async fn options_are_actor_only_codes_with_registered_clocks_in_setup(pool: PgPo
     assert_eq!(status, StatusCode::OK, "{options}");
     assert_eq!(options["subject_user_id"], user.to_string());
     assert_eq!(options["as_of"], today.to_string());
-    assert_eq!(options["controllers"], json!([{"code":"OPERATOR"}]));
+    assert_eq!(options["controllers"], json!([]));
     assert_eq!(options["detail_max_length"], 2000);
     assert!(options["reply_email_masked"].is_null());
     let kinds = options["kinds"].as_array().unwrap();
@@ -123,10 +123,7 @@ async fn options_follow_live_employee_link_and_never_other_subjects(pool: PgPool
     let uri = "/api/v1/privacy/rights-requests/options";
     let (status, options) = send(&service, "GET", uri, Some(&bearer), None).await;
     assert_eq!(status, StatusCode::OK, "{options}");
-    assert_eq!(
-        options["controllers"],
-        json!([{"code":"TENANT"},{"code":"OPERATOR"}])
-    );
+    assert_eq!(options["controllers"], json!([{"code":"TENANT"}]));
     assert!(
         options["reply_email_masked"].is_null(),
         "employee contact is not an account delivery address"
@@ -138,7 +135,7 @@ async fn options_follow_live_employee_link_and_never_other_subjects(pool: PgPool
         .unwrap();
     let (status, options) = send(&service, "GET", uri, Some(&bearer), None).await;
     assert_eq!(status, StatusCode::OK, "{options}");
-    assert_eq!(options["controllers"], json!([{"code":"OPERATOR"}]));
+    assert_eq!(options["controllers"], json!([]));
     sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
         .bind(user.as_uuid())
         .execute(&pool)

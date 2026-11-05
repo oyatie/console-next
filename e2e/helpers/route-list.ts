@@ -24,6 +24,7 @@ const paths = [
   "/access/roles/new",
   "/account",
   "/account/privacy",
+  "/account/privacy/intake/$id",
   "/approvals",
   "/approvals/$approvalId",
   "/attendance",
