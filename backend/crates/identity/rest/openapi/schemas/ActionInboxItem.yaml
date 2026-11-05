@@ -73,6 +73,7 @@ properties:
     - setup_golive
     - support_access
     - registration_check
+    - privacy_request
   urg:
     type: string
     enum:

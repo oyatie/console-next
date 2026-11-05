@@ -40,6 +40,12 @@ async fn privacy_intake_reuses_hr_edit_scope_for_point_list_and_count(pool: PgPo
     for kind in world::KINDS {
         for node in w.nodes.iter().filter(|node| node.kind == kind) {
             assert_eq!(
+                facts
+                    .authorize("privacy_request_intake_read", *node)
+                    .unwrap(),
+                facts.authorize(action, *node).unwrap()
+            );
+            assert_eq!(
                 facts.authorize(action, *node).unwrap(),
                 facts
                     .authorize(Feature::EmployeeDirectoryManage.as_str(), *node)
@@ -48,6 +54,11 @@ async fn privacy_intake_reuses_hr_edit_scope_for_point_list_and_count(pool: PgPo
         }
     }
     for node in &foreign.nodes {
+        assert!(
+            !facts
+                .authorize("privacy_request_intake_read", *node)
+                .unwrap()
+        );
         assert!(!facts.authorize(action, *node).unwrap());
     }
     let filter = facts

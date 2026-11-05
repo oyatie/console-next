@@ -23,6 +23,7 @@ type InboxItem = AttentionInboxItem;
 export type RowAction = (item: InboxItem) => ReactNode;
 type QueueColumn = Column<InboxItem> & { id: "task" | "subject" | "due" | "source" | "owner" | "actions" };
 const KIND_TEXT: Record<string, MessageId> = {
+  privacy_request: "home.inbox.privacyRequest",
   registration_check: "nts.title",
   identifier_correction_waiting: "entityRecord.corrections.title", identifier_correction_decide: "entityRecord.corrections.title", identifier_correction_apply: "entityRecord.corrections.title", identifier_correction_review: "entityRecord.corrections.title",
   support_access: "home.part.support", approval: "home.part.decide", org_change: "home.part.changes", org_change_waiting: "home.part.changes", org_change_scheduled: "home.part.changes", org_change_approve: "home.part.decide",
@@ -49,6 +50,7 @@ const REGISTER_FIELDS: Record<string, { label: MessageId; block: string }> = {
 };
 
 const RECORD_SOURCE: Record<string, MessageId> = {
+  privacy_request: "account.privacy.title",
   employee: "people.title", exit_case: "people.title", change_request: "home.part.requests",
   org_change: "home.part.changes", statutory: "statutory.title", account: "shell.account",
   access: "access.grant.title", period_lock: "home.part.unlocks", support_session: "home.part.support",

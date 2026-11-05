@@ -16,6 +16,7 @@ pub(super) fn project(
     use console_platform_authz::Feature as F;
     let can = |feature| sources::org_change::holds(&sources.principal, feature);
     let support_work = sources.support_can_approve.get().copied().unwrap_or(false);
+    let privacy_work = sources.privacy_can_handle.get().copied().unwrap_or(false);
     response["has_work"] = serde_json::json!(
         [
             F::LegalEntityManage,
@@ -36,6 +37,7 @@ pub(super) fn project(
         .into_iter()
         .any(can)
             || support_work
+            || privacy_work
     );
     let correction_work = sources.principal.branch_scope == console_kernel_core::BranchScope::All
         && [F::LegalEntityManage, F::OrgChangeApply]
@@ -56,13 +58,13 @@ pub(super) fn project(
         [
             (
                 "turn",
-                org_work || people_work || support_work || correction_work
+                org_work || people_work || support_work || correction_work || privacy_work
             ),
             ("waiting", org_work || correction_work),
             ("scheduled", org_work),
             (
                 "deadlines",
-                org_work || people_work || support_work || correction_work
+                org_work || people_work || support_work || correction_work || privacy_work
             ),
             (
                 "failures",

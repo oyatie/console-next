@@ -380,6 +380,7 @@ mod tests {
                 ActionInboxSource::Setup,
                 ActionInboxSource::GrantNotice,
                 ActionInboxSource::SupportAccess,
+                ActionInboxSource::PrivacyRequests,
             ]
         );
         for source in ActionInboxSource::ALL {
@@ -1088,6 +1089,7 @@ mod tests {
             ActionInboxSource::Setup => "setup_entity",
             ActionInboxSource::GrantNotice => "grant_notice",
             ActionInboxSource::SupportAccess => "support_access",
+            ActionInboxSource::PrivacyRequests => "privacy_request",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
         }
     }
