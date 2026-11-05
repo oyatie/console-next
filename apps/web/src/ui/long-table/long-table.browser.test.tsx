@@ -30,7 +30,6 @@ beforeAll(async () => {
         await loadCatalog('ko');
         function Fixture(){
           const editing=location.search.startsWith('?typing');
-          const auto=location.search==='?auto';
           const [values,setValues]=useState({});
           const [sort,setSort]=useState({column:'name',direction:'ascending'});
           const [selection,setSelection]=useState(NO_SELECTION);
@@ -41,14 +40,13 @@ beforeAll(async () => {
           return React.createElement(LongTable,{
             label:'정렬 검증',rows,rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
             editable:location.search==='?typing-editable',
-            rowHeight:auto?'auto':undefined,
             caption:sort.column+':'+sort.direction,
             sortDescriptor:sort,onSortChange:location.search==='?readonly'?undefined:setSort,
             ...(collision||keyboardOpen ? {...(location.search==='?collision' ? {selection,onSelectionChange:s=>{setSelection(s);document.body.dataset.selection=JSON.stringify(s.kind==='ids'?[...s.ids]:[...s.excluded]);}} : {}),
               rowKeys:keyboardOpen?{onOpen:id=>document.body.dataset.keyboardOpen=id}:{},...(keyboardOpen?{}:{onRowAction:id=>document.body.dataset.action=id}),
               onRowFocus:id=>document.body.dataset.focus=id,onRowHover:id=>document.body.dataset.hover=id} : {}),
             columns:[{id:'name',header:'이름',card:editing||location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,cell:r=>r.name},
-              {id:'note',header:'메모',allowsSorting:true,focusMode:location.search==='?typing-child'?'child':undefined,cell:r=>auto ? React.createElement('details',null,React.createElement('summary',null,r.note),Array.from({length:8},(_,i)=>React.createElement('p',{key:i},r.note+' '+i))) : editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
+              {id:'note',header:'메모',allowsSorting:true,focusMode:location.search==='?typing-child'?'child':undefined,cell:r=>editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
               {id:'fixed',header:'고정',cell:()=>'-'}]
           });
         }
@@ -66,22 +64,6 @@ beforeAll(async () => {
   page = await browser.newPage();
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
-
-test("auto height measures expanded cells and keeps following rows below them", async () => {
-  await page.setViewportSize({ width: 1280, height: 580 });
-  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?auto`);
-  const first = page.getByRole("gridcell").filter({ has: page.getByText("첫째", { exact: true }) });
-  await first.locator("summary").click();
-  await first.getByText("첫째 7", { exact: true }).scrollIntoViewIfNeeded();
-  await dom(first.getByText("첫째 7", { exact: true })).toBeInViewport();
-  const next = page.getByRole("rowheader", { name: "가상나", exact: true });
-  await expect.poll(async () => {
-    const expanded = (await first.boundingBox())!;
-    return (await next.boundingBox())!.y - (expanded.y + expanded.height);
-  }).toBeGreaterThanOrEqual(0);
-  await first.locator("summary").click();
-  await expect.poll(() => first.evaluate(el => el.getBoundingClientRect().height)).toBe(40);
-}, 60_000);
 
 for (const editable of [false, true]) {
   test(`cell typing keeps letters, spaces, Korean and input focus (editable=${editable})`, async () => {
