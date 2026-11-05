@@ -1,6 +1,35 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, type Locator, type Page } from "@playwright/test";
 
-export const filingRow = (page: Page, insurer: string, kind: string) => page.getByRole("row").filter({has:page.getByRole("gridcell",{name:`${insurer} · ${kind}`,exact:true})});
+export async function filingRow(page: Page, insurer: string, kind: string, employee: string) {
+  const search = page.getByRole("searchbox", { name: "이름·사번 검색", exact: true });
+  if (await search.inputValue() !== employee) {
+    const filtered = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return response.request().method() === "GET" && url.pathname.endsWith("/statutory/insurance-filings") && url.searchParams.get("search") === employee;
+    });
+    await search.fill(employee);
+    await search.press("Enter");
+    await filtered;
+  }
+  const grid = page.getByRole("grid", { name: "4대보험 신고", exact: true });
+  const row = grid.getByRole("row").filter({ has: page.getByRole("gridcell", { name: `${insurer} · ${kind}`, exact: true }) });
+  // Employee search can still leave several filings; no insurer/kind filter is exposed.
+  if (!await row.count()) {
+    await grid.evaluate(element => { element.scrollTop = 0; });
+    await expect.poll(async () => {
+      if (await row.count()) return true;
+      return grid.evaluate(element => {
+        const before = element.scrollTop;
+        element.scrollTop += element.clientHeight;
+        return element.scrollTop === before;
+      });
+    }).toBe(true);
+  }
+  await row.scrollIntoViewIfNeeded();
+  await expect(row).toBeInViewport();
+  return row;
+}
 
 export async function selectFilingFact(page: Page, dialog: Locator, label: string, option: string) {
   const control = dialog.getByRole("button", { name: new RegExp(`(?:^|\\s)${label}(?:\\s|$)`) });

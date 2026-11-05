@@ -15,7 +15,7 @@ import { hrAct, openCard, openHistory } from "./record";
 import { SETUP_DEPARTMENT, SECOND, REGISTRATION_FIXTURES, registerBranch, registerEntity, setupCompany, startOperations } from "./setup-flows";
 import { addDepartments, leaveScreen } from "./structure-flows";
 import { reasonChip } from "./helpers/lifecycle";
-import { prepareFilingCompletion } from "./helpers/statutory";
+import { filingRow, prepareFilingCompletion } from "./helpers/statutory";
 import { holdRead } from "./helpers/read";
 import { releaseChangeRules } from "./helpers/filing-register";
 import { fillDate, reasonBox, signOff, todayPreset } from "./sheet";
@@ -409,14 +409,16 @@ test(`a workplace appointment ${released ? "records released filings and closes 
       await dialog.getByRole("button", { name: "신고 완료", exact: true }).click();
       await expect(dialog).toBeHidden();
     } else {
-      const row = admin.getByRole("row").filter({ has: admin.getByRole("gridcell", { name: `${filingLabel(item.insurer!)} · ${filingLabel(item.filing_kind!)}`, exact: true }) });
+      const row = await filingRow(admin, filingLabel(item.insurer!), filingLabel(item.filing_kind!), "한발령");
       await expect(row).toContainText("법무 검토 전");
       await expect(row.getByRole("button", { name: "처리 기록", exact: true })).toHaveCount(0);
       await expect(admin.getByRole("dialog")).toHaveCount(0);
     }
   }
   await audit(admin, "workplace appointment filing processing");
-  const caseLink = admin.getByRole("link", { name: "사건 보기", exact: true });
+  const lastFiling = filings.at(-1)!;
+  const caseRow = await filingRow(admin, filingLabel(lastFiling.insurer!), filingLabel(lastFiling.filing_kind!), "한발령");
+  const caseLink = caseRow.getByRole("link", { name: "사건 보기", exact: true });
   await expect(caseLink).toHaveAttribute("href", new RegExp(`case%3A${appointment.id}`));
   await caseLink.click();
   await routeReady(admin);
