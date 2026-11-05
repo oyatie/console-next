@@ -29,7 +29,7 @@ impl PgOnboardingStore {
                 if slice.allows(GO_LIVE_RECEIPT_READ, &NodePath::tenant(a.org)) != Ok(true) {
                     return Err(refused(ErrorKind::Forbidden, "forbidden", None));
                 }
-                sqlx::query_as("SELECT go_live_at, go_live_by, go_live_preview_digest AS preview_digest, go_live_facts_snapshot AS facts_snapshot, go_live_facts_snapshot_version AS facts_snapshot_version FROM tenant_phase WHERE org_id=$1 AND phase='OPERATING' AND go_live_at IS NOT NULL")
+                sqlx::query_as("SELECT go_live_at, go_live_by, go_live_preview_digest AS preview_digest, go_live_facts_snapshot AS facts_snapshot, COALESCE(go_live_facts_snapshot_version, 1) AS facts_snapshot_version FROM tenant_phase WHERE org_id=$1 AND phase='OPERATING' AND go_live_at IS NOT NULL")
                     .bind(a.org.as_uuid()).fetch_optional(tx.as_mut()).await?
                     .ok_or_else(|| refused(ErrorKind::NotFound, "go_live_receipt_not_found", None))
             })

@@ -1,12 +1,12 @@
 -- migration-class: expand
 -- SPDX-License-Identifier: LicenseRef-Proprietary
--- Existing snapshots and old writers use the frozen v1 schema.
+-- Old writers leave NULL, which the reader interprets as the frozen v1 schema.
 SET LOCAL lock_timeout = '2s';
-ALTER TABLE tenant_phase ADD COLUMN go_live_facts_snapshot_version INTEGER NOT NULL DEFAULT 1
-    CHECK (go_live_facts_snapshot_version > 0);
+ALTER TABLE tenant_phase ADD COLUMN go_live_facts_snapshot_version INTEGER
+    CHECK (go_live_facts_snapshot_version IS NULL OR (go_live_facts_snapshot_version > 0));
 GRANT UPDATE (go_live_facts_snapshot_version) ON tenant_phase TO console_rt;
 COMMENT ON COLUMN tenant_phase.go_live_facts_snapshot_version IS
-    'pd:none — immutable snapshot schema version; v1 also covers legacy receipts without facts';
+    'pd:none — immutable snapshot schema version; NULL from older writers means v1';
 
 CREATE OR REPLACE FUNCTION tenant_phase_one_way() RETURNS trigger
 LANGUAGE plpgsql AS $$
