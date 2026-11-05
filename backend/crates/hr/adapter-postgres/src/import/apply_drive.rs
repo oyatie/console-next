@@ -5,16 +5,16 @@ use console_kernel_core::{
     AuditCommandContext, AuditSource, KernelError, OrgId, TraceContext, UserId,
 };
 use console_leave_adapter_postgres::PgLeaveStore;
-use console_platform_authz::Principal;
+use console_platform_authz::{Principal, cedar_pbac::actions::import_apply};
 use console_platform_db::{command_context, with_audits, with_org_conn};
-use serde_json::{Value, json};
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::import::apply::{Checked, apply_failure, check_and_build, conflict};
 use crate::import::apply_job::{
     ApplyJob, DriverSlot, STALE_AFTER_SECS, progress_audit, read_job, write_job,
 };
-use crate::import::apply_report::{final_report, register_gaps};
+use crate::import::apply_report::final_report;
 use crate::import::settle::{Chunk, SETTLE_CHUNK_ROWS, settle_chunk, settle_keys};
 use crate::import::types::{EmployeeImportApplyRequest, EmployeeImportReport};
 use crate::metrics::record_hr_import;
@@ -81,6 +81,10 @@ impl HrService {
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let org_uuid = *org.as_uuid();
+                import_apply::require(tx, org, *principal.user_id.as_uuid())
+                    .await
+                    .map_err(HrError::from_kernel)?;
+                crate::import::store::import_run_for_update(tx, org_uuid, run_id).await?;
                 let job = read_job(tx, org_uuid, run_id).await?;
                 if let Some(job) = job.as_ref().filter(|job| job.running()) {
                     if job.dry_run_digest != digest {
@@ -101,7 +105,10 @@ impl HrService {
                             ..ApplyJob::queued(run_id, &digest, principal.user_id)
                         },
                     },
-                    Checked::Apply(_) => ApplyJob::queued(run_id, &digest, principal.user_id),
+                    Checked::Apply(_) => ApplyJob {
+                        total: settle_keys(tx, org, run_id).await?.len(),
+                        ..ApplyJob::queued(run_id, &digest, principal.user_id)
+                    },
                 };
                 write_job(tx, org_uuid, &started).await?;
                 let audit = progress_audit(org, &started)?;
@@ -126,6 +133,17 @@ impl HrService {
         let job = job.clone();
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                sqlx::query("SELECT 1 FROM data_import_runs WHERE org_id=$1 AND id=$2 FOR UPDATE")
+                    .bind(org.as_uuid())
+                    .bind(job.run_id)
+                    .execute(tx.as_mut())
+                    .await?;
+                if read_job(tx, *org.as_uuid(), job.run_id)
+                    .await?
+                    .is_some_and(|stored| stored.state == "done")
+                {
+                    return Ok(((), Vec::new()));
+                }
                 write_job(tx, *org.as_uuid(), &job).await?;
                 let audit = progress_audit(org, &job)?;
                 Ok(((), vec![audit]))
@@ -171,108 +189,79 @@ impl HrService {
     ) -> Result<EmployeeImportReport, HrError> {
         let run_id = job.run_id;
         let actor = UserId::from_uuid(job.requested_by);
-        if job.state != "settling" {
-            job.state = "applying".into();
-            self.save_job(org, &job).await?;
-            let digest = job.dry_run_digest.clone();
-            let checked = with_org_conn::<_, _, HrError>(&self.pool, org, |tx| {
-                Box::pin(async move { check_and_build(tx, *org.as_uuid(), run_id, &digest).await })
-            })
-            .await;
-            match (checked, command_store) {
-                (Err(error), _) => return Err(self.fail(org, job, error).await),
-                (Ok(Checked::Replay(_)), _) => {}
-                (Ok(Checked::Apply(_)), None) => {
-                    let error = HrError {
-                        errors: None,
-                        status: http::StatusCode::CONFLICT,
-                        code: "apply_interrupted",
-                        message: "the apply stopped before it wrote anything; send it again".into(),
-                        refusals: None,
-                    };
-                    return Err(self.fail(org, job, error).await);
-                }
-                (Ok(Checked::Apply(rows)), Some(store)) => {
-                    if let Err(error) = self.leave_command(&store, org, actor, &job, &rows).await {
-                        return Err(self.fail(org, job, error).await);
+        job.state = "applying".into();
+        self.save_job(org, &job).await?;
+        let failure_job = job.clone();
+        let capability = match command_store {
+            Some(store) => console_platform_request_context::scope_org(
+                org,
+                store.employee_import_capability(run_id, actor),
+            )
+            .await
+            .map_err(apply_failure),
+            None => Ok(None),
+        };
+        let capability = match capability {
+            Ok(token) => token,
+            Err(error) => return Err(self.fail(org, failure_job, error).await),
+        };
+        let applied = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
+            Box::pin(async move {
+                import_apply::require(tx, org, *actor.as_uuid()).await.map_err(HrError::from_kernel)?;
+                match check_and_build(tx, *org.as_uuid(), run_id, &job.dry_run_digest).await? {
+                    Checked::Replay(_) => {
+                        if let Some(done) = read_job(tx, *org.as_uuid(), run_id).await?
+                            && done.state == "done"
+                            && let Some(report) = done.report {
+                            return Ok((report, Vec::new()));
+                        }
+                    }
+                    Checked::Apply(rows) => {
+                        if capability.is_none() {
+                            return Err(conflict("apply_interrupted", "the apply stopped before it wrote anything; send it again", json!([])));
+                        }
+                        let trace = TraceContext::generate();
+                        sqlx::query("SELECT * FROM import_api.apply_employee_import_batch($1,$2,$3,$4,$5,$6,$7,$8,$9)")
+                            .bind(org.as_uuid()).bind(run_id).bind(format!("run:{run_id}"))
+                            .bind(rows).bind(actor.as_uuid())
+                            .bind(json!({"run_id": run_id, "entity_type": "employee_hr", "dry_run_digest": job.dry_run_digest}))
+                            .bind(trace.trace_id()).bind(trace.span_id())
+                            .bind(capability)
+                            .execute(tx.as_mut()).await
+                            .map_err(|error| apply_failure(console_leave_adapter_postgres::PgLeaveError::from(error)))?;
                     }
                 }
-            }
-        }
-        let keys = settle_keys(&self.pool, org, run_id).await?;
-        // The report is the leave command's plus the plan's: known before the
-        // settle, so the last chunk stores the job `done` in its own
-        // transaction, whose settle audit is the stream's event (r3:hire-02:
-        // the terminal step reached no screen).
-        let report = final_report(&self.pool, org, run_id).await?;
-        job.state = "settling".into();
-        job.total = keys.len();
-        let count = keys.len().div_ceil(SETTLE_CHUNK_ROWS).max(1);
-        for i in job.done.min(job.total) / SETTLE_CHUNK_ROWS..count {
-            let end = keys.len().min((i + 1) * SETTLE_CHUNK_ROWS);
-            job.done = end;
-            let last = i + 1 == count;
-            if last {
-                job.state = "done".into();
-                job.report = Some(report.clone());
-            }
-            let chunk = Chunk {
-                keys: keys.get(i * SETTLE_CHUNK_ROWS..end).unwrap_or_default(),
-                last,
-                job: Some(job.clone()),
-            };
-            if let Err(error) = settle_chunk(&self.pool, org, actor, run_id, chunk).await {
-                job.state = "settling".into();
-                job.report = None;
-                return Err(self.fail(org, job, error).await);
-            }
-        }
-        let report = if job.state == "done" {
-            // The last chunk stored the report with its 명부 gaps.
-            self.apply_job(org, run_id).await?.report.unwrap_or(report)
-        } else {
-            // Resumed with every chunk already settled.
-            let mut report = report;
-            report.register_gaps = Some(register_gaps(&self.pool, org, run_id).await?);
-            job.state = "done".into();
-            job.report = Some(report.clone());
-            self.save_job(org, &job).await?;
-            report
+                let keys = settle_keys(tx, org, run_id).await?;
+                let report = final_report(tx, org, run_id).await?;
+                job.total = keys.len();
+                let count = keys.len().div_ceil(SETTLE_CHUNK_ROWS).max(1);
+                for i in 0..count {
+                    let end = keys.len().min((i + 1) * SETTLE_CHUNK_ROWS);
+                    job.done = end;
+                    let last = i + 1 == count;
+                    job.state = if last { "done" } else { "settling" }.into();
+                    job.report = last.then(|| report.clone());
+                    let chunk = Chunk {
+                        keys: &keys[i * SETTLE_CHUNK_ROWS..end],
+                        last,
+                        job: Some(job.clone()),
+                    };
+                    settle_chunk(org, actor, run_id, chunk)(tx).await?;
+                }
+                let report = read_job(tx, *org.as_uuid(), run_id).await?
+                    .and_then(|job| job.report)
+                    .ok_or_else(|| HrError::internal("completed import has no report"))?;
+                Ok((report, Vec::new()))
+            })
+        }).await;
+        let report = match applied {
+            Ok(report) => report,
+            Err(error) => return Err(self.fail(org, failure_job, error).await),
         };
         crate::import::statistics::refresh_after_apply(&self.pool, org, report.inserted).await;
         record_hr_import(report.inserted, report.updated);
         metrics::counter!("hr_data_import_runs_total", "stage" => "apply").increment(1);
         Ok(report)
-    }
-
-    async fn leave_command(
-        &self,
-        store: &PgLeaveStore,
-        org: OrgId,
-        actor: UserId,
-        job: &ApplyJob,
-        rows: &Value,
-    ) -> Result<(), HrError> {
-        let audit = json!({
-            "run_id": job.run_id,
-            "entity_type": "employee_hr",
-            "dry_run_digest": job.dry_run_digest,
-        });
-        console_platform_request_context::scope_org(org, async {
-            store
-                .apply_employee_import_batch(
-                    Some(job.run_id),
-                    &format!("run:{}", job.run_id),
-                    rows,
-                    actor,
-                    &audit,
-                    TraceContext::generate(),
-                )
-                .await
-        })
-        .await
-        .map(|_| ())
-        .map_err(apply_failure)
     }
 
     /// The synchronous apply (no `Prefer: respond-async`): the same job,

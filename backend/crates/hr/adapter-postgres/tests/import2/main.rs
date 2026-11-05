@@ -3,6 +3,7 @@
 //! 주민등록번호 and its tombstone, any-layout import, the 확인 필요 queue,
 //! mapping memory, 사번 변경 and renumbering.
 
+mod atomic_apply;
 mod company_names;
 mod field_reveal;
 #[path = "../emp_create/fixture.rs"]

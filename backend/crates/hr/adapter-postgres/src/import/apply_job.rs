@@ -1,9 +1,8 @@
 //! W11 (decisions #27, #28): the employee import apply as a job. The route
 //! checks everything a refusal needs synchronously (digest, unsettled rows,
 //! row limit), records the job on the run (`apply_job`) and returns; a driver
-//! then runs the leave command (all rows, one statement) and the settle in
-//! chunks of [`SETTLE_CHUNK_ROWS`], each chunk one transaction with a
-//! `data_import.apply.progress` audit row — the realtime topic of the run.
+//! then runs the protected batch and every settle chunk in one audited transaction.
+//! Progress and the complete run commit together; failure leaves no imported writes.
 //! Every write is idempotent, so a job whose process died is resumed by the
 //! schedule loop (settle phase) or by the operator re-sending the apply.
 
