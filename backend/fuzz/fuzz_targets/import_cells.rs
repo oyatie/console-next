@@ -29,14 +29,6 @@ fuzz_target!(|bytes: &[u8]| {
     let _ = pii::is_stripped_zero_rrn(text);
     let _ = rrn::contains_rrn_shaped(text);
     let scrubbed = rrn::is_rrn_value(text);
-    // FZ-1 (known, pinned by hr/domain/tests/fuzz_regressions.rs): 13 bytes with a
-    // multi-byte character across byte 6 panic in `Rrn::parse`. Delete when that passes.
-    let whole = text.trim();
-    let whole = whole.strip_suffix(".0").unwrap_or(whole);
-    let fz1 = whole.len() == 13 && !whole.contains('-') && !whole.is_char_boundary(6);
-    if fz1 {
-        return;
-    }
     if let Ok(value) = Rrn::parse(text) {
         // A cell the vault would seal as an RRN is one the PII scrub catches too.
         // FZ-4 (known, pinned): `Rrn::parse` also takes a hyphen anywhere and

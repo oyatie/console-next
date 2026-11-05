@@ -12,13 +12,12 @@ use console_hr_domain::import::rrn_value::Rrn;
 /// column of an uploaded roster reaches `Rrn::parse` (import/sheet.rs), so one
 /// such cell panicked the import request.
 #[test]
-#[ignore = "regression FZ-1 open, owner IMPORT: Rrn::parse panics (split_at(6) inside a character)"]
 fn regression_fz1_rrn_parse_refuses_a_multibyte_cell_without_panicking() {
     for cell in [
         "12345가67890",
         "aaaaa가bbbbb",
         "90010å000000",
-        "1234５6789012",
+        "1234５678901",
     ] {
         assert_eq!(
             cell.len(),

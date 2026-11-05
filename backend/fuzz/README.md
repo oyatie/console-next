@@ -36,7 +36,7 @@ product fix is open the test is `#[ignore]`d (it fails on the current tree:
 
 | Id | Found by | What | Test | State |
 |---|---|---|---|---|
-| FZ-1 | `import-cells` | `Rrn::parse` panics on 13 bytes with a multi-byte character across byte 6 (`split_at(6)`); an RRN-column cell like `12345가67890` panics the import preview | `hr/domain/tests/fuzz_regressions.rs` | open, IMPORT |
+| FZ-1 | `import-cells` | RRN parsing refuses invalid character boundaries without panicking | `hr/domain/tests/fuzz_regressions.rs` | fixed |
 | FZ-2 | `import-cells` | (withdrawn: the target's own invariant was wrong; `is_rrn_value` is a superset of `contains_rrn_shaped` by design) | — | — |
 | FZ-3 | `kr-ids` | `PhoneE164` stores `00 82 10-…` / `+82 0…` as `+820…`, which re-parses to another number | `kernel/core/tests/fuzz_regressions.rs` | open, kernel |
 | FZ-4 | `import-cells` | `Rrn::parse` accepts a hyphen anywhere and trailing control whitespace; `is_rrn_value` (the PII scrub) does not | `hr/domain/tests/fuzz_regressions.rs` | open, IMPORT |
