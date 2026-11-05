@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Route-state evidence
 
-The independent `states-evidence` workflow runs on dev pushes and supports manual runs. It uses the existing duration-budgeted shard planner for the screen matrix and support-reference specs without a backend or live-E2E concurrency group. Its `states-evidence` artifact contains the router inventory, built-in Playwright JSON report and `states.json`, including failed runs.
+The CI `d10-evidence` job produces `states.json` once from the existing duration-budgeted state shards on dev pushes. The `d8-evidence` artifact contains this file alongside live write-probe and client-error evidence, including red state observations. Built-in Playwright JSON reports remain in `states-report-*`; no additional specs run to produce evidence.
 
 ```sh
 node scripts/d8-module-routes.mjs .cache/states-evidence/routes.json
@@ -20,7 +20,7 @@ Download the artifact from a **dev push** matching its commit, then run from the
 ```sh
 python3 screens/evidence.py ingest ARTIFACT_DIR/states.json
 python3 screens/build.py inventories
-python3 screens/build.py check
+bash screens/ratchet.sh
 ```
 
-Ingest enforces dev ancestry, envelope shape and UTC timestamps, then stamps `ingested_at`. It replaces the single states source, so combine all same-commit state reports in one producer invocation when collecting separate runs. A fresh source removes `measurement pending: states`; unknown and failed rows still prevent maturity increases and name the affected routes.
+Ingest enforces dev ancestry, envelope shape and UTC timestamps, then stamps `ingested_at`. It replaces the single states source, so combine all same-commit state reports in one producer invocation when collecting separate runs. A fresh source removes `measurement pending: states`. Unknown or missing states cannot raise D3 and preserve capture-held evidence; only observed failures lower it. D9 ignores unexecuted filler rows, requires at least one executed observation per route, and still refuses executed unknown or failing observations. Evidence names the affected routes.
