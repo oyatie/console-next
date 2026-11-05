@@ -25,7 +25,11 @@ pub(super) async fn visible(
         let facts = row.approval_list_facts();
         for box_name in BOXES {
             if approval_document_list::decide(&actor, &org, &org, facts, box_name).map_err(db)? {
-                visible.push((row.id, box_name.to_owned(), refusal.clone()));
+                visible.push((
+                    row.id,
+                    box_name.to_owned(),
+                    refusal.clone().filter(|_| box_name == "pending"),
+                ));
             }
         }
     }

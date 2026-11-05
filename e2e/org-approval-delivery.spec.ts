@@ -7,7 +7,7 @@ import { inviteAccount } from "./access-flows";
 import { openTenant } from "./helpers/tenant";
 import { revealUnit } from "./structure-flows";
 
-for (const routeFirst of [false, true]) test(`an invited approver finds a routed change in both inboxes (routing first: ${routeFirst})`, { tag: ["@org", "@live"] }, async ({ browser }, info) => {
+for (const routeFirst of [false, true]) test(`an invited approver opens a routed change from the work inbox (routing first: ${routeFirst})`, { tag: ["@org", "@live"] }, async ({ browser }, info) => {
   test.setTimeout(300_000);
   const admin = await openTenant(browser, `approvaldelivery${routeFirst ? "routed" : "prepared"}`, "결재전달회사");
   await setupCompany(admin, "결재전달회사", "본점");
@@ -45,14 +45,10 @@ for (const routeFirst of [false, true]) test(`an invited approver finds a routed
   await routeReady(exec, "/inbox");
   await exec.screenshot({ path: info.outputPath("inbox-after.png"), fullPage: true });
   await info.attach("inbox", { body: await exec.getByRole("main").ariaSnapshot(), contentType: "text/plain" });
-  await expect(exec.getByRole("region", { name: "업무함", exact: true })).toContainText("결재전달부");
-  await exec.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "결재함", exact: true }).click();
-  await routeReady(exec, "/approvals");
-  await expect(exec.getByRole("grid", { name: "결재 문서" })).toContainText("결재전달부");
-  await exec.getByRole("row", { name: /결재전달부/ }).click();
-  const panel = exec.locator("[data-side-panel]");
-  await expect(panel).toContainText("계정을 인사카드에 연결하거나 동일인 확인을 완료");
-  await panel.getByRole("link", { name: "원본 기록 열기", exact: true }).click();
+  const inbox = exec.getByRole("region", { name: "업무함", exact: true });
+  await expect(inbox).toContainText("결재전달부");
+  await expect(exec.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "결재함", exact: true })).toHaveCount(0);
+  await inbox.getByRole("row", { name: /결재전달부/ }).getByRole("link", { name: "변경 내용 검토", exact: true }).click();
   await expect(exec).toHaveURL(new RegExp(`/org/changes/${change.id}$`));
   await routeReady(exec, `/org/changes/${change.id}`);
   await expect(exec.getByRole("heading", { name: /결재전달부/, level: 1 })).toBeVisible();

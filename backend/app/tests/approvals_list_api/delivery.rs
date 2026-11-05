@@ -2,6 +2,27 @@
 use super::*;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn requested_documents_do_not_report_decision_refusals(pool: PgPool) {
+    let (org, maker) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    grants::grant_org_approve(&pool, maker).await;
+    let id = document(&pool, org, maker, "OC-2026-0001").await;
+    let ctx = http::ctx(&pool, org, maker, &["SUPER_ADMIN"], None).await;
+    for bound in [false, true] {
+        if bound {
+            people::bind_user_to_distinct_person(&pool, maker).await;
+        }
+        let page = get(&ctx, &format!("box=requested&focus=org_change:{id}")).await;
+        assert_eq!(page["counts"]["requested"], 1);
+        assert_eq!(page["items"][0]["id"], format!("org_change:{id}"));
+        assert!(
+            page["items"][0]["decision_refusal"].is_null(),
+            "a requester must not receive a decision refusal (bound: {bound}): {page}"
+        );
+        assert_eq!(page["focused"], page["items"][0]);
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn invited_approver_receives_work_even_when_identity_verification_blocks_decision(
     pool: PgPool,
 ) {

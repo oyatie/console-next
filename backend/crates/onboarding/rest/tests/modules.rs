@@ -88,7 +88,7 @@ async fn no_grant_account_reads_readiness_without_counts(owner: PgPool) {
             .filter(|m| m["ready"] == true)
             .map(|m| m["key"].as_str().unwrap())
             .collect::<Vec<_>>(),
-        ["home", "org", "access", "approvals", "payroll"]
+        ["home", "org", "access", "payroll"]
     );
     for module in modules {
         assert_eq!(module.as_object().unwrap().len(), 3);
