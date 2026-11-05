@@ -200,9 +200,16 @@ for (const [path, read] of [
       await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
       await expect(main.locator(`[data-support-reference="${id(98)}"]`)).toBeVisible();
       const before = { support: supportAttempts, page: pageAttempts };
+      let supportResponses = 0, pageResponses = 0;
+      // The same failing reads exhaust the same retry budget; wait for their final responses.
+      const retriedSupport = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/support-sessions/active" && ++supportResponses === before.support);
+      const retriedPage = page.waitForResponse(response => new URL(response.url()).pathname === read && ++pageResponses === before.page);
       await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
       await expect.poll(() => supportAttempts).toBeGreaterThan(before.support);
       await expect.poll(() => pageAttempts).toBeGreaterThan(before.page);
+      await Promise.all([retriedSupport, retriedPage]);
+      await expect(main.getByRole("alert")).toHaveCount(1);
+      await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
       expect(fixture.unexpected).toEqual([]);
     } finally { releasePage(); await page.context().close(); fixture.release(); }
   });
