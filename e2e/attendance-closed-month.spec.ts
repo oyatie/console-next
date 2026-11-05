@@ -51,9 +51,15 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
     return [res.status(), await codeOf(res), body.error?.details?.refused?.[0]?.code];
   };
 
-  // The month close has no screen in this build (the close tab is its own lane): the one step taken at the API.
+  // The close board reads saved facts; the close itself is committed at the API.
   const close = await api("/attendance/closes", "POST", { month: lastMonth, attest: true });
   expect(close.status()).toBe(201);
+  const closeRecord = await close.json() as { closed_at: string; period_lock_id: string };
+  await go(admin, `/attendance?tab=close&month=${lastMonth}`);
+  const closeBoard = admin.getByRole("grid", { name: "월 마감", exact: true });
+  await expect(closeBoard.getByRole("columnheader", { name: "휴가 승인 대기", exact: true })).toBeVisible();
+  await expect(closeBoard.locator("time")).toHaveAttribute("datetime", closeRecord.closed_at);
+  await expect(closeBoard.getByRole("link", { name: "기간 잠금 해제 요청", exact: true })).toHaveAttribute("href", `${LOCKS}?unlock=${closeRecord.period_lock_id}`);
 
   // Closed: read-only with the one way to change it; typing leaves no draft, and the server refuses a save.
   await go(admin, `/attendance?month=${lastMonth}`);
