@@ -4,6 +4,7 @@ import type { components } from "@console/api";
 import { firstSignIn, go, kstDate, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { setupCompany } from "./setup-flows";
+import { responseTimestampProblems, timestampContract } from "../scripts/check-timestamp-display.mjs";
 
 test("attendance close timestamps are browser-readable and identical on write and read", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(300_000);
@@ -14,8 +15,20 @@ test("attendance close timestamps are browser-readable and identical on write an
   await tenantSlugField(vendor).fill(unique("timestamps"));
   await tenantOnboardSubmit(vendor).click();
   const admin = await firstSignIn(browser, await takeCode(vendor));
-  const api = apiOf(admin, bearerOf(admin));
+  const bearer = bearerOf(admin);
+  const api = apiOf(admin, bearer);
   await setupCompany(admin, "근태시간검증", "본사");
+  for (const path of ["/hr/readiness-summary", "/hr/attendance-import/summary", "/hr/attendance-records/me"]) {
+    const response = await api(path);
+    expect(response.status(), await response.text()).toBe(200);
+    expect(responseTimestampProblems(timestampContract, `/api/v1${path}`, "get", response.status(), await response.json())).toEqual([]);
+  }
+  const audit = await admin.request.get("/api/audit?limit=10", { headers: { authorization: bearer() } });
+  expect(audit.status(), await audit.text()).toBe(200);
+  const events = await audit.json();
+  expect(events.items.length).toBeGreaterThan(0);
+  expect(responseTimestampProblems(timestampContract, "/api/audit", "get", audit.status(), events)).toEqual([]);
+  expect(await admin.evaluate((items: { occurred_at: string }[]) => items.every(item => Number.isFinite(Date.parse(item.occurred_at))), events.items)).toBe(true);
   const month = kstDate(-60).slice(0, 7);
 
   const close = await api("/attendance/closes", "POST", { month, attest: true });

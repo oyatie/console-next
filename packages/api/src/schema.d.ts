@@ -30810,9 +30810,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        items: {
+                        items: ({
+                            occurred_at: components["schemas"]["Timestamp"];
+                        } & {
                             [key: string]: unknown;
-                        }[];
+                        })[];
                         /** Format: int64 */
                         limit: number;
                         /** Format: int64 */
@@ -46007,7 +46009,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        imports?: {
+                            latest_import_at?: components["schemas"]["Timestamp"];
+                        } & {
+                            [key: string]: unknown;
+                        };
                         payroll: {
+                            latest_updated_at?: components["schemas"]["Timestamp"];
                             /**
                              * Format: int64
                              * @description Number of inspectable non-terminal payroll close runs.
