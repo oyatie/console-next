@@ -24,11 +24,12 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Fixture() {
-          const [pending,setPending]=useState(false), [saved,setSaved]=useState(''), [batch,setBatch]=useState(0), [sent,setSent]=useState('');
+          const [pending,setPending]=useState(false), [saved,setSaved]=useState(''), [batch,setBatch]=useState(0), [sent,setSent]=useState(''), [sends,setSends]=useState(0);
           const parent={id:'site',kind:'site',name:'본사',headcount:0,chips:[],depth:2,children:saved?[{id:'dept',kind:'dept',name:saved,children:[]}]:[]};
           return React.createElement(React.Fragment,null,
             React.createElement(NameBox,{key:batch,parent,box:{x:20,y:100,w:224,h:108},pending,
-              onSubmit:name=>{setSent(name);setPending(true)},onCancel:()=>{}}),
+              onSubmit:name=>{setSent(name);setSends(n=>n+1);setPending(true)},onCancel:()=>{}}),
+            React.createElement('output',{'aria-label':'Send count'},sends),
             React.createElement('button',{onClick:()=>setSaved(sent)},'Refresh tree'),
             React.createElement('button',{onClick:()=>{setBatch(batch+1);setPending(false)}},'Finish save'),
             React.createElement('button',{onClick:()=>setPending(false)},'Refuse save'));
@@ -53,6 +54,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await field.fill("개발팀");
     await field.press("Enter");
     await expect(field).toHaveAttribute("readonly", "");
+    await field.press("Enter");
+    await expect(page.getByRole("status", { name: "Send count" })).toHaveText("1");
     await page.getByRole("button", { name: "Refresh tree" }).click();
     await expect(field).toHaveValue("개발팀");
     await expect(field).not.toHaveAttribute("aria-invalid", "true");

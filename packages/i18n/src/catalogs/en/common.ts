@@ -29,6 +29,8 @@ export const enCommon = {
   "common.failed.code.workplace_kind_not_found": "That workplace kind no longer exists. Reopen the list and pick again.",
   "common.failed.code.children_changed": "Someone changed this list meanwhile. Reopen it and set the order again.",
   "common.failed.code.org_unit_has_members": "People who haven’t left are still in this department or below it, so it wasn’t deleted. Assign them elsewhere first.",
+  "common.failed.code.org_change_scheduled_content": "Nothing was saved because a scheduled org change’s content cannot be changed. Edit only its effective date or reason, or cancel the schedule and draft a new change.",
+  "common.failed.code.org_change_scheduled_locked": "Nothing was saved because you do not have permission to apply org changes and edit or cancel this schedule. Ask the person responsible for applying it to process the request.",
   "common.failed.code.undo_conflict": "The same units changed again after this change, so it wasn’t undone. Undo the later changes first.",
   "common.failed.code.undo_unit_in_use": "A department this change added now has people or departments in it, so it wasn’t undone. Assign the people and move the departments first.",
   "common.failed.code.batch_not_undoable": "An undo can’t be undone. Make the same change again if you need it.",
