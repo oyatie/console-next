@@ -29,7 +29,8 @@ export function NameBox({ box, parent, renaming, pending, onSubmit, onCancel }: 
     input.current?.select();
   }, []);
   const trimmed = name.trim();
-  const clash = trimmed && nameClash(parent, trimmed, renaming?.id);
+  // The refreshed tree can contain our new name before the save finishes and opens an empty box.
+  const clash = !pending && trimmed && nameClash(parent, trimmed, renaming?.id);
   const label = renaming ? t("structure.edit.renameLabel", { name: renaming.name }) : t("structure.edit.addLabel", { parent: parent.name });
   const submit = () => { if (trimmed && !clash && !pending) onSubmit(trimmed); };
   return (
