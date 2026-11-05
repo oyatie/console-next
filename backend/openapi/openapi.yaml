@@ -23750,6 +23750,58 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+      tags: [payroll]
+      operationId: createPayrollRun
+      summary: Create the next payroll run derived from pay-group rules
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Optional retry key. The same key and body replay the original 201 response; a different body returns 409.
+        schema: {type: string, minLength: 16, maxLength: 200}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreatePayrollRun'}
+      responses:
+        '201':
+          description: The created run with its immutable derived schedule snapshot, or that original result on a same-key retry under current Cedar access.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayrollRunSummary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
+        '409': {description: phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay.}
+        '422': {description: run_kind_unsupported for non-REGULAR kinds; Missing, malformed or extra fields, an invalid run kind, or invalid_request_key.}
+        '503': {description: holiday_calendar_missing when the applicable calendar is unavailable; or unavailable Cedar facts.}
+  /api/v1/payroll/runs/preview:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+      tags: [payroll]
+      operationId: previewPayrollRun
+      summary: Preview the next run derived from pay-group rules
+      security:
+      - bearerAuth: []
+      parameters:
+      - {name: pay_group_id, in: query, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      - {name: kind, in: query, required: true, schema: {$ref: '#/components/schemas/PayrollRunKind'}}
+      responses:
+        '200':
+          description: Read-only derived facts for the first unoccupied month of this kind from the current month. Creation recomputes these facts.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayrollRunPreview'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
+        '422': {description: run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind.}
+        '503': {description: holiday_calendar_missing when an adjustment requires an unloaded calendar year; or unavailable Cedar facts.}
   /api/v1/payroll/runs/{id}:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -39092,6 +39144,14 @@ components:
       allOf:
       - {$ref: '#/components/schemas/PayGroupDefinition'}
       unevaluatedProperties: false
+    CreatePayrollRun:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [pay_group_id, kind]
+      properties:
+        pay_group_id: {$ref: '#/components/schemas/Uuid'}
+        kind: {$ref: '#/components/schemas/PayrollRunKind'}
     CreatePeriodLockRequest:
       type: object
       required:
@@ -53976,6 +54036,10 @@ components:
           - $ref: '#/components/schemas/PayrollPayslipDeliverySummary'
           - type: 'null'
           description: Unpaginated delivery summary; null until at least one payslip has been issued.
+    PayrollRunKind:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: string
+      enum: [REGULAR, OFF_CYCLE, CORRECTION, EXIT_SETTLEMENT]
     PayrollRunPage:
       type: object
       required:
@@ -53997,12 +54061,34 @@ components:
         offset:
           type: integer
           format: int64
+    PayrollRunPreview:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [legal_entity_id, pay_group_id, kind, attribution_month, pay_date, pay_date_clamped, period_start, period_end, variable_period_start, variable_period_end]
+      properties:
+        legal_entity_id: {$ref: '#/components/schemas/Uuid'}
+        pay_group_id: {$ref: '#/components/schemas/Uuid'}
+        kind: {$ref: '#/components/schemas/PayrollRunKind'}
+        attribution_month: {type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$'}
+        pay_date: {type: string, format: date}
+        pay_date_clamped: {type: boolean}
+        period_start: {type: string, format: date}
+        period_end: {type: string, format: date}
+        variable_period_start: {type: string, format: date}
+        variable_period_end: {type: string, format: date}
     PayrollRunSummary:
       type: object
       required:
       - id
+      - legal_entity_id
+      - pay_group_id
+      - kind
+      - attribution_month
+      - pay_date
       - period_start
       - period_end
+      - variable_period_start
+      - variable_period_end
       - source_label
       - status
       - calculation_enabled
@@ -54011,11 +54097,29 @@ components:
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
+        legal_entity_id:
+          oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+        pay_group_id:
+          oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+        kind:
+          oneOf: [{$ref: '#/components/schemas/PayrollRunKind'}, {type: 'null'}]
+        attribution_month:
+          type: [string, 'null']
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+        pay_date:
+          type: [string, 'null']
+          format: date
         period_start:
           type: string
           format: date
         period_end:
           type: string
+          format: date
+        variable_period_start:
+          type: [string, 'null']
+          format: date
+        variable_period_end:
+          type: [string, 'null']
           format: date
         source_label:
           type: string

@@ -2,7 +2,7 @@
 import { id } from "../mock/fixtures";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
 import type { attendanceScreens, attendanceBoardScreens } from "./attendance";
-import type { payrollScreens, PayrollState } from "./payroll";
+import type { payrollRunCreateScreen, payrollScreens, PayrollState } from "./payroll";
 import type { accountScreens } from "./account";
 import type { numberingScreens } from "./numbering";
 // Executable state matrix, keyed to the central screen registry route records.
@@ -34,5 +34,5 @@ export const orgChangeScreens = [
   }, registry: "org-changes-id--approval-chain", live: "e2e/orgchange-r2.spec.ts" },
 ] as const;
 export type { PayrollState };
-export type Screen = (typeof payrollScreens)[number] | (typeof screens)[number] | (typeof orgChangeScreens)[number] | (typeof lifecycleSheetScreens)[number] | (typeof accountScreens)[number] | (typeof numberingScreens)[number] | (typeof attendanceScreens)[number] | (typeof attendanceBoardScreens)[number];
+export type Screen = typeof payrollRunCreateScreen | (typeof payrollScreens)[number] | (typeof screens)[number] | (typeof orgChangeScreens)[number] | (typeof lifecycleSheetScreens)[number] | (typeof accountScreens)[number] | (typeof numberingScreens)[number] | (typeof attendanceScreens)[number] | (typeof attendanceBoardScreens)[number];
 export type OrgChangeState = Exclude<State, "empty"> | keyof typeof recordStatuses | "missing";

@@ -378,7 +378,7 @@ async fn drain_event_in_txn(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, even
                     'job', o.payload->>'job') \
          FROM workflow_outbox_events o \
          WHERE o.id = $1 \
-         ON CONFLICT (org_id, period_start, period_end, source_label) DO NOTHING \
+         ON CONFLICT (org_id, period_start, period_end, source_label) WHERE pay_group_id IS NULL DO NOTHING \
          RETURNING id",
     )
     .bind(event_id)
@@ -565,7 +565,7 @@ async fn reinsert_draft(pool: &PgPool, org: Uuid, run_id: Uuid) -> i64 {
         "INSERT INTO payroll_draft_runs \
              (org_id, period_start, period_end, source_label, status) \
          VALUES ($1, $2::date, $3::date, $4, 'BLOCKED_LEGAL_GATE') \
-         ON CONFLICT (org_id, period_start, period_end, source_label) DO NOTHING \
+         ON CONFLICT (org_id, period_start, period_end, source_label) WHERE pay_group_id IS NULL DO NOTHING \
          RETURNING id",
     )
     .bind(org)

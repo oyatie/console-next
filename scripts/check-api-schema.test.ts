@@ -99,6 +99,7 @@ test("pay group runtime constraints follow the committed contract and reject han
     PayGroupRules: { type: "object", properties: { name: { type: "string", maxLength: 23 }, channel: { type: "string", enum: ["FILE_GENERIC"] } } },
     PayGroupPeriodRule: { type: "object", properties: { start_day: { type: "integer", minimum: 2, maximum: 17 } } },
     PayGroupPayBases: { type: "array", items: { type: "string", enum: ["HOURLY"] } },
+    PayrollRunKind: { type: "string", enum: ["REGULAR", "OFF_CYCLE", "CORRECTION"] },
   };
   writeFileSync(path.join(repo, "backend/openapi/openapi.yaml"), JSON.stringify({ openapi: "3.1.0", info: { title: "t", version: "1" }, paths: { "/api/v1/payroll/employees/{employeeId}/contract-wages": { post: { requestBody: { content: { "application/json": { schema: { type: "object", properties: { source_note: { type: "string", maxLength: 321 } } } } } }, responses: { "201": { description: "Created" } } } } }, components: { schemas } }));
   git("add", "-A");

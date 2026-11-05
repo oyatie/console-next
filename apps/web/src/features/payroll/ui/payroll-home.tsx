@@ -14,15 +14,19 @@ import { SetupRail } from "../../../ui/setup-rail/setup-rail";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { accessRefusal } from "../../../reference/authz/domain/access";
 import { payGroupsQuery, payrollRunsQuery, type PayGroup } from "../api";
-import { payDateRule, periodRule, runStatus } from "../present";
+import { payDateRule, periodRule, runStatus, runName } from "../present";
 
 export function PayrollHome() {
   const groups = useQuery(payGroupsQuery);
   const access = useQuery(myAccessQuery);
-  const need = useRouter().routesByPath["/payroll/setup"].options.staticData?.access;
+  const router = useRouter();
+  const need = router.routesByPath["/payroll/setup"].options.staticData?.access;
   const add = access.data && need && (need === "signed-in" || accessRefusal(access.data, need) === null)
     ? <Link to="/payroll/setup">{t("payroll.setup.add")}</Link> : undefined;
-  return <Page floorplan="P-01" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), primary: add, tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
+  const createNeed = router.routesByPath["/payroll/runs/new"].options.staticData?.access;
+  const create = access.data && createNeed && (createNeed === "signed-in" || accessRefusal(access.data, createNeed) === null)
+    ? <Link to="/payroll/runs/new">{t("payroll.create.title")}</Link> : undefined;
+  return <Page floorplan="P-01" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), primary: create ?? add, tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
     <QueryState q={groups} layout="list">{data => data.items.length ? <div className="form">
       {data.items.map(group => <Card key={group.id} title={group.name} meta={data.legal_entities.find(entity => entity.id === group.legal_entity_id)?.name}>
         <div className="form"><KeyValue readOnly items={[
@@ -50,7 +54,7 @@ function GroupRuns({ group }: { group: PayGroup }) {
     const rows = data.items.filter(run => run.pay_group_id === group.id && run.legal_entity_id === group.legal_entity_id);
     return rows.length ? <LongTable label={t("payroll.runs", { name: group.name })} empty={null} rows={rows} rowId={run => run.id} hasMore={false} onLoadMore={() => {}} columns={[
       { id: "period", header: t("payroll.period"), cell: run => `${fmtDate(run.period_start)} – ${fmtDate(run.period_end)}`, rowHeader: true },
-      { id: "name", header: t("payroll.runName"), cell: run => <Link to="/payroll/runs/$id" params={{ id: run.id }}>{run.source_label}</Link> },
+      { id: "name", header: t("payroll.runName"), cell: run => <Link to="/payroll/runs/$id" params={{ id: run.id }}>{runName(run, group)}</Link> },
       { id: "status", header: t("payroll.status"), card: "status", cell: run => <Chip>{runStatus(run.status)}</Chip> },
     ]} /> : <EmptyState title={t("payroll.noRuns")} reason={t("payroll.noRunsReason")} />;
   }}</QueryState>;

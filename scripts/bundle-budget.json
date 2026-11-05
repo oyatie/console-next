@@ -77,6 +77,7 @@
       "src/features/org-bulk/ui/paste-page.tsx",
       "src/features/org/ui/bulk-move-page.tsx",
       "src/features/payroll/ui/payroll-setup.tsx",
+      "src/features/payroll/ui/run-create-page.tsx",
       "src/features/people/ui/bulk-page.tsx",
       "src/features/people/ui/notice-new-page.tsx",
       "src/features/people/ui/register-dup.tsx",

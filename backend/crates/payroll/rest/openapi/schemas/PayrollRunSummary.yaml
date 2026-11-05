@@ -1,8 +1,15 @@
 type: object
 required:
 - id
+- legal_entity_id
+- pay_group_id
+- kind
+- attribution_month
+- pay_date
 - period_start
 - period_end
+- variable_period_start
+- variable_period_end
 - source_label
 - status
 - calculation_enabled
@@ -11,11 +18,29 @@ required:
 properties:
   id:
     $ref: '#/components/schemas/Uuid'
+  legal_entity_id:
+    oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+  pay_group_id:
+    oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+  kind:
+    oneOf: [{$ref: '#/components/schemas/PayrollRunKind'}, {type: 'null'}]
+  attribution_month:
+    type: [string, 'null']
+    pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+  pay_date:
+    type: [string, 'null']
+    format: date
   period_start:
     type: string
     format: date
   period_end:
     type: string
+    format: date
+  variable_period_start:
+    type: [string, 'null']
+    format: date
+  variable_period_end:
+    type: [string, 'null']
     format: date
   source_label:
     type: string

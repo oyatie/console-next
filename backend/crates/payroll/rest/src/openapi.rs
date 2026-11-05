@@ -59,9 +59,22 @@ const PATHS: &[PathItem] = &[
     },
     PathItem {
         path: "/api/v1/payroll/runs",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__payroll__runs.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__v1__payroll__runs.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/payroll/runs/preview",
         operations: &[Operation {
             method: "get",
-            body: include_str!("../openapi/paths/api__v1__payroll__runs.get.yaml"),
+            body: include_str!("../openapi/paths/api__v1__payroll__runs__preview.get.yaml"),
         }],
     },
     PathItem {
@@ -185,6 +198,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/CreatePayGroup.yaml"),
     },
     NamedYaml {
+        name: "CreatePayrollRun",
+        body: include_str!("../openapi/schemas/CreatePayrollRun.yaml"),
+    },
+    NamedYaml {
         name: "DecidePayrollRunRequest",
         body: include_str!("../openapi/schemas/DecidePayrollRunRequest.yaml"),
     },
@@ -273,8 +290,16 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/PayrollRunDetail.yaml"),
     },
     NamedYaml {
+        name: "PayrollRunKind",
+        body: include_str!("../openapi/schemas/PayrollRunKind.yaml"),
+    },
+    NamedYaml {
         name: "PayrollRunPage",
         body: include_str!("../openapi/schemas/PayrollRunPage.yaml"),
+    },
+    NamedYaml {
+        name: "PayrollRunPreview",
+        body: include_str!("../openapi/schemas/PayrollRunPreview.yaml"),
     },
     NamedYaml {
         name: "PayrollRunSummary",

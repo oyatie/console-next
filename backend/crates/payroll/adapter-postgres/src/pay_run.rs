@@ -82,7 +82,7 @@ fn provenance_matches(stored: &serde_json::Value, requested: &serde_json::Value)
 const INSERT_DRAFT_RUN_SQL: &str = "INSERT INTO payroll_draft_runs \
          (org_id, period_start, period_end, source_label, status, source_summary) \
      VALUES ($1, $2, $3, $4, 'BLOCKED_LEGAL_GATE', $5) \
-     ON CONFLICT (org_id, period_start, period_end, source_label) \
+     ON CONFLICT (org_id, period_start, period_end, source_label) WHERE pay_group_id IS NULL \
      DO UPDATE SET source_label = EXCLUDED.source_label \
      RETURNING id, source_summary, (xmax = 0) AS created";
 
@@ -101,7 +101,7 @@ const INSERT_DRAFT_RUN_GATED_SQL: &str = "INSERT INTO payroll_draft_runs \
          WHERE domain = 'payroll' AND period_lock_effective(period_locks) \
            AND period_start <= $3 AND period_end >= $2 \
      ) \
-     ON CONFLICT (org_id, period_start, period_end, source_label) \
+     ON CONFLICT (org_id, period_start, period_end, source_label) WHERE pay_group_id IS NULL \
      DO UPDATE SET source_label = EXCLUDED.source_label \
      RETURNING id, source_summary, (xmax = 0) AS created";
 
@@ -170,7 +170,7 @@ async fn stage_draft_run_inner(
         let existing: Option<(Uuid, serde_json::Value)> = sqlx::query_as(
             "SELECT id, source_summary FROM payroll_draft_runs \
              WHERE org_id = $1 AND period_start IS NOT DISTINCT FROM $2 \
-               AND period_end IS NOT DISTINCT FROM $3 AND source_label = $4 \
+               AND period_end IS NOT DISTINCT FROM $3 AND source_label = $4 AND pay_group_id IS NULL \
              LIMIT 1",
         )
         .bind(org_id)
