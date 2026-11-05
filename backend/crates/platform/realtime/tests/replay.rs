@@ -114,7 +114,7 @@ async fn replay_counts_rows_even_when_the_reader_cannot_see_them(pool: PgPool) {
     let head = hello(&mut connection).await;
     assert!(head > 0);
     assert_eq!(hub.limit_hits(), [0, 0, 1]);
-    assert_live(&hub, &mut connection).await;
+    assert_live(&pool, &hub, &mut connection).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -155,15 +155,21 @@ async fn reset(connection: &mut console_platform_realtime::RealtimeConnection) {
 }
 
 async fn assert_live(
-    hub: &PgRealtimeHub,
+    pool: &PgPool,
+    hub: &Arc<PgRealtimeHub>,
     connection: &mut console_platform_realtime::RealtimeConnection,
 ) {
-    let event = RealtimeEvent::PrivacyConsent { accepted: true };
-    hub.dispatch_local_for_test(OrgId::one(), event.clone())
+    let bridge = Arc::clone(hub).start_postgres_listener().await.unwrap();
+    sqlx::query("SELECT pg_notify('privacy_consent_changed', '')")
+        .execute(pool)
         .await
         .unwrap();
-    assert_eq!(next(connection).await, event);
+    assert_eq!(
+        next(connection).await,
+        RealtimeEvent::PrivacyConsent { accepted: false }
+    );
     assert_eq!(hub.connection_count().await, 1);
+    bridge.shutdown();
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -276,7 +282,7 @@ async fn a_replay_deadline_resets_then_reads_head_and_resumes_live(pool: PgPool)
     lock.rollback().await.unwrap();
     assert_eq!(hello(&mut connection).await, 0);
     assert_eq!(hub.limit_hits(), [0, 0, 1]);
-    assert_live(&hub, &mut connection).await;
+    assert_live(&pool, &hub, &mut connection).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
