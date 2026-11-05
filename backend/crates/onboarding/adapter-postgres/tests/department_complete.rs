@@ -171,13 +171,14 @@ async fn department_complete(owner: PgPool) {
         .go_live(&a, current.digest.clone(), false, true)
         .await
         .unwrap();
-    let stored: (String, serde_json::Value) = sqlx::query_as(
-        "SELECT go_live_preview_digest, go_live_facts_snapshot FROM tenant_phase WHERE org_id=$1",
+    let stored: (String, serde_json::Value, i32) = sqlx::query_as(
+        "SELECT go_live_preview_digest, go_live_facts_snapshot, go_live_facts_snapshot_version FROM tenant_phase WHERE org_id=$1",
     )
     .bind(org)
     .fetch_one(&owner)
     .await
     .unwrap();
+    assert_eq!(stored.2, 1);
     assert_eq!(stored.0, current.digest);
     assert_eq!(stored.1, serde_json::to_value(current.facts).unwrap());
 }

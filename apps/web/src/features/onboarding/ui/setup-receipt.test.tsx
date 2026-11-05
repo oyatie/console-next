@@ -59,7 +59,7 @@ vi.mock("../ui/use-setup", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: (opts: unknown) => {
+  useQuery: (opts: { queryKey: readonly unknown[] }) => {
     if (opts === myAccessQuery) {
       return {
         data: {
@@ -80,6 +80,10 @@ vi.mock("@tanstack/react-query", () => ({
         },
       };
     }
+    if (opts.queryKey[0] === "/api/v1/onboarding/go-live/receipt") return { data: {
+      go_live_at: state.goLiveAt, facts_snapshot_version: 1,
+      facts_snapshot: { entities: 7, workplaces: 3, org_units: 8, employees: 23 },
+    } };
     return { data: undefined };
   },
 }));
@@ -108,11 +112,13 @@ test("renders post-go-live receipt link and setup history link on Home within th
     const html = render();
     expect(html).toContain("시작 시각");
     expect(html).not.toContain("운영을 시작했습니다");
-    expect(html).toContain("현재");
+    expect(html).toContain("운영 시작 당시");
+    expect(html).not.toContain("현재");
     expect(html).toContain('href="/setup/go-live"');
     expect(html).toContain("운영 시작 기록 보기");
     expect(html).toContain('href="/org/history"');
-    expect(html).toContain("42");
+    expect(html).toContain("23");
+    expect(html).not.toContain("42");
     expect(html).not.toMatch(/aria-label="운영 준비"/);
   } finally {
     vi.useRealTimers();

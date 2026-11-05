@@ -66,6 +66,7 @@ async fn legacy_receipt_returns_stored_metadata_and_an_explicit_missing_snapshot
     assert_eq!(receipt["go_live_by"], h.actor.user.as_uuid().to_string());
     assert_eq!(receipt["preview_digest"], "b".repeat(64));
     assert_eq!(receipt.get("facts_snapshot"), Some(&Value::Null));
+    assert_eq!(receipt["facts_snapshot_version"], 1);
     let error = sqlx::query("UPDATE tenant_phase SET go_live_facts_snapshot='{}' WHERE org_id=$1")
         .bind(h.actor.org.as_uuid())
         .execute(&owner)
@@ -85,6 +86,7 @@ async fn receipt_is_stored_tenant_local_and_write_once(owner: PgPool) {
     let (status, receipt) = send(&h, "GET", PATH, Value::Null).await;
     assert_eq!(status, StatusCode::OK, "{receipt}");
     assert_eq!(receipt["facts_snapshot"], facts);
+    assert_eq!(receipt["facts_snapshot_version"], 1);
     assert_eq!(receipt["preview_digest"], "a".repeat(64));
     assert_eq!(receipt["go_live_by"], h.actor.user.as_uuid().to_string());
     assert!(receipt["go_live_at"].as_str().is_some());
@@ -255,4 +257,52 @@ async fn snapshot_shape_refuses_non_objects_without_committing_go_live(owner: Pg
         Some("23514")
     );
     assert_eq!(state(&owner, &h).await.2, "SETUP");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tenant_wide_org_and_access_editors_can_read_receipts(owner: PgPool) {
+    for domain in ["org", "access"] {
+        let h = harness(&owner, false).await;
+        let role = Uuid::new_v4();
+        // rls-arming: ok live tenant grants are evaluated by the single Cedar fact loader.
+        sqlx::query("INSERT INTO access_roles (org_id,id,name_ko,status,version,created_by) VALUES ($1,$2,'Test editor','ACTIVE',1,$3)")
+            .bind(h.actor.org.as_uuid()).bind(role).bind(h.actor.user.as_uuid()).execute(&owner).await.unwrap();
+        sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES ($1,$2,1,'Test editor','ACTIVE','SETUP',$3)")
+            .bind(h.actor.org.as_uuid()).bind(role).bind(h.actor.user.as_uuid()).execute(&owner).await.unwrap();
+        sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) VALUES ($1,$2,1,$3,ARRAY['view','edit'])")
+            .bind(h.actor.org.as_uuid()).bind(role).bind(domain).execute(&owner).await.unwrap();
+        sqlx::query("INSERT INTO access_grants (org_id,account_id,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by) VALUES ($1,$2,$3,'TENANT',now()-interval '1 day',true,'SETUP','TEST',(SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops))")
+            .bind(h.actor.org.as_uuid()).bind(h.actor.user.as_uuid()).bind(role).execute(&owner).await.unwrap();
+        recorded(&owner, &h).await;
+        let (status, body) = send(&h, "GET", PATH, Value::Null).await;
+        assert_eq!(status, StatusCode::OK, "{domain}: {body}");
+        assert_eq!(body["preview_digest"], "a".repeat(64));
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn snapshot_version_is_positive_and_write_once(owner: PgPool) {
+    let h = harness(&owner, true).await;
+    // rls-arming: ok malformed versions must fail before any receipt is committed.
+    let error =
+        sqlx::query("UPDATE tenant_phase SET go_live_facts_snapshot_version=0 WHERE org_id=$1")
+            .bind(h.actor.org.as_uuid())
+            .execute(&owner)
+            .await
+            .unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("23514")
+    );
+    recorded(&owner, &h).await;
+    let error =
+        sqlx::query("UPDATE tenant_phase SET go_live_facts_snapshot_version=2 WHERE org_id=$1")
+            .bind(h.actor.org.as_uuid())
+            .execute(&owner)
+            .await
+            .unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("P0001")
+    );
 }

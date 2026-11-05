@@ -20925,7 +20925,7 @@ paths:
       - onboarding
       operationId: getGoLiveReceipt
       summary: Read the stored receipt of the tenant's start of operations
-      description: Cedar permits live ops holders or tenant-wide org, hr_basic or access editors. The timestamp, actor, digest and facts are read from the go-live record, never recomputed. Historical go-lives may have a null facts_snapshot. Tenants without a recorded go-live return go_live_receipt_not_found.
+      description: Cedar action onboarding_go_live_receipt_read permits live ops holders or tenant-wide org, hr_basic or access editors. The timestamp, actor, digest and facts are read from the go-live record, never recomputed. Historical go-lives may have a null facts_snapshot. Tenants without a recorded go-live return go_live_receipt_not_found.
       security:
       - bearerAuth: []
       responses:
@@ -45936,6 +45936,171 @@ components:
         gates:
           type: array
           items: { type: object, additionalProperties: true }  # per-gate { gate, status }
+    GoLiveFactsSnapshotV1:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      # Frozen receipt v1: additions to live SetupFacts require a new receipt version.
+      type: object
+      required:
+      - phase_is_setup
+      - terms_accepted
+      - org_step_skipped
+      - security_contact_recorded
+      - security_contact_store_available
+      - employees_step_deferred
+      - entities
+      - entities_needing_confirmation
+      - registrations
+      - registrations_needing_confirmation
+      - registrations_unverified
+      - entities_without_primary_workplace
+      - workplaces
+      - workplaces_incomplete
+      - staffed_workplaces_without_registration
+      - empty_workplaces_without_registration
+      - org_units
+      - org_change_approvers
+      - other_eligible_holders
+      - org_change_routed
+      - employees
+      - employees_starting_later
+      - unmapped_assignments
+      - insurance_not_established_with_people
+      - insurance_numbers_pending
+      - org_changes_in_approval
+      - setup_writes
+      - own_passkeys
+      - unplaced_people
+      - entity_unknown_people
+      - tenant_roles
+      - grants_effective_in_setup
+      - prepared_grants
+      - non_ops_grants
+      - hr_accounts_invited
+      - hr_accounts_enrolled
+      - access_admin_holders
+      - roles_step_skipped
+      properties:
+        phase_is_setup:
+          type: boolean
+        terms_accepted:
+          type: boolean
+        org_step_skipped:
+          type: boolean
+        security_contact_recorded:
+          type: boolean
+        security_contact_store_available:
+          type: boolean
+        employees_step_deferred:
+          type: boolean
+        entities:
+          type: integer
+          format: int64
+        entities_needing_confirmation:
+          type: integer
+          format: int64
+        registrations:
+          type: integer
+          format: int64
+        registrations_needing_confirmation:
+          type: integer
+          format: int64
+        registrations_unverified:
+          type: integer
+          format: int64
+        entities_without_primary_workplace:
+          type: integer
+          format: int64
+        workplaces:
+          type: integer
+          format: int64
+        workplaces_incomplete:
+          type: integer
+          format: int64
+        staffed_workplaces_without_registration:
+          type: integer
+          format: int64
+        empty_workplaces_without_registration:
+          type: integer
+          format: int64
+        org_units:
+          type: integer
+          format: int64
+        org_change_approvers:
+          type: integer
+          format: int64
+          description: Active accounts the access engine lets decide an org change over
+            the whole tenant, the ops account and the caller included; 0 unless org changes
+            route.
+        other_eligible_holders:
+          type: integer
+          format: int64
+        org_change_routed:
+          type: boolean
+          description: approval.policy.org_structure = route (decisions
+        employees:
+          type: integer
+          format: int64
+          description: People employed today (재직 or 휴직); never a 입사 예정, a 퇴직 or a cancelled
+            registration.
+        employees_starting_later:
+          type: integer
+          format: int64
+          description: 입사 예정 people, shown apart from the headcount.
+        unmapped_assignments:
+          type: integer
+          format: int64
+        insurance_not_established_with_people:
+          type: integer
+          format: int64
+        insurance_numbers_pending:
+          type: integer
+          format: int64
+        org_changes_in_approval:
+          type: integer
+          format: int64
+        setup_writes:
+          type: integer
+          format: int64
+        own_passkeys:
+          type: integer
+          format: int64
+          description: The caller's own passkeys; with one, a lost device ends the account.
+        people_without_department:
+          type: integer
+          format: int64
+          description: People employed today without a live department; counted from blocker records.
+        unresolved_departments:
+          type: integer
+          format: int64
+        unplaced_people:
+          type: integer
+          format: int64
+        entity_unknown_people:
+          type: integer
+          format: int64
+        tenant_roles:
+          type: integer
+          format: int64
+        grants_effective_in_setup:
+          type: integer
+          format: int64
+        prepared_grants:
+          type: integer
+          format: int64
+        non_ops_grants:
+          type: integer
+          format: int64
+        hr_accounts_invited:
+          type: integer
+          format: int64
+        hr_accounts_enrolled:
+          type: integer
+          format: int64
+        access_admin_holders:
+          type: integer
+          format: int64
+        roles_step_skipped:
+          type: boolean
     GoLivePreview:
       type: object
       required:
@@ -46109,7 +46274,7 @@ components:
     GoLiveReceipt:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
-      required: [go_live_at, go_live_by, preview_digest, facts_snapshot]
+      required: [go_live_at, go_live_by, preview_digest, facts_snapshot, facts_snapshot_version]
       properties:
         go_live_at:
           type: string
@@ -46122,8 +46287,12 @@ components:
         facts_snapshot:
           description: Facts captured under the go-live lock before the phase transition. Null for historical receipts without a stored snapshot; never replaced with current facts.
           oneOf:
-          - $ref: '#/components/schemas/SetupFacts'
+          - $ref: '#/components/schemas/GoLiveFactsSnapshotV1'
           - type: 'null'
+        facts_snapshot_version:
+          description: Schema version of the stored facts. Version 1 is frozen independently of the live preview; legacy receipts without facts also report 1.
+          type: integer
+          minimum: 1
     GoLiveRequest:
       type: object
       required:

@@ -3,7 +3,7 @@ tags:
 - onboarding
 operationId: getGoLiveReceipt
 summary: Read the stored receipt of the tenant's start of operations
-description: Cedar permits live ops holders or tenant-wide org, hr_basic or access editors. The timestamp, actor, digest and facts are read from the go-live record, never recomputed. Historical go-lives may have a null facts_snapshot. Tenants without a recorded go-live return go_live_receipt_not_found.
+description: Cedar action onboarding_go_live_receipt_read permits live ops holders or tenant-wide org, hr_basic or access editors. The timestamp, actor, digest and facts are read from the go-live record, never recomputed. Historical go-lives may have a null facts_snapshot. Tenants without a recorded go-live return go_live_receipt_not_found.
 security:
 - bearerAuth: []
 responses:

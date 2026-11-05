@@ -10,6 +10,7 @@ import { accessRefusal, type AccessRequirement } from "../../../reference/authz/
 import { settingsQuery } from "../../../reference/settings/api";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
+import { goLiveReceiptQuery } from "../api";
 import { phaseBand, receiptDuration } from "../domain/phase";
 import { useSetupChecklist } from "./use-setup";
 import s from "./go-live.module.css";
@@ -32,21 +33,24 @@ export function SetupReceipt({ receiptNeed, historyNeed }: { receiptNeed: Access
     const timer = window.setTimeout(() => setNow(Date.now()), Math.min(2147483647, Math.max(0, remaining)));
     return () => window.clearTimeout(timer);
   }, [band, data?.go_live_at, duration, now]);
+  const canOpenReceipt = !!access.data && accessRefusal(access.data, receiptNeed) === null;
+  const canOpenHistory = !!access.data && accessRefusal(access.data, historyNeed) === null;
+  const receipt = useQuery({ ...goLiveReceiptQuery, enabled: band === "started" && canOpenReceipt });
   if (band !== "started" || !data?.go_live_at || !access.data) return null;
-  const canOpenReceipt = accessRefusal(access.data, receiptNeed) === null;
-  const canOpenHistory = accessRefusal(access.data, historyNeed) === null;
   if (!canOpenReceipt && !canOpenHistory) return null;
-  const counts = data.steps[0]?.counts;
+  const record = receipt.isError && isAnswer(receipt.error) ? undefined : receipt.data;
+  const counts = record?.facts_snapshot_version === 1 ? record.facts_snapshot : null;
   const summary = counts
-    ? `${t("setup.golive.details.legal_entity")} ${fmtNumber(counts.entities)} · ${t("setup.golive.details.workplace")} ${fmtNumber(counts.workplaces)} · ${t("setup.golive.details.units")} ${fmtNumber(counts.units)} · ${t("setup.stats.people")} ${fmtNumber(data.summary.people)}`
+    ? `${t("setup.golive.details.legal_entity")} ${fmtNumber(counts.entities)} · ${t("setup.golive.details.workplace")} ${fmtNumber(counts.workplaces)} · ${t("setup.golive.details.units")} ${fmtNumber(counts.org_units)} · ${t("setup.stats.people")} ${fmtNumber(counts.employees)}`
     : null;
   return (
     <div data-setup-receipt>
       <Card look="outline" density="dense">
         <div className={s.homeReceipt}>
           <div className={s.homeReceiptMeta}>
-            <time dateTime={data.go_live_at}>{t("setup.receipt.startedAt")} · {fmtDateTime(data.go_live_at)}</time>
-            {summary && <small>{t("setup.receipt.current")} · {summary}</small>}
+            <time dateTime={record?.go_live_at ?? data.go_live_at}>{t("setup.receipt.startedAt")} · {fmtDateTime(record?.go_live_at ?? data.go_live_at)}</time>
+            {record?.facts_snapshot === null && <small>{t("setup.receipt.unrecorded")}</small>}
+            {summary && <small>{t("setup.receipt.recorded")} · {summary}</small>}
           </div>
           <div className={s.homeReceiptActions}>
             {canOpenReceipt && <Link to="/setup/go-live" className={buttonClass()}>{t("setup.receipt.open")}</Link>}

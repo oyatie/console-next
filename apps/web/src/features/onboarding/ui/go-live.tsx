@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import type { components } from "@console/api";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 // eslint-disable-next-line no-restricted-imports -- Go-live synchronizes the server-confirmed phase before navigation.
@@ -19,8 +20,8 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
-import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
-import { goLive, goLivePreviewQuery, SETUP_READS } from "../api";
+import { StatRow } from "../../../ui/key-value/key-value";
+import { goLive, goLivePreviewQuery, goLiveReceiptQuery, SETUP_READS } from "../api";
 import { Blockers, Warnings } from "./go-live-items";
 import { onboardingError } from "../present";
 import { GoLiveDetails } from "./go-live-details";
@@ -28,12 +29,11 @@ import s from "./go-live.module.css";
 
 /**
  * The one-way start of operations (design §5.4, ideal-v2 §4): compact blockers with direct fixes, what to look at, and
- * what becomes governed afterwards; once operating, this screen separates the recorded start time from current values.
+ * what becomes governed afterwards; once operating, the receipt separates recorded counts from current configuration.
  */
 export function GoLive() {
   const q = freshOnOpen(useQuery(goLivePreviewQuery));
-  const me = useQuery({ ...meQuery, enabled: q.data?.phase === "OPERATING" });
-  const startedAt = me.data && "tenant" in me.data ? me.data.tenant?.go_live_at ?? null : null;
+  const receipt = useQuery({ ...goLiveReceiptQuery, enabled: q.data?.phase === "OPERATING" });
   const qc = useQueryClient();
   const nav = useNavigate();
   const [ack, setAck] = useState(false);
@@ -64,7 +64,7 @@ export function GoLive() {
       <QueryState q={q}>
         {(p) => {
           const f = p.facts;
-          const stats = [
+          const stats = (f: components["schemas"]["GoLiveFactsSnapshotV1"]) => [
             { key: "entities", label: t("setup.golive.details.legal_entity"), value: fmtNumber(f.entities) },
             { key: "workplaces", label: t("setup.golive.details.workplace"), value: fmtNumber(f.workplaces) },
             { key: "registration-todo", label: t("setup.golive.registrationTodo"), value: fmtNumber(f.staffed_workplaces_without_registration + f.empty_workplaces_without_registration) },
@@ -80,26 +80,27 @@ export function GoLive() {
                   const text = codeText(`setup.golive.becomes.${code}`, code);
                   return <li key={code}>{operating ? codeText(`setup.receipt.applied.${code}`, text) : text}</li>;
                 })}</ul>
-                {startedAt && <KeyValue items={[
-                  { key: "startedAt", label: t("setup.receipt.startedAt"), value: <time dateTime={startedAt}>{fmtDateTime(startedAt)}</time> },
-                ]} />}
               </div>
             </Card>
           );
           if (p.phase === "OPERATING") {
             return (
               <>
-                <Card title={t("setup.receipt.current")}>
-                  <div className={s.stack}>
-                    <div className={s.receiptHead}>
-                      <Chip tone="ok">{t("setup.receipt.started.title")}</Chip>
-                      {startedAt && <time dateTime={startedAt}>{t("setup.receipt.startedAt")} · {fmtDateTime(startedAt)}</time>}
+                <QueryState q={receipt} own={onboardingError}>
+                  {(record) => <Card title={t("setup.receipt.recorded")}>
+                    <div className={s.stack}>
+                      <div className={s.receiptHead}>
+                        <Chip tone="ok">{t("setup.receipt.started.title")}</Chip>
+                        <time dateTime={record.go_live_at}>{t("setup.receipt.startedAt")} · {fmtDateTime(record.go_live_at)}</time>
+                      </div>
+                      {record.facts_snapshot === null ? <p>{t("setup.receipt.unrecorded")}</p>
+                        : record.facts_snapshot_version === 1 ? <StatRow items={stats(record.facts_snapshot)} />
+                        : <p>{t("setup.receipt.unsupported")}</p>}
                     </div>
-                    <StatRow items={stats} />
-                  </div>
-                </Card>
+                  </Card>}
+                </QueryState>
                 <div className={s.layout}>
-                  <Card><div className={s.body}><GoLiveDetails p={p} /></div></Card>
+                  <Card title={t("setup.receipt.liveDetails")}><div className={s.body}><GoLiveDetails p={p} /></div></Card>
                   {governed}
                 </div>
                 <ActionBar
@@ -121,7 +122,7 @@ export function GoLive() {
           const start = <Button variant="primary" disabled={run.isPending || refreshing} onClick={() => run.mutate(undefined)}>{t("setup.golive.start")}</Button>;
           return (
             <>
-              <Card><StatRow items={stats} /></Card>
+              <Card><StatRow items={stats(f)} /></Card>
               <div className={s.layout}>
                 <Card>
                   <div className={s.body}>

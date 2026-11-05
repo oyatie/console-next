@@ -5,6 +5,7 @@ import { api, assertPasskey, registerPasskey, session, unwrap } from "@console/a
 import { get, type PathPrefix } from "../../lib/query";
 import { landed } from "../../lib/react/landed";
 
+export const goLiveReceiptQuery = get("/api/v1/onboarding/go-live/receipt");
 export const checklistQuery = get("/api/v1/onboarding/checklist");
 export { modulesQuery } from "../../reference/onboarding/api";
 /** Re-read whenever the preview opens: a fix made on a record's own screen shows here on return (company-53). */

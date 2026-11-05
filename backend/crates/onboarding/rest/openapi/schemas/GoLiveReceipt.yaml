@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
-required: [go_live_at, go_live_by, preview_digest, facts_snapshot]
+required: [go_live_at, go_live_by, preview_digest, facts_snapshot, facts_snapshot_version]
 properties:
   go_live_at:
     type: string
@@ -13,5 +13,9 @@ properties:
   facts_snapshot:
     description: Facts captured under the go-live lock before the phase transition. Null for historical receipts without a stored snapshot; never replaced with current facts.
     oneOf:
-    - $ref: '#/components/schemas/SetupFacts'
+    - $ref: '#/components/schemas/GoLiveFactsSnapshotV1'
     - type: 'null'
+  facts_snapshot_version:
+    description: Schema version of the stored facts. Version 1 is frozen independently of the live preview; legacy receipts without facts also report 1.
+    type: integer
+    minimum: 1
