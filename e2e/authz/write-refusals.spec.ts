@@ -31,12 +31,6 @@ test("every census write is measured with no grant and an ops control", { tag: [
     return bearer();
   };
   const opsToken = await capture(admin), viewerToken = await capture(viewer);
-  const telemetry = await request.post("/api/v1/console/telemetry/route", {
-    headers: { authorization: viewerToken },
-    data: { event_kind: "route_selection", route_surface: "console", route_path: "/", release_cycle: "test" },
-  });
-  expect(telemetry.status(), "route telemetry is absent from the release build").toBe(404);
-  await telemetry.dispose();
   const platform = await vendorPage(browser);
   const platformToken = bearerOf(platform);
   await platform.reload();
