@@ -12,6 +12,8 @@ import { atPhoneWidth, expectAccessible, fits } from "../a11y";
 import { shotSet } from "../shots";
 import { forgetResize } from "../stability";
 
+test.describe.configure({ mode: "serial" });
+
 test("an interrupted import leaves no people and retry replays the complete report", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
   const slug = "atomicimport";
@@ -46,6 +48,8 @@ CREATE TRIGGER fail_import_settle AFTER INSERT ON audit_events FOR EACH ROW EXEC
     await forgetResize(admin);
     expect(await headcount(api), "the failed apply must leave the roster empty").toBe(0);
     await expect(admin.getByText("반영하지 못했습니다", { exact: true })).toBeVisible();
+    await expect(admin.getByRole("alert")).not.toContainText("이미 들어간");
+    await expect(admin.getByRole("heading", { name: "명부 반영 중", exact: true })).toHaveCount(0);
   } finally {
     psql(unique(slug), "DROP TRIGGER fail_import_settle ON audit_events; DROP FUNCTION fail_import_settle();");
   }

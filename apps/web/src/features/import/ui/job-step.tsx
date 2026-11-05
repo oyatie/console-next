@@ -35,7 +35,7 @@ export function JobStep({ runId, onDone, onFailed }: { runId: string; onDone: (r
   useEffect(() => void (missing && (keepJob(null), onFailed())), [missing, onFailed]);
   const pct = Math.round((job ? share(job) : 0) * 100);
   return (
-    <Card titleId="import-job" title={t("importJob.title")}>
+    <Card titleId="import-job" title={job?.state === "failed" ? undefined : t("importJob.title")} label={t("importJob.failed")}>
       {job?.state === "failed" ? (
         <Banner tone="danger" live="assertive" title={t("importJob.failed")} actions={<Button variant="primary" onClick={onFailed}>{t("importJob.back")}</Button>}>
           {failedWhy(job.error?.code)}
