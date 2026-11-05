@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
-use console_payroll_domain::pay_groups::run_schedule::{derive_schedule, next_attribution_month};
-use console_platform_authz::{
-    Feature,
-    cedar_pbac::visible::{load_facts, require_payroll_run_creation},
+use console_kernel_core::{
+    AuditAction, AuditCommandContext, AuditEvent, KernelError, OrgId, TenantPhase, TraceContext,
+    UserId, WriteClass, tenant_phase::admit_write,
 };
-use console_platform_db::{with_audit, with_org_conn};
+use console_payroll_domain::pay_groups::run_schedule::{derive_schedule, next_attribution_month};
+use console_platform_authz::{Feature, cedar_pbac::visible::load_facts};
+use console_platform_db::{audit_tx::with_audits, with_org_conn};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction, types::Json};
 use time::{Date, OffsetDateTime};
@@ -121,7 +121,7 @@ impl PgPayrollStore {
         input: RunRequest,
     ) -> Result<PayrollRunSummary, PgPayrollError> {
         let id = Uuid::new_v4();
-        let audit = AuditEvent::new(
+        let mut audit = AuditEvent::new(
             Some(actor),
             AuditAction::new("payroll.run_create")?,
             "payroll_draft_run",
@@ -131,22 +131,22 @@ impl PgPayrollStore {
         )
         .with_org(org);
         let loader = self.clone();
-        with_audit(&self.pool, audit, move |tx| {
+        with_audits(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let preview = loader.derive_run_in_tx(tx, org, actor, &input).await?;
-                require_payroll_run_creation(tx, org, *actor.as_uuid()).await?;
-                let group_name: String = sqlx::query_scalar(
-                    "SELECT name FROM pay_groups WHERE org_id=$1 AND id=$2",
+                let phase: Option<String> = sqlx::query_scalar(
+                    "SELECT phase FROM tenant_phase WHERE org_id=$1 FOR SHARE",
                 )
                 .bind(org.as_uuid())
-                .bind(input.pay_group_id)
-                .fetch_one(tx.as_mut())
+                .fetch_optional(tx.as_mut())
                 .await?;
-                let source_label = format!(
-                    "{group_name} · {} · {}",
-                    preview.attribution_month,
-                    input.kind.as_str()
-                );
+                let mode = admit_write(
+                    TenantPhase::from_db(phase.as_deref()),
+                    WriteClass::Operational,
+                )?;
+                let mut context = AuditCommandContext::for_actor(Some(actor));
+                context.change_mode = Some(mode);
+                audit = audit.with_command_context(context);
                 let inserted = sqlx::query(
                     "INSERT INTO payroll_draft_runs(org_id,id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label,created_by)
                      VALUES ($1,$2,$3,$4,($5||'-01')::date,$6,$7,$8,$9,$10,$11,$12)",
@@ -161,7 +161,7 @@ impl PgPayrollStore {
                 .bind(preview.period_end)
                 .bind(preview.variable_period_start)
                 .bind(preview.variable_period_end)
-                .bind(source_label)
+                .bind(id.to_string())
                 .bind(actor.as_uuid())
                 .execute(tx.as_mut())
                 .await;
@@ -179,7 +179,7 @@ impl PgPayrollStore {
                 let row = crate::fetch_run_row(tx, id)
                     .await?
                     .ok_or_else(|| KernelError::internal("created payroll run was not readable"))?;
-                crate::run_summary_from_row(&row)
+                Ok((crate::run_summary_from_row(&row)?, vec![audit]))
             })
         })
         .await

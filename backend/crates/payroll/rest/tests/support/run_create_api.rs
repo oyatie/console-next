@@ -57,6 +57,15 @@ async fn create_uses_preview_snapshot_and_replays_the_original_summary(pool: PgP
         (replay.status, replay.json),
         (created.status, created.json.clone())
     );
+    // rls-arming: ok owner verifies the admission mode recorded by the writer.
+    let mode: String = sqlx::query_scalar(
+        "SELECT change_mode FROM audit_events WHERE action='payroll.run_create'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(mode, "GOVERNED");
+
     let changed = create(service.clone(), &token, group, "CORRECTION", &key).await;
     refusal(changed, StatusCode::CONFLICT, "idempotency_key_reused");
     pay_view::grant_view(&pool, OrgId::one(), actor, None).await;
@@ -200,6 +209,7 @@ async fn same_named_groups_create_independent_regular_runs(pool: PgPool) {
         )
         .await;
         assert_eq!(response.status, StatusCode::CREATED, "{}", response.json);
+        assert_eq!(response.json["source_label"], response.json["id"]);
     }
 }
 
@@ -214,18 +224,21 @@ async fn setup_tenant_cannot_create_a_run(pool: PgPool) {
         .unwrap();
     sqlx::query("INSERT INTO tenant_phase(org_id,phase) VALUES ($1,'SETUP') ON CONFLICT(org_id) DO UPDATE SET phase='SETUP'")
         .bind(OrgId::one().as_uuid()).execute(&pool).await.unwrap();
-    refusal(
-        create(
-            service,
-            &token,
-            group,
-            "REGULAR",
-            &Uuid::new_v4().to_string(),
-        )
-        .await,
-        StatusCode::CONFLICT,
-        "phase_not_operating",
-    );
+    let response = create(
+        service,
+        &token,
+        group,
+        "REGULAR",
+        &Uuid::new_v4().to_string(),
+    )
+    .await;
+    let expected = console_kernel_core::tenant_phase::admit_write(
+        console_kernel_core::TenantPhase::Setup,
+        console_kernel_core::WriteClass::Operational,
+    )
+    .unwrap_err();
+    assert_eq!(response.json["error"]["message"], expected.message);
+    refusal(response, StatusCode::CONFLICT, "phase_not_operating");
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM payroll_draft_runs")
         .fetch_one(&pool)
         .await

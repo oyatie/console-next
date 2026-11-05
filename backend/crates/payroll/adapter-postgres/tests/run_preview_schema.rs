@@ -123,8 +123,51 @@ async fn same_named_group_runs_do_not_share_the_legacy_label_key(pool: PgPool) {
         .unwrap();
     for kind in ["REGULAR", "OFF_CYCLE"] {
         for group in [first, second] {
-            sqlx::query("INSERT INTO payroll_draft_runs(org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$2,$3,'2026-11-01','2026-11-25','2026-11-01','2026-11-30','2026-10-16','2026-11-15','모의 급여 · 2026-11 · '||$3)")
-                .bind(org.as_uuid()).bind(group).bind(kind).execute(tx.as_mut()).await.unwrap();
+            sqlx::query("INSERT INTO payroll_draft_runs(org_id,id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$4::uuid,$2,$3,'2026-11-01','2026-11-25','2026-11-01','2026-11-30','2026-10-16','2026-11-15',$4)")
+                .bind(org.as_uuid()).bind(group).bind(kind).bind(Uuid::new_v4().to_string()).execute(tx.as_mut()).await.unwrap();
+        }
+    }
+    let error = sqlx::query("INSERT INTO payroll_draft_runs(org_id,id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$3::uuid,$2,'REGULAR','2026-11-01','2026-11-25','2026-11-01','2026-11-30','2026-10-16','2026-11-15',$3)")
+        .bind(org.as_uuid()).bind(first).bind(Uuid::new_v4().to_string())
+        .execute(tx.as_mut()).await.unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().constraint(),
+        Some("payroll_regular_run_month_key")
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn previous_release_staging_upserts_still_infer_the_legacy_key(pool: PgPool) {
+    let org = OrgId::one();
+    seed_org_and_super_admin(&pool, *org.as_uuid(), "legacy-staging").await;
+    let runtime = runtime_role_pool(&pool).await;
+    let mut tx = runtime.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    // Released command and outbox writers infer the full key without a predicate.
+    for insert in [
+        "INSERT INTO payroll_draft_runs (org_id,period_start,period_end,source_label,status,source_summary) VALUES ($1,$2,$3,$4,'BLOCKED_LEGAL_GATE',$5) ON CONFLICT (org_id,period_start,period_end,source_label) DO UPDATE SET source_label=EXCLUDED.source_label RETURNING id,source_summary,(xmax=0) AS created",
+        "INSERT INTO payroll_draft_runs (org_id,period_start,period_end,source_label,status,source_summary) SELECT $1,$2,$3,$4,'BLOCKED_LEGAL_GATE',$5 WHERE NOT EXISTS (SELECT 1 FROM period_locks WHERE domain='payroll' AND period_lock_effective(period_locks) AND period_start <= $3 AND period_end >= $2) ON CONFLICT (org_id,period_start,period_end,source_label) DO UPDATE SET source_label=EXCLUDED.source_label RETURNING id,source_summary,(xmax=0) AS created",
+    ] {
+        let label = Uuid::new_v4().to_string();
+        let summary = serde_json::json!({"run_id": label, "connector": "test", "job": "test"});
+        let mut stored_id = None;
+        for expected_created in [true, false] {
+            let (id, stored, created): (Uuid, serde_json::Value, bool) = sqlx::query_as(insert)
+                .bind(org.as_uuid())
+                .bind(time::macros::date!(2026 - 11 - 01))
+                .bind(time::macros::date!(2026 - 11 - 30))
+                .bind(&label)
+                .bind(&summary)
+                .fetch_one(tx.as_mut())
+                .await
+                .unwrap();
+            assert_eq!(created, expected_created);
+            assert_eq!(stored, summary);
+            assert_eq!(*stored_id.get_or_insert(id), id);
         }
     }
 }
