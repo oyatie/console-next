@@ -202,13 +202,13 @@ async fn an_overlapping_burst_resets_on_reconnect_and_keeps_live_changes(pool: P
         .await;
         change(&next(&mut connection).await);
     }
-    hub.remove_connection(connection.id()).await;
     let head: i64 = sqlx::query_scalar("SELECT MAX(seq) FROM resource_changes")
         // rls-arming: ok the sqlx::test owner observes the audit trigger
         .fetch_one(&pool)
         .await
         .unwrap();
-    for _ in 0..2 {
+    for _ in 0..3 {
+        hub.remove_connection(connection.id()).await;
         connection = hub
             .connect_stream(
                 principal.clone(),
@@ -221,19 +221,7 @@ async fn an_overlapping_burst_resets_on_reconnect_and_keeps_live_changes(pool: P
         reset(&mut connection).await;
         cursor = hello(&mut connection).await;
         assert_eq!(cursor, head);
-        hub.remove_connection(connection.id()).await;
     }
-    connection = hub
-        .connect_stream(
-            principal,
-            StreamFrom {
-                last_event_id: Some(cursor),
-                ..Default::default()
-            },
-        )
-        .await;
-    reset(&mut connection).await;
-    assert_eq!(hello(&mut connection).await, head);
     let id = uuid::Uuid::new_v4().to_string();
     commit(
         &pool,
