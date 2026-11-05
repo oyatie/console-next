@@ -5025,6 +5025,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
     post:
+      deprecated: true
       tags:
         - branches
       operationId: createBranch
@@ -5076,6 +5077,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/branches/{id}:
     delete:
+      deprecated: true
       tags:
         - branches
       operationId: deactivateBranch
@@ -5153,6 +5155,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
+      deprecated: true
       tags:
         - branches
       operationId: updateBranch
@@ -26676,6 +26679,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
     post:
+      deprecated: true
       tags:
         - regions
       operationId: createRegion
@@ -26725,6 +26729,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/regions/{id}:
     delete:
+      deprecated: true
       tags:
         - regions
       operationId: deactivateRegion
@@ -26772,6 +26777,7 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
     patch:
+      deprecated: true
       tags:
         - regions
       operationId: updateRegion

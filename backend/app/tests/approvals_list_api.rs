@@ -43,6 +43,20 @@ async fn get(ctx: &http::Ctx, query: &str) -> Value {
     body
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn machine_kind_fallback_is_not_an_approval_summary(pool: PgPool) {
+    let (org, maker, checker) = setup(&pool).await;
+    let id = document(&pool, org, maker, "OC-2026-0001").await;
+    sqlx::query("UPDATE org_change_requests SET reason=kind WHERE id=$1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    let page = get(&ctx, &format!("box=pending&focus=org_change:{id}")).await;
+    assert_eq!(page["items"][0]["summary"], "");
+    assert_eq!(page["focused"]["summary"], "");
+}
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {
     let (org, maker, checker) = setup(&pool).await;
     let mut ids = Vec::new();
@@ -63,6 +77,7 @@ async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {
     );
     assert_eq!(first["items"].as_array().unwrap().len(), 2);
     assert_eq!(first["items"][0]["source"]["key"], "org_change");
+    assert_eq!(first["items"][0]["summary"], "변경 검토");
     assert_eq!(first["items"][0]["route"].as_array().unwrap().len(), 2);
     assert_eq!(first["items"][0]["route"][0]["state"], "current");
     assert_eq!(first["items"][0]["route"][0]["role_key"], "hr");
