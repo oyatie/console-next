@@ -12,6 +12,7 @@ const ledger = read("./quality/dependency-verification.json");
 test.each([
   ["typed-rest-client", "qs"],
   ["exceljs", "uuid"],
+  ["@stryker-mutator/core", "minimatch"],
 ])("%s resolves its scoped %s override from the verified lock pin", (parent, child) => {
   const note = ledger[`package.json:overrides:${parent}:${child}`];
   expect(note).toBeDefined();

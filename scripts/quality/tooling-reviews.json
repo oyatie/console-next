@@ -1,4 +1,28 @@
 {
+  "npm:minimatch": {
+    "group": "Test/lint tooling",
+    "job": "Security override for Stryker's existing glob matcher",
+    "verdict": "keep",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-11-05",
+      "ruling": "Patch only Stryker's existing minimatch dependency to 11.0.1",
+      "source": "docs/quality/dependencies/stryker-minimatch.md"
+    },
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "approvedUsers": ["console-react"],
+    "approvedUses": [{ "user": "console-react", "layer": "build/tooling" }],
+    "allowedLayers": ["build/tooling"],
+    "layer": "build/tooling",
+    "alternatives": "Wait for Stryker to update its matcher; maintain a local matcher fork",
+    "reason": "Scoped remediation of GHSA-g3hv-75wg-m249 in the existing mutation-testing toolchain.",
+    "license": "BlueOak-1.0.0",
+    "evidence": ["docs/quality/dependencies/stryker-minimatch.md", "https://github.com/advisories/GHSA-g3hv-75wg-m249"],
+    "exitPlan": "Remove the override once Stryker depends on minimatch >=11.0.1 and lockfile and mutation checks pass without it.",
+    "securityProcess": "Upstream advisory and patched registry artifact verified",
+    "ruleMapping": "Preserve Stryker glob discovery and mutation-test execution."
+  },
   "action:actions/attest": {
     "group": "CI/supply-chain tools",
     "job": "Release provenance attestation; removing it breaks the listed readers or enforcement",

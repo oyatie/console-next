@@ -27218,6 +27218,31 @@
     },
     {
       "kind": "npm",
+      "name": "@isaacs/nonrecursive-glob-match",
+      "direct": false,
+      "uses": [],
+      "callsites": [],
+      "evidence": [
+        "package-lock.json",
+        "https://registry.npmjs.org/%40isaacs%2Fnonrecursive-glob-match"
+      ],
+      "pins": [
+        {
+          "location": "node_modules/@isaacs/nonrecursive-glob-match",
+          "version": "1.0.3",
+          "license": "BlueOak-1.0.0",
+          "integrity": "sha512-SI7kyKHq4XXDRozw+r9GlRZkia1ZkFrpLW98r2IC2Bpr8YkFGE3fvjzmxCG0x78A++69HmDNrDvSMYBZmHGpKA==",
+          "source": "https://registry.npmjs.org/@isaacs/nonrecursive-glob-match/-/nonrecursive-glob-match-1.0.3.tgz",
+          "inBundle": false
+        }
+      ],
+      "resolvedParents": [
+        "node_modules/@stryker-mutator/core/node_modules/minimatch"
+      ],
+      "job": "Resolved implementation dependency of node_modules/@stryker-mutator/core/node_modules/minimatch"
+    },
+    {
+      "kind": "npm",
       "name": "@jridgewell/gen-mapping",
       "direct": false,
       "uses": [],
@@ -35003,47 +35028,6 @@
         "node_modules/des.js"
       ],
       "job": "Resolved implementation dependency of node_modules/des.js"
-    },
-    {
-      "kind": "npm",
-      "name": "minimatch",
-      "direct": false,
-      "uses": [],
-      "callsites": [],
-      "evidence": [
-        "package-lock.json",
-        "https://registry.npmjs.org/minimatch"
-      ],
-      "pins": [
-        {
-          "location": "node_modules/@stryker-mutator/core/node_modules/minimatch",
-          "version": "10.2.6",
-          "license": "BlueOak-1.0.0",
-          "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==",
-          "source": "https://registry.npmjs.org/minimatch/-/minimatch-10.2.6.tgz"
-        },
-        {
-          "location": "node_modules/glob/node_modules/minimatch",
-          "version": "3.1.5",
-          "license": "ISC",
-          "integrity": "sha512-VgjWUsnnT6n+NUk6eZq77zeFdpW2LWDzP6zFGrCbHXiYNul5Dzqk2HHQ5uFH2DNW5Xbp8+jVzaeNt94ssEEl4w==",
-          "source": "https://registry.npmjs.org/minimatch/-/minimatch-3.1.5.tgz"
-        },
-        {
-          "location": "node_modules/minimatch",
-          "version": "5.1.9",
-          "license": "ISC",
-          "integrity": "sha512-7o1wEA2RyMP7Iu7GNba9vc0RWWGACJOCZBJX2GJWip0ikV+wcOsgVuY9uE8CPiyQhkGFSlhuSkZPavN7u1c2Fw==",
-          "source": "https://registry.npmjs.org/minimatch/-/minimatch-5.1.9.tgz"
-        }
-      ],
-      "resolvedParents": [
-        "node_modules/@redocly/openapi-core",
-        "node_modules/@stryker-mutator/core",
-        "node_modules/glob",
-        "node_modules/readdir-glob"
-      ],
-      "job": "Resolved implementation dependency of node_modules/@redocly/openapi-core, node_modules/@stryker-mutator/core, node_modules/glob, node_modules/readdir-glob"
     },
     {
       "kind": "npm",
