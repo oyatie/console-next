@@ -2,18 +2,19 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { id, LONG_NAME } from "../mock/fixtures";
+import { failure, id, LONG_NAME } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { screens, type State } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const screen of screens) for (const state of Object.keys(screen.states) as State[]) for (const width of [1440, 390]) {
-  test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {
+  test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     const fixture = await mockScreen(page, screen, state);
+    let observed = false;
     try {
       const requested = page.waitForRequest(request => new URL(request.url()).pathname === screen.read);
       await page.goto(screen.path);
@@ -77,9 +78,28 @@ for (const screen of screens) for (const state of Object.keys(screen.states) as 
       await expectAxe(page, `${screen.key}/${state}/${width}`);
       expect(errors).toEqual([]);
       expect(fixture.unexpected, "add every supporting API read to the typed fixture").toEqual([]);
+      observed = true;
     } finally {
-      await page.close();
-      fixture.release();
+      try {
+        if (["loading", "failed", "empty", "refused"].includes(state)) {
+          const observation = await page.evaluate(raw => {
+            const main = document.querySelector("main");
+            const references = main?.querySelectorAll("[data-support-reference]");
+            return {
+              support_ref: references?.length === 1 ? references[0]!.getAttribute("data-support-reference") : null,
+              reference_count: references?.length ?? 0,
+              raw_server_text: main?.textContent?.includes(raw) ?? false,
+              floorplan: main?.getAttribute("data-floorplan") ?? main?.querySelector("[data-floorplan]")?.getAttribute("data-floorplan") ?? null,
+            };
+          }, failure("service_unavailable").error.message);
+          await info.attach("screen-state", { contentType: "application/json", body: Buffer.from(JSON.stringify({
+            ...observation, route: screen.path, state, width, status: observed ? "pass" : "unknown",
+          })) });
+        }
+      } finally {
+        await page.close();
+        fixture.release();
+      }
     }
   });
 }

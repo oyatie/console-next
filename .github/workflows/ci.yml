@@ -87,6 +87,7 @@ jobs:
           node --test scripts/d10-census.test.mjs
           python3 scripts/d10_evidence_test.py
           python3 scripts/d8_evidence_test.py
+          python3 scripts/states_evidence_test.py
       - name: Spreadsheet paste browser regression
         run: npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
 

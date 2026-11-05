@@ -1,0 +1,101 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+name: states-evidence
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: states-evidence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version, cache: npm}
+      - run: npm ci --no-audit --no-fund
+      - name: Derive routes and plan observation specs
+        id: plan
+        env:
+          E2E_MODULES_FILE: .cache/states-evidence-plan/routes.json
+        run: |
+          node scripts/d8-module-routes.mjs "$E2E_MODULES_FILE"
+          npx playwright test --config e2e/mock/playwright.config.ts e2e/states/screens.spec.ts e2e/states/support-ref-*.spec.ts --list --reporter=json > .cache/states-list.json
+          node scripts/states-shards.mjs plan .cache/states-list.json e2e/mock/timings.json .cache/states-evidence-plan/plan.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: states-evidence-plan
+          path: .cache/states-evidence-plan
+          include-hidden-files: true
+          if-no-files-found: error
+
+  states:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version, cache: npm}
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps --only-shell chromium
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {name: states-evidence-plan, path: .cache/states-evidence-plan}
+      - name: Run the existing duration-budgeted shard
+        env:
+          E2E_MODULES_FILE: .cache/states-evidence-plan/routes.json
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/states-report-${{ matrix.shard }}.json
+        run: node scripts/states-shards.mjs run .cache/states-evidence-plan/plan.json "${{ matrix.shard }}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: states-evidence-report-${{ matrix.shard }}
+          path: .cache/states-report-${{ matrix.shard }}.json
+          include-hidden-files: true
+          if-no-files-found: error
+
+  evidence:
+    if: ${{ !cancelled() }}
+    needs: [plan, states]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {name: states-evidence-plan, path: .cache/states-evidence}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {pattern: states-evidence-report-*, merge-multiple: true, path: .cache/states-evidence/reports}
+      - name: Produce evidence even for failed tests
+        if: ${{ !cancelled() }}
+        run: python3 scripts/states-evidence.py .cache/states-evidence/states.json .cache/states-evidence/routes.json .cache/states-evidence/reports/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: states-evidence
+          path: .cache/states-evidence
+          include-hidden-files: true
+          if-no-files-found: error
