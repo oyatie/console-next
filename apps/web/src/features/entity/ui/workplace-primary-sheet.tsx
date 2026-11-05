@@ -26,7 +26,8 @@ export function WorkplacePrimarySheet({ entityId, setup, onClose }: { entityId: 
   return <FreshEntity id={entityId}>{(e) => <Body e={e} setup={setup} onClose={onClose} />}</FreshEntity>;
 }
 
-function Body({ e, setup, onClose }: { e: LegalEntity; setup: boolean; onClose: () => void }) {
+function Body({ e: initialEntity, setup, onClose }: { e: LegalEntity; setup: boolean; onClose: () => void }) {
+  const [e] = useState(initialEntity);
   const open = e.workplaces.filter((w) => !w.closed_on);
   const current = open.find((w) => w.is_primary);
   const head = open.find((w) => w.id === e.head_office_workplace_id);

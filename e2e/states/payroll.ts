@@ -4,4 +4,5 @@ export const payrollScreens = [
   { key: "payroll", path: "/payroll", read: "/api/v1/payroll/pay-groups", states, registry: "payroll/2026-10-15-global/S1-home-global--ko", live: "S1a pending" },
   { key: "payroll-reference", path: "/payroll/reference", read: "/api/v1/payroll/reference/rates", states, registry: "payroll/2026-10-15-global/S5-rate-tables-global--ko", live: "S1a pending" },
 ] as const;
+export const payrollRunCreateScreen = { key: "payroll-run-create", path: "/payroll/runs/new", read: "/api/v1/payroll/pay-groups", states, registry: "payroll/2026-10-15-global/S2-run-create-global--ko", live: "POST /api/v1/payroll/runs" } as const;
 export type PayrollState = keyof typeof states;

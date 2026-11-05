@@ -5,13 +5,16 @@ import { Building2, ClipboardPaste, FileText, MapPin, Network, Plus, UserPlus, U
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { CommandPalette, type PaletteItem, type PaletteSection } from "../../../ui/command-palette/command-palette";
-import { peopleSearchQuery } from "../api";
+import { get } from "../../../lib/query";
 import { pathTo, type ChartNode } from "../domain/model";
 import { findHits } from "../domain/search";
 import { useStructure } from "./use-structure";
 
 const ICON = { entity: Building2, site: MapPin, dept: Network, tenant: Network } as const;
 const MAX = 6;
+
+/** People whose name or employee number matches, for the jump palette (a few, newest page). */
+const peopleSearchQuery = (q: string) => get("/api/v1/employees", { params: { query: { search: q, limit: 5 } } });
 
 /**
  * ⌘K (spec S1-jump): entities, workplaces and departments by name or registration number, people by name or employee number (server), and

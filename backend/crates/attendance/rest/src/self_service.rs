@@ -281,8 +281,9 @@ fn validation_message(message: impl Into<String>) -> RestError {
     )
 }
 
-fn rfc3339(value: time::OffsetDateTime) -> String {
+pub(super) fn rfc3339(value: time::OffsetDateTime) -> String {
     value
+        .to_offset(time::UtcOffset::UTC)
         .format(&time::format_description::well_known::Rfc3339)
         .unwrap_or_else(|_| value.to_string())
 }

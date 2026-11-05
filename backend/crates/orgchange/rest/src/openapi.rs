@@ -846,6 +846,13 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/hr/certificates/precondition",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__hr__certificates__precondition.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/hr/certificates/{id}",
         operations: &[Operation {
             method: "get",
@@ -1275,6 +1282,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "CertificatePage",
         body: include_str!("../openapi/schemas/CertificatePage.yaml"),
+    },
+    NamedYaml {
+        name: "CertificatePrecondition",
+        body: include_str!("../openapi/schemas/CertificatePrecondition.yaml"),
     },
     NamedYaml {
         name: "CertificateSettings",

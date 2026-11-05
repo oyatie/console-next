@@ -27,7 +27,7 @@
     "apps/web/src/features/org/OrgChange.tsx#OrgChanges": 6,
     "apps/web/src/features/org/ui/bulk-move-page.tsx#BulkMovePage": 44,
     "apps/web/src/features/people/ui/certificate-page.tsx#CertificatePage": 28,
-    "apps/web/src/features/people/ui/certificates-page.tsx#CertificatesPage": 46,
+    "apps/web/src/features/people/ui/certificates-page.tsx#CertificatesPage": 43,
     "apps/web/src/features/people/ui/exit-list.tsx#ExitCaseList": 28,
     "apps/web/src/features/people/ui/job-titles-page.tsx#JobTitlesPage": 26,
     "apps/web/src/features/people/ui/notice-list-page.tsx#NoticeListPage": 6,

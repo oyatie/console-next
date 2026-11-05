@@ -59,6 +59,7 @@ export const routeReads = {
   "/payroll/employees/$employeeId": { reads: ["GET /api/v1/payroll/employees/{employeeId}/payslip-draft"], command: "POST /api/v1/payroll/employees/{employeeId}/contract-wages" },
   "/payroll": { reads: ["GET /api/v1/payroll/pay-groups", "GET /api/v1/payroll/runs"] },
   "/payroll/setup": { reads: ["GET /api/v1/payroll/pay-groups"], command: "POST /api/v1/payroll/pay-groups" },
+  "/payroll/runs/new": { reads: ["GET /api/v1/payroll/pay-groups", "GET /api/v1/payroll/runs/preview"], command: "POST /api/v1/payroll/runs" },
   "/payroll/runs/$id": { reads: ["GET /api/v1/payroll/runs/{id}", "GET /api/v1/payroll/pay-groups"] },
   "/payroll/reference": { reads: ["GET /api/v1/payroll/pay-groups", "GET /api/v1/payroll/reference/rates"] },
   "/statutory": { reads: ["GET /api/v1/statutory/workplaces"] },

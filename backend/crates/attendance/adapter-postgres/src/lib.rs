@@ -478,11 +478,11 @@ impl PgAttendanceStore {
                     }
                 }
             };
-            let inserted = sqlx::query(
-                "INSERT INTO attendance_month_closes (id,org_id,month,branch_id,checks,attested_by,period_lock_id) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (org_id,month,branch_id) DO NOTHING",
-            ).bind(id).bind(caller.org_id).bind(month).bind(close.branch_scope).bind(&checks_json).bind(caller.user_id).bind(lock_id).execute(tx.as_mut()).await?;
-            if inserted.rows_affected() != 1 { return Err(AttendanceStoreError::Conflict); }
-            let view = MonthCloseRead { id, month, branch_id: close.branch_scope, checks: close_checks_read(&checks), attested_by: caller.user_id, attested_at: OffsetDateTime::now_utc(), period_lock_id: lock_id, closed_at: OffsetDateTime::now_utc(), amendments: Vec::new() };
+            let inserted = sqlx::query_as(
+                "INSERT INTO attendance_month_closes (id,org_id,month,branch_id,checks,attested_by,period_lock_id) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (org_id,month,branch_id) DO NOTHING RETURNING attested_at,closed_at",
+            ).bind(id).bind(caller.org_id).bind(month).bind(close.branch_scope).bind(&checks_json).bind(caller.user_id).bind(lock_id).fetch_optional(tx.as_mut()).await?;
+            let (attested_at, closed_at) = inserted.ok_or(AttendanceStoreError::Conflict)?;
+            let view = MonthCloseRead { id, month, branch_id: close.branch_scope, checks: close_checks_read(&checks), attested_by: caller.user_id, attested_at, period_lock_id: lock_id, closed_at, amendments: Vec::new() };
             let mut audits = vec![event(&caller,"attendance.close.confirm","attendance_month_close",id,close.branch_scope,Some(json!({"periodLockId":lock_id})))?];
             if let Some(audit) = created_period_lock_audit(
                 &caller,

@@ -273,6 +273,9 @@
       "get",
       "post"
     ],
+    "/api/v1/hr/certificates/precondition": [
+      "get"
+    ],
     "/api/v1/hr/certificates/{id}": [
       "get"
     ],
@@ -417,6 +420,7 @@
     "Certificate",
     "CertificateActionRequest",
     "CertificatePage",
+    "CertificatePrecondition",
     "CertificateSettings",
     "CertificateSettingsRequest",
     "CertificateSettingsView",

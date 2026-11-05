@@ -129,6 +129,15 @@ export const payGroupSchemas = {
       ]
     }
   },
+  "PayrollRunKind": {
+    "type": "string",
+    "enum": [
+      "REGULAR",
+      "OFF_CYCLE",
+      "CORRECTION",
+      "EXIT_SETTLEMENT"
+    ]
+  },
   "ContractWage": {
     "type": "object",
     "required": [

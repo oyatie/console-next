@@ -50,14 +50,15 @@ export function AsOfControl({ today, value, knownAt, onChange, changeDates, load
   const past = isDate(value) && value < today;
   const future = isDate(value) && value > today;
   const historic = past || future || Boolean(knownAt);
+  const isToday = isDate(value) && !historic;
   const label = !isDate(value) || (knownAt && !isKnowledgeDate(knownAt))
     ? t("asof.dateInvalid")
     : knownAt ? t("asof.known", { date: fmtDate(value), known: knownAt.includes("T") ? fmtDateTime(knownAt) : fmtDate(knownAt) })
     : t(past ? (entity ? "asof.recordPast" : "asof.past") : "asof.future", { date: fmtDate(value) });
   return (
     <section className={styles.control} aria-label={t("asof.label")} data-asof={past ? "past" : future ? "future" : "today"}>
-      <PopoverButton label={`${t("asof.label")} · ${isDate(value) ? fmtDate(value) : t("asof.dateInvalid")}`} title={t("asof.label")} wide
-        trigger={<><CalendarDays size={16} aria-hidden />{t("asof.label")} · {isDate(value) ? <time dateTime={value}>{fmtDate(value)}</time> : t("asof.dateInvalid")}</>}>
+      <PopoverButton chip label={`${t("asof.label")} · ${!isDate(value) ? t("asof.dateInvalid") : isToday ? `${t("asof.today")} · ${fmtDate(value)}` : fmtDate(value)}`} title={t("asof.label")} wide
+        trigger={<><CalendarDays size={16} aria-hidden />{t("asof.label")} · {isDate(value) ? <>{isToday && `${t("asof.today")} · `}<time dateTime={value}>{fmtDate(value)}</time></> : t("asof.dateInvalid")}</>}>
         {(close) => {
           const choose = (chosen: string) => { chooseDate(chosen); if (isDate(chosen)) close(); };
           return <>

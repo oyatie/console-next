@@ -24,7 +24,8 @@ type Mode = "MOVE" | "CORRECTION";
  * from the start (a correction). The people placed there are named, because they work at the new place from that day; the
  * filings an move opens (registration correction, registry move, insurance change filings) are not made here.
  */
-export function WorkplaceMoveSheet({ e, w, onClose }: { e: LegalEntity; w: Workplace; onClose: () => void }) {
+export function WorkplaceMoveSheet({ e: initialEntity, w: initialWorkplace, onClose }: { e: LegalEntity; w: Workplace; onClose: () => void }) {
+  const [{ e, w }] = useState({ e: initialEntity, w: initialWorkplace });
   const today = todayKst();
   const name = workplaceName(w);
   const [mode, setMode] = useState<Mode | null>(null);

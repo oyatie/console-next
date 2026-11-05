@@ -7,10 +7,11 @@ use console_platform_authz::cedar_pbac::visible::load_facts;
 use sqlx::{Postgres, Transaction};
 
 use axum::http::HeaderMap;
+use console_payroll_adapter_postgres::{PayrollRunSummary, PgPayrollStore};
+use console_platform_auth::JwtVerifier;
 use console_platform_authz::Principal;
 
 use crate::{PageParams, PayrollRestState, RestError, list_runs_page};
-use console_payroll_adapter_postgres::PayrollRunSummary;
 
 pub(crate) async fn require_run_read_in_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -98,6 +99,14 @@ pub(crate) async fn module_gate(
 }
 
 impl PayrollRestState {
+    #[must_use]
+    pub fn new(store: PgPayrollStore, jwt_verifier: Option<JwtVerifier>) -> Self {
+        Self {
+            store,
+            jwt_verifier,
+        }
+    }
+
     /// SSR composition helper: the same `PayrollRunRead` listing as GET `/runs`,
     /// or an empty vec (omit) when the caller is unauthenticated, unauthorized,
     /// or the listing fails. Never a 401/403 on the HTML shell.

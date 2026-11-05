@@ -6,6 +6,9 @@ const dayText = (day: number | "LAST_DAY" | "FIRST") => day === "LAST_DAY" ? t("
 export const payDateRule = (rule: PayGroup["pay_date_rule"]) => t("payroll.rule.payDate", { month: t(`payroll.rule.payMonth.${rule.month_offset}`), day: dayText(rule.day), business: t(`payroll.rule.${rule.non_business_day}`) });
 export const periodRule = (rule: PayGroup["base_period"]) => t("payroll.rule.period", { month: t(`payroll.rule.periodMonth.${rule.month_offset}`), day: dayText(rule.start_day) });
 export const runStatus = (status: PayrollRun["status"]) => t(`payroll.run.${status}`);
+export const runName = (run: PayrollRun, group?: PayGroup) => group && group.id === run.pay_group_id && group.legal_entity_id === run.legal_entity_id && run.kind && run.attribution_month
+  ? t("payroll.runLabel", { group: group.name, month: run.attribution_month, kind: t(`payroll.create.kind.${run.kind}`) })
+  : run.pay_group_id ? t("payroll.runName") : run.source_label;
 export function cited(rate: Pick<PayrollRate, "instrument_ko" | "article_ko" | "promulgation_ko" | "enforced_on" | "source_url" | "retrieved_on" | "provenance_ko">) {
   try {
     return [rate.instrument_ko, rate.article_ko, rate.promulgation_ko, rate.enforced_on, rate.retrieved_on, rate.provenance_ko].every(v => !!v.trim()) && new URL(rate.source_url).protocol === "https:";

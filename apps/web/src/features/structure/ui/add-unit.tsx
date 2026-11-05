@@ -16,5 +16,14 @@ export function AddUnit({ n, onAdd, primary = false, icon = false }: { n: ChartN
   const name = { "aria-label": label, title: icon ? label : undefined };
   if (n.kind === "tenant") return <Link to="/org/entities/new" className={className} {...name}>{content}</Link>;
   if (n.kind === "entity") return <Link to="/org/entities/$id/workplaces/new" params={{ id: n.id }} className={className} {...name}>{content}</Link>;
-  return <Button size="sm" icon={icon} variant={primary ? "primary" : "ghost"} {...name} onClick={onAdd ?? (() => void nav({ search: (q) => ({ ...q, sel: n.id, act: "dept-add", kind: undefined }) }))}>{content}</Button>;
+  return <Button size="sm" icon={icon} variant={primary ? "primary" : "ghost"} {...name}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
+      onKeyUp={(e) => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onAdd) onAdd();
+        else void nav({ search: (q) => ({ ...q, sel: n.id, act: "dept-add", kind: undefined }) });
+      }}
+    >{content}</Button>;
 }

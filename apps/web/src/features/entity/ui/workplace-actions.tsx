@@ -6,6 +6,7 @@ import { t } from "@console/i18n";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { Button } from "../../../ui/button/button";
 import { descendants, direct, type Place, type StructureAct } from "../../../reference/org/domain/structure";
+import { useUnitEdit } from "../../../reference/org/ui/use-unit-edit";
 import { DeptNameInline } from "../../../reference/org/ui/dept-name-inline";
 import { ActionRow, Actions } from "../../../reference/org/ui/panel-shell";
 import { refusalText } from "../../../reference/crud/present";
@@ -19,6 +20,7 @@ import css from "../../../reference/org/ui/structure.module.css";
  */
 export function WorkplaceActions({ place, setup, onAct }: { place: Place; setup: boolean; onAct: (act: StructureAct) => void }) {
   const can = useCan();
+  const canEdit = useUnitEdit(setup);
   const [adding, setAdding] = useState(false);
   const n = place.node;
   const go = onAct;
@@ -26,14 +28,14 @@ export function WorkplaceActions({ place, setup, onAct }: { place: Place; setup:
   const erase = end ? end.delete.allowed : setup;
   return (
     <Actions>
-      {adding ? (
-        <div><DeptNameInline parent={n} onDone={() => setAdding(false)} /></div>
+      {canEdit && (adding ? (
+        <div><DeptNameInline parent={n} setup={setup} onDone={() => setAdding(false)} /></div>
       ) : (
         <ActionRow
-          control={(d) => <Button variant="primary" id="act-dept-add" className={css.actBtn} aria-describedby={d} onClick={() => (setup ? setAdding(true) : go("dept-add"))}><Plus size={16} aria-hidden />{t("orgUnit.add.action")}</Button>}
+          control={(d) => <Button variant="primary" id="act-dept-add" className={css.actBtn} aria-describedby={d} onClick={() => setAdding(true)}><Plus size={16} aria-hidden />{t("orgUnit.add.action")}</Button>}
           why={setup ? t("orgUnit.add.whyWorkplace", { name: n.name }) : t("orgUnit.add.whyGoverned")}
         />
-      )}
+      ))}
       {can("employee_directory_manage", "all") && n.org_unit_id && (
         <ActionRow
           control={(d) => <Link className={`btn btn--ghost ${css.actBtn}`} aria-describedby={d} to="/people/new" search={{ unit: n.org_unit_id }}><UserPlus size={16} aria-hidden />{t("orgTree.act.register", { name: n.name })}</Link>}

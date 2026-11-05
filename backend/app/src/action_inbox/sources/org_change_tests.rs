@@ -108,7 +108,10 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
         let row = actual.items.iter().find(|item| item.kind == kind).unwrap();
         let context = row.context.as_ref().unwrap();
         assert_eq!(context["command"], command);
-        assert!(!context["reason"].as_str().unwrap().is_empty());
+        assert!(
+            context.get("reason").is_none(),
+            "inbox reasons come from the item kind"
+        );
         assert!(!context["drafter"].as_str().unwrap().is_empty());
     }
 

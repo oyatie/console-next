@@ -57,6 +57,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub const PAYROLL_RUNS_PATH: &str = "/api/v1/payroll/runs";
+pub const PAYROLL_RUN_PREVIEW_PATH: &str = "/api/v1/payroll/runs/preview";
 pub const PAYROLL_RUN_PATH_TEMPLATE: &str = "/api/v1/payroll/runs/{id}";
 pub const PAYROLL_MY_PAYSLIPS_PATH: &str = "/api/v1/payroll/payslips/me";
 pub const PAYROLL_RUN_CLOSE_PREFLIGHT_PATH_TEMPLATE: &str =
@@ -87,6 +88,7 @@ pub use payslip_draft::{
 pub const PAYROLL_ROUTE_PATHS: &[&str] = &[
     PAYROLL_PAY_GROUPS_PATH,
     PAYROLL_RUNS_PATH,
+    PAYROLL_RUN_PREVIEW_PATH,
     PAYROLL_RUN_PATH_TEMPLATE,
     PAYROLL_MY_PAYSLIPS_PATH,
     PAYROLL_RUN_CLOSE_PREFLIGHT_PATH_TEMPLATE,
@@ -116,16 +118,6 @@ impl std::fmt::Debug for PayrollRestState {
         f.debug_struct("PayrollRestState")
             .field("has_jwt_verifier", &self.jwt_verifier.is_some())
             .finish()
-    }
-}
-
-impl PayrollRestState {
-    #[must_use]
-    pub fn new(store: PgPayrollStore, jwt_verifier: Option<JwtVerifier>) -> Self {
-        Self {
-            store,
-            jwt_verifier,
-        }
     }
 }
 
@@ -185,6 +177,7 @@ pub fn router(state: PayrollRestState) -> Router {
             PAYROLL_RUN_PAYSLIP_DELIVERY_PATH_TEMPLATE,
             get(lifecycle::get_payslip_delivery),
         )
+        .route(PAYROLL_RUN_PREVIEW_PATH, get(pay_groups::preview))
         .merge(payslip_draft::routes())
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -247,8 +240,7 @@ async fn get_run(
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
 
-    let org = principal.org_id;
-    let actor = principal.user_id;
+    let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, Option<PayrollRunDetail>, RestError>(&pool, org, move |tx| {
         Box::pin(async move {

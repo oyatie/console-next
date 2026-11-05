@@ -1,6 +1,7 @@
 import { api, ApiError, assertPasskey, session, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
 import { get, read } from "../../lib/query";
+import { readChange } from "../../reference/org/api";
 import { landed, LANDED } from "../../lib/react/landed";
 
 type ChangeStatus = components["schemas"]["OrgChangeStatus"];
@@ -21,26 +22,7 @@ type S = components["schemas"];
 const once = (key: string) => ({ "Idempotency-Key": key });
 const at = (id: string) => ({ path: { id } });
 
-/** Drafts any org change in one write: its ops, date and reason together. */
-export const draftChange = (key: string, body: S["CreateOrgChangeRequest"]) => unwrap(api.POST("/api/v1/org-changes", { params: { header: once(key) }, body }));
-/** Sets a draft's date and reason (the region and branch drafting URLs take neither). */
-export const dateDraft = (id: string, body: { effectiveDate: string; reason: string }) => unwrap(api.PATCH("/api/v1/org-changes/{id}", { params: at(id), body }));
-const submitChange = (id: string) => unwrap(api.POST("/api/v1/org-changes/{id}/submit", { params: at(id) }));
-const readChange = (id: string) => api.GET("/api/v1/org-changes/{id}", { params: at(id) });
-/**
- * Submits a draft: "unsent" when its preflight blocks it (the draft stays, its page shows why). Submit takes
- * no Idempotency-Key, so after a lost response or a 409 the change itself says whether it already went.
- */
-export async function submitDraft(id: string): Promise<"sent" | "unsent"> {
-  try {
-    await landed(() => submitChange(id), () => readChange(id), (d) => d.status !== "DRAFT" && d.status !== "PRECHECKED");
-    return "sent";
-  } catch (e) {
-    if (e instanceof ApiError && e.code === "preflight_blocked") return "unsent";
-    throw e;
-  }
-}
-
+export { draftChange, dateDraft, submitDraft, governed } from "../../reference/org/api";
 /**
  * Adds one op to the end of a draft's proposal, so several edits go to approval as one change. The PATCH
  * replaces the whole list and takes no Idempotency-Key: after a lost response the draft itself says whether
@@ -167,17 +149,6 @@ export async function probed(run: () => Promise<unknown>, refetch: () => Promise
 
 /** The tenant settings in force; the org screens read `approval.policy.org_structure` from it (decisions #26). */
 export const orgPolicyQuery = { ...get("/api/v1/settings"), staleTime: 5 * 60_000 };
-
-/**
- * One proposal for a structure change after go-live: drafted with its ops, date and reason, then submitted unless
- * only saved. "unsent": its preflight blocks it; the draft stays and its record says why.
- */
-export async function governed(key: string, body: S["CreateOrgChangeRequest"], submit: boolean) {
-  const draft = await draftChange(key, body);
-  const sent = submit ? await submitDraft(draft.id) : ("saved" as const);
-  const result = sent === "sent" ? await unwrap(readChange(draft.id)) : draft;
-  return { id: draft.id, code: draft.code, sent, select: result.created_unit_ids?.[0] };
-}
 
 // --- lane: UX-R2 ORGCHANGE (org-06) ---
 /** Live access grants: the dissolve sheet reads the ones scoped to the closing department. */

@@ -5,7 +5,7 @@ import { withLifecycleDate } from "./clock";
 import { go, kstDate, registerEmployee } from "./flows";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
 import { registerBranch, startOperations, tenantInSetup } from "./setup-flows";
-import { box } from "./structure-flows";
+import { inlineUnitDetails, box } from "./structure-flows";
 import { openHistory } from "./record";
 import { holdRead } from "./helpers/read";
 
@@ -40,9 +40,9 @@ test("an org change moves its people with the unit, stays on the chart with a re
   await registerAt(admin, "정영업", "영업3팀");
   await startOperations(admin);
 
-  // org-03: the phase line says changes apply on their date and are corrected by a new one; no approval anywhere.
+  // org-03: the phase chip shows operating status; no approval anywhere.
   await go(admin, "/org");
-  await expect(admin.getByText(/^운영 중 · 변경한 내용은 시행일에 반영되고/)).toBeVisible();
+  await expect(admin.getByText("운영 중", { exact: true })).toBeVisible();
   await expect(admin.getByRole("main")).not.toContainText(APPROVAL);
 
   // org-01: moving 개발팀 under 본점 › 경영지원본부 counts the person whose 사업장 changes, and keeps that promise.
@@ -131,11 +131,9 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   // A rename dated in three days: 예약, and the chart says so next to its as-of date (org-26).
   const s1 = await openUnit(admin, "영업1팀");
   await s1.getByRole("button", { name: "이름 변경" }).click();
-  const rename = sheet(admin, "영업1팀 이름 변경");
-  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("국내영업팀");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(due);
-  await rename.getByRole("textbox", { name: /^사유/ }).fill("영업 조직 이름 정리");
-  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
+  await s1.getByRole("textbox", { name: /^영업1팀의 새 이름/ }).fill("국내영업팀");
+  await inlineUnitDetails(admin, s1, due);
+  await s1.getByRole("button", { name: "이름 변경", exact: true }).click();
   await expect(receipt(admin)).toContainText("영업1팀 → 국내영업팀 이름 변경");
   await expect(admin.getByRole("link", { name: "예정 1건" })).toBeVisible();
 
@@ -143,7 +141,7 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   const s2 = await openUnit(admin, "영업2팀");
   await s2.getByRole("button", { name: "폐지" }).click();
   const dissolve = sheet(admin, "영업2팀 폐지");
-  await dissolve.getByRole("textbox", { name: /^시행일/ }).fill(due);
+  await dissolve.getByRole("textbox", { name: /^적용일/ }).fill(due);
   await dissolve.getByRole("textbox", { name: /^사유/ }).fill("영업 조직 통합");
   await dissolve.getByRole("button", { name: "부서 폐지 1개 예약" }).click();
   await expect(admin.getByRole("link", { name: "예정 2건" })).toBeVisible();

@@ -7,7 +7,11 @@ import { AsOfControl } from "./asof-control";
 import { nearestDate } from "./dates";
 
 // Inspect the opened panel's contents here; browser tests cover disclosure and focus.
-vi.mock("../popover/popover-button", () => ({ PopoverButton: ({ trigger, children }: ComponentProps<typeof import("../popover/popover-button").PopoverButton>) => <>{trigger}{children(() => undefined)}</> }));
+vi.mock("../popover/popover-button", () => ({
+  PopoverButton: ({ trigger, label, chip, children }: ComponentProps<typeof import("../popover/popover-button").PopoverButton>) => (
+    <><span data-trigger data-chip={chip ? "true" : undefined} aria-label={label}>{trigger}</span>{children(() => undefined)}</>
+  ),
+}));
 
 beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
 afterEach(() => i18n.set("ko"));
@@ -119,4 +123,14 @@ test("the selected date retains its slot when an earlier change arrives", () => 
     expect(html).toMatch(new RegExp(`data-slot="5"[^>]*data-change-date="${today}"`));
     expect(html).not.toContain("style=");
   }
+});
+
+test.each(["ko", "en"] as const)("%s trigger renders as a chip defaulting to today and omits today on other dates", (locale) => {
+  i18n.set(locale);
+  const onToday = render();
+  expect(onToday).toContain('data-chip="true"');
+  expect(onToday).toContain(`aria-label="${t("asof.label")} · ${t("asof.today")} · ${fmtDate(today)}"`);
+  const onPast = render({ value: "2026-09-01" });
+  expect(onPast).toContain('data-chip="true"');
+  expect(onPast).toContain(`aria-label="${t("asof.label")} · ${fmtDate("2026-09-01")}"`);
 });

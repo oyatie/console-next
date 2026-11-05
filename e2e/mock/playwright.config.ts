@@ -10,6 +10,7 @@ export default defineConfig({
   testDir: "..",
   testMatch: ["mock/*.spec.ts", "states/*.spec.ts", "layout/layout.spec.ts"],
   outputDir: `${OUTPUT_DIR}-mock`,
+  forbidOnly: !!process.env.CI,
   fullyParallel: true,
   workers: Number(process.env.E2E_WORKERS ?? timings.workers),
   reporter: process.env.PLAYWRIGHT_JSON_OUTPUT_FILE ? [["dot"], ["json"]] : "list",

@@ -250,6 +250,7 @@ test("the first 등록증 entry reuses the original already attached to the 법�
 // ss-003-address-link (P0, filed 10-13): 「등록증과 같음」 stores a copy of the address, so the 사업장 holding the certificate keeps
 // the old 소재지 after a reissue moves it. Lands with the link (no copy-propagation patch); the BE twin is
 // entity_reissue_propagation_api::the_holder_workplace_shows_the_moved_address.
+// fixme: owner=@jason931225; reason=reissue does not propagate the copied workplace address; expires=2026-11-17
 test.fixme("the 사업장 holding the certificate shows the 소재지 the reissue moved it to", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const a = await openTenant(browser, "reissue-panel", "새온그룹");
   await go(a, "/org/entities/new");

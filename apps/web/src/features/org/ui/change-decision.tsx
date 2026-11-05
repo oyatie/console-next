@@ -17,7 +17,7 @@ import { Button } from "../../../ui/button/button";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { changeCommands, changesByStatusQuery, me, refusalOf } from "../api";
-import { describeOp, type Names, type NextStep } from "../present";
+import { describeOp, reasonText, type Names, type NextStep } from "../present";
 import type { Note } from "./use-note";
 import css from "./org-change.module.css";
 
@@ -112,7 +112,7 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
           {armed && <p className="muted" role="status">{t("orgChange.escConfirm")}</p>}
         </>}
         <ol className={css.ops}>{d.proposal.map((op, i) => <li key={i}>{describeOp(op, n)}</li>)}</ol>
-        <blockquote className={css.quote}>{d.reason}</blockquote>
+        <blockquote className={css.quote}>{reasonText(d)}</blockquote>
         <p className="num">{t("orgChange.headcount")} · {t("orgChange.headcount.value", { count: d.headcount })}</p>
         {prev?.memo && <p className="muted">{t("orgChange.decide.prevMemo", { role: label(APPROVAL_ROLE, prev.roleKey), name: actor(prev.decidedByName), memo: prev.memo })}</p>}
         {s.prevByMe && <p className={css.caution}>{t("orgChange.decide.sameDecider")}</p>}

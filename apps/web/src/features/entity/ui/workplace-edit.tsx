@@ -32,8 +32,9 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
   const [{ e, w, field, clear }] = useState(props);
   const { onClose } = props;
   const today = todayKst();
-  const base = workplaceInput(e, w);
   const c = w.current;
+  const raw = c ? workplaceInput(e, c.opened_on || field !== "openedOn" ? w : { ...w, current: { ...c, opened_on: today } }) : null;
+  const base = raw && !c?.opened_on ? { ...raw, opened_on: "" } : raw;
   const [d, setD] = useState<InfoDraft>(() => ({
     name: base?.name ?? "", representative: base?.representative_name ?? "", product: base?.main_product ?? "",
     phone: base?.phone ? toDomestic(base.phone) : "", fax: base?.fax ? toDomestic(base.fax) : "", email: base?.email ?? "",
@@ -65,10 +66,14 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
   // The insurance revision is a requested path: where the server does not serve it, the numbers are not offered as
   // an edit (they would not be recorded), and the other fields still save on their own.
   const [insuranceUnserved, setInsuranceUnserved] = useState(false);
-  const insured = !insuranceUnserved && JSON.stringify(ins.rows) !== JSON.stringify(before);
+  const insured = field === "insurance" && !insuranceUnserved && JSON.stringify(ins.rows) !== JSON.stringify(before);
   const save = useCommand({
     run: async (_: undefined, key: string) => {
-      const dated = { effective_from: from, reason_code: reason!, expected_version: w.current?.version ?? 0 };
+      const dated = {
+        effective_from: firstEntry ? (c?.effective_from ?? today) : from,
+        reason_code: firstEntry ? "ENTRY_CORRECTION" : reason!,
+        expected_version: c?.version ?? 0,
+      };
       // Insurance first: when it cannot be recorded, nothing else is half-saved.
       if (insured)
         await reviseInsurance(stepKey(key, 1), w.id, { ...dated, expected_version: Math.max(0, ...w.insurance.map((r) => r.version)), insurers: insurers(ins) }).catch((x: unknown) => {
@@ -81,11 +86,12 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
     // Closes once the record has re-read (as the suspend and move sheets do): each fact is its own sheet, so the next one is
     // opened on the version this save made, never refused 409 against it.
     settle: true,
-    announce: () => t("workplace.edit.saved", { name: name.trim() }),
+    announce: () => (firstEntry ? t("entityRecord.revise.entered", { field: INFO_LABEL.openedOn() }) : t("workplace.edit.saved", { name: name.trim() })),
     onSuccess: onClose,
   });
   const valid = name.trim() !== "" && !(phone && !phoneE164(phone)) && !(d.fax && !phoneE164(d.fax)) && !(email && !validEmail(email)) && d.openedOn !== "" && (field !== "insurance" || insuranceUnserved || Object.keys(problems).length === 0);
-  const ready = (contact || insured) && valid && from !== "" && reason !== null && (!openedFixed || reason === "ENTRY_CORRECTION");
+  const ready = (contact || insured) && valid && (firstEntry || (from !== "" && reason !== null)) && (!openedFixed || reason === "ENTRY_CORRECTION");
+  const saveLabel = t(firstEntry ? "composer.verb.enter" : "entity.edit.save");
   return (
     <Dialog open title={t("uiRecordActions.of", { field: field === "insurance" ? t("workplace.field.insurance") : INFO_LABEL[field](), verb: t(clear ? "uiRecordActions.end.clear" : firstEntry ? "composer.verb.enter" : field === "openedOn" ? "uiRecordVerbs.verb.correct" : "uiRecordActions.edit") })} onClose={onClose}>
       <Form className="form" onSubmit={() => ready && save.mutate(undefined)}>
@@ -96,17 +102,19 @@ export function WorkplaceEdit(props: { e: LegalEntity; w: Workplace; field: Info
         ) : (
           <InsuranceFields d={ins} set={(k, v) => setIns((x) => ({ ...x, [k]: v }))} problem={(k) => problems[k]} today={today} />
         )}
-        <div className="grid-3">
-          <DateField label={t("entity.edit.from")} required value={from} onChange={setFrom} today={today}  />
-          <ChoiceField label={t("entity.edit.reason")} required options={REASONS.map((r) => ({ value: r, label: t(`workplace.reason.${r}`) }))} value={reason} onChange={setReason} />
-        </div>
+        {!firstEntry && (
+          <div className="grid-3">
+            <DateField label={t("entity.edit.from")} required value={from} onChange={setFrom} today={today} />
+            <ChoiceField label={t("entity.edit.reason")} required options={REASONS.map((r) => ({ value: r, label: t(`workplace.reason.${r}`) }))} value={reason} onChange={setReason} />
+          </div>
+        )}
         {!(contact || insured) && <p className="muted">{t("entity.edit.nothing")}</p>}
         {openedFixed && reason !== "ENTRY_CORRECTION" && <p className="notice">{t("entityOps.info.openedIsCorrection")}</p>}
         <PathNote path={firstEntry ? props.setup ? "setup" : "revision" : field === "openedOn" ? "correction" : props.setup ? "setup" : openedFixed ? "correction" : "revision"} />
         {!unserved(save.error) && <EntityError error={save.error} />}
         <div className="form__actions">
           <Button onClick={onClose}>{t("common.back")}</Button>
-          {ready ? <Button type="submit" variant="primary" disabled={save.isPending}>{t("entity.edit.save")}</Button> : <DisabledReason layout="inline" reason={t("entity.edit.notReady")} control={(p) => <Button variant="primary" {...p}>{t("entity.edit.save")}</Button>} />}
+          {ready ? <Button type="submit" variant="primary" disabled={save.isPending}>{saveLabel}</Button> : <DisabledReason layout="inline" reason={t("entity.edit.notReady")} control={(p) => <Button variant="primary" {...p}>{saveLabel}</Button>} />}
         </div>
       </Form>
     </Dialog>

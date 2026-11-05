@@ -110,6 +110,7 @@ export const koEntityOps = {
   "entityOps.founding.save": "설립등기 기록",
   "entityOps.founding.done": "{name}의 설립등기를 기록했습니다",
   "entityOps.revise.firstEntry": "아직 기록된 {field} 없음 · 증빙에 적힌 값을 처음 입력하십시오.",
+  "entityOps.revise.firstValue": "입력할 {field}",
   "entityOps.revise.firstConsequence": "{field} · {value}. 처음 입력하는 값이며 이력에 남습니다.",
   "entityOps.wizard.createOnly": "법인만 등록",
   "entityOps.create.twin": "이 법인에 같은 이름의 사업장이 이미 있습니다 · 「{name}」 {address}. 선택 목록에서 둘을 구별할 수 없으니 다른 이름을 입력하십시오.",

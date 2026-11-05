@@ -7299,6 +7299,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hr/certificates/precondition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read certificate setup readiness for one employee
+         * @description The certificate_issue Cedar action uses canonical live person and access facts. Returns no settings or seal payload.
+         */
+        get: operations["getCertificatePrecondition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hr/certificates/{id}": {
         parameters: {
             query?: never;
@@ -10800,6 +10820,24 @@ export interface paths {
         };
         /** List payroll draft runs (tenant pay:view, audited read) */
         get: operations["listPayrollRuns"];
+        put?: never;
+        /** Create the next payroll run derived from pay-group rules */
+        post: operations["createPayrollRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/runs/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview the next run derived from pay-group rules */
+        get: operations["previewPayrollRun"];
         put?: never;
         post?: never;
         delete?: never;
@@ -14612,6 +14650,8 @@ export interface components {
         AccessEffective: {
             /** @description Server Cedar decisions for tenant-wide commands. Missing decisions never admit a command. */
             decisions?: {
+                /** @description Existing certificate_settings_manage Cedar action over the tenant; no settings payload. */
+                certificate_settings_manage?: boolean;
                 /** @description Either hr_basic edit or appointment edit over the tenant, decided by the bulk_appointment Cedar action. */
                 bulk_appointment?: boolean;
             };
@@ -15555,7 +15595,10 @@ export interface components {
             id: components["schemas"]["Uuid"];
             reason: string;
             actor: components["schemas"]["Uuid"];
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description RFC 3339 UTC timestamp with Z suffix
+             */
             created_at: string;
         };
         AttendanceCloseAmendmentRequest: {
@@ -16001,10 +16044,16 @@ export interface components {
             branch_scope: string;
             checks: components["schemas"]["AttendanceCloseCheck"][];
             attested_by: components["schemas"]["Uuid"];
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description RFC 3339 UTC timestamp with Z suffix
+             */
             attested_at: string;
             period_lock_id?: components["schemas"]["Uuid"];
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description RFC 3339 UTC timestamp with Z suffix
+             */
             closed_at: string;
             amendments: components["schemas"]["AttendanceCloseAmendment"][];
         };
@@ -17013,6 +17062,11 @@ export interface components {
                 replaces_id: string | null;
             }[];
             next_cursor: string | null;
+        };
+        CertificatePrecondition: {
+            settings_configured: boolean;
+            /** @enum {string|null} */
+            reason_code: "certificate_settings_required" | "certificate_facts_missing" | null;
         };
         CertificateSettings: {
             prefix: string;
@@ -18290,6 +18344,10 @@ export interface components {
             reason: string;
         };
         CreatePayGroup: components["schemas"]["PayGroupDefinition"];
+        CreatePayrollRun: {
+            pay_group_id: components["schemas"]["Uuid"];
+            kind: components["schemas"]["PayrollRunKind"];
+        };
         CreatePeriodLockRequest: {
             /** @enum {string} */
             domain: "payroll" | "accounting";
@@ -25644,6 +25702,8 @@ export interface components {
             /** @description Unpaginated delivery summary; null until at least one payslip has been issued. */
             payslip_delivery: components["schemas"]["PayrollPayslipDeliverySummary"] | null;
         };
+        /** @enum {string} */
+        PayrollRunKind: "REGULAR" | "OFF_CYCLE" | "CORRECTION" | "EXIT_SETTLEMENT";
         PayrollRunPage: {
             items: components["schemas"]["PayrollRunSummary"][];
             /** Format: int64 */
@@ -25653,12 +25713,39 @@ export interface components {
             /** Format: int64 */
             offset: number;
         };
-        PayrollRunSummary: {
-            id: components["schemas"]["Uuid"];
+        PayrollRunPreview: {
+            legal_entity_id: components["schemas"]["Uuid"];
+            pay_group_id: components["schemas"]["Uuid"];
+            kind: components["schemas"]["PayrollRunKind"];
+            attribution_month: string;
+            /** Format: date */
+            pay_date: string;
+            pay_date_clamped: boolean;
             /** Format: date */
             period_start: string;
             /** Format: date */
             period_end: string;
+            /** Format: date */
+            variable_period_start: string;
+            /** Format: date */
+            variable_period_end: string;
+        };
+        PayrollRunSummary: {
+            id: components["schemas"]["Uuid"];
+            legal_entity_id: components["schemas"]["Uuid"] | null;
+            pay_group_id: components["schemas"]["Uuid"] | null;
+            kind: components["schemas"]["PayrollRunKind"] | null;
+            attribution_month: string | null;
+            /** Format: date */
+            pay_date: string | null;
+            /** Format: date */
+            period_start: string;
+            /** Format: date */
+            period_end: string;
+            /** Format: date */
+            variable_period_start: string | null;
+            /** Format: date */
+            variable_period_end: string | null;
             source_label: string;
             /** @enum {string} */
             status: "STAGED" | "BLOCKED_LEGAL_GATE" | "READY_FOR_REVIEW" | "ATTENDANCE_CLOSED" | "CALCULATING" | "CALCULATED" | "SUBMITTED" | "REJECTED" | "APPROVED" | "DISBURSEMENT_SCHEDULED" | "PAID" | "ISSUED" | "VOID";
@@ -45333,6 +45420,39 @@ export interface operations {
             };
         };
     };
+    getCertificatePrecondition: {
+        parameters: {
+            query: {
+                employee_id: components["schemas"]["Uuid"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settings readiness only; issuance rechecks the facts in its transaction. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificatePrecondition"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Employee absent or belongs to another tenant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     getCertificate: {
         parameters: {
             query?: never;
@@ -53358,6 +53478,107 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    createPayrollRun: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional retry key. The same key and body replay the original 201 response; a different body returns 409. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePayrollRun"];
+            };
+        };
+        responses: {
+            /** @description The created run with its immutable derived schedule snapshot, or that original result on a same-key retry under current Cedar access. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollRunSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description run_kind_unsupported for non-REGULAR kinds; Missing */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description holiday_calendar_missing when the applicable calendar is unavailable; or unavailable Cedar facts. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    previewPayrollRun: {
+        parameters: {
+            query: {
+                pay_group_id: components["schemas"]["Uuid"];
+                kind: components["schemas"]["PayrollRunKind"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read-only derived facts for the first unoccupied month of this kind from the current month. Creation recomputes these facts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollRunPreview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description holiday_calendar_missing when an adjustment requires an unloaded calendar year; or unavailable Cedar facts. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getPayrollRun: {

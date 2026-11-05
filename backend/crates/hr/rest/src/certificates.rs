@@ -13,8 +13,8 @@ use console_hr_adapter_postgres::{
     HrError, HrService,
     certificates::{
         Certificate, CertificateActionRequest, CertificateListQuery, CertificatePage,
-        CertificateSettings, CertificateSettingsRequest, CertificateSettingsView,
-        IssueCertificateRequest,
+        CertificatePrecondition, CertificatePreconditionQuery, CertificateSettings,
+        CertificateSettingsRequest, CertificateSettingsView, IssueCertificateRequest,
     },
 };
 use console_platform_authz::Principal;
@@ -26,9 +26,11 @@ pub const CERTIFICATES_PATH: &str = "/api/v1/hr/certificates";
 pub const CERTIFICATE_PATH: &str = "/api/v1/hr/certificates/{id}";
 pub const CERTIFICATE_VOID_PATH: &str = "/api/v1/hr/certificates/{id}/void";
 pub const CERTIFICATE_REISSUE_PATH: &str = "/api/v1/hr/certificates/{id}/reissue";
+pub const CERTIFICATE_PRECONDITION_PATH: &str = "/api/v1/hr/certificates/precondition";
 pub const CERTIFICATE_SETTINGS_PATH: &str = "/api/v1/hr/certificate-settings";
 pub const CERTIFICATE_ROUTE_PATHS: &[&str] = &[
     CERTIFICATES_PATH,
+    CERTIFICATE_PRECONDITION_PATH,
     CERTIFICATE_PATH,
     CERTIFICATE_VOID_PATH,
     CERTIFICATE_REISSUE_PATH,
@@ -37,6 +39,7 @@ pub const CERTIFICATE_ROUTE_PATHS: &[&str] = &[
 pub fn router(hr: HrService) -> Router {
     Router::new()
         .route(CERTIFICATES_PATH, get(list).post(issue))
+        .route(CERTIFICATE_PRECONDITION_PATH, get(precondition))
         .route(CERTIFICATE_PATH, get(read))
         .route(CERTIFICATE_VOID_PATH, axum::routing::post(void))
         .route(CERTIFICATE_REISSUE_PATH, axum::routing::post(reissue))
@@ -145,6 +148,14 @@ async fn set_settings(
     Json(b): Json<CertificateSettingsRequest>,
 ) -> Result<Json<CertificateSettings>, Error> {
     Ok(Json(hr.set_certificate_settings(p, b).await?))
+}
+
+async fn precondition(
+    State(hr): State<HrService>,
+    Extension(p): Extension<Principal>,
+    Query(q): Query<CertificatePreconditionQuery>,
+) -> Result<Json<CertificatePrecondition>, Error> {
+    Ok(Json(hr.certificate_precondition(p, q.employee_id).await?))
 }
 
 #[cfg(test)]

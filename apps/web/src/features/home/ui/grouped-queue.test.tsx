@@ -169,3 +169,27 @@ test("identical state and context reasons appear once, and never repeat the subj
   expect(html([item("approval", { kind: "approval", context: { reason } })]).split("</td>")[0]!.match(new RegExp(reason, "g"))).toHaveLength(1);
   expect(taskCell(html([item(reason, { kind: "approval", context: { reason } })]))).not.toContain(reason);
 });
+
+for (const locale of ["ko", "en"] as const) test.each([
+  "org_change_draft", "org_change_rejected", "org_change_settle", "org_change_apply",
+  "org_change_scheduled", "org_change_waiting", "org_change_approve",
+] as const)(`${locale} org-change %s explains attention through its inbox kind`, async kind => {
+  await loadCatalog(locale);
+  i18n.set(locale);
+  try {
+    for (const reason of ["NEW", "REORG", "A written change note"]) {
+      const markup = html([item("department", { kind, context: { reason }, links: [{ kind: "org_change", id: "change" }] })]);
+      expect(markup).toContain(t(`home.inbox.reason.${kind}`));
+      expect(markup).not.toContain(reason);
+    }
+  } finally { i18n.set("ko"); }
+});
+
+test("folded org-change rows use the same inbox reason path", () => {
+  const markup = html(["NEW", "REORG"].map((reason, index) => item(`draft-${index}`, {
+    kind: "org_change_draft", fold_key: "org-change-drafts", context: { reason },
+  })));
+  expect(markup).toContain('aria-expanded="false"');
+  expect(markup).toContain(t("home.inbox.reason.org_change_draft"));
+  for (const raw of ["NEW", "REORG"]) expect(markup).not.toContain(raw);
+});

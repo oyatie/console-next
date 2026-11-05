@@ -39,6 +39,6 @@ export function InfoField({ only, d, set, today, openedFrom }: { only: InfoKey; 
     case "mail":
       return <AddressEdit label={label} required={false} v={d.mail} set={(v) => set("mail", v)} />;
     case "openedOn":
-      return <DateField label={label} required value={d.openedOn} onChange={(v) => set("openedOn", v)} today={today} max={today} basis={t("entityOps.info.openedHint", { date: openedFrom })} />;
+      return <DateField label={label} required value={d.openedOn} onChange={(v) => set("openedOn", v)} today={today} max={today} basis={openedFrom ? t("entityOps.info.openedHint", { date: openedFrom }) : undefined} />;
   }
 }
