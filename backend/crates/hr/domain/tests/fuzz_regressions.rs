@@ -35,7 +35,6 @@ fn regression_fz1_rrn_parse_refuses_a_multibyte_cell_without_panicking() {
 /// neither, so these cells are sealed in the RRN column and kept verbatim
 /// anywhere else.
 #[test]
-#[ignore = "regression FZ-4 open, owner IMPORT: Rrn::parse accepts shapes is_rrn_value misses"]
 fn regression_fz4_every_cell_the_vault_accepts_is_one_the_scrub_catches() {
     for cell in [
         "9003044700-110",

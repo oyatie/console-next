@@ -26,6 +26,7 @@ mod rollback;
 mod rollback_burst;
 mod rrn_audit;
 mod rrn_governed;
+mod rrn_plaintext;
 mod rrn_read;
 mod rrn_tombstone;
 mod statistics;
