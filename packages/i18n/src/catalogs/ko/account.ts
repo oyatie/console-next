@@ -75,7 +75,7 @@ export const koAccount = {
   "account.privacy.kind.DELETION": "삭제",
   "account.privacy.kind.SUSPENSION": "처리정지",
   "account.privacy.kind.WITHDRAWAL": "동의 철회",
-  "account.privacy.status.RECEIVED": "접수",
+  "account.privacy.status.RECEIVED": "접수됨",
   "account.privacy.status.DECIDED": "결정 완료",
   "account.privacy.withoutDelay": "지체 없이",
   "account.privacy.outcome.GRANTED": "수용",

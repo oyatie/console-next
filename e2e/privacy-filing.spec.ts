@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { tenantInSetup } from "./setup-flows";
+import { tenantBeforeSetup } from "./setup-flows";
 import { chooseRadio, go } from "./flows";
 import { fits, expectAccessible } from "./a11y";
+import { clearShifts } from "./stability";
 
 test("subject files an account rights request with a real passkey during setup", async ({ browser }) => {
-  const { admin } = await tenantInSetup(browser, "rightsco", "모의테스트상사");
+  const { admin } = await tenantBeforeSetup(browser, "rightsco", "모의테스트상사");
   const optionsResponse = admin.waitForResponse(response => response.url().endsWith("/privacy/rights-requests/options"));
   await go(admin, "/account/privacy");
   const response = await optionsResponse;
@@ -33,5 +34,16 @@ test("subject files an account rights request with a real passkey during setup",
   await admin.reload();
   await expect(admin.getByRole("textbox", { name: /내용/ })).toHaveValue("");
   await expect(admin.getByRole("row").filter({ hasText: receipt.receipt_no })).toBeVisible();
+  await expect(admin.getByRole("row").filter({ hasText: receipt.receipt_no })).toContainText("접수됨");
+  await admin.evaluate(clearShifts);
+  await go(admin, "/inbox");
+  const intake = admin.getByRole("row").filter({ hasText: receipt.receipt_no });
+  await expect(intake).toContainText("권리 요구");
+  await expect(intake).toContainText("D-10");
+  for (const theme of ["light", "dark"]) {
+    await admin.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+    await fits(admin, `privacy intake ${theme}`);
+  }
+  await expectAccessible(admin, "privacy intake");
   await admin.context().close();
 });

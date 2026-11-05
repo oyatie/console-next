@@ -64,7 +64,7 @@ for (const width of [1440, 390]) for (const state of ["populated", "empty", "loa
       await expect(panel.getByText(t("account.privacy.controller.TENANT"), { exact: true })).toBeVisible();
       await expect(panel.getByText(receipt.detail, { exact: true })).toBeVisible();
       await expect(panel.getByText(t("account.privacy.status"), { exact: true })).toBeVisible();
-      await expect(panel.getByText(state === "decided" ? "결정 완료" : "접수", { exact: true })).toBeVisible();
+      await expect(panel.getByText(state === "decided" ? "결정 완료" : "접수됨", { exact: true })).toBeVisible();
       await expect(panel.getByText(receipt.retention_notice, { exact: true })).toBeVisible();
       if (!["decided", "without-delay", "clock-unknown"].includes(state)) await expect(panel.getByText("D-6", { exact: true })).toBeVisible();
       else if (state === "decided") await expect(panel.getByText("수용", { exact: true })).toBeVisible();
