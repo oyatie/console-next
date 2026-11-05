@@ -3,6 +3,8 @@ import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
+import { filingRow } from "../helpers/statutory";
+import { mockRoute } from "../mock/route";
 import { filingTask, mockFilings } from "../mock/filings";
 import { id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
@@ -81,3 +83,58 @@ test("filing search keeps the server filter and clears it on reset @ui-state", a
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`filing density and evidence stay readable at ${width}px in ${theme} @ui-state`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, screens[2], "populated");
+    await mockFilings(page);
+    const exempt = { ...filingTask, event_id: id(8200), name: "김미해당", state: "NOT_APPLICABLE", record_action: "NOT_APPLICABLE" as const,
+      not_applicable_reason: "OTHER_LEGAL_GROUND" as const, detail: "공단 확인" };
+    await mockRoute(page, "get", "/api/v1/statutory/insurance-filings", {
+      status: 200, json: { items: [filingTask, exempt], total: 2, pending: 1, next: null },
+    });
+    try {
+      await page.goto("/statutory");
+      const rows = page.getByRole("grid", { name: t("statutory.insurance"), exact: true }).getByRole("row").filter({ hasText: t("statutory.ACQUIRE") });
+      await expect(rows).toHaveCount(2);
+      const pending = rows.filter({ hasText: filingTask.name });
+      const row = rows.filter({ hasText: exempt.name });
+      const basis = pending.locator("summary");
+      await expect(basis).toBeVisible();
+      await page.evaluate(async () => { await document.fonts.ready; });
+      await page.screenshot({ path: info.outputPath("density.png"), fullPage: true });
+      const heights = await rows.evaluateAll(elements => elements.map(element => Math.max(...Array.from(
+        element.querySelectorAll('[role="gridcell"], [role="rowheader"]'), cell => cell.getBoundingClientRect().height,
+      ))));
+      await info.attach("row-heights", { body: JSON.stringify(heights), contentType: "application/json" });
+      if (width === 1440) {
+        await expect.soft(filingRow(page, t("statutory.NPS"), t("statutory.ACQUIRE"))).toHaveCount(2);
+        expect.soft(heights[0]).toBeLessThanOrEqual(65);
+        expect.soft(heights[1]).toBeLessThanOrEqual(137);
+        const lines = await row.evaluate((element, text) => {
+          const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) {
+            if (walker.currentNode.textContent?.trim() !== text) continue;
+            const range = document.createRange();
+            range.selectNodeContents(walker.currentNode);
+            return range.getClientRects().length;
+          }
+          throw new Error("Missing filing reason");
+        }, t("statutory.OTHER_LEGAL_GROUND"));
+        expect.soft(lines).toBeLessThanOrEqual(2);
+      }
+      const marker = () => basis.evaluate(element => {
+        const style = getComputedStyle(element);
+        return { display: style.display, type: style.listStyleType };
+      });
+      expect.soft(await marker()).toEqual({ display: "list-item", type: "disclosure-closed" });
+      await basis.click();
+      expect.soft(await marker()).toEqual({ display: "list-item", type: "disclosure-open" });
+      await fits(page, `filing evidence ${width} ${theme}`);
+      await expectAxe(page, `filing evidence ${width} ${theme}`);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}

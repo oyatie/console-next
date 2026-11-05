@@ -409,7 +409,7 @@ test(`a workplace appointment ${released ? "records released filings and closes 
       await dialog.getByRole("button", { name: "신고 완료", exact: true }).click();
       await expect(dialog).toBeHidden();
     } else {
-      const row = admin.getByRole("row").filter({ has: admin.getByRole("cell", { name: `${filingLabel(item.insurer!)} · ${filingLabel(item.filing_kind!)}`, exact: true }) });
+      const row = admin.getByRole("row").filter({ has: admin.getByRole("gridcell", { name: `${filingLabel(item.insurer!)} · ${filingLabel(item.filing_kind!)}`, exact: true }) });
       await expect(row).toContainText("법무 검토 전");
       await expect(row.getByRole("button", { name: "처리 기록", exact: true })).toHaveCount(0);
       await expect(admin.getByRole("dialog")).toHaveCount(0);
