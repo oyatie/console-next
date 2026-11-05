@@ -11,6 +11,7 @@ import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Checks } from "../../../ui/choice/checks";
+import { EmptyState } from "../../../ui/empty-state";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { filePrivacyRequest, privacyFilingOptionsQuery, privacyReceipt } from "../api";
@@ -19,7 +20,7 @@ import s from "./account.module.css";
 export function PrivacyRequest({ onFiled }: { onFiled: (receipt: PrivacyRightsReceipt) => void }) {
   const q = useQuery({ ...privacyFilingOptionsQuery, retry: false });
   return <Card title={t("account.privacy.file")}>
-    <QueryState q={q} layout="record">{options => <PrivacyRequestForm options={options} onFiled={onFiled} />}</QueryState>
+    <QueryState q={q} layout="record">{options => options.controllers.length ? <PrivacyRequestForm options={options} onFiled={onFiled} /> : <EmptyState title={t("account.privacy.unavailable")} reason={null} />}</QueryState>
   </Card>;
 }
 

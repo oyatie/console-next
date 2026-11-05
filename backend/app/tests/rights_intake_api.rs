@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod rights_intake_support;
 mod settings_support;
 use console_app::build_router;
 use console_compliance_adapter_postgres::{PgComplianceStore, rights};
 use console_kernel_core::OrgId;
+use console_platform_test_support::seed_org_and_super_admin;
 use http::StatusCode;
 use serde_json::{Value, json};
 use settings_support::*;
@@ -13,20 +15,8 @@ use uuid::Uuid;
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isolation(pool: PgPool) {
     let org = OrgId::new();
-    let subject = console_platform_test_support::seed_org_and_super_admin(
-        &pool,
-        *org.as_uuid(),
-        "rights-intake",
-    )
-    .await;
-    let handler = seed_user(&pool, *org.as_uuid(), "MEMBER").await;
-    let grant = seed_role_and_grant(&pool, *org.as_uuid(), subject, handler, "TENANT", None).await;
-    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,role_id,2,name_ko,status,change_mode,created_by FROM access_role_versions WHERE org_id=$1 AND version=1 AND role_id=(SELECT role_id FROM access_grants WHERE id=$2)")
-        .bind(org.as_uuid()).bind(grant).execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,role_id,2,'hr_basic',ARRAY['edit'] FROM access_grants WHERE org_id=$1 AND id=$2")
-        .bind(org.as_uuid()).bind(grant).execute(&pool).await.unwrap();
-    sqlx::query("UPDATE access_roles SET version=2 WHERE org_id=$1 AND id=(SELECT role_id FROM access_grants WHERE id=$2)")
-        .bind(org.as_uuid()).bind(grant).execute(&pool).await.unwrap();
+    let subject = seed_org_and_super_admin(&pool, *org.as_uuid(), "rights-intake").await;
+    let (handler, grant) = rights_intake_support::hr_handler(&pool, org, subject).await;
     sqlx::query("UPDATE statutory_rules SET value_num=17 WHERE code='PIPA_ACCESS_RESPONSE_DAYS'")
         .execute(&pool)
         .await
@@ -37,13 +27,15 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
         .await
         .unwrap();
     let mut tx = rights::begin(&rt, org).await.unwrap();
+    let employee: Uuid = sqlx::query_scalar("INSERT INTO employees(org_id,company,name,source_filename,source_sheet,source_row,source_key) VALUES($1,'Privacy','Subject','privacy.xlsx','People',1,'subject') RETURNING id")
+        .bind(org.as_uuid()).fetch_one(&pool).await.unwrap();
     let input =
-        serde_json::from_value(json!({"controller":"OPERATOR","kinds":["ACCESS"],"detail":""}))
+        serde_json::from_value(json!({"controller":"TENANT","kinds":["ACCESS"],"detail":""}))
             .unwrap();
-    let first = rights::file(&mut tx, org, subject, None, &input, &register)
+    let first = rights::file(&mut tx, org, subject, Some(employee), &input, &register)
         .await
         .unwrap();
-    let second = rights::file(&mut tx, org, subject, None, &input, &register)
+    let second = rights::file(&mut tx, org, subject, Some(employee), &input, &register)
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -61,10 +53,17 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
         "a filed request must reach a handler: {page}"
     );
     assert_eq!(rows[0]["kind"], "privacy_request");
-    assert_eq!(
-        rows[0]["title"], rows[0]["ref"],
-        "an optional blank detail still has a receipt title"
+    let name = "Admin rights-intake";
+    assert_eq!(rows[0]["who"], name);
+    assert_eq!(rows[0]["context"]["privacy_kinds"], json!(["ACCESS"]));
+    let receipt_path = format!(
+        "/api/v1/privacy/rights-requests/{}",
+        first["id"].as_str().unwrap()
     );
+    let (status, receipt) = send(&service, "GET", &receipt_path, Some(&bearer), None).await;
+    assert_eq!(status, StatusCode::OK, "{receipt}");
+    assert_eq!(receipt["request"], first);
+    assert_eq!(receipt["subject_name"], name);
     assert_eq!(rows[0]["lane"], "turn");
     assert_eq!(rows[0]["days_remaining"], 17);
     assert_eq!(
@@ -80,7 +79,7 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
     );
     let next = page["next_cursor"].as_str().unwrap();
     let mut tx = rights::begin(&rt, org).await.unwrap();
-    rights::file(&mut tx, org, subject, None, &input, &register)
+    rights::file(&mut tx, org, subject, Some(employee), &input, &register)
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -141,28 +140,17 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
     sqlx::query("INSERT INTO access_grants(org_id,id,account_id,role_id,scope_kind,legal_entity_id,valid_from,effective_in_setup,change_mode,reason_code,granted_by) SELECT org_id,gen_random_uuid(),$2,role_id,'LEGAL_ENTITY',$3,valid_from,true,'SETUP','TEST',granted_by FROM access_grants WHERE id=$1")
         .bind(grant).bind(scoped_handler.as_uuid()).bind(entity).execute(&pool).await.unwrap();
     let scoped_token = token(&pool, &keys, *org.as_uuid(), scoped_handler, "MEMBER").await;
-    let (_, scoped) = send(&service, "GET", path, Some(&scoped_token), None).await;
+    let (status, scoped) = send(&service, "GET", path, Some(&scoped_token), None).await;
+    assert_eq!(status, StatusCode::OK, "{scoped}");
     assert!(
         !scoped["items"]
             .as_array()
             .unwrap()
             .iter()
             .any(|row| row["kind"] == "privacy_request"),
-        "account requests require tenant scope: {scoped}"
+        "unplaced requests require tenant scope: {scoped}"
     );
-    let workplace: Uuid = sqlx::query_scalar("INSERT INTO workplaces(org_id,legal_entity_id,needs_confirmation,created_change_mode,created_by) VALUES($1,$2,true,'SETUP',$3) RETURNING id")
-        .bind(org.as_uuid()).bind(entity).bind(subject.as_uuid()).fetch_one(&pool).await.unwrap();
-    let unit: Uuid = sqlx::query_scalar("INSERT INTO org_units(org_id) VALUES($1) RETURNING id")
-        .bind(org.as_uuid())
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO org_unit_revisions(org_id,org_unit_id,version,command_id,actor_id,payload_digest,attributes,receipt) VALUES($1,$2,1,gen_random_uuid(),$3,$4,'{\"status\":\"active\"}','{}')")
-        .bind(org.as_uuid()).bind(unit).bind(subject.as_uuid()).bind(vec![0u8;32]).execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO org_unit_placements(org_id,org_unit_id,legal_entity_id,workplace_id,valid_from,change_mode,actor_id,command_id) VALUES($1,$2,$3,$4,current_date,'SETUP',$5,gen_random_uuid())")
-        .bind(org.as_uuid()).bind(unit).bind(entity).bind(workplace).bind(subject.as_uuid()).execute(&pool).await.unwrap();
-    let employee: Uuid = sqlx::query_scalar("INSERT INTO employees(org_id,company,name,source_filename,source_sheet,source_row,source_key,org_unit_id) VALUES($1,'Privacy','Subject','privacy.xlsx','People',1,$2::uuid::text,$2) RETURNING id")
-        .bind(org.as_uuid()).bind(unit).fetch_one(&pool).await.unwrap();
+    let employee = rights_intake_support::placed_employee(&pool, org, subject, entity).await;
     let mut tx = rights::begin(&rt, org).await.unwrap();
     let hr_input = serde_json::from_value(
         json!({"controller":"TENANT","kinds":["ACCESS"],"detail":"My HR records"}),
@@ -171,11 +159,43 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
     let hr = rights::file(&mut tx, org, subject, Some(employee), &hr_input, &register)
         .await
         .unwrap();
-    rights::file(&mut tx, org, subject, Some(employee), &input, &register)
+    let account = serde_json::from_value(
+        json!({"controller":"OPERATOR","kinds":["ACCESS"],"detail":"Private account detail"}),
+    )
+    .unwrap();
+    let operator = rights::file(&mut tx, org, subject, Some(employee), &account, &register)
         .await
         .unwrap();
     tx.commit().await.unwrap();
-    let (_, scoped) = send(
+    let (_, tenant) = send(
+        &service,
+        "GET",
+        "/api/v1/me/action-inbox",
+        Some(&bearer),
+        None,
+    )
+    .await;
+    assert!(
+        !tenant["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["ref"] == operator["receipt_no"]),
+        "operator requests must never reach tenant HR: {tenant}"
+    );
+    let (status, _) = send(
+        &service,
+        "GET",
+        &format!(
+            "/api/v1/privacy/rights-requests/{}",
+            operator["id"].as_str().unwrap()
+        ),
+        Some(&bearer),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (status, scoped) = send(
         &service,
         "GET",
         "/api/v1/me/action-inbox?filter=turn",
@@ -183,6 +203,7 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
         None,
     )
     .await;
+    assert_eq!(status, StatusCode::OK, "{scoped}");
     let visible: Vec<_> = scoped["items"]
         .as_array()
         .unwrap()
@@ -195,6 +216,25 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
         vec![hr["receipt_no"].clone()],
         "scoped handlers see HR receipts in their scope, not account receipts: {scoped}"
     );
+    let (status, _) = send(&service, "GET", &receipt_path, Some(&scoped_token), None).await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "out-of-scope receipt must stay hidden"
+    );
+    let (status, receipt) = send(
+        &service,
+        "GET",
+        &format!(
+            "/api/v1/privacy/rights-requests/{}",
+            hr["id"].as_str().unwrap()
+        ),
+        Some(&scoped_token),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{receipt}");
+    assert_eq!(receipt["request"], hr);
     // A token minted before revocation must not retain inbox visibility or counts.
     sqlx::query(
         "UPDATE access_grants SET status='REVOKED',revoked_at=now(),revoked_by=$2 WHERE id=$1",
@@ -207,13 +247,10 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
     let (_, refused) = send(&service, "GET", path, Some(&bearer), None).await;
     assert_eq!(refused["items"], json!([]), "{refused}");
     assert_eq!(refused["counts"]["turn"]["total"], 0);
+    let (status, _) = send(&service, "GET", &receipt_path, Some(&bearer), None).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
     let foreign = OrgId::new();
-    let outsider = console_platform_test_support::seed_org_and_super_admin(
-        &pool,
-        *foreign.as_uuid(),
-        "rights-other",
-    )
-    .await;
+    let outsider = seed_org_and_super_admin(&pool, *foreign.as_uuid(), "rights-other").await;
     let bearer = token(&pool, &keys, *foreign.as_uuid(), outsider, "SUPER_ADMIN").await;
     let (_, page) = send(&service, "GET", path, Some(&bearer), None).await;
     assert!(
@@ -224,13 +261,29 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
             .any(|row| row["kind"] == "privacy_request"),
         "{page}"
     );
+    let (status, _) = send(&service, "GET", &receipt_path, Some(&bearer), None).await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "foreign tenant receipt must stay hidden"
+    );
     let non_handler = seed_user(&pool, *org.as_uuid(), "MEMBER").await;
     let bearer = token(&pool, &keys, *org.as_uuid(), non_handler, "MEMBER").await;
     sqlx::query("REVOKE SELECT ON privacy_rights_requests FROM console_rt")
         .execute(&pool)
         .await
         .unwrap();
+    let (status, _) = send(&service, "GET", &receipt_path, Some(&bearer), None).await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "non-handler must not read the store"
+    );
     let (_, page) = send(&service, "GET", path, Some(&bearer), None).await;
+    assert!(
+        !page["has_work"].as_bool().unwrap(),
+        "non-handler must not receive work affordances: {page}"
+    );
     assert_eq!(
         page["unavailable"],
         json!([]),

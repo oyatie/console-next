@@ -11617,6 +11617,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/rights-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a tenant receipt under the live privacy_request_intake_read Cedar scope */
+        get: operations["readPrivacyRightsIntake"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/production/capacity-slots": {
         parameters: {
             query?: never;
@@ -15054,6 +15071,7 @@ export interface components {
             context?: {
                 /** @description Optional physical work site, separate from the statutory placement path. */
                 worksite_name?: string;
+                privacy_kinds?: string[];
                 /** @description Exact visible total for this review kind under the same reach and snapshot; omitted for bounded counts. */
                 review_count?: number;
                 register?: {
@@ -55195,6 +55213,36 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    readPrivacyRightsIntake: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant receipt and requester name. Account-data requests are never returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        request: components["schemas"]["PrivacyRightsReceipt"];
+                        subject_name: string;
+                        /** Format: date */
+                        as_of: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             503: components["responses"]["ServiceUnavailable"];
         };
     };

@@ -23,4 +23,4 @@ export type PrivacyFiling = Omit<import("../schema").operations["filePrivacyRigh
 export type PrivacyFilingOptions = import("../schema").operations["privacyRightsRequestOptions"]["responses"][200]["content"]["application/json"];
 
 export type PrivacyPaths = Pick<import("../schema").paths,
-  "/api/v1/privacy/rights-requests/mine" | "/api/v1/privacy/rights-requests" | "/api/v1/privacy/rights-requests/options">;
+  "/api/v1/privacy/rights-requests/mine" | "/api/v1/privacy/rights-requests" | "/api/v1/privacy/rights-requests/options" | "/api/v1/privacy/rights-requests/{id}">;

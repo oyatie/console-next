@@ -29,7 +29,7 @@ async fn privacy_intake_reuses_hr_edit_scope_for_point_list_and_count(pool: PgPo
             .authorize_privacy_request_read(Uuid::new_v4())
             .unwrap()
     );
-    assert!(facts.authorize_privacy_request(actor, false).unwrap());
+    assert!(!facts.authorize_privacy_request(actor, false).unwrap());
     assert!(!facts.authorize_privacy_request(actor, true).unwrap());
     assert!(
         !facts

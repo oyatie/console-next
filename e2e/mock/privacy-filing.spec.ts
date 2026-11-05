@@ -9,7 +9,7 @@ import { user } from "./fixtures";
 
 const options = {
   subject_user_id: user.id, as_of: "2026-11-05",
-  controllers: [{ code: "OPERATOR" }],
+  controllers: [{ code: "TENANT" }],
   kinds: [
     { code: "ACCESS", due_on: "2026-11-22", without_delay: false },
     { code: "WITHDRAWAL", due_on: null, without_delay: true },
@@ -17,7 +17,7 @@ const options = {
   detail_max_length: 2000, reply_email_masked: "j***@example.test",
 };
 const receipt = { id: "request-1", receipt_no: "RR-2026-002", detail: "로그인 기록", status: "RECEIVED",
-  receipt: { controller: "OPERATOR", received_on: "2026-11-05", identity_at: "2026-11-05T01:00:00Z" },
+  receipt: { controller: "TENANT", received_on: "2026-11-05", identity_at: "2026-11-05T01:00:00Z" },
   kinds: { ACCESS: { due: { on: "2026-11-22", without_delay: false, rule: null }, decisions: [] } } };
 
 async function filing(page: Page, config = options) {
@@ -40,8 +40,8 @@ async function filing(page: Page, config = options) {
   return { ...fixture, writes };
 }
 async function fill(page: Page) {
-  await expect(page.getByRole("radio", { name: /내 계정 정보/ })).toBeVisible();
-  await chooseRadio(page.getByRole("main"), /내 계정 정보/);
+  await expect(page.getByRole("radio", { name: /내 인사 정보/ })).toBeVisible();
+  await chooseRadio(page.getByRole("main"), /내 인사 정보/);
   await page.getByRole("checkbox", { name: /열람/ }).press("Space");
   await page.getByRole("textbox", { name: /내용/ }).fill("로그인 기록");
 }
@@ -49,7 +49,7 @@ async function fill(page: Page) {
 for (const width of [390, 1440]) test(`filing uses registered choices and deadlines at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await filing(page);
-  await expect(page.getByRole("radio", { name: /내 인사 정보/ })).toHaveCount(0);
+  await expect(page.getByRole("radio", { name: /내 계정 정보/ })).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: /자동화|전송/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "요구 접수", exact: true })).toBeDisabled();
   await fill(page);
@@ -78,7 +78,7 @@ test("passkey cancellation and reload keep the draft; submit binds the exact pay
   await page.reload();
   await expect(page.getByRole("textbox", { name: /내용/ })).toHaveValue("로그인 기록");
   await expect(page.getByRole("checkbox", { name: /열람/ })).toBeChecked();
-  await expect(page.getByRole("radio", { name: /내 계정 정보/ })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /내 인사 정보/ })).toBeChecked();
   await page.evaluate(() => sessionStorage.removeItem("cancel-passkey"));
   await page.getByRole("button", { name: "요구 접수", exact: true }).click();
   const panel = page.locator("[data-side-panel]");
@@ -87,9 +87,9 @@ test("passkey cancellation and reload keep the draft; submit binds the exact pay
   expect(fixture.writes).toHaveLength(1);
   const { body, key } = fixture.writes[0]!;
   expect(key).toBeTruthy();
-  expect(body).toMatchObject({ controller: "OPERATOR", kinds: ["ACCESS"], detail: "로그인 기록",
+  expect(body).toMatchObject({ controller: "TENANT", kinds: ["ACCESS"], detail: "로그인 기록",
     step_up: { binding: { action_kind: "PRIVACY_REQUEST", object_id: user.id, reason_key: "passkey_step_up_privacy_request",
-      payload_hash: createHash("sha256").update(JSON.stringify({ controller: "OPERATOR", kinds: ["ACCESS"], detail: "로그인 기록" })).digest("hex") },
+      payload_hash: createHash("sha256").update(JSON.stringify({ controller: "TENANT", kinds: ["ACCESS"], detail: "로그인 기록" })).digest("hex") },
       assertion: { ceremony_id: "privacy-ceremony", credential: { id: "credential" } } } });
   await page.reload();
   await expect(page.getByRole("textbox", { name: /내용/ })).toHaveValue("");
@@ -119,7 +119,20 @@ for (const code of ["passkey_step_up_failed", "no_employee_record", "request_kin
 test("code-only options use the English catalog after a language change", async ({ page }) => {
   await filing(page);
   await page.getByRole("combobox", { name: "언어", exact: true }).selectOption("en");
-  await expect(page.getByRole("radio", { name: /My account information/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /My HR information/ })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Access · View your recorded information", exact: true })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Consent withdrawal · Withdraw consent to information processing", exact: true })).toBeVisible();
+});
+
+for (const width of [390, 1440]) test(`unlinked account has no filing controls at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await filing(page, { ...options, controllers: [] });
+  await expect(page.getByText("현재 이 계정에서 접수할 수 있는 권리 요구가 없습니다", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "요구 접수", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("radio")).toHaveCount(0);
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+    await fits(page, `unlinked filing ${theme}`);
+    await expectAxe(page, `unlinked filing ${theme}`);
+  }
 });

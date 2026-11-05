@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Session identity suffices to file; HR data requires the actor's linked employee.
+//! HR filing requires the actor's linked employee; account filing awaits operator intake.
 use super::super::action_schema::{ActionSchema, FactType, RequiredFact};
 use super::super::facts::second_person::ACTOR_IS_REQUESTER;
 use crate::Feature;
 
+// shortcut: account filing is disabled, enable it with a Cedar-governed operator intake.
 pub const SCHEMA: ActionSchema = ActionSchema {
     denial_codes: &[],
     feature: Feature::PrivacyRequestFile,
@@ -22,7 +23,7 @@ pub const SCHEMA: ActionSchema = ActionSchema {
     policies: r#"permit(principal, action == Action::"privacy_request_file", resource)
 when {
   principal.org == resource.org && context.actor_is_requester &&
-  (!context.is_hr || context.has_employee)
+  context.is_hr && context.has_employee
 };"#,
 };
 

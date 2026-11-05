@@ -20,15 +20,6 @@ const EXTERNAL_SCHEMAS: &[&str] = &["MobilePasskeyStepUpEnvelope", "Timestamp", 
 
 const PATHS: &[PathItem] = &[
     PathItem {
-        path: "/api/v1/privacy/rights-requests/options",
-        operations: &[Operation {
-            method: "get",
-            body: include_str!(
-                "../openapi/paths/api__v1__privacy__rights-requests__options.get.yaml"
-            ),
-        }],
-    },
-    PathItem {
         path: "/api/v1/audit-streams/ceo-covert/access-events",
         operations: &[Operation {
             method: "get",
@@ -221,6 +212,22 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__privacy__rights-requests__mine.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/options",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__privacy__rights-requests__options.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__privacy__rights-requests__id.get.yaml"),
         }],
     },
     PathItem {

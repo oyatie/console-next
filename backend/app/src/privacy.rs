@@ -17,10 +17,13 @@ use console_platform_authz::cedar_pbac::visible::load_facts;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+mod intake;
+
+pub const INTAKE: &str = "/api/v1/privacy/rights-requests/{id}";
 pub const PATH: &str = "/api/v1/privacy/rights-requests";
 pub const MINE: &str = "/api/v1/privacy/rights-requests/mine";
 pub const OPTIONS: &str = "/api/v1/privacy/rights-requests/options";
-pub const ROUTE_PATHS: &[&str] = &[PATH, MINE, OPTIONS];
+pub const ROUTE_PATHS: &[&str] = &[PATH, MINE, OPTIONS, INTAKE];
 
 #[derive(Clone)]
 struct PrivacyState {
@@ -42,6 +45,7 @@ pub(crate) fn router(
             .route(MINE, get(mine))
             .route(OPTIONS, get(options))
             .route(PATH, post(file))
+            .route(INTAKE, get(intake::read))
             .with_state(state),
         jwt_verifier,
         pool,
@@ -164,8 +168,12 @@ async fn file(
     {
         return Err(ApiError::new(
             StatusCode::UNPROCESSABLE_ENTITY,
-            "no_employee_record",
-            "no linked employee record",
+            if hr {
+                "no_employee_record"
+            } else {
+                "request_controller_unavailable"
+            },
+            "privacy request filing unavailable",
         ));
     }
     let register = state
