@@ -45,7 +45,9 @@ pub async fn file(
     if input.kinds.iter().any(|kind| !Kind::FILING.contains(kind)) {
         return Err(refuse("request_kind_unavailable"));
     }
-    let now = OffsetDateTime::now_utc();
+    let now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+        .fetch_one(tx.as_mut())
+        .await?;
     let today = now
         .to_offset(
             UtcOffset::from_hms(9, 0, 0)

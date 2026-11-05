@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 use console_kernel_core::UserId;
+mod clock;
 
 pub async fn hr_handler(pool: &PgPool, org: OrgId, subject: UserId) -> (UserId, Uuid) {
     let handler = seed_user(pool, *org.as_uuid(), "MEMBER").await;

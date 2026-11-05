@@ -12,8 +12,7 @@ use settings_support::*;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isolation(pool: PgPool) {
+async fn assert_intake(pool: PgPool) {
     let org = OrgId::new();
     let subject = seed_org_and_super_admin(&pool, *org.as_uuid(), "rights-intake").await;
     let (handler, grant) = rights_intake_support::hr_handler(&pool, org, subject).await;
@@ -50,7 +49,7 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
     assert_eq!(
         rows.len(),
         1,
-        "a filed request must reach a handler: {page}"
+        "a filed request must reach a handler: {page}; filed: {first}, {second}"
     );
     assert_eq!(rows[0]["kind"], "privacy_request");
     let name = "Admin rights-intake";
@@ -100,7 +99,7 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
     let mut actual = vec![rows[0]["ref"].clone(), next_page["items"][0]["ref"].clone()];
     let mut cursor = next_page["next_cursor"].as_str().map(str::to_owned);
     while let Some(next) = cursor {
-        let (_, page) = send(
+        let (status, page) = send(
             &service,
             "GET",
             &format!("{path}&cursor={next}"),
@@ -108,6 +107,8 @@ async fn privacy_intake_reaches_live_handlers_with_clock_paging_and_tenant_isola
             None,
         )
         .await;
+        assert_eq!(status, StatusCode::OK, "{page}");
+        assert_eq!(page["unavailable"], json!([]), "{page}");
         actual.extend(
             page["items"]
                 .as_array()
