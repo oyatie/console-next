@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
@@ -24,6 +24,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await page.screenshot({ path: info.outputPath("filings.png"), fullPage: true });
       const grid = page.getByRole("table", { name: t("statutory.insurance"), exact: true });
       await expect(grid).toHaveCSS("--table-cards", width === 390 ? "1" : "0");
+      if (width === 390) {
+        const region = page.getByRole("region", { name: t("statutory.insurance"), exact: true });
+        expect(await region.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(0);
+      }
       const row = grid.getByRole("row").filter({ hasText: filingTask.name });
       await expect(row.getByRole("link", { name: new RegExp(filingTask.name) })).toHaveAttribute("href", `/people/${id(100)}`);
       for (const value of [filingTask.employee_number!, filingTask.workplace_name!, t("statutory.NPS"), t("statutory.ACQUIRE"), fmtDate(filingTask.effective_date), t("statutory.days", { days: 3 })]) {
@@ -73,7 +77,6 @@ test("filing search keeps the server filter and clears it on reset @ui-state", a
     await expect(page.getByRole("heading", { name: t("statutory.empty"), exact: true })).toBeVisible();
     expect(queries.some(query => query.get("search") === "없는 직원")).toBe(true);
     await search.fill("");
-    await search.press("Enter");
     await expect(page.getByRole("table", { name: t("statutory.insurance"), exact: true })).toContainText(filingTask.name);
     await page.goto("/_gallery");
     const gallery = page.locator("#gallery-filings");
@@ -81,6 +84,95 @@ test("filing search keeps the server filter and clears it on reset @ui-state", a
     await expect(gallery.getByRole("table", { name: t("statutory.insurance"), exact: true })).toBeVisible();
     await gallery.getByRole("button", { name: t("statutory.record"), exact: true }).click();
     await expect(gallery.getByRole("status")).toHaveText(t("statutory.record"));
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+test("translated filing labels fit their phone card cell at 390px @ui-state", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await page.addInitScript(() => localStorage.setItem("console.locale", "en"));
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await mockFilings(page, { ...filingTask, insurer: "EI" });
+  try {
+    await loadCatalog("en");
+    i18n.set("en");
+    await page.goto("/statutory");
+    const grid = page.getByRole("table", { name: t("statutory.insurance"), exact: true });
+    await expect(grid).toContainText(filingTask.name, { timeout: 20_000 });
+    await expect(grid).toHaveCSS("--table-cards", "1");
+    const filing = grid.getByRole("cell", { name: `${t("statutory.EI")} · ${t("statutory.ACQUIRE")}` });
+    expect(await filing.evaluate(element => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return range.getBoundingClientRect().right - element.getBoundingClientRect().right;
+    })).toBeLessThanOrEqual(1);
+    await fits(page, "translated filing labels");
+    await expectAxe(page, "translated filing labels");
+    await page.screenshot({ path: info.outputPath("filings-translated.png"), fullPage: true });
+    expect(fixture.unexpected).toEqual([]);
+  } finally { i18n.set("ko"); await page.close(); fixture.release(); }
+});
+
+for (const width of [768, 600]) test(`filing words and actions stay whole at ${width}px @ui-state`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  const task = { ...filingTask, insurer: "EI", lifecycle_case_id: id(8300), workplace_name: "서울 본사 인사 지원 사업장" };
+  await mockFilings(page, task);
+  try {
+    await page.goto("/statutory");
+    const grid = page.getByRole("table", { name: t("statutory.insurance"), exact: true });
+    await expect(grid).toContainText(task.name, { timeout: 20_000 });
+    await page.evaluate(async () => { await document.fonts.ready; });
+    await page.screenshot({ path: info.outputPath("filing-width.png"), fullPage: true });
+    await fits(page, `filing words ${width}`);
+    await expect(grid).toHaveCSS("--table-cards", "0");
+    const row = grid.getByRole("row").filter({ hasText: task.name });
+    const event = row.getByRole("cell", { name: `${t("statutory.EI")} · ${t("statutory.ACQUIRE")}`, exact: true });
+    for (const control of [event, ...await row.getByRole("button").all(), ...await row.getByRole("link", { name: t("lifecycle.trail.openCase"), exact: true }).all()]) {
+      expect(await control.evaluate(element => {
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        const range = document.createRange();
+        const lines = new Set<number>();
+        while (walker.nextNode()) {
+          if (!walker.currentNode.textContent?.trim()) continue;
+          range.selectNodeContents(walker.currentNode);
+          for (const rect of range.getClientRects()) if (rect.width) lines.add(Math.round(rect.top));
+        }
+        return lines.size;
+      }), "filing event and action text stays on one line").toBe(1);
+    }
+    expect(await row.locator("td").evaluateAll(cells => cells.flatMap(cell => {
+      const style = getComputedStyle(cell);
+      const available = cell.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const canvas = document.createElement("canvas").getContext("2d")!;
+      const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+      const broken: string[] = [];
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        if (!range.getBoundingClientRect().width) continue;
+        const font = getComputedStyle(node.parentElement!);
+        canvas.font = `${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
+        for (const word of node.textContent!.trim().split(/[\s-]+/)) {
+          if (canvas.measureText(word).width > available + 1) broken.push(word);
+        }
+      }
+      return broken;
+    })), "each cell fits its longest word").toEqual([]);
+    const workplace = row.getByRole("cell", { name: task.workplace_name, exact: true });
+    expect(await workplace.evaluate(element => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return new Set(Array.from(range.getClientRects(), rect => Math.round(rect.top))).size;
+    }), "long cell text wraps between words").toBeGreaterThan(1);
+    const region = page.getByRole("region", { name: t("statutory.insurance"), exact: true });
+    await expect(region).toHaveAttribute("tabindex", "0");
+    expect(await region.evaluate(element => element.scrollWidth - element.clientWidth)).toBeGreaterThan(0);
+    await region.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+    await expectAxe(page, `filing words ${width}`);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
