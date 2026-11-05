@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { loadCatalog, t } from "@console/i18n";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 export async function filingRow(page: Page, insurer: string, kind: string, employee: string) {
-  const search = page.getByRole("searchbox", { name: "이름·사번 검색", exact: true });
+  await loadCatalog("ko");
+  const search = page.getByRole("searchbox", { name: t("statutory.search"), exact: true });
   if (await search.inputValue() !== employee) {
     const filtered = page.waitForResponse(response => {
       const url = new URL(response.url());
@@ -12,7 +14,7 @@ export async function filingRow(page: Page, insurer: string, kind: string, emplo
     await search.press("Enter");
     await filtered;
   }
-  const grid = page.getByRole("grid", { name: "4대보험 신고", exact: true });
+  const grid = page.getByRole("grid", { name: t("statutory.insurance"), exact: true });
   const row = grid.getByRole("row").filter({ has: page.getByRole("gridcell", { name: `${insurer} · ${kind}`, exact: true }) });
   // Employee search can still leave several filings; no insurer/kind filter is exposed.
   if (!await row.count()) {
