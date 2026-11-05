@@ -18,7 +18,14 @@ The local patches are:
 - `umya-spreadsheet-3.0.0-quickxml41`: published `umya-spreadsheet 3.0.0` with its `quick-xml` dependency raised to `0.41.0`.
 - `quick-xml-0.41.0-compat`: published `quick-xml 0.41.0` plus a small `BytesText::unescape` compatibility shim for `umya-spreadsheet`'s pre-0.41 API usage.
 
-Remove these patches once upstream crates.io releases allow the workspace to resolve `quick-xml >=0.41.0` without local shims.
+Remove these patches once upstream crates.io releases allow the workspace to resolve `quick-xml >=0.41.0` without local shims and preserve the security fixes below.
+
+## Shared-string allocation
+
+The calamine patch ignores the untrusted XLSX shared-string `uniqueCount` hint
+instead of reserving memory from it. Allocation follows the strings actually
+read. The workspace workbook-reader tests cover ordinary and oversized hints
+through the HR import reader; preserve this behavior when updating the vendor.
 
 ## zip dual-header security fix
 

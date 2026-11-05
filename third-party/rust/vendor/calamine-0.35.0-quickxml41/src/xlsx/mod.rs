@@ -3446,6 +3446,15 @@ mod tests {
 
     #[test]
     fn test_read_shared_strings_ignores_oversized_count_hint() {
+        assert_read_shared_strings("18446744073709551615");
+    }
+
+    #[test]
+    fn test_read_shared_strings_with_namespaced_si_name() {
+        assert_read_shared_strings("3");
+    }
+
+    fn assert_read_shared_strings(unique_count: &str) {
         let shared_strings_data = br#"<?xml version="1.0" encoding="utf-8"?>
 <x:sst count="1187" uniqueCount="18446744073709551615" xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
     <x:si>
@@ -3465,6 +3474,9 @@ mod tests {
         </x:r>
     </x:si>
 </x:sst>"#;
+        let shared_strings_data = std::str::from_utf8(shared_strings_data)
+            .unwrap()
+            .replace("18446744073709551615", unique_count);
 
         let mut buf = [0; 1000];
         let mut zip_writer = ZipWriter::new(std::io::Cursor::new(&mut buf[..]));
@@ -3473,7 +3485,7 @@ mod tests {
         zip_writer
             .start_file("xl/sharedStrings.xml", options)
             .unwrap();
-        zip_writer.write_all(shared_strings_data).unwrap();
+        zip_writer.write_all(shared_strings_data.as_bytes()).unwrap();
         let zip_size = zip_writer.finish().unwrap().position() as usize;
 
         let zip = ZipArchive::new(std::io::Cursor::new(&buf[..zip_size])).unwrap();

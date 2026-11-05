@@ -91,6 +91,21 @@ fn cells_arrive_typed_in_row_then_column_order() {
 }
 
 #[test]
+fn shared_strings_ignore_oversized_count_hints() {
+    let original = xlsx(&[("명부", &[(0, 0, "성명"), (1, 0, "김가나")])]);
+    // Two synthetic shared strings, with uniqueCount="18446744073709551615".
+    let oversized = include_bytes!("fixtures/shared-string-count.xlsx");
+    let caps = default_caps().unwrap();
+    for book in [original.as_slice(), oversized.as_slice()] {
+        let sheets = read_workbook(book, &caps).unwrap();
+        assert_eq!(sheets.len(), 1);
+        assert_eq!(sheets[0].rows.len(), 2);
+        assert_eq!(sheets[0].rows[0].text(0), "성명");
+        assert_eq!(sheets[0].rows[1].text(0), "김가나");
+    }
+}
+
+#[test]
 fn inconsistent_zip_local_filenames_are_refused() {
     let original = xlsx(&[("명부", &[(0, 0, "성명"), (1, 0, "김가나")])]);
     let caps = default_caps().unwrap();
