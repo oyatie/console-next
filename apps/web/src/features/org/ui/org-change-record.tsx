@@ -135,6 +135,7 @@ function Record({ d, refetch }: { d: Detail; refetch: () => Promise<{ data?: Det
           {place && <Link to="/org" search={place}>{t("orgChange.openUnit")}</Link>}
           <TimelineLanes
             items={[...d.events].reverse().map((e, i) => ({ key: `${d.events.length - i - 1}`, date: fmtDateTime(e.at), ...eventTitle(e) }))}
+            empty={t("orgChange.history.empty")}
           />
         </aside>
       </div>

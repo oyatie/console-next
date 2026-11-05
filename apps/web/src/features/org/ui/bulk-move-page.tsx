@@ -1,6 +1,6 @@
 import { ENTITY_PHASE, labeled } from "../../../lib/labels";
 import { useState } from "react";
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Lock, Network, Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
@@ -8,9 +8,11 @@ import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { queryView } from "../../../lib/react/query-view";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { Composer } from "../../../ui/composer/composer";
 import { Dialog } from "../../../ui/dialog";
+import { EmptyState } from "../../../ui/empty-state";
 import { applySetup, STRUCTURE_READS } from "../../../reference/org/api";
 import { bulkPlan, type Resolution } from "../domain/bulk-move";
 import { collapse, descendants, targetsFor, unitIdOf, type Node } from "../../../reference/org/domain/structure";
@@ -168,7 +170,8 @@ function AddMore({ entity, chosen, canDraft, show }: { entity: Node; chosen: str
 function Unmovable({ mixed }: { mixed: boolean }) {
   return (
     <div className="page">
-      <p className="alert" role="alert">{t(mixed ? "bulkMove.mixedEntities" : "bulkMove.nothing")}</p>
+      <EmptyState alert={mixed} title={t(mixed ? "bulkMove.mixedEntities" : "bulkMove.nothing")} reason={null}
+        actions={<Link to="/org" search={{}} className={buttonClass("primary")}>{t("orgChange.list.empty.action")}</Link>} />
     </div>
   );
 }
