@@ -25,7 +25,6 @@ struct Change {
     kind: String,
     waiting_role: Option<String>,
     created_at: OffsetDateTime,
-    reason: String,
     drafted_by_name: Option<String>,
     command_id: Option<Uuid>,
 }
@@ -33,7 +32,7 @@ struct Change {
 // Keep membership identical for the exact count and keyset page.
 macro_rules! eligible {
     () => {
-        "WITH classified AS (SELECT r.id, r.code, r.target_label, r.effective_date, r.created_at, r.reason, \
+        "WITH classified AS (SELECT r.id, r.code, r.target_label, r.effective_date, r.created_at, \
          ((r.effective_date + 1)::timestamp AT TIME ZONE 'Asia/Seoul') - interval '1 microsecond' AS inbox_due, \
          (SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = r.org_id AND u.id = r.drafted_by) AS drafted_by_name, \
          (SELECT e.command_id FROM audit_events e WHERE e.org_id = r.org_id \
@@ -159,7 +158,7 @@ pub(crate) async fn page(
             .into_iter()
             .take(query.limit)
             .map(|row| ActionInboxSourceItem {
-                context: Some(serde_json::json!({"command": match row.kind.as_str() { "org_change_approve" => Some("approve"), "org_change_apply" => Some("effectuate"), _ => None }, "reason": row.reason, "drafter": row.drafted_by_name.unwrap_or_default(), "command_id": row.command_id })),
+                context: Some(serde_json::json!({"command": match row.kind.as_str() { "org_change_approve" => Some("approve"), "org_change_apply" => Some("effectuate"), _ => None }, "drafter": row.drafted_by_name.unwrap_or_default(), "command_id": row.command_id })),
                 id: format!("org_change:{}", row.id),
                 kind: row.kind,
                 ref_code: row.code,

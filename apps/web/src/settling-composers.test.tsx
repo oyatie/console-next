@@ -19,7 +19,7 @@ vi.mock("react", async original => ({ ...await original<typeof import("react")>(
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { delete: { allowed: state.erase } } }) }));
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ ids: "dept" }) }), useNavigate: () => vi.fn() }));
 vi.mock("./lib/react/command", () => ({ useCommand: () => ({ isPending: state.pending, mutate: () => { state.pending = true; } }) }));
-vi.mock("./reference/org/ui/use-structure", () => ({ useStructure: () => ({ setup: true, tenant: "Company", places: state.places, q: { status: "success", fetchStatus: "idle", data: {} } }) }));
+vi.mock("./reference/org/ui/use-structure", () => ({ useStructure: () => ({ setup: true, tenant: "Company", places: state.places, units: { data: { draftableIds: [...state.places.keys()] } }, q: { status: "success", fetchStatus: "idle", data: {} } }) }));
 vi.mock("./reference/entity/ui/use-ei-unit", () => ({ useEiUnit: () => ({}) }));
 vi.mock("./features/org/ui/use-govern", () => ({ useGovern: () => ({ g: { date: "2026-11-04" }, missing: [] }), useGovernSubmit: () => ({ isPending: false }) }));
 vi.mock("./features/org/domain/bulk-move", () => ({ bulkPlan: () => ({ totals: { units: 1, members: 0, siteChanged: 0 }, items: { moves: 1, renames: 0 }, setupOps: () => [], unresolved: 0 }) }));

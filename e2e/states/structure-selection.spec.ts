@@ -10,7 +10,6 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { box, findBox, revealUnit } from "../structure-flows";
 import { screens } from "./registry";
-import { expectAxe, fits } from "../a11y";
 
 test.beforeAll(() => loadCatalog("ko"));
 
