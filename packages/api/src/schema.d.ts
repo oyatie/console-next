@@ -15595,7 +15595,10 @@ export interface components {
             id: components["schemas"]["Uuid"];
             reason: string;
             actor: components["schemas"]["Uuid"];
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description RFC 3339 UTC timestamp with Z suffix
+             */
             created_at: string;
         };
         AttendanceCloseAmendmentRequest: {
@@ -16041,10 +16044,16 @@ export interface components {
             branch_scope: string;
             checks: components["schemas"]["AttendanceCloseCheck"][];
             attested_by: components["schemas"]["Uuid"];
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description RFC 3339 UTC timestamp with Z suffix
+             */
             attested_at: string;
             period_lock_id?: components["schemas"]["Uuid"];
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description RFC 3339 UTC timestamp with Z suffix
+             */
             closed_at: string;
             amendments: components["schemas"]["AttendanceCloseAmendment"][];
         };
