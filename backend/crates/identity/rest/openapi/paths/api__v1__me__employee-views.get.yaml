@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: listEmployeeViews
+summary: List the caller's saved roster views
+description: Cedar permits only the active caller's own views within the tenant. Ordered by name then id.
+security: [{bearerAuth: []}]
+responses:
+  '200':
+    description: Saved views, or an empty list.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: {$ref: '#/components/schemas/EmployeeView'}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403':
+    description: The caller's personal saved-view collection was refused. Clients hide this optional control and do not retry automatically.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ErrorBody'}

@@ -44,7 +44,7 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
-test.each([404, 405, 503])("saved views stay hidden until served and report status %s only when actionable", async status => {
+test.each([200, 403, 404, 405, 503])("saved views reserve a disabled slot until status %s allows opening", async status => {
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   const writes: string[] = [];
@@ -53,25 +53,39 @@ test.each([404, 405, 503])("saved views stay hidden until served and report stat
   await page.route("**/api/v1/me/employee-views", async route => {
     if (route.request().method() !== "GET") writes.push(route.request().method());
     await held;
-    await route.fulfill(available ? { json: { items: [] } } : { status, json: { error: { code: "service_unavailable", message: "" } } });
+    await route.fulfill(available || status === 200 ? { json: { items: [] } } : { status, json: { error: { code: "service_unavailable", message: "" } } });
   });
-  const response = page.waitForResponse("**/api/v1/me/employee-views");
-  const requested = page.waitForRequest("**/api/v1/me/employee-views");
-  await page.goto(`${server.resolvedUrls!.local[0]}saved-views-test`);
-  await requested;
-  const open = page.getByRole("button", { name: t("directoryViews.open"), exact: true });
-  await browserExpect(open).toHaveCount(0);
-  release();
-  expect((await response).status()).toBe(status);
-  await browserExpect(open).toHaveCount(0);
-  const retry = page.getByRole("button", { name: t("common.retry"), exact: true });
-  if (status === 503) {
-    await browserExpect(retry).toBeVisible();
-    available = true;
-    await retry.click();
+  try {
+    const requested = page.waitForRequest("**/api/v1/me/employee-views");
+    await page.goto(`${server.resolvedUrls!.local[0]}saved-views-test`);
+    await requested;
+    const open = page.getByRole("button", { name: t("directoryViews.open"), exact: true });
     await browserExpect(open).toBeVisible();
-    await open.click();
-    await browserExpect(page.getByRole("button", { name: commitLabel({ kind: "directoryView", mode: "save" }), exact: true })).toBeEnabled();
-  } else await browserExpect(retry).toHaveCount(0);
-  expect(writes).toEqual([]);
-});
+    await browserExpect(open).toBeDisabled();
+    const slot = await open.elementHandle();
+    const response = page.waitForResponse("**/api/v1/me/employee-views");
+    release();
+    expect((await response).status()).toBe(status);
+    await browserExpect(open).toHaveCount(1);
+    expect(await slot!.evaluate(el => el.isConnected)).toBe(true);
+    if (status === 200) await browserExpect(open).toBeEnabled();
+    else await browserExpect(open).toBeDisabled();
+    const retry = page.getByRole("button", { name: t("common.retry"), exact: true });
+    if (status === 503) {
+      await browserExpect(retry).toBeVisible();
+      available = true;
+      await retry.click();
+      await browserExpect(open).toBeVisible();
+      await open.click();
+      await browserExpect(page.getByRole("button", { name: commitLabel({ kind: "directoryView", mode: "save" }), exact: true })).toBeEnabled();
+      available = false;
+      const refreshed = page.waitForResponse("**/api/v1/me/employee-views");
+      await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
+      expect((await refreshed).status()).toBe(503);
+      await browserExpect(page.getByRole("dialog", { name: t("directoryViews.open"), exact: true })).toHaveCount(0);
+      await browserExpect(open).toBeDisabled();
+      await browserExpect(retry).toHaveCount(1);
+    } else await browserExpect(retry).toHaveCount(0);
+    expect(writes).toEqual([]);
+  } finally { release(); }
+}, 60_000);

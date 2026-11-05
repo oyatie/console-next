@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: createEmployeeView
+summary: Save a caller-owned roster view
+description: >-
+  Cedar permits only the active caller's own views. Idempotency-Key must equal the view id.
+  An exact retry returns the stored view; another payload with that id returns idempotency_key_reused.
+  Names are trimmed and unique per caller within the tenant. Saving filters grants no directory access.
+security: [{bearerAuth: []}]
+parameters:
+- in: header
+  name: Idempotency-Key
+  required: true
+  schema: {type: string, format: uuid}
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema: {$ref: '#/components/schemas/EmployeeView'}
+responses:
+  '201':
+    description: Stored view.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/EmployeeView'}
+  '200':
+    description: Exact replay of the stored view.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/EmployeeView'}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403':
+    description: employee_view_owner_required when the supplied view id belongs to another account.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ErrorBody'}
+  '409':
+    description: employee_view_name_taken for an existing name; employee_view_limit_reached at the settings-owned per-account cap; idempotency_key_reused for changed content under the same id; command_in_progress while a concurrent request is still executing.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ErrorBody'}
+  '422':
+    description: employee_view_key_mismatch for a missing or different key; validation for blank or oversized text. Unknown fields or incorrect JSON types are rejected.

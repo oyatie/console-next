@@ -10,11 +10,52 @@ import { screens } from "./registry";
 import { contractWindowSettings } from "../mock/directory";
 import { addDays } from "../../apps/web/src/features/people/domain/roster";
 import { todayKst } from "../../apps/web/src/lib/pure/today";
+import { clearShifts, expectStable, recordShifts } from "../stability";
 
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`unserved saved views stay hidden and outages can recover ${width} ${theme} @ui-state`, async ({ page }) => {
+  for (const status of [200, 403]) test(`delayed saved views ${status} keep the toolbar stable ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    await page.addInitScript(recordShifts);
+    const fixture = await mockScreen(page, screens[1], "populated");
+    const held = Promise.withResolvers<void>();
+    const requests: string[] = [];
+    await page.route("**/api/v1/me/employee-views", async route => {
+      requests.push(route.request().method());
+      await held.promise;
+      await route.fulfill(status === 200 ? { json: { items: [] } } : { status, json: failure("forbidden") });
+    });
+    try {
+      const requested = page.waitForRequest("**/api/v1/me/employee-views");
+      await page.goto("/people");
+      await requested;
+      await expect(page.getByRole("grid", { name: t("people.table"), exact: true })).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      const open = page.getByRole("button", { name: t("directoryViews.open"), exact: true });
+      // Capture the surrounding controls before the read, even if its button is missing.
+      const toolbar = page.getByRole("searchbox", { name: t("roster.find"), exact: true });
+      const before = await toolbar.boundingBox();
+      const slot = await open.count() ? await open.elementHandle() : null;
+      await page.evaluate(clearShifts);
+      held.resolve();
+      if (status === 200) await expect(open).toBeEnabled();
+      else await expect(open).toBeDisabled();
+      expect(await toolbar.boundingBox()).toEqual(before);
+      await expectStable(page, `saved views ${status}/${width}/${theme}`);
+      await expect(open).toHaveCount(1);
+      await expect(open).toBeVisible();
+      expect(await slot?.evaluate(el => el.isConnected)).toBe(true);
+      expect(requests).toEqual(["GET"]);
+      await expect(page.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(0);
+      await fits(page, `delayed saved views ${status}/${width}/${theme}`);
+      await expectAxe(page, `delayed saved views ${status}/${width}/${theme}`);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { held.resolve(); await page.close(); fixture.release(); }
+  });
+
+  test(`unserved saved views keep a disabled slot and outages can recover ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[1], "populated");
@@ -23,7 +64,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect((await response).status()).toBe(404);
     const open = page.getByRole("button", { name: t("directoryViews.open"), exact: true });
     await expect(page.getByRole("grid", { name: t("people.table"), exact: true })).toBeVisible();
-    await expect(open).toHaveCount(0);
+    await expect(open).toBeDisabled();
     await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(0);
     expect(fixture.unexpected).toEqual([]);
     await fits(page, `unserved views ${width} ${theme}`);
@@ -31,7 +72,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.route("**/api/v1/me/employee-views", route => route.fulfill({ status: 503, json: failure("service_unavailable") }));
     await page.reload();
     await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1, { timeout: 10_000 });
-    await expect(open).toHaveCount(0);
+    await expect(open).toBeDisabled();
     await fits(page, `saved views outage ${width} ${theme}`);
     await expectAxe(page, `saved views outage ${width} ${theme}`);
     await page.route("**/api/v1/me/employee-views", route => route.fulfill({ json: { items: [] } }));

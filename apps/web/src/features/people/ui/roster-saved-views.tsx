@@ -15,11 +15,10 @@ import { EmptyState } from "../../../ui/empty-state";
 export function RosterSavedViews({ filters, onApply }: { filters: EmployeeViewFilters; onApply: (filters: EmployeeViewFilters) => void }) {
   const [open, setOpen] = useState(false);
   const list = useQuery(employeeViewsQuery);
-  if (list.isPending || list.data === null) return null;
-  if (list.isError) return <QueryState q={list} inline>{() => null}</QueryState>;
   return <>
-    <Button onClick={() => setOpen(true)}>{t("directoryViews.open")}</Button>
-    {open && <SavedViews list={list} filters={filters} onApply={value => { onApply(value); setOpen(false); }} onClose={() => setOpen(false)} />}
+    <Button disabled={!list.data || list.isError} onClick={() => setOpen(true)}>{t("directoryViews.open")}</Button>
+    {list.isError && <QueryState q={list} inline>{() => null}</QueryState>}
+    {open && list.data && !list.isError && <SavedViews list={list} filters={filters} onApply={value => { onApply(value); setOpen(false); }} onClose={() => setOpen(false)} />}
   </>;
 }
 

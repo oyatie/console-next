@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [id, name, filters]
+properties:
+  id: {type: string, format: uuid}
+  name: {type: string, minLength: 1, maxLength: 200}
+  filters:
+    type: object
+    additionalProperties: false
+    description: Optional roster URL values, preserved verbatim. Each present value must contain non-whitespace text.
+    properties:
+      status: {type: string, minLength: 1, maxLength: 200}
+      review: {type: string, minLength: 1, maxLength: 200}
+      unit: {type: string, minLength: 1, maxLength: 200}
+      sort: {type: string, minLength: 1, maxLength: 200}

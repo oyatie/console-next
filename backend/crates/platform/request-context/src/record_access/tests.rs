@@ -130,6 +130,23 @@ async fn account_feature_scope_is_independent_of_other_grants(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn employee_view_reach_uses_the_stored_owner(pool: PgPool) {
+    let f = Fixture::new(pool).await;
+    let other_user = f.member(None).await;
+    let view = Uuid::new_v4();
+    sqlx::query("INSERT INTO employee_views(org_id,user_id,id,name,filters) VALUES($1,$2,$3,'owner view','{}')")
+        .bind(f.org.as_uuid()).bind(f.actor.as_uuid()).bind(view).execute(&f.owner).await.unwrap(); // rls-arming: owner fixture
+    let mut owner = person_principal(Role::Member);
+    owner.user_id = f.actor;
+    owner.org_id = f.org;
+    owner.access_scope = AccessScope::legacy_org(f.org);
+    let mut other = owner.clone();
+    other.user_id = other_user;
+    assert!(may_read(&f.rt, &owner, "employee_views", &view.to_string(), None).await);
+    assert!(!may_read(&f.rt, &other, "employee_views", &view.to_string(), None).await);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn scoped_registration_reads_use_parent_legal_entity_branches(pool: PgPool) {
     let f = Fixture::new(pool).await;
     let le = Uuid::new_v4();

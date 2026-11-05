@@ -15,6 +15,8 @@ use uuid::Uuid;
 
 #[path = "record_access/access.rs"]
 mod access;
+#[path = "record_access/employee_views.rs"]
+mod employee_views;
 #[path = "record_access/hr.rs"]
 mod hr;
 #[path = "record_access/observed.rs"]
@@ -33,6 +35,9 @@ pub async fn may_read(
     id: &str,
     _branch: Option<Uuid>,
 ) -> bool {
+    if kind == "employee_views" {
+        return employee_views::may_read(pool, principal, id).await;
+    }
     if hr::handles(kind) {
         return hr::may_read(pool, principal, kind, id).await;
     }

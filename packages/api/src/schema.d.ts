@@ -8972,6 +8972,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/employee-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the caller's saved roster views
+         * @description Cedar permits only the active caller's own views within the tenant. Ordered by name then id.
+         */
+        get: operations["listEmployeeViews"];
+        put?: never;
+        /**
+         * Save a caller-owned roster view
+         * @description Cedar permits only the active caller's own views. Idempotency-Key must equal the view id. An exact retry returns the stored view; another payload with that id returns idempotency_key_reused. Names are trimmed and unique per caller within the tenant. Saving filters grants no directory access.
+         */
+        post: operations["createEmployeeView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/inbox-docs": {
         parameters: {
             query?: never;
@@ -20297,6 +20321,18 @@ export interface components {
             source?: "IMPORT" | "FORM" | null;
             /** Format: date-time */
             recorded_at?: string | null;
+        };
+        EmployeeView: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @description Optional roster URL values, preserved verbatim. Each present value must contain non-whitespace text. */
+            filters: {
+                status?: string;
+                review?: string;
+                unit?: string;
+                sort?: string;
+            };
         };
         EmployeeVoidOutcome: {
             employee_id: components["schemas"]["Uuid"];
@@ -48960,6 +48996,99 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
+            };
+        };
+    };
+    listEmployeeViews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved views, or an empty list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["EmployeeView"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The caller's personal saved-view collection was refused. Clients hide this optional control and do not retry automatically. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    createEmployeeView: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeView"];
+            };
+        };
+        responses: {
+            /** @description Exact replay of the stored view. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeView"];
+                };
+            };
+            /** @description Stored view. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeView"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description employee_view_owner_required when the supplied view id belongs to another account. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description employee_view_name_taken for an existing name; employee_view_limit_reached at the settings-owned per-account cap; idempotency_key_reused for changed content under the same id; command_in_progress while a concurrent request is still executing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description employee_view_key_mismatch for a missing or different key; validation for blank or oversized text. Unknown fields or incorrect JSON types are rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

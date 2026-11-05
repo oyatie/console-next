@@ -100,6 +100,7 @@ pub const CONSOLE_LEGACY_KILL_SWITCH_PATH: &str = "/api/v1/console/kill-switch";
 /// Per-(org,user) Oyatie Console workspace layout (UI-M1b). GET returns the
 /// caller's saved layout (empty `{}` default), PUT upserts it. Opaque jsonb.
 pub const ME_WORKSPACE_PATH: &str = "/api/v1/me/workspace";
+pub const ME_EMPLOYEE_VIEWS_PATH: &str = "/api/v1/me/employee-views";
 /// Caller's authorization projection (Identity Console UI-M13 / charter G-a):
 /// org, branch scope, roles-as-principal-attributes, and the legacy-matrix
 /// capability grants the console needs for deny-by-omission rendering. NON-
@@ -140,6 +141,7 @@ pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
     CONSOLE_ROLLOUT_ORG_FLAG_PATH,
     CONSOLE_LEGACY_KILL_SWITCH_PATH,
     ME_WORKSPACE_PATH,
+    ME_EMPLOYEE_VIEWS_PATH,
     ME_AUTHZ_PATH,
     USER_PATH_TEMPLATE,
     USER_DEACTIVATE_PATH_TEMPLATE,
@@ -184,6 +186,10 @@ pub fn router(state: IdentityRestState) -> Router {
             post(update_console_legacy_kill_switch),
         )
         .route(ME_WORKSPACE_PATH, get(get_workspace).put(put_workspace))
+        .route(
+            ME_EMPLOYEE_VIEWS_PATH,
+            get(me::employee_views::list).post(me::employee_views::create),
+        )
         .route(ME_AUTHZ_PATH, get(get_me_authz))
         .route(USERS_PATH, get(list_users).post(create_user))
         .route(DIRECTORY_PEOPLE_PATH, get(list_directory_people))

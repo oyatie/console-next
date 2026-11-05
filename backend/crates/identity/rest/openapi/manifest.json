@@ -249,6 +249,10 @@
     "/api/v1/me/authz": [
       "get"
     ],
+    "/api/v1/me/employee-views": [
+      "get",
+      "post"
+    ],
     "/api/v1/me/workbench": [
       "get"
     ],
@@ -466,6 +470,7 @@
     "DeviceLoginStartResponse",
     "DirectoryPage",
     "DirectoryPerson",
+    "EmployeeView",
     "EnrollHandoffRequest",
     "EnrollHandoffResponse",
     "LogoutRequest",
