@@ -4,7 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { loadCatalog, t } from "@console/i18n";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
-import { checklist, failure, inbox, user } from "./fixtures";
+import { checklist, failure, inbox, screenAccess, user } from "./fixtures";
 import { expectAxe, fits } from "../a11y";
 import { expectStable, recordShifts } from "../stability";
 import { screens } from "../states/registry";
@@ -237,6 +237,14 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) {
     const mock = await mockScreen(page, screens[0], "loading");
     await page.goto(path);
     const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
+    if (path === "/") {
+      await expect(page.locator('[data-read-layout="list"]')).toBeVisible();
+      await expect(queue).toHaveCount(0);
+      mock.release();
+      await expect(queue.locator("[data-id]")).toHaveCount(3);
+      expect(mock.unexpected).toEqual([]);
+      return;
+    }
     await expect(queue.getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
     const body = queue.locator(":scope > div").last();
     const before = (await body.boundingBox())!.y;
@@ -304,9 +312,11 @@ for (const width of [1440, 390]) for (const state of ["loading", "empty", "setup
   });
 }
 
-for (const width of [1440, 390]) test(`Home reserves the receipt above a refused inbox at ${width}px`, async ({ page }, info) => {
+for (const width of [1440, 390]) test(`Home paints the receipt with a refused inbox at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   await mockScreen(page, screens[0], "refused");
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/setup/go-live"), is_ops: true } });
+  let requested = false;
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [{ key: "onboarding.receipt_days", value: 2, default: 2,
@@ -314,19 +324,25 @@ for (const width of [1440, 390]) test(`Home reserves the receipt above a refused
     legal_basis: null, version: "code_default", effective_from: null, scheduled: [], source: { layer: "code_default", scope_entity_id: null }, chain: [],
   }] } });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    requested = true;
     await held;
     return { status: 200, json: { ...checklist, go_live_at: new Date().toISOString() } };
   });
   try {
     await page.goto("/");
     const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
-    await expect(queue.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
-    const before = (await queue.boundingBox())!.y;
+    await expect.poll(() => requested).toBe(true);
+    await expect(page.locator('[data-read-layout="list"]')).toBeVisible();
+    await expect(queue).toHaveCount(0);
     for (const theme of ["light", "dark"]) {
       await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
       await page.screenshot({ path: info.outputPath(`home-receipt-pending-${width}-${theme}.png`), fullPage: true });
     }
     release();
+    await expect(queue.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
+    const before = (await queue.boundingBox())!.y;
+    await expect(page.locator("[data-setup-receipt]")).toBeVisible();
+    await expect(page.getByRole("link", { name: t("setup.receipt.open"), exact: true })).toBeVisible();
     await expect(page.getByText(t("setup.receipt.started.title"), { exact: true })).toBeVisible();
     expect((await queue.boundingBox())!.y).toBe(before);
     for (const theme of ["light", "dark"]) {
@@ -335,5 +351,23 @@ for (const width of [1440, 390]) test(`Home reserves the receipt above a refused
       await expectAxe(page, `Home receipt at ${width}px ${theme}`);
       await page.screenshot({ path: info.outputPath(`home-receipt-${width}-${theme}.png`), fullPage: true });
     }
+    expect((await queue.boundingBox())!.y).toBe(before);
   } finally { release(); }
+});
+
+for (const width of [1440, 390]) test(`Home without a receipt keeps the inbox at its base position at ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 });
+  const mock = await mockScreen(page, screens[0], "populated");
+  await page.goto("/");
+  const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
+  await expect(queue.locator("[data-id]")).toHaveCount(3);
+  await expect(page.locator("[data-setup-receipt], [data-phase-band]")).toHaveCount(0);
+  expect((await queue.boundingBox())!.y).toBe(118);
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await fits(page, `Home without receipt at ${width}px ${theme}`);
+    await expectAxe(page, `Home without receipt at ${width}px ${theme}`);
+    await page.screenshot({ path: info.outputPath(`home-no-receipt-${width}-${theme}.png`), fullPage: true });
+  }
+  expect(mock.unexpected).toEqual([]);
 });

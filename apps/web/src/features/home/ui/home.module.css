@@ -1,7 +1,0 @@
-/* SPDX-License-Identifier: LicenseRef-Proprietary */
-/* The receipt can arrive after the inbox; keep its header line out of the worklist's way. */
-.phase { min-block-size: var(--target); }
-@media (--phone) {
-  .phase { min-block-size: calc(var(--target) + 1lh + var(--space-1)); }
-}
-@media print { .phase { display: none; } }
