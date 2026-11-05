@@ -23,7 +23,10 @@ impl HrService {
         employee: Uuid,
     ) -> Result<CertificatePrecondition, HrError> {
         with_org_conn::<_, _, HrError>(&self.pool, p.org_id, move |tx| Box::pin(async move {
-            let entity = super::access::person(tx, &p, "certificate_issue", employee).await?;
+            super::access::person(tx, &p, "certificate_issue", employee).await?;
+            let entity: Option<Uuid> = sqlx::query_scalar("SELECT ea.legal_entity_id FROM employees e LEFT JOIN employment_resolved_assignments ea ON ea.org_id=e.org_id AND ea.employee_id=e.id WHERE e.org_id=$1 AND e.id=$2")
+                .bind(p.org_id.as_uuid()).bind(employee).fetch_optional(tx.as_mut()).await?
+                .ok_or_else(super::not_found)?;
             let configured = if let Some(entity) = entity {
                 sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM hr_certificate_entity_settings WHERE org_id=$1 AND legal_entity_id=$2)")
                     .bind(p.org_id.as_uuid()).bind(entity).fetch_one(tx.as_mut()).await?

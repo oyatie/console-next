@@ -6,6 +6,53 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn legacy_super_admin_precondition_uses_issue_access_and_resolved_assignment(pool: PgPool) {
+    use console_kernel_core::{BranchScope, UserId};
+    use console_platform_authz::{Principal, Role};
+    use std::collections::BTreeSet;
+    let w = World::new(pool).await;
+    let user = UserId::new();
+    sqlx::query("INSERT INTO users(id,org_id,display_name,roles,is_tenant_ops) VALUES($1,$2,'Former ops',ARRAY['SUPER_ADMIN'],false)")
+        .bind(user.as_uuid()).bind(w.actor.org_id.as_uuid()).execute(&w.owner).await.unwrap();
+    let p = Principal::new(
+        user,
+        w.actor.org_id,
+        BTreeSet::from([Role::SuperAdmin]),
+        BranchScope::All,
+    );
+    assert_eq!(
+        w.hr.certificate_precondition(p.clone(), w.employee)
+            .await
+            .unwrap()
+            .reason_code,
+        Some("certificate_settings_required")
+    );
+    w.configure().await;
+    assert!(
+        w.hr.certificate_precondition(p.clone(), w.employee)
+            .await
+            .unwrap()
+            .settings_configured
+    );
+    assert_eq!(
+        w.hr.certificate_precondition(p.clone(), Uuid::new_v4())
+            .await
+            .unwrap_err()
+            .code,
+        "not_found"
+    );
+    let unconfigured = World::entity(&w.owner, *p.org_id.as_uuid(), "Unconfigured employer").await;
+    w.assign(unconfigured).await;
+    assert_eq!(
+        w.hr.certificate_precondition(p, w.employee)
+            .await
+            .unwrap()
+            .reason_code,
+        Some("certificate_settings_required")
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn scoped_issuer_reads_only_own_precondition_and_can_issue(pool: PgPool) {
     use console_kernel_core::{BranchScope, UserId};
     use console_platform_authz::{

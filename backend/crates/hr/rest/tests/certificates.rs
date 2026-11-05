@@ -97,8 +97,11 @@ async fn precondition_http_returns_only_readiness_and_refuses_an_ungranted_actor
     sqlx::query("INSERT INTO users(id,org_id,display_name,roles) VALUES($1,$2,'Unassigned',ARRAY['MEMBER'])")
         .bind(lower.as_uuid()).bind(org.as_uuid()).execute(&pool).await.unwrap();
     let hr = HrService::new(runtime_role_pool(&pool).await);
-    for (user, status) in [(actor, StatusCode::OK), (lower, StatusCode::FORBIDDEN)] {
-        let p = Principal::new(user, org, BTreeSet::from([Role::Member]), BranchScope::All);
+    for (user, role, status) in [
+        (actor, Role::SuperAdmin, StatusCode::OK),
+        (lower, Role::Member, StatusCode::FORBIDDEN),
+    ] {
+        let p = Principal::new(user, org, BTreeSet::from([role]), BranchScope::All);
         let router = console_hr_rest::certificates::router(hr.clone()).layer(Extension(p));
         let request = Request::builder()
             .uri(format!(

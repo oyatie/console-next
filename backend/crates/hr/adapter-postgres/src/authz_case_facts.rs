@@ -45,10 +45,6 @@ impl HrCaseFacts {
         Ok(facts)
     }
 
-    pub(crate) fn placement(&self, employee: Uuid) -> Option<&EmployeePlacement> {
-        self.people.get(&employee).map(|p| &p.placement)
-    }
-
     pub fn is_own(&self, employee: Uuid) -> bool {
         self.people.get(&employee).is_some_and(|p| p.own)
     }

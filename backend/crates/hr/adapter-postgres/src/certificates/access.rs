@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use crate::{
     HrError,
-    authz::{HrCaseFacts, hr_reach},
+    authz::{hr_may_person, hr_reach},
 };
 use console_platform_authz::{
     Feature, Principal,
-    access::{AccessSlice, NodeKind, NodePath, NodeRef, load_active_access_slice},
+    access::{AccessSlice, NodePath, load_active_access_slice},
     cedar_pbac::actions::certificates,
 };
 use sqlx::{Postgres, Transaction};
@@ -116,30 +116,8 @@ pub(super) async fn person(
     principal: &Principal,
     action: &str,
     id: Uuid,
-) -> Result<Option<Uuid>, HrError> {
-    let facts = console_platform_authz::cedar_pbac::visible::load_facts(
-        tx,
-        principal.org_id,
-        *principal.user_id.as_uuid(),
-    )
-    .await
-    .map_err(HrError::from_kernel)?;
-    let people = HrCaseFacts::load(tx, *principal.user_id.as_uuid(), &[id]).await?;
-    let holds = facts
-        .authorize(
-            feature(action).as_str(),
-            NodeRef {
-                kind: NodeKind::Tenant,
-                id: *principal.org_id.as_uuid(),
-            },
-        )
-        .map_err(|error| {
-            HrError::internal(format!("certificate permission unavailable: {error}"))
-        })?
-        || people.permits(&facts, principal.org_id, id, feature(action))?;
-    decide(principal, action, holds)?;
-    Ok(people
-        .placement(id)
-        .ok_or_else(super::not_found)?
-        .legal_entity_id)
+) -> Result<(), HrError> {
+    capability(principal, action)?;
+    let holds = hr_may_person(tx, principal, feature(action), id).await?;
+    decide(principal, action, holds)
 }
