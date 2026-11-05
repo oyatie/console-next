@@ -168,31 +168,43 @@ for (const path of outageRoutes.filter(singleCardOutage)) {
   });
 }
 
-for (const path of ["/attendance", "/access/roles", "/access/grants", "/audit/support-access"] as const) {
+for (const [path, read] of [
+  ["/attendance", "/api/v1/attendance/month"], ["/access/roles", "/api/v1/access/roles"],
+  ["/access/grants", "/api/v1/access/grants"], ["/audit/support-access", "/api/v1/support-sessions"],
+] as const) {
   test(`${path}: active support and page read outage shows one card and retries together @ui-state`, async ({ page }) => {
     const fixture = await mockScreen(page, screens[2], "populated");
     const shellReads = ["/api/v1/access/me", "/api/v1/users/me", "/api/v1/me/authz", "/api/v1/onboarding/modules"];
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
-    let supportAttempts = 0;
-    await page.route(url => url.pathname.startsWith("/api/"), route => {
+    let supportAttempts = 0, pageAttempts = 0;
+    let releasePage!: () => void;
+    const pageReads = new Promise<void>(resolve => { releasePage = resolve; });
+    await page.route(url => url.pathname.startsWith("/api/"), async route => {
       const pathname = new URL(route.request().url()).pathname;
+      if (route.request().method() !== "GET" || shellReads.includes(pathname)) return route.fallback();
+      if (pathname === read) pageAttempts++;
       if (pathname === "/api/v1/support-sessions/active") supportAttempts++;
-      return route.request().method() !== "GET" || shellReads.includes(pathname)
-        ? route.fallback()
-        : route.fulfill({ status: 503, json: { error: { code: "service_unavailable", support_ref: id(98), support_ref_at: AT } } });
+      else await pageReads;
+      return route.fulfill({ status: 503, json: { error: { code: "service_unavailable", support_ref: id(98), support_ref_at: AT } } });
     });
     try {
       await page.goto(path);
       const main = page.getByRole("main");
+      const failed = main.locator(".page").getByRole("alert");
+      // The shell can fail before the page; its card alone does not mean the page has settled.
+      await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true }).getByRole("alert")).toHaveCount(1, { timeout: 20_000 });
+      await expect(failed).toHaveCount(0);
+      releasePage();
+      await expect(failed).toHaveCount(1, { timeout: 20_000 });
       await expect(main.getByRole("alert")).toHaveCount(1, { timeout: 20_000 });
       await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
       await expect(main.locator(`[data-support-reference="${id(98)}"]`)).toBeVisible();
-      const before = supportAttempts;
+      const before = { support: supportAttempts, page: pageAttempts };
       await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
-      await expect.poll(() => supportAttempts).toBeGreaterThan(before);
-      await expect(main.getByRole("alert")).toHaveCount(1);
+      await expect.poll(() => supportAttempts).toBeGreaterThan(before.support);
+      await expect.poll(() => pageAttempts).toBeGreaterThan(before.page);
       expect(fixture.unexpected).toEqual([]);
-    } finally { await page.close(); fixture.release(); }
+    } finally { releasePage(); await page.context().close(); fixture.release(); }
   });
 }
 
