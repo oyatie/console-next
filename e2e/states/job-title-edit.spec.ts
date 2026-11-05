@@ -5,6 +5,7 @@ import { expectAxe, fits } from "../a11y";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
+import { failure, id } from "../mock/fixtures";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -35,4 +36,60 @@ for (const width of [1440, 390]) {
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });
+}
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  for (const code of ["job_title_label_invalid", "job_title_label_taken"] as const) {
+    test(`job title refusal ${code} ${width} ${theme} @ui-state`, async ({ page }, info) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+      const fixture = await mockScreen(page, screens.find(s => s.key === "people")!, "populated");
+      const entry = { id: id(101), kind: "JOB" as const, label: "개발자", grade_rank: null, active: true };
+      const invalid = code === "job_title_label_invalid";
+      let writes = 0;
+      await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: true, items: [entry] } });
+      const body = failure(code);
+      body.error.message = "internal basis";
+      if (invalid) body.error.errors = [{ field: "label", code }];
+      if (invalid) await mockRoute(page, "post", "/api/v1/job-titles", () => {
+        writes++;
+        return writes === 1 ? { status: 422, json: body } : { status: 201, json: entry };
+      });
+      else await mockRoute(page, "patch", "/api/v1/job-titles/{id}", () => {
+        writes++;
+        return writes === 1 ? { status: 409, json: body } : { status: 200, json: entry };
+      });
+      try {
+        await page.goto("/people/job-titles");
+        if (invalid) await page.getByRole("radio", { name: t("enum.jobTitleKind.JOB"), exact: true }).press("Space");
+        else await page.getByRole("button", { name: t("titles.edit", { label: entry.label }), exact: true }).click();
+        const form = invalid
+          ? page.locator("form").filter({ has: page.getByRole("heading", { name: t("titles.add"), exact: true }) })
+          : page.getByRole("form", { name: t("titles.edit.title", { label: entry.label }), exact: true });
+        const input = form.getByRole("textbox", { name: t("titles.col.label") });
+        const commit = form.getByRole("button", { name: t(invalid ? "titles.add.commit" : "titles.edit.commit"), exact: true });
+        await input.fill("다른 직무");
+        await commit.click();
+        const refusal = form.getByRole("alert");
+        await expect(refusal).toBeVisible();
+        await expect(refusal).toContainText(t(`common.failed.code.${code}`));
+        await expect(refusal).not.toContainText("internal");
+        await expect(refusal.locator('code[translate="no"]')).toHaveText(code);
+        await expect(refusal).toContainText(id(99));
+        await expect(input).toHaveValue("다른 직무");
+        await fits(page, `job-title-refusal/${code}/${width}/${theme}`);
+        await expectAxe(page, `job-title-refusal/${code}/${width}/${theme}`);
+        const box = await refusal.boundingBox();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+        if (!invalid) await expect(form.locator("..")).toHaveAttribute("data-card", "action");
+        await page.screenshot({ path: info.outputPath("refusal.png"), fullPage: true });
+        await input.fill("새 직무");
+        await commit.click();
+        await expect(refusal).toHaveCount(0);
+        expect(writes).toBe(2);
+        expect(fixture.unexpected).toEqual([]);
+      } finally { await page.close(); fixture.release(); }
+    });
+  }
 }
