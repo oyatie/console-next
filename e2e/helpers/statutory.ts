@@ -14,20 +14,8 @@ export async function filingRow(page: Page, insurer: string, kind: string, emplo
     await search.press("Enter");
     await filtered;
   }
-  const grid = page.getByRole("grid", { name: t("statutory.insurance"), exact: true });
-  const row = grid.getByRole("row").filter({ has: page.getByRole("gridcell", { name: `${insurer} · ${kind}`, exact: true }) });
-  // Employee search can still leave several filings; no insurer/kind filter is exposed.
-  if (!await row.count()) {
-    await grid.evaluate(element => { element.scrollTop = 0; });
-    await expect.poll(async () => {
-      if (await row.count()) return true;
-      return grid.evaluate(element => {
-        const before = element.scrollTop;
-        element.scrollTop += element.clientHeight;
-        return element.scrollTop === before;
-      });
-    }).toBe(true);
-  }
+  const grid = page.getByRole("table", { name: t("statutory.insurance"), exact: true });
+  const row = grid.getByRole("row").filter({ has: page.getByRole("cell", { name: `${insurer} · ${kind}`, exact: true }) });
   await row.scrollIntoViewIfNeeded();
   await expect(row).toBeInViewport();
   return row;

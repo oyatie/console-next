@@ -71,8 +71,6 @@ export function LongTable<R>(p: {
   loading?: boolean;
   empty: ReactNode;
   density?: "regular" | "compact";
-  /** Wrap cell content and measure variable rows, including expanded details. */
-  rowHeight?: "auto";
   /** Editing rows grow with validation messages. */
   editable?: boolean;
   onRowAction?: (id: string) => void;
@@ -105,34 +103,28 @@ export function LongTable<R>(p: {
   const cardLayout = useCardLayout(region, grid);
   const { sortDescriptor: sort, onSortChange } = p;
   const sortable = p.columns.filter(column => column.allowsSorting);
-  const [measuredHeight, setMeasuredHeight] = useState<number>();
+  const [cardHeight, setCardHeight] = useState<number>();
   useLayoutEffect(() => {
     const table = grid.current;
-    if ((!cardLayout && p.rowHeight !== "auto") || !table) return;
-    let cells: HTMLElement[] = [];
-    let estimate = 0;
-    const update = () => {
-      // Expanded details have their own measured layout; estimate unseen rows from collapsed content.
-      const height = Math.max(0, ...cells.filter(cell => p.rowHeight !== "auto" || !cell.querySelector("details[open]")).map(cell => cell.scrollHeight));
-      // Underestimates can leave the last rows outside TableLayout's reachable range.
-      estimate = Math.max(estimate, height);
-      if (height) setMeasuredHeight(p.rowHeight === "auto" ? estimate : height);
-    };
-    const resize = new ResizeObserver(update);
+    if (!cardLayout || !table) return;
+    const resize = new ResizeObserver(([entry]) => {
+      const height = entry?.target.scrollHeight;
+      if (height) setCardHeight(height);
+    });
     const measure = () => {
+      const card = table.querySelector<HTMLElement>(`.${cards.content}`);
       resize.disconnect();
-      cells = cardLayout
-        ? Array.from(table.querySelectorAll<HTMLElement>(`.${cards.content}`)).slice(0, 1)
-        : Array.from(table.querySelectorAll<HTMLElement>(`.${css.td}`));
-      cells.forEach(cell => resize.observe(cell));
-      update();
+      if (!card) return;
+      resize.observe(card);
+      const height = card.scrollHeight;
+      if (height) setCardHeight(height);
     };
-    // Virtualization replaces the measured cells as the user scrolls.
+    // Virtualization replaces the first rendered card as the user scrolls.
     const rows = new MutationObserver(measure);
     rows.observe(table, { childList: true, subtree: true });
     measure();
     return () => { resize.disconnect(); rows.disconnect(); };
-  }, [cardLayout, p.rowHeight]);
+  }, [cardLayout]);
   const captionId = useId();
   const open = p.rowKeys?.onOpen ?? p.onRowAction;
   const hasFind = Boolean(p.find);
@@ -161,8 +153,8 @@ export function LongTable<R>(p: {
   const layout = useMemo(() => ({
     ...LAYOUT[density],
     headingHeight: cardLayout && !p.selection ? 0 : LAYOUT[density].headingHeight,
-    estimatedRowHeight: (cardLayout || p.rowHeight === "auto") && measuredHeight ? measuredHeight : p.editable ? LAYOUT[density].estimatedRowHeight * 2 : LAYOUT[density].estimatedRowHeight,
-  }), [cardLayout, measuredHeight, density, p.rowHeight, p.editable, p.selection]);
+    estimatedRowHeight: cardLayout && cardHeight ? cardHeight : p.editable ? LAYOUT[density].estimatedRowHeight * 2 : LAYOUT[density].estimatedRowHeight,
+  }), [cardLayout, cardHeight, density, p.editable, p.selection]);
   const loaded = p.rows.map(p.rowId);
   const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;
@@ -217,7 +209,7 @@ export function LongTable<R>(p: {
         <SelectionBar sel={sel} loaded={loaded.length} total={p.total ?? undefined} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
       )}
       <ResizableTableContainer>
-      <Virtualizer layout={TableLayout} layoutOptions={layout} shouldObserveItemSize={p.rowHeight === "auto"}>
+      <Virtualizer layout={TableLayout} layoutOptions={layout}>
         <Table
           ref={(el) => {
             grid.current = el;
@@ -230,7 +222,6 @@ export function LongTable<R>(p: {
           aria-describedby={p.caption ? captionId : undefined}
           className={`${css.table} ${cards.surface} ${types.surface}`}
           data-layout={cardLayout ? "cards" : "rows"}
-          data-row-height={p.rowHeight}
           data-editable={p.editable || undefined}
           data-total={p.total}
           // RAC's tab mode keeps typing and caret keys in cell controls, including tables without editable row sizing.

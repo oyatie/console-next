@@ -6,3 +6,5 @@
 .filingWindow .basis { display: list-item; list-style-position: inside; width: fit-content; }
 .citation { max-width: 100%; white-space: normal; }
 .workplace { min-height: max(calc(var(--target) + var(--text-sm) * var(--lh-base) + var(--space-1)), calc(var(--space-5) * 2 + var(--text-body) * var(--lh-base))); }
+.filings { min-width: 0; }
+.filings td { white-space: normal; overflow-wrap: anywhere; }
