@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Self-service request persistence; callers admit through Cedar in this transaction.
 use crate::{PgComplianceError, statutory::StatutoryRegister};
-pub use console_compliance_domain::rights::Filing;
 use console_compliance_domain::rights::{
-    AgentKind, Channel, Controller, IdentityMethod, Kind, Receipt, RightsRequest,
+    AgentKind, Channel, IdentityMethod, Receipt, RightsRequest,
 };
+pub use console_compliance_domain::rights::{Controller, Filing, Kind, due};
 use console_kernel_core::{
     AuditAction, AuditEvent, KernelError, OrgId, Timestamp, TraceContext, UserId,
 };

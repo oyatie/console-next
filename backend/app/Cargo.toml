@@ -66,8 +66,7 @@ recruiting = ["dep:console-recruiting-adapter-postgres", "dep:console-recruiting
 evaluation = ["dep:console-evaluation-adapter-postgres", "dep:console-evaluation-rest"]
 benefit = ["dep:console-benefit-adapter-postgres", "dep:console-benefit-rest"]
 payroll = ["dep:console-payroll-adapter-postgres", "dep:console-payroll-rest"]
-# Privacy self-service always uses the REST crate; this flag gates the other compliance routes.
-compliance = []
+compliance = ["dep:console-compliance-rest"]
 integrity = ["dep:console-integrity"]
 docs = ["dep:console-docs-adapter-postgres", "dep:console-docs-rest"]
 ontology = ["dep:console-ontology-rest", "dep:console-registry-adapter-postgres", "dep:console-registry-application", "dep:console-registry-domain", "dep:console-payroll-adapter-postgres"]
@@ -120,7 +119,7 @@ console-benefit-adapter-postgres = { workspace = true, optional = true }
 console-benefit-rest = { workspace = true, optional = true }
 console-consulting-rest = { workspace = true, optional = true }
 console-compliance-adapter-postgres = { workspace = true }
-console-compliance-rest = { workspace = true }
+console-compliance-rest = { workspace = true, optional = true }
 console-erp-domain = { workspace = true }
 console-integrity = { workspace = true, optional = true }
 console-financial-adapter-postgres = { workspace = true, optional = true }

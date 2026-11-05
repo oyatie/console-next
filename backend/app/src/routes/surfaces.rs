@@ -59,10 +59,7 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         "statutory",
         console_compliance_rest::statutory::STATUTORY_ROUTE_PATHS,
     ),
-    surface(
-        "privacy-rights",
-        console_compliance_rest::rights::ROUTE_PATHS,
-    ),
+    surface("privacy-rights", crate::privacy::ROUTE_PATHS),
     surface("settings", console_settings_rest::SETTINGS_ROUTE_PATHS),
     surface(
         "reason-codes",
