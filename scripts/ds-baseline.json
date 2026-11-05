@@ -145,7 +145,7 @@
 "apps/web/src/features/people/ui/requests-page.tsx": {"dsClass":7},
 "apps/web/src/features/people/ui/requests.module.css": {"restyle":2},
 "apps/web/src/features/people/ui/roster-page.tsx": {"dsClass":2},
-"apps/web/src/features/people/ui/roster-panel.tsx": {"dsClass":4},
+"apps/web/src/features/people/ui/roster-panel.tsx": {"dsClass":3},
 "apps/web/src/features/people/ui/unplaced.module.css": {"restyle":57},
 "apps/web/src/features/periods/ui/month-strip.module.css": {"restyle":19,"literal":2},
 "apps/web/src/features/periods/ui/month-strip.tsx": {"dsClass":4},

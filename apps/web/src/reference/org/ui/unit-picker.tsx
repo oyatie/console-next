@@ -27,7 +27,7 @@ export function UnitPicker({ units, options, value, onChange, labelText = t("org
   const popover = useRef<HTMLDivElement>(null);
   const onOpenChange = useNonModalSurroundings(input, popover);
   return (
-    <ComboBox onOpenChange={onOpenChange} className="field" selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} isRequired={required} isInvalid={error != null}>
+    <ComboBox onOpenChange={onOpenChange} className="field" selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} isRequired={required} isInvalid={error != null} data-form-value={value}>
       <Label className="field__label">{labelText}</Label>
       <div className="combo">
         <Input ref={input} className="field__input combo__input" placeholder={t("org.unit.picker.search")} />

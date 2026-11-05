@@ -28,6 +28,7 @@ export function PathList({ items, value, onChange, label, searchLabel, placehold
       </SearchField>
       <ListBox
         aria-label={label}
+        data-form-value={value}
         className={s.list}
         selectionMode="single"
         selectedKeys={value ? [value] : []}

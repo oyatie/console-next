@@ -66,6 +66,7 @@ export function useDraft<T extends Fields>(opts: { route: string; record: string
   return {
     value: state.yours,
     set: (value: T) => setState((s) => ({ ...s, yours: value })),
+    dirty: JSON.stringify(state.base) !== JSON.stringify(state.yours),
     restored: state.restored,
     problem: state.problem ?? writeProblem,
     discard,

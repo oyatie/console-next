@@ -41,7 +41,7 @@ export function AddressField({ label, required, value, onChange, query, onQueryC
   const compare = printed != null && <span className={s.printed}>{t("uiAddressField.printed")} {printed}</span>;
   if (value)
     return (
-      <div className={s.wrap} role="group" aria-label={label}>
+      <div className={s.wrap} role="group" aria-label={label} data-form-value={value.key ?? value.road}>
         <span className={fieldCss.label}>{label}<Marker required={required} /></span>
         <div className={s.chosen}>
           <MapPin size={16} aria-hidden className={s.pin} />
@@ -73,7 +73,7 @@ function AddressSearch({ label, required, onChange, query, onQueryChange, hits, 
       <ComboBox onOpenChange={onOpenChange} className={`field ${css.picker}`} items={hits} inputValue={query} onInputChange={onQueryChange} onSelectionChange={(k) => {
         const h = hits.find((x) => x.key === k);
         if (h) onChange({ key: h.key, road: h.road, jibun: h.jibun, zip: h.zip, detail: "", verified: true });
-      }} menuTrigger="input" allowsEmptyCollection isRequired={required} isInvalid={error != null}>
+      }} menuTrigger="input" allowsEmptyCollection isRequired={required} isInvalid={error != null} data-form-value="">
         <Label className={fieldCss.label}>{label}<Marker required={required} /></Label>
         <div className={css.input}>
           <Search aria-hidden="true" className={css.icon} />

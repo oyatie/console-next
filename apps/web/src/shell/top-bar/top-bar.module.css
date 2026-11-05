@@ -2,10 +2,18 @@
 .tenant { display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0; }
 .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .phase { composes: t-xs t-medium from global; flex-shrink: 0; padding: var(--space-1) var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); }
-.account { composes: btn btn--ghost from global; min-width: 0; max-width: var(--rail-w); flex-shrink: 0; }
-.account svg { flex-shrink: 0; }
+.account, .needsMe { composes: btn btn--ghost from global; min-width: 0; max-width: var(--rail-w); flex-shrink: 0; }
+.account svg, .needsMe svg { flex-shrink: 0; }
+.badge { composes: t-xs t-medium num from global; display: inline-flex; align-items: center; justify-content: center; min-width: calc(var(--space-4) + var(--space-1)); height: calc(var(--space-4) + var(--space-1)); padding: 0 var(--space-1); border-radius: var(--radius-lg); background: var(--primary); color: var(--on-primary); }
+.taskPop { z-index: var(--z-sheet); width: min(var(--queue-w), calc(100vw - var(--space-4) * 2)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); }
+.taskPanel { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); max-height: min(70vh, calc(var(--qrow-h) * 7)); overflow-y: auto; outline: none; }
+.taskHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-soft); }
+.taskList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.taskLink { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--target); padding: var(--space-1) var(--space-2); border-radius: var(--radius); color: var(--ink); text-decoration: none; }
+.taskLink:hover { background: var(--muted); }
+.taskLink:focus-visible { outline: none; box-shadow: var(--focus); }
 .check { visibility: hidden; }
 [data-selected] > .check { visibility: visible; }
 @media (max-width: 640px) {
-  .account .name { display: none; }
+  .account .name, .needsMe .name { display: none; }
 }

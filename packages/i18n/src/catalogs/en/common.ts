@@ -2,6 +2,8 @@
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const enCommon = {
   "common.more": "More",
+  "common.closeRelated": "Close related item",
+  "common.resizeColumn": "Resize column",
   "common.steps": "Progress",
   "common.headcount": "{count, plural, one {# person} other {# people}}",
   "common.page.label": "Pages",

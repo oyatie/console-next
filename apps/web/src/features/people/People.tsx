@@ -26,7 +26,7 @@ const ExitCaseListContent = lazy(() => import("./ui/exit-list").then(module => (
  * nothing = current staff; `review`: comma-joined attention chips, see domain/roster.ts). The search term (a
  * person's name or number) stays out of the URL and so out of history. `bulk=paste` opens the bulk sheet from a paste.
  */
-export type PeopleSearch = { tab?: PeopleTab; exitStatus?: ExitFilter; placement?: "unplaced"; sel?: string; view?: PeopleView; unit?: string; status?: string; sort?: string; review?: string; bulk?: "paste"; export?: "register" };
+export type PeopleSearch = { tab?: PeopleTab; exitStatus?: ExitFilter; placement?: "unplaced"; sel?: string; sel2?: string; view?: PeopleView; unit?: string; status?: string; sort?: string; review?: string; bulk?: "paste"; export?: "register" };
 
 const route = getRouteApi("/app/people");
 
@@ -57,7 +57,7 @@ export function PeopleDirectory() {
   const directory = authz.isPending || can("employee_directory_read", "branch");
   const scoped = !can("employee_directory_read", "all");
   const view = directory ? (asked ?? "employees") : "accounts";
-  const onView = (v: PeopleView) => void navigate({ search: (prev) => ({ ...prev, view: v === "accounts" ? v : undefined, sel: undefined }), replace: true });
+  const onView = (v: PeopleView) => void navigate({ search: (prev) => ({ ...prev, view: v === "accounts" ? v : undefined, sel: undefined, sel2: undefined }), replace: true });
   const head = (actions?: ReactNode, available = true) => <PeopleHead view={view} directory={directory && available} onView={onView}>{actions}</PeopleHead>;
   // Not before the permissions land (a fresh load): the roster's select column and its commands would appear
   // after its rows and push every column aside.

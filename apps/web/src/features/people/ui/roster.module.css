@@ -22,7 +22,6 @@
 .warnText { composes: t-warn from global; }
 .nm { composes: t-medium from global; }
 .notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-5) 0; }
-.split { position: relative; }
 .changed { display: inline-flex; margin-inline-start: var(--space-3); }
 .inView { display: inline-flex; align-items: center; gap: var(--space-1); }
 .keep { display: inline-flex; align-items: center; gap: var(--space-1); }
@@ -39,9 +38,10 @@
 .fixed { composes: t-sm muted from global; padding-left: var(--space-1); }
 .colBox { flex: 1; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--target); }
 .said { composes: t-xs muted from global; margin: 0; }
-/* The peek lies over the table's right side, full height (E1-peek): the list keeps its columns and its scroll. */
-.peek { position: absolute; inset: 0 0 0 auto; z-index: 2; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); width: var(--panel-w); max-width: 100%; overflow: auto; }
 .peekCrumb { composes: t-xs muted from global; }
+@media (max-width: 639px) {
+  .page[data-detail] .band, .page[data-detail] .scope, .page[data-detail] .stats, .page[data-detail] .notes, .page[data-detail] .foot { display: none; }
+}
 .peekHead { display: flex; align-items: center; gap: var(--space-3); }
 .peekName { composes: t-lg from global; margin: 0; }
 .peekSub { composes: t-xs muted from global; }

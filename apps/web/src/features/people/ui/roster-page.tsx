@@ -1,17 +1,22 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { rosterWindowQuery } from "../api/roster";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi, Link, useElementScrollRestoration, useLocation, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
+import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { editable, rowById } from "../../../ui/long-table/row-keys";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
 import { focusSoon } from "../../../lib/react/announce";
+import { columnSelection } from "../../../lib/react/use-column-selection";
 import { usePrefetch } from "../../../lib/react/prefetch";
 import { todayKst } from "../../../lib/pure/today";
 import { useReasonCodesReady } from "../../../lib/reason-codes";
+import { unitsQuery } from "../../../reference/org/api";
+import { unitPath } from "../../../reference/org/present";
 import { employeeQuery } from "../api";
 import { activeView, exactNumber, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
 import { parseOrder, type RosterOrder } from "../domain/roster-order";
@@ -21,6 +26,7 @@ import { RosterBulk } from "./roster-bulk";
 import { RosterTable } from "./roster-table";
 import { RosterFilters } from "./roster-filters";
 import { RosterPanel } from "./roster-panel";
+import { RosterUnitPanel } from "./roster-unit-panel";
 import { BULK_MAX, useRoster } from "./use-roster";
 import { PeopleJump } from "./people-jump";
 import { RegisterExport } from "./register-export";
@@ -54,6 +60,25 @@ let memory: { key: string; q: string; top: number; row: string | null } | null =
 const listened = new WeakSet<HTMLElement>();
 const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memory>>) => void (memory = { ...(memory?.key === key ? memory : { key, q, top: 0, row: null }), ...patch });
 
+function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTMLElement | null> }) {
+  const router = useRouter();
+  const key = useLocation({ select: location => location.state["__TSR_key"] });
+  const entry = useElementScrollRestoration({ id });
+  const applied = useRef<string | undefined>(undefined);
+  const [, setRendered] = useState(0);
+  useEffect(() => router.subscribe("onRendered", () => setRendered(value => value + 1)), [router]);
+  useEffect(() => {
+    if (!key || !entry || applied.current === key) return;
+    const frame = requestAnimationFrame(() => {
+      if (!grid.current) return;
+      applied.current = key;
+      grid.current.scrollTop = entry.scrollY;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [entry, grid, key]);
+  return null;
+}
+
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterPage({ manage, scoped = false, switcher, notice }: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode }) {
   const contractWindow = useQuery(rosterWindowQuery);
@@ -63,7 +88,11 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   const today = todayKst();
   const status = parseStatus(search.status);
   const review = parseReview(search.review);
-  const { unit, sel: open } = search;
+  const { unit } = search;
+  const { sel: open, sel2: openUnit, select, selectRelated } = columnSelection(search, navigate);
+  const unitTrigger = useRef<HTMLButtonElement | null>(null);
+  const unitItems = useQuery({ ...unitsQuery, enabled: Boolean(openUnit) }).data?.items ?? [];
+  const selectedUnit = openUnit ? unitItems.find((u) => u.id === openUnit) : undefined;
   const sort = parseOrder(search.sort);
   const key = JSON.stringify([status, review, unit ?? null, sort]);
   const [back] = useState(() => (memory?.key === key ? memory : null));
@@ -95,6 +124,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
       search: (prev) => ({
         ...prev,
         sel: undefined,
+        sel2: undefined,
         ...(f.status && { status: f.status === "current" ? undefined : f.status }),
         ...(f.review && { review: joinReview(f.review) }),
         ...(f.unit !== undefined && { unit: f.unit ?? undefined }),
@@ -109,7 +139,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
     setQ(v);
     setJump(v || null);
     remember(key, q, { q: v, top: 0 });
-    void navigate({ search: (prev) => ({ ...prev, sel: undefined }), replace: true });
+    void navigate({ search: (prev) => ({ ...prev, sel: undefined, sel2: undefined }), replace: true });
   };
   const reset = () => {
     setSel(NO_SELECTION);
@@ -117,7 +147,6 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
     setFilter({ status: "current", review: [], unit: null });
     focusSoon("people-title");
   };
-  const select = (id: string | undefined) => void navigate({ search: (prev) => ({ ...prev, sel: id }), replace: true });
   const closePaste = () => void navigate({ search: (prev) => ({ ...prev, bulk: undefined }), replace: true });
   const bulkDone = (message: string, recordedBatch?: { id: string; count: number }) => {
     setSel(NO_SELECTION);
@@ -161,26 +190,12 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
     scroller.current = el;
   };
 
-  // Esc closes the panel (not inside a field, where it clears the text) and focus goes back to that row.
-  const split = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || editable(e.target) || !split.current?.contains(e.target as Node)) return;
-      void navigate({ search: (prev) => ({ ...prev, sel: undefined }), replace: true });
-      requestAnimationFrame(() => rowById(scroller.current, open)?.focus());
-    };
-    document.addEventListener("keydown", close, true);
-    return () => document.removeEventListener("keydown", close, true);
-  }, [open, navigate]);
-
   const settle = useRef<ReturnType<typeof setTimeout>>(undefined);
   const onRowFocus = (id: string) => {
     clearTimeout(settle.current);
     settle.current = setTimeout(() => {
       prefetch(employeeQuery(id));
       remember(key, q, { row: id });
-      if (open && id !== open) select(id); // the panel follows J/K
     }, FOCUS_SETTLE_MS);
   };
 
@@ -198,7 +213,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   // read); a current view that is empty while others exist is the table's own empty state, with its way to them.
   if (search.export === "register") return <RegisterExport onClose={() => void navigate({ search: (prev) => ({ ...prev, export: undefined }), replace: true })} />;
   return (
-    <PageReadGate q={r.list}><div className={s.page}>
+    <PageReadGate q={r.list}><div className={s.page} data-detail={Boolean(open && r.list.data) || undefined}>
       <RosterHead
         manage={manage}
         soonDays={soonDays}
@@ -245,9 +260,15 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
       </div>
       {manage && search.bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={closePaste} onDone={bulkDone} />}
       {status === "EXITED" && exitView === "voided" ? <VoidedList /> : !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed ? <RosterFirstRun /> : (
-      <div ref={split} className={s.split} data-open={Boolean(open)}>
-        <Band className={s.tableWrap}>
+      <FlexibleColumns
+        onSelect={select}
+        onOpen={openRecord}
+        onFind={() => findSlot?.querySelector("input")?.focus()}
+        record={open && { id: open, label: t("people.panel"), closeLabel: t("roster.panel.close"), onClose: () => select(undefined), returnFocus: () => rowById(scroller.current, open), children: <RosterPanel id={open} today={today} unitTriggerRef={unitTrigger} onOpenUnit={selectRelated} /> }}
+        related={open && openUnit && { id: openUnit, label: t("roster.panel.unit"), title: selectedUnit?.name ?? t("roster.panel.unit"), crumb: selectedUnit ? unitPath(unitItems, selectedUnit) : undefined, expand: <Link className={buttonClass("secondary", { size: "sm" })} to="/org" search={{ sel: openUnit, focus: openUnit }}>{t("roster.panel.openOrg")}</Link>, onClose: () => selectRelated(undefined), returnFocus: () => unitTrigger.current, children: <RosterUnitPanel unitId={openUnit} units={unitItems} /> }}
+        list={<Band className={s.tableWrap}>
           <>
+          <TableScrollRestoration id="people-roster" grid={scroller} />
           {/* Under a failed read the table stays (its search lives in the band above), empty rather than claiming nobody. */}
           <RosterTable
               sort={sort}
@@ -272,6 +293,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
               find={{ label: t("roster.find"), onFind: find, defaultValue: q }}
               findSlot={findSlot}
               scrollRef={scrollRef}
+              scrollRestorationId="people-roster"
               {...(manage && {
                 selection: sel,
                 onSelectionChange: setSel,
@@ -281,9 +303,8 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
               })}
             />
           </>
-        </Band>
-        {open && <RosterPanel id={open} today={today} onClose={() => select(undefined)} />}
-      </div>
+        </Band>}
+      />
       )}
       <RosterFoot
         shown={rowCount}

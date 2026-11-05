@@ -94,6 +94,8 @@ export function LongTable<R>(p: {
   countUnit?: "person";
   /** The scrolling element, for a caller that restores the scroll position. */
   scrollRef?: (el: HTMLElement | null) => void;
+  /** Stable router identity for restoring this virtualized scroller after Back/Forward. */
+  scrollRestorationId?: string;
 }) {
   const search = useRef<HTMLInputElement>(null);
   const region = useRef<HTMLElement>(null);
@@ -214,6 +216,7 @@ export function LongTable<R>(p: {
             p.scrollRef?.(el);
           }}
           aria-label={p.label}
+          data-scroll-restoration-id={p.scrollRestorationId}
           // React Aria derives these attributes from loaded rows; the server result includes unloaded rows.
           render={props => <div {...props} aria-rowcount={p.total === undefined ? (p.hasMore ? -1 : loaded.length + 1) : p.total === null ? -1 : p.total + 1} />}
           aria-describedby={p.caption ? captionId : undefined}
@@ -240,7 +243,7 @@ export function LongTable<R>(p: {
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
               <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout ? (c.id === SELECT ? css.selectHead : cards.visuallyHidden) : ""}`}>
-                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}><Box />{cardLayout && toggleLabel}</Checkbox> : <>{c.header}{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
+                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}><Box />{cardLayout && toggleLabel}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
           </TableHeader>
