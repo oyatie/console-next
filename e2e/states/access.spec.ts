@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { mockRoute } from "../mock/route";
-import { AT, id } from "../mock/fixtures";
+import { AT, failure, id } from "../mock/fixtures";
 import { accessRole, accessScreens, mockAccessScreen } from "./access";
 
 for (const screen of accessScreens) for (const state of screen.states) for (const phase of ["SETUP", "OPERATING"] as const) for (const width of [1440, 390]) {
@@ -16,7 +16,13 @@ for (const screen of accessScreens) for (const state of screen.states) for (cons
       const main = page.getByRole("main");
       if (state === "failed") {
         await expect(main.getByText("불러오지 못했습니다", { exact: true })).toBeVisible({ timeout: 20_000 });
+        await expect(main.getByRole("alert")).toHaveCount(1);
         await expect(main.getByRole("heading", { name: /부여 0건|부여가 없습니다|아직 역할이 없습니다/ })).toHaveCount(0);
+        await expect(main.getByRole("button", { name: "권한 부여", exact: true })).toHaveCount(0);
+        await expect(main.getByRole("link", { name: /역할 추가|여러 사람에게 부여/ })).toHaveCount(0);
+        const tabs = main.getByRole("navigation", { name: "권한 화면", exact: true });
+        await expect(tabs.getByRole("link", { name: "역할", exact: true })).toBeVisible();
+        await expect(tabs.getByRole("link", { name: "부여 현황", exact: true })).toBeVisible();
         await expect(main.getByRole("searchbox")).toHaveCount(0);
         await expect(main.getByRole("button", { name: /일 안에 끝나는 부여/ })).toHaveCount(0);
         await main.getByRole("button", { name: "다시 불러오기", exact: true }).click();
@@ -140,4 +146,21 @@ test("clearing the picker selection preserves employee-number confirmation for n
   await picker.getByRole("textbox", { name: /끝 4자리/ }).fill("0002");
   await expect(page.getByRole("dialog", { name: "권한 부여", exact: true })).toContainText("ACC-0002");
   expect(fixture.unexpected).toEqual([]);
+});
+
+test("account and request read outage renders one card without header writes @ui-state", async ({ page }) => {
+  const fixture = await mockAccessScreen(page, accessScreens[0], "populated");
+  await mockRoute(page, "get", "/api/v1/users", { status: 503, json: failure("service_unavailable") });
+  await mockRoute(page, "get", "/api/v1/access/requests", { status: 503, json: failure("service_unavailable") });
+  try {
+    await page.goto("/access/grants");
+    const main = page.getByRole("main");
+    await expect(main.getByText("불러오지 못했습니다", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(main.getByRole("alert")).toHaveCount(1);
+    await expect(main.getByRole("button", { name: "권한 부여", exact: true })).toHaveCount(0);
+    await expect(main.getByRole("link", { name: "여러 사람에게 부여", exact: true })).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
 });

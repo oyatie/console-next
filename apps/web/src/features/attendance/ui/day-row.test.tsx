@@ -19,6 +19,7 @@ test("board status words stay visible and inputs describe the shared format hint
   expect(html).toContain(`aria-describedby="${grammarHintId}"`);
   expect(html).toContain('maxLength="40"');
   expect(html).not.toContain(t("uiField.optional"));
+  expect(html).not.toContain(`>${t("attendanceRecords.board.nextAction")}<`);
   expect(html).toContain(`role="group" aria-label="${t("attendanceRecords.board.nextActionFor", { name: row.name })}"`);
 });
 

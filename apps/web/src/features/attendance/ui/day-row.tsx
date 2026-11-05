@@ -57,7 +57,6 @@ export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }:
       <DayBar day={row.day} />
       <span>{mark && <strong>{t(`attendanceRecords.mark.${mark}`)} </strong>}{problemText(row)}{row.day.entry && <><br /><Chip>{t(`attendanceRecords.source.${row.day.entry.source}`)}</Chip></>}</span>
       <div className={s.rowAction} role="group" aria-label={t("attendanceRecords.board.nextActionFor", { name: row.name })}>
-        <div className={`${s.actionLabel} muted`}>{t("attendanceRecords.board.nextAction")}</div>
         {action}
       </div>
     </div>

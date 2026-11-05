@@ -15,6 +15,7 @@ export const koAttendanceRecords = {
   "attendanceRecords.empty.clear": "조건 초기화",
   "attendanceRecords.scope.unavailable": "선택한 사업장을 확인할 수 없습니다",
   "attendanceRecords.scope.label": "단위",
+  "attendanceRecords.scope.allUnknown": "사업장 전체",
   "attendanceRecords.scope.all": "사업장 전체 {count, number}곳",
   "attendanceRecords.scope.place": "{name} · {count, number}명",
   "attendanceRecords.toolbar.label": "근태 도구",

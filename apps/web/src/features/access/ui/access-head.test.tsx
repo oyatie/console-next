@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { AccessHead } from "./access-head";
 import { opsQuery } from "../api";
 
@@ -15,7 +15,7 @@ vi.mock("@tanstack/react-query", () => ({ useQuery: (query: unknown) => {
     data: ["loading", "retrying", "first-failed", "first-refused"].includes(state.ops) ? undefined : { account_id: "ops" },
     error: ["failed", "refused", "first-failed", "first-refused"].includes(state.ops) ? new Error(state.ops) : null,
   };
-  return { data: { items: [1, 2, 3] }, error: state.failed ? new Error("outage") : null };
+  return { data: { phase: "SETUP", items: [1, 2, 3] }, error: state.failed ? new Error("outage") : null };
 } }));
 vi.mock("@tanstack/react-router", () => ({
   useRouterState: () => state.path,
@@ -23,11 +23,18 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => { state.failed = false; state.path = "/access/roles"; state.ops = "loaded"; });
-test.each([false, true])("header hides writes and counts after a failed read (%s)", failed => {
+test.each([false, true])("header hides writes, phase and counts after a failed read (%s)", failed => {
   state.failed = failed;
   const html = renderToStaticMarkup(<AccessHead actions="write" />);
   expect(html.includes("write")).toBe(!failed);
   expect(html.includes(">3<")).toBe(!failed);
+  expect(html.includes(t("access.phase.setup"))).toBe(!failed);
+});
+
+test("header hides writes and counts when the owning page reports a failed read", () => {
+  const html = renderToStaticMarkup(<AccessHead actions="write" {...({ failed: true } as object)} />);
+  expect(html).not.toContain("write");
+  expect(html).not.toContain(">3<");
 });
 test("navigation distinguishes go-live checks from the planned access review", () => {
   state.failed = false;

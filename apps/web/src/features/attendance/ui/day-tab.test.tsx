@@ -82,6 +82,11 @@ test("populated boards keep navigation and filters without save controls until a
   expect(html).not.toContain(t("attendanceRecords.toolbar.unsaved", { count: 0, refused: 0 }));
   expect(html).not.toContain(t("attendanceRecords.save.nothing"));
   expect(html).not.toContain(`>${t("attendanceRecords.toolbar.save")}<`);
+  expect(html).toContain("data-board-head");
+  expect(html).not.toMatch(/data-board-head[^>]*aria-hidden/);
+  for (const key of ["status", "person", "time", "result", "nextAction"] as const) {
+    expect(html).toContain(`>${t(`attendanceRecords.board.${key}`)}<`);
+  }
 });
 
 test("the first draft exposes the save status and save command", () => {

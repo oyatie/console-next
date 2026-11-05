@@ -6,7 +6,7 @@ import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { PasskeyError } from "../../../lib/react/passkey-error";
-import { readGroup } from "../../../lib/react/query-view";
+import { readGroup, type ReadState } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { ActionBar } from "../../../ui/action-bar/action-bar";
 import { Button } from "../../../ui/button/button";
@@ -45,8 +45,9 @@ function useHolders(role: AccessRole | undefined) {
   return { grants, holders, accounts: accounts.data?.items ?? [], names: names.join(", "), now: live.some((g) => g.enforcement === "ENFORCED"), waiting: live.length > 0 && live.every((g) => g.enforcement === "PREPARED") };
 }
 
-function RoleVersions({ role }: { role: AccessRole }) {
-  const versions = useQuery(roleVersionsQuery(role.id));
+type RoleVersionsData = Awaited<ReturnType<ReturnType<typeof roleVersionsQuery>["queryFn"]>>;
+
+function RoleVersions({ versions }: { versions: ReadState<RoleVersionsData> }) {
   const reasons = useReasons();
   return <Card title={t("access.role.versions")} flush>
     <QueryState q={versions} layout="list">{rows => rows.length ? <Table
@@ -91,6 +92,11 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
   const save = () => (problems ? setTried(true) : run.mutate(undefined));
   const holders = editing?.holder_count ?? 0;
   const who = useHolders(editing);
+  const versions = useQuery({ ...roleVersionsQuery(editing?.id ?? ""), enabled: !!editing });
+  const sharedSecondaryOutage = Boolean(editing && holders > 0 && who.grants.error && !who.grants.data && versions.error && !versions.data);
+  const holdersRead = sharedSecondaryOutage
+    ? { ...who.grants, refetch: () => Promise.all([who.grants.refetch(), versions.refetch()]) }
+    : who.grants;
   const effect = holders && !who.grants.isSuccess ? (who.grants.isPending ? t("common.loading") : undefined) : !holders ? t("access.role.effect.none")
     : !setup ? t("access.role.effect.live", { count: holders, names: who.names })
     : t(who.now ? "access.role.effect.setup" : "access.role.effect.golive", { count: holders, names: who.names });
@@ -112,7 +118,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
           {tried && isEmpty(d.grid) && <p className={`field__error ${s.pad}`} role="alert">{t("access.role.grid.missing")}</p>}
         </Card>
         {editing && <Card title={t("access.roles.col.holders")} meta={holders ? t(who.waiting ? "access.role.meta.golive" : "access.role.meta", { count: holders }) : undefined} flush>
-          {holders ? <QueryState q={who.grants} layout="list">{() => <ul className={s.held}>
+          {holders ? <QueryState q={holdersRead} layout="list">{() => <ul className={s.held}>
             {who.holders.map(g => {
               const account = who.accounts.find(a => a.id === g.account_id);
               return <li key={g.account_id}>
@@ -122,7 +128,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
             })}
           </ul>}</QueryState> : <EmptyState title={t("access.role.effect.none")} reason={null} />}
         </Card>}
-        {editing && <RoleVersions role={editing} />}
+        {editing && !sharedSecondaryOutage && <RoleVersions versions={versions} />}
       </div>
       <aside className={`card ${s.preview}`} aria-labelledby="ac-preview">
         <h2 id="ac-preview">{t("access.preview.title")}</h2>
@@ -153,10 +159,11 @@ export function RoleEditorPage({ roleId, copy }: { roleId?: string; copy?: strin
   const title = roleId ? t("access.role.title.edit") : copy ? t("access.role.title.copy") : t("access.role.title.new");
   const setup = me.data?.phase !== "OPERATING";
   const held = roleId ? role.data : undefined;
+  const pageRead = readGroup(source ? [cat, role] : [cat]);
   return (
     <div className="page">
-      <AccessHead />
-<QueryState q={readGroup(source ? [cat, role] : [cat])} back={{ to: "/access/roles", label: t("access.role.back") }} layout="form">{() => <>      <>
+      <AccessHead failed={Boolean(pageRead.error)} />
+<QueryState q={pageRead} back={{ to: "/access/roles", label: t("access.role.back") }} layout="form">{() => <>      <>
       <div className={s.titleRow}>
         <Link to="/access/roles" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.role.back")}</Link>
         <h2 className="page__title">{held ? t("access.role.title.named", { title, name: held.name_ko }) : title}</h2>

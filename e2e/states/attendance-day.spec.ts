@@ -95,6 +95,7 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
   const scroller = page.getByRole("region", { name: t("attendance.tab.day"), exact: true });
   await expect(scroller).toBeVisible();
   await expect(page.getByRole("group", { name: t("attendanceRecords.board.nextActionFor", { name: "근태직원 1" }), exact: true })).toBeVisible();
+  await expect(scroller.getByText(t("attendanceRecords.board.nextAction"), { exact: true }).filter({ visible: true })).toHaveCount(width === 1440 ? 1 : 0);
   await expect(page.getByText(t("attendanceRecords.rail.process", { count: 0 }), { exact: true })).toHaveCount(0);
   await expect(page.getByText(/정상 0/)).toHaveCount(0);
   await expect(page.getByText(/일정 없음 0/)).toHaveCount(0);
@@ -102,13 +103,26 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
   const main = await page.locator("#main").evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
   expect(scroll.scroll).toBeGreaterThan(scroll.client);
   expect(main.scroll).toBeLessThanOrEqual(main.client + 1);
-  const sticky = await scroller.evaluate(el => {
-    const head = el.querySelector<HTMLElement>("[data-board-head]")!;
-    el.scrollTop = head.offsetTop + 64;
-    return { position: getComputedStyle(head).position, head: head.getBoundingClientRect().top, box: el.getBoundingClientRect().top };
-  });
-  expect(sticky.position).toBe("sticky");
-  expect(Math.abs(sticky.head - sticky.box)).toBeLessThanOrEqual(1);
+  const head = scroller.locator("[data-board-head]");
+  if (width === 1440) {
+    await expect(head).toBeVisible();
+    await expect(head).not.toHaveAttribute("aria-hidden");
+    for (const key of ["status", "person", "time", "result", "nextAction"] as const) {
+      await expect(head.getByText(t(`attendanceRecords.board.${key}`), { exact: true })).toBeVisible();
+    }
+    const headPerson = await head.getByText(t("attendanceRecords.board.person"), { exact: true }).boundingBox();
+    const rowPerson = await scroller.getByRole("link", { name: "근태직원 1", exact: true }).boundingBox();
+    expect(Math.abs(headPerson!.x - rowPerson!.x)).toBeLessThanOrEqual(2);
+    const sticky = await scroller.evaluate(el => {
+      const bar = el.querySelector<HTMLElement>("[data-board-head]")!;
+      el.scrollTop = bar.offsetTop + 64;
+      return { position: getComputedStyle(bar).position, head: bar.getBoundingClientRect().top, box: el.getBoundingClientRect().top };
+    });
+    expect(sticky.position).toBe("sticky");
+    expect(Math.abs(sticky.head - sticky.box)).toBeLessThanOrEqual(1);
+  } else {
+    await expect(head).toBeHidden();
+  }
   await fits(page, `day-board/${width}/${colorScheme}`);
   await expectAxe(page, `day-board/${width}/${colorScheme}`);
   await testInfo.attach("day-board", { body: await page.screenshot(), contentType: "image/png" });
@@ -203,7 +217,8 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   };
   await mockRoute(page, "get", "/api/v1/attendance/days", { status: 200, json: board });
   await page.goto(screen.path);
-  await expect(page.locator("[data-board-head]")).toBeVisible();
+  if (width === 1440) await expect(page.locator("[data-board-head]")).toBeVisible();
+  else await expect(page.locator("[data-board-head]")).toBeHidden();
   const inputs = page.getByRole("textbox", { name: /^근태직원 \d+ 기록/ });
   await expect(inputs).toHaveCount(count);
   await inputs.last().focus();
@@ -240,13 +255,7 @@ for (const width of [1440, 1100]) for (const height of [900, 640]) for (const do
     await page.getByRole("button", { name: t("attendanceRecords.toolbar.save"), exact: true }).click();
   } else await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
   await expect(page.getByRole("complementary")).toBeVisible();
-  const head = page.locator("[data-board-head]");
-  const person = head.getByText(t("attendanceRecords.board.person"), { exact: true });
-  await expect(person).toBeVisible();
-  for (const key of ["status", "time", "result", "nextAction"] as const) {
-    await expect(head.getByText(t(`attendanceRecords.board.${key}`), { exact: true })).toBeHidden();
-  }
-  expect(await person.evaluate(el => getComputedStyle(el.parentElement!).gridTemplateColumns.split(" ").length)).toBe(2);
+  await expect(page.locator("[data-board-head]")).toBeHidden();
   const rail = page.getByRole("region", { name: t("attendanceRecords.rail.title"), exact: true });
   const lastRow = page.getByRole("group", { name: t("attendanceRecords.board.nextActionFor", { name: "근태직원 2" }), exact: true }).locator("..");
   expect((await rail.boundingBox())!.y).toBeGreaterThanOrEqual((await lastRow.boundingBox())!.y + (await lastRow.boundingBox())!.height);
