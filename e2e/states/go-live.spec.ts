@@ -23,7 +23,7 @@ function previewData(state: (typeof states)[number]): GoLivePreview {
     phase: isReceipt ? "OPERATING" : "SETUP", digest: `digest-${state}`, line_digests: {}, terms_version: null,
     blockers: isReceipt ? [{ code: "already_operating", count: null, remedy: null, records: [] }] : state === "blocked" ? [{ code: "people_without_department", count: records.length, remedy: "assign_department", records }] : [],
     warnings: isReceipt ? [] : [{ code: "sole_holder", count: 1, remedy: null, records: [] }],
-    becomes_governed: ["setup_undo_becomes_correction", "identifier_lock", "org_changes_governed"],
+    becomes_governed: ["setup_undo_becomes_correction", "entity_identifier_corrections_locked", "org_structure_changes_need_approval"],
     breakdown,
     roles_becoming_active: [{ role_id: id(80), role: "인사 담당", scope_kind: "TENANT", scope_id: id(2), scope: "전체", holders: [{ id: id(1), name: "김담당" }] }],
     access_admin_holders: [{ id: id(1), name: "김담당" }],
