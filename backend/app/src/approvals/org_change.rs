@@ -9,7 +9,7 @@ type Tx<'a> = Transaction<'a, Postgres>;
 pub(super) async fn visible(
     tx: &mut Tx<'_>,
     p: &Principal,
-) -> Result<Vec<(Uuid, String)>, KernelError> {
+) -> Result<Vec<(Uuid, String, Option<String>)>, KernelError> {
     let rows = step_decision_facts_in_tx(tx, p.org_id, p.user_id, StepDecisionScope::Submitted)
         .await
         .map_err(db)?;
@@ -17,18 +17,15 @@ pub(super) async fn visible(
     let org = p.org_id.to_string();
     let mut visible = Vec::new();
     for row in rows {
-        let can_decide = !row.completed
-            && org_change_step_decide::enforce(&actor, &org, &org, row.decision).is_ok();
-        let facts = approval_document_list::Facts {
-            read: row.read,
-            requester: row.requester,
-            participant: row.decision.actor_decided_prior_step,
-            can_decide,
-            completed: row.completed,
-        };
+        let refusal = org_change_step_decide::enforce(&actor, &org, &org, row.decision)
+            .err()
+            .filter(|_| !row.completed)
+            .and_then(|error| error.code)
+            .map(str::to_owned);
+        let facts = row.approval_list_facts();
         for box_name in BOXES {
             if approval_document_list::decide(&actor, &org, &org, facts, box_name).map_err(db)? {
-                visible.push((row.id, box_name.to_owned()));
+                visible.push((row.id, box_name.to_owned(), refusal.clone()));
             }
         }
     }
@@ -39,12 +36,19 @@ pub(super) async fn page(
     org: OrgId,
     q: &ListQuery,
     after: Option<(OffsetDateTime, Uuid)>,
-    visible: Vec<(Uuid, String)>,
+    visible: Vec<(Uuid, String, Option<String>)>,
 ) -> Result<Value, KernelError> {
-    let (ids, boxes): (Vec<_>, Vec<_>) = visible.into_iter().unzip();
+    let mut ids = Vec::new();
+    let mut boxes = Vec::new();
+    let mut refusals = Vec::new();
+    for (id, box_name, refusal) in visible {
+        ids.push(id);
+        boxes.push(box_name);
+        refusals.push(refusal);
+    }
     sqlx::query_scalar(
-        "WITH membership AS (SELECT * FROM unnest($2::uuid[], $3::text[]) AS v(id,box)), \
-         eligible AS MATERIALIZED (SELECT r.*,v.box FROM membership v JOIN org_change_requests r ON r.id=v.id AND r.org_id=$1 \
+        "WITH membership AS (SELECT * FROM unnest($2::uuid[], $3::text[], $11::text[]) AS v(id,box,refusal)), \
+         eligible AS MATERIALIZED (SELECT r.*,v.box,v.refusal FROM membership v JOIN org_change_requests r ON r.id=v.id AND r.org_id=$1 \
            WHERE ($4::text IS NULL OR strpos(lower(r.code||' '||r.target_label||' '||r.reason),lower($4))>0) \
            AND ($5::text IS NULL OR $5='org_change')), \
          selected AS (SELECT * FROM eligible WHERE box=$6 AND ($7::timestamptz IS NULL OR (created_at,id)<($7,$8)) \
@@ -52,7 +56,7 @@ pub(super) async fn page(
          wanted AS (SELECT * FROM selected UNION SELECT * FROM eligible WHERE box=$6 AND 'org_change:'||id=$10), \
          documents AS (SELECT r.id,r.created_at,jsonb_build_object( \
            'id','org_change:'||r.id,'box',r.box,'title',r.target_label,'summary',r.reason, \
-           'document_no',r.code,'source',jsonb_build_object('key','org_change','label','조직 변경'), \
+           'document_no',r.code,'decision_refusal',r.refusal,'source',jsonb_build_object('key','org_change','label','조직 변경'), \
            'status',jsonb_build_object('key',r.status), \
            'requester',jsonb_build_object('id',r.drafted_by,'name',u.display_name), \
            'requested_at',to_char(r.created_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), \
@@ -75,6 +79,6 @@ pub(super) async fn page(
            'next_cursor',CASE WHEN (SELECT count(*) FROM selected)>$9 THEN \
              (SELECT (extract(epoch FROM created_at)*1000000000)::bigint::text||'~'||id FROM page ORDER BY created_at,id LIMIT 1) END)")
         .bind(org.as_uuid()).bind(ids).bind(boxes).bind(q.q.as_deref().filter(|s| !s.trim().is_empty())).bind(&q.source)
-        .bind(&q.box_name).bind(after.map(|p| p.0)).bind(after.map(|p| p.1)).bind(q.limit.unwrap_or(50) as i64).bind(&q.focus)
+        .bind(&q.box_name).bind(after.map(|p| p.0)).bind(after.map(|p| p.1)).bind(q.limit.unwrap_or(50) as i64).bind(&q.focus).bind(refusals)
         .fetch_one(tx.as_mut()).await.map_err(db)
 }

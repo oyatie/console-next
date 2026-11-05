@@ -99,9 +99,9 @@ pub(crate) async fn page(
                 tx, org, principal.user_id, console_orgchange_adapter_postgres::StepDecisionScope::OpenQueue,
             ).await.map_err(|e| AppError::Internal(e.to_string()))?
                 .into_iter().filter_map(|row| {
-                    console_platform_authz::cedar_pbac::actions::org_change_step_decide::enforce(
-                        &principal.user_id.to_string(), &org.to_string(), &org.to_string(), row.decision,
-                    ).is_ok().then_some(row.id)
+                    console_platform_authz::cedar_pbac::actions::approval_document_list::decide(
+                        &principal.user_id.to_string(), &org.to_string(), &org.to_string(), row.approval_list_facts(), "pending",
+                    ).unwrap_or(false).then_some(row.id)
                 }).collect();
             let apply = apply_others
                 || (draft
