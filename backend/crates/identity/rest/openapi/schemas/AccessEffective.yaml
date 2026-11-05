@@ -11,6 +11,9 @@ properties:
     description: Server Cedar decisions for tenant-wide commands. Missing decisions never admit a command.
     additionalProperties: false
     properties:
+      certificate_settings_manage:
+        type: boolean
+        description: Existing certificate_settings_manage Cedar action over the tenant; no settings payload.
       bulk_appointment:
         type: boolean
         description: Either hr_basic edit or appointment edit over the tenant, decided by the bulk_appointment Cedar action.

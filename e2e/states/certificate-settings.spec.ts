@@ -15,20 +15,23 @@ async function prepare(page: Page, width: number, theme: string, manage: boolean
   await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
   const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
   await certificateAccess(page, manage);
+  await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: { settings: [certificateSettings], seal_max_bytes: 100000, can_manage: manage === true } });
   await mockRoute(page, "get", "/api/v1/hr/certificates", { status: 200, json: { items: [], next_cursor: null } });
   return fixture;
 }
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  for (const allowed of [true, false, undefined]) test(`certificate register lightweight decision ${allowed} ${width} ${theme} @ui-state`, async ({ page }) => {
+  for (const allowed of [true, false, undefined]) test(`certificate register lightweight decision ${allowed} ${width} ${theme} @ui-state`, async ({ page }, info) => {
     const fixture = await prepare(page, width, theme, allowed);
     const settingsReads: string[] = [];
     page.on("request", r => { if (new URL(r.url()).pathname === "/api/v1/hr/certificate-settings") settingsReads.push(r.url()); });
-    await page.goto("/people/certificates");
+    await page.goto(allowed ? "/people/certificates" : "/people/certificates#certificate-settings");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: t("empDoc.certificate.register"), level: 1 })).toBeVisible();
     await expect(page.getByText(t("empDoc.certificate.empty"), { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: t("empDoc.certificate.settings"), exact: true })).toHaveCount(allowed ? 1 : 0);
     expect(settingsReads).toEqual([]);
+    await page.screenshot({ path: info.outputPath("certificate-register.png"), fullPage: true });
     await fits(page, `certificate-register/${allowed}/${width}/${theme}`);
     await expectAxe(page, `certificate-register/${allowed}/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);
@@ -36,13 +39,12 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
   for (const allowed of [true, false, undefined]) test(`certificate precondition before entry ${allowed} ${width} ${theme} @ui-state`, async ({ page }, info) => {
     const fixture = await prepare(page, width, theme, allowed);
-    // Another entity's setup must never unlock this employee's form.
-    await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: { settings: [{ ...certificateSettings, legal_entity_id: id(4999) }], seal_max_bytes: 100000, can_manage: allowed } as never });
+    await mockRoute(page, "get", "/api/v1/hr/certificates/precondition", { status: 200, json: { settings_configured: false, reason_code: "certificate_settings_required" } });
     const writes: string[] = [];
     page.on("request", r => { if (r.method() === "POST" && new URL(r.url()).pathname === "/api/v1/hr/certificates") writes.push(r.url()); });
     await page.goto(`/people/${id(4000)}?act=cert`);
     const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });
-    await expect(sheet.getByText(t("empDoc.certificate.error.certificate_settings_required"), { exact: true }).first()).toBeVisible();
+    await expect(sheet.getByText(t("empDoc.certificate.error.certificate_settings_required"), { exact: true })).toBeVisible();
     await expect(sheet.getByRole("radio")).toHaveCount(0);
     await expect(sheet.getByRole("textbox", { name: t("empDoc.certificate.purpose") })).toHaveCount(0);
     const commit = sheet.getByRole("button", { name: t("empDoc.cert.commit"), exact: true });
@@ -58,8 +60,50 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     if (allowed) {
       await page.screenshot({ path: info.outputPath("precondition.png"), fullPage: true });
       await remedy.click();
-      await expect(page.getByRole("dialog", { name: t("empDoc.certificate.settings"), exact: true })).toBeVisible();
+      const settingsSheet = page.getByRole("dialog", { name: t("empDoc.certificate.settings"), exact: true });
+      await expect(settingsSheet).toBeVisible();
+      await settingsSheet.getByRole("button", { name: t("uiSheet.close"), exact: true }).click();
+      await expect(settingsSheet).toBeHidden();
+      await expect(page).toHaveURL(`/people/certificates?employee=${id(4000)}`);
     }
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  test(`scoped issuer enters without reading tenant settings ${width} ${theme} @ui-state`, async ({ page }, info) => {
+    const fixture = await prepare(page, width, theme, false);
+    let settingsReads = 0;
+    await mockRoute(page, "get", "/api/v1/hr/certificate-settings", () => {
+      settingsReads++;
+      return { status: 403, json: failure("certificate_forbidden") };
+    });
+    await mockRoute(page, "get", "/api/v1/hr/certificates/precondition", request => {
+      expect(new URL(request.url()).searchParams.get("employee_id")).toBe(id(4000));
+      return { status: 200, json: { settings_configured: true, reason_code: null } };
+    });
+    await page.goto(`/people/${id(4000)}?act=cert`);
+    const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });
+    await sheet.getByRole("radio", { name: t("empDoc.cert.kind.EMPLOYMENT"), exact: true }).press("Space");
+    await sheet.getByRole("checkbox", { name: t("empDoc.cert.item.period"), exact: true }).press("Space");
+    await sheet.getByRole("textbox", { name: t("empDoc.certificate.purpose") }).fill("재직 확인");
+    await expect(sheet.getByRole("button", { name: t("empDoc.cert.commit"), exact: true })).not.toHaveAttribute("aria-disabled", "true");
+    expect(settingsReads).toBe(0);
+    await fits(page, `certificate-scoped/${width}/${theme}`);
+    await expectAxe(page, `certificate-scoped/${width}/${theme}`);
+    await page.screenshot({ path: info.outputPath("scoped-issuer.png"), fullPage: true });
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  test(`missing assignment blocks with personnel facts reason ${width} ${theme} @ui-state`, async ({ page }) => {
+    const fixture = await prepare(page, width, theme, true);
+    await mockRoute(page, "get", "/api/v1/hr/certificates/precondition", { status: 200, json: { settings_configured: false, reason_code: "certificate_facts_missing" } });
+    await page.goto(`/people/${id(4000)}?act=cert`);
+    const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });
+    await expect(sheet.getByText(t("empDoc.certificate.error.certificate_facts_missing"), { exact: true })).toBeVisible();
+    await expect(sheet.getByRole("link", { name: t("empDoc.certificate.settings"), exact: true })).toHaveCount(0);
+    await expect(sheet.getByRole("radio")).toHaveCount(0);
+    await expect(sheet.getByRole("button", { name: t("empDoc.cert.commit"), exact: true })).toHaveAttribute("aria-disabled", "true");
+    await fits(page, `certificate-facts/${width}/${theme}`);
+    await expectAxe(page, `certificate-facts/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);
   });
 
@@ -117,21 +161,25 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     let failed = true, attempted = 0;
     let release!: () => void;
     const held = new Promise<void>(resolve => { release = resolve; });
-    await mockRoute(page, "get", "/api/v1/hr/certificate-settings", async () => {
+    await mockRoute(page, "get", "/api/v1/hr/certificates/precondition", async () => {
       attempted++;
       if (status === "loading" && failed) await held;
-      return failed && status !== "loading" ? { status, json: failure(status === 403 ? "forbidden" : "service_unavailable") }
-        : { status: 200, json: { settings: [certificateSettings], seal_max_bytes: 100000, can_manage: true } };
+      return failed && status !== "loading" ? { status, json: failure(status === 403 ? "certificate_forbidden" : "service_unavailable") }
+        : { status: 200, json: { settings_configured: true, reason_code: null } };
     });
     await page.goto(`/people/${id(4000)}?act=cert`);
     const sheet = page.getByRole("dialog", { name: t("empDoc.cert.title"), exact: true });
     await expect.poll(() => attempted).toBeGreaterThan(0);
+    const register = sheet.getByRole("link", { name: t("empDoc.certificate.register"), exact: true });
+    const before = await register.boundingBox();
+    expect(before).not.toBeNull();
     await expect(sheet.getByRole("radio")).toHaveCount(0);
     await sheet.locator("form").evaluate(form => (form as HTMLFormElement).requestSubmit());
     failed = false;
     if (status === "loading") release();
     else await sheet.getByRole("button", { name: t("common.retry"), exact: true }).click();
     await expect(sheet.getByRole("radio", { name: t("empDoc.cert.kind.EMPLOYMENT"), exact: true })).toBeVisible();
+    expect((await register.boundingBox())?.y).toBe(before?.y);
     await fits(page, `certificate-settings-read/${status}/${width}/${theme}`);
     await expectAxe(page, `certificate-settings-read/${status}/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);

@@ -10,7 +10,7 @@ import { CertificatesPage } from "./certificates-page";
 
 const state = vi.hoisted(() => ({
   fresh: true, success: true, manage: undefined as boolean | undefined,
-  entities: ["company"], error: null as unknown, reads: [] as string[],
+  reason: null as string | null, entities: ["company"], error: null as unknown, reads: [] as string[],
 }));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: (query: Parameters<typeof queryPath>[0]) => {
@@ -19,7 +19,8 @@ vi.mock("@tanstack/react-query", () => ({
     return { isSuccess: state.success, isFetchedAfterMount: state.fresh, isPending: false, isFetching: !state.fresh,
       error: null, refetch: () => Promise.resolve(),
       data: path === "/api/v1/access/me" ? { decisions: { certificate_settings_manage: state.manage } }
-        : { can_manage: state.manage, settings: state.entities.map(legal_entity_id => ({ legal_entity_id })) },
+        : path === "/api/v1/hr/certificate-settings" ? { can_manage: state.manage, settings: state.entities.map(legal_entity_id => ({ legal_entity_id })) }
+        : { settings_configured: state.entities.includes("company"), reason_code: state.reason ?? (state.entities.includes("company") ? null : "certificate_settings_required") },
     };
   },
   useInfiniteQuery: () => ({ isPending: false, isError: false, isSuccess: true, data: { pages: [{ items: [] }] }, hasNextPage: false, isFetchingNextPage: false, isFetchNextPageError: false, fetchNextPage: () => Promise.resolve(), refetch: () => Promise.resolve() }),
@@ -37,7 +38,7 @@ vi.mock("../../../lib/react/command", async (importOriginal) => ({
 vi.mock("../../../ui/sheet/sheet", () => ({ Sheet: ({ children, notice, actions }: { children: ReactNode; notice: ReactNode; actions: ReactNode }) => <div><div data-notice>{notice}</div><div data-body>{children}</div>{actions}</div> }));
 vi.mock("./card-who", () => ({ Who: () => null }));
 beforeAll(() => loadCatalog("ko"));
-beforeEach(() => { state.fresh = true; state.success = true; state.manage = undefined; state.entities = ["company"]; state.error = null; state.reads = []; });
+beforeEach(() => { state.fresh = true; state.success = true; state.manage = undefined; state.entities = ["company"]; state.reason = null; state.error = null; state.reads = []; });
 const c = { e: { id: "person", legal_entity_id: "company", status: "ACTIVE" }, place: { entity: "회사" } } as ComponentProps<typeof CertificateSheet>["c"];
 const renderSheet = () => renderToStaticMarkup(<CertificateSheet c={c} onClose={() => {}} />);
 const remedy = () => `data-to="/people/certificates" data-hash="certificate-settings">${t("empDoc.certificate.settings")}</span>`;
@@ -59,7 +60,8 @@ test.each([true, false, undefined])("missing settings block entry for the employ
   expect(markup).not.toContain('type="checkbox"');
   expect(markup).not.toContain(t("empDoc.certificate.purpose"));
   expect(markup.includes(remedy())).toBe(allowed === true);
-  expect(state.reads).toContain("/api/v1/hr/certificate-settings");
+  expect(state.reads).not.toContain("/api/v1/hr/certificate-settings");
+  expect(state.reads).toContain("/api/v1/hr/certificates/precondition");
 });
 
 test("cached settings cannot unlock entry before a fresh answer", () => {
@@ -79,4 +81,18 @@ test.each([true, false, undefined])("register uses only the lightweight server d
   expect(markup.includes('id="certificate-settings"')).toBe(allowed === true);
   expect(state.reads).not.toContain("/api/v1/hr/certificate-settings");
   expect(state.reads).toContain("/api/v1/access/me");
+});
+
+test("scoped issuers use no settings payload and the fresh server precondition", () => {
+  state.manage = false;
+  expect(renderSheet()).toContain(t("empDoc.certificate.purpose"));
+  expect(state.reads).not.toContain("/api/v1/hr/certificate-settings");
+  expect(state.reads).toContain("/api/v1/hr/certificates/precondition");
+});
+test("missing employee facts show their own blocked reason without a settings remedy", () => {
+  state.entities = []; state.reason = "certificate_facts_missing"; state.manage = true;
+  const markup = renderSheet();
+  expect(markup).toContain(t("empDoc.certificate.error.certificate_facts_missing"));
+  expect(markup).not.toContain(remedy());
+  expect(markup).not.toContain(t("empDoc.certificate.error.certificate_settings_required"));
 });

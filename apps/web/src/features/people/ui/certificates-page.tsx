@@ -32,7 +32,8 @@ export function CertificatesPage() {
   const access = useQuery(myAccessQuery);
   const hash = useLocation({ select: (location) => location.hash });
   const canManage = access.isSuccess && access.data?.decisions?.certificate_settings_manage === true;
-  const [configure, setConfigure] = useState(hash === "certificate-settings");
+  const configure = hash === "certificate-settings";
+  const setConfigure = (open: boolean) => void nav({ search: true, hash: open ? "certificate-settings" : "", replace: true });
   const q = useInfiniteQuery({ ...certificatesQuery(employee), initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => certificatesQuery(employee, pageParam).queryFn(),
     getNextPageParam: (last) => last.next_cursor ?? undefined,

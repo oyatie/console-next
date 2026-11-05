@@ -3,11 +3,13 @@
 mod access;
 mod commands;
 mod facts;
+mod precondition;
 mod read;
 mod seal;
 mod settings;
 mod validation;
 
+pub use precondition::{CertificatePrecondition, CertificatePreconditionQuery};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub use settings::{CertificateSettings, CertificateSettingsRequest, CertificateSettingsView};

@@ -87,8 +87,6 @@ export type EmployeeViewFilters = { status?: string; review?: string; unit?: str
 export type EmployeeView = { id: string; name: string; filters: EmployeeViewFilters };
 
 type Requested = {
-  /** Lightweight Cedar decision; no numbering settings or seal images. Missing means denied. */
-  "/api/v1/access/me": Path<{ get: Op<S["AccessEffective"] & { decisions?: S["AccessEffective"]["decisions"] & { certificate_settings_manage?: boolean } }> }>;
   "/api/v1/approvals/{id}": Path<{ get: Op<ApprovalDocument, never, never, { id: string }> }>;
   /** Delegates to the source command; a stale fingerprint refuses with approval_document_changed (409). */
   "/api/v1/approvals/{id}/decision": Path<{ post: Op<ApprovalDecisionReceipt, ApprovalDecision, never, { id: string }, { "Idempotency-Key": string }> }>;

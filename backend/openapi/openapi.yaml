@@ -15511,6 +15511,38 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/IssueCertificateRequest'
+  /api/v1/hr/certificates/precondition:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [employees]
+      operationId: getCertificatePrecondition
+      summary: Read certificate setup readiness for one employee
+      description: The certificate_issue Cedar action uses canonical live person and access facts. Returns no settings or seal payload.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: employee_id
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Settings readiness only; issuance rechecks the facts in its transaction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificatePrecondition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Employee absent or belongs to another tenant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/hr/certificates/{id}:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -32749,6 +32781,9 @@ components:
           description: Server Cedar decisions for tenant-wide commands. Missing decisions never admit a command.
           additionalProperties: false
           properties:
+            certificate_settings_manage:
+              type: boolean
+              description: Existing certificate_settings_manage Cedar action over the tenant; no settings payload.
             bulk_appointment:
               type: boolean
               description: Either hr_basic edit or appointment edit over the tenant, decided by the bulk_appointment Cedar action.
@@ -36810,6 +36845,17 @@ components:
           type:
             - string
             - 'null'
+    CertificatePrecondition:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [settings_configured, reason_code]
+      properties:
+        settings_configured:
+          type: boolean
+        reason_code:
+          type: [string, 'null']
+          enum: [certificate_settings_required, certificate_facts_missing, null]
     CertificateSettings:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

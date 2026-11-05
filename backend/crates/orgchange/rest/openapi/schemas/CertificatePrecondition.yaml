@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [settings_configured, reason_code]
+properties:
+  settings_configured:
+    type: boolean
+  reason_code:
+    type: [string, 'null']
+    enum: [certificate_settings_required, certificate_facts_missing, null]
