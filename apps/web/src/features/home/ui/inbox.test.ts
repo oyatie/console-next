@@ -80,6 +80,12 @@ test.each(["waiting", "scheduled", "deadlines", "failures"] as const)("%s reques
   html();
   expect(JSON.parse(readIdentity(view.options!))[1]).toEqual({ query: { filter } });
 });
+test("Home reuses its arrival read while the full inbox refreshes on open", () => {
+  html(false, true);
+  expect(view.options).toMatchObject({ refetchOnMount: false });
+  html(false, false);
+  expect(view.options).toMatchObject({ refetchOnMount: "always" });
+});
 test("more work follows the server cursor without an offset or a polling interval", async () => {
   view.list.hasNextPage = true;
   html();
