@@ -53,12 +53,28 @@ async fn regression_an_inline_apply_whose_request_is_dropped_still_finishes(
         )
         .body(Body::from(json!({ "dry_run_digest": digest }).to_string()))
         .map_err(e)?;
-    // The caller goes away (a request timeout drops the handler's future).
-    let dropped = tokio::time::timeout(Duration::from_secs(2), service.oneshot(request)).await;
-    assert!(
-        dropped.is_err(),
-        "the apply was blocked, so the caller gave up"
-    );
+    let mut response = Box::pin(service.oneshot(request));
+    let started = async {
+        loop {
+            let applying: bool = sqlx::query_scalar(
+                "SELECT COALESCE(apply_job->>'state'='applying',false) FROM data_import_runs WHERE id=$1",
+            )
+            .bind(run)
+            .fetch_one(&pool)
+            .await
+            .map_err(e)?;
+            if applying {
+                return Ok::<(), String>(());
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    };
+    // Cancel only after admission: a slow fact load must not turn this into an unstarted request.
+    tokio::select! {
+        result = &mut response => return Err(format!("blocked apply returned early: {}", result.map_err(e)?.status())),
+        result = tokio::time::timeout(Duration::from_secs(60), started) => result.map_err(e)??,
+    }
+    drop(response);
     holder.commit().await.map_err(e)?;
 
     // The job still reaches done, settled: the person is in, 미배치 counted.

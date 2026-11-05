@@ -1,9 +1,8 @@
 //! W11 (decisions #27, #28): the employee import apply as a job. The route
 //! checks everything a refusal needs synchronously (digest, unsettled rows,
 //! row limit), records the job on the run (`apply_job`) and returns; a driver
-//! then runs the leave command (all rows, one statement) and the settle in
-//! chunks of [`SETTLE_CHUNK_ROWS`], each chunk one transaction with a
-//! `data_import.apply.progress` audit row — the realtime topic of the run.
+//! then runs the protected batch and every settle chunk in one audited transaction.
+//! Counts publish separately; failure leaves no imported writes.
 //! Every write is idempotent, so a job whose process died is resumed by the
 //! schedule loop (settle phase) or by the operator re-sending the apply.
 
@@ -24,9 +23,8 @@ use crate::import::types::EmployeeImportReport;
 pub use crate::import::settle::SETTLE_CHUNK_ROWS;
 
 /// Seconds after which a running job with no heartbeat is resumed: longer
-/// than the leave command of a run at `import.apply.max_rows` (the driver
-/// stamps the heartbeat right before it), so a live driver is never joined.
-/// a fixed lease; renew it inside the statement if a run ever nears it.
+/// than a whole apply at `import.apply.max_rows`. The run row stays locked
+/// throughout the apply, so the resume scan skips even a driver past this lease.
 pub const STALE_AFTER_SECS: i32 = 300;
 
 /// Apply drivers one process runs at once (#28 load shedding: the next

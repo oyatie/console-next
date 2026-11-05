@@ -9,6 +9,20 @@ use sqlx::{Postgres, Row};
 use crate::{EmployeeHomeBranchUpdate, PgLeaveError, PgLeaveStore};
 
 impl PgLeaveStore {
+    /// Mint a one-use capability without exposing protected writes to the runtime role.
+    pub async fn employee_import_capability(
+        &self,
+        run: uuid::Uuid,
+        actor: UserId,
+    ) -> Result<Option<uuid::Uuid>, PgLeaveError> {
+        let org = current_org().map_err(KernelError::from)?;
+        let query = sqlx::query("SELECT import_api.employee_import_capability($1,$2,$3) AS token")
+            .bind(org.as_uuid())
+            .bind(run)
+            .bind(actor.as_uuid());
+        Ok(self.command_row(query).await?.try_get("token")?)
+    }
+
     pub(super) async fn command_row(
         &self,
         query: Query<'_, Postgres, PgArguments>,

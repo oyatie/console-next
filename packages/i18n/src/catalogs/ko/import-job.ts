@@ -12,6 +12,6 @@ export const koImportJob = {
   "importJob.error.rows_changed_since_preview": "모의 반영 뒤에 바뀐 직원이 있어 아무것도 쓰지 않았습니다. 모의 반영을 다시 실행하십시오.",
   "importJob.error.dry_run_digest_mismatch": "승인한 모의 반영이 이 가져오기의 마지막 모의 반영이 아니어서 아무것도 쓰지 않았습니다. 모의 반영을 다시 실행하십시오.",
   "importJob.error.apply_interrupted": "반영이 아무것도 쓰기 전에 멈췄습니다. 모의 반영으로 돌아가 다시 반영하십시오.",
-  "importJob.error.other": "반영이 멈췄습니다. 모의 반영으로 돌아가 다시 실행하면 이미 들어간 행은 변경 없음으로 나옵니다.",
+  "importJob.error.other": "반영이 멈췄습니다. 아무 행도 저장하지 않았습니다. 모의 반영으로 돌아가 확인한 뒤 다시 반영하십시오.",
   "importJob.started": "명부 반영을 시작했습니다",
 } as const;

@@ -4,6 +4,7 @@
 pub mod apply;
 pub mod apply_drive;
 pub mod apply_job;
+mod apply_progress;
 pub mod apply_resume;
 pub mod apply_rows;
 pub mod canonical;

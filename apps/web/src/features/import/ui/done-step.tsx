@@ -25,28 +25,26 @@ export function DoneStep({ report, runId }: { report?: ImportReport; runId: stri
     return <JobStep runId={runId} onDone={completed} onFailed={restart} />;
   }
   return (
-    <>
+    <QueryState q={run}>
+    {(r) => <>
     <section className="card panel" aria-labelledby="import-done">
-      <h2 id="import-done" className="panel__title" tabIndex={-1}>{t(run.data?.status === "APPLIED" ? "import.done.title" : "importRollback.run.title")}</h2>
-      <QueryState q={run}>
-        {(r) => <>
-          <SectionHead tools={<EnumValue e={IMPORT_RUN_STATUS} value={r.status} />}>{r.source_filename}</SectionHead>
-          <p className="muted">
-            {r.applied_at && r.applied_by ? <time dateTime={r.applied_at}>
-              {t("importRollback.run.applied", { name: r.applied_by.name ?? r.applied_by.id, at: fmtZonedDateTime(r.applied_at) })}
-            </time> : t("importRollback.run.notApplied")}
-            {r.apply_summary && <> · {t("import.summary", { inserted: r.apply_summary.inserted, updated: r.apply_summary.updated, skipped: r.apply_summary.skipped })}</>}
-          </p>
-        </>}
-      </QueryState>
+      <h2 id="import-done" className="panel__title" tabIndex={-1}>{t(r.status === "APPLIED" ? "import.done.title" : "importRollback.run.title")}</h2>
+      <SectionHead tools={<EnumValue e={IMPORT_RUN_STATUS} value={r.status} />}>{r.source_filename}</SectionHead>
+      <p className="muted">
+        {r.applied_at && r.applied_by ? <time dateTime={r.applied_at}>
+          {t("importRollback.run.applied", { name: r.applied_by.name ?? r.applied_by.id, at: fmtZonedDateTime(r.applied_at) })}
+        </time> : t("importRollback.run.notApplied")}
+        {r.apply_summary && <> · {t("import.summary", { inserted: r.apply_summary.inserted, updated: r.apply_summary.updated, skipped: r.apply_summary.skipped })}</>}
+      </p>
       <div className="form__actions">
         <Link to="/people/import" search={{}} className="btn" reloadDocument>{t("import.again")}</Link>
         <Link to="/people" search={{}} className="btn btn--primary">{t("import.viewEmployees")}</Link>
       </div>
     </section>
     {report?.register_gaps && <RegisterGaps gaps={report.register_gaps} />}
-    {run.data && ["APPLIED", "ROLLBACK_REQUESTED", "ROLLBACK_RUNNING", "ROLLED_BACK"].includes(run.data.status) && <RollbackPanel run={run.data} onChanged={completed} />}
-    {run.data?.status === "APPLIED" && <ReconcilePanel runId={runId} />}
-    </>
+    {["APPLIED", "ROLLBACK_REQUESTED", "ROLLBACK_RUNNING", "ROLLED_BACK"].includes(r.status) && <RollbackPanel run={r} onChanged={completed} />}
+    {r.status === "APPLIED" && <ReconcilePanel runId={runId} />}
+    </>}
+    </QueryState>
   );
 }

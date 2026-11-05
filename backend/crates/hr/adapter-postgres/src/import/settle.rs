@@ -9,9 +9,10 @@
 
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
 use console_ontology_canonical_adapter_postgres::employment;
-use console_platform_db::{with_audits, with_org_conn};
+use console_platform_db::insert_audit_event;
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{Postgres, Transaction};
+use std::{future::Future, pin::Pin};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -34,11 +35,11 @@ type Inserted = (
     bool,
 );
 
-/// Rows one settle transaction covers (W11, #28 bounded work per transaction).
+/// Rows one settle step covers inside the atomic apply transaction.
 /// a constant; a settings key if operators ever need to tune it.
 pub const SETTLE_CHUNK_ROWS: usize = 100;
 
-/// One settle transaction: the plan rows it covers, whether it is the run's
+/// One settle step: the plan rows it covers, whether it is the run's
 /// last, and the job to store with it (its progress, audited).
 pub struct Chunk<'a> {
     pub keys: &'a [String],
@@ -48,38 +49,37 @@ pub struct Chunk<'a> {
 
 /// The plan rows of an applied run in plan order: the settle's unit of work
 /// and of progress.
-pub async fn settle_keys(pool: &PgPool, org: OrgId, run_id: Uuid) -> Result<Vec<String>, HrError> {
-    let org_uuid = *org.as_uuid();
-    with_org_conn::<_, _, HrError>(pool, org, move |tx| {
-        Box::pin(async move {
-            Ok(sqlx::query_scalar(
-                "SELECT plan.row->>'source_key' FROM data_import_runs r \
-                 CROSS JOIN LATERAL jsonb_array_elements(r.dry_run_summary->'rows') \
-                   WITH ORDINALITY plan(row, n) \
-                 WHERE r.org_id = $1 AND r.id = $2 ORDER BY plan.n",
-            )
-            .bind(org_uuid)
-            .bind(run_id)
-            .fetch_all(tx.as_mut())
-            .await?)
-        })
-    })
-    .await
+pub async fn settle_keys(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    run_id: Uuid,
+) -> Result<Vec<String>, HrError> {
+    Ok(sqlx::query_scalar(
+        "SELECT plan.row->>'source_key' FROM data_import_runs r \
+         CROSS JOIN LATERAL jsonb_array_elements(r.dry_run_summary->'rows') \
+           WITH ORDINALITY plan(row, n) \
+         WHERE r.org_id = $1 AND r.id = $2 ORDER BY plan.n",
+    )
+    .bind(org.as_uuid())
+    .bind(run_id)
+    .fetch_all(tx.as_mut())
+    .await?)
 }
 
-/// Settles the rows of `chunk` in one audited transaction (each write skipped
-/// when already there); returns how many of its new people were bound.
-pub async fn settle_chunk(
-    pool: &PgPool,
+type SettleFuture<'a> = Pin<Box<dyn Future<Output = Result<usize, HrError>> + Send + 'a>>;
+
+/// Builds the settle write for the apply's audited transaction. Existing writes
+/// are skipped so pre-existing interrupted runs can still finish safely.
+pub fn settle_chunk(
     org: OrgId,
     actor: UserId,
     run_id: Uuid,
     chunk: Chunk<'_>,
-) -> Result<usize, HrError> {
+) -> impl for<'a> FnOnce(&'a mut Transaction<'_, Postgres>) -> SettleFuture<'a> + use<> {
     let org_uuid = *org.as_uuid();
     let Chunk { keys, last, job } = chunk;
     let keys = keys.to_vec();
-    with_audits::<_, _, HrError>(pool, org, move |tx| {
+    move |tx| {
         Box::pin(async move {
             // Serializes a concurrent second apply of the run (the leave
             // command replays it), which then finds everything settled.
@@ -247,12 +247,16 @@ pub async fn settle_chunk(
             {
                 report.register_gaps = Some(register_gaps_in(tx, org_uuid, run_id).await?);
             }
-            if let Some(job) = &job {
+            if let Some(job) = &job
+                && last
+            {
                 write_job(tx, org_uuid, job).await?;
                 audits.push(progress_audit(org, job)?);
             }
-            Ok((bound, audits))
+            for event in audits {
+                insert_audit_event(tx, &event).await?;
+            }
+            Ok(bound)
         })
-    })
-    .await
+    }
 }
