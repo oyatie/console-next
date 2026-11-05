@@ -192,22 +192,20 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await test.step("J4 Apply operating org change", async () => {
     // 8. Operating, alone: an org change is recorded and applies at once (decisions #26: no 결재 by default, so a solo
     // HR worker is never stuck waiting for an approver who does not exist); it stays on record with its reason.
-    // On the chart the same gesture as in setup (select, A) opens the change sheet.
+    // Select, A, then Enter adds inline with the change kind as its reason.
     await go(admin, "/org");
     await c.click(await findPressable(admin, "본사"));
     await admin.keyboard.press("a");
-    const proposal = admin.getByRole("dialog", { name: "부서 신설" });
-    await proposal.getByLabel("부서 이름").fill("마케팅팀");
-    await c.click(proposal.getByRole("button", { name: /^오늘/ }));
-    await proposal.getByLabel("사유").fill("마케팅 기능 신설");
-    await expectComposer(proposal, "부서 신설 1개 적용");
+    const addInput = admin.getByRole("textbox", { name: "본사 아래 새 부서 이름", exact: true });
+    await addInput.fill("마케팅팀");
     const applied = admin.waitForResponse((r) => r.request().method() === "GET" && /\/api\/v1\/org-changes\/[0-9a-f-]+$/.test(new URL(r.url()).pathname));
-    await c.click(proposal.getByRole("button", { name: "부서 신설 1개 적용" }));
+    await expect(admin.getByRole("button", { name: "사유 · 신설", exact: true })).toBeVisible();
+    await addInput.press("Enter");
     const created = await (await applied).json() as { created_unit_ids: string[] };
     expect(created.created_unit_ids).toHaveLength(1);
-    await proposal.waitFor({ state: "hidden" });
     // org-19: stay on the chart, select the department the server created, and link its record in the receipt.
     await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(created.created_unit_ids[0]);
+    await addInput.press("Escape");
     await expect(admin.getByRole("complementary", { name: "마케팅팀", exact: true })).toBeVisible();
     await expect(admin.getByRole("status").filter({ hasText: "마케팅팀 신설을 반영했습니다" }).first()).toBeVisible();
     c.done("org change after go-live: record and apply");

@@ -10,7 +10,7 @@ export const W = { dept: 192, site: 224, entity: 256, root: 352, tile: 108 } as 
  * the workplace that replaces it, so nothing above or beside it moves.
  */
 const SLOT = { w: W.site, h: 176 } as const;
-const ADD_HEIGHT = 108;
+export const EDITOR_SIZE = { w: 280, h: 132 } as const;
 const GY = 52, BUS = 16, GS = 10, IND = 24, SPINE = 12, GX = 16, MORE = 12, PAD = 40;
 /** Above this many workplace a legal entity's workplace wrap into tiles (far) or a grid (one legal entity in focus). */
 const WRAP_SITES = 8;
@@ -90,7 +90,7 @@ function build(n: ChartNode, inp: LayoutInput, far: boolean, inRow: boolean): T 
 }
 
 function measure(n: T) {
-  const [ghost, gh] = !n.adding ? [0, 0] : n.node.kind === "entity" ? [SLOT.w, SLOT.h] : [W.dept, ADD_HEIGHT];
+  const [ghost, gh] = !n.adding ? [0, 0] : n.node.kind === "entity" ? [SLOT.w, SLOT.h] : [EDITOR_SIZE.w, EDITOR_SIZE.h];
   if (!n.kids.length && !ghost) {
     n.sw = n.w;
     n.sh = n.h + (n.more ? MORE : 0);
@@ -157,7 +157,7 @@ function place(n: T, x: number, y: number, out: Box[], ghosts: Box[]) {
 }
 
 const ghostBox = (parent: ChartNode, x: number, y: number): Box =>
-  parent.kind === "entity" ? { node: parent, lod: "m", x, y, w: SLOT.w, h: SLOT.h, slot: true } : { node: parent, lod: "m", x, y, w: W.dept, h: ADD_HEIGHT, ghost: true };
+  parent.kind === "entity" ? { node: parent, lod: "m", x, y, w: SLOT.w, h: SLOT.h, slot: true } : { node: parent, lod: "m", x, y, ...EDITOR_SIZE, ghost: true };
 
 function connectors(n: T, out: Line[], ghosts: Box[]) {
   // No line hangs from the root's header: the legal entities are the top boxes, not children of a company box (decision #29).

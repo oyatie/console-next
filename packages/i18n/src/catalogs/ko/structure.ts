@@ -188,7 +188,7 @@ export const koStructure = {
   "structure.export.png": "PNG 내려받기",
   // --- lane: UX-R3 STRUCT (org-05) ---
   "structure.delete.titleMany": "부서 {count, number}개 폐지",
-  "structure.delete.oneByOne": "운영 중에는 부서마다 시행일과 사유를 정하고 구성원·부서장·권한을 정리하며 폐지합니다. 선택한 부서를 하나씩 엽니다.",
+  "structure.delete.oneByOne": "운영 중에는 부서마다 적용일과 사유를 지정하고 구성원·부서장·권한을 정리하며 폐지합니다. 선택한 부서를 하나씩 엽니다.",
   "structure.delete.chosen": "선택한 부서",
   "structure.delete.line": "{name} · {count, number}명",
   "structure.delete.dissolveOne": "{name} 폐지",

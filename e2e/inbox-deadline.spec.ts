@@ -1,3 +1,4 @@
+import { inlineUnitDetails } from "./structure-flows";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api/schema";
@@ -22,16 +23,15 @@ test("scheduled system actions keep a neutral deadline under the registered wind
 
   const unit = await openUnit(admin, SETUP_DEPARTMENT);
   await unit.getByRole("button", { name: "이름 변경" }).click();
-  const rename = sheet(admin, `${SETUP_DEPARTMENT} 이름 변경`);
-  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("기한확인팀");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(kstDate(3));
-  await rename.getByRole("textbox", { name: /^사유/ }).fill("공유 표시 기한 확인");
+  const renameInput = unit.getByRole("textbox", { name: new RegExp(`^${SETUP_DEPARTMENT}의 새 이름`) });
+  await renameInput.fill("기한확인팀");
+  await inlineUnitDetails(admin, unit, kstDate(3));
   const saved = admin.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/org-changes");
-  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
+  await unit.getByRole("button", { name: "이름 변경", exact: true }).click();
   const response = await saved;
   expect(response.status()).toBe(201);
   const change = await response.json() as { id: string };
-  await expect(rename).toBeHidden();
+  await expect(renameInput).toBeHidden();
 
   const queue = await api("/me/action-inbox?filter=scheduled");
   expect(queue.status()).toBe(200);

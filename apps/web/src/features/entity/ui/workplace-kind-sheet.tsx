@@ -24,7 +24,8 @@ export function WorkplaceKindSheet({ w, onClose, onManage }: { w: Workplace; onC
   return <QueryState q={kinds}>{(d) => <Body w={w} kinds={d.items} onClose={onClose} onManage={onManage} />}</QueryState>;
 }
 
-function Body({ w, kinds, onClose, onManage }: { w: Workplace; kinds: readonly WorkplaceKind[]; onClose: () => void; onManage: () => void }) {
+function Body({ w: initialWorkplace, kinds, onClose, onManage }: { w: Workplace; kinds: readonly WorkplaceKind[]; onClose: () => void; onManage: () => void }) {
+  const [w] = useState(initialWorkplace);
   const [to, setTo] = useState<string | null>(null);
   const name = workplaceName(w);
   const ready = to !== null && to !== w.kind_code;

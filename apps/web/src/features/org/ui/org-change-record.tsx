@@ -16,7 +16,7 @@ import { GateRail } from "../../../ui/gate-rail";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { TimelineLanes } from "../../../ui/timeline-lanes/timeline-lanes";
 import { changeCommands, changeQuery, changeUnitId, me } from "../api";
-import { changeRail, changeTitle, describeOp, eventTitle, nextStep, submittedText, type Names } from "../present";
+import { changeRail, changeTitle, describeOp, reasonText, eventTitle, nextStep, submittedText, type Names } from "../present";
 import { ChangeChain } from "./change-chain";
 import { ChangeHead } from "./change-head";
 import { ChangeNextStep } from "./change-next-step";
@@ -156,7 +156,7 @@ function Proposal({ d, n, brief }: { d: Detail; n: Names; brief: boolean }) {
       <ol className={css.ops}>{d.proposal.map((op, i) => <li key={i}>{describeOp(op, n)}</li>)}</ol>
       <dl className="kv">
         <dt>{t("orgChange.reason")}</dt>
-        <dd>{d.reason}</dd>
+        <dd>{reasonText(d)}</dd>
         {!draft && (
           <>
             <dt>{t("orgChange.headcount")}</dt>

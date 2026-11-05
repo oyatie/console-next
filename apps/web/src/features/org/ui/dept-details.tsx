@@ -30,31 +30,32 @@ const LIVE: ("ACTIVE" | "ON_LEAVE")[] = ["ACTIVE", "ON_LEAVE"];
  * and is shown as concurrent. The unit's own members are offered first; typing searches everyone.
  */
 export function DeptDetails({ node, onDone, appoint = false }: { node: Node; onDone: () => void; appoint?: boolean }) {
-  const [code, setCode] = useState(node.code ?? "");
-  const [head, setHead] = useState<string | null>(node.head?.employee_id ?? null);
+  const [opened] = useState(node);
+  const [code, setCode] = useState(opened.code ?? "");
+  const [head, setHead] = useState<string | null>(opened.head?.employee_id ?? null);
   const [query, setQuery] = useState("");
   const box = useFocusInside<HTMLDivElement>();
   const q = query.trim();
-  const people = useQuery(get("/api/v1/employees", { params: { query: q ? { search: q, status: LIVE, limit: 20 } : { org_unit_id: node.id, status: LIVE, limit: 20 } } }));
+  const people = useQuery(get("/api/v1/employees", { params: { query: q ? { search: q, status: LIVE, limit: 20 } : { org_unit_id: opened.id, status: LIVE, limit: 20 } } }));
   const peers = people.data?.items ?? [];
   const selected = peers.find((p) => p.id === head);
   const options = peers.map((e) => ({
     ...personOption(e, peers),
-    context: e.org_unit_id === node.id ? e.org_unit ?? undefined : t("orgUnit.head.otherUnit", { unit: e.org_unit ?? "—" }),
+    context: e.org_unit_id === opened.id ? e.org_unit ?? undefined : t("orgUnit.head.otherUnit", { unit: e.org_unit ?? "—" }),
   }));
-  if (node.head && !options.some((o) => o.id === node.head!.employee_id)) options.unshift({ ...personOption({ id: node.head.employee_id, name: node.head.name }, peers), context: t("orgUnit.head.current") });
+  if (opened.head && !options.some((o) => o.id === opened.head!.employee_id)) options.unshift({ ...personOption({ id: opened.head.employee_id, name: opened.head.name }, peers), context: t("orgUnit.head.current") });
   const v = code.trim();
   const bad = v !== "" && !CODE.test(v);
-  const same = v === (node.code ?? "") && head === (node.head?.employee_id ?? null);
+  const same = v === (opened.code ?? "") && head === (opened.head?.employee_id ?? null);
   const save = useCommand({
-    run: (_: undefined, key: string) => appointHead(key, node.id, head, { expected_version: node.version ?? 1, code: v || null }),
+    run: (_: undefined, key: string) => appointHead(key, opened.id, head, { expected_version: opened.version ?? 1, code: v || null }),
     invalidates: STRUCTURE_READS,
     awaitFirstRead: true,
-    announce: () => t("orgUnit.details.done", { name: node.name }),
+    announce: () => t("orgUnit.details.done", { name: opened.name }),
     onSuccess: onDone,
   });
   return (
-    <Composer kicker={appoint ? node.name : undefined} title={t(appoint ? "structure.head.appoint" : "orgUnit.details.title")} layout={appoint ? "drawer" : "inline"} headingLevel={appoint ? 2 : 3} action={appoint ? { kind: "orgHead", mode: "assign" } : { kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} consequence={appoint && head && t("structure.head.effective", { date: fmtDate(todayKst()) })} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
+    <Composer kicker={appoint ? opened.name : undefined} title={t(appoint ? "structure.head.appoint" : "orgUnit.details.title")} layout={appoint ? "drawer" : "inline"} headingLevel={appoint ? 2 : 3} action={appoint ? { kind: "orgHead", mode: "assign" } : { kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} consequence={appoint && head && t("structure.head.effective", { date: fmtDate(todayKst()) })} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
       <div ref={box} className={css.stack}>
         <ServerPicker
           label={t("orgUnit.fact.head")}
@@ -67,7 +68,7 @@ export function DeptDetails({ node, onDone, appoint = false }: { node: Node; onD
           loading={people.isPending}
           empty={t("orgUnit.head.none")}
         />
-        {head && <PersonLabel person={{ ...selected, id: head, employee_id: head, name: selected?.name ?? (node.head?.employee_id === head ? node.head.name : undefined) }} peers={peers} />}
+        {head && <PersonLabel person={{ ...selected, id: head, employee_id: head, name: selected?.name ?? (opened.head?.employee_id === head ? opened.head.name : undefined) }} peers={peers} />}
         {head && <Button variant="ghost" className="btn--sm" onClick={() => setHead(null)}>{t("orgUnit.head.clear")}</Button>}
         {!appoint && <Field label={t("orgUnit.fact.code")} required={null} hint={t("orgUnit.code.hint")} error={bad ? t("orgUnit.code.invalid") : undefined}>
           {(p) => <TextInput {...p} maxLength={30} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onDone()} />}

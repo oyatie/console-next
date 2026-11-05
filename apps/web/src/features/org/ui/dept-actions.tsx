@@ -6,6 +6,7 @@ import { t } from "@console/i18n";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { Button } from "../../../ui/button/button";
 import type { Place } from "../../../reference/org/domain/structure";
+import { useUnitEdit } from "../../../reference/org/ui/use-unit-edit";
 import { DeptNameInline } from "../../../reference/org/ui/dept-name-inline";
 import { Actions } from "../../../reference/org/ui/panel-shell";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -21,6 +22,7 @@ const route = getRouteApi("/app/org");
  */
 export function DeptActions({ place, setup }: { place: Place; setup: boolean }) {
   const can = useCan();
+  const canEdit = useUnitEdit(setup);
   const navigate = route.useNavigate();
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -38,16 +40,16 @@ export function DeptActions({ place, setup }: { place: Place; setup: boolean }) 
   const governedEnd = !setup && !!end && !end.delete.allowed && !locked;
   return (
     <Actions>
-      {adding ? (
-        <div><DeptNameInline parent={n} onDone={() => setAdding(false)} /></div>
+      {canEdit && (adding ? (
+        <div><DeptNameInline parent={n} setup={setup} onDone={() => setAdding(false)} /></div>
       ) : (
-        <div><Button variant="primary" id="act-dept-add" className={css.actBtn} onClick={() => (setup ? setAdding(true) : go("dept-add"))}><Plus size={16} aria-hidden />{t("orgUnit.add.child")}</Button></div>
-      )}
-      {renaming ? (
-        <div><DeptNameInline parent={place.parent!} unit={n} onDone={() => setRenaming(false)} /></div>
+        <div><Button variant="primary" id="act-dept-add" className={css.actBtn} onClick={() => setAdding(true)}><Plus size={16} aria-hidden />{t("orgUnit.add.child")}</Button></div>
+      ))}
+      {canEdit && (renaming ? (
+        <div><DeptNameInline parent={place.parent!} unit={n} setup={setup} onDone={() => setRenaming(false)} /></div>
       ) : (
-        <div><Button variant="ghost" id="act-dept-rename" className={css.actBtn} onClick={() => (setup ? setRenaming(true) : go("dept-rename"))}><PencilLine size={16} aria-hidden />{t("orgUnit.rename.action")}</Button></div>
-      )}
+        <div><Button variant="ghost" id="act-dept-rename" className={css.actBtn} onClick={() => setRenaming(true)}><PencilLine size={16} aria-hidden />{t("orgUnit.rename.action")}</Button></div>
+      ))}
       {can("employee_directory_manage", "all") && (
         <div><Link className={`btn btn--ghost ${css.actBtn}`} to="/people/new" search={{ unit: n.id }}><UserPlus size={16} aria-hidden />{t("orgTree.act.register", { name: n.name })}</Link></div>
       )}

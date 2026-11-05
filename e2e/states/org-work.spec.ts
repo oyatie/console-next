@@ -89,7 +89,7 @@ for (const width of [1440, 390]) {
     await sheet.getByRole("button", { name: t("uiSheet.close"), exact: true }).click();
     await page.goto(`/org?sel=${dept.id}&act=dept-add`);
     await sheet.getByRole("textbox", { name: /^부서 이름/ }).fill("새부서");
-    await sheet.getByRole("textbox", { name: /^시행일/ }).fill("2099-11-01");
+    await sheet.getByRole("textbox", { name: /^적용일/ }).fill("2099-11-01");
     await sheet.getByRole("textbox", { name: /^사유/ }).fill("조직 운영 개선");
     await expect(sheet.getByText(t("orgUnit.gov.addConsequence", { name: "새부서", date: fmtDate("2099-11-01") }), { exact: true })).toBeVisible();
     await expect(sheet.getByText(/설정 단계였다면/)).toHaveCount(0);

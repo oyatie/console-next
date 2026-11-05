@@ -14,7 +14,7 @@ import { DateField } from "../../../ui/date/date-field";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { changeCommands, changeQuery, redraftChange, refusalOf } from "../api";
-import { datePresets } from "../present";
+import { datePresets, reasonNote } from "../present";
 import css from "./org-change.module.css";
 
 type Detail = components["schemas"]["OrgChangeDetail"];
@@ -27,12 +27,12 @@ export function ChangeRedraft({ d, title, memo, onClose }: { d: Detail; title: s
   const navigate = useNavigate();
   const today = todayKst();
   const [date, setDate] = useState("");
-  const [reason, setReason] = useState(d.reason);
+  const [reason, setReason] = useState(reasonNote(d));
   const [tried, setTried] = useState(false);
   const dateRef = useRef<HTMLDivElement>(null);
   const redraft = useCommand({
     run: async (submit: boolean, key: string) => {
-      const draft = await redraftChange(d, { effectiveDate: date, reason: reason.trim() }, key);
+      const draft = await redraftChange(d, { effectiveDate: date, reason: reason.trim() || d.kind }, key);
       if (!submit) return { id: draft.id, done: "drafted" as const };
       // Refused by preflight, the draft still exists: its page shows why (the unsent receipt).
       const reread = () => changeQuery(draft.id).queryFn().then((data) => ({ data }));
@@ -48,16 +48,16 @@ export function ChangeRedraft({ d, title, memo, onClose }: { d: Detail; title: s
     invalidates: ORG_READS,
     onSuccess: ({ id, ...search }) => void navigate({ to: "/org/changes/$id", params: { id }, search }),
   });
-  const errors = { date: tried && !date ? t("orgChange.date.required") : refusalOf(redraft.error) === "date" ? t("orgChange.date.min") : undefined, reason: tried && !reason.trim() ? t("orgChange.reason.required") : undefined };
+  const errors = { date: tried && !date ? t("orgChange.date.required") : refusalOf(redraft.error) === "date" ? t("orgChange.date.min") : undefined };
   const press = (submit: boolean) => {
     setTried(true);
-    const count = [!date, !reason.trim()].filter(Boolean).length;
+    const count = date ? 0 : 1;
     if (count === 0) return redraft.mutate(submit);
     announce(t("orgChange.errors", { count }));
-    dateRef.current?.querySelector<HTMLElement>(date ? "textarea" : "input")?.focus();
+    dateRef.current?.querySelector<HTMLElement>("input")?.focus();
   };
   return (
-    <Composer title={t("orgChange.redraft")} subtitle={title} dirty={date !== "" || reason !== d.reason} onClose={onClose}
+    <Composer title={t("orgChange.redraft")} subtitle={title} dirty={date !== "" || reason !== reasonNote(d)} onClose={onClose}
       pending={redraft.isPending} action={{ kind: "orgChange", mode: "request" }} onSubmit={() => press(true)} onSaveDraft={() => press(false)}
       consequence={t("orgChange.next.draft.consequence")}
     ><div className={css.form}>
@@ -75,7 +75,7 @@ export function ChangeRedraft({ d, title, memo, onClose }: { d: Detail; title: s
           suggestWeekday
           error={errors.date}
         />
-        <Field label={t("orgChange.reason")} required error={errors.reason}>
+        <Field label={t("orgChange.reason")} required={false}>
           {(p) => <TextArea {...p} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
       </div>

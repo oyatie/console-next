@@ -4,7 +4,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { todayKst } from "../../../lib/pure/today";
 import { useCommand } from "../../../lib/react/command";
-import { STRUCTURE_READS } from "../../../reference/org/api";
+import { defaultEffectiveDate, STRUCTURE_READS } from "../../../reference/org/api";
 import { governed } from "../api";
 import type { GovOp } from "../domain/structure-plans";
 import { noteChange } from "../../../reference/org/ui/use-change-note";
@@ -18,9 +18,9 @@ type Target = { kind: "ORG_UNIT"; ref: string; label: string };
  * decisions #26: without approval (`approval.policy.org_structure = none`, the pilot default) a change dated today applies at
  * submit and a later one is recorded for its date; with `route` it is submitted for approval.
  */
-export function useGovern() {
-  const [g, setG] = useState<Govern>({ date: "", reason: "" });
+export function useGovern(asOf?: string) {
   const today = todayKst();
+  const [g, setG] = useState<Govern>(() => ({ date: defaultEffectiveDate(today, asOf), reason: "" }));
   const routed = useOrgRouted();
   const later = Boolean(g.date) && g.date > today;
   const missing = [!g.date && t("orgUnit.gov.missingDate"), !g.reason.trim() && t("orgUnit.gov.missingReason")].filter((x): x is string => Boolean(x));

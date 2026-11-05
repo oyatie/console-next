@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { FileText, Lock } from "lucide-react";
 import type { LegalEntity, Workplace } from "@console/api/pending";
 import { t } from "@console/i18n";
@@ -30,7 +31,8 @@ export function AttachHost({ entityId, workplaceId, onClose }: { entityId: strin
  * Attach a certificate to a workplace that has none (org-03, catalog company-18): its own, typed beside the kept original,
  * one the entity already holds free, or a sub-workplace serial of the unit-taxation one; then from when it files under it.
  */
-export function WorkplaceAttachSheet({ e, w, onClose }: { e: LegalEntity; w: Workplace; onClose: () => void }) {
+export function WorkplaceAttachSheet({ e: initialEntity, w: initialWorkplace, onClose }: { e: LegalEntity; w: Workplace; onClose: () => void }) {
+  const [{ e, w }] = useState({ e: initialEntity, w: initialWorkplace });
   const c = useWorkplaceAttach(e, w, onClose);
   const name = workplaceName(w);
   return (

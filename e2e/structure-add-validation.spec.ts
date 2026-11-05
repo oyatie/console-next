@@ -23,7 +23,7 @@ test("a saved department never flashes a duplicate warning while its tree refres
     await field.fill("개발팀");
     await field.press("Enter");
     await expect(box(page, "개발팀")).toHaveCount(1);
-    await expect(field).toBeDisabled();
+    await expect(field).toHaveAttribute("readonly", "");
     await expect(field).not.toHaveAttribute("aria-invalid", "true");
     await expect(page.getByRole("alert").filter({ hasText: "이미 있습니다" })).toHaveCount(0);
     release();

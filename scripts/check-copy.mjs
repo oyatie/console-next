@@ -146,6 +146,7 @@ const COMPOSER_TERM_RULES = [
 ];
 export const TERM_RULES = [
   ...COMPOSER_TERM_RULES,
+  { rule: "term.orgEffectiveDate", re: /시행일/, when: ({ id }) => /^(?:orgUnit|orgChange|orgPropose|structure)\./.test(id), use: "적용일" },
   // Routing scope and the LEGAL-owned N-1 exit label are outside person placement.
   { rule: "term.personPlace", re: /지점/, when: ({ id }) => /^(?:person|people|roster|home)\.(?!field\.homeBranch$|scope\.)/.test(id), use: "사업장 · 근무지 · 미배치 (placement owns a person's place)" },
   { rule: "verb.수정", re: /(?<!새로 ?)고[치쳐칠친칩]/, use: "수정 (the recorded act of a dated fact says 변경 or 정정)" },

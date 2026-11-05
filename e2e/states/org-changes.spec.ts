@@ -3,8 +3,10 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
-import { LONG_NAME } from "../mock/fixtures";
+import { commitLabel } from "../../apps/web/src/ui/composer/actions";
+import { authz, id, LONG_NAME } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
+import { mockRoute } from "../mock/route";
 import { orgChange } from "../mock/org-changes";
 import { orgChangeScreens, type OrgChangeState, type State } from "./registry";
 
@@ -110,3 +112,65 @@ test("saved views use server filters and keep phone cards linked to their record
     fixture.release();
   }
 });
+
+for (const state of ["applied", "approval", "draft", "rejected"] as const) for (const width of [1440, 390]) {
+  test(`org-change: ${state} without a note labels its reason at ${width}px @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.clock.setFixedTime(new Date("2026-11-04T12:00:00+09:00"));
+    const screen = orgChangeScreens[1];
+    const fixtureState = state === "applied" ? "populated" : state;
+    const fixture = await mockScreen(page, screen, fixtureState);
+    await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities, ...["org_change_draft", "org_change_approve"].map(feature => ({ feature, permission: "allow" as const, branch_scope: { kind: "all" as const }, org_wide: true, scoped: false }))] } });
+    let record = { ...orgChange(fixtureState), kind: "NEW" as const, reason: "NEW", effectiveDate: "2026-11-20", ...(state === "approval" ? { draftedBy: id(5) } : {}) };
+    await page.route(`**/api/v1/org-changes/${record.id}`, async route => {
+      if (route.request().method() === "PATCH") {
+        const body = route.request().postDataJSON();
+        expect(body.reason ?? record.reason).toBe("NEW");
+        record = { ...record, ...body, updatedAt: "2026-11-04T12:00:00Z" };
+      }
+      await route.fulfill({ json: record });
+    });
+    await page.route(`**/api/v1/org-changes/${record.id}/preflight`, route => route.fulfill({ json: record }));
+    const writes: unknown[] = [];
+    await page.route("**/api/v1/org-changes", route => {
+      if (route.request().method() !== "POST") return route.fallback();
+      writes.push(route.request().postDataJSON());
+      return route.fulfill({ status: 422, json: { error: { code: "invalid_change", message: "Change refused" } } });
+    });
+    try {
+      await page.goto(screen.path);
+      const main = page.getByRole("main");
+      const reason = state === "approval" ? main.locator("blockquote").first() : main.getByRole("region", { name: t("orgChange.proposal"), exact: true }).locator("dd").first();
+      await expect(reason).toHaveText(t("orgUnit.gov.reasonNew"));
+      await expect(main.getByText("NEW", { exact: true })).toHaveCount(0);
+      if (state === "draft" || state === "rejected") {
+        await main.getByRole("button", { name: t(state === "draft" ? "orgChange.edit" : "orgChange.redraft"), exact: true }).click();
+        const dialog = page.getByRole("dialog");
+        const note = dialog.getByRole("textbox", { name: new RegExp(`^${t("orgChange.reason")}`) });
+        await expect(note).toHaveValue("");
+        await expect(note).not.toHaveAttribute("aria-required", "true");
+        for (const theme of ["light", "dark"]) {
+          await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+          await fits(page, `${state}/note/${width}/${theme}`);
+          await expectAxe(page, `${state}/note/${width}/${theme}`);
+        }
+        await dialog.getByRole("button", { name: new RegExp(`^${t("orgChange.date.nextMonth")}`) }).click();
+        if (state === "draft") {
+          await dialog.getByRole("button", { name: commitLabel({ kind: "orgChange", mode: "change" }), exact: true }).click();
+          await expect(dialog).toHaveCount(0);
+          expect(record.reason).toBe("NEW");
+          expect(record.effectiveDate).toBe("2026-12-01");
+        } else {
+          await dialog.getByRole("button", { name: t("composer.saveDraft"), exact: true }).click();
+          await expect.poll(() => writes.length).toBe(1);
+          expect(writes).toEqual([expect.objectContaining({ kind: "NEW", reason: "NEW", supersedesId: record.id })]);
+        }
+      } else for (const theme of ["light", "dark"]) {
+        await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+        await fits(page, `${state}/reason/${width}/${theme}`);
+        await expectAxe(page, `${state}/reason/${width}/${theme}`);
+      }
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}

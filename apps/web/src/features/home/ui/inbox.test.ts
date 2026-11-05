@@ -205,7 +205,7 @@ test("the server can offer a personal view without work capabilities", () => {
 test.each(["approve", "effectuate"] as const)("server command %s reaches the inline control beside a distinct record link", (command) => {
   view.list.data = { pages: [page([item("org", { kind: command === "approve" ? "org_change_approve" : "org_change_apply", links: [{kind:"org_change",id:"record"}], context: { command, drafter:"drafter", reason:"reason" } })])] };
   const markup = html();
-  for (const part of [`data-command="${command}"`, 'data-record="record"', 'href="/org/changes/record"', `>${t("home.decide.review")}</a>`, "drafter", "reason"]) expect(markup).toContain(part);
+  for (const part of [`data-command="${command}"`, 'data-record="record"', 'href="/org/changes/record"', `>${t("home.decide.review")}</a>`, "drafter", t(command === "approve" ? "home.inbox.reason.org_change_approve" : "home.inbox.reason.org_change_apply")]) expect(markup).toContain(part);
   expect(markup).not.toContain(`>${t("org.change.effectuate")}</a>`);
 });
 test("waiting work retains its durable outcome link", () => {
