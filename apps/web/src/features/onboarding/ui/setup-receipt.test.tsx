@@ -144,3 +144,19 @@ test("omits unauthorized receipt links and hides outside the configured receipt 
     vi.useRealTimers();
   }
 });
+
+test("a history-only viewer cannot see a cached receipt summary", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+  try {
+    state.isOps = false;
+    state.entries = [{ domain: "org", level: "view", enforcement: "ENFORCED", scope: { kind: "TENANT", include_descendants: false }, grant_id: "grant", role_id: "role", role_name_ko: "Reader", valid_from: "2026-11-01T00:00:00Z", caveats: [] }];
+    const html = render();
+    expect(html).toContain('href="/org/history"');
+    expect(html).not.toContain('href="/setup/go-live"');
+    expect(html).not.toContain("운영 시작 당시");
+    expect(html).not.toContain("23");
+  } finally {
+    vi.useRealTimers();
+  }
+});

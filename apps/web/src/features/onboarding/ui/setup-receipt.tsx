@@ -38,7 +38,7 @@ export function SetupReceipt({ receiptNeed, historyNeed }: { receiptNeed: Access
   const receipt = useQuery({ ...goLiveReceiptQuery, enabled: band === "started" && canOpenReceipt });
   if (band !== "started" || !data?.go_live_at || !access.data) return null;
   if (!canOpenReceipt && !canOpenHistory) return null;
-  const record = receipt.isError && isAnswer(receipt.error) ? undefined : receipt.data;
+  const record = !canOpenReceipt || receipt.isError && isAnswer(receipt.error) ? undefined : receipt.data;
   const counts = record?.facts_snapshot_version === 1 ? record.facts_snapshot : null;
   const summary = counts
     ? `${t("setup.golive.details.legal_entity")} ${fmtNumber(counts.entities)} · ${t("setup.golive.details.workplace")} ${fmtNumber(counts.workplaces)} · ${t("setup.golive.details.units")} ${fmtNumber(counts.org_units)} · ${t("setup.stats.people")} ${fmtNumber(counts.employees)}`
