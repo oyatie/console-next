@@ -7283,7 +7283,7 @@ async fn create_schedule(
             "timezone": timezone,
             "definition_id": definition_id,
             "enabled": enabled,
-            "next_run_at": next_run_at.map(|at| at.to_string()),
+            "next_run_at": next_run_at.map(console_kernel_core::rfc3339).transpose()?,
         })),
     );
     let (label_ins, cron_ins, tz_ins) = (label.clone(), cron_expr.clone(), timezone.clone());
