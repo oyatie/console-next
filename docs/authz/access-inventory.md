@@ -121,7 +121,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/platform/authz/src/access/load.rs | reference | 5 |
 | BranchScope | backend/crates/platform/authz/src/access/model.rs | reference | 11 |
 | BranchScope | backend/crates/platform/authz/src/access/project.rs | reference | 4 |
-| BranchScope | backend/crates/platform/authz/src/access/tests.rs | reference | 7 |
+| BranchScope | backend/crates/platform/authz/src/access/tests.rs | reference | 3 |
 | BranchScope | backend/crates/platform/authz/src/cedar_pbac/mode_contract.rs | reference | 2 |
 | BranchScope | backend/crates/platform/authz/src/decide.rs | reference | 11 |
 | BranchScope | backend/crates/platform/authz/src/grants_sql.rs | reference | 7 |

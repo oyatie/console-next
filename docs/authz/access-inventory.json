@@ -635,7 +635,7 @@
       "model": "BranchScope",
       "file": "backend/crates/platform/authz/src/access/tests.rs",
       "kind": "reference",
-      "count": 7
+      "count": 3
     },
     {
       "model": "BranchScope",

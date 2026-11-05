@@ -21,7 +21,7 @@ use cedar_policy::{
 };
 use uuid::Uuid;
 
-use super::catalog::{Domain, action_group};
+use super::catalog::{Domain, Level, action_group};
 use super::model::{AccessSubject, NodeKind, NodePath};
 use super::tags::tagged;
 
@@ -278,6 +278,32 @@ impl AccessSlice {
             }
             Ok(response.decision() == Decision::Allow)
         })
+    }
+
+    /// Whether this subject could grant every effective grant held by `target`.
+    /// This is the same Cedar ceiling as a grant write: access edit plus every
+    /// domain and level at each grant's scope. Intrinsic ops authority is never
+    /// grantable through this path.
+    ///
+    /// # Errors
+    /// Any Cedar compilation or evaluation error; callers must fail closed.
+    pub fn can_grant_subject(&self, target: &AccessSubject) -> Result<bool, AccessEngineError> {
+        if target.is_ops || target.org.as_uuid().to_string() != self.org {
+            return Ok(false);
+        }
+        for grant in &target.grants {
+            if !self.allows(&action_group(Domain::Access, Level::Edit), &grant.scope)? {
+                return Ok(false);
+            }
+            for line in &grant.lines {
+                for level in &line.levels {
+                    if !self.allows(&action_group(line.domain, *level), &grant.scope)? {
+                        return Ok(false);
+                    }
+                }
+            }
+        }
+        Ok(true)
     }
 
     fn node_entities(&self, path: &NodePath) -> Result<Vec<Entity>, AccessEngineError> {
