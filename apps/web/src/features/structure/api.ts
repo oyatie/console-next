@@ -3,7 +3,6 @@
 // with phase_not_setup → submit_org_change and the governed path takes over.
 import { api, ApiError, session, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
-import { get } from "../../lib/query";
 
 export { entitiesRef, orgStructureRef as structureQuery, checklistRef } from "../../reference/entity/api";
 
@@ -28,6 +27,3 @@ export const isStale = (error: unknown) => error instanceof ApiError && error.co
 export const whoAmI = () => session.claims?.name ?? "";
 /** User-scoped chart preferences on this device. */
 export const myId = () => session.claims?.sub;
-
-/** People whose name or employee number matches, for the jump palette (a few, newest page). */
-export const peopleSearchQuery = (q: string) => get("/api/v1/employees", { params: { query: { search: q, limit: 5 } } });
