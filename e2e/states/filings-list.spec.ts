@@ -113,17 +113,19 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expect.soft(filingRow(page, t("statutory.NPS"), t("statutory.ACQUIRE"))).toHaveCount(2);
         expect.soft(heights[0]).toBeLessThanOrEqual(65);
         expect.soft(heights[1]).toBeLessThanOrEqual(137);
-        const lines = await row.evaluate((element, text) => {
+        const reason = await row.evaluate((element, text) => {
           const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
           while (walker.nextNode()) {
             if (walker.currentNode.textContent?.trim() !== text) continue;
             const range = document.createRange();
             range.selectNodeContents(walker.currentNode);
-            return range.getClientRects().length;
+            return { lines: range.getClientRects().length, top: range.getBoundingClientRect().top };
           }
           throw new Error("Missing filing reason");
         }, t("statutory.OTHER_LEGAL_GROUND"));
-        expect.soft(lines).toBeLessThanOrEqual(2);
+        expect.soft(reason.lines).toBeLessThanOrEqual(2);
+        const status = (await row.getByText(t("statutory.notApplicable"), { exact: true }).boundingBox())!;
+        expect.soft(reason.top).toBeGreaterThanOrEqual(status.y + status.height - 1);
       }
       const marker = () => basis.evaluate(element => {
         const style = getComputedStyle(element);
