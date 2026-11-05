@@ -62,14 +62,15 @@ export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase
           const rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
           const head = pages[0];
           const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
+          const noWork = !head?.has_work && unavailable.length === 0;
           if (!preview && (setupPhase || checklist)) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
           return <>
             {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
               {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
             </Banner>)}
             {checklist && setup?.(checklist)}
-            {!checklist && !head?.has_work && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
-            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} /> : !checklist && head?.has_work && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
+            {!checklist && noWork && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
+            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
             {!preview && inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
           </>;
         }}</QueryState>
