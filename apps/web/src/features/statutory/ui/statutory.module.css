@@ -1,6 +1,5 @@
 .scroll { width: 100%; min-width: 0; overflow-x: auto; }
 .scroll table { min-width: 100%; }
-.filings [role="grid"][data-layout="rows"] :is([role="gridcell"], [role="rowheader"]) { height: auto; min-height: var(--row-h); white-space: normal; align-items: start; }
 .filingWindow { min-width: 0; }
 .dateGroup { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
 .dateGroup > div { flex-wrap: nowrap; }

@@ -114,6 +114,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expect.soft(rows).toHaveCount(2);
         expect.soft(heights[0]).toBeLessThanOrEqual(65);
         expect.soft(heights[1]).toBeLessThanOrEqual(137);
+        const event = pending.getByRole("gridcell", { name: `${t("statutory.NPS")} · ${t("statutory.ACQUIRE")}`, exact: true });
+        const eventLines = await event.evaluate(element => {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          return new Set(Array.from(range.getClientRects(), rect => Math.round(rect.top))).size;
+        });
+        expect.soft(eventLines).toBeLessThanOrEqual(2);
         const reason = await row.evaluate((element, text) => {
           const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
           while (walker.nextNode()) {
@@ -176,6 +183,53 @@ for (const sameEmployee of [false, true]) test(`filing actions remain reachable 
     }
     expect(searches).toContain(target.employee_number);
     await expect(page.getByRole("searchbox", { name: t("statutory.search") })).toHaveValue(target.employee_number!);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+
+test("mouse wheel reaches the last filing with tall legal evidence @ui-state", async ({ page }, info) => {
+  await page.setViewportSize({ width: 1280, height: 580 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await mockFilings(page);
+  const tasks = Array.from({ length: 8 }, (_, index) => ({
+    ...filingTask, event_id: id(8600 + index), kind: index < 4 ? "ACQUIRE" : "LOSE", insurer: ["EI", "IACI", "NHIS", "NPS"][index % 4]!,
+    employee_number: "SW-1", name: "신고기간직원", lifecycle_case_id: index < 4 ? null : id(8700), opens_in_days: index < 4 ? 0 : 30,
+    opens_on: index < 4 ? "2026-11-05" : "2026-12-01", due_date: "2026-12-15", due_on: "2026-12-15", due_in_days: 40,
+    basis: { ...filingTask.basis!, applicability_citations: Array.from({ length: 3 }, (_, citation) => ({
+      ...filingTask.basis!.citation, article: `제${citation + 1}조`, source_url: `${filingTask.basis!.citation.source_url}?article=${citation + 1}`,
+    })), penalty: { citation: filingTask.basis!.citation, delay_won: [50000, 70000, 100000], per_worker: true, cap_won: 1000000 } },
+  }));
+  await mockRoute(page, "get", "/api/v1/statutory/insurance-filings", {
+    status: 200, json: { items: tasks, total: tasks.length, pending: tasks.length, next: null },
+  });
+  try {
+    for (const expanded of [false, true]) {
+      await page.goto("/statutory");
+      const grid = page.getByRole("grid", { name: t("statutory.insurance"), exact: true });
+      await expect(grid.getByRole("rowheader").first()).toBeVisible();
+      await page.evaluate(async () => { await document.fonts.ready; });
+      await expect.poll(() => grid.getByRole("gridcell").evaluateAll(cells => Math.max(...cells.map(el => el.getBoundingClientRect().height)))).toBeGreaterThan(80);
+      await grid.scrollIntoViewIfNeeded();
+      if (expanded) {
+        const collapsed = await grid.evaluate(el => el.scrollHeight);
+        await grid.getByText(t("statutory.basis"), { exact: true }).first().click();
+        await expect.poll(() => grid.evaluate(el => el.scrollHeight)).toBeGreaterThan(collapsed);
+      }
+      await grid.hover();
+      const distance = await grid.evaluate(el => el.clientHeight);
+      for (let step = 0; step < 40; step++) {
+        await page.mouse.wheel(0, distance);
+        // Wait for each wheel's animation frame without focusing or scrolling a row into view.
+        await grid.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      }
+      expect(await grid.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1);
+      const last = grid.locator(`[data-row-id="${tasks.at(-1)!.event_id}:LOSE:NPS"]`);
+      await expect(last).toBeAttached();
+      await expect(last).toBeInViewport();
+      await expect(last.getByRole("button", { name: t("statutory.record"), exact: true })).toBeInViewport();
+      await page.screenshot({ path: info.outputPath(`filings-end-${expanded ? "expanded" : "collapsed"}.png`), fullPage: true });
+    }
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
