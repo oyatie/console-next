@@ -40,7 +40,7 @@ export async function attendanceReadState(page: Page, screen: typeof attendanceS
     await expect(table).toBeVisible();
     if (state === "empty" && screen.key !== "attendance-close") await expect(table.getByText(t(`attendance.${screen.tab}.empty`), { exact: true })).toBeVisible();
     else if (screen.key === "attendance-close") {
-      if (width === 1440) await expect(table.getByRole("columnheader")).toHaveText([t("attendance.col.workplace"), t("attendance.col.state"), t("attendance.tab.issues"), t("attendance.close.pendingLeave"), t("attendance.close.closedAt"), t("attendance.close.periodLock")]);
+      if (width === 1440) await expect(table.getByRole("columnheader")).toHaveText([t("attendance.col.workplace"), t("attendance.col.state"), t("attendance.tab.issues"), t("attendance.close.pendingLeave"), t("attendance.close.closedAt")]);
       await expect(table.getByText("본사", { exact: true })).toBeVisible();
       await expect(table.getByText(t("attendance.count", { count: state === "empty" ? 0 : 7 }), { exact: true }).first()).toBeVisible();
       await expect(table.getByText(t("attendance.close.open"), { exact: true })).toBeVisible();

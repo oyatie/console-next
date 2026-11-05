@@ -66,6 +66,8 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   await go(admin, `/attendance?tab=close&month=${lastMonth}`);
   const closeBoard = admin.getByRole("grid", { name: "월 마감", exact: true });
   await expect(closeBoard.getByRole("columnheader", { name: "휴가 승인 대기", exact: true })).toBeVisible();
+  await expect(closeBoard.getByText(`${board.items[0].pending_leave}건 · 마감 시점`, { exact: true }).first()).toBeVisible();
+  await expect(closeBoard.getByRole("columnheader", { name: "기간 잠금", exact: true })).toBeVisible();
   await expect(closeBoard.locator("time")).toHaveAttribute("datetime", closeRecord.closed_at);
   await expect(closeBoard.locator("time")).not.toHaveText(/^[—–]$/);
   await expect(closeBoard.getByRole("link", { name: "기간 잠금 해제 요청", exact: true })).toHaveAttribute("href", `${LOCKS}?unlock=${closeRecord.period_lock_id}`);
