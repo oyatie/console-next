@@ -4,6 +4,8 @@
 the always-on organisation and HR core plus attendance and payroll. `full` enables the other
 modules. A module compiled out of a profile exposes no routes or periodic loops.
 Migrations always apply to the shared schema, regardless of enabled features.
+Privacy rights filing and own-history APIs are always-on self-service capabilities;
+other compliance routes remain gated by the `compliance` feature.
 
 Before promoting a module into `mvp`, review its feature dependencies, route mounts,
 worker loops and state initialization; test its routes and isolation, and confirm

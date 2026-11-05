@@ -11563,6 +11563,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/rights-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * File a self-service request with register-backed per-kind deadlines
+         * @description The server supplies the subject and receipt date. Idempotency-Key replays the original receipt; changed payloads conflict. A fresh PRIVACY_REQUEST passkey envelope is bound to the actor UUID and the SHA-256 of the serialized filing (controller, kinds, detail in that order). Refusals include passkey_step_up_required, passkey_step_up_failed, no_employee_record, request_kind_required, request_kind_unavailable and detail_too_long. Unregistered automated-decision and transmission kinds are unavailable. Missing statutory rules leave the per-kind deadline unknown; HOLD rule dispositions remain visible.
+         */
+        post: operations["filePrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the signed-in subject's requests in this tenant */
+        get: operations["listOwnPrivacyRightsRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Filing choices and statutory clock previews for the authenticated subject */
+        get: operations["privacyRightsRequestOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a tenant receipt under the live privacy_request_intake_read Cedar scope */
+        get: operations["readPrivacyRightsIntake"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/production/capacity-slots": {
         parameters: {
             query?: never;
@@ -15000,6 +15071,7 @@ export interface components {
             context?: {
                 /** @description Optional physical work site, separate from the statutory placement path. */
                 worksite_name?: string;
+                privacy_kinds?: string[];
                 /** @description Exact visible total for this review kind under the same reach and snapshot; omitted for bounded counts. */
                 review_count?: number;
                 register?: {
@@ -26674,6 +26746,44 @@ export interface components {
             terms: {
                 version: string;
                 sha256: string;
+            };
+        };
+        PrivacyRightsReceipt: {
+            /** Format: uuid */
+            id: string;
+            receipt_no: string;
+            detail: string;
+            /** @enum {string} */
+            status: "RECEIVED" | "DECIDED";
+            receipt: {
+                /** @enum {string} */
+                controller: "TENANT" | "OPERATOR";
+                /** Format: date */
+                received_on: string;
+                /** Format: date-time */
+                identity_at: string;
+            };
+            kinds: {
+                [key: string]: {
+                    due: {
+                        /** Format: date */
+                        on: string | null;
+                        without_delay: boolean;
+                        rule: {
+                            [key: string]: unknown;
+                        } | null;
+                    } | null;
+                    decisions: {
+                        /** Format: date */
+                        on: string;
+                        decision: {
+                            /** @enum {string} */
+                            outcome: "GRANTED" | "PARTIAL" | "REFUSED" | "POSTPONED";
+                            reason: string | null;
+                            note: string | null;
+                        };
+                    }[];
+                };
             };
         };
         /** @enum {string} */
@@ -54986,6 +55096,154 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    filePrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    controller: "TENANT" | "OPERATOR";
+                    kinds: ("ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL")[];
+                    /** @default  */
+                    detail?: string;
+                    step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Filed receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    listOwnPrivacyRightsRequests: {
+        parameters: {
+            query?: {
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own requests only, ordered by descending receipt ID with keyset paging. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        as_of: string;
+                        items: components["schemas"]["PrivacyRightsReceipt"][];
+                        /** Format: uuid */
+                        next_cursor: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    privacyRightsRequestOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Code-only choices admitted by Cedar; dates resolved as of the server KST date. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        subject_user_id: string;
+                        /** Format: date */
+                        as_of: string;
+                        controllers: {
+                            /** @enum {string} */
+                            code: "TENANT" | "OPERATOR";
+                        }[];
+                        kinds: {
+                            /** @enum {string} */
+                            code: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                            /** Format: date */
+                            due_on: string | null;
+                            without_delay: boolean;
+                        }[];
+                        detail_max_length: number;
+                        reply_email_masked: string | null;
+                    };
+                };
+            };
+            /** @description Query parameters are not accepted. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    readPrivacyRightsIntake: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant receipt and requester name. Account-data requests are never returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        request: components["schemas"]["PrivacyRightsReceipt"];
+                        subject_name: string;
+                        /** Format: date */
+                        as_of: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     listProductionCapacitySlots: {

@@ -1741,7 +1741,7 @@ pub const COMPLIANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: COMPLIANCE_FRAGMENT_EXTERNAL,
 };
 
-const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &["Timestamp", "Uuid"];
+const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &["MobilePasskeyStepUpEnvelope", "Timestamp", "Uuid"];
 
 const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -1952,6 +1952,42 @@ const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
             method: "get",
             body: include_str!(
                 "../../compliance/rest/openapi/paths/api__v1__location__arrival-events.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/mine",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__mine.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/options",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__options.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__id.get.yaml"
             ),
         }],
     },
@@ -2235,6 +2271,10 @@ const COMPLIANCE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ObligationType",
         body: include_str!("../../compliance/rest/openapi/schemas/ObligationType.yaml"),
+    },
+    NamedYaml {
+        name: "PrivacyRightsReceipt",
+        body: include_str!("../../compliance/rest/openapi/schemas/PrivacyRightsReceipt.yaml"),
     },
     NamedYaml {
         name: "RecordInsuranceFiling",

@@ -73,6 +73,7 @@ properties:
     - setup_golive
     - support_access
     - registration_check
+    - privacy_request
   urg:
     type: string
     enum:
@@ -120,6 +121,9 @@ properties:
       worksite_name:
         type: string
         description: Optional physical work site, separate from the statutory placement path.
+      privacy_kinds:
+        type: array
+        items: { type: string }
       review_count:
         type: integer
         minimum: 0

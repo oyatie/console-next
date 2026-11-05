@@ -54,7 +54,10 @@ const tenants = createRoute({
 const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-access", staticData: { access: "signed-in", floorplan: "P-01" },validateSearch:(s: Record<string, unknown>): { review?: string } => ({ review: str(s.review) }),component:lazyRouteComponent(screen(()=>import("../features/support-access/ui/support-access")),"SupportAccess")});
 // Home with the setup checklist composed in (routes compose slices).
 const home = createRoute({ getParentRoute: () => app, path: "/", staticData: { access: "signed-in", floorplan: "P-03" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
-const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/account/Account")), "Account") });
+const loadAccount = () => import("../features/account/Account");
+const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
+const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyIntake") });
+const privacy = createRoute({ getParentRoute: () => app, path: "/account/privacy", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyRequests") });
 
 // Test builds keep the gallery for the preview suite; normal production builds drop its route and chunk.
 const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
@@ -70,4 +73,4 @@ const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
   }),
 ] : [];
 
-export const frame = { signIn: [login, setupPasskey, ...dev], screens: [tenants, home, account, supportAccess, ...reviewStates] };
+export const frame = { signIn: [login, setupPasskey, ...dev], screens: [tenants, home, account, privacy, privacyIntake, supportAccess, ...reviewStates] };

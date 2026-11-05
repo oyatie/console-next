@@ -25418,6 +25418,134 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/privacy/rights-requests:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: filePrivacyRightsRequest
+      summary: File a self-service request with register-backed per-kind deadlines
+      security: [{ bearerAuth: [] }]
+      description: >
+        The server supplies the subject and receipt date. Idempotency-Key replays the
+        original receipt; changed payloads conflict. A fresh PRIVACY_REQUEST passkey envelope is bound to the actor UUID and the SHA-256 of the serialized filing (controller, kinds, detail in that order).
+        Refusals include passkey_step_up_required, passkey_step_up_failed, no_employee_record,
+        request_kind_required, request_kind_unavailable and detail_too_long. Unregistered
+        automated-decision and transmission kinds are unavailable. Missing statutory
+        rules leave the per-kind deadline unknown; HOLD rule dispositions remain visible.
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [controller, kinds, step_up]
+              properties:
+                controller: { type: string, enum: [TENANT, OPERATOR] }
+                kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+                detail: { type: string, maxLength: 2000, default: '' }
+                step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+      responses:
+        '200': { description: Filed receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/mine:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: listOwnPrivacyRightsRequests
+      summary: List the signed-in subject's requests in this tenant
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: cursor, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Own requests only, ordered by descending receipt ID with keyset paging.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor, as_of]
+                properties:
+                  as_of: { type: string, format: date }
+                  items: { type: array, items: { $ref: '#/components/schemas/PrivacyRightsReceipt' } }
+                  next_cursor: { type: string, format: uuid, nullable: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/options:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: privacyRightsRequestOptions
+      summary: Filing choices and statutory clock previews for the authenticated subject
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Code-only choices admitted by Cedar; dates resolved as of the server KST date.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [subject_user_id, as_of, controllers, kinds, detail_max_length, reply_email_masked]
+                properties:
+                  subject_user_id: { type: string, format: uuid }
+                  as_of: { type: string, format: date }
+                  controllers:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [code]
+                      properties:
+                        code: { type: string, enum: [TENANT, OPERATOR] }
+                  kinds:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [code, due_on, without_delay]
+                      properties:
+                        code: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                        due_on: { type: string, format: date, nullable: true }
+                        without_delay: { type: boolean }
+                  detail_max_length: { type: integer, minimum: 1 }
+                  reply_email_masked: { type: string, nullable: true }
+        '400': { description: Query parameters are not accepted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: readPrivacyRightsIntake
+      summary: Read a tenant receipt under the live privacy_request_intake_read Cedar scope
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Tenant receipt and requester name. Account-data requests are never returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request, subject_name, as_of]
+                properties:
+                  request: { $ref: '#/components/schemas/PrivacyRightsReceipt' }
+                  subject_name: { type: string }
+                  as_of: { type: string, format: date }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/production/capacity-slots:
     get:
       operationId: listProductionCapacitySlots
@@ -33755,6 +33883,7 @@ components:
           - setup_golive
           - support_access
           - registration_check
+          - privacy_request
         urg:
           type: string
           enum:
@@ -33802,6 +33931,9 @@ components:
             worksite_name:
               type: string
               description: Optional physical work site, separate from the statutory placement path.
+            privacy_kinds:
+              type: array
+              items: { type: string }
             review_count:
               type: integer
               minimum: 0
@@ -50457,6 +50589,7 @@ components:
             - passkey_step_up_support_session
             - passkey_step_up_pii_reveal
             - passkey_step_up_pii_record
+            - passkey_step_up_privacy_request
         replay_attempt:
           type:
             - integer
@@ -50530,6 +50663,7 @@ components:
                 - SUPPORT_SESSION
                 - PII_REVEAL
                 - PII_RECORD
+                - PRIVACY_REQUEST
             object_id:
               $ref: '#/components/schemas/Uuid'
             reason_key:
@@ -50550,6 +50684,7 @@ components:
                 - passkey_step_up_support_session
                 - passkey_step_up_pii_reveal
                 - passkey_step_up_pii_record
+                - passkey_step_up_privacy_request
             replay_attempt:
               type:
                 - integer
@@ -50582,6 +50717,7 @@ components:
         - SUPPORT_SESSION
         - PII_REVEAL
         - PII_RECORD
+        - PRIVACY_REQUEST
     MobileVotePollRequest:
       type: object
       required:
@@ -56346,6 +56482,50 @@ components:
               type: string
             sha256:
               type: string
+    PrivacyRightsReceipt:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [id, receipt_no, receipt, kinds, status, detail]
+      properties:
+        id: { type: string, format: uuid }
+        receipt_no: { type: string }
+        detail: { type: string }
+        status: { type: string, enum: [RECEIVED, DECIDED] }
+        receipt:
+          type: object
+          required: [controller, received_on, identity_at]
+          properties:
+            controller: { type: string, enum: [TENANT, OPERATOR] }
+            received_on: { type: string, format: date }
+            identity_at: { type: string, format: date-time }
+        kinds:
+          type: object
+          additionalProperties:
+            type: object
+            required: [due, decisions]
+            properties:
+              due:
+                type: object
+                nullable: true
+                required: [on, without_delay, rule]
+                properties:
+                  on: { type: string, format: date, nullable: true }
+                  without_delay: { type: boolean }
+                  rule: { type: object, nullable: true, additionalProperties: true }
+              decisions:
+                type: array
+                items:
+                  type: object
+                  required: [on, decision]
+                  properties:
+                    on: { type: string, format: date }
+                    decision:
+                      type: object
+                      required: [outcome, reason, note]
+                      properties:
+                        outcome: { type: string, enum: [GRANTED, PARTIAL, REFUSED, POSTPONED] }
+                        reason: { type: string, nullable: true }
+                        note: { type: string, nullable: true }
     ProcessingStatus:
       type: string
       enum:

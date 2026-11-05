@@ -125,6 +125,17 @@ test("setup work uses its server checklist once inside the inbox", () => {
   expect(markup).not.toContain("duplicated setup");
   expect(markup.indexOf('id="inbox-title"')).toBeLessThan(markup.indexOf('data-testid="inbox-setup"'));
 });
+test.each(["work", "unavailable", "paging"] as const)("setup inbox preserves privacy intake: %s", state => {
+  const setup: Checklist = { phase: "SETUP", steps: [], done: 0, total: 1, go_live_at: null, summary: { people: 0, placed: 0, unplaced: 0, entity_unknown: 0, progress: 0 } };
+  const rows = [item("account-work", { kind: "account_security" }), ...(state === "work" ? [item("RR-001", { kind: "privacy_request" })] : [])];
+  view.list.data = { pages: [page(rows, { setup, unavailable: state === "unavailable" ? [{ source: "privacy_requests", support_reference: "trace" }] : [] })] };
+  view.list.hasNextPage = state === "paging";
+  const markup = html(false, false);
+  expect(markup).not.toContain(t("home.inbox.setup.title"));
+  const expected = { work: "RR-001", unavailable: t("home.inbox.unavailable", { part: t("home.inbox.privacyRequest") }), paging: t("home.inbox.more") };
+  expect(markup).toContain(expected[state]);
+  expect(markup).not.toContain("account-work");
+});
 test("Home hides cached setup and work until the parent setup references settle", () => {
   view.list.data = { pages: [page([item("cached work")], { setup: { phase: "SETUP", steps: [], done: 0, total: 1, go_live_at: null, summary: { people: 0, placed: 0, unplaced: 0, entity_unknown: 0, progress: 0 } } })] };
   const pending = html(true);
