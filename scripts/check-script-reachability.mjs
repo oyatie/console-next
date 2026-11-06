@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Candidate-bound inventory: a package command alone is not a path from required CI.
+// Candidate-bound inventory: a package command alone is not a path from a workflow.
 // shortcut: traces static Node calls and current CI/Vitest syntax; extend before introducing another runner.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -113,7 +113,7 @@ export function inventory(files, read) {
       visit(config);
     }
   };
-  reach(".github/workflows/ci.yml", "required CI");
+  for (const file of files.filter(file => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(file))) reach(file, "workflow entry point");
   for (let i = 0; i < pending.length; i++) {
     const file = pending[i];
     const source = read(file);
@@ -172,7 +172,7 @@ export function inventory(files, read) {
 export function inventoryProblems(rows, inherited, previous) {
   const dark = new Set(rows.filter(row => !row.callers.length).map(row => row.file));
   return [
-    ...[...dark].filter(file => !(file in inherited)).map(file => `${file}: no caller from required CI`),
+    ...[...dark].filter(file => !(file in inherited)).map(file => `${file}: no caller from a workflow`),
     ...Object.entries(inherited).flatMap(([file, reason]) => [
       ...(!reason?.trim() ? [`${file}: orphan exception needs a reason`] : []),
       ...(!dark.has(file) ? [`${file}: remove stale orphan exception`] : []),
