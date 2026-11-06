@@ -40,14 +40,30 @@ jobs:
           E2E_PREBUILT: "1"
           E2E_SERVED: "1"
         run: |
-          npx playwright test --list --project=parallel
+          mkdir -p .cache/e2e-live-plan
+          PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/chromium-inventory.json npx playwright test --list --project=parallel --reporter=json
           npx playwright test --list --project=clock
+          E2E_XBROWSER=1 PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/firefox-inventory.json npx playwright test --list --project=firefox --reporter=json
+          node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/chromium-inventory.json .cache/e2e-live-plan chromium
+          node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/firefox-inventory.json .cache/e2e-live-plan firefox
+      - name: Check cross-browser inventory nightly
+        if: ${{ github.event_name == 'schedule' }}
+        env:
+          E2E_LIVE_INVENTORY: "1"
+        run: node --test --test-name-pattern="Firefox live discovery" scripts/e2e-live-workflow.test.mjs
+      - name: Plan Firefox mocked states nightly
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          E2E_XBROWSER=1 PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/firefox-states-inventory.json npx playwright test --config=e2e/mock/playwright.config.ts --list --reporter=json
+          node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/firefox-states-inventory.json .cache/e2e-live-plan firefox-states
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-live-runtime
           path: |
             backend/target/release/console-app
             apps/web/dist
+            .cache/e2e-live-plan
+          include-hidden-files: true
           retention-days: 1
           if-no-files-found: error
 
@@ -61,7 +77,15 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        include:
+          - {shard: clock, config: playwright.config.ts, project: "clock"}
+          - {shard: coldstart, config: playwright.coldstart.config.ts, project: "parallel"}
+          - {shard: live-renew, config: playwright.live-renew.config.ts, project: "parallel"}
+          - {shard: navigation, config: playwright.navigation.config.ts, project: "chromium"}
+          - {shard: focus-stress, config: e2e/mock/focus-stress.config.ts, project: "chromium"}
+          - {shard: grid, config: apps/web/src/features/people/ui/grid-table.playwright.ts, project: ""}
+          - {shard: timeline, config: apps/web/src/ui/timeline-lanes/timeline-line.playwright.ts, project: ""}
     services:
       postgres:
         image: postgres:18.4@sha256:65f70a152846cf504dff86e807007e9aeac98c3aeb7b62541b2c55ab9d264e56
@@ -96,26 +120,26 @@ jobs:
         with: {name: e2e-live-runtime, path: .cache/e2e-live-runtime}
       - run: chmod +x "$CONSOLE_APP_BIN"
       - name: Chromium live shard and dormant browser surfaces
+        timeout-minutes: 45
         env:
           CONSOLE_DEV_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
           SHARD: ${{ matrix.shard }}
+          CONFIG: ${{ matrix.config || 'playwright.config.ts' }}
+          PROJECT: ${{ matrix.project }}
         run: |
           mkdir -p .cache/e2e-live
           failed=0
           run_pw() {
             report="$1"
             shift
-            PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/e2e-live/${report}.json" npx playwright test "$@" --retries=0 --reporter=line,json || failed=1
+            PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/e2e-live/${report}.json" npx playwright test "$@" --global-timeout=2400000 --retries=0 --reporter=line,json || failed=1
           }
-          run_pw main --project=parallel --shard="${SHARD}/4"
-          if [[ "$SHARD" == 1 ]]; then
-            run_pw clock --project=clock --no-deps
-            run_pw coldstart --config=playwright.coldstart.config.ts --project=parallel
-            run_pw live-renew --config=playwright.live-renew.config.ts --project=parallel
-            run_pw navigation --config=playwright.navigation.config.ts --project=chromium
-            run_pw focus-stress --config=e2e/mock/focus-stress.config.ts --project=chromium
-            run_pw grid --config=apps/web/src/features/people/ui/grid-table.playwright.ts
-            run_pw timeline --config=apps/web/src/ui/timeline-lanes/timeline-line.playwright.ts
+          if [[ "$SHARD" =~ ^[0-9]+$ ]]; then
+            run_pw main --project=parallel --test-list=".cache/e2e-live-runtime/.cache/e2e-live-plan/chromium-${SHARD}.txt"
+          else
+            args=(--config="$CONFIG" --no-deps)
+            if [[ -n "$PROJECT" ]]; then args+=(--project="$PROJECT"); fi
+            run_pw "$SHARD" "${args[@]}"
           fi
           node scripts/e2e-live-report.mjs .cache/e2e-live/*.json || failed=1
           exit "$failed"
@@ -140,7 +164,12 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        include:
+          - {shard: coldstart, config: playwright.coldstart.config.ts, project: "firefox"}
+          - {shard: live-renew, config: playwright.live-renew.config.ts, project: "firefox"}
+          - {shard: navigation, config: playwright.navigation.config.ts, project: "firefox"}
+          - {shard: focus-stress, config: e2e/mock/focus-stress.config.ts, project: "firefox"}
     services:
       postgres:
         image: postgres:18.4@sha256:65f70a152846cf504dff86e807007e9aeac98c3aeb7b62541b2c55ab9d264e56
@@ -176,23 +205,26 @@ jobs:
         with: {name: e2e-live-runtime, path: .cache/e2e-live-runtime}
       - run: chmod +x "$CONSOLE_APP_BIN"
       - name: Firefox live shard and dormant browser surfaces
+        timeout-minutes: 45
         env:
           CONSOLE_DEV_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
           SHARD: ${{ matrix.shard }}
+          CONFIG: ${{ matrix.config || 'playwright.config.ts' }}
+          PROJECT: ${{ matrix.project }}
         run: |
           mkdir -p .cache/e2e-live
           failed=0
           run_pw() {
             report="$1"
             shift
-            PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/e2e-live/${report}.json" npx playwright test "$@" --retries=0 --reporter=line,json || failed=1
+            PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/e2e-live/${report}.json" npx playwright test "$@" --global-timeout=2400000 --retries=0 --reporter=line,json || failed=1
           }
-          run_pw main --project=firefox --shard="${SHARD}/4"
-          if [[ "$SHARD" == 1 ]]; then
-            run_pw coldstart --config=playwright.coldstart.config.ts --project=firefox
-            run_pw live-renew --config=playwright.live-renew.config.ts --project=firefox
-            run_pw navigation --config=playwright.navigation.config.ts --project=firefox
-            run_pw focus-stress --config=e2e/mock/focus-stress.config.ts --project=firefox
+          if [[ "$SHARD" =~ ^[0-9]+$ ]]; then
+            run_pw main --project=firefox --test-list=".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-${SHARD}.txt"
+          else
+            args=(--config="$CONFIG" --no-deps)
+            if [[ -n "$PROJECT" ]]; then args+=(--project="$PROJECT"); fi
+            run_pw "$SHARD" "${args[@]}"
           fi
           node scripts/e2e-live-report.mjs .cache/e2e-live/*.json || failed=1
           exit "$failed"
@@ -203,5 +235,51 @@ jobs:
           path: |
             .cache/e2e-live
             test-results
+          include-hidden-files: true
+          if-no-files-found: error
+
+  firefox-states:
+    if: ${{ github.event_name == 'schedule' }}
+    needs: [build]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    env:
+      E2E_WORKERS: "2"
+      E2E_XBROWSER: "1"
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version, cache: npm}
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps firefox
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with: {name: e2e-live-runtime, path: .cache/e2e-live-runtime}
+      - name: Firefox mocked states shard
+        timeout-minutes: 45
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mkdir -p .cache/e2e-live
+          failed=0
+          PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live/firefox-states.json npx playwright test --config=e2e/mock/playwright.config.ts --test-list=".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-states-${SHARD}.txt" --global-timeout=2400000 --retries=0 --reporter=line,json || failed=1
+          node scripts/e2e-live-report.mjs .cache/e2e-live/*.json || failed=1
+          exit "$failed"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: e2e-live-firefox-states-${{ matrix.shard }}
+          path: |
+            .cache/e2e-live
+            test-results-mock
           include-hidden-files: true
           if-no-files-found: error

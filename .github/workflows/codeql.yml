@@ -47,12 +47,20 @@ jobs:
         with:
           category: /language:${{ matrix.language }}
           output: ${{ runner.temp }}/codeql-results
+          wait-for-processing: true
       - name: Refuse high or critical findings in changed lines
         if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
         env:
           CODEQL_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           CODEQL_RESULTS: ${{ runner.temp }}/codeql-results
         run: node scripts/check-codeql-diff.mjs "$CODEQL_RESULTS" "$CODEQL_BASE"
+      - name: Refuse untriaged high or critical JavaScript/Rust alerts
+        if: ${{ github.event_name == 'push' && (matrix.language == 'javascript-typescript' || matrix.language == 'rust') }}
+        env:
+          CODEQL_LANGUAGE: ${{ matrix.language }}
+          CODEQL_ALERT_EXCEPTIONS: .github/codeql/alert-exceptions.json
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-codeql-alerts.mjs
 
   code-scanning:
     name: Code scanning gate

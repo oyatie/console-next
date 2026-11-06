@@ -59,10 +59,11 @@ describe("tooling inventory", () => {
   });
   test("platform locks expose installed tools, concrete build images and vendored sources", () => {
     const rows = scan({
-      "deploy/versions.json": JSON.stringify({ tools: { cluster: { version: "1", files: { linux: { url: "https://upstream/tool", sha256: "abc" } } } }, images: { node: "registry/node@sha256:123" }, platformImages: { controller: "registry/controller@sha256:456" }, sources: { schema: { repository: "upstream/schema", commit: "sha" } } }),
+      "deploy/versions.json": JSON.stringify({ tools: { cluster: { version: "1", users: [".github/workflows/platform.yml"], files: { linux: { url: "https://upstream/tool", sha256: "abc" } } } }, images: { node: "registry/node@sha256:123" }, platformImages: { controller: "registry/controller@sha256:456" }, sources: { schema: { repository: "upstream/schema", commit: "sha" } } }),
       "deploy/images/app.Dockerfile": "ARG NODE_IMAGE\nFROM ${NODE_IMAGE}\n",
     });
     expect(rows.find((r) => r.name === "cluster")?.kind).toBe("ci-tool");
+    expect(rows.find((r) => r.name === "cluster")?.uses[0].user).toBe(".github/workflows/platform.yml");
     expect(rows.find((r) => r.name === "registry/node")?.uses).toHaveLength(2);
     expect(rows.some((r) => r.name === "registry/controller")).toBe(true);
     expect(rows.find((r) => r.name === "schema")?.kind).toBe("ci-source");

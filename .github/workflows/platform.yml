@@ -27,11 +27,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version, cache: npm}
       - name: Locked tools
-        run: python3 deploy/ci/tools.py
+        run: python3 deploy/ci/tools.py flux cosign kind buildx conftest kubeconform syft kustomize actionlint helm kubectl
       - name: Contracts and strict manifests
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
-          actionlint .github/workflows/platform.yml .github/workflows/platform-negative-signer.yml
+          actionlint .github/workflows/platform.yml .github/workflows/platform-negative-signer.yml .github/workflows/api-compat.yml .github/workflows/gates.yml
           python3 -m unittest discover -s deploy/ci -p '*_test.py'
           node --test deploy/ci/*.test.mjs
           bash deploy/ci/validate.sh
@@ -112,6 +112,7 @@ jobs:
       attestations: write
     outputs:
       artifact: ${{ steps.artifact.outputs.reference }}
+      image: ${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
         with: {egress-policy: audit}
@@ -206,6 +207,32 @@ jobs:
           digest="$(jq -er '.digest' .tmp/artifact.json)"
           cosign sign --yes "${DEPLOY}@${digest}"
           echo "reference=oci://${DEPLOY}@${digest}" >> "${GITHUB_OUTPUT}"
+
+  scan:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions: {contents: read, packages: read}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - run: python3 deploy/ci/tools.py cosign grype
+      - name: Scan the image's verified SPDX attestation
+        env:
+          IMAGE: ${{ needs.publish.outputs.image }}
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          cosign verify-attestation --type=spdxjson --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+            --certificate-identity="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/platform.yml@refs/heads/dev" \
+            "${IMAGE}" > "${RUNNER_TEMP}/spdx-attestation.json"
+          jq -es --arg digest "${IMAGE##*@sha256:}" \
+            '[.[] | (if type == "array" then .[] else . end) | .payload | @base64d | fromjson | select(any(.subject[]; .digest.sha256 == $digest)) | .predicate] | if length == 1 then .[0] else error("expected one verified image SBOM") end' \
+            "${RUNNER_TEMP}/spdx-attestation.json" > "${RUNNER_TEMP}/image-sbom.json"
+          grype "sbom:${RUNNER_TEMP}/image-sbom.json" --only-fixed --fail-on high
 
   negative-signer:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'

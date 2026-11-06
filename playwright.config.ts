@@ -15,7 +15,6 @@ const reuse = process.env.E2E_REUSE === "1" && !served;
 const xbrowser = process.env.E2E_XBROWSER === "1";
 const perfTag = /(?:^|\s)@perf(?=\s|$)/;
 const ordinaryOnly = process.env.E2E_PERF === "1" ? /@clock/ : [/@clock/, perfTag];
-const testIgnore = [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|states)\//, /\/layout\/layout\.spec\.ts$/, /\/perf\/.*\.test\.ts$/];
 const origin = served ? `http://localhost:${PORTS.backend}` : `http://localhost:${PORTS.web}`;
 const backendEnv = {
   CONSOLE_APP_BIN: process.env.CONSOLE_APP_BIN ?? "backend/target/debug/console-app",
@@ -55,7 +54,7 @@ export default defineConfig({
   fullyParallel: true,
   grepInvert: process.env.E2E_PERF === "1" ? undefined : perfTag,
   // Separate profiles own short-TTL sessions and backend-free screen state proofs.
-  testIgnore,
+  testIgnore: [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|states)\//, /\/layout\/layout\.spec\.ts$/, /\/perf\/.*\.test\.ts$/, ...(xbrowser ? [/visual\.spec\.ts/] : [])],
   workers: Number(process.env.E2E_WORKERS ?? (process.env.CI ? 2 : 4)),
   // Every run records its passing tests' durations, which scripts/e2e-slot.mjs plans shards from. A sharded
   // e2e:agent run passes the caller's --reporter as E2E_REPORTER and collects one blob per job to merge.
@@ -67,7 +66,7 @@ export default defineConfig({
   // E2E_XBROWSER=1 is the Firefox leg alone: every spec creates its tenants under fixed identifiers, so two
   // engines cannot share one database. The clock specs and the gallery baselines stay Chromium-only.
   projects: xbrowser
-    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: ordinaryOnly, testIgnore: [...testIgnore, /visual\.spec\.ts/] }]
+    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: ordinaryOnly }]
     : [
         { name: "parallel", grepInvert: ordinaryOnly },
         // Date-moving tests (e2e/clock.ts) share the backend's one apply date: alone, one at a time, after the rest.

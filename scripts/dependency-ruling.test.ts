@@ -13,14 +13,28 @@ const approved = [
 ];
 const ownerApproved = [
   "container:docker.io/chrislusf/seaweedfs", "ci-tool:cargo-deny", "ci-tool:cargo-audit", "ci-tool:fontTools/pyftsubset", "ci-tool:brotli", "npm:minimatch",
-  "ci-tool:nextest", "action:actions/cache/restore", "action:actions/cache/save",
+  "ci-tool:nextest", "action:actions/cache/restore", "action:actions/cache/save", "ci-tool:oasdiff", "ci-tool:grype",
 ];
 const kinds = new Set(["npm", "cargo", "action", "container", "ci-tool"]);
 
 describe("2026-10-26 delegated dependency ruling", () => {
+  test.each([
+    ["oasdiff", ".github/workflows/api-compat.yml", "1.33.0"],
+    ["grype", ".github/workflows/platform.yml", "0.120.0"],
+  ])("%s has explicit owner approval restricted to its release workflow", (name, user, version) => {
+    const row = register().find((r) => r.kind === "ci-tool" && r.name === name);
+    expect(row).toMatchObject({ class: "STANDARD", license: "Apache-2.0", layer: "CI/supply chain",
+      approval: { by: "owner", on: "2026-11-03", source: "docs/quality/dependency-ruling-2026-11-03-release-gates.md" },
+      approvedUsers: [user], layerFindings: [],
+    });
+    expect(row.uses).toHaveLength(1);
+    expect(row.uses[0].pin.version).toBe(version);
+    for (const file of Object.values(row.uses[0].pin.files) as { sha256: string }[]) expect(file.sha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+
   test("preserves the delegated ruling and includes subsequent explicit owner approvals", () => {
     const rows = register().filter((r) => kinds.has(r.kind));
-    expect(rows).toHaveLength(155);
+    expect(rows).toHaveLength(157);
     expect(rows.filter((r) => r.class === "STANDARD").map((r) => `${r.kind}:${r.name}`).sort()).toEqual([...approved, ...ownerApproved].sort());
     expect(rows.filter((r) => r.class === "NEEDS-OWNER")).toHaveLength(117);
     for (const name of ["opentelemetry", "opentelemetry_sdk", "opentelemetry-otlp", "tracing-opentelemetry"]) {

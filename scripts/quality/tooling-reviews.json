@@ -11006,5 +11006,83 @@
     "lastRelease": "repository snapshot 2026-11-03",
     "maintainers": "repository maintainers",
     "footprint": "201 source lines (not runtime or compile delta)"
+  },
+  "ci-tool:oasdiff": {
+    "group": "CI/supply-chain tools",
+    "job": "Compare released and candidate OpenAPI contracts before admission",
+    "verdict": "keep",
+    "convention": "Explicit owner approval",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-11-03",
+      "ruling": "approve oasdiff + grype",
+      "source": "docs/quality/dependency-ruling-2026-11-03-release-gates.md"
+    },
+    "alternatives": "Manual contract review; repository-native OpenAPI graph and compatibility rules",
+    "reason": "Explicit owner approval for CI/supply chain only; checksum-locked release versions.",
+    "evidence": [
+      "https://github.com/oasdiff/oasdiff",
+      "docs/quality/dependency-ruling-2026-11-03-release-gates.md",
+      "deploy/versions.json"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/api-compat.yml"
+    ],
+    "approvedUses": [
+      {
+        "user": ".github/workflows/api-compat.yml",
+        "layer": "CI/supply chain"
+      }
+    ],
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "exitPlan": "Replace only after owner-approved compatibility/advisory refusal parity, then remove the tool pin and regenerate the register.",
+    "license": "Apache-2.0",
+    "maintainers": "oasdiff/oasdiff",
+    "securityProcess": "SHA-256 verified upstream release archives; nonzero tool exit refuses the required gate.",
+    "ruleMapping": "Only the listed workflow may invoke the tool in the CI/supply chain layer."
+  },
+  "ci-tool:grype": {
+    "group": "CI/supply-chain tools",
+    "job": "Refuse fixable High/Critical vulnerabilities in the published image SBOM",
+    "verdict": "keep",
+    "convention": "Explicit owner approval",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-11-03",
+      "ruling": "approve oasdiff + grype",
+      "source": "docs/quality/dependency-ruling-2026-11-03-release-gates.md"
+    },
+    "alternatives": "Manual advisory review; repository-native package/advisory matching",
+    "reason": "Explicit owner approval for CI/supply chain only; checksum-locked release versions.",
+    "evidence": [
+      "https://github.com/anchore/grype",
+      "docs/quality/dependency-ruling-2026-11-03-release-gates.md",
+      "deploy/versions.json"
+    ],
+    "allowedLayers": [
+      "CI/supply chain"
+    ],
+    "layer": "CI/supply chain",
+    "approvedUsers": [
+      ".github/workflows/platform.yml"
+    ],
+    "approvedUses": [
+      {
+        "user": ".github/workflows/platform.yml",
+        "layer": "CI/supply chain"
+      }
+    ],
+    "architectureRecord": "docs/architecture/frontend-module-map.md",
+    "exitPlan": "Replace only after owner-approved compatibility/advisory refusal parity, then remove the tool pin and regenerate the register.",
+    "license": "Apache-2.0",
+    "maintainers": "anchore/grype",
+    "securityProcess": "SHA-256 verified upstream release archives; nonzero tool exit refuses the required gate.",
+    "ruleMapping": "Only the listed workflow may invoke the tool in the CI/supply chain layer."
   }
 }

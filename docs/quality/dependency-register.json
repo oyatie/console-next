@@ -43765,6 +43765,84 @@
     },
     {
       "kind": "ci-tool",
+      "name": "grype",
+      "direct": true,
+      "uses": [
+        {
+          "file": "deploy/versions.json",
+          "user": ".github/workflows/platform.yml",
+          "pin": {
+            "version": "0.120.0",
+            "files": {
+              "linux-amd64": {
+                "url": "https://github.com/anchore/grype/releases/download/v0.120.0/grype_0.120.0_linux_amd64.tar.gz",
+                "sha256": "a5a1218dce63acdac152a6b3b5bb366e7267e36f4069848cf455543b3fa5700e"
+              },
+              "linux-arm64": {
+                "url": "https://github.com/anchore/grype/releases/download/v0.120.0/grype_0.120.0_linux_arm64.tar.gz",
+                "sha256": "bc0e52b1a0de37e2ff021c4924d689dce7dcff2e7d74b39aea16c0453e69be18"
+              },
+              "darwin-arm64": {
+                "url": "https://github.com/anchore/grype/releases/download/v0.120.0/grype_0.120.0_darwin_arm64.tar.gz",
+                "sha256": "d27d39ba25ba2d2a1d1568219ff159310d2cb54f3cdd5293e5820c5c784f7f11"
+              }
+            },
+            "users": [
+              ".github/workflows/platform.yml"
+            ]
+          },
+          "layer": "CI/supply chain"
+        }
+      ],
+      "callsites": [],
+      "evidence": [
+        "https://github.com/anchore/grype",
+        "docs/quality/dependency-ruling-2026-11-03-release-gates.md",
+        "deploy/versions.json"
+      ],
+      "allowedUsers": [
+        ".github/workflows/platform.yml"
+      ],
+      "resolvedFootprint": null,
+      "observedLayers": [
+        "CI/supply chain"
+      ],
+      "layerFindings": [],
+      "group": "CI/supply-chain tools",
+      "job": "Refuse fixable High/Critical vulnerabilities in the published image SBOM",
+      "verdict": "keep",
+      "convention": "Explicit owner approval",
+      "class": "STANDARD",
+      "approval": {
+        "by": "owner",
+        "on": "2026-11-03",
+        "ruling": "approve oasdiff + grype",
+        "source": "docs/quality/dependency-ruling-2026-11-03-release-gates.md"
+      },
+      "alternatives": "Manual advisory review; repository-native package/advisory matching",
+      "reason": "Explicit owner approval for CI/supply chain only; checksum-locked release versions.",
+      "allowedLayers": [
+        "CI/supply chain"
+      ],
+      "layer": "CI/supply chain",
+      "approvedUsers": [
+        ".github/workflows/platform.yml"
+      ],
+      "approvedUses": [
+        {
+          "user": ".github/workflows/platform.yml",
+          "layer": "CI/supply chain"
+        }
+      ],
+      "architectureRecord": "docs/architecture/frontend-module-map.md",
+      "exitPlan": "Replace only after owner-approved compatibility/advisory refusal parity, then remove the tool pin and regenerate the register.",
+      "license": "Apache-2.0",
+      "maintainers": "anchore/grype",
+      "securityProcess": "SHA-256 verified upstream release archives; nonzero tool exit refuses the required gate.",
+      "ruleMapping": "Only the listed workflow may invoke the tool in the CI/supply chain layer."
+    },
+    {
+      "kind": "ci-tool",
       "name": "helm",
       "direct": true,
       "uses": [
@@ -44336,6 +44414,84 @@
         "checkedOn": "2026-10-26",
         "reason": "b: Artistic-2.0 (npm/cli LICENSE; registry licence field of npm 12.2.1). Node.js bundles it; react.dev setup uses npm."
       }
+    },
+    {
+      "kind": "ci-tool",
+      "name": "oasdiff",
+      "direct": true,
+      "uses": [
+        {
+          "file": "deploy/versions.json",
+          "user": ".github/workflows/api-compat.yml",
+          "pin": {
+            "version": "1.33.0",
+            "files": {
+              "linux-amd64": {
+                "url": "https://github.com/oasdiff/oasdiff/releases/download/v1.33.0/oasdiff_1.33.0_linux_amd64.tar.gz",
+                "sha256": "43a4e328e2d13ba1552d760aa68d2485c75c5621f309f6ff64ae895188345247"
+              },
+              "linux-arm64": {
+                "url": "https://github.com/oasdiff/oasdiff/releases/download/v1.33.0/oasdiff_1.33.0_linux_arm64.tar.gz",
+                "sha256": "4ae3c362d6074d919aada2dea82d0ee84366591600384455d0bdc658ddf8f7ae"
+              },
+              "darwin-arm64": {
+                "url": "https://github.com/oasdiff/oasdiff/releases/download/v1.33.0/oasdiff_1.33.0_darwin_all.tar.gz",
+                "sha256": "2a479337c15afdcbf0b1e89c0b4d0cf0176472dbc11483358fed1f831d1e46c5"
+              }
+            },
+            "users": [
+              ".github/workflows/api-compat.yml"
+            ]
+          },
+          "layer": "CI/supply chain"
+        }
+      ],
+      "callsites": [],
+      "evidence": [
+        "https://github.com/oasdiff/oasdiff",
+        "docs/quality/dependency-ruling-2026-11-03-release-gates.md",
+        "deploy/versions.json"
+      ],
+      "allowedUsers": [
+        ".github/workflows/api-compat.yml"
+      ],
+      "resolvedFootprint": null,
+      "observedLayers": [
+        "CI/supply chain"
+      ],
+      "layerFindings": [],
+      "group": "CI/supply-chain tools",
+      "job": "Compare released and candidate OpenAPI contracts before admission",
+      "verdict": "keep",
+      "convention": "Explicit owner approval",
+      "class": "STANDARD",
+      "approval": {
+        "by": "owner",
+        "on": "2026-11-03",
+        "ruling": "approve oasdiff + grype",
+        "source": "docs/quality/dependency-ruling-2026-11-03-release-gates.md"
+      },
+      "alternatives": "Manual contract review; repository-native OpenAPI graph and compatibility rules",
+      "reason": "Explicit owner approval for CI/supply chain only; checksum-locked release versions.",
+      "allowedLayers": [
+        "CI/supply chain"
+      ],
+      "layer": "CI/supply chain",
+      "approvedUsers": [
+        ".github/workflows/api-compat.yml"
+      ],
+      "approvedUses": [
+        {
+          "user": ".github/workflows/api-compat.yml",
+          "layer": "CI/supply chain"
+        }
+      ],
+      "architectureRecord": "docs/architecture/frontend-module-map.md",
+      "exitPlan": "Replace only after owner-approved compatibility/advisory refusal parity, then remove the tool pin and regenerate the register.",
+      "license": "Apache-2.0",
+      "maintainers": "oasdiff/oasdiff",
+      "securityProcess": "SHA-256 verified upstream release archives; nonzero tool exit refuses the required gate.",
+      "ruleMapping": "Only the listed workflow may invoke the tool in the CI/supply chain layer."
     },
     {
       "kind": "ci-tool",
