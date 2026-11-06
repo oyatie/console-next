@@ -28,21 +28,51 @@ for (const state of Object.keys(employeePayScreen.states)) for (const [width, co
     }
     else {
       await expect(main.getByText(t("payroll.employee.incomplete"), { exact: true })).toBeVisible();
-      await expect(main.getByText(t("payroll.employee.monthClose"), { exact: true })).toBeVisible();
       await expect(main.getByText(t("payroll.employee.netUnavailable"), { exact: true })).toBeVisible();
       if (state === "empty") await expect(main.getByText(t("payroll.employee.noContract"), { exact: true })).toBeVisible();
       else {
-        await expect(main.getByText("3,456,789원", { exact: true })).toBeVisible();
+        await expect(main.getByRole("region", { name: t("payroll.employee.contract"), exact: true }).getByText("3,456,789원", { exact: true })).toBeVisible();
         await expect(main).toContainText(draft.contract!.source_note);
       }
       const deductions = main.getByRole("region", { name: t("payroll.employee.deductions"), exact: true });
       if (state === "held" || state === "empty") {
         await expect(deductions.getByText("34,567원", { exact: true })).toHaveCount(0);
         await expect(deductions.getByRole("link")).toHaveCount(0);
+        if (state === "held") {
+          await expect(deductions.getByText(t("payroll.reference.held") + t("payroll.reference.held"), { exact: true })).toHaveCount(0);
+          await expect(deductions.getByText(t("payroll.reference.held"), { exact: true })).toHaveCount(4);
+        }
         if (state === "empty") await expect(deductions.getByText(t("payroll.employee.noDeductions"), { exact: true })).toBeVisible();
       } else {
-        await expect(deductions.getByText("34,567원", { exact: true })).toBeVisible();
+        await expect(deductions.getByText("34,567원", { exact: true })).toHaveCount(2);
         await expect(deductions.getByRole("link").first()).toHaveAttribute("href", "https://example.com/payroll-source");
+      }
+      if (state !== "empty") {
+        const earnings = main.getByRole("region", { name: t("payroll.employee.earnings"), exact: true });
+        await expect(earnings.getByText("3,456,789원", { exact: true })).toHaveCount(2);
+        await expect(earnings).toContainText(draft.earnings![0]!.note_ko);
+        await expect(earnings).toContainText(draft.contract!.source_note);
+        const minimum = main.getByRole("region", { name: t("payroll.employee.minimumWage"), exact: true });
+        if (state === "held") {
+          await expect(minimum.getByText("12,345원", { exact: true })).toHaveCount(0);
+          await expect(minimum.getByRole("link")).toHaveCount(0);
+          await expect(deductions.getByText("3,422,222원", { exact: true })).toHaveCount(0);
+        } else {
+          await expect(minimum.getByText("12,345원", { exact: true })).toBeVisible();
+          await expect(minimum.getByRole("link")).toHaveAttribute("href", "https://example.com/payroll-source");
+          await expect(minimum).toContainText("2026. 01. 01.");
+          await expect(deductions.getByText("3,422,222원", { exact: true })).toBeVisible();
+        }
+        const blockers = main.getByRole("list", { name: t("payroll.employee.blockers") });
+        await expect(blockers.getByText(t("payroll.employee.attendanceIncomplete"), { exact: true })).toBeVisible();
+        await expect(blockers.getByText(t("payroll.employee.withholdingMissing"), { exact: true })).toBeVisible();
+        if (state === "below" || state === "incomparable") {
+          const refusal = blockers.getByRole("listitem").filter({ hasText: t(state === "below" ? "payroll.employee.minimumBelow" : "payroll.employee.minimumIncomparable") });
+          await expect(refusal).toBeVisible();
+          await expect(refusal.getByRole("link")).toHaveAttribute("href", "https://example.com/payroll-source");
+          await expect(refusal).toContainText("2026. 01. 01.");
+          await expect(main).not.toContainText("backend sentence must not render");
+        }
       }
       await page.reload();
       await expect(main.getByText(t("payroll.employee.incomplete"), { exact: true })).toBeVisible();
