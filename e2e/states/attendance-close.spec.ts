@@ -40,11 +40,15 @@ for (const { name, wp, row } of handoffs) for (const width of [1440, 390]) for (
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = { ...await mockScreen(page, screens[0], "populated"), ...await attendanceReads(page, screen, "populated") };
     await mockRoute(page, "get", "/api/v1/attendance/closes", { status: 200, json: { month: "2026-10", items: [row] } });
+    if (wp) await mockRoute(page, "get", "/api/v1/attendance/schedule/tree", { status: 200, json: {
+      date: "2026-10-04", people_total: 4, people_unscheduled: 0, holidays_loaded: true,
+      nodes: [{ id: wp, kind: "WORKPLACE", name: "부산사업장", people: 4, unscheduled: 0 }],
+    } });
     await page.goto(`/attendance?tab=close&month=2026-10${wp ? `&wp=${wp}` : ""}`);
     const table = page.getByRole("grid", { name: t("attendance.tab.close"), exact: true });
-    await expect(table.getByText(wp ? "부산사업장" : t("attendanceRecords.scope.all", { count: 2 }), { exact: true })).toBeVisible();
+    await expect(table.getByText(wp ? "부산사업장" : t("attendanceRecords.scope.allUnknown"), { exact: true })).toBeVisible();
     await expect(table.getByText(t("attendance.close.pendingLeave"), { exact: true }).first()).toBeVisible();
-    await expect(table.getByText(t("attendance.count", { count: row.pending_leave }), { exact: true }).first()).toBeVisible();
+    await expect(table.getByText(t(row.closed ? "attendance.close.frozenCount" : "attendance.count", { count: row.pending_leave }), { exact: true }).first()).toBeVisible();
     await expect(table.getByText(t(row.closed ? "attendance.close.closed" : "attendance.close.open"), { exact: true })).toBeVisible();
     const unlock = table.getByRole("link", { name: t("attendanceRecords.month.requestUnlock"), exact: true });
     await expect(unlock).toHaveCount(row.close?.period_lock_id ? 1 : 0);
@@ -53,7 +57,14 @@ for (const { name, wp, row } of handoffs) for (const width of [1440, 390]) for (
       await expect(table.locator("time")).toHaveAttribute("datetime", row.close.closed_at);
       await expect(table.locator("time")).not.toHaveText(/^[—–]$/);
     } else await expect(table.locator("time")).toHaveCount(0);
-    if (width === 1440) await expect(table.getByRole("columnheader", { name: "기간 잠금", exact: true })).toBeVisible();
+    if (width === 1440) await expect(table.getByRole("columnheader", { name: "기간 잠금", exact: true })).toHaveCount(row.close?.period_lock_id ? 1 : 0);
+    if (row.closed) await expect(table.getByText(t("attendance.close.frozenCount", { count: row.open_exceptions }), { exact: true }).first()).toBeVisible();
+    else await expect(table.getByText(/마감 시점/)).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: t("attendanceRecords.scope.label"), exact: true })).not.toContainText(t("attendanceRecords.scope.unavailable"));
+    if (!wp) {
+      await expect(table.getByText(t("attendanceRecords.scope.all", { count: 2 }), { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("combobox", { name: t("attendanceRecords.scope.label"), exact: true })).toContainText(t("attendanceRecords.scope.all", { count: 1 }));
+    }
     await expect(table.getByText(t("attendanceRecords.month.locks"), { exact: true })).toHaveCount(0);
     await expect(table.getByRole("button")).toHaveCount(0);
     await fits(page, `month-close/${name}/${width}/${theme}`);
@@ -79,7 +90,7 @@ for (const width of [1440, 390]) for (const scope of ["all", "unavailable"] as c
     }
     await page.goto(path.pathname + path.search);
     const table = page.getByRole("grid", { name: t("attendance.tab.close"), exact: true });
-    await expect(table.getByText(t(scope === "all" ? "attendanceRecords.scope.all" : "attendance.close.unavailable", { count: 2 }), { exact: true })).toBeVisible();
+    await expect(table.getByText(t(scope === "all" ? "attendanceRecords.scope.allUnknown" : "attendance.close.unavailable"), { exact: true })).toBeVisible();
     if (scope === "all") {
       await expect(table.getByText(t("attendance.close.unavailable"), { exact: true })).toHaveCount(0);
       expect(fixture.requests.filter(request => request.path === screen.read).map(request => request.query.branch_id)).toEqual([undefined]);
