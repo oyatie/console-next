@@ -3,12 +3,15 @@
 //! governed Site/Department/Team creation, rename/move, dissolve blockers,
 //! employee binding (create + TRANSFER), headcount, and the import-row detail.
 
+#[path = "org_units_api/fixtures.rs"]
+mod fixtures;
 #[path = "support/go_live.rs"]
 mod go_live;
 use axum::body::{Body, to_bytes};
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
 use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
+use fixtures::*;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::Generate;
@@ -27,6 +30,8 @@ const CHANGES: &str = "/api/v1/org-changes";
 const EMPLOYEES: &str = "/api/v1/employees";
 
 struct Ctx {
+    owner: PgPool,
+    keys: (String, String),
     service: axum::Router,
     drafter: String,
     approver: String,
@@ -81,7 +86,7 @@ impl Ctx {
     }
 
     /// Draft through the convenience endpoint, then submit → 4 ordered
-    /// approvals by a second SUPER_ADMIN → effectuate. Returns the final detail.
+    /// approvals by distinct granted people → effectuate. Returns the final detail.
     async fn govern(&self, method: &str, uri: &str, body: Option<Value>) -> Value {
         let (status, draft) = self.call(method, uri, &self.drafter, body).await;
         assert_eq!(status, StatusCode::CREATED, "draft {method} {uri}: {draft}");
@@ -100,6 +105,8 @@ impl Ctx {
             .await;
         assert_eq!(status, StatusCode::OK, "submit: {submitted}");
         for step in submitted["approvalSteps"].as_array().unwrap() {
+            let checker = seed_user(&self.owner, self.org).await;
+            let checker = token(&self.owner, &self.keys, self.org, checker).await;
             let (status, decided) = self
                 .call(
                     "POST",
@@ -107,7 +114,7 @@ impl Ctx {
                         "{CHANGES}/{id}/approval-steps/{}/decision",
                         step["id"].as_str().unwrap()
                     ),
-                    &self.approver,
+                    &checker,
                     Some(json!({"decision": "APPROVED"})),
                 )
                 .await;
@@ -220,6 +227,8 @@ async fn org_units_are_governed_bound_and_counted(pool: PgPool) {
         .unwrap(),
     );
     let ctx = Ctx {
+        owner: pool.clone(),
+        keys: keys.clone(),
         service,
         drafter: token(&pool, &keys, org, drafter).await,
         approver: token(&pool, &keys, org, approver).await,
@@ -317,6 +326,9 @@ async fn org_units_are_governed_bound_and_counted(pool: PgPool) {
     // Employees: placement is optional at registration -- 미배치 is never a refusal
     // (console-react docs/design/onboarding-and-migration.md C1, AM-5) -- so an
     // unplaced person registers in no unit. Placed: bound, projected, counted.
+    let seeded_people = ctx.unit(&org_s).await.unwrap()["headcount"]
+        .as_u64()
+        .unwrap();
     let body = Some(ctx.employee_body("E-000", None));
     let (status, u) = ctx.call("POST", EMPLOYEES, &ctx.drafter, body).await;
     let unplaced = (status, u["employee"]["org_unit_id"].is_null());
@@ -335,8 +347,11 @@ async fn org_units_are_governed_bound_and_counted(pool: PgPool) {
     assert_eq!(created["employee"]["org_unit"], "정비A팀");
     assert_eq!(ctx.unit(&team1).await.unwrap()["headcount"], 1);
     assert_eq!(ctx.unit(&team2).await.unwrap()["headcount"], 0);
-    // The Company root counts every non-exited person, placed or not: E-000 and E-001.
-    assert_eq!(ctx.unit(&org_s).await.unwrap()["headcount"], 2);
+    // The Company root counts the approval actors plus both newly registered people.
+    assert_eq!(
+        ctx.unit(&org_s).await.unwrap()["headcount"],
+        seeded_people + 2
+    );
 
     // Foreign tenant's unit: 404, nothing written.
     let foreign_org = Uuid::new_v4();
@@ -504,6 +519,8 @@ async fn reassign_moves_registered_and_on_leave_members(pool: PgPool) {
         .unwrap(),
     );
     let ctx = Ctx {
+        owner: pool.clone(),
+        keys: keys.clone(),
         service,
         drafter: token(&pool, &keys, org, drafter).await,
         approver: token(&pool, &keys, org, approver).await,
@@ -657,148 +674,4 @@ async fn reassign_moves_registered_and_on_leave_members(pool: PgPool) {
     assert_eq!(ctx.unit(&to).await.unwrap()["headcount"], 3);
     // Emptied, the unit may be dissolved.
     assert!(ctx.preflight_codes(&dissolve_id).await.is_empty());
-}
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
-async fn seed_org(pool: &PgPool, org: Uuid, name: &str) {
-    let slug = format!("ou-{}", &org.simple().to_string()[..12]);
-    go_live::live_org(pool, org, slug, name).await;
-}
-
-async fn seed_user(pool: &PgPool, org: Uuid) -> UserId {
-    let user = UserId::new();
-    sqlx::query("WITH u AS (INSERT INTO users (id, display_name, roles, org_id, is_active) VALUES ($1, 'Admin', $2, $3, true) RETURNING id, org_id) INSERT INTO tenant_setting_overrides (org_id, key, value, set_by, reason_code) SELECT org_id, 'approval.policy.org_structure', '\"route\"', id, 'BW01' FROM u")
-        .bind(*user.as_uuid())
-        .bind(["SUPER_ADMIN"].as_slice())
-        .bind(org)
-        .execute(pool)
-        .await
-        .unwrap();
-    console_platform_test_support::seed_passkey(pool, OrgId::from_uuid(org), user).await;
-    user
-}
-
-async fn seed_branch(pool: &PgPool, org: Uuid) -> Uuid {
-    let region: Uuid =
-        sqlx::query_scalar("INSERT INTO regions (name, org_id) VALUES ('수도권', $1) RETURNING id")
-            .bind(org)
-            .fetch_one(pool)
-            .await
-            .unwrap();
-    sqlx::query_scalar(
-        "INSERT INTO branches (region_id, name, org_id) VALUES ($1, '본점', $2) RETURNING id",
-    )
-    .bind(region)
-    .bind(org)
-    .fetch_one(pool)
-    .await
-    .unwrap()
-}
-
-/// An ACTIVE site as fixture rows (a 사업장's own unit is made by the entity
-/// face; decisions #18 retired bare SITE proposals).
-async fn seed_fixture_unit(pool: &PgPool, org: Uuid, name: &str) -> Uuid {
-    let id = Uuid::new_v4();
-    sqlx::query("INSERT INTO org_units (org_id, id) VALUES ($1, $2)")
-        .bind(org)
-        .bind(id)
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query(
-        "INSERT INTO org_unit_revisions \
-         (org_id, org_unit_id, version, command_id, actor_id, payload_digest, attributes, receipt) \
-         SELECT $1, $2, 1, gen_random_uuid(), u.id, decode(repeat('00', 32), 'hex'), \
-                jsonb_build_object('name', $3::text, 'kind', 'site'), '{}'::jsonb \
-         FROM users u WHERE u.org_id = $1 LIMIT 1",
-    )
-    .bind(org)
-    .bind(id)
-    .bind(name)
-    .execute(pool)
-    .await
-    .unwrap();
-    id
-}
-
-fn keys() -> (String, String) {
-    let key = SigningKey::generate();
-    (
-        key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
-        key.verifying_key()
-            .to_public_key_pem(LineEnding::LF)
-            .unwrap(),
-    )
-}
-
-async fn token(pool: &PgPool, keys: &(String, String), org: Uuid, user: UserId) -> String {
-    let issuer = JwtIssuer::from_es256_pem(
-        JwtSettings {
-            issuer: ISSUER.to_owned(),
-            audience: AUDIENCE.to_owned(),
-            access_token_ttl: Duration::minutes(15),
-        },
-        keys.0.as_bytes(),
-        keys.1.as_bytes(),
-    )
-    .unwrap();
-    console_platform_test_support::issue_session_token(
-        pool,
-        &issuer,
-        AccessTokenInput {
-            subject: user,
-            org_id: OrgId::from_uuid(org),
-            roles: vec!["SUPER_ADMIN".to_owned()],
-            branches: Vec::new(),
-            platform: false,
-            support: None,
-            read_only: false,
-            display_name: None,
-            feature_grants: Vec::new(),
-            authz_subject_version: 0,
-            authz_policy_version: 0,
-            session_generation: 0,
-            issued_at: OffsetDateTime::now_utc(),
-        },
-        None,
-        vec![],
-    )
-    .await
-}
-
-async fn role_pool(owner: &PgPool, role: &'static str) -> PgPool {
-    PgPoolOptions::new()
-        .max_connections(4)
-        .after_connect(move |conn, _| {
-            Box::pin(async move {
-                let statement = match role {
-                    "console_rt" => "SET ROLE console_rt",
-                    _ => "SET ROLE console_leave_cmd",
-                };
-                sqlx::query(statement).execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(owner.connect_options().as_ref().clone())
-        .await
-        .unwrap()
-}
-
-fn app_state(
-    runtime: PgPool,
-    leave_command: PgPool,
-    public_pem: String,
-) -> Result<AppState, console_app::AppError> {
-    let config = AppConfig::from_pairs([
-        ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),
-        ("CONSOLE_HTTP_ADDR", "127.0.0.1:0".to_owned()),
-        ("CONSOLE_JWT_ISSUER", ISSUER.to_owned()),
-        ("CONSOLE_JWT_AUDIENCE", AUDIENCE.to_owned()),
-        ("CONSOLE_JWT_PUBLIC_KEY_PEM", public_pem),
-    ])?;
-    AppState::new(config, DatabaseDependency::Postgres(runtime))
-        .map(|state| state.with_leave_command_database(leave_command))
 }
