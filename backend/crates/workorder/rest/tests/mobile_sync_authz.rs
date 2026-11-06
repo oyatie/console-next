@@ -10,7 +10,7 @@ use console_workorder_adapter_postgres::PgWorkOrderStore;
 use console_workorder_rest::{MobileRestState, mobile_router};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -86,7 +86,7 @@ async fn post_sync(service: axum::Router, token: &str, body: &Value) -> (StatusC
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn zero_grant_member_is_refused_before_claiming_sync_batch(pool: PgPool) {
     console_platform_request_context::scope_org(OrgId::one(), async move {
-        let key = SigningKey::random(&mut OsRng);
+        let key = SigningKey::generate();
         let private_pem = key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public_pem = key
             .verifying_key()

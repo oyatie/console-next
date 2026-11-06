@@ -7,7 +7,7 @@ mod compatibility;
 /// Acceptance binds both separate sign-offs to the exact immutable text hashes.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn privacy_consent_acceptance_binds_both_exact_documents(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -80,7 +80,7 @@ async fn privacy_consent_acceptance_binds_both_exact_documents(pool: PgPool) {
 /// Initial enrollment requires privacy and terms consent before passkey registration can begin.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn first_passkey_enrollment_requires_privacy_terms(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -182,7 +182,7 @@ async fn first_passkey_enrollment_requires_privacy_terms(pool: PgPool) {
 /// Status endpoint under DB fault returns 500, not false-negative accepted: false (P1-9 / P1-4).
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn privacy_consent_status_returns_500_under_db_fault(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

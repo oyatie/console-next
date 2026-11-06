@@ -65,7 +65,7 @@ const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
   createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
   createRoute({
     getParentRoute: () => app, path: "/audit/access-log", staticData: { access: "signed-in", floorplan: "P-01" },
-    validateSearch: (s: Record<string, unknown>): { period?: string; view?: "all" } => ({ period: str(s.period), view: s.view === "all" ? "all" : undefined }),
+    validateSearch: (s: Record<string, unknown>): { period?: string; view?: "all"; search?: string } => ({ period: str(s.period), view: s.view === "all" ? "all" : undefined, search: str(s.search) }),
     component: lazyRouteComponent(screen(() => import("../features/access-log/ui/access-log-page")), "AccessLogPage"),
   }),
 ] : [];

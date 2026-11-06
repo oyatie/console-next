@@ -26,7 +26,7 @@ use console_platform_provisioning::{BootstrapCredentialStore, OTP_LEN};
 use console_platform_test_support::MIGRATOR;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -119,7 +119,7 @@ struct PrivacyConsentStatusResponse {
 #[cfg(feature = "workorder")]
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn otp_first_signin_then_passkey_enrollment_then_usernameless_login(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -276,7 +276,7 @@ async fn otp_first_signin_then_passkey_enrollment_then_usernameless_login(pool: 
 async fn refresh_signing_failure_does_not_commit_undelivered_replacement(pool: PgPool) {
     use sha2::{Digest, Sha256};
 
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -378,7 +378,7 @@ async fn refresh_signing_failure_does_not_commit_undelivered_replacement(pool: P
 /// available for the same request to finish, with no orphan session or audit.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn passkey_login_session_issue_failure_preserves_signed_proof(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -535,7 +535,7 @@ async fn passkey_login_session_issue_failure_preserves_signed_proof(pool: PgPool
 #[cfg(feature = "full")]
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn mobile_bound_step_up_start_gates_mobile_approval_and_poll_vote(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -865,7 +865,7 @@ async fn mobile_bound_step_up_start_gates_mobile_approval_and_poll_vote(pool: Pg
 #[cfg(feature = "financial")]
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn financial_purchase_sensitive_actions_require_fresh_passkey_step_up(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -1225,7 +1225,7 @@ async fn financial_purchase_sensitive_actions_require_fresh_passkey_step_up(pool
 /// user into the app without registering a passkey.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn refresh_keeps_zero_passkey_user_in_setup_mode_until_enrolled(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -1313,7 +1313,7 @@ async fn refresh_keeps_zero_passkey_user_in_setup_mode_until_enrolled(pool: PgPo
 /// `/device-login/approve`; a normal bearer session is not enough.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn approve_session_rejects_generic_desktop_handoff_without_target(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -1396,7 +1396,7 @@ async fn approve_session_rejects_generic_desktop_handoff_without_target(pool: Pg
 async fn approve_session_rejects_access_token_expired_during_family_lock(pool: PgPool) {
     use sha2::{Digest, Sha256};
 
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key
         .to_pkcs8_pem(LineEnding::LF)
         .unwrap()
@@ -1622,7 +1622,7 @@ async fn platform_admin_can_approve_and_consume_bound_device_handoff(pool: PgPoo
     use sha2::{Digest, Sha256};
 
     console_platform_test_support::seed_consent_documents(&pool).await;
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key
         .to_pkcs8_pem(LineEnding::LF)
         .unwrap()
@@ -1714,7 +1714,7 @@ async fn platform_admin_can_approve_and_consume_bound_device_handoff(pool: PgPoo
 /// proof/poll permit, so a retry completes once without an orphan token family.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn device_login_failures_preserve_proof_and_poll_permit(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -1878,7 +1878,7 @@ async fn device_login_failures_preserve_proof_and_poll_permit(pool: PgPool) {
 /// Login proof is single-use before registration; the winning session can enroll.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn otp_redeems_once_and_winning_session_registers_passkey(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -1973,7 +1973,7 @@ async fn otp_redeems_once_and_winning_session_registers_passkey(pool: PgPool) {
 /// authorization must still be live when the credential is committed.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn first_passkey_registration_rejects_revoked_bootstrap_after_start(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -2079,7 +2079,7 @@ async fn first_passkey_registration_rejects_revoked_bootstrap_after_start(pool: 
 /// original OTP; neither the old nor the rotated session may finish that ceremony.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn first_passkey_registration_rejects_replaced_source_after_refresh(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -2210,7 +2210,7 @@ async fn first_passkey_registration_rejects_replaced_source_after_refresh(pool: 
 #[cfg(feature = "workorder")]
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn replaced_otp_family_cannot_create_business_work(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -2370,7 +2370,7 @@ async fn replaced_otp_family_cannot_create_business_work(pool: PgPool) {
 /// a denial for this separate, already-enrolled purpose.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn existing_passkey_addition_succeeds_without_open_bootstrap(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -2439,7 +2439,7 @@ async fn existing_passkey_addition_succeeds_without_open_bootstrap(pool: PgPool)
 /// someone else's assertion, deletes nothing.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn passkey_removal_requires_own_step_up_and_keeps_the_last_one(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -2598,7 +2598,7 @@ async fn passkey_removal_requires_own_step_up_and_keeps_the_last_one(pool: PgPoo
 /// the Account lock. Expiry during that wait must still reject registration.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn registration_start_rechecks_expired_bearer_after_account_wait(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -2703,7 +2703,7 @@ async fn registration_start_rechecks_expired_bearer_after_account_wait(pool: PgP
 /// mutex. An already-validated bearer must not finish the ceremony afterward.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn registration_rechecks_revoked_family_after_account_wait(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -2894,7 +2894,7 @@ async fn registration_rechecks_revoked_family_after_account_wait(pool: PgPool) {
 #[cfg(feature = "workorder")]
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn otp_enrollment_session_cannot_create_business_work(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -2971,7 +2971,7 @@ async fn otp_enrollment_session_cannot_create_business_work(pool: PgPool) {
 #[cfg(feature = "workorder")]
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn otp_family_cannot_gain_business_authority_after_passkey_registration(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3068,7 +3068,7 @@ async fn otp_family_cannot_gain_business_authority_after_passkey_registration(po
 /// The admin issue-OTP endpoint is authz-gated: a non-admin session is forbidden.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn admin_issue_otp_rejects_non_admin(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3123,7 +3123,7 @@ async fn admin_issue_otp_rejects_non_admin(pool: PgPool) {
 /// scope, not the client-supplied branch_id.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn admin_issue_otp_rejects_cross_branch_target(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3174,7 +3174,7 @@ async fn admin_issue_otp_rejects_cross_branch_target(pool: PgPool) {
 /// (SUPER_ADMIN or EXECUTIVE) target. Only a SUPER_ADMIN caller may do so.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn admin_issue_otp_rejects_privileged_target(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3236,7 +3236,7 @@ async fn admin_issue_otp_rejects_privileged_target(pool: PgPool) {
 /// subordinate (a non-privileged user whose only branch is the admin's).
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn admin_issue_otp_allows_in_branch_subordinate(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3305,7 +3305,7 @@ async fn admin_issue_otp_allows_in_branch_subordinate(pool: PgPool) {
 /// `requires_passkey_setup`) must not mint sign-in codes: 403 `passkey_required`.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn admin_issue_otp_requires_enrolled_passkey(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3364,7 +3364,7 @@ async fn admin_issue_otp_requires_enrolled_passkey(pool: PgPool) {
 /// redeems so the user can enroll a replacement device.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn admin_credential_reset_recovers_in_branch_subordinate(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3545,7 +3545,7 @@ async fn admin_credential_reset_recovers_in_branch_subordinate(pool: PgPool) {
 /// that per-IP buckets stay independent.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn otp_redeem_rate_limit_wires_up_on_real_clock_path(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3640,7 +3640,7 @@ async fn otp_redeem_rate_limit_wires_up_on_real_clock_path(pool: PgPool) {
 /// the CSRF-safe attributes (HttpOnly, SameSite=Strict, Path=/).
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn cookie_mode_redeem_sets_httponly_cookie_and_omits_body_refresh(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3709,7 +3709,7 @@ async fn cookie_mode_redeem_sets_httponly_cookie_and_omits_body_refresh(pool: Pg
 /// reads the token from the cookie (no body token) and rotates the cookie.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn cookie_mode_login_then_refresh_reads_and_rotates_cookie(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3815,7 +3815,7 @@ async fn cookie_mode_login_then_refresh_reads_and_rotates_cookie(pool: PgPool) {
 /// submission, while still retaining a bounded per-device refresh limiter.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn cookie_mode_refresh_allows_rapid_navigation_burst_with_device_id(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -3896,7 +3896,7 @@ async fn cookie_mode_refresh_allows_rapid_navigation_burst_with_device_id(pool: 
 /// NO Set-Cookie header is emitted.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn body_mode_without_header_is_unchanged_and_sets_no_cookie(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

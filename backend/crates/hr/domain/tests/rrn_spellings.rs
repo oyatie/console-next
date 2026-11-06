@@ -28,3 +28,43 @@ fn every_accepted_rrn_spelling_is_restricted() {
         }
     }
 }
+
+#[test]
+fn formatted_rrns_are_restricted_in_cells_and_text() {
+    for cell in [
+        "900101 1234567",
+        "900101\u{a0}1234567",
+        "900101\u{2003}1234567",
+        "900101–1234567",
+        "900101—1234567",
+        "900101−1234567",
+        "９００１０１－１２３４５６７",
+        "９００１０１１２３４５６７.0",
+        "９００１０１１—２３４５６７",
+        "５０１０１３２３４５６７.0",
+        "５０１０１３２３４５６７．０",
+    ] {
+        assert!(is_rrn_value(cell), "formatted value must be restricted");
+    }
+    for cell in [
+        "900101 1234567",
+        "900101–1234567",
+        "９００１０１－１２３４５６７",
+        "1 900101-1234567 2",
+        "1 900101 1234567 2",
+        "1 ９００１０１－１２３４５６７ 2",
+    ] {
+        assert!(
+            is_rrn_value(&format!("확인 {cell}")),
+            "embedded value must be restricted"
+        );
+    }
+    for cell in [
+        "2026000123",
+        "900101–9234567",
+        "19001011234567",
+        "연락 확인",
+    ] {
+        assert!(!is_rrn_value(cell), "unrelated text must stay intact");
+    }
+}

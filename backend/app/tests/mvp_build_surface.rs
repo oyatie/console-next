@@ -14,7 +14,7 @@ use console_kernel_core::OrgId;
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use sqlx::PgPool;
 use time::{Duration, OffsetDateTime};
@@ -144,7 +144,7 @@ async fn get(
 async fn compiled_out_module_routes_answer_404_and_mvp_routes_answer(
     pool: PgPool,
 ) -> Result<(), TestError> {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF)?.to_string();
     let public_pem = signing_key
         .verifying_key()

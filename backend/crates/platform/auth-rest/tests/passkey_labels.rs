@@ -7,7 +7,7 @@ use console_kernel_core::{OrgId, UserId};
 use console_platform_auth_rest::{AuthRestConfig, AuthRestState, router};
 use console_platform_test_support::{runtime_role_pool, soft_passkey::SoftKey};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -16,7 +16,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 fn auth_state(pool: PgPool) -> AuthRestState {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     AuthRestState::new(
         pool,
         AuthRestConfig {

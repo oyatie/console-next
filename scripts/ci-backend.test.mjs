@@ -14,7 +14,7 @@ const push = "github.event_name == 'push' && github.ref == 'refs/heads/dev'";
 test("spreadsheet paste starts its own server after browser-backed unit tests", () => {
   const step = ci.jobs.web.steps.find(s => s.run?.includes("grid-table-paste.spec.ts"));
   assert.ok(step && !step.if && !step["continue-on-error"]);
-  const port = Number(step.env?.CONSOLE_WEB_PORT);
+  const port = Number(step.run.match(/CONSOLE_WEB_PORT=(\d+)/)?.[1]);
   assert.ok(Number.isInteger(port) && port > 0 && port <= 65535);
   const config = readFileSync(new URL("../apps/web/src/features/people/ui/grid-table.playwright.ts", import.meta.url), "utf8");
   const defaultPort = Number(config.match(/CONSOLE_WEB_PORT \?\? (\d+)/)?.[1]);

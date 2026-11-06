@@ -45,7 +45,7 @@ use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifie
 use console_platform_test_support::seed_org_and_super_admin;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -497,7 +497,7 @@ struct Keys {
 
 impl Keys {
     fn generate() -> Self {
-        let key = SigningKey::random(&mut OsRng);
+        let key = SigningKey::generate();
         Self {
             private_pem: key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
             public_pem: key

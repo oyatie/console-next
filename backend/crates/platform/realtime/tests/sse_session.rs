@@ -20,7 +20,7 @@ use console_platform_realtime::{PgRealtimeHub, RealtimeHubConfig, RealtimeRestSt
 use console_platform_test_support::{runtime_role_pool, seed_branch, seed_user};
 use futures::StreamExt;
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use sqlx::PgPool;
 use time::{Duration, OffsetDateTime};
@@ -42,7 +42,7 @@ async fn a_signed_out_session_is_refused_and_its_open_stream_ends_unsent(owner: 
     let branch = seed_branch(&owner, "rt-sse-out", "rt-sse-out").await;
     let user = seed_user(&owner, "Reader", "SUPER_ADMIN", branch).await;
     let runtime = runtime_role_pool(&owner).await;
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let private = key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public = key
         .verifying_key()

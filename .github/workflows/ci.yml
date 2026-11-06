@@ -50,7 +50,8 @@ jobs:
 
   web:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # 12m setup (9m observed browser install + 3m checkout/npm/artifacts) + existing 30m checks.
+    timeout-minutes: 42
     permissions:
       contents: read
     steps:
@@ -75,24 +76,48 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
-      # Browser-backed unit tests (vitest + Playwright) need the pinned Chromium headless shell; caching is CI-1's.
-      - name: Chromium headless shell for browser-backed unit tests
-        run: npx playwright install --with-deps --only-shell chromium
-      - run: npm run check
-      - run: node --test scripts/ci-backend.test.mjs
-      - name: GHCR retention safety controls
-        run: node --test scripts/ghcr-retention.test.mjs
-      - name: D7 producer regression controls
+      - &playwright-version
+        name: Locked Playwright version
+        id: playwright
         run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+          appendFileSync(process.env.GITHUB_OUTPUT, `version=${lock.packages['node_modules/playwright-core'].version}\n`);
+          JS
+      - &playwright-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+      - &playwright-install
+        name: Chromium headless shell for browser-backed tests
+        run: |
+          install_started=$SECONDS
+          report_install_duration() {
+            printf 'Playwright Chromium install: %ss (includes OS dependencies).\n' "$((SECONDS - install_started))" >> "$GITHUB_STEP_SUMMARY"
+          }
+          trap report_install_duration EXIT
+          npx playwright install --with-deps --only-shell chromium
+      - &playwright-cache-save
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.playwright-cache.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+      - name: Web checks
+        timeout-minutes: 30
+        run: |
+          npm run check
+          node --test scripts/ci-backend.test.mjs
+          node --test scripts/ghcr-retention.test.mjs
           node --test scripts/negative-index.test.mjs
           python3 scripts/d7_evidence_test.py
           node --test scripts/d10-census.test.mjs
           python3 scripts/d10_evidence_test.py
           python3 scripts/d8_evidence_test.py
-      - name: Spreadsheet paste browser regression
-        env:
-          CONSOLE_WEB_PORT: '58743'
-        run: npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
+          CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
   states-plan:
@@ -153,7 +178,8 @@ jobs:
   states:
     needs: states-plan
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Plan-derived run budget plus setupAllowanceSeconds; setup cannot consume the run allowance.
+    timeout-minutes: ${{ matrix.jobTimeoutMinutes }}
     permissions:
       contents: read
     strategy:
@@ -171,13 +197,17 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npx playwright install --with-deps --only-shell chromium
+      - *playwright-version
+      - *playwright-cache
+      - *playwright-install
+      - *playwright-cache-save
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: states-plan
           path: .cache/states-plan
       # Workers stay at the timing configuration's default; go wider with shards, not workers.
       - run: node scripts/states-shards.mjs run .cache/states-plan/plan.json "${{ matrix.shard }}"
+        timeout-minutes: ${{ matrix.runTimeoutMinutes }}
         env:
           E2E_MODULES_FILE: .cache/states-plan/modules.json
           PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/states-report-${{ matrix.shard }}.json

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const koCommon = {
+  "common.failed.code.search_invalid": "검색어의 제어문자를 제거하고 길이를 줄인 뒤 다시 검색하십시오.",
   "common.more": "더 보기",
   "common.closeRelated": "연관 항목 닫기",
   "common.resizeColumn": "열 너비 조절",

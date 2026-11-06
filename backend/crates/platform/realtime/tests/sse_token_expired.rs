@@ -18,7 +18,7 @@ use console_platform_realtime::{
 };
 use console_platform_test_support::{runtime_role_pool, seed_branch, seed_user};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -43,7 +43,7 @@ async fn an_expired_access_token_is_refused_as_token_expired(owner: PgPool) {
     let branch = seed_branch(&owner, "rt-sse-exp", "rt-sse-exp").await;
     let user = seed_user(&owner, "Reader", "SUPER_ADMIN", branch).await;
     let runtime = runtime_role_pool(&owner).await;
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let private = key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public = key
         .verifying_key()

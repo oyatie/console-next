@@ -11,7 +11,7 @@ use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifie
 use console_platform_db::{DbError, with_audit};
 use console_platform_test_support::runtime_role_pool;
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -24,7 +24,7 @@ const TEST_AUDIENCE: &str = "console-api";
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn missing_mail_master_key_keeps_read_paths_clean_and_send_unavailable(pool: PgPool) {
     console_platform_request_context::scope_org(OrgId::one(), async move {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = SigningKey::generate();
         let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public_key_pem = signing_key
             .verifying_key()

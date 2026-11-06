@@ -1541,7 +1541,8 @@
     "reason": "c: single owner, personal repo (Keats); a: rivals josekit, jwt-simple.",
     "evidence": [
       "https://docs.rs/jsonwebtoken",
-      "docs/quality/dependency-ruling-2026-10-26.md"
+      "docs/quality/dependency-ruling-2026-10-26.md",
+      "docs/quality/dependency-ruling-2026-11-03.md"
     ],
     "allowedLayers": [
       "interface adapters",
@@ -1551,7 +1552,7 @@
     ],
     "layer": "interface adapters; frameworks & drivers/platform; test; build/tooling",
     "exitPlan": "Replace at listed users only after contract and performance parity; remove dependency and regenerate locks/register together.",
-    "securityProcess": "not independently verified; no delegated approval",
+    "securityProcess": "package governance remains unapproved; aws-lc-rs backend owner-approved 2026-11-03",
     "ruleMapping": "Preserve listed call-site contracts, error handling, wire formats and target/features.",
     "recommendation": "Keep (de-facto, single publisher).",
     "rulingEvidence": {
@@ -10932,5 +10933,78 @@
         "reason": "CI/supply chain only, used by .github/workflows/ci.yml; remove the cache steps and the build stays correct without them."
       }
     }
+  },
+  "gate:scripts/check-commit-subjects.mjs": {
+    "group": "Domain contracts and quality gates",
+    "job": "Conventional Commit subject enforcement for pull requests and merge groups",
+    "verdict": "keep",
+    "convention": "domain contract",
+    "class": "DOMAIN-CONTRACT",
+    "approval": null,
+    "alternatives": "Keep the existing repository gate and its focused tests.",
+    "reason": "The repository-specific merge range and merge-group rules are not covered by a generic linter invocation.",
+    "evidence": [
+      "scripts/check-commit-subjects.mjs",
+      "https://www.conventionalcommits.org/en/v1.0.0/"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "exitPlan": "Replace only after pull-request and merge-group range parity, including merge and revert subjects.",
+    "securityProcess": "Repository-owned gate; no external executable or runtime dependency.",
+    "ruleMapping": "Preserve the existing subject grammar, range validation, merge exemptions and diagnostics.",
+    "license": "LicenseRef-Proprietary (repository code)",
+    "lastRelease": "repository snapshot 2026-11-03",
+    "maintainers": "repository maintainers",
+    "footprint": "50 source lines (not runtime or compile delta)"
+  },
+  "gate:scripts/check-csv-cells.mjs": {
+    "group": "Domain contracts and quality gates",
+    "job": "CSV formula-safety writer enforcement for shipped web exports",
+    "verdict": "keep",
+    "convention": "domain contract",
+    "class": "DOMAIN-CONTRACT",
+    "approval": null,
+    "alternatives": "Keep the existing repository gate and its planted-case tests.",
+    "reason": "The gate enforces the product's canonical CSV cell boundary across application source.",
+    "evidence": [
+      "scripts/check-csv-cells.mjs"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "exitPlan": "Replace only after equivalent CSV writer coverage and planted-case parity.",
+    "securityProcess": "Repository-owned gate; no external executable or runtime dependency.",
+    "ruleMapping": "Preserve canonical csvCell use for every emitted CSV cell and current diagnostics.",
+    "license": "LicenseRef-Proprietary (repository code)",
+    "lastRelease": "repository snapshot 2026-11-03",
+    "maintainers": "repository maintainers",
+    "footprint": "54 source lines (not runtime or compile delta)"
+  },
+  "gate:scripts/check-script-reachability.mjs": {
+    "group": "Domain contracts and quality gates",
+    "job": "Required-CI reachability inventory for repository checks and test scripts",
+    "verdict": "keep",
+    "convention": "domain contract",
+    "class": "DOMAIN-CONTRACT",
+    "approval": null,
+    "alternatives": "Keep the existing repository gate and its planted-case tests.",
+    "reason": "Package declarations alone do not prove that repository checks execute from required CI.",
+    "evidence": [
+      "scripts/check-script-reachability.mjs"
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
+    "layer": "build/tooling",
+    "exitPlan": "Replace only after required-CI graph and inherited-orphan ratchet parity.",
+    "securityProcess": "Repository-owned gate; no external executable or runtime dependency.",
+    "ruleMapping": "Preserve required-CI traversal, execution/import distinction and shrink-only orphan diagnostics.",
+    "license": "LicenseRef-Proprietary (repository code)",
+    "lastRelease": "repository snapshot 2026-11-03",
+    "maintainers": "repository maintainers",
+    "footprint": "201 source lines (not runtime or compile delta)"
   }
 }
