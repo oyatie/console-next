@@ -86,24 +86,24 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await forgetResize(page);
+    const targets = await page.locator('[role="gridcell"], [role="rowheader"]').filter({ has: page.getByRole("button") }).evaluateAll(cells => cells.map(cell => ({
+      tabIndex: cell.getAttribute("tabindex"),
+      buttons: Array.from(cell.querySelectorAll("button"), button => ({ width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height })),
+    })));
+    for (const cell of targets) {
+      expect(cell.tabIndex).toBe("-1");
+      for (const button of cell.buttons) {
+        expect(button.width).toBeGreaterThanOrEqual(24);
+        expect(button.height).toBeGreaterThanOrEqual(24);
+      }
+    }
     if (width === 1440) {
       const appoint = page.getByRole("row").filter({ hasText: "검증부서 2" }).getByRole("button", { name: "부서장 지정", exact: true });
-      const actionCells = page.getByRole("gridcell").filter({ has: page.getByRole("button") });
-      for (const cell of await actionCells.all()) {
-        await cell.focus();
-        await expect(cell).toHaveAttribute("tabindex", "-1");
-        await expect(cell.getByRole("button").first()).toBeFocused();
-        for (const button of await cell.getByRole("button").all()) {
-          const target = await button.boundingBox();
-          expect(target!.width).toBeGreaterThanOrEqual(24);
-          expect(target!.height).toBeGreaterThanOrEqual(24);
-        }
-        await expectAccessible(page, "department action targets");
-      }
       const head = page.getByRole("columnheader", { name: "부서장", exact: true });
       const filled = page.getByRole("gridcell", { name: "박부서장", exact: true });
       const inset = await filled.evaluate(cell => parseFloat(getComputedStyle(cell).paddingInlineStart));
       expect((await appoint.boundingBox())!.x).toBeCloseTo((await head.boundingBox())!.x + inset, 0);
+      expect((await filled.boundingBox())!.x).toBeCloseTo((await head.boundingBox())!.x, 0);
     }
     if (width === 390) await fits(page, "department list");
     await expectAccessible(page, `department list ${width}`);
@@ -166,4 +166,84 @@ test("a historical department offers no appointment, including a direct action U
   await expect(page.getByRole("button", { name: "부서장 없음 2", exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "부서장 지정", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "부서장 지정", exact: true })).toHaveCount(0);
+});
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`list arrows leave the name chevron and head action at ${width}px in ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, screens[2], "populated");
+    await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: structure(3) });
+    await go(page, "/org?view=list");
+    await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+    const grid = page.getByRole("grid");
+    const chevron = grid.getByRole("button", { name: "본사 접기", exact: true });
+    const head = page.getByRole("row").filter({ hasText: "검증부서 2" }).getByRole("button", { name: "부서장 지정", exact: true });
+    for (const control of [chevron, head]) {
+      await expect(control).toBeVisible();
+      if (control === chevron) {
+        await control.locator('xpath=ancestor::*[@role="rowheader"][1]').focus();
+        await expect(control).toBeFocused();
+      }
+      for (const key of ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"]) {
+        await control.focus();
+        await page.keyboard.press(key);
+        await expect(control).not.toBeFocused();
+      }
+      const box = await control.boundingBox();
+      expect(box!.width).toBeGreaterThanOrEqual(24);
+      expect(box!.height).toBeGreaterThanOrEqual(24);
+      await control.focus();
+      await page.keyboard.press("Tab");
+      await expect(control).not.toBeFocused();
+    }
+    await grid.evaluate(el => {
+      const after = document.createElement("button");
+      after.id = "after-table";
+      after.textContent = "다음";
+      after.className = "btn";
+      el.closest("section")!.after(after);
+    });
+    await head.focus();
+    const tabStops = await grid.locator("button, input, a[href], [tabindex]").count();
+    for (let step = 0; step <= tabStops && await grid.evaluate(el => el.contains(document.activeElement)); step++) await page.keyboard.press("Tab");
+    await expect(page.locator("#after-table")).toBeFocused();
+    // Every rendered cell and its controls participate in vertical navigation.
+    const row = page.getByRole("row").filter({ hasText: "검증부서 2" });
+    const next = page.getByRole("row").filter({ hasText: "검증부서 3" });
+    for (const cell of await row.locator('[role="rowheader"], [role="gridcell"]').all()) {
+      await cell.focus();
+      await page.keyboard.press("ArrowDown");
+      await expect.poll(() => next.evaluate(el => el.contains(document.activeElement))).toBe(true);
+      await page.keyboard.press("ArrowUp");
+      await expect.poll(() => cell.evaluate(el => el.contains(document.activeElement))).toBe(true);
+    }
+    await head.focus();
+    await page.keyboard.press("Enter");
+    const sheet = page.getByRole("dialog", { name: "부서장 지정", exact: true });
+    await expect(sheet.getByRole("combobox", { name: "부서장", exact: true })).toBeFocused();
+    await sheet.getByRole("button", { name: "닫기", exact: true }).click();
+    await expect(head).toBeFocused();
+    await fits(page, `department arrows ${width} ${theme}`);
+    await expectAccessible(page, `department arrows ${width} ${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+}
+
+for (const width of [1440, 390]) test(`keyboard appointment adopts the pressed cell at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: structure(3) });
+  await go(page, "/org?view=list");
+  const rows = page.getByRole("row").filter({ has: page.getByRole("rowheader") });
+  await rows.first().focus();
+  await page.locator("body").evaluate(el => { el.tabIndex = -1; el.focus(); });
+  await page.keyboard.press("ArrowRight");
+  const open = rows.filter({ hasText: "검증부서 2" }).getByRole("button", { name: "부서장 지정", exact: true });
+  await open.focus();
+  await page.keyboard.press("Enter");
+  const sheet = page.getByRole("dialog", { name: "부서장 지정", exact: true });
+  await expect(sheet.getByRole("combobox", { name: "부서장", exact: true })).toBeFocused();
+  await sheet.getByRole("button", { name: "닫기", exact: true }).click();
+  await expect(open).toBeFocused();
+  expect(fixture.unexpected).toEqual([]);
 });
