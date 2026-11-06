@@ -154,6 +154,10 @@ test("parallel builds restore the unchanged trusted cache and publish dev-only d
   const writer = ci.jobs["backend-cache"];
   assert.ok(writer);
   assert.match(writer.if, /github.event_name == 'push'/);
+  const condition = new Function("github", "needs", `return ${writer.if}`);
+  for (const event of ["pull_request", "merge_group", "push"]) for (const backend of ["true", "false", ""]) {
+    assert.equal(condition({ event_name: event }, { affected: { outputs: { backend } } }), event === "push" && backend === "true");
+  }
   assert.deepEqual(writer.needs, ["affected"]);
   const restore = writer.steps.find(s => s.id === "rust-cache");
   assert.match(restore.with.key, /^backend-.*runner.os.*runner.arch.*backend\/rust-toolchain.toml.*backend\/Cargo.lock.*backend\/\*\*\/Cargo.toml.*github.sha/);
@@ -341,11 +345,13 @@ test("push proof accepts only a successful trusted queue run with the same tree 
 test("duplicate browser, compiler and workflow checks retain a merge-gating copy", () => {
   const read = file => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
   const live = yaml.load(read(".github/workflows/e2e-live.yml"));
+  const inventory = live.jobs.build.steps.find(s => s.name === "Refuse an empty live suite").run;
   for (const name of ["chromium", "firefox"]) {
-    const run = live.jobs[name].steps.find(s => s.run?.includes("run_pw main")).run;
     const excluded = name === "chromium" ? "first-run-solo|authz/write-refusals|error-beacon" : "first-run-solo";
-    assert.ok(run.includes(`run_pw main --grep-invert='${excluded}'`));
-    assert.doesNotMatch(run, /run_pw grid/);
+    const command = inventory.split("\n").find(line => line.includes(`${name}-inventory.json`));
+    assert.ok(command.includes(`--grep-invert='${excluded}'`));
+    assert.match(command, /--list/);
+    assert.ok(!live.jobs[name].strategy.matrix.include.some(entry => entry.shard === "grid"));
   }
   const probes = ci.jobs.home.steps.find(s => s.run?.includes("authz/write-refusals.spec.ts"));
   assert.equal(probes.if, "github.event_name == 'merge_group'");
@@ -362,7 +368,7 @@ test("duplicate browser, compiler and workflow checks retain a merge-gating copy
   assert.equal(lint.on.push, undefined);
   const platform = yaml.load(read(".github/workflows/platform.yml"));
   for (const job of Object.values(platform.jobs)) for (const step of job.steps ?? [])
-    assert.doesNotMatch(step.run ?? "", /^\s*actionlint\s+\S/m);
+    assert.doesNotMatch(step.run ?? "", /(?:^|[;&|])\s*(?:npx\s+)?actionlint(?:\s|$)/m);
 });
 
 test("imported classifications refuse a mismatched commit or missing affected output", () => {

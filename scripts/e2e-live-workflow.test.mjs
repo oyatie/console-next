@@ -114,7 +114,7 @@ test("live shards reserve cleanup time and run auxiliary suites independently", 
       assert.ok(!run.run.includes('"$SHARD" == 1'), "auxiliary suites must not accumulate on shard 1");
       const suites = job.strategy.matrix.include.map(entry => entry.shard);
       assert.deepEqual(suites, name === "chromium"
-        ? ["clock", "coldstart", "live-renew", "navigation", "focus-stress", "grid", "timeline"]
+        ? ["clock", "coldstart", "live-renew", "navigation", "focus-stress", "timeline"]
         : ["coldstart", "live-renew", "navigation", "focus-stress"]);
       assert.match(run.run, /--config="\$CONFIG"/);
       assert.equal(run.env.CONFIG, "${{ matrix.config || 'playwright.config.ts' }}");
