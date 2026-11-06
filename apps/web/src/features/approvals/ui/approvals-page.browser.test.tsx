@@ -74,6 +74,12 @@ test.each(ENGINES.map((_, engine) => ({ engine })))("preview remains usable at p
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${server.resolvedUrls!.local[0]}approvals-view-test`);
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+    const row = page.getByRole("row", { name: /영업 조직 개편안/ });
+    await expect(row.getByText("AP-2026-001", { exact: true })).toBeVisible();
+    const route = row.getByRole("list", { name: "결재선", exact: true });
+    await expect(route.getByRole("listitem")).toHaveCount(2);
+    await expect(route.locator('[aria-current="step"]')).toContainText("인사팀장 결재 · 박결재");
+    await expect(row.getByText("김기안", { exact: true })).toBeVisible();
     await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
     const panel = page.locator("[data-side-panel]");
     await expect(panel.getByRole("heading", { name: "영업 조직 개편안", exact: true })).toBeVisible();
