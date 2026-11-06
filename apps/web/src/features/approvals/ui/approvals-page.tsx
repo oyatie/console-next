@@ -8,6 +8,8 @@ import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
 import { QueryState } from "../../../lib/react/query-state";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Button } from "../../../ui/button/button";
+import { codeText } from "../../../lib/labels";
+import { SourceViewerLink } from "./source-viewer-link";
 import { Card } from "../../../ui/card/card";
 import { ChainStepper } from "../../../ui/chain-stepper/chain-stepper";
 import { Chip } from "../../../ui/chip";
@@ -53,12 +55,13 @@ export function ApprovalInboxView({ items, selected, onSelect, onClose, hasNext,
     {selected && <SidePanel
       open title={selected.title} crumb={selected.document_no} onClose={onClose}
       chips={<><Chip>{selected.source.label}</Chip><Chip tone={selected.status.tone}>{selected.status.label}</Chip></>}
-      openLink={<Link className={buttonClass("primary")} to="/approvals/$approvalId" params={{ approvalId: selected.id }}>{t("approvals.open")}</Link>}
+      openLink={selected.viewer?.kind === "org_change" ? <SourceViewerLink viewer={selected.viewer} /> : <Link className={buttonClass("primary")} to="/approvals/$approvalId" params={{ approvalId: selected.id }}>{t("approvals.open")}</Link>}
       returnFocus={() => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(selected.id)}"]`)}
     >
       <div className={s.preview}>
         <div>{selected.summary}</div>
         <KeyValue label={t("approvals.preview.facts")} readOnly items={[
+          ...(selected.decision_refusal ? [{ key: "decision-refusal", label: t("approvals.field.verification"), value: codeText(selected.decision_refusal, t("approvals.blocked")) }] : []),
           ...(selected.document_no ? [{ key: "number", label: t("approvals.field.documentNo"), value: selected.document_no }] : []),
           { key: "requester", label: t("approvals.field.requester"), value: [selected.requester?.name, selected.requester?.role].filter(Boolean).join(" · ") || "—" },
           { key: "requested", label: t("approvals.field.requestedAt"), value: fmtDateTime(selected.requested_at) },

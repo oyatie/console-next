@@ -12,6 +12,7 @@ export type ApprovalItem = {
   title: string;
   summary: string;
   document_no?: string | null;
+  decision_refusal?: string | null;
   source: { key: string; label: string };
   status: { key: string; label: string; tone: "ok" | "warn" | "danger" | "info" | "neutral" };
   requester?: { id: string; name: string; role?: string | null } | null;

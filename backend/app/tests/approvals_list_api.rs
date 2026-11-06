@@ -12,6 +12,9 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+#[path = "approvals_list_api/delivery.rs"]
+mod delivery;
+
 async fn document(pool: &PgPool, org: Uuid, maker: UserId, code: &str) -> Uuid {
     let id = sqlx::query_scalar("INSERT INTO org_change_requests (org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,proposal,drafted_by,idempotency_key,request_fingerprint) VALUES ($1,$2,'REORG','IN_APPROVAL','REGION','region','조직 개편',CURRENT_DATE,'변경 검토','[]',$3,$4,repeat('a',64)) RETURNING id")
         .bind(org).bind(code).bind(maker.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(pool).await.unwrap();
@@ -168,6 +171,9 @@ async fn completed_documents_only_reach_requesters_and_route_participants(pool: 
         assert_eq!(page["counts"]["completed"], expected);
         assert_eq!(page["items"].as_array().unwrap().len(), expected as usize);
         assert_eq!(page["counts"]["pending"], 0);
+        if expected > 0 {
+            assert!(page["items"][0]["decision_refusal"].is_null());
+        }
     }
     let rejected = document(&pool, org, maker, "OC-2026-0002").await;
     sqlx::query("UPDATE org_change_approval_steps SET decision='REJECTED',decided_by=$2,decided_at=now() WHERE request_id=$1 AND step_order=1")
@@ -263,7 +269,7 @@ async fn projection_failures_return_a_code_without_database_details(pool: PgPool
     assert!(!body.to_string().contains("org_units"));
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn same_person_alias_and_unbound_approvers_have_no_pending_documents(pool: PgPool) {
+async fn same_person_alias_is_hidden_while_unbound_approver_sees_verification_needed(pool: PgPool) {
     let (org, maker, _) = setup(&pool).await;
     document(&pool, org, maker, "OC-2026-0001").await;
     let maker_person: Uuid = sqlx::query_scalar("SELECT person_id FROM users WHERE id=$1")
@@ -279,7 +285,14 @@ async fn same_person_alias_and_unbound_approvers_have_no_pending_documents(pool:
         }
         let ctx = http::ctx(&pool, org, user, &["EXECUTIVE"], None).await;
         let page = get(&ctx, "box=pending").await;
-        assert_eq!(page["counts"]["pending"], 0);
-        assert_eq!(page["items"], json!([]));
+        assert_eq!(page["counts"]["pending"], if bound { 0 } else { 1 });
+        if bound {
+            assert_eq!(page["items"], json!([]));
+        } else {
+            assert_eq!(
+                page["items"][0]["decision_refusal"],
+                "org_change.refuse.identity_unbound"
+            );
+        }
     }
 }

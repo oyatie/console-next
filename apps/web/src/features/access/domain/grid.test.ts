@@ -48,13 +48,19 @@ test("only levels with an operation are offered, and screenless domains are not 
 
 const op = (domain: string, levels: ("view" | "edit" | "approve" | "export")[]) => ({ domain, grantable: true, levels: ["view", "edit", "approve", "export"] as ("view" | "edit" | "approve" | "export")[], operations: levels.map((level) => ({ level })) });
 
-// regression (governance-03, #26): with nothing routed the grid sold 결재 on 조직 and 퇴직.
-test("조직's approve is offered once org changes route; 퇴직 확인 and 예외·정정 결정 always, worded as such", () => {
+test("catalogued approval authority can be configured before routing is enabled", () => {
+  const org = op("org", ["view", "edit", "approve"]);
+  expect(liveLevels(org, new Set())).toContain("approve");
+  expect(liveLevels(org, new Set())).toEqual(liveLevels(org, new Set(["org_structure"])));
+});
+
+// Routing controls execution; stored authority must survive a routing change.
+test("조직's catalogued approve is offered before and after routing; 퇴직 확인 and 예외·정정 결정 always, worded as such", () => {
   const org = op("org", ["view", "edit", "approve"]);
   const exit = op("exit", ["edit", "approve"]);
   const exceptions = op("exceptions", ["edit", "approve"]);
   const none = new Set<string>();
-  expect(liveLevels(org, none)).toEqual(["view", "edit"]);
+  expect(liveLevels(org, none)).toEqual(["view", "edit", "approve"]);
   // The HQ 확인 is still a capability the server asks for: never hidden (a tenant could not finish an exit otherwise).
   expect(liveLevels(exit, none)).toEqual(["view", "edit", "approve"]);
   expect(liveLevels(exceptions, none)).toEqual(["view", "edit", "approve"]);
