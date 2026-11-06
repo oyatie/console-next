@@ -187,6 +187,40 @@ async fn setup_counts_only_reviewed_employee_bound_second_people(owner: PgPool) 
     }
 }
 
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn notice_count_excludes_read_notifications(owner: PgPool) {
+    let (service, issuer) = router(&owner).await;
+    let svc = passkey_service();
+    let org = setup_tenant(&owner).await;
+    let human = admin_in(&owner, &svc, &issuer, org, "관리자").await;
+    sqlx::query(
+        "INSERT INTO notifications (org_id,recipient_user_id,category,body,unread,read_at) \
+         VALUES ($1,$2,'period_lock.sole_holder','Unread unlock',true,NULL), \
+                ($1,$2,'period_lock.sole_holder','Read unlock',false,now())",
+    )
+    .bind(org.as_uuid())
+    .bind(human.id)
+    .execute(&owner)
+    .await
+    .unwrap();
+    let (status, page) = read(&service, LOCKS, &human.token).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    assert_eq!(page["soleHolderNotices"], 1, "{page}");
+
+    sqlx::query(
+        "UPDATE notifications SET unread=false,read_at=now() \
+         WHERE org_id=$1 AND recipient_user_id=$2 AND unread",
+    )
+    .bind(org.as_uuid())
+    .bind(human.id)
+    .execute(&owner)
+    .await
+    .unwrap();
+    let (status, page) = read(&service, LOCKS, &human.token).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    assert_eq!(page["soleHolderNotices"], 0, "{page}");
+}
+
 async fn setup_tenant(owner: &PgPool) -> OrgId {
     let org = Uuid::new_v4();
     sqlx::query("INSERT INTO organizations(id,slug,name) VALUES($1,$2,'Unlock setup')")

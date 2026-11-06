@@ -12,6 +12,7 @@ for (const locale of ["ko", "en"] as const) for (const state of ["populated", "e
     await loadCatalog(locale);
     i18n.set(locale);
     await page.addInitScript(value => localStorage.setItem("console.locale", value), locale);
+    await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
     await page.setViewportSize({ width: 390, height: 844 });
     await mockScreen(page, screens[0], "empty");
     await mockRoute(page, "get", "/api/v1/reason-codes", request => ({ status: 200, json: { domain: new URL(request.url()).searchParams.get("domain") ?? "", items: [] } }));
@@ -27,8 +28,8 @@ for (const locale of ["ko", "en"] as const) for (const state of ["populated", "e
       };
     });
     await page.goto("/people/period-locks");
-    await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
     await expect(page.getByRole("heading", { name: t("periodLocks.title"), exact: true })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect.poll(() => reads).toBeGreaterThan(0);
     if (state === "loading") {
       await expect(page.getByRole("status", { name: t("common.loading") })).toBeVisible();
@@ -44,9 +45,12 @@ for (const locale of ["ko", "en"] as const) for (const state of ["populated", "e
       await expect(page.getByText(/단독 해제 알림|solo unlock notices/)).toHaveCount(0);
       recovered = true;
       await page.reload();
-      await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
     }
-    await expect(page.getByText(locale === "ko" ? "단독 해제 알림 3건" : "3 solo unlock notices", { exact: true })).toBeVisible();
+    const unlocked = page.getByRole("button", { name: t("periodLocks.view.unlocked", { count: 0 }) });
+    await expect(unlocked.locator(".chip--warn")).toHaveText(t("periodLocks.unlock.notices", { count: 3 }));
+    await unlocked.click();
+    await expect(unlocked).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("heading", { name: t("periodLocks.unlocked.section", { count: 0 }), exact: true })).toBeVisible();
     await fits(page, `period unlock notices/${state}`);
     await expectAxe(page, `period unlock notices/${state}`);
   });
