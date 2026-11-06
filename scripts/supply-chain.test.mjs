@@ -154,7 +154,7 @@ test("affected paths uses full history, the event base and the checked-out merge
 test("ci-ok requires the affected-path aggregate and its regression controls", () => {
   assert.equal(workflow.jobs["ci-ok"].if, "${{ always() }}");
   assert.deepEqual([...workflow.jobs["ci-ok"].needs].sort(), ["affected", "backend", "backend-gates", "backend-release", "backend-tests", "commits", "home", "states", "states-plan", "states-timings", "supply-chain", "web"]);
-  assert.ok(workflow.jobs.web.steps.some(s => s.run === "node --test scripts/ci-backend.test.mjs"));
+  assert.ok(workflow.jobs.web.steps.some(s => s.run?.includes("node --test scripts/ci-backend.test.mjs")));
 });
 
 test("Dependabot groups only minor and patch updates weekly on dev, leaving majors individual", () => {
