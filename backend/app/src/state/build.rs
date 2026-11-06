@@ -74,7 +74,7 @@ impl AppState {
         };
         let audit_attestation_signer =
             audit_chain_signer::build_attestation_signer(config.audit_chain_external.as_ref())?;
-        let realtime_hub = realtime_hub_from_database(&database);
+        let realtime_hub = realtime_hub_from_database(&database, config.realtime.clone());
         let juso = Arc::new(console_entity_adapter_juso::JusoClient::new(
             config.juso.clone(),
         ));

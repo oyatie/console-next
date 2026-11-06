@@ -9,7 +9,7 @@ use console_messenger_application::MessageQuery;
 use console_platform_db::with_org_conn;
 use console_platform_request_context::scope_org;
 
-use crate::event::MessageCursor;
+use crate::event::{MessageCursor, ResetData, ResetReason};
 use crate::hub::{ConnectionDeliveryState, ReplayPlan};
 use crate::messenger_sql::{
     REALTIME_MESSAGE_GROUP_BY, message_select_builder, message_summary_from_row, push_scope_filter,
@@ -26,19 +26,46 @@ impl PgRealtimeHub {
         principal: RealtimePrincipal,
         plan: ReplayPlan,
     ) {
-        let result = async {
+        let mut remaining = self.config.max_replay_rows;
+        let mut result = tokio::time::timeout(self.config.replay_timeout, async {
             if let Some(last_message_id) = plan.last_message_id {
-                self.replay_after(connection_id, &principal, last_message_id)
+                self.replay_after(connection_id, &principal, last_message_id, &mut remaining)
                     .await?;
             }
             if plan.change_stream {
-                self.replay_changes(connection_id, &principal, plan.last_event_id)
-                    .await?;
+                self.replay_changes(
+                    connection_id,
+                    &principal,
+                    plan.last_event_id,
+                    &mut remaining,
+                )
+                .await?;
             }
             self.finish_replay(connection_id).await
-        }
-        .await;
+        })
+        .await
+        .unwrap_or(Err(RealtimeError::ReplayLimitExceeded));
 
+        if matches!(result, Err(RealtimeError::ReplayLimitExceeded)) {
+            self.replay_limit_hit();
+            if plan.change_stream {
+                result = tokio::time::timeout(SOCKET_IO_TIMEOUT, async {
+                    let reset = RealtimeEvent::Reset {
+                        data: ResetData {
+                            reason: ResetReason::Pruned,
+                        },
+                    };
+                    if self.send_replay_event(connection_id, reset).await? {
+                        self.replay_changes(connection_id, &principal, None, &mut remaining)
+                            .await?;
+                        self.finish_replay(connection_id).await?;
+                    }
+                    Ok(())
+                })
+                .await
+                .unwrap_or(Err(RealtimeError::ReadTimedOut));
+            }
+        }
         if let Err(err) = result {
             tracing::warn!(error = %err, "realtime replay failed");
             let resume_after = self.replay_resume_after(connection_id).await;
@@ -52,6 +79,7 @@ impl PgRealtimeHub {
         connection_id: uuid::Uuid,
         principal: &RealtimePrincipal,
         last_message_id: MessageId,
+        remaining: &mut usize,
     ) -> Result<(), RealtimeError> {
         let pool = self
             .pool
@@ -122,6 +150,7 @@ impl PgRealtimeHub {
             }
 
             let row_count = rows.len();
+            consume_replay_rows(remaining, row_count)?;
             for row in rows {
                 let message = message_summary_from_row(&row)?;
                 cursor = MessageCursor {
@@ -259,5 +288,27 @@ impl PgRealtimeHub {
                 resume_after,
             });
         }
+    }
+}
+
+pub(crate) fn consume_replay_rows(remaining: &mut usize, rows: usize) -> Result<(), RealtimeError> {
+    *remaining = remaining
+        .checked_sub(rows)
+        .ok_or(RealtimeError::ReplayLimitExceeded)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn replay_phases_share_one_budget_and_allow_the_exact_limit() {
+        let mut remaining = 3;
+        super::consume_replay_rows(&mut remaining, 1).unwrap();
+        super::consume_replay_rows(&mut remaining, 2).unwrap();
+        super::consume_replay_rows(&mut remaining, 0).unwrap();
+        assert!(matches!(
+            super::consume_replay_rows(&mut remaining, 1),
+            Err(crate::RealtimeError::ReplayLimitExceeded)
+        ));
     }
 }

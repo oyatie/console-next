@@ -55,6 +55,7 @@ impl PgRealtimeHub {
         connection_id: uuid::Uuid,
         principal: &RealtimePrincipal,
         cursor: Option<i64>,
+        remaining: &mut usize,
     ) -> Result<(), RealtimeError> {
         let pool = self
             .pool
@@ -81,6 +82,7 @@ impl PgRealtimeHub {
                     let mut after = (start, 0);
                     loop {
                         let page = changes::replay_page(pool, org, after, REPLAY_PAGE_SIZE).await?;
+                        crate::replay::consume_replay_rows(remaining, page.len())?;
                         let Some((last_at, last)) = page.last() else {
                             break;
                         };

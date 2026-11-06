@@ -175,5 +175,65 @@ async fn a_change_subscribed_socket_gets_hello_change_and_pings(owner: PgPool) {
 
     let (opcode, _) = frame(&mut stream).await;
     assert_eq!(opcode, 9, "an idle socket gets a server ping");
+
+    let mut sockets = Vec::new();
+    for _ in 1..10 {
+        let (socket, header) = handshake(addr, &token, "").await;
+        assert!(header.starts_with("HTTP/1.1 101"));
+        sockets.push(socket);
+    }
+    for query in ["", "?changes=true"] {
+        let (mut rejected, header) = handshake(addr, &token, query).await;
+        assert!(header.starts_with("HTTP/1.1 429"), "{header}");
+        let length = header
+            .lines()
+            .find_map(|line| line.strip_prefix("content-length: "))
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        let mut body = vec![0; length];
+        rejected.read_exact(&mut body).await.unwrap();
+        assert_eq!(
+            serde_json::from_slice::<Value>(&body).unwrap()["error"]["code"],
+            "ws_account_limit"
+        );
+    }
+    drop(sockets.pop());
+    timeout(StdDuration::from_secs(5), async {
+        loop {
+            let (socket, header) = handshake(addr, &token, "?changes=true").await;
+            if header.starts_with("HTTP/1.1 101") {
+                drop(socket);
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("a disconnected socket releases its reservation");
     server.abort();
+}
+
+async fn handshake(addr: std::net::SocketAddr, token: &str, query: &str) -> (TcpStream, String) {
+    timeout(StdDuration::from_secs(5), async {
+        let mut stream = TcpStream::connect(addr).await.unwrap();
+        stream
+            .write_all(
+                format!(
+                    "GET /api/v1/ws{query} HTTP/1.1\r\nHost: {addr}\r\nConnection: Upgrade\r\n\
+             Upgrade: websocket\r\nSec-WebSocket-Version: 13\r\n\
+             Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nAuthorization: Bearer {token}\r\n\r\n"
+                )
+                .as_bytes(),
+            )
+            .await
+            .unwrap();
+        let mut header = Vec::new();
+        while !header.ends_with(b"\r\n\r\n") {
+            header.push(stream.read_u8().await.unwrap());
+        }
+        (stream, String::from_utf8(header).unwrap())
+    })
+    .await
+    .unwrap()
 }

@@ -18,6 +18,10 @@ use crate::{DEFAULT_CONNECTION_BUFFER, RealtimeError, RealtimeEvent};
 /// from the settings registry (SET-RT), `Default` is the code default.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RealtimeHubConfig {
+    pub max_ws_per_account: usize,
+    pub max_ws_total: usize,
+    pub max_replay_rows: usize,
+    pub replay_timeout: Duration,
     /// `realtime.connection_buffer`
     pub connection_buffer: usize,
     /// `realtime.coalesce_threshold`: more surviving rows of one type in one
@@ -49,6 +53,10 @@ impl Default for RealtimeHubConfig {
     fn default() -> Self {
         Self {
             connection_buffer: DEFAULT_CONNECTION_BUFFER,
+            max_ws_per_account: 10,
+            max_ws_total: 1024,
+            max_replay_rows: 10_000,
+            replay_timeout: Duration::from_secs(30),
             coalesce_threshold: 50,
             replay_window: Duration::from_secs(24 * 60 * 60),
             retry_hint: Duration::from_secs(3),
@@ -155,6 +163,7 @@ pub(crate) enum ConnectionDeliveryState {
 
 #[derive(Debug)]
 pub struct PgRealtimeHub {
+    pub(crate) limits: crate::limits::Limits,
     pub(crate) pool: Option<PgPool>,
     pub(crate) config: RealtimeHubConfig,
     pub(crate) connections: Mutex<HashMap<uuid::Uuid, ConnectionSlot>>,
@@ -167,6 +176,7 @@ impl PgRealtimeHub {
     pub fn new(pool: PgPool, config: RealtimeHubConfig) -> Self {
         Self {
             pool: Some(pool),
+            limits: Default::default(),
             config,
             connections: Mutex::new(HashMap::new()),
             status_ping: Mutex::new(None),
@@ -177,6 +187,7 @@ impl PgRealtimeHub {
     pub fn for_tests(config: RealtimeHubConfig) -> Self {
         Self {
             pool: None,
+            limits: Default::default(),
             config,
             connections: Mutex::new(HashMap::new()),
             status_ping: Mutex::new(None),
@@ -219,7 +230,8 @@ impl PgRealtimeHub {
         } else {
             ConnectionDeliveryState::Live
         };
-        self.connections.lock().await.insert(
+        let mut connections = self.connections.lock().await;
+        connections.insert(
             id,
             ConnectionSlot {
                 principal: principal.clone(),
@@ -236,13 +248,13 @@ impl PgRealtimeHub {
             let task = tokio::spawn(async move {
                 hub.run_replay(id, principal, plan).await;
             });
-            // The producer or shutdown may remove the slot before installation.
-            if let Some(slot) = self.connections.lock().await.get_mut(&id) {
+            if let Some(slot) = connections.get_mut(&id) {
                 slot.replay_task = Some(task.abort_handle());
             } else {
                 task.abort();
             }
         }
+        drop(connections);
 
         RealtimeConnection {
             id,

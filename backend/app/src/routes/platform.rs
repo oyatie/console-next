@@ -35,10 +35,12 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
         pool.clone(),
         state.jwt_verifier.clone(),
     ));
-    let realtime_hub = state
-        .realtime_hub
-        .clone()
-        .unwrap_or_else(|| Arc::new(PgRealtimeHub::new(pool.clone(), Default::default())));
+    let realtime_hub = state.realtime_hub.clone().unwrap_or_else(|| {
+        Arc::new(PgRealtimeHub::new(
+            pool.clone(),
+            state.config.realtime.clone(),
+        ))
+    });
     let platform_tenant_config_seeder = match &state.ontology_command_database {
         DatabaseDependency::Postgres(_) => {
             Some(tenant_config_seeder(deps.ontology_registry_store.clone()))
