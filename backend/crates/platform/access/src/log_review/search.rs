@@ -21,7 +21,11 @@ impl Prepared {
             .filter(|r| r.flags.iter().any(|f| f.contains(search)))
             .map(|r| r.event_id)
             .collect();
-        let matches: Vec<Uuid> = sqlx::query_scalar(include_str!("search.sql"))
+        let mut sql = sqlx::QueryBuilder::new(
+            include_str!("search.sql").replace("{outcome}", include_str!("outcome.sql")),
+        );
+        let matches: Vec<Uuid> = sql
+            .build_query_scalar()
             .bind(self.org.as_uuid())
             .bind(self.from)
             .bind(self.to)

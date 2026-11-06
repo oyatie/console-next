@@ -13,7 +13,10 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
 
 use super::{list, record::require};
-use crate::{AccessError, AccessResult, AccessService};
+use crate::{AccessError, AccessResult, AccessService, Refusal};
+
+// Bound per-row substring work while allowing names, identifiers and export purposes.
+const MAX_SEARCH_CHARS: usize = 200;
 
 #[cfg(test)]
 mod tests;
@@ -31,6 +34,22 @@ pub struct Query {
 }
 
 impl Query {
+    fn validate_search(&self) -> AccessResult<()> {
+        if let Some(search) = &self.search
+            && (search.chars().take(MAX_SEARCH_CHARS + 1).count() > MAX_SEARCH_CHARS
+                || search.chars().any(char::is_control))
+        {
+            return Err(AccessError::new(
+                Refusal::BadRequest,
+                "search_invalid",
+                format!(
+                    "search must contain no control characters and be at most {MAX_SEARCH_CHARS} characters"
+                ),
+            ));
+        }
+        Ok(())
+    }
+
     fn search(&self) -> Option<String> {
         self.search
             .as_deref()
@@ -78,6 +97,7 @@ impl Query {
 pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Value> {
     with_audits::<_, _, AccessError>(&s.pool, p.org_id, move |tx| Box::pin(async move {
         require(tx, &p, Level::View).await?;
+        q.validate_search()?;
         let limit = q.limit.unwrap_or(super::MAX_PAGE_SIZE);
         list::validate_limit(limit)?;
         let period = if let Some(period) = &q.period { period.clone() } else {
@@ -101,12 +121,13 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
         } else { false };
         let next = last.filter(|_| more).map(|(at,id)| format!("{}{}~{}~{id}", q.prefix(p.org_id, &period), as_of.unix_timestamp_nanos(), at.unix_timestamp_nanos()));
         let ids: Vec<_> = keys.iter().map(|r| r.event_id).collect();
-        let rows = sqlx::query(
+        let mut sql = sqlx::QueryBuilder::new(format!(
             "SELECT a.id,a.actor,a.created_at,a.occurred_at,COALESCE(a.actor_display,u.display_name,'') AS actor_name,\
              COALESCE(a.principal_type,a.after_snap->>'principal_type','') AS principal_type,a.action,a.target_type,COALESCE((a.after_snap->>'subject_count')::bigint,0) AS subject_count,\
-             a.ip,COALESCE(a.outcome,CASE WHEN a.after_snap->>'denied'='true' OR a.action ~ '([.]refused$|_refused$|[.]denied$)' THEN 'DENIED' ELSE 'ALLOWED' END) AS outcome,a.after_snap->>'export_purpose' AS export_purpose,(a.after_snap->>'row_count')::bigint AS row_count \
+             a.ip,{outcome} AS outcome,a.after_snap->>'export_purpose' AS export_purpose,(a.after_snap->>'row_count')::bigint AS row_count \
              FROM audit_events a LEFT JOIN person_accounts_current u ON u.org_id=a.org_id AND u.id=a.actor \
-             WHERE a.org_id=$1 AND a.id=ANY($2) ORDER BY a.created_at,a.id")
+             WHERE a.org_id=$1 AND a.id=ANY($2) ORDER BY a.created_at,a.id", outcome=include_str!("outcome.sql")));
+        let rows = sql.build()
             .bind(p.org_id.as_uuid()).bind(ids).fetch_all(tx.as_mut()).await?;
         let mut subjects = BTreeSet::new();
         let mut items = Vec::with_capacity(rows.len());

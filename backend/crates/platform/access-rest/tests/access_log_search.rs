@@ -224,7 +224,12 @@ async fn assert_search_plan(w: &support::World) {
         .unwrap();
     for term in ["김인사", "203.0.113", "no-match", "employee.read", "%"] {
         let mut sql = sqlx::QueryBuilder::new("EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ");
-        sql.push(include_str!("../../access/src/log_review/search.sql"));
+        sql.push(
+            include_str!("../../access/src/log_review/search.sql").replace(
+                "{outcome}",
+                include_str!("../../access/src/log_review/outcome.sql"),
+            ),
+        );
         let plan: Value = sql
             .build_query_scalar()
             .bind(w.org)

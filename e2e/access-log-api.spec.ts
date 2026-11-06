@@ -39,6 +39,11 @@ test("access records serve the current tenant month and refuse malformed paging"
   const next = await api(`/access/access-log?search=access_log.review_read&limit=1&cursor=${encodeURIComponent(filtered.next_cursor)}`);
   expect(next.status()).toBe(200);
   expect(await next.json()).toMatchObject({ totals: filtered.totals, items: [{ action: "access_log.review_read" }] });
+  for (const term of ["actor\0name", "\t", "a\u007fb", "가".repeat(201), " ".repeat(201)]) {
+    const response = await api(`/access/access-log?search=${encodeURIComponent(term)}`);
+    expect(response.status()).toBe(400);
+    expect(await codeOf(response)).toBe("search_invalid");
+  }
   for (const [query, code] of [
     ["period=2026-13", "period_invalid"],
     ["limit=201", "limit_out_of_range"],

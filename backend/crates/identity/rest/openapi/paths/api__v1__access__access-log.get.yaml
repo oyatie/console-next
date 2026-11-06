@@ -8,9 +8,10 @@ security:
 parameters:
 - name: search
   in: query
-  description: Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Trims surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid.
+  description: Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Rejects control characters and more than 200 Unicode characters before trimming surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid.
   schema:
     type: string
+    maxLength: 200
 - name: period
   in: query
   schema:
@@ -39,6 +40,12 @@ responses:
       application/json:
         schema:
           $ref: '#/components/schemas/AccessLogPage'
+  '400':
+    description: search_invalid — search contains control characters or exceeds the character limit.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
   '401':
     $ref: '#/components/responses/Unauthorized'
   '403':

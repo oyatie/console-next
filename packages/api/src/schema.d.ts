@@ -32757,7 +32757,7 @@ export interface operations {
     listAccessLog: {
         parameters: {
             query?: {
-                /** @description Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Trims surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid. */
+                /** @description Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Rejects control characters and more than 200 Unicode characters before trimming surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid. */
                 search?: string;
                 period?: string;
                 flagged?: boolean;
@@ -32777,6 +32777,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccessLogPage"];
+                };
+            };
+            /** @description search_invalid — search contains control characters or exceeds the character limit. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             401: components["responses"]["Unauthorized"];
