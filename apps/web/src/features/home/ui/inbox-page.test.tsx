@@ -49,6 +49,14 @@ test("InboxPage defaults to filter=all while /inbox?tab=turn addresses my turn",
   expect(JSON.parse(readIdentity(view.options!))).toEqual(["/api/v1/me/action-inbox", { query: { filter: "turn" } }, "cursor"]);
 });
 
+test.each([false, true])("an empty inbox with an unavailable source stays partial (has_work=%s)", has_work => {
+  view.list.data = { pages: [samplePage({ items: [], total: 0, has_work, unavailable: [{ source: "support_access", support_reference: "support-reference" }] })] };
+  const partial = html();
+  expect(partial).toContain(t("home.empty.partial.title"));
+  expect(partial).not.toContain(t("home.noWork.title"));
+  expect(partial).not.toContain(t("home.inbox.empty.title"));
+});
+
 test("InboxPage places as-of in the page head and never mounts a headless card header", () => {
   const ready = html();
   const timeAt = ready.indexOf("<time");

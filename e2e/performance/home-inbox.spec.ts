@@ -6,8 +6,8 @@ import { COMPANY, importPeople } from "../people-directory.fixture";
 import { tenantWithExecutive } from "../setup-flows";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
 
-test("served 2,000-person Home and its inbox stay within 2 seconds", { tag: ["@hr", "@performance"] }, async ({ browser }, info) => {
-  test.skip(process.env.E2E_SERVED !== "1", "Requires the served release build");
+test("served 2,000-person Home and its inbox stay within 2 seconds under burst", { tag: ["@hr", "@performance"] }, async ({ browser }, info) => {
+  test.skip(process.env.E2E_SERVED !== "1", "Requires the served production web build");
   test.setTimeout(600_000);
   const { admin, exec } = await tenantWithExecutive(browser, "homeperf", COMPANY);
   try {
@@ -31,12 +31,17 @@ test("served 2,000-person Home and its inbox stay within 2 seconds", { tag: ["@h
       });
       observer.observe(document, { subtree: true, childList: true });
     });
-    const samples: { run: number; responseStart: number; firstRows: number; inbox: number }[] = [];
+    let arrivalReads = 0;
+    const isArrival = (message: { url(): string }) => {
+      const url = new URL(message.url());
+      return url.pathname === "/api/v1/me/action-inbox" && url.searchParams.get("filter") === "turn" && !url.searchParams.has("cursor");
+    };
+    admin.on("request", request => { if (isArrival(request)) arrivalReads++; });
+    const samples: { run: number; arrivalReads: number; responseStart: number; firstRows: number; inbox: number }[] = [];
     for (let run = 1; run <= 3; run++) {
-      const inbox = admin.waitForResponse(r => {
-        const url = new URL(r.url());
-        return url.pathname === "/api/v1/me/action-inbox" && url.searchParams.get("filter") === "turn" && !url.searchParams.has("cursor");
-      });
+      arrivalReads = 0;
+      const burst = admin.waitForRequest(isArrival).then(() => Promise.all(Array.from({ length: permits }, () => api("/me/action-inbox?filter=turn&attention=all"))));
+      const inbox = admin.waitForResponse(isArrival);
       await admin.goto("/");
       const response = await inbox;
       expect(response.status()).toBe(200);
@@ -50,19 +55,24 @@ test("served 2,000-person Home and its inbox stay within 2 seconds", { tag: ["@h
         const resource = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).find(r => new URL(r.name).pathname === "/api/v1/me/action-inbox");
         return { responseStart: navigation.responseStart, firstRows: performance.measure("home:response-to-first-rows", { start: navigation.responseStart, end: "home:first-rows" }).duration, inbox: resource?.duration ?? 0 };
       });
-      samples.push({ run, ...timing });
+      for (const reply of await burst) {
+        expect(reply.status()).toBe(200);
+        expect((await reply.json() as components["schemas"]["ActionInboxResponse"]).unavailable).toEqual([]);
+      }
+      samples.push({ run, arrivalReads, ...timing });
     }
     const percentile = (values: number[], p: number) => values.sort((a, b) => a - b)[Math.ceil(values.length * p) - 1]!;
     const summary = Object.fromEntries(["inbox", "firstRows"].map(key => {
       const values = samples.map(s => key === "inbox" ? s.inbox : s.firstRows);
       return [key, { median: percentile([...values], 0.5), p95: percentile([...values], 0.95) }];
     }));
-    const report = { employees: 2000, buildProfile: "release", configuredPermits: permits, budgetMs: 2000, samples, summary };
+    const report = { employees: 2000, buildProfile: "production-web", configuredPermits: permits, burstRequests: permits, budgetMs: 2000, samples, summary };
     const reportPath = info.outputPath("home-inbox-performance.json");
     await writeFile(reportPath, JSON.stringify(report, null, 2));
     await info.attach("home-inbox-performance", { path: reportPath, contentType: "application/json" });
     console.log(JSON.stringify(report));
     for (const sample of samples) {
+      expect(sample.arrivalReads).toBe(1);
       expect(sample.responseStart).toBeGreaterThan(0);
       expect(sample.inbox).toBeGreaterThan(0);
       expect(sample.inbox).toBeLessThanOrEqual(report.budgetMs);
