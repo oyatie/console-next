@@ -16,6 +16,10 @@ test("requester opens a submitted source change in the approval document viewer"
   await go(admin, "/");
   await expect.poll(bearer).not.toBe("");
   const api = apiOf(admin, bearer);
+  const modules = await api("/onboarding/modules");
+  expect(modules.status()).toBe(200);
+  expect(await modules.json()).toEqual(expect.arrayContaining([expect.objectContaining({ key: "approvals", ready: true })]));
+  await expect(admin.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "결재함", exact: true })).toBeVisible();
   const policy = await api("/settings/approval.policy.org_structure", "POST", { value: "route", reason_code: "POLICY_REVIEW" });
   expect(policy.status()).toBe(201);
   await admin.reload();

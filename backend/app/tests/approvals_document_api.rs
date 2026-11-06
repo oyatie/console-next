@@ -22,15 +22,42 @@ async fn unknown_source_prefix_cannot_alias_a_visible_document(pool: PgPool) {
         .call("GET", &format!("/api/v1/approvals/org_change:{id}"), None)
         .await;
     assert_eq!(status, StatusCode::OK, "{document}");
-    for prefix in ["governance", "unknown"] {
-        let (status, body) = ctx
-            .call("GET", &format!("/api/v1/approvals/{prefix}:{id}"), None)
-            .await;
-        assert_eq!(status, StatusCode::NOT_FOUND, "{prefix}: {body}");
-        assert_eq!(body["error"]["code"], "not_found");
-        assert_eq!(body["error"]["message"], "approval document not found");
-        assert!(body.get("body").is_none());
+    for unavailable in [false, true] {
+        if unavailable {
+            // Unknown sources must be refused before loading the source projection.
+            sqlx::query(
+                "ALTER TABLE org_change_requests RENAME TO unavailable_org_change_requests",
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
+        }
+        for prefix in ["governance", "unknown"] {
+            let (status, body) = ctx
+                .call("GET", &format!("/api/v1/approvals/{prefix}:{id}"), None)
+                .await;
+            assert_eq!(status, StatusCode::NOT_FOUND, "{prefix}: {body}");
+            assert_eq!(body["error"]["code"], "not_found");
+            assert_eq!(body["error"]["message"], "approval document not found");
+            assert!(body.get("body").is_none());
+        }
     }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_read_without_inbox_membership_returns_not_found(pool: PgPool) {
+    let (org, maker, _) = fixtures::setup(&pool).await;
+    let ctx = http::ctx(&pool, org, maker, &["SUPER_ADMIN"], None).await;
+    let (status, body) = ctx
+        .call(
+            "GET",
+            &format!("/api/v1/approvals/org_change:{}", Uuid::new_v4()),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+    assert_eq!(body["error"]["code"], "not_found");
+    assert_eq!(body["error"]["message"], "approval document not found");
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

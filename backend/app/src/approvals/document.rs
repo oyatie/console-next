@@ -18,16 +18,10 @@ pub(super) async fn get(
     let document = console_platform_db::with_org_locking_snapshot::<_, _, crate::error::AppError>(
         &pool,
         principal.org_id,
-        move |tx| {
-            Box::pin(async move {
-                read(tx, &principal, id, key)
-                    .await
-                    .map_err(|e| crate::error::AppError::Internal(e.to_string()))
-            })
-        },
+        move |tx| Box::pin(async move { Ok(read(tx, &principal, id, key).await) }),
     )
     .await
-    .map_err(db)?;
+    .map_err(db)??;
     Ok(Json(document.ok_or_else(missing)?))
 }
 

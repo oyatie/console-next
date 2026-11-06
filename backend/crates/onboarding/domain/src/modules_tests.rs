@@ -11,7 +11,7 @@ fn empty_setup_only_readies_modules_without_prerequisites() {
             .filter(|m| m.ready)
             .map(|m| m.key)
             .collect::<Vec<_>>(),
-        ["home", "org", "access", "approvals"]
+        ["home", "org", "access"]
     );
     assert_eq!(
         modules.iter().find(|m| m.key == "people").unwrap().unblock,
