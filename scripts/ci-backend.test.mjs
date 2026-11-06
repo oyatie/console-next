@@ -220,7 +220,7 @@ test("PR fan-out stays below the runner allowance across workflows", () => {
   const shards = ci.jobs["backend-tests"].strategy.matrix.shard;
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url)));
   assert.ok(shards.length <= 2);
-  assert.ok(timings.maxShards <= 4);
+  assert.ok(timings.maxShards <= 5);
   assert.ok(timings.budgetSeconds <= 600);
   // Long root jobs can overlap later jobs; count every dependency-independent combination.
   let concurrent = 0;

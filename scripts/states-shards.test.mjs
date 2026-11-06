@@ -107,6 +107,7 @@ test("the real suite allows 30 added tests and ten percent timing drift within t
   assert.equal(result.status, 0, result.stderr);
   const discovered = JSON.parse(result.stdout);
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
+  const timeoutSeconds = workflow.jobs.states["timeout-minutes"] * 60;
   assert.equal(timings.timeoutSeconds, 1080, "suite growth must fit without extending the execution timeout");
   for (const drift of [1, 1.1]) {
     const input = { ...discovered, suites: [...discovered.suites, ...report({ "states/growth.spec.ts": 30 }).suites] };
@@ -114,9 +115,10 @@ test("the real suite allows 30 added tests and ten percent timing drift within t
     const plan = planStates(input, timings, measured);
     assert.ok(plan.shards.length <= timings.maxShards);
     assert.ok(plan.budgetSeconds > timings.budgetSeconds && plan.budgetSeconds <= timings.timeoutSeconds);
+    assert.ok(plan.budgetSeconds * 1.25 <= timeoutSeconds);
     assert.deepEqual(plan.shards.flatMap(s => filesForShard(plan, s.id)).sort(), input.suites.map(s => `e2e/${s.file}`).sort());
   }
-  assert.ok(timings.timeoutSeconds < workflow.jobs.states["timeout-minutes"] * 60 - timings.startupSeconds);
+  assert.ok(timings.timeoutSeconds < timeoutSeconds - timings.startupSeconds);
 });
 
 test("planning refuses only when a spec or capped packing exceeds the execution timeout", async () => {
