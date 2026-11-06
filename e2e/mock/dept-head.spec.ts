@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { go } from "../flows";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { AT, employees, id, structure } from "./fixtures";
 import { screens } from "../states/registry";
-import { expectAccessible } from "../a11y";
+import { expectAccessible, fits } from "../a11y";
 import { forgetResize, recordShifts } from "../stability";
 
 test("operating list and panel appoint directly, keep the code, and refresh the shared vacancy count", async ({ page }) => {
@@ -37,7 +38,7 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
     saved = true;
     return { status: 200, json: { id: dept.id, version: 8, batch_id: id(9), change_mode: "GOVERNED" } };
   });
-  await page.goto("/org?view=list");
+  await go(page, "/org?view=list");
   const filter = page.getByRole("button", { name: "부서장 없음 2", exact: true });
   await filter.click();
   await expect(filter).toHaveAttribute("aria-pressed", "true");
@@ -47,6 +48,8 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   const open = row.getByRole("button", { name: "부서장 지정", exact: true });
   const sheet = page.getByRole("dialog", { name: "부서장 지정", exact: true });
   const picker = sheet.getByRole("combobox", { name: "부서장", exact: true });
+  // The virtualized rows must finish relayout before keyboard activation.
+  await open.click({ trial: true });
   await open.focus();
   await open.press("Enter");
   await expect(picker).toBeFocused();
@@ -85,11 +88,21 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await forgetResize(page);
+    if (width === 1440) {
+      const appoint = page.getByRole("row").filter({ hasText: "검증부서 2" }).getByRole("button", { name: "부서장 지정", exact: true });
+      const target = await appoint.evaluate(button => {
+        const cell = button.closest('[role="gridcell"]')!;
+        const a = cell.getBoundingClientRect(), b = button.getBoundingClientRect();
+        return { buttonWidth: b.width, buttonHeight: b.height, cellHeight: a.height, clearWidth: b.left - a.left };
+      });
+      for (const [part, size] of Object.entries(target)) expect(size, part).toBeGreaterThanOrEqual(24);
+    }
+    if (width === 390) await fits(page, "department list");
     await expectAccessible(page, `department list ${width}`);
   }
   // Member rows wrap as a whole at 390 px: no row overflows and the date and 사번 each stay one unit.
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto(`/org?sel=${dept.id}`);
+  await go(page, `/org?sel=${dept.id}`);
   const longRow = page.getByRole("listitem").filter({ hasText: "Konstantinopapadopoulos" });
   await expect(longRow).toHaveCount(1);
   expect(await longRow.evaluate(li => li.scrollWidth <= li.clientWidth)).toBe(true);
@@ -98,7 +111,7 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   await page.setViewportSize({ width: 1440, height: 900 });
   await Promise.all([
     page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/org-units/${id(101)}`),
-    page.goto(`/org?sel=${id(101)}`),
+    go(page, `/org?sel=${id(101)}`),
   ]);
   const panel = page.getByRole("complementary", { name: "검증부서 2", exact: true });
   await expect(panel.getByText("부서장 없음", { exact: true })).toHaveCount(1);
@@ -108,10 +121,11 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await forgetResize(page);
+    if (width === 390) await fits(page, "department panel");
     await expectAccessible(page, `department panel ${width}`);
   }
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`/org?sel=${dept.id}`);
+  await go(page, `/org?sel=${dept.id}`);
   const members = page.locator("#dept-members");
   const head = members.getByRole("listitem").filter({ hasText: "김부서장" });
   await expect(head).toContainText("팀장 · 차장 · 2026. 03. 02.부터");
@@ -122,10 +136,11 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await forgetResize(page);
+    if (width === 390) await fits(page, "department member dates");
     await expectAccessible(page, `department member dates ${width}`);
   }
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`/org?view=list&sel=${dept.id}`);
+  await go(page, `/org?view=list&sel=${dept.id}`);
   const other = page.getByRole("row").filter({ hasText: "검증부서 2" });
   await other.getByRole("button", { name: "부서장 지정", exact: true }).click();
   await expect(picker).toBeFocused();
@@ -139,7 +154,7 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
 test("a historical department offers no appointment, including a direct action URL", async ({ page }) => {
   await mockScreen(page, screens[2], "populated");
   await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: { ...structure(2), read_only: true, as_of: "2026-01-01" } });
-  await page.goto(`/org?view=list&sel=${id(100)}&act=dept-head&as_of=2026-01-01`);
+  await go(page, `/org?view=list&sel=${id(100)}&act=dept-head&as_of=2026-01-01`);
   await expect(page.getByRole("button", { name: "부서장 없음 2", exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "부서장 지정", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "부서장 지정", exact: true })).toHaveCount(0);
