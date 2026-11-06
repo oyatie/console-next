@@ -6,14 +6,14 @@
 //! time, so a new module is censused and route-checked without editing this
 //! test. Files already embedded above keep their existing, stricter checks.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use super::{
     APP_PRODUCTION_SOURCES, CONFIGURED_ROUTE_SOURCES, CONFIGURED_ROUTE_SURFACES,
     EXTRA_REST_SOURCES, PAYROLL_REST_INNER_SOURCES, normalize_path_parameters, route_calls,
-    strip_cfg_test,
+    route_path_constants, strip_cfg_test,
 };
 
 // E2E-only routes are mounted only in dev and the test-support binary.
@@ -23,6 +23,7 @@ pub(super) struct WalkedSource {
     /// Path relative to `backend/`.
     pub(super) name: &'static str,
     pub(super) source: &'static str,
+    crate_source: &'static str,
     /// Included in a source the parent already checks, possibly with its constants.
     pub(super) embedded: bool,
 }
@@ -48,6 +49,7 @@ pub(super) fn walked_router_sources() -> Vec<WalkedSource> {
         )
         .collect();
 
+    let mut crate_sources = BTreeMap::new();
     files
         .into_iter()
         .map(|path| {
@@ -58,10 +60,21 @@ pub(super) fn walked_router_sources() -> Vec<WalkedSource> {
                 .unwrap_or(&path)
                 .display()
                 .to_string();
+            let lib = path
+                .ancestors()
+                .find(|dir| dir.file_name().is_some_and(|name| name == "src"))
+                .expect("router source is under src")
+                .join("lib.rs");
+            let crate_source = *crate_sources.entry(lib.clone()).or_insert_with(|| {
+                let text = fs::read_to_string(&lib)
+                    .unwrap_or_else(|error| panic!("read {}: {error}", lib.display()));
+                &*Box::leak(text.into_boxed_str())
+            });
             WalkedSource {
                 embedded: embedded.iter().any(|source| source.contains(text.as_str())),
                 name: Box::leak(name.into_boxed_str()),
                 source: Box::leak(text.into_boxed_str()),
+                crate_source,
             }
         })
         .filter(|source| !TEST_SUPPORT_ROUTER_SOURCES.contains(&source.name))
@@ -134,6 +147,7 @@ fn unresolvable_route_path_is_rejected() {
             fn router() { Router::new().route(crate::UNRESOLVED_PATH, get(handler)); }
         "#,
         embedded: false,
+        crate_source: "",
     }]);
 }
 
@@ -149,6 +163,55 @@ fn test_functions_do_not_contribute_production_routes() {
             fn router() { Router::new().route("/api/platform/users/me", get(handler)); }
         "#,
         embedded: false,
+        crate_source: "",
+    }]);
+}
+
+#[test]
+fn crate_root_route_constants_are_resolved() {
+    let payroll = walked_router_sources()
+        .into_iter()
+        .find(|source| source.name == "crates/payroll/rest/src/pay_groups.rs")
+        .expect("payroll router source");
+    assert!(!payroll.embedded);
+    assert!(payroll.source.contains(".route(crate::PAYROLL_RUNS_PATH,"));
+    assert_routes_in_configured_surfaces([payroll]);
+}
+
+#[test]
+fn commented_test_attributes_do_not_hide_routes() {
+    for comment in ["// #[test]", "/* outer /* #[tokio::test] */ #[test] */"] {
+        let source = format!(
+            "{comment}\nfn router() {{ Router::new().route(\"/missing-from-inventory\", get(handler)); }}"
+        );
+        let failure = std::panic::catch_unwind(|| {
+            assert_routes_in_configured_surfaces([WalkedSource {
+                name: "comment fixture",
+                source: Box::leak(source.into_boxed_str()),
+                embedded: false,
+                crate_source: "",
+            }]);
+        })
+        .expect_err("comment must not hide the production route");
+        let message = failure.downcast_ref::<String>().expect("route diagnostic");
+        assert!(message.contains("comment fixture route /missing-from-inventory"));
+    }
+}
+
+#[test]
+fn commented_routes_do_not_contribute_production_routes() {
+    assert_routes_in_configured_surfaces([WalkedSource {
+        name: "commented route fixture",
+        source: r##"
+            // .route(crate::COMMENTED_PATH, get(handler))
+            /* outer /* .route(crate::COMMENTED_PATH, get(handler)) */ */
+            const URL: &str = "https://example.com/";
+            const RAW: &str = r#"a quote " /* still a string */"#;
+            const QUOTE: char = '"';
+            fn router() { Router::new().route("/api/platform/users/me", get(handler)); }
+        "##,
+        embedded: false,
+        crate_source: "",
     }]);
 }
 
@@ -160,13 +223,20 @@ fn assert_routes_in_configured_surfaces(sources: impl IntoIterator<Item = Walked
         .collect();
     let mut problems = Vec::new();
     for walked in sources.into_iter().filter(|walked| !walked.embedded) {
-        let source = walked
-            .source
+        let source = strip_comments(walked.source)
             .replace("#[tokio::test]", "#[cfg(test)]")
             .replace("#[test]", "#[cfg(test)]");
         let stripped: &'static str = Box::leak(strip_cfg_test(&source).into_boxed_str());
+        let constants = route_path_constants(&strip_cfg_test(&strip_comments(walked.crate_source)));
         for route in route_calls(stripped, &[]) {
-            match route.path {
+            let path = route.path.or_else(|| {
+                route
+                    .argument
+                    .strip_prefix("crate::")
+                    .and_then(|name| constants.get(name))
+                    .cloned()
+            });
+            match path {
                 None => problems.push(format!(
                     "{} has unresolved route argument {}",
                     walked.name, route.argument
@@ -181,4 +251,59 @@ fn assert_routes_in_configured_surfaces(sources: impl IntoIterator<Item = Walked
         }
     }
     assert!(problems.is_empty(), "{}", problems.join("\n"));
+}
+
+fn strip_comments(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let mut out = bytes.to_vec();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i..].starts_with(b"'\"'") {
+            i += 3;
+        } else if bytes[i] == b'"' {
+            let hashes = bytes[..i].iter().rev().take_while(|&&b| b == b'#').count();
+            let raw = i > hashes && bytes[i - hashes - 1] == b'r';
+            let suffix = &bytes[i - hashes..i];
+            i += 1;
+            while i < bytes.len() {
+                if !raw && bytes[i] == b'\\' {
+                    i = (i + 2).min(bytes.len());
+                } else if bytes[i] == b'"' && (!raw || bytes[i + 1..].starts_with(suffix)) {
+                    i += 1 + if raw { hashes } else { 0 };
+                    break;
+                } else {
+                    i += 1;
+                }
+            }
+        } else if bytes[i..].starts_with(b"//") || bytes[i..].starts_with(b"/*") {
+            let start = i;
+            let block = bytes[i + 1] == b'*';
+            i += 2;
+            let mut depth = 1;
+            while i < bytes.len() {
+                if !block && bytes[i] == b'\n' {
+                    break;
+                } else if block && bytes[i..].starts_with(b"/*") {
+                    depth += 1;
+                    i += 2;
+                } else if block && bytes[i..].starts_with(b"*/") {
+                    depth -= 1;
+                    i += 2;
+                    if depth == 0 {
+                        break;
+                    }
+                } else {
+                    i += 1;
+                }
+            }
+            for byte in &mut out[start..i] {
+                if *byte != b'\n' {
+                    *byte = b' ';
+                }
+            }
+        } else {
+            i += 1;
+        }
+    }
+    String::from_utf8(out).expect("comment removal preserves UTF-8")
 }
