@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { AxeBuilder } from "@axe-core/playwright";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
@@ -24,6 +25,7 @@ beforeAll(async () => {
         import React,{useState} from 'react'; import {createRoot} from 'react-dom/client';
         import {loadCatalog} from '@console/i18n';
         import {LongTable,TableControl} from '/apps/web/src/ui/long-table/long-table.tsx';
+        import {Button} from '/apps/web/src/ui/button/button.tsx';
         import {TextInput} from '/apps/web/src/ui/field/field.tsx';
         import {NO_SELECTION} from '/apps/web/src/ui/long-table/selection.ts';
         import '/apps/web/src/app.css';
@@ -38,6 +40,7 @@ beforeAll(async () => {
           const rows=editing ? [{id:'a',name:'Alpha'},{id:'b',name:'Beta'},{id:'ko',name:'ㄱ가상'}] : collision||keyboardOpen ? ['name','__select','__card','row:name'].map((id,i)=>({id,name:'가상'+i,note:id}))
             : [{id:'a',name:'가상가',note:'첫째'},{id:'b',name:'가상나',note:'둘째'}];
           return React.createElement(LongTable,{
+            density:location.search==='?targets'?'compact':undefined,
             label:'정렬 검증',rows,rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
             editable:location.search==='?typing-editable',
             caption:sort.column+':'+sort.direction,
@@ -47,7 +50,7 @@ beforeAll(async () => {
               onRowFocus:id=>document.body.dataset.focus=id,onRowHover:id=>document.body.dataset.hover=id} : {}),
             columns:[{id:'name',header:'이름',card:editing||location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,cell:r=>r.name},
               {id:'note',header:'메모',allowsSorting:true,focusMode:location.search==='?typing-child'?'child':undefined,cell:r=>editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
-              {id:'fixed',header:'고정',cell:()=>'-'}]
+              {id:'fixed',header:'고정',width:location.search==='?targets'?160:undefined,cell:()=>location.search==='?targets'?React.createElement(Button,{size:'sm',style:{width:'100%'}},'지정'): '-'}]
           });
         }
         createRoot(document.getElementById('root')).render(React.createElement(Fixture));
@@ -61,7 +64,7 @@ beforeAll(async () => {
   });
   await server.listen();
   browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
-  page = await browser.newPage();
+  page = await (await browser.newContext()).newPage();
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
@@ -255,4 +258,26 @@ test("card mode preserves child focusMode on the synthesized card column at 390 
   await row.focus();
   await page.keyboard.press("ArrowRight");
   await dom(page.getByRole("textbox", { name: "Alpha 메모", exact: true })).toBeFocused();
+});
+
+test("compact cells keep a minimum pointer target beside their buttons in both themes", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?targets`);
+  const button = page.getByRole("button", { name: "지정", exact: true }).first();
+  await dom(button).toBeVisible();
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+    const cell = button.locator('xpath=ancestor::*[@role="gridcell"][1]');
+    await cell.focus();
+    const { violations } = await new AxeBuilder({ page }).withRules(["target-size"]).analyze();
+    expect(violations).toEqual([]);
+    const target = await button.evaluate(button => {
+      const cell = button.closest('[role="gridcell"]')!;
+      const a = cell.getBoundingClientRect(), b = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(a.left + 12, a.top + a.height / 2);
+      return { buttonWidth: b.width, buttonHeight: b.height, cellHeight: a.height, clearWidth: b.left - a.left, hitsCell: hit === cell };
+    });
+    expect(target.hitsCell).toBe(true);
+    for (const size of [target.buttonWidth, target.buttonHeight, target.cellHeight, target.clearWidth]) expect(size).toBeGreaterThanOrEqual(24);
+  }
 });
