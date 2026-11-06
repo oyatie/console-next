@@ -7,12 +7,13 @@ import { screens } from "../states/registry";
 test.afterEach(() => i18n.set("ko"));
 
 const values = [
+  { name: "real", title: "영업 조직 개편안", secondary: "AP-2026-001" },
   { name: "short", title: "조직 개편", secondary: "인사" },
   { name: "Latin", title: "ABCDEFGHIJKLMNOPQRST", secondary: "ABCDEFGHIJKLMNOPQRST" },
   { name: "Korean", title: "가".repeat(30), secondary: "나".repeat(30) },
 ];
 
-for (const width of [1024, 1280, 1440]) for (const preview of [false, true])
+for (const width of [1024, 1280, 1366, 1440, 1920]) for (const preview of [false, true])
   for (const locale of ["ko", "en"] as const) for (const value of values) {
     test(`approval column invariants: ${width}px preview=${preview} ${locale} ${value.name}`, async ({ page }) => {
       await loadCatalog(locale);
@@ -22,10 +23,10 @@ for (const width of [1024, 1280, 1440]) for (const preview of [false, true])
       const mock = await mockScreen(page, screens[0], "empty");
       const item = {
         id: "approval-layout", box: "pending", title: value.title, summary: value.title,
-        document_no: value.secondary, source: { key: "org_change", label: value.secondary },
-        status: { key: "IN_APPROVAL" }, requester: { id: "requester", name: value.secondary },
+        document_no: value.secondary, source: { key: "org_change", label: value.name === "real" ? "조직 변경" : value.secondary },
+        status: { key: "IN_APPROVAL" }, requester: { id: "requester", name: value.name === "real" ? "김기안" : value.secondary },
         requested_at: "2026-11-03T01:00:00Z", due_at: null, facts: [],
-        route: [{ id: "current", role_key: "legal", assignee: value.secondary, state: "current" }],
+        route: [{ id: "current", role_key: "legal", assignee: value.name === "real" ? "박결재" : value.secondary, state: "current" }],
         viewer: { kind: "org_change", id: "change-layout" },
       };
       await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ json: {
@@ -53,12 +54,35 @@ for (const width of [1024, 1280, 1440]) for (const preview of [false, true])
         range.selectNodeContents(statusText);
         return {
           containerWidth: container.clientWidth,
+          // Measure intrinsic values independently of the production cap and hide conditions.
+          naturalWidths: cells.map((cell, index) => {
+            const natural = (el: HTMLElement) => {
+              const clone = el.cloneNode(true) as HTMLElement;
+              const style = getComputedStyle(el);
+              clone.style.cssText = "display:block;position:fixed;width:max-content;min-width:0;max-width:none;white-space:nowrap;visibility:hidden";
+              clone.style.font = style.font;
+              clone.style.letterSpacing = style.letterSpacing;
+              clone.style.paddingLeft = style.paddingLeft;
+              clone.style.paddingRight = style.paddingRight;
+              document.body.append(clone);
+              const width = clone.getBoundingClientRect().width;
+              clone.remove();
+              return width;
+            };
+            const style = getComputedStyle(cell);
+            const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+            return Math.max(natural(headers[index]!), natural(cell.firstElementChild as HTMLElement ?? cell) + (cell.firstElementChild ? padding : 0));
+          }),
+          values: cells.map(cell => {
+            const inner = cell.firstElementChild as HTMLElement ?? cell;
+            return { visible: getComputedStyle(cell).display !== "none", clipped: inner.scrollWidth > inner.clientWidth };
+          }),
           overflows: [card, card.firstElementChild!, container, table].map(el => el.scrollWidth - el.clientWidth),
           tableRight: bounds(table).right, cardRight: bounds(card).right,
           titleWidth: bounds(title).width,
+          titlePadding: parseFloat(getComputedStyle(title.parentElement!).paddingLeft) + parseFloat(getComputedStyle(title.parentElement!).paddingRight),
           titleMinimum: getComputedStyle(title).minWidth,
-          // --rail-w is the existing 220px size token reserved for the document title.
-          minimum: parseFloat(getComputedStyle(title).getPropertyValue("--rail-w")),
+          minimum: 13.75 * parseFloat(getComputedStyle(document.documentElement).fontSize),
           statusFits: range.getBoundingClientRect().right <= bounds(status).right
             && bounds(statusText).right <= bounds(status).right
             && bounds(status).right <= bounds(card).right,
@@ -81,19 +105,24 @@ for (const width of [1024, 1280, 1440]) for (const preview of [false, true])
       expect(metrics.tableRight).toBeLessThanOrEqual(metrics.cardRight);
       expect(metrics.statusFits, "entire status chip fits inside the card").toBe(true);
       expect(metrics.statusHeaderFits).toBe(true);
-      expect(metrics.titleWidth).toBeGreaterThanOrEqual(metrics.minimum);
-      expect(metrics.titleMinimum, "title retains an explicit token minimum").toContain(`${metrics.minimum}px`);
       expect(metrics.secondary).toHaveLength(5);
-      for (const cell of metrics.secondary) {
-        const visible = metrics.containerWidth > ([0, 3].includes(cell.index) ? 640 : 1100);
-        expect(cell.visible, `column ${cell.index} follows its container budget`).toBe(visible);
-        expect(cell.headerVisible).toBe(visible);
-        if (!visible) continue;
-        expect(cell.fullValue).toBe(cell.text);
-        expect(cell.maxWidth).not.toBe("none");
-        expect(cell.width).toBeLessThanOrEqual(parseFloat(cell.maxWidth));
-        expect([cell.overflow, cell.ellipsis, cell.whiteSpace]).toEqual(["hidden", "ellipsis", "nowrap"]);
+      const minimum = metrics.minimum;
+      const metadataFit = metrics.naturalWidths.reduce((sum, size, index) => sum + (index === 1 ? minimum + metrics.titlePadding : size), 0) <= metrics.containerWidth;
+      if (metadataFit) expect(metrics.values.every(cell => cell.visible), "all columns stay visible when their content fits").toBe(true);
+      const visibleMetadataFit = metrics.naturalWidths.reduce((sum, size, index) => sum + (metrics.values[index]!.visible ? index === 1 ? minimum + metrics.titlePadding : size : 0), 0) <= metrics.containerWidth;
+      const visibleContentFit = metrics.naturalWidths.reduce((sum, size, index) => sum + (metrics.values[index]!.visible ? size : 0), 0) <= metrics.containerWidth;
+      if (visibleMetadataFit) for (const [index, cell] of metrics.values.entries()) {
+        if (cell.visible && (index !== 1 || visibleContentFit)) expect(cell.clipped, `inner value ${index} is whole when there is room`).toBe(false);
       }
+      if (!preview && [1280, 1366, 1440].includes(width)) {
+        expect(metrics.values.every(cell => cell.visible), "desktop list retains all seven columns").toBe(true);
+      }
+      for (const cell of metrics.secondary) {
+        expect(cell.headerVisible).toBe(cell.visible);
+        if (cell.visible) expect(cell.fullValue).toBe(cell.text);
+      }
+      expect(metrics.titleWidth).toBeGreaterThanOrEqual(metrics.minimum);
+      expect(parseFloat(metrics.titleMinimum)).toBe(metrics.minimum);
       expect(mock.unexpected).toEqual([]);
     });
   }
