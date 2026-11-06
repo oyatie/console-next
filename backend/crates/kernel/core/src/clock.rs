@@ -28,9 +28,33 @@ impl Clock for FixedClock {
     }
 }
 
+/// Format a wire timestamp in UTC, refusing values RFC 3339 cannot represent.
+/// # Errors
+/// Returns an internal error for an unrepresentable year or offset.
+pub fn rfc3339(value: Timestamp) -> Result<String, crate::KernelError> {
+    value
+        .to_offset(time::UtcOffset::UTC)
+        .format(&time::format_description::well_known::Rfc3339)
+        .map_err(|_| crate::KernelError::internal("timestamp cannot be represented as RFC 3339"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wire_timestamp_is_utc_rfc3339_and_refuses_unrepresentable_values() {
+        assert_eq!(
+            rfc3339(time::macros::datetime!(2026-11-05 12:31:02.238349 +09:00)).unwrap(),
+            "2026-11-05T03:31:02.238349Z"
+        );
+        assert_eq!(
+            rfc3339(time::macros::datetime!(-0001-01-01 00:00 UTC))
+                .unwrap_err()
+                .kind,
+            crate::ErrorKind::Internal
+        );
+    }
 
     #[test]
     fn fixed_clock_returns_pinned_instant() {

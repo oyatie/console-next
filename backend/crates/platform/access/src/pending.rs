@@ -219,7 +219,7 @@ pub(crate) async fn event(
     .with_org(org)
     .with_snapshots(
         None,
-        Some(serde_json::json!({"activates_at": at.to_string()})),
+        Some(serde_json::json!({"activates_at": console_kernel_core::rfc3339(at)?})),
     );
     console_platform_db::insert_audit_event(tx, &event)
         .await

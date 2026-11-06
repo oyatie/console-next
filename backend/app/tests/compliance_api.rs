@@ -161,53 +161,6 @@ async fn withdrawal_route_destroys_location_pings_and_logs(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn admin_can_read_and_export_consent_ledger(pool: PgPool) {
-    let fixture = TestFixture::new(&pool, "Consent Ledger", "Ledger Branch").await;
-    let service = build_router(app_state(pool.clone(), fixture.public_key_pem.clone()).unwrap());
-
-    let grant = post_json(
-        service.clone(),
-        "/api/v1/location-consent/grant",
-        &fixture.mechanic_token,
-        json!({ "branch_id": fixture.branch_id }),
-    )
-    .await;
-    assert_eq!(grant.status, StatusCode::OK, "{:?}", grant.json);
-
-    let ledger = get_json(
-        service.clone(),
-        &format!(
-            "/api/v1/location-consents/ledger?branch_id={}",
-            fixture.branch_id.as_uuid()
-        ),
-        &fixture.admin_token,
-    )
-    .await;
-    assert_eq!(ledger.status, StatusCode::OK, "{:?}", ledger.json);
-    assert_eq!(ledger.json["items"][0]["action"], "consent.grant");
-    assert_eq!(ledger.json["total"], 1);
-
-    let csv = get(
-        service,
-        &format!(
-            "/api/v1/location-consents/ledger.csv?branch_id={}",
-            fixture.branch_id.as_uuid()
-        ),
-        &fixture.admin_token,
-    )
-    .await;
-    assert_eq!(csv.status, StatusCode::OK, "{}", csv.body);
-    assert!(
-        csv.headers
-            .get(header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .is_some_and(|value| value.starts_with("text/csv"))
-    );
-    assert!(csv.body.contains("consent.grant"));
-    assert!(!csv.body.contains("37.5665"));
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn ceo_covert_audit_stream_requires_clearance_and_audits_successful_read(pool: PgPool) {
     let fixture = TestFixture::new(&pool, "CEO Audit", "CEO Audit Branch").await;
     let sensitive_event_id = seed_ceo_covert_audit_event(&pool, fixture.admin_id).await;
@@ -622,3 +575,6 @@ async fn coordinate_audit_count(pool: &PgPool) -> i64 {
     .await
     .unwrap()
 }
+
+#[path = "compliance_api/ledger.rs"]
+mod ledger;
