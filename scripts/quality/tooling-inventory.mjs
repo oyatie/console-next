@@ -48,7 +48,8 @@ export function inventory(files, readInput, metadata = []) {
   const manifests = files.filter((f) => /(^|\/)package.json$/.test(f) && !f.startsWith("third-party/"));
   const platformFile = "deploy/versions.json";
   const platform = files.includes(platformFile) ? JSON.parse(read(platformFile)) : {};
-  for (const [name, pin] of Object.entries(platform.tools ?? {})) add("ci-tool", name, { file: platformFile, user: "deploy/ci/tools.py", pin, layer: "CI/supply chain" });
+  for (const [name, pin] of Object.entries(platform.tools ?? {}))
+    for (const user of pin.users ?? ["deploy/ci/tools.py"]) add("ci-tool", name, { file: platformFile, user, pin, layer: "CI/supply chain" });
   for (const pin of Object.values({ ...platform.images, ...platform.platformImages })) add("container", pin.split(/[:@]/)[0], { file: platformFile, user: "deploy", pin, layer: "CI/supply chain" });
   for (const [name, pin] of Object.entries(platform.sources ?? {})) add("ci-source", name, { file: platformFile, user: "deploy/ci/vendor.mjs", pin, layer: "CI/supply chain" });
   const internal = new Set(manifests.map((f) => JSON.parse(read(f)).name));

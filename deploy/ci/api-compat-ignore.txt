@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+
+# Reviewed response narrowing: the released callback allowed any non-negative
+# error integer in HTTP 200. callback_handler in backend/app/src/office.rs
+# returns only {"error": 0} on success; refusals use non-2xx with error 1.
+# backend/app/tests/office_callback.rs covers both outcomes. enum [0] therefore
+# documents the success response without introducing a new response value.
+# Keep these two exact findings together; other values, properties and endpoints
+# remain errors. Remove when no supported released baseline needs this transition.
+POST /api/v1/office/callback added the new `0.00` enum value to the `error` response property for the response status `200`
+POST /api/v1/office/callback the `error` response property's min was unset from `0.00` for the response status `200`
