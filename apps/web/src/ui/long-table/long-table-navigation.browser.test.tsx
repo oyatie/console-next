@@ -10,9 +10,9 @@ let browser: Browser;
 let page: Page;
 beforeAll(async () => {
   ({ server, browser, page } = await tableTest());
-  // Exercise Ctrl grid shortcuts on macOS runners too.
+  // Exercise both platform shortcuts on every runner.
   await page.addInitScript(() => {
-    Object.defineProperty(navigator, "platform", { value: "Win32" });
+    Object.defineProperty(navigator, "platform", { value: location.search.includes("-mac-") ? "MacIntel" : "Win32" });
     Object.defineProperty(navigator, "userAgentData", { value: undefined });
   });
 }, 60_000);
@@ -84,6 +84,31 @@ test.each([1440, 390].flatMap(width => (["cell", "button"] as const).map(origin 
     await dom(page.getByRole("row", { selected: true })).toHaveCount(2);
   },
 );
+
+test.each([1440, 390].flatMap(width => (["cell", "button"] as const).flatMap(origin =>
+  ["Control", "Meta"].map(modifier => ({ width, origin, modifier })),
+)))("browser shortcuts from $origin at $width px with $modifier keep their default", async ({ width, origin, modifier }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?targets-wrapped-${modifier === "Meta" ? "mac-" : ""}arrows`);
+  const rows = page.getByRole("row").filter({ has: page.getByRole("rowheader") });
+  await dom(rows).toHaveCount(2);
+  const button = rows.first().getByRole("button", { name: "지정", exact: true });
+  const cell = button.locator('xpath=ancestor::*[@role="gridcell" or @role="rowheader"][1]');
+  await page.evaluate(() => {
+    // Capture the trusted event before forwarding stops propagation; inspect it after dispatch completes.
+    window.addEventListener("keydown", event => {
+      if (event.isTrusted && event.key.length === 1) setTimeout(() => { document.body.dataset.shortcutPrevented = String(event.defaultPrevented); }, 0);
+    }, true);
+  });
+  for (const key of ["f", "Equal", "a"]) {
+    await rows.first().focus();
+    await (origin === "cell" ? cell : button).focus();
+    await page.locator("body").evaluate(el => { delete el.dataset.shortcutPrevented; });
+    await page.keyboard.press(`${modifier}+${key}`);
+    await dom(page.locator("body")).toHaveAttribute("data-shortcut-prevented", String(key === "a"));
+  }
+  await dom(page.getByRole("row", { selected: true })).toHaveCount(2);
+});
 
 test.each([1440, 390])("shared table controls keep their own minimum target at %s px", async width => {
   await page.setViewportSize({ width, height: 900 });

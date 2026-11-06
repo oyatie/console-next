@@ -280,8 +280,8 @@ export function LongTable<R>(p: {
                             if (editable(event.target)) return;
                             if (event.target !== event.currentTarget && event.currentTarget.contains(event.target as Node)
                               && !/^(Tab|Enter| |Arrow(Up|Down|Left|Right))$/.test(event.key)) {
-                              event.preventDefault(); event.stopPropagation();
-                              event.currentTarget.parentElement?.dispatchEvent(new KeyboardEvent(event.type, event.nativeEvent));
+                              event.stopPropagation();
+                              if (event.currentTarget.parentElement?.dispatchEvent(new KeyboardEvent(event.type, event.nativeEvent)) === false) event.preventDefault();
                               return;
                             }
                             capture?.(event);
