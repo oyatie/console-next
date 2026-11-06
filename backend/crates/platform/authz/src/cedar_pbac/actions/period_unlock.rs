@@ -12,12 +12,12 @@ action period_unlock appliesTo { principal: [Subject], resource: [Resource], con
 } };"#;
 const POLICIES: &str = r#"permit(principal, action == Action::"period_unlock", resource)
 when { principal.org == resource.org && context.other_eligible_holders >= 0 &&
-  ((context.intent == "request" && (context.other_eligible_holders > 0 || (context.sole_holder_allowed && context.setup_single_admin))) ||
+  ((context.intent == "request" && (context.other_eligible_holders > 0 || context.sole_holder_allowed)) ||
    (context.intent == "wait" && context.step_up && context.other_eligible_holders > 0) ||
-   (context.intent == "unlock" && context.step_up && context.other_eligible_holders == 0 && (context.sole_holder_allowed && context.setup_single_admin))) };
+   (context.intent == "unlock" && context.step_up && context.other_eligible_holders == 0 && context.sole_holder_allowed)) };
 forbid(principal, action == Action::"period_unlock", resource)
 when { context.intent == "unlock" && context.actor_is_requester }
-unless { context.other_eligible_holders == 0 && context.step_up && (context.sole_holder_allowed && context.setup_single_admin) };"#;
+unless { context.other_eligible_holders == 0 && context.step_up && context.sole_holder_allowed };"#;
 
 fn bundle() -> Result<&'static ActionBundle, String> {
     static BUNDLE: OnceLock<Result<ActionBundle, String>> = OnceLock::new();
@@ -102,7 +102,7 @@ mod tests {
             intent: Intent::Unlock,
         };
         assert!(decide("u", "o", "o", f));
-        assert!(!decide(
+        assert!(decide(
             "u",
             "o",
             "o",

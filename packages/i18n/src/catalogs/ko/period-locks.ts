@@ -72,6 +72,8 @@ export const koPeriodLocks = {
   "periodLocks.unlock.commit": "패스키로 확인하고 잠금 해제",
   "periodLocks.unlock.review": "다른 마감 권한자가 없어 사후 검토 대상으로 표시했습니다.",
   "periodLocks.unlock.reviewChip": "사후 검토 필요",
+  "periodLocks.unlock.notices": "단독 해제 알림 {count, number}건",
+  "periodLocks.unlock.noticeReview": "해제됨 목록에서 사유와 사후 검토 대상을 확인해 주십시오.",
   "periodLocks.unlock.approved": "다른 마감 권한자가 확인함",
   "periodLocks.relockNow": "{domain} {period} 지금 다시 잠금",
   // Refused for a closed period, named (UX-R1-HOME)

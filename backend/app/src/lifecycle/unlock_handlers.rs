@@ -142,7 +142,7 @@ pub(super) async fn unlock_period_lock(
                     })
                     .await?;
                     let exception = record_sole_holder_exception(tx, &SoleHolderUnlock {
-                        unlocked, actor: user, reason_code: &reason.code,
+                        org, unlocked, actor: user, reason_code: &reason.code,
                         note: reason.note.as_deref(), relock_at: &body.relock_at, step_up,
                     }, &settings).await?;
                     let review_due_at = exception.review_due_at.and_then(|at| at.format(&Rfc3339).ok());
