@@ -225,6 +225,8 @@ export function LongTable<R>(p: {
               const cell = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-cell-key]") : null;
               // Adopt the focused control before the grid restores its previous row on keyboard entry.
               if (cell && event.target !== cell && event.currentTarget.contains(cell)) state.selectionManager.setFocusedKey(cell.dataset.cellKey!);
+              // A card merges columns: direct entry starts at the first control rather than a remembered column.
+              if (cardLayout && event.target === cell && cell.matches('[role="rowheader"]') && content[0]?.focusMode === "child") [...cell.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]')].find(control => control.checkVisibility({ visibilityProperty: true }) && !control.matches(':disabled, [inert], [inert] *'))?.focus();
             }} />}
           aria-describedby={p.caption ? captionId : undefined}
           className={`${css.table} ${cards.surface} ${types.surface}`}
