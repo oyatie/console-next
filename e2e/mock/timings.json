@@ -1,7 +1,7 @@
 {
   "budgetSeconds": 600,
   "timeoutSeconds": 1080,
-  "runLimitSeconds": 1200,
+  "runLimitSeconds": 1500,
   "setupAllowanceSeconds": 720,
   "maxShards": 5,
   "startupSeconds": 40,
