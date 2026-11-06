@@ -19,8 +19,6 @@
 .row[data-selected] { background: var(--primary-soft); }
 .row[data-focus-visible], .th[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .td { display: flex; align-items: center; height: 100%; padding: 0 var(--space-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; outline: none; }
-/* A tabbable cell needs its own pointer target beside a nested button (WCAG 2.5.8). */
-.td:has(> button) { padding-inline-start: var(--space-6); }
 .table[data-layout="rows"] .td { height: var(--row-h); }
 [data-density="compact"] .table[data-layout="rows"] .td { height: var(--row-h-compact); }
 /* Label plus control reserve two rows; validation can grow the measured height. */

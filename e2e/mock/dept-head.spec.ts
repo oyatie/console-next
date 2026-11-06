@@ -48,8 +48,6 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   const open = row.getByRole("button", { name: "부서장 지정", exact: true });
   const sheet = page.getByRole("dialog", { name: "부서장 지정", exact: true });
   const picker = sheet.getByRole("combobox", { name: "부서장", exact: true });
-  // The virtualized rows must finish relayout before keyboard activation.
-  await open.click({ trial: true });
   await open.focus();
   await open.press("Enter");
   await expect(picker).toBeFocused();
@@ -90,12 +88,22 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
     await forgetResize(page);
     if (width === 1440) {
       const appoint = page.getByRole("row").filter({ hasText: "검증부서 2" }).getByRole("button", { name: "부서장 지정", exact: true });
-      const target = await appoint.evaluate(button => {
-        const cell = button.closest('[role="gridcell"]')!;
-        const a = cell.getBoundingClientRect(), b = button.getBoundingClientRect();
-        return { buttonWidth: b.width, buttonHeight: b.height, cellHeight: a.height, clearWidth: b.left - a.left };
-      });
-      for (const [part, size] of Object.entries(target)) expect(size, part).toBeGreaterThanOrEqual(24);
+      const actionCells = page.getByRole("gridcell").filter({ has: page.getByRole("button") });
+      for (const cell of await actionCells.all()) {
+        await cell.focus();
+        await expect(cell).toHaveAttribute("tabindex", "-1");
+        await expect(cell.getByRole("button").first()).toBeFocused();
+        for (const button of await cell.getByRole("button").all()) {
+          const target = await button.boundingBox();
+          expect(target!.width).toBeGreaterThanOrEqual(24);
+          expect(target!.height).toBeGreaterThanOrEqual(24);
+        }
+        await expectAccessible(page, "department action targets");
+      }
+      const head = page.getByRole("columnheader", { name: "부서장", exact: true });
+      const filled = page.getByRole("gridcell", { name: "박부서장", exact: true });
+      const inset = await filled.evaluate(cell => parseFloat(getComputedStyle(cell).paddingInlineStart));
+      expect((await appoint.boundingBox())!.x).toBeCloseTo((await head.boundingBox())!.x + inset, 0);
     }
     if (width === 390) await fits(page, "department list");
     await expectAccessible(page, `department list ${width}`);

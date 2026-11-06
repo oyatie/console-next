@@ -37,11 +37,15 @@ beforeAll(async () => {
           const [selection,setSelection]=useState(NO_SELECTION);
           const collision=location.search.startsWith('?collision');
           const keyboardOpen=location.search==='?keyboard-open';
+          const targets=location.search.startsWith('?targets');
+          const stopKey=e=>{if(e.key==='Enter'||e.key===' ')e.stopPropagation();};
+          const action=React.createElement(Button,{size:'sm',onKeyDown:stopKey,onKeyUp:stopKey,onClick:e=>{e.stopPropagation();document.body.dataset.pressed='true';}},'지정');
           const rows=editing ? [{id:'a',name:'Alpha'},{id:'b',name:'Beta'},{id:'ko',name:'ㄱ가상'}] : collision||keyboardOpen ? ['name','__select','__card','row:name'].map((id,i)=>({id,name:'가상'+i,note:id}))
             : [{id:'a',name:'가상가',note:'첫째'},{id:'b',name:'가상나',note:'둘째'}];
           return React.createElement(LongTable,{
-            density:location.search==='?targets'?'compact':undefined,
+            density:targets?'compact':undefined,
             label:'정렬 검증',rows,rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
+            ...(targets ? {selection,onSelectionChange:setSelection,onRowAction:id=>document.body.dataset.action=id} : {}),
             editable:location.search==='?typing-editable',
             caption:sort.column+':'+sort.direction,
             sortDescriptor:sort,onSortChange:location.search==='?readonly'?undefined:setSort,
@@ -50,7 +54,7 @@ beforeAll(async () => {
               onRowFocus:id=>document.body.dataset.focus=id,onRowHover:id=>document.body.dataset.hover=id} : {}),
             columns:[{id:'name',header:'이름',card:editing||location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,cell:r=>r.name},
               {id:'note',header:'메모',allowsSorting:true,focusMode:location.search==='?typing-child'?'child':undefined,cell:r=>editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
-              {id:'fixed',header:'고정',width:location.search==='?targets'?160:undefined,cell:()=>location.search==='?targets'?React.createElement(Button,{size:'sm',style:{width:'100%'}},'지정'): '-'}]
+              {id:'fixed',header:'고정',type:targets?'action':undefined,width:targets?160:undefined,cell:()=>targets ? (location.search==='?targets-wrapped' ? React.createElement('span',null,action) : action) : '-'}]
           });
         }
         createRoot(document.getElementById('root')).render(React.createElement(Fixture));
@@ -260,24 +264,52 @@ test("card mode preserves child focusMode on the synthesized card column at 390 
   await dom(page.getByRole("textbox", { name: "Alpha 메모", exact: true })).toBeFocused();
 });
 
-test("compact cells keep a minimum pointer target beside their buttons in both themes", async () => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?targets`);
-  const button = page.getByRole("button", { name: "지정", exact: true }).first();
-  await dom(button).toBeVisible();
-  for (const theme of ["light", "dark"]) {
-    await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
-    const cell = button.locator('xpath=ancestor::*[@role="gridcell"][1]');
-    await cell.focus();
-    const { violations } = await new AxeBuilder({ page }).withRules(["target-size"]).analyze();
-    expect(violations).toEqual([]);
-    const target = await button.evaluate(button => {
-      const cell = button.closest('[role="gridcell"]')!;
-      const a = cell.getBoundingClientRect(), b = button.getBoundingClientRect();
-      const hit = document.elementFromPoint(a.left + 12, a.top + a.height / 2);
-      return { buttonWidth: b.width, buttonHeight: b.height, cellHeight: a.height, clearWidth: b.left - a.left, hitsCell: hit === cell };
-    });
-    expect(target.hitsCell).toBe(true);
-    for (const size of [target.buttonWidth, target.buttonHeight, target.cellHeight, target.clearWidth]) expect(size).toBeGreaterThanOrEqual(24);
-  }
+test.each([1440, 390].flatMap(width => ["direct", "wrapped"].map(shape => ({ width, shape }))))(
+  "action controls own focus and their targets at $width px ($shape)", async ({ width, shape }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?targets${shape === "wrapped" ? "-wrapped" : ""}`);
+    const button = page.getByRole("button", { name: "지정", exact: true }).first();
+    await dom(button).toBeVisible();
+    const cell = button.locator('xpath=ancestor::*[@role="gridcell" or @role="rowheader"][1]');
+    const row = button.locator('xpath=ancestor::*[@role="row"][1]');
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+      await row.focus();
+      await cell.focus();
+      await dom(button).toBeFocused();
+      await dom(cell).toHaveAttribute("tabindex", "-1");
+      const { violations } = await new AxeBuilder({ page }).withRules(["target-size"]).analyze();
+      expect(violations).toEqual([]);
+      const target = await button.boundingBox();
+      expect(target!.width).toBeGreaterThanOrEqual(24);
+      expect(target!.height).toBeGreaterThanOrEqual(24);
+      for (const key of ["Enter", "Space"]) {
+        await page.locator("body").evaluate(el => { delete el.dataset.pressed; });
+        await button.press(key);
+        await dom(page.locator("body")).toHaveAttribute("data-pressed", "true");
+        await dom(button).toBeFocused();
+        await dom(row).not.toHaveAttribute("aria-selected", "true");
+        expect(await page.locator("body").getAttribute("data-action")).toBeNull();
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+  },
+);
+
+test.each([1440, 390])("keyboard focus entering a nested action never returns to a previous row at %s px", async width => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?targets-wrapped`);
+  const buttons = page.getByRole("button", { name: "지정", exact: true });
+  const rows = page.getByRole("row").filter({ has: buttons });
+  await rows.first().focus();
+  await page.locator("body").evaluate(el => { el.tabIndex = -1; el.focus(); });
+  await page.keyboard.press("ArrowRight");
+  await buttons.nth(1).focus();
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await dom(buttons.nth(1)).toBeFocused();
+  await buttons.nth(1).press("Enter");
+  await dom(page.locator("body")).toHaveAttribute("data-pressed", "true");
+  await dom(rows.first()).not.toHaveAttribute("aria-selected", "true");
+  await dom(rows.nth(1)).not.toHaveAttribute("aria-selected", "true");
+  expect(await page.locator("body").getAttribute("data-action")).toBeNull();
 });
