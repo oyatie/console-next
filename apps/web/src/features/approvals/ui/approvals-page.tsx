@@ -43,16 +43,16 @@ export function ApprovalInboxView({ items, selected, onSelect, onClose, hasNext,
     <Card label={t("approvals.list")} flush>
       {items.length ? <>
         <Table label={t("approvals.list")} rows={items} rowId={item => item.id} selected={selected?.id} onSelect={onSelect} columns={[
-          { header: t("approvals.field.documentNo"), card: "fact", cell: item => <code className={s.nowrap}>{item.document_no ?? "—"}</code>, fit: true },
-          { header: t("approvals.col.title"), card: "title", cell: item => item.title },
-          { header: t("approvals.col.source"), card: "fact", cell: item => item.source.label, fit: true },
-          { header: t("approvals.preview.route"), card: "fact", cell: item => {
+          { header: t("approvals.field.documentNo"), card: "fact", type: "code", width: "code", cell: item => <code>{item.document_no ?? "—"}</code> },
+          { header: t("approvals.col.title"), card: "title", type: "text", cell: item => item.title },
+          { header: t("approvals.col.source"), card: "fact", type: "text", cell: item => item.source.label },
+          { header: t("approvals.preview.route"), card: "fact", type: "text", cell: item => {
             const current = item.route.find(step => step.state === "current");
-            return current ? <strong className={s.nowrap} aria-current="step">{[current.label, current.assignee].filter(Boolean).join(" · ")}</strong> : "—";
+            return current ? <strong aria-current="step">{[current.label, current.assignee].filter(Boolean).join(" · ")}</strong> : "—";
           } },
-          { header: t("approvals.col.requester"), card: "fact", cell: item => <span className={s.nowrap}>{item.requester?.name ?? "—"}</span>, fit: true },
-          { header: t("approvals.col.requestedAt"), card: "fact", cell: item => <time className="num" dateTime={item.requested_at}>{fmtDateTime(item.requested_at)}</time>, fit: true },
-          { header: t("approvals.col.status"), card: "status", cell: item => <Chip tone={item.status.tone}>{item.status.label}</Chip>, fit: true },
+          { header: t("approvals.col.requester"), card: "fact", type: "text", cell: item => <span>{item.requester?.name ?? "—"}</span> },
+          { header: t("approvals.col.requestedAt"), card: "fact", type: "date", width: "datetime", cell: item => <time className="num" dateTime={item.requested_at}>{fmtDateTime(item.requested_at)}</time> },
+          { header: t("approvals.col.status"), card: "status", type: "status", width: "status", cell: item => <Chip tone={item.status.tone}>{item.status.label}</Chip> },
         ]} />
         {hasNext && <div className={s.more}><Button disabled={loadingMore} onClick={onMore}>{t("approvals.more")}</Button></div>}
       </> : <EmptyState title={emptyTitle ?? t("approvals.empty.title")} reason={t("approvals.empty.reason")} />}
