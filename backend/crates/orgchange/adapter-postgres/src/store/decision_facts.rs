@@ -6,9 +6,10 @@ use console_platform_authz::{
     cedar_pbac::{actions::org_change_step_decide::Facts, visible::load_facts},
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum StepDecisionScope {
     Request(Uuid),
+    Requests(Vec<Uuid>),
     OpenQueue,
     Submitted,
 }
@@ -66,13 +67,15 @@ pub async fn step_decision_facts_in_tx(
         actor_decided_prior_step: false,
         merge_requested: false,
     };
-    let (request, submitted) = match scope {
-        StepDecisionScope::Request(id) => (Some(id), false),
+    let (requests, submitted) = match scope {
+        StepDecisionScope::Request(id) => (Some(vec![id]), false),
+        StepDecisionScope::Requests(ids) => (Some(ids), false),
         StepDecisionScope::OpenQueue => (None, false),
         StepDecisionScope::Submitted => (None, true),
     };
     if !holds_permission && !submitted {
-        return Ok(request
+        return Ok(requests
+            .unwrap_or_default()
             .into_iter()
             .map(|id| StepDecisionFacts {
                 id,
@@ -97,13 +100,13 @@ pub async fn step_decision_facts_in_tx(
            CROSS JOIN LATERAL public.console_decision_people($1,s.decided_by,$2) h \
            WHERE s.org_id=$1 AND s.request_id=r.id AND s.decision <> 'PENDING' \
          ) p ON true \
-         WHERE r.org_id=$1 AND (r.id=$3 OR ($3 IS NULL AND NOT $4 AND r.status='IN_APPROVAL') \
+         WHERE r.org_id=$1 AND (r.id=ANY($3::uuid[]) OR ($3 IS NULL AND NOT $4 AND r.status='IN_APPROVAL') \
            OR ($4 AND r.status NOT IN ('DRAFT','PRECHECKED') AND EXISTS \
              (SELECT 1 FROM org_change_approval_steps s WHERE s.org_id=r.org_id AND s.request_id=r.id)))",
     )
     .bind(org.as_uuid())
     .bind(actor.as_uuid())
-    .bind(request)
+    .bind(requests)
     .bind(submitted)
     .fetch_all(tx.as_mut())
     .await
