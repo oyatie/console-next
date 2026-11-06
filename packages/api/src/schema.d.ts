@@ -930,7 +930,7 @@ export interface paths {
         };
         /**
          * Tenant access records with monthly flag totals
-         * @description Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period and flagged filter. Defaults to the current month in the configured review time zone. Read failures return no records if their access record cannot be stored.
+         * @description Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
          */
         get: operations["listAccessLog"];
         put?: never;
@@ -32757,6 +32757,8 @@ export interface operations {
     listAccessLog: {
         parameters: {
             query?: {
+                /** @description Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Rejects control characters and more than 200 Unicode characters before trimming surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid. */
+                search?: string;
                 period?: string;
                 flagged?: boolean;
                 cursor?: string;
@@ -32768,13 +32770,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Monthly totals and one keyset page. */
+            /** @description Search-filtered monthly totals and one keyset page. The flagged filter affects items only. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["AccessLogPage"];
+                };
+            };
+            /** @description search_invalid — search contains control characters or exceeds the character limit. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             401: components["responses"]["Unauthorized"];

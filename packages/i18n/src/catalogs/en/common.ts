@@ -3,6 +3,7 @@
 export const enCommon = {
   "common.failed.code.change_request_closed": "This request has already been decided or withdrawn. Check its current status in the request list.",
   "common.failed.code.change_request_self_decision": "You cannot decide a change request you sent. Ask another handler to decide it.",
+  "common.failed.code.search_invalid": "Remove control characters and shorten the search term, then search again.",
   "common.more": "More",
   "common.closeRelated": "Close related item",
   "common.resizeColumn": "Resize column",

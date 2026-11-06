@@ -10,7 +10,6 @@ use std::time::Instant;
 use tracing::instrument::WithSubscriber;
 use tracing_subscriber::util::SubscriberInitExt;
 use uuid::Uuid;
-
 pub async fn arm(pool: &PgPool, org: OrgId) -> Transaction<'static, Postgres> {
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org',$1,true)")
@@ -178,6 +177,7 @@ pub async fn performance(pool: PgPool, sparse: bool) {
         .bind(None::<Uuid>)
         .bind(50_i64)
         .bind(None::<time::OffsetDateTime>)
+        .bind(None::<Vec<Uuid>>)
         .fetch_one(tx.as_mut())
         .await
         .unwrap();
