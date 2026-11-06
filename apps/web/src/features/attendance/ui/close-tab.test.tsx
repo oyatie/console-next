@@ -35,7 +35,7 @@ test("workplace labels follow each served row even without a workplace filter", 
 test.each([undefined, "branch"])("only the server's org scope uses the all-workplaces label (filter %s)", wp => {
   state.wp = wp;
   state.items[0]!.branch_scope = "org";
-  expect(render()).toContain(t("attendanceRecords.scope.all", { count: 1 }));
+  expect(render()).toContain(t("attendanceRecords.scope.allUnknown"));
 });
 
 test("an unknown scope stays unknown instead of being labelled all workplaces", () => {
@@ -69,4 +69,30 @@ test("missing close details or lock ids never invent a timestamp or unlock link"
   expect(render()).not.toContain("NaN");
   state.items[0]!.close = { id: "close", month: "2026-10", branch_scope: "branch", checks: [], attested_by: "actor", attested_at: "2026-11-02T01:00:00Z", closed_at: "2026-11-02T01:00:00Z", amendments: [] };
   expect(render()).not.toContain("/people/period-locks");
+});
+
+
+test("only served period locks get a column, including when a filter is present", () => {
+  expect(render()).not.toContain(t("attendance.close.periodLock"));
+  state.wp = "branch";
+  expect(render()).not.toContain(t("attendance.close.periodLock"));
+  state.items[0]!.close = { id: "close", month: "2026-10", branch_scope: "branch", checks: [], attested_by: "actor", attested_at: "2026-11-02T01:00:00Z", closed_at: "2026-11-02T01:00:00Z", amendments: [], period_lock_id: "lock" };
+  expect(render()).toContain(t("attendance.close.periodLock"));
+  expect(render()).toContain("/people/period-locks?unlock=lock");
+});
+
+test("closed counts explicitly remain frozen at close, even without receipt details", () => {
+  state.items[0]!.closed = true;
+  const html = render();
+  expect(html).toContain("7건 · 마감 시점");
+  expect(html).toContain("2건 · 마감 시점");
+  state.items[0]!.closed = false;
+  expect(render()).not.toContain("마감 시점");
+});
+
+test("the all-workplaces row does not repeat a conflicting total from the branches read", () => {
+  state.items[0]!.branch_scope = "org";
+  const html = render();
+  expect(html).toContain(t("attendanceRecords.scope.allUnknown"));
+  expect(html).not.toContain(t("attendanceRecords.scope.all", { count: 1 }));
 });
