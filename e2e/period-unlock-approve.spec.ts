@@ -103,7 +103,7 @@ test("period unlock: a second close authority refuses, then approves; the reques
   expect([unboundOperator.status(), await codeOf(unboundOperator)]).toEqual([403, "period_unlock.refuse.identity_unbound"]);
   const nobodyBearer = bearerOf(nobody);
   await go(nobody, LOCKS);
-  await expect(nobody.getByText("기간 잠금을 볼 권한이 없습니다")).toBeVisible();
+  await expect(nobody.getByRole("heading", { name: "이 화면에 접근 권한이 없습니다", exact: true })).toBeVisible();
   await expect.poll(nobodyBearer, { timeout: 15_000 }).not.toBe("");
   const lower = await apiOf(nobody, nobodyBearer)(`/period-locks/${lock.id}/unlock/reject`, "POST", { requestId, note: "권한 없음" });
   expect(lower.status()).toBe(403);
@@ -179,10 +179,11 @@ test("period unlock: a second close authority refuses, then approves; the reques
   await expect(opened).not.toContainText("사후 검토 필요");
 });
 
-test("setup with ops and one linked close authority unlocks with review; go-live closes the solo path", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+test("a sole close authority unlocks with notices and review before and after go-live", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(8 * 60_000);
   const slug = "unlocksolo";
   const { admin: operator } = await tenantInSetup(browser, slug, "단독마감회사", false, "본사", "none");
+  const operatorBearer = bearerOf(operator);
   await registerEmployee(operator, { name: "단독마감", number: "UL-0003", hired: "2024-03-04", unit: SETUP_DEPARTMENT });
   await operator.getByRole("button", { name: "계정 초대" }).click();
   await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
@@ -191,7 +192,10 @@ test("setup with ops and one linked close authority unlocks with review; go-live
   await go(human, "/", true);
   await passkeyLogin(human);
   const notice = human.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: human.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
+  const acknowledged = human.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/notice"));
   await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
+  expect((await acknowledged).status()).toBe(200);
+  await human.reload();
   await expect(notice).toBeHidden();
   letGrantsAge(unique(slug), "단독마감");
   const bearer = bearerOf(human);
@@ -212,9 +216,31 @@ test("setup with ops and one linked close authority unlocks with review; go-live
   await expect(dialog).toBeHidden();
   await startOperations(operator);
   await lockPayroll(human);
-  const api = apiOf(human, bearer);
-  const { items } = await (await api("/period-locks?active=true")).json();
-  const { id } = items[0];
-  const refused = await api(`/period-locks/${id}/unlock`, "POST", { reasonCode: "RETRO_CORRECTION", note: "운영 시작 뒤 단독 요청", relockAt: new Date(Date.now() + 86_400_000).toISOString() });
-  expect([refused.status(), await codeOf(refused)]).toEqual([409, "period_unlock_sole_holder_refused"]);
+  await human.setViewportSize({ width: 390, height: 844 });
+  await human.emulateMedia({ colorScheme: "dark" });
+  await human.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+  await human.getByRole("button", { name: `급여 ${month} 잠금 해제`, exact: true }).click();
+  await option(human, "해제 사유", "소급 정정").click();
+  await dialog.getByLabel("해제 메모").fill("운영 시작 뒤 급여 확인");
+  await dialog.getByRole("button", { name: /^3일 동안/ }).click();
+  await expectAccessible(human, "operating solo unlock at 390 px in dark mode");
+  const operatingResponse = human.waitForResponse((r) => r.url().endsWith("/unlock") && r.request().method() === "POST");
+  await dialog.getByRole("button", { name: "패스키로 확인하고 잠금 해제" }).click();
+  const operating = await operatingResponse;
+  expect(operating.status()).toBe(200);
+  const recorded = await operating.json();
+  expect(recorded.lock.active).toBe(false);
+  expect(recorded.lock.unlockReviewRequired).toBe(true);
+  expect(recorded.exception.reviewDueAt).toBeTruthy();
+  await expect(dialog).toBeHidden();
+  await expect(human.getByRole("status").filter({ hasText: "기간의 잠금을 해제했습니다" })).toContainText("사후 검토");
+  expect(await human.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (const page of [human, operator]) {
+    const read = apiOf(page, page === human ? bearer : operatorBearer);
+    const response = await read("/period-locks");
+    expect(response.status()).toBe(200);
+    expect((await response.json()).soleHolderNotices).toBe(2);
+    await go(page, LOCKS);
+    await expect(page.getByText("단독 해제 알림 2건", { exact: true })).toBeVisible();
+  }
 });

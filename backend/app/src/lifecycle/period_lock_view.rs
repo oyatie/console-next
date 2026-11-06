@@ -146,8 +146,10 @@ pub(super) async fn attach_unlock_requests(
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct PeriodLockListResponse {
     pub(super) items: Vec<PeriodLockResponse>,
+    pub(super) sole_holder_notices: i64,
 }
 
 fn period_lock_from_row(row: &sqlx::postgres::PgRow) -> Result<PeriodLockResponse, LifecycleError> {

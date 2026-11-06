@@ -47,6 +47,9 @@ pub struct DecisionFacts {
     employee_id: Option<Uuid>,
 }
 
+#[path = "visible_period_unlock.rs"]
+mod period_unlock;
+
 impl DecisionFacts {
     /// Request writes use the live account and Cedar's access-management decision.
     ///
