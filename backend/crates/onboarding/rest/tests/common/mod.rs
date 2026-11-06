@@ -9,7 +9,7 @@ use console_platform_test_support::{
     issue_session_token, runtime_role_pool, seed_org_and_super_admin,
 };
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -44,7 +44,7 @@ pub async fn harness_with_payroll(owner: &PgPool, ops: bool, compiled: bool) -> 
         console_platform_test_support::seed_active_user(owner, *org.as_uuid(), "SUPER_ADMIN", "HR")
             .await
     };
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let settings = JwtSettings {
         issuer: "onboarding-test".into(),
         audience: "console-api".into(),

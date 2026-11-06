@@ -15,7 +15,7 @@ use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -28,7 +28,7 @@ const TEST_AUDIENCE: &str = "console-api";
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn resolves_kinds_and_denies_by_omission(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -283,7 +283,7 @@ async fn resolves_kinds_and_denies_by_omission(pool: PgPool) {
 /// stay at membership parity.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn resolve_enforces_domain_feature_guards(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -387,7 +387,7 @@ async fn resolve_enforces_domain_feature_guards(pool: PgPool) {
 /// unaccepted consent must all be denied by omission.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn resolves_identity_kinds_and_denies_by_omission(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -598,7 +598,7 @@ async fn resolves_identity_kinds_and_denies_by_omission(pool: PgPool) {
 /// records nothing (traversing a graph is not viewing a card).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn person_direct_resolve_audits_non_self_only(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

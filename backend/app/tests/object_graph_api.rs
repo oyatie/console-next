@@ -26,7 +26,7 @@ use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -41,7 +41,7 @@ const OTHER_ORG: Uuid = Uuid::from_u128(0x0bad_0bad_0bad_0bad_0bad_0bad_0bad_0ba
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn walks_hops_omits_out_of_scope_nodes_and_ignores_cross_org_links(owner_pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -198,7 +198,7 @@ async fn walks_hops_omits_out_of_scope_nodes_and_ignores_cross_org_links(owner_p
 /// enforced mid-walk with `truncated: true`.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn terminates_on_dense_cyclic_graph_and_respects_node_cap(owner_pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -332,7 +332,7 @@ async fn terminates_on_dense_cyclic_graph_and_respects_node_cap(owner_pool: PgPo
 /// have reopened without this composition).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn graph_omits_work_order_node_for_member_without_feature_grant(owner_pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -402,7 +402,7 @@ async fn graph_omits_work_order_node_for_member_without_feature_grant(owner_pool
 /// 403 for account heads without creating an existence oracle mid-walk.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn graph_omits_account_node_for_member_without_user_manage(owner_pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -515,7 +515,7 @@ async fn graph_omits_account_node_for_member_without_user_manage(owner_pool: PgP
 /// non-resolvable, so no extra nodes are added).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn link_limit_clip_marks_truncated(owner_pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

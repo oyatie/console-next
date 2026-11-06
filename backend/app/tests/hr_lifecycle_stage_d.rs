@@ -14,7 +14,7 @@ use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use profile_seed::seed_profile;
 use serde_json::{Value, json};
@@ -1966,7 +1966,7 @@ async fn seed_org_unit(pool: &PgPool, org: Uuid, actor: UserId, name: &str) -> U
 }
 
 fn keys() -> (String, String) {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     (
         key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
         key.verifying_key()

@@ -101,11 +101,12 @@ hex = "0.4.3"
 url = "2.5.8"
 bytes = "1.11.1"
 # Version verified against the upstream release 2026-11-02: jsonwebtoken 11.1.0.
-jsonwebtoken = { version = "11.1.0", default-features = false, features = ["rust_crypto", "use_pem"] }
-# Owner-approved 2026-10-13 (brief 157): P-256 keys (platform-auth SPKI parsing, already
-# in the lock via jsonwebtoken) and the test-only soft passkey for the WebAuthn helpers.
+# Its AWS-LC backend is owner-approved in dependency-ruling-2026-11-03.md.
+jsonwebtoken = { version = "11.1.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
+# Owner-approved 2026-10-13 (brief 157): P-256 keys for platform-auth SPKI parsing and
+# test fixtures, plus the test-only soft passkey for the WebAuthn helpers.
 # Members add their own features.
-p256 = "0.13.2"
+p256 = "0.14.0"
 webauthn-authenticator-rs = "0.5.5"
 # apalis 1.0.0-rc.9, apalis-postgres 1.0.0-rc.8, apalis-sql 1.0.0-rc.9.
 # No stable apalis 1.0.0 release was available at verification time.

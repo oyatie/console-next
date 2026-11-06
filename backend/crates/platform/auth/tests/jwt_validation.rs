@@ -6,7 +6,7 @@ use console_kernel_core::OrgId;
 use console_platform_auth::{JwtIssuer, JwtSettings, JwtVerifier};
 use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -26,7 +26,7 @@ struct Corpus {
 }
 
 fn corpus(settings: &JwtSettings) -> Corpus {
-    let signing = SigningKey::random(&mut OsRng);
+    let signing = SigningKey::generate();
     let private_pem = signing.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_pem = signing
         .verifying_key()

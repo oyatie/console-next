@@ -9,7 +9,7 @@ use console_kernel_core::{
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -22,7 +22,7 @@ const TEST_AUDIENCE: &str = "console-api";
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn admin_reads_only_branch_scoped_audits_and_read_access_is_audited(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -101,7 +101,7 @@ async fn admin_reads_only_branch_scoped_audits_and_read_access_is_audited(pool: 
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn audit_read_rechecks_live_branch_membership_after_token_issue(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_pem = signing_key
         .verifying_key()
@@ -190,7 +190,7 @@ async fn audit_read_rechecks_live_branch_membership_after_token_issue(pool: PgPo
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn branch_scoped_super_admin_cannot_attest_whole_company(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_pem = signing_key
         .verifying_key()
@@ -258,7 +258,7 @@ async fn branch_scoped_super_admin_cannot_attest_whole_company(pool: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn mechanic_role_is_denied_audit_read(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -307,7 +307,7 @@ async fn mechanic_role_is_denied_audit_read(pool: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn audit_attestation_requires_org_wide_audit_authority(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -418,7 +418,7 @@ async fn audit_attestation_requires_org_wide_audit_authority(pool: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn target_id_filter_isolates_one_object_and_trace_id_correlates_across_objects(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -538,7 +538,7 @@ async fn target_id_filter_isolates_one_object_and_trace_id_correlates_across_obj
 /// GREEN: the SAE admin sees its own SAE audit row and NOT the other tenant's.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn super_admin_audit_read_arms_org_and_isolates_cross_org_as_runtime_role(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

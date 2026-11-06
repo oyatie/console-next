@@ -2452,10 +2452,16 @@ paths:
       tags: [access]
       operationId: listAccessLog
       summary: Tenant access records with monthly flag totals
-      description: Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period and flagged filter. Defaults to the current month in the configured review time zone. Read failures return no records if their access record cannot be stored.
+      description: Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
       security:
       - bearerAuth: []
       parameters:
+      - name: search
+        in: query
+        description: Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Rejects control characters and more than 200 Unicode characters before trimming surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid.
+        schema:
+          type: string
+          maxLength: 200
       - name: period
         in: query
         schema:
@@ -2479,11 +2485,17 @@ paths:
           default: 200
       responses:
         '200':
-          description: Monthly totals and one keyset page.
+          description: Search-filtered monthly totals and one keyset page. The flagged filter affects items only.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccessLogPage'
+        '400':
+          description: search_invalid — search contains control characters or exceeds the character limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
