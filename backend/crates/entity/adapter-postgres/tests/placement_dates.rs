@@ -3,6 +3,8 @@
 //! Placement dates respect the first workplace and employer records, including older data.
 
 mod common;
+#[path = "placement_dates/first_registration.rs"]
+mod first_registration;
 #[path = "placement_dates/reads.rs"]
 mod reads;
 
