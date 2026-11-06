@@ -12,7 +12,7 @@ pub(crate) fn router(state: IdentityRestState) -> Router {
     let pool = state.pool().clone();
     with_platform_context(
         Router::new()
-            .route(crate::PLATFORM_ME_PATH, get(read).patch(update))
+            .route("/api/platform/users/me", get(read).patch(update))
             .with_state(state),
         verifier,
         pool,
