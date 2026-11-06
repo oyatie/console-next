@@ -54,7 +54,7 @@ export function DayDetail({ board, store, grammarHintId, onAssign, onNote }: { b
   const columns: LongColumn<BoardRow>[] = [
     { id: "number", width: 120, header: t("attendanceRecords.grid.number"), cell: (r) => r.employee_number ?? "" },
     { id: "name", width: 160, rowHeader: true, header: t("attendanceRecords.grid.name"), cell: (r) => r.name },
-    { id: "plan", width: 240, focusMode: "child", header: t("attendanceRecords.day.plan"), cell: (r) => <>{r.day.plan.shift ? shiftText(r.day.plan.shift) : t(`attendance.dayKind.${r.day.plan.kind}`)}{r.day.plan.kind === "NO_SCHEDULE" && <> <TableControl><Button size="sm" onKeyDown={e => e.stopPropagation()} onClick={() => onAssign(r)}>{t("attendanceRecords.unscheduled.assign")}</Button></TableControl></>}</> },
+    { id: "plan", width: 240, focusMode: "child", header: t("attendanceRecords.day.plan"), cell: (r) => <>{r.day.plan.shift ? shiftText(r.day.plan.shift) : t(`attendance.dayKind.${r.day.plan.kind}`)}{r.day.plan.kind === "NO_SCHEDULE" && <> <TableControl><Button size="sm" onKeyDown={e => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }} onClick={() => onAssign(r)}>{t("attendanceRecords.unscheduled.assign")}</Button></TableControl></>}</> },
     {
       id: "input", width: 320, focusMode: "child", header: t("attendanceRecords.detail.input"),
       cell: (r) => {

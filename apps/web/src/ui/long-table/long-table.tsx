@@ -1,11 +1,11 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@console/i18n";
 import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
 import { DisabledReason } from "../disabled-reason/disabled-reason";
-import { listenRowKeys, rowIdOf } from "./row-keys";
+import { editable, listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
 import cards from "./table-cards.module.css";
 import type { CardColumn } from "./card-columns";
@@ -269,7 +269,13 @@ export function LongTable<R>(p: {
                       const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.
                       const value = p.editable && !c.rowHeader ? render : render();
-                      return <Cell data-type={c.type} focusMode={c.focusMode} className={css.td} render={(props, { id: cellKey }) => <div {...props} data-cell-key={cellKey} title={typeof value === "string" ? value : undefined} aria-labelledby={cardLayout && c.id === "__card" ? titleId(r) : props["aria-labelledby"]} />}>{value}</Cell>;
+                      return <Cell data-type={c.type} focusMode={c.focusMode} allowsArrowNavigation className={css.td} render={(props, { id: cellKey }) => {
+                        const capture: KeyboardEventHandler | undefined = props.onKeyDownCapture;
+                        return <div {...props} data-cell-key={cellKey}
+                          // Buttons use grid arrows; text entry keeps its caret and picker keys.
+                          onKeyDownCapture={event => { if (!editable(event.target)) capture?.(event); }}
+                          title={typeof value === "string" ? value : undefined} aria-labelledby={cardLayout && c.id === "__card" ? titleId(r) : props["aria-labelledby"]} />;
+                      }}>{value}</Cell>;
                     }}
                   </Row>
                 );
