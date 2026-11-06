@@ -34,6 +34,9 @@ updates:
     schedule:
       interval: weekly
     ignore:
+      # Keep the envelope cipher readable; revisit after the RNG/nonce migration and old-ciphertext proof.
+      - dependency-name: "chacha20poly1305"
+        versions: [">=0.11"]
       # Defer all Apalis updates until the audited migration; see docs/quality/dependencies/dependabot-cargo-315.md.
       - dependency-name: "apalis"
       - dependency-name: "apalis-postgres"
