@@ -203,7 +203,9 @@ test("closed-month detail keeps arrow-key focus on a read-only record", async ({
   await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
   await page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }).click();
   await page.keyboard.press("Tab");
-  for (let column = 0; column < 4; column++) await page.keyboard.press("ArrowRight");
+  for (let column = 0; column < 3; column++) await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("grid").first().getByRole("button", { name: "일정 지정", exact: true }).first()).toBeFocused();
+  await page.keyboard.press("Tab");
   const input = page.getByRole("textbox", { name: /^근태직원 1 입력/ });
   await expect(input).toBeFocused();
   await expect(input).toHaveAttribute("readonly");
