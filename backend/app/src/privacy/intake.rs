@@ -13,12 +13,15 @@ use console_platform_authz::{
     access::cedar::PRIVACY_REQUEST_INTAKE_READ,
     cedar_pbac::visible::{EmployeePlacement, load_facts},
 };
+use console_platform_db::insert_audit_event;
+use console_platform_request_context::audit_context::access_log::{AccessRecord, access_event};
 use serde_json::{Value, json};
 use uuid::Uuid;
 
 #[derive(sqlx::FromRow)]
 struct Receipt {
     body: Value,
+    subject_user_id: Uuid,
     subject_name: String,
     org_unit_id: Option<Uuid>,
     workplace_id: Option<Uuid>,
@@ -51,7 +54,7 @@ pub(super) async fn read(
         return Err(missing());
     }
     let row = sqlx::query_as::<_, Receipt>(concat!(
-        "SELECT r.body, p.display_name AS subject_name, e.org_unit_id, ea.workplace_id, ea.legal_entity_id ",
+        "SELECT r.body, r.subject_user_id, p.display_name AS subject_name, e.org_unit_id, ea.workplace_id, ea.legal_entity_id ",
         "FROM privacy_rights_requests r ",
         "JOIN person_accounts_current p ON p.org_id=r.org_id AND p.id=r.subject_user_id ",
         "LEFT JOIN employees e ON e.org_id=r.org_id AND e.id=r.subject_employee_id ",
@@ -70,6 +73,21 @@ pub(super) async fn read(
     {
         return Err(missing());
     }
+    let event = access_event(
+        &actor,
+        AccessRecord {
+            action: "privacy_request.intake_read",
+            target_type: "privacy_rights_request",
+            target_id: id.to_string(),
+            subject_ids: &[row.subject_user_id],
+            reader_subject: Some(*actor.user_id.as_uuid()),
+            details: json!({}),
+        },
+    )
+    .map_err(unavailable)?;
+    insert_audit_event(&mut tx, &event)
+        .await
+        .map_err(unavailable)?;
     tx.commit().await.map_err(unavailable)?;
     let today = console_hr_adapter_postgres::clock::today_kst();
     Ok(Json(
