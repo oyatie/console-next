@@ -60,7 +60,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       const candidate = yaml.load(to === '-' ? stdin : readFileSync(to, 'utf8'));
       normalize(base, candidate);
       for (const [name, spec] of [['base', base], ['candidate', candidate]]) writeFileSync(join(directory, `${name}.json`), JSON.stringify(spec));
-      process.stdout.write(run('oasdiff', ['breaking', join(directory, 'base.json'), join(directory, 'candidate.json'), '--fail-on', 'ERR', '-f', 'singleline']));
+      process.stdout.write(run('oasdiff', ['breaking', join(directory, 'base.json'), join(directory, 'candidate.json'),
+        '--err-ignore', fileURLToPath(new URL('./api-compat-ignore.txt', import.meta.url)), '--fail-on', 'ERR', '-f', 'singleline']));
     }
   } finally { rmSync(directory, {recursive:true, force:true}); }
 }

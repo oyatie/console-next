@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
+import yaml from 'js-yaml';
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const api = await import(pathToFileURL(join(root, 'deploy/ci/api-compat.mjs')));
 const binary = {skip:spawnSync('oasdiff', ['--version']).status !== 0 && 'Pinned binary is installed by the api-compat workflow'};
@@ -15,6 +16,11 @@ test('normalization preserves strict commands, scalar types and removed extensib
   const candidate = {shared:{'x-extensible-enum':['a', 1]}, command:{enum:['a']}, items:[{'x-extensible-enum':['a']}]};
   api.normalize(base, candidate);
   assert.deepEqual(base, {shared:{'x-extensible-enum':['a', 'b', 1]}, command:{enum:['a']}, items:[{'x-extensible-enum':['a', 'b']}]});
+});
+test('normalization preserves strict enums when an extensible hint is also present', () => {
+  const base = {enum:['a', 'b']};
+  api.normalize(base, {enum:['a'], 'x-extensible-enum':['a', 'b']});
+  assert.deepEqual(base, {enum:['a', 'b']});
 });
 
 const spec = (values, extensible = false) => ({openapi:'3.0.3', info:{title:'fixture', version:'1'}, paths:{
@@ -38,10 +44,36 @@ test('pinned oasdiff permits extensible additions but refuses removed values', b
   assert.equal(compare(spec(['a', 'b']), spec(['a', 'b', 'c'], true)).status, 0);
   assert.notEqual(compare(spec(['a', 'b']), spec(['a'], true)).status, 0);
 });
-test('real committed tip contract passes unchanged', binary, () => {
-  const spec = readFileSync(join(root, 'backend/openapi/openapi.yaml'), 'utf8');
-  const result = spawnSync(process.execPath, [join(root, 'deploy/ci/api-compat.mjs'), 'compare', '-', '-'], {encoding:'utf8', input:spec});
+const released = yaml.load(readFileSync(new URL('./fixtures/released-office-callback.yaml', import.meta.url), 'utf8'));
+const candidate = yaml.load(readFileSync(join(root, 'backend/openapi/openapi.yaml'), 'utf8'));
+test('real committed tip contract passes against the released callback contract', binary, () => {
+  const result = compare(released, candidate);
   assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+const callbackPath = '/api/v1/office/callback';
+const successSchema = doc => doc.paths[callbackPath].post.responses['200'].content['application/json'].schema;
+const callbackCandidate = () => ({...structuredClone(released), paths:{[callbackPath]:structuredClone(candidate.paths[callbackPath])}});
+for (const [name, mutate, finding] of [
+  ['another enum value', (_base, tip) => { successSchema(tip).properties.error.enum = [0, 1]; }, 'response-property-enum-value-added'],
+  ['another property', (base, tip) => {
+    successSchema(base).properties.other = {type:'integer', minimum:0};
+    successSchema(tip).properties.other = {type:'integer'};
+  }, 'response-property-min-unset'],
+  ['another endpoint', (base, tip) => {
+    base.paths['/other'] = structuredClone(base.paths[callbackPath]);
+    tip.paths['/other'] = structuredClone(tip.paths[callbackPath]);
+  }, 'response-property-min-unset'],
+  ['another response status', (base, tip) => {
+    base.paths[callbackPath].post.responses['201'] = structuredClone(base.paths[callbackPath].post.responses['200']);
+    tip.paths[callbackPath].post.responses['201'] = structuredClone(tip.paths[callbackPath].post.responses['200']);
+  }, 'response-property-min-unset'],
+  ['an unrelated removed path', (base) => { base.paths['/kept'] = {get:{responses:{200:{description:'ok'}}}}; }, 'api-path-removed-without-deprecation'],
+]) test(`callback exception still refuses ${name}`, binary, () => {
+  const base = structuredClone(released), tip = callbackCandidate();
+  mutate(base, tip);
+  const result = compare(base, tip);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.ok(result.stdout.includes(`[${finding}]`) || result.stderr.includes(`[${finding}]`), result.stdout + result.stderr);
 });
 
 function releaseFixture(change = () => {}) {
