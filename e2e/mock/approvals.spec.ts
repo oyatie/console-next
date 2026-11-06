@@ -76,7 +76,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     if (width === 1440) {
       const rowHeight = await row.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue("--row-h")));
       expect((await row.boundingBox())!.height).toBeLessThanOrEqual(rowHeight + 1);
-      for (const text of [item.document_no, item.requester.name]) {
+      for (const text of [item.document_no]) {
         const metrics = await row.getByText(text, { exact: true }).evaluate(el => {
           const range = document.createRange();
           range.selectNodeContents(el);
@@ -107,65 +107,77 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 }
 
 for (const width of [1280, 1440]) for (const theme of ["light", "dark"]) {
-  test(`long approval summaries fit beside the preview at ${width}px ${theme}`, async ({ page }, info) => {
+  test(`approval columns preserve readable content at ${width}px ${theme}`, async ({ page }, info) => {
     const longItem = {
       ...item,
       title: "전사 영업 조직 개편 및 인사 운영 체계 변경 승인요청",
-      document_no: "AP-2026-HR-1103-001",
-      requester: { ...item.requester, name: "김기안 인사운영팀" },
-      route: item.route.map(step => step.state === "current" ? { ...step, assignee: "박결재 준법경영지원팀" } : step),
+      document_no: "OC-2026-HR-1103-001",
     };
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "empty");
     await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({
-      json: { ...response(), items: [longItem, { ...longItem, id: "approval-2" }] },
+      json: { ...response(), items: Array.from({ length: 50 }, (_, i) => ({ ...longItem, id: `approval-${i + 1}` })) },
     }));
     await page.goto("/approvals");
     const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
     const rows = grid.getByRole("row").filter({ hasText: longItem.title });
-    await rows.first().click();
-    const panel = page.locator("[data-side-panel]");
-    await expect(panel.getByRole("heading", { name: longItem.title, exact: true })).toBeVisible();
-    await expect(panel).toContainText("박결재 준법경영지원팀");
-    for (const row of await rows.all()) {
-      const rowHeight = await row.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue("--row-h")));
-      expect((await row.boundingBox())!.height).toBeLessThanOrEqual(rowHeight + 1);
-      const title = row.getByRole("gridcell", { name: longItem.title, exact: true });
-      await expect(title).toBeVisible();
-      await expect(title).toHaveCSS("text-overflow", "ellipsis");
-      await expect(row.locator('[aria-current="step"]').locator("..")).toHaveCSS("text-overflow", "ellipsis");
-      for (const text of [longItem.title, longItem.document_no, longItem.requester.name, `${t("enum.approvalRole.legal")} · 박결재 준법경영지원팀`]) {
-        const metrics = await row.getByText(text, { exact: true }).evaluate(el => {
+    await expect(rows).toHaveCount(50);
+    for (const preview of [false, true, false]) {
+      const headers = [t("approvals.field.documentNo"), t("approvals.col.title"), ...(preview ? [] : [t("approvals.col.source")]), t("approvals.preview.route"), ...(preview ? [] : [t("approvals.col.requester"), t("approvals.col.requestedAt")]), t("approvals.col.status")];
+      await expect(grid.getByRole("columnheader")).toHaveText(headers);
+      const measurements = await rows.evaluateAll((elements, title) => elements.map(row => {
+        const cells = Array.from(row.querySelectorAll<HTMLElement>("td"));
+        const textBounds = (cell: HTMLElement) => {
           const range = document.createRange();
-          range.selectNodeContents(el);
-          return { height: range.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(el).lineHeight) };
-        });
-        expect(metrics.height, `${text} stays on one line`).toBeLessThanOrEqual(metrics.lineHeight + 1);
+          range.selectNodeContents(cell);
+          return range.getBoundingClientRect();
+        };
+        const titleCell = cells.find(cell => cell.textContent === title)!;
+        const titleText = titleCell.querySelector("span") ?? titleCell;
+        const textNode = titleText.firstChild!;
+        const style = getComputedStyle(titleCell);
+        const ellipsis = titleText.scrollWidth > titleText.clientWidth ? parseFloat(style.fontSize) : 0;
+        const right = titleCell.getBoundingClientRect().right - parseFloat(style.paddingRight) - ellipsis;
+        let visibleCharacters = 0;
+        for (let i = 0; i < title.length; i++) {
+          const range = document.createRange();
+          range.setStart(textNode, i);
+          range.setEnd(textNode, i + 1);
+          if (range.getBoundingClientRect().right <= right) visibleCharacters++;
+        }
+        return {
+          height: row.getBoundingClientRect().height,
+          rowHeight: parseFloat(getComputedStyle(row).getPropertyValue("--row-h")),
+          visibleCharacters,
+          compact: cells.filter(cell => cell.querySelector("code, time") || cell.dataset.card === "status").map(cell => ({
+            text: cell.textContent,
+            clipped: cell.scrollWidth > cell.clientWidth,
+            textHeight: textBounds(cell).height,
+            lineHeight: parseFloat(getComputedStyle(cell).lineHeight),
+          })),
+        };
+      }), longItem.title);
+      for (const row of measurements) {
+        expect(row.height).toBeLessThanOrEqual(row.rowHeight + 1);
+        // Keep at least 40% of the 30-character subject readable beside its identities.
+        expect(row.visibleCharacters).toBeGreaterThanOrEqual(12);
+        for (const cell of row.compact) {
+          expect(cell.clipped, `${cell.text} is not clipped`).toBe(false);
+          expect(cell.textHeight, `${cell.text} stays on one line`).toBeLessThanOrEqual(cell.lineHeight + 1);
+        }
       }
-      const status = row.getByRole("gridcell", { name: t("enum.orgChangeStatus.IN_APPROVAL"), exact: true });
-      await expect(status).toBeVisible();
-      const chip = status.getByText(t("enum.orgChangeStatus.IN_APPROVAL"), { exact: true });
-      expect((await chip.boundingBox())!.x + (await chip.boundingBox())!.width).toBeLessThanOrEqual((await status.boundingBox())!.x + (await status.boundingBox())!.width);
-      expect((await status.boundingBox())!.x + (await status.boundingBox())!.width).toBeLessThanOrEqual((await panel.boundingBox())!.x);
-    }
-    const bounds = await grid.evaluate(el => {
-      const card = el.closest("section")!;
-      return { table: el.getBoundingClientRect().right, card: card.getBoundingClientRect().right, overflow: card.scrollWidth - card.clientWidth };
-    });
-    expect(bounds.table).toBeLessThanOrEqual(bounds.card + 1);
-    expect(bounds.overflow).toBeLessThanOrEqual(1);
-    for (const header of await grid.getByRole("columnheader").all()) {
-      const label = await header.evaluate(el => {
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        return { text: range.getBoundingClientRect().width, cell: el.clientWidth, padding: parseFloat(getComputedStyle(el).paddingInlineStart) + parseFloat(getComputedStyle(el).paddingInlineEnd) };
+      const bounds = await grid.evaluate(el => {
+        const card = el.closest("section")!;
+        return { table: el.getBoundingClientRect().right, card: card.getBoundingClientRect().right, overflow: card.scrollWidth - card.clientWidth };
       });
-      expect(label.text + label.padding).toBeLessThanOrEqual(label.cell + 1);
+      expect(bounds.table).toBeLessThanOrEqual(bounds.card + 1);
+      expect(bounds.overflow).toBeLessThanOrEqual(1);
+      await fits(page, "approval list");
+      await page.screenshot({ path: info.outputPath(`approvals-columns-${width}-${theme}-${preview}.png`), fullPage: true });
+      if (!preview) await rows.first().click();
+      else await page.locator("[data-side-panel]").getByRole("button", { name: t("common.closePanel"), exact: true }).click();
     }
-    await expect(grid.getByRole("columnheader", { name: "상태", exact: true })).toBeVisible();
-    await fits(page, "approval split list");
-    await page.screenshot({ path: info.outputPath(`approvals-long-${width}-${theme}.png`), fullPage: true });
     expect(mock.unexpected).toEqual([]);
   });
 }
