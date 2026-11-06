@@ -272,10 +272,12 @@ export function LongTable<R>(p: {
                       return <Cell data-type={c.type} focusMode={c.focusMode} allowsArrowNavigation className={css.td} render={(props, { id: cellKey }) => {
                         const capture: KeyboardEventHandler | undefined = props.onKeyDownCapture;
                         return <div {...props} data-cell-key={cellKey}
-                          // Buttons use grid navigation; text entry keeps its caret and picker keys.
+                          // Controls keep Tab and activation, arrows go through the cell; every other grid key reaches the row.
+                          // Text entry keeps its caret and picker keys; portalled popovers (outside the cell's DOM) keep theirs.
                           onKeyDownCapture={event => {
                             if (editable(event.target)) return;
-                            if (event.target !== event.currentTarget && /^(Home|End|PageUp|PageDown)$/.test(event.key)) {
+                            if (event.target !== event.currentTarget && event.currentTarget.contains(event.target as Node)
+                              && !/^(Tab|Enter| |Arrow(Up|Down|Left|Right))$/.test(event.key)) {
                               event.preventDefault(); event.stopPropagation();
                               event.currentTarget.parentElement?.dispatchEvent(new KeyboardEvent(event.type, event.nativeEvent));
                               return;

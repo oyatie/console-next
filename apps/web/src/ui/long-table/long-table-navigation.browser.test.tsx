@@ -69,6 +69,22 @@ test.each([1440, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, 
   },
 );
 
+// Select-all (Ctrl+A; the page reports Windows) reaches the grid from a focused control exactly as from its cell.
+test.each([1440, 390].flatMap(width => (["cell", "button"] as const).map(origin => ({ width, origin }))))(
+  "Control+A from $origin at $width px selects every row", async ({ width, origin }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?targets-wrapped-arrows`);
+    const rows = page.getByRole("row").filter({ has: page.getByRole("rowheader") });
+    await dom(rows).toHaveCount(2);
+    const button = rows.first().getByRole("button", { name: "지정", exact: true });
+    const cell = button.locator('xpath=ancestor::*[@role="gridcell" or @role="rowheader"][1]');
+    await rows.first().focus();
+    await (origin === "cell" ? cell : button).focus();
+    await page.keyboard.press("Control+a");
+    await dom(page.getByRole("row", { selected: true })).toHaveCount(2);
+  },
+);
+
 test.each([1440, 390])("shared table controls keep their own minimum target at %s px", async width => {
   await page.setViewportSize({ width, height: 900 });
   await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?targets-tiny`);
