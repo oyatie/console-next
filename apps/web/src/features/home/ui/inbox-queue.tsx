@@ -32,8 +32,8 @@ const SOURCE_TEXT: Record<string, MessageId> = {
 /** Every surface reads this server queue; filters, ownership and deadlines stay with its sources. */
 export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase = false, setupPending = false, action }: { preview?: boolean; filter?: InboxFilter; setup?: (c: Checklist) => ReactNode; setupPhase?: boolean; setupPending?: boolean; action?: RowAction } = {}) {
   const [attention, setAttention] = useState<AttentionFilter>("all");
-  // Home's arrival gate already refreshed this key before mounting the preview.
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", preview ? { filter, attention } : { filter }), placeholderData: keepPreviousData, refetchOnMount: preview ? false : "always" });
+  // Home and InboxPage own arrival refreshes; mounting the queue reuses their read.
+  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", preview ? { filter, attention } : { filter }), placeholderData: keepPreviousData, refetchOnMount: false });
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
