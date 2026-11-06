@@ -48,7 +48,8 @@ test("form registration records RRN through the real endpoint on the card and id
     await sheet.getByRole("button", { name: "보기", exact: true }).click();
     const revealedResponse = await revealed;
     expect(revealedResponse.ok()).toBe(true);
-    const { display_seconds } = await revealedResponse.json() as { display_seconds: number };
+    const { display_seconds, rrn: revealedNumber } = await revealedResponse.json() as { display_seconds: number; rrn: string };
+    expect(revealedNumber.replaceAll("-", "")).toBe(number.replaceAll("-", ""));
     await expect(page.getByRole("timer")).toBeVisible();
     await page.clock.setSystemTime((await page.evaluate(() => Date.now())) + display_seconds * 1000 + 1);
     await expect(section.getByText("••••••-•••••••", { exact: true })).toBeVisible();

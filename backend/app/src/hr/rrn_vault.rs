@@ -1,36 +1,20 @@
 //! IMPORT-2 (decisions #25): the shell's 주민등록번호 vault. Sealing reuses the
-//! webmail envelope AEAD (XChaCha20-Poly1305, per-row key wrapped by a master
+//! webmail envelope AEAD (AES-256-GCM / AES-256-KWP, per-row key wrapped by a master
 //! key) under its own master key; matching is HMAC-SHA256 under a separate
 //! key. Both keys come from the environment (Vault-injected in production),
 //! never from the database, and are never logged. Without both keys the
 //! import drops 주민등록번호 cells and the reveal answers 503.
 
+use aws_lc_rs::hmac;
 use console_comms_credential_cipher::{
     Aad, CredentialCipher, EnvelopeCredentialCipher, SealedCredential,
 };
 use console_hr_domain::import::rrn_value::{Rrn, RrnVault, SealedRrn, VaultError};
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 pub const MASTER_KEY_ENV: &str = "CONSOLE_RRN_MASTER_KEY";
 pub const HMAC_KEY_ENV: &str = "CONSOLE_RRN_HMAC_KEY";
 const HMAC_KEY_VERSION: i16 = 1;
-
-/// HMAC-SHA256 (RFC 2104) over a key of at most one block.
-fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
-    let mut block = [0u8; 64];
-    block[..key.len().min(64)].copy_from_slice(&key[..key.len().min(64)]);
-    let pad = |byte: u8| block.map(|k| k ^ byte);
-    let inner = Sha256::new()
-        .chain_update(pad(0x36))
-        .chain_update(message)
-        .finalize();
-    Sha256::new()
-        .chain_update(pad(0x5c))
-        .chain_update(inner)
-        .finalize()
-        .into()
-}
 
 /// The vault for the HR router, or none (logged once per router build; the
 /// message names the variables, never a value).
@@ -129,7 +113,12 @@ impl RrnVault for EnvRrnVault {
     }
 
     fn blind_index(&self, rrn: &Rrn) -> Vec<u8> {
-        hmac_sha256(&self.hmac_key, rrn.digits().as_bytes()).to_vec()
+        hmac::sign(
+            &hmac::Key::new(hmac::HMAC_SHA256, &self.hmac_key),
+            rrn.digits().as_bytes(),
+        )
+        .as_ref()
+        .to_vec()
     }
 
     fn open(&self, org: Uuid, sealed: &SealedRrn) -> Result<Rrn, VaultError> {
@@ -155,8 +144,33 @@ impl RrnVault for EnvRrnVault {
 mod tests {
     use super::*;
 
+    fn hmac_sha256(key: &[u8], message: &[u8]) -> Vec<u8> {
+        hmac::sign(&hmac::Key::new(hmac::HMAC_SHA256, key), message)
+            .as_ref()
+            .to_vec()
+    }
+
     fn hex(bytes: &[u8]) -> String {
         bytes.iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    #[test]
+    fn hmac_preserves_existing_32_byte_key_indexes() {
+        // Captured from the original SHA-256 ipad/opad implementation.
+        for (key, message, expected) in [
+            (
+                [0u8; 32],
+                b"".as_slice(),
+                "b613679a0814d9ec772f95d778c35fc5ff1697c493715653c6c712144292c5ad",
+            ),
+            (
+                [7u8; 32],
+                b"synthetic identity",
+                "d4c969fedc30197c0f4e3cf0d03f34b132b08585e4205488cf9e3999a699dfbf",
+            ),
+        ] {
+            assert_eq!(hex(&hmac_sha256(&key, message)), expected);
+        }
     }
 
     #[test]
@@ -176,6 +190,10 @@ mod tests {
         let sealed = vault.seal(org, &rrn).unwrap();
         assert_eq!(sealed.masked, "900101-1******");
         assert_eq!(
+            hex(&sealed.hmac),
+            "50ac32b2efe7b34cedaa4452d5048195e05b40e40d5129644fb1dd8ab12bc2bc"
+        );
+        assert_eq!(
             sealed.hmac,
             vault.blind_index(&Rrn::parse("9001011234567").unwrap())
         );
@@ -185,3 +203,7 @@ mod tests {
         assert!(EnvRrnVault::from_keys("bad", key).is_err());
     }
 }
+
+#[cfg(all(test, feature = "test-postgres"))]
+#[path = "rrn_vault_db_tests.rs"]
+mod db_tests;
