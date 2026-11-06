@@ -56,7 +56,16 @@ export function assertPromotion({sha, repository, run, jobs, gatesResult, curren
     assert.ok(!matrix.exclude && (!matrix.include || Object.keys(matrix).length === 1),
       'PROMOTE_NOT_GREEN: unsupported matrix; update proof inventory before changing the workflow');
     const rows = matrix.include?.map(row => Object.values(row)) ?? Object.values(matrix)
-      .reduce((combinations, values) => combinations.flatMap(row => values.map(value => [...row, value])), [[]]);
+      .reduce((combinations, values) => {
+        if (typeof values === 'string') {
+          // Resolve only the event-conditioned JSON axis used by scheduled repetitions; never evaluate workflow code.
+          const expression = values.match(/^\$\{\{ fromJSON\(github\.event_name == '([a-z_]+)' && '(\[[\d, ]+\])' \|\| '(\[[\d, ]+\])'\) \}\}$/);
+          assert.ok(expression, 'PROMOTE_NOT_GREEN: unsupported matrix expression');
+          values = JSON.parse(expression[run.event === expression[1] ? 2 : 3]);
+          assert.ok(values.length > 0, 'PROMOTE_NOT_GREEN: empty matrix axis');
+        }
+        return combinations.flatMap(row => values.map(value => [...row, value]));
+      }, [[]]);
     const expected = rows.map(row => `${name} (${row.join(', ')})`).sort();
     const actual = jobs.filter(actualJob => actualJob.name.startsWith(`${name} (`)).map(actualJob => actualJob.name).sort();
     assert.deepEqual(actual, expected, `PROMOTE_NOT_GREEN: require every ${name} matrix job exactly once`);
