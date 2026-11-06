@@ -210,7 +210,7 @@ async fn review(
                 .bool("actor_holds_permission", holds).bool("step_up", false).bool("is_approval", false))?;
         let events = if reviewed { vec![] } else {
             vec![AuditEvent::new(Some(p.user_id), AuditAction::new("exception.review")?, "governed_exception", id.to_string(), TraceContext::generate(), time::OffsetDateTime::now_utc())
-                .with_org(p.org_id).with_snapshots(None, Some(json!({"status":"REVIEWED", "note":body.note.trim(), "review_due_at":stored.review_due_at.map(|at| at.to_string())}))) ]
+                .with_org(p.org_id).with_snapshots(None, Some(json!({"status":"REVIEWED", "note":body.note.trim(), "review_due_at":stored.review_due_at.map(console_kernel_core::rfc3339).transpose()?}))) ]
         };
         Ok((json!({"id":id,"status":"REVIEWED"}), events))
     })).await;

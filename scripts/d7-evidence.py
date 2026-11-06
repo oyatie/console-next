@@ -90,15 +90,18 @@ def main():
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     index = json.loads(subprocess.check_output(["node", "scripts/negative-index.mjs"], text=True))
     reports = [json.loads(Path(file).read_text()) for file in reports]
-    xml = Path(junit).read_text()
-    root = ET.fromstring(xml)
+    paths = sorted(Path(junit).rglob("junit.xml")) if Path(junit).is_dir() else [Path(junit)]
+    if not paths: raise ValueError("nextest JUnit required")
+    xmls = [file.read_text() for file in paths]
+    roots = [ET.fromstring(xml) for xml in xmls]
     # nextest's report timestamp is the proof time; copying an old artifact cannot refresh it.
-    timestamps = [fresh(e.get("timestamp")) for e in root.iter() if e.tag in ("testsuites", "testsuite") and e.get("timestamp")]
-    if not timestamps: raise ValueError("nextest JUnit timestamp required")
+    times = [[fresh(e.get("timestamp")) for e in root.iter() if e.tag in ("testsuites", "testsuite") and e.get("timestamp")] for root in roots]
+    if any(not timestamps for timestamps in times): raise ValueError("nextest JUnit timestamp required for every shard")
+    timestamps = [timestamp for shard in times for timestamp in shard]
     source = "python3 " + " ".join(sys.argv)
     envelopes = {
         "e2e": {"run_at": min(fresh(r["stats"]["startTime"]) for r in reports), "rows": [row for r in reports for row in e2e_rows(r, index)]},
-        "nextest": {"run_at": min(timestamps), "rows": nextest_rows(xml, index)}}
+        "nextest": {"run_at": min(timestamps), "rows": [row for xml in xmls for row in nextest_rows(xml, index)]}}
     Path(output).mkdir(parents=True, exist_ok=True)
     for name, data in envelopes.items():
         Path(output, name + ".json").write_text(json.dumps({"commit": commit, "source_command": source, **data}, indent=2) + "\n")

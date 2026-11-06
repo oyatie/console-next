@@ -713,10 +713,10 @@ impl PgWorkflowRuntimeStore {
                 )
                 .with_org(org)
                 .with_snapshots(
-                    Some(serde_json::json!({ "next_run_at": fired_at.to_string() })),
+                    Some(serde_json::json!({ "next_run_at": console_kernel_core::rfc3339(fired_at)? })),
                     Some(serde_json::json!({
-                        "next_run_at": next_run_at.map(|at| at.to_string()),
-                        "last_run_at": fired_at.to_string(),
+                        "next_run_at": next_run_at.map(console_kernel_core::rfc3339).transpose()?,
+                        "last_run_at": console_kernel_core::rfc3339(fired_at)?,
                         "last_status": last_status,
                     })),
                 );

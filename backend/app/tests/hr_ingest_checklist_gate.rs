@@ -26,6 +26,9 @@ use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
 
+#[path = "auth_fixtures/attendance_grants.rs"]
+mod attendance_grants;
+
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 const SOURCE_SHA256: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -165,10 +168,7 @@ async fn apply_with_checklist_admits_and_applies(owner_pool: PgPool) {
 // Helpers.
 // ===========================================================================
 
-/// SUPER_ADMIN (not ADMIN): `authorize_hr_org_wide` requires `BranchScope::All`,
-/// which only SUPER_ADMIN/EXECUTIVE resolve to without a `user_branches` row
-/// (`resolve_branch_scope_in_org`); ADMIN would 403 upstream of the §16 gate
-/// this test targets.
+/// Tenant attendance authority keeps this test focused on checklist admission.
 async fn seed_admin(pool: &PgPool, user_id: UserId) {
     sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
         .bind(*user_id.as_uuid())
@@ -178,6 +178,7 @@ async fn seed_admin(pool: &PgPool, user_id: UserId) {
         .execute(pool)
         .await
         .unwrap();
+    attendance_grants::grant(pool, OrgId::one(), user_id, None).await;
 }
 
 /// Seed a `data_import_runs` row already at `DRY_RUN` with zero candidate rows,

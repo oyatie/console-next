@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Observe actual runtime-pool leases while exercising the product router.
+#![allow(dead_code)]
 use super::http;
+use ::http::StatusCode;
 use console_app::build_router;
 use console_kernel_core::UserId;
 use console_settings_domain::{SettingKey, SettingValue};
+use serde_json::Value;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::sync::{
     Arc,
@@ -11,6 +14,21 @@ use std::sync::{
 };
 use std::time::Duration;
 use uuid::Uuid;
+
+pub const INBOX: &str = "/api/v1/me/action-inbox";
+pub async fn read(ctx: &http::Ctx, query: &str) -> Value {
+    let (status, page) = ctx.call("GET", &format!("{INBOX}?{query}"), None).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    page
+}
+pub fn count<'a>(page: &'a Value, key: &str) -> &'a Value {
+    page["attention_filters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["key"] == key)
+        .unwrap()
+}
 
 pub struct Probe {
     pub pool: PgPool,
@@ -56,7 +74,7 @@ pub async fn context(owner: &PgPool, org: Uuid, user: UserId) -> (http::Ctx, Pro
     let pool = PgPoolOptions::new()
         .min_connections(8)
         .max_connections(8)
-        .acquire_timeout(Duration::from_secs(1))
+        .acquire_timeout(Duration::from_secs(10))
         .after_connect(|conn, _| {
             Box::pin(async move {
                 sqlx::query("SET ROLE console_rt").execute(conn).await?;

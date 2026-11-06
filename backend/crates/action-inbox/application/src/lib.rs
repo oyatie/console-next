@@ -1,6 +1,8 @@
 //! Source-neutral action inbox application boundary.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod attention;
+pub use attention::{Attention, AttentionCount};
 mod projection;
 use projection::project_item;
 pub use projection::urgency;
@@ -103,6 +105,7 @@ pub trait ActionInboxSourcePort: Send + Sync {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ActionInboxItem {
+    pub age_days: i64,
     pub fold_key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<serde_json::Value>,
@@ -139,6 +142,7 @@ pub struct ActionInboxItem {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ActionInboxPage {
+    pub attention_filters: Vec<AttentionCount>,
     pub unavailable: Vec<ActionInboxSource>,
     pub counts: std::collections::BTreeMap<&'static str, InboxCount>,
     pub upcoming: Vec<ActionInboxItem>,
@@ -192,11 +196,17 @@ pub async fn list_action_inbox(
         async move { (source, port.list_source_page(source, query).await) }
     }))
     .await;
+    let mut incomplete = Vec::new();
     let mut pages = Vec::new();
     let mut unavailable = Vec::new();
     for (source, outcome) in outcomes {
         match outcome {
-            Ok(page) => pages.push(page),
+            Ok(page) => {
+                if !page.total_is_exact || page.has_more {
+                    incomplete.push(source);
+                }
+                pages.push(page);
+            }
             Err(_) => unavailable.push(source),
         }
     }
@@ -208,8 +218,16 @@ pub async fn list_action_inbox(
         limit,
         port.deadline_due_soon_days()?,
     );
+    for count in &mut page.attention_filters {
+        if count.key != Attention::All {
+            count.total_is_exact = count.key.is_exact(&incomplete, cursor.is_none());
+        }
+    }
     if !unavailable.is_empty() {
         page.total_is_exact = false;
+        for count in &mut page.attention_filters {
+            count.total_is_exact = false;
+        }
         for count in page.counts.values_mut() {
             count.total_is_exact = false;
         }
@@ -252,6 +270,12 @@ pub fn merge_pages(
         &items,
         cursor.is_none() && total_is_exact && !source_has_more,
     );
+    let mut attention_filters = attention::counts(
+        &items,
+        cursor.is_none() && total_is_exact && !source_has_more,
+    );
+    attention_filters[0].total = total;
+    attention_filters[0].total_is_exact = total_is_exact;
     let has_merged_more = items.len() > limit;
     items.truncate(limit);
     let next_cursor = (has_merged_more || source_has_more)
@@ -269,6 +293,7 @@ pub fn merge_pages(
         })
         .flatten();
     ActionInboxPage {
+        attention_filters,
         unavailable: Vec::new(),
         counts,
         upcoming,

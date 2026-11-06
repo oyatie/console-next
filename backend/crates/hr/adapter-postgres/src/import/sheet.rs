@@ -107,7 +107,7 @@ impl Targets<'_> {
 
     fn text(&self, row: &GridRow, target: &str) -> Option<String> {
         let text = row.text(self.column(target)?);
-        (!text.is_empty()).then_some(text)
+        (!text.is_empty() && !is_rrn_value(&text)).then_some(text)
     }
 }
 
@@ -201,18 +201,15 @@ pub fn sheet_rows(
             out.notes
                 .push(note("summary_row_skipped", Some(source_row), None));
         }
-        let name = targets
-            .text(row, "name")
-            .filter(|v| !summary && !is_rrn_value(v));
+        let name = targets.text(row, "name").filter(|_| !summary);
         let source_key = format!(
             "filename:{}|sheet:{}|row:{source_row}",
             ctx.filename, sheet.name
         );
         if let (Some(_), Some(column)) = (&name, targets.column("phone"))
-            && let Some(cell) = row.get(column)
-            && !cell.text().is_empty()
+            && let Some(text) = targets.text(row, "phone")
         {
-            match import_phone(&cell.text()) {
+            match import_phone(&text) {
                 Some(phone) => out.phones.push((source_key.clone(), phone)),
                 None => {
                     let at = cell_ref(column, row.index);
