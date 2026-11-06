@@ -269,7 +269,7 @@ tower = { workspace = true, features = ["util"] }
 # Builds the .xlsx fixtures for the import privacy tests (hr.rs).
 umya-spreadsheet = "3.0.0"
 webauthn-authenticator-rs = { workspace = true, features = ["softpasskey"] }
-webauthn-rs = { version = "0.5.5", features = ["danger-allow-state-serialisation"] }
+webauthn-rs = { version = "0.6.2", features = ["danger-allow-state-serialisation"] }
 
 [build-dependencies]
 serde_json = { workspace = true }
