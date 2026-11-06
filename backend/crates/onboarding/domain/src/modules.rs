@@ -32,6 +32,7 @@ pub fn readiness(f: &SetupFacts, phase: TenantPhase) -> Vec<Module> {
         ("home", None),
         ("org", None),
         ("access", None),
+        ("approvals", None),
         ("people", people),
         ("exits", operating),
         ("attendance", operating),

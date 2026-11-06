@@ -25,6 +25,9 @@ export const approvalPages = (query: Omit<ApprovalQuery, "cursor">) => ({
   getNextPageParam: (last: ApprovalPage) => last.next_cursor ?? undefined,
 });
 
-export const approvalDocumentQuery = (id: string) => read("/api/v1/approvals/{id}", () => unwrap(api.GET("/api/v1/approvals/{id}", { params: { path: { id } } })), { id });
+export const approvalDocumentQuery = (id: string) => read("/api/v1/approvals/{id}", async () => {
+  const document = await unwrap(api.GET("/api/v1/approvals/{id}", { params: { path: { id } } }));
+  return { ...document, ...present(document) };
+}, { id });
 export const decideApproval = (id: string, body: ApprovalDecision, key: string) =>
   unwrap(api.POST("/api/v1/approvals/{id}/decision", { params: { path: { id } }, headers: { "Idempotency-Key": key }, body }));
