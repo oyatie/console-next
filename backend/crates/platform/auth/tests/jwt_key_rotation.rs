@@ -8,7 +8,7 @@ use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, AuthError, JwtIssuer, JwtSettings, JwtVerifier};
 use jsonwebtoken::{Algorithm, EncodingKey, Header, decode_header, encode};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use sha2::{Digest, Sha256};
 use time::{Duration, OffsetDateTime};
@@ -20,7 +20,7 @@ struct Key {
 }
 
 fn key() -> Key {
-    let signing = SigningKey::random(&mut OsRng);
+    let signing = SigningKey::generate();
     Key {
         private_pem: signing.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
         public_pem: signing
@@ -79,7 +79,7 @@ fn token(issuer: &JwtIssuer) -> String {
 
 /// RFC 7638 §3 for an EC key, written out by hand: a second implementation.
 fn rfc7638(key: &Key) -> String {
-    let point = key.signing.verifying_key().to_encoded_point(false);
+    let point = key.signing.verifying_key().to_sec1_point(false);
     let json = format!(
         r#"{{"crv":"P-256","kty":"EC","x":"{}","y":"{}"}}"#,
         URL_SAFE_NO_PAD.encode(point.x().unwrap()),

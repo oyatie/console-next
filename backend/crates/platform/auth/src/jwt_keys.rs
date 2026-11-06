@@ -9,7 +9,7 @@ use jsonwebtoken::jwk::{
     EllipticCurveKeyType, Jwk, ThumbprintHash,
 };
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, decode_header};
-use p256::elliptic_curve::sec1::ToEncodedPoint;
+use p256::elliptic_curve::sec1::ToSec1Point;
 use p256::pkcs8::DecodePublicKey;
 
 use crate::AuthError;
@@ -110,7 +110,7 @@ impl KeySet {
             }
             let key = p256::PublicKey::from_public_key_pem(block)
                 .map_err(|err| invalid_key(&err.to_string()))?;
-            let point = key.to_encoded_point(false);
+            let point = key.to_sec1_point(false);
             let (Some(x), Some(y)) = (point.x(), point.y()) else {
                 return Err(invalid_key("not an uncompressed point"));
             };

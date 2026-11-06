@@ -14,7 +14,7 @@ use console_platform_db::{DbError, with_audits};
 use console_platform_realtime::{PgRealtimeHub, RealtimeHubConfig, RealtimeRestState};
 use console_platform_test_support::{seed_branch, seed_user};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -65,7 +65,7 @@ async fn a_change_subscribed_socket_gets_hello_change_and_pings(owner: PgPool) {
     let user = seed_user(&owner, "Reader", "SUPER_ADMIN", branch).await;
     let runtime = runtime_pool(&owner).await;
 
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let private = key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public = key
         .verifying_key()

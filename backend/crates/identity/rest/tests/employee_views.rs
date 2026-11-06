@@ -15,7 +15,7 @@ use console_platform_test_support::{
 };
 use p256::{
     ecdsa::SigningKey,
-    elliptic_curve::rand_core::OsRng,
+    elliptic_curve::Generate,
     pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding},
 };
 use serde_json::{Value, json};
@@ -32,7 +32,7 @@ struct Harness {
 }
 impl Harness {
     async fn new(pool: &PgPool) -> Self {
-        let key = SigningKey::random(&mut OsRng);
+        let key = SigningKey::generate();
         let private = key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public = key
             .verifying_key()

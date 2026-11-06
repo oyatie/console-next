@@ -27,7 +27,7 @@ use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifie
 mod governed;
 use governed::{command_role_pool, runtime_role_pool, seed_org_and_super_admin};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -274,7 +274,7 @@ async fn build(owner_pool: &PgPool) -> Http {
 
     // ONE keypair: two would make the second principal's token a 401, which
     // reads like an authz failure and is not one.
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_pem = signing_key
         .verifying_key()

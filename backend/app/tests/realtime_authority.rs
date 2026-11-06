@@ -10,7 +10,7 @@ use console_platform_realtime::{
 use console_platform_test_support::{seed_branch, seed_user};
 use p256::{
     ecdsa::SigningKey,
-    elliptic_curve::rand_core::OsRng,
+    elliptic_curve::Generate,
     pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding},
 };
 use serde_json::{Value, json};
@@ -85,7 +85,7 @@ impl Fixture {
         let notification = NotificationId::new();
         sqlx::query("INSERT INTO notifications(id,org_id,recipient_user_id,category,body,link) VALUES($1,$2,$3,'test','Current notice',$4)")
             .bind(*notification.as_uuid()).bind(*OrgId::one().as_uuid()).bind(*user.as_uuid()).bind(json!({"type":"screen","screen":"notifications"})).execute(&owner).await.unwrap();
-        let key = SigningKey::random(&mut OsRng);
+        let key = SigningKey::generate();
         let private = key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public = key
             .verifying_key()

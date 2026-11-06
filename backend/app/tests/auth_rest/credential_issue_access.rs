@@ -4,7 +4,7 @@ use super::*;
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn admin_issue_otp_preserves_live_code_without_access_authority(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -110,7 +110,7 @@ async fn admin_issue_otp_preserves_live_code_without_access_authority(pool: PgPo
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn admin_issue_otp_refuses_grants_committed_while_locking_authority(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
