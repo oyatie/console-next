@@ -61,6 +61,13 @@ it("documents readiness timestamps so the response guard rejects tuple encoding"
   })).toHaveLength(2);
 });
 
+it.each(["operator_approved_at", "started_at", "ended_at"])("documents every support lifecycle timestamp: %s", (field) => {
+  const check = (value: string | null) => responseTimestampProblems(timestampContract, "/api/v1/support-sessions", "get", 200, { sessions: [{ [field]: value }] });
+  expect(check("2026-11-05T03:31:02.238349+00:00")).toHaveLength(1);
+  expect(check("2026-11-05T03:31:02.238349Z")).toEqual([]);
+  expect(check(null)).toEqual([]);
+});
+
 it.each([
   [{ type: "integer" }, 1],
   [{ type: "number" }, 1.5],

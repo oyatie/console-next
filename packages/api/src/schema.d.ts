@@ -28840,6 +28840,12 @@ export interface components {
             expires_at: string | null;
             /** Format: date-time */
             tenant_approved_at: string | null;
+            /** Format: date-time */
+            operator_approved_at?: string | null;
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            ended_at?: string | null;
             decisions: components["schemas"]["SupportSessionDecision"][];
             records: components["schemas"]["SupportAccessRecord"][];
         };
