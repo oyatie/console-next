@@ -116,6 +116,7 @@ jobs:
           node --test scripts/d10-census.test.mjs
           python3 scripts/d10_evidence_test.py
           python3 scripts/d8_evidence_test.py
+          python3 scripts/states_evidence_test.py
           CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
@@ -616,13 +617,19 @@ jobs:
       - run: node scripts/d10-census.mjs > .cache/d10-census.json
       - run: python3 scripts/d10-evidence.py .cache/d10-evidence .cache/d10-census.json .cache/d7-evidence .cache/d10-input/*.json
       - run: python3 scripts/d8-evidence.py .cache/d8-evidence .cache/d7-evidence/e2e.json .cache/d8-input/*.json .cache/d10-input/*.json
+      - name: Produce route-state evidence from the existing reports
+        run: |
+          node scripts/d8-module-routes.mjs .cache/d8-routes.json
+          python3 scripts/states-evidence.py .cache/d8-evidence/states.json .cache/d8-routes.json .cache/d8-input/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
         with:
           name: d8-evidence
           path: .cache/d8-evidence/*.json
           include-hidden-files: true
           if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
         with:
           name: d10-evidence
           path: .cache/d10-evidence/*.json
