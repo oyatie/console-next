@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { ApiError } from "@console/api";
 import type { SupportReceipt } from "../support-reference";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "@console/i18n";
 import { EmptyState } from "../../ui/empty-state";
 import { Button } from "../../ui/button/button";
-import { chunk, reloadPage } from "../chunk-guard";
+import { reloadPage } from "../chunk-guard";
 import { requestSupportReference, supportReferenceFromError } from "../support-reference";
-
-const SupportReference = lazy(() => chunk(import("./support-reference")).then(m => ({ default: m.SupportReference })));
+import { SupportReference } from "./support-reference";
 
 export function CrashScreen({ error }: { error: unknown }) {
   const issued = supportReferenceFromError(error);
@@ -21,5 +20,5 @@ export function CrashScreen({ error }: { error: unknown }) {
   }, [error]);
   return <main className="page"><EmptyState alert title={t("common.crashed.title")} reason={t("common.crashed.reason")}
     actions={<Button variant="primary" onClick={reloadPage}>{t("common.crashed.action")}</Button>}
-    meta={<Suspense fallback={null}><SupportReference reference={issued ?? reference?.support_ref} at={error instanceof ApiError ? error.supportRefAt : reference?.support_ref_at} /></Suspense>} /></main>;
+    meta={<SupportReference reference={issued ?? reference?.support_ref} at={error instanceof ApiError ? error.supportRefAt : reference?.support_ref_at} />} /></main>;
 }
