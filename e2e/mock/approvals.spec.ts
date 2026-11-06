@@ -127,6 +127,86 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
+for (const width of [1280, 1440]) for (const theme of ["light", "dark"]) {
+  test(`approval columns preserve readable content at ${width}px ${theme}`, async ({ page }, info) => {
+    const longItem = {
+      ...item,
+      title: "전사 영업 조직 개편 및 인사 운영 체계 변경 승인요청",
+      document_no: "OC-2026-HR-1103-001",
+    };
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const mock = await mockScreen(page, screens[0], "empty");
+    await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({
+      json: { ...response(), items: Array.from({ length: 50 }, (_, i) => ({ ...longItem, id: `approval-${i + 1}` })) },
+    }));
+    await page.goto("/approvals");
+    const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
+    const rows = grid.getByRole("row").filter({ hasText: longItem.title });
+    await expect(rows).toHaveCount(50);
+    for (const preview of [false, true, false]) {
+      if (!preview) await expect(grid.getByRole("columnheader")).toHaveText([
+        t("approvals.field.documentNo"), t("approvals.col.title"), t("approvals.col.source"),
+        t("approvals.preview.route"), t("approvals.col.requester"), t("approvals.col.requestedAt"), t("approvals.col.status"),
+      ]);
+      await expect(grid.getByRole("columnheader", { name: t("approvals.col.title"), exact: true })).toBeVisible();
+      await expect(grid.getByRole("columnheader", { name: t("approvals.col.status"), exact: true })).toBeVisible();
+      const measurements = await rows.evaluateAll((elements, title) => elements.map(row => {
+        const cells = Array.from(row.querySelectorAll<HTMLElement>("td"));
+        const textBounds = (cell: HTMLElement) => {
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          return range.getBoundingClientRect();
+        };
+        const titleCell = cells.find(cell => cell.textContent === title)!;
+        const titleText = titleCell.querySelector("span") ?? titleCell;
+        const textNode = titleText.firstChild!;
+        const style = getComputedStyle(titleCell);
+        const ellipsis = titleText.scrollWidth > titleText.clientWidth ? parseFloat(style.fontSize) : 0;
+        const right = titleCell.getBoundingClientRect().right - parseFloat(style.paddingRight) - ellipsis;
+        let visibleCharacters = 0;
+        for (let i = 0; i < title.length; i++) {
+          const range = document.createRange();
+          range.setStart(textNode, i);
+          range.setEnd(textNode, i + 1);
+          if (range.getBoundingClientRect().right <= right) visibleCharacters++;
+        }
+        return {
+          height: row.getBoundingClientRect().height,
+          rowHeight: parseFloat(getComputedStyle(row).getPropertyValue("--row-h")),
+          visibleCharacters,
+          compact: cells.filter(cell => getComputedStyle(cell).display !== "none" && (cell.querySelector("code, time") || cell.dataset.card === "status")).map(cell => ({
+            text: cell.textContent,
+            clipped: (cell.firstElementChild ?? cell).scrollWidth > (cell.firstElementChild ?? cell).clientWidth,
+            textHeight: textBounds(cell).height,
+            lineHeight: parseFloat(getComputedStyle(cell).lineHeight),
+          })),
+        };
+      }), longItem.title);
+      for (const row of measurements) {
+        expect(row.height).toBeLessThanOrEqual(row.rowHeight + 1);
+        // Keep at least 40% of the 30-character subject readable beside its identities.
+        expect(row.visibleCharacters).toBeGreaterThanOrEqual(12);
+        for (const cell of row.compact) {
+          expect(cell.clipped, `${cell.text} is not clipped`).toBe(false);
+          expect(cell.textHeight, `${cell.text} stays on one line`).toBeLessThanOrEqual(cell.lineHeight + 1);
+        }
+      }
+      const bounds = await grid.evaluate(el => {
+        const card = el.closest("section")!;
+        return { table: el.getBoundingClientRect().right, card: card.getBoundingClientRect().right, overflow: card.scrollWidth - card.clientWidth };
+      });
+      expect(bounds.table).toBeLessThanOrEqual(bounds.card + 1);
+      expect(bounds.overflow).toBeLessThanOrEqual(1);
+      await fits(page, "approval list");
+      await page.screenshot({ path: info.outputPath(`approvals-columns-${width}-${theme}-${preview}.png`), fullPage: true });
+      if (!preview) await rows.first().click();
+      else await page.locator("[data-side-panel]").getByRole("button", { name: t("common.closePanel"), exact: true }).click();
+    }
+    expect(mock.unexpected).toEqual([]);
+  });
+}
+
 test("approval rows keep absent document numbers and routes unknown", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const mock = await mockScreen(page, screens[0], "empty");
