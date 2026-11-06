@@ -219,7 +219,7 @@ impl PgInspectionStore {
                     Some(serde_json::json!({
                         "schedule_id": schedule.id.to_string(),
                         "outcome": command.outcome.as_db_str(),
-                        "completed_at": command.completed_at.to_string(),
+                        "completed_at": console_kernel_core::rfc3339(command.completed_at)?,
                     })),
                 )
                 .with_org(org);
@@ -233,10 +233,10 @@ impl PgInspectionStore {
                     command.occurred_at,
                 )?
                 .with_snapshots(
-                    Some(schedule.audit_snapshot()),
+                    Some(schedule.audit_snapshot()?),
                     Some(serde_json::json!({
                         "status": InspectionScheduleStatus::Completed.as_db_str(),
-                        "completed_at": command.completed_at.to_string(),
+                        "completed_at": console_kernel_core::rfc3339(command.completed_at)?,
                         "completed_by": command.actor.to_string(),
                     })),
                 )
@@ -425,12 +425,12 @@ struct LockedSchedule {
 }
 
 impl LockedSchedule {
-    fn audit_snapshot(&self) -> serde_json::Value {
-        serde_json::json!({
+    fn audit_snapshot(&self) -> Result<serde_json::Value, KernelError> {
+        Ok(serde_json::json!({
             "status": self.status.as_db_str(),
-            "completed_at": self.completed_at.map(|value| value.to_string()),
+            "completed_at": self.completed_at.map(console_kernel_core::rfc3339).transpose()?,
             "completed_by": self.completed_by.map(|value| value.to_string()),
-        })
+        }))
     }
 }
 
@@ -630,4 +630,30 @@ fn push_branch_column_filter(
             builder.push(")");
         }
     };
+}
+
+#[cfg(test)]
+mod timestamp_tests {
+    use super::*;
+
+    #[test]
+    fn schedule_snapshot_normalizes_optional_completed_timestamp() {
+        let mut schedule = LockedSchedule {
+            id: InspectionScheduleId::new(),
+            branch_id: BranchId::new(),
+            equipment_id: EquipmentId::new(),
+            mechanic_id: UserId::new(),
+            status: InspectionScheduleStatus::Completed,
+            completed_at: Some(time::macros::datetime!(2026-11-05 12:31:02.238349 +09:00)),
+            completed_by: None,
+        };
+        assert_eq!(
+            schedule.audit_snapshot().unwrap()["completed_at"],
+            "2026-11-05T03:31:02.238349Z"
+        );
+        schedule.completed_at = None;
+        assert!(schedule.audit_snapshot().unwrap()["completed_at"].is_null());
+        schedule.completed_at = Some(time::macros::datetime!(-0001-01-01 00:00 UTC));
+        assert!(schedule.audit_snapshot().is_err());
+    }
 }

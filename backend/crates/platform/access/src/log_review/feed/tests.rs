@@ -2,11 +2,48 @@
 use super::*;
 
 #[test]
+fn search_cursor_binds_normalized_terms_without_embedding_personal_search_text() {
+    let org = OrgId::new();
+    let query = |search: &str, cursor: Option<&str>| -> Query {
+        serde_json::from_value(json!({"search":search,"cursor":cursor})).unwrap()
+    };
+    let q = query(" Historical~Actor ", None);
+    let unfiltered: Query = serde_json::from_value(json!({})).unwrap();
+    assert_eq!(
+        query("", None).prefix(org, "2026-09"),
+        unfiltered.prefix(org, "2026-09")
+    );
+    let prefix = q.prefix(org, "2026-09");
+    assert!(!prefix.contains("historical"));
+    assert_ne!(prefix, query("", None).prefix(org, "2026-09"));
+    let cursor = format!("{prefix}1234567890~123456789~{}", Uuid::new_v4());
+    assert!(
+        query("historical~ACTOR", Some(&cursor))
+            .cursor(org, "2026-09")
+            .is_ok()
+    );
+    for term in ["historical", "", "different"] {
+        assert_eq!(
+            query(term, Some(&cursor))
+                .cursor(org, "2026-09")
+                .unwrap_err()
+                .code,
+            "cursor_invalid"
+        );
+    }
+    assert_eq!(
+        query(" \t", None).prefix(org, "2026-09"),
+        query("", None).prefix(org, "2026-09")
+    );
+}
+
+#[test]
 fn cursor_round_trips_exact_timestamps_and_is_bound_to_the_query() {
     let org = OrgId::new();
     let id = Uuid::new_v4();
     let mut q = Query {
         period: Some("2026-09".into()),
+        search: None,
         flagged: false,
         cursor: None,
         limit: None,
@@ -35,6 +72,7 @@ fn malformed_cursor_components_refuse_without_panicking() {
     let org = OrgId::new();
     let mut q = Query {
         period: Some("2026-09".into()),
+        search: None,
         flagged: false,
         cursor: None,
         limit: None,

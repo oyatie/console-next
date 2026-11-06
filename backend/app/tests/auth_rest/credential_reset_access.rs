@@ -4,7 +4,7 @@ use super::*;
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn credential_reset_requires_authority_over_the_targets_access_grants(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

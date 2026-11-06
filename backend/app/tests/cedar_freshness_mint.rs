@@ -41,7 +41,7 @@ use console_platform_authz::{
 };
 use console_platform_db::read_subject_authz_freshness;
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -170,7 +170,7 @@ struct Keys {
 }
 
 fn keypair() -> Keys {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     Keys {
         private_pem: signing_key
             .to_pkcs8_pem(LineEnding::LF)

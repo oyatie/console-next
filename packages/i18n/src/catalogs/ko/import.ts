@@ -242,7 +242,7 @@ export const koImport = {
   "import.error.mapping_header_row_out_of_range": "시트에 없는 행을 머리글로 골랐습니다.",
   "import.error.mapping_name_required": "성명 열을 하나 선택하십시오.",
   "import.error.mapping_duplicate_target": "같은 직원 항목을 두 열에 골랐습니다.",
-  "import.timedOut": "{rows, number}행을 한 번에 반영하다 서버 제한 시간을 넘겼습니다. 다시 모의 반영하면 이미 들어간 행은 변경 없음으로 나옵니다. 파일을 1,000행 안팎으로 나누어 차례로 가져오십시오.",
+  "import.timedOut": "{rows, number}행 반영이 완료되기 전에 서버 제한 시간을 넘겼습니다. 아무 행도 저장하지 않았습니다. 모의 반영으로 돌아가 확인한 뒤 다시 반영하십시오.",
   "import.crumb": "가져오기",
   "import.steps": "가져오기 단계",
   "import.close": "가져오기 닫기",

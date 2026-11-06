@@ -8,6 +8,7 @@ use console_attendance_application::{
 };
 use console_attendance_domain::AttendanceDateRange;
 use serde::{Deserialize, Serialize};
+use time::{OffsetDateTime, UtcOffset};
 
 use crate::{
     AttendanceQuery, AttendanceRestState, RestError, parse_date, parse_month_range, principal,
@@ -38,7 +39,8 @@ struct OwnExceptionResolutionDto {
     reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     ot_hours: Option<String>,
-    resolved_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    resolved_at: OffsetDateTime,
 }
 
 impl From<OwnExceptionResolutionRead> for OwnExceptionResolutionDto {
@@ -47,7 +49,7 @@ impl From<OwnExceptionResolutionRead> for OwnExceptionResolutionDto {
             action: value.action.as_db().to_owned(),
             reason: value.reason,
             ot_hours: value.ot_hours,
-            resolved_at: rfc3339(value.resolved_at),
+            resolved_at: value.resolved_at.to_offset(UtcOffset::UTC),
         }
     }
 }
@@ -59,12 +61,14 @@ struct OwnExceptionDto {
     kind: String,
     status: String,
     work_date: String,
-    occurred_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    occurred_at: OffsetDateTime,
     detail: String,
     evidence: Vec<OwnEvidenceDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     resolution: Option<OwnExceptionResolutionDto>,
-    created_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
 }
 
 #[derive(Serialize)]
@@ -82,7 +86,7 @@ impl From<OwnAttendanceExceptionRead> for OwnExceptionDto {
             kind: value.kind.as_db().to_owned(),
             status: value.status,
             work_date: value.work_date.to_string(),
-            occurred_at: rfc3339(value.occurred_at),
+            occurred_at: value.occurred_at.to_offset(UtcOffset::UTC),
             detail: value.detail,
             evidence: value
                 .evidence
@@ -93,7 +97,7 @@ impl From<OwnAttendanceExceptionRead> for OwnExceptionDto {
                 })
                 .collect(),
             resolution: value.resolution.map(OwnExceptionResolutionDto::from),
-            created_at: rfc3339(value.created_at),
+            created_at: value.created_at.to_offset(UtcOffset::UTC),
         }
     }
 }
@@ -113,7 +117,8 @@ struct OwnWeek52Dto {
     projected_hours: f64,
     tone: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    acknowledged_at: Option<String>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    acknowledged_at: Option<OffsetDateTime>,
 }
 
 #[derive(Serialize)]
@@ -158,7 +163,7 @@ impl From<OwnWeek52Read> for OwnWeek52Dto {
                 Week52Tone::Unknown => "UNKNOWN",
             }
             .to_owned(),
-            acknowledged_at: value.acknowledged_at.map(rfc3339),
+            acknowledged_at: value.acknowledged_at.map(|at| at.to_offset(UtcOffset::UTC)),
         }
     }
 }
@@ -281,19 +286,53 @@ fn validation_message(message: impl Into<String>) -> RestError {
     )
 }
 
-pub(super) fn rfc3339(value: time::OffsetDateTime) -> String {
-    value
-        .to_offset(time::UtcOffset::UTC)
-        .format(&time::format_description::well_known::Rfc3339)
-        .unwrap_or_else(|_| value.to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use console_attendance_application::{OwnWeek52Read, Week52Tone};
     use serde_json::json;
     use time::{Date, Month};
+
+    #[test]
+    fn own_attendance_timestamps_normalize_offsets_to_utc() {
+        let at = time::macros::datetime!(2026-11-05 12:31:02.238349 +09:00);
+        let value = serde_json::to_value(OwnExceptionDto::from(OwnAttendanceExceptionRead {
+            employee_id: uuid::Uuid::nil(),
+            id: uuid::Uuid::nil(),
+            code: "AT-1".into(),
+            kind: console_attendance_domain::ExceptionKind::Late,
+            status: "RESOLVED".into(),
+            work_date: at.date(),
+            occurred_at: at,
+            detail: "late".into(),
+            evidence: vec![],
+            created_at: at,
+            resolution: Some(OwnExceptionResolutionRead {
+                action: console_attendance_domain::ResolutionAction::Confirm,
+                reason: "verified".into(),
+                ot_hours: None,
+                resolved_at: at,
+            }),
+        }))
+        .unwrap();
+        let week = serde_json::to_value(OwnWeek52Dto::from(OwnWeek52Read {
+            employee_id: uuid::Uuid::nil(),
+            week_start: at.date(),
+            current_hours: 40.0,
+            projected_hours: 40.0,
+            tone: Week52Tone::Ok,
+            acknowledged_at: Some(at),
+        }))
+        .unwrap();
+        for value in [
+            &value["occurred_at"],
+            &value["created_at"],
+            &value["resolution"]["resolved_at"],
+            &week["acknowledged_at"],
+        ] {
+            assert_eq!(value, "2026-11-05T03:31:02.238349Z");
+        }
+    }
 
     #[test]
     fn own_week52_available_response_has_only_status_and_projection() {

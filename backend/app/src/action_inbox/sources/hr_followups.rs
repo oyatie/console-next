@@ -91,6 +91,7 @@ pub(crate) async fn page(
             let mut count = counted_employees("SELECT count(*)", &filters);
             boundary(&mut count);
             let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
+            let total = usize::try_from(total).unwrap_or(0);
             let due = if contract {
                 "((p.contract_end_date + TIME '23:59:59.999999') AT TIME ZONE 'Asia/Seoul')"
             } else {
@@ -145,7 +146,7 @@ pub(crate) async fn page(
                 .collect();
             Ok(ActionInboxSourcePage {
                 items,
-                total: usize::try_from(total).unwrap_or(0),
+                total,
                 total_is_exact: true,
                 has_more,
             })

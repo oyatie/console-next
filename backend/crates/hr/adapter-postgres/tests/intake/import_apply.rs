@@ -197,10 +197,21 @@ async fn two_applies_at_once_write_and_settle_once(pool: PgPool) {
         im.apply(run, &plan.dry_run_digest),
         im.apply(run, &plan.dry_run_digest)
     );
-    let mut inserted = [a.unwrap().inserted, b.unwrap().inserted];
-    inserted.sort_unstable();
-    // The second is the stored report of the first (a replay), whichever won.
-    assert_eq!(inserted, [2, 2]);
+    assert!(a.is_ok() || b.is_ok(), "one driver must finish the run");
+    for result in [a, b] {
+        match result {
+            Ok(report) => assert_eq!(report.inserted, 2),
+            Err(error) => assert_eq!(
+                (error.status.as_u16(), error.code),
+                (409, "apply_in_progress")
+            ),
+        }
+    }
+    // A concurrent synchronous request may observe the running job; its retry replays the report.
+    assert_eq!(
+        im.apply(run, &plan.dry_run_digest).await.unwrap().inserted,
+        2
+    );
     let counts: (i64, i64) = sqlx::query_as(
         "SELECT (SELECT count(*) FROM employees WHERE org_id = $1), \
                 (SELECT count(*) FROM employee_lifecycle_events \

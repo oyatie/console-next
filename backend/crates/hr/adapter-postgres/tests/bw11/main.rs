@@ -231,6 +231,9 @@ async fn a_stale_version_or_a_date_before_hire_is_refused(pool: PgPool) {
     assert_eq!((status, code.as_str()), (409, "stale_record"));
     assert_eq!(refusals[0]["event_type"], "PROMOTE");
     assert_eq!(refusals[0]["recorded_by"], "HR 담당");
+    let recorded = refusals[0]["recorded_at"].as_str().unwrap();
+    assert!(recorded.ends_with('Z'), "{recorded}");
+    time::OffsetDateTime::parse(recorded, &time::format_description::well_known::Rfc3339).unwrap();
     f.record(promote(
         "과장",
         "2026-09-02",

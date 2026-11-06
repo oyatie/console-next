@@ -85,8 +85,10 @@ export function summarize(route: string, cache: "cold" | "warm", samples: Sample
   const lcp = samples.flatMap(s => s.lcp_ms === null ? [] : [s.lcp_ms]);
   const n_plus_one = [...new Set(samples.flatMap(s => s.repeated_requests))];
   const compliance = samples.length ? lcp.filter(n => n <= budget.ms).length / samples.length : 0;
-  return { route, cache, environment: "live", ...budget.shape, status: complete ? "pass" : "unknown",
-    lcp_p95_ms: percentile(lcp, 0.95), budget_ms: budget.ms, target: budget.target, compliance,
+  const lcp_p95_ms = percentile(lcp, 0.95);
+  const withinBudget = lcp_p95_ms !== null && lcp_p95_ms <= budget.ms && compliance >= budget.target && !n_plus_one.length;
+  return { route, cache, environment: "live", ...budget.shape, status: !complete ? "unknown" : withinBudget ? "pass" : "fail",
+    lcp_p95_ms, budget_ms: budget.ms, target: budget.target, compliance,
     n_plus_one, sample_count: samples.length, samples };
 }
 

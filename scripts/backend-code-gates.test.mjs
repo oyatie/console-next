@@ -8,7 +8,7 @@ import test from "node:test";
 import yaml from "js-yaml";
 
 const workflow = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
-const step = workflow.jobs.backend.steps.find((s) => s.name === "Backend code gates (release parity)");
+const step = workflow.jobs["backend-gates"].steps.find((s) => s.name === "Backend code gates (release parity)");
 
 function run({ fail = "", buildFailure = false, empty = false } = {}) {
   assert.ok(step, "the required backend job must run the release code gates");
@@ -42,7 +42,7 @@ if [[ "$1" == run && "$*" == *"console-gate-$FAIL_GATE" && -n "$FAIL_GATE" ]]; t
 }
 
 const commands = [
-  "build --locked --offline -p console-gate-alpha -p console-gate-beta -p console-gate-gamma",
+  "build --locked -p console-gate-alpha -p console-gate-beta -p console-gate-gamma",
   ...["alpha", "beta", "gamma"].map((name) => `run -q --locked --offline -p console-gate-${name}`),
 ];
 

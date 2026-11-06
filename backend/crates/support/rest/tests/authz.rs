@@ -15,7 +15,7 @@ use console_support_domain::{TicketCategory, TicketPriority};
 use console_support_rest::{SupportRestState, router};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -32,7 +32,7 @@ const TEST_AUDIENCE: &str = "console-api";
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn list_tickets_resolves_branch_scope_from_db_not_token_claim(pool: PgPool) {
     console_platform_request_context::scope_org(console_kernel_core::OrgId::one(), async move {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = SigningKey::generate();
         let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public_key_pem = signing_key
             .verifying_key()

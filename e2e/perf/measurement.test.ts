@@ -59,7 +59,7 @@ describe("the budget gate cannot read missing or failed measurements as green", 
   ] as [string, Partial<Sample>][]) {
     test(name, () => {
       const row = summarize("/people", "warm", samples().map(s => ({ ...s, ...change })));
-      expect(row.status).toBe(change.lcp_ms === null || change.errors?.length ? "unknown" : "pass");
+      expect(row.status).toBe(change.lcp_ms === null || change.errors?.length ? "unknown" : "fail");
       expect(() => assertBudget(row)).toThrow(/\/people warm/);
     });
   }
@@ -68,6 +68,7 @@ describe("the budget gate cannot read missing or failed measurements as green", 
     values[0] = { ...sample, lcp_ms: budget.ms + 500 };
     const row = summarize("/", "cold", values);
     expect(row.lcp_p95_ms).toBeLessThan(budget.ms);
+    expect(row.status).toBe("fail");
     expect(() => assertBudget(row)).toThrow();
   });
   test("empty and undersampled rows are unknown", () => {

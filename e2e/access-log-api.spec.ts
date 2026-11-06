@@ -22,6 +22,28 @@ test("access records serve the current tenant month and refuse malformed paging"
   const empty = await api("/access/access-log?period=2020-01&flagged=true");
   expect(empty.status()).toBe(200);
   expect(await empty.json()).toMatchObject({ items: [], next_cursor: null, totals: { events: 0, flagged: 0 } });
+  const noMatch = await api("/access/access-log?search=nonexistent-access-record");
+  expect(noMatch.status()).toBe(200);
+  expect(await noMatch.json()).toMatchObject({ items: [], next_cursor: null, totals: { events: 0, flagged: 0 } });
+  const searched = await api("/access/access-log?search=access_log.review_read&limit=1");
+  expect(searched.status()).toBe(200);
+  const filtered = await searched.json() as { items: { action: string }[]; next_cursor: string; totals: { events: number } };
+  expect(filtered.items.map(row => row.action)).toEqual(["access_log.review_read"]);
+  expect(filtered.totals.events).toBeGreaterThanOrEqual(2);
+  expect(filtered.next_cursor).toBeTruthy();
+  for (const search of ["", "&search=employee"]) {
+    const refused = await api(`/access/access-log?cursor=${encodeURIComponent(filtered.next_cursor)}${search}`);
+    expect(refused.status()).toBe(422);
+    expect(await codeOf(refused)).toBe("cursor_invalid");
+  }
+  const next = await api(`/access/access-log?search=access_log.review_read&limit=1&cursor=${encodeURIComponent(filtered.next_cursor)}`);
+  expect(next.status()).toBe(200);
+  expect(await next.json()).toMatchObject({ totals: filtered.totals, items: [{ action: "access_log.review_read" }] });
+  for (const term of ["actor\0name", "\t", "a\u007fb", "가".repeat(201), " ".repeat(201)]) {
+    const response = await api(`/access/access-log?search=${encodeURIComponent(term)}`);
+    expect(response.status()).toBe(400);
+    expect(await codeOf(response)).toBe("search_invalid");
+  }
   for (const [query, code] of [
     ["period=2026-13", "period_invalid"],
     ["limit=201", "limit_out_of_range"],

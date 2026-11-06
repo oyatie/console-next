@@ -14,6 +14,6 @@ export const enImportJob: Record<keyof typeof koImportJob, string> = {
   "importJob.error.rows_changed_since_preview": "People changed after the dry run, so nothing was written. Run the dry run again.",
   "importJob.error.dry_run_digest_mismatch": "The approved dry run is no longer this import's latest, so nothing was written. Run the dry run again.",
   "importJob.error.apply_interrupted": "The apply stopped before writing anything. Go back to the dry run and apply again.",
-  "importJob.error.other": "The apply stopped. Run the dry run again: rows already in come back as unchanged.",
+  "importJob.error.other": "The apply stopped. Nothing was written. Go back to the dry run, review it, and apply again.",
   "importJob.started": "The roster apply has started",
 };

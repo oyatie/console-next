@@ -930,7 +930,7 @@ export interface paths {
         };
         /**
          * Tenant access records with monthly flag totals
-         * @description Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period and flagged filter. Defaults to the current month in the configured review time zone. Read failures return no records if their access record cannot be stored.
+         * @description Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
          */
         get: operations["listAccessLog"];
         put?: never;
@@ -14969,6 +14969,8 @@ export interface components {
         };
         /** @description One unified actionable item. Field names mirror the overview prototype's items[] shape. Source-partial fields (site/who/due/submitted) are absent when the originating source does not carry them. */
         ActionInboxItem: {
+            /** @description Korean calendar days since this item's own creation, using the database clock; never the tenant's age. */
+            age_days?: number;
             /** @description Server identity of kind, subject and source case (insurance group when present); never derived from display text. */
             fold_key?: string;
             /** @description "{kind}:{uuid}" — source-namespaced so ids never collide. */
@@ -14998,7 +15000,7 @@ export interface components {
             context?: {
                 /** @description Optional physical work site, separate from the statutory placement path. */
                 worksite_name?: string;
-                /** @description Total visible records for this review kind, under the same reach and snapshot. */
+                /** @description Exact visible total for this review kind under the same reach and snapshot; omitted for bounded counts. */
                 review_count?: number;
                 register?: {
                     missing_fields: string[];
@@ -15054,6 +15056,13 @@ export interface components {
             label?: string;
         };
         ActionInboxResponse: {
+            /** @description Home counts over the same authorized source read, independent of the selected attention view. Subset counts are lower bounds for bounded or continued source prefixes; only contributing sources affect subset exactness. Unavailable sources make every count inexact. All uses source totals, or the turn count when filter=turn. Counts are authoritative on the first page only; continuation pages describe source prefixes, not the whole inbox. */
+            attention_filters?: {
+                /** @enum {string} */
+                key: "all" | "approvals" | "today" | "overdue";
+                total: number;
+                total_is_exact: boolean;
+            }[];
             items: components["schemas"]["ActionInboxItem"][];
             /** @description Live visible item count across sources admitted by as_of; inspect total_is_exact before treating it as authoritative. */
             total: number;
@@ -15068,7 +15077,7 @@ export interface components {
                 source: string;
                 support_reference: string;
             }[];
-            /** @description Counts from the same server traversal. Inexact values are lower bounds. */
+            /** @description Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. */
             counts: {
                 [key: string]: {
                     total: number;
@@ -32748,6 +32757,8 @@ export interface operations {
     listAccessLog: {
         parameters: {
             query?: {
+                /** @description Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Rejects control characters and more than 200 Unicode characters before trimming surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid. */
+                search?: string;
                 period?: string;
                 flagged?: boolean;
                 cursor?: string;
@@ -32759,13 +32770,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Monthly totals and one keyset page. */
+            /** @description Search-filtered monthly totals and one keyset page. The flagged filter affects items only. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["AccessLogPage"];
+                };
+            };
+            /** @description search_invalid — search contains control characters or exceeds the character limit. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -49234,6 +49254,8 @@ export interface operations {
     listMyActionInbox: {
         parameters: {
             query?: {
+                /** @description Home attention view over the same authorized work. Approvals are pending decisions; today means an actionable source deadline on today's Korean calendar date; overdue means that source deadline has expired (including statutory-register deadlines). All preserves filter=all or filter=turn; the other attention views take precedence. Counts honor filter=turn for Home; other saved views require attention to be omitted. */
+                attention?: "all" | "approvals" | "today" | "overdue";
                 /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
                 filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures";
                 /** @description Page size, clamped server-side to 1..=200. */
@@ -49256,8 +49278,17 @@ export interface operations {
                     "application/json": components["schemas"]["ActionInboxResponse"];
                 };
             };
+            /** @description An unknown attention or saved-filter value was supplied. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
             401: components["responses"]["Unauthorized"];
-            /** @description The action-inbox cursor is malformed. */
+            /** @description The cursor is malformed or attention was combined with a saved filter other than all or turn. */
             422: {
                 headers: {
                     [name: string]: unknown;

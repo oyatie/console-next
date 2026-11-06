@@ -7,7 +7,7 @@ pub(super) struct Keys {
 }
 
 pub(super) fn gen_keys() -> Keys {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     Keys {
         private_pem: signing_key
             .to_pkcs8_pem(LineEnding::LF)

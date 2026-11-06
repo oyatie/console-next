@@ -78,6 +78,22 @@ pub(crate) async fn user_context(
     headers: &HeaderMap,
     allow_enrollment: bool,
 ) -> Result<(Uuid, OrgId, bool), RestError> {
+    let claims = direct_session_claims(services, headers)?;
+    let (user, org) = console_platform_request_context::validate_current_claims(pool, &claims)
+        .await
+        .map_err(rest_error_from_request_context)?;
+    // An enrollment session reaches only the enrollment surface, here as well
+    // as at the app's path layer.
+    if claims.enrollment && !allow_enrollment {
+        return Err(RestError::passkey_required());
+    }
+    Ok((*user.as_uuid(), org, claims.enrollment))
+}
+
+fn direct_session_claims(
+    services: &AuthServices,
+    headers: &HeaderMap,
+) -> Result<console_platform_auth::AccessClaims, RestError> {
     let token = bearer_token(headers)?;
     let claims = services
         .jwt_verifier
@@ -92,15 +108,7 @@ pub(crate) async fn user_context(
             "delegated sessions cannot manage account credentials or consent",
         ));
     }
-    let (user, org) = console_platform_request_context::validate_current_claims(pool, &claims)
-        .await
-        .map_err(rest_error_from_request_context)?;
-    // An enrollment session reaches only the enrollment surface, here as well
-    // as at the app's path layer.
-    if claims.enrollment && !allow_enrollment {
-        return Err(RestError::passkey_required());
-    }
-    Ok((*user.as_uuid(), org, claims.enrollment))
+    Ok(claims)
 }
 
 pub(crate) fn session_family_from_headers(
@@ -168,6 +176,7 @@ pub(crate) async fn principal_from_headers(
     services: &AuthServices,
     headers: &HeaderMap,
 ) -> Result<Principal, RestError> {
+    direct_session_claims(services, headers)?;
     console_platform_request_context::resolve_principal(&services.jwt_verifier, pool, headers)
         .await
         .map_err(rest_error_from_request_context)

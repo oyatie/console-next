@@ -1,7 +1,9 @@
 //! REST API for Location Information Act consent controls.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod ledger_export;
 mod openapi;
+use ledger_export::ledger_csv;
 pub use openapi::OPENAPI_FRAGMENT;
 pub mod statutory;
 
@@ -963,7 +965,9 @@ async fn export_ledger_csv(
         .await
         .map_err(RestError::from_store)?;
 
-    let mut response = ledger_csv(&page.items).into_response();
+    let mut response = ledger_csv(&page.items)
+        .map_err(RestError::from_kernel)?
+        .into_response();
     response.headers_mut().insert(
         header::CONTENT_TYPE,
         HeaderValue::from_static("text/csv; charset=utf-8"),
@@ -1231,40 +1235,6 @@ fn resolve_requested_branch(
         BranchScope::Branches(_) | BranchScope::All => Err(RestError::from_kernel(
             KernelError::validation("branch_id is required"),
         )),
-    }
-}
-
-fn ledger_csv(items: &[LocationConsentLedgerEntry]) -> String {
-    let mut csv =
-        "id,consent_id,user_id,branch_id,actor,action,from_status,to_status,occurred_at,created_at\n"
-            .to_owned();
-    for item in items {
-        let actor = item
-            .actor
-            .map(|actor| actor.to_string())
-            .unwrap_or_default();
-        csv.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{}\n",
-            csv_field(&item.id),
-            csv_field(&item.consent_id),
-            csv_field(&item.user_id.to_string()),
-            csv_field(&item.branch_id.to_string()),
-            csv_field(&actor),
-            csv_field(&item.action),
-            csv_field(item.from_status.as_db_str()),
-            csv_field(item.to_status.as_db_str()),
-            csv_field(&item.occurred_at.to_string()),
-            csv_field(&item.created_at.to_string()),
-        ));
-    }
-    csv
-}
-
-fn csv_field(value: &str) -> String {
-    if value.contains([',', '"', '\n', '\r']) {
-        format!("\"{}\"", value.replace('"', "\"\""))
-    } else {
-        value.to_owned()
     }
 }
 

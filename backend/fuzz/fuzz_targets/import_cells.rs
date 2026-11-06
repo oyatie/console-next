@@ -29,29 +29,10 @@ fuzz_target!(|bytes: &[u8]| {
     let _ = pii::is_stripped_zero_rrn(text);
     let _ = rrn::contains_rrn_shaped(text);
     let scrubbed = rrn::is_rrn_value(text);
-    // FZ-1 (known, pinned by hr/domain/tests/fuzz_regressions.rs): 13 bytes with a
-    // multi-byte character across byte 6 panic in `Rrn::parse`. Delete when that passes.
-    let whole = text.trim();
-    let whole = whole.strip_suffix(".0").unwrap_or(whole);
-    let fz1 = whole.len() == 13 && !whole.contains('-') && !whole.is_char_boundary(6);
-    if fz1 {
-        return;
-    }
     if let Ok(value) = Rrn::parse(text) {
         // A cell the vault would seal as an RRN is one the PII scrub catches too.
-        // FZ-4 (known, pinned): `Rrn::parse` also takes a hyphen anywhere and
-        // trailing control whitespace, which the scrub does not; checked for the
-        // canonical shapes only until that test passes.
-        let b = whole.as_bytes();
-        let canonical = (b.len() == 13 && b.iter().all(u8::is_ascii_digit))
-            || (b.len() == 14
-                && b[6] == b'-'
-                && whole
-                    .replacen('-', "", 1)
-                    .bytes()
-                    .all(|c| c.is_ascii_digit()));
         assert!(
-            scrubbed || !canonical,
+            scrubbed,
             "Rrn::parse accepts {text:?} but is_rrn_value misses it"
         );
         let digits = value.digits().to_owned();

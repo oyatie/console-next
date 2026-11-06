@@ -70,6 +70,7 @@ async fn websocket_handler(
         last_event_id: query.last_event_id.filter(|seq| *seq >= 0),
     };
     let changes = query.changes;
+    let lease = state.hub.acquire_ws(&reader)?;
     Ok(ws
         // Browser clients carry the bearer token as a `Sec-WebSocket-Protocol`
         // subprotocol pair (`bearer, <token>`); the WebSocket handshake REQUIRES
@@ -77,8 +78,16 @@ async fn websocket_handler(
         // complete the handshake (without this the browser aborts with "Sent
         // non-empty 'Sec-WebSocket-Protocol' header but no response was received").
         .protocols(["bearer"])
-        .on_upgrade(move |socket| {
-            websocket_session(state, reader, token, deadline, (changes, from), socket)
+        .on_upgrade(move |socket| async move {
+            websocket_session(
+                state,
+                reader,
+                token,
+                deadline,
+                (changes, from, lease),
+                socket,
+            )
+            .await;
         })
         .into_response())
 }
@@ -88,7 +97,7 @@ async fn websocket_session(
     reader: ChangeReader,
     token: String,
     deadline: tokio::time::Instant,
-    (changes, from): (bool, StreamFrom),
+    (changes, from, mut lease): (bool, StreamFrom, crate::limits::WsLease),
     mut socket: WebSocket,
 ) {
     let connection = if changes {
@@ -108,6 +117,7 @@ async fn websocket_session(
         }
     };
     let (connection_id, mut events_rx, mut disconnect_rx) = connection.into_parts();
+    lease.connection = Some(connection_id);
     let mut recheck = Recheck::new(state.session_recheck_interval);
     // Server ping: Cloudflare's WS idle cutoff is undocumented, so keep the
     // socket busy at the stream heartbeat (`infra/realtime-transports.md` §2).
@@ -184,6 +194,7 @@ async fn websocket_session(
     };
 
     state.hub.remove_connection(connection_id).await;
+    lease.connection = None;
     if let Some(close) = close {
         send_close(&mut socket, close).await;
     }

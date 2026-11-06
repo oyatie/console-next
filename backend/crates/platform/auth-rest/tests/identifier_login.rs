@@ -16,7 +16,7 @@ use console_platform_auth_rest::{
 use console_platform_test_support::runtime_role_pool;
 use console_platform_test_support::soft_passkey::{SoftKey, passkey_service};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -29,7 +29,7 @@ use uuid::Uuid;
 mod unusable;
 
 fn state(pool: PgPool) -> AuthRestState {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     AuthRestState::new(
         pool,
         AuthRestConfig {

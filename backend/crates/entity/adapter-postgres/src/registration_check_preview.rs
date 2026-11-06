@@ -100,7 +100,7 @@ impl PgEntityStore {
                 return Ok((serde_json::from_value(value)?,vec![]));
             }
             let admitted=admit(tx,WriteClass::EntityStructure).await?;
-            sqlx::query("UPDATE entity_commands SET outcome=$2 WHERE command_id=$1").bind(actor.command_id).bind(json!({"preview":answer,"checked_at":checked_at.to_string()})).execute(tx.as_mut()).await?;
+            sqlx::query("UPDATE entity_commands SET outcome=$2 WHERE command_id=$1").bind(actor.command_id).bind(json!({"preview":answer,"checked_at":console_kernel_core::rfc3339(checked_at)?})).execute(tx.as_mut()).await?;
             let event=audit(&actor,"business_registration.check_preview","business_registration_preview",actor.command_id.ok_or_else(|| Refusal::field("Idempotency-Key","required"))?,admitted,json!({"kind":kind,"fields_sent":answer.fields_sent,"purpose":"registration_evidence"}))?;
             Ok((answer,vec![event]))
         })).await

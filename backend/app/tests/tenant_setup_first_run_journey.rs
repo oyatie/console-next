@@ -16,7 +16,7 @@ use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use console_platform_test_support::soft_passkey::SoftKey;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -341,7 +341,7 @@ async fn one_person_goes_from_an_empty_tenant_to_operating(pool: PgPool) {
 }
 
 fn keys() -> (String, String) {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     (
         key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
         key.verifying_key()

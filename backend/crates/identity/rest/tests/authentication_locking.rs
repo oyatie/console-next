@@ -17,7 +17,7 @@ use console_platform_auth_rest::{
 };
 use p256::{
     ecdsa::SigningKey,
-    elliptic_curve::rand_core::OsRng,
+    elliptic_curve::Generate,
     pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding},
 };
 use serde_json::{Value, json};
@@ -90,7 +90,7 @@ struct Keys {
 }
 impl Keys {
     fn new() -> Self {
-        let key = SigningKey::random(&mut OsRng);
+        let key = SigningKey::generate();
         Self {
             private: key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
             public: key
