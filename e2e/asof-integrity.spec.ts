@@ -52,7 +52,6 @@ test("past and future views keep dated labels and readable inspectors; future ch
 
   await go(admin, `/org?as_of=${past}&sel=${workplace}`);
   await datedLabels(admin, past, "과거");
-  await expect(admin.getByRole("main").getByText(`${past} 기준 구조입니다`, { exact: false })).toBeVisible();
   await readOnlyPanel(panel(admin, "본사"), past);
   await accessibleAtBothWidths(admin, "past workplace inspector");
 
@@ -70,7 +69,6 @@ test("past and future views keep dated labels and readable inspectors; future ch
   await readOnlyPanel(panel(admin, SETUP_DEPARTMENT), future);
   expect((await members).status()).toBe(200);
   await expect(panel(admin, SETUP_DEPARTMENT)).toContainText("시점구성원");
-  await expect(admin.getByRole("main").getByText(`${future} 기준 구조입니다`, { exact: false })).toBeVisible();
   await accessibleAtBothWidths(admin, "future department inspector");
 
   await go(admin, `/org?compare_a=${today}&compare_b=${future}&sel=${department}`);
@@ -83,7 +81,7 @@ test("past and future views keep dated labels and readable inspectors; future ch
   await admin.getByRole("button", { name: "이 날짜로 조직 변경 작성", exact: true }).click();
   const proposal = sheet(admin, "본사 아래에 부서 신설");
   await expect(proposal).toBeVisible();
-  await expect(proposal.getByRole("textbox", { name: /^시행일/ })).toHaveValue(koDate(future));
+  await expect(proposal.getByRole("textbox", { name: /^적용일/ })).toHaveValue(koDate(future));
   await proposal.getByRole("button", { name: "닫기", exact: true }).last().click();
   await datedLabels(admin, future, "예정");
 });

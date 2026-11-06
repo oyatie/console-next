@@ -80,3 +80,46 @@ async fn every_route_returns_a_coded_refusal_with_a_support_reference(pool: PgPo
         .unwrap();
     assert_eq!(count, 0);
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn precondition_http_returns_only_readiness_and_refuses_an_ungranted_actor(pool: PgPool) {
+    let org = OrgId::new();
+    let actor = seed_org_and_super_admin(&pool, *org.as_uuid(), "certificate-precondition").await;
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE org_id=$1 AND id=$2")
+        .bind(org.as_uuid())
+        .bind(actor.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let employee: Uuid = sqlx::query_scalar("INSERT INTO employees(org_id,company,name,hire_date,source_filename,source_sheet,source_row,source_key) VALUES($1,'Employer','Employee','2020-01-01','test','test',1,$2) RETURNING id")
+        .bind(org.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(&pool).await.unwrap();
+    let lower = UserId::new();
+    sqlx::query("INSERT INTO users(id,org_id,display_name,roles) VALUES($1,$2,'Unassigned',ARRAY['MEMBER'])")
+        .bind(lower.as_uuid()).bind(org.as_uuid()).execute(&pool).await.unwrap();
+    let hr = HrService::new(runtime_role_pool(&pool).await);
+    for (user, role, status) in [
+        (actor, Role::SuperAdmin, StatusCode::OK),
+        (lower, Role::Member, StatusCode::FORBIDDEN),
+    ] {
+        let p = Principal::new(user, org, BTreeSet::from([role]), BranchScope::All);
+        let router = console_hr_rest::certificates::router(hr.clone()).layer(Extension(p));
+        let request = Request::builder()
+            .uri(format!(
+                "/api/v1/hr/certificates/precondition?employee_id={employee}"
+            ))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), status);
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), 4096).await.unwrap()).unwrap();
+        if status == StatusCode::OK {
+            assert_eq!(
+                body,
+                json!({"settings_configured":false,"reason_code":"certificate_facts_missing"})
+            );
+        } else {
+            assert_eq!(body["error"]["code"], "certificate_forbidden");
+        }
+    }
+}

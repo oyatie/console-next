@@ -15,3 +15,9 @@ mod refusals;
 
 #[path = "certificates/regressions.rs"]
 mod regressions;
+
+#[path = "certificates/precondition.rs"]
+mod precondition;
+
+#[path = "certificates/access_parity.rs"]
+mod access_parity;

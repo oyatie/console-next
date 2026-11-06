@@ -43,7 +43,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const)
       await page.screenshot({ path: test.info().outputPath(`before-${width}-${theme}.png`) });
       await field.press("Enter");
       await expect(box(page, "개발팀")).toHaveCount(1);
-      await expect(field).toBeDisabled();
+      await expect(field).toHaveAttribute("readonly", "");
       await page.screenshot({ path: test.info().outputPath(`refresh-${width}-${theme}.png`) });
       await expect(field).not.toHaveAttribute("aria-invalid", "true");
       await expect(page.getByRole("alert").filter({ hasText: "이미 있습니다" })).toHaveCount(0);

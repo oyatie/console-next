@@ -6,6 +6,45 @@ use console_app::{AppConfig, AppRole, AppState, DatabaseDependency};
 use console_kernel_core::OrgId;
 use console_platform_email::StubEmailMode;
 
+#[test]
+fn realtime_budgets_are_configurable_and_invalid_overrides_refuse_startup() {
+    let defaults = AppConfig::from_pairs(app_pairs()).unwrap().realtime;
+    assert_eq!(
+        (
+            defaults.max_ws_per_account,
+            defaults.max_ws_total,
+            defaults.max_replay_rows,
+            defaults.replay_timeout.as_secs()
+        ),
+        (10, 1024, 10_000, 30)
+    );
+    let names = [
+        "CONSOLE_REALTIME_MAX_WS_PER_ACCOUNT",
+        "CONSOLE_REALTIME_MAX_WS_TOTAL",
+        "CONSOLE_REALTIME_MAX_REPLAY_ROWS",
+        "CONSOLE_REALTIME_REPLAY_TIMEOUT_SECS",
+    ];
+    let configured = AppConfig::from_pairs(names.map(|key| (key, "2")))
+        .unwrap()
+        .realtime;
+    assert_eq!(
+        (
+            configured.max_ws_per_account,
+            configured.max_ws_total,
+            configured.max_replay_rows,
+            configured.replay_timeout.as_secs()
+        ),
+        (2, 2, 2, 2)
+    );
+    for name in names {
+        for value in ["0", "-1", "invalid", "18446744073709551616"] {
+            assert!(
+                AppConfig::from_pairs([(name, value)]).is_err(),
+                "{name}={value}"
+            );
+        }
+    }
+}
 fn app_pairs() -> Vec<(&'static str, String)> {
     vec![
         ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),

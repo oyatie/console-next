@@ -77,7 +77,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const offset = query.has("cursor") ? 8 : 0;
       const attentionKey = query.get("attention");
       const items = query.get("filter") === "scheduled" ? [] : attentionKey === "approvals" ? queue.items.slice(0, 2) : attentionKey === "today" ? queue.items.slice(2, 3) : attentionKey === "overdue" ? queue.items.slice(3, 4) : queue.items;
-      return { status: 200, json: { ...queue, attention_filters: attention, items: offset ? [{ ...queue.items[0]!, id: "second-page", title: "다음 페이지 직원", age_days: 12 }] : items.map((item, index) => ({ ...item, age_days: 12, ...(index === 0 ? { context: { reason: "추가 확인 사유" } } : {}) })), next_cursor: offset || !items.length ? null : "next" } };
+      return { status: 200, json: { ...queue, attention_filters: [...attention], items: offset ? [{ ...queue.items[0]!, id: "second-page", title: "다음 페이지 직원", age_days: 12 }] : items.map((item, index) => ({ ...item, age_days: 12, ...(index === 0 ? { context: { reason: "추가 확인 사유" } } : {}) })), next_cursor: offset || !items.length ? null : "next" } };
     });
     await page.goto("/");
     const preview = page.getByRole("region", { name: t("home.inbox.title"), exact: true });

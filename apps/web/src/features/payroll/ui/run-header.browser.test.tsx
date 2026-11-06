@@ -13,7 +13,7 @@ afterAll(async () => { await browser?.close(); });
 
 test("the browser exposes six read-only stages, completed delivery and no current step for void runs", async () => {
   for (const status of ["STAGED", "ISSUED", "VOID"] as const) {
-    const run: PayrollRun = { id: id(899), legal_entity_id: id(801), pay_group_id: id(812), source_label: "모의 급여", period_start: "2026-10-01", period_end: "2026-10-31", status, calculation_enabled: false, created_at: AT, updated_at: AT };
+    const run: PayrollRun = { id: id(899), legal_entity_id: id(801), pay_group_id: id(812), kind: "REGULAR", attribution_month: "2026-10", pay_date: "2026-10-25", source_label: "모의 급여", period_start: "2026-10-01", period_end: "2026-10-31", variable_period_start: "2026-09-16", variable_period_end: "2026-10-15", status, calculation_enabled: false, created_at: AT, updated_at: AT };
     await page.setContent(renderToStaticMarkup(<RunHeader run={run} />));
     const rail = page.getByRole("list", { name: t("payroll.stages.title") });
     expect(await rail.getByRole("listitem").count()).toBe(6);

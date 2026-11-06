@@ -10,7 +10,7 @@
 .row[data-current] { box-shadow: var(--selected-bar); background: var(--primary-soft); }
 .row[data-new] { background: var(--ok-bg); }
 .row > :last-child { text-align: right; }
-.edit { display: flex; flex-wrap: wrap; gap: var(--space-1); min-width: 0; }
+.edit { display: flex; flex: 1; flex-wrap: wrap; gap: var(--space-1); min-width: 0; }
 .edit .input { width: 100%; }
 .name { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .grip { color: var(--faint); flex: none; }
@@ -25,4 +25,7 @@
 @media (max-width: 960px) {
   .split { flex-direction: column; }
   .pane { width: auto; }
+  .colhead, .row > .level, .row[data-new] > :not(:first-child) { display: none; }
+  .row { display: flex; flex-wrap: wrap; justify-content: space-between; min-height: var(--row-h); align-items: center; }
+  .name { flex-basis: 100%; }
 }

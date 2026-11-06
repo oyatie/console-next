@@ -19,20 +19,23 @@ beforeAll(async () => {
       load: id => id === "\0name-box-test" ? `
         import React, {useState} from 'react'; import {createRoot} from 'react-dom/client';
         import {loadCatalog} from '@console/i18n';
+        import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
         import {NameBox} from '/apps/web/src/features/structure/ui/name-box.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Fixture() {
-          const [pending,setPending]=useState(false), [saved,setSaved]=useState(''), [batch,setBatch]=useState(0), [sent,setSent]=useState('');
+          const [pending,setPending]=useState(false), [saved,setSaved]=useState(''), [batch,setBatch]=useState(0), [sent,setSent]=useState(''), [sends,setSends]=useState(0);
           const parent={id:'site',kind:'site',name:'본사',headcount:0,chips:[],depth:2,children:saved?[{id:'dept',kind:'dept',name:saved,children:[]}]:[]};
           return React.createElement(React.Fragment,null,
             React.createElement(NameBox,{key:batch,parent,box:{x:20,y:100,w:224,h:108},pending,
-              onSubmit:name=>{setSent(name);setPending(true)},onCancel:()=>{}}),
+              onSubmit:name=>{setSent(name);setSends(n=>n+1);setPending(true)},onCancel:()=>{}}),
+            React.createElement('output',{'aria-label':'Send count'},sends),
             React.createElement('button',{onClick:()=>setSaved(sent)},'Refresh tree'),
             React.createElement('button',{onClick:()=>{setBatch(batch+1);setPending(false)}},'Finish save'),
             React.createElement('button',{onClick:()=>setPending(false)},'Refuse save'));
         }
-        createRoot(document.getElementById('root')).render(React.createElement(Fixture));
+        const client=new QueryClient({defaultOptions:{queries:{retry:false,queryFn:async()=>({items:[]})}}});
+        createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client},React.createElement(Fixture)));
       ` : undefined }],
   });
   await server.listen();
@@ -50,7 +53,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     const field = page.getByRole("textbox", { name: "본사 아래 새 부서 이름" });
     await field.fill("개발팀");
     await field.press("Enter");
-    await expect(field).toBeDisabled();
+    await expect(field).toHaveAttribute("readonly", "");
+    await field.press("Enter");
+    await expect(page.getByRole("status", { name: "Send count" })).toHaveText("1");
     await page.getByRole("button", { name: "Refresh tree" }).click();
     await expect(field).toHaveValue("개발팀");
     await expect(field).not.toHaveAttribute("aria-invalid", "true");
@@ -64,7 +69,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await field.fill("인사팀");
     await page.getByRole("button", { name: "부서 추가", exact: true }).click();
     await page.getByRole("button", { name: "Refuse save" }).click();
-    await expect(field).toBeEnabled();
+    await expect(field).not.toHaveAttribute("readonly");
     await expect(field).toHaveValue("인사팀");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });

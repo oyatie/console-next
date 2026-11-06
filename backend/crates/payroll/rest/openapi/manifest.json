@@ -15,6 +15,10 @@
       "get"
     ],
     "/api/v1/payroll/runs": [
+      "get",
+      "post"
+    ],
+    "/api/v1/payroll/runs/preview": [
       "get"
     ],
     "/api/v1/payroll/runs/{id}": [
@@ -61,6 +65,7 @@
     "AttestPayrollDisbursementRequest",
     "ClosePayrollAttendanceRequest",
     "CreatePayGroup",
+    "CreatePayrollRun",
     "DecidePayrollRunRequest",
     "MyPayrollLine",
     "MyPayrollLinePage",
@@ -83,7 +88,9 @@
     "PayrollPreflightCheck",
     "PayrollRunCalcSummary",
     "PayrollRunDetail",
+    "PayrollRunKind",
     "PayrollRunPage",
+    "PayrollRunPreview",
     "PayrollRunSummary",
     "PayrollStatutoryCitation",
     "PayrollStatutoryInstrument",

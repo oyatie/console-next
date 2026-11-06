@@ -4,6 +4,7 @@ import config from "./playwright.config";
 
 export default defineConfig({
   ...config,
+  forbidOnly: !!process.env.CI,
   testIgnore: [],
   webServer: config.webServer?.map((server) => ({
     ...server,

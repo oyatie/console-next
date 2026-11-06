@@ -233,7 +233,7 @@ export const enImport: Partial<Record<keyof typeof koImport, string>> = {
   "import.error.mapping_header_row_out_of_range": "The chosen header row is not in the sheet.",
   "import.error.mapping_name_required": "Select one name column.",
   "import.error.mapping_duplicate_target": "The same employee field is chosen for two columns.",
-  "import.timedOut": "Applying {rows, number} rows at once outlasted the server’s time limit. Dry-run again: rows already in show as unchanged. Split the file into parts of about 1,000 rows and import them one after another.",
+  "import.timedOut": "Applying {rows, number} rows exceeded the server time limit before the batch committed. Nothing was written. Go back to the dry run, review it, and apply again.",
   "import.crumb": "Import",
   "import.steps": "Import steps",
   "import.close": "Close the import",

@@ -17,7 +17,7 @@ use chaos::{arm_kill, arm_slow, disarm, kill_running};
 use support::{Ctx, audits, count, ctx, structure, tenant};
 
 const ADMIN: &[&str] = &["SUPER_ADMIN"];
-const ROWS: usize = 5;
+const ROWS: usize = 105;
 
 fn roster() -> Vec<u8> {
     let mut book = umya_spreadsheet::new_file();
@@ -108,19 +108,35 @@ async fn setup(pool: &PgPool) -> (Uuid, Ctx, String, Value) {
 async fn finishes_once(pool: &PgPool, org: Uuid, ctx: &Ctx, apply: &str, body: &Value) {
     let (status, report) = ctx.call("POST", apply, Some(body.clone())).await;
     assert_eq!(status, StatusCode::OK, "{report}");
+    let rows_before: Vec<(Uuid, Value)> =
+        sqlx::query_as("SELECT id, to_jsonb(e) FROM employees e WHERE org_id=$1 ORDER BY id")
+            .bind(org)
+            .fetch_all(pool)
+            .await
+            .unwrap();
     let (status, replay) = ctx.call("POST", apply, Some(body.clone())).await;
     assert_eq!(
         status,
         StatusCode::OK,
         "a replay returns the stored report: {replay}"
     );
-    assert_eq!(replay["inserted"], report["inserted"]);
+    assert_eq!(replay, report);
+    let rows_after: Vec<(Uuid, Value)> =
+        sqlx::query_as("SELECT id, to_jsonb(e) FROM employees e WHERE org_id=$1 ORDER BY id")
+            .bind(org)
+            .fetch_all(pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        rows_after, rows_before,
+        "a replay preserves every stored employee field"
+    );
     assert_eq!(run_status(pool, org).await, "APPLIED");
     assert_eq!(count(pool, "employees", org).await, ROWS as i64);
     assert_eq!(
         audits(pool, org, "employee.import.settle").await,
-        1,
-        "settled once"
+        ROWS.div_ceil(console_hr_adapter_postgres::import::settle::SETTLE_CHUNK_ROWS) as i64,
+        "each chunk settled once"
     );
 }
 
@@ -143,12 +159,22 @@ async fn apply_killed_in_the_settle_is_finished_by_the_reapply(pool: PgPool) {
         &pool,
         "audit_events",
         "AFTER INSERT",
-        "NEW.action = 'employee.import.settle'",
+        "NEW.action = 'employee.import.settle' AND NEW.after_snap->>'inserted' = '5'",
     )
     .await;
     let (status, died) = ctx.call("POST", &apply, Some(body.clone())).await;
     assert!(status.is_server_error(), "{status} {died}");
     assert_eq!(audits(&pool, org, "employee.import.settle").await, 0);
+    assert_eq!(
+        count(&pool, "employees", org).await,
+        0,
+        "settle failure must roll back the batch too"
+    );
+    assert_eq!(count(&pool, "import_run_row_snapshots", org).await, 0);
+    assert_eq!(count(&pool, "import_run_effects", org).await, 0);
+    assert_eq!(count(&pool, "employee_person_bindings", org).await, 0);
+    assert_eq!(audits(&pool, org, "data_import.apply").await, 0);
+    assert_eq!(run_status(&pool, org).await, "DRY_RUN");
     disarm(&pool).await;
     finishes_once(&pool, org, &ctx, &apply, &body).await;
 }

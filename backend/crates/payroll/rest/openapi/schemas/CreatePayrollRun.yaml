@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [pay_group_id, kind]
+properties:
+  pay_group_id: {$ref: '#/components/schemas/Uuid'}
+  kind: {$ref: '#/components/schemas/PayrollRunKind'}

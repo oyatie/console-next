@@ -28,7 +28,8 @@ type Plan = "erase" | "dissolve" | "raise";
  * In setup, a department with sub-departments and no direct members asks first, nothing preselected (S6-delete): end them with
  * it, or move them one level up (then this one is dissolved in the same undoable batch, since they sat under it).
  */
-export function DeptEndSheet({ place, setup, onClose, onDone, onPropose }: { place: Place; setup: boolean; onClose: () => void; onDone: () => void; onPropose: () => void }) {
+export function DeptEndSheet({ place: initialPlace, setup, onClose, onDone, onPropose }: { place: Place; setup: boolean; onClose: () => void; onDone: () => void; onPropose: () => void }) {
+  const [place] = useState(initialPlace);
   const d = place.node;
   const subs = depts(d);
   const q = useQuery({ ...unitEndQuery(d.id), refetchOnMount: "always" });

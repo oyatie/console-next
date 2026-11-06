@@ -48,6 +48,46 @@ pub struct DecisionFacts {
 }
 
 impl DecisionFacts {
+    /// Request writes use the live account and Cedar's access-management decision.
+    ///
+    /// # Errors
+    /// A Cedar compilation or evaluation failure.
+    pub fn authorize_access_request_write(
+        &self,
+        operation: &str,
+        requester: Option<Uuid>,
+        support_session: bool,
+    ) -> Result<bool, String> {
+        let can_manage = if matches!(operation, "DONE" | "DECLINED") {
+            !self
+                .permitted_nodes(&crate::access::action_group(
+                    crate::access::Domain::Access,
+                    crate::access::Level::Edit,
+                ))
+                .map_err(|e| e.to_string())?
+                .is_empty()
+        } else {
+            false
+        };
+        super::actions::access_request_write::decide(
+            &self.actor.to_string(),
+            &self.org.to_string(),
+            &self.roles,
+            &[
+                (
+                    "support_session",
+                    super::actions::Fact::Bool(support_session),
+                ),
+                ("operation", super::actions::Fact::Str(operation.to_owned())),
+                (
+                    "is_requester",
+                    super::actions::Fact::Bool(requester == Some(self.actor)),
+                ),
+                ("can_manage", super::actions::Fact::Bool(can_manage)),
+            ],
+        )
+    }
+
     /// Personal preference ownership uses the live account from this snapshot.
     pub fn authorize_employee_view(&self, org: OrgId, owner: Uuid) -> Result<bool, String> {
         super::actions::employee_view::decide(

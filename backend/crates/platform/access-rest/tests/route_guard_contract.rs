@@ -43,6 +43,41 @@ impl Subscriber for Events {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn certificate_settings_decision_preserves_live_policy_and_scope(pool: PgPool) {
+    for (domain, level, scope, expected) in [
+        ("org", "edit", "TENANT", true),
+        ("org", "view", "TENANT", false),
+        ("hr_basic", "edit", "TENANT", false),
+        ("org", "edit", "LEGAL_ENTITY", false),
+    ] {
+        let mut w = world(pool.clone()).await;
+        let role = w
+            .role(domain, json!([{ "domain": domain, "levels": [level] }]))
+            .await;
+        let node = (scope == "LEGAL_ENTITY").then_some(w.le_a);
+        w.grant(json!([grant_op(w.hr, role, scope, node, true)]))
+            .await;
+        for (account, expected) in [(w.hr, expected), (w.ops, true)] {
+            let (status, me) = w
+                .call(Method::GET, "/api/v1/access/me", account, None)
+                .await;
+            assert_eq!(status, StatusCode::OK, "{me}");
+            assert_eq!(
+                me["decisions"]["certificate_settings_manage"], expected,
+                "{domain}/{scope}: {me}"
+            );
+        }
+        sqlx::query("UPDATE access_grants SET status='REVOKED',revoked_at=now(),revoked_by=$3 WHERE org_id=$1 AND account_id=$2 AND status <> 'REVOKED'")
+            .bind(w.org).bind(w.hr.as_uuid()).bind(w.ops.as_uuid()).execute(&w.owner).await.unwrap();
+        let (_, me) = w.call(Method::GET, "/api/v1/access/me", w.hr, None).await;
+        assert_eq!(
+            me["decisions"]["certificate_settings_manage"], false,
+            "{me}"
+        );
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn invalid_cedar_decision_logs_the_request_support_reference_and_stays_closed(pool: PgPool) {
     let mut w = world(pool).await;
     let role = w

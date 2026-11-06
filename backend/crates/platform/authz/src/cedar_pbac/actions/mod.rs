@@ -3,6 +3,7 @@
 //! its own `permit`/`forbid` rules. A lane adds its `mod` line and one registry
 //! line below; INTEG merges them. The `action_schema` tests gate every entry.
 
+pub(crate) mod access_request_write;
 pub mod certificates;
 pub mod change_request_decide;
 pub mod exception_decide;
@@ -227,6 +228,7 @@ impl ActionBundle {
 pub mod command_outcome;
 
 pub mod company_domain_request;
+pub mod import_apply;
 pub mod import_rollback;
 pub mod ops_recovery_decide;
 pub mod support_reference;

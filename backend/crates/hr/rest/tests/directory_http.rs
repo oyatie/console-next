@@ -16,7 +16,7 @@ use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifie
 use console_platform_request_context::{TrustedClientIp, with_request_context};
 use console_platform_test_support::runtime_role_pool;
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use sqlx::PgPool;
 use time::{Duration, OffsetDateTime};
@@ -92,7 +92,7 @@ async fn export_and_facets_over_http_log_the_client_ip_and_never_cache(pool: PgP
     .unwrap();
     tx.commit().await.unwrap();
 
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let private_pem = key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
     let public_pem = key
         .verifying_key()

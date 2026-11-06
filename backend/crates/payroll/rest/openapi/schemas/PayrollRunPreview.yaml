@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [legal_entity_id, pay_group_id, kind, attribution_month, pay_date, pay_date_clamped, period_start, period_end, variable_period_start, variable_period_end]
+properties:
+  legal_entity_id: {$ref: '#/components/schemas/Uuid'}
+  pay_group_id: {$ref: '#/components/schemas/Uuid'}
+  kind: {$ref: '#/components/schemas/PayrollRunKind'}
+  attribution_month: {type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$'}
+  pay_date: {type: string, format: date}
+  pay_date_clamped: {type: boolean}
+  period_start: {type: string, format: date}
+  period_end: {type: string, format: date}
+  variable_period_start: {type: string, format: date}
+  variable_period_end: {type: string, format: date}

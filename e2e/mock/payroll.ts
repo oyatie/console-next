@@ -13,7 +13,7 @@ export const payGroups: PayGroups = {
   legal_entities: [{ id: id(800), name: "모의상사" }, { id: id(801), name: "모의상사 해외법인" }],
   items: [0, 1, 2].map(n => ({ id: id(810 + n), legal_entity_id: id(n < 2 ? 800 : 801), name: `모의 급여 그룹 ${n + 1}`, pay_date_rule: { day: 25 as const, month_offset: 0 as const, non_business_day: "PREVIOUS" as const }, base_period: { start_day: "FIRST" as const, month_offset: -1 as const }, variable_period: { start_day: 16 as const, month_offset: -1 as const }, proration: "CALENDAR_DAYS" as const, channel: "ATTESTATION_ONLY" as const, sensitive: false, pay_basis_allowed: ["MONTHLY" as const] })),
 };
-const payrollRuns: PayrollRun[] = runStatuses.map((status, n) => ({ id: id(850 + n), legal_entity_id: id(n === 12 ? 801 : 800), pay_group_id: id(n === 12 ? 812 : n % 2 ? 811 : 810), period_start: "2026-10-01", period_end: "2026-10-31", source_label: `모의 급여 ${n + 1}`, status, calculation_enabled: false, created_at: AT, updated_at: AT }));
+const payrollRuns: PayrollRun[] = runStatuses.map((status, n) => ({ id: id(850 + n), legal_entity_id: id(n === 12 ? 801 : 800), pay_group_id: id(n === 12 ? 812 : n % 2 ? 811 : 810), kind: "REGULAR", attribution_month: "2026-10", pay_date: "2026-10-25", period_start: "2026-10-01", period_end: "2026-10-31", variable_period_start: "2026-09-16", variable_period_end: "2026-10-15", source_label: `모의 급여 ${n + 1}`, status, calculation_enabled: false, created_at: AT, updated_at: AT }));
 export async function mockPayroll(page: Page, screen: { key: string; read: string }, state: PayrollState | string, held: Promise<void>) {
   if (!screen.key.startsWith("payroll")) return;
   const groups = { ...payGroups, items: state === "empty" ? [] : payGroups.items };

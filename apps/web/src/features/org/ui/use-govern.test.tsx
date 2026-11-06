@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { bindAnnouncer } from "../../../lib/react/announce";
+import { todayKst } from "../../../lib/pure/today";
 import { read } from "../../../lib/query";
-import { useGovernSubmit, type GovernState } from "./use-govern";
+import { useGovern, useGovernSubmit, type GovernState } from "./use-govern";
 
 const { navigate, receipt, governed } = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -12,7 +13,7 @@ const { navigate, receipt, governed } = vi.hoisted(() => ({
   governed: vi.fn(async () => ({ id: "change", code: "change-code", sent: "sent", select: "new-unit" })),
 }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
-vi.mock("../api", () => ({ governed }));
+vi.mock("../api", async () => ({ governed, orgPolicyQuery: (await import("../../../lib/query")).read("/api/v1/settings", async () => ({ items: [] })) }));
 vi.mock("../../../reference/org/ui/use-change-note", () => ({ noteChange: receipt }));
 
 beforeAll(() => loadCatalog("ko"));
@@ -61,4 +62,17 @@ test("a governed change keeps its sheet pending until the changed chart has been
     unsubscribe();
     client.clear();
   }
+});
+
+test("useGovern defaults effective date (적용일) to today so only reason remains missing", () => {
+  expect(t("orgUnit.gov.date")).toBe("적용일");
+  expect(t("orgPropose.field.date")).toBe("적용일");
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  function Probe() {
+    const gov = useGovern();
+    return <output data-date={gov.g.date}>{gov.missing.join("|")}</output>;
+  }
+  const html = renderToStaticMarkup(<QueryClientProvider client={client}><Probe /></QueryClientProvider>);
+  client.clear();
+  expect(html).toBe(`<output data-date="${todayKst()}">${t("orgUnit.gov.missingReason")}</output>`);
 });

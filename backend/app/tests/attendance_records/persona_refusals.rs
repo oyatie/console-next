@@ -1,6 +1,9 @@
 //! Existing persona refusal assertions, shared unchanged by their original tests.
 use super::{Response, StatusCode, Uuid};
 
+#[path = "persona_refusals/close_timestamps.rs"]
+mod close_timestamps;
+
 pub(super) fn assert_forbidden(response: &Response) {
     assert_eq!(
         response.status,

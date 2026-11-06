@@ -1,3 +1,5 @@
+import { UnitEdit } from "../../../reference/org/ui/use-unit-edit";
+import { useStructureEdit } from "./use-structure-gestures";
 import { RegistryExportContext } from "./export-scope";
 import type { ChartNode } from "../domain/model";
 import type { OrgStructure } from "@console/api/pending";
@@ -46,6 +48,7 @@ export function StructurePage({ proposal, panel, sheets }: {
   const dates = freshOnOpen(useQuery({ ...get("/api/v1/org-structure/change-dates", { params: { query: { from: "0001-01-01", to: "9999-12-31", known_at: search.known_at } } }), refetchOnMount: "always" }));
   const pageRead = { ...ready, refetch: () => Promise.all([ready.refetch(), dates.refetch()]) };
   const cmd = useStructureCommands(!s || s.readOnly);
+  const canEdit = useStructureEdit(s?.phase === "SETUP", cmd.readOnly);
   // A place picked elsewhere (⌘K, a link) arrives as `sel` and becomes the selection; a pick from outside the chart
   // re-centres it. The values this page writes itself (one box chosen on the chart) arrive the same way, a frame or two
   // later and possibly between two clicks, so each is recognised and passed over: a Shift-click is never undone by the
@@ -89,6 +92,7 @@ export function StructurePage({ proposal, panel, sheets }: {
   const onFocus = (id: string | undefined) => void navigate({ search: (q) => ({ ...q, focus: id }) });
   const empty = s && s.root.children.length === 0;
   return (
+    <UnitEdit.Provider value={canEdit}>
     <RegistryExportContext.Provider value={view === "list" ? exportRows : null}>
     <div className={css.page}>
       <PageHead s={s} view={view} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} />
@@ -112,5 +116,6 @@ export function StructurePage({ proposal, panel, sheets }: {
     </>}</QueryState>
     </div>
     </RegistryExportContext.Provider>
+    </UnitEdit.Provider>
   );
 }

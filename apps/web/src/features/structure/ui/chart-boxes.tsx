@@ -91,6 +91,10 @@ export function ChartBoxes({ s, c, g, canEdit, menu, onMenu, drag, moved, onActi
               e.currentTarget.focus({ preventScroll: true });
               onActivate(n.id, e.shiftKey || e.ctrlKey || e.metaKey ? "toggle" : "only");
             }}
+            onDoubleClick={(e) => {
+              if ((e.target as HTMLElement).closest("button, a, [role=menu]") || !canEdit || n.kind !== "dept") return;
+              g.rename(n);
+            }}
           >
             <NodeContent box={b} counts={s.counts} badge={inside != null && <NodeBadge>{inside}</NodeBadge>} />
             {canEdit && n.kind !== "tenant" && (c.sel.has(n.id) || menu === n.id) && (

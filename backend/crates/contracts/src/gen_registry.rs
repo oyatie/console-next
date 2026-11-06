@@ -10471,6 +10471,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/hr/certificates/precondition",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__certificates__precondition.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/hr/certificates/{id}",
         operations: &[Operation {
             method: "get",
@@ -10988,6 +10997,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "CertificatePage",
         body: include_str!("../../orgchange/rest/openapi/schemas/CertificatePage.yaml"),
+    },
+    NamedYaml {
+        name: "CertificatePrecondition",
+        body: include_str!("../../orgchange/rest/openapi/schemas/CertificatePrecondition.yaml"),
     },
     NamedYaml {
         name: "CertificateSettings",
@@ -11736,9 +11749,28 @@ const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
     },
     PathItem {
         path: "/api/v1/payroll/runs",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../payroll/rest/openapi/paths/api__v1__payroll__runs.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../payroll/rest/openapi/paths/api__v1__payroll__runs.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/payroll/runs/preview",
         operations: &[Operation {
             method: "get",
-            body: include_str!("../../payroll/rest/openapi/paths/api__v1__payroll__runs.get.yaml"),
+            body: include_str!(
+                "../../payroll/rest/openapi/paths/api__v1__payroll__runs__preview.get.yaml"
+            ),
         }],
     },
     PathItem {
@@ -11876,6 +11908,10 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../payroll/rest/openapi/schemas/CreatePayGroup.yaml"),
     },
     NamedYaml {
+        name: "CreatePayrollRun",
+        body: include_str!("../../payroll/rest/openapi/schemas/CreatePayrollRun.yaml"),
+    },
+    NamedYaml {
         name: "DecidePayrollRunRequest",
         body: include_str!("../../payroll/rest/openapi/schemas/DecidePayrollRunRequest.yaml"),
     },
@@ -11964,8 +12000,16 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../payroll/rest/openapi/schemas/PayrollRunDetail.yaml"),
     },
     NamedYaml {
+        name: "PayrollRunKind",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayrollRunKind.yaml"),
+    },
+    NamedYaml {
         name: "PayrollRunPage",
         body: include_str!("../../payroll/rest/openapi/schemas/PayrollRunPage.yaml"),
+    },
+    NamedYaml {
+        name: "PayrollRunPreview",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayrollRunPreview.yaml"),
     },
     NamedYaml {
         name: "PayrollRunSummary",

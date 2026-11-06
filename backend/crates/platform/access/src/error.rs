@@ -6,6 +6,7 @@ use console_platform_db::DbError;
 /// The class of a refusal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Refusal {
+    BadRequest,
     Invalid,
     NotFound,
     Forbidden,

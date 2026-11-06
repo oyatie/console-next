@@ -1,3 +1,4 @@
+import { inlineUnitDetails } from "./structure-flows";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
@@ -147,12 +148,11 @@ test("attendance reads commit one access row naming the people returned", { tag:
   await startOperations(admin);
   const operatingPanel = await openUnit(admin, SETUP_DEPARTMENT);
   await operatingPanel.getByRole("button", { name: "이름 변경" }).click();
-  const rename = sheet(admin, `${SETUP_DEPARTMENT} 이름 변경`);
-  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("접속기록 부서");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(kstDate(3));
-  await rename.getByRole("textbox", { name: /^사유/ }).fill("접속기록 확인");
-  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
-  await expect(rename).toBeHidden();
+  const renameInput = operatingPanel.getByRole("textbox", { name: new RegExp(`^${SETUP_DEPARTMENT}의 새 이름`) });
+  await renameInput.fill("접속기록 부서");
+  await inlineUnitDetails(admin, operatingPanel, kstDate(3));
+  await operatingPanel.getByRole("button", { name: "이름 변경", exact: true }).click();
+  await expect(renameInput).toBeHidden();
   await go(admin, "/account");
   await settled(admin);
   const changes = await (await api("/org-changes?limit=1")).json() as { items: { id: string }[] };

@@ -71,6 +71,7 @@ export type UnitKit = ReturnType<typeof unitKit>;
 /** One card's typed values, all empty at first: nothing is preselected. */
 export function useValues() {
   const { as_of } = useSearch({ strict: false });
-  const [v, setV] = useState<Values>(() => ({ ...EMPTY, date: as_of && as_of > todayKst() ? as_of : "" }));
+  const today = todayKst();
+  const [v, setV] = useState<Values>(() => ({ ...EMPTY, date: as_of && as_of > today ? as_of : today }));
   return [v, (f: Field, x: string) => setV((s) => ({ ...s, [f]: x }))] as const;
 }

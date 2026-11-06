@@ -1,4 +1,5 @@
 {
+  "POST /api/v1/access/requests": "Any signed-in caller may ask for access for themselves; reviewing or closing a request is granted separately.",
   "POST /api/v1/auth/device-login/approve": "A passkey assertion approves the caller's own login.",
   "POST /api/v1/auth/device-login/approve-session": "The authenticated caller approves their own desktop login.",
   "POST /api/v1/auth/device-login/poll": "The one-use poll token consumes the caller's own login handoff.",

@@ -3,6 +3,10 @@ use super::*;
 
 #[path = "nullable_pay_groups.rs"]
 mod nullable_pay_groups;
+#[path = "run_create_api.rs"]
+mod run_create_api;
+#[path = "run_preview_api.rs"]
+mod run_preview_api;
 
 #[path = "module_readiness.rs"]
 mod module_readiness;
@@ -12,13 +16,13 @@ mod pay_group_idempotency;
 
 const GROUPS: &str = "/api/v1/payroll/pay-groups";
 
-async fn entity(pool: &PgPool, org: OrgId) -> Uuid {
+pub(super) async fn entity(pool: &PgPool, org: OrgId) -> Uuid {
     // rls-arming: ok owner seeds prerequisites; HTTP requests use console_rt.
     sqlx::query_scalar("INSERT INTO legal_entities(org_id,id,needs_confirmation,created_change_mode) VALUES ($1,$2,true,'MIGRATION') RETURNING id")
         .bind(org.as_uuid()).bind(Uuid::new_v4()).fetch_one(pool).await.unwrap()
 }
 
-fn input(entity: Uuid) -> Value {
+pub(super) fn input(entity: Uuid) -> Value {
     json!({"legal_entity_id":entity,"name":"모의상사 월급",
         "pay_date_rule":{"day":"LAST_DAY","month_offset":0,"non_business_day":"PREVIOUS"},
         "base_period":{"start_day":"FIRST","month_offset":0},

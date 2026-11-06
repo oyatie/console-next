@@ -5,7 +5,7 @@ import { go } from "./flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { setupCompany, startOperations } from "./setup-flows";
-import { revealUnit } from "./structure-flows";
+import { inlineUnitDetails, revealUnit } from "./structure-flows";
 
 test("a drafter withdraws a routed change after go-live and keeps its chain on record", async ({ browser }) => {
   test.setTimeout(300_000);
@@ -23,13 +23,11 @@ test("a drafter withdraws a routed change after go-live and keeps its chain on r
   await go(admin, "/org");
   await revealUnit(admin, "본점");
   await admin.keyboard.press("a");
-  const card = admin.getByRole("dialog", { name: "부서 신설", exact: true });
-  await card.getByLabel("부서 이름").fill("회수검증부");
-  await card.getByRole("button", { name: /^오늘/ }).click();
-  await card.getByLabel("사유").fill("회수 검증을 위한 상신");
+  const name = admin.getByRole("textbox", { name: "본점 아래 새 부서 이름", exact: true });
+  await name.fill("회수검증부");
+  await inlineUnitDetails(admin, admin);
   const submitted = admin.waitForResponse((r) => r.request().method() === "POST" && /\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
-  await expect(card.getByRole("button", { name: /결재 요청$/ })).toBeVisible();
-  await card.getByRole("button", { name: /결재 요청$/ }).click();
+  await name.press("Enter");
   const before = await (await submitted).json() as components["schemas"]["OrgChangeDetail"];
   expect(before.status).toBe("IN_APPROVAL");
   expect(before.version).toEqual(expect.any(String));

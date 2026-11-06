@@ -3,7 +3,8 @@
     "apps/web/src/features/payroll/ui/payroll-home.tsx#PayrollHome": 15,
     "apps/web/src/features/payroll/ui/reference-page.tsx#PayrollReference": 13,
     "apps/web/src/features/payroll/ui/payroll-setup.tsx#PayrollSetup": 24,
-    "apps/web/src/features/payroll/ui/run-page.tsx#PayrollRunPage": 3
+    "apps/web/src/features/payroll/ui/run-page.tsx#PayrollRunPage": 3,
+    "apps/web/src/features/payroll/ui/run-create-page.tsx#PayrollRunCreatePage": 23
   },
   "newScreens": {
     "apps/web/src/features/payroll/ui/payroll-home.tsx#PayrollHome": {
@@ -32,6 +33,14 @@
     },
     "apps/web/src/features/payroll/ui/payroll-setup.tsx#PayrollSetup": {
       "FACT": 16,
+      "REFUSAL": 4,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/payroll/ui/run-create-page.tsx#PayrollRunCreatePage": {
+      "FACT": 15,
       "REFUSAL": 4,
       "EMPTY": 1,
       "LEGAL": 0,

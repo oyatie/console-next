@@ -9,7 +9,7 @@ use console_platform_test_support::{MIGRATOR, runtime_role_pool};
 use http::{Request, StatusCode};
 use p256::{
     ecdsa::SigningKey,
-    elliptic_curve::rand_core::OsRng,
+    elliptic_curve::Generate,
     pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding},
 };
 use serde_json::{Value, json};
@@ -19,7 +19,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 pub(super) fn router(pool: PgPool) -> Router {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let mut pairs = super::app_pairs();
     pairs.extend([
         ("CONSOLE_JWT_ISSUER", "console-test".to_owned()),

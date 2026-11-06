@@ -4,7 +4,7 @@ import { clickCounter } from "./clicks";
 import { chooseRadio, kstDate, registerEmployee } from "./flows";
 import { addDepts, openUnit, quickWorkplace, sheet } from "./helpers/structure";
 import { startOperations, tenantInSetup } from "./setup-flows";
-import { box, leaveScreen } from "./structure-flows";
+import { inlineUnitDetails, box, leaveScreen } from "./structure-flows";
 import { expectComposer } from "./helpers/composer";
 
 // 운영 중 (final spec D12, S5-close, S6-add-governed, S6-dissolve-governed, S8-governed): the same actions open a
@@ -38,22 +38,17 @@ test("operating: new department and dissolution proposals, a governed move, dele
   await views.getByRole("button", { name: "조직도", exact: true }).click();
   await admin.getByRole("button", { name: "전체 보기", exact: true }).click();
 
-  // 1. 부서 신설: the same 「부서 추가」 opens an org change; nothing is dated for you.
+  // 1. 부서 신설: 「부서 추가」 edits inline in the panel with 적용일 defaulted to 오늘 (changeable) and zero modal dialog.
   const main = await openUnit(admin, "본점");
   await expect(main.getByRole("button", { name: "부서 추가" })).toHaveAccessibleDescription("운영 중 · 부서 신설을 조직 변경으로 기록합니다");
   await c.click(main.getByRole("button", { name: "부서 추가" }));
-  const add = sheet(admin, "부서 신설");
-  const submitAdd = add.getByRole("button", { name: "부서 신설 1개 적용" });
-  await expect(submitAdd).toHaveAttribute("aria-disabled", "true");
-  await add.getByLabel("부서 이름").fill("마케팅팀");
-  // A free name is accepted silently (no standing hint, 5bfb1b2cc): only the date and the reason are left.
-  await expect(add.getByLabel("부서 이름")).not.toHaveAttribute("aria-invalid", "true");
-  await expect(add).toContainText("시행일, 사유가 남아 아직 반영할 수 없습니다");
-  await c.click(add.getByRole("button", { name: /^오늘/ }));
-  await add.getByLabel("사유").fill("마케팅 기능 신설");
-  await expectComposer(add, "부서 신설 1개 적용");
+  await expect(admin.getByRole("dialog")).toHaveCount(0);
+  const addName = main.getByRole("textbox", { name: /^본점 아래 새 부서 이름/ });
+  await addName.fill("마케팅팀");
+  await inlineUnitDetails(admin, main);
+  await expect(addName).not.toHaveAttribute("aria-invalid", "true");
   await expectAccessible(admin, "new department proposal");
-  await c.click(submitAdd);
+  await c.click(main.getByRole("button", { name: "부서 추가", exact: true }));
   // org-19: the user stays on the chart; the receipt names the change and links its record.
   await expect(admin).toHaveURL(/\/org(\?|$)/);
   await expect(admin.getByRole("status").filter({ hasText: "마케팅팀 신설을 반영했습니다" })).toBeVisible();
@@ -71,7 +66,7 @@ test("operating: new department and dissolution proposals, a governed move, dele
   await expect(dissolve).toBeVisible();
   await leaveScreen(admin);
   const submitDissolve = dissolve.getByRole("button", { name: "부서 폐지 1개 적용" });
-  await expect(submitDissolve).toHaveAccessibleDescription(/시행일, 사유/);
+  await expect(submitDissolve).toHaveAccessibleDescription(/사유/);
   await expect(dissolve.getByRole("region", { name: "본점 직속으로 1명" })).toBeVisible();
   await dissolve.getByRole("button", { name: /^오늘/ }).click();
   await dissolve.getByLabel("사유").fill("인사 기능을 본사 직속으로");
@@ -108,11 +103,9 @@ test("operating: new department and dissolution proposals, a governed move, dele
   // A future change reaches the selected unit's timeline through the existing live reads.
   const marketing = await openUnit(admin, "마케팅팀");
   await marketing.getByRole("button", { name: "이름 변경", exact: true }).click();
-  const rename = sheet(admin, "마케팅팀 이름 변경");
-  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("브랜드마케팅팀");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(kstDate(3));
-  await rename.getByRole("textbox", { name: /^사유/ }).fill("브랜드 기능 통합");
-  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약", exact: true }).click();
-  await expect(rename).toBeHidden();
+  await marketing.getByRole("textbox", { name: /^마케팅팀의 새 이름/ }).fill("브랜드마케팅팀");
+  await inlineUnitDetails(admin, marketing, kstDate(3));
+  await marketing.getByRole("button", { name: "이름 변경", exact: true }).click();
+  await expect(marketing.getByRole("textbox", { name: /^마케팅팀의 새 이름/ })).toBeHidden();
   await expect(marketing.locator("#dept-history").getByRole("link", { name: /마케팅팀 → 브랜드마케팅팀/ })).toBeVisible();
 });

@@ -12,6 +12,27 @@ required:
 - quick_starts
 - as_of
 properties:
+  attention_filters:
+    type: array
+    description: >-
+      Home counts over the same authorized source read, independent of the
+      selected attention view. Subset counts are lower bounds for bounded or
+      continued source prefixes; only contributing sources affect subset exactness.
+      Unavailable sources make every count inexact. All uses source totals, or
+      the turn count when filter=turn. Counts are authoritative on the first page
+      only; continuation pages describe source prefixes, not the whole inbox.
+    items:
+      type: object
+      required: [key, total, total_is_exact]
+      properties:
+        key:
+          type: string
+          enum: [all, approvals, today, overdue]
+        total:
+          type: integer
+          minimum: 0
+        total_is_exact:
+          type: boolean
   items:
     type: array
     items:
@@ -44,7 +65,7 @@ properties:
           type: string
   counts:
     type: object
-    description: Counts from the same server traversal. Inexact values are lower bounds.
+    description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds.
     additionalProperties:
       type: object
       required: [total, total_is_exact]

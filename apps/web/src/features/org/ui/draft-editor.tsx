@@ -14,7 +14,7 @@ import { DateField } from "../../../ui/date/date-field";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { changeCommands, refusalOf } from "../api";
-import { datePresets } from "../present";
+import { datePresets, reasonNote } from "../present";
 import type { Note } from "./use-note";
 import css from "./org-change.module.css";
 
@@ -37,23 +37,24 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
 }) {
   const today = todayKst();
   const [date, setDate] = useState("");
-  const [reason, setReason] = useState(d.reason);
-  const [fields, setFields] = useState<Fields<Key>>(() => ({ effectiveDate: load(d.effectiveDate), reason: load(d.reason) }));
+  const [reason, setReason] = useState(reasonNote(d));
+  const [fields, setFields] = useState<Fields<Key>>(() => ({ effectiveDate: load(d.effectiveDate), reason: load(reasonNote(d)) }));
   const [seen, setSeen] = useState(d.updatedAt);
   const [taken, setTaken] = useState<Key[]>([]);
-  const [error, setError] = useState<{ reason?: string; form?: string }>({});
+  const [error, setError] = useState<{ form?: string }>({});
   if (d.updatedAt !== seen) {
     // Someone saved this draft while it was open: merge, never reset what was typed.
     setSeen(d.updatedAt);
-    const r = rebaseAll(fields, { effectiveDate: d.effectiveDate, reason: d.reason });
+    const r = rebaseAll(fields, { effectiveDate: d.effectiveDate, reason: reasonNote(d) });
     setFields(r.fields);
     setTaken((Object.keys(r.outcomes) as Key[]).filter((k) => r.outcomes[k] === "take"));
-    if (r.outcomes.reason === "take") setReason(d.reason);
+    if (r.outcomes.reason === "take") setReason(reasonNote(d));
   }
   const conflicts = (Object.keys(fields) as Key[]).filter((k) => isConflict(fields[k]));
+  const storedReason = reason.trim() || d.kind;
   const body = {
     ...(date && date !== d.effectiveDate ? { effectiveDate: date } : {}),
-    ...(reason.trim() !== d.reason ? { reason: reason.trim() } : {}),
+    ...(storedReason !== d.reason ? { reason: storedReason } : {}),
   };
   const save = useCommand({
     run: () =>
@@ -67,11 +68,10 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
   });
   const press = () => {
     const e = {
-      reason: reason.trim() ? undefined : t("orgChange.reason.required"),
       form: Object.keys(body).length ? undefined : t("orgChange.edit.nothing"),
     };
     setError(e);
-    if (!e.reason && !e.form && conflicts.length === 0) save.mutate(undefined);
+    if (!e.form && conflicts.length === 0) save.mutate(undefined);
   };
   const dateError = refusalOf(save.error) === "date" ? t("orgChange.date.min") : undefined;
   const choose = (k: Key, choice: "theirs" | "mine") => {
@@ -117,7 +117,7 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
         error={dateError}
       />
       {taken.includes("effectiveDate") && <p className={css.changed}>{t("live.notice.updated_by.hidden", { time: changedAt })}</p>}
-      <Field label={t("orgChange.reason")} required error={error.reason}>
+      <Field label={t("orgChange.reason")} required={false}>
         {(p) => (
           <TextArea
             {...p}

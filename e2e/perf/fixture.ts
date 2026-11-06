@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { inlineUnitDetails } from "../structure-flows";
 import { expect, type Browser, type Page } from "@playwright/test";
 import { bizRegNoChecksumOk, corpRegNoChecksumOk } from "../../apps/web/src/lib/pure/formats";
 import { chooseRadio, go, kstDate } from "../flows";
@@ -176,13 +177,12 @@ async function recordRoutes(admin: Page, urls: Record<string, string>, depts: st
   const selected = panel(admin, depts.at(-1)!);
   await expect(selected).toBeVisible();
   await selected.getByRole("button", { name: "이름 변경" }).click();
-  const rename = admin.getByRole("dialog", { name: `${depts.at(-1)!} 이름 변경` });
-  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("가상미래부서");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(kstDate(14));
-  await rename.getByRole("textbox", { name: /^사유/ }).fill("가상 성능 측정");
+  const renameInput = selected.getByRole("textbox", { name: new RegExp(`^${depts.at(-1)!}의 새 이름`) });
+  await renameInput.fill("가상미래부서");
+  await inlineUnitDetails(admin, selected, kstDate(14));
   const change = admin.waitForResponse(r => r.request().method() === "POST" && /\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
-  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
+  await selected.getByRole("button", { name: "이름 변경", exact: true }).click();
   expect((await change).status()).toBe(200);
   urls["/org/changes/$id"] = `/org/changes/${new URL((await change).url()).pathname.split("/").at(-2)!}`;
-  await expect(rename).toBeHidden();
+  await expect(renameInput).toBeHidden();
 }

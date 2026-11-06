@@ -32,13 +32,13 @@ pub(crate) async fn staged(i: &Importer, people: usize) -> (Uuid, String) {
     (run, plan.dry_run_digest)
 }
 
-fn body(digest: &str) -> EmployeeImportApplyRequest {
+pub(crate) fn body(digest: &str) -> EmployeeImportApplyRequest {
     EmployeeImportApplyRequest {
         dry_run_digest: digest.into(),
     }
 }
 
-async fn progress_events(i: &Importer, run: Uuid) -> i64 {
+pub(crate) async fn progress_events(i: &Importer, run: Uuid) -> i64 {
     sqlx::query_scalar(
         "SELECT count(*) FROM audit_events WHERE org_id = $1 AND target_type = 'data_import_run' \
            AND target_id = $2 AND action = 'data_import.apply.progress'",

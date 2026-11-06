@@ -202,8 +202,8 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
         </div>
       )}
       {verb && (
-        <section className={s.editor} aria-label={spec.empty ? title : t("entityRecord.revise.newValue", { field: spec.label })}>
-          <h3 className={s.subhead}>{spec.empty ? title : verb === "rev" && chosen ? t("entityRecord.revise.fromDate", { date: fmtDate(chosen), field: spec.label }) : t("entityRecord.revise.newValue", { field: spec.label })}</h3>
+        <section className={s.editor} aria-labelledby="revise-editor">
+          <h3 id="revise-editor" className={s.subhead}>{spec.empty ? t("entityOps.revise.firstValue", { field: spec.label }) : verb === "rev" && chosen ? t("entityRecord.revise.fromDate", { date: fmtDate(chosen), field: spec.label }) : t("entityRecord.revise.newValue", { field: spec.label })}</h3>
           {spec.edit(value, setValue)}
         </section>
       )}

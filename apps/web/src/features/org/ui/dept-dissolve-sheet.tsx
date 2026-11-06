@@ -23,7 +23,8 @@ import { Muted } from "../../../ui/muted/muted";
  * one change: the server moves the people (a dated transfer each) and sub-department first, then closes the unit, and the
  * user stays on the chart with a receipt. Kept in the history, never deleted.
  */
-export function DeptDissolveSheet({ place, places, company, onClose }: { place: Place; places: Map<string, Place>; company: string; onClose: () => void }) {
+export function DeptDissolveSheet({ place: initialPlace, places: initialPlaces, company, onClose }: { place: Place; places: Map<string, Place>; company: string; onClose: () => void }) {
+  const [{ place, places }] = useState({ place: initialPlace, places: initialPlaces });
   const d = place.node;
   const sub = depts(d);
   const detail = useQuery(get("/api/v1/org-units/{id}", { params: { path: { id: d.id } } }));

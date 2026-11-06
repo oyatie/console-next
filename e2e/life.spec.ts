@@ -168,5 +168,6 @@ test("people: HR corrects a record", { tag: "@hr" }, async ({ browser }) => {
 // title-implied 지점 roster («내 지점에 속한 직원만 보입니다») and 변경 요청 path. A 부서장/사업장 manager account returns
 // with a tenant role over a 사업장 (decision #18: managers sign in after the pilot); its body is at mvp 825e921a,
 // life.spec.ts lines 156-201. Owner: EMP-A (lane-corrections, UX-R1 ACCESS ask).
+// fixme: owner=@jason931225; reason=the manager journey lacks tenant-scoped role setup; expires=2026-11-17
 test.fixme("people: a 사업장 manager asks HR for a change, which HR applies", { tag: "@hr" }, async () => {});
 

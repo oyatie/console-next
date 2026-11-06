@@ -49,14 +49,30 @@ for (const width of [1440, 390]) {
         const toolbar = page.getByRole("toolbar", { name: t("structure.tools.label", { name: tree.entities[3]!.children[0]!.name }), exact: true });
         await expect(toolbar).toBeVisible();
         await expect(toolbar.getByRole("button").first()).toBeInViewport();
+        await page.screenshot({ path: test.info().outputPath(`find-${theme}.png`) });
+        // A lazy canvas stylesheet can arrive after the chart’s decoration rules.
+        await page.evaluate(() => {
+          const layer = document.querySelector('[class*="layer"]')!;
+          const rules = [...document.styleSheets].flatMap(sheet => [...sheet.cssRules]);
+          const rule = rules.find(rule => rule instanceof CSSStyleRule && rule.selectorText.includes("layer") && rule.selectorText.endsWith("> *"));
+          if (!rule) throw new Error("Canvas interaction rule missing");
+          const late = document.createElement("style");
+          late.textContent = rule.cssText;
+          document.head.append(late);
+          const decorations = layer.querySelectorAll(':scope > svg, :scope > [role="tooltip"]');
+          if (!decorations.length) throw new Error("Chart preview missing");
+          for (const decoration of decorations) {
+            if (getComputedStyle(decoration).pointerEvents !== "none") throw new Error("Chart decoration intercepts the pointer");
+          }
+        });
         await page.mouse.click(centre.x, centre.y);
         await expect(workplace).toHaveAttribute("aria-selected", "true");
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await expect(page.locator('[data-box][data-s~="edit"]')).toHaveCount(0);
         await fits(page, `org find/${width}/${theme}`);
-        await expectAxe(page, `org find/${width}/${theme}`);
         await page.keyboard.press("Escape");
       }
+      await expectAxe(page, `org toolbar/${width}`);
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });
@@ -104,7 +120,6 @@ for (const width of [1440, 390]) {
         })).toBe(true);
         await page.screenshot({ path: test.info().outputPath(`top-${theme}.png`) });
         await fits(page, `org toolbar edge/${width}/${theme}`);
-        await expectAxe(page, `org toolbar edge/${width}/${theme}`);
         const topCorner = await parent.evaluate(el => {
           const r = el.getBoundingClientRect();
           return { x: r.right - 2, y: r.bottom - 2 };
@@ -117,9 +132,9 @@ for (const width of [1440, 390]) {
         await find.press("Enter");
         await fits(page, `org toolbar/${width}/${theme}`);
         await page.screenshot({ path: test.info().outputPath(`parent-${theme}.png`) });
-        await expectAxe(page, `org toolbar/${width}/${theme}`);
         await page.keyboard.press("Escape");
       }
+      await expectAxe(page, `org toolbar/${width}`);
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });

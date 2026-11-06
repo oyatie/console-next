@@ -19,12 +19,55 @@ pub enum InboxFilter {
     Scheduled,
     Deadlines,
     Failures,
+    #[serde(skip)]
+    Approvals,
+    #[serde(skip)]
+    Today,
+    #[serde(skip)]
+    Overdue,
 }
 
 impl InboxFilter {
+    pub(crate) fn includes_source(self, source: crate::ActionInboxSource) -> bool {
+        use crate::ActionInboxSource as S;
+        match self {
+            InboxFilter::Waiting => matches!(source, S::OrgChange | S::EntityCorrections),
+            InboxFilter::Scheduled => source == S::OrgChange,
+            InboxFilter::Failures => source == S::HrLifecycle,
+            InboxFilter::Approvals => matches!(
+                source,
+                S::Workflow
+                    | S::OrgChange
+                    | S::Payroll
+                    | S::Governance
+                    | S::PeriodUnlock
+                    | S::SupportAccess
+                    | S::EntityCorrections
+            ),
+            InboxFilter::Deadlines | InboxFilter::Today | InboxFilter::Overdue => !matches!(
+                source,
+                S::HrIdentity
+                    | S::HrUnplaced
+                    | S::HrBranch
+                    | S::HrRegister
+                    | S::HrRequests
+                    | S::HrLifecycle
+                    | S::Setup
+                    | S::GrantNotice
+                    | S::Payroll
+                    | S::Governance
+                    | S::RegistrationChecks
+            ),
+            _ => true,
+        }
+    }
+
     fn includes(self, item: &ActionInboxItem) -> bool {
         match self {
             Self::All => true,
+            Self::Approvals => crate::Attention::Approvals.includes(item),
+            Self::Today => crate::Attention::Today.includes(item),
+            Self::Overdue => crate::Attention::Overdue.includes(item),
             Self::Turn => item.lane == "turn",
             Self::Waiting => item.lane == "waiting",
             Self::Scheduled => item.lane == "scheduled",
@@ -83,7 +126,14 @@ pub async fn list_filtered_action_inbox(
             }
         }
         if summary.is_none() {
-            summary = Some((page.counts, page.upcoming));
+            summary = Some((page.counts, page.upcoming, page.attention_filters));
+        }
+        if !unavailable.is_empty()
+            && let Some((_, _, attention_filters)) = &mut summary
+        {
+            for count in attention_filters {
+                count.total_is_exact = false;
+            }
         }
         items.extend(page.items.into_iter().filter(|item| filter.includes(item)));
         if items.len() > limit {
@@ -99,8 +149,9 @@ pub async fn list_filtered_action_inbox(
                     id: last.id.clone(),
                 },
             ));
-            let (counts, upcoming) = summary.unwrap_or_default();
+            let (counts, upcoming, attention_filters) = summary.unwrap_or_default();
             return Ok(ActionInboxPage {
+                attention_filters,
                 unavailable,
                 counts,
                 upcoming,
@@ -114,8 +165,9 @@ pub async fn list_filtered_action_inbox(
             Some(next) if cursor.as_ref() != Some(&next) => cursor = Some(next),
             Some(_) => return Err(KernelError::internal("inbox source repeated its cursor")),
             None => {
-                let (counts, upcoming) = summary.unwrap_or_default();
+                let (counts, upcoming, attention_filters) = summary.unwrap_or_default();
                 return Ok(ActionInboxPage {
+                    attention_filters,
                     unavailable,
                     counts,
                     upcoming,
@@ -142,28 +194,7 @@ impl ActionInboxSourcePort for ViewPort<'_> {
         source: crate::ActionInboxSource,
         mut query: crate::ActionInboxSourceQuery,
     ) -> crate::ActionInboxSourceFuture<'_> {
-        use crate::ActionInboxSource as S;
-        let included = match self.filter {
-            InboxFilter::Waiting => matches!(source, S::OrgChange | S::EntityCorrections),
-            InboxFilter::Scheduled => source == S::OrgChange,
-            InboxFilter::Failures => source == S::HrLifecycle,
-            InboxFilter::Deadlines => !matches!(
-                source,
-                S::HrIdentity
-                    | S::HrUnplaced
-                    | S::HrBranch
-                    | S::HrRegister
-                    | S::HrRequests
-                    | S::HrLifecycle
-                    | S::Setup
-                    | S::GrantNotice
-                    | S::Payroll
-                    | S::Governance
-                    | S::RegistrationChecks
-            ),
-            _ => true,
-        };
-        if included {
+        if self.filter.includes_source(source) {
             query.filter = self.filter;
             self.port.list_source_page(source, query)
         } else {
@@ -259,6 +290,20 @@ mod tests {
             (InboxFilter::Scheduled, &[S::OrgChange][..]),
             (InboxFilter::Failures, &[S::HrLifecycle][..]),
             (InboxFilter::Deadlines, &deadlines[..]),
+            (InboxFilter::Today, &deadlines[..]),
+            (InboxFilter::Overdue, &deadlines[..]),
+            (
+                InboxFilter::Approvals,
+                &[
+                    S::Workflow,
+                    S::OrgChange,
+                    S::Payroll,
+                    S::Governance,
+                    S::PeriodUnlock,
+                    S::SupportAccess,
+                    S::EntityCorrections,
+                ][..],
+            ),
         ] {
             let port = RecordingPort::default();
             let view = ViewPort {
@@ -312,6 +357,7 @@ mod tests {
 
     fn item(lane: &'static str, due_tone: &'static str, kind: &str) -> ActionInboxItem {
         ActionInboxItem {
+            age_days: 0,
             fold_key: String::new(),
             context: None,
             id: String::new(),

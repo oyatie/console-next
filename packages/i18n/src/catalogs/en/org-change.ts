@@ -85,7 +85,6 @@ export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
   "orgChange.date.nextMonday": "Next Monday",
   "orgChange.date.today": "Today",
   "orgChange.reason": "Reason",
-  "orgChange.reason.required": "Enter a reason",
   "orgChange.errors": "{count, plural, one {# error} other {# errors}} · moved to the first",
   "orgChange.escConfirm": "You have unsaved input · press again to close",
   "orgChange.proposal": "Changes",

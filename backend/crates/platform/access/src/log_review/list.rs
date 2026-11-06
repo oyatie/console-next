@@ -3,6 +3,8 @@
 //! Callers supply an armed tenant transaction after the Cedar tenant-wide gate.
 #[path = "rules.rs"]
 mod rules;
+#[path = "search.rs"]
+mod search;
 
 use console_kernel_core::OrgId;
 pub(super) use rules::Rules;
@@ -29,6 +31,9 @@ pub struct Prepared {
     flagged: Vec<FlaggedEvent>,
     summaries: Value,
     totals: Value,
+    // Search is a live projection, never part of a frozen review's evidence.
+    #[serde(skip)]
+    matches: Option<Vec<Uuid>>,
 }
 
 impl Prepared {
@@ -208,6 +213,7 @@ pub(super) async fn prepare(
         flagged: serde_json::from_value(row.try_get("flagged")?).map_err(AccessError::internal)?,
         summaries: row.try_get("summaries")?,
         totals: row.try_get("totals")?,
+        matches: None,
     })
 }
 
@@ -261,7 +267,8 @@ pub(super) async fn page_at(
         "SELECT id AS event_id,created_at,ARRAY[]::text[] AS flags FROM audit_events \
          WHERE org_id=$1 AND created_at >= $2 AND created_at < $3 AND after_snap ? 'self_read' \
          AND ($4::timestamptz IS NULL OR (created_at,id)>($4,$5)) \
-         AND ($7::timestamptz IS NULL OR created_at < $7) ORDER BY created_at,id LIMIT $6",
+         AND ($7::timestamptz IS NULL OR created_at < $7) \
+         AND ($8::uuid[] IS NULL OR id=ANY($8)) ORDER BY created_at,id LIMIT $6",
     )
     .bind(prepared.org.as_uuid())
     .bind(prepared.from)
@@ -270,6 +277,7 @@ pub(super) async fn page_at(
     .bind(cursor.map(|c| c.1))
     .bind(limit)
     .bind(as_of)
+    .bind(&prepared.matches)
     .fetch_all(conn)
     .await?;
     for row in &mut rows {

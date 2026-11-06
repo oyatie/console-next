@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 import { todayKst } from "../../../lib/pure/today";
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
@@ -23,9 +24,12 @@ export function CloseTab() {
       <h2>{t("attendance.close.heading", { month: monthText(data.month) })}</h2>
       <LongTable label={t("attendance.tab.close")} rows={data.items} rowId={row => row.branch_scope} hasMore={false} onLoadMore={() => {}}
         empty={t("attendance.close.empty")} columns={[
-          { id: "place", header: t("attendance.col.workplace"), card: "title", rowHeader: true, cell: row => search.wp ? places.find(place => place.id === row.branch_scope)?.name ?? t("attendance.close.unavailable") : t("attendanceRecords.scope.all", { count: places.length }) },
+          { id: "place", header: t("attendance.col.workplace"), card: "title", rowHeader: true, cell: row => row.branch_scope === "org" ? t("attendanceRecords.scope.all", { count: places.length }) : places.find(place => place.id === row.branch_scope)?.name ?? t("attendance.close.unavailable") },
           { id: "state", header: t("attendance.col.state"), card: "status", cell: row => <Chip tone={row.closed ? "ok" : "neutral"}>{t(row.closed ? "attendance.close.closed" : "attendance.close.open")}</Chip> },
           { id: "issues", header: t("attendance.tab.issues"), card: "fact", cell: row => t("attendance.count", { count: row.open_exceptions }) },
+          { id: "leave", header: t("attendance.close.pendingLeave"), card: "fact", cell: row => t("attendance.count", { count: row.pending_leave }) },
+          { id: "closedAt", header: t("attendance.close.closedAt"), card: "fact", cell: row => row.close ? <time dateTime={row.close.closed_at}>{fmtDateTime(row.close.closed_at)}</time> : "–" },
+          { id: "lock", header: t("attendance.close.periodLock"), card: "action", cell: row => row.close?.period_lock_id ? <Link to="/people/period-locks" search={{ unlock: row.close.period_lock_id }}>{t("attendanceRecords.month.requestUnlock")}</Link> : null },
         ]} />
     </>;
   }}</QueryState></>;

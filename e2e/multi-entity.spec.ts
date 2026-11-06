@@ -91,6 +91,7 @@ test("a group of two legal entities: each with its workplace and people, placed 
 // 전근 (a move between 사업장 of one 법인, design §3.9): a lifecycle TRANSFER with to_workplace_id that splits the
 // placement on its date and starts the 피보험자 전근 신고 clock when the workplaces' insurance links differ.
 // Waits for hr's lifecycle TRANSFER to call the placement port (hr.rs, INTEG R2).
+// fixme: owner=@jason931225; reason=lifecycle transfer does not yet update placements; expires=2026-11-17
 test.fixme("a transfer between two workplaces of one legal entity moves the placement on its date", async () => {});
 
 // 전적 (a move between 법인) with consent and a continuity choice: group-transfer.spec.ts.

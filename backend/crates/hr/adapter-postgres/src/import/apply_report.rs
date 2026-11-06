@@ -12,28 +12,22 @@ use crate::import::types::{EmployeeImportReport, RegisterGaps};
 
 /// The leave command's report plus what the settle and the plan add.
 pub async fn final_report(
-    pool: &PgPool,
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     org: OrgId,
     run_id: Uuid,
 ) -> Result<EmployeeImportReport, HrError> {
-    let (summary, unplaced, bound): (Value, Option<Value>, i64) =
-        with_org_conn::<_, _, HrError>(pool, org, move |tx| {
-            Box::pin(async move {
-                Ok(sqlx::query_as(
-                    "SELECT r.apply_summary, r.dry_run_summary->'unplaced', \
-                            (SELECT count(*) FROM import_run_row_snapshots s \
-                               JOIN person_employees_current e ON e.org_id = s.org_id AND e.id = s.employee_id \
-                              WHERE s.org_id = r.org_id AND s.run_id = r.id \
-                                AND s.outcome = 'INSERTED' AND e.org_unit_id IS NOT NULL) \
-                       FROM data_import_runs r WHERE r.org_id = $1 AND r.id = $2",
-                )
-                .bind(*org.as_uuid())
-                .bind(run_id)
-                .fetch_one(tx.as_mut())
-                .await?)
-            })
-        })
-        .await?;
+    let (summary, unplaced, bound): (Value, Option<Value>, i64) = sqlx::query_as(
+        "SELECT r.apply_summary, r.dry_run_summary->'unplaced', \
+                (SELECT count(*) FROM import_run_row_snapshots s \
+                   JOIN person_employees_current e ON e.org_id = s.org_id AND e.id = s.employee_id \
+                  WHERE s.org_id = r.org_id AND s.run_id = r.id \
+                    AND s.outcome = 'INSERTED' AND e.org_unit_id IS NOT NULL) \
+           FROM data_import_runs r WHERE r.org_id = $1 AND r.id = $2",
+    )
+    .bind(org.as_uuid())
+    .bind(run_id)
+    .fetch_one(tx.as_mut())
+    .await?;
     let mut report: EmployeeImportReport = serde_json::from_value(summary)
         .map_err(|e| HrError::internal(format!("invalid employee import report: {e}")))?;
     report.org_units_bound = usize::try_from(bound).unwrap_or_default();

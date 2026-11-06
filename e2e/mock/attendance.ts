@@ -12,10 +12,6 @@ const exceptions: S["AttendanceException"][] = ["LATE", "UNAPPROVED_OVERTIME", "
   id: id(600 + i), code: `AT-${i}`, kind: kind as S["AttendanceException"]["kind"], status: "OPEN", employee_id: id(100 + i),
   employee_name: `검증직원 ${i + 1}`, branch_id: id(4), work_date: `2026-10-0${i + 1}`, occurred_at: AT, detail: "근태 확인", evidence: [], links: [], created_at: AT,
 }));
-const closeItems: S["AttendanceMonthCloseItem"][] = [
-  { branch_scope: id(4), closed: false, open_exceptions: 7, pending_leave: 2 },
-  { branch_scope: id(5), closed: true, open_exceptions: 0, pending_leave: 0 },
-];
 const weekRows: Week52Row[] = (["OK", "WARN", "DANGER", "UNKNOWN"] as const).map((tone, i) => ({
   employee_id: id(100 + i), name: `검증직원 ${i + 1}`, week_start: "2026-09-28", current_hours: 20 + i, projected_hours: 30 + i, tone, acked: false,
   ...(tone === "UNKNOWN" ? {} : { recognized_hours: 32.5 + i, overtime_hours: 1.5 + i }),
@@ -50,7 +46,7 @@ export async function attendanceReads(page: Page, screen: typeof attendanceScree
       const empty = state === "empty";
       const offset = Number(url.searchParams.get("offset") ?? 0), limit = 2;
       const json = path === paths[0] ? { items: empty ? [] : exceptions.slice(offset, offset + limit), total: empty ? 0 : exceptions.length, offset, limit } satisfies S["AttendanceExceptionPage"]
-        : path === paths[1] ? { month: url.searchParams.get("month")!, items: empty ? [] : url.searchParams.has("branch_id") ? closeItems : [{ branch_scope: "org", closed: false, open_exceptions: 0, pending_leave: 0 }] } satisfies S["AttendanceCloseBoard"]
+        : path === paths[1] ? { month: url.searchParams.get("month")!, items: [{ branch_scope: url.searchParams.get("branch_id") ?? "org", closed: false, open_exceptions: empty ? 0 : 7, pending_leave: empty ? 0 : 2 }] } satisfies S["AttendanceCloseBoard"]
         : { week_start: url.searchParams.get("week_start")!, items: empty ? [] : weekRows } satisfies S["AttendanceWeek52Board"];
       if (!page.isClosed()) await route.fulfill({ status: 200, json });
     });

@@ -198,3 +198,42 @@ async fn cedar_rechecks_live_grants_and_tenant_isolation(pool: PgPool) {
     );
     assert_eq!(snapshot(&pool, id).await, before);
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn org_change_queue_context_keeps_commands_but_omits_free_text_reasons(pool: PgPool) {
+    let (org, maker) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    person_fixtures::bind_user_to_distinct_person(&pool, maker).await;
+    let checker = actor(&pool, org).await;
+    let (id, _) = request(&pool, org, maker).await;
+    let ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    for reason in ["NEW", "REORG", "A written change note"] {
+        sqlx::query("UPDATE org_change_requests SET reason=$2 WHERE id=$1")
+            .bind(id)
+            .bind(reason)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let (status, body) = ctx
+            .call("GET", "/api/v1/me/action-inbox?filter=turn", None)
+            .await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let row = body["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == format!("org_change:{id}"))
+            .unwrap();
+        assert_eq!(row["kind"], "org_change_approve");
+        let context = &row["context"];
+        assert!(context.get("reason").is_none(), "{context}");
+        assert_eq!(context["command"], "approve");
+        assert!(!context["drafter"].as_str().unwrap().is_empty());
+        let stored: String =
+            sqlx::query_scalar("SELECT reason FROM org_change_requests WHERE id=$1")
+                .bind(id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(stored, reason, "the record retains its reason");
+    }
+}

@@ -1,6 +1,7 @@
 // English for `denied.` ids (source: ../ko/denied.ts).
 export const enDenied = {
   "denied.action.bulk_appointment": "“HR records · Create & edit · All” or “Appointments · Create & edit · All”",
+  "denied.action.certificate_settings_manage": "Manage certificate numbering and seals",
   "denied.scopeKind.LEGAL_ENTITY": "Entity scope",
   "denied.scopeKind.WORKPLACE": "Workplace scope",
   "denied.scopeKind.DEPARTMENT": "Department scope",

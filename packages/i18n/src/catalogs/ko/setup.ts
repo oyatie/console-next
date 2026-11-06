@@ -216,6 +216,7 @@ export const koSetup = {
   "setup.golive.changed.hr_accounts_with_no_grant": "권한이 없는 담당자 계정",
   "setup.golive.changed.terms_version": "이용약관 버전",
   "setup.golive.refreshing": "새 운영 시작 미리보기를 읽고 있습니다",
+  "setup.golive.refreshFailed": "미리보기를 새로 읽지 못했습니다. 다시 시도한 뒤 운영을 시작하십시오",
   "setup.paste.file": "직원 목록.xlsx",
   "setup.paste.tooLarge": "목록이 너무 큽니다. 파일을 나누어 가져오십시오.",
   "setup.paste.empty": "제목 행과 직원 목록을 붙여넣으십시오.",

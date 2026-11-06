@@ -76,12 +76,14 @@ describe("go-live submission", () => {
       setup_writes: 0, prepared_grants: 0, grants_effective_in_setup: 0, hr_accounts_invited: 0, hr_accounts_enrolled: 0 },
   };
   let pendingRead: Promise<void> | undefined;
+  let readFailed = false;
   const launches: unknown[] = [];
   let ceremonies = 0;
   beforeAll(async () => {
     page = await browser.newPage();
     await page.route("**/api/v1/onboarding/go-live/preview", async (route) => {
       await pendingRead;
+      if (readFailed) return route.fulfill({ status: 503, json: { error: { code: "service_unavailable", message: "unavailable" } } });
       await route.fulfill({ json: preview });
     });
     await page.route("**/api/v1/auth/passkey/login/start", async (route) => {
@@ -127,9 +129,18 @@ describe("go-live submission", () => {
       await start.click({ force: true });
       assert.deepEqual(launches, []);
       assert.equal(ceremonies, 0);
+      readFailed = true;
+      refreshing.resolve();
+      const retry = page.getByRole("button", { name: "Reload", exact: true });
+      await browserExpect(retry).toBeVisible();
+      await browserExpect(start).toHaveAttribute("aria-disabled", "true");
+      await browserExpect(start).toHaveAccessibleDescription("The preview could not be refreshed. Retry before starting operations");
+      assert.deepEqual(launches, []);
+      assert.equal(ceremonies, 0);
+      readFailed = false;
       preview.digest = "fresh-department-preview";
       preview.line_digests = { org_units: "fresh-department-line" };
-      refreshing.resolve();
+      await retry.click();
       await browserExpect(start).not.toHaveAttribute("aria-disabled", "true");
       await start.click();
       await browserExpect(page.getByRole("heading", { name: "Operations", exact: true })).toBeVisible();
@@ -141,7 +152,7 @@ describe("go-live submission", () => {
     } finally {
       await page.close();
     }
-  }, 5000);
+  });
 });
 
 describe.each([3, 2000])("department readiness with %i people", (count) => {
