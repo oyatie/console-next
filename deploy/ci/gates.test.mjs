@@ -10,6 +10,28 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 const collector = await import(pathToFileURL(resolve(process.env.PLATFORM_REPO_ROOT ?? '.', 'deploy/ci/gates.mjs')));
+const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
+const gatesPolicy = JSON.parse(readFileSync(resolve(root, 'deploy/gates.json'), 'utf8'));
+
+for (const [gate, definitions] of Object.entries(gatesPolicy.checks)) {
+  for (const definition of definitions) test(`${gate}: configured evidence resolves once in the workflow`, () => {
+    const workflow = yaml.load(readFileSync(resolve(root, '.github/workflows', definition.workflow), 'utf8'));
+    const jobs = Object.entries(workflow.jobs).flatMap(([id, job]) => {
+      const rows = job.strategy?.matrix?.include;
+      const names = rows ? rows.map(row => job.name
+        ? job.name.replace(/\$\{\{\s*matrix\.(\w+)\s*\}\}/g, (_, axis) => row[axis])
+        : `${id} (${Object.values(row).join(', ')})`) : [job.name ?? id];
+      return names.filter(name => name === definition.job).map(() => job);
+    });
+    assert.equal(jobs.length, 1, `${definition.workflow}: ${definition.job}`);
+    if (definition.step) assert.equal(jobs[0].steps.filter(step => step?.name === definition.step).length, 1, definition.step);
+  });
+}
+
+test('native smoke keeps the default matrix names required by promotion', () => {
+  const workflow = yaml.load(readFileSync(resolve(root, '.github/workflows/platform.yml'), 'utf8'));
+  assert.equal(workflow.jobs.build.name, undefined);
+});
 
 const sha = 'a'.repeat(40);
 const predicateType = 'https://cosskorea.com/attestations/console-gates/v1';
@@ -148,9 +170,9 @@ test('shared check reader propagates API failure', async () => {
 function ciFixture() {
   let id = 100;
   const definitions = {
-    'ci.yml': [['backend', 'Backend code gates (release parity)']],
+    'ci.yml': [['backend-gates', 'Backend code gates (release parity)']],
     'api-compat.yml': [['api-compat']],
-    'platform.yml': [['publish', 'SPDX SBOM'], ['scan'], ['smoke-amd64', 'Test native image'], ['smoke-arm64', 'Test native image']],
+    'platform.yml': [['publish', 'SPDX SBOM'], ['scan'], ['build (amd64, ubuntu-24.04)', 'Test native image'], ['build (arm64, ubuntu-24.04-arm)', 'Test native image']],
   };
   const runs = Object.fromEntries(Object.keys(definitions).map((file, index) => [file, {
     id:index + 1, head_sha:sha, event:'push', head_branch:'dev', path:`.github/workflows/${file}`,
@@ -183,6 +205,19 @@ test('CI collector binds every gate to the latest push attempt and passes the ho
   const {github} = ciFixture();
   const gateChecks = await collector.collectChecks(github, sha);
   assert.ok(hostAccepts(buildPredicate({...fixture(), gateChecks}).predicate));
+});
+
+for (const latestFirst of [false, true]) test(`CI collector selects the latest push with latestFirst=${latestFirst}`, async () => {
+  const {github, runs} = ciFixture();
+  const original = github.paginate;
+  github.paginate = async (route, params) => {
+    if (!params.workflow_id) return original(route, params);
+    const latest = runs[params.workflow_id];
+    const older = {...latest, id:latest.id - 1, head_sha:'c'.repeat(40)};
+    return latestFirst ? [latest, older] : [older, latest];
+  };
+  const gateChecks = await collector.collectChecks(github, sha);
+  assert.equal(buildPredicate({...fixture(), gateChecks}).result, 'pass');
 });
 
 test('CI collector records a missing workflow as failed evidence and propagates API outages', async () => {
@@ -223,13 +258,14 @@ printf 'apps/web/src/features/auth/login.ts\\0docs/login.ts\\0'
   }
 });
 
-for (const reason of ['missing', 'skipped', 'cancelled', 'failed step', 'wrong suite', 'wrong SHA', 'wrong event', 'wrong branch', 'wrong workflow', 'wrong job SHA', 'missing arch', 'duplicate job', 'old attempt']) {
+for (const reason of ['missing', 'skipped', 'cancelled', 'failed step', 'duplicate step', 'wrong suite', 'wrong SHA', 'wrong event', 'wrong branch', 'wrong workflow', 'wrong job SHA', 'missing arch', 'duplicate job', 'old attempt']) {
   test(`CI collector fails closed for ${reason}`, async () => {
     const {github, runs, jobs, checks} = ciFixture();
     if (reason === 'missing') checks.splice(0, 1);
     if (reason === 'skipped') jobs[1][0].conclusion = 'skipped';
     if (reason === 'cancelled') jobs[1][0].status = 'in_progress';
     if (reason === 'failed step') jobs[1][0].steps[0].conclusion = 'failure';
+    if (reason === 'duplicate step') jobs[1][0].steps.push({...jobs[1][0].steps[0]});
     if (reason === 'wrong suite') checks[0].check_suite.id = 999;
     if (reason === 'wrong SHA') runs['ci.yml'].head_sha = 'c'.repeat(40);
     if (reason === 'wrong event') runs['ci.yml'].event = 'pull_request';
