@@ -89,6 +89,13 @@ for (const width of [1024, 1100, 1152, 1216, 1280, 1366, 1440, 1472, 1536, 1600,
             && bounds(statusText).right <= bounds(status).right
             && bounds(status).right <= bounds(card).right,
           statusHeaderFits: headers.at(-1)!.scrollWidth <= headers.at(-1)!.clientWidth,
+          // Distance from each visible cell's text centre to the cell's centre.
+          textOffsets: [...headers, ...cells].filter(el => getComputedStyle(el).display !== "none").map(el => {
+            const text = document.createRange();
+            text.selectNodeContents(el);
+            const box = text.getBoundingClientRect(), cell = bounds(el);
+            return Math.abs((box.top + box.bottom - cell.top - cell.bottom) / 2);
+          }),
           secondary: cells.flatMap((cell, index) => {
             if (cell.dataset.card !== "fact") return [];
             const text = cell.firstElementChild as HTMLElement ?? cell;
@@ -107,6 +114,7 @@ for (const width of [1024, 1100, 1152, 1216, 1280, 1366, 1440, 1472, 1536, 1600,
       expect(metrics.tableRight).toBeLessThanOrEqual(metrics.cardRight);
       expect(metrics.statusFits, "entire status chip fits inside the card").toBe(true);
       expect(metrics.statusHeaderFits).toBe(true);
+      for (const offset of metrics.textOffsets) expect(offset, "cell text is vertically centred").toBeLessThanOrEqual(2);
       expect(metrics.secondary).toHaveLength(5);
       const minimum = metrics.minimum;
       // Whole-value checks use the natural title width when it is shorter than the title floor.
