@@ -17,7 +17,7 @@ use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -25,6 +25,9 @@ use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
+
+#[path = "auth_fixtures/attendance_grants.rs"]
+mod attendance_grants;
 
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
@@ -165,10 +168,7 @@ async fn apply_with_checklist_admits_and_applies(owner_pool: PgPool) {
 // Helpers.
 // ===========================================================================
 
-/// SUPER_ADMIN (not ADMIN): `authorize_hr_org_wide` requires `BranchScope::All`,
-/// which only SUPER_ADMIN/EXECUTIVE resolve to without a `user_branches` row
-/// (`resolve_branch_scope_in_org`); ADMIN would 403 upstream of the §16 gate
-/// this test targets.
+/// Tenant attendance authority keeps this test focused on checklist admission.
 async fn seed_admin(pool: &PgPool, user_id: UserId) {
     sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
         .bind(*user_id.as_uuid())
@@ -178,6 +178,7 @@ async fn seed_admin(pool: &PgPool, user_id: UserId) {
         .execute(pool)
         .await
         .unwrap();
+    attendance_grants::grant(pool, OrgId::one(), user_id, None).await;
 }
 
 /// Seed a `data_import_runs` row already at `DRY_RUN` with zero candidate rows,
@@ -222,7 +223,7 @@ async fn send(service: axum::Router, uri: &str, token: &str, body: Option<Value>
 }
 
 fn keys() -> Keys {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     Keys {
         private_pem: signing_key
             .to_pkcs8_pem(LineEnding::LF)

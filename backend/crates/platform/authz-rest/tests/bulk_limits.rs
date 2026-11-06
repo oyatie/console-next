@@ -13,7 +13,7 @@ use console_platform_test_support::{
     issue_session_token, runtime_role_pool, seed_org_and_super_admin,
 };
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -24,7 +24,7 @@ use uuid::Uuid;
 async fn app(pool: &PgPool) -> (axum::Router, String, Uuid) {
     let org = Uuid::new_v4();
     let user = seed_org_and_super_admin(pool, org, "bulk-limits").await;
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let settings = JwtSettings {
         issuer: "bulk-limit-test".to_owned(),
         audience: "bulk-limit-test".to_owned(),

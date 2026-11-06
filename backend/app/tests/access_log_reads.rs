@@ -54,6 +54,13 @@ async fn personal_data_reads_record_the_client_ip_session_and_subjects(pool: PgP
         "EXECUTIVE",
     )
     .await;
+    attendance_grants::grant(
+        &pool,
+        console_kernel_core::OrgId::from_uuid(org),
+        admin,
+        None,
+    )
+    .await;
     let app: Router = build_router(app_state(runtime, public_pem));
 
     // Through the trusted proxy: the forwarded client is the 접속지.
@@ -211,3 +218,6 @@ async fn personal_data_reads_record_the_client_ip_session_and_subjects(pool: PgP
     assert_eq!(rows[6].4["self_read"], true);
     assert_eq!(rows[1].4["self_read"], false);
 }
+
+#[path = "auth_fixtures/attendance_grants.rs"]
+mod attendance_grants;

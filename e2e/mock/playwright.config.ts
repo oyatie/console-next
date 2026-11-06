@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { execFileSync } from "node:child_process";
 import { defineConfig } from "@playwright/test";
 import { OUTPUT_DIR, PORTS } from "../slot";
 import timings from "./timings.json" with { type: "json" };
@@ -7,6 +8,7 @@ const dist = `../../.cache/states-${PORTS.web}`;
 
 // Prebuild lazy chunks once so state assertions never wait on Vite's dev transforms.
 export default defineConfig({
+  metadata: { commit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim() },
   testDir: "..",
   testMatch: ["mock/*.spec.ts", "states/*.spec.ts", "layout/layout.spec.ts"],
   outputDir: `${OUTPUT_DIR}-mock`,

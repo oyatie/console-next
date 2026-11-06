@@ -128,6 +128,7 @@ export const koOrgChange = {
   "orgChange.settle.transfer.left": "{name}에 아직 {count, plural, other {#명}}이 있습니다",
   "orgChange.settle.transfer.zero": "{name}에 남은 구성원이 없습니다(지금 0명)",
   "orgChange.history": "기록",
+  "orgChange.history.empty": "아직 기록된 변경이 없습니다",
   "orgChange.event.create": "{actor}님이 조직 변경을 작성했습니다",
   "orgChange.event.update": "{actor}님이 초안을 수정했습니다",
   "orgChange.event.submit": "{actor}님이 조직 변경을 상신했습니다",

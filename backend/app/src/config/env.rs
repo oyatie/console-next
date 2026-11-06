@@ -241,6 +241,7 @@ impl AppConfig {
         .map_err(AppError::Config)?;
 
         Ok(Self {
+            realtime: crate::config::realtime::from_vars(&vars)?,
             role,
             service_name,
             http_addr,

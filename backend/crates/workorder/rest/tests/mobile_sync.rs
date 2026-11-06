@@ -12,7 +12,7 @@ use console_workorder_adapter_postgres::PgWorkOrderStore;
 use console_workorder_rest::{MobileRestState, mobile_router};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -120,7 +120,7 @@ struct Harness {
 }
 
 async fn harness(pool: PgPool) -> Harness {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

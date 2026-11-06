@@ -18,6 +18,7 @@ pub(crate) type ApiResult<T> = Result<T, ApiError>;
 
 const fn status(kind: Refusal) -> StatusCode {
     match kind {
+        Refusal::BadRequest => StatusCode::BAD_REQUEST,
         Refusal::Invalid => StatusCode::UNPROCESSABLE_ENTITY,
         Refusal::NotFound => StatusCode::NOT_FOUND,
         Refusal::Forbidden => StatusCode::FORBIDDEN,

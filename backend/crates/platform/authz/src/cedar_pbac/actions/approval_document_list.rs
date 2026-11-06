@@ -6,11 +6,11 @@ const SCHEMA: &str = r#"entity Subject = { "org": String, "roles": Set<String> }
 entity Resource = { "org": String };
 action approval_document_list appliesTo { principal: [Subject], resource: [Resource],
  context: { "read": Bool, "requester": Bool, "participant": Bool,
-            "can_decide": Bool, "completed": Bool, "box": String }
+            "can_review": Bool, "completed": Bool, "box": String }
 };"#;
 const POLICIES: &str = r#"permit(principal, action == Action::"approval_document_list", resource)
 when { principal.org == resource.org && context.read && (
- (context.box == "pending" && !context.completed && context.can_decide) ||
+ (context.box == "pending" && !context.completed && context.can_review && !context.requester && !context.participant) ||
  (context.box == "requested" && !context.completed && context.requester) ||
  (context.box == "completed" && context.completed && (context.requester || context.participant))
 ) };"#;
@@ -19,7 +19,7 @@ pub struct Facts {
     pub read: bool,
     pub requester: bool,
     pub participant: bool,
-    pub can_decide: bool,
+    pub can_review: bool,
     pub completed: bool,
 }
 pub fn decide(
@@ -43,7 +43,7 @@ pub fn decide(
                 ("read", Fact::Bool(f.read)),
                 ("requester", Fact::Bool(f.requester)),
                 ("participant", Fact::Bool(f.participant)),
-                ("can_decide", Fact::Bool(f.can_decide)),
+                ("can_review", Fact::Bool(f.can_review)),
                 ("completed", Fact::Bool(f.completed)),
                 ("box", Fact::Str(box_name.into())),
             ],
@@ -59,7 +59,7 @@ mod tests {
             read: true,
             requester: false,
             participant: false,
-            can_decide: false,
+            can_review: false,
             completed: false,
         };
         for box_name in ["pending", "upcoming", "requested", "reference", "completed"] {
@@ -71,7 +71,7 @@ mod tests {
                     "other",
                     Facts {
                         requester: true,
-                        can_decide: true,
+                        can_review: true,
                         ..f
                     },
                     box_name
@@ -98,7 +98,7 @@ mod tests {
                 "o",
                 "o",
                 Facts {
-                    can_decide: true,
+                    can_review: true,
                     ..f
                 },
                 "pending"
@@ -111,7 +111,7 @@ mod tests {
                 "o",
                 "o",
                 Facts {
-                    can_decide: true,
+                    can_review: true,
                     read: false,
                     ..f
                 },
@@ -119,6 +119,23 @@ mod tests {
             ),
             Ok(false)
         );
+        for (requester, participant) in [(true, false), (false, true)] {
+            assert_eq!(
+                decide(
+                    "u",
+                    "o",
+                    "o",
+                    Facts {
+                        can_review: true,
+                        requester,
+                        participant,
+                        ..f
+                    },
+                    "pending"
+                ),
+                Ok(false)
+            );
+        }
         let bundle = ActionBundle::compile("approval_document_list", SCHEMA, POLICIES).unwrap();
         assert!(bundle.decide("u", "o", &[], "o", &[]).is_err());
         assert!(

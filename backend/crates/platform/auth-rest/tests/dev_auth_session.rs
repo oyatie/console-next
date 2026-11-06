@@ -18,7 +18,7 @@ use console_kernel_core::OrgId;
 use console_platform_auth::RefreshTokenStore;
 use console_platform_auth_rest::{AuthRestConfig, AuthRestState, router};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::json;
 use sqlx::PgPool;
@@ -57,7 +57,7 @@ async fn runtime_role_pool(owner_pool: &PgPool) -> PgPool {
 }
 
 fn test_state(pool: PgPool) -> AuthRestState {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key
         .to_pkcs8_pem(LineEnding::LF)
         .unwrap()

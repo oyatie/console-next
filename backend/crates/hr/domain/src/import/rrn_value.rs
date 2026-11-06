@@ -40,7 +40,7 @@ impl Rrn {
         } else {
             let (head, tail) = match whole.split_once('-') {
                 Some((head, tail)) => (head, tail),
-                None if whole.len() == 13 => whole.split_at(6),
+                None if whole.len() == 13 => whole.split_at_checked(6).ok_or(RrnInvalid)?,
                 None => return Err(RrnInvalid),
             };
             format!("{head}{tail}")

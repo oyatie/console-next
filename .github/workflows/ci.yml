@@ -49,7 +49,8 @@ jobs:
 
   web:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # 12m setup (9m observed browser install + 3m checkout/npm/artifacts) + existing 30m checks.
+    timeout-minutes: 42
     permissions:
       contents: read
     steps:
@@ -74,21 +75,49 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
-      # Browser-backed unit tests (vitest + Playwright) need the pinned Chromium headless shell; caching is CI-1's.
-      - name: Chromium headless shell for browser-backed unit tests
-        run: npx playwright install --with-deps --only-shell chromium
-      - run: npm run check
-      - name: GHCR retention safety controls
-        run: node --test scripts/ghcr-retention.test.mjs
-      - name: D7 producer regression controls
+      - &playwright-version
+        name: Locked Playwright version
+        id: playwright
         run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+          appendFileSync(process.env.GITHUB_OUTPUT, `version=${lock.packages['node_modules/playwright-core'].version}\n`);
+          JS
+      - &playwright-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+      - &playwright-install
+        name: Chromium headless shell for browser-backed tests
+        run: |
+          install_started=$SECONDS
+          report_install_duration() {
+            printf 'Playwright Chromium install: %ss (includes OS dependencies).\n' "$((SECONDS - install_started))" >> "$GITHUB_STEP_SUMMARY"
+          }
+          trap report_install_duration EXIT
+          npx playwright install --with-deps --only-shell chromium
+      - &playwright-cache-save
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.playwright-cache.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+      - name: Web checks
+        timeout-minutes: 30
+        run: |
+          npm run check
+          node --test scripts/ci-backend.test.mjs
+          node --test scripts/ghcr-retention.test.mjs
           node --test scripts/negative-index.test.mjs
           python3 scripts/d7_evidence_test.py
           node --test scripts/d10-census.test.mjs
           python3 scripts/d10_evidence_test.py
           python3 scripts/d8_evidence_test.py
-      - name: Spreadsheet paste browser regression
-        run: npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
+          python3 scripts/states_evidence_test.py
+          CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
   states-plan:
@@ -149,7 +178,8 @@ jobs:
   states:
     needs: states-plan
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Plan-derived run budget plus setupAllowanceSeconds; setup cannot consume the run allowance.
+    timeout-minutes: ${{ matrix.jobTimeoutMinutes }}
     permissions:
       contents: read
     strategy:
@@ -167,13 +197,17 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npx playwright install --with-deps --only-shell chromium
+      - *playwright-version
+      - *playwright-cache
+      - *playwright-install
+      - *playwright-cache-save
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: states-plan
           path: .cache/states-plan
       # Workers stay at the timing configuration's default; go wider with shards, not workers.
       - run: node scripts/states-shards.mjs run .cache/states-plan/plan.json "${{ matrix.shard }}"
+        timeout-minutes: ${{ matrix.runTimeoutMinutes }}
         env:
           E2E_MODULES_FILE: .cache/states-plan/modules.json
           PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/states-report-${{ matrix.shard }}.json
@@ -219,29 +253,28 @@ jobs:
           if-no-files-found: error
 
   backend:
+    needs: [affected]
+    if: &backend-affected ${{ !cancelled() && (github.event_name == 'push' || needs.affected.outputs.backend == 'true') }}
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 120
-    permissions:
-      contents: read
-    defaults:
+    timeout-minutes: 30
+    permissions: {contents: read}
+    defaults: &backend-defaults
       run:
         working-directory: backend
-    env:
+    env: &backend-env
       SQLX_OFFLINE: "true"
       CARGO_TERM_COLOR: always
-      MIGRATION_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-      CARGO_NEXTEST_VERSION: 0.9.138
       CARGO_INCREMENTAL: "0"
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
-        with:
-          egress-policy: audit
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      # Clippy, gates and nextest share one build; PRs restore only trusted dev caches.
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - &backend-harden
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with: {egress-policy: audit}
+      - &backend-checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false, fetch-depth: 0}
+      # All workers restore the same cache; only the dev-only collector saves their union.
+      - &rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: rust-cache
         with:
           path: |
@@ -251,13 +284,52 @@ jobs:
           key: backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
           restore-keys: |
             backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-
-      # backend/rust-toolchain.toml pins the toolchain; rustup on the runner installs it on first use.
-      # Workspace members only: --all would also format the vendored path dependencies in third-party/.
+      - &cache-mark
+        name: Mark restored cache
+        run: |
+          mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git/db" "$GITHUB_WORKSPACE/backend/target"
+          touch "$RUNNER_TEMP/rust-cache-start"
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - &cache-collect
+        name: Collect Rust cache changes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        run: |
+          mkdir -p "$RUNNER_TEMP/rust-cache"
+          cd "$HOME"
+          find .cargo/registry .cargo/git/db -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
+            tar --null -czf "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz" -T -
+          cd "$GITHUB_WORKSPACE"
+          find backend/target -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
+            tar --null -czf "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz" -T -
+      - &cache-upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        with:
+          name: rust-cache-${{ github.job }}-${{ env.NEXTEST_SHARD || '0' }}
+          path: ${{ runner.temp }}/rust-cache/*.tgz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+  backend-gates:
+    needs: [affected]
+    if: *backend-affected
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions: {contents: read}
+    defaults: *backend-defaults
+    env:
+      SQLX_OFFLINE: "true"
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      MIGRATION_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+    steps:
+      - *backend-harden
+      - *backend-checkout
+      - *rust-cache
+      - *cache-mark
       - run: cargo test --locked -p console-gate-migration-safety
-      # Clippy fills the registry first so the release commands below can run offline.
-      # Same discovery, build and no-argument execution as console-infra's code-gates image stage.
       - name: Backend code gates (release parity)
         shell: bash
         run: |
@@ -265,25 +337,64 @@ jobs:
           test -n "$pkgs"
           args=()
           for p in ${pkgs}; do args+=(-p "$p"); done
-          cargo build --locked --offline "${args[@]}"
+          cargo build --locked "${args[@]}"
           failed=0
           for p in ${pkgs}; do
             cargo run -q --locked --offline -p "${p}" || failed=1
           done
           echo "Backend code gates: ${SECONDS}s"
           exit "$failed"
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          cache: npm
+      - *cache-collect
+      - *cache-upload
+
+  backend-release:
+    needs: [affected]
+    if: *backend-affected
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions: {contents: read}
+    defaults: *backend-defaults
+    env: *backend-env
+    steps:
+      - *backend-harden
+      - *backend-checkout
+      - *rust-cache
+      - *cache-mark
       - name: Release backend for Home probe
         run: cargo build --release --locked -p console-app --features e2e-test-support
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: d10-backend
           path: backend/target/release/console-app
-          retention-days: 1
+          retention-days: ${{ github.event_name == 'push' && 90 || 1 }}
           if-no-files-found: error
+      - *cache-collect
+      - *cache-upload
+
+  backend-tests:
+    needs: [affected]
+    if: *backend-affected
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions: {contents: read}
+    defaults: *backend-defaults
+    env:
+      SQLX_OFFLINE: "true"
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      CARGO_NEXTEST_VERSION: 0.9.138
+      NEXTEST_SHARD: ${{ matrix.shard }}
+      NEXTEST_SHARDS: ${{ strategy.job-total }}
+    strategy:
+      fail-fast: false
+      matrix: {shard: [1, 2]}
+    steps:
+      - *backend-harden
+      - *backend-checkout
+      - *rust-cache
+      - *cache-mark
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: {node-version-file: .node-version}
       - name: Install pinned Rust test runner
         run: |
           curl --fail --silent --show-error --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
@@ -293,27 +404,52 @@ jobs:
           echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
       - run: node scripts/backend-tests.mjs
         working-directory: .
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: backend-test-results-${{ matrix.shard }}
+          path: backend/target/nextest/ci/
+          if-no-files-found: error
+
+      - *cache-collect
+      - *cache-upload
+
+  # Merge only changed cache files after successful dev builds, avoiding competing partial-cache writers.
+  backend-cache:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: [backend, backend-gates, backend-tests, backend-release]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    permissions: {contents: read}
+    steps:
+      - *backend-harden
+      - *backend-checkout
+      - *rust-cache
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: rust-cache-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/rust-cache
+      - name: Merge Rust cache changes
+        run: |
+          for archive in "$RUNNER_TEMP"/rust-cache/registry-*.tgz; do tar -xzf "$archive" -C "$HOME"; done
+          for archive in "$RUNNER_TEMP"/rust-cache/target-*.tgz; do tar -xzf "$archive" -C "$GITHUB_WORKSPACE"; done
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git/db
             backend/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: ${{ !cancelled() }}
-        with:
-          name: backend-test-results
-          path: backend/target/nextest/ci/
-          if-no-files-found: error
 
   home:
-    needs: [backend]
+    needs: [affected, backend-release]
+    if: ${{ !cancelled() && needs.affected.result == 'success' && (needs['backend-release'].result == 'success' || (github.event_name != 'push' && needs.affected.outputs.backend == 'false' && needs['backend-release'].result == 'skipped')) }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with: {egress-policy: audit}
@@ -326,8 +462,18 @@ jobs:
           npm ci --no-audit --no-fund
           npx playwright install --with-deps --only-shell chromium
           npm run build
+      - name: Find latest successful trusted dev backend
+        id: backend
+        if: needs['backend-release'].result == 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci-home-backend.mjs
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {name: d10-backend, path: .cache/home-backend}
+        with:
+          name: d10-backend
+          path: .cache/home-backend
+          run-id: ${{ steps.backend.outputs.run-id || github.run_id }}
+          github-token: ${{ github.token }}
       - run: chmod +x .cache/home-backend/console-app
       - name: Served 2,000-person Home budget
         env:
@@ -370,7 +516,7 @@ jobs:
 
   d10-probes:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
-    needs: [backend]
+    needs: [backend-release]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     permissions:
@@ -408,7 +554,7 @@ jobs:
 
   d7-evidence:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
-    needs: [backend, home, states]
+    needs: [backend, backend-gates, backend-tests, backend-release, home, states]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -421,14 +567,26 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
       - run: npm ci --no-audit --no-fund
+      - name: Record upstream evidence status
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          mkdir -p .cache/d7-evidence
+          node --input-type=module <<'JS'
+          import { writeFileSync } from 'node:fs';
+          const jobs = JSON.parse(process.env.NEEDS);
+          const status = Object.values(jobs).every(job => job.result === 'success') ? 'pass' : 'fail';
+          writeFileSync('.cache/d7-evidence/ci.json', JSON.stringify({ commit: process.env.GITHUB_SHA, run_at: new Date().toISOString(), status, jobs }, null, 2) + '\n');
+          JS
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with: {pattern: states-report-*, merge-multiple: true, path: .cache/d7-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with: {name: d7-playwright, path: .cache/d7-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {name: backend-test-results, path: .cache/d7-nextest}
-      - run: python3 scripts/d7-evidence.py .cache/d7-evidence .cache/d7-nextest/junit.xml .cache/d7-input/*.json
+        with: {pattern: backend-test-results-*, path: .cache/d7-nextest}
+      - run: python3 scripts/d7-evidence.py .cache/d7-evidence .cache/d7-nextest .cache/d7-input/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
         with:
           name: d7-evidence
           path: .cache/d7-evidence/*.json
@@ -459,13 +617,19 @@ jobs:
       - run: node scripts/d10-census.mjs > .cache/d10-census.json
       - run: python3 scripts/d10-evidence.py .cache/d10-evidence .cache/d10-census.json .cache/d7-evidence .cache/d10-input/*.json
       - run: python3 scripts/d8-evidence.py .cache/d8-evidence .cache/d7-evidence/e2e.json .cache/d8-input/*.json .cache/d10-input/*.json
+      - name: Produce route-state evidence from the existing reports
+        run: |
+          node scripts/d8-module-routes.mjs .cache/d8-routes.json
+          python3 scripts/states-evidence.py .cache/d8-evidence/states.json .cache/d8-routes.json .cache/d8-input/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
         with:
           name: d8-evidence
           path: .cache/d8-evidence/*.json
           include-hidden-files: true
           if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
         with:
           name: d10-evidence
           path: .cache/d10-evidence/*.json
@@ -539,18 +703,23 @@ jobs:
 
   ci-ok:
     if: ${{ always() }}
-    needs: [affected, commits, web, states-plan, states, states-timings, backend, home, supply-chain]
+    needs: [affected, commits, web, states-plan, states, states-timings, backend, backend-gates, backend-tests, backend-release, home, supply-chain]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Require every CI job
+      - name: Require every affected CI job
+        env:
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          test "${{ needs.affected.result }}" = success
-          test "${{ needs.commits.result }}" = success
-          test "${{ needs.web.result }}" = success
-          test "${{ needs['states-plan'].result }}" = success
-          test "${{ needs.states.result }}" = success
-          test "${{ needs['states-timings'].result }}" = success || test "${{ needs['states-timings'].result }}" = skipped
-          test "${{ needs.backend.result }}" = success
-          test "${{ needs.home.result }}" = success
-          test "${{ needs.supply-chain.result }}" = success
+          node <<'JS'
+          const jobs = JSON.parse(process.env.NEEDS);
+          const push = process.env.GITHUB_EVENT_NAME === 'push';
+          const backend = push || jobs.affected.outputs.backend !== 'false';
+          const backendJobs = ['backend', 'backend-gates', 'backend-tests', 'backend-release'];
+          for (const [name, job] of Object.entries(jobs)) {
+            const optional = !push && (name === 'states-timings' || !backend && backendJobs.includes(name));
+            if (job.result !== 'success' && !(optional && job.result === 'skipped')) {
+              throw new Error(`${name}: ${job.result}`);
+            }
+          }
+          JS

@@ -26,7 +26,7 @@ use console_platform_rest::{PLATFORM_ORGS_PATH, PlatformRestState, router};
 use console_platform_test_support::soft_passkey::{self, SoftKey};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -48,7 +48,7 @@ struct Harness {
 
 impl Harness {
     async fn new(owner_pool: &PgPool) -> Self {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = SigningKey::generate();
         let private_pem = signing_key
             .to_pkcs8_pem(LineEnding::LF)
             .unwrap()

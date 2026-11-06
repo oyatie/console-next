@@ -37,6 +37,16 @@ async fn closed_preview_requires_acknowledgment_then_records_reported_close_date
         .await
         .unwrap();
     assert_eq!(answer.reported_status, Some(OperatingStatus::Closed));
+    let wire: String = sqlx::query_scalar(
+        "SELECT outcome->>'checked_at' FROM entity_commands WHERE command_id=$1",
+    )
+    .bind(command.command_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(wire.ends_with('Z'), "{wire}");
+    time::OffsetDateTime::parse(&wire, &time::format_description::well_known::Rfc3339).unwrap();
+
     let checked_at:time::OffsetDateTime=sqlx::query_scalar("UPDATE entity_commands SET outcome=outcome || jsonb_build_object('checked_at',now()-interval '1 hour') WHERE command_id=$1 RETURNING (outcome->>'checked_at')::timestamptz").bind(command.command_id).fetch_one(&pool).await.unwrap();
     let preview: PreviewAcceptance = serde_json::from_value(serde_json::json!({
         "command_id":command.command_id.unwrap(), "acknowledged":false, "status_since":null

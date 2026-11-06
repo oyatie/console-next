@@ -33,7 +33,8 @@ const SOURCE_TEXT: Record<string, MessageId> = {
 /** Every surface reads this server queue; filters, ownership and deadlines stay with its sources. */
 export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase = false, setupPending = false, action }: { preview?: boolean; filter?: InboxFilter; setup?: (c: Checklist) => ReactNode; setupPhase?: boolean; setupPending?: boolean; action?: RowAction } = {}) {
   const [attention, setAttention] = useState<AttentionFilter>("all");
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", preview ? { filter, attention } : { filter }), placeholderData: keepPreviousData, refetchOnMount: "always" });
+  // Home and InboxPage own arrival refreshes; mounting the queue reuses their read.
+  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", preview ? { filter, attention } : { filter }), placeholderData: keepPreviousData, refetchOnMount: false });
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
@@ -64,14 +65,15 @@ export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase
           if (!preview && (setupPhase || checklist)) rows = rows.filter(item => item.kind === "privacy_request");
           const head = pages[0];
           const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
+          const noWork = !head?.has_work && unavailable.length === 0;
           if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
           return <>
             {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
               {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
             </Banner>)}
             {checklist && setup?.(checklist)}
-            {!checklist && !head?.has_work && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
-            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} /> : !checklist && head?.has_work && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
+            {!checklist && noWork && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
+            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
             {!preview && inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
           </>;
         }}</QueryState>

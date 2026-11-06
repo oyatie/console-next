@@ -16,7 +16,7 @@ use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifie
 use console_platform_request_context::scope_org;
 use console_platform_test_support::{runtime_role_pool, seed_org_and_super_admin};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -1282,7 +1282,7 @@ fn draft(title: &str) -> Value {
 }
 
 async fn test_auth(pool: &sqlx::PgPool, user_id: UserId, org: OrgId) -> TestAuth {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_pem = signing_key
         .verifying_key()

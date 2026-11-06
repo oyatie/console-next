@@ -21,6 +21,21 @@ pub struct StepDecisionFacts {
     pub read: bool,
 }
 
+impl StepDecisionFacts {
+    /// Receiving work does not confer permission to decide it before identity verification.
+    pub fn approval_list_facts(
+        &self,
+    ) -> console_platform_authz::cedar_pbac::actions::approval_document_list::Facts {
+        console_platform_authz::cedar_pbac::actions::approval_document_list::Facts {
+            read: self.read,
+            requester: self.requester,
+            participant: self.decision.actor_decided_prior_step,
+            can_review: self.decision.holds_permission && !self.decision.actor_is_drafter,
+            completed: self.completed,
+        }
+    }
+}
+
 /// A decision names its locked request; submitted documents must have an approval route.
 /// The access snapshot is loaded once, and person facts are read in one batch.
 ///

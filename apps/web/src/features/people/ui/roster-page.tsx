@@ -236,15 +236,15 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
         density={view.density}
         onDensity={view.setDensity}
         tools={<><RosterColumns shown={view.shown} onChange={view.set} density={view.density} onDensity={view.setDensity} />
-        <RosterSavedViews filters={{ status, review: joinReview(review), unit, sort }} onApply={filters => {
+        {(!r.list.error || r.list.data !== undefined) && <RosterSavedViews filters={{ status, review: joinReview(review), unit, sort }} onApply={filters => {
           setSel(NO_SELECTION);
           find("");
           setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, sort: parseOrder(filters.sort) });
           focusSoon("people-title");
-        }} /></>}
+        }} />}</>}
       />
-      {contractWindow.isError && <QueryState q={contractWindow} inline>{() => null}</QueryState>}
       <QueryState q={r.list} layout="list">{() => <>
+      {contractWindow.isError && <QueryState q={contractWindow} inline>{() => null}</QueryState>}
       <div className={s.notes}>
       {status === "EXITED" && <ExitTabs view={exitView} kept={r.status.totals.EXITED} onView={setExitView} />}
       {(notice || scoped) && <p className="muted" role={notice ? "note" : undefined}>{notice}{notice && scoped && " "}{scoped && t("roster.scope.branches")}</p>}

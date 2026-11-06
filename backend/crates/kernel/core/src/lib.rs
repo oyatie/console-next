@@ -27,7 +27,7 @@ pub use audit::{
     AuditRequestContext, AuditSource,
 };
 pub use branch::BranchScope;
-pub use clock::{Clock, FixedClock, SystemClock};
+pub use clock::{Clock, FixedClock, SystemClock, rfc3339};
 pub use error::{ErrorKind, ErrorType, KernelError};
 pub use ids::*;
 pub use policy_value::{EffectivePeriod, OfficialSource, Resolved, SettingVersionId};

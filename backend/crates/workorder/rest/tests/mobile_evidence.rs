@@ -18,7 +18,7 @@ use console_workorder_adapter_postgres::PgWorkOrderStore;
 use console_workorder_rest::{MobileRestState, mobile_router};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -124,7 +124,7 @@ impl S3ObjectStore for StaticObjectStore {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn evidence_presign_confirm_flow_is_authorized_and_audited(pool: PgPool) {
     console_platform_request_context::scope_org(console_kernel_core::OrgId::one(), async move {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = SigningKey::generate();
         let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public_key_pem = signing_key
             .verifying_key()
@@ -252,7 +252,7 @@ async fn evidence_presign_confirm_flow_is_authorized_and_audited(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn evidence_confirm_fails_when_post_replication_media_reload_fails(pool: PgPool) {
     console_platform_request_context::scope_org(console_kernel_core::OrgId::one(), async move {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = SigningKey::generate();
         let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public_key_pem = signing_key
             .verifying_key()
@@ -342,7 +342,7 @@ async fn evidence_confirm_fails_when_post_replication_media_reload_fails(pool: P
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn presign_after_evidence_rejected_on_final_completed_work_order(pool: PgPool) {
     console_platform_request_context::scope_org(console_kernel_core::OrgId::one(), async move {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = SigningKey::generate();
         let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public_key_pem = signing_key
             .verifying_key()
@@ -600,7 +600,7 @@ impl JobQueue for RecordingQueue {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn evidence_staging_presign_creates_processing_row_and_enqueues_transcode(pool: PgPool) {
     console_platform_request_context::scope_org(OrgId::one(), async move {
-        let signing_key = SigningKey::random(&mut OsRng);
+        let signing_key = SigningKey::generate();
         let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public_key_pem = signing_key
             .verifying_key()

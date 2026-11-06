@@ -52,10 +52,10 @@ fn from_env_refuses_dev_coldstart_otp_with_cookie_secure_unset() {
 #[test]
 fn dev_coldstart_otp_is_refused_on_plain_http_dev_too() {
     use p256::ecdsa::SigningKey;
-    use p256::elliptic_curve::rand_core::OsRng;
+    use p256::elliptic_curve::Generate;
     use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let mut pairs = app_pairs();
     pairs.extend([
         ("CONSOLE_JWT_ISSUER", "console-dev".to_owned()),

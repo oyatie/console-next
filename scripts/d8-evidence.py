@@ -59,7 +59,7 @@ def main():
     dates = [d10.d7.fresh(e2e["run_at"])] + [d10.d7.fresh(r["stats"]["startTime"]) for r in reports]
     probes = [p for report in reports for p in d10.probe_rows(report)]
     data = {"commit": commit, "run_at": min(dates), "source_command": "python3 scripts/d8-evidence.py OUTPUT_DIR E2E_JSON PLAYWRIGHT_JSON..."}
-    artifacts = {"e2e": e2e["rows"], "states": [r for report in reports for r in state_rows(report)],
+    artifacts = {"e2e": e2e["rows"],
                  "write-probe": [{**p, "ops_resolved": resolved(p)} for p in probes]}
     Path(output).mkdir(parents=True, exist_ok=True)
     for name, rows in artifacts.items():

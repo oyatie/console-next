@@ -26,6 +26,26 @@ const response = (box = "pending") => ({
   sources: [{ key: "org_change", label: "조직 변경", count: 2 }, { key: "governance", label: "예외 승인", count: 1 }],
 });
 
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`an identity-blocked approval explains the fix and opens the source record at ${width}px ${theme}`, async ({ page }, info) => {
+  await mockScreen(page, screens[0], "empty");
+  await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ status: 200, json: {
+    ...response(), items: [{ ...item, decision_refusal: "org_change.refuse.identity_unbound" }],
+  } }));
+  await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto("/approvals");
+  await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+  await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
+  const panel = page.locator("[data-side-panel]");
+  await expect(panel).toContainText("계정을 인사카드에 연결하거나 동일인 확인을 완료");
+  await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
+  await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveCount(0);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+  await page.screenshot({ path: info.outputPath(`approval-blocked-${width}-${theme}.png`), fullPage: true });
+  await expectAxe(page, `blocked approval ${width}px ${theme}`);
+  if (width === 390) await fits(page, "blocked approval");
+});
+
 async function mockApprovals(page: Page, reply: "ready" | "failed" | "refused" = "ready") {
   const queries: URLSearchParams[] = [];
   await page.route(url => url.pathname === "/api/v1/approvals", async route => {
@@ -60,7 +80,7 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
     await expect(panel.getByText(t("enum.orgChangeStatus.IN_APPROVAL"), { exact: true })).toBeVisible();
     await expect(panel.getByText(/hr|executive|IN_APPROVAL/, { exact: true })).toHaveCount(0);
     await expect(panel.getByText(new RegExp(t("enum.approvalRole.executive")))).toBeVisible();
-    await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveAttribute("href", "/approvals/approval-1");
+    await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-preview.png`), fullPage: true });
     await expectAxe(page, `approval inbox ${width}px ${theme}`);

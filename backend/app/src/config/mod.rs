@@ -11,6 +11,7 @@ pub(crate) mod notify;
 pub(crate) mod office;
 pub(crate) mod parse;
 pub(crate) mod proxy;
+pub(crate) mod realtime;
 pub(crate) mod role;
 pub(crate) mod secret_files;
 pub(crate) mod storage;
@@ -63,6 +64,7 @@ pub(crate) const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
+    pub realtime: console_platform_realtime::RealtimeHubConfig,
     pub role: AppRole,
     pub service_name: String,
     pub http_addr: SocketAddr,

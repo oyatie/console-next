@@ -13,7 +13,7 @@ use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{HeaderMap, Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -385,7 +385,7 @@ async fn a_certificate_is_typed_kept_and_read_back_with_reference_data(pool: PgP
 }
 
 fn keys() -> (String, String) {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     (
         key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
         key.verifying_key()

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! One draft authority for create, edit, preflight, submit and cancellation.
 use super::{ActionBundle, Fact};
-use crate::{Feature, cedar_pbac::engine::generate_policies};
+use crate::{Feature, Role, cedar_pbac::engine::generate_policies};
 use std::sync::OnceLock;
 
 /// Preserve role compatibility in Cedar alongside the scoped grant decision.
@@ -32,13 +32,16 @@ action {action} appliesTo {{ principal: [Subject], resource: [Resource],
             r#"{}
 permit(principal, action == Action::"{action}", resource) when {{ context.holds_permission }};
 forbid(principal, action == Action::"{action}", resource) when {{
-  principal.roles.contains("ADMIN") &&
-  !principal.roles.contains("EXECUTIVE") &&
-  !principal.roles.contains("SUPER_ADMIN") &&
+  principal.roles.contains("{admin}") &&
+  !principal.roles.contains("{executive}") &&
+  !principal.roles.contains("{super_admin}") &&
   !context.holds_permission
 }};
 forbid(principal, action, resource) unless {{ principal.org == resource.org }};"#,
-            generate_policies(feature)
+            generate_policies(feature),
+            admin = Role::Admin.as_str(),
+            executive = Role::Executive.as_str(),
+            super_admin = Role::SuperAdmin.as_str(),
         );
         ActionBundle::compile(action, &schema, &policies)
     });

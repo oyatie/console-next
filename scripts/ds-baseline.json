@@ -78,7 +78,7 @@
 "apps/web/src/features/org-bulk/ui/site-card.tsx": {"dsClass":1},
 "apps/web/src/features/org-bulk/ui/stale-banner.tsx": {"dsClass":2},
 "apps/web/src/features/org-bulk/ui/undo-cell.tsx": {"dsClass":1},
-"apps/web/src/features/org/ui/bulk-move-page.tsx": {"dsClass":5},
+"apps/web/src/features/org/ui/bulk-move-page.tsx": {"dsClass":4},
 "apps/web/src/features/org/ui/bulk-move.module.css": {"restyle":26},
 "apps/web/src/features/org/ui/change-apply.tsx": {"dsClass":2},
 "apps/web/src/features/org/ui/change-chain.tsx": {"dsClass":2},

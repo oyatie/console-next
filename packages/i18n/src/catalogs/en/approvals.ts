@@ -2,6 +2,8 @@
 import type { koApprovals } from "../ko/approvals";
 
 export const enApprovals: Record<keyof typeof koApprovals, string> = {
+  "approvals.field.verification": "Before deciding",
+  "approvals.blocked": "Verification is required before deciding.",
   "approvals.title": "Approval inbox",
   "approvals.tabs": "Approval inbox queues",
   "approvals.box.pending": "Pending",
