@@ -241,6 +241,6 @@ test("a sole close authority unlocks with notices and review before and after go
     expect(response.status()).toBe(200);
     expect((await response.json()).soleHolderNotices).toBe(2);
     await go(page, LOCKS);
-    await expect(page.getByText("단독 해제 알림 2건", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^해제됨 / }).locator(".chip--warn")).toHaveText("단독 해제 알림 2건");
   }
 });

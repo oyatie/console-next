@@ -6,7 +6,7 @@ import { fmtDateTime } from "@console/i18n/format";
 import { focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { EmptyState } from "../../../ui/empty-state";
-import { Banner } from "../../../ui/banner/banner";
+import { Chip } from "../../../ui/chip";
 import { Card } from "../../../ui/card/card";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { Receipt } from "../../../ui/receipt/receipt";
@@ -115,7 +115,6 @@ export function PeriodLockPage() {
           must not be on screen first, under a pointer, to be pushed down by it. */}
       {refused && failedWith(locks.error, 403) ? <Card><EmptyState title={t("periodLocks.denied.title")} reason={t("periodLocks.denied.reason")} /></Card> : locks.isPending || reasons.isPending || refused ? <Card><QueryState q={locks}>{() => null}</QueryState></Card> : (
         <>
-          {noticeCount > 0 && <Banner tone="warn" title={t("periodLocks.unlock.notices", { count: noticeCount })}>{t("periodLocks.unlock.noticeReview")}</Banner>}
           <div id="pl-new" hidden={!open}>
             <Card title={t("periodLocks.new")} titleId="pl-new-title">
               <LockForm key={preset ? `${preset.domain}-${preset.month}` : "new"} preset={preset} locks={rows.active} onLocked={(l) => (setFormOpen(true), recorded("periodLocks.locked", l, l.lockedAt))} onShowLock={showLock} onClose={() => (setFormOpen(false), focusSoon("pl-new-open"))} />
@@ -136,6 +135,7 @@ export function PeriodLockPage() {
                 {(["active", "unlocked"] as const).map((v) => (
                   <ToggleButton key={v} size="sm" pressed={view === v} onClick={() => setView(v)}>
                     {t(`periodLocks.view.${v}`, { count: rows[v].length })}
+                    {v === "unlocked" && noticeCount > 0 && <Chip tone="warn">{t("periodLocks.unlock.notices", { count: noticeCount })}</Chip>}
                   </ToggleButton>
                 ))}
               </div>
