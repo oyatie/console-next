@@ -15277,6 +15277,7 @@ export interface components {
             title: string;
             summary: string;
             document_no: string;
+            decision_refusal?: string | null;
             source: {
                 key: string;
                 label: string;

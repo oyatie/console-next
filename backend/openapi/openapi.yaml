@@ -34452,6 +34452,7 @@ components:
         title: {type: string}
         summary: {type: string}
         document_no: {type: string}
+        decision_refusal: {type: string, nullable: true}
         source:
           type: object
           required: [key, label]

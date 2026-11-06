@@ -7,11 +7,13 @@ import { listedTests, plan } from "./e2e-timings.mjs";
 
 const refuse = (reason, detail) => { throw new Error(`${reason}: ${detail}`); };
 const positive = n => Number.isFinite(n) && n > 0;
+// Run-to-run runner speed varies by about a third, so a shard gets this much time over its measured plan.
+export const RUN_HEADROOM = 1.6;
 const specPath = file => /^(?:(?:mock|states)\/[^/]+\.spec\.ts|layout\/layout\.spec\.ts)$/.test(file);
 
 function validateTimings(timings) {
-  const { budgetSeconds, timeoutSeconds = budgetSeconds, runLimitSeconds = timeoutSeconds * 1.25, setupAllowanceSeconds, startupSeconds, workers, defaultTestSeconds, specs, maxShards = 256 } = timings;
-  if (![budgetSeconds, timeoutSeconds, runLimitSeconds, setupAllowanceSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || timeoutSeconds < budgetSeconds || runLimitSeconds < timeoutSeconds || !Number.isInteger(workers) || !Number.isInteger(maxShards) || maxShards < 1 || maxShards > 256 || startupSeconds >= Math.min(budgetSeconds, runLimitSeconds / 1.25) || !specs || typeof specs !== "object")
+  const { budgetSeconds, timeoutSeconds = budgetSeconds, runLimitSeconds = timeoutSeconds * RUN_HEADROOM, setupAllowanceSeconds, startupSeconds, workers, defaultTestSeconds, specs, maxShards = 256 } = timings;
+  if (![budgetSeconds, timeoutSeconds, runLimitSeconds, setupAllowanceSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || timeoutSeconds < budgetSeconds || runLimitSeconds < timeoutSeconds || !Number.isInteger(workers) || !Number.isInteger(maxShards) || maxShards < 1 || maxShards > 256 || startupSeconds >= Math.min(budgetSeconds, runLimitSeconds / RUN_HEADROOM) || !specs || typeof specs !== "object")
     refuse("STATES_INVALID_TIMINGS", "expected positive run/setup budgets, startup, workers, default and per-spec durations");
   for (const [file, entry] of Object.entries(specs)) if (!specPath(file) || !positive(entry?.seconds) || !Number.isInteger(entry?.tests) || entry.tests <= 0)
     refuse("STATES_INVALID_TIMINGS", file);
@@ -34,9 +36,9 @@ export function planStates(report, timings, measured) {
   const perTest = Object.values(specs).map(entry => entry.seconds * workers / entry.tests).sort((a, b) => a - b);
   const unknownTestSeconds = Math.max(defaultTestSeconds, perTest[Math.ceil(perTest.length * 0.95) - 1] ?? 0);
   const unmeasured = [...counts].filter(([file, tests]) => tests > (specs[file]?.tests ?? 0)).map(([file]) => file);
-  // Keep 1.25x headroom under the run limit even when whole-file packing stretches the target.
+  // Keep RUN_HEADROOM under the run limit even when whole-file packing stretches the target.
   const executionSeconds = timings.timeoutSeconds ?? timings.budgetSeconds;
-  const timeoutSeconds = Math.min(executionSeconds, Math.floor((timings.runLimitSeconds ?? executionSeconds * 1.25) / 1.25));
+  const timeoutSeconds = Math.min(executionSeconds, Math.floor((timings.runLimitSeconds ?? executionSeconds * RUN_HEADROOM) / RUN_HEADROOM));
   const durations = Object.fromEntries([...counts].map(([file, tests]) => {
     const old = specs[file];
     return [file, { s: (old?.seconds ?? 0) * workers + Math.max(0, tests - (old?.tests ?? 0)) * unknownTestSeconds }];
@@ -60,7 +62,7 @@ export function planStates(report, timings, measured) {
     const guidance = unmeasured.length ? `; add timings for unmeasured specs in this PR: ${unmeasured.join(", ")}` : "";
     throw new Error(error.message.replace(/^E2E_/, "STATES_") + guidance);
   }
-  const runTimeoutMinutes = Math.ceil(budgetSeconds * 1.25 / 60);
+  const runTimeoutMinutes = Math.ceil(budgetSeconds * RUN_HEADROOM / 60);
   const jobTimeoutMinutes = Math.ceil(timings.setupAllowanceSeconds / 60) + runTimeoutMinutes;
   return { budgetSeconds, runTimeoutMinutes, jobTimeoutMinutes, testCounts: Object.fromEntries(counts),
     shards: jobs.map((job, i) => ({ id: i + 1, files: job.files.map(file => `e2e/${file}`), seconds: job.est })) };
@@ -135,7 +137,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       const output = process.env.PLAYWRIGHT_JSON_OUTPUT_FILE ?? path.resolve(`.cache/states-report-${id}.json`);
       const timings = readJson("e2e/mock/timings.json");
       validateTimings(timings);
-      const result = spawnSync("npm", ["run", "e2e:states", "--", `--test-list=${list}`, `--global-timeout=${Math.ceil(plan.budgetSeconds * 1.25) * 1000}`], { stdio: "inherit", env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
+      const result = spawnSync("npm", ["run", "e2e:states", "--", `--test-list=${list}`, `--global-timeout=${Math.ceil(plan.budgetSeconds * RUN_HEADROOM) * 1000}`], { stdio: "inherit", env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
       if (result.status === 0) refreshTimings(timings, { ...plan, shards: [{ ...plan.shards[id - 1], id: 1 }] }, [readJson(output)]);
       process.exitCode = result.status ?? 1;
     } else if (command === "refresh") {

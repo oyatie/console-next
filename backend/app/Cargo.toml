@@ -298,6 +298,10 @@ name = "benefit_catalog_api"
 required-features = ["benefit"]
 
 [[test]]
+name = "console_route_telemetry"
+required-features = ["full"]
+
+[[test]]
 name = "board_ack_api"
 required-features = ["notices"]
 

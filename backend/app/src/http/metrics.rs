@@ -142,7 +142,15 @@ async fn track_http_metrics(
 /// `/api` to this server and everything else to the SPA, so `/metrics` is
 /// reachable only in-cluster (e.g. by a ServiceMonitor scrape), never via the
 /// public host.
-async fn render_metrics() -> Response<Body> {
+async fn render_metrics(State(state): State<AppState>) -> Response<Body> {
+    if let Some(hub) = &state.realtime_hub {
+        for (reason, count) in ["ws_account_limit", "ws_global_limit", "replay_limit"]
+            .into_iter()
+            .zip(hub.limit_hits())
+        {
+            metrics::counter!("realtime_limit_total", "reason" => reason).absolute(count);
+        }
+    }
     match METRICS_HANDLE.get() {
         Some(handle) => (
             [(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
@@ -171,7 +179,7 @@ pub(crate) fn with_metrics(router: Router, state: &AppState) -> Router {
     match state.config.internal_addr {
         // P4: scraped on the internal listener only.
         Some(_) => router,
-        None => router.route("/metrics", get(render_metrics)),
+        None => router.route("/metrics", get(render_metrics).with_state(state.clone())),
     }
 }
 

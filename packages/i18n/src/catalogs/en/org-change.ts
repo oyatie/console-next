@@ -120,6 +120,7 @@ export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
   "orgChange.settle.transfer.left": "{name} still has {count, plural, one {# person} other {# people}}",
   "orgChange.settle.transfer.zero": "Nobody is left in {name} (0 now)",
   "orgChange.history": "History",
+  "orgChange.history.empty": "No changes recorded yet",
   "orgChange.event.create": "{actor} wrote the org change",
   "orgChange.event.update": "{actor} edited the draft",
   "orgChange.event.submit": "{actor} submitted the org change",
