@@ -29,7 +29,17 @@ async fn v2_round_trips_through_both_rrn_tables_and_refuses_malformed_shapes(poo
     let key = base64::engine::general_purpose::STANDARD.encode([7u8; 32]);
     let vault = EnvRrnVault::from_keys(&key, &key).unwrap();
     let rrn = Rrn::parse("900101-1234567").unwrap();
-    let sealed = vault.seal(org, &rrn).unwrap();
+    let mut sealed = vault.seal(org, &rrn).unwrap();
+    assert_eq!(sealed.key_version, 1);
+    let v2 = vault
+        .cipher
+        .encrypt_with_suite(2, rrn.digits().as_bytes(), aad(&org.to_string()))
+        .unwrap();
+    sealed.ciphertext = v2.ciphertext;
+    sealed.nonce = v2.nonce;
+    sealed.dek_wrapped = v2.dek_wrapped;
+    sealed.dek_nonce = v2.dek_nonce;
+    sealed.key_version = v2.key_version;
     assert_eq!(sealed.key_version, 2);
     for (table, suffix) in [
         (
@@ -88,6 +98,8 @@ async fn v2_round_trips_through_both_rrn_tables_and_refuses_malformed_shapes(poo
             "dek_nonce = decode('00', 'hex')",
             "key_version = 3",
             "dek_wrapped = decode('00', 'hex')",
+            "dek_wrapped = decode(repeat('00', 39), 'hex')",
+            "dek_wrapped = decode(repeat('00', 41), 'hex')",
         ] {
             let error = sqlx::query(sqlx::AssertSqlSafe(format!(
                 "UPDATE {table} SET {assignment} WHERE org_id = $1"

@@ -16,8 +16,34 @@ async fn password_versions_survive_independent_replacements(owner_pool: PgPool) 
         [(1, 1, true, true), (2, 1, true, false), (2, 2, false, true)]
     {
         let mut upsert = upsert_for(org, account_id, actor, &cipher);
-        upsert.smtp_password.as_mut().unwrap().key_version = smtp_version;
-        upsert.imap_password.as_mut().unwrap().key_version = imap_version;
+        for (secret, suite, field, plaintext) in [
+            (
+                &mut upsert.smtp_password,
+                smtp_version,
+                "smtp_password",
+                b"smtp-secret",
+            ),
+            (
+                &mut upsert.imap_password,
+                imap_version,
+                "imap_password",
+                b"imap-secret",
+            ),
+        ] {
+            *secret = Some(
+                cipher
+                    .encrypt_with_suite(
+                        suite,
+                        plaintext,
+                        Aad {
+                            org_id: &org.to_string(),
+                            account_id: &account_id.to_string(),
+                            field,
+                        },
+                    )
+                    .unwrap(),
+            );
+        }
         if !replace_smtp {
             upsert.smtp_password = None;
         }

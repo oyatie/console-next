@@ -1,6 +1,6 @@
 //! IMPORT-2 (decisions #25): the shell's 주민등록번호 vault. Sealing reuses the
-//! webmail envelope AEAD (AES-256-GCM / AES-256-KWP, per-row key wrapped by a master
-//! key) under its own master key; matching is HMAC-SHA256 under a separate
+//! versioned webmail envelope AEAD (v1 writes during dual-reader rollout) under
+//! its own master key; matching is HMAC-SHA256 under a separate
 //! key. Both keys come from the environment (Vault-injected in production),
 //! never from the database, and are never logged. Without both keys the
 //! import drops 주민등록번호 cells and the reveal answers 503.
@@ -179,6 +179,41 @@ mod tests {
             hex(&hmac_sha256(&[0x0b; 20], b"Hi There")),
             "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
         );
+    }
+
+    #[test]
+    fn historical_v1_rrn_binding_remains_readable() {
+        use base64::Engine as _;
+        let key = base64::engine::general_purpose::STANDARD.encode([7u8; 32]);
+        let vault = EnvRrnVault::from_keys(&key, &key).unwrap();
+        let org = Uuid::new_v4();
+        let rrn = Rrn::parse("900101-1234567").unwrap();
+        // Literal historical binding, independent of the current vault's aad().
+        let credential = vault
+            .cipher
+            .encrypt_with_suite(
+                1,
+                rrn.digits().as_bytes(),
+                Aad {
+                    org_id: &org.to_string(),
+                    account_id: "employee_rrn",
+                    field: "rrn",
+                },
+            )
+            .unwrap();
+        let sealed = SealedRrn {
+            hmac: vault.blind_index(&rrn),
+            hmac_key_version: 1,
+            ciphertext: credential.ciphertext,
+            nonce: credential.nonce,
+            dek_wrapped: credential.dek_wrapped,
+            dek_nonce: credential.dek_nonce,
+            key_version: credential.key_version,
+            masked: rrn.masked(),
+        };
+        assert_eq!(sealed.key_version, 1);
+        assert_eq!(vault.open(org, &sealed).unwrap(), rrn);
+        assert_eq!(vault.open(Uuid::new_v4(), &sealed), Err(VaultError));
     }
 
     #[test]

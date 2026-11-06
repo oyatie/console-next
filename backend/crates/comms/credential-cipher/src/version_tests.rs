@@ -72,7 +72,11 @@ fn original_v1_records_remain_readable_and_authenticate_every_field() {
         Err(CipherError::Decrypt)
     ));
     let modern = cipher
-        .encrypt(&cipher.open_bytes(&legacy, binding()).unwrap(), binding())
+        .encrypt_with_suite(
+            2,
+            &cipher.open_bytes(&legacy, binding()).unwrap(),
+            binding(),
+        )
         .unwrap();
     assert_eq!(modern.key_version, 2);
     assert_eq!(
@@ -84,7 +88,7 @@ fn original_v1_records_remain_readable_and_authenticate_every_field() {
 #[test]
 fn version_downgrades_and_tag_changes_are_refused() {
     let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7; 32]).unwrap();
-    let mut sealed = cipher.encrypt(b"secret", binding()).unwrap();
+    let mut sealed = cipher.encrypt_with_suite(2, b"secret", binding()).unwrap();
     assert_eq!(sealed.key_version, 2);
     let last = sealed.ciphertext.len() - 1;
     sealed.ciphertext[last] ^= 1;
@@ -157,8 +161,8 @@ fn nist_cavp_aes256_gcm_known_answers_use_the_writer_path() {
 #[test]
 fn swapping_wrapped_deks_between_rows_is_refused() {
     let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7; 32]).unwrap();
-    let mut first = cipher.encrypt(b"first", binding()).unwrap();
-    let second = cipher.encrypt(b"second", binding()).unwrap();
+    let mut first = cipher.encrypt_with_suite(2, b"first", binding()).unwrap();
+    let second = cipher.encrypt_with_suite(2, b"second", binding()).unwrap();
     first.dek_wrapped = second.dek_wrapped;
     assert!(matches!(
         cipher.decrypt(&first, binding()),
@@ -169,7 +173,7 @@ fn swapping_wrapped_deks_between_rows_is_refused() {
 #[test]
 fn malformed_v2_wraps_and_authenticated_wrong_size_deks_are_refused() {
     let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7; 32]).unwrap();
-    let original = cipher.encrypt(b"secret", binding()).unwrap();
+    let original = cipher.encrypt_with_suite(2, b"secret", binding()).unwrap();
     for size in [0, 1, 16, 39, 41, 48] {
         let mut sealed = original.clone();
         sealed.dek_wrapped.resize(size, 0);
@@ -214,5 +218,75 @@ fn v2_nonce_lengths_are_strict_even_for_a_zero_nonce_payload() {
             cipher.decrypt(&sealed, binding()),
             Err(CipherError::Decrypt)
         ));
+    }
+}
+
+#[test]
+fn rollout_writer_emits_v1_for_the_previous_release() {
+    let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7; 32]).unwrap();
+    let sealed = cipher.encrypt(b"rollback-safe", binding()).unwrap();
+    assert_eq!(CURRENT_KEY_VERSION, 1);
+    assert_eq!(sealed.key_version, 1);
+    assert_eq!(sealed.nonce.len(), 24);
+    assert_eq!(sealed.dek_nonce.len(), 24);
+    assert_eq!(
+        cipher
+            .decrypt_v1(&sealed, binding())
+            .unwrap()
+            .expose_secret()
+            .as_slice(),
+        b"rollback-safe"
+    );
+}
+
+#[test]
+fn rollout_reader_opens_v2_and_writer_refuses_unknown_suites() {
+    let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7; 32]).unwrap();
+    let sealed = cipher
+        .encrypt_with_suite(2, b"future writer", binding())
+        .unwrap();
+    assert_eq!(sealed.key_version, 2);
+    assert_eq!(
+        cipher.open_bytes(&sealed, binding()).unwrap(),
+        b"future writer"
+    );
+    assert!(matches!(
+        cipher.encrypt_with_suite(99, b"secret", binding()),
+        Err(CipherError::KeyVersion)
+    ));
+}
+
+#[test]
+fn both_suites_authenticate_payload_nonce_wrap_and_aad() {
+    let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7; 32]).unwrap();
+    for suite in [1, 2] {
+        let original = cipher
+            .encrypt_with_suite(suite, b"secret", binding())
+            .unwrap();
+        for field in 0..4 {
+            let mut bad = original.clone();
+            match field {
+                0 => bad.ciphertext[0] ^= 1,
+                1 => bad.nonce[0] ^= 1,
+                2 => bad.dek_wrapped[0] ^= 1,
+                _ => bad.dek_nonce.push(1),
+            }
+            assert!(matches!(
+                cipher.decrypt(&bad, binding()),
+                Err(CipherError::Decrypt)
+            ));
+        }
+        for field in 0..3 {
+            let mut aad = binding();
+            match field {
+                0 => aad.org_id = "other tenant",
+                1 => aad.account_id = "other row",
+                _ => aad.field = "other purpose",
+            }
+            assert!(matches!(
+                cipher.decrypt(&original, aad),
+                Err(CipherError::Decrypt)
+            ));
+        }
     }
 }

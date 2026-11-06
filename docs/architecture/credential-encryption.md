@@ -15,7 +15,9 @@ added. This uses the existing non-FIPS build, without claiming FIPS validation.
 | 1 | XChaCha20-Poly1305 | XChaCha20-Poly1305 | 24 / 24 bytes |
 | 2 | AES-256-GCM, full 128-bit tag | AES-256-KWP | 12 / 0 bytes |
 
-Writers emit only v2. Readers dispatch strictly by version, never fall back after
+This release keeps `CURRENT_KEY_VERSION = 1`: all runtime writers emit v1 so
+a canary rollback to the previous v1-only binary can read every new row.
+Readers accept v1 and v2, dispatch strictly by version, never fall back after
 an authentication failure, and reject unknown versions. SMTP and IMAP persist
 independent versions because either password can be replaced alone. RRN import
 staging and the employee vault accept both formats. Existing KEKs remain in
@@ -40,10 +42,23 @@ an exclusive statutory algorithm list or evidence of this build's certification.
 
 HMAC-SHA256 uses `aws_lc_rs::hmac` with the unchanged separate matching key;
 legacy index vectors must remain byte-identical. Keys and plaintext are never
-logged. Legacy ChaCha remains read-only until every environment's employee,
+logged. Legacy ChaCha remains writable during this expansion release. After
+the writer flip, retain its reader until every environment's employee,
 staged-import, SMTP and IMAP records have been re-sealed and zero v1 rows proven.
-Drain v1 writers before allowing v2 writes: an old writer cannot maintain the
+Drain v1-only binaries before allowing v2 writes: an old writer cannot maintain the
 independent IMAP version when replacing a secret on an upgraded account.
 Rollback after v2 writes requires a dual-reader release; the v1-only binary
 cannot read v2 records. Provider replacement requires versioned-read, known-answer,
 HMAC-index and persisted-envelope compatibility proof before retiring it.
+
+## Scheduled contract
+
+- After one release containing this dual reader has been deployed, flip
+  `CURRENT_KEY_VERSION` to 2 in the following release. Admission:
+  the released N-1 binary reads both suites, no v1-only writers remain, and
+  persisted SMTP/IMAP and both RRN-table compatibility tests pass. Rollback must
+  target that dual-reader release. Until then, explicit v2 sealing exists for
+  compatibility tests; no runtime caller or background re-seal writes v2.
+- After the writer flip, ship the idempotent, resumable, audited batched re-seal
+  and remaining-v1 report; remove ChaCha only after every environment reports
+  zero v1 rows. This release performs no re-seal and makes no zero-v1 claim.

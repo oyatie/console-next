@@ -10,7 +10,8 @@
 //!
 //! # Versioned envelope encryption
 //!
-//! Version 1 reads XChaCha20-Poly1305 envelopes. Version 2 writes AES-256-GCM
+//! Version 1 reads and writes XChaCha20-Poly1305 envelopes during rollout.
+//! Version 2 supports AES-256-GCM
 //! with a fresh random 256-bit DEK and 96-bit nonce per secret, and AES-256-KWP
 //! (RFC 5649 / NIST SP 800-38F) to wrap the DEK under the existing master KEK.
 //! The existing `key_version` identifies the complete envelope suite: 1 or 2.
@@ -45,8 +46,8 @@ pub use console_comms_application::credential_cipher::{
 /// The environment variable carrying the base64-encoded 32-byte master KEK.
 pub const MASTER_KEY_ENV: &str = "CONSOLE_MAIL_MASTER_KEY";
 
-/// Envelope suite stamped on new records: AES-256-GCM + AES-256-KWP.
-pub const CURRENT_KEY_VERSION: i16 = 2;
+/// Keep v1 writes until the dual-reader release is deployed for safe rollback.
+pub const CURRENT_KEY_VERSION: i16 = 1;
 
 const KEY_LEN: usize = 32;
 
@@ -112,6 +113,80 @@ impl EnvelopeCredentialCipher {
 
 impl CredentialCipher for EnvelopeCredentialCipher {
     fn encrypt(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError> {
+        self.encrypt_with_suite(CURRENT_KEY_VERSION, plaintext, aad)
+    }
+
+    fn decrypt(
+        &self,
+        sealed: &SealedCredential,
+        aad: Aad<'_>,
+    ) -> Result<SecretBox<Vec<u8>>, CipherError> {
+        match sealed.key_version {
+            1 => self.decrypt_v1(sealed, aad),
+            2 => self.decrypt_v2(sealed, aad),
+            _ => Err(CipherError::KeyVersion),
+        }
+    }
+}
+
+impl EnvelopeCredentialCipher {
+    /// Seal with an explicit envelope suite for compatibility proofs and re-sealing.
+    /// Runtime writers must use [`CredentialCipher::encrypt`] during rollout.
+    ///
+    /// # Errors
+    /// Unknown suites return [`CipherError::KeyVersion`]; sealing can return
+    /// [`CipherError::Encrypt`].
+    pub fn encrypt_with_suite(
+        &self,
+        suite: i16,
+        plaintext: &[u8],
+        aad: Aad<'_>,
+    ) -> Result<SealedCredential, CipherError> {
+        match suite {
+            1 => self.encrypt_v1(plaintext, aad),
+            2 => self.encrypt_v2(plaintext, aad),
+            _ => Err(CipherError::KeyVersion),
+        }
+    }
+
+    fn encrypt_v1(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError> {
+        let rng = SystemRandom::new();
+        let mut dek = Zeroizing::new([0u8; KEY_LEN]);
+        let mut nonce = [0u8; 24];
+        let mut dek_nonce = [0u8; 24];
+        rng.fill(dek.as_mut()).map_err(|_| CipherError::Encrypt)?;
+        rng.fill(&mut nonce).map_err(|_| CipherError::Encrypt)?;
+        rng.fill(&mut dek_nonce).map_err(|_| CipherError::Encrypt)?;
+        let aad_bytes = aad.encode();
+        let ciphertext = XChaCha20Poly1305::new(Key::from_slice(dek.as_ref()))
+            .encrypt(
+                XNonce::from_slice(&nonce),
+                Payload {
+                    msg: plaintext,
+                    aad: &aad_bytes,
+                },
+            )
+            .map_err(|_| CipherError::Encrypt)?;
+        let dek_wrapped = self
+            .kek_cipher()
+            .encrypt(
+                XNonce::from_slice(&dek_nonce),
+                Payload {
+                    msg: dek.as_ref(),
+                    aad: &aad_bytes,
+                },
+            )
+            .map_err(|_| CipherError::Encrypt)?;
+        Ok(SealedCredential {
+            ciphertext,
+            nonce: nonce.to_vec(),
+            dek_wrapped,
+            dek_nonce: dek_nonce.to_vec(),
+            key_version: 1,
+        })
+    }
+
+    fn encrypt_v2(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError> {
         let rng = SystemRandom::new();
         let mut dek = Zeroizing::new([0u8; KEY_LEN]);
         let mut nonce = [0u8; aead::NONCE_LEN];
@@ -130,24 +205,10 @@ impl CredentialCipher for EnvelopeCredentialCipher {
             nonce: nonce.to_vec(),
             dek_wrapped,
             dek_nonce: Vec::new(),
-            key_version: CURRENT_KEY_VERSION,
+            key_version: 2,
         })
     }
 
-    fn decrypt(
-        &self,
-        sealed: &SealedCredential,
-        aad: Aad<'_>,
-    ) -> Result<SecretBox<Vec<u8>>, CipherError> {
-        match sealed.key_version {
-            1 => self.decrypt_v1(sealed, aad),
-            CURRENT_KEY_VERSION => self.decrypt_v2(sealed, aad),
-            _ => Err(CipherError::KeyVersion),
-        }
-    }
-}
-
-impl EnvelopeCredentialCipher {
     fn decrypt_v2(
         &self,
         sealed: &SealedCredential,
@@ -285,7 +346,7 @@ mod tests {
     fn ciphertext_is_not_plaintext_and_v2_has_gcm_nonce() {
         let c = cipher();
         let secret = b"another-pw";
-        let sealed = c.encrypt(secret, aad()).unwrap();
+        let sealed = c.encrypt_with_suite(2, secret, aad()).unwrap();
         assert_ne!(sealed.ciphertext, secret);
         assert_eq!(sealed.nonce.len(), 12);
         assert!(sealed.dek_nonce.is_empty());
