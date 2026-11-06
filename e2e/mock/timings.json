@@ -1,7 +1,8 @@
 {
   "budgetSeconds": 600,
   "timeoutSeconds": 1080,
-  "jobTimeoutSeconds": 1200,
+  "runLimitSeconds": 1200,
+  "setupAllowanceSeconds": 720,
   "maxShards": 5,
   "startupSeconds": 40,
   "workers": 2,

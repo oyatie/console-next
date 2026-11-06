@@ -13,13 +13,28 @@ npm run e2e:states -- --grep 'people: loading at 390'
 CI plans duration-balanced shards before running this suite with Chromium headless
 shell. `timings.json` owns the ten-minute target, five-shard cap, startup headroom,
 worker count and minimum estimate for unmeasured tests. The planner stretches
-the target only within the 1080-second execution limit and 80% of the committed
-job limit (checked against CI), reserving 1.25x headroom; the states job has a
-20-minute timeout and zero retries. Five state runners plus two backend test
-runners keep CI's peak at 13; CodeQL's three, platform's three and workflow checks'
-one bring concurrent PR jobs to the 20-runner allowance. The suite-growth
-regression checks that 1.25 times the planned budget
-fits within the job timeout. A spec exceeding the planning limit fails
+the target only within the 1080-second planning limit and 80% of `runLimitSeconds`,
+reserving 1.25x headroom. Each run step gets `ceil(planned budget × 1.25 / 60)`
+minutes; Playwright's global timeout uses the same unrounded budget in seconds.
+The job adds `ceil(setupAllowanceSeconds / 60)` minutes to that run allowance.
+Setup reserves 12 minutes: measured Chromium installs took 7.5–9 minutes while
+Ubuntu's package mirror served fonts slowly, plus three minutes for checkout,
+npm and artifacts. A 13-minute plan therefore gets 17 minutes to run and a
+29-minute job, so the observed install no longer consumes its test allowance.
+The web job puts its full existing check sequence under one 30-minute step
+limit and adds the same 12-minute setup allowance (42 minutes total). These are timeout ceilings, not target durations.
+
+Both jobs restore `~/.cache/ms-playwright` with the existing cache action, keyed
+by OS, architecture, Chromium and the exact `playwright-core` version in
+`package-lock.json`. Only dev pushes save; PRs restore caches without publishing
+them for other branches. `--with-deps` still runs on cache hits because browser
+archives do not include the OS fonts needed by screenshots. Each install appends
+its elapsed seconds to the job summary, including failed installs.
+
+Five state runners plus two backend test runners keep CI's peak at 13;
+CodeQL's three, platform's three and workflow checks' one bring concurrent PR
+jobs to the 20-runner allowance. The suite-growth regression checks that the
+job timeout covers both setup and the plan's run allowance. A spec exceeding the planning limit fails
 with `STATES_SPEC_OVER_BUDGET` and its path. If five shards cannot fit, planning
 fails with `STATES_TIMEOUT_LIMIT`. For unmeasured specs, both errors tell the PR
 to add timings; measured oversized specs must be split.
@@ -44,7 +59,7 @@ overwrite CI's trusted artifact. The committed snapshot comes from the complete
 92 specs, 1536 passing tests, two workers. It is reproduced by `refreshTimings`
 from every shard report and matches that run's `states-timings` artifact. Only
 new specs or added cases use the conservative estimate. The planner regression
-adds 30 tests and 10% timing drift without extending the execution limit.
+adds 30 tests and 10% timing drift without extending the run limit.
 
 Use the existing `E2E_SLOT` / `CONSOLE_WEB_PORT` environment variables to isolate
 concurrent runs. The config builds the web app once, then starts Vite preview on
