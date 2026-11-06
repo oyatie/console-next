@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+name: api-compat
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [dev]
+permissions: {}
+jobs:
+  api-compat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false, fetch-depth: 0}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version, cache: npm}
+      - name: Locked compatibility tools
+        run: |
+          python3 deploy/ci/tools.py oasdiff flux cosign
+          npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test deploy/ci/api-compat.test.mjs
+      - name: Compare released contract with candidate
+        env: {REGISTRY_TOKEN: '${{ github.token }}'}
+        run: |
+          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          base="$(node deploy/ci/api-compat.mjs base)"
+          git show "${base}:backend/openapi/openapi.yaml" > "${RUNNER_TEMP}/base.yaml"
+          node deploy/ci/api-compat.mjs compare "${RUNNER_TEMP}/base.yaml" backend/openapi/openapi.yaml

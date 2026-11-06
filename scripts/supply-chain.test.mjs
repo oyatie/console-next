@@ -171,13 +171,15 @@ test("Dependabot groups only minor and patch updates weekly on dev, leaving majo
   assert.deepEqual(config.updates.find((u) => u["package-ecosystem"] === "cargo").directories.sort(), ["/apps/desktop/src-tauri", "/backend", "/backend/fuzz"]);
 });
 
-test("Dependabot defers all Apalis updates until the coordinated migration, leaving desktop patches eligible", () => {
+test("Dependabot defers incompatible cipher and Apalis updates, leaving desktop patches eligible", () => {
   const source = read(".github/dependabot.yml");
   const config = yaml.load(source);
   const cargo = config.updates.find((u) => u["package-ecosystem"] === "cargo");
-  assert.deepEqual(cargo.ignore, ["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({
-    "dependency-name": name,
-  })));
+  assert.deepEqual(cargo.ignore, [
+    { "dependency-name": "chacha20poly1305", versions: [">=0.11"] },
+    { "dependency-name": "windows-registry", versions: [">=0.7"] },
+    ...["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({ "dependency-name": name })),
+  ]);
   assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
 });
 

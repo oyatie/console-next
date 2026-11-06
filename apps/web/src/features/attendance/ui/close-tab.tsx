@@ -8,7 +8,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
 import { branchesQuery } from "../../../reference/org/api";
 import { Chip } from "../../../ui/chip";
-import { LongTable } from "../../../ui/long-table/long-table";
+import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { closesQuery } from "../api";
 import { monthText } from "../present";
 import { ReadPeriod } from "./read-period";
@@ -20,16 +20,18 @@ export function CloseTab() {
   const branches = useQuery(branchesQuery);
   return <><ReadPeriod /><QueryState q={readGroup([board, branches])} layout="list">{() => {
     const data = board.data!, places = branches.data!;
+    const hasLocks = data.items.some(row => row.close?.period_lock_id);
     return <>
       <h2>{t("attendance.close.heading", { month: monthText(data.month) })}</h2>
       <LongTable label={t("attendance.tab.close")} rows={data.items} rowId={row => row.branch_scope} hasMore={false} onLoadMore={() => {}}
         empty={t("attendance.close.empty")} columns={[
-          { id: "place", header: t("attendance.col.workplace"), card: "title", rowHeader: true, cell: row => row.branch_scope === "org" ? t("attendanceRecords.scope.all", { count: places.length }) : places.find(place => place.id === row.branch_scope)?.name ?? t("attendance.close.unavailable") },
+          // The close API serializes a null branch_id as "org"; every other scope is a workplace id.
+          { id: "place", header: t("attendance.col.workplace"), card: "title", rowHeader: true, cell: row => row.branch_scope === "org" ? t("attendanceRecords.scope.allUnknown") : places.find(place => place.id === row.branch_scope)?.name ?? t("attendance.close.unavailable") },
           { id: "state", header: t("attendance.col.state"), card: "status", cell: row => <Chip tone={row.closed ? "ok" : "neutral"}>{t(row.closed ? "attendance.close.closed" : "attendance.close.open")}</Chip> },
-          { id: "issues", header: t("attendance.tab.issues"), card: "fact", cell: row => t("attendance.count", { count: row.open_exceptions }) },
-          { id: "leave", header: t("attendance.close.pendingLeave"), card: "fact", cell: row => t("attendance.count", { count: row.pending_leave }) },
-          { id: "closedAt", header: t("attendance.close.closedAt"), card: "fact", cell: row => row.close ? <time dateTime={row.close.closed_at}>{fmtDateTime(row.close.closed_at)}</time> : "–" },
-          { id: "lock", header: t("attendance.close.periodLock"), card: "action", cell: row => row.close?.period_lock_id ? <Link to="/people/period-locks" search={{ unlock: row.close.period_lock_id }}>{t("attendanceRecords.month.requestUnlock")}</Link> : null },
+          { id: "issues", header: t("attendance.tab.issues"), card: "fact", cell: row => t(row.closed ? "attendance.close.frozenCount" : "attendance.count", { count: row.open_exceptions }) },
+          { id: "leave", header: t("attendance.close.pendingLeave"), card: "fact", cell: row => t(row.closed ? "attendance.close.frozenCount" : "attendance.count", { count: row.pending_leave }) },
+          { id: "closedAt", header: t("attendance.close.closedAt"), card: "fact", cell: row => row.close ? <time dateTime={row.close.closed_at}>{fmtDateTime(row.close.closed_at)}</time> : "—" },
+          ...(hasLocks ? [{ id: "lock", header: t("attendance.close.periodLock"), card: "action", cell: row => row.close?.period_lock_id ? <Link to="/people/period-locks" search={{ unlock: row.close.period_lock_id }}>{t("attendanceRecords.month.requestUnlock")}</Link> : null } satisfies LongColumn<typeof data.items[number]>] : []),
         ]} />
     </>;
   }}</QueryState></>;

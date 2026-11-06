@@ -5,6 +5,7 @@ import type { attendanceScreens, attendanceBoardScreens } from "./attendance";
 import type { payrollRunCreateScreen, payrollScreens, PayrollState } from "./payroll";
 import type { accountScreens } from "./account";
 import type { numberingScreens } from "./numbering";
+export { onboardingScreens } from "./onboarding";
 // Executable state matrix, keyed to the central screen registry route records.
 const states = {
   empty: "Return zero items and totals (first run / no work).",

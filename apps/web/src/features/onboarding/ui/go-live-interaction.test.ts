@@ -6,12 +6,15 @@ import { realpathSync } from "node:fs";
 import { afterAll, beforeAll, describe, test } from "vitest";
 import { chromium, expect as browserExpect, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { browserTestOptimizeDeps } from "../../../lib/browser-test";
 
 // Serve the real component and hooks in Chromium; only API responses and the passkey device are fixtures.
 let server: ViteDevServer;
 let browser: Browser;
 beforeAll(async () => {
+  await loadCatalog("en");
+  i18n.set("en");
   server = await createServer({
     // The installed virtualizer uses this switch for browser measurements.
     define: { "process.env.VIRT_ON": "true" },
@@ -134,13 +137,16 @@ describe("go-live submission", () => {
       const retry = page.getByRole("button", { name: "Reload", exact: true });
       await browserExpect(retry).toBeVisible();
       await browserExpect(start).toHaveAttribute("aria-disabled", "true");
-      await browserExpect(start).toHaveAccessibleDescription("The preview could not be refreshed. Retry before starting operations");
+      await browserExpect(start).toHaveAccessibleDescription(t("setup.golive.refreshFailed"));
       assert.deepEqual(launches, []);
       assert.equal(ceremonies, 0);
       readFailed = false;
       preview.digest = "fresh-department-preview";
       preview.line_digests = { org_units: "fresh-department-line" };
       await retry.click();
+      await browserExpect(page.getByRole("checkbox")).not.toBeChecked();
+      await browserExpect(start).toHaveAttribute("aria-disabled", "true");
+      await page.getByRole("checkbox").check();
       await browserExpect(start).not.toHaveAttribute("aria-disabled", "true");
       await start.click();
       await browserExpect(page.getByRole("heading", { name: "Operations", exact: true })).toBeVisible();

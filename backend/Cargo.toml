@@ -195,7 +195,7 @@ ipnet = "2.12.0"
 # so `cargo tree -d` stays single-stack (one rustls, one ring, no native-tls /
 # openssl). `mail-parser` is the inbound MIME parser; both appear ONLY in
 # `console-comms-adapter-imap`.
-async-imap = { version = "0.11.2", default-features = false, features = ["runtime-tokio"] }
+async-imap = { version = "0.12.0", default-features = false, features = ["runtime-tokio"] }
 mail-parser = "0.11.4"
 tokio-rustls = { version = "0.26.4", default-features = false, features = ["ring", "tls12"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

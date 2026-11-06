@@ -35,6 +35,7 @@ export const koAttendance = {
   "attendance.close.open": "미마감",
   "attendance.close.pendingLeave": "휴가 승인 대기",
   "attendance.close.closedAt": "마감 시각",
+  "attendance.close.frozenCount": "{count, number}건 · 마감 시점",
   "attendance.close.periodLock": "기간 잠금",
   "attendance.overtime.heading": "{date} 시작 주 · 주 52시간",
   "attendance.overtime.empty": "이 주의 근로시간 기록이 없습니다",
