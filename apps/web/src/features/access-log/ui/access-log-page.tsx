@@ -64,15 +64,17 @@ export function AccessLogPage() {
           <Link to="/audit/access-log" search={{ ...search, view: undefined }} className={tabClass}>{t("accessLog.flagged")}<TabCount>{q.error ? undefined : first?.totals.flagged}</TabCount></Link>
           <Link to="/audit/access-log" search={{ ...search, view: "all" }} className={tabClass}>{t("accessLog.all")}<TabCount>{q.error ? undefined : first?.totals.events}</TabCount></Link>
         </TabNav>
-        {filtered && <Button onClick={clear}>{t("accessLog.clearSearch")}</Button>}
-        {first?.filter_options ? <Button onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
-          : <SearchField label={t("accessLog.search")} value={searchText} onChange={setSearchText}
-            onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} />}
+        <SearchField label={t("accessLog.search")} value={searchText} onChange={setSearchText}
+          onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} />
+        <div className="row wrap">
+          <Button disabled={!first?.filter_options} onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
+          {filtered && <Button onClick={clear}>{t("accessLog.clearSearch")}</Button>}
+        </div>
       </div>}
     sheet={filterOpen && first?.filter_options ? <Sheet open title={t("accessLog.filters")} onClose={() => setFilterOpen(false)} consequence={null}
       actions={null}>
       <AccessLogFiltersForm key={JSON.stringify({ ...filters, period: search.period })} value={filters} options={first.filter_options} period={first.period}
-        onApply={next => { setFilterOpen(false); void navigate({ search: s => ({ period: s.period, view: s.view, ...next }), replace: true, resetScroll: false }); }} />
+        onApply={next => { setFilterOpen(false); void navigate({ search: s => ({ period: s.period, view: s.view, search: s.search, ...next }), replace: true, resetScroll: false }); }} />
     </Sheet> : selected && <Sheet open title={selected.actor_name} onClose={() => setSelected(null)} consequence={null}
       actions={<Button onClick={() => setSelected(null)}>{t("uiSheet.close")}</Button>}>
       <KeyValue readOnly items={[

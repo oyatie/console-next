@@ -54,6 +54,15 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       });
       expect(fixture.requests.at(-1)!.has("search")).toBe(false);
       expect(fixture.requests.at(-1)!.has("cursor")).toBe(false);
+      const search = page.getByRole("searchbox", { name: "접속자·IP 주소 검색" });
+      await expect(search).toBeVisible();
+      await search.fill("김민수");
+      await expect.poll(() => Object.fromEntries(fixture.requests.at(-1)!)).toMatchObject({
+        search: "김민수", actor: id(101), action: "employee.export", target_type: "employee", from: "2026-10-05", to: "2026-10-20",
+      });
+      await fits(page, "audit search with filters");
+      await expectAxe(page, "audit search with filters");
+      await page.screenshot({ path: testInfo.outputPath("search-with-filters.png"), fullPage: true });
       await page.reload();
       await page.getByRole("button", { name: "필터 선택", exact: true }).click();
       await expect(actor).toHaveValue(id(101));
@@ -67,10 +76,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expectStable(page, "audit structured filters");
       await expectAxe(page, "audit structured filters");
       await page.screenshot({ path: testInfo.outputPath("filters.png"), fullPage: true });
-      await expect(page.getByRole("searchbox")).toHaveCount(0);
       await page.getByRole("combobox", { name: "동작", exact: true }).selectOption({ label: "주민등록번호 열람" });
       await page.getByRole("button", { name: "필터 적용", exact: true }).click();
       await expect(page.getByRole("heading", { name: "검색 결과가 없습니다" })).toBeVisible();
+      expect(fixture.requests.at(-1)!.get("search")).toBe("김민수");
       await page.getByRole("button", { name: "검색 초기화", exact: true }).click();
       await expect(page.getByRole("grid")).toBeVisible();
       await page.getByRole("button", { name: "필터 선택", exact: true }).click();

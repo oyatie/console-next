@@ -55,7 +55,7 @@ test("access records serve the current tenant month and refuse malformed paging"
   }
 });
 
-test("access-log filters use live choices, persist after reload and reset an empty intersection", async ({ browser }) => {
+test("access-log filters intersect live choices, bind cursors and preserve empty-result choices", async ({ browser }) => {
   const admin = await openTenant(browser, "accessfilters", "접속기록 필터");
   const bearer = bearerOf(admin);
   await go(admin, "/account");
@@ -67,33 +67,40 @@ test("access-log filters use live choices, persist after reload and reset an emp
   const record = before.items.find((row: { action: string }) => row.action === "account.list_read");
   expect(record).toBeTruthy();
   expect(before.filter_options.actions).toContainEqual({ id: "account.list_read", label_key: "accessLog.action.account.list_read" });
-  await go(admin, "/audit/access-log?view=all");
-  await expect(admin.getByRole("grid")).toBeVisible();
-  await admin.getByRole("button", { name: "필터 선택", exact: true }).click();
-  await admin.getByRole("combobox", { name: "접속자", exact: true }).selectOption(record.actor_id);
-  await admin.getByRole("combobox", { name: "동작", exact: true }).selectOption({ label: "계정 목록 조회" });
-  await admin.getByRole("combobox", { name: "대상 종류", exact: true }).selectOption({ label: "계정" });
-  const day = before.period.from;
-  await admin.getByLabel("시작일", { exact: true }).fill(day);
+  const rows = before.items as { actor_id: string; action: string; target_type: string }[];
+  expect(before.filter_options.actions.map((choice: { id: string }) => choice.id).sort()).toEqual([...new Set(rows.map(row => row.action))].sort());
+  expect(before.filter_options.target_types.map((choice: { id: string }) => choice.id).sort()).toEqual([...new Set(rows.map(row => row.target_type))].sort());
+  expect(before.filter_options.actors.map((choice: { id: string }) => choice.id).sort()).toEqual([...new Set(rows.map(row => row.actor_id))].sort());
+  expect((await api("/users?limit=1")).status()).toBe(200);
   const end = new Date(before.period.to);
   end.setUTCDate(end.getUTCDate() - 1);
-  const last = end.toISOString().slice(0, 10);
-  await admin.getByLabel("종료일", { exact: true }).fill(last);
-  const response = admin.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/access/access-log" && new URL(r.url()).searchParams.get("action") === "account.list_read");
-  await admin.getByRole("button", { name: "필터 적용", exact: true }).click();
-  const filtered = await (await response).json();
-  expect(filtered.totals.events).toBeGreaterThan(0);
-  expect(filtered.items.every((row: { actor_id: string; action: string; target_type: string }) => row.actor_id === record.actor_id && row.action === "account.list_read" && row.target_type === "user")).toBe(true);
-  expect(new URL(admin.url()).searchParams.get("from")).toBe(day);
-  expect(new URL(admin.url()).searchParams.get("to")).toBe(last);
-  await admin.reload();
-  await admin.getByRole("button", { name: "필터 선택", exact: true }).click();
-  await expect(admin.getByRole("combobox", { name: "동작", exact: true })).toHaveValue("account.list_read");
-  await admin.getByRole("combobox", { name: "대상 종류", exact: true }).selectOption({ label: "접속기록" });
-  await admin.getByRole("button", { name: "필터 적용", exact: true }).click();
-  await expect(admin.getByRole("heading", { name: "검색 결과가 없습니다" })).toBeVisible();
-  await admin.getByRole("button", { name: "검색 초기화", exact: true }).click();
-  await expect(admin.getByRole("grid")).toBeVisible();
-  expect(new URL(admin.url()).searchParams.has("action")).toBe(false);
-  expect(new URL(admin.url()).searchParams.has("actor")).toBe(false);
+  const query = new URLSearchParams({
+    actor: record.actor_id, action: record.action, target_type: record.target_type,
+    from: before.period.from, to: end.toISOString().slice(0, 10), limit: "1",
+  });
+  const response = await api(`/access/access-log?${query}`);
+  expect(response.status()).toBe(200);
+  const filtered = await response.json();
+  expect(filtered.totals.events).toBe(2);
+  expect(filtered.items).toHaveLength(1);
+  expect(filtered.items[0]).toMatchObject({ actor_id: record.actor_id, action: record.action, target_type: record.target_type });
+  expect(filtered.filter_options).toEqual(before.filter_options);
+  expect(filtered.next_cursor).toEqual(expect.any(String));
+  for (const key of ["actor", "action", "target_type", "from", "to"]) {
+    const changed = new URLSearchParams(query);
+    changed.delete(key);
+    changed.set("cursor", filtered.next_cursor);
+    const refused = await api(`/access/access-log?${changed}`);
+    expect(refused.status()).toBe(422);
+    expect(await codeOf(refused)).toBe("cursor_invalid");
+  }
+  query.set("cursor", filtered.next_cursor);
+  const next = await api(`/access/access-log?${query}`);
+  expect(next.status()).toBe(200);
+  expect(await next.json()).toMatchObject({ totals: filtered.totals, filter_options: filtered.filter_options, next_cursor: null });
+  query.delete("cursor");
+  query.set("target_type", "access_log");
+  const empty = await api(`/access/access-log?${query}`);
+  expect(empty.status()).toBe(200);
+  expect(await empty.json()).toMatchObject({ items: [], next_cursor: null, totals: { events: 0, flagged: 0 }, filter_options: before.filter_options });
 });
