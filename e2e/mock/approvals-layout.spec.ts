@@ -8,12 +8,14 @@ test.afterEach(() => i18n.set("ko"));
 
 const values = [
   { name: "real", title: "영업 조직 개편안", secondary: "AP-2026-001" },
+  { name: "document", title: "영업 조직 개편안", secondary: "OC-2026-HR-1103-001" },
   { name: "short", title: "조직 개편", secondary: "인사" },
   { name: "Latin", title: "ABCDEFGHIJKLMNOPQRST", secondary: "ABCDEFGHIJKLMNOPQRST" },
   { name: "Korean", title: "가".repeat(30), secondary: "나".repeat(30) },
+  { name: "oversized", title: "조직 개편", secondary: "나".repeat(80) },
 ];
 
-for (const width of [1024, 1280, 1366, 1440, 1920]) for (const preview of [false, true])
+for (const width of [1024, 1100, 1152, 1216, 1280, 1366, 1440, 1472, 1536, 1600, 1920]) for (const preview of [false, true])
   for (const locale of ["ko", "en"] as const) for (const value of values) {
     test(`approval column invariants: ${width}px preview=${preview} ${locale} ${value.name}`, async ({ page }) => {
       await loadCatalog(locale);
@@ -23,10 +25,10 @@ for (const width of [1024, 1280, 1366, 1440, 1920]) for (const preview of [false
       const mock = await mockScreen(page, screens[0], "empty");
       const item = {
         id: "approval-layout", box: "pending", title: value.title, summary: value.title,
-        document_no: value.secondary, source: { key: "org_change", label: value.name === "real" ? "조직 변경" : value.secondary },
-        status: { key: "IN_APPROVAL" }, requester: { id: "requester", name: value.name === "real" ? "김기안" : value.secondary },
+        document_no: value.secondary, source: { key: "org_change", label: ["real", "document"].includes(value.name) ? "조직 변경" : value.secondary },
+        status: { key: "IN_APPROVAL" }, requester: { id: "requester", name: ["real", "document"].includes(value.name) ? "김기안" : value.secondary },
         requested_at: "2026-11-03T01:00:00Z", due_at: null, facts: [],
-        route: [{ id: "current", role_key: "legal", assignee: value.name === "real" ? "박결재" : value.secondary, state: "current" }],
+        route: [{ id: "current", role_key: "legal", assignee: ["real", "document"].includes(value.name) ? "박결재" : value.secondary, state: "current" }],
         viewer: { kind: "org_change", id: "change-layout" },
       };
       await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ json: {
@@ -107,15 +109,23 @@ for (const width of [1024, 1280, 1366, 1440, 1920]) for (const preview of [false
       expect(metrics.statusHeaderFits).toBe(true);
       expect(metrics.secondary).toHaveLength(5);
       const minimum = metrics.minimum;
-      const metadataFit = metrics.naturalWidths.reduce((sum, size, index) => sum + (index === 1 ? minimum + metrics.titlePadding : size), 0) <= metrics.containerWidth;
-      if (metadataFit) expect(metrics.values.every(cell => cell.visible), "all columns stay visible when their content fits").toBe(true);
-      const visibleMetadataFit = metrics.naturalWidths.reduce((sum, size, index) => sum + (metrics.values[index]!.visible ? index === 1 ? minimum + metrics.titlePadding : size : 0), 0) <= metrics.containerWidth;
+      // Whole-value checks use the natural title width when it is shorter than the title floor.
+      const visibleMetadataFit = metrics.naturalWidths.reduce((sum, size, index) => sum + (metrics.values[index]!.visible ? index === 1 ? Math.min(size, minimum + metrics.titlePadding) : size : 0), 0) <= metrics.containerWidth;
+      const visibleTracksFit = metrics.naturalWidths.reduce((sum, size, index) => sum + (metrics.values[index]!.visible ? index === 1 ? minimum + metrics.titlePadding : size : 0), 0) <= metrics.containerWidth;
       const visibleContentFit = metrics.naturalWidths.reduce((sum, size, index) => sum + (metrics.values[index]!.visible ? size : 0), 0) <= metrics.containerWidth;
       if (visibleMetadataFit) for (const [index, cell] of metrics.values.entries()) {
-        if (cell.visible && (index !== 1 || visibleContentFit)) expect(cell.clipped, `inner value ${index} is whole when there is room`).toBe(false);
+        if (cell.visible && ([0, 5, 6].includes(index) || (visibleTracksFit && (index !== 1 || visibleContentFit)))) expect(cell.clipped, `inner value ${index} is whole when there is room`).toBe(false);
       }
-      if (!preview && [1280, 1366, 1440].includes(width)) {
+      for (const index of [0, 5]) {
+        if (metrics.values[index]!.visible && (index === 5 || ["real", "document", "short"].includes(value.name))) {
+          expect(metrics.values[index]!.clipped, `identity/date ${index} stays whole`).toBe(false);
+        }
+      }
+      if ((!preview && width >= 1216) || (preview && width === 1920)) {
         expect(metrics.values.every(cell => cell.visible), "desktop list retains all seven columns").toBe(true);
+      }
+      if ((!preview && width <= 1152) || (preview && width >= 1472 && width <= 1600)) {
+        expect(metrics.values.map(cell => cell.visible), "compact lists keep identity, title, route and status").toEqual([true, true, false, true, false, false, true]);
       }
       for (const cell of metrics.secondary) {
         expect(cell.headerVisible).toBe(cell.visible);
