@@ -6,6 +6,7 @@ use console_platform_db::with_audits;
 use console_platform_request_context::audit_context::access_log::{AccessRecord, access_event};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::collections::BTreeSet;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
@@ -22,6 +23,7 @@ type Cursor = (OffsetDateTime, OffsetDateTime, Uuid);
 #[derive(Debug, Deserialize)]
 pub struct Query {
     pub period: Option<String>,
+    pub search: Option<String>,
     #[serde(default)]
     pub flagged: bool,
     pub cursor: Option<String>,
@@ -29,8 +31,20 @@ pub struct Query {
 }
 
 impl Query {
+    fn search(&self) -> Option<String> {
+        self.search
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_lowercase)
+    }
+
     fn prefix(&self, org: OrgId, period: &str) -> String {
-        format!("{}~{}~{}~", org, period, self.flagged)
+        let search = self
+            .search()
+            .map(|s| format!("{}~", hex::encode(Sha256::digest(s))))
+            .unwrap_or_default();
+        format!("{}~{}~{}~{search}", org, period, self.flagged)
     }
 
     fn cursor(&self, org: OrgId, period: &str) -> AccessResult<Option<Cursor>> {
@@ -76,7 +90,10 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
         let as_of = if let Some(c) = cursor { c.0 } else {
             sqlx::query_scalar("SELECT now()").fetch_one(tx.as_mut()).await?
         };
-        let prepared = list::prepare(tx.as_mut(), p.org_id, &period, false, Some(as_of)).await?;
+        let mut prepared = list::prepare(tx.as_mut(), p.org_id, &period, false, Some(as_of)).await?;
+        if let Some(search) = q.search() {
+            prepared.search(tx.as_mut(), &search, as_of).await?;
+        }
         let keys = list::page_at(tx.as_mut(), &prepared, cursor.map(|c| (c.1,c.2)), limit, q.flagged, Some(as_of)).await?;
         let last = keys.last().map(|r| (r.created_at, r.event_id));
         let more = if keys.len() == limit as usize {
