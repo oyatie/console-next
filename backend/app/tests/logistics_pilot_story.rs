@@ -7,7 +7,7 @@ use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::StatusCode;
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
@@ -503,7 +503,7 @@ struct Keys {
 }
 impl Keys {
     fn generate() -> Self {
-        let key = SigningKey::random(&mut OsRng);
+        let key = SigningKey::generate();
         Self {
             private_pem: key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
             public_pem: key

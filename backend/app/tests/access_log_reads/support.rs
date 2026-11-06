@@ -11,7 +11,7 @@ use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Method, Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -252,7 +252,7 @@ pub async fn token(
 
 /// A fresh ES256 key pair as (private, public) PEM.
 pub fn signing_pems() -> (String, String) {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let private_pem = key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
     let public_pem = key
         .verifying_key()

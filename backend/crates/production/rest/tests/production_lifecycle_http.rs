@@ -19,7 +19,7 @@ use console_production_rest::{
     router,
 };
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -63,7 +63,7 @@ struct LifecycleAuditRow {
 }
 
 fn keys() -> Keys {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     Keys {
         private_pem: key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
         public_pem: key

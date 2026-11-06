@@ -33,7 +33,7 @@ impl Fixture {
             .unwrap();
         sqlx::query("INSERT INTO users(id, org_id, display_name, roles, is_active) VALUES ($1, $2, 'Authority subject', ARRAY['SUPER_ADMIN'], true)")
             .bind(*user.as_uuid()).bind(*if platform { OrgId::platform() } else { org }.as_uuid()).execute(&owner).await.unwrap();
-        let key = SigningKey::random(&mut OsRng);
+        let key = SigningKey::generate();
         let private = key.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public = key
             .verifying_key()

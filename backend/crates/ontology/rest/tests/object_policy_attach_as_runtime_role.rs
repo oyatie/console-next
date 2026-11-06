@@ -28,7 +28,7 @@ use console_platform_request_context::scope_org;
 mod governed;
 use governed::{command_role_pool, runtime_role_pool, seed_org_and_super_admin};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -4200,7 +4200,7 @@ struct TestAuth {
 thread_local! {
     /// One key per test thread so a second principal's token verifies against
     /// the router's single verifier.
-    static SIGNING_KEY: SigningKey = SigningKey::random(&mut OsRng);
+    static SIGNING_KEY: SigningKey = SigningKey::generate();
 }
 
 /// The issuer's and the verifier's settings must be the SAME settings, or every

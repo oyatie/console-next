@@ -18,7 +18,7 @@ use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifier};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -1145,7 +1145,7 @@ struct Fixture {
 
 impl Fixture {
     async fn new(pool: &PgPool) -> Self {
-        let signing = SigningKey::random(&mut OsRng);
+        let signing = SigningKey::generate();
         let private_pem = signing.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
         let public_pem = signing
             .verifying_key()
