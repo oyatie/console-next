@@ -26,6 +26,19 @@ export async function tableTest() {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Fixture(){
+          const navigation=location.search.match(/^\\?navigation-(cell|button|input)(-wrapped)?$/);
+          if(navigation) return React.createElement(LongTable,{
+            label:'키보드 탐색',rows:[{id:'a',name:'Alpha'},{id:'b',name:'Beta'},{id:'c',name:'Gamma'}],rowId:r=>r.id,
+            empty:null,hasMore:false,onLoadMore:()=>{},selection:NO_SELECTION,onSelectionChange:()=>{},
+            columns:[{id:'name',header:'이름',rowHeader:true,card:'title',cell:r=>r.name},
+              {id:'control',header:'작업',card:'action',focusMode:navigation[1]==='cell'?'cell':'child',cell:r=>{
+                const child=navigation[1]==='cell'?r.name:navigation[1]==='button'
+                  ?React.createElement(Button,{'aria-label':r.name,onClick:()=>document.body.dataset.pressed=r.id},r.name)
+                  :React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name,defaultValue:'abcdef',onKeyDown:e=>requestAnimationFrame(()=>document.body.dataset.inputPrevented=String(e.defaultPrevented))}));
+                return navigation[2]?React.createElement('span',null,child):child;
+              }},
+              {id:'last',header:'메모',card:'fact',cell:()=>'-'}]
+          });
           const editing=location.search.startsWith('?typing');
           const [values,setValues]=useState({});
           const [sort,setSort]=useState({column:'name',direction:'ascending'});
@@ -49,7 +62,7 @@ export async function tableTest() {
               onRowFocus:id=>document.body.dataset.focus=id,onRowHover:id=>document.body.dataset.hover=id} : {}),
             columns:[{id:'name',header:'이름',card:editing||location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,focusMode:location.search.endsWith('-arrows')?'child':undefined,cell:r=>location.search.endsWith('-arrows') ? React.createElement(Button,{size:'sm',onKeyDown:stopKey,onKeyUp:stopKey,onClick:e=>{e.stopPropagation();document.body.dataset.pressed='true';}},r.name) : r.name},
               {id:'note',header:'메모',allowsSorting:true,focusMode:location.search==='?typing-child'?'child':undefined,cell:r=>editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
-              {id:'fixed',header:'고정',type:targets?'action':undefined,width:targets?160:undefined,cell:()=>targets ? (location.search==='?targets-wrapped' ? React.createElement('span',null,action) : action) : '-'}]
+              {id:'fixed',header:'고정',type:targets?'action':undefined,width:targets?160:undefined,cell:()=>targets ? (location.search.startsWith('?targets-wrapped') ? React.createElement('span',null,action) : action) : '-'}]
           });
         }
         createRoot(document.getElementById('root')).render(React.createElement(Fixture));

@@ -272,8 +272,16 @@ export function LongTable<R>(p: {
                       return <Cell data-type={c.type} focusMode={c.focusMode} allowsArrowNavigation className={css.td} render={(props, { id: cellKey }) => {
                         const capture: KeyboardEventHandler | undefined = props.onKeyDownCapture;
                         return <div {...props} data-cell-key={cellKey}
-                          // Buttons use grid arrows; text entry keeps its caret and picker keys.
-                          onKeyDownCapture={event => { if (!editable(event.target)) capture?.(event); }}
+                          // Buttons use grid navigation; text entry keeps its caret and picker keys.
+                          onKeyDownCapture={event => {
+                            if (editable(event.target)) return;
+                            if (event.target !== event.currentTarget && /^(Home|End|PageUp|PageDown)$/.test(event.key)) {
+                              event.preventDefault(); event.stopPropagation();
+                              event.currentTarget.parentElement?.dispatchEvent(new KeyboardEvent(event.type, event.nativeEvent));
+                              return;
+                            }
+                            capture?.(event);
+                          }}
                           title={typeof value === "string" ? value : undefined} aria-labelledby={cardLayout && c.id === "__card" ? titleId(r) : props["aria-labelledby"]} />;
                       }}>{value}</Cell>;
                     }}

@@ -247,3 +247,44 @@ for (const width of [1440, 390]) test(`keyboard appointment adopts the pressed c
   await expect(open).toBeFocused();
   expect(fixture.unexpected).toEqual([]);
 });
+
+for (const width of [1440, 390]) test(`list boundary keys and order and add targets at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  const tree = structure(3);
+  tree.phase = "SETUP";
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+  await go(page, "/org?view=list");
+  const grid = page.getByRole("grid");
+  const row = page.getByRole("row").filter({ hasText: "검증부서 2" });
+  const head = row.getByRole("button", { name: "부서장 지정", exact: true });
+  await expect(head).toBeVisible();
+  for (const key of ["Home", "End", "PageUp", "PageDown"]) {
+    // Paging virtualizes the origin out; bring it back before the next independent key.
+    if (width === 390) await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
+    await head.focus();
+    const startIndex = Number(await row.getAttribute("aria-rowindex"));
+    await page.keyboard.press(key);
+    const destination = page.getByRole("row").filter({ hasText: "검증부서 3" });
+    if (key === "PageDown") await expect.poll(() => destination.evaluate(el => el.contains(document.activeElement))).toBe(true);
+    else if (key === "PageUp") await expect.poll(() => page.evaluate(() => Number(document.activeElement?.closest('[role="row"]')?.getAttribute("aria-rowindex")))).toBeLessThan(startIndex);
+    else if (width === 1440 || key === "Home") await expect(head).not.toBeFocused();
+  }
+  if (width === 1440) {
+    // Arrive with arrows so the roving cell, rather than a non-roving tabindex, is measured.
+    for (const [header, label] of [["순서", "검증부서 2 위로"], ["작업", "검증부서 2 이름 변경"]]) {
+      const column = await grid.getByRole("columnheader", { name: header, exact: true }).getAttribute("aria-colindex");
+      const cell = row.locator(`[aria-colindex="${column}"]`);
+      await row.getByRole("rowheader").focus();
+      for (let step = 0; step < Number(column) * 2 && !await cell.evaluate(el => el.contains(document.activeElement)); step++) await page.keyboard.press("ArrowRight");
+      const control = cell.getByRole("button", { name: label, exact: true });
+      await expect(control).toBeFocused();
+      await expect(cell).toHaveAttribute("tabindex", "-1");
+      const box = await control.boundingBox();
+      expect(box!.width).toBeGreaterThanOrEqual(24);
+      expect(box!.height).toBeGreaterThanOrEqual(24);
+    }
+  }
+  await fits(page, `department navigation ${width}`);
+  expect(fixture.unexpected).toEqual([]);
+});
