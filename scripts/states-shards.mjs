@@ -10,8 +10,8 @@ const positive = n => Number.isFinite(n) && n > 0;
 const specPath = file => /^(?:(?:mock|states)\/[^/]+\.spec\.ts|layout\/layout\.spec\.ts)$/.test(file);
 
 function validateTimings(timings) {
-  const { budgetSeconds, startupSeconds, workers, defaultTestSeconds, specs } = timings;
-  if (![budgetSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || !Number.isInteger(workers) || startupSeconds >= budgetSeconds || !specs || typeof specs !== "object")
+  const { budgetSeconds, timeoutSeconds = budgetSeconds, startupSeconds, workers, defaultTestSeconds, specs, maxShards = 256 } = timings;
+  if (![budgetSeconds, timeoutSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || timeoutSeconds < budgetSeconds || !Number.isInteger(workers) || !Number.isInteger(maxShards) || maxShards < 1 || maxShards > 256 || startupSeconds >= budgetSeconds || !specs || typeof specs !== "object")
     refuse("STATES_INVALID_TIMINGS", "expected positive budget, startup, workers, default and per-spec durations");
   for (const [file, entry] of Object.entries(specs)) if (!specPath(file) || !positive(entry?.seconds) || !Number.isInteger(entry?.tests) || entry.tests <= 0)
     refuse("STATES_INVALID_TIMINGS", file);
@@ -29,19 +29,29 @@ export function planStates(report, timings, measured) {
     counts.set(file, (counts.get(file) ?? 0) + 1);
   }
   if (!counts.size) refuse("STATES_EMPTY_SUITE", "no runnable state specs");
-  const { budgetSeconds, startupSeconds, workers, defaultTestSeconds } = timings;
+  const { startupSeconds, workers, defaultTestSeconds, maxShards = 256, timeoutSeconds = timings.budgetSeconds } = timings;
   const durations = Object.fromEntries([...counts].map(([file, tests]) => {
     const old = specs[file];
     return [file, { s: (old?.seconds ?? 0) * workers + Math.max(0, tests - (old?.tests ?? 0)) * defaultTestSeconds }];
   }));
+  const seconds = Object.values(durations).map(({ s }) => s / workers);
+  const minimum = Math.ceil(startupSeconds + seconds.reduce((sum, s) => sum + s, 0) / maxShards);
+  let budgetSeconds = Math.min(timeoutSeconds, Math.max(timings.budgetSeconds, Math.ceil(startupSeconds + Math.max(...seconds))));
   let jobs;
   try {
-    jobs = plan([...counts.keys()].map(file => ({ project: "states", file, key: file })), durations,
-      { target: budgetSeconds, boot: startupSeconds, workers, strict: true });
+    const attempts = Math.ceil(timeoutSeconds - budgetSeconds) + 1;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      jobs = plan([...counts.keys()].map(file => ({ project: "states", file, key: file })), durations,
+        { target: budgetSeconds, boot: startupSeconds, workers, strict: true });
+      if (jobs.length <= maxShards) break;
+      if (budgetSeconds >= timeoutSeconds) refuse("STATES_TIMEOUT_LIMIT", `${maxShards} shards cannot fit within ${timeoutSeconds}s`);
+      // Whole specs may need more than the average load to fit within the runner cap.
+      budgetSeconds = Math.min(timeoutSeconds, Math.max(budgetSeconds + 1, minimum));
+    }
+    if (jobs.length > maxShards) refuse("STATES_TIMEOUT_LIMIT", `${attempts} planning attempts exhausted`);
   } catch (error) {
     throw new Error(error.message.replace(/^E2E_/, "STATES_"));
   }
-  if (jobs.length > 256) refuse("STATES_MATRIX_LIMIT", "plan exceeds GitHub's 256-job matrix limit");
   return { budgetSeconds, testCounts: Object.fromEntries(counts),
     shards: jobs.map((job, i) => ({ id: i + 1, files: job.files.map(file => `e2e/${file}`), seconds: job.est })) };
 }
@@ -113,8 +123,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       mkdirSync(path.dirname(list), { recursive: true });
       writeFileSync(list, files.map(f => f.slice(4)).join("\n"));
       const output = process.env.PLAYWRIGHT_JSON_OUTPUT_FILE ?? path.resolve(`.cache/states-report-${id}.json`);
-      const result = spawnSync("npm", ["run", "e2e:states", "--", `--test-list=${list}`], { stdio: "inherit", env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
-      if (result.status === 0) refreshTimings(readJson("e2e/mock/timings.json"), { ...plan, shards: [{ ...plan.shards[id - 1], id: 1 }] }, [readJson(output)]);
+      const timings = readJson("e2e/mock/timings.json");
+      validateTimings(timings);
+      const result = spawnSync("npm", ["run", "e2e:states", "--", `--test-list=${list}`, `--global-timeout=${Math.ceil((timings.timeoutSeconds ?? timings.budgetSeconds) * 1000)}`], { stdio: "inherit", env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
+      if (result.status === 0) refreshTimings(timings, { ...plan, shards: [{ ...plan.shards[id - 1], id: 1 }] }, [readJson(output)]);
       process.exitCode = result.status ?? 1;
     } else if (command === "refresh") {
       writeJson(third, refreshTimings(readJson(first), readJson(second), rest.map(readJson)));
