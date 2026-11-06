@@ -10,8 +10,8 @@ const positive = n => Number.isFinite(n) && n > 0;
 const specPath = file => /^(?:(?:mock|states)\/[^/]+\.spec\.ts|layout\/layout\.spec\.ts)$/.test(file);
 
 function validateTimings(timings) {
-  const { budgetSeconds, timeoutSeconds = budgetSeconds, startupSeconds, workers, defaultTestSeconds, specs, maxShards = 256 } = timings;
-  if (![budgetSeconds, timeoutSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || timeoutSeconds < budgetSeconds || !Number.isInteger(workers) || !Number.isInteger(maxShards) || maxShards < 1 || maxShards > 256 || startupSeconds >= budgetSeconds || !specs || typeof specs !== "object")
+  const { budgetSeconds, timeoutSeconds = budgetSeconds, jobTimeoutSeconds = timeoutSeconds * 1.25, startupSeconds, workers, defaultTestSeconds, specs, maxShards = 256 } = timings;
+  if (![budgetSeconds, timeoutSeconds, jobTimeoutSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || timeoutSeconds < budgetSeconds || jobTimeoutSeconds < timeoutSeconds || !Number.isInteger(workers) || !Number.isInteger(maxShards) || maxShards < 1 || maxShards > 256 || startupSeconds >= Math.min(budgetSeconds, jobTimeoutSeconds / 1.25) || !specs || typeof specs !== "object")
     refuse("STATES_INVALID_TIMINGS", "expected positive budget, startup, workers, default and per-spec durations");
   for (const [file, entry] of Object.entries(specs)) if (!specPath(file) || !positive(entry?.seconds) || !Number.isInteger(entry?.tests) || entry.tests <= 0)
     refuse("STATES_INVALID_TIMINGS", file);
@@ -29,10 +29,17 @@ export function planStates(report, timings, measured) {
     counts.set(file, (counts.get(file) ?? 0) + 1);
   }
   if (!counts.size) refuse("STATES_EMPTY_SUITE", "no runnable state specs");
-  const { startupSeconds, workers, defaultTestSeconds, maxShards = 256, timeoutSeconds = timings.budgetSeconds } = timings;
+  const { startupSeconds, workers, defaultTestSeconds, maxShards = 256 } = timings;
+  // Nearest-rank P95 protects new specs from the slow measured tail, with the configured default as a floor.
+  const perTest = Object.values(specs).map(entry => entry.seconds * workers / entry.tests).sort((a, b) => a - b);
+  const unknownTestSeconds = Math.max(defaultTestSeconds, perTest[Math.ceil(perTest.length * 0.95) - 1] ?? 0);
+  const unmeasured = [...counts].filter(([file, tests]) => tests > (specs[file]?.tests ?? 0)).map(([file]) => file);
+  // Keep 1.25x headroom under the job limit even when whole-file packing stretches the target.
+  const executionSeconds = timings.timeoutSeconds ?? timings.budgetSeconds;
+  const timeoutSeconds = Math.min(executionSeconds, Math.floor((timings.jobTimeoutSeconds ?? executionSeconds * 1.25) / 1.25));
   const durations = Object.fromEntries([...counts].map(([file, tests]) => {
     const old = specs[file];
-    return [file, { s: (old?.seconds ?? 0) * workers + Math.max(0, tests - (old?.tests ?? 0)) * defaultTestSeconds }];
+    return [file, { s: (old?.seconds ?? 0) * workers + Math.max(0, tests - (old?.tests ?? 0)) * unknownTestSeconds }];
   }));
   const seconds = Object.values(durations).map(({ s }) => s / workers);
   const minimum = Math.ceil(startupSeconds + seconds.reduce((sum, s) => sum + s, 0) / maxShards);
@@ -50,7 +57,8 @@ export function planStates(report, timings, measured) {
     }
     if (jobs.length > maxShards) refuse("STATES_TIMEOUT_LIMIT", `${attempts} planning attempts exhausted`);
   } catch (error) {
-    throw new Error(error.message.replace(/^E2E_/, "STATES_"));
+    const guidance = unmeasured.length ? `; add timings for unmeasured specs in this PR: ${unmeasured.join(", ")}` : "";
+    throw new Error(error.message.replace(/^E2E_/, "STATES_") + guidance);
   }
   return { budgetSeconds, testCounts: Object.fromEntries(counts),
     shards: jobs.map((job, i) => ({ id: i + 1, files: job.files.map(file => `e2e/${file}`), seconds: job.est })) };

@@ -12,31 +12,38 @@ npm run e2e:states -- --grep 'people: loading at 390'
 
 CI plans duration-balanced shards before running this suite with Chromium headless
 shell. `timings.json` owns the ten-minute target, five-shard cap, startup headroom,
-worker count and conservative default for unmeasured tests. The planner stretches
-the target only within the 1080-second execution limit; the states job has a
+worker count and minimum estimate for unmeasured tests. The planner stretches
+the target only within the 1080-second execution limit and 80% of the committed
+job limit (checked against CI), reserving 1.25x headroom; the states job has a
 20-minute timeout and zero retries. Five state runners plus two backend test
 runners keep CI's peak at 13; CodeQL's three, platform's three and workflow checks'
 one bring concurrent PR jobs to the 20-runner allowance. The suite-growth
 regression checks that 1.25 times the planned budget
-fits within the job timeout. A spec exceeding the execution limit fails
-with `STATES_SPEC_OVER_BUDGET` and its path; split that spec before rerunning.
+fits within the job timeout. A spec exceeding the planning limit fails
+with `STATES_SPEC_OVER_BUDGET` and its path. If five shards cannot fit, planning
+fails with `STATES_TIMEOUT_LIMIT`. For unmeasured specs, both errors tell the PR
+to add timings; measured oversized specs must be split.
 
 `states-plan` lists the runnable specs and packs whole files longest first. Every
 matrix job downloads that exact plan and runs its file list; `ci-ok` requires the
-planner and every shard. Added tests in measured files get the conservative default
-until measured. Run the planner regressions with `node --test scripts/states-shards.test.mjs`.
+planner and every shard. Unknown specs and added tests in measured files use their
+test count times the nearest-rank **P95** of measured per-test wall times
+(`seconds / tests`), with `defaultTestSeconds / workers` as a floor. P95 covers
+the slow measured tail instead of treating new screens as average-speed tests.
+The planner converts wall estimates back to worker-seconds for the shared packer.
+Run the planner regressions with `node --test scripts/states-shards.test.mjs`.
 
 Successful dev pushes publish per-spec wall durations and the measurement's worker
 count as `states-timings`. Plans take settings only from committed `timings.json`
 and overlay the latest same-repository dev artifact's spec durations only when its
-worker count matches. Otherwise the committed snapshot and conservative defaults
+worker count matches. Otherwise the committed snapshot and conservative estimates
 apply. Partial, failed, duplicate or mismatched reports cannot refresh measurements.
 CI never overwrites the committed configuration. Local measurements must not
 overwrite CI's trusted artifact. The committed snapshot comes from the complete
 [2026-11-05 dev states results](https://github.com/oyatie/console-next/actions/runs/42107170406):
 92 specs, 1536 passing tests, two workers. It is reproduced by `refreshTimings`
 from every shard report and matches that run's `states-timings` artifact. Only
-new specs or added cases use the conservative default. The planner regression
+new specs or added cases use the conservative estimate. The planner regression
 adds 30 tests and 10% timing drift without extending the execution limit.
 
 Use the existing `E2E_SLOT` / `CONSOLE_WEB_PORT` environment variables to isolate

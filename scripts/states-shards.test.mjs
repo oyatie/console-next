@@ -59,12 +59,44 @@ test("greedy duration packing balances the fixture within 15% and covers every s
   assert.deepEqual(plan.shards.flatMap(s => s.files).sort(), Object.keys(specs).map(f => `e2e/${f}`).sort());
 });
 
-test("new specs and new cases in a measured spec receive the conservative default", async () => {
+test("new specs and new cases use measured per-test P95 above the default floor", async () => {
   const { planStates } = await load();
   const timings = { ...settings, specs: { "mock/known.spec.ts": { seconds: 20, tests: 2 } } };
   const plan = planStates(report({ "mock/known.spec.ts": 4, "states/new.spec.ts": 4 }), timings);
-  assert.equal(plan.shards[0].seconds, settings.startupSeconds + 20 + 2 * 5 + 4 * 5);
+  assert.equal(plan.shards[0].seconds, settings.startupSeconds + 20 + 2 * 10 + 4 * 10);
   assert.equal(plan.shards.length, 1);
+  const fallback = planStates(report({ "states/new.spec.ts": 4 }), settings);
+  assert.equal(fallback.shards[0].seconds, settings.startupSeconds + 4 * settings.defaultTestSeconds / settings.workers);
+});
+
+test("an unknown 30-test spec uses nearest-rank P95 and adds a shard with headroom", async () => {
+  const { planStates } = await load();
+  const specs = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`mock/${i}.spec.ts`, { seconds: (i + 1) ** 2, tests: i + 1 }]));
+  const timings = { ...settings, specs, budgetSeconds: 600, timeoutSeconds: 1200, maxShards: 5 };
+  const plan = planStates(report({ "mock/19.spec.ts": 20, "states/new.spec.ts": 30 }), timings);
+  assert.equal(plan.shards.length, 2);
+  assert.equal(plan.shards.find(s => s.files.includes("e2e/states/new.spec.ts")).seconds, settings.startupSeconds + 30 * 19);
+  assert.ok(plan.shards.every(s => s.seconds * 1.25 <= timings.timeoutSeconds));
+  assert.equal(plan.testCounts["states/new.spec.ts"], 30);
+});
+
+test("unknown estimates that exceed whole-spec or shard capacity request timings", async () => {
+  const { planStates } = await load();
+  const timings = { ...settings, timeoutSeconds: 600, jobTimeoutSeconds: 600, maxShards: 1,
+    specs: { "mock/known.spec.ts": { seconds: 20, tests: 1 } } };
+  assert.throws(() => planStates(report({ "states/new.spec.ts": 30 }), timings), /STATES_SPEC_OVER_BUDGET.*states\/new\.spec\.ts.*add timings/i);
+  assert.throws(() => planStates(report({ "mock/known.spec.ts": 1, "states/new.spec.ts": 22 }), timings), /STATES_TIMEOUT_LIMIT.*add timings.*states\/new\.spec\.ts/i);
+});
+
+test("packing adds shards before consuming the 1.25x job headroom", async () => {
+  const { planStates } = await load();
+  const specs = Object.fromEntries([0, 1, 2].map(i => [`mock/${i}.spec.ts`, { seconds: 500, tests: 1 }]));
+  const input = report(Object.fromEntries(Object.keys(specs).map(file => [file, 1])));
+  const timings = { ...settings, specs, timeoutSeconds: 1080, jobTimeoutSeconds: 1080, maxShards: 3 };
+  const plan = planStates(input, timings);
+  assert.equal(plan.shards.length, 3);
+  assert.ok(plan.budgetSeconds * 1.25 <= timings.timeoutSeconds);
+  assert.throws(() => planStates(input, { ...timings, maxShards: 2 }), /STATES_TIMEOUT_LIMIT/);
 });
 
 test("packing adds capacity when ceil(total / budget) still overfills a bin", async () => {
@@ -108,6 +140,7 @@ test("the real suite allows 30 added tests and ten percent timing drift within t
   const discovered = JSON.parse(result.stdout);
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
   const timeoutSeconds = workflow.jobs.states["timeout-minutes"] * 60;
+  assert.equal(timings.jobTimeoutSeconds, timeoutSeconds, "committed job limit must match CI");
   assert.equal(timings.timeoutSeconds, 1080, "suite growth must fit without extending the execution timeout");
   for (const drift of [1, 1.1]) {
     const input = { ...discovered, suites: [...discovered.suites, ...report({ "states/growth.spec.ts": 30 }).suites] };
@@ -148,7 +181,7 @@ test("a matrix selects only planned shards; malformed and oversized plans fail c
 
 test("invalid timing inputs, an empty suite and discovery errors cannot create a green empty matrix", async () => {
   const { planStates } = await load();
-  for (const patch of [{ workers: 0 }, { budgetSeconds: 40 }, { defaultTestSeconds: -1 }, { specs: { "mock/a.spec.ts": { seconds: NaN, tests: 1 } } }]) {
+  for (const patch of [{ workers: 0 }, { budgetSeconds: 40 }, { defaultTestSeconds: -1 }, { jobTimeoutSeconds: 0 }, { jobTimeoutSeconds: 299 }, { specs: { "mock/a.spec.ts": { seconds: NaN, tests: 1 } } }]) {
     assert.throws(() => planStates(report({ "mock/a.spec.ts": 1 }), { ...settings, ...patch }), /STATES_INVALID_TIMINGS/);
   }
   assert.throws(() => planStates(report({}), settings), /STATES_EMPTY_SUITE/);
@@ -228,8 +261,8 @@ exec "$REAL_NODE" "$@"
       assert.equal(planned.status, 0, planned.stderr);
       assert.deepEqual(JSON.parse(readFileSync(path.join(dir, step.env.E2E_MODULES_FILE), "utf8")), { modules: [{ routes: ["/login", "/setup-passkey"] }] });
       const plan = JSON.parse(readFileSync(path.join(dir, ".cache/states-plan/plan.json"), "utf8"));
-      assert.equal(plan.budgetSeconds, workers === committed.workers ? 90 : committed.budgetSeconds);
-      assert.equal(plan.shards[0].seconds, workers === committed.workers ? 90 : 27);
+      assert.equal(plan.budgetSeconds, workers === committed.workers ? 330 : committed.budgetSeconds);
+      assert.equal(plan.shards[0].seconds, workers === committed.workers ? 330 : 27);
       const ran = spawnSync(process.execPath, ["scripts/states-shards.mjs", "run", ".cache/states-plan/plan.json", "1"], { cwd: dir, env, encoding: "utf8" });
       assert.equal(ran.status, 0, ran.stderr);
       const refreshed = spawnSync("bash", ["-e", "-o", "pipefail", "-c", refresh.run], { cwd: dir, env, encoding: "utf8" });
