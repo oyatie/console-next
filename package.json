@@ -37,11 +37,11 @@
     "@types/node": "^26.6.6",
     "exceljs": "^4.4.0",
     "openapi-typescript": "^7.13.0",
-    "oxlint": "^1.90.0",
+    "oxlint": "^1.91.0",
     "stylelint": "^17.15.0",
     "stylelint-declaration-strict-value": "^1.12.1",
     "typescript": "~5.9",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "overrides": {
     "@stryker-mutator/core": {
