@@ -106,6 +106,70 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
+for (const width of [1280, 1440]) for (const theme of ["light", "dark"]) {
+  test(`long approval summaries fit beside the preview at ${width}px ${theme}`, async ({ page }, info) => {
+    const longItem = {
+      ...item,
+      title: "전사 영업 조직 개편 및 인사 운영 체계 변경 승인요청",
+      document_no: "AP-2026-HR-1103-001",
+      requester: { ...item.requester, name: "김기안 인사운영팀" },
+      route: item.route.map(step => step.state === "current" ? { ...step, assignee: "박결재 준법경영지원팀" } : step),
+    };
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const mock = await mockScreen(page, screens[0], "empty");
+    await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({
+      json: { ...response(), items: [longItem, { ...longItem, id: "approval-2" }] },
+    }));
+    await page.goto("/approvals");
+    const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
+    const rows = grid.getByRole("row").filter({ hasText: longItem.title });
+    await rows.first().click();
+    const panel = page.locator("[data-side-panel]");
+    await expect(panel.getByRole("heading", { name: longItem.title, exact: true })).toBeVisible();
+    await expect(panel).toContainText("박결재 준법경영지원팀");
+    for (const row of await rows.all()) {
+      const rowHeight = await row.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue("--row-h")));
+      expect((await row.boundingBox())!.height).toBeLessThanOrEqual(rowHeight + 1);
+      const title = row.getByRole("gridcell", { name: longItem.title, exact: true });
+      await expect(title).toBeVisible();
+      await expect(title).toHaveCSS("text-overflow", "ellipsis");
+      await expect(row.locator('[aria-current="step"]').locator("..")).toHaveCSS("text-overflow", "ellipsis");
+      for (const text of [longItem.title, longItem.document_no, longItem.requester.name, `${t("enum.approvalRole.legal")} · 박결재 준법경영지원팀`]) {
+        const metrics = await row.getByText(text, { exact: true }).evaluate(el => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          return { height: range.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(el).lineHeight) };
+        });
+        expect(metrics.height, `${text} stays on one line`).toBeLessThanOrEqual(metrics.lineHeight + 1);
+      }
+      const status = row.getByRole("gridcell", { name: t("enum.orgChangeStatus.IN_APPROVAL"), exact: true });
+      await expect(status).toBeVisible();
+      const chip = status.getByText(t("enum.orgChangeStatus.IN_APPROVAL"), { exact: true });
+      expect((await chip.boundingBox())!.x + (await chip.boundingBox())!.width).toBeLessThanOrEqual((await status.boundingBox())!.x + (await status.boundingBox())!.width);
+      expect((await status.boundingBox())!.x + (await status.boundingBox())!.width).toBeLessThanOrEqual((await panel.boundingBox())!.x);
+    }
+    const bounds = await grid.evaluate(el => {
+      const card = el.closest("section")!;
+      return { table: el.getBoundingClientRect().right, card: card.getBoundingClientRect().right, overflow: card.scrollWidth - card.clientWidth };
+    });
+    expect(bounds.table).toBeLessThanOrEqual(bounds.card + 1);
+    expect(bounds.overflow).toBeLessThanOrEqual(1);
+    for (const header of await grid.getByRole("columnheader").all()) {
+      const label = await header.evaluate(el => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return { text: range.getBoundingClientRect().width, cell: el.clientWidth, padding: parseFloat(getComputedStyle(el).paddingInlineStart) + parseFloat(getComputedStyle(el).paddingInlineEnd) };
+      });
+      expect(label.text + label.padding).toBeLessThanOrEqual(label.cell + 1);
+    }
+    await expect(grid.getByRole("columnheader", { name: "상태", exact: true })).toBeVisible();
+    await fits(page, "approval split list");
+    await page.screenshot({ path: info.outputPath(`approvals-long-${width}-${theme}.png`), fullPage: true });
+    expect(mock.unexpected).toEqual([]);
+  });
+}
+
 test("approval rows keep absent document numbers and routes unknown", async ({ page }) => {
   const mock = await mockScreen(page, screens[0], "empty");
   await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ status: 200,
