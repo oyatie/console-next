@@ -10,13 +10,13 @@ import { homeSetupChecklist, homeSetupScreen } from "./home-setup";
 
 const states = ["loading", "failed", "refused", "blocked", "ready", "receipt", "legacy-receipt", "missing-receipt", "unknown-receipt"] as const;
 
-for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
-  test(`go-live: failed refresh recovers in ${locale} at ${width}px @ui-state`, async ({ page }, info) => {
+for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) for (const changedDigest of [false, true]) {
+  test(`go-live: failed refresh recovers with ${changedDigest ? "changed" : "same"} digest in ${locale} at ${width}px @ui-state`, async ({ page }, info) => {
     await loadCatalog(locale);
     i18n.set(locale);
     const text = t;
     await page.addInitScript(value => localStorage.setItem("console.locale", value), locale);
-    info.annotations.push({ type: "registry", description: "setup-go-live--load-failed-common-loadfailed-retry-operationid" });
+    info.annotations.push({ type: "registry", description: "setup-go-live--go-live-disabled-with-reason" });
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, homeSetupScreen, "empty");
     const preview = previewData("ready");
@@ -28,7 +28,7 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/setup/go-live", "SETUP"), is_ops: true } });
     await mockRoute(page, "get", "/api/v1/onboarding/go-live/preview", () => accepted && !recover
       ? { status: 503, json: failure("service_unavailable") }
-      : { status: 200, json: { ...preview, blockers: accepted ? [] : preview.blockers } });
+      : { status: 200, json: { ...preview, digest: recover && changedDigest ? "changed-preview" : preview.digest, blockers: accepted ? [] : preview.blockers } });
     const terms = { version: "2026-10-01", sha256: "a".repeat(64), body: "서비스 이용약관" };
     await mockRoute(page, "get", "/api/v1/onboarding/terms", { status: 200, json: { ...terms, privacy: { ...terms, policy_url: "https://example.test/privacy", review_pending: false } } });
     await page.route("**/api/v1/onboarding/terms", route => {
@@ -48,7 +48,16 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
       const retry = main.getByRole("button", { name: text("common.retry"), exact: true });
       await expect(retry).toBeVisible({ timeout: 20_000 });
       await expect(start).toHaveAttribute("aria-disabled", "true");
-      await expect(start).toHaveAccessibleDescription(locale === "ko" ? "미리보기를 새로 읽지 못했습니다. 다시 시도한 뒤 운영을 시작하십시오" : "The preview could not be refreshed. Retry before starting operations");
+      await expect(start).toHaveAccessibleDescription(text("setup.golive.refreshFailed"));
+      const banner = main.getByRole("status").filter({ has: page.getByRole("button", { name: text("common.retry"), exact: true }) });
+      await expect(banner).toContainText(text("setup.golive.refreshFailed"));
+      expect((await banner.innerText()).split(text("setup.golive.refreshFailed"))).toHaveLength(2);
+      await expect(banner).not.toContainText(text("common.read.stale"));
+      await main.evaluate(el => { el.scrollTop = el.scrollHeight; });
+      await retry.click({ trial: true });
+      const box = await retry.boundingBox();
+      expect(box!.y).toBeGreaterThanOrEqual(0);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(900);
       await expect(ack).toBeChecked();
       for (const theme of ["light", "dark"]) {
         await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
@@ -58,6 +67,11 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
       await expectAxe(page, `go-live/refresh-failed/${locale}/${width}`);
       recover = true;
       await retry.click();
+      if (changedDigest) {
+        await expect(ack).not.toBeChecked();
+        await expect(start).toHaveAttribute("aria-disabled", "true");
+        await ack.check();
+      }
       await expect(start).not.toHaveAttribute("aria-disabled", "true");
       await expect(ack).toBeChecked();
       await expect(retry).toHaveCount(0);
@@ -71,7 +85,8 @@ test.beforeAll(() => loadCatalog("ko"));
 test.beforeEach(() => i18n.set("ko"));
 
 for (const state of states) for (const width of [1440, 390]) {
-  test(`go-live: ${state} at ${width}px @ui-state`, async ({ page }) => {
+  test(`go-live: ${state} at ${width}px @ui-state`, async ({ page }, info) => {
+    if (state === "failed") info.annotations.push({ type: "registry", description: "setup-go-live--load-failed-common-loadfailed-retry-operationid" });
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, homeSetupScreen, "empty");
     const isReceipt = state.endsWith("receipt");

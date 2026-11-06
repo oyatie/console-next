@@ -13,6 +13,7 @@ import { meQuery } from "../../account/api";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
+import { queryView } from "../../../lib/react/query-view";
 import { ActionBar } from "../../../ui/action-bar/action-bar";
 import { Button, Check } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
@@ -35,7 +36,9 @@ export function GoLive() {
   const receipt = useQuery({ ...goLiveReceiptQuery, enabled: q.data?.phase === "OPERATING" });
   const qc = useQueryClient();
   const nav = useNavigate();
-  const [ack, setAck] = useState(false);
+  const [acknowledgedDigest, setAcknowledgedDigest] = useState<string | null>(null);
+  const ack = acknowledgedDigest === q.data?.digest;
+  const refreshFailed = q.data?.phase === "SETUP" && queryView(q) === "stale";
   const run = useCommand({
     run: (_: undefined, key: string) => goLive(q.data!.digest, ack, q.data!.line_digests, key),
     // Freeze the destination rail only after its server readiness includes this command.
@@ -60,7 +63,8 @@ export function GoLive() {
         <Link to="/" className={buttonClass("ghost")}>{t(operating ? "shell.link.home" : "setup.title")}</Link>
         <h1 className="page__title" tabIndex={-1}>{t("setup.golive.title")}</h1>
       </div>
-      <QueryState q={q}>
+      {/* Cached-read recovery belongs beside the sticky launch action; refusals remain with QueryState. */}
+      <QueryState q={refreshFailed ? { ...q, error: null } : q}>
         {(p) => {
           const stats = (f: GoLiveFactsSnapshot) => [
             { key: "entities", label: t("setup.golive.details.legal_entity"), value: fmtNumber(f.entities) },
@@ -131,8 +135,11 @@ export function GoLive() {
               </div>
               <ActionBar
                 sticky
-                notice={<CommandError error={run.error} own={onboardingError}>{changed.length > 0 && <ul>{changed.map((code) => <li key={code}>{codeText(`setup.golive.changed.${code}`, codeText(`setup.golive.item.${code}`, t("setup.golive.changed")))}</li>)}</ul>}</CommandError>}
-                consequence={<>{sole && <Check checked={ack} onChange={setAck}>{t("setup.golive.soleHolder")}</Check>}{t("setup.golive.becomes.setup_undo_becomes_correction")} · {t("setup.golive.oneWay")}</>}
+                notice={<>
+                  {refreshFailed && <QueryState q={q} inline own={() => t("setup.golive.refreshFailed")}>{() => null}</QueryState>}
+                  <CommandError error={run.error} own={onboardingError}>{changed.length > 0 && <ul>{changed.map((code) => <li key={code}>{codeText(`setup.golive.changed.${code}`, codeText(`setup.golive.item.${code}`, t("setup.golive.changed")))}</li>)}</ul>}</CommandError>
+                </>}
+                consequence={<>{sole && <Check checked={ack} onChange={(checked) => setAcknowledgedDigest(checked ? p.digest : null)}>{t("setup.golive.soleHolder")}</Check>}{t("setup.golive.becomes.setup_undo_becomes_correction")} · {t("setup.golive.oneWay")}</>}
                 actions={
                   <>
                     <Link to="/" className={buttonClass()}>{t("common.back")}</Link>

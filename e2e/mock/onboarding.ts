@@ -67,7 +67,7 @@ function emptyPreview(): GoLivePreview {
 }
 
 export async function mockOnboarding(page: Page, screen: OnboardingScreen, state: OnboardingState) {
-  const shell = await mockScreen(page, screens[2], "empty");
+  const shell = await mockScreen(page, screens.find(s => s.key === "org")!, "empty");
   await mockRoute(page, "get", "/api/v1/entity-identifier-corrections", { status: 200, json: { items: [], next_offset: null } });
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: {
     ...user, is_tenant_ops: true, tenant: { name: "화면 검증 회사", phase: "SETUP", go_live_at: null },
