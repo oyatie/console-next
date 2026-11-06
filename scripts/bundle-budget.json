@@ -8,6 +8,7 @@
       "src/auth/SetupPasskey.tsx",
       "src/features/structure/ui/jump-palette.tsx",
       "src/lib/react/route-error.tsx",
+      "src/lib/react/support-reference.tsx",
       "src/shell/shell.tsx"
     ]
   },
