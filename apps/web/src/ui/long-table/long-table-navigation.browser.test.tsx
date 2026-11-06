@@ -8,7 +8,14 @@ import { tableTest } from "../../../../../e2e/long-table-fixture";
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
-beforeAll(async () => { ({ server, browser, page } = await tableTest()); }, 60_000);
+beforeAll(async () => {
+  ({ server, browser, page } = await tableTest());
+  // Exercise Ctrl grid shortcuts on macOS runners too.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { value: "Win32" });
+    Object.defineProperty(navigator, "userAgentData", { value: undefined });
+  });
+}, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 // Exercise the focused controls as well as the cells around them, in both synthesized cards and rows.
@@ -71,5 +78,64 @@ test.each([1440, 390])("shared table controls keep their own minimum target at %
     const target = await control.boundingBox();
     expect(target!.width).toBeGreaterThanOrEqual(24);
     expect(target!.height).toBeGreaterThanOrEqual(24);
+  }
+});
+
+// Row/column destinations of cell navigation, including the header and the mobile row boundary.
+const navigationKeys = [
+  { key: "ArrowLeft", rows: [3, 2], cards: [3, 1] },
+  { key: "ArrowRight", rows: [3, 4], cards: [3, null] },
+  { key: "ArrowUp", rows: [2, 3], cards: [2, 2] },
+  { key: "ArrowDown", rows: [4, 3], cards: [4, 2] },
+  { key: "Home", rows: [3, 1], cards: [3, 1] },
+  { key: "End", rows: [3, 4], cards: [3, 2] },
+  { key: "Control+Home", rows: [2, 1], cards: [2, 1] },
+  { key: "Control+End", rows: [4, 4], cards: [4, 2] },
+  { key: "PageUp", rows: [1, 3], cards: [1, 2] },
+  { key: "PageDown", rows: [4, 3], cards: [4, 2] },
+];
+const navigationMatrix = [1440, 390].flatMap(width => navigationKeys.flatMap(({ key, rows, cards }) =>
+  (["cell", "button", "input"] as const).map(origin => ({ width, key, origin, expected: width === 390 ? cards : rows })),
+));
+
+test.each(navigationMatrix)("grid navigation $key from $origin at $width px matches cell navigation", async ({ width, key, origin, expected }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const address = () => page.evaluate(() => {
+    const active = document.activeElement;
+    const cell = active?.closest('[role="gridcell"], [role="rowheader"], [role="columnheader"]');
+    return [Number(active?.closest('[role="row"]')?.getAttribute("aria-rowindex")) || null, Number(cell?.getAttribute("aria-colindex")) || null];
+  });
+  const open = async (mode: string) => {
+    await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?navigation-${mode}`);
+    await dom(page.getByRole("grid")).toHaveAttribute("data-layout", width === 390 ? "cards" : "rows");
+    const row = page.getByRole("row").filter({ hasText: "Beta" });
+    return width === 390 ? row.getByRole("rowheader") : row.getByRole("gridcell").nth(1);
+  };
+  for (const wrapped of [false, true]) {
+    const cell = await open(`${origin}${wrapped ? "-wrapped" : ""}`);
+    const target = origin === "cell" ? cell : cell.getByRole(origin === "button" ? "button" : "textbox", { name: "Beta", exact: true });
+    await target.focus();
+    await dom(target).toBeFocused();
+    if (origin === "input") await target.evaluate(el => new Promise<void>(resolve => requestAnimationFrame(() => {
+      (el as HTMLInputElement).setSelectionRange(3, 3);
+      resolve();
+    })));
+    await page.keyboard.press(key);
+    if (origin === "input") {
+      await dom(target).toBeFocused();
+      await dom(target).toHaveValue("abcdef");
+      await dom(page.locator("body")).toHaveAttribute("data-input-prevented", "false");
+      if (key === "ArrowLeft" || key === "ArrowRight") {
+        expect(await target.evaluate(el => (el as HTMLInputElement).selectionStart)).toBe(key === "ArrowLeft" ? 2 : 4);
+      }
+    } else await expect.poll(address).toEqual(expected);
+    if (origin === "button") {
+      for (const activation of ["Enter", "Space"]) {
+        await target.focus();
+        await page.locator("body").evaluate(el => { delete el.dataset.pressed; });
+        await page.keyboard.press(activation);
+        await dom(page.locator("body")).toHaveAttribute("data-pressed", "b");
+      }
+    }
   }
 });
