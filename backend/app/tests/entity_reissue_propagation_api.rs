@@ -273,7 +273,7 @@ async fn a_change_dated_before_the_state_in_force_is_never_silently_lost(pool: P
 /// Probe (every surface derives, §13.18): the 사업장 that holds the
 /// certificate with 「등록증과 같음」 shows the certificate's 소재지 after it moved.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-#[ignore = "owner=entity; reason=등록증과 같음 stores an address copy until address-link propagation lands; expires=2026-12-03"]
+#[ignore = "owner=entity; reason=등록증과 같음 stores an address copy until address-link propagation lands; expires=2026-11-23"]
 async fn the_holder_workplace_shows_the_moved_address(pool: PgPool) {
     let (c, id, reg, wp) = setup(&pool).await;
     let uri = format!("/api/v1/business-registrations/{reg}/reissues");

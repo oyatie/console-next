@@ -2037,7 +2037,7 @@ $canonical$;
 }
 
 #[test]
-#[ignore = "owner=platform-db; reason=references harness scripts absent from this repo; expires=2026-12-03"]
+#[ignore = "owner=platform-db; reason=references harness scripts absent from this repo; expires=2026-12-02"]
 fn census_binds_to_an_executed_database() -> Fallible {
     require_docker();
     let harness = boot()?;

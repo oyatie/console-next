@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 # Long PostgreSQL tests run on dev, nightly and gate-changing pull requests.
-# merge_group stays disabled until CI-FAST keeps this gate within the 60-minute queue timeout.
+# merge_group stays disabled until test execution fits within the 60-minute queue timeout.
 name: db-tests
 on:
   pull_request:

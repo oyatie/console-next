@@ -115,7 +115,7 @@ fn null_guard_cannot_hide_a_second_action_or_required_column() -> TestResult {
 }
 
 #[test]
-#[ignore = "owner=release-engineering; reason=requires RELEASE_MIGRATION_LINT from the release checkout; expires=2026-12-03"]
+#[ignore = "owner=release-engineering; reason=requires RELEASE_MIGRATION_LINT from the release checkout; expires=2026-11-26"]
 fn release_lint_and_ci_agree_on_shared_ddl_fixtures() -> TestResult {
     let lint = std::env::var("RELEASE_MIGRATION_LINT")?;
     // Table CHECK and DROP CONSTRAINT are stricter in CI; the release script misses them.

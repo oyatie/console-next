@@ -88,7 +88,7 @@ async fn assert_acl_mutation_is_detected(
 }
 
 #[tokio::test]
-#[ignore = "owner=platform-db; reason=requires PostgreSQL 18 migrated directly as console_app; expires=2026-12-03"]
+#[ignore = "owner=platform-db; reason=requires PostgreSQL 18 migrated directly as console_app; expires=2026-11-29"]
 async fn owner_only_acl_is_effectively_private_on_postgres18() -> TestResult {
     let database_url = std::env::var("DATABASE_URL")?;
     let pool = PgPoolOptions::new()

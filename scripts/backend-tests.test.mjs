@@ -114,12 +114,24 @@ test("ignored tests require an unexpired owner, reason and expiry", () => {
   ]) assert.throws(() => backendTests.validateIgnoredTests([source], "2026-11-03"), /ignore policy/);
 });
 
-test("every repository ignore has live ownership metadata", () => {
+test("manual generators carry ownership without a quarantine deadline", () => {
+  const generator = '#[ignore = "owner=privacy; reason=manual baseline generator; kind=generator"]\n#[sqlx::test] async fn generate() {}';
+  assert.equal(backendTests.validateIgnoredTests([generator], "2099-01-01"), 1);
+  for (const invalid of [generator.replace("owner=privacy", "owner="), generator.replace("owner=privacy", "owner= "), generator.replace("reason=manual baseline generator", "reason="), generator.replace("reason=manual baseline generator", "reason= "), generator.replace("kind=generator", "kind=test")]) {
+    assert.throws(() => backendTests.validateIgnoredTests([invalid]), /ignore policy/);
+  }
+});
+
+test("every repository ignore has live ownership metadata and staggered review dates", () => {
   const readRust = (directory) => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(directory, entry.name);
     return entry.isDirectory() ? readRust(file) : entry.name.endsWith(".rs") ? [readFileSync(file, "utf8")] : [];
   });
-  assert.equal(backendTests.validateIgnoredTests(readRust(fileURLToPath(new URL("../backend", import.meta.url)))), 15);
+  const sources = readRust(fileURLToPath(new URL("../backend", import.meta.url)));
+  assert.ok(backendTests.validateIgnoredTests(sources) > 0);
+  const expiries = sources.flatMap(source => [...source.matchAll(/#\[ignore = "[^"\n]*expires=(\d{4}-\d{2}-\d{2})"\]/g)].map(match => match[1]));
+  assert.ok(expiries.length > 0);
+  assert.equal(new Set(expiries).size, expiries.length, "quarantine reviews must be staggered");
 });
 
 const junit = (cases, extra = "", failures = 0) => `<?xml version="1.0"?><testsuites tests="${cases.length}" failures="${failures}" errors="0"><testsuite>${cases.map(([binary, name]) => `<testcase classname="${binary}" name="${name}">${extra}</testcase>`).join("")}</testsuite></testsuites>`;
@@ -154,10 +166,12 @@ const root = process.env.FIXTURE_ROOT, args = process.argv.slice(2);
 if (Boolean(process.env.DATABASE_URL || process.env.PGHOST) !== (process.env.EXPECT_DATABASE === '1')) process.exit(91);
 if (args[0] === 'metadata') process.stdout.write(fs.readFileSync(path.join(root, 'metadata.json')));
 else if (args[1] === 'list') {
+  if (process.env.EXPECT_DATABASE === '1' && (!args.includes('--workspace') || ['--test', '--lib', '--bins'].some(flag => args.includes(flag)))) process.exit(95);
   process.stdout.write(fs.readFileSync(path.join(root, args.includes('--features') ? 'list-db.json' : 'list.json')));
   if (process.env.MODE === 'spawn-error') fs.unlinkSync(__filename);
 }
 else {
+  if (process.env.EXPECT_DATABASE === '1' && (!args.includes('--workspace') || ['--test', '--lib', '--bins'].some(flag => args.includes(flag)))) process.exit(95);
   fs.writeFileSync(path.join(root, 'args.json'), JSON.stringify(args));
   const callsFile = path.join(root, 'calls.json');
   const calls = fs.existsSync(callsFile) ? JSON.parse(fs.readFileSync(callsFile)) : [];
@@ -193,7 +207,7 @@ else {
 
     writeFileSync(path.join(root, "bin/cargo"), cargo, { mode: 0o755 });
     const database = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname, "--db", "--shard", "1/1"], { encoding: "utf8", env: {
-      ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: "pass", EXPECT_DATABASE: "1",
+      ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: "pass", EXPECT_DATABASE: "1", NEXTEST_SHARD: "2", NEXTEST_SHARDS: "2",
       DATABASE_URL: "postgres://postgres@127.0.0.1/postgres", PGHOST: "127.0.0.1", GITHUB_STEP_SUMMARY: path.join(root, "db-summary.md"),
     } });
     assert.equal(database.status, 0, database.stdout + database.stderr);
@@ -241,7 +255,8 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   const dbWorkflow = yaml.load(file);
   assert.deepEqual(Object.keys(dbWorkflow.on).sort(), ["pull_request", "push", "schedule"]);
   assert.doesNotMatch(file, /^\s*merge_group:/m);
-  assert.match(file, /merge_group.*CI-FAST/);
+  assert.match(file, /merge_group.*queue timeout/);
+  assert.doesNotMatch(file, /CI-[A-Z]+/);
   assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
   assert.match(file, /schedule:\s*\n\s*- cron:/);
   assert.equal(dbWorkflow.concurrency.group, "db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}");
@@ -274,7 +289,7 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   assert.match(save.if, /github\.event_name == 'push'.*github\.ref == 'refs\/heads\/dev'.*matrix\.shard == 1/);
   const budget = job.steps.find((step) => step.name === "Check Rust cache budget");
   assert.equal(budget.env.RUST_CACHE_MAX_BYTES, "3221225472");
-  assert.match(budget.if, /!cancelled\(\)/);
+  assert.equal(budget.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' }}");
   assert.match(budget.run, /find.*\.cargo\/registry.*find backend\/target.*\.fingerprint.*build.*deps/s);
   assert.match(budget.run, /tar.*zstd.*stat -c %s/s);
   const overBudget = budget.run.match(/if \(\( cache_bytes > RUST_CACHE_MAX_BYTES \)\); then(?<body>[\s\S]*?)\n\s*else/)?.groups?.body;
@@ -307,6 +322,43 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   }
 });
 
+test("cache budget measures an archive containing registry and all restored target files", () => {
+  const dbWorkflow = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  const budget = dbWorkflow.jobs["db-tests"].steps.find(step => step.id === "cache-budget");
+  const root = mkdtempSync(path.join(tmpdir(), "cache-archive-"));
+  try {
+    const files = ["home/.cargo/registry/index/config.json", ...[".fingerprint", "build", "deps"].map(dir => `backend/target/debug/${dir}/artifact`)];
+    for (const file of files) {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      writeFileSync(path.join(root, file), file.repeat(100));
+    }
+    mkdirSync(path.join(root, "bin"));
+    mkdirSync(path.join(root, "temp"));
+    // Keep tar's real input, with portable fixtures for compression and GNU stat.
+    writeFileSync(path.join(root, "bin/zstd"), `#!${process.execPath}
+const fs = require('node:fs');
+fs.writeFileSync(process.argv[process.argv.indexOf('-o') + 1], fs.readFileSync(0));
+`, { mode: 0o755 });
+    writeFileSync(path.join(root, "bin/stat"), `#!${process.execPath}
+console.log(require('node:fs').statSync(process.argv.at(-1)).size);
+`, { mode: 0o755 });
+    const output = path.join(root, "output"), summary = path.join(root, "summary");
+    const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", budget.run], { cwd: root, encoding: "utf8", env: {
+      ...process.env, HOME: path.join(root, "home"), RUNNER_TEMP: path.join(root, "temp"), PATH: `${root}/bin:${process.env.PATH}`,
+      GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary, ...budget.env,
+    } });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const archive = path.join(root, "temp/db-tests-rust-cache.tar.zst");
+    const entries = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
+    assert.equal(entries.status, 0, entries.stderr);
+    const names = entries.stdout.trim().split("\n");
+    assert.deepEqual(names.map(name => name.replace(/^.*\.cargo\//, "home/.cargo/")).sort(), files.sort());
+    assert.ok(readFileSync(archive).length > 0);
+    assert.match(readFileSync(summary, "utf8"), new RegExp(`candidate: ${readFileSync(archive).length} bytes`));
+    assert.equal(readFileSync(output, "utf8"), "save=true\n");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("backend tests inherit hardening, pinned tooling, JUnit artifacts and blocking ci-ok wiring", () => {
   const job = workflow.jobs["backend-tests"];
   assert.ok(job, "backend checks and tests must execute in CI");
@@ -337,12 +389,16 @@ for (const mode of ["pass", "compile-error"]) test(`cold-cache discovery: ${mode
   const root = mkdtempSync(path.join(tmpdir(), "backend-cold-"));
   try {
     mkdirSync(path.join(root, "bin"));
-    writeFileSync(path.join(root, "lib.rs"), "#[test] fn ordinary() {}\n");
+    mkdirSync(path.join(root, "member"));
+    writeFileSync(path.join(root, "member/lib.rs"), "#[test] fn ordinary() {}\n");
     const metadata = { workspace_root: root, workspace_members: ["example"], packages: [{
-      id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [
+      id: "example", manifest_path: path.join(root, "member/Cargo.toml"), targets: [
         { name: "ordinary", kind: ["test"] }, { name: "optional", kind: ["test"], "required-features": ["full"] },
       ],
     }, { id: "external", manifest_path: path.join(root, "absent/Cargo.toml"), targets: [] }], resolve: { nodes: [{ id: "example", features: [] }] } };
+    mkdirSync(path.join(root, "external"));
+    writeFileSync(path.join(root, "external/lib.rs"), '#[ignore]\n#[test] fn third_party() {}');
+    metadata.packages[1].manifest_path = path.join(root, "external/Cargo.toml");
     writeFileSync(path.join(root, "metadata.json"), JSON.stringify(metadata));
     writeFileSync(path.join(root, "list.json"), JSON.stringify(listing(suite(["ordinary"]))));
     writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "ordinary"]]));

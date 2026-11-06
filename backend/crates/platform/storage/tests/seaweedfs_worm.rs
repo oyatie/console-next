@@ -3,7 +3,7 @@ use std::io;
 use time::{Duration, OffsetDateTime};
 
 #[tokio::test]
-#[ignore = "owner=platform-storage; reason=requires a SeaweedFS S3 compliance endpoint; expires=2026-12-03"]
+#[ignore = "owner=platform-storage; reason=requires a SeaweedFS S3 compliance endpoint; expires=2026-12-23"]
 async fn seaweedfs_compliance_retention_protects_locked_object_version()
 -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = std::env::var("CONSOLE_STORAGE_TEST_S3_ENDPOINT")

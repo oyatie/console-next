@@ -62,6 +62,9 @@ the latest same-repository JUnit durations, with equal weights only when no meas
 Tests excluded by the development-auth feature run from a derived default-feature variant in the same
 plan, so mutually exclusive feature guards cannot make either side disappear.
 Their reports are reconciled into one exact inventory before new timings are trusted. Source ignores
-must carry an owner, reason and unexpired date. Database ignores remain quarantined until that date and
+must carry an owner, reason and a staggered, unexpired review date. Manual generators use
+`kind=generator` instead of an expiry because they are tools, not quarantined assertions. Only workspace
+member sources are subject to this policy; dependency tests are outside this repository’s ownership.
+Database ignores remain quarantined until their review date and
 their exact identities stay in the published inventory; the runner never broadens selection with
 `--run-ignored all`.

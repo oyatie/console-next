@@ -112,9 +112,9 @@ export function validateIgnoredTests(sources, today = new Date().toISOString().s
     const name = source.slice(match.index + match[0].length).match(/(?:async\s+)?fn\s+(?:r#)?(\w+)/)?.[1] ?? "unknown test";
     const adjacent = source.slice(0, match.index).match(/\/\/\s*ignore-policy:\s*([^\n]+)\n\s*$/)?.[1];
     const policy = match[1].match(/\bignore\s*=\s*"([^"]+)"/)?.[1] ?? adjacent;
-    const fields = policy?.match(/^owner=([^;]+);\s*reason=([^;]+);\s*expires=(\d{4}-\d{2}-\d{2})$/);
+    const fields = policy?.match(/^owner=([^;]+);\s*reason=([^;]+);\s*(?:expires=(\d{4}-\d{2}-\d{2})|kind=(generator))$/);
     const expiry = fields?.[3], timestamp = Date.parse(`${expiry}T00:00:00Z`);
-    assert.ok(fields?.[1].trim() && fields[2].trim() && Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === expiry && expiry >= today, `${name}: invalid or expired ignore policy`);
+    assert.ok(fields?.[1].trim() && fields[2].trim() && (fields[4] === "generator" || Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === expiry && expiry >= today), `${name}: invalid or expired ignore policy`);
   }
   return count;
 }
@@ -284,7 +284,7 @@ function main() {
     label = "database";
     artifact = { ...inventory, databaseFeaturesEnabled: enabled, defaultOnlyDatabase: defaultOnly };
     summary(`Rust database tests discovered: ${tests.length} (${enabled.length} enabled by database features, ${defaultOnly.length} requiring the default feature variant); shard ${command.shard}/${command.total} selected ${expected.length} by measured duration (${shard.seconds.toFixed(1)}s estimate).`, env);
-    summary(`Source-ignored database quarantine: ${inventory.ignoredDatabase.length} exact owned identities; ${inventory.ignored.length - inventory.ignoredDatabase.length} other source-ignored tests carry owner, reason and expiry.`, env);
+    summary(`Source-ignored database quarantine: ${inventory.ignoredDatabase.length} exact owned identities; ${inventory.ignored.length - inventory.ignoredDatabase.length} other source-ignored cases carry ownership and a review date or generator kind.`, env);
   } else {
     const deferred = inventory.database.length + inventory.ignored.length + inventory.featureGatedDatabase.length;
     summary(`Rust tests discovered: ${inventory.selected.length} non-database; ${deferred} deferred (${inventory.database.length} listed database tests, ${inventory.ignored.length} explicitly ignored, ${inventory.featureGatedDatabase.length} feature-gated database source declarations, including test-postgres).`, env);
