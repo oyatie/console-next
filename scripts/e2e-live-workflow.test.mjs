@@ -39,7 +39,7 @@ test("live E2E builds one candidate and runs at most four Chromium shards before
   }
 });
 
-test("Firefox live discovery preserves Chromium's live scope except visual baselines", () => {
+test("Firefox live discovery preserves Chromium's live scope except visual baselines", { skip: !process.env.E2E_LIVE_INVENTORY }, () => {
   const dir = mkdtempSync(path.join(tmpdir(), "live-inventory-"));
   const discover = (browser, config = "playwright.config.ts") => {
     const output = path.join(dir, `${browser}.json`);
@@ -102,7 +102,9 @@ test("live shards reserve cleanup time and run auxiliary suites independently", 
         "--global-timeout=2400000", "--retries=0", "--reporter=line,json"]);
       }
     }
-    assert.match(read("e2e/mock/focus-stress.config.ts"), /testMatch: "mock\/route-focus-title\.spec\.ts"/);
+    const focus = read("e2e/mock/focus-stress.config.ts");
+    for (const spec of ["dept-head", "route-focus-title"])
+      assert.ok(focus.includes(`"mock/${spec}.spec.ts"`), `${spec} must retain focus-stress coverage`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -164,4 +166,60 @@ test("route load publishes failed measurements against the served synthetic tena
   assert.equal(probe.env.PERF_EVIDENCE_DIR, "${{ runner.temp }}/route-load");
   assert.equal(job.env.PERF_EVIDENCE_DIR, undefined, "runner context is only available at step scope");
   assert.ok(!job.steps.some(step => step.run?.includes("cargo build")), "reuse the candidate binary");
+});
+
+
+test("Firefox mocked states run nightly in bounded shards without a backend", () => {
+  const workflow = yaml.load(read(".github/workflows/e2e-live.yml"));
+  const job = workflow.jobs["firefox-states"];
+  assert.ok(job, "Firefox mocked states need a scheduled producer");
+  assert.equal(job.if, "${{ github.event_name == 'schedule' }}");
+  assert.deepEqual(job.needs, ["build"]);
+  assert.deepEqual(job.strategy.matrix.shard, workflow.jobs.firefox.strategy.matrix.shard);
+  assert.equal(job.strategy["max-parallel"], 4);
+  assert.equal(job.services, undefined);
+  assert.equal(job.env.E2E_XBROWSER, "1");
+  assert.equal(job.env.E2E_WORKERS, "2");
+  assert.ok(job.steps.some(step => step.run === "npx playwright install --with-deps firefox"));
+  assert.ok(job.steps.some(step => step.with?.name === "e2e-live-runtime"));
+  const discovery = workflow.jobs.build.steps.find(step => step.run?.includes("firefox-states-inventory.json"));
+  assert.equal(discovery.if, job.if);
+  assert.match(discovery.run, /E2E_XBROWSER=1 .*npx playwright test --config=e2e\/mock\/playwright.config.ts --list --reporter=json/);
+  assert.match(discovery.run, /node scripts\/e2e-live-plan.mjs .cache\/e2e-live-plan\/firefox-states-inventory.json .cache\/e2e-live-plan firefox-states/);
+  const run = job.steps.find(step => step.run?.includes("e2e-live-report.mjs"));
+  assert.equal(job["timeout-minutes"], 60);
+  assert.equal(run["timeout-minutes"], 45);
+  assert.equal(run.env.SHARD, "${{ matrix.shard }}");
+  const dir = mkdtempSync(path.join(tmpdir(), "states-dispatch-"));
+  const bin = path.join(dir, "bin");
+  mkdirSync(bin);
+  writeFileSync(path.join(bin, "npx"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$CALLS"\nexit "${PW_STATUS:-0}"\n', { mode: 0o755 });
+  writeFileSync(path.join(bin, "node"), '#!/bin/sh\nexit "${REPORT_STATUS:-0}"\n', { mode: 0o755 });
+  try {
+    for (const shard of job.strategy.matrix.shard) {
+      const calls = path.join(dir, "calls");
+      for (const [pw, report] of [[0, 0], [1, 0], [0, 1]]) {
+        const result = spawnSync("bash", ["-c", run.run], { cwd: dir, encoding: "utf8", env: { ...process.env,
+          PATH: `${bin}:${process.env.PATH}`, CALLS: calls, SHARD: String(shard), PW_STATUS: String(pw), REPORT_STATUS: String(report) } });
+        assert.equal(result.status, pw || report, result.stdout + result.stderr);
+        assert.deepEqual(readFileSync(calls, "utf8").trim().split("\n"), ["playwright", "test",
+          "--config=e2e/mock/playwright.config.ts", `--test-list=.cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-states-${shard}.txt`,
+          "--global-timeout=2400000", "--retries=0", "--reporter=line,json"]);
+      }
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+  const upload = job.steps.find(step => step.with?.name === "e2e-live-firefox-states-${{ matrix.shard }}");
+  assert.equal(upload.if, "${{ always() }}");
+  assert.match(upload.with.path, /test-results-mock/);
+  assert.equal(upload.with["if-no-files-found"], "error");
+});
+
+
+test("browser inventory discovery is opt-in and scheduled outside PR checks", () => {
+  const workflow = yaml.load(read(".github/workflows/e2e-live.yml"));
+  const inventory = workflow.jobs.build.steps.find(step => step.env?.E2E_LIVE_INVENTORY === "1");
+  assert.ok(inventory, "the scheduled workflow must run the browser inventory check");
+  assert.equal(inventory.if, "${{ github.event_name == 'schedule' }}");
+  assert.match(inventory.run, /node --test .*scripts\/e2e-live-workflow.test.mjs/);
+  assert.match(read("scripts/e2e-live-workflow.test.mjs"), /skip: !process.env.E2E_LIVE_INVENTORY/);
 });
