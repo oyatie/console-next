@@ -41,9 +41,11 @@ export function ApprovalInboxView({ items, selected, onSelect, onClose, hasNext,
     <Card label={t("approvals.list")} flush>
       {items.length ? <>
         <Table label={t("approvals.list")} rows={items} rowId={item => item.id} selected={selected?.id} onSelect={onSelect} columns={[
+          { header: t("approvals.field.documentNo"), card: "fact", cell: item => item.document_no ?? "—" },
           { header: t("approvals.col.title"), card: "title", cell: item => item.title },
           { header: t("approvals.col.source"), card: "fact", cell: item => item.source.label, fit: true },
-          { header: t("approvals.col.requester"), card: "fact", cell: item => item.requester?.name ?? "—", wide: true },
+          { header: t("approvals.preview.route"), card: "fact", cell: item => item.route.length ? <ChainStepper label={t("approvals.preview.route")} steps={item.route.map(step => ({ key: step.id, who: [step.label, step.assignee].filter(Boolean).join(" · "), state: step.state }))} /> : "—" },
+          { header: t("approvals.col.requester"), card: "fact", cell: item => item.requester?.name ?? "—" },
           { header: t("approvals.col.requestedAt"), card: "fact", cell: item => <span className="num">{fmtDateTime(item.requested_at)}</span>, fit: true },
           { header: t("approvals.col.status"), card: "status", cell: item => <Chip tone={item.status.tone}>{item.status.label}</Chip>, fit: true },
         ]} />

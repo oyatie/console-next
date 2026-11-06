@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { expectAxe, fits } from "../a11y";
+import { expectAccessible, fits } from "../a11y";
+import { recordShifts } from "../stability";
 import { failure } from "./fixtures";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
@@ -39,9 +40,10 @@ async function mockApprovals(page: Page, reply: "ready" | "failed" | "refused" =
   return queries;
 }
 
-for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, theme: "dark" }] as const) {
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`approval inbox filters, previews and opens a viewer at ${width}px ${theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(recordShifts);
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "empty");
     const queries = await mockApprovals(page);
@@ -53,6 +55,18 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
     const tabs = page.getByRole("navigation", { name: "결재함 구분", exact: true });
     await expect(tabs.getByRole("link")).toHaveCount(5);
     await expect(tabs.getByRole("link", { name: /대기/ })).toHaveAttribute("aria-current", "page");
+    const row = page.getByRole("row", { name: /영업 조직 개편안/ });
+    await expect(row.getByText(item.document_no, { exact: true })).toBeVisible();
+    const chain = row.getByRole("list", { name: "결재선", exact: true });
+    await expect(chain.getByRole("listitem")).toHaveText([
+      new RegExp(`${t("enum.approvalRole.hr")}.*김기안`),
+      new RegExp(`${t("enum.approvalRole.executive")}.*박결재`),
+    ]);
+    await expect(chain.locator('[aria-current="step"]')).toHaveText(new RegExp(t("enum.approvalRole.executive")));
+    await expect(chain.locator('[aria-current="step"]')).toHaveCount(1);
+    await expect(row.getByText("김기안", { exact: true })).toBeVisible();
+    await expectAccessible(page, `approval list ${width}px ${theme}`);
+    if (width === 390) await fits(page, "approval list");
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-before.png`), fullPage: true });
     await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
     const panel = page.locator("[data-side-panel]");
@@ -63,7 +77,7 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
     await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveAttribute("href", "/approvals/approval-1");
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-preview.png`), fullPage: true });
-    await expectAxe(page, `approval inbox ${width}px ${theme}`);
+    await expectAccessible(page, `approval inbox ${width}px ${theme}`);
     if (width === 390) await fits(page, "approval inbox");
     await panel.getByRole("button", { name: t(width === 390 ? "common.back" : "common.closePanel"), exact: true }).click();
     await page.getByRole("button", { name: /문서 종류/ }).click();
@@ -77,6 +91,19 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
     expect(mock.unexpected).toEqual([]);
   });
 }
+
+test("approval rows keep absent document numbers and routes unknown", async ({ page }) => {
+  const mock = await mockScreen(page, screens[0], "empty");
+  await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ status: 200,
+    json: { ...response(), items: [{ ...item, document_no: null, route: [], requester: null }] },
+  }));
+  await page.goto("/approvals");
+  const row = page.getByRole("row", { name: /영업 조직 개편안/ });
+  await expect(row.getByRole("gridcell", { name: "—", exact: true })).toHaveCount(3);
+  await expect(row.getByRole("list")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
+  expect(mock.unexpected).toEqual([]);
+});
 
 test("an unavailable approvals module hides the rail entry and refuses a direct URL", async ({ page }) => {
   const mock = await mockScreen(page, screens[0], "empty", "not-ready");
