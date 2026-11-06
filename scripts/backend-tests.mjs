@@ -103,7 +103,10 @@ export function planDatabaseTests(tests, timings = {}, shardCount = 4) {
   return { version: 1, tests, shards: bins };
 }
 
-export function validateIgnoredTests(sources, today = new Date().toISOString().slice(0, 10)) {
+export function validateIgnoredTests(sources, today = new Date().toISOString().slice(0, 10), warn = (message) => {
+  console.warn(`::warning::${message}`);
+  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `- Warning: ${message}\n`);
+}) {
   assert.match(today, /^\d{4}-\d{2}-\d{2}$/, "invalid ignore policy date");
   let count = 0;
   for (const source of sources) for (const match of source.matchAll(/^[ \t]*#\s*\[([\s\S]*?)\][ \t]*$/gm)) {
@@ -115,6 +118,9 @@ export function validateIgnoredTests(sources, today = new Date().toISOString().s
     const fields = policy?.match(/^owner=([^;]+);\s*reason=([^;]+);\s*(?:expires=(\d{4}-\d{2}-\d{2})|kind=(generator))$/);
     const expiry = fields?.[3], timestamp = Date.parse(`${expiry}T00:00:00Z`);
     assert.ok(fields?.[1].trim() && fields[2].trim() && (fields[4] === "generator" || Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === expiry && expiry >= today), `${name}: invalid or expired ignore policy`);
+    if (expiry && timestamp - Date.parse(`${today}T00:00:00Z`) <= 7 * 24 * 60 * 60 * 1000) {
+      warn(`${name}: owner=${fields[1]}; quarantine expires ${expiry}. Unignore after fixing the test, or review the reason and set a new expiry before the deadline.`);
+    }
   }
   return count;
 }
@@ -263,12 +269,14 @@ function main() {
   for (const name of ["junit.xml", "junit-featured.xml", "junit-default.xml"]) rmSync(path.join(report, name), { force: true });
   let expected, runs, label, artifact = inventory;
   if (command.database) {
-    const featured = inventory.database;
+    const ordinaryKeys = new Set(defaultInventory.selected.map(identity));
+    const featureOnly = inventory.selected.filter(id => !ordinaryKeys.has(identity(id)));
+    const featured = [...inventory.database, ...featureOnly];
     const defaults = defaultInventory.database;
     const featuredKeys = new Set(featured.map(identity)), defaultKeys = new Set(defaults.map(identity));
     const missingInBoth = inventory.featureGatedDatabase.filter((id) => new Set(defaultInventory.featureGatedDatabase.map(identity)).has(identity(id)));
     assert.deepEqual(missingInBoth, [], "database declarations are absent from both feature variants");
-    const enabled = featured.filter((id) => !defaultKeys.has(identity(id)));
+    const enabled = inventory.database.filter((id) => !defaultKeys.has(identity(id)));
     const defaultOnly = defaults.filter((id) => !featuredKeys.has(identity(id)));
     const tests = [...featured, ...defaultOnly];
     const timings = command.timings && existsSync(command.timings) ? JSON.parse(readFileSync(command.timings, "utf8")) : {};
@@ -282,8 +290,8 @@ function main() {
       { name: "default", args: defaultArgs, tests: defaultOnly.filter((id) => selected.has(identity(id))) },
     ].filter((run) => run.tests.length);
     label = "database";
-    artifact = { ...inventory, databaseFeaturesEnabled: enabled, defaultOnlyDatabase: defaultOnly };
-    summary(`Rust database tests discovered: ${tests.length} (${enabled.length} enabled by database features, ${defaultOnly.length} requiring the default feature variant); shard ${command.shard}/${command.total} selected ${expected.length} by measured duration (${shard.seconds.toFixed(1)}s estimate).`, env);
+    artifact = { ...inventory, databaseFeaturesEnabled: enabled, defaultOnlyDatabase: defaultOnly, featureOnlyNonDatabase: featureOnly };
+    summary(`Rust database tests discovered: ${tests.length} (${featureOnly.length} feature-only non-database, ${enabled.length} enabled by database features, ${defaultOnly.length} requiring the default feature variant); shard ${command.shard}/${command.total} selected ${expected.length} by measured duration (${shard.seconds.toFixed(1)}s estimate).`, env);
     summary(`Source-ignored database quarantine: ${inventory.ignoredDatabase.length} exact owned identities; ${inventory.ignored.length - inventory.ignoredDatabase.length} other source-ignored cases carry ownership and a review date or generator kind.`, env);
   } else {
     const deferred = inventory.database.length + inventory.ignored.length + inventory.featureGatedDatabase.length;

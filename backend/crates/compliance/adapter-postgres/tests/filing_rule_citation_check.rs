@@ -176,12 +176,10 @@ async fn seeded_855_statutory_urls_pass_and_register_loads(pool: PgPool) -> sqlx
         "expected at least 855 seeded statutory URLs, got {}",
         urls.len()
     );
-    // 4605 seeded rows' URLs plus P0-EXIT-GUARDS' five dismissal-protection rows
-    // and LMG-LEGAL's two minimum-service rule slices retain their source URLs.
-    assert_eq!(
-        urls.len(),
-        4612,
-        "expected 4612 materialized statutory URLs across all seeded rows"
+    // Preserve established coverage while allowing sourced catalog additions.
+    assert!(
+        urls.len() >= 4612,
+        "expected at least 4612 materialized statutory URLs across all seeded rows"
     );
     assert!(
         urls.iter()

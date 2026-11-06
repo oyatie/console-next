@@ -55,9 +55,13 @@ exit after the first failure.
 
 Run `node scripts/backend-tests.mjs --db` with `DATABASE_URL` for the database selection. The command
 enables the workspace `test-postgres` features and the app's full, E2E-fixture and development-auth
-test surfaces, then selects SQLx tests from the same source inventory; there is no checked-in test list.
+test surfaces, then selects SQLx tests and ordinary tests absent from the default-feature inventory;
+there is no checked-in test list.
 The `db-tests` workflow runs for gate-changing pull requests, dev pushes and nightly
-against the pinned PostgreSQL service image. Four jobs are packed from
+against the pinned PostgreSQL service image. It provisions the repository’s role topology with
+`deploy/dev/postgres-init.sh`, rotates the bootstrap password, and supplies random role credentials
+to the shared fixtures. The migration connection uses `console_buck_admin` on a `_contract` database
+with the explicit SQLx bootstrap startup option. Four jobs are packed from
 the latest same-repository JUnit durations, with equal weights only when no measurement exists yet.
 Tests excluded by the development-auth feature run from a derived default-feature variant in the same
 plan, so mutually exclusive feature guards cannot make either side disappear.
@@ -65,6 +69,13 @@ Their reports are reconciled into one exact inventory before new timings are tru
 must carry an owner, reason and a staggered, unexpired review date. Manual generators use
 `kind=generator` instead of an expiry because they are tools, not quarantined assertions. Only workspace
 member sources are subject to this policy; dependency tests are outside this repository’s ownership.
+During the seven days before expiry, the job emits annotations and step-summary warnings identifying
+the owner and deadline. Fix and unignore the test, or review its reason and renew the expiry before
+the deadline; an expired quarantine fails discovery.
 Database ignores remain quarantined until their review date and
 their exact identities stay in the published inventory; the runner never broadens selection with
 `--run-ignored all`.
+
+Tests with `budget` in their names reserve all test slots through
+[nextest’s heavy-test configuration](https://www.nexte.st/docs/configuration/threads-required/),
+so other migrations cannot interfere with their samples.

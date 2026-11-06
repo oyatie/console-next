@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/db-tests.yml
       - scripts/backend-tests.mjs
+      - deploy/dev/postgres-init.sh
       - .config/nextest.toml
   push:
     branches: [dev]
@@ -70,12 +71,12 @@ jobs:
       postgres:
         image: postgres:18.4@sha256:65f70a152846cf504dff86e807007e9aeac98c3aeb7b62541b2c55ab9d264e56
         env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
+          POSTGRES_DB: console_ci_contract
+          POSTGRES_USER: console_buck_admin
           POSTGRES_PASSWORD: ${{ github.run_id }}
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-cmd "pg_isready -U console_buck_admin -d console_ci_contract"
           --health-interval 1s
           --health-timeout 5s
           --health-retries 60
@@ -83,7 +84,7 @@ jobs:
       CARGO_INCREMENTAL: '0'
       CARGO_NEXTEST_VERSION: 0.9.138
       CARGO_TERM_COLOR: always
-      DATABASE_URL: postgres://postgres:${{ github.run_id }}@127.0.0.1:5432/postgres
+      DATABASE_URL: postgres://console_buck_admin@127.0.0.1:5432/console_ci_contract?options%5Bconsole.sqlx_test_bootstrap%5D=buck-sqlx-superuser-v1
       SQLX_OFFLINE: 'true'
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
@@ -116,6 +117,48 @@ jobs:
           run-id: ${{ needs.db-test-timing-source.outputs.run-id }}
           github-token: ${{ github.token }}
           path: .cache/db-test-timings
+      - name: Provision PostgreSQL test roles
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { spawnSync } from 'node:child_process';
+          import { randomBytes } from 'node:crypto';
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const credentials = Object.fromEntries([
+            'POSTGRES_PASSWORD', 'CONSOLE_APP_POSTGRES_PASSWORD', 'CONSOLE_RT_POSTGRES_PASSWORD',
+            'CONSOLE_LEAVE_COMMAND_POSTGRES_PASSWORD', 'CONSOLE_ONTOLOGY_COMMAND_POSTGRES_PASSWORD',
+            'CONSOLE_PLATFORM_FORCE_COMMAND_POSTGRES_PASSWORD',
+          ].map(key => [key, randomBytes(24).toString('hex')]));
+          for (const value of Object.values(credentials)) console.log(`::add-mask::${value}`);
+          const url = new URL(process.env.DATABASE_URL);
+          const exec = (args, input) => {
+            const result = spawnSync('docker', ['exec', '-i', ...args], {
+              input, encoding: 'utf8', env: { ...process.env, ...credentials }, stdio: ['pipe', 'inherit', 'inherit'],
+            });
+            assert.ifError(result.error);
+            assert.equal(result.status, 0, 'PostgreSQL test provisioning failed');
+          };
+          exec([...Object.keys(credentials).flatMap(key => ['--env', key]), process.env.POSTGRES_CONTAINER, 'bash'],
+            readFileSync('deploy/dev/postgres-init.sh', 'utf8'));
+          exec([process.env.POSTGRES_CONTAINER, 'psql', '-v', 'ON_ERROR_STOP=1', '--username', url.username, '--dbname', url.pathname.slice(1)],
+            `ALTER ROLE ${url.username} PASSWORD '${credentials.POSTGRES_PASSWORD}';`);
+          url.password = credentials.POSTGRES_PASSWORD;
+          const owner = new URL(url), runtime = new URL(url);
+          owner.username = 'console_app'; owner.password = credentials.CONSOLE_APP_POSTGRES_PASSWORD; owner.search = '';
+          runtime.username = 'console_rt'; runtime.password = credentials.CONSOLE_RT_POSTGRES_PASSWORD; runtime.search = '';
+          const fixtures = {
+            DATABASE_URL: url.href, CONSOLE_APALIS_ADMIN_DATABASE_URL: url.href,
+            CONSOLE_APALIS_OWNER_DATABASE_URL: owner.href, CONSOLE_APALIS_RUNTIME_DATABASE_URL: runtime.href,
+            CONSOLE_TEST_RUNTIME_PASSWORD: credentials.CONSOLE_RT_POSTGRES_PASSWORD,
+            CONSOLE_TEST_FORCE_PASSWORD: credentials.CONSOLE_PLATFORM_FORCE_COMMAND_POSTGRES_PASSWORD,
+          };
+          for (const [key, value] of Object.entries(fixtures)) {
+            console.log(`::add-mask::${value}`);
+            appendFileSync(process.env.GITHUB_ENV, `${key}=${value}\n`);
+          }
+          JS
       - name: Run duration shard
         run: node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
       - name: Check Rust cache budget

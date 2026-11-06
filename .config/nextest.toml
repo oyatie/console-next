@@ -43,6 +43,11 @@ slow-timeout = { period = "120s", terminate-after = 3 }
 filter = 'binary(census_executes_against_postgres)'
 slow-timeout = { period = "120s", terminate-after = 8 }
 
+# Wall-clock budgets must not measure concurrent migrations.
+[[profile.ci.overrides]]
+filter = 'test(/budget/)'
+threads-required = "num-test-threads"
+
 [profile.ci.junit]
 path = "junit.xml"
 
