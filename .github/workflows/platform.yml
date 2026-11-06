@@ -43,7 +43,7 @@ jobs:
           node deploy/ci/admission.mjs
 
   prune-image-cache:
-    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.ref == 'refs/heads/dev'
     continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 5

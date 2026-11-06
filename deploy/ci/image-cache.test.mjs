@@ -17,7 +17,7 @@ const trustedPush = "github.event_name == 'push' && github.ref_name == github.ev
 test('only default-branch pushes may export image caches or prune old caches', () => {
   assert.equal(build.env.CACHE_WRITE, '${{ ' + trustedPush + ' }}');
   const prune = workflow.jobs['prune-image-cache'];
-  assert.equal(prune.if, trustedPush);
+  assert.equal(prune.if, `${trustedPush} && github.ref == 'refs/heads/dev'`);
   assert.equal(prune.permissions.actions, 'write');
   assert.match(JSON.stringify(prune.steps), /prune-image-cache\.mjs/);
 });

@@ -22,7 +22,8 @@ No registry cache is introduced: its cost and retention have not been measured.
 
 ## Legacy cleanup
 
-On a default-branch push, `prune-image-cache` runs before either native build.
+On a default-branch push to `dev`, `prune-image-cache` runs alongside the native
+builds. PR and merge-group runs skip maintenance.
 It removes the old `platform-amd64` and `platform-arm64` indexes, including PR
 indexes. If these are the only image indexes, it also resets the legacy BuildKit
 blobs once, allowing the smaller caches to repopulate on this run. If any new or
@@ -30,9 +31,12 @@ unrelated image index exists, shared blobs are preserved. npm, Cargo, CodeQL and
 unrecognized key families are never selected. PRs receive no cleanup write token.
 
 The script snapshots every page before deleting by ID; already-evicted entries
-are tolerated, while permission and transport failures fail the job. The exact
-deleted count and bytes appear in the job summary. The key shapes follow the
-existing [BuildKit GHA exporter](https://github.com/moby/buildkit/blob/master/cache/remotecache/gha/gha.go).
+are tolerated, while permission and transport failures fail the cleanup step. The exact
+deleted count and bytes appear in the job summary. Cleanup failures produce a
+summary warning while builds and publishing continue. Promotion still requires
+completed, successful evidence for every job, including cache maintenance.
+The key shapes follow the existing
+[BuildKit GHA exporter](https://github.com/moby/buildkit/blob/master/cache/remotecache/gha/gha.go).
 The [GitHub cache API](https://docs.github.com/en/rest/actions/cache) requires
 Actions write permission for deletion; that permission belongs only to cleanup.
 

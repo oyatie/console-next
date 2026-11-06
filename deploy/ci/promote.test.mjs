@@ -31,7 +31,7 @@ function proof() {
   return {sha, repository, currentRevision:previous, gatesResult:'pass',
     run:{id:42, path:'.github/workflows/platform.yml', event:'push', head_branch:'dev',
       head_repository:{full_name:repository}, head_sha:sha, status:'completed', conclusion:'success'},
-    jobs:['validate', 'build (amd64, ubuntu-24.04)', 'build (arm64, ubuntu-24.04-arm)', 'publish', 'negative-signer / sign', ...exitNames]
+    jobs:['validate', 'build (amd64, ubuntu-24.04)', 'build (arm64, ubuntu-24.04-arm)', 'publish', 'negative-signer / sign', 'prune-image-cache', ...exitNames]
       .map((name, index) => ({id:index + 1, name, run_id:42, head_sha:sha, status:'completed', conclusion:'success'})),
   };
 }
@@ -153,17 +153,13 @@ test('green exact-SHA platform proof admits first, descendant and repeated promo
   }
 });
 
-for (const conclusion of ['success', 'failure', 'skipped', 'cancelled', 'neutral', null]) {
-  test(`cache cleanup ${conclusion} does not gate promotion or mask failed release gates`, async () => {
+for (const conclusion of ['failure', 'skipped', 'cancelled', 'neutral', null]) {
+  test(`PROMOTE_NOT_GREEN: refuses ${conclusion} cache maintenance evidence`, async () => {
     const {assertPromotion} = await api();
     const input = proof();
-    input.jobs.push({id:100, name:'prune-image-cache', run_id:42, head_sha:sha,
-      status:conclusion === null ? 'in_progress' : 'completed', conclusion});
-    assert.doesNotThrow(() => assertPromotion(input, historyRoot));
-    input.gatesResult = 'fail';
-    assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_GATES/);
-    input.gatesResult = 'pass';
-    input.jobs[0].conclusion = 'failure';
+    const cleanup = input.jobs.find(job => job.name === 'prune-image-cache');
+    cleanup.status = conclusion === null ? 'in_progress' : 'completed';
+    cleanup.conclusion = conclusion;
     assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_NOT_GREEN/);
   });
 }
@@ -184,6 +180,9 @@ for (const [reason, change] of [
   ['pending run', input => { input.run.status = 'in_progress'; }],
   ['empty jobs', input => { input.jobs = []; }],
   ['missing publish job', input => { input.jobs = input.jobs.filter(job => job.name !== 'publish'); }],
+  ['missing cache maintenance job', input => { input.jobs = input.jobs.filter(job => job.name !== 'prune-image-cache'); }],
+  ['wrong cache maintenance SHA', input => { input.jobs.find(job => job.name === 'prune-image-cache').head_sha = previous; }],
+  ['wrong cache maintenance run', input => { input.jobs.find(job => job.name === 'prune-image-cache').run_id = 41; }],
   ['missing native build', input => { input.jobs.splice(1, 1); }],
   ['missing exit test', input => { input.jobs.pop(); }],
   ['duplicate exit test', input => { input.jobs.push({...input.jobs.at(-1), id:100}); }],
