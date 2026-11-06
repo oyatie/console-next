@@ -102,6 +102,20 @@ test("a background preview refresh disarms launch until the current digest is di
   expect(state.mutate).not.toHaveBeenCalled();
 });
 
+for (const locale of ["ko", "en"] as const) test(`a failed preview refresh keeps launch disabled until recovery in ${locale}`, () => {
+  i18n.set(locale);
+  state.readError = new ApiError(503, "service_unavailable", "unavailable");
+  const failed = render();
+  expect(failed).toContain("Head Office");
+  expect(failed).toContain('type="checkbox" checked=""');
+  expect(failed).toContain('aria-disabled="true"');
+  expect(failed).toContain(locale === "ko" ? "미리보기를 새로 읽지 못했습니다. 다시 시도한 뒤 운영을 시작하십시오" : "The preview could not be refreshed. Retry before starting operations");
+  expect(failed).not.toContain('<button type="button" class="btn btn--primary">');
+  state.readError = null;
+  expect(render()).not.toContain('aria-disabled="true"');
+  expect(state.mutate).not.toHaveBeenCalled();
+});
+
 test("preview_stale marks changed lines, waits for a fresh read, then re-arms with the ack kept", () => {
   state.commandError = ApiError.fromBody(new Response(null, { status: 409 }), {
     error: { code: "preview_stale", message: "stale", details: { digest: "fresh", changed_codes: ["breakdown"] } },
