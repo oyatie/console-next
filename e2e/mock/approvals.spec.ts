@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { expectAccessible, fits } from "../a11y";
+import { expectAccessible, expectAxe, fits } from "../a11y";
 import { recordShifts } from "../stability";
 import { failure } from "./fixtures";
 import { mockScreen } from "./screen";
@@ -16,7 +16,10 @@ const item = {
   facts: [{ key: "effective", label: "시행일", value: "2026. 11. 10." }],
   route: [
     { id: "first", role_key: "hr", assignee: "김기안", state: "done", meta: "11. 3. 10:00" },
-    { id: "approve", role_key: "executive", assignee: "박결재", state: "current", meta: "내 차례" },
+    { id: "finance", role_key: "finance", assignee: "이재무", state: "done" },
+    { id: "approve", role_key: "legal", assignee: "박결재", state: "current", meta: "내 차례" },
+    { id: "executive", role_key: "executive", assignee: "정경영", state: "future" },
+    { id: "last", role_key: "hr", assignee: "최인사", state: "future" },
   ],
   viewer: { kind: "org_change", id: "change-1" },
 } as const;
@@ -77,13 +80,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(tabs.getByRole("link", { name: /대기/ })).toHaveAttribute("aria-current", "page");
     const row = page.getByRole("row", { name: /영업 조직 개편안/ });
     await expect(row.getByText(item.document_no, { exact: true })).toBeVisible();
-    const chain = row.getByRole("list", { name: "결재선", exact: true });
-    await expect(chain.getByRole("listitem")).toHaveText([
-      new RegExp(`${t("enum.approvalRole.hr")}.*김기안`),
-      new RegExp(`${t("enum.approvalRole.executive")}.*박결재`),
-    ]);
-    await expect(chain.locator('[aria-current="step"]')).toHaveText(new RegExp(t("enum.approvalRole.executive")));
-    await expect(chain.locator('[aria-current="step"]')).toHaveCount(1);
+    if (width === 390) expect((await row.boundingBox())!.height).toBeLessThanOrEqual(280);
     await expect(row.getByText("김기안", { exact: true })).toBeVisible();
     await expectAccessible(page, `approval list ${width}px ${theme}`);
     if (width === 390) await fits(page, "approval list");
@@ -94,10 +91,28 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(panel.getByText(t("enum.orgChangeStatus.IN_APPROVAL"), { exact: true })).toBeVisible();
     await expect(panel.getByText(/hr|executive|IN_APPROVAL/, { exact: true })).toHaveCount(0);
     await expect(panel.getByText(new RegExp(t("enum.approvalRole.executive")))).toBeVisible();
+    const chain = panel.getByRole("list", { name: "결재선", exact: true });
+    await expect(chain.getByRole("listitem")).toHaveCount(item.route.length);
+    await expect(chain.locator('[aria-current="step"]')).toContainText(`${t("enum.approvalRole.legal")} · 박결재`);
+    if (width === 1440) {
+      const rowHeight = await row.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue("--row-h")));
+      expect((await row.boundingBox())!.height).toBeLessThanOrEqual(rowHeight + 1);
+      for (const text of [item.document_no, item.requester.name]) {
+        const metrics = await row.getByText(text, { exact: true }).evaluate(el => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          return { height: range.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(el).lineHeight) };
+        });
+        expect(metrics.height, `${text} stays on one line in the split list`).toBeLessThanOrEqual(metrics.lineHeight + 1);
+      }
+    }
+    await expect(row.getByRole("list")).toHaveCount(0);
+    await expect(row.locator('[aria-current="step"]')).toHaveText(`${t("enum.approvalRole.legal")} · 박결재`);
     await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-preview.png`), fullPage: true });
-    await expectAccessible(page, `approval inbox ${width}px ${theme}`);
+    // Preview opening inherits a shell shift; keep its axe audit separate from the list arrival audit.
+    await expectAxe(page, `approval inbox ${width}px ${theme}`);
     if (width === 390) await fits(page, "approval inbox");
     await panel.getByRole("button", { name: t(width === 390 ? "common.back" : "common.closePanel"), exact: true }).click();
     await page.getByRole("button", { name: /문서 종류/ }).click();
@@ -123,6 +138,19 @@ test("approval rows keep absent document numbers and routes unknown", async ({ p
   await expect(row.getByRole("list")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
   expect(mock.unexpected).toEqual([]);
+});
+
+test("a completed route does not invent a current signer", async ({ page }) => {
+  await mockScreen(page, screens[0], "empty");
+  await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ json: {
+    ...response(), items: [{ ...item, box: "completed", status: { key: "APPLIED" }, route: item.route.map(step => ({ ...step, state: "done" })) }],
+  } }));
+  await page.goto("/approvals?box=completed");
+  const row = page.getByRole("row", { name: /영업 조직 개편안/ });
+  await expect(row.getByRole("gridcell", { name: "—", exact: true })).toHaveCount(1);
+  await expect(row.locator('[aria-current="step"]')).toHaveCount(0);
+  await row.click();
+  await expect(page.locator("[data-side-panel]").getByRole("listitem")).toHaveCount(item.route.length);
 });
 
 test("an unavailable approvals module hides the rail entry and refuses a direct URL", async ({ page }) => {

@@ -43,12 +43,15 @@ export function ApprovalInboxView({ items, selected, onSelect, onClose, hasNext,
     <Card label={t("approvals.list")} flush>
       {items.length ? <>
         <Table label={t("approvals.list")} rows={items} rowId={item => item.id} selected={selected?.id} onSelect={onSelect} columns={[
-          { header: t("approvals.field.documentNo"), card: "fact", cell: item => item.document_no ?? "—" },
+          { header: t("approvals.field.documentNo"), card: "fact", cell: item => <code className={s.nowrap}>{item.document_no ?? "—"}</code>, fit: true },
           { header: t("approvals.col.title"), card: "title", cell: item => item.title },
           { header: t("approvals.col.source"), card: "fact", cell: item => item.source.label, fit: true },
-          { header: t("approvals.preview.route"), card: "fact", cell: item => item.route.length ? <ChainStepper label={t("approvals.preview.route")} steps={item.route.map(step => ({ key: step.id, who: [step.label, step.assignee].filter(Boolean).join(" · "), state: step.state }))} /> : "—" },
-          { header: t("approvals.col.requester"), card: "fact", cell: item => item.requester?.name ?? "—" },
-          { header: t("approvals.col.requestedAt"), card: "fact", cell: item => <span className="num">{fmtDateTime(item.requested_at)}</span>, fit: true },
+          { header: t("approvals.preview.route"), card: "fact", cell: item => {
+            const current = item.route.find(step => step.state === "current");
+            return current ? <strong className={s.nowrap} aria-current="step">{[current.label, current.assignee].filter(Boolean).join(" · ")}</strong> : "—";
+          } },
+          { header: t("approvals.col.requester"), card: "fact", cell: item => <span className={s.nowrap}>{item.requester?.name ?? "—"}</span>, fit: true },
+          { header: t("approvals.col.requestedAt"), card: "fact", cell: item => <time className="num" dateTime={item.requested_at}>{fmtDateTime(item.requested_at)}</time>, fit: true },
           { header: t("approvals.col.status"), card: "status", cell: item => <Chip tone={item.status.tone}>{item.status.label}</Chip>, fit: true },
         ]} />
         {hasNext && <div className={s.more}><Button disabled={loadingMore} onClick={onMore}>{t("approvals.more")}</Button></div>}
