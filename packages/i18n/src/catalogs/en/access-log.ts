@@ -2,6 +2,12 @@
 import type { koAccessLog } from "../ko/access-log";
 export const enAccessLog: Record<keyof typeof koAccessLog, string> = {
   "accessLog.title": "Access-log review",
+  "accessLog.chooseFilters": "Choose filters",
+  "accessLog.filters": "Access-log filters",
+  "accessLog.targetType": "Target kind",
+  "accessLog.from": "Start date",
+  "accessLog.to": "End date",
+  "accessLog.applyFilters": "Apply filters",
   "accessLog.period": "Review period",
   "accessLog.views": "Access-log view",
   "accessLog.flagged": "Needs review",
@@ -11,7 +17,7 @@ export const enAccessLog: Record<keyof typeof koAccessLog, string> = {
   "accessLog.search": "Search actors or IP addresses",
   "accessLog.searchCount": "{count, plural, one {# search result} other {# search results}}",
   "accessLog.noResults": "No search results",
-  "accessLog.noResultsReason": "Change or clear the search to try again.",
+  "accessLog.noResultsReason": "Change or clear the search or filters to try again.",
   "accessLog.clearSearch": "Clear search",
   "accessLog.empty": "No access records need review",
   "accessLog.emptyReason": "No records in this period match the selected view.",

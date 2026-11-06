@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koAccessLog = {
   "accessLog.title": "접속기록 점검",
+  "accessLog.chooseFilters": "필터 선택",
+  "accessLog.filters": "접속기록 필터",
+  "accessLog.targetType": "대상 종류",
+  "accessLog.from": "시작일",
+  "accessLog.to": "종료일",
+  "accessLog.applyFilters": "필터 적용",
   "accessLog.period": "점검 기간",
   "accessLog.views": "접속기록 보기",
   "accessLog.flagged": "확인 대상",
@@ -10,7 +16,7 @@ export const koAccessLog = {
   "accessLog.search": "접속자·IP 주소 검색",
   "accessLog.searchCount": "검색 결과 {count, plural, other {#건}}",
   "accessLog.noResults": "검색 결과가 없습니다",
-  "accessLog.noResultsReason": "검색어를 변경하거나 비워 다시 확인하십시오.",
+  "accessLog.noResultsReason": "검색어나 필터를 변경하거나 초기화해 다시 확인하십시오.",
   "accessLog.clearSearch": "검색 초기화",
   "accessLog.empty": "확인할 접속기록이 없습니다",
   "accessLog.emptyReason": "이 기간에는 선택한 보기에 해당하는 기록이 없습니다.",
