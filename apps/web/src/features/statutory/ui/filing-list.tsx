@@ -1,5 +1,5 @@
 import { buttonClass } from "../../../ui/button/button-class";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -10,10 +10,13 @@ import { useCommand } from "../../../lib/react/command";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { FILING_READS, filingsQuery, recordFiling, type FilingTask } from "../../../reference/statutory/api";
-import { FilingTable } from "./filing-table";
+import { chunk } from "../../../lib/chunk-guard";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { FilingRequest } from "./filing-request";
 import { FilingComplete } from "./filing-complete";
 import { filingLabel } from "../present";
+
+const FilingTable = lazy(() => chunk(import("./filing-table")).then(m => ({ default: m.FilingTable })));
 
 export function FilingList({ site, event, filing, workplaces }: { site?: string; event?: string; filing?: string; workplaces: ReadState }) {
   const [state, setState] = useState("PENDING");
@@ -50,9 +53,9 @@ export function FilingList({ site, event, filing, workplaces }: { site?: string;
     <QueryState q={readGroup([workplaces, tasks])} layout="list">{() => {
       const page = tasks.data!;
       return <>
-      <FilingTable rows={page.items} total={page.total} search={search} findSlot={findSlot}
+      <Suspense fallback={<ReadSkeleton layout="list" />}><FilingTable rows={page.items} total={page.total} search={search} findSlot={findSlot}
         onFind={value => { setSearch(value.trim()); setAfter(undefined); }} onRecord={setSelected} onRequest={setRequest}
-        onUndo={task => undo.mutate(task)} undoing={undo.isPending} />
+        onUndo={task => undo.mutate(task)} undoing={undo.isPending} /></Suspense>
       <div className="row">{after && <Button onClick={() => setAfter(undefined)}>{t("common.back")}</Button>}{page.next && <Button onClick={() => setAfter(page.next!)}>{t("statutory.more")}</Button>}</div>
     </>; }}</QueryState>
     <CommandError error={undo.error} recover={false}>{undo.isChecking && <Button onClick={() => undo.check()}>{t("common.retry")}</Button>}</CommandError>
