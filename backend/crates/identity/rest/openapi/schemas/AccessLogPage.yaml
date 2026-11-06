@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
-required: [period, totals, items, next_cursor]
+required: [period, totals, items, next_cursor, filter_options]
 properties:
   period:
     type: object
@@ -38,3 +38,32 @@ properties:
       $ref: '#/components/schemas/AccessLogEvent'
   next_cursor:
     type: [string, 'null']
+  filter_options:
+    type: object
+    description: Choices from the authorized month at the cursor snapshot, independent of selected filters and page. Actor names prefer the latest stored display; duplicate names include the actor ID. Action and target label keys resolve through the ko/en catalogs.
+    required: [actors, actions, target_types]
+    properties:
+      actors:
+        type: array
+        items:
+          type: object
+          required: [id, label]
+          properties:
+            id:
+              type: string
+              format: uuid
+            label:
+              type: string
+      actions:
+        type: array
+        items: &access_log_code_choice
+          type: object
+          required: [id, label_key]
+          properties:
+            id:
+              type: string
+            label_key:
+              type: string
+      target_types:
+        type: array
+        items: *access_log_code_choice

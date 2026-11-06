@@ -23,8 +23,8 @@ async function filtersFixture(page: Page) {
       items, next_cursor: null,
       filter_options: {
         actors: [{ id: id(101), label: "김민수" }],
-        actions: [{ id: "employee.export", label: "직원 명부 내보내기" }, { id: "employee.rrn_reveal", label: "주민등록번호 열람" }],
-        target_types: [{ id: "employee", label: "직원" }],
+        actions: [{ id: "employee.export", label_key: "accessLog.action.employee.export" }, { id: "employee.rrn_reveal", label_key: "accessLog.action.employee.rrn_reveal" }],
+        target_types: [{ id: "employee", label_key: "accessLog.target.employee" }],
       },
     } });
   });
@@ -99,5 +99,40 @@ for (const [name, from, to, invalidField] of [
     await expect(page.getByLabel(invalidField, { exact: true })).toHaveAttribute("aria-invalid", "true");
     expect(fixture.requests).toHaveLength(1);
     expect(new URL(page.url()).searchParams.has("from")).toBe(false);
+  } finally { fixture.release(); }
+});
+
+test("access-log explains an unavailable server filter @ui-state", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.addInitScript(recordShifts);
+  await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+  const fixture = await filtersFixture(page);
+  try {
+    await page.route(url => url.pathname === "/api/v1/access/access-log", route => new URL(route.request().url()).searchParams.has("actor") ? route.fulfill({
+      status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } },
+    }) : route.fallback());
+    await page.goto("/audit/access-log?actor=unavailable");
+    await expect(page.getByText("필터의 선택 항목과 기간을 확인한 뒤 다시 조회하십시오.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("grid")).toHaveCount(0);
+    await fits(page, "audit filter refusal");
+    await expectAxe(page, "audit filter refusal");
+    await expectStable(page, "audit filter refusal");
+    await page.screenshot({ path: testInfo.outputPath("filter-refusal.png"), fullPage: true });
+    await page.getByRole("button", { name: "검색 초기화", exact: true }).click();
+    await expect(page.getByRole("grid")).toBeVisible();
+    expect(new URL(page.url()).searchParams.has("actor")).toBe(false);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fixture.release(); }
+});
+
+test("access-log month changes clear choices from the previous month @ui-state", async ({ page }) => {
+  const fixture = await filtersFixture(page);
+  try {
+    await page.goto(`/audit/access-log?period=2026-10&view=all&actor=${id(101)}&action=employee.export&target_type=employee&from=2026-10-05&to=2026-10-20`);
+    await expect(page.getByRole("grid")).toBeVisible();
+    await page.getByLabel("점검 기간", { exact: true }).fill("2026-11");
+    await expect.poll(() => Object.fromEntries(fixture.requests.at(-1)!)).toEqual({ period: "2026-11", flagged: "false", limit: "200" });
+    expect(new URL(page.url()).searchParams.has("actor")).toBe(false);
+    expect(fixture.unexpected).toEqual([]);
   } finally { fixture.release(); }
 });

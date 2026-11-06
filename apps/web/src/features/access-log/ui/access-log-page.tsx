@@ -59,11 +59,12 @@ export function AccessLogPage() {
   const period = search.period ?? first?.period.from.slice(0, 7) ?? "";
   return <Page floorplan="P-01" head={{ title: t("audit.title"), tabs: <AuditTabs /> }} q={q}
     toolbar={<div className="form">
-        <Field label={t("accessLog.period")} required={null}>{p => <TextInput {...p} type="month" value={period} onChange={e => void navigate({ search: s => ({ ...s, period: e.target.value || undefined, from: undefined, to: undefined }), replace: true })} />}</Field>
+        <Field label={t("accessLog.period")} required={null}>{p => <TextInput {...p} type="month" value={period} onChange={e => void navigate({ search: s => ({ ...s, period: e.target.value || undefined, actor: undefined, action: undefined, target_type: undefined, from: undefined, to: undefined }), replace: true })} />}</Field>
         <TabNav label={t("accessLog.views")} overflow="scroll">
           <Link to="/audit/access-log" search={{ ...search, view: undefined }} className={tabClass}>{t("accessLog.flagged")}<TabCount>{q.error ? undefined : first?.totals.flagged}</TabCount></Link>
           <Link to="/audit/access-log" search={{ ...search, view: "all" }} className={tabClass}>{t("accessLog.all")}<TabCount>{q.error ? undefined : first?.totals.events}</TabCount></Link>
         </TabNav>
+        {filtered && <Button onClick={clear}>{t("accessLog.clearSearch")}</Button>}
         {first?.filter_options ? <Button onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
           : <SearchField label={t("accessLog.search")} value={searchText} onChange={setSearchText}
             onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} />}
@@ -87,8 +88,7 @@ export function AccessLogPage() {
         const rows = data.pages.flatMap(p => p.items);
         return <Card title={t("accessLog.title")} flush>
           {!rows.length ? <EmptyState title={t(filtered ? "accessLog.noResults" : "accessLog.empty")}
-            reason={t(filtered ? "accessLog.noResultsReason" : "accessLog.emptyReason")}
-            actions={filtered && <Button onClick={clear}>{t("accessLog.clearSearch")}</Button>} /> : <>
+            reason={t(filtered ? "accessLog.noResultsReason" : "accessLog.emptyReason")} /> : <>
             <StatRow label={t("accessLog.summary")} items={[
               { key: "events", label: t("accessLog.all"), value: fmtNumber(page.totals.events) },
               { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(page.totals.flagged) },

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
 import { t } from "@console/i18n";
+import { codeText } from "../../../lib/labels";
+
 import { Button, Form } from "../../../ui/button/button";
 import { DateInput } from "../../../ui/date/date-input";
 import { addDays, inBounds } from "../../../ui/date/days";
@@ -8,6 +10,7 @@ import { Field } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
 import type { AccessLogFilterOptions, AccessLogFilters } from "../api";
 
+// Server label keys resolve `accessLog.action.${code}` and `accessLog.target.${code}` in the catalogs.
 export function AccessLogFiltersForm({ value, options, period, onApply }: {
   value: AccessLogFilters;
   options: AccessLogFilterOptions;
@@ -30,7 +33,7 @@ export function AccessLogFiltersForm({ value, options, period, onApply }: {
     ] as const).map(([name, label, choices]) => <Field key={name} label={t(label)} required={null}>{props =>
       <SelectInput {...props} name={name} value={draft[name] ?? ""} onChange={event => setDraft(previous => ({ ...previous, [name]: event.target.value || undefined }))}>
         <option value="">{t("accessLog.all")}</option>
-        {choices.map(choice => <option key={choice.id} value={choice.id}>{choice.label}</option>)}
+        {choices.map(choice => <option key={choice.id} value={choice.id}>{"label_key" in choice ? codeText(choice.label_key, choice.id) : choice.label}</option>)}
       </SelectInput>
     }</Field>)}
     <Field label={t("accessLog.from")} required={null}>{props => <DateInput {...props} value={from}

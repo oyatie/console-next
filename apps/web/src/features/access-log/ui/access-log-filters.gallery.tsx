@@ -13,6 +13,6 @@ export default function AccessLogFiltersGallery() {
     <AccessLogFiltersForm key={JSON.stringify(value)} value={value} onApply={setValue}
       period={{ from: "2026-10-01", to: "2026-11-01" }}
       options={{ actors: [{ id: "account-1", label: tg("blocker.ceo") }],
-        actions: [{ id: "employee.export", label: t("accessLog.action.employee.export") }], target_types: [] }} />
+        actions: [{ id: "employee.export", label_key: "accessLog.action.employee.export" }], target_types: [] }} />
   </Section>;
 }

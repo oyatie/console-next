@@ -7,7 +7,7 @@ import { go } from "./flows";
 test("access records serve the current tenant month and refuse malformed paging", async ({ browser }) => {
   const admin = await openTenant(browser, "accesslog", "접속기록 조회");
   const bearer = bearerOf(admin);
-  await go(admin, "/");
+  await go(admin, "/account");
   await expect.poll(bearer, { timeout: 15_000 }).not.toBe("");
   const api = apiOf(admin, bearer);
   expect((await admin.request.get("/api/v1/access/access-log")).status()).toBe(401);
@@ -53,4 +53,47 @@ test("access records serve the current tenant month and refuse malformed paging"
     expect(response.status()).toBe(422);
     expect(await codeOf(response)).toBe(code);
   }
+});
+
+test("access-log filters use live choices, persist after reload and reset an empty intersection", async ({ browser }) => {
+  const admin = await openTenant(browser, "accessfilters", "접속기록 필터");
+  const bearer = bearerOf(admin);
+  await go(admin, "/account");
+  await expect.poll(bearer, { timeout: 15_000 }).not.toBe("");
+  const api = apiOf(admin, bearer);
+  expect((await api("/users?limit=1")).status()).toBe(200);
+  expect((await api("/access/access-log")).status()).toBe(200);
+  const before = await (await api("/access/access-log")).json();
+  const record = before.items.find((row: { action: string }) => row.action === "account.list_read");
+  expect(record).toBeTruthy();
+  expect(before.filter_options.actions).toContainEqual({ id: "account.list_read", label_key: "accessLog.action.account.list_read" });
+  await go(admin, "/audit/access-log?view=all");
+  await expect(admin.getByRole("grid")).toBeVisible();
+  await admin.getByRole("button", { name: "필터 선택", exact: true }).click();
+  await admin.getByRole("combobox", { name: "접속자", exact: true }).selectOption(record.actor_id);
+  await admin.getByRole("combobox", { name: "동작", exact: true }).selectOption({ label: "계정 목록 조회" });
+  await admin.getByRole("combobox", { name: "대상 종류", exact: true }).selectOption({ label: "계정" });
+  const day = before.period.from;
+  await admin.getByLabel("시작일", { exact: true }).fill(day);
+  const end = new Date(before.period.to);
+  end.setUTCDate(end.getUTCDate() - 1);
+  const last = end.toISOString().slice(0, 10);
+  await admin.getByLabel("종료일", { exact: true }).fill(last);
+  const response = admin.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/access/access-log" && new URL(r.url()).searchParams.get("action") === "account.list_read");
+  await admin.getByRole("button", { name: "필터 적용", exact: true }).click();
+  const filtered = await (await response).json();
+  expect(filtered.totals.events).toBeGreaterThan(0);
+  expect(filtered.items.every((row: { actor_id: string; action: string; target_type: string }) => row.actor_id === record.actor_id && row.action === "account.list_read" && row.target_type === "user")).toBe(true);
+  expect(new URL(admin.url()).searchParams.get("from")).toBe(day);
+  expect(new URL(admin.url()).searchParams.get("to")).toBe(last);
+  await admin.reload();
+  await admin.getByRole("button", { name: "필터 선택", exact: true }).click();
+  await expect(admin.getByRole("combobox", { name: "동작", exact: true })).toHaveValue("account.list_read");
+  await admin.getByRole("combobox", { name: "대상 종류", exact: true }).selectOption({ label: "접속기록" });
+  await admin.getByRole("button", { name: "필터 적용", exact: true }).click();
+  await expect(admin.getByRole("heading", { name: "검색 결과가 없습니다" })).toBeVisible();
+  await admin.getByRole("button", { name: "검색 초기화", exact: true }).click();
+  await expect(admin.getByRole("grid")).toBeVisible();
+  expect(new URL(admin.url()).searchParams.has("action")).toBe(false);
+  expect(new URL(admin.url()).searchParams.has("actor")).toBe(false);
 });

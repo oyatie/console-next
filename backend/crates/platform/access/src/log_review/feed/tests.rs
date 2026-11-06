@@ -44,6 +44,7 @@ fn cursor_round_trips_exact_timestamps_and_is_bound_to_the_query() {
     let mut q = Query {
         period: Some("2026-09".into()),
         search: None,
+        filters: Filters::default(),
         flagged: false,
         cursor: None,
         limit: None,
@@ -73,6 +74,7 @@ fn malformed_cursor_components_refuse_without_panicking() {
     let mut q = Query {
         period: Some("2026-09".into()),
         search: None,
+        filters: Filters::default(),
         flagged: false,
         cursor: None,
         limit: None,
@@ -117,4 +119,63 @@ fn a_period_whose_exclusive_end_overflows_is_invalid() {
         list::period_day(&period).unwrap_err().code,
         "period_invalid"
     );
+}
+
+#[test]
+fn structured_filter_cursors_bind_each_field_and_cannot_alias_a_literal_search() {
+    let org = OrgId::new();
+    let filters = json!({"actor":Uuid::new_v4(),"action":"employee.export","target_type":"employee","from":"2026-09-01","to":"2026-09-30"});
+    let query = |value| serde_json::from_value::<Query>(value).unwrap();
+    let q = query(filters.clone());
+    for field in ["actor", "action", "target_type", "from", "to"] {
+        let mut changed = filters.clone();
+        changed.as_object_mut().unwrap().remove(field);
+        assert_ne!(
+            q.prefix(org, "2026-09"),
+            query(changed).prefix(org, "2026-09"),
+            "{field}"
+        );
+    }
+    let search = query(json!({"search":filters.to_string()}));
+    assert_ne!(q.prefix(org, "2026-09"), search.prefix(org, "2026-09"));
+    assert!(!q.prefix(org, "2026-09").contains("employee.export"));
+}
+
+#[test]
+fn structured_filters_validate_options_and_calendar_bounds() {
+    let zero: Query = serde_json::from_value(json!({"from":"0000-09-01"})).unwrap();
+    assert_eq!(
+        zero.filters
+            .validate("0000-09", &json!({}))
+            .unwrap_err()
+            .code,
+        "filter_invalid"
+    );
+    let actor = Uuid::new_v4().to_string();
+    let options = json!({"actors":[{"id":actor}],"actions":[{"id":"employee.export"}],"target_types":[{"id":"employee"}]});
+    for value in [
+        json!({"actor":"unknown"}),
+        json!({"action":"unknown.action"}),
+        json!({"target_type":"unknown"}),
+        json!({"from":"2026-08-31"}),
+        json!({"to":"2026-10-01"}),
+        json!({"from":"2026-09-31"}),
+        json!({"from":"2026-09-1"}),
+        json!({"from":""}),
+        json!({"from":"2026-09-11","to":"2026-09-10"}),
+    ] {
+        let q: Query = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(
+            q.filters.validate("2026-09", &options).unwrap_err().code,
+            "filter_invalid",
+            "{value}"
+        );
+    }
+    for value in [
+        json!({}),
+        json!({"actor":actor,"action":"employee.export","target_type":"employee","from":"2026-09-01","to":"2026-09-30"}),
+    ] {
+        let q: Query = serde_json::from_value(value).unwrap();
+        q.filters.validate("2026-09", &options).unwrap();
+    }
 }
