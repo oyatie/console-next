@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import yaml from "js-yaml";
+import { RUN_HEADROOM } from "./states-shards.mjs";
 
 const settings = { setupAllowanceSeconds: 120, budgetSeconds: 300, startupSeconds: 40, workers: 2, defaultTestSeconds: 10, specs: {} };
 const report = (counts, seconds = 4) => ({
@@ -76,26 +77,27 @@ test("an unknown 30-test spec uses nearest-rank P95 and adds a shard with headro
   const plan = planStates(report({ "mock/19.spec.ts": 20, "states/new.spec.ts": 30 }), timings);
   assert.equal(plan.shards.length, 2);
   assert.equal(plan.shards.find(s => s.files.includes("e2e/states/new.spec.ts")).seconds, settings.startupSeconds + 30 * 19);
-  assert.ok(plan.shards.every(s => s.seconds * 1.25 <= timings.timeoutSeconds));
+  assert.ok(plan.shards.every(s => s.seconds * RUN_HEADROOM <= timings.timeoutSeconds));
   assert.equal(plan.testCounts["states/new.spec.ts"], 30);
 });
 
 test("unknown estimates that exceed whole-spec or shard capacity request timings", async () => {
   const { planStates } = await load();
-  const timings = { ...settings, timeoutSeconds: 600, runLimitSeconds: 600, maxShards: 1,
+  // The run limit leaves a 480 s execution timeout after headroom.
+  const timings = { ...settings, timeoutSeconds: 600, runLimitSeconds: 480 * RUN_HEADROOM, maxShards: 1,
     specs: { "mock/known.spec.ts": { seconds: 20, tests: 1 } } };
   assert.throws(() => planStates(report({ "states/new.spec.ts": 30 }), timings), /STATES_SPEC_OVER_BUDGET.*states\/new\.spec\.ts.*add timings/i);
   assert.throws(() => planStates(report({ "mock/known.spec.ts": 1, "states/new.spec.ts": 22 }), timings), /STATES_TIMEOUT_LIMIT.*add timings.*states\/new\.spec\.ts/i);
 });
 
-test("packing adds shards before consuming the 1.25x run headroom", async () => {
+test("packing adds shards before consuming the RUN_HEADROOM run headroom", async () => {
   const { planStates } = await load();
   const specs = Object.fromEntries([0, 1, 2].map(i => [`mock/${i}.spec.ts`, { seconds: 500, tests: 1 }]));
   const input = report(Object.fromEntries(Object.keys(specs).map(file => [file, 1])));
   const timings = { ...settings, specs, timeoutSeconds: 1080, runLimitSeconds: 1080, maxShards: 3 };
   const plan = planStates(input, timings);
   assert.equal(plan.shards.length, 3);
-  assert.ok(plan.budgetSeconds * 1.25 <= timings.timeoutSeconds);
+  assert.ok(plan.budgetSeconds * RUN_HEADROOM <= timings.timeoutSeconds);
   assert.throws(() => planStates(input, { ...timings, maxShards: 2 }), /STATES_TIMEOUT_LIMIT/);
 });
 
@@ -147,7 +149,7 @@ test("the real suite allows 30 added tests and ten percent timing drift within t
     const plan = planStates(input, timings, measured);
     assert.ok(plan.shards.length <= timings.maxShards);
     assert.ok(plan.budgetSeconds > timings.budgetSeconds && plan.budgetSeconds <= timings.timeoutSeconds);
-    assert.ok(plan.budgetSeconds * 1.25 <= plan.runTimeoutMinutes * 60);
+    assert.ok(plan.budgetSeconds * RUN_HEADROOM <= plan.runTimeoutMinutes * 60);
     assert.equal(plan.jobTimeoutMinutes, Math.ceil(timings.setupAllowanceSeconds / 60) + plan.runTimeoutMinutes);
     assert.deepEqual(plan.shards.flatMap(s => filesForShard(plan, s.id)).sort(), input.suites.map(s => `e2e/${s.file}`).sort());
   }
@@ -276,11 +278,11 @@ exec "$REAL_NODE" "$@"
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("a shard gets a Playwright timeout derived from its plan with 1.25x headroom", () => {
+test("a shard gets a Playwright timeout derived from its plan with RUN_HEADROOM headroom", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "states-drift-"));
   const estimatedSeconds = 80;
   const timeoutSeconds = 120;
-  const observed = { ...report({ "mock/a.spec.ts": 1 }, estimatedSeconds * 1.25), config: { workers: settings.workers } };
+  const observed = { ...report({ "mock/a.spec.ts": 1 }, estimatedSeconds * RUN_HEADROOM), config: { workers: settings.workers } };
   const planned = { budgetSeconds: estimatedSeconds, testCounts: { "mock/a.spec.ts": 1 },
     shards: [{ id: 1, files: ["e2e/mock/a.spec.ts"], seconds: estimatedSeconds }] };
   try {
@@ -292,7 +294,7 @@ test("a shard gets a Playwright timeout derived from its plan with 1.25x headroo
     const env = { ...process.env, PATH: `${dir}/bin:${process.env.PATH}`, TEST_ARGS: path.join(dir, "args"), TEST_REPORT: JSON.stringify(observed) };
     const result = spawnSync(process.execPath, ["scripts/states-shards.mjs", "run", ".cache/plan.json", "1"], { cwd: dir, env, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(readFileSync(env.TEST_ARGS, "utf8").trim().split("\n"), ["run", "e2e:states", "--", "--test-list=.cache/states-shard-1.txt", `--global-timeout=${Math.ceil(estimatedSeconds * 1.25) * 1000}`]);
+    assert.deepEqual(readFileSync(env.TEST_ARGS, "utf8").trim().split("\n"), ["run", "e2e:states", "--", "--test-list=.cache/states-shard-1.txt", `--global-timeout=${Math.ceil(estimatedSeconds * RUN_HEADROOM) * 1000}`]);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -415,9 +417,9 @@ test("CI consumes the plan's matrix and exact file list and ci-ok requires plann
 test("setup allowance is separate from the plan's run budget, including minute rounding", async () => {
   const { planStates } = await load();
   const plan = planStates(report({ "mock/a.spec.ts": 1 }), { ...settings, budgetSeconds: 301, setupAllowanceSeconds: 601 });
-  assert.equal(plan.runTimeoutMinutes, 7);
-  assert.equal(plan.jobTimeoutMinutes, 18);
-  assert.ok(plan.runTimeoutMinutes * 60 >= plan.budgetSeconds * 1.25);
+  assert.equal(plan.runTimeoutMinutes, Math.ceil(301 * RUN_HEADROOM / 60));
+  assert.equal(plan.jobTimeoutMinutes, 11 + plan.runTimeoutMinutes);
+  assert.ok(plan.runTimeoutMinutes * 60 >= plan.budgetSeconds * RUN_HEADROOM);
   for (const setupAllowanceSeconds of [undefined, 0, -1, "720", NaN]) {
     assert.throws(() => planStates(report({ "mock/a.spec.ts": 1 }), { ...settings, setupAllowanceSeconds }), /STATES_INVALID_TIMINGS/);
   }
