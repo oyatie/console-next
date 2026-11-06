@@ -66,10 +66,10 @@ test("Home CI runs the served scale probe with the selected release artifact", (
   assert.equal(report.with["if-no-files-found"], "error");
   assert.ok(jobs["ci-ok"].needs.includes("home"));
   assert.equal(jobs["ci-ok"].steps[0].env.NEEDS, "${{ toJSON(needs) }}");
-  assert.ok(jobs["d7-evidence"].needs.includes("home"));
+  assert.deepEqual(jobs["release-evidence"].needs, ["affected"]);
   for (const name of ["Firefox for D7 solo journey", "Solo journey on Chromium and Firefox"]) {
     const step = home.steps.find(s => s.name === name);
-    assert.equal(step.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}");
+    assert.equal(step.if, "${{ !cancelled() && github.event_name == 'merge_group' }}");
   }
   assert.equal(home.steps.find(s => s.name === "Solo journey on Chromium and Firefox").env.CONSOLE_APP_BIN, probe.env.CONSOLE_APP_BIN);
   assert.ok(home.steps.some(s => s.with?.name === "d7-playwright"));

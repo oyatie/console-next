@@ -18,7 +18,8 @@ for (const [name, files, expected] of [
   ["migration and API inputs", ["migrations/change.sql", "openapi.yaml", "openapi/schema.json"], backend],
   ["web", ["apps/web/src/main.tsx", "packages/api/src/schema.d.ts", "e2e/home.spec.ts", "package.json", "package-lock.json"], web],
   ["CI and tooling", [".github/workflows/ci.yml", "scripts/check.mjs"], both],
-  ["unknown", ["README.md", "new-area/source.txt", ".cargo/config.toml", "tsconfig.json", "docs/apps/x.md", "deploy/backend/x.rs"], both],
+  ["documentation", ["README.md", "CONTRIBUTING.md", "docs/apps/x.md"], { backend: false, web: false }],
+  ["unknown", ["new-area/source.txt", ".cargo/config.toml", "tsconfig.json", "deploy/backend/x.rs"], both],
   ["shared backend contracts", ["backend/openapi/openapi.yaml", "backend/openapi/ops.yaml", "backend/openapi/schemas/Example.yaml"], both],
 ]) {
   test(`classifies each ${name} path`, async () => {
