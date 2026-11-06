@@ -8,6 +8,15 @@
   .filters > * { flex: 1 1 100%; min-width: 0; }
 }
 @container list-table (min-width: 481px) {
-  /* Let fitted identities take their content width before the title fills the remainder. */
-  .title { display: block; width: 0; min-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Reserve the rail size for the subject before budgeting secondary identities. */
+  .title { display: block; width: 0; min-width: max(var(--rail-w), 100%); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .secondary { display: block; }
+  .secondary, .list [data-card="fact"] { max-width: calc(var(--rail-w) / 2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list [data-card="status"] { white-space: nowrap; }
+}
+@container list-table (481px <= width <= 1100px) {
+  .list :is(th, td):is(:nth-child(3), :nth-child(5), :nth-child(6)) { display: none; }
+}
+@container list-table (481px <= width <= 640px) {
+  .list :is(th, td):is(:nth-child(1), :nth-child(4)) { display: none; }
 }

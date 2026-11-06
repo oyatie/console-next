@@ -17,7 +17,7 @@ import { Page } from "../../../ui/page/page";
 import { SearchField } from "../../../ui/search/search-field";
 import { SelectField } from "../../../ui/select/select-field";
 import { SidePanel } from "../../../ui/side-panel/side-panel";
-import { Table, type Column } from "../../../ui/table";
+import { Table } from "../../../ui/table";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { approvalPages, type ApprovalItem } from "../api";
@@ -39,23 +39,22 @@ export function ApprovalInboxView({ items, selected, onSelect, onClose, hasNext,
 }) {
   return <div className="split" data-open={Boolean(selected)}>
     <Card label={t("approvals.list")} flush>
-      {items.length ? <>
+      {items.length ? <div className={s.list}>
         <Table label={t("approvals.list")} rows={items} rowId={item => item.id} selected={selected?.id} onSelect={onSelect} columns={[
-          { header: t("approvals.field.documentNo"), card: "fact", fit: true, cell: item => <code>{item.document_no ?? "—"}</code> },
+          { header: t("approvals.field.documentNo"), card: "fact", fit: true, cell: item => <code className={s.secondary} title={item.document_no ?? "—"}>{item.document_no ?? "—"}</code> },
           { header: t("approvals.col.title"), card: "title", cell: item => <span className={s.title} title={item.title}>{item.title}</span> },
-          ...(!selected ? [{ header: t("approvals.col.source"), card: "fact", fit: true, cell: item => item.source.label } satisfies Column<ApprovalItem>] : []),
+          { header: t("approvals.col.source"), card: "fact", fit: true, cell: item => item.source.label },
           { header: t("approvals.preview.route"), card: "fact", fit: true, cell: item => {
             const current = item.route.find(step => step.state === "current");
-            return current ? <strong aria-current="step">{[current.label, current.assignee].filter(Boolean).join(" · ")}</strong> : "—";
+            const text = current ? [current.label, current.assignee].filter(Boolean).join(" · ") : "—";
+            return <strong className={s.secondary} title={text} aria-current={current ? "step" : undefined}>{text}</strong>;
           } },
-          ...(!selected ? [
-            { header: t("approvals.col.requester"), card: "fact", fit: true, cell: item => item.requester?.name ?? "—" },
-            { header: t("approvals.col.requestedAt"), card: "fact", fit: true, cell: item => <time className="num" dateTime={item.requested_at}>{fmtDateTime(item.requested_at)}</time> },
-          ] satisfies Column<ApprovalItem>[] : []),
+          { header: t("approvals.col.requester"), card: "fact", fit: true, cell: item => item.requester?.name ?? "—" },
+          { header: t("approvals.col.requestedAt"), card: "fact", fit: true, cell: item => <time className={`${s.secondary} num`} title={fmtDateTime(item.requested_at)} dateTime={item.requested_at}>{fmtDateTime(item.requested_at)}</time> },
           { header: t("approvals.col.status"), card: "status", fit: true, cell: item => <Chip tone={item.status.tone}>{item.status.label}</Chip> },
         ]} />
         {hasNext && <div className={s.more}><Button disabled={loadingMore} onClick={onMore}>{t("approvals.more")}</Button></div>}
-      </> : <EmptyState title={emptyTitle ?? t("approvals.empty.title")} reason={t("approvals.empty.reason")} />}
+      </div> : <EmptyState title={emptyTitle ?? t("approvals.empty.title")} reason={t("approvals.empty.reason")} />}
     </Card>
     {selected && <SidePanel
       open title={selected.title} crumb={selected.document_no} onClose={onClose}
