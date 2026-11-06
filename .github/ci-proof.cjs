@@ -3,7 +3,7 @@ async function source(github, context) {
   const params = { ...context.repo, per_page: 100 };
   const { data: candidate } = await github.rest.repos.getCommit({ ...context.repo, ref: context.sha });
   for await (const { data: runs } of github.paginate.iterator('GET /repos/{owner}/{repo}/actions/workflows/ci.yml/runs',
-    { ...params, event: 'merge_group', status: 'success' })) {
+    { ...params, event: 'merge_group', status: 'success', head_sha: context.sha })) {
     for (const run of runs) {
       if (run.path !== '.github/workflows/ci.yml' || run.event !== 'merge_group' || run.status !== 'completed' ||
           run.conclusion !== 'success' || !run.head_branch?.startsWith('gh-readonly-queue/dev/') ||

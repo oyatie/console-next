@@ -370,7 +370,7 @@ jobs:
 
   backend-gates:
     needs: [affected]
-    if: *backend-affected
+    if: ${{ !cancelled() && (github.event_name == 'push' || needs.affected.outputs.backend == 'true') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions: {contents: read}
@@ -791,6 +791,7 @@ jobs:
             else if (name === 'states-timings') skip = !push || !web;
             else if (name === 'backend-cache') skip = !push || !backend;
             else if (name === 'release-evidence') skip = !push || !backend || !web;
+            else if (name === 'backend-gates') skip = !push && !backend;
             else if (backendJobs.includes(name)) skip ||= !backend;
             else if (['web', 'states-plan', 'states'].includes(name)) skip ||= !web;
             else if (name === 'home') skip ||= !web && !backend;

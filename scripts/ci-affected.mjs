@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 export function classifyPaths(paths) {
   const affected = { backend: false, web: false };
   for (const file of paths) {
-    if (/^(?:docs\/.*\.md|[^/]+\.md)$/.test(file)) continue;
     // The web contract gate reads both committed backend OpenAPI documents.
     if (file.startsWith("backend/openapi/")) affected.backend = affected.web = true;
     else if (/^(?:backend\/|Cargo\.[^/]+$|rust-toolchain(?:\.toml)?$|migrations\/|openapi(?:\/|\.))/.test(file)) affected.backend = true;

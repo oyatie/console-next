@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, utimesSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, utimesSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -22,19 +22,39 @@ test("spreadsheet paste starts its own server after browser-backed unit tests", 
   assert.match(config, /env: \{ CONSOLE_WEB_PORT: String\(port\) \}/);
 });
 
-for (const name of backendJobs) test(`${name} runs in parallel only for affected candidates`, () => {
+for (const name of backendJobs) test(`${name} runs for affected candidates or required push evidence`, () => {
   const job = ci.jobs[name];
   assert.ok(job, name);
   assert.deepEqual(job.needs, ["affected"]);
   assert.match(job.if, /!cancelled\(\)/);
   const condition = new Function("github", "needs", "cancelled", `return ${job.if.slice(3, -2)}`);
   for (const event of ["pull_request", "merge_group", "push"]) for (const affected of ["true", "false", ""]) {
-    assert.equal(condition({ event_name: event }, { affected: { outputs: { backend: affected } } }, () => false), event !== "push" && affected === "true");
+    assert.equal(condition({ event_name: event }, { affected: { outputs: { backend: affected } } }, () => false), name === "backend-gates" ? event === "push" || affected === "true" : event !== "push" && affected === "true");
   }
   assert.ok(job.steps[0].uses.startsWith("step-security/harden-runner@"));
   assert.deepEqual(job.permissions, { contents: "read" });
   assert.ok(!job["continue-on-error"]);
   assert.ok(!job.steps.some(s => s.with?.cache === "npm"));
+});
+
+test("release policy CI evidence runs on every dev push and is required by ci-ok", t => {
+  const policy = new URL("../deploy/gates.json", import.meta.url);
+  if (!existsSync(policy)) return t.skip("Release policy is not present on this base");
+  assert.ok(ci.on.push.branches.includes("dev"));
+  const definitions = Object.values(JSON.parse(readFileSync(policy, "utf8")).checks).flat()
+    .filter(definition => definition.workflow === "ci.yml");
+  assert.ok(definitions.length > 0);
+  for (const { job: name, step } of definitions) {
+    const job = ci.jobs[name];
+    assert.ok(job, name);
+    assert.deepEqual(job.needs, ["affected"]);
+    assert.ok(ci.jobs["ci-ok"].needs.includes(name), name);
+    const condition = new Function("github", "needs", "cancelled", `return ${job.if.slice(3, -2)}`);
+    for (const backend of ["true", "false", ""]) {
+      assert.equal(condition({ event_name: "push" }, { affected: { outputs: { backend } } }, () => false), true, name);
+    }
+    if (step) assert.equal(job.steps.filter(s => s.name === step && !s.if && !s["continue-on-error"]).length, 1, step);
+  }
 });
 
 test("Home uses a release artifact on every candidate; every Rust check stays required", () => {
@@ -101,7 +121,7 @@ test("ci-ok accepts only exact event/path skips and fails closed on missing clas
   const backendJobs = ["backend", "backend-gates", "backend-tests", "backend-release"];
   for (const event of ["pull_request", "merge_group", "push"]) for (const backend of ["true", "false"]) for (const web of ["true", "false"]) {
     const push = event === "push";
-    const skips = new Set(push ? ["commits", "workflows", "web", "states-plan", "states", ...backendJobs, "home", "supply-chain"] : ["dev-artifacts"]);
+    const skips = new Set(push ? ["commits", "workflows", "web", "states-plan", "states", ...backendJobs.filter(name => name !== "backend-gates"), "home", "supply-chain"] : ["dev-artifacts"]);
     if (!push || web === "false") skips.add("states-timings");
     if (!push || backend === "false") skips.add("backend-cache");
     if (!push || backend === "false" || web === "false") skips.add("release-evidence");
@@ -298,7 +318,7 @@ test("push proof accepts only a successful trusted queue run with the same tree 
   const good = { id: 10, path: ".github/workflows/ci.yml", event: "merge_group", status: "completed", conclusion: "success", head_branch: "gh-readonly-queue/dev/pr-1", head_sha: "queue", repository: { id: 42 }, head_repository: { id: 42 } };
   const api = (runs, tree = "tree", ancestor = "base") => ({
     paginate: Object.assign(async () => [{ name: "cargo-security-Linux-X64-deny-1-audit-1" }], {
-      iterator: async function* (route, args) { assert.equal(args.event, "merge_group"); yield { data: runs }; },
+      iterator: async function* (route, args) { assert.equal(args.event, "merge_group"); assert.equal(args.head_sha, context.sha); yield { data: runs }; },
     }),
     rest: { repos: {
       getCommit: async ({ ref }) => ({ data: { commit: { tree: { sha: ref === "merged" ? "tree" : tree } } } }),
@@ -340,7 +360,9 @@ test("duplicate browser, compiler and workflow checks retain a merge-gating copy
   assert.equal(ci.jobs.workflows.uses, "./.github/workflows/workflows-check.yml");
   assert.ok(ci.jobs["ci-ok"].needs.includes("workflows"));
   assert.equal(lint.on.push, undefined);
-  assert.doesNotMatch(read(".github/workflows/platform.yml"), /actionlint /);
+  const platform = yaml.load(read(".github/workflows/platform.yml"));
+  for (const job of Object.values(platform.jobs)) for (const step of job.steps ?? [])
+    assert.doesNotMatch(step.run ?? "", /^\s*actionlint\s+\S/m);
 });
 
 test("imported classifications refuse a mismatched commit or missing affected output", () => {
