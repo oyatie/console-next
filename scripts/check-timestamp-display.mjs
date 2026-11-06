@@ -35,7 +35,8 @@ export function timestampProblems(spec, schema, value, location = "$") {
     const candidates = alternatives.filter(child => {
       const resolved = resolve(spec, child);
       const type = value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
-      if (resolved.type && resolved.type !== type && !(Array.isArray(resolved.type) && resolved.type.includes(type))) return false;
+      const types = Array.isArray(resolved.type) ? resolved.type : [resolved.type];
+      if (resolved.type && !types.some(candidate => candidate === type || (candidate === "integer" && type === "number" && Number.isInteger(value)))) return false;
       if (value && type === "object") {
         return (resolved.required ?? []).every(key => Object.hasOwn(value, key)) && Object.entries(resolved.properties ?? {}).every(([key, property]) => {
           const child = resolve(spec, property);
@@ -44,7 +45,8 @@ export function timestampProblems(spec, schema, value, location = "$") {
       }
       return true;
     });
-    if (!candidates.length) return [`${location}: unexpected response type`];
+    if (!candidates.length) return alternatives.some(child => resolve(spec, child).format === "date-time")
+      ? [...problems, `${location}: expected UTC RFC 3339 string`] : problems;
     const results = candidates.map(child => timestampProblems(spec, child, value, location));
     if (results.every(result => result.length)) problems.push(...results[0]);
   }

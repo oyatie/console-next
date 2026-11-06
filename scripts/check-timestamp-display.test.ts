@@ -10,7 +10,7 @@ const spec = {
   } },
 };
 
-it.each(["2026-11-05 3:31:02.238349 +00:00:00", "", [2026, 309, 3, 31, 2, 238349000, 0, 0, 0], null, 0, "2026-11-05T12:31:02+09:00", "2026-02-30T00:00:00Z"])("rejects a non-contract timestamp without relying on its name: %j", observed => {
+it.each(["2026-11-05 3:31:02.238349 +00:00:00", "", [2026, 309, 3, 31, 2, 238349000, 0, 0, 0], null, 0, "2026-11-05T12:31:02+09:00", "2026-11-05T03:31:02+00:00", "2026-02-30T00:00:00Z"])("rejects a non-contract timestamp without relying on its name: %j", observed => {
   expect(responseTimestampProblems(spec, "/events", "GET", 200, { entries: [{ observed }] })).toHaveLength(1);
 });
 it("accepts fractional UTC timestamps, nullable fields and omitted optional fields", () => {
@@ -59,4 +59,36 @@ it("documents readiness timestamps so the response guard rejects tuple encoding"
   expect(responseTimestampProblems(timestampContract, "/api/v1/hr/readiness-summary", "get", 200, {
     imports: { latest_import_at: [] }, payroll: { latest_updated_at: [] },
   })).toHaveLength(2);
+});
+
+it.each([
+  [{ type: "integer" }, 1],
+  [{ type: "number" }, 1.5],
+  [{ type: ["integer", "null"] }, 1],
+])("accepts numeric alternatives alongside timestamps: %j", (numeric, value) => {
+  const schema = { oneOf: [numeric, { $ref: "#/components/schemas/Instant" }] };
+  expect(timestampProblems(spec, schema, value)).toEqual([]);
+});
+
+it("ignores unmatched alternatives that do not describe timestamps", () => {
+  const schema = { oneOf: [{ type: "integer" }, { type: "string" }] };
+  expect(timestampProblems(spec, schema, 1)).toEqual([]);
+  expect(timestampProblems(spec, schema, [])).toEqual([]);
+});
+
+it("accepts numeric settings and pay-group values in the real response contracts", () => {
+  expect(responseTimestampProblems(timestampContract, "/api/v1/settings", "get", 200, {
+    items: [{ default: 1, value: 1 }],
+  })).toEqual([]);
+  expect(responseTimestampProblems(timestampContract, "/api/v1/settings/example.value", "post", 201, { value: 1 })).toEqual([]);
+  expect(responseTimestampProblems(timestampContract, "/api/v1/payroll/pay-groups", "post", 201, {
+    variable_period: { start_day: 1 },
+  })).toEqual([]);
+});
+
+it("still rejects tuples and fractional numbers in nullable integer-or-timestamp alternatives", () => {
+  const tuple = [2026, 309, 3, 31, 2, 238349000, 0, 0, 0];
+  expect(responseTimestampProblems(spec, "/events", "get", 200, { entries: [{ maybe: tuple }] })).toHaveLength(1);
+  const schema = { anyOf: [{ type: "integer" }, { $ref: "#/components/schemas/Instant" }, { type: "null" }] };
+  expect(timestampProblems(spec, schema, 1.5)).toHaveLength(1);
 });
