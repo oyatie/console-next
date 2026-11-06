@@ -177,6 +177,7 @@ test("Dependabot defers incompatible cipher and Apalis updates, leaving desktop 
   const cargo = config.updates.find((u) => u["package-ecosystem"] === "cargo");
   assert.deepEqual(cargo.ignore, [
     { "dependency-name": "chacha20poly1305", versions: [">=0.11"] },
+    { "dependency-name": "windows-registry", versions: [">=0.7"] },
     ...["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({ "dependency-name": name })),
   ]);
   assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
