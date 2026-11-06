@@ -113,3 +113,13 @@ pub(super) async fn seed_linked_employee(
     .unwrap();
     employee_id
 }
+
+pub(super) async fn seed_record(pool: &PgPool, actor: UserId, employee: Uuid) {
+    let record = Uuid::new_v4();
+    sqlx::query("INSERT INTO employee_attendance_records (id,org_id,employee_id,actor_user_id,kind,state_after,idempotency_key) VALUES ($1,$2,$3,$4,'CLOCK_IN','CLOCKED_IN',$1::text)")
+        .bind(record).bind(OrgId::one().as_uuid()).bind(employee).bind(actor.as_uuid())
+        .execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO payroll_attendance_material_refs (org_id,attendance_record_id,employee_id,work_date,source_digest) VALUES ($1,$2,$3,CURRENT_DATE,$4)")
+        .bind(OrgId::one().as_uuid()).bind(record).bind(employee).bind("a".repeat(64))
+        .execute(pool).await.unwrap();
+}

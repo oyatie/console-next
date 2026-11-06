@@ -1,6 +1,7 @@
 // Korean source for `attendance.` ids: the 근태 page, its chain strip, first run and the shared enum words.
 // Rules: the header of ../ko.ts and packages/i18n/GUIDE.md; words per docs/design/copy-conventions.md.
 export const koAttendance = {
+  "attendance.refuse.missing_grant": "근태를 기록할 권한이 없어 처리하지 않았습니다. 권한 관리 담당자에게 해당 직원의 근태 기록 권한을 요청하십시오.",
   "attendance.title": "근태",
   "attendance.phase.operating": "운영 중 · 근무 일정은 적용 시작일부터 반영되고, 지난 일정은 이력에 남습니다",
   "attendance.phase.setup": "설정 단계 · 근무 일정은 운영 시작 전에도 지정할 수 있습니다",
