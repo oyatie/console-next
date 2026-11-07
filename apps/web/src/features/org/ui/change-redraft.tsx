@@ -58,7 +58,8 @@ export function ChangeRedraft({ d, title, memo, onClose }: { d: Detail; title: s
   };
   return (
     <Composer title={t("orgChange.redraft")} subtitle={title} dirty={date !== "" || reason !== reasonNote(d)} onClose={onClose}
-      pending={redraft.isPending} action={{ kind: "orgChange", mode: "request" }} onSubmit={() => press(true)} onSaveDraft={() => press(false)}
+      error={redraft.error} pending={redraft.isPending} action={{ kind: "orgChange", mode: "request" }} onSubmit={() => press(true)} onSaveDraft={() => press(false)}
+      notice={<CommandError error={refusalOf(redraft.error) === "date" ? undefined : redraft.error} />}
       consequence={t("orgChange.next.draft.consequence")}
     ><div className={css.form}>
       {memo && <blockquote className={css.quote}>{t("orgChange.rejected.memo", { memo })}</blockquote>}
@@ -79,7 +80,6 @@ export function ChangeRedraft({ d, title, memo, onClose }: { d: Detail; title: s
           {(p) => <TextArea {...p} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
       </div>
-      <CommandError error={refusalOf(redraft.error) === "date" ? undefined : redraft.error} />
     </div></Composer>
   );
 }

@@ -45,7 +45,7 @@ export function DeptNameComposer({ mode, place, onClose }: { mode: "create" | "r
     blocked={missing.length ? { reason: t("orgUnit.gov.missing", { list: missing.join(", ") }) } : undefined}
     onSaveDraft={missing.length === 0 ? () => submit.mutate(false) : undefined}
     onSubmit={() => { if (missing.length === 0) submit.mutate(true); }}
-    notice={<CommandError error={submit.error} />}
+    error={submit.error} notice={<CommandError error={submit.error} />}
     sections={{ approvals: gov.routed ? t("orgPropose.route") : null }}
     consequence={missing.length ? null : <>
       <span>{creating ? t("orgUnit.gov.addConsequence", { name: value, date: fmtDate(gov.g.date) }) : t("orgUnit.rename.consequence", { from: d.name, name: value, date: fmtDate(gov.g.date) })}</span>
