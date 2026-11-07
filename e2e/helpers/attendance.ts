@@ -2,15 +2,18 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { chooseRadio, go } from "../flows";
 import { sheet } from "../sheet";
 
-/** Setup tenants have a limited main menu; attendance journeys use the stable URL entry. */
-export async function openAttendance(admin: Page) {
-  await go(admin, "/attendance");
+export type AttendanceEntry = "direct" | "menu";
+
+/** Setup fixtures retain direct entry; the operating first-run journey must use the main menu. */
+export async function openAttendance(admin: Page, entry: AttendanceEntry = "direct") {
+  if (entry === "menu") await admin.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "근태", exact: true }).click();
+  else await go(admin, "/attendance");
   await expect(admin.getByRole("heading", { level: 1, name: "근태" })).toBeVisible();
 }
 
 /** 근태 › 근무 일정 (the month timesheet is the default tab, so the schedule is one tab away). */
-export async function openSchedule(admin: Page) {
-  await openAttendance(admin);
+export async function openSchedule(admin: Page, entry: AttendanceEntry = "direct") {
+  await openAttendance(admin, entry);
   await admin.getByRole("navigation", { name: "근태 화면" }).getByRole("link", { name: "근무 일정" }).click();
 }
 

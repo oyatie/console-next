@@ -2,6 +2,10 @@ import type { koAttendance } from "../ko/attendance";
 
 export const enAttendance: Partial<Record<keyof typeof koAttendance, string>> = {
   "attendance.refuse.missing_grant": "Attendance was not recorded because you lack attendance write permission. Ask an access administrator for permission covering the affected employees.",
+  "attendance.period.label": "Period navigation",
+  "attendance.period.thisMonth": "This month",
+  "attendance.period.thisWeek": "This week",
+  "attendance.period.thisYear": "This year",
   "attendance.title": "Attendance",
   "attendance.phase.operating": "Operating · schedules apply from their start date; past schedules stay in history",
   "attendance.phase.setup": "Setup · schedules can be assigned before operations start",
@@ -28,7 +32,6 @@ export const enAttendance: Partial<Record<keyof typeof koAttendance, string>> = 
   "attendance.exception.EARLY_LEAVE": "Left early",
   "attendance.exception.OPEN": "Needs review",
   "attendance.exception.RESOLVED": "Resolved",
-  "attendance.close.heading": "{month} month close",
   "attendance.close.empty": "No workplaces to close this month",
   "attendance.close.unavailable": "Workplace name unavailable",
   "attendance.close.closed": "Closed",

@@ -8,7 +8,7 @@ import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
 import { holidaysQuery } from "../api";
 import { dateText } from "../present";
-import { YearStepper } from "./year-stepper";
+import { PeriodStepper } from "./period-stepper";
 
 /**
  * public holiday (read-only, A2-holidays): the bundled reference data shipped with the release (the government-office holiday regulation §2 · §3
@@ -18,7 +18,7 @@ export function PublicHolidaysView() {
   const [year, setYear] = useState(Number(todayKst().slice(0, 4)));
   const q = useQuery({ ...holidaysQuery(year), placeholderData: keepPreviousData });
   return (
-    <Card title={t("attendanceHolidays.public.title")} meta={t("attendanceHolidays.public.meta")} flush tools={<YearStepper year={year} onYear={setYear} />}>
+    <Card title={t("attendanceHolidays.public.title")} meta={t("attendanceHolidays.public.meta")} flush tools={<PeriodStepper unit="year" value={String(year)} onChange={value => setYear(Number(value))} />}>
       <QueryState q={q} layout="list" empty={(d) => (d.loaded ? null : <EmptyState title={t("attendanceHolidays.public.notLoaded", { year })} reason={t("attendanceHolidays.public.notLoaded.reason")} />)}>
         {(d) => (
           <>

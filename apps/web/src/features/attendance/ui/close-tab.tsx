@@ -10,7 +10,6 @@ import { branchesQuery } from "../../../reference/org/api";
 import { Chip } from "../../../ui/chip";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { closesQuery } from "../api";
-import { monthText } from "../present";
 import { ReadPeriod } from "./read-period";
 
 const route = getRouteApi("/app/attendance");
@@ -22,7 +21,6 @@ export function CloseTab() {
     const data = board.data!, places = branches.data!;
     const hasLocks = data.items.some(row => row.close?.period_lock_id);
     return <>
-      <h2>{t("attendance.close.heading", { month: monthText(data.month) })}</h2>
       <LongTable label={t("attendance.tab.close")} rows={data.items} rowId={row => row.branch_scope} hasMore={false} onLoadMore={() => {}}
         empty={t("attendance.close.empty")} columns={[
           // The close API serializes a null branch_id as "org"; every other scope is a workplace id.

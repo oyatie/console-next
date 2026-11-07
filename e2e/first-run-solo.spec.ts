@@ -215,7 +215,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
 
   await test.step("J8 Record attendance with explicit acknowledgement", async () => {
     // A lone administrator records unusual attendance with evidence and an explicit acknowledgement.
-    await officeSchedule(admin);
+    await officeSchedule(admin, "menu");
     const date = kstDate();
     const grid = await openMonth(admin, date.slice(0, 7));
     await cellOf(admin, "김직원", date).click();
