@@ -259,13 +259,16 @@ jobs:
           REGISTRY_TOKEN: ${{ github.token }}
         run: |
           printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
-          cosign verify-attestation --type=spdxjson --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+          cosign verify-attestation --type=https://spdx.dev/Document/v2.3 --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
             --certificate-identity="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/platform.yml@refs/heads/dev" \
             "${IMAGE}" > "${RUNNER_TEMP}/spdx-attestation.json"
-          jq -es --arg digest "${IMAGE##*@sha256:}" \
-            '[.[] | (if type == "array" then .[] else . end) | .payload | @base64d | fromjson | select(any(.subject[]; .digest.sha256 == $digest)) | .predicate] | if length == 1 then .[0] else error("expected one verified image SBOM") end' \
-            "${RUNNER_TEMP}/spdx-attestation.json" > "${RUNNER_TEMP}/image-sbom.json"
-          grype "sbom:${RUNNER_TEMP}/image-sbom.json" --only-fixed --fail-on high
+          jq -ecs --arg digest "${IMAGE##*@sha256:}" \
+            '[.[] | (if type == "array" then .[] else . end) | .payload | @base64d | fromjson | select(any(.subject[]; .digest.sha256 == $digest)) | .predicate] | if length > 0 then .[] else error("expected a verified image SBOM") end' \
+            "${RUNNER_TEMP}/spdx-attestation.json" > "${RUNNER_TEMP}/image-sboms.jsonl"
+          while IFS= read -r sbom; do
+            printf '%s\n' "${sbom}" > "${RUNNER_TEMP}/image-sbom.json"
+            grype "sbom:${RUNNER_TEMP}/image-sbom.json" --only-fixed --fail-on high
+          done < "${RUNNER_TEMP}/image-sboms.jsonl"
 
   negative-signer:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
