@@ -58,6 +58,10 @@ updates:
       - dependency-name: "apalis"
       - dependency-name: "apalis-postgres"
       - dependency-name: "apalis-sql"
+      # 2026-11-07: 0.6 replaces the crypto backend and conflicts with our 0.5 proto types.
+      # Revisit after a coordinated proto/API migration preserves stored passkeys and passes Chromium auth E2E.
+      - dependency-name: "webauthn-rs"
+        versions: ["0.6.*"]
     groups:
       cargo:
         patterns: ["*"]

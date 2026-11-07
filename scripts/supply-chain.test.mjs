@@ -188,7 +188,7 @@ test("Dependabot cooldown day values never fall below seven days", () => {
   }
 });
 
-test("Dependabot defers incompatible cipher and Apalis updates, leaving desktop patches eligible", () => {
+test("Dependabot defers incompatible Cargo updates, leaving desktop patches eligible", () => {
   const source = read(".github/dependabot.yml");
   const config = yaml.load(source);
   const cargo = config.updates.find((u) => u["package-ecosystem"] === "cargo");
@@ -196,6 +196,7 @@ test("Dependabot defers incompatible cipher and Apalis updates, leaving desktop 
     { "dependency-name": "chacha20poly1305", versions: [">=0.11"] },
     { "dependency-name": "windows-registry", versions: [">=0.7"] },
     ...["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({ "dependency-name": name })),
+    { "dependency-name": "webauthn-rs", versions: ["0.6.*"] },
   ]);
   assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
 });
