@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { fmtDateTime, fmtNumber } from "@console/i18n/format";
+import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
 import { announce } from "../../../lib/react/announce";
 import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
@@ -21,7 +21,7 @@ import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { AuditTabs } from "../../../reference/audit/ui/audit-tabs";
 import { accessLogPages, type AccessLogEvent, type AccessLogFlag } from "../api";
-import { AccessLogFiltersForm } from "./access-log-filters";
+import { AccessLogFilterSheet } from "./access-log-filter-sheet";
 
 const route = getRouteApi("/app/audit/access-log");
 const flagText = (flag: AccessLogFlag) => t(`accessLog.flag.${flag}`);
@@ -52,6 +52,13 @@ export function AccessLogPage() {
   const all = search.view === "all";
   const q = useInfiniteQuery({ ...accessLogPages(search.period, !all, searchQuery || undefined, filters), placeholderData: keepPreviousData });
   const first = q.data?.pages[0];
+  const appliedFilters = [
+    { key: "actor", label: t("accessLog.actor"), value: actor && (first?.filter_options?.actors.find(choice => choice.id === actor)?.label ?? actor) },
+    { key: "action", label: t("accessLog.action"), value: action && codeText(`accessLog.action.${action}`, action) },
+    { key: "target_type", label: t("accessLog.targetType"), value: target_type && codeText(`accessLog.target.${target_type}`, target_type) },
+    { key: "from", label: t("accessLog.from"), value: from && fmtDate(from) },
+    { key: "to", label: t("accessLog.to"), value: to && fmtDate(to) },
+  ].filter(item => item.value);
   const count = all ? first?.totals.events : first?.totals.flagged;
   useEffect(() => {
     if (filtered && q.isSuccess && !q.isPlaceholderData && !q.isFetching && count !== undefined) announce(t("accessLog.searchCount", { count }));
@@ -67,15 +74,14 @@ export function AccessLogPage() {
         <SearchField label={t("accessLog.search")} value={searchText} onChange={setSearchText}
           onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} />
         <div className="row wrap">
-          <Button disabled={!first?.filter_options} onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
+          <Button onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
           {filtered && <Button onClick={clear}>{t("accessLog.clearSearch")}</Button>}
         </div>
+        {!!appliedFilters.length && <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly />}
       </div>}
-    sheet={filterOpen && first?.filter_options ? <Sheet open title={t("accessLog.filters")} onClose={() => setFilterOpen(false)} consequence={null}
-      actions={null}>
-      <AccessLogFiltersForm key={JSON.stringify({ ...filters, period: search.period })} value={filters} options={first.filter_options} period={first.period}
-        onApply={next => { setFilterOpen(false); void navigate({ search: s => ({ period: s.period, view: s.view, search: s.search, ...next }), replace: true, resetScroll: false }); }} />
-    </Sheet> : selected && <Sheet open title={selected.actor_name} onClose={() => setSelected(null)} consequence={null}
+    sheet={filterOpen ? <AccessLogFilterSheet key={JSON.stringify({ ...filters, period: search.period })} period={search.period} value={filters} onClose={() => setFilterOpen(false)}
+      onApply={next => { setFilterOpen(false); void navigate({ search: s => ({ period: s.period, view: s.view, search: s.search, ...next }), replace: true, resetScroll: false }); }} />
+    : selected && <Sheet open title={selected.actor_name} onClose={() => setSelected(null)} consequence={null}
       actions={<Button onClick={() => setSelected(null)}>{t("uiSheet.close")}</Button>}>
       <KeyValue readOnly items={[
         { key: "action", label: t("accessLog.action"), value: codeText(`accessLog.action.${selected.action}`, selected.action) },
