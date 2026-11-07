@@ -30,7 +30,6 @@ jobs:
     outputs:
       run-id: ${{ fromJSON(steps.proof.outputs.result || '{}').id }}
       tools: ${{ fromJSON(steps.proof.outputs.result || '{}').tools }}
-      rebuild-backend: ${{ steps.backend.outputs.rebuild-backend || 'false' }}
       backend: ${{ steps.paths.outputs.backend || steps.import.outputs.backend }}
       web: ${{ steps.paths.outputs.web || steps.import.outputs.web }}
     steps:
@@ -84,11 +83,6 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
           }
           JS
-
-      - id: backend
-        if: github.event_name == 'push' && steps.import.outputs.backend == 'false'
-        env: {GH_TOKEN: '${{ github.token }}'}
-        run: node scripts/ci-home-backend.mjs --rebuild-if-stale
 
   commits:
     if: github.event_name != 'push'
@@ -411,7 +405,7 @@ jobs:
 
   backend-release:
     needs: [affected]
-    if: ${{ !cancelled() && ((github.event_name != 'push' && needs.affected.outputs.backend == 'true') || (github.event_name == 'push' && needs.affected.outputs.rebuild-backend == 'true')) }}
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions: {contents: read}
@@ -428,7 +422,7 @@ jobs:
         with:
           name: d10-backend
           path: backend/target/release/console-app
-          retention-days: ${{ github.event_name == 'push' && 90 || 1 }}
+          retention-days: 1
           if-no-files-found: error
       - *cache-collect
       - *cache-upload
@@ -509,17 +503,16 @@ jobs:
 
   home:
     needs: [affected, backend-release]
-    if: ${{ !cancelled() && github.event_name != 'push' && needs.affected.result == 'success' && (needs.affected.outputs.web == 'true' || needs.affected.outputs.backend == 'true') && (needs['backend-release'].result == 'success' || (needs.affected.outputs.backend == 'false' && needs['backend-release'].result == 'skipped')) }}
+    if: ${{ !cancelled() && github.event_name != 'push' && needs.affected.result == 'success' && (needs.affected.outputs.web == 'true' || needs.affected.outputs.backend == 'true') && needs['backend-release'].result == 'success' }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     permissions:
       contents: read
-      actions: read
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: {persist-credentials: false, fetch-depth: 0}
+        with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
       - name: Served Home probe prerequisites
@@ -527,18 +520,10 @@ jobs:
           npm ci --no-audit --no-fund
           npx playwright install --with-deps --only-shell chromium
           npm run build
-      - name: Find latest successful trusted dev backend
-        id: backend
-        if: needs['backend-release'].result == 'skipped'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/ci-home-backend.mjs
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: d10-backend
           path: .cache/home-backend
-          run-id: ${{ steps.backend.outputs.run-id || github.run_id }}
-          github-token: ${{ github.token }}
       - run: chmod +x .cache/home-backend/console-app
       - name: Served 2,000-person Home budget
         env:
@@ -722,8 +707,8 @@ jobs:
           if-no-files-found: error
 
   dev-artifacts:
-    if: github.event_name == 'push' && !cancelled() && needs.affected.result == 'success' && (needs['backend-release'].result == 'success' || needs['backend-release'].result == 'skipped')
-    needs: [affected, backend-release]
+    if: github.event_name == 'push'
+    needs: [affected]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions: {contents: read, actions: read}
@@ -733,20 +718,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version}
       - *playwright-version
-      - id: backend
-        if: needs.affected.outputs.backend == 'false' && needs.affected.outputs.rebuild-backend == 'false'
-        env: {GH_TOKEN: '${{ github.token }}'}
-        run: node scripts/ci-home-backend.mjs
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        if: needs.affected.outputs.rebuild-backend != 'true'
-        with:
-          name: d10-backend
-          path: .cache/dev-backend
-          run-id: ${{ steps.backend.outputs.run-id || needs.affected.outputs.run-id }}
-          github-token: ${{ github.token }}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: needs.affected.outputs.rebuild-backend != 'true'
-        with: {name: d10-backend, path: .cache/dev-backend/console-app, retention-days: 90, if-no-files-found: error}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: ${{ needs.affected.outputs.tools }}
@@ -800,7 +771,7 @@ jobs:
             else if (name === 'backend-cache') skip = !push || !backend;
             else if (name === 'release-evidence') skip = !push || !backend || !web;
             else if (name === 'backend-gates') skip = !push && !backend;
-            else if (name === 'backend-release') skip = push ? jobs.affected.outputs['rebuild-backend'] !== 'true' : !backend;
+            else if (name === 'backend-release') skip ||= !backend && !web;
             else if (backendJobs.includes(name)) skip ||= !backend;
             else if (['web', 'states-plan', 'states'].includes(name)) skip ||= !web;
             else if (name === 'home') skip ||= !web && !backend;

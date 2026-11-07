@@ -43,7 +43,7 @@ test("Home CI runs the served scale probe with the selected release artifact", (
   assert.match(home.if, /!cancelled\(\)/);
   assert.deepEqual(home.needs, ["affected", "backend-release"]);
   assert.equal(home["runs-on"], jobs["backend-release"]["runs-on"]);
-  assert.deepEqual(home.permissions, { contents: "read", actions: "read" });
+  assert.deepEqual(home.permissions, { contents: "read" });
   assert.ok(home.steps[0].uses.startsWith("step-security/harden-runner@"));
   const build = jobs["backend-release"].steps.find(s => s.name === "Release backend for Home probe");
   assert.match(build.run, /cargo build .*--release.*e2e-test-support/);
@@ -51,7 +51,7 @@ test("Home CI runs the served scale probe with the selected release artifact", (
   assert.equal(upload.if, undefined, "candidate binary must be available on PRs and merge groups too");
   const download = home.steps.find(s => s.uses?.startsWith("actions/download-artifact@"));
   assert.equal(download.with.name, upload.with.name);
-  assert.equal(download.with["run-id"], "${{ steps.backend.outputs.run-id || github.run_id }}");
+  assert.equal(download.with["run-id"], undefined);
   const probe = home.steps.find(s => s.name === "Served 2,000-person Home budget");
   assert.equal(probe.if, undefined);
   assert.match(probe.run, /home-inbox\.spec\.ts.*--project=parallel/);
