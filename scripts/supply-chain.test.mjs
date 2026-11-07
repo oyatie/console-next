@@ -200,13 +200,14 @@ test("Dependabot defers incompatible cipher and Apalis updates, leaving desktop 
   assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
 });
 
-test("Dependabot keeps Node declarations on the runtime major and defers native TypeScript", () => {
+test("Dependabot keeps runtime constraints and defers incompatible npm updates", () => {
   const config = yaml.load(read(".github/dependabot.yml"));
   const npm = config.updates.find((u) => u["package-ecosystem"] === "npm");
   const nodeMajor = Number(read(".node-version").trim());
   assert.deepEqual(npm.ignore, [
     { "dependency-name": "@types/node", versions: [`>=${nodeMajor + 1}`] },
     { "dependency-name": "typescript", "update-types": ["version-update:semver-major"] },
+    { "dependency-name": "stylelint", versions: ["18.x"] },
   ]);
   assert.match(read(".github/dependabot.yml"), /#.*openapi-typescript.*JavaScript compiler API/);
   const manifest = JSON.parse(read("package.json"));

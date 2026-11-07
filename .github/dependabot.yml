@@ -27,6 +27,9 @@ updates:
       # openapi-typescript requires the JavaScript compiler API missing from native TypeScript.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # 2026-11-07: strict-value 1.12.1 supports Stylelint 16–17; revisit when its peer range supports 18.
+      - dependency-name: "stylelint"
+        versions: ["18.x"]
     groups:
       npm:
         patterns: ["*"]
