@@ -382,7 +382,7 @@ console-platform-test-support = { path = "crates/platform/test-support" }
 # is TRUE in production builds. Each fix was correct and each left a sibling
 # spelling live. Parsing Rust with the parser rustc's own ecosystem uses ends
 # the enumeration instead of extending it.
-syn = { version = "2.0.117", default-features = false, features = ["full", "parsing", "printing", "clone-impls", "visit"] }
+syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "printing", "clone-impls", "visit"] }
 
 # Version verified live against crates.io 2026-10-06: proptest 1.11.0 (MSRV 1.85).
 # Dev-dependency only: property tests for the kr identifiers, the import cell
