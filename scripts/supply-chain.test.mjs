@@ -196,8 +196,7 @@ test("Dependabot defers incompatible Cargo updates, leaving desktop patches elig
     { "dependency-name": "chacha20poly1305", versions: [">=0.11"] },
     { "dependency-name": "windows-registry", versions: [">=0.7"] },
     ...["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({ "dependency-name": name })),
-    { "dependency-name": "webauthn-rs", versions: ["0.6.*"] },
-    { "dependency-name": "sqlparser", versions: ["0.63.*"] },
+    ...["webauthn-rs", "webauthn-rs-proto", "webauthn-authenticator-rs"].map((name) => ({ "dependency-name": name, versions: ["0.6.*"] })),
   ]);
   assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
 });
@@ -211,6 +210,7 @@ test("Dependabot keeps runtime constraints and defers incompatible npm updates",
     { "dependency-name": "typescript", "update-types": ["version-update:semver-major"] },
     { "dependency-name": "stylelint", versions: ["18.x"] },
     { "dependency-name": "oxlint", versions: ["1.91.x"] },
+    { "dependency-name": "@tanstack/react-query", versions: ["5.105.3"] },
   ]);
   assert.match(read(".github/dependabot.yml"), /#.*openapi-typescript.*JavaScript compiler API/);
   const manifest = JSON.parse(read("package.json"));

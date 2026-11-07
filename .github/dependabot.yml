@@ -33,6 +33,10 @@ updates:
       # 2026-11-07: ten React Compiler lint failures; revisit after effect-cancellation lint compatibility is proven.
       - dependency-name: "oxlint"
         versions: ["1.91.x"]
+      # 2026-11-07: 5.105.3 loses the /people go-live receipt in phase-band E2E.
+      # Revisit after receipt rendering and configured expiry pass in Chromium and Firefox.
+      - dependency-name: "@tanstack/react-query"
+        versions: ["5.105.3"]
     groups:
       npm:
         patterns: ["*"]
@@ -62,10 +66,10 @@ updates:
       # Revisit after a coordinated proto/API migration preserves stored passkeys and passes Chromium auth E2E.
       - dependency-name: "webauthn-rs"
         versions: ["0.6.*"]
-      # 2026-11-07: CI is red on the unrelated server-picker close test; no parser incompatibility found.
-      # Revisit once picker close is deterministic and this update has green merge-result CI.
-      - dependency-name: "sqlparser"
-        versions: ["0.63.*"]
+      - dependency-name: "webauthn-rs-proto"
+        versions: ["0.6.*"]
+      - dependency-name: "webauthn-authenticator-rs"
+        versions: ["0.6.*"]
     groups:
       cargo:
         patterns: ["*"]
