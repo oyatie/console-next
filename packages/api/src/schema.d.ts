@@ -53455,6 +53455,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description 409 employee_exited_read_only when the employee has exited, including after the draft was read. No contract wage is appended; existing wages remain unchanged. Request a governed correction of the personnel record. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
         };
     };

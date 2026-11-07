@@ -21,7 +21,7 @@ export async function mockEmployeePay(page: Page, state: string, held: Promise<v
     if (page.isClosed()) return;
     if (state === "failed" || state === "refused") return route.fulfill({ status: state === "failed" ? 500 : 403, json: failure(state === "failed" ? "internal_error" : "forbidden") });
     await route.fulfill({ json: { ...draft, contract: state === "empty" ? null : draft.contract,
-      blockers: [...draft.blockers, ...(state === "below" ? ["최저임금 미달: backend sentence must not render"] : [])],
+      blockers: [...draft.blockers, ...(state === "below" ? ["최저임금 미달: backend sentence must not render"] : state === "incomparable" ? ["최저임금 비교 불가: 월 소정근로시간이 근로계약에 없다"] : [])],
       minimum_wage_check: { ...draft.minimum_wage_check!, effective_hourly_won: state === "incomparable" ? null : state === "below" ? 12222 : draft.minimum_wage_check!.effective_hourly_won, monthly_standard_hours: state === "incomparable" ? null : draft.minimum_wage_check!.monthly_standard_hours, passes: state === "below" ? false : state === "incomparable" ? null : true, instrument: { ...instrument, url: state === "held" ? "" : instrument.url } },
       deductions: state === "empty" ? [] : state === "held" ? draft.deductions!.map(row => ({ ...row, instrument: { ...instrument, url: "" }, share_instrument: { ...instrument, url: "" } })) : draft.deductions } });
   });
