@@ -197,6 +197,7 @@ test("Dependabot defers incompatible Cargo updates, leaving desktop patches elig
     { "dependency-name": "windows-registry", versions: [">=0.7"] },
     ...["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({ "dependency-name": name })),
     { "dependency-name": "webauthn-rs", versions: ["0.6.*"] },
+    { "dependency-name": "sqlparser", versions: ["0.63.*"] },
   ]);
   assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
 });

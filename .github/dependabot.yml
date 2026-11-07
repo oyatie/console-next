@@ -62,6 +62,10 @@ updates:
       # Revisit after a coordinated proto/API migration preserves stored passkeys and passes Chromium auth E2E.
       - dependency-name: "webauthn-rs"
         versions: ["0.6.*"]
+      # 2026-11-07: CI is red on the unrelated server-picker close test; no parser incompatibility found.
+      # Revisit once picker close is deterministic and this update has green merge-result CI.
+      - dependency-name: "sqlparser"
+        versions: ["0.63.*"]
     groups:
       cargo:
         patterns: ["*"]
