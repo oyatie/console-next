@@ -58,9 +58,8 @@ pub(crate) async fn list_visible_directory_people(
     .map_err(RestError::from_store)?;
     access_log::record_account_page_read(state.pool(), &principal, "directory.list_read", &page)
         .await?;
-    Ok(page
-        .items
+    page.items
         .into_iter()
-        .map(VisibleDirectoryPerson::from)
-        .collect())
+        .map(VisibleDirectoryPerson::try_from)
+        .collect()
 }

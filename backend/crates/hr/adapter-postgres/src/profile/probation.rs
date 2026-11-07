@@ -53,7 +53,7 @@ impl HrService {
                     &request.expected,
                     &REQUIRED_FACTS,
                     &doc,
-                    &provenance(&current),
+                    &provenance(&current)?,
                     |_| true,
                 )
                 .map_err(|refusal| refusal_error(&refusal))?;

@@ -36,6 +36,10 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
     await expect(sheet).toBeHidden();
   }
   const recorded = (await read()).emergency_contacts!;
+  for (const contact of recorded) {
+    expect(contact.recorded_at).toMatch(/Z$/);
+    expect(Number.isFinite(Date.parse(contact.recorded_at))).toBe(true);
+  }
   const contacts = admin.getByRole("list", { name: "비상연락처", exact: true });
   await expect(contacts).toContainText("응급 상황 대비 (검토 전)");
   await expect(contacts).toContainText(recorded[0]!.recorded_by_name);
