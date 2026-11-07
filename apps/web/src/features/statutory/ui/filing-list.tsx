@@ -1,29 +1,27 @@
 import { buttonClass } from "../../../ui/button/button-class";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { readGroup, type ReadState } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { CommandError } from "../../../lib/react/command-error";
 import { useCommand } from "../../../lib/react/command";
-import { Field, TextInput } from "../../../ui/field/field";
 import { Button, ToggleButton } from "../../../ui/button/button";
-import { RecordRows } from "../../../ui/record/rows";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { Chip } from "../../../ui/chip";
-import { EmptyState } from "../../../ui/empty-state";
 import { FILING_READS, filingsQuery, recordFiling, type FilingTask } from "../../../reference/statutory/api";
-import { FilingWindow } from "./filing-deadline";
+import { chunk } from "../../../lib/chunk-guard";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { FilingRequest } from "./filing-request";
 import { FilingComplete } from "./filing-complete";
 import { filingLabel } from "../present";
-import s from "./statutory.module.css";
+
+const FilingTable = lazy(() => chunk(import("./filing-table")).then(m => ({ default: m.FilingTable })));
 
 export function FilingList({ site, event, filing, workplaces }: { site?: string; event?: string; filing?: string; workplaces: ReadState }) {
   const [state, setState] = useState("PENDING");
   const [search, setSearch] = useState("");
+  const [findSlot, setFindSlot] = useState<HTMLDivElement | null>(null);
   const [after, setAfter] = useState<string>();
   const [selected, setSelected] = useState<FilingTask>();
   const [request, setRequest] = useState<FilingTask>();
@@ -50,31 +48,14 @@ export function FilingList({ site, event, filing, workplaces }: { site?: string;
       {event && <Link to="/statutory" className={buttonClass()}>{t("statutory.all")}</Link>}
       <ToggleButton pressed={state === "PENDING"} onClick={() => { setState("PENDING"); setAfter(undefined); }}>{t("statutory.pending")}</ToggleButton>
       <ToggleButton pressed={state === "DONE"} onClick={() => { setState("DONE"); setAfter(undefined); }}>{t("statutory.done")}</ToggleButton>
-      <Field label={t("statutory.search")} required={null}>{(p) => <TextInput {...p} value={search} onChange={(e) => { setSearch(e.target.value); setAfter(undefined); }} />}</Field>
+      <div ref={setFindSlot} />
     </div>
     <QueryState q={readGroup([workplaces, tasks])} layout="list">{() => {
       const page = tasks.data!;
       return <>
-      <Chip>{t("statutory.count", { count: page.total })}</Chip>
-      {page.items.length ? (
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to scroll this wide table.
-        <div className={s.scroll} tabIndex={0} role="region" aria-label={t("statutory.insurance")}><RecordRows label={t("statutory.insurance")} rows={page.items} rowId={(r) => `${r.event_id}:${r.kind}:${r.insurer}`}
-        columns={[
-          { header: t("statutory.employee"), cell: (r) => <Link to="/people/$id" params={{ id: r.employee_id }}>{r.name}</Link> },
-          { header: t("statutory.employeeNumber"), cell: (r) => r.employee_number },
-          { header: t("statutory.workplace"), cell: (r) => r.workplace_name },
-          { header: t("statutory.event"), cell: (r) => <>{filingLabel(r.insurer)} · {filingLabel(r.kind)}</> },
-          { header: t("statutory.date"), cell: (r) => fmtDate(r.effective_date) },
-          { header: t("statutory.deadline"), cell: (r) => <FilingWindow task={r} /> },
-          { header: t("statutory.evidence"), cell: (r) => r.completed_on ? <dl className="facts">
-            <dt>{t("statutory.completedOn")}</dt><dd>{fmtDate(r.completed_on)}</dd>
-            {r.receipt_number && <><dt>{t("statutory.receiptNumber")}</dt><dd>{r.receipt_number}</dd></>}
-            {r.loss_code && <><dt>{t("statutory.lossCode")}</dt><dd>{r.loss_code} · {r.loss_options.find((o) => o.code === r.loss_code)?.label}</dd></>}
-            {r.detail && <><dt>{t("statutory.detail")}</dt><dd>{r.detail}</dd></>}
-          </dl> : r.state === "LEGAL_REVIEW" ? t("lifecycle.trail.unverified") : r.state === "NOT_APPLICABLE" ? <><Chip>{t("statutory.notApplicable")}</Chip> {r.not_applicable_reason && filingLabel(r.not_applicable_reason)}{r.detail && <dl className="facts"><dt>{t("statutory.reasonEvidence")}</dt><dd>{r.detail}</dd></dl>}</> : r.state === "COVERED" ? t("statutory.covered") : t("statutory.pending") },
-          { header: t("statutory.action"), end: true, cell: (r) => <div className="row">{r.lifecycle_case_id && <Link to="/people/$id" params={{ id: r.employee_id }} search={{ act: `case:${r.lifecycle_case_id}` }} hash={`case-${r.lifecycle_case_id}`}>{t("lifecycle.trail.openCase")}</Link>}{r.state !== "LEGAL_REVIEW" && <>{r.record_action === "COMPLETE" || r.record_action === "NOT_APPLICABLE" ? <Button onClick={() => undo.mutate(r)} disabled={undo.isPending}>{t("statutory.undo")}</Button> : <Button onClick={() => setSelected(r)}>{t("statutory.record")}</Button>}
-            {!r.is_request && ["ACQUIRE", "LOSE"].includes(r.kind) && r.insurer === "EI" && <Button onClick={() => setRequest(r)}>{t("statutory.futureRequest")}</Button>}</>}</div> },
-        ]} /></div>) : <EmptyState title={t("statutory.empty")} reason={t("statutory.emptyReason")} actions={<Link to="/people" className={buttonClass()}>{t("statutory.openPeople")}</Link>} />}
+      <Suspense fallback={<ReadSkeleton layout="list" />}><FilingTable rows={page.items} total={page.total} search={search} findSlot={findSlot}
+        onFind={value => { setSearch(value.trim()); setAfter(undefined); }} onRecord={setSelected} onRequest={setRequest}
+        onUndo={task => undo.mutate(task)} undoing={undo.isPending} /></Suspense>
       <div className="row">{after && <Button onClick={() => setAfter(undefined)}>{t("common.back")}</Button>}{page.next && <Button onClick={() => setAfter(page.next!)}>{t("statutory.more")}</Button>}</div>
     </>; }}</QueryState>
     <CommandError error={undo.error} recover={false}>{undo.isChecking && <Button onClick={() => undo.check()}>{t("common.retry")}</Button>}</CommandError>
