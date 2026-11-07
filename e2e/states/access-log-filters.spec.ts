@@ -31,6 +31,66 @@ async function filtersFixture(page: Page) {
   return { ...shell, requests };
 }
 
+for (const query of ["", "&view=all&from=2026-10-05", "&search=김민수"]) {
+  test(`access-log reuses displayed filter choices for ${query || "default view"} @ui-state`, async ({ page }) => {
+    const fixture = await filtersFixture(page);
+    try {
+      await page.goto(`/audit/access-log?period=2026-10${query}`);
+      await expect(page.getByRole("grid")).toBeVisible();
+      expect(fixture.requests).toHaveLength(1);
+      const reads = fixture.requests.length;
+      await page.getByRole("button", { name: "필터 선택", exact: true }).click();
+      await expect(page.getByRole("combobox", { name: "접속자", exact: true })).toHaveValue("");
+      await page.getByRole("button", { name: "닫기", exact: true }).click();
+      expect(fixture.requests).toHaveLength(reads);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); }
+  });
+}
+
+test("access-log date-only apply clears unavailable choices shown as All @ui-state", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+  const fixture = await filtersFixture(page);
+  await page.route(url => url.pathname === "/api/v1/access/access-log" && ["actor", "action", "target_type"].some(key => url.searchParams.get(key) === "unavailable"),
+    route => route.fulfill({ status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } } }));
+  try {
+    await page.goto("/audit/access-log?period=2026-10&actor=unavailable&action=unavailable&target_type=unavailable");
+    await expect(page.getByText("필터의 선택 항목과 기간을 확인한 뒤 다시 조회하십시오.", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "필터 선택", exact: true }).click();
+    for (const name of ["접속자", "동작", "대상 종류"]) await expect(page.getByRole("combobox", { name, exact: true })).toHaveValue("");
+    await page.getByLabel("시작일", { exact: true }).fill("2026-10-05");
+    await fits(page, "audit date-only recovery");
+    await expectAxe(page, "audit date-only recovery");
+    await page.screenshot({ path: testInfo.outputPath("date-only-recovery.png"), fullPage: true });
+    await page.getByRole("button", { name: "필터 적용", exact: true }).click();
+    await expect(page.getByRole("grid")).toBeVisible();
+    expect(Object.fromEntries(fixture.requests.at(-1)!)).toEqual({ period: "2026-10", flagged: "true", from: "2026-10-05", limit: "200" });
+    const summary = page.getByLabel("적용한 필터", { exact: true });
+    await expect(summary.locator("dt")).toHaveText(["시작일"]);
+    expect(new URL(page.url()).searchParams.has("actor")).toBe(false);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fixture.release(); }
+});
+
+test("access-log refusal offers recovery without retry and resolves actor names @ui-state", async ({ page }) => {
+  const fixture = await filtersFixture(page);
+  await page.route(url => url.pathname === "/api/v1/access/access-log" && url.searchParams.get("action") === "unavailable",
+    route => route.fulfill({ status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } } }));
+  try {
+    await page.goto(`/audit/access-log?actor=${id(101)}&action=unavailable`);
+    await expect(page.getByRole("heading", { name: "필터를 확인하십시오", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "다시 불러오기", exact: true })).toHaveCount(0);
+    await expect(page.getByLabel("적용한 필터", { exact: true })).toContainText("김민수");
+    await expect(page.getByLabel("적용한 필터", { exact: true })).not.toContainText(id(101));
+    await expect(page.getByLabel("점검 기간", { exact: true })).toHaveValue("2026-10");
+    expect(fixture.requests.map(params => Object.fromEntries(params))).toEqual([{ flagged: "false", limit: "1" }]);
+    await page.getByRole("button", { name: "검색 초기화", exact: true }).click();
+    await expect(page.getByRole("grid")).toBeVisible();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fixture.release(); }
+});
+
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`access-log structured Korean filters at ${width}px in ${theme} @ui-state`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
@@ -153,6 +213,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await page.goto("/audit/access-log?period=2026-10&view=all&actor=unavailable&action=employee.export&target_type=employee&from=2026-10-05&to=2026-10-20");
       await expect(page.getByText("필터의 선택 항목과 기간을 확인한 뒤 다시 조회하십시오.", { exact: true })).toBeVisible();
       const summary = page.getByLabel("적용한 필터", { exact: true });
+      await expect(summary).toContainText("선택할 수 없는 접속자");
+      await expect(summary).not.toContainText("unavailable");
       await expect(summary).toContainText("직원 명부 내보내기");
       await expect(summary).toContainText("직원");
       await expect(summary).toContainText("2026. 10. 05.");

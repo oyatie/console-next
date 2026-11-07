@@ -64,6 +64,8 @@ export const enAccessLog: Record<keyof typeof koAccessLog, string> = {
   "accessLog.chooseFilters": "Choose filters",
   "accessLog.filters": "Access-log filters",
   "accessLog.appliedFilters": "Applied filters",
+  "accessLog.filterInvalid": "Check the filters",
+  "accessLog.actorUnavailable": "Unavailable actor",
   "accessLog.filtersUnavailable": "Filters are unavailable",
   "accessLog.filtersUnavailableReason": "Use actor or IP address search to find records.",
   "accessLog.targetType": "Target kind",
