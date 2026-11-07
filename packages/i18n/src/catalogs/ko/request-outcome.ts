@@ -6,6 +6,7 @@ export const koRequestOutcome = {
   "requestOutcome.code.second_person_required": "요청자와 같은 사람은 결정할 수 없습니다. 해당 업무의 결정 권한이 있는 다른 사람에게 요청하십시오.",
 
   "requestOutcome.lookup": "요청 번호 또는 요청 키",
+  "requestOutcome.search": "법인·사업장·부서·직원 또는 요청 번호 검색",
   "requestOutcome.find": "결과 확인",
   "requestOutcome.empty": "요청 번호로 처리 결과를 확인하십시오.",
   "requestOutcome.masked": "현재 조회 권한이 없어 입력과 결과가 가려졌습니다.",
