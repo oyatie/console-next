@@ -28,6 +28,7 @@ async function searchFixture(page: Page) {
       period: { key: "2026-10", from: "2026-10-01", to: "2026-11-01", time_zone: "Asia/Seoul", closed: true },
       totals: { events: items.length, flagged: items.length, by_flag: { download: items.length } },
       items, next_cursor: null,
+      filter_options: { actors: [], actions: [], target_types: [] },
     } });
   });
   return { ...fixture, requests };
