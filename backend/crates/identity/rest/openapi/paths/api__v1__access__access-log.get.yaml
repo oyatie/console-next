@@ -2,10 +2,38 @@
 tags: [access]
 operationId: listAccessLog
 summary: Tenant access records with monthly flag totals
-description: Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
+description: Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search and all structured filters. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
 security:
 - bearerAuth: []
 parameters:
+- name: actor
+  in: query
+  description: Exact actor ID from filter_options. All structured filters combine with AND and affect items and totals, preserving full-month flag classification.
+  schema:
+    type: string
+    format: uuid
+- name: action
+  in: query
+  description: Exact action code from filter_options.
+  schema:
+    type: string
+- name: target_type
+  in: query
+  description: Exact target type code from filter_options.
+  schema:
+    type: string
+- name: from
+  in: query
+  description: Inclusive created_at start day in the review time zone, within the selected month.
+  schema:
+    type: string
+    format: date
+- name: to
+  in: query
+  description: Inclusive created_at end day in the review time zone, within the selected month and on or after from.
+  schema:
+    type: string
+    format: date
 - name: search
   in: query
   description: Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Rejects control characters and more than 200 Unicode characters before trimming surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid.
@@ -55,7 +83,7 @@ responses:
         schema:
           $ref: '#/components/schemas/ErrorBody'
   '422':
-    description: period_invalid, limit_out_of_range or cursor_invalid.
+    description: period_invalid, limit_out_of_range, cursor_invalid or filter_invalid (unavailable option, malformed/out-of-month/reversed date).
     content:
       application/json:
         schema:

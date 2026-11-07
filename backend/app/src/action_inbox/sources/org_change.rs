@@ -13,6 +13,7 @@ use console_platform_db::with_org_conn;
 use console_settings_adapter_postgres::approval_routes_in_tx;
 use console_settings_domain::SettingKey;
 use sqlx::PgPool;
+use std::collections::HashMap;
 use time::{Date, OffsetDateTime, PrimitiveDateTime, Time, macros::offset};
 use uuid::Uuid;
 
@@ -93,15 +94,16 @@ pub(crate) async fn page(
         console_action_inbox_application::InboxFilter::Deadlines => "deadlines",
         _ => "all",
     };
-    let (rows, total) = with_org_conn::<_, _, AppError>(pool, org, move |tx| {
+    let (rows, total, decisions) = with_org_conn::<_, _, AppError>(pool, org, move |tx| {
         Box::pin(async move {
-            let approve: Vec<Uuid> = console_orgchange_adapter_postgres::step_decision_facts_in_tx(
+            let facts: HashMap<_, _> = console_orgchange_adapter_postgres::step_decision_facts_in_tx(
                 tx, org, principal.user_id, console_orgchange_adapter_postgres::StepDecisionScope::OpenQueue,
             ).await.map_err(|e| AppError::Internal(e.to_string()))?
-                .into_iter().filter_map(|row| {
+                .into_iter().map(|row| (row.id, row)).collect();
+            let approve: Vec<Uuid> = facts.iter().filter_map(|(id, row)| {
                     console_platform_authz::cedar_pbac::actions::approval_document_list::decide(
                         &principal.user_id.to_string(), &org.to_string(), &org.to_string(), row.approval_list_facts(), "pending",
-                    ).unwrap_or(false).then_some(row.id)
+                    ).unwrap_or(false).then_some(*id)
                 }).collect();
             let apply = apply_others
                 || (draft
@@ -147,7 +149,11 @@ pub(crate) async fn page(
             .bind(i64::try_from(query.limit.saturating_add(1)).unwrap_or(i64::MAX))
             .fetch_all(tx.as_mut())
             .await?;
-            Ok((rows, count))
+            let ids = rows.iter().take(query.limit)
+                .filter(|row| matches!(row.kind.as_str(), "org_change_approve" | "org_change_waiting"))
+                .map(|row| row.id).collect();
+            let decisions = super::super::decisions::load(tx, &principal, ids, facts.into_iter().map(|(id, row)| (id, row.decision)).collect()).await?;
+            Ok((rows, count, decisions))
         })
     })
     .await
@@ -157,25 +163,32 @@ pub(crate) async fn page(
         items: rows
             .into_iter()
             .take(query.limit)
-            .map(|row| ActionInboxSourceItem {
-                context: Some(serde_json::json!({"command": match row.kind.as_str() { "org_change_approve" => Some("approve"), "org_change_apply" => Some("effectuate"), _ => None }, "drafter": row.drafted_by_name.unwrap_or_default(), "command_id": row.command_id })),
-                id: format!("org_change:{}", row.id),
-                kind: row.kind,
-                ref_code: row.code,
-                title: row.target_label,
-                site: None,
-                who: row.waiting_role,
-                due: Some(
-                    PrimitiveDateTime::new(row.effective_date, Time::MAX - time::Duration::nanoseconds(999))
-                        .assume_offset(offset!(+9)),
-                ),
-                submitted: None,
-                links: vec![ActionInboxLink {
-                    kind: "org_change".into(),
-                    id: row.id.to_string(),
-                    label: None,
-                }],
-                created_at: row.created_at,
+            .map(|row| {
+                let mut context = serde_json::json!({"command": match row.kind.as_str() { "org_change_approve" => Some("approve"), "org_change_apply" => Some("effectuate"), _ => None }, "drafter": row.drafted_by_name.unwrap_or_default(), "command_id": row.command_id });
+                if let Some(fields) = decisions.get(&row.id) {
+                    context["decision"] = fields.clone();
+                }
+                ActionInboxSourceItem {
+                    context: Some(context),
+                    id: format!("org_change:{}", row.id),
+                    kind: row.kind,
+                    ref_code: row.code,
+                    title: row.target_label,
+                    site: None,
+                    who: row.waiting_role,
+                    due: Some(
+                        PrimitiveDateTime::new(row.effective_date, Time::MAX - time::Duration::nanoseconds(999))
+                            .assume_offset(offset!(+9)),
+                    ),
+                    submitted: None,
+                    links: vec![ActionInboxLink {
+                        kind: "org_change".into(),
+                        id: row.id.to_string(),
+                        label: None,
+                    }],
+                    created_at: row.created_at,
+                }
+
             })
             .collect(),
         total: usize::try_from(total).unwrap_or(0),

@@ -5,7 +5,8 @@
 # web runs `npm run check`: the client-contract check against backend/openapi, typecheck, lint, unit tests, build,
 # bundle budget, gitleaks over the whole history and the build, licence headers on added files, fixture ids
 # (checksum-valid RRNs, whole or Excel-stripped) and the npm licence gate.
-# backend also runs non-database Rust tests with nextest and reconciles JUnit with a fresh test inventory.
+# backend also runs non-database Rust tests, including full-feature OpenAPI drift, with nextest
+# and reconciles JUnit with a fresh test inventory.
 # Database tests remain INTEG's; solo journey evidence runs on dev pushes, mocked states on every run.
 name: ci
 on:

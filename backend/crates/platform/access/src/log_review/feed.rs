@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
 
-use super::{list, record::require};
+use super::{list, list::filters::Filters, record::require};
 use crate::{AccessError, AccessResult, AccessService, Refusal};
 
 // Bound per-row substring work while allowing names, identifiers and export purposes.
@@ -27,6 +27,8 @@ type Cursor = (OffsetDateTime, OffsetDateTime, Uuid);
 pub struct Query {
     pub period: Option<String>,
     pub search: Option<String>,
+    #[serde(flatten)]
+    pub filters: Filters,
     #[serde(default)]
     pub flagged: bool,
     pub cursor: Option<String>,
@@ -63,7 +65,13 @@ impl Query {
             .search()
             .map(|s| format!("{}~", hex::encode(Sha256::digest(s))))
             .unwrap_or_default();
-        format!("{}~{}~{}~{search}", org, period, self.flagged)
+        format!(
+            "{}~{}~{}~{search}{}",
+            org,
+            period,
+            self.flagged,
+            self.filters.fingerprint()
+        )
     }
 
     fn cursor(&self, org: OrgId, period: &str) -> AccessResult<Option<Cursor>> {
@@ -111,8 +119,10 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
             sqlx::query_scalar("SELECT now()").fetch_one(tx.as_mut()).await?
         };
         let mut prepared = list::prepare(tx.as_mut(), p.org_id, &period, false, Some(as_of)).await?;
-        if let Some(search) = q.search() {
-            prepared.search(tx.as_mut(), &search, as_of).await?;
+        let options = prepared.filter_options(tx.as_mut(), as_of).await?;
+        q.filters.validate(&period, &options)?;
+        if q.search().is_some() || q.filters.active() {
+            prepared.search(tx.as_mut(), q.search().as_deref(), as_of, &q.filters).await?;
         }
         let keys = list::page_at(tx.as_mut(), &prepared, cursor.map(|c| (c.1,c.2)), limit, q.flagged, Some(as_of)).await?;
         let last = keys.last().map(|r| (r.created_at, r.event_id));
@@ -130,6 +140,10 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
         let rows = sql.build()
             .bind(p.org_id.as_uuid()).bind(ids).fetch_all(tx.as_mut()).await?;
         let mut subjects = BTreeSet::new();
+        // Month-wide actor names are personal data returned even on an empty result page.
+        for actor in options["actors"].as_array().ok_or_else(|| AccessError::internal("invalid actor options"))? {
+            subjects.insert(serde_json::from_value::<Uuid>(actor["id"].clone()).map_err(AccessError::internal)?);
+        }
         let mut items = Vec::with_capacity(rows.len());
         for (row, key) in rows.iter().zip(&keys) {
             let actor: Option<Uuid> = row.try_get("actor")?;
@@ -147,6 +161,6 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
         let subjects: Vec<_> = subjects.into_iter().collect();
         let audit = access_event(&p, AccessRecord {action:"access_log.review_read",target_type:"access_log",target_id:period.clone(),
             subject_ids:&subjects,reader_subject:Some(*p.user_id.as_uuid()),details:json!({"period":period,"flagged":q.flagged,"rows":items.len()})})?;
-        Ok((json!({"period":prepared.period(&period)?,"totals":prepared.totals(),"items":items,"next_cursor":next}),vec![audit]))
+        Ok((json!({"period":prepared.period(&period)?,"totals":prepared.totals(),"items":items,"next_cursor":next,"filter_options":options}),vec![audit]))
     })).await
 }

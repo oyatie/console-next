@@ -930,7 +930,7 @@ export interface paths {
         };
         /**
          * Tenant access records with monthly flag totals
-         * @description Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
+         * @description Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search and all structured filters. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
          */
         get: operations["listAccessLog"];
         put?: never;
@@ -14915,6 +14915,22 @@ export interface components {
             };
             items: components["schemas"]["AccessLogEvent"][];
             next_cursor: string | null;
+            /** @description Choices from the authorized month at the cursor snapshot, independent of selected filters and page. Actor names prefer the latest stored display; duplicate names include the actor ID. Action and target label keys resolve through the ko/en catalogs. */
+            filter_options: {
+                actors: {
+                    /** Format: uuid */
+                    id: string;
+                    label: string;
+                }[];
+                actions: {
+                    id: string;
+                    label_key: string;
+                }[];
+                target_types: {
+                    id: string;
+                    label_key: string;
+                }[];
+            };
         };
         /** @description Access-screen account labels and state. Contact details and unrelated HR facts are excluded. */
         AccessPerson: {
@@ -15118,6 +15134,12 @@ export interface components {
                 grants?: components["schemas"]["AccessEffectiveEntry"][];
                 is_ops?: boolean;
             };
+            /** @description Opaque command version for pending org-change approval rows; changes after any step decision. */
+            version?: string;
+            /** @description Present on pending org-change approval rows; evaluated by the command's Cedar action and batch fact loader. Commands recheck current facts. */
+            can_decide?: boolean;
+            /** @description Command refusal code when can_decide is false; absent when allowed. */
+            cannot_reason?: string;
         };
         /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current browser-linkable kinds are approval_run, work_order, and support_ticket. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
         ActionInboxLink: {
@@ -32868,6 +32890,16 @@ export interface operations {
     listAccessLog: {
         parameters: {
             query?: {
+                /** @description Exact actor ID from filter_options. All structured filters combine with AND and affect items and totals, preserving full-month flag classification. */
+                actor?: string;
+                /** @description Exact action code from filter_options. */
+                action?: string;
+                /** @description Exact target type code from filter_options. */
+                target_type?: string;
+                /** @description Inclusive created_at start day in the review time zone, within the selected month. */
+                from?: string;
+                /** @description Inclusive created_at end day in the review time zone, within the selected month and on or after from. */
+                to?: string;
                 /** @description Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Rejects control characters and more than 200 Unicode characters before trimming surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid. */
                 search?: string;
                 period?: string;
@@ -32909,7 +32941,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description period_invalid, limit_out_of_range or cursor_invalid. */
+            /** @description period_invalid, limit_out_of_range, cursor_invalid or filter_invalid (unavailable option, malformed/out-of-month/reversed date). */
             422: {
                 headers: {
                     [name: string]: unknown;

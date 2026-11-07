@@ -29,6 +29,7 @@ async function mockAccessLog(page: Page, state: State, count = state === "empty"
       period: { key: "2026-10", from: "2026-10-01", to: "2026-11-01", time_zone: "Asia/Seoul", closed: true },
       totals: { events: rows.length, flagged: rows.length, by_flag: { download: Math.ceil(rows.length / 2), sensitive_read: Math.floor(rows.length / 2) } },
       items: rows.slice(offset, end), next_cursor: end < rows.length ? String(end) : null,
+      filter_options: { actors: [], actions: [], target_types: [] },
     } });
   });
   return { ...shell, pageCalls: () => pageCalls };

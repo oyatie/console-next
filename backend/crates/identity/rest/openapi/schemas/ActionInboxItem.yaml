@@ -216,3 +216,12 @@ properties:
           $ref: '#/components/schemas/AccessEffectiveEntry'
       is_ops:
         type: boolean
+  version:
+    type: string
+    description: Opaque command version for pending org-change approval rows; changes after any step decision.
+  can_decide:
+    type: boolean
+    description: Present on pending org-change approval rows; evaluated by the command's Cedar action and batch fact loader. Commands recheck current facts.
+  cannot_reason:
+    type: string
+    description: Command refusal code when can_decide is false; absent when allowed.

@@ -127,8 +127,8 @@ function main() {
     assert.equal(result.status, 0, `cargo ${args.slice(0, 2).join(" ")} failed (${result.status ?? result.signal})`);
     return JSON.parse(result.stdout);
   };
-  const metadata = cargoJSON(["metadata", "--locked", "--format-version", "1"]);
-  const args = [...buildTargets(metadata, env.NEXTEST_SHARD, env.NEXTEST_SHARDS), "--locked", "--profile", "ci", "--config-file", path.join(root, ".config/nextest.toml"), "--ignore-default-filter"];
+  const metadata = cargoJSON(["metadata", "--locked", "--features", "console-app/full", "--format-version", "1"]);
+  const args = [...buildTargets(metadata, env.NEXTEST_SHARD, env.NEXTEST_SHARDS), "--locked", "--features", "console-app/full", "--profile", "ci", "--config-file", path.join(root, ".config/nextest.toml"), "--ignore-default-filter"];
   const list = cargoJSON(["nextest", "list", ...args, "--message-format", "json"]);
   const byPackage = new Map(metadata.packages.filter(pkg => metadata.workspace_members.includes(pkg.id)).map((pkg) => [pkg.id, databaseTests(sources(path.dirname(pkg.manifest_path)))]));
   const inventory = classifyTests(list, byPackage);

@@ -3,7 +3,7 @@
 use super::*;
 use console_action_inbox_application::ActionInboxPage;
 
-pub(super) fn project(
+pub(super) async fn project(
     sources: &PgActionInboxSources,
     page: ActionInboxPage,
     filter: InboxFilter,
@@ -12,6 +12,7 @@ pub(super) fn project(
 ) -> Result<Json<serde_json::Value>, InboxError> {
     let unavailable: Vec<_> = page.unavailable.iter().map(|source| serde_json::json!({ "source": source, "support_reference": sources.support_reference })).collect();
     let mut response = serde_json::to_value(page).map_err(|e| source_failure("projection", e))?;
+    super::decisions::project(&mut response);
     response["unavailable"] = serde_json::json!(unavailable);
     use console_platform_authz::Feature as F;
     let can = |feature| sources::org_change::holds(&sources.principal, feature);
