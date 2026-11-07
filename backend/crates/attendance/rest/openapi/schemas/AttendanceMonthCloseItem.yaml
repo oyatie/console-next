@@ -1,3 +1,16 @@
 type: object
 required: [branch_scope, closed, open_exceptions, pending_leave]
-properties: { branch_scope: { type: string }, closed: { type: boolean }, close: { $ref: '#/components/schemas/AttendanceMonthClose', nullable: true }, open_exceptions: { type: integer, format: int64 }, pending_leave: { type: integer, format: int64 } }
+properties:
+  branch_scope:
+    type: string
+    description: 'org denotes organization-wide scope; otherwise the branch UUID. Matches the stored close scope, or the requested scope for an open row.'
+  closed: { type: boolean }
+  close: { $ref: '#/components/schemas/AttendanceMonthClose', nullable: true }
+  open_exceptions:
+    type: integer
+    format: int64
+    description: 'Open exception count. Frozen from close.checks at close time when closed is true; current preflight count otherwise.'
+  pending_leave:
+    type: integer
+    format: int64
+    description: 'Pending leave count. Frozen from close.checks at close time when closed is true; current preflight count otherwise.'
