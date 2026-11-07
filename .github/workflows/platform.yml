@@ -42,6 +42,34 @@ jobs:
           kind create cluster --name platform-admission --image "$(jq -r .images.kind deploy/versions.json)" --wait 120s
           node deploy/ci/admission.mjs
 
+  prune-image-cache:
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.ref == 'refs/heads/dev'
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - name: Prune legacy image caches
+        id: prune
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const { pruneImageCache } = await import(`${process.env.GITHUB_WORKSPACE}/deploy/ci/prune-image-cache.mjs`);
+            const result = await pruneImageCache(github, context);
+            await core.summary.addRaw(`Removed ${result.deleted} legacy image cache entries (${result.bytes} bytes).\n`).write();
+      - name: Warn when image cache cleanup fails
+        if: >-
+          !cancelled() && steps.prune.outcome != 'success'
+        run: |
+          echo '**Warning:** Image cache cleanup failed. Build and publish will continue; legacy caches may remain near the repository cache limit.' >> "$GITHUB_STEP_SUMMARY"
+
   build:
     if: github.event_name == 'merge_group' || github.event_name == 'push'
     strategy:
@@ -74,18 +102,23 @@ jobs:
       - name: Native image and GHA cache
         env:
           ARCH: ${{ matrix.arch }}
+          CACHE_WRITE: ${{ github.event_name == 'push' && github.ref_name == github.event.repository.default_branch }}
         run: |
           case "${ARCH}/$(docker info --format '{{.Architecture}}')" in
             amd64/x86_64|arm64/aarch64) ;;
             *) echo 'PLAT_NATIVE_ARCH: Docker must run the matrix architecture natively' >&2; exit 1;;
           esac
           buildx create --name platform --driver docker-container --driver-opt "image=$(jq -r .images.buildkit deploy/versions.json)" --use
+          cache_export=()
+          if [[ "${CACHE_WRITE}" == true ]]; then
+            cache_export=(--cache-to "type=gha,version=2,scope=console-platform-${ARCH},mode=min")
+          fi
           buildx build --builder platform --platform "linux/${ARCH}" \
             --build-arg "NODE_IMAGE=$(jq -r .images.node deploy/versions.json)" \
             --build-arg "RUST_IMAGE=$(jq -r .images.rust deploy/versions.json)" \
             --build-arg "RUNTIME_IMAGE=$(jq -r .images.runtime deploy/versions.json)" \
-            --cache-from "type=gha,version=2,scope=platform-${ARCH}" \
-            --cache-to "type=gha,version=2,scope=platform-${ARCH},mode=max" \
+            --cache-from "type=gha,version=2,scope=console-platform-${ARCH}" \
+            "${cache_export[@]}" --progress=plain \
             --tag "console-platform:${ARCH}" --file deploy/images/console.Dockerfile \
             --output "type=docker,dest=${RUNNER_TEMP}/console-${ARCH}.tar" .
       - name: Test native image

@@ -17,6 +17,7 @@ test("check-toolchain-pins: stable pins match the root and fuzz stays on nightly
 test("check-toolchain-pins rejects planted mismatches", () => run("node", ["--test", "scripts/check-toolchain-pins.test.mjs"]));
 test("backend CI runs every release code gate and propagates failures", () => run("node", ["--test", "scripts/backend-code-gates.test.mjs"]));
 test("release predicates refuse incomplete merge-commit evidence under the host rule", () => run("node", ["--test", "deploy/ci/gates.test.mjs"]));
+test("image caches stay scoped and cleanup cannot block delivery", () => run("node", ["--test", "deploy/ci/image-cache.test.mjs"]));
 // platform.yml runs the Kubernetes render check with its locked tools; web CI needs no Kubernetes tooling.
 test("promotion proof and environment rendering refuse unsafe inputs", () => run("node", ["--test", "--test-skip-pattern=a newly configured Kubernetes environment", "deploy/ci/promote.test.mjs"]), 60000);
 test("release API comparison preserves extensible enums and refuses contract breaks", () => run("node", ["--test", "deploy/ci/api-compat.test.mjs"]));
