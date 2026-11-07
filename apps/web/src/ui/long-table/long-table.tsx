@@ -1,11 +1,11 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@console/i18n";
 import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
 import { DisabledReason } from "../disabled-reason/disabled-reason";
-import { listenRowKeys, rowIdOf } from "./row-keys";
+import { editable, listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
 import cards from "./table-cards.module.css";
 import type { CardColumn } from "./card-columns";
@@ -161,7 +161,9 @@ export function LongTable<R>(p: {
   const selected = sel ? shownKeys(sel, loaded) : NONE;
   const toggleLabel = t("uiLongTable.selection.toggleAll", { count: loaded.length, unit: p.countUnit ?? "item" });
   const titleId = (r: R) => `${captionId}-${encodeURIComponent(p.rowId(r))}-title`;
-  const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, focusMode: p.columns.find(c => c.focusMode)?.focusMode, cell: (r) => <CardContent row={r} columns={p.columns} titleId={titleId(r)} /> }] : p.columns;
+  // Action cells delegate focus to their controls, including when collapsed into a card.
+  const columns = p.columns.map(c => ({ ...c, focusMode: c.focusMode ?? (c.type === "action" ? "child" as const : undefined) }));
+  const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, focusMode: columns.find(c => c.focusMode === "child")?.focusMode, cell: (r) => <CardContent row={r} columns={columns} titleId={titleId(r)} /> }] : columns;
   const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...content] : content;
   const widths = columnWidths(cols);
   const slotted = p.findSlot !== undefined;
@@ -218,7 +220,14 @@ export function LongTable<R>(p: {
           aria-label={p.label}
           data-scroll-restoration-id={p.scrollRestorationId}
           // React Aria derives these attributes from loaded rows; the server result includes unloaded rows.
-          render={props => <div {...props} aria-rowcount={p.total === undefined ? (p.hasMore ? -1 : loaded.length + 1) : p.total === null ? -1 : p.total + 1} />}
+          render={(props, { state }) => <div {...props} aria-rowcount={p.total === undefined ? (p.hasMore ? -1 : loaded.length + 1) : p.total === null ? -1 : p.total + 1}
+            onFocusCapture={event => {
+              const cell = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-cell-key]") : null;
+              // Adopt the focused control before the grid restores its previous row on keyboard entry.
+              if (cell && event.target !== cell && event.currentTarget.contains(cell)) state.selectionManager.setFocusedKey(cell.dataset.cellKey!);
+              // A card merges columns: direct entry starts at the first control rather than a remembered column.
+              if (cardLayout && event.target === cell && cell.matches('[role="rowheader"]') && content[0]?.focusMode === "child") [...cell.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]')].find(control => control.checkVisibility({ visibilityProperty: true }) && !control.matches(':disabled, [inert], [inert] *'))?.focus();
+            }} />}
           aria-describedby={p.caption ? captionId : undefined}
           className={`${css.table} ${cards.surface} ${types.surface}`}
           data-layout={cardLayout ? "cards" : "rows"}
@@ -262,7 +271,23 @@ export function LongTable<R>(p: {
                       const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.
                       const value = p.editable && !c.rowHeader ? render : render();
-                      return <Cell data-type={c.type} focusMode={c.focusMode} className={css.td} render={props => <div {...props} title={typeof value === "string" ? value : undefined} aria-labelledby={cardLayout && c.id === "__card" ? titleId(r) : props["aria-labelledby"]} />}>{value}</Cell>;
+                      return <Cell data-type={c.type} focusMode={c.focusMode} allowsArrowNavigation className={css.td} render={(props, { id: cellKey }) => {
+                        const capture: KeyboardEventHandler | undefined = props.onKeyDownCapture;
+                        return <div {...props} data-cell-key={cellKey}
+                          // Controls keep Tab and activation, arrows go through the cell; every other grid key reaches the row.
+                          // Text entry keeps its caret and picker keys; portalled popovers (outside the cell's DOM) keep theirs.
+                          onKeyDownCapture={event => {
+                            if (editable(event.target)) return;
+                            if (event.target !== event.currentTarget && event.currentTarget.contains(event.target as Node)
+                              && !/^(Tab|Enter| |Arrow(Up|Down|Left|Right))$/.test(event.key)) {
+                              event.stopPropagation();
+                              if (event.currentTarget.parentElement?.dispatchEvent(new KeyboardEvent(event.type, event.nativeEvent)) === false) event.preventDefault();
+                              return;
+                            }
+                            capture?.(event);
+                          }}
+                          title={typeof value === "string" ? value : undefined} aria-labelledby={cardLayout && c.id === "__card" ? titleId(r) : props["aria-labelledby"]} />;
+                      }}>{value}</Cell>;
                     }}
                   </Row>
                 );
