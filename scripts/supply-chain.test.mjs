@@ -208,6 +208,7 @@ test("Dependabot keeps runtime constraints and defers incompatible npm updates",
     { "dependency-name": "@types/node", versions: [`>=${nodeMajor + 1}`] },
     { "dependency-name": "typescript", "update-types": ["version-update:semver-major"] },
     { "dependency-name": "stylelint", versions: ["18.x"] },
+    { "dependency-name": "oxlint", versions: ["1.91.x"] },
   ]);
   assert.match(read(".github/dependabot.yml"), /#.*openapi-typescript.*JavaScript compiler API/);
   const manifest = JSON.parse(read("package.json"));
