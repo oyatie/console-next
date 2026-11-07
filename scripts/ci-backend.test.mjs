@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, utimesSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -27,9 +27,11 @@ for (const name of backendJobs) test(`${name} runs for affected candidates or re
   assert.ok(job, name);
   assert.deepEqual(job.needs, ["affected"]);
   assert.match(job.if, /!cancelled\(\)/);
-  const condition = new Function("github", "needs", "cancelled", `return ${job.if.slice(3, -2)}`);
-  for (const event of ["pull_request", "merge_group", "push"]) for (const affected of ["true", "false", ""]) {
-    assert.equal(condition({ event_name: event }, { affected: { outputs: { backend: affected } } }, () => false), name === "backend-gates" ? event === "push" || affected === "true" : event !== "push" && affected === "true");
+  const condition = new Function("github", "needs", "cancelled", `return ${job.if.slice(3, -2).replaceAll(".rebuild-backend", "[\"rebuild-backend\"]")}`);
+  for (const event of ["pull_request", "merge_group", "push"]) for (const affected of ["true", "false", ""]) for (const rebuild of ["true", "false"]) {
+    const expected = name === "backend-gates" ? event === "push" || affected === "true"
+      : name === "backend-release" && event === "push" ? rebuild === "true" : event !== "push" && affected === "true";
+    assert.equal(condition({ event_name: event }, { affected: { outputs: { backend: affected, "rebuild-backend": rebuild } } }, () => false), expected);
   }
   assert.ok(job.steps[0].uses.startsWith("step-security/harden-runner@"));
   assert.deepEqual(job.permissions, { contents: "read" });
@@ -100,7 +102,9 @@ test("Home runs after deliberate backend skips and requires the trusted dev arti
 test("Home selects only the latest successful same-repository dev push", async () => {
   const { trustedDevBackendRun } = await import("./ci-home-backend.mjs");
   const env = { GITHUB_API_URL: "https://api.github.com", GITHUB_REPOSITORY: "sample/console", GITHUB_REPOSITORY_ID: "42", GH_TOKEN: "test-token" };
-  const trusted = { id: 12, event: "push", status: "completed", conclusion: "success", head_branch: "dev", repository: { id: 42 }, head_repository: { id: 42 } };
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  env.GITHUB_SHA = head;
+  const trusted = { id: 12, head_sha: head, event: "push", status: "completed", conclusion: "success", head_branch: "dev", repository: { id: 42 }, head_repository: { id: 42 } };
   const rejected = [
     { event: "pull_request" }, { status: "in_progress" }, { conclusion: "failure" }, { head_branch: "feature" },
     { repository: { id: 99 } }, { head_repository: { id: 99 } }, { head_repository: null },
@@ -119,9 +123,10 @@ test("Home selects only the latest successful same-repository dev push", async (
 test("ci-ok accepts only exact event/path skips and fails closed on missing classification", () => {
   const job = ci.jobs["ci-ok"], command = job.steps[0].run;
   const backendJobs = ["backend", "backend-gates", "backend-tests", "backend-release"];
-  for (const event of ["pull_request", "merge_group", "push"]) for (const backend of ["true", "false"]) for (const web of ["true", "false"]) {
+  for (const event of ["pull_request", "merge_group", "push"]) for (const backend of ["true", "false"]) for (const web of ["true", "false"]) for (const rebuild of ["true", "false"]) {
     const push = event === "push";
     const skips = new Set(push ? ["commits", "workflows", "web", "states-plan", "states", ...backendJobs.filter(name => name !== "backend-gates"), "home", "supply-chain"] : ["dev-artifacts"]);
+    if (push && rebuild === "true") skips.delete("backend-release");
     if (!push || web === "false") skips.add("states-timings");
     if (!push || backend === "false") skips.add("backend-cache");
     if (!push || backend === "false" || web === "false") skips.add("release-evidence");
@@ -129,7 +134,7 @@ test("ci-ok accepts only exact event/path skips and fails closed on missing clas
     if (!push && web === "false") ["web", "states-plan", "states"].forEach(name => skips.add(name));
     if (!push && backend === "false" && web === "false") skips.add("home");
     const needs = Object.fromEntries(job.needs.map(name => [name, { result: skips.has(name) ? "skipped" : "success" }]));
-    needs.affected.outputs = { backend, web };
+    needs.affected.outputs = { backend, web, "rebuild-backend": rebuild };
     const check = () => spawnSync("bash", ["-e", "-c", command], { encoding: "utf8", env: {
       ...process.env, NEEDS: JSON.stringify(needs), GITHUB_EVENT_NAME: event,
     } });
@@ -409,4 +414,135 @@ test("push proof tolerates run-completion lag and refuses persistent absence or 
   attempts = 0;
   await assert.rejects(run(async () => { attempts++; throw new Error("HTTP 403"); }), /HTTP 403/);
   assert.equal(attempts, 1);
+});
+
+
+test("backend fallback refuses batched, superseded and unknown ranges", async t => {
+  const { trustedDevBackendRun } = await import("./ci-home-backend.mjs");
+  const root = mkdtempSync(path.join(tmpdir(), "backend-range-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const env = { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_AUTHOR_NAME: "Jason Lee", GIT_AUTHOR_EMAIL: "56489493+jason931225@users.noreply.github.com",
+    GIT_COMMITTER_NAME: "Jason Lee", GIT_COMMITTER_EMAIL: "56489493+jason931225@users.noreply.github.com" };
+  const git = (...args) => execFileSync("git", args, { cwd: root, env, encoding: "utf8" }).trim();
+  const commit = (file, value) => {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), value);
+    git("add", file);
+    git("-c", "core.hooksPath=/dev/null", "commit", "-qm", "test: backend range fixture");
+    return git("rev-parse", "HEAD");
+  };
+  git("init", "-q", "--initial-branch=dev");
+  const fallback = commit("backend/app.rs", "old");
+  const web = commit("apps/web/page.tsx", "first");
+  const backend = commit("backend/app.rs", "new");
+  const push = commit("apps/web/page.tsx", "last");
+  const run = { id: 12, head_sha: fallback, event: "push", status: "completed", conclusion: "success",
+    head_branch: "dev", repository: { id: 42 }, head_repository: { id: 42 } };
+  const config = { GITHUB_API_URL: "https://api.github.com", GITHUB_REPOSITORY: "sample/console",
+    GITHUB_REPOSITORY_ID: "42", GITHUB_WORKSPACE: root, GITHUB_SHA: web };
+  const request = async () => ({ ok: true, json: async () => ({ workflow_runs: [run] }) });
+  const cli = (rebuild = true, ok = true) => {
+    const script = new URL("./ci-home-backend.mjs", import.meta.url).pathname;
+    const output = path.join(root, "output");
+    writeFileSync(output, "");
+    const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+      globalThis.fetch = async () => ({ ok: ${ok}, status: 503, json: async () => ({ workflow_runs: [${JSON.stringify(run)}] }) });
+      process.argv = [process.execPath, ${JSON.stringify(script)}, ${JSON.stringify(rebuild ? "--rebuild-if-stale" : "")}];
+      await import(${JSON.stringify(script)});
+    `], { cwd: root, env: { ...env, ...config, GITHUB_OUTPUT: output }, encoding: "utf8" });
+    return { ...result, output: readFileSync(output, "utf8") };
+  };
+  assert.equal(await trustedDevBackendRun(config, request), 12);
+  for (const [label, before] of [["batched", web], ["superseded", backend]]) {
+    config.GITHUB_SHA = push;
+    config.GITHUB_EVENT_BEFORE = before;
+    await assert.rejects(trustedDevBackendRun(config, request), /CI_HOME_BACKEND_STALE/, label);
+    const result = cli();
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.output, "rebuild-backend=true\n", label);
+    assert.match(cli(false).stderr, /CI_HOME_BACKEND_STALE/, "Home refuses a stale fallback");
+  }
+  for (const sha of [undefined, "0".repeat(40), "--help"]) {
+    run.head_sha = sha;
+    await assert.rejects(trustedDevBackendRun(config, request), /CI_HOME_BACKEND_STALE/);
+    assert.equal(cli().output, "rebuild-backend=true\n");
+  }
+  assert.equal(cli(true, false).output, "rebuild-backend=true\n", "API uncertainty rebuilds");
+  run.head_sha = push;
+  config.GITHUB_SHA = fallback;
+  await assert.rejects(trustedDevBackendRun(config, request), /CI_HOME_BACKEND_STALE/);
+  git("checkout", "-qb", "diverged", fallback);
+  config.GITHUB_SHA = commit("apps/web/other.tsx", "other branch");
+  run.head_sha = web;
+  await assert.rejects(trustedDevBackendRun(config, request), /CI_HOME_BACKEND_STALE/, "unrelated web-only ranges are unknown");
+  run.head_sha = fallback;
+  config.GITHUB_SHA = web;
+  assert.equal(cli().output, "run-id=12\nrebuild-backend=false\n");
+});
+
+test("queue producers cover every push consumer and every job gates ci-ok", () => {
+  assert.deepEqual([...ci.jobs["ci-ok"].needs].sort(), Object.keys(ci.jobs).filter(n => n !== "ci-ok").sort());
+  const evaluate = (condition, event, outputs, job = "") => {
+    if (!condition) return true;
+    const expression = condition.replace(/^\$\{\{\s*|\s*\}\}$/g, "").replaceAll(".rebuild-backend", "[\"rebuild-backend\"]");
+    const needs = { affected: { result: "success", outputs }, "backend-release": { result: outputs.backend === "true" ? "success" : "skipped" }, "states-plan": { result: "success" } };
+    return !!new Function("github", "needs", "cancelled", "always", "success", `return ${expression}`)(
+      { event_name: event, ref: "refs/heads/dev", job }, needs, () => false, () => true, () => true);
+  };
+  const active = (job, event, outputs) => {
+    const definition = ci.jobs[job];
+    if (!evaluate(definition.if, event, outputs, job)) return false;
+    // Jobs without a status predicate inherit skipped dependencies, including the states matrix.
+    return !!definition.if || [definition.needs ?? []].flat().every(dependency => active(dependency, event, outputs));
+  };
+  const artifact = (value, job) => value.replace(/\$\{\{.*?\}\}/g, expression => {
+    if (expression.includes("tools") || expression.includes("cache.outputs.key")) return "cargo-security-test";
+    if (expression.includes("github.job")) return job;
+    return "1";
+  });
+  const uploads = Object.entries(ci.jobs).flatMap(([job, definition]) => (definition.steps ?? [])
+    .filter(s => s.uses?.startsWith("actions/upload-artifact@"))
+    .map(step => ({ job, definition, step, name: artifact(step.with.name, job) })));
+  const consumers = Object.entries(ci.jobs).flatMap(([job, definition]) => (definition.steps ?? [])
+    .filter(s => s.uses?.startsWith("actions/download-artifact@") &&
+      (s.with["run-id"]?.includes("needs.affected.outputs.run-id") || s.with.name === "ci-proof"))
+    .map(step => ({ job, definition, step })));
+  assert.ok(consumers.length > 10);
+  for (const backend of ["true", "false"]) for (const web of ["true", "false"]) for (const rebuild of ["true", "false"]) {
+    const outputs = { backend, web, "rebuild-backend": rebuild };
+    for (const { job, step } of consumers) {
+      if (!active(job, "push", outputs) || !evaluate(step.if, "push", outputs)) continue;
+      // A web-only push uses the separately validated dev backend rather than the queue's absent binary.
+      if (step.with.name === "d10-backend" && backend === "false") continue;
+      const pattern = artifact(step.with.name ?? step.with.pattern, job);
+      const matches = uploads.filter(upload => pattern.endsWith("*") ? upload.name.startsWith(pattern.slice(0, -1)) : upload.name === pattern);
+      const producers = matches.filter(upload => !["dev-artifacts", "states-timings", "release-evidence"].includes(upload.job));
+      assert.ok(producers.length, `${job}/${pattern}: no queue producer`);
+      for (const upload of producers) {
+        assert.ok(active(upload.job, "merge_group", outputs) &&
+          evaluate(upload.step.if, "merge_group", outputs, upload.job), `${job}/${upload.job}/${pattern}/${backend}/${web}/${rebuild}`);
+        if (pattern === "playwright-cache") {
+          const exporter = upload.definition.steps.find(s => s.name === "Export browser cache for dev");
+          assert.ok(exporter && evaluate(exporter.if, "merge_group", outputs), "browser archive exists before upload");
+        }
+      }
+    }
+    const lookup = ci.jobs["dev-artifacts"].steps.find(s => s.id === "backend");
+    assert.equal(evaluate(lookup.if, "push", outputs), backend === "false" && rebuild === "false", "fallback lookup");
+  }
+});
+
+test("push backend rebuild replaces artifact promotion and remains a required gate", () => {
+  const rebuild = ci.jobs.affected.steps.find(s => s.id === "backend");
+  assert.ok(rebuild?.run.includes("scripts/ci-home-backend.mjs --rebuild-if-stale"));
+  assert.equal(rebuild.if, "github.event_name == 'push' && steps.import.outputs.backend == 'false'");
+  assert.equal(ci.jobs.affected.outputs["rebuild-backend"], "${{ steps.backend.outputs.rebuild-backend || 'false' }}");
+  const dev = ci.jobs["dev-artifacts"];
+  assert.deepEqual(dev.needs, ["affected", "backend-release"]);
+  for (const step of dev.steps.filter(s => s.with?.name === "d10-backend")) {
+    assert.equal(step.if, "needs.affected.outputs.rebuild-backend != 'true'");
+  }
+  const upload = ci.jobs["backend-release"].steps.find(s => s.with?.name === "d10-backend");
+  assert.equal(upload.with["retention-days"], "${{ github.event_name == 'push' && 90 || 1 }}");
 });
