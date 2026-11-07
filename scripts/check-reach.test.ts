@@ -1,4 +1,5 @@
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { REACH } from "../e2e/record-actions/reach";
@@ -159,6 +160,29 @@ test("operations: --lower removes an allowance once its operation is called or d
   const allUncalled = operationGaps({ spec: paritySpec, files: [["apps/web/src/probe.ts", `api.GET("/api/v1/employees/parity-probe")`]], crates: new Map(), releaseCrates: undefined });
   expect(checkOperations({ gaps: [], operations: { [plantedOp]: allowance }, uncalled: allUncalled })).toEqual([expect.stringContaining(`operation-stale: ${plantedOp}`)]);
   expect(lowerOperations(operations, allUncalled)).toEqual({ [deferred]: allowance });
+});
+
+test("operations: an excluded allowance cannot hide a live operation served at the base", () => {
+  const excluded = { ...allowance, when: "excluded" };
+  expect(checkOperations({ gaps: [plantedOp], operations: { [plantedOp]: excluded }, previous: {}, uncalled: [plantedOp], existing: [plantedOp] }))
+    .toContainEqual(expect.stringContaining("baseline must only shrink"));
+});
+
+test("operations: legacy hierarchy writes are deprecated and served; hidden live reads still fail", () => {
+  const spec = createRequire(import.meta.url)("js-yaml").load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
+  const paths: Record<string, Record<string, { deprecated?: boolean }>> = {};
+  for (const resource of ["regions", "branches"]) {
+    for (const [method, suffix] of [["post", ""], ["patch", "/{id}"], ["delete", "/{id}"]]) {
+      const url = `/api/v1/${resource}${suffix}`;
+      const operation = spec.paths[url][method!];
+      expect(operation?.deprecated, `${method} ${url}`).toBe(true);
+      (paths[url] ??= {})[method!] = operation;
+    }
+  }
+  paths["/api/v1/branches"]!.get = spec.paths["/api/v1/branches"].get;
+  const gaps = operationGaps({ spec: { paths }, files: [], crates: new Map() });
+  expect(gaps).toEqual(["GET /api/v1/branches"]);
+  expect(checkOperations({ gaps, operations: {} })).toEqual([expect.stringContaining("operation-unreachable: GET /api/v1/branches")]);
 });
 
 test("operations: parameter calls prefer literal endpoints and never reach the sibling static path", () => {

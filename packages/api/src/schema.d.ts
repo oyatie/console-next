@@ -2951,6 +2951,7 @@ export interface paths {
         put?: never;
         /**
          * Propose creating a branch inside a region
+         * @deprecated
          * @description Creates a governed DRAFT containing one CREATE_BRANCH proposal. The live branches table is unchanged until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns the existing org-change request with 200. Cedar draft admission precedes proposal validation; a caller without draft authority receives 403 (org_change.refuse.missing_grant), even for invalid proposal content, rather than 422.
          */
         post: operations["createBranch"];
@@ -2976,6 +2977,7 @@ export interface paths {
         post?: never;
         /**
          * Propose deactivating a branch
+         * @deprecated
          * @description Creates a governed DRAFT containing one DEACTIVATE_BRANCH proposal. The live row is unchanged; preflight and apply retain the active-user and equipment guards.
          */
         delete: operations["deactivateBranch"];
@@ -2983,6 +2985,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a branch or move it to another region
+         * @deprecated
          * @description Creates a governed DRAFT containing one RENAME_BRANCH proposal; it does not mutate the live row.
          */
         patch: operations["updateBranch"];
@@ -12181,6 +12184,7 @@ export interface paths {
         put?: never;
         /**
          * Propose creating a region
+         * @deprecated
          * @description Creates a governed DRAFT containing one CREATE_REGION proposal. The live regions table is unchanged until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns the existing org-change request with 200. Cedar draft admission precedes proposal validation; a caller without draft authority receives 403 (org_change.refuse.missing_grant), even for invalid proposal content, rather than 422.
          */
         post: operations["createRegion"];
@@ -12202,6 +12206,7 @@ export interface paths {
         post?: never;
         /**
          * Propose deactivating a region
+         * @deprecated
          * @description Creates a governed DRAFT containing one DEACTIVATE_REGION proposal. The live row is unchanged; preflight and apply retain the active-branch guard.
          */
         delete: operations["deactivateRegion"];
@@ -12209,6 +12214,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a region
+         * @deprecated
          * @description Creates a governed DRAFT containing one RENAME_REGION proposal; it does not rename the live row.
          */
         patch: operations["updateRegion"];
