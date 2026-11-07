@@ -1443,7 +1443,7 @@ export interface paths {
         };
         /**
          * Read a source-authorized approval document
-         * @description Cedar approval_document_read uses the same source facts and inbox membership as the list. Hidden, absent, unsupported, draft and unrouted documents all return not_found. Body contains the source target, effective date and reason; the source record link exposes the full proposal. This read-only envelope exposes no decisions until the source-command adapter is available.
+         * @description Cedar approval_document_read uses the same source facts and inbox membership as the list. Hidden, absent, unsupported, draft and unrouted documents all return not_found. Proposal contains typed source operations and effective_date is a business date; body does not repeat the header. This read-only envelope exposes no decisions until the source-command adapter is available.
          */
         get: operations["getApprovalDocument"];
         put?: never;
@@ -15332,6 +15332,8 @@ export interface components {
                 id: string;
                 name: string;
             };
+            /** Format: date */
+            effective_date?: string;
             /** Format: date-time */
             requested_at: string;
             facts: {
@@ -15360,6 +15362,11 @@ export interface components {
                 label: string;
                 value: string;
             }[];
+            proposal?: components["schemas"]["OrgProposalOp"][];
+            /** @description Current names of same-tenant organization units referenced by the proposal, covered by the fingerprint. */
+            proposal_names?: {
+                [key: string]: string;
+            };
             /** @description Source event sequence length plus one; the fingerprint also covers edits without new events. */
             revision: number;
             /** @description Opaque snapshot token covering the source request, proposal, route and displayed facts. */

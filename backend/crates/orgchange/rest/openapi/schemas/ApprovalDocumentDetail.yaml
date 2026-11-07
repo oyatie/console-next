@@ -13,6 +13,13 @@ allOf:
           key: {type: string}
           label: {type: string}
           value: {type: string}
+    proposal:
+      type: array
+      items: {$ref: '#/components/schemas/OrgProposalOp'}
+    proposal_names:
+      type: object
+      description: Current names of same-tenant organization units referenced by the proposal, covered by the fingerprint.
+      additionalProperties: {type: string}
     revision:
       type: integer
       description: Source event sequence length plus one; the fingerprint also covers edits without new events.

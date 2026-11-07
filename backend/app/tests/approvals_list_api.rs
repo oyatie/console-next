@@ -41,7 +41,7 @@ async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {
         .execute(&pool)
         .await
         .unwrap();
-    let ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    let ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
     let first = get(&ctx, "box=pending&limit=2").await;
     assert_eq!(
         first["counts"],
@@ -49,6 +49,8 @@ async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {
     );
     assert_eq!(first["items"].as_array().unwrap().len(), 2);
     assert_eq!(first["items"][0]["source"]["key"], "org_change");
+    assert_eq!(first["items"][0]["source"]["label"], "조직 변경");
+    assert_eq!(first["sources"][0]["label"], "조직 변경");
     assert_eq!(first["items"][0]["route"].as_array().unwrap().len(), 2);
     assert_eq!(first["items"][0]["route"][0]["state"], "current");
     assert_eq!(first["items"][0]["route"][0]["role_key"], "hr");
@@ -72,7 +74,7 @@ async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {
     let filtered = get(&ctx, "box=pending&q=OC-2026-0001&source=org_change").await;
     assert_eq!(filtered["counts"]["pending"], 1);
     assert_eq!(filtered["items"][0]["document_no"], "OC-2026-0001");
-    let maker_ctx = http::ctx(&pool, org, maker, &["SUPER_ADMIN"], None).await;
+    let maker_ctx = fixtures::ctx(&pool, org, maker, &["SUPER_ADMIN"], None).await;
     let requested = get(&maker_ctx, "box=requested").await;
     assert_eq!(requested["counts"]["requested"], 3);
     assert_eq!(requested["counts"]["pending"], 0, "SoD excludes own work");
@@ -93,7 +95,7 @@ async fn outsiders_and_revoked_grants_leak_no_items_counts_facets_or_focus(pool:
         (org, checker, "EXECUTIVE"),
         (foreign_org, foreign, "SUPER_ADMIN"),
     ] {
-        let ctx = http::ctx(&pool, tenant, user, &[role], None).await;
+        let ctx = fixtures::ctx(&pool, tenant, user, &[role], None).await;
         for box_name in ["pending", "upcoming", "requested", "reference", "completed"] {
             let page = get(&ctx, &format!("box={box_name}&focus=org_change:{id}")).await;
             assert_eq!(page["items"], json!([]));
@@ -106,7 +108,7 @@ async fn outsiders_and_revoked_grants_leak_no_items_counts_facets_or_focus(pool:
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn invalid_list_queries_are_refused_without_reading_documents(pool: PgPool) {
     let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
-    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let ctx = fixtures::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
     for query in [
         "box=invalid",
         "box=pending&cursor=bad",
@@ -127,7 +129,7 @@ async fn completed_documents_only_reach_requesters_and_route_participants(pool: 
     let id = document(&pool, org, maker, "OC-2026-0001").await;
     sqlx::query("UPDATE org_change_approval_steps SET decision='APPROVED',decided_by=$2,decided_at=now() WHERE request_id=$1 AND step_order=1")
         .bind(id).bind(checker.as_uuid()).execute(&pool).await.unwrap();
-    let checker_ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    let checker_ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
     assert_eq!(
         get(&checker_ctx, "box=pending").await["counts"]["pending"],
         0,
@@ -141,7 +143,7 @@ async fn completed_documents_only_reach_requesters_and_route_participants(pool: 
     let unrelated = http::add_user(&pool, org, &["EXECUTIVE"]).await;
     grants::grant_org_approve(&pool, unrelated).await;
     for (user, expected) in [(maker, 1), (checker, 1), (unrelated, 0)] {
-        let ctx = http::ctx(
+        let ctx = fixtures::ctx(
             &pool,
             org,
             user,
@@ -194,7 +196,7 @@ async fn unrouted_approved_changes_and_cancelled_drafts_are_not_approval_documen
         ids.push(id);
     }
     for (user, role) in [(maker, "SUPER_ADMIN"), (checker, "EXECUTIVE")] {
-        let ctx = http::ctx(&pool, org, user, &[role], None).await;
+        let ctx = fixtures::ctx(&pool, org, user, &[role], None).await;
         for box_name in ["pending", "upcoming", "requested", "reference", "completed"] {
             for id in &ids {
                 let page = get(&ctx, &format!("box={box_name}&focus=org_change:{id}")).await;
@@ -218,7 +220,7 @@ async fn view_only_reader_cannot_receive_another_persons_pending_approval(pool: 
         .bind(checker.as_uuid()).execute(&pool).await.unwrap();
     sqlx::query("UPDATE access_roles SET version=2 WHERE id IN (SELECT role_id FROM access_grants WHERE account_id=$1)")
         .bind(checker.as_uuid()).execute(&pool).await.unwrap();
-    let ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    let ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
     let requested = get(&ctx, "box=requested").await;
     assert_eq!(requested["items"][0]["id"], format!("org_change:{own}"));
     assert_eq!(
@@ -238,7 +240,7 @@ async fn view_only_reader_cannot_receive_another_persons_pending_approval(pool: 
 async fn projection_failures_return_a_code_without_database_details(pool: PgPool) {
     let (org, maker, checker) = setup(&pool).await;
     document(&pool, org, maker, "OC-2026-0001").await;
-    let ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    let ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
     sqlx::query("ALTER TABLE org_units RENAME TO unavailable_org_units")
         .execute(&pool)
         .await
@@ -269,7 +271,7 @@ async fn same_person_alias_is_hidden_while_unbound_approver_sees_verification_ne
         if bound {
             people::bind_user_to_person(&pool, user, maker_person).await;
         }
-        let ctx = http::ctx(&pool, org, user, &["EXECUTIVE"], None).await;
+        let ctx = fixtures::ctx(&pool, org, user, &["EXECUTIVE"], None).await;
         let page = get(&ctx, "box=pending").await;
         assert_eq!(page["counts"]["pending"], if bound { 0 } else { 1 });
         if bound {

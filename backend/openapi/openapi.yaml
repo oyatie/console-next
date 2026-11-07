@@ -3532,7 +3532,7 @@ paths:
       description: >-
         Cedar approval_document_read uses the same source facts and inbox membership as the list.
         Hidden, absent, unsupported, draft and unrouted documents all return not_found.
-        Body contains the source target, effective date and reason; the source record link exposes the full proposal.
+        Proposal contains typed source operations and effective_date is a business date; body does not repeat the header.
         This read-only envelope exposes no decisions until the source-command adapter is available.
       parameters:
       - {name: id, in: path, required: true, schema: {type: string}, description: Canonical source-prefixed document ID from the inbox.}
@@ -34584,6 +34584,7 @@ components:
           properties:
             id: {type: string, format: uuid}
             name: {type: string}
+        effective_date: {type: string, format: date}
         requested_at: {type: string, format: date-time}
         facts:
           type: array
@@ -34626,6 +34627,13 @@ components:
                 key: {type: string}
                 label: {type: string}
                 value: {type: string}
+          proposal:
+            type: array
+            items: {$ref: '#/components/schemas/OrgProposalOp'}
+          proposal_names:
+            type: object
+            description: Current names of same-tenant organization units referenced by the proposal, covered by the fingerprint.
+            additionalProperties: {type: string}
           revision:
             type: integer
             description: Source event sequence length plus one; the fingerprint also covers edits without new events.
