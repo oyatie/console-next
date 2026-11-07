@@ -18,7 +18,7 @@ uuid = { workspace = true }
 time = { workspace = true }
 sqlx = { workspace = true }
 tokio = { workspace = true }
-webauthn-rs = { version = "0.5.5", features = [
+webauthn-rs = { version = "0.6.2", features = [
     "danger-allow-state-serialisation",
     "conditional-ui",
 ] }
