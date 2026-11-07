@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { renderToReadableStream, renderToStaticMarkup } from "react-dom/server";
+import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { ApiError } from "../../../reference/statutory/api";
@@ -18,14 +18,12 @@ vi.mock("@tanstack/react-router", async () => {
 });
 beforeAll(() => loadCatalog("ko"));
 
-test.each(["LEGAL_REVIEW", "PENDING"])("%s exposes only the available filing controls", async (state) => {
+test.each(["LEGAL_REVIEW", "PENDING"])("%s exposes only the available filing controls", (state) => {
   query.data.items = [{
     event_id: "event-1", employee_id: "employee-1", kind: "CHANGE", insurer: "NPS", name: "홍길동",
     state, effective_date: "2026-10-24", due_date: null, due_in_days: null, deadline_status: "UNKNOWN", lifecycle_case_id: "case-1",
   }];
-  const stream = await renderToReadableStream(<FilingList workplaces={query} />);
-  await stream.allReady;
-  const html = await new Response(stream).text();
+  const html = renderToStaticMarkup(<FilingList workplaces={query} />);
   expect(html).toContain(t("lifecycle.trail.openCase"));
   if (state === "LEGAL_REVIEW") {
     expect(html).toContain("법무 검토 전");

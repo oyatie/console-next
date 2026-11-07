@@ -32,12 +32,12 @@ export function FilingTable({ rows, total, search, onFind, findSlot, onRecord, o
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to scroll this wide table.
       <div className={`${s.scroll} ${s.filings}`} tabIndex={0} role="region" aria-label={t("statutory.insurance")}><RecordRows mobileLayout="cards" label={t("statutory.insurance")} rows={rows} rowId={(r) => `${r.event_id}:${r.kind}:${r.insurer}`}
       columns={[
-        { rowHeader: true, header: t("statutory.employee"), cell: (r) => <PersonRef wrap account={{ id: r.employee_id, employee_id: r.employee_id, employee_name: r.name, employee_number: r.employee_number }} /> },
-        { header: t("statutory.workplace"), cell: (r) => r.workplace_name },
-        { header: t("statutory.event"), cell: (r) => <div className={s.filingEvent}>{filingLabel(r.insurer)} · {filingLabel(r.kind)}</div> },
-        { header: t("statutory.date"), cell: (r) => fmtDate(r.effective_date) },
-        { header: t("statutory.deadline"), cell: (r) => <FilingWindow task={r} /> },
-        { header: t("statutory.evidence"), cell: (r) => r.completed_on ? <dl className="facts">
+        { card: "title", header: t("statutory.employee"), cell: (r) => <PersonRef wrap account={{ id: r.employee_id, employee_id: r.employee_id, employee_name: r.name, employee_number: r.employee_number }} /> },
+        { card: "fact", header: t("statutory.workplace"), cell: (r) => r.workplace_name },
+        { card: "fact", header: t("statutory.event"), cell: (r) => <div className={s.filingEvent}>{filingLabel(r.insurer)} · {filingLabel(r.kind)}</div> },
+        { card: "fact", header: t("statutory.date"), cell: (r) => fmtDate(r.effective_date) },
+        { card: "fact", header: t("statutory.deadline"), cell: (r) => <FilingWindow task={r} /> },
+        { card: "fact", header: t("statutory.evidence"), cell: (r) => r.completed_on ? <dl className="facts">
           <dt>{t("statutory.completedOn")}</dt><dd>{fmtDate(r.completed_on)}</dd>
           {r.receipt_number && <><dt>{t("statutory.receiptNumber")}</dt><dd>{r.receipt_number}</dd></>}
           {r.loss_code && <><dt>{t("statutory.lossCode")}</dt><dd>{r.loss_code} · {r.loss_options.find((o) => o.code === r.loss_code)?.label}</dd></>}
