@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { INBOX_FILTERS } from "../../apps/web/src/features/home/domain/inbox-filter";
 import { expectAxe, fits } from "../a11y";
 import { AT, failure, id, inbox } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
@@ -10,7 +11,7 @@ import { screens } from "./registry";
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) {
-  for (const path of ["/", "/inbox", "/people/requests", "/requests", `/requests/${id(99)}`]) {
+  for (const path of ["/", "/inbox", ...INBOX_FILTERS.filter(tab => tab !== "all").map(tab => `/inbox?tab=${tab}`), "/people/requests", "/requests", `/requests/${id(99)}`]) {
     test(`home inbox ${path}: empty or not found at ${width}px @ui-state`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
       const fixture = await mockScreen(page, screens[0], "empty");
@@ -73,7 +74,7 @@ for (const width of [1440, 390]) {
     } finally { await page.close(); fixture.release(); }
   });
 
-  for (const code of ["change_request_closed", "change_request_self_decision"] as const) {
+  for (const code of ["change_request_closed", "change_request_self_decision", "change_request_not_assignee", "change_request_not_requester"] as const) {
     test(`home inbox refusal ${code} at ${width}px @ui-state`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
       const fixture = await mockScreen(page, screens[0], "empty");
