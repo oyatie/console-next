@@ -25,7 +25,7 @@ const sha = git('rev-parse', 'HEAD');
 const image = `example.invalid/console@sha256:${'a'.repeat(64)}`;
 const repository = 'example/console';
 const exitNames = ['ubuntu-24.04', 'ubuntu-24.04-arm'].flatMap(runner =>
-  [1, 2].map(repetition => `exit-test (${runner}, ${repetition})`));
+  [1].map(repetition => `exit-test (${runner}, ${repetition})`));
 
 function proof() {
   return {sha, repository, currentRevision:previous, gatesResult:'pass',
@@ -230,6 +230,27 @@ test('PROMOTE_NOT_GREEN: refuses matrix policies whose proof inventory is unsupp
       assert.notEqual(config, source);
       writeFileSync(join(dir, '.github/workflows/platform.yml'), config);
       assert.throws(() => assertPromotion({...proof(), currentRevision:null}, dir), /PROMOTE_NOT_GREEN/);
+    }
+  } finally { rmSync(dir, {recursive:true, force:true}); }
+});
+
+test('PROMOTE_NOT_GREEN: refuses unknown expressions and malformed event matrix axes', async () => {
+  const {assertPromotion} = await api();
+  const dir = mkdtempSync(join(tmpdir(), 'promotion-event-matrix-'));
+  try {
+    mkdirSync(join(dir, '.github/workflows'), {recursive:true});
+    const source = readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8');
+    for (const expression of [
+      "${{ github.event_name }}",
+      "${{ fromJSON(github.event_name == 'schedule' && '[1, 2]' || 'null') }}",
+      "${{ fromJSON(github.event_name == 'schedule' && '[1, 2]' || '[ ]') }}",
+    ]) {
+      const config = source.replace(/repetition: .*/, `repetition: ${expression}`);
+      assert.notEqual(config, source);
+      writeFileSync(join(dir, '.github/workflows/platform.yml'), config);
+      const input = {...proof(), currentRevision:null};
+      input.jobs = input.jobs.filter(job => !job.name.startsWith('exit-test ('));
+      assert.throws(() => assertPromotion(input, dir), /PROMOTE_NOT_GREEN/);
     }
   } finally { rmSync(dir, {recursive:true, force:true}); }
 });

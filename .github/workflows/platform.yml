@@ -71,9 +71,7 @@ jobs:
           echo '**Warning:** Image cache cleanup failed. Build and publish will continue; legacy caches may remain near the repository cache limit.' >> "$GITHUB_STEP_SUMMARY"
 
   build:
-    if: >-
-      !cancelled() &&
-      (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push')
+    if: github.event_name == 'merge_group' || github.event_name == 'push'
     strategy:
       fail-fast: false
       matrix:
@@ -288,7 +286,7 @@ jobs:
       fail-fast: false
       matrix:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
-        repetition: [1, 2]
+        repetition: ${{ fromJSON(github.event_name == 'schedule' && '[1, 2]' || '[1]') }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     permissions:
