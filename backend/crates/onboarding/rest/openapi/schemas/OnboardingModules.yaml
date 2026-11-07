@@ -7,7 +7,7 @@ items:
   properties:
     key:
       type: string
-      x-extensible-enum: [home, org, access, people, exits, attendance, statutory, payroll]
+      x-extensible-enum: [home, org, access, approvals, people, exits, attendance, statutory, payroll]
     ready:
       type: boolean
     unblock:

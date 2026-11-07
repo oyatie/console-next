@@ -8,6 +8,7 @@
 
 mod error;
 mod go_live_read;
+mod modules;
 use error::RestError;
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
@@ -48,6 +49,7 @@ pub struct OnboardingRestState {
     jwt_verifier: Option<JwtVerifier>,
     passkey_step_up: Option<PasskeyService>,
     payroll_compiled: bool,
+    approvals_released: bool,
 }
 
 impl OnboardingRestState {
@@ -62,12 +64,19 @@ impl OnboardingRestState {
             jwt_verifier,
             passkey_step_up,
             payroll_compiled: false,
+            approvals_released: false,
         }
     }
 
     #[must_use]
     pub fn with_payroll(mut self, compiled: bool) -> Self {
         self.payroll_compiled = compiled;
+        self
+    }
+
+    #[must_use]
+    pub fn with_approvals(mut self, released: bool) -> Self {
+        self.approvals_released = released;
         self
     }
 }
@@ -77,7 +86,7 @@ pub fn router(state: OnboardingRestState) -> Router {
     let pool = state.store.pool().clone();
     let router = Router::new()
         .route(CHECKLIST_PATH, get(checklist))
-        .route(MODULES_PATH, get(modules))
+        .route(MODULES_PATH, get(modules::get))
         .route(GO_LIVE_PREVIEW_PATH, get(go_live_read::preview))
         .route(GO_LIVE_RECEIPT_PATH, get(go_live_read::receipt))
         .route(GO_LIVE_PATH, post(go_live))
@@ -129,20 +138,6 @@ async fn checklist(
 ) -> Result<Response, RestError> {
     let a = actor(&s, &h).await?;
     Ok(Json(s.store.checklist(&a).await?).into_response())
-}
-
-async fn modules(
-    State(s): State<OnboardingRestState>,
-    h: HeaderMap,
-) -> Result<Response, RestError> {
-    let a = actor(&s, &h).await?;
-    let mut modules = s.store.modules(&a).await?;
-    for module in &mut modules {
-        if module.key == "payroll" {
-            module.ready &= s.payroll_compiled;
-        }
-    }
-    Ok(Json(modules).into_response())
 }
 
 #[derive(Debug, Deserialize)]
