@@ -1,11 +1,15 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 version: 2
+# Let releases settle before version updates; security updates bypass cooldown.
+# https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown
 updates:
   - package-ecosystem: github-actions
     directory: /
     target-branch: dev
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]
@@ -15,6 +19,8 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "@types/node"
         versions: [">=27"]
@@ -33,6 +39,8 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       # Keep the envelope cipher readable; revisit after the RNG/nonce migration and old-ciphertext proof.
       - dependency-name: "chacha20poly1305"
