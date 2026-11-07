@@ -11,6 +11,7 @@ import type { Card } from "./use-card";
 const state = vi.hoisted(() => ({ served: false, failed: false, missing: false }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { items: [], capabilities: state.missing ? undefined : state.served ? [{ feature: "documents", permission: "allow" }] : [] }, isError: state.failed }) }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: ReactNode }) => <span>{children}</span>, useNavigate: () => vi.fn(), getRouteApi: () => ({ useSearch: () => ({}), useNavigate: () => vi.fn() }) }));
+vi.mock("../../../reference/payroll/ui/employee-pay-link", () => ({ EmployeePayLink: () => null }));
 vi.mock("./use-case-actions", () => ({ useOwnRecord: () => false }));
 vi.mock("./employee-warnings", () => ({ EmployeeWarnings: () => null }));
 beforeAll(() => loadCatalog("ko"));
