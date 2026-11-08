@@ -329,12 +329,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false, fetch-depth: 0}
       # All workers restore the same cache; only the dev-only collector saves their union.
+      # registry/src is left out: cargo keeps crate mtimes when it unpacks, so a -newer delta would carry only .cargo-ok
+      # markers without sources, and cargo then refuses to build. It re-unpacks from registry/cache quickly.
       - &rust-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: rust-cache
         with:
           path: |
-            ~/.cargo/registry
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
             ~/.cargo/git/db
             backend/target
           key: backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
@@ -343,7 +346,7 @@ jobs:
       - &cache-mark
         name: Mark restored cache
         run: |
-          mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git/db" "$GITHUB_WORKSPACE/backend/target"
+          mkdir -p "$HOME/.cargo/registry/index" "$HOME/.cargo/registry/cache" "$HOME/.cargo/git/db" "$GITHUB_WORKSPACE/backend/target"
           touch "$RUNNER_TEMP/rust-cache-start"
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -355,7 +358,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/rust-cache"
           cd "$HOME"
-          find .cargo/registry .cargo/git/db -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
+          find .cargo/registry/index .cargo/registry/cache .cargo/git/db -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
             tar --null -czf "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" -T -
           mv "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz"
           cd "$GITHUB_WORKSPACE"
@@ -460,7 +463,7 @@ jobs:
         with: {node-version-file: .node-version}
       - name: Install pinned Rust test runner
         run: |
-          curl --fail --silent --show-error --retry 4 --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
+          curl --fail --silent --show-error --retry 8 --retry-delay 15 --retry-all-errors --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
             "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
           echo "e1c85dbe02dcf5b963803b3f96f4f561757f5c37cab68c932411dea20d57284e  ${RUNNER_TEMP}/nextest.tar.gz" | sha256sum -c -
           tar -xzf "${RUNNER_TEMP}/nextest.tar.gz" -C "${RUNNER_TEMP}" cargo-nextest
@@ -509,7 +512,8 @@ jobs:
         timeout-minutes: 5
         with:
           path: |
-            ~/.cargo/registry
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
             ~/.cargo/git/db
             backend/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}

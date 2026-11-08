@@ -247,17 +247,22 @@ test("cache deltas retain new files and permissions without republishing restore
     run(prepare.run);
     const marker = path.join(root, "rust-cache-start");
     utimesSync(marker, new Date(2000), new Date(2000));
-    writeFileSync(path.join(home, ".cargo/registry/new"), "registry");
+    writeFileSync(path.join(home, ".cargo/registry/cache/new"), "registry");
+    // cargo unpacks sources with the crate's own old mtimes but writes a fresh .cargo-ok marker
+    const unpacked = path.join(home, ".cargo/registry/src/crate-1.0.0");
+    mkdirSync(unpacked, { recursive: true });
+    writeFileSync(path.join(unpacked, ".cargo-ok"), "ok");
     writeFileSync(path.join(workspace, "backend/target/new"), "executable", { mode: 0o755 });
     const old = path.join(workspace, "backend/target/old");
     writeFileSync(old, "restored"); utimesSync(old, new Date(1000), new Date(1000));
-    const oldRegistry = path.join(home, ".cargo/registry/old");
+    const oldRegistry = path.join(home, ".cargo/registry/cache/old");
     writeFileSync(oldRegistry, "restored"); utimesSync(oldRegistry, new Date(1000), new Date(1000));
     run(collect.run);
     rmSync(path.join(home, ".cargo"), { recursive: true });
     rmSync(path.join(workspace, "backend/target"), { recursive: true });
     run(merge.run);
-    assert.equal(readFileSync(path.join(home, ".cargo/registry/new"), "utf8"), "registry");
+    assert.equal(readFileSync(path.join(home, ".cargo/registry/cache/new"), "utf8"), "registry");
+    assert.throws(() => readFileSync(path.join(unpacked, ".cargo-ok")), /ENOENT/, "a src marker without its sources poisons the cache");
     assert.equal(readFileSync(path.join(workspace, "backend/target/new"), "utf8"), "executable");
     assert.equal(statSync(path.join(workspace, "backend/target/new")).mode & 0o777, 0o755);
     assert.throws(() => readFileSync(old), /ENOENT/);

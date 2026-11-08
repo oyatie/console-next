@@ -10,7 +10,7 @@ docker.io/library/node:
   source: https://github.com/nodejs/docker-node
   reason: Official Node build stage; no Sigstore signature is published for the locked digest.
   authority: {static: {action: pass}}
-gcr.io/distroless/cc-debian12:
+gcr.io/distroless/cc-debian13:
   source: https://github.com/GoogleContainerTools/distroless#how-do-i-verify-distroless-images
   reason: Runtime base; verify the published Distroless keyless signature.
   authority:
