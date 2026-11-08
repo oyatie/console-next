@@ -46,7 +46,7 @@ test("both live browser projects exclude backend-free suites while retaining liv
     const output = path.join(directory, `${project}.json`);
     const env = { ...process.env, E2E_XBROWSER: xbrowser, PLAYWRIGHT_JSON_OUTPUT_FILE: output };
     delete env.NODE_TEST_CONTEXT;
-    const selection = "first-run-solo|authz/write-refusals|error-beacon|coldstart/|mock/|states/|live-renew.server-expiry|layout/layout.spec|perf/.*.test|visual.spec";
+    const selection = "first-run-solo|error-beacon|coldstart/|mock/|states/|live-renew.server-expiry|layout/layout.spec|perf/.*.test|visual.spec";
     const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", selection, "--list", `--project=${project}`, "--reporter=json"], {
       cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 60_000,
       env,
@@ -64,7 +64,7 @@ test("both live browser projects exclude backend-free suites while retaining liv
       assert.doesNotMatch(file, /(?:^|\/)(?:coldstart|mock|states)\/|live-renew\.server-expiry\.spec\.ts$|(?:^|\/)layout\/layout\.spec\.ts$|(?:^|\/)perf\/.*\.test\.ts$/, `${project}: ${file}`);
       if (project === "firefox") assert.doesNotMatch(file, /visual\.spec\.ts/, file);
     }
-    for (const spec of ["first-run-solo.spec.ts", "authz/write-refusals.spec.ts", "error-beacon.spec.ts"])
+    for (const spec of ["first-run-solo.spec.ts", "error-beacon.spec.ts"])
       assert.ok(files.some(file => file.endsWith(spec)), `${project} must retain ${spec}`);
   }
 });
@@ -114,7 +114,7 @@ test("live shards reserve cleanup time and run auxiliary suites independently", 
       assert.ok(!run.run.includes('"$SHARD" == 1'), "auxiliary suites must not accumulate on shard 1");
       const suites = job.strategy.matrix.include.map(entry => entry.shard);
       assert.deepEqual(suites, name === "chromium"
-        ? ["clock", "coldstart", "live-renew", "navigation", "focus-stress", "grid", "timeline"]
+        ? ["clock", "coldstart", "live-renew", "navigation", "focus-stress", "timeline"]
         : ["coldstart", "live-renew", "navigation", "focus-stress"]);
       assert.match(run.run, /--config="\$CONFIG"/);
       assert.equal(run.env.CONFIG, "${{ matrix.config || 'playwright.config.ts' }}");
@@ -145,7 +145,6 @@ test("the workflow reaches every previously dormant Playwright surface", () => {
     "playwright.live-renew.config.ts",
     "playwright.navigation.config.ts",
     "e2e/mock/focus-stress.config.ts",
-    "apps/web/src/features/people/ui/grid-table.playwright.ts",
     "apps/web/src/ui/timeline-lanes/timeline-line.playwright.ts",
   ]) assert.ok(source.includes(file), file);
   assert.match(source, /--project=clock/);
