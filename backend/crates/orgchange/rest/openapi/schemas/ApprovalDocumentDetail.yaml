@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+allOf:
+- {$ref: '#/components/schemas/ApprovalDocument'}
+- type: object
+  required: [body, revision, fingerprint, consequence, opinion_max, my_actions]
+  properties:
+    body:
+      type: array
+      items:
+        type: object
+        required: [key, label, value]
+        properties:
+          key: {type: string}
+          label: {type: string}
+          value: {type: string}
+    revision:
+      type: integer
+      description: Source event sequence length plus one; the fingerprint also covers edits without new events.
+    fingerprint:
+      type: string
+      description: Opaque snapshot token covering the source request, proposal, route and displayed facts.
+    consequence: {type: string}
+    opinion_max: {type: integer, minimum: 0}
+    my_actions:
+      type: object
+      required: [kind]
+      properties:
+        kind: {type: string, enum: [none]}

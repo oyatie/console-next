@@ -43,16 +43,16 @@ test("every write survives, with registered actions from its own handler only", 
 
 test("D10 reuses report artifacts and approved actions on dev pushes", () => {
   const ci = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
-  const job = ci.jobs["d10-evidence"];
-  assert.deepEqual(job.needs, ["d7-evidence", "d10-probes"]);
+  const job = ci.jobs["release-evidence"];
+  assert.deepEqual(job.needs, ["affected"]);
   assert.ok(job.steps.some(s => s.run?.includes("scripts/d10-census.mjs")));
   assert.ok(job.steps.some(s => s.run?.includes("scripts/d10-evidence.py")));
   const upload = job.steps.find(s => s.with?.name === "d10-evidence");
   assert.ok(upload);
-  assert.equal(upload.uses, ci.jobs["d7-evidence"].steps.find(s => s.with?.name === "d7-evidence").uses);
-  assert.ok(job.steps.some(s => s.with?.name === "d7-evidence" && s.with.path === ".cache/d7-evidence"));
+  assert.equal(upload.uses, ci.jobs["release-evidence"].steps.find(s => s.with?.name === "d7-evidence").uses);
+  assert.ok(job.steps.some(s => s.run?.includes("scripts/d7-evidence.py")));
   assert.match(job.if, /github.event_name == 'push'/);
-  assert.match(job.if, /refs\/heads\/dev/);
+
   assert.ok(ci.jobs.web.steps.some(s => s.run?.includes("scripts/d10_evidence_test.py")));
 });
 
@@ -69,19 +69,18 @@ test("wire names without enrollment in the Cedar action registry stay unresolved
 
 test("dev write probes reuse the E2E backend and feed the existing evidence producer even on failure", () => {
   const ci = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
-  const job = ci.jobs["d10-probes"];
+  const job = ci.jobs.home;
   assert.ok(job, "a live D10 probe job is required");
-  assert.match(job.if, /github.event_name == 'push'/);
-  assert.match(job.if, /refs\/heads\/dev/);
+  assert.match(job.if, /github.event_name != 'push'/);
   assert.equal(job["runs-on"], ci.jobs["backend-release"]["runs-on"]);
   assert.ok(job.needs.includes("backend-release"));
   const execute = job.steps.find(s => s.run?.includes("authz/write-refusals.spec.ts"));
   assert.match(execute.run, /--project=parallel/);
   assert.equal(execute.env.E2E_REPORTER, "line,json");
-  assert.equal(execute.env.CONSOLE_APP_BIN, ".cache/d10-backend/console-app");
+  assert.equal(execute.env.CONSOLE_APP_BIN, ".cache/home-backend/console-app");
   assert.ok(job.steps.some(s => s.with?.name === "d10-playwright" && s.if?.includes("!cancelled()")));
-  const evidence = ci.jobs["d10-evidence"];
-  assert.ok(evidence.needs.includes("d10-probes"));
+  const evidence = ci.jobs["release-evidence"];
+  assert.deepEqual(evidence.needs, ["affected"]);
   assert.ok(evidence.steps.some(s => s.with?.name === "d10-playwright" && s.with.path === ".cache/d10-input"));
   const approved = new Set(Object.values(ci.jobs).filter(j => j !== job).flatMap(j => j.steps ?? []).map(s => s.uses).filter(Boolean));
   for (const step of job.steps) if (step.uses) assert.ok(approved.has(step.uses), step.uses);

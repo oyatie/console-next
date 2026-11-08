@@ -71,15 +71,56 @@ impl IntoResponse for ApiError {
             body["error"]["current_version"] = json!(version);
         }
         if let Some(earliest) = self.earliest {
-            body["error"]["earliest_effective_from"] = json!(
-                earliest
-                    .format(&time::format_description::well_known::Rfc3339)
-                    .unwrap_or_default()
-            );
+            let earliest = match console_kernel_core::rfc3339(earliest) {
+                Ok(value) => value,
+                Err(error) => return Self::from(error).into_response(),
+            };
+            body["error"]["earliest_effective_from"] = json!(earliest);
         }
         if let Some(field) = self.error.field {
             body["error"]["errors"] = json!([{ "field": field, "code": code }]);
         }
         (self.status, Json(body)).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn too_soon_timestamp_is_utc_or_an_internal_error() {
+        for (at, status) in [
+            (
+                time::macros::datetime!(2026-11-05 12:31:02.238349 +09:00),
+                StatusCode::CONFLICT,
+            ),
+            (
+                time::macros::datetime!(-0001-01-01 00:00 UTC),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+        ] {
+            let response = ApiError {
+                status: StatusCode::CONFLICT,
+                error: KernelError::conflict("effective date too soon"),
+                earliest: Some(at),
+                current_version: None,
+            }
+            .into_response();
+            assert_eq!(response.status(), status);
+            let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            if status == StatusCode::CONFLICT {
+                assert_eq!(
+                    body["error"]["earliest_effective_from"],
+                    "2026-11-05T03:31:02.238349Z"
+                );
+            } else {
+                assert_eq!(body["error"]["code"], "internal");
+                assert!(body["error"].get("earliest_effective_from").is_none());
+            }
+        }
     }
 }

@@ -16,9 +16,11 @@ export function ContractWageForm({ employeeId, onClose }: { employeeId: string; 
   const [amount, setAmount] = useState("");
   const [hours, setHours] = useState("");
   const [source, setSource] = useState("");
-  const save = useCommand({ run: recordContractWage, invalidates: ["/api/v1/payroll/employees"], settle: true, announce: () => t("payroll.employee.saved") });
+  const save = useCommand({ run: recordContractWage, invalidates: ["/api/v1/payroll/employees"], settle: true, announce: () => t("payroll.employee.saved"), onSuccess: () => {
+    setEffective(""); setKind(""); setAmount(""); setHours(""); setSource("");
+  } });
   return <Composer formId={formId} layout="inline" title={t("payroll.employee.record")} action={{ kind: "contractWage", mode: "save" }} onClose={onClose} pending={save.isPending} consequence={t("payroll.employee.appendOnly")}
-    notice={<><CommandError error={save.error} />{save.isSuccess && <p role="status">{t("payroll.employee.saved")}</p>}</>}
+    notice={<><CommandError error={save.error} own={code => code === "employee_exited_read_only" ? t("payroll.refuse.employee_exited_read_only") : undefined} />{save.isSuccess && <p role="status">{t("payroll.employee.saved")}</p>}</>}
     onSubmit={() => {
     if (!(document.getElementById(formId) as HTMLFormElement).reportValidity() || !kind || !effective || !source.trim() || !Number.isSafeInteger(Number(amount)) || !Number.isSafeInteger(Number(hours))) return false;
     save.mutate({ employeeId, body: { effective_from: effective, wage_kind: kind, amount_won: Number(amount), monthly_standard_hours: Number(hours), source_note: source.trim() } });

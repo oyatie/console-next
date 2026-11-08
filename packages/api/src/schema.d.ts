@@ -1434,6 +1434,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/approvals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a source-authorized approval document
+         * @description Cedar approval_document_read uses the same source facts and inbox membership as the list. Hidden, absent, unsupported, draft and unrouted documents all return not_found. Body contains the source target, effective date and reason; the source record link exposes the full proposal. This read-only envelope exposes no decisions until the source-command adapter is available.
+         */
+        get: operations["getApprovalDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attendance/batches/{batch_id}/undo": {
         parameters: {
             query?: never;
@@ -15334,6 +15354,23 @@ export interface components {
                 id: string;
             };
         };
+        ApprovalDocumentDetail: components["schemas"]["ApprovalDocument"] & {
+            body: {
+                key: string;
+                label: string;
+                value: string;
+            }[];
+            /** @description Source event sequence length plus one; the fingerprint also covers edits without new events. */
+            revision: number;
+            /** @description Opaque snapshot token covering the source request, proposal, route and displayed facts. */
+            fingerprint: string;
+            consequence: string;
+            opinion_max: number;
+            my_actions: {
+                /** @enum {string} */
+                kind: "none";
+            };
+        };
         ApprovalDocumentPage: {
             items: components["schemas"]["ApprovalDocument"][];
             focused: components["schemas"]["ApprovalDocument"] | null;
@@ -28851,6 +28888,12 @@ export interface components {
             expires_at: string | null;
             /** Format: date-time */
             tenant_approved_at: string | null;
+            /** Format: date-time */
+            operator_approved_at?: string | null;
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            ended_at?: string | null;
             decisions: components["schemas"]["SupportSessionDecision"][];
             records: components["schemas"]["SupportAccessRecord"][];
         };
@@ -30821,9 +30864,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        items: {
+                        items: ({
+                            occurred_at: components["schemas"]["Timestamp"];
+                        } & {
                             [key: string]: unknown;
-                        }[];
+                        })[];
                         /** Format: int64 */
                         limit: number;
                         /** Format: int64 */
@@ -33694,6 +33739,40 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getApprovalDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Canonical source-prefixed document ID from the inbox. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible source document under one consistent snapshot. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDocumentDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description Sanitized approvals.projection_unavailable; includes a support reference. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     undoAttendanceBatch: {
@@ -46018,7 +46097,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        imports?: {
+                            latest_import_at?: components["schemas"]["Timestamp"];
+                        } & {
+                            [key: string]: unknown;
+                        };
                         payroll: {
+                            latest_updated_at?: components["schemas"]["Timestamp"];
                             /**
                              * Format: int64
                              * @description Number of inspectable non-terminal payroll close runs.
@@ -53384,6 +53469,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description 409 employee_exited_read_only when the employee has exited, including after the draft was read. No contract wage is appended; existing wages remain unchanged. Request a governed correction of the personnel record. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
         };
     };

@@ -141,6 +141,10 @@ paths:
                     type: array
                     items:
                       type: object
+                      required: [occurred_at]
+                      properties:
+                        occurred_at:
+                          $ref: '#/components/schemas/Timestamp'
                       additionalProperties: true
                   limit:
                     type: integer
@@ -3518,6 +3522,33 @@ paths:
         '422': {$ref: '#/components/responses/ValidationError'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '503': {$ref: '#/components/responses/ServiceUnavailable'}
+  /api/v1/approvals/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [org]
+      operationId: getApprovalDocument
+      summary: Read a source-authorized approval document
+      security: [{bearerAuth: []}]
+      description: >-
+        Cedar approval_document_read uses the same source facts and inbox membership as the list.
+        Hidden, absent, unsupported, draft and unrouted documents all return not_found.
+        Body contains the source target, effective date and reason; the source record link exposes the full proposal.
+        This read-only envelope exposes no decisions until the source-command adapter is available.
+      parameters:
+      - {name: id, in: path, required: true, schema: {type: string}, description: Canonical source-prefixed document ID from the inbox.}
+      responses:
+        '200':
+          description: Visible source document under one consistent snapshot.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApprovalDocumentDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500':
+          description: Sanitized approvals.projection_unavailable; includes a support reference.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorBody'}
   /api/v1/attendance/batches/{batch_id}/undo:
     post:
       tags: [attendance]
@@ -16230,11 +16261,19 @@ paths:
                 required:
                 - payroll
                 properties:
+                  imports:
+                    type: object
+                    properties:
+                      latest_import_at:
+                        $ref: '#/components/schemas/Timestamp'
+                    additionalProperties: true
                   payroll:
                     type: object
                     required:
                     - active_close_runs
                     properties:
+                      latest_updated_at:
+                        $ref: '#/components/schemas/Timestamp'
                       active_close_runs:
                         type: integer
                         format: int64
@@ -23629,6 +23668,15 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          description: >
+            409 employee_exited_read_only when the employee has exited, including
+            after the draft was read. No contract wage is appended; existing wages
+            remain unchanged. Request a governed correction of the personnel record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '422':
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/employees/{employeeId}/payslip-draft:
@@ -34562,6 +34610,35 @@ components:
           properties:
             kind: {type: string, enum: [org_change]}
             id: {type: string, format: uuid}
+    ApprovalDocumentDetail:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf:
+      - {$ref: '#/components/schemas/ApprovalDocument'}
+      - type: object
+        required: [body, revision, fingerprint, consequence, opinion_max, my_actions]
+        properties:
+          body:
+            type: array
+            items:
+              type: object
+              required: [key, label, value]
+              properties:
+                key: {type: string}
+                label: {type: string}
+                value: {type: string}
+          revision:
+            type: integer
+            description: Source event sequence length plus one; the fingerprint also covers edits without new events.
+          fingerprint:
+            type: string
+            description: Opaque snapshot token covering the source request, proposal, route and displayed facts.
+          consequence: {type: string}
+          opinion_max: {type: integer, minimum: 0}
+          my_actions:
+            type: object
+            required: [kind]
+            properties:
+              kind: {type: string, enum: [none]}
     ApprovalDocumentPage:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -51591,7 +51668,7 @@ components:
         properties:
           key:
             type: string
-            x-extensible-enum: [home, org, access, people, exits, attendance, statutory, payroll]
+            x-extensible-enum: [home, org, access, approvals, people, exits, attendance, statutory, payroll]
           ready:
             type: boolean
           unblock:
@@ -61113,6 +61190,21 @@ components:
             - 'null'
           format: date-time
         tenant_approved_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        operator_approved_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        started_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        ended_at:
           type:
             - string
             - 'null'
