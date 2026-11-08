@@ -29,6 +29,16 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         expect(await region.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(0);
       }
       const row = grid.getByRole("row").filter({ hasText: filingTask.name });
+      if (width === 390) {
+        const title = row.locator('[data-card="title"]');
+        await expect(title).toHaveAttribute("data-label", t("statutory.employee"));
+        await expect(title).toContainText(filingTask.name);
+        for (const key of ["statutory.workplace", "statutory.event", "statutory.date", "statutory.deadline", "statutory.evidence"] as const) {
+          const cell = row.locator(`[data-card="fact"][data-label="${t(key)}"]`);
+          await expect(cell).toBeVisible();
+          expect(await cell.evaluate(element => getComputedStyle(element, "::before").content)).toBe(JSON.stringify(t(key)));
+        }
+      }
       await expect(row.getByRole("link", { name: new RegExp(filingTask.name) })).toHaveAttribute("href", `/people/${id(100)}`);
       for (const value of [filingTask.employee_number!, filingTask.workplace_name!, t("statutory.NPS"), t("statutory.ACQUIRE"), fmtDate(filingTask.effective_date), t("statutory.days", { days: 3 })]) {
         await expect(row).toContainText(value);

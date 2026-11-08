@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { failure, id } from "../mock/fixtures";
 
-test.beforeAll(() => loadCatalog("ko"));
+test.beforeEach(async () => { await loadCatalog("ko"); i18n.set("ko"); });
 
 for (const width of [1440, 390]) {
   test(`job title inline edit opens and stays open at ${width}px`, async ({ page }) => {
