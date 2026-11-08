@@ -61,6 +61,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       });
       try {
         await page.goto("/people/job-titles");
+        const row = page.getByRole("row").filter({ hasText: entry.label });
+        await expect(row.getByRole("cell", { name: entry.label, exact: true })).toBeVisible();
+        if (width === 390) await expect(row.locator('[data-card="title"]')).toHaveText(entry.label);
         if (invalid) await page.getByRole("radio", { name: t("enum.jobTitleKind.JOB"), exact: true }).press("Space");
         else await page.getByRole("button", { name: t("titles.edit", { label: entry.label }), exact: true }).click();
         const form = invalid
@@ -76,6 +79,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expect(refusal).not.toContainText("internal");
         await expect(refusal.locator('code[translate="no"]')).toHaveText(code);
         await expect(refusal).toContainText(id(99));
+        expect(await refusal.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(0);
         await expect(input).toHaveValue("다른 직무");
         await fits(page, `job-title-refusal/${code}/${width}/${theme}`);
         await expectAxe(page, `job-title-refusal/${code}/${width}/${theme}`);
