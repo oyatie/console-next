@@ -1,6 +1,11 @@
 // Korean copy for `exit.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 import type { enExit } from "../en/exit";
 export const koExit: Record<keyof typeof enExit, string> = {
+  "exit.settlement.notEligible.serviceYears": "퇴직금 미해당 (근속 {threshold}년 미만)",
+  "exit.settlement.notEligible.weeklyHours": "퇴직금 미해당 (주 {threshold}시간 미만)",
+  "exit.settlement.notEligible.consequence": "{name}의 퇴직금 미해당 근거로 4대보험 상실 신고·결재 문서를 작성합니다. 상신하면 퇴직 절차가 끝나 반려하거나 수정할 수 없습니다.",
+  "exit.settlement.reviewPending": "노무사 검토 전",
+  "exit.settlement.ruleEffective": "{date}부터 적용되는 법정 기준",
   "exit.board.board": "단계별 업무",
   "exit.board.ribbon": "사건 일정",
   "exit.board.leg.approval": "결재",

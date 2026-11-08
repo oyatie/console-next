@@ -1,4 +1,9 @@
 export const enExit = {
+  "exit.settlement.notEligible.serviceYears": "Severance not applicable (service below {threshold} years)",
+  "exit.settlement.notEligible.weeklyHours": "Severance not applicable (below {threshold} hours per week)",
+  "exit.settlement.notEligible.consequence": "Prepare insurance-loss and approval documents using the basis for {name}’s severance exemption. Submission closes the exit procedure and prevents further changes.",
+  "exit.settlement.reviewPending": "Pending labor counsel review",
+  "exit.settlement.ruleEffective": "Statutory rule effective from {date}",
   "exit.board.board": "Tasks by leg",
   "exit.board.ribbon": "Case timeline",
   "exit.board.leg.approval": "Approval",
