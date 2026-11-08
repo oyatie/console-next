@@ -139,22 +139,28 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRecorded: (m: string) => void }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
+  const [pickedName, setPickedName] = useState("");
+  const [changing, setChanging] = useState(false);
   const [tried, setTried] = useState(false);
   const found = useQuery({ ...get("/api/v1/employees", { params: { query: { search: query.trim(), limit: 20 } } }), enabled: admin && query.trim() !== "" });
-  const options = found.isError ? [] : found.data?.items ?? [];
+  const options = found.isError ? [] : found.data?.items.filter((e) => e.id !== u.employee_id) ?? [];
   const link = useCommand({
     run: ({ employeeId, requestId }: { employeeId: string | null; requestId?: string }) => checkedOnAccount(u.id, () => linkAccount(u.id, employeeId, requestId), holdsLink(employeeId)),
     invalidates: [...INVALIDATES, "/api/v1/employees", "/api/v1/person-binding-reviews"],
-    onSuccess: (r) =>
-      onRecorded("account_link" in r ? t("people.account.waiting") : r.employee_name ? t("accounts.employee.linked", { name: personName(u.display_name), employee: r.employee_name }) : t("accounts.employee.unlinked", { name: personName(u.display_name) })),
+    onSuccess: (r) => {
+      if (!("account_link" in r)) setChanging(false);
+      onRecorded("account_link" in r ? t("people.account.waiting") : r.employee_name ? t("accounts.employee.linked", { name: personName(u.display_name), employee: r.employee_name }) : t("accounts.employee.unlinked", { name: personName(u.display_name) }));
+    },
   });
   const pending = link.data && "account_link" in link.data ? link.data.account_link : undefined;
   const canChange = admin && u.id !== mySub();
+  const error = <PasskeyError error={link.error} own={own} />;
   if (pending) return <>
+    {u.employee_id && <PersonRef account={u} wrap />}
     <Banner tone="info" live="polite"
       title={t("people.account.pending", {
         account: u.display_name,
-        employee: pending.employee_id ? options.find((e) => e.id === pending.employee_id)?.name ?? "" : t("accounts.unlinked"),
+        employee: pending.employee_id ? pickedName : t("accounts.unlinked"),
         requester: pending.requester_name,
       })}
       actions={canChange && pending.requested_by !== mySub() && <Button disabled={link.isPending}
@@ -162,26 +168,28 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
         {t("uiOverrideSheet.stepUp", { action: t("org.change.step.APPROVED") })}
       </Button>}
     />
-    <PasskeyError error={link.error} />
+    {error}
   </>;
-  if (u.employee_id)
+  if (u.employee_id && !changing)
     return (
       <div className="row">
         <PersonRef account={u} wrap />
+        {canChange && <Button variant="ghost" disabled={link.isPending} onClick={() => setChanging(true)}>{t("accounts.employee.change")}</Button>}
         {canChange && <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate({ employeeId: null })}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.unlink") })}</Button>}
-        <PasskeyError error={link.error} />
+        {error}
       </div>
     );
   if (!canChange) return <Muted>{t("accounts.unlinked")}</Muted>;
   return (
     <>
+      {u.employee_id && <PersonRef account={u} wrap />}
       <ServerPicker
         label={t("accounts.employee.pick")}
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={(value) => { setQuery(value); setPicked(null); setPickedName(""); setTried(false); }}
         options={options.map((e) => ({ ...personOption(e, options), status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined }))}
         value={picked}
-        onChange={setPicked}
+        onChange={(id) => { setPicked(id); setPickedName(options.find((e) => e.id === id)?.name ?? ""); }}
         group={t("accounts.employee.group")}
         loading={found.isFetching}
         error={found.isError ? readFailureText(found.error) : undefined}
@@ -191,9 +199,10 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
       {tried && picked === null && <span className="field__error" role="alert">{t("accounts.employee.pickError")}</span>}
       <div className="row">
         {found.isError && <Button onClick={() => void found.refetch()}>{t("common.retry")}</Button>}
-        <Button disabled={link.isPending} onClick={() => (setTried(true), picked && link.mutate({ employeeId: picked }))}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.link") })}</Button>
+        <Button disabled={link.isPending} onClick={() => (setTried(true), picked && link.mutate({ employeeId: picked }))}>{t("uiOverrideSheet.stepUp", { action: t(changing ? "accounts.employee.requestChange" : "accounts.employee.link") })}</Button>
+        {changing && <Button disabled={link.isPending} onClick={() => { setChanging(false); setQuery(""); setPicked(null); setPickedName(""); setTried(false); }}>{t("common.cancel")}</Button>}
       </div>
-      <PasskeyError error={link.error} />
+      {error}
     </>
   );
 }

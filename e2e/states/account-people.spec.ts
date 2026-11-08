@@ -14,6 +14,7 @@ const linked: User = { ...user, id: id(500), display_name: "김계정", employee
   employee_org_unit: employee.org_unit, employee_link_status: "LINKED" };
 const unlinked: User = { ...linked, employee_id: null, employee_name: null, employee_number: null,
   employee_company: null, employee_org_unit: null, employee_link_status: "UNLINKED" };
+const replacement = { ...employee, id: id(501), name: "이직원", employee_number: "EMP-13" };
 
 async function fixture(page: Page, initial: User = linked) {
   const shell = await mockScreen(page, screens[1], "populated");
@@ -29,7 +30,7 @@ async function fixture(page: Page, initial: User = linked) {
   await mockRoute(page, "get", "/api/v1/person-binding-reviews", { status: 200, json: { items: [], total: 0, limit: 100, offset: 0 } });
   await mockRoute(page, "get", "/api/v1/employees", () => searchFailed
     ? { status: 503, json: failure("service_unavailable") }
-    : { status: 200, json: { items: [employee], total: 1, limit: 20, offset: 0, next_cursor: null } });
+    : { status: 200, json: { items: [employee, replacement], total: 2, limit: 20, offset: 0, next_cursor: null } });
   await mockRoute(page, "post", "/api/v1/auth/passkey/login/start", { status: 200, json: {
     ceremony_id: id(600), expires_at: "2099-01-01T00:00:00Z", challenge: { publicKey: { challenge: "AQID", rpId: "localhost" } },
   } });
@@ -43,7 +44,124 @@ async function fixture(page: Page, initial: User = linked) {
     account = body.employee_id === null ? unlinked : linked;
     return { status: 200, json: account };
   });
-  return { ...shell, writes, failSearch: () => { searchFailed = true; }, recoverSearch: () => { searchFailed = false; } };
+  return { ...shell, writes, setAccount: (next: User) => { account = next; }, failSearch: () => { searchFailed = true; }, recoverSearch: () => { searchFailed = false; } };
+}
+
+for (const width of [1440, 390]) {
+  test(`direct relink keeps the current employee until independent confirmation at ${width}px @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const f = await fixture(page);
+    const writes: Record<string, unknown>[] = [];
+    await mockRoute(page, "patch", "/api/v1/users/{id}", request => {
+      writes.push(request.postDataJSON());
+      return { status: 202, json: { ...linked, account_link: {
+        status: "PENDING" as const, request_id: id(700), requested_by: user.id, requester_name: user.display_name,
+        user_id: linked.id, employee_id: replacement.id,
+      } } };
+    });
+    await page.goto(`/people?view=accounts&sel=${linked.id}`);
+    const section = page.getByRole("region", { name: "직원 연결", exact: true });
+    await section.getByRole("button", { name: "직원 변경", exact: true }).click();
+    await expect(section.getByRole("link", { name: /김직원.*EMP-12/ })).toBeVisible();
+    const picker = section.getByRole("combobox", { name: "연결할 직원", exact: true });
+    await picker.fill("직원");
+    await expect(page.getByRole("option", { name: /김직원/ })).toHaveCount(0);
+    await page.getByRole("option", { name: /이직원/ }).click();
+    const submit = section.getByRole("button", { name: "패스키로 확인하고 직원 변경 요청", exact: true });
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, theme) => { el.dataset.theme = theme; }, theme);
+      await fits(page, `relink draft ${theme}`);
+    }
+    await expectAxe(page, "relink draft");
+    await submit.click();
+    await expect(section).toContainText("확인 대기");
+    await expect(section).toContainText("이직원");
+    await expect(section.getByRole("link", { name: /김직원.*EMP-12/ })).toBeVisible();
+    await expect(section.getByRole("button", { name: /승인/ })).toHaveCount(0);
+    expect(writes).toEqual([{ employee_id: replacement.id, step_up: { ceremony_id: id(600), credential: { id: "test-passkey", type: "public-key" } } }]);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, theme) => { el.dataset.theme = theme; }, theme);
+      await fits(page, `pending relink ${theme}`);
+    }
+    await expectAxe(page, "pending relink");
+    expect(f.unexpected).toEqual([]);
+  });
+}
+
+test("cancelling a relink draft and changing the search never submits the previous selection @ui-state", async ({ page }) => {
+  const f = await fixture(page);
+  await page.goto(`/people?view=accounts&sel=${linked.id}`);
+  const section = page.getByRole("region", { name: "직원 연결", exact: true });
+  await section.getByRole("button", { name: "직원 변경", exact: true }).click();
+  const picker = section.getByRole("combobox", { name: "연결할 직원", exact: true });
+  await picker.fill("이직원");
+  await page.getByRole("option", { name: /이직원/ }).click();
+  await picker.fill("다른 검색");
+  await section.getByRole("button", { name: "패스키로 확인하고 직원 변경 요청", exact: true }).click();
+  await expect(section.getByRole("alert")).toContainText("연결할 직원을 선택하십시오");
+  await section.getByRole("button", { name: "취소", exact: true }).click();
+  await expect(picker).toHaveCount(0);
+  await expect(section.getByRole("link", { name: /김직원.*EMP-12/ })).toBeVisible();
+  expect(f.writes).toEqual([]);
+  expect(f.unexpected).toEqual([]);
+});
+
+test("a second person confirms the frozen relink with a fresh passkey @ui-state", async ({ page }) => {
+  const f = await fixture(page);
+  const writes: Record<string, unknown>[] = [];
+  await mockRoute(page, "patch", "/api/v1/users/{id}", request => {
+    const body = request.postDataJSON();
+    writes.push(body);
+    if (!body.account_link_request_id) return { status: 202, json: { ...linked, account_link: {
+      status: "PENDING" as const, request_id: id(700), requested_by: id(701), requester_name: "김요청",
+      user_id: linked.id, employee_id: replacement.id,
+    } } };
+    const confirmed = { ...linked, employee_id: replacement.id, employee_name: replacement.name, employee_number: replacement.employee_number };
+    f.setAccount(confirmed);
+    return { status: 200, json: confirmed };
+  });
+  await page.goto(`/people?view=accounts&sel=${linked.id}`);
+  const section = page.getByRole("region", { name: "직원 연결", exact: true });
+  await section.getByRole("button", { name: "직원 변경", exact: true }).click();
+  await section.getByRole("combobox", { name: "연결할 직원", exact: true }).fill("이직원");
+  await page.getByRole("option", { name: /이직원/ }).click();
+  await section.getByRole("button", { name: "패스키로 확인하고 직원 변경 요청", exact: true }).click();
+  await expect(section).toContainText("김요청");
+  await section.getByRole("button", { name: "패스키로 확인하고 승인", exact: true }).click();
+  await expect(section.getByRole("link", { name: /이직원.*EMP-13/ })).toBeVisible();
+  await expect(section).not.toContainText("확인 대기");
+  await page.reload();
+  await expect(section.getByRole("link", { name: /이직원.*EMP-13/ })).toBeVisible();
+  expect(writes).toEqual([
+    { employee_id: replacement.id, step_up: { ceremony_id: id(600), credential: { id: "test-passkey", type: "public-key" } } },
+    { employee_id: replacement.id, account_link_request_id: id(700), step_up: { ceremony_id: id(600), credential: { id: "test-passkey", type: "public-key" } } },
+  ]);
+  expect(f.unexpected).toEqual([]);
+});
+
+for (const [code, status, copy] of [
+  ["account_link_self_forbidden", 403, "본인 계정의 직원 연결은 변경할 수 없습니다"],
+  ["account_link_second_person_required", 403, "요청자와 다른 확인 권한자가 승인해야 합니다"],
+  ["account_link.refuse.identity_unbound", 403, "본인 정보를 확인할 수 없어 거부했습니다"],
+  ["account_link_stale", 409, "현재 연결이 바뀌었습니다"],
+  ["step_up_required", 428, "내 패스키로 본인 확인을 해야 합니다"],
+  ["step_up_failed", 401, "패스키를 확인하지 못했습니다"],
+] as const) {
+  test(`direct relink preserves the current employee on ${code} @ui-state`, async ({ page }) => {
+    const f = await fixture(page);
+    await mockRoute(page, "patch", "/api/v1/users/{id}", { status, json: failure(code) });
+    await page.goto(`/people?view=accounts&sel=${linked.id}`);
+    const section = page.getByRole("region", { name: "직원 연결", exact: true });
+    await section.getByRole("button", { name: "직원 변경", exact: true }).click();
+    await section.getByRole("combobox", { name: "연결할 직원", exact: true }).fill("이직원");
+    await page.getByRole("option", { name: /이직원/ }).click();
+    await section.getByRole("button", { name: "패스키로 확인하고 직원 변경 요청", exact: true }).click();
+    await expect(section.getByRole("alert")).toContainText(copy);
+    await expect(section.getByRole("link", { name: /김직원.*EMP-12/ })).toBeVisible();
+    await expect(section.getByRole("button", { name: "패스키로 확인하고 직원 변경 요청", exact: true })).toBeEnabled();
+    expect(f.writes).toEqual([]);
+    expect(f.unexpected).toEqual([]);
+  });
 }
 
 for (const width of [1440, 390]) {
