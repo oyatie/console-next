@@ -37,6 +37,10 @@ test("a drafter withdraws a routed change after go-live and keeps its chain on r
   const queue = await inboxRead.json() as components["schemas"]["ActionInboxResponse"];
   const pending = queue.items.find(item => item.id === `org_change:${before.id}`);
   expect(pending).toMatchObject({ version: before.version, can_decide: false, cannot_reason: expect.any(String) });
+  expect(pending).toHaveProperty("policy", {
+    key: "approval.policy.org_structure", routed: true,
+    merge_consecutive: false, bulk_allowed: false, step_up: false,
+  });
   for (const decision of ["APPROVED", "REJECTED"]) {
     const denied = await api(`/org-changes/${before.id}/approval-steps/${before.approvalSteps[0]!.id}/decision`, "POST", { decision });
     expect([403, 409]).toContain(denied.status());

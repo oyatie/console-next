@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Decision hints enrich visible rows; commands always recheck live admission.
 use super::*;
+use console_action_inbox_application::decision::{DecisionFacts, DecisionPolicy};
 use console_platform_authz::cedar_pbac::actions::org_change_step_decide;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -11,6 +12,7 @@ pub(super) async fn load(
     principal: &Principal,
     ids: Vec<Uuid>,
     mut facts: HashMap<Uuid, org_change_step_decide::Facts>,
+    policy: Option<DecisionPolicy>,
 ) -> Result<HashMap<Uuid, Value>, crate::error::AppError> {
     if ids.is_empty() {
         return Ok(HashMap::new());
@@ -51,13 +53,11 @@ pub(super) async fn load(
                 &org.to_string(),
                 *facts.get(&id)?,
             );
-            let mut fields = json!({
-                "version": console_orgchange_domain::decision_version(timestamp, None),
-                "can_decide": decision.is_ok(),
-            });
-            if let Err(error) = decision {
-                fields["cannot_reason"] = json!(error.code.unwrap_or("forbidden"));
-            }
+            let fields = json!(DecisionFacts::new(
+                console_orgchange_domain::decision_version(timestamp, None),
+                policy,
+                decision,
+            ));
             Some((id, fields))
         })
         .collect())

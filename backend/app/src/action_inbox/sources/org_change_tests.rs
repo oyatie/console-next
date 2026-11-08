@@ -77,9 +77,14 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
         after: None,
         limit: 20,
     };
-    let actual = page(&runtime_role_pool(&pool).await, &principal, query.clone())
-        .await
-        .unwrap();
+    let actual = page(
+        &runtime_role_pool(&pool).await,
+        &principal,
+        query.clone(),
+        None,
+    )
+    .await
+    .unwrap();
     assert_eq!(actual.total, 8);
     for kind in [
         "org_change_draft",
@@ -120,7 +125,7 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
         .execute(&pool)
         .await
         .unwrap();
-    let without_grant = page(&runtime_role_pool(&pool).await, &principal, query)
+    let without_grant = page(&runtime_role_pool(&pool).await, &principal, query, None)
         .await
         .unwrap();
     assert_eq!(without_grant.total, 7);
@@ -145,6 +150,7 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
             after: None,
             limit: 20,
         },
+        None,
     )
     .await
     .unwrap();
@@ -174,6 +180,7 @@ async fn no_org_change_grant_does_not_query_or_disclose_a_source() {
             after: None,
             limit: 10,
         },
+        None,
     )
     .await
     .unwrap();

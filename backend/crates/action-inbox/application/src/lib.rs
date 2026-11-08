@@ -2,6 +2,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod attention;
+pub mod decision;
 pub use attention::{Attention, AttentionCount};
 mod projection;
 use projection::project_item;

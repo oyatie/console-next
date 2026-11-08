@@ -20,6 +20,7 @@ use tracing::Instrument;
 
 mod decisions;
 pub(crate) mod error;
+mod policy;
 mod request_register;
 mod response;
 use error::InboxError;
@@ -103,18 +104,13 @@ async fn list_action_inbox(
         .await
         .map_err(|error| source_failure("clock", error))?;
     let org = principal.org_id;
-    let (created_at, deadline_due_soon_days) = console_platform_db::with_org_conn::<
+    let (created_at, deadline_due_soon_days, org_policy) = console_platform_db::with_org_conn::<
         _,
         _,
         console_settings_adapter_postgres::PgSettingsError,
     >(&state.pool, org, move |tx| {
         Box::pin(async move {
-            let window = console_settings_adapter_postgres::deadline_due_soon_days_in_tx(
-                tx.as_mut(),
-                org,
-                now,
-            )
-            .await?;
+            let (window, org_policy) = policy::load(tx.as_mut(), org, now).await?;
             let created = sqlx::query_scalar::<_, OffsetDateTime>(
                 "SELECT created_at FROM organizations WHERE id = $1",
             )
@@ -122,7 +118,7 @@ async fn list_action_inbox(
             .fetch_one(tx.as_mut())
             .await
             .map_err(console_platform_db::DbError::from)?;
-            Ok((created, window))
+            Ok((created, window, org_policy))
         })
     })
     .await
@@ -140,6 +136,7 @@ async fn list_action_inbox(
         statutory_register: request_register::Register::default(),
         setup_created_at: created_at,
         deadline_due_soon_days,
+        org_policy,
     };
     let mut page = run_action_inbox(
         &sources,
@@ -176,6 +173,7 @@ struct PgActionInboxSources {
     statutory_register: request_register::Register,
     setup_created_at: OffsetDateTime,
     deadline_due_soon_days: i64,
+    org_policy: Option<console_action_inbox_application::decision::DecisionPolicy>,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     support_reference: String,
 }
@@ -252,7 +250,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     sources::registration_checks::page(&self.pool, &self.principal, query).await
                 }
                 ActionInboxSource::OrgChange => {
-                    sources::org_change::page(&self.pool, &self.principal, query).await
+                    sources::org_change::page(&self.pool, &self.principal, query, self.org_policy).await
                 }
                 ActionInboxSource::HrExit => {
                     sources::hr_exit::page(&self.pool, &self.principal, query, &self.statutory_register).await
