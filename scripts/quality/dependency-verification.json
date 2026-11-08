@@ -28,10 +28,10 @@
     "note": "docs/quality/dependencies/npm-group-2026-11.md"
   },
   "apps/web/package.json:dependencies:lucide-react": {
-    "requirement": "^1.65.0",
-    "version": "1.65.0",
-    "registry": "https://registry.npmjs.org/lucide-react/1.65.0",
-    "checked": "2026-11-06",
+    "requirement": "^1.66.0",
+    "version": "1.66.0",
+    "registry": "https://registry.npmjs.org/lucide-react/1.66.0",
+    "checked": "2026-11-08",
     "note": "docs/quality/dependencies/lucide-react.md"
   },
   "apps/web/package.json:dependencies:@internationalized/date": {

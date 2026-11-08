@@ -27,6 +27,16 @@ updates:
       # openapi-typescript requires the JavaScript compiler API missing from native TypeScript.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # 2026-11-07: strict-value 1.12.1 supports Stylelint 16–17; revisit when its peer range supports 18.
+      - dependency-name: "stylelint"
+        versions: ["18.x"]
+      # 2026-11-07: ten React Compiler lint failures; revisit after effect-cancellation lint compatibility is proven.
+      - dependency-name: "oxlint"
+        versions: ["1.91.x"]
+      # 2026-11-08: 5.105.2+ loses the /people go-live receipt in phase-band E2E (bisected: 5.105.1 passes).
+      # Revisit after receipt rendering and configured expiry pass in Chromium and Firefox.
+      - dependency-name: "@tanstack/react-query"
+        versions: [">=5.105.2"]
     groups:
       npm:
         patterns: ["*"]
@@ -52,6 +62,14 @@ updates:
       - dependency-name: "apalis"
       - dependency-name: "apalis-postgres"
       - dependency-name: "apalis-sql"
+      # 2026-11-07: 0.6 replaces the crypto backend and conflicts with our 0.5 proto types.
+      # Revisit after a coordinated proto/API migration preserves stored passkeys and passes Chromium auth E2E.
+      - dependency-name: "webauthn-rs"
+        versions: ["0.6.*"]
+      - dependency-name: "webauthn-rs-proto"
+        versions: ["0.6.*"]
+      - dependency-name: "webauthn-authenticator-rs"
+        versions: ["0.6.*"]
     groups:
       cargo:
         patterns: ["*"]
