@@ -63,6 +63,10 @@ async fn filing_is_atomic_keyset_paged_and_uses_the_register(pool: PgPool) {
     .unwrap();
     assert_eq!(due, &(received + time::Duration::days(17)).to_string());
     assert_eq!(record["kinds"]["WITHDRAWAL"]["due"]["without_delay"], true);
+    assert_eq!(
+        record["kinds"]["ACCESS"]["due"]["rule"]["effective_from"],
+        "2026-09-11"
+    );
     let id = Uuid::parse_str(record["id"].as_str().unwrap()).unwrap();
     assert_eq!(record["receipt"]["identity_method"], "PASSKEY");
     let second = rights::file(&mut tx, org, user, None, &input, &register)

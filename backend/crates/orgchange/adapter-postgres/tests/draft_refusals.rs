@@ -15,6 +15,10 @@ use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+#[path = "draft_refusals/support.rs"]
+mod support;
+use support::snapshot;
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn create_admission_refuses_before_any_business_or_audit_write(pool: PgPool) {
     let org = OrgId::new();
@@ -157,7 +161,7 @@ async fn scoped_admin_cannot_draft_a_change_that_touches_another_unit(pool: PgPo
             employee_ids: None,
         }],
     ];
-    for proposal in cases {
+    for proposal in support::legacy_places().into_iter().chain(cases) {
         assert_scope_refusal(scope_org(org, store.create(actor, change(inside, proposal))).await);
         assert_eq!(snapshot(&pool).await, before);
     }
@@ -301,9 +305,4 @@ async fn grant_org_edit(
         .bind(org.as_uuid()).bind(actor.as_uuid()).bind(role).bind(unit).bind(maker.as_uuid())
         .bind(if unit.is_some() { "DEPARTMENT" } else { "TENANT" })
         .execute(pool).await.unwrap();
-}
-
-async fn snapshot(pool: &PgPool) -> serde_json::Value {
-    sqlx::query_scalar("SELECT jsonb_build_array((SELECT count(*) FROM org_change_requests),(SELECT count(*) FROM org_change_approval_steps),(SELECT count(*) FROM org_change_events),(SELECT count(*) FROM audit_events))")
-        .fetch_one(pool).await.unwrap()
 }

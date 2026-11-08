@@ -10,7 +10,7 @@ use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -47,7 +47,7 @@ struct JsonResponse {
 async fn admin_without_employee_link_reads_empty_self_attendance(pool: PgPool) {
     let keys = keys();
 
-    // A linked MEMBER punches in, so the org has a real attendance record.
+    // Existing attendance remains readable without a write grant.
     let member = UserId::new();
     let member_employee = seed_linked_employee(&pool, member, "MEMBER", "member-emp").await;
     let admin = UserId::new();
@@ -56,17 +56,7 @@ async fn admin_without_employee_link_reads_empty_self_attendance(pool: PgPool) {
     let service =
         build_router(app_state(runtime_role_pool(&pool).await, keys.public_pem.clone()).unwrap());
 
-    // Seed the member's record through the real write path (it also writes the
-    // payroll material ref the read view joins on).
-    let created = post(
-        service.clone(),
-        ME_PATH,
-        &bearer(&pool, &keys, member, "MEMBER").await,
-        json!({ "kind": "CLOCK_IN", "idempotency_key": "member-clock-in-1" }),
-    )
-    .await;
-    assert_eq!(created.status, StatusCode::OK, "{:?}", created.json);
-    let _ = member_employee;
+    account_link::seed_record(&pool, member, member_employee).await;
 
     // ADMIN self-read: 200 with an empty page, NOT 403, and NOT the member's row.
     let admin_read = get(
@@ -93,44 +83,8 @@ async fn admin_without_employee_link_reads_empty_self_attendance(pool: PgPool) {
 // ===========================================================================
 // A linked non-admin reads ONLY their own record (self-scoped, never widened).
 // ===========================================================================
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn linked_member_reads_only_own_attendance(pool: PgPool) {
-    let keys = keys();
-
-    let alice = UserId::new();
-    seed_linked_employee(&pool, alice, "MEMBER", "alice").await;
-    let bob = UserId::new();
-    seed_linked_employee(&pool, bob, "MEMBER", "bob").await;
-    empty_grants::assert_empty_grants(&pool, alice).await;
-
-    let service =
-        build_router(app_state(runtime_role_pool(&pool).await, keys.public_pem.clone()).unwrap());
-
-    // Both punch in.
-    for (user, key) in [(alice, "alice-in"), (bob, "bob-in")] {
-        let created = post(
-            service.clone(),
-            ME_PATH,
-            &bearer(&pool, &keys, user, "MEMBER").await,
-            json!({ "kind": "CLOCK_IN", "idempotency_key": key }),
-        )
-        .await;
-        assert_eq!(created.status, StatusCode::OK, "{:?}", created.json);
-    }
-
-    // Alice sees exactly one record — her own, never bob's.
-    let alice_read = get(
-        service,
-        ME_PATH,
-        &bearer(&pool, &keys, alice, "MEMBER").await,
-    )
-    .await;
-    assert_eq!(alice_read.status, StatusCode::OK, "{:?}", alice_read.json);
-    assert_eq!(alice_read.json["total"], 1);
-    let items = alice_read.json["items"].as_array().unwrap();
-    assert_eq!(items.len(), 1);
-    assert_eq!(items[0]["employee_display_name"], "alice");
-}
+#[path = "hr_attendance_self_read/timestamps.rs"]
+mod timestamps;
 
 // The attendance-console self-service surface is a separate, signed-principal
 // read boundary. It deliberately does not require a manager feature grant.
@@ -297,7 +251,7 @@ async fn send(
 }
 
 fn keys() -> Keys {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     Keys {
         private_pem: signing_key
             .to_pkcs8_pem(LineEnding::LF)
@@ -370,3 +324,6 @@ fn app_state(pool: PgPool, public_key_pem: String) -> Result<AppState, console_a
     ])?;
     AppState::new(config, DatabaseDependency::Postgres(pool))
 }
+
+#[path = "hr_attendance_self_read/write_access.rs"]
+mod write_access;

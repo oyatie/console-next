@@ -46,7 +46,7 @@ struct RouteSource {
 
 #[path = "openapi_drift/route_sources.rs"]
 mod route_sources;
-use route_sources::CONFIGURED_ROUTE_SOURCES;
+use route_sources::{CONFIGURED_ROUTE_SOURCES, platform_route_operations};
 
 const APP_CARGO_TOML: &str = include_str!("../Cargo.toml");
 const APP_LIB_RS: &str = include_str!("../src/lib.rs");
@@ -546,18 +546,14 @@ fn openapi_path_keys(yaml: &str) -> BTreeSet<String> {
 
 fn missing_platform_route_operations(yaml: &str) -> Vec<String> {
     let openapi_operations = openapi_operation_keys(yaml);
-    PLATFORM_ROUTE_OPERATIONS
-        .iter()
-        .chain(SUPPORT_REFERENCE_ROUTE_OPERATIONS)
+    platform_route_operations()
         .filter(|operation| !openapi_operations.contains(&route_operation_key(operation)))
         .map(|operation| format!("{} {}", operation.method, operation.path))
         .collect()
 }
 
 fn platform_route_operation_keys() -> BTreeSet<(String, String)> {
-    PLATFORM_ROUTE_OPERATIONS
-        .iter()
-        .chain(SUPPORT_REFERENCE_ROUTE_OPERATIONS)
+    platform_route_operations()
         .map(route_operation_key)
         .collect()
 }

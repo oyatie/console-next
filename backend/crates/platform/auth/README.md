@@ -10,7 +10,8 @@ T0.5 authentication platform crate.
 - Passkeys are stored as serialized `webauthn-rs` `Passkey` values in
   `auth_webauthn_credentials`, with credential IDs unique across accounts.
 - Access tokens are JWTs signed with ES256 through `jsonwebtoken` and
-  its explicit `rust_crypto` backend feature.
+  its explicit `aws_lc_rs` backend feature, scoped by the
+  [2026-11-03 dependency ruling](../../../../docs/quality/dependency-ruling-2026-11-03.md).
 - Refresh tokens are opaque values. Only SHA-256 hashes are stored in
   `auth_refresh_tokens`.
 - Refresh-token rotation marks each token as used and creates a replacement in

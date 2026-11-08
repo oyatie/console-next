@@ -17,6 +17,7 @@ pub mod policy_value;
 pub mod price_intel;
 pub mod redact;
 pub mod tenant_phase;
+pub mod timestamp;
 pub mod trace;
 pub mod transition;
 pub mod validation;
@@ -27,7 +28,7 @@ pub use audit::{
     AuditRequestContext, AuditSource,
 };
 pub use branch::BranchScope;
-pub use clock::{Clock, FixedClock, SystemClock};
+pub use clock::{Clock, FixedClock, SystemClock, rfc3339};
 pub use error::{ErrorKind, ErrorType, KernelError};
 pub use ids::*;
 pub use policy_value::{EffectivePeriod, OfficialSource, Resolved, SettingVersionId};

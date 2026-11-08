@@ -263,3 +263,6 @@ mod view_as;
 mod scopes;
 #[path = "attendance_access_log/subjects.rs"]
 mod subjects;
+
+#[path = "attendance_access_log/close_snapshot.rs"]
+mod close_snapshot;

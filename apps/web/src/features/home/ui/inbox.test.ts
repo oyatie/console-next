@@ -55,7 +55,7 @@ test("Home reads all work through the unified inbox and renders its record verb"
   expect(markup).toContain("명부 확인");
   expect(markup).toContain('href="/people/');
   expect(markup).toContain(t("home.review.register"));
-  expect(view.options).toMatchObject({ refetchOnMount: "always" });
+  expect(view.options).toMatchObject({ refetchOnMount: false });
 });
 
 test.each([
@@ -80,6 +80,12 @@ test.each(["waiting", "scheduled", "deadlines", "failures"] as const)("%s reques
   html();
   expect(JSON.parse(readIdentity(view.options!))[1]).toEqual({ query: { filter } });
 });
+test("Home and the full inbox reuse their parent's arrival read", () => {
+  html(false, true);
+  expect(view.options).toMatchObject({ refetchOnMount: false });
+  html(false, false);
+  expect(view.options).toMatchObject({ refetchOnMount: false });
+});
 test("more work follows the server cursor without an offset or a polling interval", async () => {
   view.list.hasNextPage = true;
   html();
@@ -102,11 +108,6 @@ test("a refreshed response removes resolved rows and keeps loaded cursor pages",
 test("deadlines use the server's remaining days", () => {
   view.list.data = { pages: [page([item("dated", { due: "2099-01-01T00:00:00Z", days_remaining: 3, dueTone: "warn" })])] };
   expect(html()).toContain("D-3");
-});
-test("a statutory inbox item opens the filing list for its own lifecycle event", () => {
-  const event = "ecdf082c-c28e-4e9f-b6bb-9c4187d8d6fd";
-  view.list.data = { pages: [page([item("신고 대상", { kind: "insurance_filing", links: [{ kind: "statutory", id: event }] })])] };
-  expect(html()).toContain(`href="/statutory?event=${event}"`);
 });
 test("a failed inbox read shows retry without claiming the queue is empty", () => {
   view.list.error = new Error("source unavailable"); view.list.data = undefined;
@@ -270,6 +271,7 @@ test.each([
   ["hr_exit_confirm", "exit_case", "/people/exits/record?act=confirm_exit"],
   ["hr_exit_confirm_hq", "exit_case", "/people/exits/record?act=confirm_exit_hq"],
   ["hr_exit_settle", "exit_case", "/people/exits/record?act=prepare_settlement"],
+  ["insurance_filing", "statutory", "/statutory?event=record"],
   ["period_unlock", "period_lock", "/people/period-locks?review=record"],
 ] as const)("%s retains its resolving record or sheet verb", (kind, link, href) => {
   view.list.data = { pages: [page([item("work", { kind, links: [{ kind: link, id: "record" }], context: kind === "period_unlock" ? { unlock: { domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", requester: "김요청", reason_code: "RETRO_CORRECTION" } } : undefined })])] };

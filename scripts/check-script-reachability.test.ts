@@ -22,24 +22,43 @@ const scan = (extra = {}) => {
   return inventory(Object.keys(files), file => files[file]);
 };
 
-test("inventory follows required CI, nested npm scripts, Vitest, subprocesses and imported helpers", () => {
+test("inventory follows workflows, nested npm scripts, Vitest, subprocesses and imported helpers", () => {
   const rows = scan();
   expect(rows.filter(row => row.callers.length).map(row => row.file)).toEqual([
     "scripts/check-helper.mjs", "scripts/check-live.mjs", "scripts/live.test.mjs",
   ]);
   expect(inventoryProblems(rows, {})).toEqual([
-    "scripts/check-dark.mjs: no caller from required CI",
-    "scripts/dark.test.mjs: no caller from required CI",
+    "scripts/check-dark.mjs: no caller from a workflow",
+    "scripts/dark.test.mjs: no caller from a workflow",
   ]);
 });
 
-test("comments, expected strings, unused npm commands and non-required workflows are not callers", () => {
+test("comments, expected strings and unused npm commands are not callers", () => {
   const rows = scan({
     "scripts/gates.test.ts": '// run("node", ["scripts/check-dark.mjs"]);\nexpect(actual).toBe("scripts/check-dark.mjs");',
     "package.json": JSON.stringify({ scripts: { check: "npm test", test: "vitest run", unused: "node scripts/check-dark.mjs" } }),
-    ".github/workflows/optional.yml": "jobs:\n  optional:\n    steps:\n      - run: node scripts/check-dark.mjs\n",
   });
   expect(rows.find(row => row.file === "scripts/check-dark.mjs")?.callers).toEqual([]);
+});
+
+test.each([
+  ["yml", "node --test deploy/ci/*.test.mjs"],
+  ["yaml", "|\n          node --test deploy/ci/*.test.mjs"],
+])("independent .%s workflows reach every suite in a run glob", (extension, run) => {
+  const workflow = `.github/workflows/platform.${extension}`;
+  const files = {
+    "package.json": '{"scripts":{}}',
+    ".github/workflows/ci.yml": "jobs: {}\n",
+    [workflow]: `jobs:\n  validate:\n    steps:\n      - run: ${run}\n`,
+    "deploy/ci/admission.test.mjs": "",
+    "deploy/ci/sbom.test.mjs": "",
+    "scripts/unwired.test.mjs": "",
+  };
+  expect(inventory(Object.keys(files), file => files[file])).toEqual([
+    { file: "deploy/ci/admission.test.mjs", callers: [workflow] },
+    { file: "deploy/ci/sbom.test.mjs", callers: [workflow] },
+    { file: "scripts/unwired.test.mjs", callers: [] },
+  ]);
 });
 
 test("importing exports does not count as executing a guarded check CLI", () => {
@@ -114,6 +133,8 @@ test("the required check has no unexplained orphan and runs the lifecycle and st
   expect(inventoryProblems(rows, inherited)).toEqual([]);
   expect(rows.find(row => row.file === "scripts/lifecycle-correction-contract.test.mjs")?.callers.length).toBeGreaterThan(0);
   expect(rows.find(row => row.file === "deploy/ci/stack.test.mjs")?.callers).toContain("package.json#check");
+  expect(rows.find(row => row.file === "deploy/ci/admission.test.mjs")?.callers).toContain(".github/workflows/platform.yml");
+  expect(rows.find(row => row.file === "e2e/helpers/nts-fake.test.mjs")?.callers).toContain("package.json#check");
 });
 
 test("CLI refuses a planted orphan in the candidate worktree", () => {
@@ -127,7 +148,7 @@ test("CLI refuses a planted orphan in the candidate worktree", () => {
     writeFileSync(path.join(root, "planted.test.mjs"), "");
     const result = spawnSync(process.execPath, [path.join(import.meta.dirname, "check-script-reachability.mjs"), "--root", root], { encoding: "utf8" });
     expect(result.status, result.stdout + result.stderr).toBe(1);
-    expect(result.stderr).toContain("planted.test.mjs: no caller from required CI");
+    expect(result.stderr).toContain("planted.test.mjs: no caller from a workflow");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

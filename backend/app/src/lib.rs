@@ -15,6 +15,7 @@ compile_error!("the dev-auth feature is forbidden in non-development builds");
 mod coldstart_guard;
 #[cfg(feature = "workspace")]
 mod collaboration;
+#[cfg(feature = "full")]
 mod console_telemetry;
 mod entity_wiring;
 mod error_i18n;

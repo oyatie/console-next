@@ -1,3 +1,7 @@
+#[path = "hr/attendance_import_response.rs"]
+mod attendance_import_response;
+use attendance_import_response::AttendanceImportSummaryItem;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use axum::extract::{Multipart, Path, Query, State};
@@ -158,6 +162,7 @@ pub const HR_ROUTE_PATHS: &[&str] = &[
     HR_EXIT_CASE_CANCEL_PATH_TEMPLATE,
     HR_EXIT_CASE_APPROVAL_DRAFT_PATH_TEMPLATE,
 ];
+mod attendance_access;
 mod attendance_rules;
 mod lane_routes;
 use attendance_rules::{
@@ -358,6 +363,7 @@ struct AttendanceSummaryItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     last_kind: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "console_kernel_core::timestamp::option")]
     last_event_at: Option<time::OffsetDateTime>,
 }
 #[derive(Debug, Deserialize)]
@@ -395,6 +401,7 @@ struct EmployeeAttendanceRecordResponse {
     employee_id: Uuid,
     employee_display_name: String,
     kind: String,
+    #[serde(with = "console_kernel_core::timestamp")]
     occurred_at: time::OffsetDateTime,
     work_date: String,
     state_after: String,
@@ -428,6 +435,7 @@ struct HrImportReadinessSummary {
     preserved_rows: i64,
     ledger_rows: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "console_kernel_core::timestamp::option")]
     latest_import_at: Option<time::OffsetDateTime>,
 }
 
@@ -453,6 +461,7 @@ struct HrPayrollReadinessSummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     latest_period_end: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "console_kernel_core::timestamp::option")]
     latest_updated_at: Option<time::OffsetDateTime>,
 }
 
@@ -813,7 +822,7 @@ async fn list_my_attendance_records(
             // Self-scoped read, no role gate: an authenticated user with no
             // linked employee — an ADMIN/system account — has zero personal
             // records, so return an empty page rather than a 403. (Writes still
-            // require a link via `load_linked_employee_for_user`.)
+            // require a link via `attendance_access::linked_employee`.)
             match load_optional_linked_employee_id(tx, org, user_id).await? {
                 Some(employee_id) => {
                     list_attendance_records_for_employee(tx, employee_id, None, limit, offset).await
@@ -876,7 +885,7 @@ async fn create_my_attendance_record(
 
     let response = with_audits::<_, _, HrError>(&state.pool, org, move |tx| {
         Box::pin(async move {
-            let linked = load_linked_employee_for_user(tx, org, actor, true).await?;
+            let linked = attendance_access::linked_employee(tx, org, actor).await?;
 
             if let Some(existing) =
                 load_attendance_record_by_idempotency_key(tx, linked.employee_id, &idempotency_key)
@@ -1401,7 +1410,11 @@ async fn preview_attendance_import(
     Extension(principal): Extension<Principal>,
     multipart: Multipart,
 ) -> Result<Json<AttendanceImportPreviewResponse>, HrApiError> {
-    authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
+    let (org, actor) = (principal.org_id, principal.user_id);
+    with_org_conn::<_, _, HrError>(&state.pool, org, |tx| {
+        Box::pin(async move { attendance_access::require(tx, org, actor, None).await })
+    })
+    .await?;
     let caps = state.hr.workbook_caps(principal.org_id).await?;
     let upload = read_attendance_upload(multipart, caps.max_upload_bytes).await?;
     let source_sha256 = sha256_hex(&upload.bytes);
@@ -1411,9 +1424,7 @@ async fn preview_attendance_import(
         Vec::new()
     };
     let parsed = parse_attendance_import_upload(&upload.filename, &upload.bytes, &sheets)?;
-    let org = principal.org_id;
     let org_uuid = *org.as_uuid();
-    let actor = principal.user_id;
     let run_id = Uuid::new_v4();
     let input_rows = i32::try_from(parsed.rows.len())
         .map_err(|_| HrError::validation("attendance import row count exceeds i32"))?;
@@ -1458,6 +1469,7 @@ async fn preview_attendance_import(
         let parsed = parsed.clone();
         let mapping_profile = mapping_profile.clone();
         Box::pin(async move {
+            attendance_access::require(tx, org, actor, None).await?;
             sqlx::query(
                 r#"
                 INSERT INTO data_import_runs (
@@ -1525,8 +1537,8 @@ async fn dry_run_attendance_import(
     Extension(principal): Extension<Principal>,
     Path(run_id): Path<Uuid>,
 ) -> Result<Json<AttendanceImportDryRunSummary>, HrApiError> {
-    authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
     let org = principal.org_id;
+    let actor = principal.user_id;
     let org_uuid = *org.as_uuid();
 
     let after = json!({ "run_id": run_id, "entity_type": "attendance_direct" });
@@ -1534,6 +1546,7 @@ async fn dry_run_attendance_import(
 
     let summary = with_audit::<_, _, HrError>(&state.pool, event, |tx| {
         Box::pin(async move {
+            attendance_access::require(tx, org, actor, None).await?;
             let run = import_run_for_update(tx, org_uuid, run_id).await?;
             ensure_attendance_import_run(&run, &["PREVIEWED", "DRY_RUN"])?;
             let rows = load_attendance_import_rows(tx, org_uuid, run_id).await?;
@@ -1565,7 +1578,6 @@ async fn apply_attendance_import(
     Path(run_id): Path<Uuid>,
     body: Option<Json<ImportApplyRequest>>,
 ) -> Result<Json<AttendanceImportApplyReport>, HrApiError> {
-    authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
     let checklist_all_acknowledged = body.and_then(|Json(b)| b.checklist_all_acknowledged);
     let gate_outcome = evaluate_ingest_checklist_gate(checklist_all_acknowledged)?;
     let org = principal.org_id;
@@ -1592,6 +1604,7 @@ async fn apply_attendance_import(
 
     let report = with_audit::<_, _, HrError>(&state.pool, event, |tx| {
             Box::pin(async move {
+                attendance_access::require(tx, org, actor, None).await?;
                 let run = import_run_for_update(tx, org_uuid, run_id).await?;
                 ensure_attendance_import_run(&run, &["DRY_RUN"])?;
                 let rows = load_attendance_import_rows(tx, org_uuid, run_id).await?;
@@ -1929,23 +1942,6 @@ struct AttendanceImportApplyReport {
     inserted: usize,
     skipped: usize,
     error_rows: usize,
-}
-
-#[derive(Debug, Serialize)]
-struct AttendanceImportSummaryItem {
-    run_id: Uuid,
-    status: String,
-    source_filename: String,
-    source_format: String,
-    source_sha256: String,
-    input_rows: i32,
-    candidate_rows: i32,
-    preserved_rows: i32,
-    dry_run_summary: Value,
-    apply_summary: Value,
-    created_at: OffsetDateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    applied_at: Option<OffsetDateTime>,
 }
 
 #[derive(Debug, Serialize)]
@@ -3586,65 +3582,9 @@ fn absence_alert_from_row(
     })
 }
 
-async fn load_linked_employee_for_user(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
-    org: OrgId,
-    user_id: UserId,
-    lock_user: bool,
-) -> Result<LinkedEmployee, HrError> {
-    let sql = if lock_user {
-        r#"
-        SELECT u.employee_id, e.name AS employee_name
-        FROM users u
-        LEFT JOIN employees e
-          ON e.id = u.employee_id
-         AND e.org_id = u.org_id
-        WHERE u.id = $1
-          AND u.org_id = $2
-        FOR UPDATE OF u
-        "#
-    } else {
-        r#"
-        SELECT u.employee_id, e.name AS employee_name
-        FROM users u
-        LEFT JOIN employees e
-          ON e.id = u.employee_id
-         AND e.org_id = u.org_id
-        WHERE u.id = $1
-          AND u.org_id = $2
-        "#
-    };
-
-    let row = sqlx::query(sql)
-        .bind(*user_id.as_uuid())
-        .bind(*org.as_uuid())
-        .fetch_optional(tx.as_mut())
-        .await?
-        .ok_or_else(|| {
-            HrError::from_kernel(KernelError::forbidden("linked employee account required"))
-        })?;
-
-    let employee_id = row
-        .try_get::<Option<Uuid>, _>("employee_id")?
-        .ok_or_else(|| {
-            HrError::from_kernel(KernelError::forbidden("linked employee account required"))
-        })?;
-    let display_name = row
-        .try_get::<Option<String>, _>("employee_name")?
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| {
-            HrError::from_kernel(KernelError::forbidden("linked employee record required"))
-        })?;
-
-    Ok(LinkedEmployee {
-        employee_id,
-        display_name,
-    })
-}
-
 /// Employee id linked to `user_id`, or `None` when the account has no employee
 /// link. Self-service *reads* use this so an unlinked user (an ADMIN/system
-/// account) sees an empty page instead of the 403 `load_linked_employee_for_user`
+/// account) sees an empty page instead of the 403 `attendance_access::linked_employee`
 /// raises for the write path.
 async fn load_optional_linked_employee_id(
     tx: &mut sqlx::Transaction<'_, Postgres>,
@@ -3907,6 +3847,14 @@ fn push_attendance_branch_filter(builder: &mut QueryBuilder<Postgres>, branch_id
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
+    #[cfg(feature = "test-postgres")]
+    mod attendance_grants {
+        include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/auth_fixtures/attendance_grants.rs"
+        ));
+    }
+
     #[cfg(not(feature = "test-postgres"))]
     use console_hr_adapter_postgres::authz::authorize_home_branch_transition;
     use console_hr_adapter_postgres::authz::{
@@ -4339,6 +4287,17 @@ mod tests {
         let report: Value = serde_json::from_slice(&body).map_err(|error| error.to_string())?;
         assert_eq!(report["inserted"], 1);
 
+        attendance_grants::grant(
+            &pool,
+            OrgId::from_uuid(org_id),
+            UserId::from_uuid(actor_id),
+            None,
+        )
+        .await;
+        let state = HrState::new(
+            console_platform_test_support::runtime_role_pool(&pool).await,
+            None,
+        );
         let csv = "사번,성명,지점,근무일,출근,퇴근,주민번호,연락처,메모\n\
                    E-1001,홍길동,본사,2026-06-01,09:00,18:00,850505-2345678,010-5555-6666,6602021234567\n";
         let multipart = Multipart::from_request(upload("근태.csv", csv.as_bytes().to_vec())?, &())
@@ -7828,3 +7787,7 @@ mod unknown_fields_tests;
 #[path = "hr_bodies.rs"]
 mod hr_bodies;
 use hr_bodies::*;
+
+#[cfg(test)]
+#[path = "hr/timestamp_tests.rs"]
+mod timestamp_tests;

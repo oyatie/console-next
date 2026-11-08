@@ -1,7 +1,7 @@
 import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
-import { i18n, loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import type { GoLiveItem } from "@console/api/pending";
 import { ApiError, goLiveReceiptQuery } from "../api";
 import { GoLive } from "./go-live";
@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   snapshot: { entities: 7, workplaces: 3, staffed_workplaces_without_registration: 0, empty_workplaces_without_registration: 0, org_units: 8, employees: 42, employees_starting_later: 0, setup_writes: 9 } as object | null,
   readError: null as unknown, commandError: null as unknown, updated: 100, submitted: 200,
   fetching: false, fetched: true, mutate: vi.fn(),
+  acknowledgedDigest: "preview" as string | null,
   data: {
     phase: "SETUP", digest: "preview", line_digests: {}, blockers: [] as GoLiveItem[],
     warnings: [{ code: "sole_holder", count: 0, remedy: null, records: [] }], becomes_governed: [] as string[],
@@ -21,7 +22,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("react", async (original) => {
   const react = await original<typeof import("react")>();
-  return { ...react, useState: (initial: unknown) => initial === false ? [true, vi.fn()] : react.useState(initial) };
+  return { ...react, useState: (initial: unknown) => initial === false ? [true, vi.fn()] : initial === null ? [state.acknowledgedDigest, vi.fn()] : react.useState(initial) };
 });
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: (opts: { queryFn?: unknown }) => opts.queryFn === goLiveReceiptQuery.queryFn ? {
   data: state.receiptError ? undefined : { go_live_at: "2026-11-04T09:00:00Z", preview_digest: "recorded-digest", facts_snapshot: state.snapshot, facts_snapshot_version: state.snapshot ? 1 : null },
@@ -37,6 +38,15 @@ beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
 afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.receiptError = null; state.snapshot = { entities: 7, workplaces: 3, staffed_workplaces_without_registration: 0, empty_workplaces_without_registration: 0, org_units: 8, employees: 42, employees_starting_later: 0, setup_writes: 9 }; state.data.phase = "SETUP"; state.data.digest = "preview"; state.data.blockers = []; state.data.becomes_governed = []; state.data.facts.org_units = 2; state.mutate.mockClear(); });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/setup/go-live"] }) });
 const render = () => renderToStaticMarkup(<RouterContextProvider router={router}><GoLive /></RouterContextProvider>);
+
+test("sole-holder confirmation applies only to the preview digest that was reviewed", () => {
+  expect(render()).toContain('type="checkbox" checked=""');
+  state.data.digest = "changed-preview";
+  const changed = render();
+  expect(changed).not.toContain('type="checkbox" checked=""');
+  expect(changed).toContain('aria-disabled="true"');
+  state.data.digest = "preview";
+});
 
 test("a missing department blocks launch and links to adding one until the preview is ready", () => {
   state.data.facts.org_units = 0;
@@ -99,6 +109,21 @@ test("a background preview refresh disarms launch until the current digest is di
   expect(waiting).toContain('aria-disabled="true"');
   state.fetching = false;
   expect(render()).toContain('<button type="button" class="btn btn--primary">운영 시작</button>');
+  expect(state.mutate).not.toHaveBeenCalled();
+});
+
+for (const locale of ["ko", "en"] as const) test(`a failed preview refresh keeps launch disabled until recovery in ${locale}`, () => {
+  i18n.set(locale);
+  state.readError = new ApiError(503, "service_unavailable", "unavailable");
+  const failed = render();
+  expect(failed).toContain("Head Office");
+  expect(failed).toContain('type="checkbox" checked=""');
+  expect(failed).toContain('aria-disabled="true"');
+  expect(failed).toContain(locale === "ko" ? "미리보기를 불러오지 못했습니다" : "The preview could not be reloaded");
+  expect(failed).not.toContain(t("common.read.stale"));
+  expect(failed).not.toContain('<button type="button" class="btn btn--primary">');
+  state.readError = null;
+  expect(render()).not.toContain('aria-disabled="true"');
   expect(state.mutate).not.toHaveBeenCalled();
 });
 

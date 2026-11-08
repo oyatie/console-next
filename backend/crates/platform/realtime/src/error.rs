@@ -56,4 +56,7 @@ pub enum RealtimeError {
 
     #[error("realtime read timed out")]
     ReadTimedOut,
+
+    #[error("realtime replay budget exceeded")]
+    ReplayLimitExceeded,
 }

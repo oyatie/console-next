@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enPayroll = {
+  "payroll.refuse.employee_exited_read_only": "A former employee’s contract wage cannot be recorded. Request a correction from the personnel record.",
   "payroll.refuse.identity_unbound": "The requester or decider identity could not be verified. Ask someone with account management permission to link the account to its personnel record or complete its identity review.",
   "payroll.accessInactive": "Payroll is not enabled, so pay and sensitive pay-group grants cannot be used on payroll screens.",
   "payroll.title": "Payroll",
@@ -124,7 +125,6 @@ export const enPayroll = {
   "payroll.setup.noEntities": "No legal entities available for pay group setup",
   "payroll.employee.title": "Employee payroll",
   "payroll.employee.incomplete": "Incomplete draft",
-  "payroll.employee.monthClose": "Attendance month close is unverified; this draft is incomplete.",
   "payroll.employee.net": "Net pay",
   "payroll.employee.netUnavailable": "Unavailable · withholding not computed",
   "payroll.employee.contract": "Contract wage in force",
@@ -154,4 +154,17 @@ export const enPayroll = {
   "payroll.employee.withholdingMissing": "Withholding has not been computed.",
   "payroll.employee.hourlyUnsupported": "Draft calculation is unavailable for hourly contracts.",
   "payroll.employee.wage": "Contract wage",
+  "payroll.employee.earnings": "Draft earnings and source",
+  "payroll.employee.earningsNote": "Calculation basis",
+  "payroll.employee.gross": "Gross pay",
+  "payroll.employee.minimumWage": "Minimum wage check",
+  "payroll.employee.hourlyFloor": "Statutory hourly floor",
+  "payroll.employee.effectiveHourly": "Effective hourly wage",
+  "payroll.employee.minimumPass": "Meets minimum",
+  "payroll.employee.minimumBelow": "Below the minimum wage.",
+  "payroll.employee.minimumIncomparable": "Minimum wage cannot be compared.",
+  "payroll.employee.insuranceTotal": "Total employee insurance",
+  "payroll.employee.afterInsurance": "After insurance · before withholding",
+  "payroll.employee.unavailable": "Unavailable",
+  "payroll.employee.blockers": "Items requiring review",
 } as const;

@@ -217,6 +217,7 @@ export const enSetup: Record<keyof typeof koSetup, string> = {
   "setup.golive.changed.hr_accounts_with_no_grant": "Accounts without access",
   "setup.golive.changed.terms_version": "Terms version",
   "setup.golive.refreshing": "Reading the updated start-of-operations preview",
+  "setup.golive.refreshFailed": "The preview could not be reloaded",
   "setup.paste.file": "employee-list.xlsx",
   "setup.paste.tooLarge": "The list is too large. Split it into smaller files.",
   "setup.paste.empty": "Paste a header row and employee list.",

@@ -21,7 +21,7 @@ use console_platform_test_support::{
 use http::{Request, StatusCode, header};
 use p256::{
     ecdsa::SigningKey,
-    elliptic_curve::rand_core::OsRng,
+    elliptic_curve::Generate,
     pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding},
 };
 use serde_json::{Value, json};
@@ -68,7 +68,7 @@ impl Support {
         let base = Harness::new(owner.clone()).await;
         let org = base.onboard("support-http").await;
         let rt = runtime_role_pool(&owner).await;
-        let signing = SigningKey::random(&mut OsRng);
+        let signing = SigningKey::generate();
         let private = signing.to_pkcs8_pem(LineEnding::LF).unwrap();
         let public = signing
             .verifying_key()

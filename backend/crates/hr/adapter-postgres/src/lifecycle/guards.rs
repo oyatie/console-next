@@ -57,10 +57,12 @@ async fn stale(
     .bind(employee)
     .fetch_optional(tx.as_mut())
     .await?;
-    let detail = last.map_or(Value::Null, |(id, kind, on, by, at)| {
+    let detail = if let Some((id, kind, on, by, at)) = last {
         json!({ "lifecycle_event_id": id, "event_type": kind, "effective_date": on,
-                "recorded_by": by, "recorded_at": at.to_string() })
-    });
+                "recorded_by": by, "recorded_at": console_kernel_core::rfc3339(at)? })
+    } else {
+        Value::Null
+    };
     Ok(refused(
         StatusCode::CONFLICT,
         "stale_record",

@@ -18,6 +18,7 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 use tracing::Instrument;
 
+mod decisions;
 pub(crate) mod error;
 mod request_register;
 mod response;
@@ -160,7 +161,7 @@ async fn list_action_inbox(
         all.total = turn.total;
         all.total_is_exact = turn.total_is_exact;
     }
-    response::project(&sources, page, filter, query.cursor.is_none(), now)
+    response::project(&sources, page, filter, query.cursor.is_none(), now).await
 }
 
 /// Temporary composition-root adapter. This intentionally proves the inward

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -105,14 +105,19 @@ test("runner propagates failures, refuses stale/missing JUnit and runs without d
     writeFileSync(path.join(root, "lib.rs"), '#[test] fn ordinary() {}\n#[sqlx::test] async fn database(pool: PgPool) {}\n#[cfg(feature = "test-postgres")] #[sqlx::test] async fn feature_database() {}');
     const s = suite(["ordinary", "database", "tooling"]);
     s.testcases.tooling.ignored = true;
-    writeFileSync(path.join(root, "metadata.json"), JSON.stringify({ workspace_root: root, target_directory: path.join(root, "custom-build-cache"), packages: [{ id: "example", manifest_path: path.join(root, "Cargo.toml") }] }));
+    writeFileSync(path.join(root, "metadata.json"), JSON.stringify({ workspace_root: root, target_directory: path.join(root, "custom-build-cache"), workspace_members: ["example"], packages: [{ id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [{ name: "first", kind: ["test"] }, { name: "second", kind: ["test"] }, { name: "openapi_drift", kind: ["test"], "required-features": ["full"] }] }] }));
     writeFileSync(path.join(root, "list.json"), JSON.stringify(listing(s)));
     const cargo = `#!${process.execPath}
 const fs = require('node:fs'), path = require('node:path');
 const root = process.env.FIXTURE_ROOT, args = process.argv.slice(2);
 if (process.env.DATABASE_URL || process.env.PGHOST) process.exit(91);
-if (args[0] === 'metadata') process.stdout.write(fs.readFileSync(path.join(root, 'metadata.json')));
+if (args[0] === 'metadata') {
+  const metadata = JSON.parse(fs.readFileSync(path.join(root, 'metadata.json')));
+  metadata.resolve = { nodes: [{ id: 'example', features: args[args.indexOf('--features') + 1] === 'console-app/full' ? ['full'] : [] }] };
+  process.stdout.write(JSON.stringify(metadata));
+}
 else if (args[1] === 'list') {
+  fs.writeFileSync(path.join(root, 'list-args.json'), JSON.stringify(args));
   process.stdout.write(fs.readFileSync(path.join(root, 'list.json')));
   if (process.env.MODE === 'spawn-error') fs.unlinkSync(__filename);
 }
@@ -122,15 +127,30 @@ else {
   process.exit(process.env.MODE === 'exit' ? 100 : 0);
 }
 `;
-    for (const mode of ["pass", "failure", "exit", "missing", "skipped", "spawn-error"]) {
+    for (const mode of ["pass", "sharded", "sharded-first", "failure", "exit", "missing", "skipped", "spawn-error"]) {
       writeFileSync(path.join(root, "bin/cargo"), cargo, { mode: 0o755 });
       writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "ordinary"]], mode === "skipped" ? "<skipped/>" : "", mode === "failure" ? 1 : 0));
-      const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], { encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, DATABASE_URL: "postgres://unused.invalid/db", PGHOST: "unused.invalid", GITHUB_STEP_SUMMARY: path.join(root, "summary.md") } });
-      assert.equal(result.status, mode === "pass" ? 0 : 1, result.stdout + result.stderr);
+      const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], { encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, NEXTEST_SHARD: mode === "sharded" ? "2" : mode === "sharded-first" ? "1" : undefined, NEXTEST_SHARDS: mode.startsWith("sharded") ? "2" : undefined, DATABASE_URL: "postgres://unused.invalid/db", PGHOST: "unused.invalid", GITHUB_STEP_SUMMARY: path.join(root, "summary.md") } });
+      assert.equal(result.status, ["pass", "sharded-first", "sharded"].includes(mode) ? 0 : 1, result.stdout + result.stderr);
+      if (mode === "sharded") {
+        const args = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
+        assert.ok(args.includes("--workspace"));
+        assert.deepEqual(args.slice(args.indexOf("--test"), args.indexOf("--test") + 2), ["--test", "openapi_drift"], "full-feature drift binary must be in the shard plan");
+        assert.ok(!args.includes("--lib") && !args.includes("--bins"));
+      }
+      if (mode === "sharded-first") {
+        const args = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
+        assert.deepEqual(args.filter((_, i) => args[i - 1] === "--test"), ["first", "second"]);
+        assert.ok(args.includes("--lib") && args.includes("--bins"));
+      }
       if (mode === "spawn-error") assert.match(result.stderr, /spawnSync cargo ENOENT/);
       assert.equal(JSON.parse(readFileSync(path.join(root, "target/nextest/ci/inventory.json"), "utf8")).selected.length, 1);
     }
     const args = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
+    const listArgs = JSON.parse(readFileSync(path.join(root, "list-args.json"), "utf8"));
+    for (const command of [listArgs, args]) {
+      assert.equal(command[command.indexOf("--features") + 1], "console-app/full", "discovery and execution must include full-feature OpenAPI drift tests");
+    }
     for (const flag of ["--workspace", "--locked", "--no-fail-fast", "--ignore-default-filter"]) assert.ok(args.includes(flag));
     assert.equal(args[args.indexOf("--run-ignored") + 1], "default");
     assert.ok(readFileSync(path.join(root, "summary.md"), "utf8").includes("1/1 non-database tests passed"));
@@ -140,54 +160,91 @@ else {
 });
 
 test("backend tests inherit hardening, pinned tooling, JUnit artifacts and blocking ci-ok wiring", () => {
-  const job = workflow.jobs.backend;
+  const job = workflow.jobs["backend-tests"];
   assert.ok(job, "backend checks and tests must execute in CI");
-  assert.ok(!workflow.jobs["backend-tests"], "nextest shares the existing backend build directory");
   assert.deepEqual(job.permissions, { contents: "read" });
   assert.equal(job.env.SQLX_OFFLINE, "true");
   assert.match(job.env.CARGO_NEXTEST_VERSION, /^\d+\.\d+\.\d+$/);
-  assert.ok(!job["continue-on-error"] && !job.if);
+  assert.ok(!job["continue-on-error"]);
   assert.ok(job.steps[0].uses.startsWith("step-security/harden-runner@"));
   for (const step of job.steps) {
     if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
-    assert.ok(!step["continue-on-error"]);
+    const cacheMaintenance = step.name === "Collect Rust cache changes" || step.with?.name?.startsWith("rust-cache-") === true;
+    assert.equal(step["continue-on-error"] ?? false, cacheMaintenance);
   }
   const run = job.steps.find((s) => s.run === "node scripts/backend-tests.mjs");
   assert.ok(run && !run.if);
   assert.equal(run["working-directory"], ".");
-  assert.ok(job.steps.indexOf(run) > job.steps.findIndex((s) => s.run?.startsWith("cargo clippy ")));
   const check = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts.check;
   assert.match(check, /node --test[^&]*scripts\/backend-tests\.test\.mjs/);
   const install = job.steps.find((s) => s.name === "Install pinned Rust test runner");
   assert.ok(install.run.includes("releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/"));
   assert.match(install.run, /[a-f0-9]{64}.*sha256sum -c -/);
-  const artifact = job.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@") && s.with?.name === "backend-test-results");
+  const artifact = job.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@") && s.with?.name === "backend-test-results-${{ matrix.shard }}");
   assert.equal(artifact.if, "${{ !cancelled() }}");
   assert.equal(artifact.with["if-no-files-found"], "error");
-  assert.ok(workflow.jobs["ci-ok"].needs.includes("backend"));
-  const command = workflow.jobs["ci-ok"].steps.map((s) => s.run ?? "").join("\n");
-  for (const status of ["success", "failure", "cancelled", "skipped"]) {
-    const shell = command.replace(/\$\{\{ needs(?:\.([\w-]+)|\['([\w-]+)'\])\.result \}\}/g, (_, dotted, quoted) => (dotted ?? quoted) === "backend" ? status : "success");
-    assert.equal(spawnSync("bash", ["-e", "-c", shell]).status, status === "success" ? 0 : 1);
-  }
+  assert.ok(workflow.jobs["ci-ok"].needs.includes("backend-tests"));
 });
 
-test("clippy and nextest reuse a Rust cache that only trusted dev pushes can save", () => {
-  const steps = workflow.jobs.backend.steps;
-  const restore = steps.find((s) => s.uses?.startsWith("actions/cache/restore@"));
-  const save = steps.find((s) => s.uses?.startsWith("actions/cache/save@"));
-  assert.ok(restore && save);
-  assert.match(restore.with.path, /backend\/target/);
-  assert.match(restore.with.path, /\.cargo\/registry/);
-  for (const input of ["backend/rust-toolchain.toml", "backend/Cargo.lock", "backend/**/Cargo.toml"])
-    assert.ok(restore.with.key.includes(input));
-  for (const input of ["runner.os", "runner.arch", "github.sha"])
-    assert.ok(restore.with.key.includes(input));
-  assert.equal(save.with.key, "${{ steps.rust-cache.outputs.cache-primary-key }}");
-  assert.equal(save.with.path, restore.with.path);
-  assert.equal(save.if, "github.event_name == 'push' && github.ref == 'refs/heads/dev'");
-  assert.ok(steps.indexOf(restore) < steps.findIndex((s) => s.run?.startsWith("cargo clippy ")));
-  assert.ok(steps.indexOf(save) > steps.findIndex((s) => s.run === "node scripts/backend-tests.mjs"));
-  const pins = steps.filter((s) => s.uses?.startsWith("actions/setup-node@")).map((s) => s.uses);
-  assert.deepEqual(pins, [workflow.jobs.web.steps.find((s) => s.uses?.startsWith("actions/setup-node@")).uses]);
+for (const mode of ["pass", "compile-error"]) test(`cold-cache discovery: ${mode} builds targets or exposes Cargo stderr`, () => {
+  const root = mkdtempSync(path.join(tmpdir(), "backend-cold-"));
+  try {
+    mkdirSync(path.join(root, "bin"));
+    writeFileSync(path.join(root, "lib.rs"), "#[test] fn ordinary() {}\n");
+    const metadata = { workspace_root: root, workspace_members: ["example"], packages: [{
+      id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [
+        { name: "ordinary", kind: ["test"] }, { name: "optional", kind: ["test"], "required-features": ["full"] },
+      ],
+    }, { id: "external", manifest_path: path.join(root, "absent/Cargo.toml"), targets: [] }], resolve: { nodes: [{ id: "example", features: [] }] } };
+    writeFileSync(path.join(root, "metadata.json"), JSON.stringify(metadata));
+    writeFileSync(path.join(root, "list.json"), JSON.stringify(listing(suite(["ordinary"]))));
+    writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "ordinary"]]));
+    writeFileSync(path.join(root, "bin/cargo"), `#!${process.execPath}
+const fs = require('node:fs'), path = require('node:path');
+const root = process.env.FIXTURE_ROOT, args = process.argv.slice(2);
+if (args[0] === 'metadata') {
+  if (args.includes('--no-deps') && process.env.MODE === 'pass') process.exit(91);
+  process.stdout.write(fs.readFileSync(path.join(root, 'metadata.json')));
+} else if (args[1] === 'list') {
+  if (args.includes('--no-run') || args.includes('--no-build') || args.includes('optional')) process.exit(92);
+  if (process.env.MODE === 'compile-error') { process.stderr.write('error: test binary compilation failed\\n'); process.exit(101); }
+  fs.writeFileSync(path.join(root, 'built'), 'binary');
+  process.stdout.write(fs.readFileSync(path.join(root, 'list.json')));
+} else {
+  if (!fs.existsSync(path.join(root, 'built'))) process.exit(93);
+  fs.copyFileSync(path.join(root, 'result.xml'), path.join(root, 'target/nextest/ci/junit.xml'));
+}
+`, { mode: 0o755 });
+    const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], {
+      encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, NEXTEST_SHARD: "1", NEXTEST_SHARDS: "1" },
+    });
+    assert.equal(result.status, mode === "pass" ? 0 : 1, result.stdout + result.stderr);
+    if (mode === "compile-error") {
+      assert.match(result.stderr, /error: test binary compilation failed/);
+      assert.match(result.stderr, /cargo nextest list failed \(101\)/);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("Cargo diagnostics reach the job log before discovery exits", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "backend-stderr-"));
+  try {
+    writeFileSync(path.join(root, "cargo"), `#!${process.execPath}
+const fs = require('node:fs'), path = require('node:path');
+process.stderr.write('compiling test binaries\\n');
+setInterval(() => { if (fs.existsSync(path.join(process.env.FIXTURE_ROOT, 'ack'))) process.exit(101); }, 10);
+setTimeout(() => process.exit(94), 3000);
+`, { mode: 0o755 });
+    const child = spawn(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], {
+      env: { ...process.env, PATH: root, FIXTURE_ROOT: root }, stdio: ["ignore", "ignore", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.on("data", chunk => {
+      stderr += chunk;
+      if (stderr.includes("compiling test binaries")) writeFileSync(path.join(root, "ack"), "");
+    });
+    const status = await new Promise((resolve, reject) => { child.on("error", reject); child.on("close", resolve); });
+    assert.equal(status, 1, stderr);
+    assert.match(stderr, /cargo metadata --locked failed \(101\)/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

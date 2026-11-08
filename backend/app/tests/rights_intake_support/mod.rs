@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 use console_kernel_core::UserId;
+mod access_log;
 mod clock;
 
 pub async fn hr_handler(pool: &PgPool, org: OrgId, subject: UserId) -> (UserId, Uuid) {

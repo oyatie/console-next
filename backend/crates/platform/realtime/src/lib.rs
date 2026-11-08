@@ -15,6 +15,7 @@ mod event;
 mod fanout;
 mod filter;
 mod hub;
+mod limits;
 mod listener;
 mod messenger_sql;
 mod notifier;

@@ -26,7 +26,7 @@ use console_workorder_adapter_postgres::PgWorkOrderStore;
 use console_workorder_rest::{DEVICES_PATH, MobileRestState, mobile_router};
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -120,7 +120,7 @@ struct Harness {
 /// The mobile router on a `console_rt` pool — the role production runs as — plus
 /// an access token for `user_id`.
 async fn harness(pool: &PgPool, user_id: UserId, role: &str, branches: Vec<BranchId>) -> Harness {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

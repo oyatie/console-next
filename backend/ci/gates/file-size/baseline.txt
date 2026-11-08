@@ -2,7 +2,7 @@
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1499
-app/src/hr.rs	3575
+app/src/hr.rs	3528
 app/src/objects.rs	2007
 app/src/office.rs	891
 app/src/workbench.rs	660
@@ -16,7 +16,7 @@ app/tests/benefit_catalog_api.rs	317
 app/tests/board_ack_api.rs	358
 app/tests/cedar_freshness_mint.rs	375
 app/tests/cedar_shadow_role_manage.rs	304
-app/tests/compliance_api.rs	561
+app/tests/compliance_api.rs	520
 app/tests/compliance_catalog_api.rs	310
 app/tests/console_kill_switch.rs	304
 app/tests/console_route_telemetry.rs	312
@@ -27,7 +27,7 @@ app/tests/evaluation_cycle_api.rs	1301
 app/tests/facilities_pilot_story.rs	652
 app/tests/field_visit_api.rs	804
 app/tests/hr_attendance_manager_scope.rs	367
-app/tests/hr_attendance_self_read.rs	317
+app/tests/hr_attendance_self_read.rs	309
 app/tests/hr_lifecycle_stage_d.rs	1881
 app/tests/hr_people_create_api.rs	1144
 app/tests/logistics_pilot_story.rs	593
@@ -51,7 +51,6 @@ app/tests/registry_api.rs	577
 app/tests/search_api.rs	505
 app/tests/submittable_definitions_api.rs	385
 app/tests/workbench_native_api.rs	619
-app/tests/workflow_automation_triggers.rs	333
 app/tests/workflow_four_eyes_publish.rs	967
 app/tests/workflow_object_context_api.rs	564
 app/tests/workflow_run_read_surface.rs	606
@@ -73,9 +72,9 @@ ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1753
 ci/gates/writer-ownership/tests/gate_detects_violation.rs	2104
 crates/attendance/adapter-postgres/src/lib.rs	1045
 crates/attendance/adapter-postgres/tests/cancel_substitution.rs	895
-crates/attendance/adapter-postgres/tests/concurrency.rs	483
+crates/attendance/adapter-postgres/tests/concurrency.rs	403
 crates/attendance/application/src/lib.rs	411
-crates/attendance/rest/src/lib.rs	1146
+crates/attendance/rest/src/lib.rs	1141
 crates/benefit/adapter-postgres/src/lib.rs	1260
 crates/benefit/domain/src/lib.rs	307
 crates/benefit/rest/src/lib.rs	484
@@ -91,7 +90,7 @@ crates/compliance/adapter-postgres/src/lib.rs	2117
 crates/compliance/adapter-postgres/tests/location_store.rs	883
 crates/compliance/application/src/lib.rs	471
 crates/compliance/domain/src/lib.rs	930
-crates/compliance/rest/src/lib.rs	1293
+crates/compliance/rest/src/lib.rs	1265
 crates/consulting/rest/src/lib.rs	966
 crates/consulting/rest/tests/audit_atomicity.rs	501
 crates/contracts/src/lib.rs	651

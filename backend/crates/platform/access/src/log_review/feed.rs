@@ -6,13 +6,17 @@ use console_platform_db::with_audits;
 use console_platform_request_context::audit_context::access_log::{AccessRecord, access_event};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::collections::BTreeSet;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
 
-use super::{list, record::require};
-use crate::{AccessError, AccessResult, AccessService};
+use super::{list, list::filters::Filters, record::require};
+use crate::{AccessError, AccessResult, AccessService, Refusal};
+
+// Bound per-row substring work while allowing names, identifiers and export purposes.
+const MAX_SEARCH_CHARS: usize = 200;
 
 #[cfg(test)]
 mod tests;
@@ -22,6 +26,9 @@ type Cursor = (OffsetDateTime, OffsetDateTime, Uuid);
 #[derive(Debug, Deserialize)]
 pub struct Query {
     pub period: Option<String>,
+    pub search: Option<String>,
+    #[serde(flatten)]
+    pub filters: Filters,
     #[serde(default)]
     pub flagged: bool,
     pub cursor: Option<String>,
@@ -29,8 +36,42 @@ pub struct Query {
 }
 
 impl Query {
+    fn validate_search(&self) -> AccessResult<()> {
+        if let Some(search) = &self.search
+            && (search.chars().take(MAX_SEARCH_CHARS + 1).count() > MAX_SEARCH_CHARS
+                || search.chars().any(char::is_control))
+        {
+            return Err(AccessError::new(
+                Refusal::BadRequest,
+                "search_invalid",
+                format!(
+                    "search must contain no control characters and be at most {MAX_SEARCH_CHARS} characters"
+                ),
+            ));
+        }
+        Ok(())
+    }
+
+    fn search(&self) -> Option<String> {
+        self.search
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_lowercase)
+    }
+
     fn prefix(&self, org: OrgId, period: &str) -> String {
-        format!("{}~{}~{}~", org, period, self.flagged)
+        let search = self
+            .search()
+            .map(|s| format!("{}~", hex::encode(Sha256::digest(s))))
+            .unwrap_or_default();
+        format!(
+            "{}~{}~{}~{search}{}",
+            org,
+            period,
+            self.flagged,
+            self.filters.fingerprint()
+        )
     }
 
     fn cursor(&self, org: OrgId, period: &str) -> AccessResult<Option<Cursor>> {
@@ -64,6 +105,7 @@ impl Query {
 pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Value> {
     with_audits::<_, _, AccessError>(&s.pool, p.org_id, move |tx| Box::pin(async move {
         require(tx, &p, Level::View).await?;
+        q.validate_search()?;
         let limit = q.limit.unwrap_or(super::MAX_PAGE_SIZE);
         list::validate_limit(limit)?;
         let period = if let Some(period) = &q.period { period.clone() } else {
@@ -76,7 +118,12 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
         let as_of = if let Some(c) = cursor { c.0 } else {
             sqlx::query_scalar("SELECT now()").fetch_one(tx.as_mut()).await?
         };
-        let prepared = list::prepare(tx.as_mut(), p.org_id, &period, false, Some(as_of)).await?;
+        let mut prepared = list::prepare(tx.as_mut(), p.org_id, &period, false, Some(as_of)).await?;
+        let options = prepared.filter_options(tx.as_mut(), as_of).await?;
+        q.filters.validate(&period, &options)?;
+        if q.search().is_some() || q.filters.active() {
+            prepared.search(tx.as_mut(), q.search().as_deref(), as_of, &q.filters).await?;
+        }
         let keys = list::page_at(tx.as_mut(), &prepared, cursor.map(|c| (c.1,c.2)), limit, q.flagged, Some(as_of)).await?;
         let last = keys.last().map(|r| (r.created_at, r.event_id));
         let more = if keys.len() == limit as usize {
@@ -84,14 +131,19 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
         } else { false };
         let next = last.filter(|_| more).map(|(at,id)| format!("{}{}~{}~{id}", q.prefix(p.org_id, &period), as_of.unix_timestamp_nanos(), at.unix_timestamp_nanos()));
         let ids: Vec<_> = keys.iter().map(|r| r.event_id).collect();
-        let rows = sqlx::query(
+        let mut sql = sqlx::QueryBuilder::new(format!(
             "SELECT a.id,a.actor,a.created_at,a.occurred_at,COALESCE(a.actor_display,u.display_name,'') AS actor_name,\
              COALESCE(a.principal_type,a.after_snap->>'principal_type','') AS principal_type,a.action,a.target_type,COALESCE((a.after_snap->>'subject_count')::bigint,0) AS subject_count,\
-             a.ip,COALESCE(a.outcome,CASE WHEN a.after_snap->>'denied'='true' OR a.action ~ '([.]refused$|_refused$|[.]denied$)' THEN 'DENIED' ELSE 'ALLOWED' END) AS outcome,a.after_snap->>'export_purpose' AS export_purpose,(a.after_snap->>'row_count')::bigint AS row_count \
+             a.ip,{outcome} AS outcome,a.after_snap->>'export_purpose' AS export_purpose,(a.after_snap->>'row_count')::bigint AS row_count \
              FROM audit_events a LEFT JOIN person_accounts_current u ON u.org_id=a.org_id AND u.id=a.actor \
-             WHERE a.org_id=$1 AND a.id=ANY($2) ORDER BY a.created_at,a.id")
+             WHERE a.org_id=$1 AND a.id=ANY($2) ORDER BY a.created_at,a.id", outcome=include_str!("outcome.sql")));
+        let rows = sql.build()
             .bind(p.org_id.as_uuid()).bind(ids).fetch_all(tx.as_mut()).await?;
         let mut subjects = BTreeSet::new();
+        // Month-wide actor names are personal data returned even on an empty result page.
+        for actor in options["actors"].as_array().ok_or_else(|| AccessError::internal("invalid actor options"))? {
+            subjects.insert(serde_json::from_value::<Uuid>(actor["id"].clone()).map_err(AccessError::internal)?);
+        }
         let mut items = Vec::with_capacity(rows.len());
         for (row, key) in rows.iter().zip(&keys) {
             let actor: Option<Uuid> = row.try_get("actor")?;
@@ -109,6 +161,6 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
         let subjects: Vec<_> = subjects.into_iter().collect();
         let audit = access_event(&p, AccessRecord {action:"access_log.review_read",target_type:"access_log",target_id:period.clone(),
             subject_ids:&subjects,reader_subject:Some(*p.user_id.as_uuid()),details:json!({"period":period,"flagged":q.flagged,"rows":items.len()})})?;
-        Ok((json!({"period":prepared.period(&period)?,"totals":prepared.totals(),"items":items,"next_cursor":next}),vec![audit]))
+        Ok((json!({"period":prepared.period(&period)?,"totals":prepared.totals(),"items":items,"next_cursor":next,"filter_options":options}),vec![audit]))
     })).await
 }

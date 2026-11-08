@@ -58,6 +58,11 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             state.policy_step_up.clone(),
             state.juso.clone(),
             state.nts.clone(),
+            state
+                .config
+                .release_toggles
+                .iter()
+                .any(|name| name == "approvals"),
         ))
 }
 

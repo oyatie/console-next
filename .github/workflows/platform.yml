@@ -27,11 +27,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version, cache: npm}
       - name: Locked tools
-        run: python3 deploy/ci/tools.py
+        run: python3 deploy/ci/tools.py flux cosign kind buildx conftest kubeconform syft kustomize actionlint helm kubectl
       - name: Contracts and strict manifests
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
-          actionlint .github/workflows/platform.yml .github/workflows/platform-negative-signer.yml
           python3 -m unittest discover -s deploy/ci -p '*_test.py'
           node --test deploy/ci/*.test.mjs
           bash deploy/ci/validate.sh
@@ -42,8 +41,36 @@ jobs:
           kind create cluster --name platform-admission --image "$(jq -r .images.kind deploy/versions.json)" --wait 120s
           node deploy/ci/admission.mjs
 
+  prune-image-cache:
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.ref == 'refs/heads/dev'
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - name: Prune legacy image caches
+        id: prune
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const { pruneImageCache } = await import(`${process.env.GITHUB_WORKSPACE}/deploy/ci/prune-image-cache.mjs`);
+            const result = await pruneImageCache(github, context);
+            await core.summary.addRaw(`Removed ${result.deleted} legacy image cache entries (${result.bytes} bytes).\n`).write();
+      - name: Warn when image cache cleanup fails
+        if: >-
+          !cancelled() && steps.prune.outcome != 'success'
+        run: |
+          echo '**Warning:** Image cache cleanup failed. Build and publish will continue; legacy caches may remain near the repository cache limit.' >> "$GITHUB_STEP_SUMMARY"
+
   build:
-    if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push'
+    if: github.event_name == 'merge_group' || github.event_name == 'push'
     strategy:
       fail-fast: false
       matrix:
@@ -74,18 +101,23 @@ jobs:
       - name: Native image and GHA cache
         env:
           ARCH: ${{ matrix.arch }}
+          CACHE_WRITE: ${{ github.event_name == 'push' && github.ref_name == github.event.repository.default_branch }}
         run: |
           case "${ARCH}/$(docker info --format '{{.Architecture}}')" in
             amd64/x86_64|arm64/aarch64) ;;
             *) echo 'PLAT_NATIVE_ARCH: Docker must run the matrix architecture natively' >&2; exit 1;;
           esac
           buildx create --name platform --driver docker-container --driver-opt "image=$(jq -r .images.buildkit deploy/versions.json)" --use
+          cache_export=()
+          if [[ "${CACHE_WRITE}" == true ]]; then
+            cache_export=(--cache-to "type=gha,version=2,scope=console-platform-${ARCH},mode=min")
+          fi
           buildx build --builder platform --platform "linux/${ARCH}" \
             --build-arg "NODE_IMAGE=$(jq -r .images.node deploy/versions.json)" \
             --build-arg "RUST_IMAGE=$(jq -r .images.rust deploy/versions.json)" \
             --build-arg "RUNTIME_IMAGE=$(jq -r .images.runtime deploy/versions.json)" \
-            --cache-from "type=gha,version=2,scope=platform-${ARCH}" \
-            --cache-to "type=gha,version=2,scope=platform-${ARCH},mode=max" \
+            --cache-from "type=gha,version=2,scope=console-platform-${ARCH}" \
+            "${cache_export[@]}" --progress=plain \
             --tag "console-platform:${ARCH}" --file deploy/images/console.Dockerfile \
             --output "type=docker,dest=${RUNNER_TEMP}/console-${ARCH}.tar" .
       - name: Test native image
@@ -112,6 +144,7 @@ jobs:
       attestations: write
     outputs:
       artifact: ${{ steps.artifact.outputs.reference }}
+      image: ${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
         with: {egress-policy: audit}
@@ -207,6 +240,35 @@ jobs:
           cosign sign --yes "${DEPLOY}@${digest}"
           echo "reference=oci://${DEPLOY}@${digest}" >> "${GITHUB_OUTPUT}"
 
+  scan:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions: {contents: read, packages: read}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - run: python3 deploy/ci/tools.py cosign grype
+      - name: Scan the image's verified SPDX attestation
+        env:
+          IMAGE: ${{ needs.publish.outputs.image }}
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          cosign verify-attestation --type=https://spdx.dev/Document/v2.3 --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+            --certificate-identity="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/platform.yml@refs/heads/dev" \
+            "${IMAGE}" > "${RUNNER_TEMP}/spdx-attestation.json"
+          jq -ecs --arg digest "${IMAGE##*@sha256:}" \
+            '[.[] | (if type == "array" then .[] else . end) | .payload | @base64d | fromjson | select(any(.subject[]; .digest.sha256 == $digest)) | .predicate] | if length > 0 then .[] else error("expected a verified image SBOM") end' \
+            "${RUNNER_TEMP}/spdx-attestation.json" > "${RUNNER_TEMP}/image-sboms.jsonl"
+          while IFS= read -r sbom; do
+            printf '%s\n' "${sbom}" > "${RUNNER_TEMP}/image-sbom.json"
+            grype "sbom:${RUNNER_TEMP}/image-sbom.json" --only-fixed --fail-on high
+          done < "${RUNNER_TEMP}/image-sboms.jsonl"
+
   negative-signer:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     needs: publish
@@ -226,7 +288,7 @@ jobs:
       fail-fast: false
       matrix:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
-        repetition: [1, 2]
+        repetition: ${{ fromJSON(github.event_name == 'schedule' && '[1, 2]' || '[1]') }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     permissions:

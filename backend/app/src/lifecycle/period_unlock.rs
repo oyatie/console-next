@@ -30,7 +30,6 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 use super::LifecycleError;
@@ -307,15 +306,15 @@ pub(super) fn unlock_event(
     .with_snapshots(None, Some(snapshot)))
 }
 
-pub(super) fn request_json(request: &UnlockRequest) -> Value {
-    json!({
+pub(super) fn request_json(request: &UnlockRequest) -> Result<Value, LifecycleError> {
+    Ok(json!({
         "id": request.id,
         "requestedBy": request.requested_by,
         "reasonCode": &request.reason_code,
         "reasonNote": &request.reason_note,
-        "relockAt": request.relock_at.format(&Rfc3339).unwrap_or_default(),
-        "requestedAt": request.requested_at.format(&Rfc3339).unwrap_or_default(),
-    })
+        "relockAt": console_kernel_core::rfc3339(request.relock_at)?,
+        "requestedAt": console_kernel_core::rfc3339(request.requested_at)?,
+    }))
 }
 
 #[cfg(test)]
@@ -323,6 +322,25 @@ mod tests {
     use super::{UnlockPath, approve_payload, request_status, unlock_path, unlock_payload};
     use time::{Duration, OffsetDateTime};
     use uuid::Uuid;
+
+    #[test]
+    fn unlock_request_refuses_invalid_timestamps() {
+        let mut request = console_platform_db::period_lock::UnlockRequest {
+            id: Uuid::nil(),
+            lock_id: Uuid::nil(),
+            requested_by: Uuid::nil(),
+            reason_code: "CORRECTION".into(),
+            reason_note: None,
+            relock_at: time::macros::datetime!(2026-11-05 12:31:02.238349 +09:00),
+            step_up_assertion_id: Uuid::nil(),
+            requested_at: time::macros::datetime!(2026-11-05 12:31:02.238349 +09:00),
+        };
+        let response = super::request_json(&request).unwrap();
+        assert_eq!(response["relockAt"], "2026-11-05T03:31:02.238349Z");
+        assert_eq!(response["requestedAt"], "2026-11-05T03:31:02.238349Z");
+        request.relock_at = time::macros::datetime!(-0001-01-01 00:00 UTC);
+        assert!(super::request_json(&request).is_err());
+    }
 
     #[test]
     fn a_request_reads_as_its_decision_or_its_window() {

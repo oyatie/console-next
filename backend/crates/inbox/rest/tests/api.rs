@@ -32,7 +32,7 @@ use console_platform_db::{DbError, with_audit};
 use console_platform_test_support::runtime_role_pool;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -108,7 +108,7 @@ fn inject_allow_credential(
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn inbox_receipt_flow_is_person_scoped_and_passkey_gated(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()
@@ -286,7 +286,7 @@ async fn inbox_receipt_flow_is_person_scoped_and_passkey_gated(pool: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn inbox_payslip_filter_is_person_scoped_and_not_receipt_gated(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
         .verifying_key()

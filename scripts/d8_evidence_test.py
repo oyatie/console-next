@@ -102,7 +102,8 @@ class SupportEvidenceTest(unittest.TestCase):
             command = [sys.executable, producer.__file__, str(root / "out"), str(root / "e2e.json"), str(report)]
             result = subprocess.run(command, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            data = json.loads((root / "out/states.json").read_text())
+            self.assertEqual({file.name for file in (root / "out").iterdir()}, {"e2e.json", "write-probe.json"})
+            data = json.loads((root / "out/e2e.json").read_text())
             self.assertEqual(data["commit"], commit)
             self.assertEqual(data["run_at"], self.time)
             self.assertNotIn(directory, data["source_command"])
@@ -147,7 +148,7 @@ class SupportEvidenceTest(unittest.TestCase):
                      "ops_http_status": 200, "ops_support_ref": "a" * 32}
             put("write-probe", [{**probe, "ops_resolved": producer.resolved(probe)}])
             self.assertEqual(score()["level"], 2)
-            rows[0]["rendered_ref"] = None
+            rows[0]["support_ref"] = None
             put("states", rows)
             red = score()
             self.assertEqual(red["level"], 1)

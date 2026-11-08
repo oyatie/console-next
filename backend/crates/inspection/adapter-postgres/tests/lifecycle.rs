@@ -114,6 +114,10 @@ async fn schedule_lifecycle_requires_prevention_mechanic_and_audits_completion(p
         .await
         .unwrap();
         assert_eq!(schedule_audit_count, 1);
+        assert_eq!(after_snap.as_ref().unwrap()["completed_at"], "2026-06-12T11:00:00Z");
+        let round_snapshot: serde_json::Value = sqlx::query_scalar("SELECT after_snap FROM audit_events WHERE action='inspection.round.complete' AND target_id=$1")
+            .bind(round.id.to_string()).fetch_one(&pool).await.unwrap();
+        assert_eq!(round_snapshot["completed_at"], "2026-06-12T11:00:00Z");
         assert_eq!(
             before_snap.unwrap()["status"],
             serde_json::Value::String("SCHEDULED".to_owned())

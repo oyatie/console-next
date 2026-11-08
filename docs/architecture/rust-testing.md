@@ -7,7 +7,8 @@ with the same local invocation for reproducible proofs. It does not enter the ap
 | Tool | Layer | User | Approval | Exit plan |
 | --- | --- | --- | --- | --- |
 | `ci-tool:nextest` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-28: cargo-nextest approved as Rust tooling | Replace only with test discovery, isolation, failure propagation and JUnit parity. |
-| `actions/cache/restore`, `actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-29: cache actions approved; `approval.by = owner`; `authority = Owner` | Remove the cache steps; all checks still run on a cold build. |
+| `action:actions/cache/restore` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-29: cache actions approved; `approval.by = owner`; `authority = Owner` | Remove the cache steps; all checks continue with cold builds. |
+| `action:actions/cache/save` | CI/supply chain | `.github/workflows/ci.yml` | Owner, 2026-10-29: cache actions approved; `approval.by = owner`; `authority = Owner` | Remove the cache steps; all checks continue with cold builds. |
 
 The owner approved the cache actions on 2026-10-29, following the 2026-10-28 directive:
 「caching should work following best practices both in github and locally」.
@@ -31,21 +32,24 @@ the container-backed census opts in through `console-gate-writer-ownership/test-
 Ambiguous names or unsupported test macro signatures fail classification.
 Database connection environment variables are removed for this run: a missing database failure is a
 classification defect, not a reason to add an exclusion. The filter and complete identity inventory are
-published beside JUnit in the `backend-test-results` artifact. No baseline test list is checked in.
+published beside JUnit in the `backend-test-results-<shard>` artifacts. No baseline test list is checked in.
 
-Nextest runs after clippy in the backend job, sharing its registry and target directory.
+Nextest shards run alongside clippy, gates and the release build, restoring the same trusted cache.
 The Rust cache covers both builds, keyed by runner OS/architecture, toolchain, manifests, lockfile and
 commit. Only successful pushes to dev save it; pull requests and merge groups only restore it.
 Incremental compilation is disabled to limit cache size. A warm hosted run targets ten minutes including
 restore and upload; the first run or a changed dependency key builds cold and can exceed that target.
 Hosted summaries must establish the actual timing; the local cold proof took about seventeen minutes.
+The served Home budget runs on every candidate. Backend changes use the current release artifact;
+web-only candidates download `d10-backend` from the latest successful same-repository dev CI push.
+Dev release artifacts are retained for 90 days; a missing trusted artifact fails the job.
 The job summary reports selected and deferred cases, naming each existing
 `#[ignore]` case. Deferred totals include listed database tests, explicitly ignored cases, and SQLx
 source declarations absent from the default-feature inventory (including `test-postgres`-only tests).
 The last bucket counts declarations, without a second feature build; the complete declaration list is
 in the inventory artifact. These cases remain visible debt and are not counted as passing tests.
 JUnit must contain every selected identity exactly once, without skips, failures or errors, and nextest
-must exit successfully. Any discrepancy fails `backend` and the required `ci-ok` aggregate.
+must exit successfully. Any discrepancy fails `backend-tests` and the required `ci-ok` aggregate.
 The runner uses the existing [CI JUnit profile](../../.config/nextest.toml), with no retries and no early
 exit after the first failure. Database test execution and its Postgres role topology are the next step;
 no database tests are claimed as executed by this tier.

@@ -9,6 +9,7 @@ use super::TenantDeps;
 use crate::audit_api::{
     AUDIT_ATTESTATION_ROUTE_PATH, AUDIT_ROUTE_PATH, audit_attestation, audit_log,
 };
+#[cfg(feature = "full")]
 use crate::console_telemetry;
 use crate::http::client_errors;
 use crate::http::ops::{
@@ -58,9 +59,10 @@ pub(super) fn mount(deps: &TenantDeps<'_>) -> Router {
         state.jwt_verifier.clone(),
         pool.clone(),
     );
+    let audit_router = audit_router.merge(crate::http::support_reference::router(state, pool));
+    #[cfg(feature = "full")]
+    let audit_router = audit_router.merge(console_telemetry::router(
+        console_telemetry::ConsoleTelemetryState::new(pool.clone(), state.jwt_verifier.clone()),
+    ));
     audit_router
-        .merge(crate::http::support_reference::router(state, pool))
-        .merge(console_telemetry::router(
-            console_telemetry::ConsoleTelemetryState::new(pool.clone(), state.jwt_verifier.clone()),
-        ))
 }

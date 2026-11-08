@@ -4,6 +4,7 @@ mod input;
 mod reason;
 #[cfg(test)]
 mod tests;
+mod wire;
 use crate::statutory::{StatutoryRegister, StatutoryRule, StatutoryUnit, codes, filing};
 use console_kernel_core::KernelError;
 pub use input::Filing;
@@ -96,6 +97,7 @@ pub struct Due {
     pub on: Option<Date>,
     pub without_delay: bool,
     /// The exact register row, including its HOLD/review disposition.
+    #[serde(serialize_with = "wire::rule")]
     pub rule: Option<StatutoryRule>,
 }
 #[derive(Debug, Clone, Serialize)]

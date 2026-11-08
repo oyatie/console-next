@@ -29,6 +29,7 @@ async function mockAccessLog(page: Page, state: State, count = state === "empty"
       period: { key: "2026-10", from: "2026-10-01", to: "2026-11-01", time_zone: "Asia/Seoul", closed: true },
       totals: { events: rows.length, flagged: rows.length, by_flag: { download: Math.ceil(rows.length / 2), sensitive_read: Math.floor(rows.length / 2) } },
       items: rows.slice(offset, end), next_cursor: end < rows.length ? String(end) : null,
+      filter_options: { actors: [], actions: [], target_types: [] },
     } });
   });
   return { ...shell, pageCalls: () => pageCalls };
@@ -100,5 +101,33 @@ test("the role editor offers support-access approval only when the server catalo
   } });
   await page.goto("/access/roles/new");
   await expect(page.getByRole("checkbox", { name: "지원 접근 승인" })).toBeVisible();
+  expect(fixture.unexpected).toEqual([]);
+});
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`org approval can be prepared before routing is enabled at ${width}px ${theme}`, async ({ page }, info) => {
+  const fixture = await mockAccessScreen(page, accessScreens[1], "populated");
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess("/access/roles/new") });
+  await mockRoute(page, "get", "/api/v1/access/catalog", { status: 200, json: {
+    domains: [{ domain: "org", grantable: true, levels: ["view", "approve"], operations: [
+      { operation: "org_change_read", level: "view" }, { operation: "org_change_approve", level: "approve" },
+    ] }],
+    levels: ["view", "approve"], scope_kinds: [{ kind: "TENANT", enforceable: true, descendants_only: true }], reason_domain: "role_change",
+  } });
+  await page.route(url => url.pathname === "/api/v1/settings", route => route.fulfill({ json: {
+    items: [{ key: "approval.policy.org_structure", value: "none" }],
+  } }));
+  await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto("/access/roles/new");
+  await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+  const approval = page.getByRole("checkbox", { name: "조직 결재", exact: true });
+  await expect(approval).toBeVisible();
+  await approval.check();
+  await expect(approval).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /^조직 조회 · 자동 포함/ })).toBeChecked();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+  await page.screenshot({ path: info.outputPath(`org-approval-role-${width}-${theme}.png`), fullPage: true });
+  await expectAxe(page, `org approval authority ${width}px ${theme}`);
+  await fits(page, "org approval authority");
   expect(fixture.unexpected).toEqual([]);
 });

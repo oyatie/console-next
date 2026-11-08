@@ -2,6 +2,7 @@
 //! Personal attendance read projections shared by the REST handlers.
 use console_attendance_application::{SubstitutionCandidateRead, Week52Read};
 use serde::Serialize;
+use time::{OffsetDateTime, UtcOffset};
 
 #[derive(Serialize)]
 pub(super) struct SubstitutionCandidateDto {
@@ -32,7 +33,8 @@ pub(super) struct Week52RowDto {
     tone: String,
     acked: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    acked_at: Option<String>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    acked_at: Option<OffsetDateTime>,
 }
 impl From<Week52Read> for Week52RowDto {
     fn from(v: Week52Read) -> Self {
@@ -51,10 +53,7 @@ impl From<Week52Read> for Week52RowDto {
             }
             .into(),
             acked: v.acknowledged_at.is_some(),
-            acked_at: v.acknowledged_at.map(|d| {
-                d.format(&time::format_description::well_known::Rfc3339)
-                    .unwrap_or_else(|_| d.to_string())
-            }),
+            acked_at: v.acknowledged_at.map(|at| at.to_offset(UtcOffset::UTC)),
         }
     }
 }

@@ -11,7 +11,7 @@ use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifier};
 use console_platform_test_support::{issue_session_token, runtime_role_pool, seed_active_user};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -71,7 +71,7 @@ async fn save(service: axum::Router, token: &str) -> (StatusCode, Value) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn preferences_require_current_workspace_authority_before_storage(pool: PgPool) {
-    let key = SigningKey::random(&mut OsRng);
+    let key = SigningKey::generate();
     let private = key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public = key
         .verifying_key()

@@ -26,7 +26,7 @@ use console_kernel_core::{BranchId, BranchScope, KernelError};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::{Action, Feature, Principal, authorize, authorize_org_wide};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use time::{Date, Duration};
+use time::{Date, Duration, OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 #[path = "records_audit.rs"]
@@ -34,6 +34,8 @@ mod audit;
 mod closes_read;
 mod read_dto;
 mod self_service;
+#[cfg(test)]
+mod timestamp_tests;
 use read_dto::{SubstitutionCandidateDto, Week52BoardDto, Week52RowDto};
 // --- lane: ATT-BUILD ---
 mod auth;
@@ -371,7 +373,8 @@ struct SubstitutionDto {
     #[serde(skip_serializing_if = "Option::is_none")]
     exception_id: Option<String>,
     created_by: String,
-    created_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
 }
 impl From<AttendanceSubstitutionRead> for SubstitutionDto {
     fn from(v: AttendanceSubstitutionRead) -> Self {
@@ -394,10 +397,7 @@ impl From<AttendanceSubstitutionRead> for SubstitutionDto {
             status: v.status,
             exception_id: v.exception_id.map(|id| id.to_string()),
             created_by: v.created_by.to_string(),
-            created_at: v
-                .created_at
-                .format(&time::format_description::well_known::Rfc3339)
-                .unwrap_or_else(|_| v.created_at.to_string()),
+            created_at: v.created_at.to_offset(UtcOffset::UTC),
         }
     }
 }
@@ -536,7 +536,8 @@ struct ExceptionResolutionDto {
     #[serde(skip_serializing_if = "Option::is_none")]
     ot_hours: Option<f64>,
     actor: String,
-    resolved_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    resolved_at: OffsetDateTime,
 }
 #[derive(Serialize)]
 struct ExceptionDto {
@@ -551,13 +552,15 @@ struct ExceptionDto {
     #[serde(skip_serializing_if = "Option::is_none")]
     branch_id: Option<String>,
     work_date: String,
-    occurred_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    occurred_at: OffsetDateTime,
     detail: String,
     evidence: Vec<ExceptionEvidenceDto>,
     links: Vec<ExceptionLinkDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     resolution: Option<ExceptionResolutionDto>,
-    created_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
 }
 impl From<AttendanceExceptionRead> for ExceptionDto {
     fn from(value: AttendanceExceptionRead) -> Self {
@@ -571,10 +574,7 @@ impl From<AttendanceExceptionRead> for ExceptionDto {
             team: value.team,
             branch_id: value.branch_id.map(|id| id.to_string()),
             work_date: value.work_date.to_string(),
-            occurred_at: value
-                .occurred_at
-                .format(&time::format_description::well_known::Rfc3339)
-                .unwrap_or_else(|_| value.occurred_at.to_string()),
+            occurred_at: value.occurred_at.to_offset(UtcOffset::UTC),
             detail: value.detail,
             evidence: value
                 .evidence
@@ -599,15 +599,9 @@ impl From<AttendanceExceptionRead> for ExceptionDto {
                 linked_work_ref: v.linked_work_ref,
                 ot_hours: v.ot_hours.and_then(|hours| hours.parse().ok()),
                 actor: v.actor.to_string(),
-                resolved_at: v
-                    .resolved_at
-                    .format(&time::format_description::well_known::Rfc3339)
-                    .unwrap_or_else(|_| v.resolved_at.to_string()),
+                resolved_at: v.resolved_at.to_offset(UtcOffset::UTC),
             }),
-            created_at: value
-                .created_at
-                .format(&time::format_description::well_known::Rfc3339)
-                .unwrap_or_else(|_| value.created_at.to_string()),
+            created_at: value.created_at.to_offset(UtcOffset::UTC),
         }
     }
 }
@@ -904,7 +898,8 @@ struct CloseAmendmentDto {
     id: String,
     reason: String,
     actor: String,
-    created_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
 }
 #[derive(Serialize)]
 struct MonthCloseDto {
@@ -913,11 +908,23 @@ struct MonthCloseDto {
     branch_scope: String,
     checks: Vec<CloseCheckDto>,
     attested_by: String,
-    attested_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    attested_at: OffsetDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     period_lock_id: Option<String>,
-    closed_at: String,
+    #[serde(with = "time::serde::rfc3339")]
+    closed_at: OffsetDateTime,
     amendments: Vec<CloseAmendmentDto>,
+}
+impl From<console_attendance_application::CloseAmendmentRead> for CloseAmendmentDto {
+    fn from(value: console_attendance_application::CloseAmendmentRead) -> Self {
+        Self {
+            id: value.id.to_string(),
+            reason: value.reason,
+            actor: value.actor.to_string(),
+            created_at: value.created_at.to_offset(UtcOffset::UTC),
+        }
+    }
 }
 impl From<MonthCloseRead> for MonthCloseDto {
     fn from(v: MonthCloseRead) -> Self {
@@ -939,18 +946,13 @@ impl From<MonthCloseRead> for MonthCloseDto {
                 })
                 .collect(),
             attested_by: v.attested_by.to_string(),
-            attested_at: self_service::rfc3339(v.attested_at),
+            attested_at: v.attested_at.to_offset(UtcOffset::UTC),
             period_lock_id: v.period_lock_id.map(|i| i.to_string()),
-            closed_at: self_service::rfc3339(v.closed_at),
+            closed_at: v.closed_at.to_offset(UtcOffset::UTC),
             amendments: v
                 .amendments
                 .into_iter()
-                .map(|a| CloseAmendmentDto {
-                    id: a.id.to_string(),
-                    reason: a.reason,
-                    actor: a.actor.to_string(),
-                    created_at: self_service::rfc3339(a.created_at),
-                })
+                .map(CloseAmendmentDto::from)
                 .collect(),
         }
     }
@@ -1064,12 +1066,7 @@ async fn amend_close(
             },
         )
         .await
-        .map(|v| CloseAmendmentDto {
-            id: v.id.to_string(),
-            reason: v.reason,
-            actor: v.actor.to_string(),
-            created_at: self_service::rfc3339(v.created_at),
-        })
+        .map(CloseAmendmentDto::from)
         .map(Json)
         .map_err(RestError::store)
 }

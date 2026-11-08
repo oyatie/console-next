@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 
 use console_kernel_core::OrgId;
+use console_kernel_core::rfc3339;
 use console_platform_authz::Principal;
 use console_platform_authz::access::{
     AccessEngineError, AccessSlice, Domain, Enforcement, Level, NodePath, action_group,
@@ -15,7 +16,6 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use sqlx::{Postgres, Row, Transaction};
 use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 use crate::AccessService;
@@ -24,10 +24,6 @@ use crate::caveats::caveats;
 use crate::error::{AccessError, AccessResult};
 use crate::grants_store::{self as store, ListFilter};
 use crate::roles_store::lines_of;
-
-fn rfc3339(t: OffsetDateTime) -> AccessResult<String> {
-    t.format(&Rfc3339).map_err(AccessError::internal)
-}
 
 fn fail_closed_decision<T>(
     result: Result<T, AccessEngineError>,

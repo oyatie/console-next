@@ -41,29 +41,20 @@ export const isEmpty = (grid: Chosen) => Object.values(grid).every((v) => !v.len
 type Offered = { domain: string; grantable: boolean; levels: readonly Level[]; operations: readonly { level: Level }[] };
 /** Domains with no console screen in the MVP (Org + HR first): listed as "not yet", never sold as a permission. */
 const NO_SCREEN = new Set(["evaluation", "notice"]);
-/**
- * The approve level by domain (#26). The org row's is the approval of an org change: until that class routes it does
- * nothing and is not offered. The exit row's is the HQ confirmation (the server still asks for it; under "none" the HR
- * confirmer may give it too) and the exceptions row's is the decision: both always offered. It reads as an approval only
- * on a row whose class the tenant routes.
- */
-const OFFERED_WHEN_ROUTED: Readonly<Record<string, string>> = { org: "org_structure" };
 const ROUTE_CLASS: Readonly<Record<string, string>> = { org: "org_structure", exit: "exit" };
-/** The approval classes the tenant routes (settings `approval.policy.<class>` = route); undefined = not known, offer all. */
+/** The approval classes the tenant routes (settings `approval.policy.<class>` = route). */
 export type Routed = ReadonlySet<string> | undefined;
-// A Set only: `sellable` is also handed straight to Array.filter, whose second argument is an index.
-const decides = (domain: string, routed: Routed) => !(routed instanceof Set) || !(domain in OFFERED_WHEN_ROUTED) || routed.has(OFFERED_WHEN_ROUTED[domain]!);
 /** A routed row's approve cell is an approval (governance-03): the word appears only there. */
 export const isRoutedApproval = (domain: string, routed: Routed) => routed instanceof Set && domain in ROUTE_CLASS && routed.has(ROUTE_CLASS[domain]!);
-/** The approve cell's word: an approval on a routed row, else the domain's own decision (exit confirm, exception decide). */
+/** Org authority prepares approval; exit confirmation and exception decisions keep their own words. */
 export const approveWord = (domain: string, routed: Routed): "routed" | "confirm" | "decide" =>
-  isRoutedApproval(domain, routed) ? "routed" : domain === "exit" ? "confirm" : "decide";
+  (domain === "org" || isRoutedApproval(domain, routed)) ? "routed" : domain === "exit" ? "confirm" : "decide";
 /**
  * The levels a domain really offers: those the platform tags an operation with, plus view wherever anything is offered
- * (it is implied by every other level); approve only where it decides something today. governance-17: never an empty cell.
+ * (it is implied by every other level); routing controls execution, not which catalogued permissions can be configured.
  */
-export const liveLevels = (d: Offered, routed?: Routed): Level[] =>
-  d.levels.filter((l) => (d.operations.some((o) => o.level === l) || (l === "view" && d.operations.length > 0)) && (l !== "approve" || decides(d.domain, routed)));
+export const liveLevels = (d: Offered, _routed?: Routed): Level[] =>
+  d.levels.filter((l) => (d.operations.some((o) => o.level === l) || (l === "view" && d.operations.length > 0)));
 /** A domain a role can hold today: grantable, with a screen, and at least one level that does something. */
 export const sellable = (d: Offered, routed?: Routed) => d.grantable && !NO_SCREEN.has(d.domain) && liveLevels(d, routed).length > 0;
 /** The grid's columns: only levels some sellable domain offers. */

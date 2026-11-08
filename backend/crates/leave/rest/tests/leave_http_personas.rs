@@ -23,7 +23,7 @@ use console_leave_rest::{LeaveRestState, router};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifier};
 use console_platform_test_support::{grant_console_rt, runtime_role_pool};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -370,7 +370,7 @@ async fn test_auth_with_roles(
     branches: Vec<BranchId>,
     roles: Vec<&str>,
 ) -> TestAuth {
-    let signing_key = SigningKey::random(&mut OsRng);
+    let signing_key = SigningKey::generate();
     let private_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_pem = signing_key
         .verifying_key()

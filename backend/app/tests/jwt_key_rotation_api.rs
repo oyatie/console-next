@@ -11,7 +11,7 @@ use console_platform_provisioning::BootstrapCredentialStore;
 use console_platform_test_support::MIGRATOR;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
+use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -28,7 +28,7 @@ struct Key {
 
 impl Key {
     fn new() -> Self {
-        let signing = SigningKey::random(&mut OsRng);
+        let signing = SigningKey::generate();
         Self {
             private_pem: signing.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
             public_pem: signing

@@ -118,6 +118,9 @@ test("two operators and the customer authorize support; every read arrives live 
     org_id: org, step_up: await boundStepUp(approver, approverBearer(), id, JSON.stringify([org, id, "approve"])),
   });
   expect(approvedByOperator.state).toBe("OPERATOR_APPROVED");
+  const pendingNotice = await apiOf(tenant, tenantBearer)("/support-sessions/active");
+  expect(pendingNotice.status()).toBe(200);
+  expect((await pendingNotice.json()).pending_approvals[0].request_expires_at).toMatch(/Z$/);
   // The same SSE event updates both the safety notice and the unified inbox.
   await expect(tenant.getByText("지원 접근 승인 대기 1건", { exact: true }).first()).toBeVisible();
   const review = tenant.getByRole("region", { name: "업무함", exact: true }).getByRole("link", { name: "지원 요청 확인", exact: true });
@@ -148,6 +151,9 @@ test("two operators and the customer authorize support; every read arrives live 
     org_id: org, step_up: await boundStepUp(operator, requesterBearer(), id, JSON.stringify([org, id, "start"])),
   }));
   const token = started.access_token;
+  const activeNotice = await apiOf(tenant, tenantBearer)("/support-sessions/active");
+  expect(activeNotice.status()).toBe(200);
+  expect((await activeNotice.json()).sessions[0].expires_at).toMatch(/Z$/);
   const metadata = (await requester.list(org)).sessions.find((s) => s.id === id);
   expect(metadata?.state).toBe("ACTIVE");
   expect(metadata).not.toHaveProperty("reason");

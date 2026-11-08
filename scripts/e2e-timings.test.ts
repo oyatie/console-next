@@ -46,6 +46,12 @@ test("strict planning names a file exceeding its budget after worker scaling and
     .toThrow(/E2E_SPEC_OVER_BUDGET.*too-long\.spec\.ts.*301.*300/);
 });
 
+test("a requested shard floor spreads whole files without emitting empty shards", () => {
+  const files = ["a.spec.ts", "b.spec.ts", "c.spec.ts"].map(file => t("parallel", file));
+  expect(plan(files, {}, { target: 300, workers: 2, boot: 40, strict: true, minShards: 3 }))
+    .toEqual(files.map(file => ({ project: "parallel", files: [file.file], est: 45 })));
+});
+
 test("listedTests skips fixme tests and keys nested describes", () => {
   const report = {
     suites: [

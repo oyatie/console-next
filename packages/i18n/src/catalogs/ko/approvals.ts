@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Korean source for `approvals.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koApprovals = {
+  "approvals.field.verification": "결재 전 확인",
+  "approvals.blocked": "결재 전 확인이 필요합니다.",
   "approvals.title": "결재함",
   "approvals.tabs": "결재함 구분",
   "approvals.box.pending": "대기",

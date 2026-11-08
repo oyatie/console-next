@@ -74,10 +74,15 @@ test.each(ENGINES.map((_, engine) => ({ engine })))("preview remains usable at p
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${server.resolvedUrls!.local[0]}approvals-view-test`);
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+    const row = page.getByRole("row", { name: /영업 조직 개편안/ });
+    await expect(row.getByText("AP-2026-001", { exact: true })).toBeVisible();
+    await expect(row.getByRole("list")).toHaveCount(0);
+    await expect(row.locator('[aria-current="step"]')).toHaveText("인사팀장 결재 · 박결재");
+    await expect(row.getByText("김기안", { exact: true })).toBeVisible();
     await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
     const panel = page.locator("[data-side-panel]");
     await expect(panel.getByRole("heading", { name: "영업 조직 개편안", exact: true })).toBeVisible();
-    await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveAttribute("href", "/approvals/approval-1");
+    await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
     await expect(panel.getByText("인사팀장 결재", { exact: false })).toBeVisible();
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);

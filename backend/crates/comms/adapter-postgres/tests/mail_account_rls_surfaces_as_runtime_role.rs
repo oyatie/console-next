@@ -42,8 +42,7 @@ const ORG_B: Uuid = Uuid::from_u128(0x2222_2222_2222_2222_2222_2222_2222_2222);
 /// A deterministic 32-byte test KEK (base64), distinct from any production key.
 fn test_cipher() -> EnvelopeCredentialCipher {
     use base64::Engine as _;
-    let key = [13u8; 32];
-    let b64 = base64::engine::general_purpose::STANDARD.encode(key);
+    let b64 = base64::engine::general_purpose::STANDARD.encode([13u8; 32]);
     EnvelopeCredentialCipher::from_base64_key(&b64).unwrap()
 }
 
@@ -188,9 +187,8 @@ fn upsert_for(
 async fn upsert_and_get_account_as_runtime_role_persist_ciphertext_only(owner_pool: PgPool) {
     let rt_pool = runtime_role_pool(&owner_pool).await;
     let org = OrgId::one();
-    let org_uuid = *org.as_uuid();
-    seed_org(&owner_pool, org_uuid, "A").await;
-    let actor = seed_active_user(&owner_pool, org_uuid).await;
+    seed_org(&owner_pool, *org.as_uuid(), "A").await;
+    let actor = seed_active_user(&owner_pool, *org.as_uuid()).await;
     let cipher = test_cipher();
 
     let account_id = EmailAccountId::new();
@@ -613,3 +611,6 @@ async fn smtp_port_check_rejects_25_accepts_submission_ports(owner_pool: PgPool)
         "465 (implicit TLS submission) must still be accepted"
     );
 }
+
+#[path = "mail_account_rls_surfaces_as_runtime_role/credentials.rs"]
+mod credentials;
