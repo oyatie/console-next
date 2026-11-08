@@ -11,15 +11,15 @@ test("ci-ok cannot succeed when the reusable commit check fails or is skipped", 
   expect(ci.on).toHaveProperty("pull_request");
   expect(ci.on).toHaveProperty("merge_group");
   expect(ci.jobs.commits.uses).toBe("./.github/workflows/commits.yml");
-  expect(ci.jobs.commits.if).toBeUndefined();
+  expect(ci.jobs.commits.if).toBe("github.event_name != 'push'");
   expect(ci.jobs.commits["continue-on-error"]).toBeUndefined();
   expect(ci.jobs.web.needs ?? []).not.toContain("commits");
-  expect(ci.jobs.web.if).toBeUndefined();
+  expect(ci.jobs.web.if).toContain("needs.affected.outputs.web == 'true'");
   expect(ci.jobs["ci-ok"].needs).toContain("commits");
   expect(ci.jobs["ci-ok"].needs).toContain("web");
-  for (const name of ["commits", "web"]) for (const result of ["failure", "skipped", "cancelled"]) {
-    const needs = Object.fromEntries(ci.jobs["ci-ok"].needs.map(job => [job, { result: job === name ? result : "success", outputs: { backend: "true" } }]));
-    expect(spawnSync("bash", ["-e", "-c", ci.jobs["ci-ok"].steps[0].run], { env: { ...process.env, NEEDS: JSON.stringify(needs), GITHUB_EVENT_NAME: "pull_request" } }).status).not.toBe(0);
+  for (const name of ["commits", "web"]) for (const result of ["success", "failure", "skipped", "cancelled"]) {
+    const needs = Object.fromEntries(ci.jobs["ci-ok"].needs.map(job => [job, { result: job === name ? result : ["states-timings", "dev-artifacts", "backend-cache", "release-evidence"].includes(job) ? "skipped" : "success", outputs: { backend: "true", web: "true" } }]));
+    expect(spawnSync("bash", ["-e", "-c", ci.jobs["ci-ok"].steps[0].run], { env: { ...process.env, NEEDS: JSON.stringify(needs), GITHUB_EVENT_NAME: "pull_request" } }).status).toBe(result === "success" ? 0 : 1);
   }
 });
 

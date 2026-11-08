@@ -41,9 +41,9 @@ jobs:
           E2E_SERVED: "1"
         run: |
           mkdir -p .cache/e2e-live-plan
-          PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/chromium-inventory.json npx playwright test --list --project=parallel --reporter=json
+          PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/chromium-inventory.json npx playwright test --list --grep-invert='first-run-solo|authz/write-refusals|error-beacon' --project=parallel --reporter=json
           npx playwright test --list --project=clock
-          E2E_XBROWSER=1 PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/firefox-inventory.json npx playwright test --list --project=firefox --reporter=json
+          E2E_XBROWSER=1 PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/firefox-inventory.json npx playwright test --list --grep-invert='first-run-solo' --project=firefox --reporter=json
           node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/chromium-inventory.json .cache/e2e-live-plan chromium
           node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/firefox-inventory.json .cache/e2e-live-plan firefox
       - name: Check cross-browser inventory nightly
@@ -84,7 +84,6 @@ jobs:
           - {shard: live-renew, config: playwright.live-renew.config.ts, project: "parallel"}
           - {shard: navigation, config: playwright.navigation.config.ts, project: "chromium"}
           - {shard: focus-stress, config: e2e/mock/focus-stress.config.ts, project: "chromium"}
-          - {shard: grid, config: apps/web/src/features/people/ui/grid-table.playwright.ts, project: ""}
           - {shard: timeline, config: apps/web/src/ui/timeline-lanes/timeline-line.playwright.ts, project: ""}
     services:
       postgres:

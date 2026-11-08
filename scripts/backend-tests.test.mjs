@@ -169,7 +169,8 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
   assert.ok(job.steps[0].uses.startsWith("step-security/harden-runner@"));
   for (const step of job.steps) {
     if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
-    assert.ok(!step["continue-on-error"]);
+    const cacheMaintenance = step.name === "Collect Rust cache changes" || step.with?.name?.startsWith("rust-cache-") === true;
+    assert.equal(step["continue-on-error"] ?? false, cacheMaintenance);
   }
   const run = job.steps.find((s) => s.run === "node scripts/backend-tests.mjs");
   assert.ok(run && !run.if);

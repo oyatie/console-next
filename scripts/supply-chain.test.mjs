@@ -77,8 +77,7 @@ test("pinned tools use trusted dev artifacts as a cache and never introduce a ne
   const restore = job.steps.find((s) => s.uses?.startsWith("actions/download-artifact@"));
   const save = job.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@"));
   assert.ok(restore?.with["run-id"]);
-  assert.match(save?.if, /github\.event_name == 'push'/);
-  assert.match(save.if, /refs\/heads\/dev/);
+  assert.match(save?.if, /github\.event_name == 'merge_group'/);
   assert.match(JSON.stringify(job), /cargo-security-.*CARGO_DENY_VERSION.*CARGO_AUDIT_VERSION/);
   assert.match(JSON.stringify(job), /--locked --version/);
 });
@@ -135,7 +134,7 @@ test("affected paths uses full history, the event base and the checked-out merge
   const affected = workflow.jobs.affected;
   assert.ok(affected);
   assert.equal(affected.if, undefined);
-  assert.deepEqual(affected.permissions, { contents: "read" });
+  assert.deepEqual(affected.permissions, { contents: "read", actions: "read" });
   const checkout = affected.steps.find((s) => s.uses?.startsWith("actions/checkout@"));
   assert.deepEqual(checkout.with, { "persist-credentials": false, "fetch-depth": 0 });
   assert.ok(affected.steps.some((s) => s.run === "node --test scripts/ci-affected.test.mjs"));
@@ -145,15 +144,18 @@ test("affected paths uses full history, the event base and the checked-out merge
     HEAD_SHA: "${{ github.sha }}",
   });
   assert.equal(classify.run, 'node scripts/ci-affected.mjs "$GITHUB_EVENT_NAME" "$BASE_SHA" "$HEAD_SHA"');
-  assert.deepEqual(affected.outputs, { backend: "${{ steps.paths.outputs.backend }}", web: "${{ steps.paths.outputs.web }}" });
+  assert.equal(affected.outputs.backend, "${{ steps.paths.outputs.backend || steps.import.outputs.backend }}");
+  assert.equal(affected.outputs.web, "${{ steps.paths.outputs.web || steps.import.outputs.web }}");
   const existingUses = new Set(Object.entries(workflow.jobs).filter(([name]) => name !== "affected")
     .flatMap(([, job]) => (job.steps ?? []).map((s) => s.uses).filter(Boolean)));
+  const admission = yaml.load(read(".github/workflows/release-admission.yml"));
+  existingUses.add(admission.jobs.plan.steps.find(s => s.uses?.startsWith("actions/github-script@")).uses);
   for (const step of affected.steps) if (step.uses) assert.ok(existingUses.has(step.uses));
 });
 
 test("ci-ok requires the affected-path aggregate and its regression controls", () => {
   assert.equal(workflow.jobs["ci-ok"].if, "${{ always() }}");
-  assert.deepEqual([...workflow.jobs["ci-ok"].needs].sort(), ["affected", "backend", "backend-gates", "backend-release", "backend-tests", "commits", "home", "states", "states-plan", "states-timings", "supply-chain", "web"]);
+  assert.deepEqual([...workflow.jobs["ci-ok"].needs].sort(), ["affected", "backend", "backend-cache", "backend-gates", "backend-release", "backend-tests", "commits", "dev-artifacts", "home", "release-evidence", "states", "states-plan", "states-timings", "supply-chain", "web", "workflows"]);
   assert.ok(workflow.jobs.web.steps.some(s => s.run?.includes("node --test scripts/ci-backend.test.mjs")));
 });
 
