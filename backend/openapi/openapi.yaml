@@ -23865,6 +23865,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/payroll/reference/rates:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:view", "scope": "entity"}
+      tags: [payroll]
+      operationId: listPayrollReferenceRates
+      summary: Read the legal entity's current statutory rate register
+      security:
+      - bearerAuth: []
+      parameters:
+      - {name: legal_entity_id, in: query, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      responses:
+        '200':
+          description: Citations in force today in the installed country pack's timezone. Unknown or unadopted packs return no rates. Quantities are never estimated.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PayrollRates'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {description: Cedar refuses entity pay:view, including foreign or unknown entities.}
+        '422': {description: validation for missing or malformed legal_entity_id or unknown query fields.}
+        '503': {description: Cedar facts or evaluation unavailable.}
   /api/v1/payroll/runs:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -54403,6 +54424,37 @@ components:
           description: Up to 50 fix-link ids (draft lines missing attendance material, or pending leave requests); the note carries the full count.
           items:
             $ref: '#/components/schemas/Uuid'
+    PayrollRate:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf:
+      - {$ref: '#/components/schemas/PayrollStatutoryCitation'}
+      - type: object
+        required: [name, value, status]
+        properties:
+          name:
+            type: string
+            description: The stored statutory instrument name, without a client-side code lookup.
+          value:
+            type: [string, 'null']
+            description: Exact stored numerator/denominator or lower–upper won band. Null when the quantities needed for display are unknown.
+          status:
+            type: string
+            enum: [ACTIVE, HELD, SCHEDULED]
+            description: ACTIVE for a current stored quantity; HELD for unknown quantities. This read excludes future and expired rows.
+    PayrollRates:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [country_code, adopted, items]
+      properties:
+        country_code:
+          type: [string, 'null']
+          description: Installed country pack for the entity timezone, or null when unknown. An absent entity timezone uses the configured default pack.
+        adopted:
+          type: boolean
+          description: The installed country pack has a classified payroll citation register, even if no rows are currently in force.
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/PayrollRate'}
     PayrollRunCalcSummary:
       type: object
       required:

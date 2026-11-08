@@ -237,3 +237,18 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
     ]);
     rates
 }
+
+/// Display stored quantities exactly, without estimating missing inputs.
+#[must_use]
+pub fn reference_value(
+    numerator: Option<i64>,
+    denominator: Option<i64>,
+    floor_won: Option<i64>,
+    cap_won: Option<i64>,
+) -> Option<String> {
+    match (numerator, denominator, floor_won, cap_won) {
+        (Some(num), Some(den), _, _) => Some(format!("{num}/{den}")),
+        (None, None, Some(floor), Some(cap)) => Some(format!("{floor}–{cap}원")),
+        _ => None,
+    }
+}

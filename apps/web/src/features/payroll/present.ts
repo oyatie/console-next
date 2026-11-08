@@ -14,7 +14,7 @@ export function cited(rate: Pick<PayrollRate, "instrument_ko" | "article_ko" | "
     return [rate.instrument_ko, rate.article_ko, rate.promulgation_ko, rate.enforced_on, rate.retrieved_on, rate.provenance_ko].every(v => !!v.trim()) && new URL(rate.source_url).protocol === "https:";
   } catch { return false; }
 }
-export const rateValue = (rate: PayrollRate) => cited(rate) && rate.status !== "HELD" ? rate.value : t("payroll.reference.held");
+export const rateValue = (rate: PayrollRate) => cited(rate) && rate.status !== "HELD" && rate.value !== null ? rate.value : t("payroll.reference.held");
 export const referenceStatus = (rates: PayrollRates) => !rates.adopted ? t("payroll.reference.noPack") : rates.items.length ? null : t("payroll.reference.empty");
 
 const stages = ["attendance", "calculate", "exceptions", "approval", "payment", "delivery"] as const;

@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "pay:view", "scope": "entity"}
+tags: [payroll]
+operationId: listPayrollReferenceRates
+summary: Read the legal entity's current statutory rate register
+security:
+- bearerAuth: []
+parameters:
+- {name: legal_entity_id, in: query, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+responses:
+  '200':
+    description: Citations in force today in the installed country pack's timezone. Unknown or unadopted packs return no rates. Quantities are never estimated.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/PayrollRates'}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403': {description: Cedar refuses entity pay:view, including foreign or unknown entities.}
+  '422': {description: validation for missing or malformed legal_entity_id or unknown query fields.}
+  '503': {description: Cedar facts or evaluation unavailable.}

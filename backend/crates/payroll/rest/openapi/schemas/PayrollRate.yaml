@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+allOf:
+- {$ref: '#/components/schemas/PayrollStatutoryCitation'}
+- type: object
+  required: [name, value, status]
+  properties:
+    name:
+      type: string
+      description: The stored statutory instrument name, without a client-side code lookup.
+    value:
+      type: [string, 'null']
+      description: Exact stored numerator/denominator or lower–upper won band. Null when the quantities needed for display are unknown.
+    status:
+      type: string
+      enum: [ACTIVE, HELD, SCHEDULED]
+      description: ACTIVE for a current stored quantity; HELD for unknown quantities. This read excludes future and expired rows.

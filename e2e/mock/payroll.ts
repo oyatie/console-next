@@ -3,11 +3,11 @@ import type { Page } from "@playwright/test";
 import type { PayGroups, PayrollRate, PayrollRates, PayrollRun } from "@console/api/pending";
 import type { PayrollState } from "../states/payroll";
 import { AT, failure, id } from "./fixtures";
-export const rate: PayrollRate = {
+export const rate = {
   code: "SYNTHETIC", name: "모의 기준", value: "0.123456%", status: "ACTIVE", effective_from: "2026-01-01", effective_to_exclusive: "2027-01-01",
   rate_num: 123456, rate_den: 100000000, floor_won: null, cap_won: null, basis: "SYNTHETIC", bearer: "SYNTHETIC",
   instrument_ko: "모의 고시", article_ko: "모의 조문", promulgation_ko: "모의 제1호", enforced_on: "2026-01-01", source_url: "https://example.com/payroll-source", retrieved_on: "2026-10-29", provenance_ko: "화면 검증용 가상 기준 · 실제 계산에 사용하지 않음",
-};
+} satisfies PayrollRate;
 const runStatuses = ["STAGED", "BLOCKED_LEGAL_GATE", "READY_FOR_REVIEW", "ATTENDANCE_CLOSED", "CALCULATING", "CALCULATED", "SUBMITTED", "REJECTED", "APPROVED", "DISBURSEMENT_SCHEDULED", "PAID", "ISSUED", "VOID"] as const satisfies readonly PayrollRun["status"][];
 export const payGroups: PayGroups = {
   legal_entities: [{ id: id(800), name: "모의상사" }, { id: id(801), name: "모의상사 해외법인" }],
