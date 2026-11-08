@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [id, receipt_no, receipt, kinds, status, detail]
+properties:
+  id: { type: string, format: uuid }
+  receipt_no: { type: string }
+  detail: { type: string }
+  status: { type: string, enum: [RECEIVED, DECIDED] }
+  receipt:
+    type: object
+    required: [controller, received_on, identity_at]
+    properties:
+      controller: { type: string, enum: [TENANT, OPERATOR] }
+      received_on: { type: string, format: date }
+      identity_at: { type: string, format: date-time }
+  kinds:
+    type: object
+    additionalProperties:
+      type: object
+      required: [due, decisions]
+      properties:
+        due:
+          type: object
+          nullable: true
+          required: [on, without_delay, rule]
+          properties:
+            on: { type: string, format: date, nullable: true }
+            without_delay: { type: boolean }
+            rule: { type: object, nullable: true, additionalProperties: true }
+        decisions:
+          type: array
+          items:
+            type: object
+            required: [on, decision]
+            properties:
+              on: { type: string, format: date }
+              decision:
+                type: object
+                required: [outcome, reason, note]
+                properties:
+                  outcome: { type: string, enum: [GRANTED, PARTIAL, REFUSED, POSTPONED] }
+                  reason: { type: string, nullable: true }
+                  note: { type: string, nullable: true }

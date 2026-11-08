@@ -109,11 +109,6 @@ test("deadlines use the server's remaining days", () => {
   view.list.data = { pages: [page([item("dated", { due: "2099-01-01T00:00:00Z", days_remaining: 3, dueTone: "warn" })])] };
   expect(html()).toContain("D-3");
 });
-test("a statutory inbox item opens the filing list for its own lifecycle event", () => {
-  const event = "ecdf082c-c28e-4e9f-b6bb-9c4187d8d6fd";
-  view.list.data = { pages: [page([item("신고 대상", { kind: "insurance_filing", links: [{ kind: "statutory", id: event }] })])] };
-  expect(html()).toContain(`href="/statutory?event=${event}"`);
-});
 test("a failed inbox read shows retry without claiming the queue is empty", () => {
   view.list.error = new Error("source unavailable"); view.list.data = undefined;
   const markup = html();
@@ -130,6 +125,17 @@ test("setup work uses its server checklist once inside the inbox", () => {
   expect(markup.match(/data-testid="inbox-setup"/g)).toHaveLength(1);
   expect(markup).not.toContain("duplicated setup");
   expect(markup.indexOf('id="inbox-title"')).toBeLessThan(markup.indexOf('data-testid="inbox-setup"'));
+});
+test.each(["work", "unavailable", "paging"] as const)("setup inbox preserves privacy intake: %s", state => {
+  const setup: Checklist = { phase: "SETUP", steps: [], done: 0, total: 1, go_live_at: null, summary: { people: 0, placed: 0, unplaced: 0, entity_unknown: 0, progress: 0 } };
+  const rows = [item("account-work", { kind: "account_security" }), ...(state === "work" ? [item("RR-001", { kind: "privacy_request" })] : [])];
+  view.list.data = { pages: [page(rows, { setup, unavailable: state === "unavailable" ? [{ source: "privacy_requests", support_reference: "trace" }] : [] })] };
+  view.list.hasNextPage = state === "paging";
+  const markup = html(false, false);
+  expect(markup).not.toContain(t("home.inbox.setup.title"));
+  const expected = { work: "RR-001", unavailable: t("home.inbox.unavailable", { part: t("home.inbox.privacyRequest") }), paging: t("home.inbox.more") };
+  expect(markup).toContain(expected[state]);
+  expect(markup).not.toContain("account-work");
 });
 test("Home hides cached setup and work until the parent setup references settle", () => {
   view.list.data = { pages: [page([item("cached work")], { setup: { phase: "SETUP", steps: [], done: 0, total: 1, go_live_at: null, summary: { people: 0, placed: 0, unplaced: 0, entity_unknown: 0, progress: 0 } } })] };
@@ -265,6 +271,7 @@ test.each([
   ["hr_exit_confirm", "exit_case", "/people/exits/record?act=confirm_exit"],
   ["hr_exit_confirm_hq", "exit_case", "/people/exits/record?act=confirm_exit_hq"],
   ["hr_exit_settle", "exit_case", "/people/exits/record?act=prepare_settlement"],
+  ["insurance_filing", "statutory", "/statutory?event=record"],
   ["period_unlock", "period_lock", "/people/period-locks?review=record"],
 ] as const)("%s retains its resolving record or sheet verb", (kind, link, href) => {
   view.list.data = { pages: [page([item("work", { kind, links: [{ kind: link, id: "record" }], context: kind === "period_unlock" ? { unlock: { domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", requester: "김요청", reason_code: "RETRO_CORRECTION" } } : undefined })])] };

@@ -120,6 +120,18 @@
       "seconds": 42.4,
       "tests": 15
     },
+    "mock/privacy-filing.spec.ts": {
+      "seconds": 4.7,
+      "tests": 12
+    },
+    "mock/privacy-intake.spec.ts": {
+      "seconds": 4.7,
+      "tests": 8
+    },
+    "mock/privacy-rights.spec.ts": {
+      "seconds": 10.8,
+      "tests": 19
+    },
     "mock/route-focus-title.spec.ts": {
       "seconds": 5.2,
       "tests": 4

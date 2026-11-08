@@ -24,6 +24,7 @@ import css from "./inbox-queue.module.css";
 // Keep the Home preview short enough for the first viewport; full paging belongs to /inbox.
 const HOME_PREVIEW_ROWS = 5;
 const SOURCE_TEXT: Record<string, MessageId> = {
+  privacy_requests: "home.inbox.privacyRequest",
   registration_checks: "nts.title",
   entity_corrections: "entityRecord.corrections.title",
   support_access: "home.part.support", workflow: "home.part.decide", dispatch: "home.inbox.source.dispatch", support: "home.inbox.source.support", work_order: "home.inbox.source.workOrder", payroll: "accessCodes.domain.pay", governance: "home.inbox.source.governance",
@@ -64,11 +65,12 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
       <QueryState q={loading ? { ...inbox, isPending: true, data: undefined } : inbox} layout="list">{(data) => {
           const pages = data.pages as AttentionInboxResponse[];
           const checklist = pages[0]?.setup;
-          const rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
+          let rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
+          if (!preview && (setupPhase || checklist)) rows = rows.filter(item => item.kind === "privacy_request");
           const head = pages[0];
           const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
           const noWork = !head?.has_work && unavailable.length === 0;
-          if (!preview && (setupPhase || checklist)) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
+          if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
           return <>
             {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
               {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
