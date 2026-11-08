@@ -36,7 +36,7 @@ updates:
       # 2026-11-07: 5.105.3 loses the /people go-live receipt in phase-band E2E.
       # Revisit after receipt rendering and configured expiry pass in Chromium and Firefox.
       - dependency-name: "@tanstack/react-query"
-        versions: ["5.105.3"]
+        versions: [">=5.105.3"]
     groups:
       npm:
         patterns: ["*"]
