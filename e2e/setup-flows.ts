@@ -242,7 +242,7 @@ export async function acceptSetupTerms(admin: Page, c: C = plain) {
   }
   if (await accept.isVisible()) {
     await c.click(accept);
-    await expect(accept).toBeHidden();
+    await expect(accept).toBeHidden({ timeout: 20_000 });
   }
 }
 

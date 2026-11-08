@@ -20,11 +20,12 @@ const INPUT = ["pointerdown", "keydown", "touchstart"] as const;
  * Mounted beside the router, outside it: a session that ends in use gets a sign-in dialog over the screen it was
  * on (the screen, and any draft in it, stays mounted), and a session near the server's idle cut-off gets a warning.
  */
-export function IdleGuard() {
+export function IdleGuard({ onCodeSignIn, signingIn }: { onCodeSignIn: () => void; signingIn: boolean }) {
   const lost = useSyncExternalStore(session.subscribe, () => session.lost);
+  if (signingIn) return null;
   return lost ? (
     <Suspense fallback={null}>
-      <ReAuth />
+      <ReAuth onCodeSignIn={onCodeSignIn} />
     </Suspense>
   ) : (
     <IdleWarning />

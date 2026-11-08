@@ -1,7 +1,7 @@
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createRouter, Link, RouterProvider } from "@tanstack/react-router";
+import { createRouter, Link, RouterProvider, useRouterState } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 import { I18nProvider } from "react-aria-components";
 import { ApiError, configure, session } from "@console/api";
@@ -153,13 +153,14 @@ session.subscribe(() => {
 /** Re-renders the app when the locale changes; server data is refetched in the new language. */
 function Root() {
   const locale = useSyncExternalStore(i18n.subscribe, () => i18n.locale);
+  const signingIn = useRouterState({ router, select: state => state.location.pathname === "/login" });
   return (
     <QueryClientProvider client={queryClient}>
       {/* React Aria's own strings (tree chevrons, dismiss buttons, combobox announcements) follow the app locale. */}
       <I18nProvider locale={locale === "ko" ? "ko-KR" : "en-US"}>
         <RouterProvider router={router} key={locale} />
         <Suspense fallback={null}>
-          <IdleGuard />
+          <IdleGuard signingIn={signingIn} onCodeSignIn={() => void router.navigate({ to: "/login", search: { code: true } })} />
         </Suspense>
       </I18nProvider>
     </QueryClientProvider>

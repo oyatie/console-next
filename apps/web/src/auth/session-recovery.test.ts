@@ -11,5 +11,6 @@ test.each([
   ["session_signed_out_elsewhere", "idle.reauth.elsewhere", true],
   [null, "idle.reauth.body", true],
 ])("%s names its reason and offers only usable sign-in actions", (reason, message, passkey) => {
-  expect(sessionRecovery(reason as string | null)).toEqual({ message, passkey });
+  expect(sessionRecovery(reason as string | null)).toMatchObject({ message, passkey });
+  expect(!!sessionRecovery(reason as string | null).code).toBe(reason === "session_passkey_reset");
 });

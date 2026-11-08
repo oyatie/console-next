@@ -10,7 +10,11 @@ async function signInAgain(): Promise<never> {
 
 const home = () => (session.claims?.platform ? "/platform" : "/");
 let interrupted: { principal: string | null; href: string } | null = null;
-/** The current account resumes the URL interrupted by consent, including its search and fragment. */
+/** Remember the current screen before consent or code sign-in unmounts its forms. */
+export function rememberInterrupted(href = location.pathname + location.search + location.hash) {
+  interrupted = { principal: session.principal, href };
+}
+/** Only the interrupted account resumes its URL, including search and fragment. */
 export const consentDestination = () => interrupted?.principal === session.principal ? interrupted.href : home();
 
 /** A reload loses the in-memory access token; the refresh cookie restores it. */
@@ -22,7 +26,7 @@ export async function ensureSession({ location }: { location: { pathname: string
   if (session.stage === "enroll") throw redirect({ to: "/setup-passkey" });
   if (session.stage === "stale") return signInAgain();
   if (session.stage === "app" && !session.consentAccepted) {
-    interrupted = { principal: session.principal, href: location.href ?? location.pathname };
+    rememberInterrupted(location.href ?? location.pathname);
     throw redirect({ to: "/setup-passkey" });
   }
   interrupted = null;
