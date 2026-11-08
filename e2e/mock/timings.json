@@ -153,8 +153,8 @@
       "tests": 20
     },
     "states/access-log-filters.spec.ts": {
-      "seconds": 17.9,
-      "tests": 11
+      "seconds": 33.2,
+      "tests": 25
     },
     "states/access-log-search.spec.ts": {
       "seconds": 16.9,
@@ -200,6 +200,10 @@
       "seconds": 40.4,
       "tests": 18
     },
+    "states/attendance-period.spec.ts": {
+      "seconds": 14.2,
+      "tests": 6
+    },
     "states/attendance-schedule.spec.ts": {
       "seconds": 33.9,
       "tests": 20
@@ -209,8 +213,8 @@
       "tests": 3
     },
     "states/audit-reviews.spec.ts": {
-      "seconds": 58,
-      "tests": 35
+      "seconds": 80.7,
+      "tests": 39
     },
     "states/bulk-access.spec.ts": {
       "seconds": 44.5,
@@ -225,8 +229,8 @@
       "tests": 34
     },
     "states/employee-pay.spec.ts": {
-      "seconds": 49.4,
-      "tests": 25
+      "seconds": 83.7,
+      "tests": 37
     },
     "states/entity-fields.spec.ts": {
       "seconds": 33.6,
@@ -240,9 +244,13 @@
       "seconds": 25.4,
       "tests": 8
     },
+    "states/filings-list.spec.ts": {
+      "seconds": 39.8,
+      "tests": 17
+    },
     "states/go-live.spec.ts": {
-      "seconds": 66.1,
-      "tests": 22
+      "seconds": 76,
+      "tests": 26
     },
     "states/home-inbox.spec.ts": {
       "seconds": 23.1,
