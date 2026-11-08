@@ -61,6 +61,7 @@ impl RestError {
     }
     pub(crate) fn store(error: AttendanceStoreError) -> Self {
         match error {
+            AttendanceStoreError::Schedule(error) => Self::schedule(error),
             AttendanceStoreError::Application(e) => match e {
                 console_attendance_application::AttendanceApplicationError::ForbiddenBranch => {
                     Self::new(StatusCode::FORBIDDEN, "forbidden", e.to_string())

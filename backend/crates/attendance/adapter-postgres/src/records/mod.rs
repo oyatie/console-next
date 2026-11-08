@@ -8,9 +8,9 @@ mod board_page;
 mod cells;
 mod day;
 mod edits;
-mod entries;
+pub(crate) mod entries;
 mod grid;
-mod roster;
+pub(crate) mod roster;
 mod save;
 mod thresholds;
 

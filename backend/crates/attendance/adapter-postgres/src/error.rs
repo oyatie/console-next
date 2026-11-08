@@ -5,6 +5,8 @@ use console_platform_db::DbError;
 #[derive(Debug, thiserror::Error)]
 pub enum AttendanceStoreError {
     #[error(transparent)]
+    Schedule(#[from] crate::ScheduleStoreError),
+    #[error(transparent)]
     Application(#[from] app::AttendanceApplicationError),
     #[error(transparent)]
     Database(#[from] DbError),

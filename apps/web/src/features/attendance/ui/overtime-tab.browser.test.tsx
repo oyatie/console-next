@@ -31,7 +31,7 @@ beforeAll(async () => {
         await client.fetchQuery({...treeQuery(), queryFn:async()=>({nodes:[]})});
         await client.fetchQuery({...week52Query('2026-10-04'), queryFn:async()=>({week_start:'2026-09-28',items:[
           {employee_id:'known', name:'Known', week_start:'2026-09-28', current_hours:1, projected_hours:1, recognized_hours:37.25, overtime_hours:2.25, tone:'DANGER', acked:false},
-          {employee_id:'unknown', name:'Unknown', week_start:'2026-09-28', current_hours:0, projected_hours:0, tone:'UNKNOWN', acked:false}
+          {employee_id:'unknown', name:'Unknown', week_start:'2026-09-28', current_hours:0, projected_hours:0, recognized_hours:null, overtime_hours:null, tone:'UNKNOWN', acked:false}
         ]})});
         const root = createRootRoute();
         const app = createRoute({getParentRoute:()=>root,id:'app'});

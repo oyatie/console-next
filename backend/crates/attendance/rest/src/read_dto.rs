@@ -30,6 +30,8 @@ pub(super) struct Week52RowDto {
     week_start: String,
     current_hours: f64,
     projected_hours: f64,
+    recognized_hours: Option<f64>,
+    overtime_hours: Option<f64>,
     tone: String,
     acked: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -45,6 +47,8 @@ impl From<Week52Read> for Week52RowDto {
             week_start: v.week_start.to_string(),
             current_hours: v.current_hours,
             projected_hours: v.projected_hours,
+            recognized_hours: v.recognized_hours,
+            overtime_hours: v.overtime_hours,
             tone: match v.tone {
                 console_attendance_application::Week52Tone::Ok => "OK",
                 console_attendance_application::Week52Tone::Warn => "WARN",

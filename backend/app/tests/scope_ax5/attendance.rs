@@ -74,3 +74,34 @@ async fn day_board_refuses_filters_outside_a_workplace_grant(pool: PgPool) {
         .await;
     assert_eq!(status, FORBIDDEN, "{body}");
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn weekly_totals_follow_the_cedar_workplace_read_set(pool: PgPool) {
+    let mut w = world(pool).await;
+    let reader = w.holder("WORKPLACE", Some(&w.wp_a.clone())).await;
+    let today = time::Date::parse(
+        &support::today_kst(),
+        time::macros::format_description!("[year]-[month]-[day]"),
+    )
+    .unwrap();
+    let monday = today - time::Duration::days(i64::from(today.weekday().number_days_from_monday()));
+    let path = format!("/api/v1/attendance/week52?week_start={monday}");
+    let (status, body) = reader.call("GET", &path, None).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let rows = body["items"].as_array().unwrap();
+    assert_eq!(rows.len(), 1, "{body}");
+    assert_eq!(rows[0]["employee_id"], w.a1);
+    assert_eq!(
+        rows[0].get("recognized_hours"),
+        Some(&serde_json::Value::Null)
+    );
+    assert_eq!(
+        rows[0].get("overtime_hours"),
+        Some(&serde_json::Value::Null)
+    );
+    let (status, body) = reader
+        .call("GET", &format!("{path}&branch_id={}", w.branch_b), None)
+        .await;
+    assert_eq!(status, FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "forbidden");
+}

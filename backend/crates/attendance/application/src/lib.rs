@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 pub mod self_service;
 pub mod week52;
-pub use week52::{Week52Limits, Week52Tone, week52_tone};
+pub use week52::{Week52Limits, Week52Read, Week52Tone, week52_tone};
 // --- lane: ATT-BUILD ---
 pub mod calendar;
 mod inputs;
@@ -232,17 +232,6 @@ pub struct Week52Input {
     pub week_start: Date,
     pub current_hours: f64,
     pub projected_hours: f64,
-    pub acknowledged_at: Option<OffsetDateTime>,
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Week52Read {
-    pub employee_id: Uuid,
-    pub name: String,
-    pub team: Option<String>,
-    pub week_start: Date,
-    pub current_hours: f64,
-    pub projected_hours: f64,
-    pub tone: Week52Tone,
     pub acknowledged_at: Option<OffsetDateTime>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]

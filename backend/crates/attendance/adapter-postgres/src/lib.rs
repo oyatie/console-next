@@ -11,7 +11,7 @@ use console_attendance_application::{
     CallerScope, CancelSubstitution, CloseAmendmentRead, CloseCheckRead, CloseChecks, CloseMonth,
     ClosePreflightRead, ExceptionResolutionRead, ListExceptions, ListSubstitutions, MonthCloseRead,
     RaiseException, ResolveException, SubstitutionCandidateFacts, SubstitutionCandidateQuery,
-    SubstitutionCandidateRead, Week52AcknowledgementRead, Week52Read,
+    SubstitutionCandidateRead, Week52AcknowledgementRead,
 };
 use console_attendance_domain::{
     AttendanceDateRange, ExceptionKind, HistoricalAbsence, StrictDurationEvent,
@@ -26,7 +26,6 @@ use uuid::Uuid;
 
 mod self_service;
 mod week52;
-use week52::week52_inputs_for_active;
 // --- lane: ATT-BUILD ---
 mod keys;
 mod schedule;
@@ -604,39 +603,6 @@ impl PgAttendanceStore {
             )
         })).await
     }
-
-    pub async fn week52_inputs(
-        &self,
-        caller: &CallerScope,
-        week_start: Date,
-        branch_id: Option<Uuid>,
-    ) -> Result<Vec<Week52Read>, AttendanceStoreError> {
-        app::ensure_scope(caller, branch_id)?;
-        app::validate_week52_start(week_start)?;
-        let org = OrgId::from_uuid(caller.org_id);
-        let end = week_start + Duration::days(7);
-        let week_start_at = week52_boundary(week_start)?;
-        let week_end_at = week52_boundary(end)?;
-        with_org_conn::<_, _, AttendanceStoreError>(&self.pool, org, move |tx| Box::pin(async move {
-            let limits = week52::load_limits(tx.as_mut(), org, week_start).await?;
-            let active_employees = sqlx::query_as::<_, (Uuid, String, Option<String>)>("SELECT id,name,org_unit FROM employees WHERE employment_status='ACTIVE' AND ($1::uuid IS NULL OR home_branch_id=$1) ORDER BY id")
-                .bind(branch_id).fetch_all(tx.as_mut()).await?;
-            // Pair the complete employee timeline. Filtering by `work_date` (or by either
-            // week boundary) loses a side of a shift that crosses that boundary.
-            let rows = sqlx::query("SELECT r.id,r.employee_id,r.kind,r.occurred_at FROM employee_attendance_records r JOIN employees e ON e.id=r.employee_id AND e.org_id=r.org_id WHERE e.employment_status='ACTIVE' AND ($1::uuid IS NULL OR e.home_branch_id=$1) ORDER BY r.employee_id,r.occurred_at,r.id")
-                .bind(branch_id).fetch_all(tx.as_mut()).await?;
-            let events = rows.iter().map(|row| Ok(StrictDurationEvent {
-                id: row.try_get("id")?,
-                employee_id: row.try_get("employee_id")?,
-                kind: strict_duration_event_kind(&row.try_get::<String, _>("kind")?),
-                occurred_at: row.try_get("occurred_at")?,
-            })).collect::<Result<Vec<_>, AttendanceStoreError>>()?;
-            let hours = week52_hours(&events, week_start_at, week_end_at)?;
-            let acknowledgements = sqlx::query("SELECT a.employee_id,a.acknowledged_at FROM attendance_week52_acknowledgements a JOIN employees e ON e.id=a.employee_id AND e.org_id=a.org_id WHERE a.week_start=$1 AND e.employment_status='ACTIVE' AND ($2::uuid IS NULL OR e.home_branch_id=$2)")
-                .bind(week_start).bind(branch_id).fetch_all(tx.as_mut()).await?.into_iter().map(|row| Ok((row.try_get::<Uuid,_>("employee_id")?, row.try_get::<OffsetDateTime,_>("acknowledged_at")?))).collect::<Result<BTreeMap<_,_>, AttendanceStoreError>>()?;
-            Ok(week52_inputs_for_active(active_employees, week_start, hours, acknowledgements, limits))
-        })).await
-    }
 }
 
 fn week52_hours(
@@ -1131,6 +1097,7 @@ async fn close_read(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::week52::week52_inputs_for_active;
     use console_attendance_domain::SubstitutionWindow;
     use time::{Date, Month};
 

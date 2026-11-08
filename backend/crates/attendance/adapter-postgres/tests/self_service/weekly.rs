@@ -34,7 +34,7 @@ async fn weekly_limits_drive_both_projections_and_missing_rows_are_unknown(owner
                     .bind(caller.org_id).bind(serde_json::json!(warn)).bind(caller.user_id).execute(&mut *tx).await.unwrap();
                 tx.commit().await.unwrap();
             }
-            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid())).await.unwrap();
+            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid()), |_| Box::pin(async { Ok(Box::new(|_| Ok(true)) as console_attendance_adapter_postgres::BoardReadAccess) })).await.unwrap();
             assert_eq!(manager[0].current_hours, 45.0);
             assert_eq!(serde_json::to_value(manager[0].tone).unwrap(), expected);
             let own = store.read_own_week52(own, ReadOwnWeek52::new(monday).unwrap()).await.unwrap().unwrap();
@@ -46,12 +46,12 @@ async fn weekly_limits_drive_both_projections_and_missing_rows_are_unknown(owner
         seed_attendance_record(&owner, employee, *actor.as_uuid(), "CLOCK_OUT", saturday + Duration::hours(5), "OFF_DUTY").await;
         sqlx::query("UPDATE statutory_rules SET value_num=10 WHERE code='WEEKLY_OVERTIME_MAX_HOURS' AND effective_from='2026-10-08'")
             .execute(&owner).await.unwrap();
-        let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid())).await.unwrap();
+        let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid()), |_| Box::pin(async { Ok(Box::new(|_| Ok(true)) as console_attendance_adapter_postgres::BoardReadAccess) })).await.unwrap();
         assert_eq!(serde_json::to_value(manager[0].tone).unwrap(), "DANGER");
         let projection = store.read_own_week52(own, ReadOwnWeek52::new(monday).unwrap()).await.unwrap().unwrap();
         assert_eq!(serde_json::to_value(projection.tone).unwrap(), "DANGER");
         let after_coverage = date!(2028 - 01 - 03);
-        let manager = store.week52_inputs(&caller, after_coverage, Some(*branch.as_uuid())).await.unwrap();
+        let manager = store.week52_inputs(&caller, after_coverage, Some(*branch.as_uuid()), |_| Box::pin(async { Ok(Box::new(|_| Ok(true)) as console_attendance_adapter_postgres::BoardReadAccess) })).await.unwrap();
         assert_eq!(manager[0].current_hours, 0.0);
         assert_eq!(serde_json::to_value(manager[0].tone).unwrap(), "UNKNOWN");
         let projection = store.read_own_week52(own, ReadOwnWeek52::new(after_coverage).unwrap()).await.unwrap().unwrap();
@@ -60,7 +60,7 @@ async fn weekly_limits_drive_both_projections_and_missing_rows_are_unknown(owner
         for (code, value, restore, expected) in [("WEEKLY_STANDARD_HOURS", 0_i64, 40_i64, "UNKNOWN"), ("WEEKLY_OVERTIME_MAX_HOURS", 4, 12, "DANGER")] {
             sqlx::query("UPDATE statutory_rules SET value_num=$2 WHERE code=$1 AND effective_from='2026-10-08'")
                 .bind(code).bind(value).execute(&owner).await.unwrap();
-            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid())).await.unwrap();
+            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid()), |_| Box::pin(async { Ok(Box::new(|_| Ok(true)) as console_attendance_adapter_postgres::BoardReadAccess) })).await.unwrap();
             assert_eq!(serde_json::to_value(manager[0].tone).unwrap(), expected);
             let projection = store.read_own_week52(own, ReadOwnWeek52::new(monday).unwrap()).await.unwrap().unwrap();
             assert_eq!(serde_json::to_value(projection.tone).unwrap(), expected);
@@ -70,7 +70,7 @@ async fn weekly_limits_drive_both_projections_and_missing_rows_are_unknown(owner
         for code in ["WEEKLY_STANDARD_HOURS", "WEEKLY_OVERTIME_MAX_HOURS"] {
             let removed: Vec<serde_json::Value> = sqlx::query_scalar("DELETE FROM statutory_rules WHERE code=$1 RETURNING to_jsonb(statutory_rules.*)")
                 .bind(code).fetch_all(&owner).await.unwrap();
-            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid())).await.unwrap();
+            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid()), |_| Box::pin(async { Ok(Box::new(|_| Ok(true)) as console_attendance_adapter_postgres::BoardReadAccess) })).await.unwrap();
             assert_eq!(serde_json::to_value(manager[0].tone).unwrap(), "UNKNOWN");
             let projection = store.read_own_week52(own, ReadOwnWeek52::new(monday).unwrap()).await.unwrap().unwrap();
             assert_eq!(serde_json::to_value(projection.tone).unwrap(), "UNKNOWN");

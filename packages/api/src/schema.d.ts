@@ -16606,6 +16606,10 @@ export interface components {
             week_start: string;
             current_hours: number;
             projected_hours: number;
+            /** @description Scheduled work plus approved worked overtime; null when no complete scheduled record is available. */
+            recognized_hours?: number | null;
+            /** @description Approved overtime capped at worked excess for each scheduled day; null when unknown. */
+            overtime_hours?: number | null;
             /**
              * @description UNKNOWN: 확인 불가 — 법정 근로시간 대장 미등록
              * @enum {string}
