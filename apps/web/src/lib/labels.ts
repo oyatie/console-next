@@ -4,6 +4,7 @@ import type { components } from "@console/api/schema";
 import type * as P from "@console/api/pending";
 import { personName } from "../reference/person/present";
 import { isMessageId, t } from "@console/i18n";
+export { codeText } from "./code-text";
 
 type S = components["schemas"];
 type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
@@ -173,6 +174,3 @@ export const labeled = (e: Enum, v: string): Labeled => {
 
 /** A server-resolved actor name; unknown renders as a dash; an unset name uses the shared person label. */
 export const actor = (name?: string | null) => name == null ? "—" : personName(name);
-
-/** A server code in words when the catalog has `id` (written as a template so the copy gate sees it), else the code itself. */
-export const codeText = (id: string, code: string, vars?: Record<string, string | number>) => (isMessageId(id) ? t(id, vars as never) : code);
