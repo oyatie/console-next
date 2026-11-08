@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "apps/web/src/features/statutory/ui/filing-table.tsx#FilingTable": 11,
+    "apps/web/src/features/statutory/ui/filing-deadline.tsx#FilingWindow": 7
+  },
+  "newScreens": {
+    "apps/web/src/features/statutory/ui/filing-table.tsx#FilingTable": {
+      "FACT": 7,
+      "REFUSAL": 1,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/statutory/ui/filing-deadline.tsx#FilingWindow": {
+      "FACT": 1,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 6,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

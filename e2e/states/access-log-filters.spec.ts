@@ -31,6 +31,106 @@ async function filtersFixture(page: Page) {
   return { ...shell, requests };
 }
 
+test("access-log keeps filter selection disabled after the page read fails @ui-state", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+  const fixture = await filtersFixture(page);
+  await page.route(url => url.pathname === "/api/v1/access/access-log",
+    route => route.fulfill({ status: 503, json: { error: { code: "service_unavailable", message: "unavailable" } } }));
+  try {
+    await page.goto("/audit/access-log?period=2026-10");
+    await expect(page.getByRole("heading", { name: "불러오지 못했습니다", exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "필터 선택", exact: true })).toBeDisabled();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await fits(page, "audit page read failure");
+    await expectAxe(page, "audit page read failure");
+    await page.screenshot({ path: testInfo.outputPath("page-read-failure.png"), fullPage: true });
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fixture.release(); }
+});
+
+test("access-log recovery choices respect read failure while the filter sheet is open @ui-state", async ({ page }) => {
+  const fixture = await filtersFixture(page);
+  await page.route(url => url.pathname === "/api/v1/access/access-log" && url.searchParams.has("actor"),
+    route => route.fulfill({ status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } } }));
+  try {
+    await page.goto("/audit/access-log?period=2026-10&actor=unavailable");
+    await expect(page.getByRole("heading", { name: "필터를 확인하십시오", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "필터 선택", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "접속기록 필터" });
+    await expect(sheet.getByRole("combobox", { name: "접속자", exact: true })).toBeVisible();
+    await page.context().setOffline(true);
+    await expect(sheet.getByText("오프라인입니다 · 연결 후 다시 불러오십시오.", { exact: true })).toBeVisible();
+    await page.route(url => url.pathname === "/api/v1/access/access-log" && !url.searchParams.has("actor"),
+      route => route.fulfill({ status: 403, json: { error: { code: "access_denied", message: "unavailable" } } }));
+    await sheet.getByRole("button", { name: "다시 불러오기", exact: true }).click();
+    await page.context().setOffline(false);
+    await expect(sheet.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeVisible();
+    await expect(sheet.getByRole("combobox")).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.context().setOffline(false); fixture.release(); }
+});
+
+for (const query of ["", "&view=all&from=2026-10-05", "&search=김민수"]) {
+  test(`access-log reuses displayed filter choices for ${query || "default view"} @ui-state`, async ({ page }) => {
+    const fixture = await filtersFixture(page);
+    try {
+      await page.goto(`/audit/access-log?period=2026-10${query}`);
+      await expect(page.getByRole("grid")).toBeVisible();
+      expect(fixture.requests).toHaveLength(1);
+      const reads = fixture.requests.length;
+      await page.getByRole("button", { name: "필터 선택", exact: true }).click();
+      await expect(page.getByRole("combobox", { name: "접속자", exact: true })).toHaveValue("");
+      await page.getByRole("button", { name: "닫기", exact: true }).click();
+      expect(fixture.requests).toHaveLength(reads);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); }
+  });
+}
+
+test("access-log date-only apply clears unavailable choices shown as All @ui-state", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+  const fixture = await filtersFixture(page);
+  await page.route(url => url.pathname === "/api/v1/access/access-log" && ["actor", "action", "target_type"].some(key => url.searchParams.get(key) === "unavailable"),
+    route => route.fulfill({ status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } } }));
+  try {
+    await page.goto("/audit/access-log?period=2026-10&actor=unavailable&action=unavailable&target_type=unavailable");
+    await expect(page.getByText("필터의 선택 항목과 기간을 확인한 뒤 다시 조회하십시오.", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "필터 선택", exact: true }).click();
+    for (const name of ["접속자", "동작", "대상 종류"]) await expect(page.getByRole("combobox", { name, exact: true })).toHaveValue("");
+    await page.getByLabel("시작일", { exact: true }).fill("2026-10-05");
+    await fits(page, "audit date-only recovery");
+    await expectAxe(page, "audit date-only recovery");
+    await page.screenshot({ path: testInfo.outputPath("date-only-recovery.png"), fullPage: true });
+    await page.getByRole("button", { name: "필터 적용", exact: true }).click();
+    await expect(page.getByRole("grid")).toBeVisible();
+    expect(Object.fromEntries(fixture.requests.at(-1)!)).toEqual({ period: "2026-10", flagged: "true", from: "2026-10-05", limit: "200" });
+    const summary = page.getByLabel("적용한 필터", { exact: true });
+    await expect(summary.locator("dt")).toHaveText(["시작일"]);
+    expect(new URL(page.url()).searchParams.has("actor")).toBe(false);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fixture.release(); }
+});
+
+test("access-log refusal offers recovery without retry and resolves actor names @ui-state", async ({ page }) => {
+  const fixture = await filtersFixture(page);
+  await page.route(url => url.pathname === "/api/v1/access/access-log" && url.searchParams.get("action") === "unavailable",
+    route => route.fulfill({ status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } } }));
+  try {
+    await page.goto(`/audit/access-log?actor=${id(101)}&action=unavailable`);
+    await expect(page.getByRole("heading", { name: "필터를 확인하십시오", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "다시 불러오기", exact: true })).toHaveCount(0);
+    await expect(page.getByLabel("적용한 필터", { exact: true })).toContainText("김민수");
+    await expect(page.getByLabel("적용한 필터", { exact: true })).not.toContainText(id(101));
+    await expect(page.getByLabel("점검 기간", { exact: true })).toHaveValue("2026-10");
+    expect(fixture.requests.map(params => Object.fromEntries(params))).toEqual([{ flagged: "false", limit: "1" }]);
+    await page.getByRole("button", { name: "검색 초기화", exact: true }).click();
+    await expect(page.getByRole("grid")).toBeVisible();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fixture.release(); }
+});
+
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`access-log structured Korean filters at ${width}px in ${theme} @ui-state`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
@@ -54,6 +154,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       });
       expect(fixture.requests.at(-1)!.has("search")).toBe(false);
       expect(fixture.requests.at(-1)!.has("cursor")).toBe(false);
+      await expect(page.getByLabel("적용한 필터", { exact: true })).toContainText("직원 명부 내보내기");
+      await expect(page.getByLabel("적용한 필터", { exact: true })).toContainText("김민수");
+      await expect(page.getByLabel("적용한 필터", { exact: true })).toContainText("직원");
       const search = page.getByRole("searchbox", { name: "접속자·IP 주소 검색" });
       await expect(search).toBeVisible();
       await search.fill("김민수");
@@ -104,9 +207,10 @@ for (const [name, from, to, invalidField] of [
     await page.getByRole("button", { name: "필터 선택", exact: true }).click();
     await page.getByLabel("시작일", { exact: true }).fill(from);
     await page.getByLabel("종료일", { exact: true }).fill(to);
+    const readsBeforeApply = fixture.requests.length;
     await page.getByRole("button", { name: "필터 적용", exact: true }).click();
     await expect(page.getByLabel(invalidField, { exact: true })).toHaveAttribute("aria-invalid", "true");
-    expect(fixture.requests).toHaveLength(1);
+    expect(fixture.requests).toHaveLength(readsBeforeApply);
     expect(new URL(page.url()).searchParams.has("from")).toBe(false);
   } finally { fixture.release(); }
 });
@@ -117,7 +221,7 @@ test("access-log explains an unavailable server filter @ui-state", async ({ page
   await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
   const fixture = await filtersFixture(page);
   try {
-    await page.route(url => url.pathname === "/api/v1/access/access-log", route => new URL(route.request().url()).searchParams.has("actor") ? route.fulfill({
+    await page.route(url => url.pathname === "/api/v1/access/access-log", route => new URL(route.request().url()).searchParams.get("actor") === "unavailable" ? route.fulfill({
       status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } },
     }) : route.fallback());
     await page.goto("/audit/access-log?actor=unavailable");
@@ -127,12 +231,71 @@ test("access-log explains an unavailable server filter @ui-state", async ({ page
     await expectAxe(page, "audit filter refusal");
     await expectStable(page, "audit filter refusal");
     await page.screenshot({ path: testInfo.outputPath("filter-refusal.png"), fullPage: true });
+    await page.getByRole("button", { name: "필터 선택", exact: true }).click();
+    await page.getByRole("combobox", { name: "접속자", exact: true }).selectOption({ label: "김민수" });
+    await page.getByRole("button", { name: "필터 적용", exact: true }).click();
+    await expect(page.getByRole("grid")).toBeVisible();
     await page.getByRole("button", { name: "검색 초기화", exact: true }).click();
     await expect(page.getByRole("grid")).toBeVisible();
     expect(new URL(page.url()).searchParams.has("actor")).toBe(false);
     expect(fixture.unexpected).toEqual([]);
   } finally { fixture.release(); }
 });
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`access-log recovers filter choices after refusal at ${width}px in ${theme} @ui-state`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await filtersFixture(page);
+    await page.route(url => url.pathname === "/api/v1/access/access-log" && url.searchParams.get("actor") === "unavailable",
+      route => route.fulfill({ status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } } }));
+    try {
+      await page.goto("/audit/access-log?period=2026-10&view=all&actor=unavailable&action=employee.export&target_type=employee&from=2026-10-05&to=2026-10-20");
+      await expect(page.getByText("필터의 선택 항목과 기간을 확인한 뒤 다시 조회하십시오.", { exact: true })).toBeVisible();
+      const summary = page.getByLabel("적용한 필터", { exact: true });
+      await expect(summary).toContainText("선택할 수 없는 접속자");
+      await expect(summary).not.toContainText("unavailable");
+      await expect(summary).toContainText("직원 명부 내보내기");
+      await expect(summary).toContainText("직원");
+      await expect(summary).toContainText("2026. 10. 05.");
+      await expect(page.getByRole("button", { name: "필터 선택", exact: true })).toHaveCount(1);
+      await page.getByRole("button", { name: "필터 선택", exact: true }).click();
+      await page.getByRole("combobox", { name: "접속자", exact: true }).selectOption({ label: "김민수" });
+      await fits(page, "audit filter recovery");
+      await expectAxe(page, "audit filter recovery");
+      await page.screenshot({ path: testInfo.outputPath("filter-recovery.png"), fullPage: true });
+      await page.getByRole("button", { name: "필터 적용", exact: true }).click();
+      await expect(page.getByRole("grid")).toBeVisible();
+      await expect(summary).toContainText("김민수");
+      expect(Object.fromEntries(new URL(page.url()).searchParams)).toMatchObject({ actor: id(101), period: "2026-10", view: "all", action: "employee.export", target_type: "employee", from: "2026-10-05", to: "2026-10-20" });
+      expect(fixture.requests.some(query => query.get("flagged") === "false" && !query.has("actor"))).toBe(true);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); }
+  });
+}
+
+for (const state of ["unsupported", "failed", "refused"] as const) {
+  test(`access-log filter choices handle ${state} server reads @ui-state`, async ({ page }) => {
+    const fixture = await filtersFixture(page);
+    await page.route(url => url.pathname === "/api/v1/access/access-log", route => {
+      const actor = new URL(route.request().url()).searchParams.get("actor");
+      return actor ? route.fulfill({ status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } } })
+        : state === "unsupported" ? route.fulfill({ json: { period: { from: "2026-10-01", to: "2026-11-01" }, items: [], next_cursor: null, totals: { events: 0, flagged: 0, by_flag: {} } } })
+        : route.fulfill({ status: state === "failed" ? 503 : 403, json: { error: { code: state === "failed" ? "service_unavailable" : "access_denied", message: "unavailable" } } });
+    });
+    try {
+      await page.goto("/audit/access-log?period=2026-10&actor=unavailable");
+      await expect(page.getByText("필터의 선택 항목과 기간을 확인한 뒤 다시 조회하십시오.", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "필터 선택", exact: true }).click();
+      const sheet = page.getByRole("dialog", { name: "접속기록 필터" });
+      await expect(sheet.getByRole("combobox")).toHaveCount(0);
+      if (state === "unsupported") await expect(sheet.getByText("필터를 사용할 수 없습니다", { exact: true })).toBeVisible();
+      else if (state === "failed") await expect(sheet.getByText("불러오지 못했습니다", { exact: true })).toBeVisible({ timeout: 20_000 });
+      else await expect(sheet.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeVisible();
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); }
+  });
+}
 
 test("access-log month changes clear choices from the previous month @ui-state", async ({ page }) => {
   const fixture = await filtersFixture(page);
