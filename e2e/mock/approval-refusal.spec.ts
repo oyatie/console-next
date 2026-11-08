@@ -31,8 +31,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await page.goto("/approvals/approval-1");
       await expect(page.getByRole("heading", { level: 1, name: "조직 개편안", exact: true })).toBeVisible();
       if (entry.message) {
-        await expect(page.getByText(t(entry.message), { exact: true })).toBeVisible();
+        const verification = page.locator("dl > div").filter({ has: page.getByRole("term").filter({ hasText: /^결재 전 확인$/ }) });
+        await expect(verification).toHaveCount(1);
+        await expect(verification.getByRole("definition")).toHaveText(t(entry.message));
       } else {
+        await expect(page.getByRole("term").filter({ hasText: /^결재 전 확인$/ })).toHaveCount(0);
         await expect(page.getByText(t("approvals.viewer.blockedHint"), { exact: true })).toHaveCount(0);
       }
       await expect(page.getByRole("region", { name: "문서 내용", exact: true })).toContainText("영업팀 통합");

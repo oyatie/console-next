@@ -3,7 +3,6 @@
 import sourceLabels from "../approval-sources.json" with { type: "json" };
 export const koApprovals = {
   "approvals.field.verification": "결재 전 확인",
-  "approvals.blocked": "결재 전 확인이 필요합니다.",
   "approvals.viewer.blockedHint": "이 문서는 지금 결재할 수 없습니다. 원본 기록에서 결재 상태를 확인하십시오.",
   "approvals.title": "결재함",
   "approvals.tabs": "결재함 구분",
