@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koPayroll = {
+  "payroll.refuse.employee_exited_read_only": "퇴직한 직원의 계약 임금은 등록할 수 없습니다. 인사카드에서 정정을 요청하십시오.",
   "payroll.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
   "payroll.accessInactive": "급여가 활성화되지 않아 급여·민감 급여 그룹 권한은 급여 화면에서 사용할 수 없습니다.",
   "payroll.title": "급여",
@@ -124,7 +125,6 @@ export const koPayroll = {
   "payroll.setup.noEntities": "급여 그룹을 등록할 법인이 없습니다",
   "payroll.employee.title": "직원 급여",
   "payroll.employee.incomplete": "미완성 초안",
-  "payroll.employee.monthClose": "근태 월 마감을 확인할 수 없어 완성된 명세서가 아닙니다.",
   "payroll.employee.net": "차인지급액",
   "payroll.employee.netUnavailable": "확인 불가 · 원천징수 미계산",
   "payroll.employee.contract": "적용 근로계약 임금",
@@ -154,4 +154,17 @@ export const koPayroll = {
   "payroll.employee.withholdingMissing": "원천징수를 계산하지 않았습니다.",
   "payroll.employee.hourlyUnsupported": "시급제 계약의 초안 계산을 지원하지 않습니다.",
   "payroll.employee.wage": "계약 임금",
+  "payroll.employee.earnings": "지급 초안과 근거",
+  "payroll.employee.earningsNote": "산정 근거",
+  "payroll.employee.gross": "총 지급액",
+  "payroll.employee.minimumWage": "최저임금 확인",
+  "payroll.employee.hourlyFloor": "법정 시간급 하한",
+  "payroll.employee.effectiveHourly": "환산 시간급",
+  "payroll.employee.minimumPass": "기준 충족",
+  "payroll.employee.minimumBelow": "최저임금에 미달합니다.",
+  "payroll.employee.minimumIncomparable": "최저임금을 비교할 수 없습니다.",
+  "payroll.employee.insuranceTotal": "직원 보험료 합계",
+  "payroll.employee.afterInsurance": "보험료 공제 후 금액 · 원천징수 전",
+  "payroll.employee.unavailable": "확인 불가",
+  "payroll.employee.blockers": "확인 필요 사항",
 } as const;

@@ -4,6 +4,8 @@
 mod admission;
 #[path = "action_inbox_items/contract.rs"]
 mod contract;
+#[path = "action_inbox_items/decision_projection.rs"]
+mod decision_projection;
 #[path = "action_inbox_items/draft_access.rs"]
 mod draft_access;
 #[allow(dead_code)]

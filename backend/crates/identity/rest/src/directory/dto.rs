@@ -134,9 +134,10 @@ pub(crate) struct DirectoryPerson {
     pub(crate) created_at: Timestamp,
 }
 
-impl From<UserSummary> for VisibleDirectoryPerson {
-    fn from(user: UserSummary) -> Self {
-        use time::format_description::well_known::Rfc3339;
+impl TryFrom<UserSummary> for VisibleDirectoryPerson {
+    type Error = RestError;
+
+    fn try_from(user: UserSummary) -> Result<Self, Self::Error> {
         let UserSummary {
             id,
             person_id: _,
@@ -163,7 +164,7 @@ impl From<UserSummary> for VisibleDirectoryPerson {
             account_status,
             created_at,
         } = user;
-        Self {
+        Ok(Self {
             id: id.to_string(),
             display_name,
             employee_id: employee_id
@@ -197,8 +198,9 @@ impl From<UserSummary> for VisibleDirectoryPerson {
                 AccountStatus::PendingSetup => "PENDING_SETUP".to_owned(),
                 AccountStatus::Archived => "ARCHIVED".to_owned(),
             },
-            created_at: created_at.format(&Rfc3339).unwrap_or_default(),
-        }
+            created_at: console_kernel_core::rfc3339(created_at)
+                .map_err(|error| RestError::internal(error.to_string()))?,
+        })
     }
 }
 
@@ -458,6 +460,15 @@ mod directory_query_tests {
             account_status: AccountStatus::Active,
             created_at: OffsetDateTime::now_utc(),
         };
+        let mut invalid = user.clone();
+        invalid.created_at = time::macros::datetime!(-0001-01-01 00:00 UTC);
+        assert!(VisibleDirectoryPerson::try_from(invalid).is_err());
+        let mut offset = user.clone();
+        offset.created_at = time::macros::datetime!(2026-11-05 12:31:02.238349 +09:00);
+        assert_eq!(
+            VisibleDirectoryPerson::try_from(offset).unwrap().created_at,
+            "2026-11-05T03:31:02.238349Z"
+        );
         let user_json = serde_json::to_value(&user).expect("user summary json");
         assert_eq!(user_json["phone"], stored_phone);
         assert!(

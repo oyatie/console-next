@@ -48,7 +48,7 @@ for (const routeFirst of [false, true]) test(`an invited approver opens a routed
   await info.attach("inbox", { body: await exec.getByRole("main").ariaSnapshot(), contentType: "text/plain" });
   const inbox = exec.getByRole("region", { name: "업무함", exact: true });
   await expect(inbox).toContainText("결재전달부");
-  await expect(exec.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "결재함", exact: true })).toHaveCount(0);
+  await expect(exec.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "결재함", exact: true })).toBeVisible();
   await inbox.getByRole("row", { name: /결재전달부/ }).getByRole("link", { name: "변경 내용 검토", exact: true }).click();
   await expect(exec).toHaveURL(new RegExp(`/org/changes/${change.id}$`));
   await routeReady(exec, `/org/changes/${change.id}`);

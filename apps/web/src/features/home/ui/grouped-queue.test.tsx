@@ -63,7 +63,7 @@ test("each deadline group ranks source dates before server insertion order", () 
     item("undated first"),
     item("due in three days", { due: "2026-10-29T00:00:00Z", days_remaining: 3, dueTone: "warn" }),
     item("later overdue", { due: "2026-10-25T00:00:00Z", days_remaining: -1, dueTone: "danger" }),
-    item("D-day exit", { kind: "hr_exit_confirm", due: "2026-10-26T09:00:00+09:00", days_remaining: 0, dueTone: "danger" }),
+    item("D-day exit", { kind: "hr_exit_confirm", due: "2026-10-26T00:00:00Z", days_remaining: 0, dueTone: "danger" }),
     item("earlier overdue", { due: "2026-10-24T00:00:00Z", days_remaining: -2, dueTone: "danger" }),
     item("earlier today", { due: "2026-10-25T23:00:00Z", days_remaining: 0, dueTone: "danger" }),
   ]);

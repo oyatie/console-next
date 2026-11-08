@@ -50956,7 +50956,7 @@
         }
       ],
       "callsites": [
-        ".github/dependabot.yml:19",
+        ".github/dependabot.yml:25",
         "package.json:37",
         "scripts/dependency-ruling.test.ts:9",
         "scripts/supply-chain.test.mjs:196"
@@ -52087,7 +52087,7 @@
         }
       ],
       "callsites": [
-        ".github/dependabot.yml:21",
+        ".github/dependabot.yml:27",
         "package.json:39",
         "packages/api/src/ops-schema.d.ts:3",
         "packages/api/src/schema.d.ts:2",
@@ -54461,7 +54461,7 @@
         }
       ],
       "callsites": [
-        ".github/dependabot.yml:21",
+        ".github/dependabot.yml:27",
         ".github/workflows/codeql.yml:30",
         "apps/web/src/lib/react/read-boundaries.test.ts:4",
         "apps/web/src/ui/avatar/avatar.test.tsx:10",

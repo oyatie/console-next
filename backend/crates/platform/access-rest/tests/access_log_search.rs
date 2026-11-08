@@ -23,7 +23,7 @@ async fn get(w: &support::World, suffix: &str) -> Value {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn search_filters_projected_fields_totals_and_audits_only_returned_actors(pool: PgPool) {
+async fn search_filters_projected_fields_totals_and_audits_returned_rows_and_choices(pool: PgPool) {
     let w = world(pool.clone()).await;
     seed(&w, 4).await;
     let other = world(pool).await;
@@ -99,13 +99,15 @@ async fn search_filters_projected_fields_totals_and_audits_only_returned_actors(
     let reads: Vec<Value> = sqlx::query_scalar("SELECT after_snap FROM audit_events WHERE org_id=$1 AND action='access_log.review_read' ORDER BY created_at,id")
         .bind(w.org).fetch_all(&w.owner).await.unwrap();
     assert_eq!(reads.len(), 21);
+    let mut actors = vec![w.hr, w.hr2];
+    actors.sort();
     for row in &reads[..7] {
-        assert_eq!(row["subject_ids"], json!([w.hr]));
+        assert_eq!(row["subject_ids"], json!(actors));
         assert_eq!(row["rows"], 2);
         assert!(!row.to_string().contains("search"));
     }
     for row in &reads[9..14] {
-        assert_eq!(row["subject_ids"], json!([]));
+        assert_eq!(row["subject_ids"], json!(actors));
         assert_eq!(row["rows"], 0);
     }
 }
@@ -239,6 +241,11 @@ async fn assert_search_plan(w: &support::World) {
             .bind(term)
             .bind(Vec::<uuid::Uuid>::new())
             .bind("Asia/Seoul")
+            .bind(None::<String>)
+            .bind(None::<String>)
+            .bind(None::<String>)
+            .bind(None::<String>)
+            .bind(None::<String>)
             .fetch_one(tx.as_mut())
             .await
             .unwrap();

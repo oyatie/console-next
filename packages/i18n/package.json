@@ -2,6 +2,6 @@
   "name": "@console/i18n",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./format": "./src/format.ts", "./gallery": "./src/gallery.ts" },
+  "exports": { ".": "./src/index.ts", "./format": "./src/format.ts", "./gallery": "./src/gallery.ts", "./payroll-blockers": "./src/payroll-blockers.ts" },
   "dependencies": { "intl-messageformat": "*" }
 }

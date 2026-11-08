@@ -7,3 +7,26 @@
 @media (max-width: 639px) {
   .filters > * { flex: 1 1 100%; min-width: 0; }
 }
+/* Title, metadata and cell padding set the compact column budgets. */
+.list { --approval-title-min: 13.75rem; --approval-status-budget: 6rem; --approval-value-max: 16rem; }
+@container list-table (min-width: 481px) {
+  .list table { display: grid; grid-template-columns: max-content minmax(calc(var(--approval-title-min) + 2 * var(--space-3)), 1fr) repeat(3, minmax(0, max-content)) max-content max-content; }
+  .list :is(thead, tbody, tr) { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; }
+  .list :is(th, td) { min-width: 0; width: auto; overflow: hidden; white-space: nowrap; align-content: center; }
+  .title, .secondary { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list table th[class] { width: auto; }
+  .list :is(code, time) { max-width: var(--approval-value-max); }
+  .title { min-width: var(--approval-title-min); }
+  .list [data-card="status"] { white-space: nowrap; }
+}
+/* Seven whole ko/en columns need up to 58rem, including the title floor and cell insets. */
+@container list-table (481px <= width < 58rem) {
+  .list table { grid-template-columns: max-content minmax(calc(var(--approval-title-min) + 2 * var(--space-3)), 1fr) minmax(0, max-content) max-content; }
+  .list :is(th, td):is(:nth-child(3), :nth-child(5), :nth-child(6)) { display: none; }
+  .list .secondary { max-width: min(var(--approval-value-max), calc(100cqi - var(--approval-title-min) - 8 * var(--space-3) - var(--approval-status-budget))); }
+}
+/* The title, status and four insets take precedence over the two identities. */
+@container list-table (481px <= width < calc(13.75rem + 12rem + 6rem + 6rem)) {
+  .list table { grid-template-columns: minmax(calc(var(--approval-title-min) + 2 * var(--space-3)), 1fr) max-content; }
+  .list :is(th, td):is(:nth-child(1), :nth-child(4)) { display: none; }
+}

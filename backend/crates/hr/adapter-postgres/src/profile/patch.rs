@@ -13,7 +13,6 @@ use console_platform_preconditions::{ActorClearance, PatchOp, Provenance, Refusa
 use http::StatusCode;
 use serde_json::{Value, json};
 use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 use super::read::{EmploymentFacts, load_facts};
@@ -58,9 +57,9 @@ pub(crate) fn refusal_error(refusal: &Refusal) -> HrError {
 
 /// Who changed the record is not stored, so the actor stays hidden; `at` is
 /// the head's `updated_at` (ME-8).
-pub(crate) fn provenance(facts: &EmploymentFacts) -> Provenance {
-    let at = facts.updated_at.format(&Rfc3339).unwrap_or_default();
-    Provenance::new("", at, ActorClearance::Covert)
+pub(crate) fn provenance(facts: &EmploymentFacts) -> Result<Provenance, HrError> {
+    let at = console_kernel_core::rfc3339(facts.updated_at)?;
+    Ok(Provenance::new("", at, ActorClearance::Covert))
 }
 
 /// Applies the write ops to `doc`. Only object members on the writable paths;
@@ -171,7 +170,7 @@ impl HrService {
                 let current_doc = serde_json::to_value(&current).map_err(|e| HrError::internal(e.to_string()))?;
                 // The route is manager-only and the record is the manager's
                 // own read: every path passes the read check (ME-11).
-                check_patch(&ops, &current_doc, &provenance(&current), |_| true)
+                check_patch(&ops, &current_doc, &provenance(&current)?, |_| true)
                     .map_err(|refusal| refusal_error(&refusal))?;
                 let mut doc = current_doc;
                 apply(&mut doc, &ops)?;
@@ -232,5 +231,25 @@ impl HrService {
             })
         })
         .await
+    }
+}
+
+#[cfg(test)]
+mod timestamp_tests {
+    use super::*;
+
+    #[test]
+    fn provenance_refuses_an_unrepresentable_timestamp() {
+        let facts = EmploymentFacts {
+            employee_id: Uuid::nil(),
+            hire_date: None,
+            birth_date: None,
+            work_email: None,
+            id_type: None,
+            employment: None,
+            pending_employment: None,
+            updated_at: time::macros::datetime!(-0001-01-01 00:00 UTC),
+        };
+        assert!(provenance(&facts).is_err());
     }
 }

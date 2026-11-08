@@ -5,7 +5,7 @@
 // reads and commands no backend branch serves yet (the security contact). Each is a backend ask; the screens that
 // use one degrade where it is not served. Remove an entry once its path is generated, and a type that then fails to
 // match is a contract bug to raise, not to paper over.
-import type { ApprovalDecision, ApprovalDecisionReceipt, ApprovalDocument } from "./approvals";
+import type { ApprovalDecision, ApprovalDecisionReceipt } from "./approvals";
 export type { ApprovalDecision, ApprovalDocument, ApprovalItem, ApprovalPage, ApprovalQuery, ApprovalViewer } from "./approvals";
 import type { PayrollPaths } from "./payroll";
 export type { PayGroup, PayGroups, PayrollRate, PayrollRates, PayrollRun, PayrollRunDetail } from "./payroll";
@@ -87,7 +87,6 @@ export type EmployeeViewFilters = { status?: string; review?: string; unit?: str
 export type EmployeeView = { id: string; name: string; filters: EmployeeViewFilters };
 
 type Requested = {
-  "/api/v1/approvals/{id}": Path<{ get: Op<ApprovalDocument, never, never, { id: string }> }>;
   /** Delegates to the source command; a stale fingerprint refuses with approval_document_changed (409). */
   "/api/v1/approvals/{id}/decision": Path<{ post: Op<ApprovalDecisionReceipt, ApprovalDecision, never, { id: string }, { "Idempotency-Key": string }> }>;
   /** Cursor projection; absence of next_cursor identifies the older offset-only response. */
