@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { api, unwrap, type components, type paths } from "@console/api";
 import { cursorRead } from "../../lib/query";
+export { ApiError } from "@console/api";
 
 export type AccessLogFilters = Pick<Query, "actor" | "action" | "target_type" | "from" | "to">;
-export type AccessLogFilterOptions = components["schemas"]["AccessLogPage"]["filter_options"];
+export type AccessLogPage = components["schemas"]["AccessLogPage"];
+export type AccessLogFilterOptions = AccessLogPage["filter_options"];
 
 export type AccessLogEvent = components["schemas"]["AccessLogEvent"];
 export type AccessLogFlag = AccessLogEvent["flags"][number];
@@ -19,5 +21,5 @@ const page = async (query: Query) => {
   return result;
 };
 
-export const accessLogPages = (period: string | undefined, flagged: boolean, search?: string, filters: AccessLogFilters = {}) =>
-  cursorRead(path, { period, flagged, search, ...filters }, cursor => page({ period, flagged, search, ...filters, cursor, limit: 200 }));
+export const accessLogPages = (period: string | undefined, flagged: boolean, search?: string, filters: AccessLogFilters = {}, limit = 200) =>
+  cursorRead(path, { period, flagged, search, ...filters, limit }, cursor => page({ period, flagged, search, ...filters, cursor, limit }));

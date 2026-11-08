@@ -152,11 +152,9 @@ impl EnvelopeCredentialCipher {
     fn encrypt_v1(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError> {
         let rng = SystemRandom::new();
         let mut dek = Zeroizing::new([0u8; KEY_LEN]);
-        let mut nonce = [0u8; 24];
-        let mut dek_nonce = [0u8; 24];
         rng.fill(dek.as_mut()).map_err(|_| CipherError::Encrypt)?;
-        rng.fill(&mut nonce).map_err(|_| CipherError::Encrypt)?;
-        rng.fill(&mut dek_nonce).map_err(|_| CipherError::Encrypt)?;
+        let nonce: [u8; 24] = random(&rng)?;
+        let dek_nonce: [u8; 24] = random(&rng)?;
         let aad_bytes = aad.encode();
         let ciphertext = XChaCha20Poly1305::new(Key::from_slice(dek.as_ref()))
             .encrypt(
@@ -189,9 +187,8 @@ impl EnvelopeCredentialCipher {
     fn encrypt_v2(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError> {
         let rng = SystemRandom::new();
         let mut dek = Zeroizing::new([0u8; KEY_LEN]);
-        let mut nonce = [0u8; aead::NONCE_LEN];
         rng.fill(dek.as_mut()).map_err(|_| CipherError::Encrypt)?;
-        rng.fill(&mut nonce).map_err(|_| CipherError::Encrypt)?;
+        let nonce: [u8; aead::NONCE_LEN] = random(&rng)?;
         let ciphertext = gcm_seal(dek.as_ref(), nonce, plaintext, &aad.encode())?;
         let kek =
             AesKek::new(&AES_256, self.kek.expose_secret()).map_err(|_| CipherError::Encrypt)?;
@@ -283,6 +280,12 @@ impl EnvelopeCredentialCipher {
 
         Ok(SecretBox::new(Box::new(plaintext)))
     }
+}
+
+fn random<const N: usize>(rng: &SystemRandom) -> Result<[u8; N], CipherError> {
+    aws_lc_rs::rand::generate(rng)
+        .map(|r| r.expose())
+        .map_err(|_| CipherError::Encrypt)
 }
 
 fn gcm_seal(

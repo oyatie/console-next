@@ -83,3 +83,85 @@ async fn pay_view_cannot_write_contract_wages_but_manage_can(owner: PgPool) {
     .await;
     assert_eq!(created.status, StatusCode::CREATED, "{}", created.json);
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn duplicate_contract_wage_is_typed_conflict_without_wage_or_audit_changes(owner: PgPool) {
+    let (rt, keys, org, actor, employee) = fixture(&owner).await;
+    pay_view::grant_manage(&owner, org, actor, None).await;
+    let token = bearer(&owner, &keys, actor, org, "MEMBER").await;
+    let uri = format!("/api/v1/payroll/employees/{employee}/contract-wages");
+    let created = post(app(rt.clone(), &keys), &uri, &token, contract()).await;
+    assert_eq!(created.status, StatusCode::CREATED, "{}", created.json);
+    let wages_sql = "SELECT to_jsonb(w) FROM employee_contract_wages w WHERE org_id=$1 ORDER BY id";
+    let audits_sql = "SELECT to_jsonb(a) FROM audit_events a WHERE org_id=$1 AND action='payroll_contract_wage.create' ORDER BY id";
+    let wages: Vec<Value> = sqlx::query_scalar(wages_sql)
+        .bind(org.as_uuid())
+        .fetch_all(&owner)
+        .await
+        .unwrap();
+    let audits: Vec<Value> = sqlx::query_scalar(audits_sql)
+        .bind(org.as_uuid())
+        .fetch_all(&owner)
+        .await
+        .unwrap();
+    assert_eq!(wages.len(), 1);
+    assert_eq!(audits.len(), 1);
+    assert_eq!(audits[0]["target_id"], created.json["id"]);
+    for body in [
+        contract(),
+        json!({"effective_from":"2026-07-01","wage_kind":"HOURLY",
+        "amount_won":20_000,"monthly_standard_hours":200,"source_note":"변경한 합성 계약"}),
+    ] {
+        let refused = post(app(rt.clone(), &keys), &uri, &token, body).await;
+        assert_eq!(refused.status, StatusCode::CONFLICT, "{}", refused.json);
+        assert_eq!(refused.json["error"]["code"], "contract_wage_exists");
+        let after_wages: Vec<Value> = sqlx::query_scalar(wages_sql)
+            .bind(org.as_uuid())
+            .fetch_all(&owner)
+            .await
+            .unwrap();
+        let after_audits: Vec<Value> = sqlx::query_scalar(audits_sql)
+            .bind(org.as_uuid())
+            .fetch_all(&owner)
+            .await
+            .unwrap();
+        assert_eq!(after_wages, wages);
+        assert_eq!(after_audits, audits);
+    }
+    let mut later = contract();
+    later["effective_from"] = json!("2026-08-01");
+    let corrected = post(app(rt.clone(), &keys), &uri, &token, later).await;
+    assert_eq!(corrected.status, StatusCode::CREATED, "{}", corrected.json);
+    assert_ne!(corrected.json["id"], created.json["id"]);
+
+    let mut concurrent = contract();
+    concurrent["effective_from"] = json!("2026-09-01");
+    let (first, second) = tokio::join!(
+        post(app(rt.clone(), &keys), &uri, &token, concurrent.clone()),
+        post(app(rt.clone(), &keys), &uri, &token, concurrent),
+    );
+    let (created, refused) = if first.status == StatusCode::CREATED {
+        (first, second)
+    } else {
+        (second, first)
+    };
+    assert_eq!(created.status, StatusCode::CREATED, "{}", created.json);
+    assert_eq!(refused.status, StatusCode::CONFLICT, "{}", refused.json);
+    assert_eq!(refused.json["error"]["code"], "contract_wage_exists");
+
+    sqlx::query("UPDATE employees SET employment_status='EXITED',exit_date='2026-10-10' WHERE org_id=$1 AND id=$2")
+        .bind(org.as_uuid()).bind(employee).execute(&owner).await.unwrap();
+    let exited = post(app(rt, &keys), &uri, &token, contract()).await;
+    assert_eq!(exited.status, StatusCode::CONFLICT, "{}", exited.json);
+    assert_eq!(exited.json["error"]["code"], "employee_exited_read_only");
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE org_id=$1 AND action='payroll_contract_wage.create'")
+        .bind(org.as_uuid()).fetch_one(&owner).await.unwrap();
+    assert_eq!(count, 3);
+    let count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM employee_contract_wages WHERE org_id=$1")
+            .bind(org.as_uuid())
+            .fetch_one(&owner)
+            .await
+            .unwrap();
+    assert_eq!(count, 3);
+}

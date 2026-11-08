@@ -15,9 +15,21 @@ const ownerApproved = [
   "container:docker.io/chrislusf/seaweedfs", "ci-tool:cargo-deny", "ci-tool:cargo-audit", "ci-tool:fontTools/pyftsubset", "ci-tool:brotli", "npm:minimatch",
   "ci-tool:nextest", "action:actions/cache/restore", "action:actions/cache/save", "ci-tool:oasdiff", "ci-tool:grype",
 ];
+const delegatedRuntime = "container:gcr.io/distroless/cc-debian13";
 const kinds = new Set(["npm", "cargo", "action", "container", "ci-tool"]);
 
 describe("2026-10-26 delegated dependency ruling", () => {
+  test("the maintained runtime records the distroless ruling and best-practice delegation", () => {
+    const row = register().find((r) => `${r.kind}:${r.name}` === delegatedRuntime);
+    expect(row).toMatchObject({ class: "STANDARD", layer: "CI/supply chain",
+      approval: { authority: "Orchestrator under owner delegation", date: "2026-11-08", source: "docs/quality/dependency-ruling-2026-11-08-runtime.md" },
+      approvedUsers: ["deploy", "deploy/images/console.Dockerfile"], layerFindings: [],
+    });
+    expect(row.approval.by).toBeUndefined();
+    for (const date of ["2026-10-26", "2026-11-03"]) expect(row.approval.ruling).toContain(date);
+    for (const criterion of ["a", "b", "c", "d", "e"]) expect(row.standardTest[criterion]).toMatchObject({ result: "pass", source: expect.any(String), reason: expect.any(String) });
+  });
+
   test.each([
     ["oasdiff", ".github/workflows/api-compat.yml", "1.33.0"],
     ["grype", ".github/workflows/platform.yml", "0.120.0"],
@@ -35,8 +47,8 @@ describe("2026-10-26 delegated dependency ruling", () => {
   test("preserves the delegated ruling and includes subsequent explicit owner approvals", () => {
     const rows = register().filter((r) => kinds.has(r.kind));
     expect(rows).toHaveLength(157);
-    expect(rows.filter((r) => r.class === "STANDARD").map((r) => `${r.kind}:${r.name}`).sort()).toEqual([...approved, ...ownerApproved].sort());
-    expect(rows.filter((r) => r.class === "NEEDS-OWNER")).toHaveLength(117);
+    expect(rows.filter((r) => r.class === "STANDARD").map((r) => `${r.kind}:${r.name}`).sort()).toEqual([...approved, ...ownerApproved, delegatedRuntime].sort());
+    expect(rows.filter((r) => r.class === "NEEDS-OWNER")).toHaveLength(116);
     for (const name of ["opentelemetry", "opentelemetry_sdk", "opentelemetry-otlp", "tracing-opentelemetry"]) {
       expect(rows.find((r) => r.kind === "cargo" && r.name === name)).toMatchObject({ class: "NEEDS-OWNER", approval: null, group: "Observability" });
     }
