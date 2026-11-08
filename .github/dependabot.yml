@@ -33,10 +33,10 @@ updates:
       # 2026-11-07: ten React Compiler lint failures; revisit after effect-cancellation lint compatibility is proven.
       - dependency-name: "oxlint"
         versions: ["1.91.x"]
-      # 2026-11-07: 5.105.3 loses the /people go-live receipt in phase-band E2E.
+      # 2026-11-08: 5.105.2+ loses the /people go-live receipt in phase-band E2E (bisected: 5.105.1 passes).
       # Revisit after receipt rendering and configured expiry pass in Chromium and Firefox.
       - dependency-name: "@tanstack/react-query"
-        versions: [">=5.105.3"]
+        versions: [">=5.105.2"]
     groups:
       npm:
         patterns: ["*"]
