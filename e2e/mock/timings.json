@@ -53,8 +53,8 @@
       "tests": 2
     },
     "mock/date-calendar-build.spec.ts": {
-      "seconds": 6,
-      "tests": 5
+      "seconds": 17.1,
+      "tests": 9
     },
     "mock/date-calendar.spec.ts": {
       "seconds": 16.2,
