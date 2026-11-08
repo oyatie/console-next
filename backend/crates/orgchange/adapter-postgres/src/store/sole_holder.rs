@@ -34,10 +34,7 @@ pub async fn sole_holder_eligibility_in_tx(
     let settings = console_settings_adapter_postgres::resolve_in_tx(
         tx.as_mut(),
         org,
-        &[
-            SettingKey::ApprovalPolicyOrgStructure,
-            SettingKey::AuthzSoleHolderMode,
-        ],
+        &[SettingKey::AuthzSoleHolderMode],
         None,
         now,
     )
@@ -53,7 +50,8 @@ pub async fn sole_holder_eligibility_in_tx(
         identities_bound: viewer.decision.identities_bound,
         requires_exception: viewer.decision.actor_is_drafter
             || viewer.decision.actor_decided_prior_step,
-        routed: code(SettingKey::ApprovalPolicyOrgStructure) == Some(SettingValue::Code("route")),
+        routed: approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyOrgStructure)
+            .await?,
         sole_holder_allowed: code(SettingKey::AuthzSoleHolderMode)
             == Some(SettingValue::Code("step_up_notice_review")),
         pending: step.is_some(),
@@ -67,11 +65,7 @@ pub async fn sole_holder_eligibility_in_tx(
     if !allowed(org_change_sole_holder::Facts { ..facts })? {
         return Ok(None);
     }
-    let candidates: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT u.id FROM users u WHERE u.org_id=$1 AND u.is_active AND u.id<>$2 \
-         AND (u.is_tenant_ops OR EXISTS(SELECT 1 FROM access_grants g WHERE g.org_id=u.org_id AND g.account_id=u.id))",
-    ).bind(org.as_uuid()).bind(actor.as_uuid()).fetch_all(tx.as_mut()).await?;
-    // shortcut: candidate snapshots load separately; batch through the same loader if holder scans become costly.
+    let candidates = approval_candidates_in_tx(tx, org, actor).await?;
     for account in candidates {
         let Some(candidate) =
             super::step_decision_facts_in_tx(tx, org, UserId::from_uuid(account), scope.clone())
@@ -105,3 +99,24 @@ pub async fn sole_holder_eligibility_in_tx(
     }
     Ok(allowed(facts)?.then_some(step).flatten())
 }
+
+// This is only a superset; the ordinary fact loader and Cedar decide each candidate.
+async fn approval_candidates_in_tx(
+    tx: Tx<'_, '_>,
+    org: OrgId,
+    actor: UserId,
+) -> Result<Vec<Uuid>, PgOrgChangeError> {
+    Ok(sqlx::query_scalar(
+        "SELECT u.id FROM users u WHERE u.org_id=$1 AND u.is_active AND u.id<>$2 \
+         AND (u.is_tenant_ops OR EXISTS(SELECT 1 FROM access_grants g \
+           JOIN access_roles r ON r.org_id=g.org_id AND r.id=g.role_id \
+           JOIN access_role_lines l ON l.org_id=r.org_id AND l.role_id=r.id AND l.version=r.version \
+           WHERE g.org_id=u.org_id AND g.account_id=u.id AND g.status <> 'REVOKED' \
+             AND (g.valid_to IS NULL OR g.valid_to>now()) \
+             AND l.domain='org' AND 'approve'=ANY(l.levels)))",
+    ).bind(org.as_uuid()).bind(actor.as_uuid()).fetch_all(tx.as_mut()).await?)
+}
+
+#[cfg(test)]
+#[path = "sole_holder_tests.rs"]
+mod tests;
