@@ -109,7 +109,7 @@ export function AccessLogPage() {
         <SearchField label={t("accessLog.search")} value={searchText} onChange={setSearchText}
           onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} />
         <div className="row wrap">
-          <Button onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
+          <Button disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
           {filtered && <Button onClick={clear}>{t("accessLog.clearSearch")}</Button>}
         </div>
         {!!appliedFilters.length && <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly />}
