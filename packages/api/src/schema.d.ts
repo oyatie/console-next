@@ -28518,6 +28518,11 @@ export interface components {
             entities: number;
             /** Format: int64 */
             entities_needing_confirmation: number;
+            /**
+             * Format: int64
+             * @description Active legal entities without an active numbered or pending registration.
+             */
+            entities_without_registration?: number;
             /** Format: int64 */
             registrations: number;
             /** Format: int64 */

@@ -103,6 +103,8 @@ async fn exempt_workplaces_are_finished_while_later_is_counted_with_support(owne
         .await
         .unwrap();
     let entity = entity(&mut tx, org, "주식회사 가나", Some(0)).await;
+    sqlx::query("INSERT INTO business_registrations (org_id,legal_entity_id,brn_pending_reason,created_change_mode) VALUES ($1,$2,'NEW_REGISTRATION_PENDING','MIGRATION')")
+        .bind(org).bind(entity).execute(tx.as_mut()).await.unwrap();
     let exempt = site(&mut tx, org, entity, "하치장", Some(0)).await;
     let later = site(&mut tx, org, entity, "등록 답변 대기", Some(1)).await;
     sqlx::query(

@@ -21,6 +21,7 @@ test("the server's steps are grouped in its order, and nothing is invented", () 
 
 test("every remedy the server sends either opens its screen or stays text, never a dead link", () => {
   expect(fixFor("create_legal_entity")).toEqual({ to: "/org/entities/new" });
+  expect(fixFor("add_registration")).toEqual({ to: "/org/entities" });
   expect(fixFor("invite_executive")).toEqual({ to: "/people", search: { view: "accounts" } });
   expect(fixFor("accept_terms")).toEqual({ to: "/setup/go-live" });
   expect(fixFor("none")).toBeUndefined();
