@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koAccessLog = {
+  "accessLog.action.privacy_request.intake_read": "개인정보 권리 요구 조회",
+  "accessLog.target.privacy_rights_request": "개인정보 권리 요구",
   "accessLog.target.employee": "직원",
   "accessLog.target.user": "계정",
   "accessLog.target.access_log": "접속기록",

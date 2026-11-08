@@ -4,7 +4,7 @@ import type { components } from "./schema";
 
 /** The BW-29 step-up kinds a web command binds its passkey assertion to (the server's step_up_kind.rs). */
 export type StepUpKind = "PII_REVEAL" | "PII_RECORD" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION" | "PRIVACY_REQUEST";
-const REASON_KEY: Record<StepUpKind, Envelope["binding"]["reason_key"]> = { PRIVACY_REQUEST: "passkey_step_up_privacy_request", PII_REVEAL: "passkey_step_up_pii_reveal", PII_RECORD: "passkey_step_up_pii_record", SUPPORT_SESSION: "passkey_step_up_support_session", OPERATOR_RECOVERY: "passkey_step_up_operator_recovery", PERIOD_UNLOCK: "passkey_step_up_period_unlock", IDENTITY_MERGE: "passkey_step_up_identity_merge", EXCEPTION_DECIDE: "passkey_step_up_exception_decide" };
+const reasonKey = (kind: StepUpKind): `passkey_step_up_${Lowercase<StepUpKind>}` => `passkey_step_up_${kind.toLowerCase() as Lowercase<StepUpKind>}`;
 
 type Envelope = components["schemas"]["MobilePasskeyStepUpEnvelope"];
 
@@ -25,7 +25,7 @@ export async function assertBoundPasskey(kind: StepUpKind, objectId: string, pay
 /** Bind a server-computed fingerprint directly, preserving the payload the reviewer saw. */
 export async function assertBoundPasskeyHash(kind: StepUpKind, objectId: string, payloadHash: string): Promise<Envelope> {
   if (!/^[0-9a-f]{64}$/.test(payloadHash)) throw new Error("passkey_payload_hash_invalid");
-  const binding: Envelope["binding"] = { action_kind: kind, object_id: objectId, reason_key: REASON_KEY[kind], replay_attempt: null, payload_hash: payloadHash };
+  const binding: Envelope["binding"] = { action_kind: kind, object_id: objectId, reason_key: reasonKey(kind), replay_attempt: null, payload_hash: payloadHash };
   const start = await unwrap(api.POST("/api/v1/auth/passkey/step-up/start", { body: { binding: binding } }));
   const { publicKey } = start.challenge as { publicKey: PublicKeyCredentialRequestOptionsJSON };
   const credential = await platform().passkeys.get(publicKey);

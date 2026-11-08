@@ -1,9 +1,20 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, expect, test, vi } from "vitest";
 import { configure } from "@console/api";
-import { filePrivacyRequest } from "./api";
+import { filePrivacyRequest, privacyReceipt } from "./api";
+import type { components } from "@console/api/schema";
 
 afterEach(() => vi.unstubAllGlobals());
+
+test("a decided receipt has no deadline clock even when its legal due date remains recorded", () => {
+  const item: components["schemas"]["PrivacyRightsReceipt"] = {
+    id: "request", receipt_no: "RR-001", detail: "", status: "RECEIVED",
+    receipt: { controller: "TENANT", received_on: "2026-11-01", identity_at: "2026-11-01T00:00:00Z" },
+    kinds: { ACCESS: { due: { on: "2026-11-11", without_delay: false, rule: null }, decisions: [] } },
+  };
+  expect(privacyReceipt(item, "2026-11-13").clock).toEqual({ due_at: "2026-11-11", days_left: -2, severity: "over" });
+  expect(privacyReceipt({ ...item, status: "DECIDED" }, "2026-11-13").clock).toBeNull();
+});
 
 test("filing verifies the canonical payload before posting with its intent key", async () => {
   configure({ baseUrl: "https://console.example", passkeys: { get: async () => ({ id: "credential" }), create: async () => null }, refresh: { kind: "cookie" } });
