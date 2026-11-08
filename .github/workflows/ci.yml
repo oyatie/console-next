@@ -189,29 +189,13 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
       - run: npm ci --no-audit --no-fund
-      - run: node --test scripts/states-shards.test.mjs
-      - name: Find latest trusted dev timings
-        id: timings
+      - name: Restore latest compatible dev timings
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          curl --fail --silent --show-error --retry 4 --get \
-            -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' \
-            --data-urlencode 'name=states-timings' --data-urlencode 'per_page=100' \
-            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/artifacts" > "${RUNNER_TEMP}/states-timings.json"
-          node --input-type=module <<'JS'
-          import { readFileSync, appendFileSync } from 'node:fs';
-          const { artifacts } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/states-timings.json`, 'utf8'));
-          const cached = artifacts.find(a => !a.expired && a.workflow_run?.head_branch === 'dev' && a.workflow_run.head_repository_id === Number(process.env.GITHUB_REPOSITORY_ID) && a.workflow_run.repository_id === Number(process.env.GITHUB_REPOSITORY_ID));
-          if (cached) appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${cached.workflow_run.id}\n`);
-          JS
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        if: steps.timings.outputs.run-id != ''
-        with:
-          name: states-timings
-          run-id: ${{ steps.timings.outputs.run-id }}
-          github-token: ${{ github.token }}
-          path: .cache/states-timings
+        run: node scripts/states-shards.mjs restore e2e/mock/timings.json .cache/states-timings/timings.json
+      - run: node --test scripts/states-shards.test.mjs
+        env:
+          STATES_TIMINGS_FILE: .cache/states-timings/timings.json
       - name: Plan every state spec
         id: plan
         env:
