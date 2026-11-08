@@ -66,8 +66,8 @@ export function SupportAccess() {
   const q = useQuery({ ...supportSessionsQuery, enabled: !!session.token });
   const visible = q.error instanceof ApiError && q.error.status === 403 ? { ...q, data: undefined } : q;
   return <Page floorplan="P-01" head={{ title: t("supportAccess.title") }} q={visible} own={supportRefusal}>
-    {data => <Card flush label={t("supportAccess.description")}>
-      {data.sessions.length ? <SessionsList data={data} /> : <EmptyState title={t("supportAccess.emptyTitle")} reason={t("supportAccess.emptyReason")} />}
+    {data => data.sessions.length ? <SessionsList data={data} /> : <Card flush label={t("supportAccess.description")}>
+      <EmptyState title={t("supportAccess.emptyTitle")} reason={t("supportAccess.emptyReason")} />
     </Card>}
   </Page>;
 }
@@ -75,16 +75,20 @@ export function SupportAccess() {
 function SessionsList({ data }: { data: Sessions }) {
   const { review } = route.useSearch();
   const navigate = route.useNavigate();
-  const current = data.sessions.find((s) => s.id === review)?.id ?? data.sessions[0]?.id;
-  return <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current} onSelect={(id) => void navigate({ search: { review: id }, replace: true })}
-    columns={[
-      { header: t("supportAccess.operator"), cell: (s) => <>{s.operator_label}<div className="muted">{s.ticket_ref}</div></> },
-      { header: t("supportAccess.state"), cell: (s) => <EnumValue e={SUPPORT_SESSION_STATE} value={s.state} /> },
-      { header: t("supportAccess.reason"), cell: (s) => s.reason, wide: true },
-      { header: t("supportAccess.requestedAt"), cell: (s) => fmtDateTime(s.requested_at), wide: true },
-    ]}
-    detail={(s) => s.id === current ? <SessionDetails key={s.id} session={s} canApprove={data.can_approve} /> : null}
-  />;
+  const current = data.sessions.find((s) => s.id === review) ?? data.sessions[0];
+  return <>
+    <Card flush label={t("supportAccess.description")}>
+      <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current?.id} onSelect={(id) => void navigate({ search: { review: id }, replace: true })}
+        columns={[
+          { header: t("supportAccess.operator"), cell: (s) => <>{s.operator_label}<div className="muted">{s.ticket_ref}</div></> },
+          { header: t("supportAccess.state"), cell: (s) => <EnumValue e={SUPPORT_SESSION_STATE} value={s.state} /> },
+          { header: t("supportAccess.reason"), cell: (s) => s.reason, wide: true },
+          { header: t("supportAccess.requestedAt"), cell: (s) => fmtDateTime(s.requested_at), wide: true },
+        ]}
+      />
+    </Card>
+    {current && <Card><SessionDetails key={current.id} session={current} canApprove={data.can_approve} /></Card>}
+  </>;
 }
 
 function SessionDetails({ session: s, canApprove }: { session: SupportSession; canApprove: boolean }) {
@@ -129,13 +133,13 @@ function SessionDetails({ session: s, canApprove }: { session: SupportSession; c
     </Form>}
     {canApprove && (s.state === "ACTIVE" || (s.state === "OPERATOR_APPROVED" && s.tenant_approved_at)) && <Button variant="danger" disabled={busy} onClick={() => end.mutate(undefined)}>{t("supportAccess.end")}</Button>}
     <CommandError error={decide.error ?? end.error} own={supportRefusal} />
-    <h3>{t("supportAccess.decisions")}</h3>
+    <h2>{t("supportAccess.decisions")}</h2>
     {s.decisions.length ? <Table label={t("supportAccess.decisions")} rows={s.decisions} rowId={(d) => `${d.at}:${d.actor_label}:${d.decision}`} columns={[
       { header: t("supportAccess.actor"), cell: (d) => d.actor_label },
       { header: t("supportAccess.decision"), cell: (d) => decisionText(d.decision) },
       { header: t("supportAccess.at"), cell: (d) => fmtDateTime(d.at) },
     ]} /> : <p className="muted">{t("supportAccess.noDecisions")}</p>}
-    <h3>{t("supportAccess.records")}</h3>
+    <h2>{t("supportAccess.records")}</h2>
     {s.records.length ? <Table label={t("supportAccess.records")} rows={s.records} rowId={(r) => r.id} columns={[
       { header: t("supportAccess.method"), cell: (r) => r.method },
       { header: t("supportAccess.path"), cell: (r) => r.path },

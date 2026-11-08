@@ -73,6 +73,11 @@ test("the tenant sees purpose, scope, bounded duration, decisions and access rec
   expect(html).toContain("max=\"30\"");
   expect(html).toContain("supportAccess.revealPersonal");
 });
+test("support history sections follow the page heading without skipping a level", () => {
+  const html = renderToStaticMarkup(<SupportAccess />);
+  for (const heading of ["supportAccess.decisions", "supportAccess.records"])
+    expect(html).toContain(`<h2>${heading}</h2>`);
+});
 test("the support-access head has no navigation while it is the only served audit view", () => {
   expect(renderToStaticMarkup(<SupportAccess />)).not.toContain("<nav");
 });
