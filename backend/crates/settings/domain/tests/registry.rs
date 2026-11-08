@@ -7,8 +7,8 @@ use std::collections::HashSet;
 /// 34 App. A keys (`doc_class.{a,b}` is two) + 17 retention classes +
 /// `exit.settlement.wage_deviation_pct` + `authz.cross_entity_grant.basis_required`
 /// (decisions #15.2) + `retention.entity_registration_document` + 10 EMP-RECORD
-/// section switches + PEOPLE-A's two `people.void_*` + D26's six
-/// `approval.policy.*` + IMPORT-2's nine `import.*` + BE-MIG's
+/// section switches + PEOPLE-A's two `people.void_*` + fourteen approval
+/// policy and decision settings + IMPORT-2's nine `import.*` + BE-MIG's
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`, support-session ceilings,
 /// inbox settings, five NTS settings, the organization apply time, tenant erasure cooling period,
 /// two privacy reveal settings, the shared deadline display window, eleven access-review keys,
@@ -21,7 +21,7 @@ const EXPECTED_KEYS: usize = 34
     + 1
     + 10
     + 2
-    + 6
+    + 14
     + 9
     + 1
     + 6

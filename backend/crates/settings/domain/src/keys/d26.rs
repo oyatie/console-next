@@ -15,4 +15,12 @@ macro_rules! d26 { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     // 퇴직 확인: `route` = the HQ tier is a different person than the HR tier.
     ApprovalPolicyExit => "approval.policy.exit" = D::code(APPROVAL_POLICIES, "none", Higher);
     ApprovalPolicyImportRollback => "approval.policy.import_rollback" = D::code(APPROVAL_POLICIES, "none", Higher);
+    ApprovalBulkOrgStructure => "approval.bulk.org_structure" = D::bool(false, Higher);
+    ApprovalBulkPeopleCorrection => "approval.bulk.people_correction" = D::bool(false, Higher);
+    ApprovalBulkIdentityMerge => "approval.bulk.identity_merge" = D::bool(false, Higher);
+    ApprovalBulkImportRollback => "approval.bulk.import_rollback" = D::bool(false, Higher);
+    ApprovalStepUpOrgStructure => "approval.step_up.org_structure" = D::bool(false, Lower);
+    ApprovalStepUpPeopleCorrection => "approval.step_up.people_correction" = D::bool(false, Lower);
+    ApprovalStepUpIdentityMerge => "approval.step_up.identity_merge" = D::bool(false, Lower);
+    ApprovalStepUpImportRollback => "approval.step_up.import_rollback" = D::bool(false, Lower);
 ] $($rest)* } }; }
