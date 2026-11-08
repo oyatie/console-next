@@ -46,7 +46,8 @@ for (const width of [1440, 390]) for (const state of ["populated", "empty", "loa
     await page.goto("/account/privacy");
     await expect(page.getByRole("heading", { name: t("account.privacy.title"), exact: true })).toBeVisible();
     if (state === "empty") await expect(page.getByText(t("account.privacy.empty.title"), { exact: true })).toBeVisible();
-    else if (state === "loading") await expect(page.getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
+    // The shell may still show its own loading status; the page owns the one inside main.
+    else if (state === "loading") await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
     else if (state === "failed" || state === "refused") {
       await expect(page.getByText(receipt.receipt_no)).toHaveCount(0);
       if (state === "refused") {
