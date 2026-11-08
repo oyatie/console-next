@@ -21,7 +21,10 @@ const state = vi.hoisted(() => ({
   action: undefined as Action | undefined,
   reads: [] as { path: string; enabled: boolean }[], hold: vi.fn(),
 }));
-vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: () => [state.settled, (settled: boolean) => { state.settled = settled; }] }));
+vi.mock("react", async (original) => {
+  const react = await original<typeof import("react")>();
+  return { ...react, useState: (initial: unknown) => initial === false ? [state.settled, (settled: boolean) => { state.settled = settled; }] : react.useState(initial) };
+});
 vi.mock("@tanstack/react-query", async (original) => ({
   ...await original<typeof import("@tanstack/react-query")>(),
   useInfiniteQuery: (options: ReturnType<typeof cursorPages>) => { state.options = options; return state.inbox; },

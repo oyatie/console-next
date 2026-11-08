@@ -15,6 +15,8 @@ export const koCommon = {
   "common.failed.code.stale_revision": "다른 사람이 먼저 변경해 저장하지 않았습니다. 닫고 다시 열면 바뀐 내용에서 다시 적용할 수 있습니다.",
   "common.failed.code.change_request_closed": "이미 처리되거나 철회된 요청입니다. 요청 목록에서 현재 상태를 확인하십시오.",
   "common.failed.code.change_request_self_decision": "본인이 보낸 변경 요청은 직접 처리할 수 없습니다. 다른 담당자에게 처리를 요청하십시오.",
+  "common.failed.code.change_request_not_assignee": "이 요청의 담당자만 처리할 수 있습니다. 요청 목록에서 담당자를 확인하십시오.",
+  "common.failed.code.change_request_not_requester": "본인이 보낸 요청만 철회할 수 있습니다. 요청 목록에서 요청자를 확인하십시오.",
   "common.failed.code.own_record_forbidden": "본인의 인사 기록은 직접 처리할 수 없습니다(플랫폼 규칙: 어떤 역할로도 자기 자신의 인사 기록은 변경할 수 없습니다). 범위 안의 다른 담당자나 운영 계정이 처리합니다.",
   "common.failed.code.employee_number_taken": "다른 직원이 쓰고 있거나 예전 사번으로 묶여 있는 사번입니다. 다른 사번을 쓰거나, 비워 두면 다음 사번을 자동으로 부여합니다.",
   "common.failed.code.parent_not_found": "그 상위 항목이 없습니다. 조직 구조를 다시 여십시오.",

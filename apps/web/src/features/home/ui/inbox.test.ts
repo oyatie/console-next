@@ -55,7 +55,7 @@ test("Home reads all work through the unified inbox and renders its record verb"
   expect(markup).toContain("명부 확인");
   expect(markup).toContain('href="/people/');
   expect(markup).toContain(t("home.review.register"));
-  expect(view.options).toMatchObject({ refetchOnMount: false });
+  expect(view.options).toMatchObject({ refetchOnMount: "always" });
 });
 
 test.each([
@@ -80,11 +80,11 @@ test.each(["waiting", "scheduled", "deadlines", "failures"] as const)("%s reques
   html();
   expect(JSON.parse(readIdentity(view.options!))[1]).toEqual({ query: { filter } });
 });
-test("Home and the full inbox reuse their parent's arrival read", () => {
+test("the queue owns a fresh arrival read without a parent observer in preview and full views", () => {
   html(false, true);
-  expect(view.options).toMatchObject({ refetchOnMount: false });
+  expect(view.options).toMatchObject({ refetchOnMount: "always", notifyOnChangeProps: "all" });
   html(false, false);
-  expect(view.options).toMatchObject({ refetchOnMount: false });
+  expect(view.options).toMatchObject({ refetchOnMount: "always", notifyOnChangeProps: "all" });
 });
 test("more work follows the server cursor without an offset or a polling interval", async () => {
   view.list.hasNextPage = true;
