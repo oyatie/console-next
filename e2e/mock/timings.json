@@ -265,8 +265,8 @@
       "tests": 4
     },
     "states/job-title-edit.spec.ts": {
-      "seconds": 3.4,
-      "tests": 2
+      "seconds": 10.2,
+      "tests": 10
     },
     "states/lifecycle-sheets.spec.ts": {
       "seconds": 139,
