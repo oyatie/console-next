@@ -13,6 +13,8 @@ use crate::{Feature, access};
 /// The session transition or read being authorized.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
+    ActiveList,
+    List,
     Request,
     OperatorApprove,
     TenantApprove,
@@ -24,7 +26,9 @@ pub enum Action {
 }
 
 impl Action {
-    const ALL: [Self; 8] = [
+    const ALL: [Self; 10] = [
+        Self::ActiveList,
+        Self::List,
         Self::Request,
         Self::OperatorApprove,
         Self::TenantApprove,
@@ -37,6 +41,8 @@ impl Action {
 
     const fn name(self) -> &'static str {
         match self {
+            Self::ActiveList => "support_active_list",
+            Self::List => "support_list",
             Self::Request => "support_request",
             Self::OperatorApprove => "support_operator_approve",
             Self::TenantApprove => "support_tenant_approve",
@@ -58,19 +64,29 @@ pub enum PrincipalKind {
 }
 
 /// Facts are loaded from current authority and the locked session, never JSON input.
-#[derive(Debug, Clone, Copy, Default)]
+///
+/// ```compile_fail
+/// use console_platform_authz::cedar_pbac::actions::support_session::Facts;
+/// let _ = Facts::default();
+/// ```
+///
+/// ```compile_fail
+/// use console_platform_authz::cedar_pbac::actions::support_session::Facts;
+/// fn forge(mut facts: Facts) { facts.in_scope = true; }
+/// ```
+#[derive(Debug, Clone, Copy)]
 pub struct Facts {
-    pub active: bool,
-    pub vendor: bool,
-    pub step_up: bool,
-    pub other_eligible_holders: i64,
-    pub actor_is_requester: bool,
-    pub actor_holds_permission: bool,
-    pub operator_approved: bool,
-    pub tenant_approved: bool,
-    pub in_scope: bool,
-    pub personal: bool,
-    pub reveal_granted: bool,
+    pub(in crate::cedar_pbac) active: bool,
+    pub(in crate::cedar_pbac) vendor: bool,
+    pub(in crate::cedar_pbac) step_up: bool,
+    pub(in crate::cedar_pbac) other_eligible_holders: i64,
+    pub(in crate::cedar_pbac) actor_is_requester: bool,
+    pub(in crate::cedar_pbac) actor_holds_permission: bool,
+    pub(in crate::cedar_pbac) operator_approved: bool,
+    pub(in crate::cedar_pbac) tenant_approved: bool,
+    pub(in crate::cedar_pbac) in_scope: bool,
+    pub(in crate::cedar_pbac) personal: bool,
+    pub(in crate::cedar_pbac) reveal_granted: bool,
 }
 
 const ENTITIES: &str = r#"entity Subject = { "org": String };
@@ -89,6 +105,15 @@ const CONTEXT: &str = r#" appliesTo {
 const POLICIES: &str = r#"@reason("support.refuse.read_only")
 forbid(principal is SupportPrincipal, action, resource)
 unless { action == Action::"support_read" || action == Action::"support_field_read" };
+permit(principal is Subject, action == Action::"support_active_list", resource)
+when { context.active && !context.vendor && principal.org == resource.org };
+permit(principal is Subject, action == Action::"support_list", resource)
+when { context.active && (context.vendor ||
+  (principal.org == resource.org && context.actor_holds_permission)) };
+@reason("support.refuse.no_second_operator")
+forbid(principal is Subject, action in [Action::"support_request",
+  Action::"support_operator_approve", Action::"support_start"], resource)
+when { context.vendor && context.other_eligible_holders <= 0 };
 permit(principal is Subject, action == Action::"support_request", resource)
 when { context.active && context.vendor && context.step_up
   && context.actor_holds_permission && context.other_eligible_holders > 0 };
@@ -239,6 +264,7 @@ fn evaluate(
         .filter_map(|id| bundle.policies.policy(id))
         .filter_map(|policy| policy.annotation("reason"))
         .find_map(|reason| match reason {
+            "support.refuse.no_second_operator" => Some("support.refuse.no_second_operator"),
             "support.refuse.read_only" => Some("support.refuse.read_only"),
             "support.refuse.requester_cannot_approve" => {
                 Some("support.refuse.requester_cannot_approve")
@@ -266,12 +292,6 @@ pub fn decide(
     crate::cedar_stack::with_cedar_stack(|| {
         evaluate(action.name(), kind, actor, actor_org, target_org, facts).is_ok_and(|r| r.is_ok())
     })
-}
-
-/// The catalog owns read classification; unclassified and write actions default-deny.
-#[must_use]
-pub fn decide_feature(feature: Feature, session: &str, org: &str, facts: Facts) -> bool {
-    require_feature(feature, session, org, facts).is_ok()
 }
 
 fn feature_action(feature: Feature) -> Action {
@@ -313,12 +333,6 @@ pub fn require_feature(
     )
 }
 
-/// The caller resolves the field class against the tenant's session grant.
-#[must_use]
-pub fn field_visible(personal: bool, grant_enables_class: bool) -> bool {
-    !personal || grant_enables_class
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -328,3 +342,7 @@ mod tests {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "../../../tests/support_session/unit.rs"]
+mod support_tests;
