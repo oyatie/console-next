@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
@@ -39,7 +39,10 @@ async function mockViewer(page: Page, options: { actions?: boolean; return?: boo
   await page.route(url => url.pathname === "/api/v1/approvals/approval-1", async route => {
     reads++;
     if (options.holdSuccessRead && decided) await readGate;
-    return route.fulfill({ status: 200, json: current });
+    return route.fulfill({ status: 200, json: { ...current,
+      status: { key: current.status.key === "approved" ? "APPROVED" : "IN_APPROVAL" },
+      route: current.route.map(step => ({ ...step, role_key: step.id === "draft" ? "hr" : "executive" })),
+    } });
   });
   await page.route(url => url.pathname === "/api/v1/approvals/approval-1/decision", async route => {
     const body = route.request().postDataJSON();
@@ -66,7 +69,7 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 1440, 
 
     await expect(page.getByRole("heading", { level: 1, name: document.title, exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "문서 정보", exact: true })).toContainText("대상 조직");
-    await expect(page.getByRole("region", { name: "결재선", exact: true })).toContainText("인사팀장 결재");
+    await expect(page.getByRole("region", { name: "결재선", exact: true })).toContainText(t("enum.approvalRole.executive"));
     await expect(page.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
     await page.screenshot({ path: info.outputPath(`approval-viewer-${width}-${theme}-before.png`), fullPage: true });
 
@@ -86,7 +89,7 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 1440, 
     await page.getByRole("button", { name: "승인", exact: true }).click();
     await expect(page.locator("p[role=status]", { hasText: "결재를 기록했습니다." })).toHaveText("결재를 기록했습니다.");
     await expect.poll(reads).toBe(2);
-    await expect(page.locator("main")).toContainText("결재 완료");
+    await expect(page.getByText(t("enum.orgChangeStatus.APPROVED"), { exact: true })).toBeVisible();
     await expect(chain).not.toContainText("내 차례");
     await expect(page.getByRole("textbox", { name: /^의견/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);

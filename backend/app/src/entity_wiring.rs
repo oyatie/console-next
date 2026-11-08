@@ -120,6 +120,7 @@ pub(crate) fn router(
     passkey: Option<PasskeyService>,
     juso: Arc<JusoClient>,
     nts: Arc<console_entity_adapter_nts::NtsClient>,
+    approvals_released: bool,
 ) -> Router {
     let exceptions = exceptions::router(pool.clone(), jwt.clone(), passkey.clone());
     let entity = console_entity_rest::router(
@@ -141,7 +142,8 @@ pub(crate) fn router(
     ));
     let onboarding = console_onboarding_rest::router(
         OnboardingRestState::new(PgOnboardingStore::new(pool), jwt, passkey)
-            .with_payroll(cfg!(feature = "payroll")),
+            .with_payroll(cfg!(feature = "payroll"))
+            .with_approvals(approvals_released),
     );
     entity.merge(onboarding).merge(exceptions)
 }

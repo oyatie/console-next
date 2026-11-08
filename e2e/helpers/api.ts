@@ -1,4 +1,5 @@
 import type { APIResponse, Page } from "@playwright/test";
+import { responseTimestampProblems, timestampContract } from "../../scripts/check-timestamp-display.mjs";
 
 // The API as the signed-in page sends it, for negative tests: a refusal asserted at the server (status, code) and
 // the read that proves nothing was written. Never used to build a world; worlds are made through the UI.
@@ -15,8 +16,14 @@ export function bearerOf(page: Page) {
 }
 
 /** One call under the page's session: `api("/employees", "POST", body)`. */
-export const apiOf = (page: Page, bearer: () => string) => (path: string, method = "GET", data?: object, headers: Record<string, string> = {}) =>
-  page.request.fetch(`/api/v1${path}`, { method, headers: { authorization: bearer(), ...headers }, data, failOnStatusCode: false });
+export const apiOf = (page: Page, bearer: () => string) => async (path: string, method = "GET", data?: object, headers: Record<string, string> = {}) => {
+  const response = await page.request.fetch(`/api/v1${path}`, { method, headers: { authorization: bearer(), ...headers }, data, failOnStatusCode: false });
+  if (response.headers()["content-type"]?.includes("application/json")) {
+    const problems = responseTimestampProblems(timestampContract, `/api/v1${path}`, method, response.status(), await response.json());
+    if (problems.length) throw new Error(`${method} ${path}: ${problems.join(", ")}`);
+  }
+  return response;
+};
 
 /** The error code of a refusal (`{error:{code}}`), or null for a success. */
 export async function codeOf(res: Pick<APIResponse, "ok" | "json">) {

@@ -37,6 +37,7 @@ const backendEnv = {
   // The run's throwaway database commits without waiting on the VM's disk (scripts/backend-dev.mjs).
   CONSOLE_DEV_ASYNC_COMMIT: "1",
   CONSOLE_EMAIL_STUB_MODE: "e2e",
+  CONSOLE_RELEASE_TOGGLES: "approvals",
   // Paired release proofs may serve the shipped FE build while using this branch's test harness.
   ...(served
     ? { CONSOLE_WEB_DIST: path.resolve(process.env.CONSOLE_WEB_DIST ?? "apps/web/dist") }

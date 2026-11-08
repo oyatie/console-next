@@ -41,8 +41,11 @@ export function releasedBase(repository, directory, execute = run) {
       return statement.predicate.buildDefinition.resolvedDependencies;
     }).filter(dep => dep.uri === `git+https://github.com/${repository}@refs/heads/dev`);
     const revisions = [...new Set(dependencies.map(dep => dep.digest.gitCommit))];
-    assert.equal(revisions.length, 1, 'N-1 image needs one verified source revision');
-    [revision] = revisions;
+    assert.ok(revisions.length, 'N-1 image needs a verified source revision');
+    // Reproducible builds can be re-attested; ancestry identifies the first dev build of these bytes.
+    const history = execute('git', ['rev-list', '--first-parent', '--reverse', 'origin/dev']).trim().split('\n');
+    assert.ok(revisions.every(value => history.includes(value)), 'N-1 sources must be in dev first-parent history');
+    revision = history.find(value => revisions.includes(value));
   }
   assert.match(revision ?? '', /^(?!0{40}$)[a-f0-9]{40}$/, 'Released API base needs a full revision');
   return revision;
