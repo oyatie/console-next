@@ -65,13 +65,13 @@ jobs:
         if: github.event_name == 'push'
         with:
           name: ci-proof
-          run-id: ${{ fromJSON(steps.proof.outputs.result).id }}
+          run-id: ${{ fromJSON(steps.proof.outputs.result || '{}').id }}
           github-token: ${{ github.token }}
           path: .cache/proof
       - id: import
         if: github.event_name == 'push'
         env:
-          PROVEN_SHA: ${{ fromJSON(steps.proof.outputs.result).sha }}
+          PROVEN_SHA: ${{ fromJSON(steps.proof.outputs.result || '{}').sha }}
         run: |
           node <<'JS'
           const fs = require('node:fs');
