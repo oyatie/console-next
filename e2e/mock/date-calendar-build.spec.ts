@@ -93,6 +93,35 @@ for (const failure of ["missing chunk", "render error"] as const) {
   });
 }
 
+for (const failure of ["missing chunk", "throwing module"] as const) {
+  test(`crash recovery stays on one page with support details ${failure}`, async ({ page }) => {
+    const documents: string[] = [], errors: string[] = [];
+    let requested = 0;
+    page.on("request", request => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(request.url()); });
+    page.on("pageerror", error => errors.push(error.message));
+    await page.route("**/api/v1/client-errors", route => route.fulfill({ status: 200, json: { support_ref: id(99), support_ref_at: AT } }));
+    await page.route(url => /\/Login(-[^/]*)?\.(js|tsx)$/.test(url.pathname), route => route.fulfill({
+      contentType: "text/javascript", body: 'export function Login() { throw new Error("screen render failed"); }',
+    }));
+    await page.route(url => /\/support-reference(-[^/]*)?\.(js|tsx)$/.test(url.pathname), route => {
+      requested++;
+      return route.fulfill(failure === "missing chunk" ? { status: 404, body: "" } : {
+        contentType: "text/javascript", body: 'throw new Error("support details failed");',
+      });
+    });
+    await page.goto("/login");
+    await expect.poll(() => requested).toBeGreaterThan(0);
+    // Observe repeated recovery navigations after the optional import has failed.
+    await page.waitForTimeout(4_000);
+    expect(documents).toHaveLength(1);
+    await expect(page.getByRole("heading", { name: t("common.crashed.title"), exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: t("common.crashed.action"), exact: true })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: t("common.crashed.action"), exact: true })).toBeVisible();
+    await expect(page.locator("[data-support-reference]")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
+
 for (const theme of ["light", "dark"] as const) {
   test(`crash recovery paints while support details load at 390px ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
