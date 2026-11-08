@@ -16,8 +16,12 @@
       "seconds": 15.7,
       "tests": 6
     },
+    "mock/approval-document.spec.ts": {
+      "seconds": 3.5,
+      "tests": 4
+    },
     "mock/approval-viewer.spec.ts": {
-      "seconds": 16.5,
+      "seconds": 10.7,
       "tests": 15
     },
     "mock/approvals-layout.spec.ts": {

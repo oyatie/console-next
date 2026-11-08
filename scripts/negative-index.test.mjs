@@ -55,27 +55,26 @@ test("the solo flow names only implemented journeys and preserves audit as missi
   assert.doesNotMatch(source, /test\.step\("J11 /);
 });
 
-test("D7 evidence runs on dev pushes without adding a PR gate", async () => {
+test("D7 evidence imports reports on dev pushes; the queue gates solo journeys", async () => {
   const { default: yaml } = await import("js-yaml");
   const ci = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
   const home = ci.jobs.home;
   assert.ok(home, "served journeys must run in Home CI");
   const journey = home.steps.find(s => s.name === "Solo journey on Chromium and Firefox");
   for (const step of home.steps.filter(s => /D7|Solo journey/.test(s.name ?? "") || s.with?.name === "d7-playwright")) {
-    assert.match(step.if, /github\.event_name == 'push'/);
-    assert.match(step.if, /github\.ref == 'refs\/heads\/dev'/);
+    assert.match(step.if, /github\.event_name == 'merge_group'/);
   }
   assert.match(journey.run, /for browser in 0 1/);
   assert.match(journey.run, /\|\| failed=1/);
   assert.match(journey.env.E2E_REPORTER, /json/);
   assert.deepEqual(home.needs, ["affected", "backend-release"]);
   assert.ok(ci.jobs["backend-tests"].steps.some(s => s.run === "node scripts/backend-tests.mjs"));
-  const job = ci.jobs["d7-evidence"];
+  const job = ci.jobs["release-evidence"];
   const runner = steps => steps.find(s => s.uses?.startsWith("step-security/harden-runner@"))?.uses;
   assert.equal(runner(job.steps), runner(ci.jobs.web.steps));
-  assert.equal(job.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}");
-  assert.deepEqual(job.needs, ["backend", "backend-gates", "backend-tests", "backend-release", "home", "states"]);
-  assert.ok(!job.steps.some(s => s.with?.name === "d10-playwright" || s.run?.includes("scripts/d10-")));
+  assert.match(job.if, /github.event_name == 'push'/);
+  assert.deepEqual(job.needs, ["affected"]);
+  assert.ok(job.steps.some(s => s.run?.includes("scripts/d10-evidence.py")));
   assert.ok(job.steps.some(s => s.with?.name === "d7-evidence"));
   assert.ok(!ci.jobs["ci-ok"].needs.includes("d7-evidence"));
   assert.ok(!ci.jobs["ci-ok"].steps.some(s => s.run?.includes("needs.d7-evidence")));

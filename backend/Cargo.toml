@@ -168,6 +168,7 @@ lettre = { version = "0.11.22", default-features = false, features = [
 # for per-row DEK + nonce generation rather than adding the standalone `rand`
 # crate (rand 0.10 would pull a SECOND, incompatible `rand_core` major). No
 # async-imap / tokio-rustls is added in this batch (those land in B-mail-3).
+aws-lc-rs = "1.18.1"
 chacha20poly1305 = "0.10.1"
 secrecy = "0.10.3"
 zeroize = "1.9.0"

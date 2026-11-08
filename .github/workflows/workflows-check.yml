@@ -2,11 +2,7 @@
 # Checks workflow changes with actionlint (with shellcheck).
 name: workflows-check
 on:
-  pull_request:
-    paths: [".github/**"]
-  push:
-    branches: [dev]
-    paths: [".github/**"]
+  workflow_call:
 permissions: {}
 jobs:
   workflows:

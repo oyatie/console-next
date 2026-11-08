@@ -59,6 +59,7 @@ struct AuditRecord {
     #[serde(flatten)]
     #[sqlx(flatten)]
     context: context::AuditRecordContext,
+    #[serde(with = "console_kernel_core::timestamp")]
     occurred_at: time::OffsetDateTime,
 }
 

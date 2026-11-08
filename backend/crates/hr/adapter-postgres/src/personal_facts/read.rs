@@ -33,7 +33,7 @@ pub struct PersonalFactsResponse {
     pub employee_id: Uuid,
     /// The employee's version: send it as `expected_updated_at` with the
     /// `PATCH /employees/{id}` that corrects these items.
-    #[serde(with = "time::serde::rfc3339")]
+    #[serde(with = "console_kernel_core::timestamp")]
     pub updated_at: OffsetDateTime,
     pub name_hanja: Option<String>,
     pub name_en: Option<String>,
@@ -45,6 +45,19 @@ pub struct PersonalFactsResponse {
     pub photo: Option<PersonalPhoto>,
     /// 그룹 입사일 (근속 기산일), `YYYY-MM-DD`.
     pub group_service_start_date: Option<String>,
+}
+
+#[derive(sqlx::FromRow, Serialize)]
+struct EmergencyContact {
+    name: String,
+    relation: String,
+    phone: String,
+    contact_notified: bool,
+    basis: Option<String>,
+    recorded_by: Uuid,
+    recorded_by_name: Option<String>,
+    #[serde(with = "console_kernel_core::timestamp")]
+    recorded_at: OffsetDateTime,
 }
 
 impl HrService {
@@ -97,19 +110,17 @@ impl HrService {
                     }
                     _ => None,
                 };
-                let contacts: Option<Value> = sqlx::query_scalar(
-                    "SELECT jsonb_agg(jsonb_build_object( \
-                     'name', c.name, 'relation', c.relation, 'phone', c.phone_e164, \
-                     'contact_notified', c.contact_notified, 'basis', c.basis, \
-                     'recorded_by', c.created_by, 'recorded_by_name', u.display_name, \
-                     'recorded_at', c.created_at) ORDER BY c.seq) \
+                let contacts: Vec<EmergencyContact> = sqlx::query_as(
+                    "SELECT c.name, c.relation, c.phone_e164 AS phone, \
+                     c.contact_notified, c.basis, c.created_by AS recorded_by, \
+                     u.display_name AS recorded_by_name, c.created_at AS recorded_at \
                      FROM employee_emergency_contacts c \
                      LEFT JOIN person_accounts_current u ON u.org_id = c.org_id AND u.id = c.created_by \
-                     WHERE c.org_id = $1 AND c.employee_id = $2 AND c.voided_at IS NULL",
+                     WHERE c.org_id = $1 AND c.employee_id = $2 AND c.voided_at IS NULL ORDER BY c.seq",
                 )
                 .bind(org_uuid)
                 .bind(employee_id)
-                .fetch_one(tx.as_mut())
+                .fetch_all(tx.as_mut())
                 .await?;
                 let me = actor_employee_id(tx, &principal).await?;
                 let event = access_event(
@@ -126,7 +137,12 @@ impl HrService {
                     name_en: row.name_en,
                     nationality: row.nationality,
                     personal_email: row.personal_email,
-                    emergency_contacts: contacts.unwrap_or(Value::Null),
+                    emergency_contacts: if contacts.is_empty() {
+                        Value::Null
+                    } else {
+                        serde_json::to_value(contacts)
+                            .map_err(|error| sqlx::Error::Protocol(error.to_string()))?
+                    },
                     photo,
                     group_service_start_date: row.group_service_start_date,
                 };

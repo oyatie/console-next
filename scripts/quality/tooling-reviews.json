@@ -1,4 +1,63 @@
 {
+  "cargo:aws-lc-rs": {
+    "group": "Crypto/auth",
+    "job": "AES-256-GCM payload encryption, AES-256-KWP DEK wrapping, HMAC-SHA256 RRN matching and CSPRNG for credential/RRN envelopes; jsonwebtoken crypto backend",
+    "verdict": "keep",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-11-07",
+      "ruling": "2026-10-26: aws-lc-rs everywhere; 2026-11-03: approve aws-lc-rs; 2026-11-07: direct workspace dependency for AES-256-GCM replacing XChaCha20-Poly1305 — no reason to pick chacha20poly1305 over aes-256-gcm",
+      "source": "docs/quality/dependency-ruling-2026-11-03.md"
+    },
+    "architectureRecord": "docs/architecture/credential-encryption.md",
+    "approvedUsers": [
+      "console-app",
+      "console-comms-credential-cipher"
+    ],
+    "approvedUses": [
+      {
+        "user": "console-app",
+        "layer": "frameworks & drivers/platform"
+      },
+      {
+        "user": "console-comms-credential-cipher",
+        "layer": "frameworks & drivers/platform"
+      }
+    ],
+    "allowedLayers": [
+      "frameworks & drivers/platform"
+    ],
+    "layer": "frameworks & drivers/platform",
+    "features": {
+      "defaultFeatures": true,
+      "default": [
+        "aws-lc-sys",
+        "alloc",
+        "ring-io",
+        "ring-sig-verify"
+      ],
+      "workspaceResolved": [
+        "alloc",
+        "aws-lc-sys",
+        "default",
+        "prebuilt-nasm",
+        "ring-io",
+        "ring-sig-verify"
+      ],
+      "fips": false
+    },
+    "alternatives": "Retain the legacy XChaCha20-Poly1305 implementation; other audited AES providers require owner approval; never implement crypto primitives in-house",
+    "reason": "Owner-approved standard AES envelope provider and byte-compatible HMAC; existing locked provider also backs jsonwebtoken. JWT use remains governed by its separate dependency review.",
+    "license": "ISC AND (Apache-2.0 OR ISC)",
+    "evidence": [
+      "docs/quality/dependency-ruling-2026-10-26.md",
+      "docs/quality/dependency-ruling-2026-11-03.md",
+      "docs/architecture/credential-encryption.md",
+      "https://github.com/aws/aws-lc-rs"
+    ],
+    "exitPlan": "Replace only after versioned-read, known-answer, persisted-envelope, HMAC-index and JWT compatibility proof; remove legacy ChaCha only after zero v1 rows in every environment."
+  },
   "npm:minimatch": {
     "group": "Test/lint tooling",
     "job": "Security override for Stryker's existing glob matcher",

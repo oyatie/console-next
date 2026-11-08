@@ -50,6 +50,10 @@ responses:
               type: array
               items:
                 type: object
+                required: [occurred_at]
+                properties:
+                  occurred_at:
+                    $ref: '#/components/schemas/Timestamp'
                 additionalProperties: true
             limit:
               type: integer
