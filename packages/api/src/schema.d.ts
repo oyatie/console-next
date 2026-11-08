@@ -53469,7 +53469,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description 409 employee_exited_read_only when the employee has exited, including after the draft was read. No contract wage is appended; existing wages remain unchanged. Request a governed correction of the personnel record. */
+            /** @description contract_wage_exists when a wage already exists for the same employee and effective_from, even if the remaining payload differs. Append a new effective date for a raise. employee_exited_read_only takes priority when the employee has exited, including after the draft was read; request a governed correction of the personnel record. Neither refusal appends a wage or a successful creation audit; existing wages and audits remain unchanged. */
             409: {
                 headers: {
                     [name: string]: unknown;
