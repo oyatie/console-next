@@ -92,3 +92,37 @@ for (const failure of ["missing chunk", "render error"] as const) {
     }
   });
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`crash recovery paints while support details load at 390px ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.addInitScript(value => {
+      localStorage.setItem("console.theme", value);
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    const reference = id(99);
+    await page.route("**/api/v1/client-errors", route => route.fulfill({ status: 200, json: { support_ref: reference, support_ref_at: AT } }));
+    await page.route(url => /\/Login(-[^/]*)?\.(js|tsx)$/.test(url.pathname), route => route.fulfill({
+      contentType: "text/javascript", body: 'export function Login() { throw new Error("screen render failed"); }',
+    }));
+    let requested = false;
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    await page.route(url => /\/support-reference(-[^/]*)?\.(js|tsx)$/.test(url.pathname), async route => {
+      requested = true;
+      await held;
+      await route.continue();
+    });
+    try {
+      await page.goto("/login");
+      await expect(page.getByRole("heading", { name: t("common.crashed.title"), exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: t("common.crashed.action"), exact: true })).toHaveCount(1);
+      await expect.poll(() => requested).toBe(true);
+      await expect(page.locator("[data-support-reference]")).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      release();
+      await expect(page.locator(`[data-support-reference="${reference}"]`)).toBeVisible();
+    } finally { release(); }
+  });
+}
