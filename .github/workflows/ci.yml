@@ -350,17 +350,23 @@ jobs:
       - &cache-collect
         name: Collect Rust cache changes
         if: github.event_name == 'merge_group'
+        continue-on-error: true
+        timeout-minutes: 2
         run: |
           mkdir -p "$RUNNER_TEMP/rust-cache"
           cd "$HOME"
           find .cargo/registry .cargo/git/db -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
-            tar --null -czf "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz" -T -
+            tar --null -czf "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" -T -
+          mv "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz"
           cd "$GITHUB_WORKSPACE"
           find backend/target -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
-            tar --null -czf "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz" -T -
+            tar --null -czf "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" -T -
+          mv "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz"
       - &cache-upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: github.event_name == 'merge_group'
+        continue-on-error: true
+        timeout-minutes: 2
         with:
           name: rust-cache-${{ github.job }}-${{ env.NEXTEST_SHARD || '0' }}
           path: ${{ runner.temp }}/rust-cache/*.tgz
@@ -431,8 +437,8 @@ jobs:
     needs: [affected]
     if: *backend-affected
     runs-on: ubuntu-24.04-arm
-    # Queue workers also export cache deltas (observed 13m); retain the PR check budget.
-    timeout-minutes: ${{ github.event_name == 'merge_group' && 45 || 30 }}
+    # Measured tests take 25m; reserve setup, result upload and bounded cache maintenance.
+    timeout-minutes: 40
     permissions: {contents: read}
     defaults: *backend-defaults
     env:
@@ -483,6 +489,8 @@ jobs:
       - *backend-checkout
       - *rust-cache
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        continue-on-error: true
+        timeout-minutes: 2
         with:
           run-id: ${{ needs.affected.outputs.run-id }}
           github-token: ${{ github.token }}
@@ -490,10 +498,15 @@ jobs:
           merge-multiple: true
           path: ${{ runner.temp }}/rust-cache
       - name: Merge Rust cache changes
+        continue-on-error: true
+        timeout-minutes: 5
         run: |
+          shopt -s nullglob
           for archive in "$RUNNER_TEMP"/rust-cache/registry-*.tgz; do tar -xzf "$archive" -C "$HOME"; done
           for archive in "$RUNNER_TEMP"/rust-cache/target-*.tgz; do tar -xzf "$archive" -C "$GITHUB_WORKSPACE"; done
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        continue-on-error: true
+        timeout-minutes: 5
         with:
           path: |
             ~/.cargo/registry

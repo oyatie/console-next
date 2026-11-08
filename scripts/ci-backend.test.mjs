@@ -172,6 +172,63 @@ test("parallel builds restore the unchanged trusted cache and publish dev-only d
   assert.equal(save.with.key, "${{ steps.rust-cache.outputs.cache-primary-key }}");
 });
 
+test("Rust cache maintenance is non-fatal and bounded within job budgets", () => {
+  for (const name of [...backendJobs, "backend-cache"]) {
+    const job = ci.jobs[name];
+    const maintenance = job.steps.filter(s => s.name === "Collect Rust cache changes" ||
+      s.with?.name?.startsWith("rust-cache-") || s.with?.pattern === "rust-cache-*" ||
+      s.name === "Merge Rust cache changes" || s.uses?.startsWith("actions/cache/save@"));
+    assert.equal(maintenance.length, name === "backend-cache" ? 3 : 2);
+    for (const step of maintenance) {
+      assert.equal(step["continue-on-error"], true, `${name}: cache failures must not fail tests`);
+      assert.ok(Number.isInteger(step["timeout-minutes"]) && step["timeout-minutes"] > 0);
+    }
+    const cacheMinutes = maintenance.reduce((sum, s) => sum + s["timeout-minutes"], 0);
+    assert.ok(cacheMinutes < job["timeout-minutes"], `${name}: cache must fit inside job timeout`);
+    if (name === "backend-tests") {
+      // Measured tests take 25 minutes; leave setup and teardown headroom too.
+      assert.ok(job["timeout-minutes"] >= 25 + cacheMinutes + 5);
+    }
+  }
+});
+
+for (const archives of ["none", "registry", "target"]) test(`cache merge tolerates missing archives: ${archives}`, () => {
+  const merge = ci.jobs["backend-cache"].steps.find(s => s.name === "Merge Rust cache changes");
+  const root = mkdtempSync(path.join(tmpdir(), "rust-cache-missing-"));
+  try {
+    const home = path.join(root, "home"), workspace = path.join(root, "workspace");
+    mkdirSync(home); mkdirSync(workspace);
+    const env = { ...process.env, HOME: home, GITHUB_WORKSPACE: workspace, RUNNER_TEMP: root };
+    if (archives !== "none") {
+      mkdirSync(path.join(root, "rust-cache"));
+      writeFileSync(path.join(root, "entry"), "cached");
+      const archive = spawnSync("tar", ["-czf", path.join(root, `rust-cache/${archives}-test.tgz`), "-C", root, "entry"], { encoding: "utf8" });
+      assert.equal(archive.status, 0, archive.stderr);
+    }
+    const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", merge.run], { env, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    if (archives !== "none") assert.equal(readFileSync(path.join(archives === "registry" ? home : workspace, "entry"), "utf8"), "cached");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+for (const archive of ["registry", "target"]) test(`cache collection publishes only complete archives when ${archive} compression fails`, () => {
+  const job = ci.jobs.backend;
+  const root = mkdtempSync(path.join(tmpdir(), "rust-cache-interrupted-"));
+  try {
+    const home = path.join(root, "home"), workspace = path.join(root, "workspace"), bin = path.join(root, "bin");
+    mkdirSync(home); mkdirSync(workspace); mkdirSync(bin);
+    const env = { ...process.env, HOME: home, GITHUB_WORKSPACE: workspace, RUNNER_TEMP: root, GITHUB_JOB: "backend", FAIL_ARCHIVE: archive, PATH: `${bin}:${process.env.PATH}` };
+    const run = command => spawnSync("bash", ["-e", "-o", "pipefail", "-c", command], { env, encoding: "utf8" });
+    assert.equal(run(job.steps.find(s => s.name === "Mark restored cache").run).status, 0);
+    writeFileSync(path.join(bin, "tar"), '#!/bin/bash\ncat >/dev/null\nprintf partial > "$3"\ncase "$3" in */"$FAIL_ARCHIVE"-*) exit 1 ;; esac\n', { mode: 0o755 });
+    const result = run(job.steps.find(s => s.name === "Collect Rust cache changes").run);
+    assert.notEqual(result.status, 0);
+    const uploaded = spawnSync("bash", ["-c", 'find "$RUNNER_TEMP/rust-cache" -name "*.tgz" -print'], { env, encoding: "utf8" });
+    assert.equal(uploaded.status, 0, uploaded.stderr);
+    assert.equal(uploaded.stdout, archive === "registry" ? "" : `${root}/rust-cache/registry-backend-0.tgz\n`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("cache deltas retain new files and permissions without republishing restored files", () => {
   const job = ci.jobs["backend-release"];
   const prepare = job?.steps.find(s => s.name === "Mark restored cache");
