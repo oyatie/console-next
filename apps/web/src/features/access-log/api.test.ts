@@ -7,6 +7,18 @@ import { accessLogPages } from "./api";
 beforeAll(() => configure({ baseUrl: "https://console.example", refresh: { kind: "cookie" }, passkeys: { get: async () => null, create: async () => null } }));
 afterEach(() => vi.unstubAllGlobals());
 
+test("refused-filter recovery limits the audited read and has a separate cache entry", async () => {
+  const requests: URL[] = [];
+  vi.stubGlobal("fetch", async (request: Request) => {
+    requests.push(new URL(request.url));
+    return new Response(JSON.stringify({ items: [], next_cursor: null }), { headers: { "content-type": "application/json" } });
+  });
+  const recovery = accessLogPages("2026-10", false, undefined, {}, 1);
+  expect(readIdentity(recovery)).not.toEqual(readIdentity(accessLogPages("2026-10", false)));
+  await recovery.queryFn({ pageParam: undefined });
+  expect(Object.fromEntries(requests[0]!.searchParams)).toEqual({ period: "2026-10", flagged: "false", limit: "1" });
+});
+
 test("access-log search partitions the cache and follows every cursor without changing the review scope", async () => {
   const requests: URL[] = [];
   vi.stubGlobal("fetch", async (request: Request) => {
