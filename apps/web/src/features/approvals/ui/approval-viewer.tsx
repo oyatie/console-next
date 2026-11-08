@@ -5,6 +5,8 @@ import { getRouteApi } from "@tanstack/react-router";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { reasonCodesQuery, reasonOptions, type ReasonDomain } from "../../../lib/reason-codes";
+import { codeText } from "../../../lib/labels";
+import { catalogRefusal } from "../../../lib/refusal";
 import { readsAreStale, useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { ApprovalCard } from "../../../ui/approval-card/approval-card";
@@ -64,6 +66,8 @@ export function ApprovalDocumentView({ document: d }: { document: ApprovalDocume
     </Card>
     <Card title={t("approvals.preview.facts")}>
       <KeyValue readOnly items={[
+        ...(d.decision_refusal ? [{ key: "decision-refusal", label: t("approvals.field.verification"),
+          value: catalogRefusal(d.decision_refusal) ?? codeText(`requestOutcome.code.${d.decision_refusal}`, t("approvals.viewer.blockedHint")) }] : []),
         ...(d.document_no && d.my_actions.kind === "none" ? [{ key: "number", label: t("approvals.field.documentNo"), value: d.document_no }] : []),
         { key: "requester", label: t("approvals.field.requester"), value: [d.requester?.name, d.requester?.role].filter(Boolean).join(" · ") || "—" },
         { key: "requested", label: t("approvals.field.requestedAt"), value: fmtDateTime(d.requested_at) },

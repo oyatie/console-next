@@ -38,11 +38,13 @@ beforeAll(async () => {
       load: id => id === "\0approvals-view-test" ? `
         import React,{useState} from 'react'; import {QueryClient,QueryClientProvider} from '@tanstack/react-query'; import {createRoot} from 'react-dom/client';
         import {createMemoryHistory,createRootRoute,createRoute,createRouter,Outlet,RouterProvider} from '@tanstack/react-router';
-        import {loadCatalog} from '@console/i18n';
+        import {i18n,loadCatalog} from '@console/i18n';
         import {ApprovalInboxView} from '/apps/web/src/features/approvals/ui/approvals-page.tsx';
         import {ApprovalDocumentView} from '/apps/web/src/features/approvals/ui/approval-viewer.tsx';
         import '/apps/web/src/app.css';
-        await loadCatalog('ko'); const items=${JSON.stringify(items)},approvalDocument=${JSON.stringify(approvalDocument)};
+        const locale=new URL(location.href).searchParams.get('locale')??'ko'; await loadCatalog(locale); i18n.set(locale);
+        const items=${JSON.stringify(items)},approvalDocument=${JSON.stringify(approvalDocument)};
+        approvalDocument.decision_refusal=new URL(location.href).searchParams.get('refusal');
         function Demo(){const [id,setId]=useState();return React.createElement(ApprovalInboxView,{items,sel:id,selected:items.find(x=>x.id===id),record:React.createElement(ApprovalDocumentView,{document:approvalDocument}),onSelect:setId,onClose:()=>setId(undefined)});}
         const root=createRootRoute({component:Outlet});
         const inbox=createRoute({getParentRoute:()=>root,path:'/',component:Demo});
@@ -67,6 +69,20 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => { await Promise.all(sessions.map(({ browser }) => browser.close())); await server?.close(); });
+
+test.each(ENGINES.map((_, engine) => ({ engine })))("read-only document explains its server refusal in engine $engine", async ({ engine }) => {
+  const { page } = sessions[engine]!;
+  const refusal = "org_change.refuse.identity_unbound";
+  for (const [locale, message, body] of [
+    ["ko", "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다.", "문서 내용"],
+    ["en", "The requester or decider identity could not be verified.", "Document body"],
+  ] as const) {
+    await page.goto(`${server.resolvedUrls!.local[0]}approvals-view-test?route=${encodeURIComponent("/approvals/approval-1")}&refusal=${refusal}&locale=${locale}`);
+    await expect(page.getByText(message, { exact: false })).toBeVisible();
+    await expect(page.getByRole("button")).toHaveCount(0);
+    await expect(page.getByRole("region", { name: body, exact: true })).toContainText("영업1팀과 영업2팀을 영업팀으로 통합");
+  }
+});
 
 test.each(ENGINES.map((_, engine) => ({ engine })))("the document opens beside the list at phone and desktop widths in engine $engine", async ({ engine }) => {
   const { page } = sessions[engine]!;
