@@ -17,11 +17,14 @@ test.each([403, 404, 405])("permanent HTTP %s has no retry prompt or raw fallbac
   expect(banner).not.toMatch(/다시 시도|http_\d+|diagnostic/);
 });
 
-test("a catalog-backed refusal keeps its diagnostic code non-translatable beside the explanation", async () => {
+test("a catalog-backed refusal keeps its diagnostic non-translatable inside the reason disclosure", async () => {
   const code = "lifecycle.refuse.close_blocked";
   const banner = await html(new ApiError(409, code, "internal diagnostic"));
   expect(banner).toContain(t(code));
-  expect(banner).toContain(`<code translate="no">${code}</code>`);
+  expect(banner.replace(/<details>[\s\S]*?<\/details>/g, "")).not.toContain(`<code translate="no">${code}</code>`);
+  const details = banner.match(/<details>[\s\S]*?<\/details>/)?.[0];
+  expect(details).toContain(t("common.denied.why"));
+  expect(details).toContain(`<code translate="no">${code}</code>`);
   expect(banner).not.toContain("internal diagnostic");
 });
 

@@ -132,6 +132,14 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(refusal).toContainText(reason);
     await expect(refusal).not.toContainText("internal basis");
     await expect(refusal.locator('code[translate="no"]')).toHaveText("lifecycle.refuse.close_blocked");
+    const diagnostic = refusal.locator('code[translate="no"]');
+    await expect(diagnostic).toBeHidden();
+    await refusal.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(diagnostic).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath(`command-refusal-${width}-${theme}.png`), fullPage: true });
+    await page.keyboard.press("Space");
+    await expect(diagnostic).toBeHidden();
     const link = refusal.getByRole("link", { name: t("lifecycle.trail.openBlocking"), exact: true });
     await expect(link).toHaveAttribute("href", `${exitCaseScreen.path}#item-${exitTrail().items[0]!.id}`);
     await link.click();
