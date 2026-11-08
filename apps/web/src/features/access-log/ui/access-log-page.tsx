@@ -114,7 +114,7 @@ export function AccessLogPage() {
         </div>
         {!!appliedFilters.length && <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly />}
       </div>}
-    sheet={filterOpen ? <AccessLogFilterSheet key={JSON.stringify({ ...filters, period: search.period })} source={source} choices={choices} value={filters} onClose={() => setFilterOpen(false)}
+    sheet={filterOpen ? <AccessLogFilterSheet key={JSON.stringify({ ...filters, period: search.period })} source={first} choices={choices} value={filters} onClose={() => setFilterOpen(false)}
       onApply={next => { setFilterOpen(false); void navigate({ search: s => ({ period: s.period, view: s.view, search: s.search, ...next }), replace: true, resetScroll: false }); }} />
     : selected && <Sheet open title={selected.actor_name} onClose={() => setSelected(null)} consequence={null}
       actions={<Button onClick={() => setSelected(null)}>{t("uiSheet.close")}</Button>}>
