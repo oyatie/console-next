@@ -1,6 +1,25 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { loadCatalog, t } from "@console/i18n";
 import { expect, type Locator, type Page } from "@playwright/test";
 
-export const filingRow = (page: Page, insurer: string, kind: string) => page.getByRole("row").filter({has:page.getByRole("cell",{name:`${insurer} · ${kind}`,exact:true})});
+export async function filingRow(page: Page, insurer: string, kind: string, employee: string) {
+  await loadCatalog("ko");
+  const search = page.getByRole("searchbox", { name: t("statutory.search"), exact: true });
+  if (await search.inputValue() !== employee) {
+    const filtered = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return response.request().method() === "GET" && url.pathname.endsWith("/statutory/insurance-filings") && url.searchParams.get("search") === employee;
+    });
+    await search.fill(employee);
+    await search.press("Enter");
+    await filtered;
+  }
+  const grid = page.getByRole("table", { name: t("statutory.insurance"), exact: true });
+  const row = grid.getByRole("row").filter({ has: page.getByRole("cell", { name: `${insurer} · ${kind}`, exact: true }) });
+  await row.scrollIntoViewIfNeeded();
+  await expect(row).toBeInViewport();
+  return row;
+}
 
 export async function selectFilingFact(page: Page, dialog: Locator, label: string, option: string) {
   const control = dialog.getByRole("button", { name: new RegExp(`(?:^|\\s)${label}(?:\\s|$)`) });

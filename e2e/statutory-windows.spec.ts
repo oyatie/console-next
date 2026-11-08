@@ -26,18 +26,18 @@ test("hire today, prepare next month's exit, and resolve truthful not-applicable
     const opens=task.kind==="ACQUIRE"?hire:addDays(futureExit,1);
     expect(task.opens_on).toBe(opens);expect(task.target_on).toBe(opens);
     expect(task.due_on).toBe(task.insurer==="NHIS"?addDays(opens,13):nextMonthDay(task.kind==="ACQUIRE"?hire:futureExit,15));
-    const row=filingRow(admin,task.insurer==="NPS"?"국민연금":task.insurer==="NHIS"?"건강보험":task.insurer==="EI"?"고용보험":"산재보험",task.kind==="ACQUIRE"?"취득 신고":"상실 신고");
+    const row=await filingRow(admin,task.insurer==="NPS"?"국민연금":task.insurer==="NHIS"?"건강보험":task.insurer==="EI"?"고용보험":"산재보험",task.kind==="ACQUIRE"?"취득 신고":"상실 신고","SW-1");
     await expect(row).toContainText("시작");await expect(row).toContainText("기한");await expect(row).not.toContainText("목표");
-    if(task.dates?.conservative){await row.getByText("근거",{exact:true}).click();await expect(row).toContainText("보수적 기한");await expect(row).toContainText("법정 최종일 후보");}
+    if(task.dates?.conservative){await row.getByText("근거",{exact:true}).click();await expect(row).toContainText("보수적 기한");await expect(row).toContainText("법정 최종일 후보");await row.getByText("근거",{exact:true}).click();}
   }
   await expectAccessible(admin,"statutory earliest window and legal deadline");await atPhoneWidth(admin,()=>fits(admin,"filing windows"));
-  const loss=filingRow(admin,"국민연금","상실 신고");await loss.getByRole("button",{name:"처리 기록",exact:true}).click();dialog=admin.getByRole("dialog");await prepareFilingCompletion(admin,dialog);await fillDate(dialog,hire,"신고일");await dialog.getByRole("button",{name:"미리보기",exact:true}).click();await expect(dialog).toContainText("신고일을 확인하십시오");await dialog.getByRole("button",{name:"취소",exact:true}).click();
-  const acquire=filingRow(admin,"국민연금","취득 신고");await acquire.getByRole("button",{name:"처리 기록",exact:true}).click();dialog=admin.getByRole("dialog");
+  const loss=await filingRow(admin,"국민연금","상실 신고","SW-1");await loss.getByRole("button",{name:"처리 기록",exact:true}).click();dialog=admin.getByRole("dialog");await prepareFilingCompletion(admin,dialog);await fillDate(dialog,hire,"신고일");await dialog.getByRole("button",{name:"미리보기",exact:true}).click();await expect(dialog).toContainText("신고일을 확인하십시오");await dialog.getByRole("button",{name:"취소",exact:true}).click();
+  let acquire=await filingRow(admin,"국민연금","취득 신고","SW-1");await acquire.getByRole("button",{name:"처리 기록",exact:true}).click();dialog=admin.getByRole("dialog");
   await selectFilingFact(admin,dialog,"처리 방법","미해당");await dialog.getByRole("textbox",{name:/^생년월일/}).fill("1990-01-01");await selectFilingFact(admin,dialog,"미해당 사유","연금 가입 연령 상한");await dialog.getByRole("textbox",{name:/^사유의 근거/}).fill("연령 자료 확인");await dialog.getByRole("button",{name:"미리보기",exact:true}).click();
   const refused=admin.waitForResponse((r)=>r.request().method()==="POST"&&r.url().includes("/insurance-filings/"));await dialog.getByRole("button",{name:"미해당",exact:true}).click();const refusal=await refused;expect(refusal.status()).toBe(422);expect((await refusal.json()).error.code).toBe("filing_not_applicable_invalid");await expect(dialog.getByRole("alert").last()).toBeVisible();await expect(acquire).toContainText("해야 함");await dialog.getByRole("button",{name:"수정",exact:true}).click();await dialog.getByRole("button",{name:"취소",exact:true}).click();
-  await resolveFilingNotApplicable(admin,acquire);await admin.getByRole("button",{name:"처리 내역",exact:true}).click();await expect(acquire).toContainText("미해당");await expect(acquire).toContainText("공단 확인");await expect(acquire.getByText("신고일",{exact:true})).toHaveCount(0);
-  await acquire.getByRole("button",{name:"되돌리기",exact:true}).click();await admin.getByRole("button",{name:"해야 함",exact:true}).click();await expect(acquire).toContainText("해야 함");
-  const employment=filingRow(admin,"고용보험","취득 신고");
+  await resolveFilingNotApplicable(admin,await filingRow(admin,"국민연금","취득 신고","SW-1"));await admin.getByRole("button",{name:"처리 내역",exact:true}).click();acquire=await filingRow(admin,"국민연금","취득 신고","SW-1");await expect(acquire).toContainText("미해당");await expect(acquire).toContainText("공단 확인");await expect(acquire.getByText("신고일",{exact:true})).toHaveCount(0);
+  await (await filingRow(admin,"국민연금","취득 신고","SW-1")).getByRole("button",{name:"되돌리기",exact:true}).click();await admin.getByRole("button",{name:"해야 함",exact:true}).click();acquire=await filingRow(admin,"국민연금","취득 신고","SW-1");await expect(acquire).toContainText("해야 함");
+  const employment=await filingRow(admin,"고용보험","취득 신고","SW-1");
   await employment.getByRole("button",{name:"신고 요청·근로월 기록",exact:true}).click();dialog=admin.getByRole("dialog");
   await selectFilingFact(admin,dialog,"신고 종류","근로자 요청 취득 신고");
   await fillDate(dialog,hire,"요청일·근로월 말일");
@@ -55,5 +55,5 @@ test("hire today, prepare next month's exit, and resolve truthful not-applicable
   await expect(dialog.getByRole("textbox")).toHaveCount(0);
   await dialog.getByRole("button",{name:"다시 불러오기",exact:true}).click();
   await expect(dialog).toBeHidden();expect(requestKeys).toHaveLength(2);expect(requestKeys[1]).toBe(requestKeys[0]);
-  await admin.unroute(requestPath);await expect(employment).toContainText("지체 없이");
+  await admin.unroute(requestPath);await expect(await filingRow(admin,"고용보험","취득 신고","SW-1")).toContainText("지체 없이");
 });
