@@ -5,9 +5,9 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { t } from "@console/i18n";
 import { EmptyState } from "../../ui/empty-state";
 import { Button } from "../../ui/button/button-base";
-import { chunk, reloadPage } from "../chunk-guard";
+import { localChunk, reloadPage } from "../chunk-guard";
 import { requestSupportReference, supportReferenceFromError } from "../support-reference";
-const SupportReference = lazy(() => chunk(import("./support-reference")).then(m => ({ default: m.SupportReference })));
+const SupportReference = lazy(() => localChunk(import("./support-reference")).then(m => ({ default: m.SupportReference }), () => ({ default: () => null })));
 
 export function CrashScreen({ error }: { error: unknown }) {
   const issued = supportReferenceFromError(error);
