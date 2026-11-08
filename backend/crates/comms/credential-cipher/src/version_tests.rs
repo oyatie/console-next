@@ -290,3 +290,24 @@ fn both_suites_authenticate_payload_nonce_wrap_and_aad() {
         }
     }
 }
+
+#[test]
+fn every_seal_draws_fresh_nonces() {
+    let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7u8; 32]).unwrap();
+    for suite in [1, 2] {
+        let a = cipher
+            .encrypt_with_suite(suite, b"secret", binding())
+            .unwrap();
+        let b = cipher
+            .encrypt_with_suite(suite, b"secret", binding())
+            .unwrap();
+        assert_ne!(a.nonce, b.nonce, "suite {suite} reused a nonce");
+        assert!(
+            a.nonce.iter().any(|&x| x != 0),
+            "suite {suite} sealed with a zero nonce"
+        );
+        if suite == 1 {
+            assert_ne!(a.dek_nonce, b.dek_nonce, "suite 1 reused a DEK nonce");
+        }
+    }
+}
