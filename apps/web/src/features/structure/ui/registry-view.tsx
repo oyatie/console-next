@@ -44,6 +44,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
   const columns: LongColumn<ChartNode>[] = [
     {
       id: "name",
+      focusMode: "child",
       rowHeader: true,
       card: "title",
       width: "3fr",
@@ -71,6 +72,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
     // The head a level has: a legal entity's representatives, a department's head (a workplace's manager is not served).
     {
       id: "head",
+      focusMode: "child",
       card: "fact",
       width: 160,
       header: t("structure.list.head"),
@@ -82,9 +84,10 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
     { id: "people", card: "fact", cardHeader: t("structure.list.people"), width: 142, header: <HeadcountBasis>{t("structure.list.people")}</HeadcountBasis>, cell: (n) => <span className="num">{unitCounts(n)}</span> },
     { id: "site", card: "omit", width: 120, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? none : none },
     { id: "chips", card: "status", width: "2fr", minWidth: 112, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : null },
-    ...(!s.readOnly ? [{ id: "order", card: "action" as const, width: 64, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
+    ...(!s.readOnly ? [{ id: "order", focusMode: "child" as const, card: "action" as const, width: 64, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
     ...(!s.readOnly ? [{
       id: "add",
+      focusMode: "child" as const,
       card: "action" as const,
       width: 196,
       header: t("orgStructure.tab.actions"),
