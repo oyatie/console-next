@@ -121,14 +121,14 @@ pub struct ActionInboxItem {
     pub who: Option<String>,
     #[serde(
         rename = "due",
-        with = "time::serde::rfc3339::option",
+        with = "console_kernel_core::timestamp::option",
         skip_serializing_if = "Option::is_none"
     )]
     pub due: Option<OffsetDateTime>,
     #[serde(rename = "dueTone")]
     pub due_tone: &'static str,
     #[serde(
-        with = "time::serde::rfc3339::option",
+        with = "console_kernel_core::timestamp::option",
         skip_serializing_if = "Option::is_none"
     )]
     pub submitted: Option<OffsetDateTime>,

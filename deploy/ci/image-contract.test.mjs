@@ -41,7 +41,7 @@ test('Rust compile-time file inputs are copied from the admitted context', () =>
   }
 });
 
-test('the SBOM policy accepts the pinned attest v4.1.0 SPDX-2.3 statement shape', () => {
+test('the SBOM scan and policy accept the pinned attest v4.1.0 SPDX-2.3 statement shape', () => {
   // actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 src/sbom.ts generates this versioned type.
   const statement = {_type:'https://in-toto.io/Statement/v1', subject:[{name:'example.invalid/console',digest:{sha256:'a'.repeat(64)}}], predicateType:'https://spdx.dev/Document/v2.3', predicate:{spdxVersion:'SPDX-2.3',SPDXID:'SPDXRef-DOCUMENT',name:'console'}};
   const policy = yaml.loadAll(read('deploy/policies/images.yaml')).find(p => p.metadata.name === 'console-attestations');
@@ -49,6 +49,68 @@ test('the SBOM policy accepts the pinned attest v4.1.0 SPDX-2.3 statement shape'
   assert.equal(sbom.predicateType, statement.predicateType);
   assert.ok(sbom.policy.data.includes(`predicateType: "${statement.predicateType}"`));
   assert.match(statement.predicate.spdxVersion, /^SPDX-2\./);
+  const workflow = yaml.load(read('.github/workflows/platform.yml'));
+  const attest = workflow.jobs.publish.steps.find(step => step.uses?.startsWith('actions/attest-sbom@'));
+  assert.equal(attest.uses, 'actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e');
+  assert.equal(attest.with['push-to-registry'], true);
+  const scan = workflow.jobs.scan.steps.find(step => step.run?.includes('cosign verify-attestation'));
+  assert.equal(scan.run.match(/verify-attestation --type=(\S+)/)?.[1], statement.predicateType);
+  assert.ok(scan.run.includes('--certificate-oidc-issuer=https://token.actions.githubusercontent.com'));
+  assert.ok(scan.run.includes('--certificate-identity="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/platform.yml@refs/heads/dev"'));
+  assert.equal(scan.env.IMAGE, '${{ needs.publish.outputs.image }}');
+  assert.ok(scan.run.includes('grype "sbom:${RUNNER_TEMP}/image-sbom.json" --only-fixed --fail-on high'));
+});
+
+test('the scan handles repeated verified SBOMs and fails closed on verification or vulnerability errors', () => {
+  const workflow = yaml.load(read('.github/workflows/platform.yml'));
+  const scan = workflow.jobs.scan.steps.find(step => step.run?.includes('cosign verify-attestation'));
+  const digest = 'a'.repeat(64);
+  const envelope = (name, hash = digest) => ({payload:Buffer.from(JSON.stringify({
+    subject:[{digest:{sha256:hash}}], predicate:{spdxVersion:'SPDX-2.3',name},
+  })).toString('base64')});
+  const dir = mkdtempSync(join(tmpdir(), 'image-scan-'));
+  try {
+    for (const [name, source] of Object.entries({
+      docker:'#!/usr/bin/env bash\ncat > /dev/null\n',
+      cosign:'#!/usr/bin/env bash\ncat "$ATTESTATIONS"\nexit "${VERIFY_STATUS:-0}"\n',
+      grype:`#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.CALLS, JSON.stringify({args,sbom:JSON.parse(fs.readFileSync(args[0].slice('sbom:'.length),'utf8'))})+'\\n');
+process.exit(Number(process.env.GRYPE_STATUS ?? 0));
+`,
+    })) writeFileSync(join(dir, name), source, {mode:0o755});
+    const calls = join(dir, 'calls');
+    const attestations = join(dir, 'attestations');
+    const run = (statements, extra = {}) => {
+      writeFileSync(attestations, statements.map(value => JSON.stringify(value)).join('\n'));
+      writeFileSync(calls, '');
+      const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', scan.run], {encoding:'utf8',env:{
+        ...process.env, PATH:`${dir}:${process.env.PATH}`, RUNNER_TEMP:dir, ATTESTATIONS:attestations, CALLS:calls,
+        IMAGE:`example.invalid/console@sha256:${digest}`, REGISTRY_TOKEN:'fixture',
+        GITHUB_SERVER_URL:'https://github.com', GITHUB_REPOSITORY:'example/console', GITHUB_ACTOR:'fixture', ...extra,
+      }});
+      return {...result, calls:readFileSync(calls, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line))};
+    };
+    const single = run([envelope('first')]);
+    assert.equal(single.status, 0, single.stderr);
+    assert.equal(single.calls.length, 1);
+    const repeated = run([[envelope('first')], envelope('second'), envelope('unrelated', 'b'.repeat(64))]);
+    assert.equal(repeated.status, 0, repeated.stderr);
+    assert.deepEqual(repeated.calls.map(call => call.sbom.name), ['first','second']);
+    for (const call of repeated.calls) assert.deepEqual(call.args, [`sbom:${dir}/image-sbom.json`,'--only-fixed','--fail-on','high']);
+    for (const statements of [[], [envelope('unrelated', 'b'.repeat(64))]]) {
+      const missing = run(statements);
+      assert.notEqual(missing.status, 0, 'missing digest-matching evidence must fail');
+      assert.equal(missing.calls.length, 0);
+    }
+    const unverified = run([envelope('unverified')], {VERIFY_STATUS:'1'});
+    assert.notEqual(unverified.status, 0);
+    assert.equal(unverified.calls.length, 0);
+    const vulnerable = run([envelope('vulnerable'), envelope('second')], {GRYPE_STATUS:'2'});
+    assert.equal(vulnerable.status, 2);
+    assert.equal(vulnerable.calls.length, 1, 'a vulnerability failure must stop the scan');
+  } finally { rmSync(dir, {recursive:true,force:true}); }
 });
 
 function imageAdmission(extra = {}) {

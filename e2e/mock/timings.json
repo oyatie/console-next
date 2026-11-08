@@ -16,13 +16,21 @@
       "seconds": 15.7,
       "tests": 6
     },
+    "mock/approval-document.spec.ts": {
+      "seconds": 3.5,
+      "tests": 4
+    },
     "mock/approval-viewer.spec.ts": {
-      "seconds": 16.5,
+      "seconds": 10.7,
       "tests": 15
     },
+    "mock/approvals-layout.spec.ts": {
+      "seconds": 144.5,
+      "tests": 264
+    },
     "mock/approvals.spec.ts": {
-      "seconds": 7.8,
-      "tests": 5
+      "seconds": 38.7,
+      "tests": 17
     },
     "mock/attendance-detail.spec.ts": {
       "seconds": 9.9,
@@ -79,6 +87,10 @@
     "mock/import-csv.spec.ts": {
       "seconds": 6.8,
       "tests": 6
+    },
+    "mock/inbox-arrival.spec.ts": {
+      "seconds": 10.3,
+      "tests": 4
     },
     "mock/inbox-page.spec.ts": {
       "seconds": 69.3,

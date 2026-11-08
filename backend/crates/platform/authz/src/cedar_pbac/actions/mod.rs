@@ -244,3 +244,5 @@ pub(crate) mod pay_group;
 pub(crate) mod payroll_module;
 
 pub mod approval_document_list;
+
+pub mod approval_document_read;

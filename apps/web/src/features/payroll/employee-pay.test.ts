@@ -27,6 +27,8 @@ test("deductions require both instruments, provenance and a settled amount", () 
 test("known blockers are localised without hiding an unknown blocker", () => {
   expect(blockerText("ATTENDANCE_INCOMPLETE: backend details")).toBe("근태 기록이 충분하지 않습니다.");
   expect(blockerText("WITHHOLDING_NOT_COMPUTED")).toBe("원천징수를 계산하지 않았습니다.");
+  expect(blockerText("CONTRACT_WAGE_NOT_IN_FORCE")).toBe("적용 중인 계약 임금이 없습니다");
+  expect(blockerText("HOURLY_WAGE_NOT_SUPPORTED_IN_THIS_SLICE")).toBe("시급제 계약의 초안 계산을 지원하지 않습니다.");
   expect(blockerText("UNKNOWN")).toBe("확인 필요 · UNKNOWN");
 });
 
@@ -40,6 +42,26 @@ test("minimum-wage blockers use typed codes, never the backend sentence", () => 
   expect(draftBlockers({ ...draft, blockers: [], minimum_wage_check: { ...draft.minimum_wage_check!, passes: false } })).toEqual(["MINIMUM_WAGE_BELOW_FLOOR"]);
   expect(blockerText("MINIMUM_WAGE_BELOW_FLOOR")).toBe("최저임금에 미달합니다.");
 });
+test("the backend's incomparable sentence is localised without a comparator", async () => {
+  const data = { ...draft, blockers: ["최저임금 비교 불가: 월 소정근로시간이 근로계약에 없다"], minimum_wage_check: undefined };
+  expect(draftBlockers(data)).toEqual(["MINIMUM_WAGE_NOT_COMPARABLE"]);
+  expect(blockerText(draftBlockers(data)[0]!)).toBe("최저임금을 비교할 수 없습니다.");
+  await loadCatalog("en");
+  i18n.set("en");
+  try {
+    expect(draftBlockers(data)).toEqual(["MINIMUM_WAGE_NOT_COMPARABLE"]);
+    expect(blockerText(draftBlockers(data)[0]!)).toBe("Minimum wage cannot be compared.");
+  } finally { i18n.set("ko"); }
+});
+
+test("minimum-wage findings preserve unknowns, deduplicate codes and distinguish no comparison from a pass", () => {
+  for (const passes of [true, false, null] as const) {
+    const code = passes === false ? "MINIMUM_WAGE_BELOW_FLOOR" : "MINIMUM_WAGE_NOT_COMPARABLE";
+    expect(draftBlockers({ ...draft, blockers: [], minimum_wage_check: { ...draft.minimum_wage_check!, passes } })).toEqual(passes === true ? [] : [code]);
+    expect(draftBlockers({ ...draft, blockers: [code, code, "UNKNOWN: details"], minimum_wage_check: { ...draft.minimum_wage_check!, passes } })).toEqual([code, "UNKNOWN: details"]);
+  }
+  expect(blockerText("MINIMUM_WAGE_NOT_COMPARABLE: detail")).toBe("최저임금을 비교할 수 없습니다.");
+});
 test("insurance totals require every employee component's citation", () => {
   expect(insuranceCited(draft)).toBe(true);
   expect(insuranceCited({ ...draft, deductions: [] })).toBe(false);
@@ -48,6 +70,19 @@ test("insurance totals require every employee component's citation", () => {
     expect(insuranceCited({ ...draft, deductions: [{ ...draft.deductions![0]!, ...change }] })).toBe(false);
   }
   expect(insuranceCited({ ...draft, deductions: [...draft.deductions!, { ...draft.deductions![0]!, employer_only: true, employee_won: null }] })).toBe(true);
+});
+
+test("insurance totals reconcile every visible employee row and exclude employer costs", () => {
+  const row = draft.deductions![0]!;
+  const data: typeof draft = { ...draft, deductions: [row, { ...row, code: "HealthInsurance", employee_won: 123 }, { ...row, code: "IndustrialAccident", employer_only: true, employee_won: null }], total_employee_insurance_won: row.employee_won! + 123 };
+  expect(insuranceCited(data)).toBe(true);
+  expect(insuranceCited({ ...data, total_employee_insurance_won: row.employee_won! })).toBe(false);
+  expect(insuranceCited({ ...data, total_employee_insurance_won: undefined })).toBe(false);
+  expect(insuranceCited({ ...data, total_employee_insurance_won: null })).toBe(false);
+  expect(insuranceCited({ ...data, total_employee_insurance_won: 1.5 })).toBe(false);
+  expect(insuranceCited({ ...data, deductions: [{ ...row, employee_won: Number.MAX_SAFE_INTEGER }, { ...row, code: "HealthInsurance", employee_won: 1 }], total_employee_insurance_won: Number.MAX_SAFE_INTEGER + 1 })).toBe(false);
+  expect(insuranceCited({ ...data, deductions: [{ ...row, employee_won: 0 }], total_employee_insurance_won: 0 })).toBe(true);
+  expect(insuranceCited({ ...data, deductions: [{ ...row, employer_only: true }], total_employee_insurance_won: 0 })).toBe(false);
 });
 
 test("legacy minimum-wage findings retain typed codes in English", async () => {

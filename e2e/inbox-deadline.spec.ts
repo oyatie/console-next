@@ -38,6 +38,9 @@ test("scheduled system actions keep a neutral deadline under the registered wind
   const page = await queue.json() as components["schemas"]["ActionInboxResponse"];
   expect(page.items.find((item) => item.links.some((link) => link.kind === "org_change" && link.id === change.id)))
     .toMatchObject({ dueTone: "neutral", days_remaining: 3 });
+  const scheduled = page.items.find((item) => item.links.some((link) => link.kind === "org_change" && link.id === change.id))!;
+  expect(scheduled.due).toMatch(/Z$/);
+  expect(Number.isFinite(Date.parse(scheduled.due!))).toBe(true);
   await go(admin, "/");
   const inbox = admin.getByRole("region", { name: "업무함", exact: true });
   await inbox.getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();

@@ -270,3 +270,6 @@ mod surfaces;
 
 #[path = "support_sessions/policy.rs"]
 mod policy;
+
+#[path = "support_sessions/timestamps.rs"]
+mod timestamps;

@@ -25,23 +25,28 @@ pub(crate) async fn list_closes(
             )
         })?
         .from;
-    let preflight = state
-        .store
-        .close_checks(
-            &scope(&p),
-            &CloseMonth {
-                month: q.month.clone(),
-                branch_scope: q.branch_id,
-                attest: false,
-            },
-        )
-        .await
-        .map_err(RestError::store)?;
     let closes = state
         .store
         .list_closes(&scope(&p), q.branch_id, month)
         .await
         .map_err(RestError::store)?;
+    let preflight = if closes.is_empty() {
+        let preflight = state
+            .store
+            .close_checks(
+                &scope(&p),
+                &CloseMonth {
+                    month: q.month.clone(),
+                    branch_scope: q.branch_id,
+                    attest: false,
+                },
+            )
+            .await
+            .map_err(RestError::store)?;
+        Some(preflight)
+    } else {
+        None
+    };
     let mut subjects: Vec<_> = closes
         .iter()
         .flat_map(|close| {
@@ -80,7 +85,7 @@ pub(crate) async fn list_closes(
                 )
             })
     };
-    let items = if closes.is_empty() {
+    let items = if let Some(preflight) = preflight {
         vec![MonthCloseItemDto {
             branch_scope: q
                 .branch_id

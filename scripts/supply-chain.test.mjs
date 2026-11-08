@@ -171,6 +171,23 @@ test("Dependabot groups only minor and patch updates weekly on dev, leaving majo
   assert.deepEqual(config.updates.find((u) => u["package-ecosystem"] === "cargo").directories.sort(), ["/apps/desktop/src-tauri", "/backend", "/backend/fuzz"]);
 });
 
+for (const ecosystem of ["github-actions", "npm", "cargo"]) {
+  test(`Dependabot ${ecosystem} lets new releases settle before version updates`, () => {
+    const config = yaml.load(read(".github/dependabot.yml"));
+    const update = config.updates.find((u) => u["package-ecosystem"] === ecosystem);
+    assert.deepEqual(update.cooldown, { "default-days": 7 });
+  });
+}
+
+test("Dependabot cooldown day values never fall below seven days", () => {
+  const config = yaml.load(read(".github/dependabot.yml"));
+  for (const update of config.updates) {
+    for (const [key, days] of Object.entries(update.cooldown)) {
+      if (key.endsWith("-days")) assert.ok(days >= 7, `${update["package-ecosystem"]}: ${key} must be at least seven days`);
+    }
+  }
+});
+
 test("Dependabot defers incompatible cipher and Apalis updates, leaving desktop patches eligible", () => {
   const source = read(".github/dependabot.yml");
   const config = yaml.load(source);
