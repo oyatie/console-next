@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Route-state evidence
 
-The CI `d10-evidence` job produces `states.json` once from the existing duration-budgeted state shards on dev pushes. The `d8-evidence` artifact contains this file alongside live write-probe and client-error evidence, including red state observations. Built-in Playwright JSON reports remain in `states-report-*`; no additional specs run to produce evidence.
+The CI `states-timings` job publishes `states.json` as the `states-evidence` artifact on dev pushes affecting web code, independently of backend or live-journey changes. It reuses the tested route inventory and duration-budgeted state reports, including red observations, before refreshing timings. Built-in Playwright JSON reports remain in `states-report-*`; no additional specs or PR jobs run to produce evidence.
 
 ```sh
 node scripts/d8-module-routes.mjs .cache/states-evidence/routes.json
@@ -15,10 +15,17 @@ Every app route has a row for loading, failed, empty and refused. The existing h
 
 Rendering a state successfully does not establish support-reference or floorplan conformance. The reader checks those fields independently for D8/D9. Row `kind` distinguishes general `screen-state` fixtures from dedicated `support-reference` probes, so intentionally reference-free fixtures cannot override reference proof; null references and missing declarations remain visible. This mocked evidence never raises D6 or establishes live support-reference resolution.
 
-Download the artifact from a **dev push** matching its commit, then run from the checkout containing the screens reader:
+From the repository root, download and ingest the latest completed **ci dev push** set with the existing screens reader:
 
 ```sh
-python3 screens/evidence.py ingest ARTIFACT_DIR/states.json
+bash scripts/pull-measured-evidence.sh READER_DIR [OWNER/REPO]
+```
+
+This validates all three envelopes (`states`, `e2e`, `nextest`) before ingesting any. It checks the dev commit, report freshness and the reader's row schema. Failed and unknown rows stay unchanged. Missing artifacts fail explicitly; the command never selects an older successful run to hide a failed latest run. Before the standalone artifact rolls out, it accepts the existing `d8-evidence` states file. D7 inputs come from `d7-evidence` in the same run. Repository selection uses the argument, `GITHUB_REPOSITORY`, then `gh repo view`.
+
+Then refresh scores from the checkout containing the reader:
+
+```sh
 python3 screens/build.py inventories
 bash screens/ratchet.sh
 ```
