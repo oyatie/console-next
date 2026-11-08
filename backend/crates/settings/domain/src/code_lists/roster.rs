@@ -183,4 +183,5 @@ reason_domains! {
     // PIPA §35③; a justified postponement always records its cause.
     PrivacyPostponeAccess => "privacy_postpone_access" ["JUSTIFIED_REASON"] closed;
     PrivacyIdentityMethod => "privacy_identity_method" ["SIGNED_IN", "ID_DOCUMENT_SEEN", "KNOWN_CONTACT", "AGENT_MANDATE"] closed;
+    OvertimeApprovalMethod => "overtime_approval_method" ["IN_APP", "WRITTEN", "VERBAL"] closed;
 }
