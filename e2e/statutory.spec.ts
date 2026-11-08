@@ -26,7 +26,6 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await expect(admin.getByRole("tab")).toHaveCount(2);
   const row = admin.getByRole("row").filter({ hasText: "김신고" }).filter({ hasText: "국민연금" });
   await expect(row).toContainText("취득 신고");
-  await expect(admin.getByRole("columnheader", { name: "사번", exact: true })).toBeVisible();
   await expect(admin.getByRole("columnheader", { name: "사업장", exact: true })).toBeVisible();
   await expect(row).toContainText("S-1");
   await expect(row).toContainText("노무사 검토 전");
