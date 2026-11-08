@@ -31,6 +31,41 @@ async function filtersFixture(page: Page) {
   return { ...shell, requests };
 }
 
+for (const state of ["available", "absent", "failed", "search_invalid"] as const) {
+  test(`access-log actor availability waits for loaded choices: ${state} @ui-state`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+    const fixture = await filtersFixture(page);
+    let release!: () => void;
+    const response = new Promise<void>(resolve => { release = resolve; });
+    await page.route(url => url.pathname === "/api/v1/access/access-log", async route => {
+      await response;
+      if (state === "failed" || state === "search_invalid") {
+        await route.fulfill({ status: state === "failed" ? 503 : 422, json: { error: { code: state === "failed" ? "service_unavailable" : "search_invalid", message: "unavailable" } } });
+      } else await route.fallback();
+    });
+    try {
+      await page.goto(`/audit/access-log?period=2026-10&actor=${id(state === "absent" ? 102 : 101)}${state === "search_invalid" ? "&search=invalid" : ""}`);
+      await expect(page.getByRole("status", { name: /^불러오는 중/ })).toBeVisible();
+      await expect(page.getByText("선택할 수 없는 접속자", { exact: true })).toHaveCount(0);
+      await expect(page.getByLabel("적용한 필터", { exact: true })).toHaveCount(0);
+      release();
+      if (state === "failed" || state === "search_invalid") {
+        await expect(page.getByRole("button", { name: "다시 불러오기", exact: true })).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByText("선택할 수 없는 접속자", { exact: true })).toHaveCount(0);
+        await expect(page.getByLabel("적용한 필터", { exact: true })).toHaveCount(0);
+      } else {
+        await expect(page.getByRole("grid")).toBeVisible();
+        await expect(page.getByLabel("적용한 필터", { exact: true })).toHaveText(`접속자${state === "available" ? "김민수" : "선택할 수 없는 접속자"}`);
+      }
+      await fits(page, `audit actor ${state}`);
+      await expectAxe(page, `audit actor ${state}`);
+      await page.screenshot({ path: testInfo.outputPath(`actor-${state}.png`), fullPage: true });
+      expect(fixture.unexpected).toEqual([]);
+    } finally { release(); fixture.release(); }
+  });
+}
+
 test("access-log keeps filter selection disabled after the page read fails @ui-state", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
