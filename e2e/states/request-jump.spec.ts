@@ -27,9 +27,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
     try {
       await page.goto("/");
       await expect(page.getByRole("heading", { name: t("home.noWork.title"), exact: true })).toBeVisible();
+      const triggerText = await page.getByRole("button", { name: t("shell.jumpLabel"), exact: true, includeHidden: true }).locator("span").innerText();
       await page.keyboard.press("Control+KeyK");
       const palette = page.getByRole("dialog", { name: t("shell.jumpLabel"), exact: true });
       const input = palette.getByRole("searchbox");
+      await expect(input).toHaveAttribute("placeholder", triggerText);
       await input.fill(`  ${key}  `);
       const result = palette.getByRole("menuitem", { name: t("requestOutcome.find"), exact: true });
       await expect(result).toBeVisible();

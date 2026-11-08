@@ -69,7 +69,7 @@ export function JumpPalette({ onClose }: { onClose: () => void }) {
       open
       onClose={onClose}
       label={t("shell.jumpLabel")}
-      placeholder={t("requestOutcome.search")}
+      placeholder={t("shell.jump")}
       query={q}
       onQuery={setQ}
       sections={sections}

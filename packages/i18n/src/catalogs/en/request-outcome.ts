@@ -6,7 +6,6 @@ export const enRequestOutcome = {
   "requestOutcome.code.second_person_required": "The requester cannot decide through another account. Ask a different person with decision authority.",
 
   "requestOutcome.lookup": "Request ID or key",
-  "requestOutcome.search": "Search places, people, or request numbers",
   "requestOutcome.find": "Check result",
   "requestOutcome.empty": "Enter a request ID to check its outcome.",
   "requestOutcome.masked": "Inputs and results are masked because you no longer have read access.",
