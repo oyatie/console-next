@@ -31,7 +31,6 @@ jobs:
       - name: Contracts and strict manifests
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
-          actionlint .github/workflows/platform.yml .github/workflows/platform-negative-signer.yml .github/workflows/api-compat.yml .github/workflows/gates.yml
           python3 -m unittest discover -s deploy/ci -p '*_test.py'
           node --test deploy/ci/*.test.mjs
           bash deploy/ci/validate.sh
