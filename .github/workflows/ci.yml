@@ -463,7 +463,7 @@ jobs:
         with: {node-version-file: .node-version}
       - name: Install pinned Rust test runner
         run: |
-          curl --fail --silent --show-error --retry 4 --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
+          curl --fail --silent --show-error --retry 8 --retry-delay 15 --retry-all-errors --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
             "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
           echo "e1c85dbe02dcf5b963803b3f96f4f561757f5c37cab68c932411dea20d57284e  ${RUNNER_TEMP}/nextest.tar.gz" | sha256sum -c -
           tar -xzf "${RUNNER_TEMP}/nextest.tar.gz" -C "${RUNNER_TEMP}" cargo-nextest
