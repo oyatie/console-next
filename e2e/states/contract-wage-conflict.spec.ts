@@ -36,7 +36,7 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
     await form.getByLabel(t("payroll.employee.source"), { exact: false }).fill(original.source_note);
     const submit = form.getByRole("button", { name: commitLabel({ kind: "contractWage", mode: "save" }), exact: false });
     await submit.click();
-    await expect(form.getByRole("alert")).toContainText("이 직원의 같은 적용 시작일에 계약 임금이 이미 등록되어 있습니다. 등록된 계약 임금을 확인하고 적용 시작일을 변경하십시오.");
+    await expect(form.getByRole("alert")).toContainText(t("payroll.refuse.contract_wage_exists"));
     await expect(form.getByRole("alert")).toContainText("contract_wage_exists");
     await expect(form.getByRole("status")).toHaveCount(0);
     await expect(form.getByLabel(t("payroll.employee.effective"), { exact: false })).toHaveValue(fmtDate(original.effective_from));
