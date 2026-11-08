@@ -190,7 +190,7 @@ test("Dependabot cooldown day values never fall below seven days", () => {
   }
 });
 
-test("Dependabot defers incompatible cipher and Apalis updates, leaving desktop patches eligible", () => {
+test("Dependabot defers incompatible Cargo updates, leaving desktop patches eligible", () => {
   const source = read(".github/dependabot.yml");
   const config = yaml.load(source);
   const cargo = config.updates.find((u) => u["package-ecosystem"] === "cargo");
@@ -198,17 +198,21 @@ test("Dependabot defers incompatible cipher and Apalis updates, leaving desktop 
     { "dependency-name": "chacha20poly1305", versions: [">=0.11"] },
     { "dependency-name": "windows-registry", versions: [">=0.7"] },
     ...["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({ "dependency-name": name })),
+    ...["webauthn-rs", "webauthn-rs-proto", "webauthn-authenticator-rs"].map((name) => ({ "dependency-name": name, versions: ["0.6.*"] })),
   ]);
   assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
 });
 
-test("Dependabot keeps Node declarations on the runtime major and defers native TypeScript", () => {
+test("Dependabot keeps runtime constraints and defers incompatible npm updates", () => {
   const config = yaml.load(read(".github/dependabot.yml"));
   const npm = config.updates.find((u) => u["package-ecosystem"] === "npm");
   const nodeMajor = Number(read(".node-version").trim());
   assert.deepEqual(npm.ignore, [
     { "dependency-name": "@types/node", versions: [`>=${nodeMajor + 1}`] },
     { "dependency-name": "typescript", "update-types": ["version-update:semver-major"] },
+    { "dependency-name": "stylelint", versions: ["18.x"] },
+    { "dependency-name": "oxlint", versions: ["1.91.x"] },
+    { "dependency-name": "@tanstack/react-query", versions: [">=5.105.2"] },
   ]);
   assert.match(read(".github/dependabot.yml"), /#.*openapi-typescript.*JavaScript compiler API/);
   const manifest = JSON.parse(read("package.json"));
