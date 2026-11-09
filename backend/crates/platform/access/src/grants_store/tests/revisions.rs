@@ -106,7 +106,11 @@ async fn activating_a_held_elevated_draft_is_delayed_only_after_go_live(pool: Pg
 async fn an_exit_ends_or_cancels_pending_grants_before_activation(pool: PgPool) {
     for starts_after_exit in [false, true] {
         let (org, actor, target, role) = fixture(&pool).await;
-        let now = OffsetDateTime::now_utc();
+        // Use the database's timestamp precision for the exact expiry assertion.
+        let now: OffsetDateTime = sqlx::query_scalar("SELECT now()")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         let ends_at = now + time::Duration::days(30);
         let employee: Uuid = sqlx::query_scalar("INSERT INTO employees (org_id,company,name,source_filename,source_sheet,source_row,source_key)
             VALUES ($1,'Synthetic','퇴직자','fixture','fixture',1,$2) RETURNING id")
