@@ -108,6 +108,7 @@ export const enAttendanceRecords: Partial<Record<keyof typeof koAttendanceRecord
   "attendanceRecords.evidence.label": "Evidence · what was this taken from",
   "attendanceRecords.evidence.hint": "Nothing chosen · kept in the history and the attendance statement",
   "attendanceRecords.evidence.PAPER_SHEET": "Paper attendance sheet",
+  "attendanceRecords.evidence.WORK_OUTPUT": "Work records · output",
   "attendanceRecords.evidence.DEVICE_FILE": "Time-clock printout or file",
   "attendanceRecords.evidence.SUPERVISOR_CONFIRM": "Supervisor's confirmation · name them",
   "attendanceRecords.evidence.EMPLOYEE_STATEMENT": "Employee's statement",

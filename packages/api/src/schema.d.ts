@@ -15894,7 +15894,7 @@ export interface components {
             /** @enum {string} */
             source: "MANUAL" | "BULK" | "PASTE" | "SCHEDULE" | "IMPORT" | "CORRECTION" | "VOID";
             /** @enum {string} */
-            evidence_kind: "PAPER_SHEET" | "SUPERVISOR_CONFIRM" | "DEVICE_FILE" | "EMPLOYEE_STATEMENT" | "OTHER";
+            evidence_kind: "PAPER_SHEET" | "SUPERVISOR_CONFIRM" | "DEVICE_FILE" | "EMPLOYEE_STATEMENT" | "WORK_OUTPUT" | "OTHER";
             reason?: string | null;
             supersedes_id?: components["schemas"]["Uuid"];
             undone: boolean;
@@ -15917,7 +15917,7 @@ export interface components {
         AttendanceEntryKind: "TIMES" | "CLOCK_IN_ONLY" | "ABSENT" | "OUTSIDE_WORK" | "BUSINESS_TRIP" | "VOID";
         AttendanceEvidence: {
             /** @enum {string} */
-            kind: "PAPER_SHEET" | "SUPERVISOR_CONFIRM" | "DEVICE_FILE" | "EMPLOYEE_STATEMENT" | "OTHER";
+            kind: "PAPER_SHEET" | "SUPERVISOR_CONFIRM" | "DEVICE_FILE" | "EMPLOYEE_STATEMENT" | "WORK_OUTPUT" | "OTHER";
             note?: string;
             /** @description required for SUPERVISOR_CONFIRM */
             confirmer_employee_id?: components["schemas"]["Uuid"];

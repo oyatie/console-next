@@ -58,3 +58,31 @@ fn shrinking_the_repeat_window_takes_the_loosening_delay() {
         Err(SettingError::LooseningTooSoon { .. })
     ));
 }
+
+#[test]
+fn paid_disposition_reasons_have_separate_domains() {
+    for (wire, code, other) in [
+        (
+            "excess_post_approval",
+            "WORK_CONFIRMED",
+            "STATUTORY_CAP_EXCEEDED",
+        ),
+        (
+            "excess_paid_over_cap",
+            "STATUTORY_CAP_EXCEEDED",
+            "WORK_CONFIRMED",
+        ),
+    ] {
+        let domain = parse_domain(wire).unwrap();
+        assert!(validate_reason(domain, code, None, &[]).is_ok());
+        for invalid in [
+            "",
+            "GARBAGE",
+            "PERSONAL_PRESENCE",
+            "TIME_INPUT_ERROR",
+            other,
+        ] {
+            assert!(validate_reason(domain, invalid, None, &[]).is_err());
+        }
+    }
+}

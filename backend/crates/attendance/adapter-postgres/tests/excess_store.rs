@@ -6,6 +6,8 @@ mod support;
 
 #[path = "excess_store/cancel_race.rs"]
 mod cancel_race;
+#[path = "excess_store/dispositions.rs"]
+mod dispositions;
 #[path = "excess_store/foreign_keys.rs"]
 mod foreign_keys;
 #[path = "excess_store/invariants.rs"]
@@ -247,7 +249,7 @@ async fn new_dispositions_are_final_immutable_and_old_writes_remain_valid(pool: 
         let mut tx = runtime(&w).await;
         let entry_id = foreign_keys::entry(&w).await;
         let changes = serde_json::json!({"action": action,
-            "reason_code": if action == "RECORD_CORRECTION" { "TIME_INPUT_ERROR" } else { "PERSONAL_PRESENCE" },
+            "reason_code": match action { "RECORD_CORRECTION" => Some("TIME_INPUT_ERROR"), "NOT_WORK" => Some("PERSONAL_PRESENCE"), "POST_APPROVAL" => Some("WORK_CONFIRMED"), "PAID_OVER_CAP" => Some("STATUTORY_CAP_EXCEEDED"), _ => None },
             "superseding_entry_id": entry_id});
         let id = if ["CONFIRM", "APPROVE_OVERTIME"].contains(&action) {
             sqlx::query_scalar(
