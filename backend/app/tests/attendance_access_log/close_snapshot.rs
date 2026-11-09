@@ -15,7 +15,7 @@ async fn pending_leave(pool: &PgPool, admin: &Ctx, person: &str) {
         .bind(Uuid::new_v4()).execute(&command).await.unwrap();
 }
 
-async fn snapshot(pool: PgPool, workplace: bool) {
+async fn snapshot(pool: PgPool, workplace: bool, filtered: bool) {
     let (admin, people) = world(&pool).await;
     let branch: Uuid = sqlx::query_scalar("SELECT home_branch_id FROM employees WHERE id=$1")
         .bind(Uuid::parse_str(&people[0]).unwrap())
@@ -25,7 +25,8 @@ async fn snapshot(pool: PgPool, workplace: bool) {
     let scope = workplace.then_some(branch);
     let path = format!(
         "/api/v1/attendance/closes?month=2026-10{}",
-        scope
+        filtered
+            .then_some(branch)
             .map(|id| format!("&branch_id={id}"))
             .unwrap_or_default()
     );
@@ -125,10 +126,15 @@ async fn snapshot(pool: PgPool, workplace: bool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn organization_close_preserves_snapshot_without_live_sources(pool: PgPool) {
-    snapshot(pool, false).await;
+    snapshot(pool, false, false).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn workplace_close_preserves_snapshot_without_live_sources(pool: PgPool) {
-    snapshot(pool, true).await;
+    snapshot(pool, true, true).await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn organization_close_preserves_snapshot_under_workplace_filter(pool: PgPool) {
+    snapshot(pool, false, true).await;
 }

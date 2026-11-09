@@ -506,7 +506,7 @@ impl PgAttendanceStore {
         app::ensure_scope(caller, branch_id)?;
         let org = OrgId::from_uuid(caller.org_id);
         with_org_conn::<_, _, AttendanceStoreError>(&self.pool, org, move |tx| Box::pin(async move {
-            let rows = sqlx::query("SELECT id,month,branch_id,checks,attested_by,attested_at,period_lock_id,closed_at FROM attendance_month_closes WHERE branch_id IS NOT DISTINCT FROM $1 AND month=$2 ORDER BY month DESC").bind(branch_id).bind(month).fetch_all(tx.as_mut()).await?;
+            let rows = sqlx::query("SELECT id,month,branch_id,checks,attested_by,attested_at,period_lock_id,closed_at FROM attendance_month_closes WHERE (branch_id IS NULL OR branch_id=$1) AND month=$2 ORDER BY month DESC").bind(branch_id).bind(month).fetch_all(tx.as_mut()).await?;
             let mut result=Vec::with_capacity(rows.len()); for row in &rows { result.push(close_read(tx,row).await?); } Ok(result)
         })).await
     }
@@ -937,7 +937,7 @@ async fn close_checks(
     let open:i64=sqlx::query_scalar("SELECT count(*) FROM attendance_exceptions WHERE status='OPEN' AND work_date >= $1 AND work_date < $2 AND ($3::uuid IS NULL OR branch_id=$3)").bind(month).bind(next).bind(branch).fetch_one(tx.as_mut()).await?;
     let pending:i64=sqlx::query_scalar("SELECT count(*) FROM leave_requests WHERE status IN ('pending','PENDING') AND start_date < $2 AND end_date >= $1 AND ($3::uuid IS NULL OR branch_id=$3)").bind(month).bind(next).bind(branch).fetch_one(tx.as_mut()).await?;
     let closed: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM attendance_month_closes WHERE month=$1 AND branch_id IS NOT DISTINCT FROM $2)",
+        "SELECT EXISTS(SELECT 1 FROM attendance_month_closes WHERE month=$1 AND (branch_id IS NULL OR branch_id=$2))",
     )
     .bind(month)
     .bind(branch)
