@@ -28,6 +28,8 @@ export const enCommon = {
   "common.failed.code.record_single_entry_exists": "Nothing was added because this entry already exists. Review and correct the existing entry.",
   "common.failed.code.record_version_conflict": "Nothing was saved because someone else changed the record first. Refresh the personnel card before correcting it.",
   "common.failed.code.rehire_requires_exited": "Only an exited employee can be rehired. Check the current status in personnel history.",
+  "common.retryCommand": "Try again",
+  "common.failed.code.session_renewal_unreachable": "Your changes were not saved because the connection failed. Try again when connected.",
   "common.failed.code.change_request_closed": "This request has already been decided or withdrawn. Check its current status in the request list.",
   "common.failed.code.change_request_self_decision": "You cannot decide a change request you sent. Ask another handler to decide it.",
   "common.failed.code.filter_invalid": "Choose an available filter option and dates within the review month, then try again.",

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { acceptConsent, configure, session } from "@console/api";
+import { syncDraftPrincipal } from "./draft-owner";
 import { consentDestination, ensureSession, ensureEnrolling, rememberInterrupted } from "./session";
 
 const pair = (accepted?: boolean) => ({
@@ -14,7 +15,7 @@ beforeEach(() => {
   fetch.mockReset().mockImplementation(async () => new Response(JSON.stringify({ accepted: true })));
   vi.stubGlobal("fetch", fetch);
 });
-afterEach(() => { session.set(null); vi.unstubAllGlobals(); });
+afterEach(() => { session.set(null); syncDraftPrincipal(null); vi.unstubAllGlobals(); });
 
 test("ten route changes use the accepted session with zero consent requests", async () => {
   session.set(pair(true));

@@ -5,7 +5,7 @@ import { acceptConsent, firstSignIn, go, kstDate, option, passkeyLogin, register
 import { setupCompany, startOperations, tenantInSetup } from "./setup-flows";
 import { expectAccessible } from "./a11y";
 import { inviteAccount } from "./access-flows";
-import { forgetResize } from "./stability";
+import { clearShifts, forgetResize } from "./stability";
 import { authenticatorOf } from "./auth";
 import { apiOf, bearerOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
@@ -57,6 +57,8 @@ for (const [reason, message, passkey] of [
       return denied ? route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: { code: "unauthorized", message: "ended" } }) }) : route.fallback();
     });
     await page.route(REFRESH, (route) => route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: { code: reason, message: "ended" } }) }));
+    // Audit the interrupted write and recovery, after the fixture's earlier screen transitions.
+    await page.evaluate(clearShifts);
     await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
     const recovery = page.getByRole("dialog", { name: "다시 로그인" });
     await expect(recovery).toContainText(message);
@@ -151,8 +153,11 @@ test("exit-report draft survives close/reload, discards explicitly, and never cr
   await admin.context().addCookies(execPair);
   const sibling = await admin.context().newPage();
   await sibling.goto(record);
-  await expect(admin).toHaveURL(/\/login/);
+  await routeReady(sibling);
+  // The changed shared cookie restores the sibling account after the sign-out transition.
+  await expect(admin).toHaveURL(new URL("/", admin.url()).href);
   await routeReady(admin);
+  await expect(admin.getByRole("link", { name: "이임원", exact: true })).toBeVisible();
   expect(await drafts(admin)).toHaveLength(0);
   await expect(admin.getByText(note)).toHaveCount(0);
   await sibling.getByRole("button", { name: "퇴직 보고", exact: true }).click();
@@ -281,19 +286,31 @@ for (const different of [false, true]) {
     if (!different) await recoveryScreenProof(user, "reset");
     await recovery.getByRole("button", { name: "코드로 로그인" }).click();
     await expect(user).toHaveURL(/\/login\?code=true/);
-    expect(await drafts(user)).toHaveLength(1);
+    expect(await drafts(user)).toHaveLength(2);
     if (!different) {
-      await recoveryScreenProof(user, "code-login");
       await user.goBack();
       await recovery.getByRole("button", { name: "코드로 로그인" }).click();
+      await user.reload();
+      await expect(user.getByLabel("일회용 코드")).toBeFocused();
+      await expect(user.locator("summary")).not.toContainText("처음이면");
+      await recoveryScreenProof(user, "code-login");
     }
     await authenticatorOf(user).clear();
     await user.getByLabel("일회용 코드").fill(otherCode ?? code);
     await user.getByRole("button", { name: "코드로 로그인" }).click();
     await expect(user).toHaveURL(/\/setup-passkey/, { timeout: 20_000 });
     if (different) await acceptConsent(user);
-    if (!different) await recoveryScreenProof(user, "setup-passkey");
+    if (!different) {
+      await recoveryScreenProof(user, "setup-passkey");
+      await user.route("**/api/v1/auth/passkey/login/start", route => route.abort());
+    }
     await user.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/, disabled: false }).click();
+    if (!different) {
+      await expect(user).toHaveURL(/\/login\?enrolled=true/);
+      expect(await drafts(user)).toHaveLength(2);
+      await user.unroute("**/api/v1/auth/passkey/login/start");
+      await passkeyLogin(user);
+    }
     await expect(user).toHaveURL(different ? /\/$/ : returnUrl, { timeout: 20_000 });
     await routeReady(user);
     expect(keys).toHaveLength(1);
@@ -313,5 +330,46 @@ for (const different of [false, true]) {
       expect(keys).toHaveLength(2);
       expect(await drafts(user)).toEqual([]);
     }
+  });
+}
+
+
+for (const retry of ["form", "banner"] as const) {
+  test(`a refused write with unreachable renewal retries edited input from the ${retry} under its original key`, async ({ browser }) => {
+    const page = await soloTenant(browser, `renewal${retry}`, "저장복구상사");
+    const api = apiAs(page);
+    await setupCompany(page, "저장복구상사");
+    await startOperations(page);
+    await registerEmployee(page, { name: "김재시도", number: "REC-0006", hired: kstDate(-30), unit: "본점" });
+    const employee = new URL(page.url()).pathname.split("/").pop()!;
+    const form = await openDraft(page);
+    const keys: string[] = [];
+    let refused = true;
+    await page.route(REPORT, route => {
+      if (route.request().method() !== "POST") return route.continue();
+      keys.push(route.request().headers()["idempotency-key"]!);
+      return refused ? route.fulfill({ status: 401, json: { error: { code: "unauthorized" } } }) : route.continue();
+    });
+    await page.route(REFRESH, route => route.abort());
+    await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
+    await expect(form).toContainText("연결되지 않아 저장하지 않았습니다");
+    await expect(form.getByRole("button", { name: "기록됐는지 확인" })).toHaveCount(0);
+    await expect(form.getByRole("button", { name: "다시 시도", exact: true })).toBeVisible();
+    await recoveryScreenProof(page, "not-saved");
+    refused = false;
+    await page.unroute(REFRESH);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    expect(keys).toHaveLength(1);
+    const saved = page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/hr/exit-cases", { timeout: 15_000 });
+    const edited = "고친 퇴직 경위";
+    await form.getByRole("textbox", { name: /^퇴직 경위/ }).fill(edited);
+    await form.getByRole("button", { name: retry === "form" ? "퇴직 보고 1명 적용" : "다시 시도", exact: true }).click();
+    expect((await saved).ok()).toBe(true);
+    await expect(form).toBeHidden();
+    expect(keys[0]).toBeTruthy();
+    expect(keys).toEqual([keys[0], keys[0]]);
+    const cases = await api<{ items: { site_manager_note: string }[] }>(`/api/v1/hr/exit-cases?employee_id=${employee}`);
+    expect(cases.items).toHaveLength(1);
+    expect(cases.items[0]!.site_manager_note).toBe(edited);
   });
 }

@@ -11,6 +11,7 @@ import { Banner } from "../ui/banner/banner";
 import { Button, Form } from "../ui/button/button";
 import { Field, TextInput } from "../ui/field/field";
 import { PageHead } from "../ui/page-head/page-head";
+import { consentDestination } from "../lib/react/session";
 import { IDLE_EXPIRED } from "./idle";
 import { autofillPaused, rememberDomain, rememberedDomains, resumeAutofill } from "./sign-in-id";
 import { parseSignInId } from "./sign-in-id-input";
@@ -80,6 +81,8 @@ function useAutofill(signedIn: () => Promise<void>) {
 export function Login() {
   const nav = useNavigate();
   const { enrolled, cancelled, code } = loginRoute.useSearch();
+  const codeInput = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (code) codeInput.current?.focus(); }, [code]);
   const [otp, setOtp] = useState("");
   const [id, setId] = useState("");
   const [idError, setIdError] = useState<string | null>(null);
@@ -104,7 +107,7 @@ export function Login() {
       if (currentDomain) rememberDomain(currentDomain, submittedDomain);
     }
     resumeAutofill();
-    await nav({ to: session.stage === "enroll" ? "/setup-passkey" : session.claims?.platform ? "/platform" : "/" });
+    await nav({ href: session.stage === "enroll" ? "/setup-passkey" : consentDestination() });
   };
   const abortAutofill = useAutofill(signedIn);
   const run = async (fn: () => Promise<void>, onFail: (e: unknown) => Recovery) => {
@@ -185,7 +188,7 @@ export function Login() {
           <KeyRound size={16} aria-hidden /> {t("auth.login.passkey")}
         </Button>
         <details open={code || undefined}>
-        <summary>{t("auth.login.or")}</summary>
+        <summary>{t(code ? "auth.login.code" : "auth.login.or")}</summary>
         <Form className="form" onSubmit={submitOtp}>
           <Field label={t("auth.login.code")} required={null} hint={t("auth.login.codeHint", { count: otp.replaceAll("-", "").length, length: OTP_LENGTH })}>
             {/* Enter submits only this code form; the server also accepts outstanding legacy codes. */}
@@ -193,6 +196,7 @@ export function Login() {
               <TextInput
                 {...p}
                 className="code"
+                ref={codeInput}
                 autoComplete="one-time-code"
                 autoCapitalize="none"
                 autoCorrect="off"

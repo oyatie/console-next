@@ -14,4 +14,8 @@ test.each([undefined, true])("code recovery opens the existing code form (code=%
   const html = renderToStaticMarkup(<Login />);
   expect(html.includes('<details open="">')).toBe(code === true);
   expect(html.match(/autocomplete="one-time-code"/gi)).toHaveLength(1);
+  if (code) {
+    expect(html).not.toContain("처음이면");
+    expect(html).toContain("일회용 코드");
+  }
 });

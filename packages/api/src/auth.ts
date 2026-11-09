@@ -90,7 +90,7 @@ export async function registerPasskey(opts: { stepUp?: boolean; label?: string }
   try {
     await loginWithPasskey({ identifier: done.sign_in_id ?? undefined });
   } catch (e) {
-    session.set(null); // the passkey is enrolled; sign-in continues from the login screen
+    session.expire(null, { preservePrincipal: true }); // the new passkey can sign in without losing this account’s drafts
     throw new Error(PASSKEY_ENROLLED, { cause: e });
   }
   return done.sign_in_id ?? null;

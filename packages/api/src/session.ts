@@ -257,10 +257,10 @@ export const session = {
   },
   /**
    * The server ended the session (refresh refused). A signed-in session becomes `lost`; a cold start, or a one-time-code
-   * session (it can only enroll a passkey, so it has no drafts and no passkey to sign back in with), just has none.
+   * session, just has none. A completed enrollment may retain its draft owner until passkey sign-in.
    */
-  expire(reason: string | null = null) {
-    lost = claims !== null && !claims.enrollment;
+  expire(reason: string | null = null, { preservePrincipal = false } = {}) {
+    lost = claims !== null && (!claims.enrollment || preservePrincipal);
     ended = reason;
     accessToken = null;
     if (!lost) claims = null;

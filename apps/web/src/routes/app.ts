@@ -3,7 +3,6 @@
 import { createRootRoute, createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { chunk } from "../lib/chunk-guard";
 import { screen } from "../lib/fonts";
-import { ensureEnrolling, ensureSession, leaveSignInWhenSignedIn } from "../lib/react/session";
 import { streamReady } from "../lib/live/session-stream";
 import { RouteFrame } from "../lib/react/route-ready";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
@@ -28,22 +27,23 @@ export const flag = (v: unknown) => v === true || v === "true" || undefined;
 
 export { screen };
 
+const guards = () => chunk(import("../lib/react/session"));
 export const root = createRootRoute({ component: RouteFrame });
-const login = createRoute({
+export const login = createRoute({
   getParentRoute: () => root,
   path: "/login",
   // `enrolled`: a passkey was just registered but the automatic sign-in with it failed (e.g. rate-limited).
   validateSearch: (s: Record<string, unknown>): { enrolled?: boolean; cancelled?: 1; code?: boolean } => ({ enrolled: flag(s.enrolled), code: flag(s.code), cancelled: s.cancelled === 1 || s.cancelled === "1" ? 1 : undefined }),
-  beforeLoad: leaveSignInWhenSignedIn,
+  beforeLoad: async () => (await guards()).leaveSignInWhenSignedIn(),
   component: lazyRouteComponent(() => chunk(import("../auth/Login")), "Login"),
 });
-const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: ensureEnrolling, component: lazyRouteComponent(() => chunk(import("../auth/SetupPasskey")), "SetupPasskey") });
-export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await ensureSession(context); await streamReady(); }, component: lazyRouteComponent(screen(() => import("../shell/shell")), "Shell") });
+const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(() => chunk(import("../auth/SetupPasskey")), "SetupPasskey") });
+export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await (await guards()).ensureSession(context); await streamReady(); }, component: lazyRouteComponent(screen(() => import("../shell/shell")), "Shell") });
 
 const tenants = createRoute({
   getParentRoute: () => app,
   path: "/platform", staticData: { access: "signed-in", floorplan: "P-01" },
-  beforeLoad: ensureSession,
+  beforeLoad: async context => { await (await guards()).ensureSession(context); await streamReady(); },
   // The tenant, the search and the status view live in the URL, so a support ticket can link to them.
   validateSearch: (s: Record<string, unknown>): TenantsSearch => ({
     sel: str(s.sel),

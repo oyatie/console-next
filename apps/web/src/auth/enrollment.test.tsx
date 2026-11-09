@@ -4,7 +4,7 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog } from "@console/i18n";
 import { SetupPasskey } from "./Login";
 
-vi.mock("@console/api", async (importOriginal) => ({ ...await importOriginal<typeof import("@console/api")>(), session: { stage: "enroll", claims: null } }));
+vi.mock("@console/api", async (importOriginal) => ({ ...await importOriginal<typeof import("@console/api")>(), session: { stage: "enroll", claims: null, subscribe: () => () => undefined } }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn(), getRouteApi: () => ({ useSearch: () => ({}) }) }));
 const query = vi.hoisted(() => ({ pending: false, failed: false, fetched: true, error: null as unknown }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: query.pending || query.failed ? undefined : { accepted: false, policy_version: "2026-10", version: "service-v1", sha256: "a".repeat(64), body: "Store service terms exact text", privacy: { version: "notice-v1", sha256: "b".repeat(64), body: "Store notice exact text 휴대전화번호", policy_url: "https://cosskorea.com/privacy", review_pending: true } }, isFetchedAfterMount: query.fetched && !query.pending, isPending: query.pending, isError: query.failed, error: query.error }) }));

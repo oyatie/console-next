@@ -240,3 +240,27 @@ test("failed passkey verification cannot offer a command outcome", async () => {
   expect(markup).not.toContain(t("requestOutcome.open"));
   expect(markup).not.toContain("/requests/");
 });
+
+
+test("a failed renewal says not saved without an uncertain-outcome link", async () => {
+  const banner = await html(new ApiError(401, "session_renewal_unreachable", "", [], undefined, false, [], { requestKey: key }));
+  expect(banner).toContain("연결되지 않아 저장하지 않았습니다");
+  expect(banner).not.toContain(t("requestOutcome.check"));
+  expect(banner).not.toContain(t("requestOutcome.remedy"));
+  expect(banner).not.toContain("/requests/");
+});
+
+
+test("a known not-saved command offers retry in place unless its screen owns recovery", async () => {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+  let command!: ReturnType<typeof useCommand<string, string>>;
+  function Probe({ collect }: { collect: (value: ReturnType<typeof useCommand<string, string>>) => void }) {
+    collect(useCommand<string, string>({ run: async () => { throw new ApiError(401, "session_renewal_unreachable", "", [], undefined, false, [], { requestKey: key }); } }));
+    return null;
+  }
+  renderToStaticMarkup(<QueryClientProvider client={client}><Probe collect={value => { command = value; }} /></QueryClientProvider>);
+  const failure: unknown = await command.mutateAsync("original").catch((error: unknown) => error);
+  expect(await html(failure)).toContain(`>${t("common.retryCommand")}</button>`);
+  expect(await html(failure, { recover: false })).not.toContain(`>${t("common.retryCommand")}</button>`);
+  client.clear();
+});
