@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { fits } from "./a11y";
 import { firstSignIn, go, option, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
-import { fillEntity, pickKind, REGISTRATION_FIXTURES, startOperations, typeAddress, workplaceSheet } from "./setup-flows";
+import { fillEntity, pickKind, startOperations, typeAddress, workplaceSheet } from "./setup-flows";
 import { addDepartments } from "./structure-flows";
 
 test("a solo administrator fixes a missing business registration before starting operations", async ({ browser }) => {
@@ -36,7 +36,7 @@ test("a solo administrator fixes a missing business registration before starting
   const sheet = workplaceSheet(admin);
   await sheet.getByLabel("사업장 이름").fill("본점");
   await option(admin, "사업자등록", "이 사업장의 등록증").click();
-  await sheet.getByLabel("사업자등록번호").fill(REGISTRATION_FIXTURES.primary.brn);
+  await sheet.getByRole("checkbox", { name: "신규 사업자등록 신청 중", exact: true }).check();
   await sheet.getByLabel("법인명(단체명)").fill("주식회사 등록준비");
   await sheet.getByLabel("개업연월일").fill("2020-03-02");
   await typeAddress(admin, "사업장 소재지", "서울특별시 강남구 테헤란로 152", "06236");
@@ -48,7 +48,12 @@ test("a solo administrator fixes a missing business registration before starting
   await pickKind(sheet);
   await sheet.getByRole("radiogroup", { name: /^원천징수 신고/ }).getByText(/에서 함께 신고$/).click();
   await option(admin, "4대보험", "모두 성립 · 번호는 나중에").click();
+  await fits(admin, "pending registration entry");
+  const registered = admin.waitForResponse(response => response.request().method() === "POST" && /\/legal-entities\/[^/]+\/registrations$/.test(new URL(response.url()).pathname));
   await sheet.getByRole("button", { name: "사업장 추가", exact: true }).click();
+  const response = await registered;
+  expect(response.status()).toBe(201);
+  expect(response.request().postDataJSON()).toMatchObject({ brn: null, brn_pending_reason: "NEW_REGISTRATION_PENDING" });
   await expect(sheet).toBeHidden();
   await go(admin, "/org");
   await addDepartments(admin, "본점", ["본사"]);

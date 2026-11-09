@@ -34,6 +34,7 @@ export const enEntity: Record<keyof typeof koEntity, string> = {
   "entity.bizKind.hint.INDIVIDUAL": "A business in its owner’s own name",
   "entity.bizKind.hint.ID_NUMBER_ORG": "An organization issued an identification number",
   "entity.field.brn": "Business registration no.",
+  "entity.field.brnPending": "New business registration pending",
   "entity.field.brnExample": "123-45-67890",
   "entity.field.corpName": "Corporate name",
   "entity.field.tradeName": "Trade name",
