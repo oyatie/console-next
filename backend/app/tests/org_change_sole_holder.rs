@@ -69,7 +69,7 @@ async fn each_step_persists_its_bound_exception_notices_and_configured_review(po
                 )
             );
             let notice:(String,Value)=sqlx::query_as("SELECT body,link FROM notifications WHERE recipient_user_id=$1 ORDER BY created_at DESC LIMIT 1").bind(recipient.as_uuid()).fetch_one(&pool).await.unwrap();
-            assert!(notice.0.contains("조직 변경"));
+            assert_eq!(notice.0, "org_change.sole_holder.recorded.v1");
             assert_eq!(notice.1["id"], w.id.to_string());
             assert_eq!(notice.1["type"], "object");
             assert_eq!(notice.1["kind"], "org_change");

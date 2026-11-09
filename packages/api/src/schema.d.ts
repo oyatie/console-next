@@ -10224,7 +10224,7 @@ export interface paths {
         put?: never;
         /**
          * Decide one approval step
-         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.details.current_version. Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
+         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. The sole-holder exception requires the viewer-specific GET offer, expected_version and a bound step_up. A successful solo decision returns sole_holder_exception and, when another step remains, the next offer. Invalid step-up returns 401 step_up_failed. The review period and notice audience are fingerprinted. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.details.current_version. Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
          */
         post: operations["decideOrgChangeApprovalStep"];
         delete?: never;
@@ -24773,6 +24773,8 @@ export interface components {
         OrgChangeDecisionRequest: {
             /** @description Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.details.current_version. */
             expected_version?: string;
+            /** @description Required for the sole-holder path. EXCEPTION_DECIDE binds the request id and offered payload_hash; reason_key is passkey_step_up_exception_decide and replay_attempt is null. Requires expected_version and forbids through_step. */
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
             /** @description Merging stored steps is refused with 409 lifecycle.refuse.merge_not_allowed. Each step requires a distinct natural person. */
             through_step?: components["schemas"]["Uuid"];
             /** @enum {string} */
@@ -24787,6 +24789,22 @@ export interface components {
             approvalSteps: components["schemas"]["OrgChangeApprovalStep"][];
             settlementItems: components["schemas"]["OrgChangeSettlementItem"][];
             events: components["schemas"]["OrgChangeEvent"][];
+            /** @description Viewer-specific offer for the first pending stored step; null when Cedar refuses case B. review_due_at projects the configured review period from the read time; the receipt stores the deadline from the decision time. */
+            sole_holder_decision?: {
+                step_id: components["schemas"]["Uuid"];
+                expected_version: string;
+                payload_hash: string;
+                notice_count: number;
+                /** Format: date-time */
+                review_due_at: string;
+            } | null;
+            /** @description Persisted receipt for the latest sole-holder decision, including after approval completes. */
+            sole_holder_exception?: {
+                id: components["schemas"]["Uuid"];
+                notice_count: number;
+                /** Format: date-time */
+                review_due_at: string;
+            } | null;
         };
         OrgChangeEvent: {
             at: components["schemas"]["Timestamp"];

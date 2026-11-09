@@ -4,6 +4,25 @@ use console_settings_domain::SettingValue;
 use serde_json::json;
 
 impl PgOrgChangeStore {
+    pub async fn get_for_viewer(
+        &self,
+        actor: UserId,
+        id: Uuid,
+    ) -> Result<OrgChangeDetail, PgOrgChangeError> {
+        let org = current_org().map_err(KernelError::from)?;
+        let port = self.sole_holder_decision.clone();
+        with_org_conn(&self.pool, org, |tx| {
+            Box::pin(async move {
+                let mut detail = load_detail(tx, id)
+                    .await?
+                    .ok_or_else(|| KernelError::not_found("org-change request was not found"))?;
+                attach_offer(tx, org, actor, id, port.as_deref(), &mut detail).await?;
+                Ok(detail)
+            })
+        })
+        .await
+    }
+
     /// Server consent facts for the sole holder; no business decision is recorded.
     pub async fn sole_holder_consent(
         &self,
@@ -13,10 +32,7 @@ impl PgOrgChangeStore {
         let org = current_org().map_err(KernelError::from)?;
         let port = self.sole_holder_decision.clone();
         with_org_conn(&self.pool, org, |tx| {
-            Box::pin(async move {
-                lock_request(tx, id).await?;
-                consent(tx, org, actor, id, port.as_deref()).await
-            })
+            Box::pin(async move { consent(tx, org, actor, id, port.as_deref()).await })
         })
         .await
     }
@@ -65,11 +81,49 @@ pub(super) async fn consent(
         "review_days":int(SettingKey::ReviewSoleHolderExceptionDue)?,"approval_ttl_days":int(SettingKey::ExceptionsApprovalTtlDays)?,
         "other_eligible_holders":u64::from(other_holder),
         "notice_count":recipients.len(),"recipients_hash":fingerprint(&json!(recipients)),
-        "notice_body":"단독 권한 보유자가 본인 확인 후 조직 변경의 결재 단계를 승인했습니다. 사후 검토가 필요합니다."});
+        "notice_template":"org_change.sole_holder.recorded.v1"});
     let hash = fingerprint(&payload);
     Ok(Some(
         json!({"payload":payload,"payload_hash":hash,"expected_version":detail.version,"step_id":step,"recipients":recipients}),
     ))
+}
+
+pub(super) async fn attach_offer(
+    tx: Tx<'_, '_>,
+    org: OrgId,
+    actor: UserId,
+    id: Uuid,
+    port: Option<&dyn SoleHolderDecisionPort>,
+    detail: &mut OrgChangeDetail,
+) -> Result<(), PgOrgChangeError> {
+    if let Some(snapshot) = consent(tx, org, actor, id, port).await? {
+        // A concurrent decision may have advanced the document while this read was assembling.
+        if snapshot["expected_version"].as_str() != Some(detail.version.as_str()) {
+            return Ok(());
+        }
+        let now: OffsetDateTime = sqlx::query_scalar("SELECT now()")
+            .fetch_one(tx.as_mut())
+            .await?;
+        detail.sole_holder_decision = Some(console_orgchange_domain::SoleHolderDecision {
+            step_id: serde_json::from_value(snapshot["step_id"].clone())
+                .map_err(|_| KernelError::internal("decision step unavailable"))?,
+            expected_version: detail.version.clone(),
+            payload_hash: snapshot["payload_hash"]
+                .as_str()
+                .ok_or_else(|| KernelError::internal("decision fingerprint unavailable"))?
+                .to_owned(),
+            notice_count: snapshot["payload"]["notice_count"]
+                .as_i64()
+                .ok_or_else(|| KernelError::internal("decision notice count unavailable"))?,
+            review_due_at: now
+                + time::Duration::days(
+                    snapshot["payload"]["review_days"].as_i64().ok_or_else(|| {
+                        KernelError::internal("decision review period unavailable")
+                    })?,
+                ),
+        });
+    }
+    Ok(())
 }
 
 pub(super) async fn record(

@@ -22177,6 +22177,9 @@ paths:
       description: >-
         IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons
         in the locked decision transaction; the drafter and any person who decided another step cannot decide.
+        The sole-holder exception requires the viewer-specific GET offer, expected_version and a bound step_up.
+        A successful solo decision returns sole_holder_exception and, when another step remains, the next offer.
+        Invalid step-up returns 401 step_up_failed. The review period and notice audience are fingerprinted.
         Steps decide strictly in order and a rejection ends the request as REJECTED.
         CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version;
         a mismatch returns 409 lifecycle.refuse.stale_version with error.details.current_version.
@@ -52197,6 +52200,9 @@ components:
         expected_version:
           type: string
           description: Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.details.current_version.
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+          description: Required for the sole-holder path. EXCEPTION_DECIDE binds the request id and offered payload_hash; reason_key is passkey_step_up_exception_decide and replay_attempt is null. Requires expected_version and forbids through_step.
         through_step:
           $ref: '#/components/schemas/Uuid'
           description: Merging stored steps is refused with 409 lifecycle.refuse.merge_not_allowed. Each step requires a distinct natural person.
@@ -52239,6 +52245,39 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/OrgChangeEvent'
+          sole_holder_decision:
+            type: object
+            nullable: true
+            description: Viewer-specific offer for the first pending stored step; null when Cedar refuses case B. review_due_at projects the configured review period from the read time; the receipt stores the deadline from the decision time.
+            required: [step_id, expected_version, payload_hash, notice_count, review_due_at]
+            properties:
+              step_id:
+                $ref: '#/components/schemas/Uuid'
+              expected_version:
+                type: string
+              payload_hash:
+                type: string
+                pattern: '^[a-f0-9]{64}$'
+              notice_count:
+                type: integer
+                minimum: 1
+              review_due_at:
+                type: string
+                format: date-time
+          sole_holder_exception:
+            type: object
+            nullable: true
+            description: Persisted receipt for the latest sole-holder decision, including after approval completes.
+            required: [id, notice_count, review_due_at]
+            properties:
+              id:
+                $ref: '#/components/schemas/Uuid'
+              notice_count:
+                type: integer
+                minimum: 1
+              review_due_at:
+                type: string
+                format: date-time
     OrgChangeEvent:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

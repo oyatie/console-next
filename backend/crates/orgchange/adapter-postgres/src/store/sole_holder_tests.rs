@@ -128,3 +128,52 @@ async fn view_only_accounts_have_no_approval_candidates_in_one_query(pool: PgPoo
     }
     assert!(!candidates.contains(actor.as_uuid()));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn approval_candidates_exclude_pending_future_inactive_and_setup_ineffective_grants(
+    pool: PgPool,
+) {
+    for changed in ["pending", "future", "inactive_role", "setup"] {
+        let org = OrgId::new();
+        let actor = seed_org_and_super_admin(&pool, *org.as_uuid(), "candidate-validity").await;
+        let holder = console_platform_test_support::seed_active_user(
+            &pool,
+            *org.as_uuid(),
+            "MEMBER",
+            "holder",
+        )
+        .await;
+        let role = Uuid::new_v4();
+        sqlx::query("INSERT INTO access_roles(org_id,id,name_ko,status,version,created_by) VALUES($1,$2,'조직 결재',$4,1,$3)")
+            .bind(org.as_uuid()).bind(role).bind(actor.as_uuid()).bind(if changed=="inactive_role" {"RETIRED"} else {"ACTIVE"}).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO access_role_versions(org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES($1,$2,1,'조직 결재','ACTIVE','SETUP',$3)")
+            .bind(org.as_uuid()).bind(role).bind(actor.as_uuid()).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO access_role_lines(org_id,role_id,version,domain,levels) VALUES($1,$2,1,'org',ARRAY['approve'])")
+            .bind(org.as_uuid()).bind(role).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO access_grants(org_id,account_id,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by,status) VALUES($1,$2,$3,'TENANT',now()+make_interval(days=>$6),$5,'SETUP','TEST',$4,$7)")
+            .bind(org.as_uuid()).bind(holder.as_uuid()).bind(role).bind(actor.as_uuid())
+            .bind(changed!="setup").bind(i32::from(changed=="future"))
+            .bind(if changed=="pending" {"PENDING"} else {"ACTIVE"}).execute(&pool).await.unwrap();
+        if changed == "setup" {
+            sqlx::query("INSERT INTO tenant_phase(org_id,phase) VALUES($1,'SETUP') ON CONFLICT(org_id) DO UPDATE SET phase='SETUP'")
+                .bind(org.as_uuid())
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        let runtime = runtime_role_pool(&pool).await;
+        let mut tx = runtime.begin().await.unwrap();
+        sqlx::query("SELECT set_config('app.current_org',$1,true)")
+            .bind(org.to_string())
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        assert!(
+            approval_candidates_in_tx(&mut tx, org, actor)
+                .await
+                .unwrap()
+                .is_empty(),
+            "{changed}"
+        );
+    }
+}

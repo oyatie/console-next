@@ -94,6 +94,8 @@ pub(crate) struct OrgChangeDecisionRequest {
     pub(crate) expected_version: Option<String>,
     #[serde(default, rename = "through_step")]
     pub(crate) through_step: Option<Uuid>,
+    #[serde(default, rename = "step_up")]
+    pub(crate) step_up: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]

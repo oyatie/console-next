@@ -26,7 +26,7 @@ impl SoleHolderDecisionPort for PgSoleHolderDecisionPort {
         Box<dyn std::future::Future<Output = Result<Vec<Uuid>, KernelError>> + Send + 'tx>,
     > {
         Box::pin(async move {
-            let mut recipients = PgHolderResolver {
+            let recipients = PgHolderResolver {
                 tx,
                 org,
                 capability: HolderCapability::OrgRead,
@@ -37,11 +37,25 @@ impl SoleHolderDecisionPort for PgSoleHolderDecisionPort {
             }
             .resolve_at_most(usize::MAX)
             .await?;
-            // A tenant with no other reader receives a self-receipt.
-            if recipients.is_empty() {
-                recipients.insert(*actor.as_uuid());
+            let recipients: Vec<Uuid> = recipients.into_iter().collect();
+            let mut independent: Vec<Uuid> = sqlx::query_scalar(
+                "SELECT DISTINCT ON (coalesce(u.person_id,u.id)) u.id FROM users u \
+                 JOIN users actor ON actor.org_id=u.org_id AND actor.id=$2 \
+                 WHERE u.org_id=$1 AND u.id=ANY($3) \
+                   AND (actor.person_id IS NULL OR u.person_id IS DISTINCT FROM actor.person_id) \
+                 ORDER BY coalesce(u.person_id,u.id),u.id",
+            )
+            .bind(org.as_uuid())
+            .bind(actor.as_uuid())
+            .bind(recipients)
+            .fetch_all(tx.as_mut())
+            .await
+            .map_err(|_| KernelError::internal("notice identities unavailable"))?;
+            // No independent reader: send the actor a self-receipt.
+            if independent.is_empty() {
+                independent.push(*actor.as_uuid());
             }
-            Ok(recipients.into_iter().collect())
+            Ok(independent)
         })
     }
 
@@ -132,7 +146,7 @@ async fn record_in_tx(
     let recipients: Vec<Uuid> =
         serde_json::from_value(consent["recipients"].clone()).map_err(|_| invalid())?;
     sqlx::query("INSERT INTO notifications(org_id,recipient_user_id,category,body,link,dedup_key) SELECT NULLIF(current_setting('app.current_org',true),'')::uuid,recipient,'org_change.sole_holder',$2,jsonb_build_object('type','object','kind','org_change','id',$3::uuid::text),$4 FROM unnest($1::uuid[]) recipient ON CONFLICT(org_id,recipient_user_id,dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING")
-    .bind(recipients).bind(payload["notice_body"].as_str().ok_or_else(invalid)?)
+    .bind(recipients).bind(payload["notice_template"].as_str().ok_or_else(invalid)?)
     .bind(request).bind(format!("org_change.sole_holder:{}",exception.id)).execute(tx.as_mut()).await.map_err(|_| invalid())?;
     Ok(exception.id)
 }
