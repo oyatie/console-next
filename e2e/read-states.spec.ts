@@ -226,7 +226,9 @@ test.describe("one state contract across console routes", () => {
         if (["/api/v1/me/authz", "/api/v1/support-sessions/active"].includes(path)) protectedReads.push(path);
       });
       await page.route("**/api/v1/auth/token/refresh", route => route.fulfill(failure(503)));
+      const failedRefresh = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/auth/token/refresh" && response.status() === 503);
       await page.goto(path);
+      await (await failedRefresh).finished();
       await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible({ timeout: 1500 });
       await expect(page.getByRole("main").getByText("불러오지 못했습니다", { exact: true })).toBeVisible();
       await expect(page.getByText("화면을 표시하지 못했습니다", { exact: true })).toHaveCount(0);

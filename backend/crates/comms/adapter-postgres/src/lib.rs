@@ -1501,7 +1501,7 @@ const ACCOUNT_SELECT_LATEST: &str = r#"
            smtp_host, smtp_port, smtp_security, smtp_username,
            smtp_password_ct, smtp_password_nonce, dek_wrapped, dek_nonce,
            imap_password_ct, imap_password_nonce, imap_dek_wrapped, imap_dek_nonce,
-           key_version, status
+           key_version, imap_key_version, status
     FROM email_accounts
     ORDER BY created_at ASC
     LIMIT 1
@@ -1513,7 +1513,7 @@ const ACCOUNT_SELECT_BY_ID: &str = r#"
            smtp_host, smtp_port, smtp_security, smtp_username,
            smtp_password_ct, smtp_password_nonce, dek_wrapped, dek_nonce,
            imap_password_ct, imap_password_nonce, imap_dek_wrapped, imap_dek_nonce,
-           key_version, status
+           key_version, imap_key_version, status
     FROM email_accounts
     WHERE id = $1
 "#;
@@ -1525,8 +1525,6 @@ async fn insert_account_tx(
     smtp: &SealedCredential,
     imap: &SealedCredential,
 ) -> Result<(), PgMailError> {
-    // Both secrets share one `key_version` (the cipher stamps the same current
-    // version on every fresh seal in a single configure call).
     sqlx::query(
         r#"
         INSERT INTO email_accounts (
@@ -1535,14 +1533,13 @@ async fn insert_account_tx(
             smtp_host, smtp_port, smtp_security, smtp_username,
             smtp_password_ct, smtp_password_nonce, dek_wrapped, dek_nonce,
             imap_password_ct, imap_password_nonce, imap_dek_wrapped, imap_dek_nonce,
-            key_version, created_by
+            key_version, created_by, imap_key_version
         ) VALUES (
             $1, $2, $3, $4, $5,
             $6, $7, $8, $9,
             $10, $11, $12, $13,
             $14, $15, $16, $17,
-            $18, $19, $20, $21,
-            $22, $23
+            $18, $19, $20, $21, $22, $23, $24
         )
         "#,
     )
@@ -1569,6 +1566,7 @@ async fn insert_account_tx(
     .bind(&imap.dek_nonce)
     .bind(smtp.key_version)
     .bind(*upsert.actor.as_uuid())
+    .bind(imap.key_version)
     .execute(tx.as_mut())
     .await?;
     Ok(())
@@ -1628,7 +1626,7 @@ async fn update_account_tx(
             r#"
             UPDATE email_accounts
             SET imap_password_ct = $2, imap_password_nonce = $3,
-                imap_dek_wrapped = $4, imap_dek_nonce = $5, updated_at = now()
+                imap_dek_wrapped = $4, imap_dek_nonce = $5, imap_key_version = $6, updated_at = now()
             WHERE id = $1
             "#,
         )
@@ -1637,6 +1635,7 @@ async fn update_account_tx(
         .bind(&imap.nonce)
         .bind(&imap.dek_wrapped)
         .bind(&imap.dek_nonce)
+        .bind(imap.key_version)
         .execute(tx.as_mut())
         .await?;
     }
@@ -1657,14 +1656,13 @@ async fn fetch_account_tx(
 fn account_from_row(row: sqlx::postgres::PgRow) -> Result<StoredAccount, PgMailError> {
     let imap_security = MailSecurity::parse(row.try_get::<String, _>("imap_security")?.as_str())?;
     let smtp_security = MailSecurity::parse(row.try_get::<String, _>("smtp_security")?.as_str())?;
-    let key_version: i16 = row.try_get("key_version")?;
 
     let smtp_password = SealedCredential {
         ciphertext: row.try_get("smtp_password_ct")?,
         nonce: row.try_get("smtp_password_nonce")?,
         dek_wrapped: row.try_get("dek_wrapped")?,
         dek_nonce: row.try_get("dek_nonce")?,
-        key_version,
+        key_version: row.try_get("key_version")?,
     };
     let imap_password = SealedCredential {
         ciphertext: row.try_get("imap_password_ct")?,
@@ -1673,7 +1671,7 @@ fn account_from_row(row: sqlx::postgres::PgRow) -> Result<StoredAccount, PgMailE
         // NOT NULL and always written by `insert_account_tx`/`update_account_tx`.
         dek_wrapped: row.try_get("imap_dek_wrapped")?,
         dek_nonce: row.try_get("imap_dek_nonce")?,
-        key_version,
+        key_version: row.try_get("imap_key_version")?,
     };
 
     Ok(StoredAccount {

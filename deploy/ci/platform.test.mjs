@@ -21,6 +21,9 @@ test('native builds cannot publish or sign a PR; only dev pushes publish', () =>
   assert.deepEqual(wf.jobs.build.strategy.matrix.include, [
     { arch: 'amd64', runner: 'ubuntu-24.04' }, { arch: 'arm64', runner: 'ubuntu-24.04-arm' },
   ]);
+  const build = new Function('github', `return ${wf.jobs.build.if}`);
+  for (const event of ['pull_request', 'merge_group', 'push', 'workflow_dispatch', 'schedule'])
+    assert.equal(build({event_name:event}), ['merge_group', 'push'].includes(event), event);
   for (const [name, job] of Object.entries(wf.jobs)) {
     for (const step of job.steps ?? []) {
       if (step.uses) assert.match(step.uses, /^(actions\/[^@]+|step-security\/harden-runner)@[a-f0-9]{40}$/);
@@ -42,6 +45,15 @@ test('native builds cannot publish or sign a PR; only dev pushes publish', () =>
   assert.deepEqual(wf.jobs['exit-test'].strategy.matrix.runner, ['ubuntu-24.04', 'ubuntu-24.04-arm']);
   assert.match(wf.jobs['exit-test'].if, /schedule/);
   assert.match(wf.jobs['exit-test'].if, /workflow_dispatch/);
+});
+
+test('exit tests repeat on both native architectures only on the weekly schedule', () => {
+  const wf = yaml.load(read('.github/workflows/platform.yml'));
+  const value = wf.jobs['exit-test'].strategy.matrix.repetition;
+  assert.equal(typeof value, 'string');
+  const repetitions = new Function('github', 'fromJSON', `return ${value.slice(3, -2)}`);
+  for (const event of ['push', 'workflow_dispatch', 'schedule'])
+    assert.deepEqual(repetitions({event_name:event}, JSON.parse), event === 'schedule' ? [1, 2] : [1]);
 });
 
 test('the image ships the real API, worker and migrations without development features', () => {

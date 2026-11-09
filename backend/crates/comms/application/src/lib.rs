@@ -66,7 +66,7 @@ pub mod credential_cipher {
     /// Associated data binding a ciphertext to the exact row + field it belongs
     /// to.
     ///
-    /// Encoded into the AEAD AAD on both the secret-seal and the DEK-wrap, so a
+    /// Encoded into the payload AEAD AAD (and the legacy AEAD DEK-wrap), so a
     /// ciphertext lifted to a different org, account, or field fails to
     /// authenticate. The encoding is unambiguous (length-prefixed) so distinct
     /// triples can never collide.
@@ -101,15 +101,15 @@ pub mod credential_cipher {
     /// plaintext.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct SealedCredential {
-        /// AEAD ciphertext of the secret (includes the Poly1305 tag).
+        /// AEAD ciphertext of the secret, including its authentication tag.
         pub ciphertext: Vec<u8>,
-        /// 24-byte XChaCha nonce used to seal the secret under the DEK.
+        /// Payload nonce: 24 bytes for v1 XChaCha, 12 bytes for v2 AES-GCM.
         pub nonce: Vec<u8>,
-        /// The DEK, itself AEAD-sealed under the KEK (includes its tag).
+        /// The DEK, wrapped under the KEK with integrity protection.
         pub dek_wrapped: Vec<u8>,
-        /// 24-byte XChaCha nonce used to wrap the DEK under the KEK.
+        /// 24-byte wrap nonce for v1; empty for nonce-free v2 AES-KWP.
         pub dek_nonce: Vec<u8>,
-        /// The KEK version used to wrap the DEK.
+        /// Envelope suite: 1 = XChaCha20-Poly1305, 2 = AES-256-GCM + AES-256-KWP.
         pub key_version: i16,
     }
 

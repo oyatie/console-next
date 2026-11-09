@@ -61,6 +61,8 @@ fn the_due_keeps_the_exact_rule_and_its_hold_disposition() {
     assert_eq!(wire["rule"]["code"], codes::PIPA_ACCESS_RESPONSE_DAYS);
     assert_eq!(wire["rule"]["disposition"]["disposition"], "HOLD");
     assert_eq!(wire["rule"]["value_num"], 10);
+    assert_eq!(wire["rule"]["effective_from"], "2026-09-11");
+    assert!(wire["rule"]["effective_to_exclusive"].is_null());
     assert_eq!(
         wire["rule"]["citation"]["instrument_ko"],
         "개인정보 보호법 시행령"
@@ -75,6 +77,7 @@ fn a_due_also_preserves_a_released_rules_review_reference() {
     rule.disposition = ReleaseDisposition::Released {
         receipt_ref: "review-receipt".into(),
     };
+    rule.effective_to_exclusive = Some(date!(2027 - 01 - 01));
     let register = StatutoryRegister::new(vec![rule.clone()], vec![]).unwrap();
     let request = RightsRequest::receive(
         receipt(date!(2026 - 10 - 27)),
@@ -84,6 +87,11 @@ fn a_due_also_preserves_a_released_rules_review_reference() {
         None,
     )
     .unwrap();
+    let wire = serde_json::to_value(&request).unwrap();
+    assert_eq!(
+        wire["kinds"]["ACCESS"]["due"]["rule"]["effective_to_exclusive"],
+        "2027-01-01"
+    );
     assert_eq!(
         request.kinds()[&Kind::Access]
             .due

@@ -141,6 +141,10 @@ paths:
                     type: array
                     items:
                       type: object
+                      required: [occurred_at]
+                      properties:
+                        occurred_at:
+                          $ref: '#/components/schemas/Timestamp'
                       additionalProperties: true
                   limit:
                     type: integer
@@ -2452,10 +2456,38 @@ paths:
       tags: [access]
       operationId: listAccessLog
       summary: Tenant access records with monthly flag totals
-      description: Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
+      description: Requires tenant-wide Cedar audit::view. Ordered by created_at and event_id; cursors retain the initial read time and are bound to tenant, period, flagged filter and normalized search and all structured filters. Defaults to the current month in the configured review time zone. Search filters items and totals; flags retain their full-month actor-day classification. Read failures return no records if their access record cannot be stored.
       security:
       - bearerAuth: []
       parameters:
+      - name: actor
+        in: query
+        description: Exact actor ID from filter_options. All structured filters combine with AND and affect items and totals, preserving full-month flag classification.
+        schema:
+          type: string
+          format: uuid
+      - name: action
+        in: query
+        description: Exact action code from filter_options.
+        schema:
+          type: string
+      - name: target_type
+        in: query
+        description: Exact target type code from filter_options.
+        schema:
+          type: string
+      - name: from
+        in: query
+        description: Inclusive created_at start day in the review time zone, within the selected month.
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: Inclusive created_at end day in the review time zone, within the selected month and on or after from.
+        schema:
+          type: string
+          format: date
       - name: search
         in: query
         description: Case-insensitive literal substring of the displayed actor name or ID, IP, action, target type, principal type, outcome, subject or row count, export purpose, local timestamps or flag codes. Rejects control characters and more than 200 Unicode characters before trimming surrounding whitespace; blank searches are unfiltered. Uses stored actor display names before the current account name. Private snapshots are never searched. A cursor from another normalized search returns cursor_invalid.
@@ -2505,7 +2537,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '422':
-          description: period_invalid, limit_out_of_range or cursor_invalid.
+          description: period_invalid, limit_out_of_range, cursor_invalid or filter_invalid (unavailable option, malformed/out-of-month/reversed date).
           content:
             application/json:
               schema:
@@ -3490,6 +3522,33 @@ paths:
         '422': {$ref: '#/components/responses/ValidationError'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '503': {$ref: '#/components/responses/ServiceUnavailable'}
+  /api/v1/approvals/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [org]
+      operationId: getApprovalDocument
+      summary: Read a source-authorized approval document
+      security: [{bearerAuth: []}]
+      description: >-
+        Cedar approval_document_read uses the same source facts and inbox membership as the list.
+        Hidden, absent, unsupported, draft and unrouted documents all return not_found.
+        Body contains the source target, effective date and reason; the source record link exposes the full proposal.
+        This read-only envelope exposes no decisions until the source-command adapter is available.
+      parameters:
+      - {name: id, in: path, required: true, schema: {type: string}, description: Canonical source-prefixed document ID from the inbox.}
+      responses:
+        '200':
+          description: Visible source document under one consistent snapshot.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApprovalDocumentDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500':
+          description: Sanitized approvals.projection_unavailable; includes a support reference.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorBody'}
   /api/v1/attendance/batches/{batch_id}/undo:
     post:
       tags: [attendance]
@@ -16202,11 +16261,19 @@ paths:
                 required:
                 - payroll
                 properties:
+                  imports:
+                    type: object
+                    properties:
+                      latest_import_at:
+                        $ref: '#/components/schemas/Timestamp'
+                    additionalProperties: true
                   payroll:
                     type: object
                     required:
                     - active_close_runs
                     properties:
+                      latest_updated_at:
+                        $ref: '#/components/schemas/Timestamp'
                       active_close_runs:
                         type: integer
                         format: int64
@@ -23601,6 +23668,18 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          description: >
+            contract_wage_exists when a wage already exists for the same employee
+            and effective_from, even if the remaining payload differs. Append a new
+            effective date for a raise. employee_exited_read_only takes priority when
+            the employee has exited, including after the draft was read; request a
+            governed correction of the personnel record. Neither refusal appends a
+            wage or a successful creation audit; existing wages and audits remain unchanged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '422':
           $ref: '#/components/responses/ValidationError'
   /api/v1/payroll/employees/{employeeId}/payslip-draft:
@@ -25430,6 +25509,134 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/privacy/rights-requests:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: filePrivacyRightsRequest
+      summary: File a self-service request with register-backed per-kind deadlines
+      security: [{ bearerAuth: [] }]
+      description: >
+        The server supplies the subject and receipt date. Idempotency-Key replays the
+        original receipt; changed payloads conflict. A fresh PRIVACY_REQUEST passkey envelope is bound to the actor UUID and the SHA-256 of the serialized filing (controller, kinds, detail in that order).
+        Refusals include passkey_step_up_required, passkey_step_up_failed, no_employee_record,
+        request_kind_required, request_kind_unavailable and detail_too_long. Unregistered
+        automated-decision and transmission kinds are unavailable. Missing statutory
+        rules leave the per-kind deadline unknown; HOLD rule dispositions remain visible.
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [controller, kinds, step_up]
+              properties:
+                controller: { type: string, enum: [TENANT, OPERATOR] }
+                kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+                detail: { type: string, maxLength: 2000, default: '' }
+                step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+      responses:
+        '200': { description: Filed receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/mine:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: listOwnPrivacyRightsRequests
+      summary: List the signed-in subject's requests in this tenant
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: cursor, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Own requests only, ordered by descending receipt ID with keyset paging.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor, as_of]
+                properties:
+                  as_of: { type: string, format: date }
+                  items: { type: array, items: { $ref: '#/components/schemas/PrivacyRightsReceipt' } }
+                  next_cursor: { type: string, format: uuid, nullable: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/options:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: privacyRightsRequestOptions
+      summary: Filing choices and statutory clock previews for the authenticated subject
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Code-only choices admitted by Cedar; dates resolved as of the server KST date.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [subject_user_id, as_of, controllers, kinds, detail_max_length, reply_email_masked]
+                properties:
+                  subject_user_id: { type: string, format: uuid }
+                  as_of: { type: string, format: date }
+                  controllers:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [code]
+                      properties:
+                        code: { type: string, enum: [TENANT, OPERATOR] }
+                  kinds:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [code, due_on, without_delay]
+                      properties:
+                        code: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                        due_on: { type: string, format: date, nullable: true }
+                        without_delay: { type: boolean }
+                  detail_max_length: { type: integer, minimum: 1 }
+                  reply_email_masked: { type: string, nullable: true }
+        '400': { description: Query parameters are not accepted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: readPrivacyRightsIntake
+      summary: Read a tenant receipt under the live privacy_request_intake_read Cedar scope
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Tenant receipt and requester name. Account-data requests are never returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request, subject_name, as_of]
+                properties:
+                  request: { $ref: '#/components/schemas/PrivacyRightsReceipt' }
+                  subject_name: { type: string }
+                  as_of: { type: string, format: date }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/production/capacity-slots:
     get:
       operationId: listProductionCapacitySlots
@@ -33311,7 +33518,7 @@ components:
     AccessLogPage:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
-      required: [period, totals, items, next_cursor]
+      required: [period, totals, items, next_cursor, filter_options]
       properties:
         period:
           type: object
@@ -33349,6 +33556,35 @@ components:
             $ref: '#/components/schemas/AccessLogEvent'
         next_cursor:
           type: [string, 'null']
+        filter_options:
+          type: object
+          description: Choices from the authorized month at the cursor snapshot, independent of selected filters and page. Actor names prefer the latest stored display; duplicate names include the actor ID. Action and target label keys resolve through the ko/en catalogs.
+          required: [actors, actions, target_types]
+          properties:
+            actors:
+              type: array
+              items:
+                type: object
+                required: [id, label]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+            actions:
+              type: array
+              items: &access_log_code_choice
+                type: object
+                required: [id, label_key]
+                properties:
+                  id:
+                    type: string
+                  label_key:
+                    type: string
+            target_types:
+              type: array
+              items: *access_log_code_choice
     AccessPerson:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -33767,6 +34003,7 @@ components:
           - setup_golive
           - support_access
           - registration_check
+          - privacy_request
         urg:
           type: string
           enum:
@@ -33814,6 +34051,9 @@ components:
             worksite_name:
               type: string
               description: Optional physical work site, separate from the statutory placement path.
+            privacy_kinds:
+              type: array
+              items: { type: string }
             review_count:
               type: integer
               minimum: 0
@@ -33906,6 +34146,15 @@ components:
                 $ref: '#/components/schemas/AccessEffectiveEntry'
             is_ops:
               type: boolean
+        version:
+          type: string
+          description: Opaque command version for pending org-change approval rows; changes after any step decision.
+        can_decide:
+          type: boolean
+          description: Present on pending org-change approval rows; evaluated by the command's Cedar action and batch fact loader. Commands recheck current facts.
+        cannot_reason:
+          type: string
+          description: Command refusal code when can_decide is false; absent when allowed.
     ActionInboxLink:
       type: object
       description: >-
@@ -34496,6 +34745,35 @@ components:
           properties:
             kind: {type: string, enum: [org_change]}
             id: {type: string, format: uuid}
+    ApprovalDocumentDetail:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf:
+      - {$ref: '#/components/schemas/ApprovalDocument'}
+      - type: object
+        required: [body, revision, fingerprint, consequence, opinion_max, my_actions]
+        properties:
+          body:
+            type: array
+            items:
+              type: object
+              required: [key, label, value]
+              properties:
+                key: {type: string}
+                label: {type: string}
+                value: {type: string}
+          revision:
+            type: integer
+            description: Source event sequence length plus one; the fingerprint also covers edits without new events.
+          fingerprint:
+            type: string
+            description: Opaque snapshot token covering the source request, proposal, route and displayed facts.
+          consequence: {type: string}
+          opinion_max: {type: integer, minimum: 0}
+          my_actions:
+            type: object
+            required: [kind]
+            properties:
+              kind: {type: string, enum: [none]}
     ApprovalDocumentPage:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -35091,12 +35369,12 @@ components:
     AttendanceClosePreflight:
       type: object
       required: [month, branch_scope, checks, can_close]
-      properties: { month: { type: string }, branch_scope: { type: string }, checks: { type: array, items: { $ref: '#/components/schemas/AttendanceCloseCheck' } }, can_close: { type: boolean } }
+      properties: { month: { type: string }, branch_scope: { type: string, description: 'org denotes organization-wide scope; otherwise the branch UUID.' }, checks: { type: array, items: { $ref: '#/components/schemas/AttendanceCloseCheck' } }, can_close: { type: boolean } }
     AttendanceCloseRequest:
       type: object
       additionalProperties: false
       required: [month]
-      properties: { month: { type: string, pattern: '^\\d{4}-\\d{2}$' }, branch_scope: { $ref: '#/components/schemas/Uuid', nullable: true }, attest: { type: boolean, nullable: true } }
+      properties: { month: { type: string, pattern: '^\\d{4}-\\d{2}$' }, branch_scope: { $ref: '#/components/schemas/Uuid', nullable: true, description: 'Omit or pass null for organization-wide scope; otherwise pass the branch UUID. Responses serialize organization-wide scope as org.' }, attest: { type: boolean, nullable: true } }
     AttendanceConflict:
       type: object
       required: [employee_id, work_date, mine]
@@ -35536,11 +35814,24 @@ components:
     AttendanceMonthClose:
       type: object
       required: [id, month, branch_scope, checks, attested_by, attested_at, closed_at, amendments]
-      properties: { id: { $ref: '#/components/schemas/Uuid' }, month: { type: string, pattern: '^\\d{4}-\\d{2}$' }, branch_scope: { type: string }, checks: { type: array, items: { $ref: '#/components/schemas/AttendanceCloseCheck' } }, attested_by: { $ref: '#/components/schemas/Uuid' }, attested_at: { type: string, format: date-time, description: 'RFC 3339 UTC timestamp with Z suffix' }, period_lock_id: { $ref: '#/components/schemas/Uuid', nullable: true }, closed_at: { type: string, format: date-time, description: 'RFC 3339 UTC timestamp with Z suffix' }, amendments: { type: array, items: { $ref: '#/components/schemas/AttendanceCloseAmendment' } } }
+      properties: { id: { $ref: '#/components/schemas/Uuid' }, month: { type: string, pattern: '^\\d{4}-\\d{2}$' }, branch_scope: { type: string, description: 'org denotes organization-wide scope; otherwise the branch UUID.' }, checks: { type: array, description: 'Immutable preflight checks captured at close time; later exception or leave changes do not update them.', items: { $ref: '#/components/schemas/AttendanceCloseCheck' } }, attested_by: { $ref: '#/components/schemas/Uuid' }, attested_at: { type: string, format: date-time, description: 'RFC 3339 UTC timestamp with Z suffix' }, period_lock_id: { $ref: '#/components/schemas/Uuid', nullable: true }, closed_at: { type: string, format: date-time, description: 'RFC 3339 UTC timestamp with Z suffix' }, amendments: { type: array, items: { $ref: '#/components/schemas/AttendanceCloseAmendment' } } }
     AttendanceMonthCloseItem:
       type: object
       required: [branch_scope, closed, open_exceptions, pending_leave]
-      properties: { branch_scope: { type: string }, closed: { type: boolean }, close: { $ref: '#/components/schemas/AttendanceMonthClose', nullable: true }, open_exceptions: { type: integer, format: int64 }, pending_leave: { type: integer, format: int64 } }
+      properties:
+        branch_scope:
+          type: string
+          description: 'org denotes organization-wide scope; otherwise the branch UUID. Matches the stored close scope, or the requested scope for an open row.'
+        closed: { type: boolean }
+        close: { $ref: '#/components/schemas/AttendanceMonthClose', nullable: true }
+        open_exceptions:
+          type: integer
+          format: int64
+          description: 'Open exception count. Frozen from close.checks at close time when closed is true; current preflight count otherwise.'
+        pending_leave:
+          type: integer
+          format: int64
+          description: 'Pending leave count. Frozen from close.checks at close time when closed is true; current preflight count otherwise.'
     AttendanceMonthGrid:
       type: object
       required: [month, rows, people_total]
@@ -50470,6 +50761,7 @@ components:
             - passkey_step_up_support_session
             - passkey_step_up_pii_reveal
             - passkey_step_up_pii_record
+            - passkey_step_up_privacy_request
         replay_attempt:
           type:
             - integer
@@ -50543,6 +50835,7 @@ components:
                 - SUPPORT_SESSION
                 - PII_REVEAL
                 - PII_RECORD
+                - PRIVACY_REQUEST
             object_id:
               $ref: '#/components/schemas/Uuid'
             reason_key:
@@ -50563,6 +50856,7 @@ components:
                 - passkey_step_up_support_session
                 - passkey_step_up_pii_reveal
                 - passkey_step_up_pii_record
+                - passkey_step_up_privacy_request
             replay_attempt:
               type:
                 - integer
@@ -50595,6 +50889,7 @@ components:
         - SUPPORT_SESSION
         - PII_REVEAL
         - PII_RECORD
+        - PRIVACY_REQUEST
     MobileVotePollRequest:
       type: object
       required:
@@ -51512,7 +51807,7 @@ components:
         properties:
           key:
             type: string
-            x-extensible-enum: [home, org, access, people, exits, attendance, statutory, payroll]
+            x-extensible-enum: [home, org, access, approvals, people, exits, attendance, statutory, payroll]
           ready:
             type: boolean
           unblock:
@@ -56359,6 +56654,50 @@ components:
               type: string
             sha256:
               type: string
+    PrivacyRightsReceipt:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [id, receipt_no, receipt, kinds, status, detail]
+      properties:
+        id: { type: string, format: uuid }
+        receipt_no: { type: string }
+        detail: { type: string }
+        status: { type: string, enum: [RECEIVED, DECIDED] }
+        receipt:
+          type: object
+          required: [controller, received_on, identity_at]
+          properties:
+            controller: { type: string, enum: [TENANT, OPERATOR] }
+            received_on: { type: string, format: date }
+            identity_at: { type: string, format: date-time }
+        kinds:
+          type: object
+          additionalProperties:
+            type: object
+            required: [due, decisions]
+            properties:
+              due:
+                type: object
+                nullable: true
+                required: [on, without_delay, rule]
+                properties:
+                  on: { type: string, format: date, nullable: true }
+                  without_delay: { type: boolean }
+                  rule: { type: object, nullable: true, additionalProperties: true }
+              decisions:
+                type: array
+                items:
+                  type: object
+                  required: [on, decision]
+                  properties:
+                    on: { type: string, format: date }
+                    decision:
+                      type: object
+                      required: [outcome, reason, note]
+                      properties:
+                        outcome: { type: string, enum: [GRANTED, PARTIAL, REFUSED, POSTPONED] }
+                        reason: { type: string, nullable: true }
+                        note: { type: string, nullable: true }
     ProcessingStatus:
       type: string
       enum:
@@ -61034,6 +61373,21 @@ components:
             - 'null'
           format: date-time
         tenant_approved_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        operator_approved_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        started_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        ended_at:
           type:
             - string
             - 'null'

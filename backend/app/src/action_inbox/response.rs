@@ -3,7 +3,7 @@
 use super::*;
 use console_action_inbox_application::ActionInboxPage;
 
-pub(super) fn project(
+pub(super) async fn project(
     sources: &PgActionInboxSources,
     page: ActionInboxPage,
     filter: InboxFilter,
@@ -12,10 +12,12 @@ pub(super) fn project(
 ) -> Result<Json<serde_json::Value>, InboxError> {
     let unavailable: Vec<_> = page.unavailable.iter().map(|source| serde_json::json!({ "source": source, "support_reference": sources.support_reference })).collect();
     let mut response = serde_json::to_value(page).map_err(|e| source_failure("projection", e))?;
+    super::decisions::project(&mut response);
     response["unavailable"] = serde_json::json!(unavailable);
     use console_platform_authz::Feature as F;
     let can = |feature| sources::org_change::holds(&sources.principal, feature);
     let support_work = sources.support_can_approve.get().copied().unwrap_or(false);
+    let privacy_work = sources.privacy_can_handle.get().copied().unwrap_or(false);
     response["has_work"] = serde_json::json!(
         [
             F::LegalEntityManage,
@@ -36,6 +38,7 @@ pub(super) fn project(
         .into_iter()
         .any(can)
             || support_work
+            || privacy_work
     );
     let correction_work = sources.principal.branch_scope == console_kernel_core::BranchScope::All
         && [F::LegalEntityManage, F::OrgChangeApply]
@@ -56,13 +59,13 @@ pub(super) fn project(
         [
             (
                 "turn",
-                org_work || people_work || support_work || correction_work
+                org_work || people_work || support_work || correction_work || privacy_work
             ),
             ("waiting", org_work || correction_work),
             ("scheduled", org_work),
             (
                 "deadlines",
-                org_work || people_work || support_work || correction_work
+                org_work || people_work || support_work || correction_work || privacy_work
             ),
             (
                 "failures",

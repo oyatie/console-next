@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! SQL projections for the closed-month list and its frozen actor-day evidence.
 //! Callers supply an armed tenant transaction after the Cedar tenant-wide gate.
+#[path = "filters.rs"]
+pub(super) mod filters;
 #[path = "rules.rs"]
 mod rules;
 #[path = "search.rs"]

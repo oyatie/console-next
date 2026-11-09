@@ -251,11 +251,11 @@ function main() {
     assert.equal(result.status, 0, `cargo ${args.slice(0, 2).join(" ")} failed (${result.status ?? result.signal})`);
     return JSON.parse(result.stdout);
   };
-  const features = command.database ? ["--features", "test-postgres,console-app/full,console-app/e2e-test-support,console-app/dev-auth"] : [];
+  const features = ["--features", command.database ? "test-postgres,console-app/full,console-app/e2e-test-support,console-app/dev-auth" : "console-app/full"];
   const metadata = cargoJSON(["metadata", "--locked", ...features, "--format-version", "1"]);
   const targets = command.database ? ["--workspace"] : buildTargets(metadata, env.NEXTEST_SHARD, env.NEXTEST_SHARDS);
   const nextestArgs = (selectedFeatures = []) => [...targets, "--locked", ...selectedFeatures, "--profile", "ci", "--config-file", path.join(root, ".config/nextest.toml"), "--ignore-default-filter"];
-  const defaultArgs = nextestArgs(), featuredArgs = nextestArgs(features);
+  const defaultArgs = nextestArgs(command.database ? [] : features), featuredArgs = nextestArgs(features);
   const list = cargoJSON(["nextest", "list", ...(command.database ? featuredArgs : defaultArgs), "--message-format", "json"]);
   const packageSources = metadata.packages.filter(pkg => metadata.workspace_members.includes(pkg.id)).map((pkg) => [pkg, sources(path.dirname(pkg.manifest_path))]);
   validateIgnoredTests(packageSources.flatMap(([, files]) => files));

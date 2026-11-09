@@ -42,6 +42,16 @@ function checkSubjectTags(versions, catalog) {
   }
 }
 
+test('the Debian 13 runtime requires the Distroless keyless signer and Google issuer', () => {
+  const catalog = yaml.load(readFileSync(join(root, 'deploy/policies/upstream.yaml'), 'utf8'));
+  assert.deepEqual(catalog['gcr.io/distroless/cc-debian13']?.authority, {
+    keyless: {
+      url: 'https://fulcio.sigstore.dev',
+      identities: [{issuer: 'https://accounts.google.com', subject: 'keyless@distroless.iam.gserviceaccount.com'}],
+    },
+  });
+});
+
 test('console and upstream Cosign bundles share the signature predicate from images.yaml', () => {
   const dir = mkdtempSync(join(tmpdir(), 'platform-signature-predicate-'));
   try {

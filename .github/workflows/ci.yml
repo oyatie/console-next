@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# Checks on every push to dev and every pull request (public-readiness H-4): the web workspace and the backend
+# Candidate checks on pull requests and merge groups; dev pushes consume the proven tree's artifacts
+# (public-readiness H-4): the web workspace and the backend
 # workspace, each standalone. Fork pull requests run with a read-only token and no secrets (plain pull_request,
 # never pull_request_target); the repository setting "Require approval for all outside collaborators" gates them.
 # web runs `npm run check`: the client-contract check against backend/openapi, typecheck, lint, unit tests, build,
 # bundle budget, gitleaks over the whole history and the build, licence headers on added files, fixture ids
 # (checksum-valid RRNs, whole or Excel-stripped) and the npm licence gate.
-# backend also runs non-database Rust tests with nextest and reconciles JUnit with a fresh test inventory.
-# Database tests remain INTEG's; solo journey evidence runs on dev pushes, mocked states on every run.
+# backend also runs non-database Rust tests, including full-feature OpenAPI drift, with nextest
+# and reconciles JUnit with a fresh test inventory.
+# Database tests remain INTEG's; solo journeys gate merge groups, mocked states run for affected web changes.
 name: ci
 on:
   push:
@@ -24,9 +26,12 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read
     outputs:
-      backend: ${{ steps.paths.outputs.backend }}
-      web: ${{ steps.paths.outputs.web }}
+      run-id: ${{ fromJSON(steps.proof.outputs.result || '{}').id }}
+      tools: ${{ fromJSON(steps.proof.outputs.result || '{}').tools }}
+      backend: ${{ steps.paths.outputs.backend || steps.import.outputs.backend }}
+      web: ${{ steps.paths.outputs.web || steps.import.outputs.web }}
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with: {egress-policy: audit}
@@ -35,19 +40,64 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version}
       - run: node --test scripts/ci-affected.test.mjs
+        if: github.event_name != 'push'
       - name: Classify changes against the merge base
+        if: github.event_name != 'push'
         id: paths
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           HEAD_SHA: ${{ github.sha }}
         run: node scripts/ci-affected.mjs "$GITHUB_EVENT_NAME" "$BASE_SHA" "$HEAD_SHA"
+      - id: proof
+        if: github.event_name == 'push'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { source } = require('./.github/ci-proof.cjs');
+            for (let attempt = 0; ; attempt++) {
+              try { return await source(github, context); }
+              catch (error) {
+                if (!error.message.startsWith('CI_PROOF_MISSING') || attempt >= 5) throw error;
+                await new Promise(resolve => setTimeout(resolve, 10000));
+              }
+            }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: github.event_name == 'push'
+        with:
+          name: ci-proof
+          run-id: ${{ fromJSON(steps.proof.outputs.result || '{}').id }}
+          github-token: ${{ github.token }}
+          path: .cache/proof
+      - id: import
+        if: github.event_name == 'push'
+        env:
+          PROVEN_SHA: ${{ fromJSON(steps.proof.outputs.result || '{}').sha }}
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const proof = JSON.parse(fs.readFileSync('.cache/proof/ci.json'));
+          if (proof.commit !== process.env.PROVEN_SHA) throw new Error('CI_PROOF_COMMIT');
+          for (const key of ['backend', 'web']) {
+            const value = proof.jobs.affected.outputs[key];
+            if (!['true', 'false'].includes(value)) throw new Error('CI_PROOF_CLASSIFICATION');
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
+          }
+          JS
 
   commits:
+    if: github.event_name != 'push'
     permissions:
       contents: read
     uses: ./.github/workflows/commits.yml
 
+  workflows:
+    if: github.event_name != 'push'
+    permissions: {contents: read}
+    uses: ./.github/workflows/workflows-check.yml
+
   web:
+    needs: [affected]
+    if: &web-affected ${{ github.event_name != 'push' && needs.affected.outputs.web == 'true' }}
     runs-on: ubuntu-24.04
     # 12m setup (9m observed browser install + 3m checkout/npm/artifacts) + existing 30m checks.
     timeout-minutes: 42
@@ -99,12 +149,12 @@ jobs:
           }
           trap report_install_duration EXIT
           npx playwright install --with-deps --only-shell chromium
-      - &playwright-cache-save
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.playwright-cache.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/dev'
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+      - name: Export browser cache for dev
+        if: github.event_name == 'merge_group'
+        run: tar -czf "$RUNNER_TEMP/playwright.tgz" -C "$HOME/.cache" ms-playwright
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: github.event_name == 'merge_group'
+        with: {name: playwright-cache, path: '${{ runner.temp }}/playwright.tgz', retention-days: 1, if-no-files-found: error}
       - name: Web checks
         timeout-minutes: 30
         run: |
@@ -117,10 +167,13 @@ jobs:
           python3 scripts/d10_evidence_test.py
           python3 scripts/d8_evidence_test.py
           python3 scripts/states_evidence_test.py
+          python3 scripts/pull_measured_evidence_test.py
           CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
   states-plan:
+    needs: [affected]
+    if: *web-affected
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -200,7 +253,6 @@ jobs:
       - *playwright-version
       - *playwright-cache
       - *playwright-install
-      - *playwright-cache-save
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: states-plan
@@ -220,12 +272,13 @@ jobs:
           if-no-files-found: error
 
   states-timings:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    needs: [states-plan, states]
+    if: github.event_name == 'push' && needs.affected.outputs.web == 'true'
+    needs: [affected]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with: {egress-policy: audit}
@@ -235,13 +288,25 @@ jobs:
         with: {node-version-file: .node-version}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
+          run-id: ${{ needs.affected.outputs.run-id }}
+          github-token: ${{ github.token }}
           pattern: states-report-*
           merge-multiple: true
           path: .cache/states-reports
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
+          run-id: ${{ needs.affected.outputs.run-id }}
+          github-token: ${{ github.token }}
           name: states-plan
           path: .cache/states-plan
+      - name: Produce state evidence independently of live and backend results
+        run: python3 scripts/states-evidence.py .cache/states-evidence/states.json .cache/states-plan/modules.json .cache/states-reports/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: states-evidence
+          path: .cache/states-evidence/states.json
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Refresh measurements from complete CI results
         run: node scripts/states-shards.mjs refresh e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-timings/timings.json .cache/states-reports/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -254,7 +319,7 @@ jobs:
 
   backend:
     needs: [affected]
-    if: &backend-affected ${{ !cancelled() && (github.event_name == 'push' || needs.affected.outputs.backend == 'true') }}
+    if: &backend-affected ${{ !cancelled() && github.event_name != 'push' && needs.affected.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions: {contents: read}
@@ -273,12 +338,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false, fetch-depth: 0}
       # All workers restore the same cache; only the dev-only collector saves their union.
+      # registry/src is left out: cargo keeps crate mtimes when it unpacks, so a -newer delta would carry only .cargo-ok
+      # markers without sources, and cargo then refuses to build. It re-unpacks from registry/cache quickly.
       - &rust-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: rust-cache
         with:
           path: |
-            ~/.cargo/registry
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
             ~/.cargo/git/db
             backend/target
           key: backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
@@ -287,24 +355,30 @@ jobs:
       - &cache-mark
         name: Mark restored cache
         run: |
-          mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git/db" "$GITHUB_WORKSPACE/backend/target"
+          mkdir -p "$HOME/.cargo/registry/index" "$HOME/.cargo/registry/cache" "$HOME/.cargo/git/db" "$GITHUB_WORKSPACE/backend/target"
           touch "$RUNNER_TEMP/rust-cache-start"
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - &cache-collect
         name: Collect Rust cache changes
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        if: github.event_name == 'merge_group'
+        continue-on-error: true
+        timeout-minutes: 2
         run: |
           mkdir -p "$RUNNER_TEMP/rust-cache"
           cd "$HOME"
-          find .cargo/registry .cargo/git/db -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
-            tar --null -czf "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz" -T -
+          find .cargo/registry/index .cargo/registry/cache .cargo/git/db -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
+            tar --null -czf "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" -T -
+          mv "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" "$RUNNER_TEMP/rust-cache/registry-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz"
           cd "$GITHUB_WORKSPACE"
           find backend/target -type f -newer "$RUNNER_TEMP/rust-cache-start" -print0 |
-            tar --null -czf "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz" -T -
+            tar --null -czf "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" -T -
+          mv "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz.partial" "$RUNNER_TEMP/rust-cache/target-$GITHUB_JOB-${NEXTEST_SHARD:-0}.tgz"
       - &cache-upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        if: github.event_name == 'merge_group'
+        continue-on-error: true
+        timeout-minutes: 2
         with:
           name: rust-cache-${{ github.job }}-${{ env.NEXTEST_SHARD || '0' }}
           path: ${{ runner.temp }}/rust-cache/*.tgz
@@ -314,7 +388,7 @@ jobs:
 
   backend-gates:
     needs: [affected]
-    if: *backend-affected
+    if: ${{ !cancelled() && (github.event_name == 'push' || needs.affected.outputs.backend == 'true') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions: {contents: read}
@@ -349,7 +423,7 @@ jobs:
 
   backend-release:
     needs: [affected]
-    if: *backend-affected
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions: {contents: read}
@@ -366,7 +440,7 @@ jobs:
         with:
           name: d10-backend
           path: backend/target/release/console-app
-          retention-days: ${{ github.event_name == 'push' && 90 || 1 }}
+          retention-days: 1
           if-no-files-found: error
       - *cache-collect
       - *cache-upload
@@ -375,7 +449,8 @@ jobs:
     needs: [affected]
     if: *backend-affected
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 30
+    # Measured tests take 25m; reserve setup, result upload and bounded cache maintenance.
+    timeout-minutes: 40
     permissions: {contents: read}
     defaults: *backend-defaults
     env:
@@ -397,7 +472,7 @@ jobs:
         with: {node-version-file: .node-version}
       - name: Install pinned Rust test runner
         run: |
-          curl --fail --silent --show-error --retry 4 --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
+          curl --fail --silent --show-error --retry 8 --retry-delay 15 --retry-all-errors --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
             "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
           echo "e1c85dbe02dcf5b963803b3f96f4f561757f5c37cab68c932411dea20d57284e  ${RUNNER_TEMP}/nextest.tar.gz" | sha256sum -c -
           tar -xzf "${RUNNER_TEMP}/nextest.tar.gz" -C "${RUNNER_TEMP}" cargo-nextest
@@ -414,42 +489,51 @@ jobs:
       - *cache-collect
       - *cache-upload
 
-  # Merge only changed cache files after successful dev builds, avoiding competing partial-cache writers.
+  # Import only the successful queue proof; all cache writes stay on dev.
   backend-cache:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    needs: [backend, backend-gates, backend-tests, backend-release]
+    if: github.event_name == 'push' && needs.affected.outputs.backend == 'true'
+    needs: [affected]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
-    permissions: {contents: read}
+    permissions: {contents: read, actions: read}
     steps:
       - *backend-harden
       - *backend-checkout
       - *rust-cache
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        continue-on-error: true
+        timeout-minutes: 2
         with:
+          run-id: ${{ needs.affected.outputs.run-id }}
+          github-token: ${{ github.token }}
           pattern: rust-cache-*
           merge-multiple: true
           path: ${{ runner.temp }}/rust-cache
       - name: Merge Rust cache changes
+        continue-on-error: true
+        timeout-minutes: 5
         run: |
+          shopt -s nullglob
           for archive in "$RUNNER_TEMP"/rust-cache/registry-*.tgz; do tar -xzf "$archive" -C "$HOME"; done
           for archive in "$RUNNER_TEMP"/rust-cache/target-*.tgz; do tar -xzf "$archive" -C "$GITHUB_WORKSPACE"; done
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        continue-on-error: true
+        timeout-minutes: 5
         with:
           path: |
-            ~/.cargo/registry
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
             ~/.cargo/git/db
             backend/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
   home:
     needs: [affected, backend-release]
-    if: ${{ !cancelled() && needs.affected.result == 'success' && (needs['backend-release'].result == 'success' || (github.event_name != 'push' && needs.affected.outputs.backend == 'false' && needs['backend-release'].result == 'skipped')) }}
+    if: ${{ !cancelled() && github.event_name != 'push' && needs.affected.result == 'success' && (needs.affected.outputs.web == 'true' || needs.affected.outputs.backend == 'true') && needs['backend-release'].result == 'success' }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     permissions:
       contents: read
-      actions: read
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with: {egress-policy: audit}
@@ -462,18 +546,10 @@ jobs:
           npm ci --no-audit --no-fund
           npx playwright install --with-deps --only-shell chromium
           npm run build
-      - name: Find latest successful trusted dev backend
-        id: backend
-        if: needs['backend-release'].result == 'skipped'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/ci-home-backend.mjs
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: d10-backend
           path: .cache/home-backend
-          run-id: ${{ steps.backend.outputs.run-id || github.run_id }}
-          github-token: ${{ github.token }}
       - run: chmod +x .cache/home-backend/console-app
       - name: Served 2,000-person Home budget
         env:
@@ -490,10 +566,10 @@ jobs:
           if-no-files-found: error
 
       - name: Firefox for D7 solo journey
-        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
         run: npx playwright install --with-deps firefox
       - name: Solo journey on Chromium and Firefox
-        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
         env:
           E2E_SERVED: "1"
           E2E_PREBUILT: "1"
@@ -507,58 +583,40 @@ jobs:
           done
           exit "$failed"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
         with:
           name: d7-playwright
           path: .cache/d7/*.json
           include-hidden-files: true
           if-no-files-found: error
 
-  d10-probes:
-    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
-    needs: [backend-release]
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
-        with: {egress-policy: audit}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: {persist-credentials: false}
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: {node-version-file: .node-version, cache: npm}
-      - run: npm ci --no-audit --no-fund
-      - run: npx playwright install --with-deps --only-shell chromium
-      - run: npm run build
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {name: d10-backend, path: .cache/d10-backend}
-      - run: chmod +x .cache/d10-backend/console-app
       - name: Live no-grant write census on Chromium
+        if: github.event_name == 'merge_group'
         env:
           E2E_SERVED: "1"
           E2E_PREBUILT: "1"
           E2E_REPORTER: line,json
           PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/d10/playwright.json
-          CONSOLE_APP_BIN: .cache/d10-backend/console-app
+          CONSOLE_APP_BIN: .cache/home-backend/console-app
         run: |
           npx playwright test e2e/authz/write-refusals.spec.ts --project=parallel
           PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/d10/beacon.json npx playwright test e2e/error-beacon.spec.ts --project=parallel
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
         with:
           name: d10-playwright
           path: .cache/d10/*.json
           include-hidden-files: true
           if-no-files-found: error
 
-  d7-evidence:
-    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
-    needs: [backend, backend-gates, backend-tests, backend-release, home, states]
+  release-evidence:
+    if: github.event_name == 'push' && needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true'
+    needs: [affected]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with: {egress-policy: audit}
@@ -567,23 +625,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
       - run: npm ci --no-audit --no-fund
-      - name: Record upstream evidence status
-        env:
-          NEEDS: ${{ toJSON(needs) }}
-        run: |
-          mkdir -p .cache/d7-evidence
-          node --input-type=module <<'JS'
-          import { writeFileSync } from 'node:fs';
-          const jobs = JSON.parse(process.env.NEEDS);
-          const status = Object.values(jobs).every(job => job.result === 'success') ? 'pass' : 'fail';
-          writeFileSync('.cache/d7-evidence/ci.json', JSON.stringify({ commit: process.env.GITHUB_SHA, run_at: new Date().toISOString(), status, jobs }, null, 2) + '\n');
-          JS
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {pattern: states-report-*, merge-multiple: true, path: .cache/d7-input}
+        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: states-report-*, merge-multiple: true, path: .cache/d7-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {name: d7-playwright, path: .cache/d7-input}
+        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', name: d7-playwright, path: .cache/d7-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {pattern: backend-test-results-*, path: .cache/d7-nextest}
+        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: backend-test-results-*, path: .cache/d7-nextest}
       - run: python3 scripts/d7-evidence.py .cache/d7-evidence .cache/d7-nextest .cache/d7-input/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() }}
@@ -593,27 +640,10 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
-  d10-evidence:
-    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
-    needs: [d7-evidence, d10-probes]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
-        with: {egress-policy: audit}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: {persist-credentials: false}
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: {node-version-file: .node-version, cache: npm}
-      - run: npm ci --no-audit --no-fund
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {name: d7-evidence, path: .cache/d7-evidence}
+        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', name: d10-playwright, path: .cache/d10-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {name: d10-playwright, path: .cache/d10-input}
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {pattern: states-report-*, merge-multiple: true, path: .cache/d8-input}
+        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: states-report-*, merge-multiple: true, path: .cache/d8-input}
       - run: node scripts/d10-census.mjs > .cache/d10-census.json
       - run: python3 scripts/d10-evidence.py .cache/d10-evidence .cache/d10-census.json .cache/d7-evidence .cache/d10-input/*.json
       - run: python3 scripts/d8-evidence.py .cache/d8-evidence .cache/d7-evidence/e2e.json .cache/d8-input/*.json .cache/d10-input/*.json
@@ -637,6 +667,7 @@ jobs:
           if-no-files-found: error
 
   supply-chain:
+    if: github.event_name != 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -694,16 +725,54 @@ jobs:
         working-directory: backend
         run: '"$TOOL_ROOT/bin/cargo-audit" audit'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.cache.outputs.run-id == ''
+        if: github.event_name == 'merge_group'
         with:
           name: ${{ steps.cache.outputs.key }}
           path: ${{ env.TOOL_ROOT }}/bin/cargo-*
           retention-days: 90
           if-no-files-found: error
 
+  dev-artifacts:
+    if: github.event_name == 'push'
+    needs: [affected]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {contents: read, actions: read}
+    steps:
+      - *backend-harden
+      - *backend-checkout
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - *playwright-version
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.affected.outputs.tools }}
+          path: .cache/dev-tools
+          run-id: ${{ needs.affected.outputs.run-id }}
+          github-token: ${{ github.token }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with: {name: '${{ needs.affected.outputs.tools }}', path: '.cache/dev-tools/cargo-*', retention-days: 90, if-no-files-found: error}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: needs.affected.outputs.web == 'true'
+        with:
+          name: playwright-cache
+          path: .cache/dev-browser
+          run-id: ${{ needs.affected.outputs.run-id }}
+          github-token: ${{ github.token }}
+      - if: needs.affected.outputs.web == 'true'
+        run: |
+          mkdir -p "$HOME/.cache"
+          tar -xzf .cache/dev-browser/playwright.tgz -C "$HOME/.cache"
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        if: needs.affected.outputs.web == 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+
   ci-ok:
+    permissions: {contents: read}
     if: ${{ always() }}
-    needs: [affected, commits, web, states-plan, states, states-timings, backend, backend-gates, backend-tests, backend-release, home, supply-chain]
+    needs: [affected, commits, workflows, web, states-plan, states, states-timings, backend, backend-gates, backend-tests, backend-release, home, supply-chain, dev-artifacts, backend-cache, release-evidence]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -714,12 +783,30 @@ jobs:
           node <<'JS'
           const jobs = JSON.parse(process.env.NEEDS);
           const push = process.env.GITHUB_EVENT_NAME === 'push';
-          const backend = push || jobs.affected.outputs.backend !== 'false';
+          for (const key of ['backend', 'web']) {
+            if (!['true', 'false'].includes(jobs.affected.outputs[key])) throw new Error('CI_CLASSIFICATION_MISSING');
+          }
+          const backend = jobs.affected.outputs.backend !== 'false';
+          const web = jobs.affected.outputs.web !== 'false';
           const backendJobs = ['backend', 'backend-gates', 'backend-tests', 'backend-release'];
           for (const [name, job] of Object.entries(jobs)) {
-            const optional = !push && (name === 'states-timings' || !backend && backendJobs.includes(name));
-            if (job.result !== 'success' && !(optional && job.result === 'skipped')) {
-              throw new Error(`${name}: ${job.result}`);
-            }
+            let skip = push;
+            if (name === 'affected') skip = false;
+            else if (name === 'dev-artifacts') skip = !push;
+            else if (name === 'states-timings') skip = !push || !web;
+            else if (name === 'backend-cache') skip = !push || !backend;
+            else if (name === 'release-evidence') skip = !push || !backend || !web;
+            else if (name === 'backend-gates') skip = !push && !backend;
+            else if (name === 'backend-release') skip ||= !backend && !web;
+            else if (backendJobs.includes(name)) skip ||= !backend;
+            else if (['web', 'states-plan', 'states'].includes(name)) skip ||= !web;
+            else if (name === 'home') skip ||= !web && !backend;
+            if (job.result !== (skip ? 'skipped' : 'success')) throw new Error(`${name}: ${job.result}`);
           }
+          const fs = require('node:fs');
+          fs.mkdirSync('.cache', { recursive: true });
+          fs.writeFileSync('.cache/ci.json', JSON.stringify({ commit: process.env.GITHUB_SHA, jobs }));
           JS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: github.event_name == 'merge_group'
+        with: {name: ci-proof, path: .cache/ci.json, include-hidden-files: true, retention-days: 1, if-no-files-found: error}

@@ -57,14 +57,14 @@ pub struct Session {
     pub reveal_classes: Vec<String>,
     pub requested_duration_seconds: i64,
     pub approved_duration_seconds: Option<i64>,
-    #[serde(with = "time::serde::rfc3339")]
+    #[serde(with = "console_kernel_core::timestamp")]
     pub requested_at: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
+    #[serde(with = "console_kernel_core::timestamp")]
     pub request_expires_at: OffsetDateTime,
     pub operator_approver_ref: Option<Uuid>,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(with = "console_kernel_core::timestamp::option")]
     pub tenant_approved_at: Option<OffsetDateTime>,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(with = "console_kernel_core::timestamp::option")]
     pub expires_at: Option<OffsetDateTime>,
 }
 

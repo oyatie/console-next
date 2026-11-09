@@ -16,6 +16,7 @@ pub mod job_title_manage;
 // --- lane: CRUD ---
 pub mod org_change_cancel;
 pub mod org_change_draft;
+pub mod org_change_sole_holder;
 pub mod org_change_step_decide;
 pub mod org_unit_manage;
 // --- lane: F7 ---
@@ -244,3 +245,5 @@ pub(crate) mod pay_group;
 pub(crate) mod payroll_module;
 
 pub mod approval_document_list;
+
+pub mod approval_document_read;

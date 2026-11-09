@@ -23,7 +23,6 @@ use uuid::Uuid;
 
 use super::catalog::{Domain, Level, action_group};
 use super::model::{AccessSubject, NodeKind, NodePath};
-use super::tags::tagged;
 
 /// Why the engine could not decide (always a deny for the caller).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -38,13 +37,9 @@ pub enum AccessEngineError {
     Evaluation(String),
 }
 
-const APPLIES: &str =
-    "appliesTo { principal: [Account], resource: [Tenant, LegalEntity, Workplace, Dept] };";
-
-/// Tenant-wide setup editors and the live ops holder may read historical setup facts.
-pub const GO_LIVE_RECEIPT_READ: &str = "onboarding_go_live_receipt_read";
-
-pub const BULK_APPOINTMENT: &str = "bulk_appointment";
+pub use super::cedar_schema::{
+    BULK_APPOINTMENT, GO_LIVE_RECEIPT_READ, PRIVACY_REQUEST_INTAKE_READ, schema_source,
+};
 
 const PLATFORM_POLICIES: [(&str, &str); 2] = [
     (
@@ -56,54 +51,6 @@ const PLATFORM_POLICIES: [(&str, &str); 2] = [
         "permit (principal, action, resource) when { principal.is_ops };",
     ),
 ];
-
-/// The platform schema: the node hierarchy, grants, accounts, one action group
-/// per offered (domain, level) and one action per tagged operation key.
-#[must_use]
-pub fn schema_source() -> String {
-    let mut src = String::from(
-        "entity Tenant = { org: String };\n\
-         entity LegalEntity in [Tenant] = { org: String };\n\
-         entity Workplace in [LegalEntity] = { org: String };\n\
-         entity Dept in [Workplace, Dept] = { org: String };\n\
-         entity Grant;\n\
-         entity Account in [Grant] = { org: String, is_ops: Bool };\n",
-    );
-    for domain in Domain::ALL {
-        for level in domain.offered() {
-            src.push_str(&format!(
-                "action \"{}\" {APPLIES}\n",
-                action_group(domain, *level)
-            ));
-        }
-    }
-    for (feature, domain, level) in tagged() {
-        src.push_str(&format!(
-            "action \"{}\" in [\"{}\"] {APPLIES}\n",
-            feature.as_str(),
-            action_group(domain, level)
-        ));
-    }
-    src.push_str(&format!(
-        "action \"{BULK_APPOINTMENT}\" in [\"{}\", \"{}\"] {APPLIES}\n\
-         action \"{}\" in [\"{}\", \"{}\"] {APPLIES}\n\
-         action \"{}\" in [\"{}\"] {APPLIES}\n",
-        action_group(Domain::HrBasic, super::catalog::Level::Edit),
-        action_group(Domain::Appointment, super::catalog::Level::Edit),
-        crate::cedar_pbac::actions::certificates::SETTINGS_READ,
-        action_group(Domain::HrBasic, super::catalog::Level::Edit),
-        action_group(Domain::Org, super::catalog::Level::Edit),
-        crate::cedar_pbac::actions::certificates::SETTINGS_MANAGE,
-        action_group(Domain::Org, super::catalog::Level::Edit),
-    ));
-    src.push_str(&format!(
-        "action \"{GO_LIVE_RECEIPT_READ}\" in [\"{}\", \"{}\", \"{}\"] {APPLIES}\n",
-        action_group(Domain::Org, super::catalog::Level::Edit),
-        action_group(Domain::HrBasic, super::catalog::Level::Edit),
-        action_group(Domain::Access, super::catalog::Level::Edit),
-    ));
-    src
-}
 
 fn schema() -> Result<&'static Schema, AccessEngineError> {
     static SCHEMA: OnceLock<Result<Schema, String>> = OnceLock::new();

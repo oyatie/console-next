@@ -4,6 +4,8 @@
 the always-on organisation and HR core plus attendance and payroll. `full` enables the other
 modules. A module compiled out of a profile exposes no routes or periodic loops.
 Migrations always apply to the shared schema, regardless of enabled features.
+Privacy rights filing and own-history APIs are always-on self-service capabilities;
+other compliance routes remain gated by the `compliance` feature.
 Console route telemetry ingestion is available only in `full`; the default
 release build exposes no telemetry ingestion route.
 

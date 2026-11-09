@@ -38,6 +38,7 @@ mod mail_sync;
 pub mod objects;
 #[cfg(feature = "office")]
 pub mod office;
+mod privacy;
 #[cfg(feature = "recruiting")]
 mod recruiting_hire;
 pub mod requests;

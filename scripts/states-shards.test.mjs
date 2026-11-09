@@ -358,7 +358,8 @@ test("a successful Playwright exit with an empty selection cannot pass a shard",
 test("ci-ok fails when the planner or any matrix shard fails or is skipped", () => {
   const aggregate = workflow.jobs["ci-ok"].steps[0].run;
   const run = (plan, states, refresh = "skipped") => {
-    const needs = Object.fromEntries(workflow.jobs["ci-ok"].needs.map(name => [name, { result: "success", outputs: { backend: "true" } }]));
+    const needs = Object.fromEntries(workflow.jobs["ci-ok"].needs.map(name => [name, { result: "success", outputs: { backend: "true", web: "true" } }]));
+    for (const name of ["dev-artifacts", "backend-cache", "release-evidence"]) needs[name].result = "skipped";
     needs["states-plan"].result = plan;
     needs.states.result = states;
     needs["states-timings"].result = refresh;
@@ -367,7 +368,7 @@ test("ci-ok fails when the planner or any matrix shard fails or is skipped", () 
     } });
   };
   assert.equal(run("success", "success").status, 0);
-  assert.equal(run("success", "success", "success").status, 0);
+  assert.notEqual(run("success", "success", "success").status, 0);
   for (const result of ["failure", "skipped", "cancelled"]) {
     assert.notEqual(run(result, "success").status, 0);
     assert.notEqual(run("success", result).status, 0);
@@ -409,7 +410,7 @@ test("CI consumes the plan's matrix and exact file list and ci-ok requires plann
   assert.ok(jobs["ci-ok"].needs.includes("states"));
   assert.equal(jobs["ci-ok"].steps[0].env.NEEDS, "${{ toJSON(needs) }}");
   assert.match(jobs["states-timings"].if, /github\.event_name == 'push'/);
-  assert.match(jobs["states-timings"].if, /refs\/heads\/dev/);
+  assert.match(jobs["states-timings"].if, /needs.affected.outputs.web/);
   assert.match(readFileSync(new URL("../package.json", import.meta.url), "utf8"), /--global-timeout=600000/);
 });
 
@@ -444,6 +445,7 @@ test("CI gives state and web checks their full run budget after measured setup",
     "python3 scripts/d10_evidence_test.py",
     "python3 scripts/d8_evidence_test.py",
     "python3 scripts/states_evidence_test.py",
+    "python3 scripts/pull_measured_evidence_test.py",
     "CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts",
   ]);
   assert.equal(web["timeout-minutes"], Math.ceil(timings.setupAllowanceSeconds / 60) + check["timeout-minutes"]);
@@ -469,11 +471,13 @@ test("both jobs cache Chromium by exact locked Playwright version using existing
       assert.deepEqual(restore.with, { path: "~/.cache/ms-playwright", key });
       const install = job.steps.find(s => s.name === "Chromium headless shell for browser-backed tests");
       assert.ok(install && !install.if, "OS fonts must install even on a browser cache hit");
-      const save = job.steps.find(s => s.uses === saveAction);
-      assert.deepEqual(save.with, { path: "~/.cache/ms-playwright", key });
-      assert.equal(save.if, "steps.playwright-cache.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/dev'");
       assert.ok(job.steps.indexOf(restore) < job.steps.indexOf(install));
-      assert.ok(job.steps.indexOf(install) < job.steps.indexOf(save));
+      assert.ok(!job.steps.some(s => s.uses === saveAction));
+      const writer = workflow.jobs["dev-artifacts"];
+      const save = writer.steps.find(s => s.uses === saveAction);
+      assert.deepEqual(save.with, { path: "~/.cache/ms-playwright", key });
+      assert.match(writer.if, /github.event_name == 'push'/);
+      assert.equal(save.if, "needs.affected.outputs.web == 'true'");
     }
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

@@ -5,9 +5,11 @@
 // reads and commands no backend branch serves yet (the security contact). Each is a backend ask; the screens that
 // use one degrade where it is not served. Remove an entry once its path is generated, and a type that then fails to
 // match is a contract bug to raise, not to paper over.
-import type { ApprovalDecision, ApprovalDecisionReceipt, ApprovalDocument } from "./approvals";
+import type { ApprovalDecision, ApprovalDecisionReceipt } from "./approvals";
 export type { ApprovalDecision, ApprovalDocument, ApprovalItem, ApprovalPage, ApprovalQuery, ApprovalViewer } from "./approvals";
 import type { PayrollPaths } from "./payroll";
+import type { PrivacyPaths } from "./privacy";
+export type { PrivacyRightsReceipt, PrivacyRightsPage, PrivacyFiling, PrivacyFilingOptions } from "./privacy";
 export type { PayGroup, PayGroups, PayrollRate, PayrollRates, PayrollRun, PayrollRunDetail } from "./payroll";
 import type { StatutoryPaths } from "./statutory";
 export type { FilingTask, FilingPage, RegisterPage, RecordFiling, FilingFacts, FilingReason, FilingCitation } from "./statutory";
@@ -87,7 +89,6 @@ export type EmployeeViewFilters = { status?: string; review?: string; unit?: str
 export type EmployeeView = { id: string; name: string; filters: EmployeeViewFilters };
 
 type Requested = {
-  "/api/v1/approvals/{id}": Path<{ get: Op<ApprovalDocument, never, never, { id: string }> }>;
   /** Delegates to the source command; a stale fingerprint refuses with approval_document_changed (409). */
   "/api/v1/approvals/{id}/decision": Path<{ post: Op<ApprovalDecisionReceipt, ApprovalDecision, never, { id: string }, { "Idempotency-Key": string }> }>;
   /** Cursor projection; absence of next_cursor identifies the older offset-only response. */
@@ -102,7 +103,7 @@ type Requested = {
 };
 
 /** The generated paths with the requested ones laid over them. */
-export type AllPaths = Omit<paths, keyof Requested | keyof StatutoryPaths | keyof PayrollPaths> & Requested & StatutoryPaths & PayrollPaths;
+export type AllPaths = Omit<paths, keyof Requested | keyof StatutoryPaths | keyof PayrollPaths | keyof PrivacyPaths> & Requested & StatutoryPaths & PayrollPaths & PrivacyPaths;
 
 // --- lane: CS-BULK (fe/cs-bulk-history): setup batches (MR-12 org-structure, MR-29 entity-setup), named from the
 // generated schema. The structure node and tree are the ones ./structure names (kept under their old names here).

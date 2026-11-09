@@ -168,17 +168,22 @@ test("runner propagates failures, refuses stale/missing JUnit and runs without d
     const db = suite(["ordinary", "database", "ignored_database", "feature_database", "feature_ordinary", "tooling"]);
     db.testcases.ignored_database.ignored = true;
     db.testcases.tooling.ignored = true;
-    writeFileSync(path.join(root, "metadata.json"), JSON.stringify({ workspace_root: root, target_directory: path.join(root, "custom-build-cache"), workspace_members: ["example"], packages: [{ id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [{ name: "first", kind: ["test"] }, { name: "second", kind: ["test"] }] }] }));
+    writeFileSync(path.join(root, "metadata.json"), JSON.stringify({ workspace_root: root, target_directory: path.join(root, "custom-build-cache"), workspace_members: ["example"], packages: [{ id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [{ name: "first", kind: ["test"] }, { name: "second", kind: ["test"] }, { name: "openapi_drift", kind: ["test"], "required-features": ["full"] }] }] }));
     writeFileSync(path.join(root, "list.json"), JSON.stringify(listing(s)));
     writeFileSync(path.join(root, "list-db.json"), JSON.stringify(listing(db)));
     const cargo = `#!${process.execPath}
 const fs = require('node:fs'), path = require('node:path');
 const root = process.env.FIXTURE_ROOT, args = process.argv.slice(2);
 if (Boolean(process.env.DATABASE_URL || process.env.PGHOST) !== (process.env.EXPECT_DATABASE === '1')) process.exit(91);
-if (args[0] === 'metadata') process.stdout.write(fs.readFileSync(path.join(root, 'metadata.json')));
+if (args[0] === 'metadata') {
+  const metadata = JSON.parse(fs.readFileSync(path.join(root, 'metadata.json')));
+  metadata.resolve = { nodes: [{ id: 'example', features: args[args.indexOf('--features') + 1] === 'console-app/full' ? ['full'] : [] }] };
+  process.stdout.write(JSON.stringify(metadata));
+}
 else if (args[1] === 'list') {
   if (process.env.EXPECT_DATABASE === '1' && (!args.includes('--workspace') || ['--test', '--lib', '--bins'].some(flag => args.includes(flag)))) process.exit(95);
-  process.stdout.write(fs.readFileSync(path.join(root, args.includes('--features') ? 'list-db.json' : 'list.json')));
+  fs.writeFileSync(path.join(root, 'list-args.json'), JSON.stringify(args));
+  process.stdout.write(fs.readFileSync(path.join(root, process.env.EXPECT_DATABASE === '1' && args.includes('--features') ? 'list-db.json' : 'list.json')));
   if (process.env.MODE === 'spawn-error') fs.unlinkSync(__filename);
 }
 else {
@@ -188,27 +193,36 @@ else {
   const calls = fs.existsSync(callsFile) ? JSON.parse(fs.readFileSync(callsFile)) : [];
   calls.push(args);
   fs.writeFileSync(callsFile, JSON.stringify(calls));
-  const result = args.includes('--features') ? 'result-db.xml' : 'result.xml';
+  const result = process.env.EXPECT_DATABASE === '1' && args.includes('--features') ? 'result-db.xml' : 'result.xml';
   if (process.env.MODE !== 'missing') fs.copyFileSync(path.join(root, result), path.join(root, 'target/nextest/ci/junit.xml'));
   process.exit(process.env.MODE === 'exit' ? 100 : 0);
 }
 `;
-    for (const mode of ["pass", "sharded", "failure", "exit", "missing", "skipped", "spawn-error"]) {
+    for (const mode of ["pass", "sharded", "sharded-first", "failure", "exit", "missing", "skipped", "spawn-error"]) {
       writeFileSync(path.join(root, "bin/cargo"), cargo, { mode: 0o755 });
       writeFileSync(path.join(root, "result.xml"), junit([["example::mixed", "ordinary"]], mode === "skipped" ? "<skipped/>" : "", mode === "failure" ? 1 : 0));
       writeFileSync(path.join(root, "result-db.xml"), junit([["example::mixed", "database"], ["example::mixed", "feature_database"]]));
-      const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], { encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, NEXTEST_SHARD: mode === "sharded" ? "2" : undefined, NEXTEST_SHARDS: mode === "sharded" ? "2" : undefined, DATABASE_URL: "postgres://unused.invalid/db", PGHOST: "unused.invalid", GITHUB_STEP_SUMMARY: path.join(root, "summary.md") } });
-      assert.equal(result.status, ["pass", "sharded"].includes(mode) ? 0 : 1, result.stdout + result.stderr);
+      const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname], { encoding: "utf8", env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, MODE: mode, NEXTEST_SHARD: mode === "sharded" ? "2" : mode === "sharded-first" ? "1" : undefined, NEXTEST_SHARDS: mode.startsWith("sharded") ? "2" : undefined, DATABASE_URL: "postgres://unused.invalid/db", PGHOST: "unused.invalid", GITHUB_STEP_SUMMARY: path.join(root, "summary.md") } });
+      assert.equal(result.status, ["pass", "sharded-first", "sharded"].includes(mode) ? 0 : 1, result.stdout + result.stderr);
       if (mode === "sharded") {
         const args = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
         assert.ok(args.includes("--workspace"));
-        assert.deepEqual(args.slice(args.indexOf("--test"), args.indexOf("--test") + 2), ["--test", "second"]);
+        assert.deepEqual(args.slice(args.indexOf("--test"), args.indexOf("--test") + 2), ["--test", "openapi_drift"], "full-feature drift binary must be in the shard plan");
         assert.ok(!args.includes("--lib") && !args.includes("--bins"));
+      }
+      if (mode === "sharded-first") {
+        const args = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
+        assert.deepEqual(args.filter((_, i) => args[i - 1] === "--test"), ["first", "second"]);
+        assert.ok(args.includes("--lib") && args.includes("--bins"));
       }
       if (mode === "spawn-error") assert.match(result.stderr, /spawnSync cargo ENOENT/);
       assert.equal(JSON.parse(readFileSync(path.join(root, "target/nextest/ci/inventory.json"), "utf8")).selected.length, 1);
     }
     const args = JSON.parse(readFileSync(path.join(root, "args.json"), "utf8"));
+    const listArgs = JSON.parse(readFileSync(path.join(root, "list-args.json"), "utf8"));
+    for (const command of [listArgs, args]) {
+      assert.equal(command[command.indexOf("--features") + 1], "console-app/full", "discovery and execution must include full-feature OpenAPI drift tests");
+    }
     for (const flag of ["--workspace", "--locked", "--no-fail-fast", "--ignore-default-filter"]) assert.ok(args.includes(flag));
     assert.equal(args[args.indexOf("--retries") + 1], "0");
     assert.equal(args[args.indexOf("--run-ignored") + 1], "default");
@@ -505,7 +519,8 @@ test("backend tests inherit hardening, pinned tooling, JUnit artifacts and block
   assert.ok(job.steps[0].uses.startsWith("step-security/harden-runner@"));
   for (const step of job.steps) {
     if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
-    assert.ok(!step["continue-on-error"]);
+    const cacheMaintenance = step.name === "Collect Rust cache changes" || step.with?.name?.startsWith("rust-cache-") === true;
+    assert.equal(step["continue-on-error"] ?? false, cacheMaintenance);
   }
   const run = job.steps.find((s) => s.run === "node scripts/backend-tests.mjs");
   assert.ok(run && !run.if);

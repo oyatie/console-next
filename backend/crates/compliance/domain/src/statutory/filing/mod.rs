@@ -1,5 +1,9 @@
 //! Effective-dated filing rules: the whole clock and applicability belong to the register.
 mod applicability;
+mod citation_url;
+pub use citation_url::FilingCitationUrl;
+#[cfg(test)]
+mod citation_tests;
 mod coverage;
 #[cfg(test)]
 mod coverage_tests;
@@ -75,7 +79,7 @@ pub struct FilingCitation {
     pub instrument: String,
     pub article: String,
     pub promulgation: String,
-    pub source_url: String,
+    pub source_url: FilingCitationUrl,
     pub enforced_on: String,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,10 +152,6 @@ impl FilingRule {
             .transpose()?
             .is_some_and(|end| end <= from)
             || super::parse_date(&self.citation.enforced_on)? > from
-            || !self
-                .citation
-                .source_url
-                .starts_with("https://www.law.go.kr/")
         {
             return Err(KernelError::validation(
                 "invalid filing rule period or citation",

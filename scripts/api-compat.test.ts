@@ -56,8 +56,8 @@ test("filing identity and opening countdown are additive response fields for N-1
 });
 
 test.each([
-  ["step-up response action_kind", responseBinding.action_kind!, 15],
-  ["step-up response reason_key", responseBinding.reason_key!, 15],
+  ["step-up response action_kind", responseBinding.action_kind!, 16],
+  ["step-up response reason_key", responseBinding.reason_key!, 16],
   ["EmployeeLifecycleEvent.leave_type", schemas.EmployeeLifecycleEvent!.properties!.leave_type!, 6],
   ["import leave_type", schemas.EmployeeImportPlannedRow!.properties!.new_person!.properties!.leave!.properties!.leave_type!, 5],
   ["leave request leave_type", schemas.LeaveRequestView!.properties!.leave_type!, 2],
@@ -65,7 +65,7 @@ test.each([
   ["change request kind", schemas.ChangeRequest!.properties!.kind!, 9],
   ["change request subject_type", schemas.ChangeRequest!.properties!.subject_type!, 5],
   ["access domain", schemas.AccessDomain!, 19],
-  ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 45],
+  ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 46],
 ] as const)("%s permits future response values and retains every documented value", (_, schema, count) => {
   expect(schema.type).toBe("string");
   expect(schema.enum).toBeUndefined();

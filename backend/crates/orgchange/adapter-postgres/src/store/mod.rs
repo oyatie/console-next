@@ -12,7 +12,9 @@ mod effectuate;
 mod queries;
 mod schedule;
 mod settlement;
+mod sole_holder;
 mod submit;
+pub use sole_holder::sole_holder_eligibility_in_tx;
 
 pub(crate) use detail::*;
 pub(crate) use effectuate::effectuate_in_tx;

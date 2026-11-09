@@ -27,6 +27,25 @@ async fn admin_can_read_and_export_consent_ledger(pool: PgPool) {
     assert_eq!(ledger.status, StatusCode::OK, "{:?}", ledger.json);
     assert_eq!(ledger.json["items"][0]["action"], "consent.grant");
     assert_eq!(ledger.json["total"], 1);
+    let stored: (OffsetDateTime, OffsetDateTime) =
+        sqlx::query_as("SELECT occurred_at, created_at FROM location_consent_ledger WHERE id = $1")
+            .bind(
+                ledger.json["items"][0]["id"]
+                    .as_str()
+                    .unwrap()
+                    .parse::<uuid::Uuid>()
+                    .unwrap(),
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    for (field, stored) in [("occurred_at", stored.0), ("created_at", stored.1)] {
+        let wire = ledger.json["items"][0][field]
+            .as_str()
+            .expect("RFC 3339 string");
+        assert!(wire.ends_with('Z'), "{wire}");
+        assert_eq!(OffsetDateTime::parse(wire, &Rfc3339).unwrap(), stored);
+    }
 
     let csv = get(
         service,

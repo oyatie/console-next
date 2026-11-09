@@ -73,6 +73,7 @@ properties:
     - setup_golive
     - support_access
     - registration_check
+    - privacy_request
   urg:
     type: string
     enum:
@@ -120,6 +121,9 @@ properties:
       worksite_name:
         type: string
         description: Optional physical work site, separate from the statutory placement path.
+      privacy_kinds:
+        type: array
+        items: { type: string }
       review_count:
         type: integer
         minimum: 0
@@ -212,3 +216,12 @@ properties:
           $ref: '#/components/schemas/AccessEffectiveEntry'
       is_ops:
         type: boolean
+  version:
+    type: string
+    description: Opaque command version for pending org-change approval rows; changes after any step decision.
+  can_decide:
+    type: boolean
+    description: Present on pending org-change approval rows; evaluated by the command's Cedar action and batch fact loader. Commands recheck current facts.
+  cannot_reason:
+    type: string
+    description: Command refusal code when can_decide is false; absent when allowed.

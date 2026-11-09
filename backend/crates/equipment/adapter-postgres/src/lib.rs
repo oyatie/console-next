@@ -11,6 +11,7 @@ use console_equipment_application::{
     QuoteCase, RegisterUnit,
 };
 use console_equipment_domain::{Availability, CaseState, DispositionKind, DispositionState};
+use console_kernel_core::rfc3339;
 use console_kernel_core::{
     AuditAction, AuditEvent, BranchId, ErrorKind, KernelError, OrgId, TraceContext, UserId,
 };
@@ -21,7 +22,6 @@ use sha2::{Digest, Sha256};
 use sqlx::postgres::PgRow;
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 #[derive(Debug, thiserror::Error)]
@@ -1205,11 +1205,6 @@ async fn bind_handover_custody(
 
 fn fingerprint(v: &Value) -> String {
     hex::encode(Sha256::digest(v.to_string()))
-}
-
-fn rfc3339(at: OffsetDateTime) -> Result<String, PgEquipment3rError> {
-    at.format(&Rfc3339)
-        .map_err(|e| KernelError::internal(format!("timestamp formatting failed: {e}")).into())
 }
 
 fn opt_rfc3339(at: Option<OffsetDateTime>) -> Result<Value, PgEquipment3rError> {
