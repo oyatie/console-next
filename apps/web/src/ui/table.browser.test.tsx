@@ -141,6 +141,10 @@ test("grouped tables preserve row detail, tone and keyboard selection across nat
   await expectElement(last).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowDown");
   await expectElement(first).toBeFocused();
+  await first.dispatchEvent("keydown", { key: "ㅏ", code: "KeyK" });
+  await expectElement(last).toBeFocused();
+  await last.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ" });
+  await expectElement(first).toBeFocused();
 });
 
 test("editing tables never add wrapper tab stops or duplicate regions at any width", async () => {

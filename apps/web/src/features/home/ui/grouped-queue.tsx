@@ -14,6 +14,7 @@ import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Table, type Column } from "../../../ui/table";
 import { useCardLayout } from "../../../ui/long-table/use-card-layout";
+import { rowStep } from "../../../ui/long-table/row-keys";
 import { DEADLINE_BUCKETS, deadlineBucket } from "../domain/deadline-bucket";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { GrantNotice } from "./grant-notices";
@@ -128,8 +129,8 @@ export function GroupedQueue({ items, action, selected, onSelect, onOpen }: { it
     : <Table detail={detail} label={name} rows={rows} rowId={rowId} selected={selected} onSelect={pick} columns={columns} />;
   };
   return <div ref={surface} className={css.groups} onFocusCapture={e => { if (e.target.closest("a, button, input, select, textarea")) e.stopPropagation(); }} onKeyDownCapture={onSelect && (e => {
-    if (!(e.target instanceof HTMLElement) || !e.target.matches("[data-id]") || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.nativeEvent.isComposing) return;
-    const step = { j: 1, ArrowDown: 1, k: -1, ArrowUp: -1 }[e.key];
+    if (!(e.target instanceof HTMLElement) || !e.target.matches("[data-id]")) return;
+    const step = rowStep(e.nativeEvent);
     if (!step) return;
     const rows = [...surface.current!.querySelectorAll<HTMLElement>("[data-id]")].filter(row => row.getClientRects().length > 0);
     const next = rows[rows.indexOf(e.target) + step];

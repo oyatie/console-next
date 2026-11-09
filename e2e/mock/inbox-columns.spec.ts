@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { screens } from "../states/registry";
-import { failure, inbox } from "./fixtures";
+import { checklist, failure, inbox } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { orgChange } from "./org-changes";
@@ -115,15 +115,18 @@ for (const path of ["/", "/inbox"]) {
   }
 }
 
-for (const path of ["/", "/inbox"]) test(`a decision in the record stays on ${path} and row commands do not select`, async ({ page }) => {
+for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) test(`a decision in the record stays on ${path} at ${width}px and row commands do not select`, async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const mock = await mockScreen(page, screens[0], "populated");
   const detail = orgChange("approval");
   const data = inbox(2);
   data.items[1] = { ...data.items[1]!, kind: "org_change_approve", links: [{ kind: "org_change", id: detail.id }], context: { command: "approve" } };
-  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: data });
-  await mockRoute(page, "get", "/api/v1/org-changes/{id}", { status: 200, json: detail });
   let decisions = 0;
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", () => {
+    const items = decisions < 2 ? data.items : data.items.slice(0, 1);
+    return { status: 200, json: { ...data, items, total: items.length, counts: { ...data.counts, turn: { total: items.length, total_is_exact: true } } } };
+  });
+  await mockRoute(page, "get", "/api/v1/org-changes/{id}", { status: 200, json: detail });
   await mockRoute(page, "post", "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision", request => {
     expect(request.postDataJSON()).toEqual({ decision: "APPROVED" });
     decisions++;
@@ -143,9 +146,104 @@ for (const path of ["/", "/inbox"]) test(`a decision in the record stays on ${pa
   await row.press("Enter");
   const pane = page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true });
   await expect(pane).toContainText(data.items[1]!.title);
+  await page.setViewportSize({ width, height: 900 });
+  await page.evaluate(title => {
+    const seen: string[] = [];
+    const observer = new MutationObserver(changes => {
+      for (const change of changes) for (const node of change.addedNodes) {
+        if (node instanceof Element && [node, ...node.querySelectorAll("h2")].some(el => el.matches("h2") && el.textContent === title)) seen.push(title);
+      }
+    });
+    observer.observe(document.querySelector("main")!, { childList: true, subtree: true });
+    Object.assign(window, { missingRecordHeadings: seen });
+  }, t("common.read.notFound.title"));
   await pane.getByRole("button", { name: "조직 변경 승인", exact: true }).click();
   await expect.poll(() => decisions).toBe(2);
+  await expect(pane).toHaveCount(0);
+  await expect(page).not.toHaveURL(/sel=/);
+  await expect(page.locator("main [data-id]").first()).toBeFocused();
+  await expect(page.getByRole("heading", { name: t("common.read.notFound.title"), exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { missingRecordHeadings: string[] }).missingRecordHeadings)).toEqual([]);
   expect(new URL(page.url()).pathname).toBe(path);
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await fits(page, `after decision ${path} ${width} ${theme}`);
+    await page.screenshot({ path: info.outputPath(`decided-${path === "/" ? "home" : "inbox"}-${width}-${theme}.png`), fullPage: true });
+  }
+  await expectAxe(page, `after decision ${path} ${width}`);
+  expect(mock.unexpected).toEqual([]);
+});
+
+for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) {
+  test(`Korean row keys respect composition, modifiers, controls and hidden rows on ${path} at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const mock = await mockScreen(page, screens[0], "populated");
+    const data = rows();
+    await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: data });
+    await page.goto(path);
+    const listRows = page.locator("[data-flexible-columns] [data-id]");
+    const first = listRows.first();
+    await first.focus();
+    for (const guard of [{ isComposing: true }, { altKey: true }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
+      await first.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ", ...guard });
+      await expect(first).toBeFocused();
+      await expect(page).not.toHaveURL(/sel=/);
+    }
+    const control = first.getByRole("link").first();
+    await control.focus();
+    await control.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ" });
+    await expect(control).toBeFocused();
+    await first.focus();
+    await listRows.nth(1).evaluate(el => el.style.display = "none");
+    await first.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ" });
+    await expect(listRows.nth(2)).toBeFocused();
+    await listRows.nth(2).dispatchEvent("keydown", { key: "ㅏ", code: "KeyK" });
+    await expect(first).toBeFocused();
+    await listRows.nth(1).evaluate(el => el.style.removeProperty("display"));
+    await first.press("Enter");
+    if (width === 390) {
+      await page.getByRole("button", { name: t("common.back"), exact: true }).click();
+      await expect(page).not.toHaveURL(/sel=/);
+      await expect(page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true })).toHaveCount(0);
+    }
+    await first.focus();
+    await first.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ" });
+    const pane = page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true });
+    if (width === 1440) await expect(pane).toContainText(data.items[1]!.title);
+    else await expect(listRows.nth(1)).toBeFocused();
+    expect(mock.unexpected).toEqual([]);
+  });
+}
+
+for (const path of ["/", "/inbox"]) test(`task links keep their own click without selecting on ${path}`, async ({ page }) => {
+  const mock = await mockScreen(page, screens[0], "populated");
+  const data = rows();
+  data.items[1] = { ...data.items[1]!, context: { command_id: "00000000-0000-4000-8000-000000000001" } };
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: data });
+  await page.goto(`${path}?sel=${encodeURIComponent(data.items[0]!.id)}`);
+  const link = page.locator("main [data-id]").nth(1).getByRole("link", { name: t("requestOutcome.open"), exact: true });
+  await link.evaluate(el => el.addEventListener("click", event => event.preventDefault()));
+  await link.click();
+  let observations = 0;
+  await expect.poll(() => {
+    expect(new URL(page.url()).searchParams.get("sel")).toBe(data.items[0]!.id);
+    return ++observations;
+  }, { intervals: [200], timeout: 1000 }).toBe(2);
+  expect(mock.unexpected).toEqual([]);
+});
+
+test("setup rows ignore a record selection at phone width", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const mock = await mockScreen(page, screens[0], "populated");
+  const data = inbox(1);
+  data.items[0] = { ...data.items[0]!, kind: "privacy_request" };
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: { ...data, setup: checklist } });
+  await page.goto(`/inbox?sel=${encodeURIComponent(data.items[0]!.id)}`);
+  const row = page.locator("main [data-id]");
+  await expect(row).toHaveCount(1);
+  await expect(row).not.toHaveAttribute("data-selected");
+  await expect(row).not.toHaveAttribute("aria-selected");
+  await expect(page.locator("[data-flexible-columns]")).toHaveCount(0);
   expect(mock.unexpected).toEqual([]);
 });
 

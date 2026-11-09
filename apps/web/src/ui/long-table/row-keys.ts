@@ -6,6 +6,11 @@
 export const editable = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.isContentEditable || /^(TEXTAREA|SELECT)$/.test(el.tagName) || (el instanceof HTMLInputElement && !/^(checkbox|radio|button)$/.test(el.type)));
 
+/** Physical J/K positions work with Korean input; composing and modified keys belong to the input source. */
+export const rowStep = (e: Pick<KeyboardEvent, "key" | "code" | "isComposing" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">) =>
+  e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey ? 0 :
+    e.code === "KeyJ" || e.key === "ArrowDown" ? 1 : e.code === "KeyK" || e.key === "ArrowUp" ? -1 : 0;
+
 export type RowKeyHandlers = {
   /** `/`: focus the in-app search. */
   find?: () => void;

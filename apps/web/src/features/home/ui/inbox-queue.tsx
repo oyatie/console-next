@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useContext, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState, type AnyRouter } from "@tanstack/react-router";
 import type { Checklist } from "@console/api/pending";
 import { t, type MessageId } from "@console/i18n";
@@ -46,6 +46,28 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
   const search = useRouterState({ select: state => state.location.search as { sel?: string; sel2?: string } });
   const navigate = useNavigate();
   const { sel, select } = columnSelection(search, options => navigate<AnyRouter, string>(options));
+  const [foundSelection, setFoundSelection] = useState<string>();
+  const restoreList = useRef(false);
+  const selectedItem = inbox.data?.pages.flatMap(page => page.items).find(item => item.id === sel);
+  if (selectedItem && foundSelection !== sel) setFoundSelection(sel);
+  else if (foundSelection && foundSelection !== sel) setFoundSelection(undefined);
+  const removed = !!sel && foundSelection === sel && inbox.isSuccess && !inbox.isPlaceholderData && !selectedItem;
+  useEffect(() => {
+    if (removed) {
+      restoreList.current = true;
+      select(undefined);
+    } else if (!sel && restoreList.current) {
+      let nextFrame = 0;
+      // Inline commands restore the heading in two frames; the surviving list row owns the final focus.
+      const frame = requestAnimationFrame(() => {
+        nextFrame = requestAnimationFrame(() => {
+          restoreList.current = false;
+          surface.current?.querySelector<HTMLElement>("[data-id], a[href], button")?.focus();
+        });
+      });
+      return () => { cancelAnimationFrame(frame); cancelAnimationFrame(nextFrame); };
+    }
+  }, [removed, sel, select]);
   const focusRecord = () => surface.current?.querySelector<HTMLElement>("aside h2[tabindex]")?.focus();
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
@@ -91,7 +113,7 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
             {!preview && inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
           </>;
           return columns ? <div ref={surface}><FlexibleColumns list={list} onSelect={selectItem} onOpen={focusRecord}
-            record={sel && { id: sel, label: t("home.inbox.record.title"), title: t("home.inbox.record.title"), onClose: () => select(undefined),
+            record={!removed && sel && { id: sel, label: t("home.inbox.record.title"), title: t("home.inbox.record.title"), onClose: () => select(undefined),
               returnFocus: () => surface.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
               children: <InboxRecord item={rows.find(item => item.id === sel)} action={action} onBack={() => select(undefined)} />,
             }} /></div> : list;
