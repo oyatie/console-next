@@ -5,17 +5,18 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApiError } from "../../../reference/support-access/api";
 import { readIdentity } from "../../../lib/query";
-import { ActiveSupportBanner, SupportAccess, SupportAccessIndicator } from "./support-access";
+import { SupportAccess } from "./support-access";
+import { ActiveSupportBanner, SupportAccessIndicator } from "./support-access-status";
 import { activeSupportQuery, supportSessionsQuery, supportRefusal, type SupportSession } from "../../../reference/support-access/api";
 
 const state = vi.hoisted(() => ({
   data: undefined as unknown, active: undefined as unknown, error: undefined as unknown,
-  pending: false, calls: [] as { run: (input: unknown, key: string) => Promise<unknown> }[],
+  review: "session-a" as string | undefined, pending: false, calls: [] as { run: (input: unknown, key: string) => Promise<unknown> }[],
   get: vi.fn(), post: vi.fn(), query: vi.fn(), auth: { token: null as string | null },
 }));
 vi.mock("@console/api", async (original) => ({ ...await original<object>(), api: { GET: state.get, POST: state.post }, session: state.auth }));
 vi.mock("@console/i18n", async (original) => ({ ...await original<object>(), t: (key: string) => key, isMessageId: () => true }));
-vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: undefined }), useNavigate: () => vi.fn() }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
+vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: state.review }), useNavigate: () => vi.fn() }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
 vi.mock("@tanstack/react-query", async (original) => ({ ...await original<object>(), useQuery: (q: Parameters<typeof readIdentity>[0]) => { state.query(q); return {
   data: readIdentity(q) === readIdentity(activeSupportQuery) ? state.active : readIdentity(q) === readIdentity(supportSessionsQuery) ? state.data : undefined,
   error: state.error, isError: !!state.error, isPending: state.pending, refetch: vi.fn(),
@@ -24,6 +25,8 @@ vi.mock("../../../lib/react/command", () => ({ useCommand: (opts: typeof state.c
   state.calls.push(opts);
   return { mutate: vi.fn(), isPending: false, error: undefined };
 }, outcomeUnknown: () => false, recoveryOf: () => undefined }));
+
+vi.mock("../../../ui/composer/composer", () => ({ Composer: ({ title, children, secondary, notice, kicker, action }: { title: string; children: ReactNode; secondary: ReactNode; notice: ReactNode; kicker: ReactNode; action: { mode: string } }) => <section role="dialog" aria-label={title} data-action={action.mode}><h2>{title}</h2>{kicker}{children}{notice}<button>composer.commit</button>{secondary}</section> }));
 
 const session: SupportSession = {
   id: "session-a", operator_label: "공급사 · 운영자 A", ticket_ref: "HELP-123", reason_code: "DIAGNOSE", reason: "조회 화면 오류 확인",
@@ -35,7 +38,7 @@ const session: SupportSession = {
 beforeEach(() => {
   state.data = { sessions: [session], can_approve: true };
   state.active = { sessions: [], can_approve: true, pending_count: 0, pending_approvals: [] };
-  state.error = undefined; state.pending = false; state.calls = [];
+  state.review = session.id; state.error = undefined; state.pending = false; state.calls = [];
   state.get.mockReset(); state.post.mockReset(); state.query.mockReset();
   state.auth.token = null;
   state.post.mockResolvedValue({ data: {}, response: new Response(null, { status: 200 }) });
@@ -69,7 +72,7 @@ test("the tenant sees purpose, scope, bounded duration, decisions and access rec
   const html = renderToStaticMarkup(<SupportAccess />);
   expect(html).toContain("supportAccess.title");
   expect(html).not.toContain("audit.title");
-  for (const text of ["HELP-123", session.reason, session.operator_label, "supportAccess.duration", "supportAccess.masked", "supportAccess.approve", "supportAccess.deny", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
+  for (const text of ["HELP-123", session.reason, session.operator_label, "supportAccess.duration", "supportAccess.masked", "supportAccess.approve", "composer.commit", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
   expect(html).toContain("max=\"30\"");
   expect(html).toContain("supportAccess.revealPersonal");
 });
@@ -189,4 +192,27 @@ test.each(["REQUESTED", "OPERATOR_APPROVED", "ACTIVE", "ENDED", "EXPIRED", "DENI
   const out = renderToStaticMarkup(<SupportAccess />);
   expect(vi.mocked(EnumValue).mock.calls.map(([p]) => [p.e.type, p.value])).toEqual([["supportSessionState", value]]);
   expect(out).toContain(`<span class="chip chip--${value === "ACTIVE" ? "warn" : "neutral"}">supportAccess.state.${value}</span>`);
+});
+
+test("plain navigation leaves support history unselected", () => {
+  state.review = undefined;
+  state.data = { sessions: [{ ...session, state: "ENDED" }], can_approve: true };
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).not.toContain('data-side-panel');
+  expect(html).not.toContain('role="dialog"');
+  expect(html).not.toContain('aria-selected="true"');
+});
+
+test("an active session stays read-only for a non-approver", () => {
+  state.data = { sessions: [{ ...session, state: "ACTIVE", tenant_approved_at: session.requested_at }], can_approve: false };
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).toContain('data-side-panel');
+  expect(html).not.toContain('role="dialog"');
+  expect(html).not.toContain('>supportAccess.end</button>');
+});
+
+test("approval details use the action sheet instead of the read-only peek", () => {
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).toContain('role="dialog"');
+  expect(html).not.toContain('data-side-panel');
 });

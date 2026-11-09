@@ -86,7 +86,7 @@ test("two operators and the customer authorize support; every read arrives live 
   await go(nonApprover, "/audit/support-access");
   expect((await readerList).status()).toBe(403);
   await expect(nonApprover.getByRole("navigation").getByRole("link", { name: "감사 기록", exact: true })).toHaveCount(0);
-  for (const name of ["지원 접근 승인", "지원 접근 거절", "지원 종료"]) await expect(nonApprover.getByRole("button", { name, exact: true })).toHaveCount(0);
+  for (const name of ["지원 접근 승인", "지원 접근 반려", "지원 종료"]) await expect(nonApprover.getByRole("button", { name, exact: true })).toHaveCount(0);
   expect(readerBearer()).not.toBe("");
   await auditLayouts(nonApprover, "support access refusal");
   const initialList = tenant.waitForResponse((r) => new URL(r.url()).pathname === TENANT_SUPPORT && r.request().method() === "GET");
@@ -159,6 +159,7 @@ test("two operators and the customer authorize support; every read arrives live 
   expect(metadata).not.toHaveProperty("reason");
   await expect(tenant.getByText("공급사 지원 접근이 진행 중입니다", { exact: true })).toBeVisible();
   await expect(tenant.getByRole("button", { name: "지원 종료", exact: true })).toBeVisible();
+  await tenant.getByRole("dialog").getByRole("button", { name: "닫기", exact: true }).click();
   let documentLoads = 0;
   tenant.on("load", () => { documentLoads++; });
   const liveRead = tenant.waitForResponse((r) => new URL(r.url()).pathname === TENANT_SUPPORT && r.request().method() === "GET");
@@ -170,6 +171,7 @@ test("two operators and the customer authorize support; every read arrives live 
   expect(tree.as_of).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(tree.entities[0]?.name).toContain("지원 승인 고객");
   expect((await liveRead).ok()).toBe(true);
+  await tenant.getByRole("grid", { name: "지원 접근", exact: true }).getByRole("row").filter({ hasText: body.ticket_ref }).click();
   const records = tenant.getByRole("table", { name: "접속기록 · 공급사", exact: true });
   await expect(records.getByText("/api/v1/org-structure", { exact: true })).toBeVisible();
   await expect(records.getByRole("row")).toHaveCount(2);

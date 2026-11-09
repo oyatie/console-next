@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koComposer = {
+  "composer.action.support": "지원",
+  "composer.verb.end": "종료",
   "composer.action.orgHead": "부서장",
   "composer.verb.assign": "지정",
   "composer.section.preflight": "사전 확인",

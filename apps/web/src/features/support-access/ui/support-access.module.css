@@ -5,5 +5,5 @@
 .indicatorCompact { display: none; }
 @media (--phone) {
   .indicatorText { display: none; }
-  .indicatorCompact { display: inline; }
+  .indicatorCompact { display: inline-flex; }
 }

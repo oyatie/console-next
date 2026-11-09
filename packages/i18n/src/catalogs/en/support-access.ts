@@ -31,6 +31,7 @@ export const enSupportAccess = {
   "supportAccess.deny": "Deny support access",
   "supportAccess.end": "End support",
   "supportAccess.decisionSaved": "Support access decision recorded.",
+  "supportAccess.endConsequence": "Ending support refuses access from the next request.",
   "supportAccess.ended": "Support ended. Further requests will be refused.",
   "supportAccess.decisions": "Requests, decisions and session history",
   "supportAccess.records": "Vendor access records",

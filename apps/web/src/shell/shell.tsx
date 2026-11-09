@@ -1,6 +1,6 @@
 import { personName } from "../reference/person/present";
 import { activeSupportQuery } from "../reference/support-access/api";
-import { ActiveSupportBanner, SupportAccessIndicator } from "../features/support-access/ui/support-access";
+import { ActiveSupportBanner, SupportAccessIndicator } from "../features/support-access/ui/support-access-status";
 import { DomainNotice } from "../auth/domain-notice";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";

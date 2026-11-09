@@ -3,6 +3,8 @@ import { t } from "@console/i18n";
 
 /** Action nouns and verbs are catalog data; screens describe intent, never build frame copy. */
 const ACTION_KINDS = {
+  supportAccess: ["supportAccess.title", "units"],
+  support: ["composer.action.support", "units"],
   directoryView: ["directoryViews.noun", "units"],
   contractWage: ["payroll.employee.wage", "units"],
   payGroup: ["composer.action.payGroup", "units"],
@@ -52,6 +54,7 @@ const ACTION_KINDS = {
 
 /** Withdraw pending approval; cancel before effect; correct an applied fact; revoke an applied act. */
 const ACTION_VERBS = {
+  end: "composer.verb.end",
   assign: "composer.verb.assign",
   calculate: "composer.verb.calculate",
   approve: "composer.verb.approve",

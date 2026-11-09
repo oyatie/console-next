@@ -4,7 +4,7 @@ import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadCatalog } from "@console/i18n";
 import { chromium, type Browser, type Page } from "../../../lib/browser-test";
-import { ActiveSupportBanner } from "./support-access";
+import { ActiveSupportBanner } from "./support-access-status";
 import appCss from "../../../app.css?inline";
 import tokensCss from "@console/tokens/tokens.css?inline";
 
