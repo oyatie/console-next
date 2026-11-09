@@ -1,4 +1,5 @@
 import { koUiFlexibleColumns } from "./ko/ui-flexible-columns";
+import { koSettingsHub } from "./ko/settings-hub";
 import { koGovernanceRefusals } from "./ko/governance";
 import { koDirectoryViews } from "./ko/directory-views";
 import { koAccountLinkRefusals } from "./ko/account_link";
@@ -137,6 +138,7 @@ import { koPeopleJump } from "./ko/people-jump";
 
 export const ko = {
   ...koUiFlexibleColumns,
+  ...koSettingsHub,
   ...koGovernanceRefusals,
   ...koAccountLinkRefusals,
   ...koPeriodUnlockRefusals,
