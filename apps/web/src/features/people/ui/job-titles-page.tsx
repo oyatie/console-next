@@ -12,12 +12,11 @@ import { Field, TextInput } from "../../../ui/field/field";
 import { Table, type Column } from "../../../ui/table";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { JOB_TITLE_KIND, JOB_TITLE_STATUS, label as enumLabel } from "../../../lib/labels";
-import { addJobTitle, jobTitlesQuery, updateJobTitle, type JobTitleKind } from "../api";
+import { addJobTitle, jobTitleSchemas, jobTitlesQuery, updateJobTitle, type JobTitleKind } from "../api";
 import { JobTitleEdit } from "./job-title-edit";
 import type { JobTitle } from "../domain/titles";
 
-const LABEL_MAX = 100;
-const RANK_MAX = 1000;
+const rules = jobTitleSchemas.create.properties;
 
 /**
  * The company's position catalog (BW-13): every title, most senior first, the ones no longer used kept for history.
@@ -71,7 +70,7 @@ function AddTitle({ manage }: { manage: boolean }) {
   const [tried, setTried] = useState(false);
   const ranked = kind !== null && RANKED.includes(kind);
   const n = rank === "" || !ranked ? null : Number(rank);
-  const bad = n !== null && (!Number.isInteger(n) || n < 0 || n > RANK_MAX);
+  const bad = n !== null && (!Number.isInteger(n) || n < rules.grade_rank.minimum || n > rules.grade_rank.maximum);
   const run = useCommand({
     run: () => addJobTitle({ kind: kind!, label: label.trim(), grade_rank: n }),
     invalidates: ["/api/v1/job-titles"],
@@ -98,9 +97,9 @@ function AddTitle({ manage }: { manage: boolean }) {
       />
       <div className="grid-3">
         <Field label={t("titles.col.label")} required error={tried && !label.trim() ? t("titles.label.missing") : undefined}>
-          {(p) => <TextInput {...p} value={label} maxLength={LABEL_MAX} onChange={(e) => (run.reset(), setLabel(e.target.value))} />}
+          {(p) => <TextInput {...p} value={label} maxLength={rules.label.maxLength} onChange={(e) => (run.reset(), setLabel(e.target.value))} />}
         </Field>
-        {ranked && <Field label={t("titles.col.rank")} required={false} hint={t("titles.rank.hint", { max: RANK_MAX })} error={bad ? t("titles.rank.bad", { max: RANK_MAX }) : undefined}>
+        {ranked && <Field label={t("titles.col.rank")} required={false} hint={t("titles.rank.hint", { min: rules.grade_rank.minimum, max: rules.grade_rank.maximum })} error={bad ? t("titles.rank.bad", { min: rules.grade_rank.minimum, max: rules.grade_rank.maximum }) : undefined}>
           {(p) => <TextInput {...p} className="num" inputMode="numeric" value={rank} onChange={(e) => setRank(e.target.value.replace(/\D/g, ""))} />}
         </Field>}
       </div>

@@ -112,3 +112,18 @@ test("pay group runtime constraints follow the committed contract and reject han
   writeFileSync(runtimeOut, generated.replace("23", "40"));
   expect(checkApiSchema({ repo, out, runtimeOut })).toMatchObject({ ok: false, message: expect.stringContaining("runtime schema drift") });
 });
+
+test("job title form limits are generated from both committed write contracts", () => {
+  const jobTitleOut = path.join(dir, "job-title-schema.ts");
+  const schema = { type: "object", properties: { label: { type: "string", maxLength: 37 }, grade_rank: { type: "integer", minimum: 3, maximum: 71 } } };
+  const operation = { requestBody: { content: { "application/json": { schema } } }, responses: { "200": { description: "OK" } } };
+  writeFileSync(path.join(repo, "backend/openapi/openapi.yaml"), JSON.stringify({ openapi: "3.1.0", info: { title: "t", version: "1" }, paths: { "/api/v1/job-titles": { post: operation }, "/api/v1/job-titles/{id}": { patch: operation } } }));
+  git("add", "-A");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-qm", "test job title constraints");
+  expect(checkApiSchema({ repo, out, jobTitleOut, write: true }).ok).toBe(true);
+  const generated = readFileSync(jobTitleOut, "utf8");
+  expect(JSON.parse(generated.slice(generated.indexOf("= ") + 2, generated.lastIndexOf(" as const")))).toEqual({ create: schema, update: schema });
+  expect(checkApiSchema({ repo, out, jobTitleOut }).ok).toBe(true);
+  writeFileSync(jobTitleOut, generated.replace("71", "1000"));
+  expect(checkApiSchema({ repo, out, jobTitleOut })).toMatchObject({ ok: false, message: expect.stringContaining("runtime schema drift") });
+});

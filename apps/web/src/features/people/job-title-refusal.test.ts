@@ -5,7 +5,7 @@ import { i18n, isMessageId, loadCatalog, t } from "@console/i18n";
 import { failureText, readFailureText } from "../../lib/refusal";
 
 for (const locale of ["ko", "en"] as const) {
-  test.each(["job_title_label_invalid", "job_title_label_taken"])("%s has actionable catalog copy in " + locale, async code => {
+  test.each(["job_title_label_invalid", "job_title_label_taken", "job_title_rank_invalid"])("%s has actionable catalog copy in " + locale, async code => {
     await loadCatalog(locale);
     i18n.set(locale);
     try {

@@ -39,13 +39,13 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  for (const code of ["job_title_label_invalid", "job_title_label_taken"] as const) {
+  for (const code of ["job_title_label_invalid", "job_title_label_taken", "job_title_rank_invalid"] as const) {
     test(`job title refusal ${code} ${width} ${theme} @ui-state`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
       const fixture = await mockScreen(page, screens.find(s => s.key === "people")!, "populated");
       const entry = { id: id(101), kind: "JOB" as const, label: "개발자", grade_rank: null, active: true };
-      const invalid = code === "job_title_label_invalid";
+      const invalid = code !== "job_title_label_taken";
       let writes = 0;
       await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: true, items: [entry] } });
       const body = failure(code);
@@ -96,4 +96,50 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       } finally { await page.close(); fixture.release(); }
     });
   }
+}
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`job title edit refuses ranks outside the contract ${width} ${theme} @ui-state`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, screens.find(s => s.key === "people")!, "populated");
+    const entry = { id: id(101), kind: "TITLE" as const, label: "팀장", grade_rank: 10, active: true };
+    const writes: unknown[] = [];
+    await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: true, items: [entry] } });
+    await mockRoute(page, "patch", "/api/v1/job-titles/{id}", request => {
+      writes.push(request.postDataJSON());
+      return { status: 200, json: entry };
+    });
+    try {
+      await page.goto("/people/job-titles");
+      const edit = page.getByRole("button", { name: t("titles.edit", { label: entry.label }), exact: true });
+      await edit.click();
+      const form = page.getByRole("form", { name: t("titles.edit.title", { label: entry.label }), exact: true });
+      const rank = form.getByRole("textbox", { name: t("titles.col.rank") });
+      const commit = form.getByRole("button", { name: t("titles.edit.commit"), exact: true });
+      for (const value of ["-1", "1001", "1.5", "", "Infinity"]) {
+        await rank.fill(value);
+        await expect(commit).toHaveAttribute("aria-disabled", "true");
+        await expect(rank).toHaveAttribute("aria-invalid", "true");
+        await expect(form).toContainText(t("titles.rank.bad", { min: 0, max: 1000 }));
+        await rank.press("Enter");
+        await expect(form).toBeVisible();
+        expect(writes).toEqual([]);
+      }
+      await fits(page, `job-title-rank/${width}/${theme}`);
+      await expectAxe(page, `job-title-rank/${width}/${theme}`);
+      await page.screenshot({ path: info.outputPath("rank-refused.png"), fullPage: true });
+      for (const value of [0, 1000]) {
+        await rank.fill(String(value));
+        await expect(commit).not.toHaveAttribute("aria-disabled", "true");
+        await commit.click();
+        await expect(form).toHaveCount(0);
+        expect(writes.at(-1)).toEqual({ grade_rank: value });
+        if (value === 0) await edit.click();
+      }
+      expect(writes).toHaveLength(2);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+
 }
