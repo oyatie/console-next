@@ -54,6 +54,18 @@ test.each(["OPEN", "FUTURE_OUTCOME"])("%s cannot bypass wage evidence using a st
   expect(renderToStaticMarkup(<SettlementFigures pkg={p} />)).not.toContain("3,000,000");
 });
 
+test.each([
+  ["UNDER_SERVICE_YEARS", 1, "근속 1년 미만"],
+  ["UNDER_WEEKLY_HOURS", 15, "주 15시간 미만"],
+])("certified %s does not display a pending legal review", (reason, threshold, label) => {
+  const p = pkg(reason, threshold);
+  p.certification_status = "CERTIFIED";
+  const html = renderToStaticMarkup(<SettlementFigures pkg={p} />);
+  expect(html).toContain(`퇴직금 미해당 (${label})`);
+  expect(html).not.toContain("노무사 검토 전");
+  expect(html).not.toContain("검증 전 초안");
+});
+
 test("English renders the recorded reason and counsel review hold", async () => {
   await loadCatalog("en"); i18n.set("en");
   const html = form(pkg("UNDER_WEEKLY_HOURS", 15));

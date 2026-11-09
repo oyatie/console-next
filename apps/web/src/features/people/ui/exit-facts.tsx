@@ -121,7 +121,7 @@ export function SettlementFigures({ pkg }: { pkg: Package }) {
       <DerivedValue label={t("exit.settlement.serviceDays")} value={pkg.service_days == null ? t("format.notComputable") : t("exit.settlement.days", { days: pkg.service_days })} basis={basis} />
       {!ineligible && <DerivedValue label={t("exit.settlement.averageDaily")} value={won(!figuresKnown || pkg.average_daily_wage_milliwon == null ? undefined : Math.round(pkg.average_daily_wage_milliwon / 1000))} basis={basis} />}
       {!ineligible && <DerivedValue label={t("exit.settlement.ordinaryDaily")} value={won(figuresKnown ? pkg.ordinary_daily_wage_won : undefined)} basis={basis} />}
-      <DerivedValue label={t("exit.settlement.severance")} value={ineligible ? severanceLabel(ineligible) : won(figuresKnown ? pkg.severance_pay_won : undefined)} basis={ineligible ? <>{basis} · {t("exit.settlement.reviewPending")}</> : basis} />
+      <DerivedValue label={t("exit.settlement.severance")} value={ineligible ? severanceLabel(ineligible) : won(figuresKnown ? pkg.severance_pay_won : undefined)} basis={ineligible && pkg.certification_status !== "CERTIFIED" ? <>{basis} · {t("exit.settlement.reviewPending")}</> : basis} />
       {(rows.length > 0 || rules.length > 0) && (
         <details className={s.basis}>
           <summary>{t("exit.settlement.basis")}</summary>

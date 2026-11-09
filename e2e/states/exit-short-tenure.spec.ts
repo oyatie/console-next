@@ -14,7 +14,7 @@ type Case = components["schemas"]["EmployeeExitCase"];
 const path = peopleExitScreens[0].path;
 const outcome = (reason: string, num: number, den = 1) => ({ outcome: "NOT_ELIGIBLE", reason, threshold: { num, den } });
 
-async function settlement(page: import("@playwright/test").Page, eligibility: unknown) {
+async function settlement(page: import("@playwright/test").Page, eligibility: unknown, certification: "UNCERTIFIED_DRAFT" | "CERTIFIED" = "UNCERTIFIED_DRAFT") {
   const fixture = await mockScreen(page, screens[1], "populated");
   await mockExitCase(page, "reported");
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz,
@@ -29,7 +29,7 @@ async function settlement(page: import("@playwright/test").Page, eligibility: un
     approval_submitted_by_name: null, closed_by_name: null, exit_lifecycle_event_id: null, exit_event_state: "APPLIED",
     next_actions: [{ key: "prepare_settlement" }],
     settlement_package: { id: id(7300), status: "READY_FOR_APPROVAL", service_days: 1,
-      missing_source_fields: [], insurance_loss_payload: {}, approval_payload: {}, certification_status: "UNCERTIFIED_DRAFT", generated_at: AT,
+      missing_source_fields: [], insurance_loss_payload: {}, approval_payload: {}, certification_status: certification, generated_at: AT,
       statutory_basis: { severance_eligibility: eligibility,
         calculation_references: { rules: [{ code: "SEVERANCE_MIN_SERVICE_YEARS", effective_from: "2026-07-01", citation: { instrument_ko: "검증 법령", article_ko: "검증 조항" } }] },
       },
@@ -77,6 +77,23 @@ for (const theme of ["light", "dark"]) for (const [reason, num, den, label] of [
       expect(fixture.sent).toEqual([{ submit: false }, { submit: true }]);
       await expect(page.getByRole("region", { name: "산정 결과", exact: true })).toHaveCount(1);
       await fits(page, `severance-submitted/${reason}/${theme}`);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
+for (const [reason, num, label] of [
+  ["UNDER_SERVICE_YEARS", 1, "근속 1년 미만"],
+  ["UNDER_WEEKLY_HOURS", 15, "주 15시간 미만"],
+] as const) {
+  test(`certified severance decision ${reason} has no pending review @ui-state`, async ({ page }) => {
+    const fixture = await settlement(page, outcome(reason, num), "CERTIFIED");
+    try {
+      await page.goto(path);
+      const figures = page.getByRole("region", { name: "산정 결과", exact: true });
+      await expect(figures).toContainText(`퇴직금 미해당 (${label})`);
+      await expect(figures).not.toContainText("노무사 검토 전");
+      await expect(figures).not.toContainText("검증 전 초안");
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });
