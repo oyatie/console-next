@@ -22,7 +22,9 @@ import css from "./grouped-queue.module.css";
 type InboxItem = AttentionInboxItem;
 export type RowAction = (item: InboxItem) => ReactNode;
 type QueueColumn = Column<InboxItem> & { id: "task" | "subject" | "due" | "source" | "owner" | "actions" };
-const KIND_TEXT: Record<string, MessageId> = {
+// oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
+export const KIND_TEXT: Record<string, MessageId> = {
+  dispatch: "home.inbox.source.dispatch", support: "home.inbox.source.support", work: "home.inbox.source.workOrder", payroll: "accessCodes.domain.pay", governance: "home.inbox.source.governance",
   privacy_request: "home.inbox.privacyRequest",
   registration_check: "nts.title",
   identifier_correction_waiting: "entityRecord.corrections.title", identifier_correction_decide: "entityRecord.corrections.title", identifier_correction_apply: "entityRecord.corrections.title", identifier_correction_review: "entityRecord.corrections.title",
@@ -34,6 +36,8 @@ const KIND_TEXT: Record<string, MessageId> = {
   contract_renewal: "people.lifecycle.action.CONTRACT_RENEWAL", insurance_filing: "home.part.insurance", period_unlock: "home.part.unlocks", grant_notice: "access.grant.title", account_security: "account.second.title",
 };
 const VERB_TEXT: Record<string, MessageId> = {
+  approval: "home.inbox.open", privacy_request: "home.inbox.open", org_change: "home.inbox.open", org_change_waiting: "home.inbox.open", org_change_scheduled: "home.inbox.open", hr_exit: "home.inbox.open", grant_notice: "home.inbox.open", account_security: "shell.account",
+  dispatch: "home.inbox.open", support: "home.inbox.open", work: "home.inbox.open", payroll: "home.inbox.open", governance: "home.inbox.open",
   registration_check: "nts.inbox.review",
   identifier_correction_waiting: "entityRecord.corrections.track", identifier_correction_decide: "home.inbox.correction.decide", identifier_correction_apply: "entityRecord.corrections.apply", identifier_correction_review: "entityRecord.corrections.review",
   org_change_approve: "home.decide.review", org_change_apply: "org.change.effectuate", org_change_draft: "home.mine.edit",
@@ -59,7 +63,7 @@ const RECORD_SOURCE: Record<string, MessageId> = {
 
 /** One deadline presentation for Home and the inbox route; membership and cursor order stay server-owned. */
 // shortcut: server-paged rows; use LongTable when adding cross-page selection.
-export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: RowAction }) {
+export function GroupedQueue({ items, action, selected, onSelect, onOpen }: { items: InboxItem[]; action?: RowAction; selected?: string; onSelect?: (id: string) => void; onOpen?: () => void }) {
   const surface = useRef<HTMLDivElement>(null);
   const compact = useCardLayout(surface, surface);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -77,14 +81,14 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
   const folded = new Map([...folds.values()].filter(rows => rows.length > 1).map(rows => [rows[0]!.id, rows]));
   const isFold = (item: InboxItem) => folded.get(item.id)?.[0] === item;
   const toggle = (id: string) => setExpanded(old => { const next = new Set(old); if (!next.delete(id)) next.add(id); return next; });
+  const pick = onSelect && ((id: string) => { if (id === selected) onOpen?.(); else onSelect(id); });
+  const rowId = (item: InboxItem) => isFold(item) ? `fold:${item.id}` : item.id;
   const controls = new Map(normalized.map(item => [item.id, recordAction(item, action)]));
   const allColumns: QueueColumn[] = [
     { id: "task", header: t("home.inbox.column.task"), cell: item => {
-      const reason = item.kind === "account_security" ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")
-        : REVIEW_FILTER[item.kind] || item.kind === "contract_renewal" && !item.due ? "" : codeText(`home.inbox.reason.${item.kind}`, "");
-      return <div id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
-      {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={() => toggle(item.id)}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</strong>}
-      {[...new Set([reason, item.kind.startsWith("org_change") ? undefined : item.context?.reason])].filter(line => line && line !== item.title && line !== t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")).map(line => <div className="muted" key={line}>{line}</div>)}
+      return <div role="presentation" onClick={e => { if (e.target instanceof Element && e.target.closest("a, button")) e.stopPropagation(); }} id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
+      {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={e => { e.stopPropagation(); toggle(item.id); }}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</strong>}
+      {reasonLines(item).map(line => <div className="muted" key={line}>{line}</div>)}
       {(() => {
         const labels = [...new Set((item.context?.register?.missing_fields ?? []).flatMap(key => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!.label] : []))];
         return labels.length > 0 && <div className="row">{labels.map((id, i) => <Fragment key={id}>{i > 0 && " "}<Chip>{t(id)}</Chip></Fragment>)}</div>;
@@ -99,31 +103,38 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
       {item.kind === "org_change_apply" && item.days_remaining != null && item.days_remaining <= 0 && <div className="muted num">{t("home.due.since", { days: -item.days_remaining })}</div>}
     </> : item.age_days != null ? <div className="muted num">{t("home.inbox.aging", { days: item.age_days })}</div> : null },
     { id: "source", header: t("home.inbox.column.source"), width: "code", cell: item => {
-      if (item.kind === "unplaced") return <Link to="/people/unplaced">{t(KIND_TEXT[item.kind]!)}</Link>;
-      if (REVIEW_FILTER[item.kind]) return <Link to="/people" search={{ review: REVIEW_FILTER[item.kind], ...(item.kind === "lifecycle_apply_failed" ? { status: "all" } : {}) }}>{t(KIND_TEXT[item.kind]!)}</Link>;
+      if (item.kind === "unplaced") return <Link to="/people/unplaced" onClick={e => e.stopPropagation()}>{t(KIND_TEXT[item.kind]!)}</Link>;
+      if (REVIEW_FILTER[item.kind]) return <Link to="/people" onClick={e => e.stopPropagation()} search={{ review: REVIEW_FILTER[item.kind], ...(item.kind === "lifecycle_apply_failed" ? { status: "all" } : {}) }}>{t(KIND_TEXT[item.kind]!)}</Link>;
       return t(RECORD_SOURCE[item.links[0]?.kind ?? ""] ?? "home.inbox.unknown");
     } },
     { id: "owner", header: t("home.inbox.column.owner"), width: "code", cell: item => item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who!) : item.who },
     { id: "actions", header: <span className="sr-only">{t("home.inbox.column.actions")}</span>, cell: item => {
       const control = isFold(item) ? null : controls.get(item.id);
-      return control ? <div className={css.actions}>{control}</div> : null;
+      return control ? <div role="presentation" className={css.actions} onClick={e => e.stopPropagation()}>{control}</div> : null;
     } },
   ];
   const detail = (item: InboxItem) => isFold(item) && expanded.has(item.id) ? renderRows(folded.get(item.id)!.map(child => ({ ...child })), t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")) : null;
   const renderRows = (rows: InboxItem[], name: string): ReactNode => {
     const columns = allColumns.filter(column => column.id === "due" ? rows.some(item => item.due || item.age_days != null) : column.id === "owner" ? rows.some(item => item.who) : column.id === "actions" ? rows.some(item => !isFold(item) && controls.get(item.id)) : true);
-    return compact ? <div role="table" aria-label={name} aria-colcount={columns.length}>
+    return compact ? <div role={pick ? "grid" : "table"} aria-label={name} aria-colcount={columns.length}>
       <div role="rowgroup" className="sr-only"><div role="row">{columns.map((column, i) => <div role="columnheader" key={i}>{column.header}</div>)}</div></div>
       <div role="rowgroup">{rows.map(item => <Fragment key={item.id}>
-        <div role="row" data-id={item.id} className={css.phoneRow}>
-          {columns.map((column, i) => <div role="cell" aria-colindex={i + 1} data-column={column.id} data-type={column.type} key={i} className={column.id === "due" || column.id === "source" || column.id === "owner" ? "muted t-xs" : undefined}>{column.cell(item)}</div>)}
+        <div role="row" data-id={rowId(item)} data-row-id={rowId(item)} data-selected={selected === item.id && !isFold(item) || undefined} tabIndex={pick ? 0 : undefined} aria-selected={pick ? selected === item.id && !isFold(item) : undefined} onClick={pick && (() => pick(rowId(item)))} onKeyDown={pick && (e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); pick(rowId(item)); } })} className={css.phoneRow}>
+          {columns.map((column, i) => <div role={pick ? "gridcell" : "cell"} aria-colindex={i + 1} data-column={column.id} data-type={column.type} key={i} className={column.id === "due" || column.id === "source" || column.id === "owner" ? "muted t-xs" : undefined}>{column.cell(item)}</div>)}
         </div>
         {isFold(item) && expanded.has(item.id) && <div role="row"><div role="cell" aria-colspan={columns.length}>{detail(item)}</div></div>}
       </Fragment>)}</div>
     </div>
-    : <Table detail={detail} label={name} rows={rows} rowId={item => item.id} columns={columns} />;
+    : <Table detail={detail} label={name} rows={rows} rowId={rowId} selected={selected} onSelect={pick} columns={columns} />;
   };
-  return <div ref={surface} className={css.groups}>{DEADLINE_BUCKETS.map(bucket => {
+  return <div ref={surface} className={css.groups} onFocusCapture={e => { if (e.target.closest("a, button, input, select, textarea")) e.stopPropagation(); }} onKeyDownCapture={onSelect && (e => {
+    if (!(e.target instanceof HTMLElement) || !e.target.matches("[data-id]") || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.nativeEvent.isComposing) return;
+    const step = { j: 1, ArrowDown: 1, k: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    const rows = [...surface.current!.querySelectorAll<HTMLElement>("[data-id]")].filter(row => row.getClientRects().length > 0);
+    const next = rows[rows.indexOf(e.target) + step];
+    if (next) { e.preventDefault(); e.stopPropagation(); next.focus(); next.scrollIntoView({ block: "nearest" }); }
+  })}>{DEADLINE_BUCKETS.map(bucket => {
     const rows = [...folds.values()].map(siblings => siblings[0]!).filter(item => deadlineBucket(item) === bucket);
     if (!rows.length) return null;
     return <section key={bucket} aria-label={t(`home.inbox.bucket.${bucket}`)}>
@@ -139,7 +150,7 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
   })}</div>;
 }
 
-function Subject({ item }: { item: InboxItem }) {
+export function Subject({ item }: { item: InboxItem }) {
   const { unlock, insurance, lifecycle, request, correction } = item.context ?? {};
   const subject = item.kind === "privacy_request" ? (item.context?.privacy_kinds ?? []).map(code => codeText(`account.privacy.kind.${code}`, t("enum.unknown"))).join(" · ") : unlock ? `${domainText(unlock.domain)} ${periodText(unlock)}` : request ? codeText(`requests.kind.${request.kind}`, t("requests.kind.OTHER")) : item.title;
   const facts = correction ? [`${t("entityRecord.corrections.state")}: ${t(`entityRecord.corrections.status.${correction.status}`)}`, item.who && `${t("entityRecord.corrections.requester")}: ${item.who}`] : unlock ? [unlock.requester, unlock.reason_entry || isMessageId(`reason.period_unlock.${unlock.reason_code}`) ? reasonLabel("period_unlock", unlock.reason_code, unlock.reason_entry ?? undefined) : t("enum.unknown")]
@@ -150,12 +161,13 @@ function Subject({ item }: { item: InboxItem }) {
 }
 
 /** Only registered record kinds become links; source text cannot provide a URL. */
-function recordAction(item: InboxItem, action?: RowAction) {
+// oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
+export function recordAction(item: InboxItem, action?: RowAction, textId?: MessageId) {
   const link = item.links[0];
   if (!link) return null;
   const unlock = item.context?.unlock;
   const fields = (item.context?.register?.missing_fields ?? []).flatMap((key) => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!] : []);
-  const text = t(VERB_TEXT[item.kind] ?? "home.inbox.open", unlock ? { domain: domainText(unlock.domain), period: periodText(unlock) } : {});
+  const text = t(textId ?? VERB_TEXT[item.kind] ?? "home.inbox.open", unlock ? { domain: domainText(unlock.domain), period: periodText(unlock) } : {});
   const className = buttonClass("secondary", { size: "sm" });
   const inline = action?.(item);
   switch (link.kind) {
@@ -172,9 +184,17 @@ function recordAction(item: InboxItem, action?: RowAction) {
     case "change_request": return <Link to="/people/requests" search={{ sel: link.id }} className={className}>{text}</Link>;
     case "exit_case": return <Link to="/people/exits/$id" params={{ id: link.id }} search={{ act: item.kind === "hr_exit_confirm" ? "confirm_exit" : item.kind === "hr_exit_confirm_hq" ? "confirm_exit_hq" : "prepare_settlement" }} className={className}>{text}</Link>;
     case "period_lock": return <Link to="/people/period-locks" search={{ review: link.id }} className={className}>{text}</Link>;
-    case "account": return <>{inline}<Link to="/account" className={buttonClass("ghost")}>{t("shell.account")}</Link></>;
+    case "account": return <>{inline}<Link to="/account" className={buttonClass("ghost")}>{t(textId ?? "shell.account")}</Link></>;
     case "access": return <GrantNotice id={link.id} role={item.title} entries={item.context?.grants ?? []} />;
     case "statutory": return <Link to="/statutory" search={{ event: link.id }} className={className}>{text}</Link>;
     default: return null;
   }
+}
+
+// oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
+export function reasonLines(item: InboxItem) {
+  const reason = item.kind === "account_security" ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")
+    : REVIEW_FILTER[item.kind] || item.kind === "contract_renewal" && !item.due ? "" : codeText(`home.inbox.reason.${item.kind}`, "");
+  return [...new Set([reason, item.kind.startsWith("org_change") ? undefined : item.context?.reason])]
+    .filter((line): line is string => !!line && line !== item.title && line !== t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"));
 }
