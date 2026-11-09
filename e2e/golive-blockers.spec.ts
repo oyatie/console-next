@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { fits } from "./a11y";
 import { firstSignIn, go, option, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { fillEntity, finishWorkplace, startOperations, typeBusiness, typeCertificate, workplaceSheet } from "./setup-flows";
+import { forgetResize } from "./stability";
 import { addDepartments } from "./structure-flows";
 
 test("a solo administrator fixes a missing business registration before starting operations", async ({ browser }) => {
@@ -22,6 +23,11 @@ test("a solo administrator fixes a missing business registration before starting
   await admin.getByRole("button", { name: "다음", exact: true }).click();
   await admin.getByRole("button", { name: "법인만 등록", exact: true }).click();
   await expect(admin.getByRole("heading", { name: "주식회사 등록준비", level: 1 })).toBeVisible();
+  await go(admin, "/");
+  const entityStep = admin.locator('[data-step]').filter({ hasText: "법인 등록" });
+  await expect(entityStep.locator('[data-step-state]')).toHaveText("필요");
+  await expect(entityStep.getByRole("link", { name: "사업자등록 추가", exact: true })).toHaveCount(1);
+  await expect(entityStep).toContainText("법인에 사업자등록을 추가합니다");
   await go(admin, "/setup/go-live");
   const blocker = admin.locator('[data-blocker-row="entity_without_registration"]');
   await expect(blocker).toContainText("사업자등록이 없는 법인 1곳");
@@ -29,6 +35,7 @@ test("a solo administrator fixes a missing business registration before starting
   const fix = blocker.getByRole("link", { name: /사업자등록 추가.*등록준비/ });
   await expect(admin.getByRole("button", { name: "운영 시작", exact: true })).toHaveAttribute("aria-disabled", "true");
   await admin.setViewportSize({ width: 390, height: 844 });
+  await forgetResize(admin);
   await admin.locator("html").evaluate(el => { el.dataset.theme = "dark"; });
   await fits(admin, "go-live registration blocker");
   await fix.click();
@@ -43,7 +50,10 @@ test("a solo administrator fixes a missing business registration before starting
   await finishWorkplace(admin, "본점", true);
   const response = await registered;
   expect(response.status()).toBe(201);
-  expect(response.request().postDataJSON()).toMatchObject({ brn: null, brn_pending_reason: "NEW_REGISTRATION_PENDING" });
+  expect((await response.json()).record).toMatchObject({ brn: null, brn_pending_reason: "NEW_REGISTRATION_PENDING" });
+  await go(admin, "/");
+  await expect(entityStep.locator('[data-step-state]')).not.toHaveText("필요");
+  await expect(entityStep.getByRole("link", { name: "사업자등록 추가", exact: true })).toHaveCount(0);
   await go(admin, "/org");
   await addDepartments(admin, "본점", ["본사"]);
   await go(admin, "/setup/go-live");

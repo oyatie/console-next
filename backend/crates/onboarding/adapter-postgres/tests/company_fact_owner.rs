@@ -16,6 +16,8 @@ async fn setup_confirms_the_entity_and_never_uses_the_tenant_legal_name_copy(own
         .bind(actor.org.as_uuid()).bind(entity).execute(&owner).await.unwrap();
     sqlx::query("INSERT INTO company_revisions (org_id,version,command_id,actor_id,payload_digest,attributes,receipt) VALUES ($1,1,gen_random_uuid(),$2,sha256('x'::bytea),'{\"legal_name\":\"COSS\"}','{}')")
         .bind(actor.org.as_uuid()).bind(actor.user.as_uuid()).execute(&owner).await.unwrap();
+    sqlx::query("INSERT INTO business_registrations (org_id,legal_entity_id,brn_pending_reason,created_change_mode) VALUES ($1,$2,'NEW_REGISTRATION_PENDING','MIGRATION')")
+        .bind(actor.org.as_uuid()).bind(entity).execute(&owner).await.unwrap();
     let checklist = store.checklist(&actor).await.unwrap();
     let step = checklist.steps.iter().find(|s| s.key == "entity").unwrap();
     assert_eq!(step.remedy, Some("confirm_legal_entity"));

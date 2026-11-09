@@ -40,7 +40,7 @@ export function SetupHome({ c }: { c: Checklist }) {
   const action = (s: ChecklistStep): ReactNode => {
     const variant = s.key === current ? "primary" : undefined;
     switch (s.key) {
-      case "entity": return <Link to="/org/entities/new" className={buttonClass(variant)}>{t("setup.action.entity")}</Link>;
+      case "entity": return s.action === "add_registration" ? <FixLink code={s.action} primary={s.key === current} /> : <Link to="/org/entities/new" className={buttonClass(variant)}>{t("setup.action.entity")}</Link>;
       case "workplace":
         // Straight to the new workplace of the entity that has none (the usual first run); otherwise the entity list.
         // Not offered until the entities are read, so the link never changes under the pointer.

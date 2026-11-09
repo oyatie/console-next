@@ -58,6 +58,12 @@ async fn missing_registration_refuses_go_live_until_pending_or_numbered(owner: P
     assert_eq!(blocker.records.len(), 1);
     assert_eq!(blocker.records[0].id, missing.to_string());
     assert_eq!(blocker.records[0].name, "미등록 법인");
+    let checklist = store.checklist(&a).await.unwrap();
+    let entity = &checklist.steps[0];
+    assert_eq!(entity.state, console_onboarding_domain::StepState::Todo);
+    assert_eq!(entity.action, "add_registration");
+    assert_eq!(entity.remedy, blocker.remedy);
+    assert_eq!(entity.count, blocker.count);
     let before = snapshot(&owner, &a).await;
     let error = store.go_live(&a, p.digest, false, true).await.unwrap_err();
     assert!(
@@ -71,6 +77,12 @@ async fn missing_registration_refuses_go_live_until_pending_or_numbered(owner: P
         .bind(org).bind(registration).bind(missing).execute(&owner).await.unwrap();
     let fixed = store.preview(&a).await.unwrap();
     assert!(fixed.blockers.is_empty(), "{:?}", fixed.blockers);
+    let checklist = store.checklist(&a).await.unwrap();
+    assert_ne!(checklist.steps[0].remedy, Some("add_registration"));
+    assert_ne!(
+        checklist.steps[0].state,
+        console_onboarding_domain::StepState::Todo
+    );
     for (brn, reason) in [
         (Some("0008100009"), None),
         (None, Some("NEW_REGISTRATION_PENDING")),
