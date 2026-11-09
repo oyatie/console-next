@@ -11,13 +11,24 @@ const codes = [
   "employee_correction_unavailable", "employee_merged", "employee_not_exited",
   "employee_number_in_use", "employee_profile_missing", "exit_case_owns_exit_date",
   "exit_case_owns_exit_reason", "exit_date_needs_exit", "import_not_applied",
-  "job_title_label_invalid", "job_title_label_taken", "legacy_import_removed",
+  "legacy_import_removed",
   "photo_upload_missing", "photo_upload_not_found", "photo_upload_size_mismatch",
   "photo_upload_unconfirmed", "precondition_missing", "record_import_plan_changed",
   "record_purpose_required", "record_restricted_export_unavailable",
   "record_restricted_forbidden", "record_restricted_self", "record_section_disabled",
   "record_single_entry_exists", "record_version_conflict", "rehire_requires_exited",
 ] as const;
+
+test("refusal recovery uses the screen's restricted-item and import-review terms", () => {
+  expect(koCommon["common.failed.code.import_not_applied"]).toContain("이관 확인");
+  expect(koCommon["common.failed.code.record_purpose_required"]).toContain("목적을 선택");
+  expect(koCommon["common.failed.code.precondition_missing"]).not.toContain("인사카드");
+  for (const code of ["record_purpose_required", "record_restricted_export_unavailable", "record_restricted_self"] as const) {
+    expect(koCommon[`common.failed.code.${code}`]).toContain("제한 항목");
+    expect(koCommon[`common.failed.code.${code}`]).not.toContain("민감한");
+  }
+  expect(enCommon["common.failed.code.record_purpose_required"]).toContain("Select a purpose");
+});
 
 for (const locale of ["ko", "en"] as const) test.each(codes)(`org/HR refusal %s has its own ${locale} recovery copy`, async code => {
   await loadCatalog(locale);
