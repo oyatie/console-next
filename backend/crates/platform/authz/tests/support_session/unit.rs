@@ -252,6 +252,29 @@ fn missing_second_operator_refusal_comes_from_cedar() {
 }
 
 #[test]
+fn simultaneous_forbids_preserve_no_second_operator_priority() {
+    use crate::cedar_pbac::actions::support_session::require;
+    let facts = Facts {
+        actor_is_requester: true,
+        other_eligible_holders: 0,
+        ..eligible()
+    };
+    for _ in 0..400 {
+        assert_eq!(
+            require(
+                Action::OperatorApprove,
+                PrincipalKind::Operator,
+                "operator",
+                "vendor",
+                "tenant",
+                facts
+            ),
+            Err("support.refuse.no_second_operator")
+        );
+    }
+}
+
+#[test]
 fn active_notice_requires_live_tenant_identity_but_no_approval_grant() {
     let facts = Facts {
         vendor: false,

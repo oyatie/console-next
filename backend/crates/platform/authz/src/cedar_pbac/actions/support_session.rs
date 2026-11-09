@@ -258,24 +258,25 @@ fn evaluate(
     if response.decision() == Decision::Allow && response.diagnostics().errors().next().is_none() {
         return Ok(Ok(()));
     }
-    let reason = response
+    let reasons: HashSet<_> = response
         .diagnostics()
         .reason()
         .filter_map(|id| bundle.policies.policy(id))
         .filter_map(|policy| policy.annotation("reason"))
-        .find_map(|reason| match reason {
-            "support.refuse.no_second_operator" => Some("support.refuse.no_second_operator"),
-            "support.refuse.read_only" => Some("support.refuse.read_only"),
-            "support.refuse.requester_cannot_approve" => {
-                Some("support.refuse.requester_cannot_approve")
-            }
-            _ => None,
-        })
-        .unwrap_or(if kind == PrincipalKind::Support {
-            "support.refuse.out_of_scope"
-        } else {
-            "forbidden"
-        });
+        .collect();
+    // Cedar's determining policies are unordered; preserve the public refusal priority.
+    let reason = [
+        "support.refuse.read_only",
+        "support.refuse.no_second_operator",
+        "support.refuse.requester_cannot_approve",
+    ]
+    .into_iter()
+    .find(|reason| reasons.contains(reason))
+    .unwrap_or(if kind == PrincipalKind::Support {
+        "support.refuse.out_of_scope"
+    } else {
+        "forbidden"
+    });
     Ok(Err(reason))
 }
 
