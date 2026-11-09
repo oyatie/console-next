@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { expectStable, forgetResize } from "./stability";
@@ -22,9 +23,13 @@ export async function expectAxe(page: Page, context: string, options: { include?
   const found: string[] = [];
   for (const theme of ["light", "dark"]) {
     await html.evaluate((el, t) => (el.dataset.theme = t), theme);
-    const scan = new AxeBuilder({ page }).withTags(TAGS);
+    const singleFrame = page.frames().length === 1;
+    // Only violation nodes need full selectors; summarizing passes avoids work on large rosters.
+    const scan = new AxeBuilder({ page }).options({ resultTypes: ["violations"] }).withTags(TAGS).setLegacyMode(singleFrame);
     if (options.include) scan.include(options.include);
-    const { violations } = await scan.analyze();
+    let { violations } = await scan.analyze();
+    // The single-frame runner avoids an aggregation page; frames still need cross-origin analysis.
+    if (singleFrame && page.frames().length > 1) ({ violations } = await scan.setLegacyMode(false).analyze());
     for (const v of violations.filter((v) => v.impact === "serious" || v.impact === "critical"))
       found.push(`[${theme}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);
   }

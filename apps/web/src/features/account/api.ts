@@ -1,6 +1,9 @@
+export { ApiError } from "@console/api";
 import { api, assertBoundPasskey, assertPasskey, consentDocuments, consentStatus, logout, registerPasskey, session, unwrap } from "@console/api";
+import { isMessageId, t } from "@console/i18n";
+import type { PrivacyRightsReceipt } from "@console/api/pending";
 import type { components } from "@console/api/schema";
-import { get, read } from "../../lib/query";
+import { cursorPages, get, read } from "../../lib/query";
 import { landed } from "../../lib/react/landed";
 import { forgetDomains } from "../../auth/sign-in-id";
 
@@ -10,6 +13,29 @@ export const passkeysQuery = get("/api/v1/auth/passkeys");
 export const passkeyLabelPolicyQuery = get("/api/v1/auth/passkeys/policy");
 /** Tenant accounts only: a platform token is another world, where this read answers 404. */
 export const meQuery = get("/api/v1/users/me");
+const kindLabel = (code: string) => { const key = `account.privacy.kind.${code}`; return isMessageId(key) ? t(key) : code; };
+const rightsPages = cursorPages("/api/v1/privacy/rights-requests/mine", {});
+export const privacyRequestPages = { ...rightsPages, select: (data: { pages: Awaited<ReturnType<typeof rightsPages.queryFn>>[]; pageParams: unknown[] }) => ({
+  ...data, pages: data.pages.map(page => ({ ...page, items: page.items.map(item => privacyReceipt(item, page.as_of)) })),
+}) };
+
+export function privacyReceipt(item: components["schemas"]["PrivacyRightsReceipt"], asOf: string): PrivacyRightsReceipt {
+  const kinds = Object.entries(item.kinds);
+  const dates = kinds.flatMap(([, state]) => state.due?.on ? [state.due.on] : []).sort();
+  const due = item.status === "RECEIVED" ? dates[0] : undefined;
+  const days = due ? Math.round((Date.parse(due) - Date.parse(asOf)) / 86_400_000) : 0;
+  return { id: item.id, receipt_no: item.receipt_no, controller_label: t(`account.privacy.controller.${item.receipt.controller}`),
+    kinds: kinds.map(([code]) => ({ code, label: kindLabel(code) })),
+    detail: item.detail, received_at: item.receipt.identity_at,
+    status: { code: item.status, label: t(`account.privacy.status.${item.status}`), tone: "info" },
+    clock: due ? { due_at: due, days_left: days, severity: days < 0 ? "over" : "due" } : null,
+    without_delay: item.status === "RECEIVED" && kinds.some(([, state]) => state.due?.without_delay),
+    outcomes: kinds.flatMap(([code, state]) => state.decisions.map(({ decision }) => ({ kind_label: kindLabel(code),
+      outcome_label: t(`account.privacy.outcome.${decision.outcome}`), reason_label: decision.reason, note: decision.note }))),
+    notified_at: null, objection_method: null, retention_notice: null,
+  };
+}
+
 export const operatorMeQuery = get("/api/platform/users/me");
 /** Only this user changes their own consent: no polling of the auth endpoint. */
 export const consentDocumentsQuery = read("/api/v1/onboarding/terms", consentDocuments);
@@ -61,4 +87,13 @@ export function updateName(display_name: string) {
   return landed(() => unwrap(platform ? api.PATCH("/api/platform/users/me", { body }) : api.PATCH("/api/v1/users/me", { body })),
     async () => ({ data: await (platform ? operatorMeQuery : meQuery).queryFn() }),
     (profile) => profile.display_name === display_name);
+}
+
+export const privacyFilingOptionsQuery = get("/api/v1/privacy/rights-requests/options");
+
+/** Keep field order identical to the server's canonical Filing serialization. */
+export async function filePrivacyRequest(subject: string, input: import("@console/api/pending").PrivacyFiling, key: string) {
+  const body = { controller: input.controller, kinds: input.kinds, detail: input.detail ?? "" };
+  const step_up = await assertBoundPasskey("PRIVACY_REQUEST", subject, JSON.stringify(body));
+  return unwrap(api.POST("/api/v1/privacy/rights-requests", { params: { header: { "Idempotency-Key": key } }, body: { ...body, step_up } }));
 }

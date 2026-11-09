@@ -213,9 +213,9 @@ fn decided_kinds_are_final_and_request_waits_for_every_kind() {
 #[test]
 fn empty_future_and_unproven_agent_receipts_are_refused() {
     let today = date!(2026 - 10 - 27);
-    assert_refusal(
-        RightsRequest::receive(receipt(today), [], &register(), today, None),
-        "request_kind_required",
+    assert_eq!(
+        RightsRequest::receive(receipt(today), [], &register(), today, None).unwrap_err(),
+        KernelError::validation("request_kind_required").with_code("request_kind_required"),
     );
     assert_refusal(
         RightsRequest::receive(

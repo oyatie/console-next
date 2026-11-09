@@ -8,6 +8,8 @@
 import type { ApprovalDecision, ApprovalDecisionReceipt } from "./approvals";
 export type { ApprovalDecision, ApprovalDocument, ApprovalItem, ApprovalPage, ApprovalQuery, ApprovalViewer } from "./approvals";
 import type { PayrollPaths } from "./payroll";
+import type { PrivacyPaths } from "./privacy";
+export type { PrivacyRightsReceipt, PrivacyRightsPage, PrivacyFiling, PrivacyFilingOptions } from "./privacy";
 export type { PayGroup, PayGroups, PayrollRate, PayrollRates, PayrollRun, PayrollRunDetail } from "./payroll";
 import type { StatutoryPaths } from "./statutory";
 export type { FilingTask, FilingPage, RegisterPage, RecordFiling, FilingFacts, FilingReason, FilingCitation } from "./statutory";
@@ -103,7 +105,7 @@ type Requested = {
 };
 
 /** The generated paths with the requested ones laid over them. */
-export type AllPaths = Omit<paths, keyof Requested | keyof StatutoryPaths | keyof PayrollPaths | keyof OrgChangePaths> & Requested & StatutoryPaths & PayrollPaths & OrgChangePaths;
+export type AllPaths = Omit<paths, keyof Requested | keyof StatutoryPaths | keyof PayrollPaths | keyof OrgChangePaths | keyof PrivacyPaths> & Requested & StatutoryPaths & PayrollPaths & OrgChangePaths & PrivacyPaths;
 
 // --- lane: CS-BULK (fe/cs-bulk-history): setup batches (MR-12 org-structure, MR-29 entity-setup), named from the
 // generated schema. The structure node and tree are the ones ./structure names (kept under their old names here).

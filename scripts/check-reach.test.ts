@@ -174,6 +174,14 @@ test("operations: release packages follow default features and optional dependen
   expect([...releasePackages(app)]).toEqual(["console-hr-rest", "console-attendance-rest"]);
 });
 
+test("privacy self-service does not promote dormant compliance operations into the release", () => {
+  const result = spawnSync("cargo", ["metadata", "--offline", "--no-deps", "--format-version", "1", "--manifest-path", "backend/Cargo.toml"], { encoding: "utf8", maxBuffer: 1 << 26 });
+  expect(result.status, result.stderr).toBe(0);
+  const app = JSON.parse(result.stdout).packages.find((p: { name: string }) => p.name === "console-app");
+  expect(releasePackages(app).has("console-compliance-rest")).toBe(false);
+  expect(app.features.compliance).toContain("dep:console-compliance-rest");
+});
+
 
 test("operations: the CLI rejects a removed release-operation allowance against a committed base", () => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-cli-")));

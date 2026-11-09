@@ -17,6 +17,18 @@ use crate::wiring::orgchange_ports::{PgEmploymentTransferPort, PgOrgUnitWritePor
 pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     let (state, pool) = (deps.state, deps.pool);
     router
+        .merge(
+            crate::privacy::router(
+                pool.clone(),
+                state.jwt_verifier.clone(),
+                state.policy_step_up.clone(),
+            )
+            .layer(axum::Extension(
+                console_platform_request_context::record_access::outcome::Reader(
+                    read_privacy_outcome,
+                ),
+            )),
+        )
         // Settings registry + reason-code catalog (BW-00/07): reads for any
         // signed-in member; every write is a Cedar `enforce_action` call.
         .merge(
@@ -145,4 +157,31 @@ pub(super) fn mount_governance(router: Router, deps: &TenantDeps<'_>) -> Router 
             deps.state.jwt_verifier.clone(),
         ),
     ))
+}
+
+// Filing always makes the authenticated actor the subject; replay rechecks that identity in Cedar.
+fn read_privacy_outcome<'a>(
+    pool: &'a sqlx::PgPool,
+    actor: &'a console_platform_authz::Principal,
+    outcome: &'a mut console_platform_db::command_outcomes::CommandOutcome,
+) -> console_platform_request_context::record_access::outcome::ReadFuture<'a> {
+    Box::pin(async move {
+        let Ok(mut tx) =
+            console_compliance_adapter_postgres::rights::begin(pool, actor.org_id).await
+        else {
+            return false;
+        };
+        let Ok(facts) = console_platform_authz::cedar_pbac::visible::load_facts(
+            &mut tx,
+            actor.org_id,
+            *actor.user_id.as_uuid(),
+        )
+        .await
+        else {
+            return false;
+        };
+        facts
+            .authorize_privacy_request_read(outcome.actor_id)
+            .unwrap_or(false)
+    })
 }

@@ -11,55 +11,58 @@ npm run e2e:states -- --grep 'people: loading at 390'
 ```
 
 CI plans duration-balanced shards before running this suite with Chromium headless
-shell. `timings.json` owns the ten-minute target, five-shard cap, startup headroom,
-worker count and minimum estimate for unmeasured tests. The planner stretches
-the target only within the 1080-second planning limit and 80% of `runLimitSeconds`,
-reserving 1.25x headroom. Each run step gets `ceil(planned budget × 1.25 / 60)`
-minutes; Playwright's global timeout uses the same unrounded budget in seconds.
-The job adds `ceil(setupAllowanceSeconds / 60)` minutes to that run allowance.
-Setup reserves 12 minutes: measured Chromium installs took 7.5–9 minutes while
-Ubuntu's package mirror served fonts slowly, plus three minutes for checkout,
-npm and artifacts. A 13-minute plan therefore gets 17 minutes to run and a
-29-minute job, so the observed install no longer consumes its test allowance.
-The web job puts its full existing check sequence under one 30-minute step
-limit and adds the same 12-minute setup allowance (42 minutes total). These are timeout ceilings, not target durations.
+shell. `timings.json` owns the ten-minute target, five-shard cap, startup allowance,
+worker count and per-test bootstrap floor. It contains no per-spec measurements.
+The planner stretches the target only within the execution limit:
+`min(timeoutSeconds, floor(runLimitSeconds / RUN_HEADROOM))` (currently 937 seconds).
+`RUN_HEADROOM` is 1.6; each run step gets `ceil(planned budget × 1.6 / 60)`
+minutes and Playwright uses the same unrounded timeout in seconds. The job adds
+`ceil(setupAllowanceSeconds / 60)` minutes for checkout, npm, browser setup and artifacts.
+These are timeout ceilings, not target durations.
 
-Both jobs restore `~/.cache/ms-playwright` with the existing cache action, keyed
-by OS, architecture, Chromium and the exact `playwright-core` version in
-`package-lock.json`. Only dev pushes save; PRs restore caches without publishing
-them for other branches. `--with-deps` still runs on cache hits because browser
-archives do not include the OS fonts needed by screenshots. Each install appends
-its elapsed seconds to the job summary, including failed installs.
+The browser cache uses the exact installed Playwright version, OS and architecture.
+Only dev pushes save it; PRs restore without publishing. `--with-deps` still runs
+on cache hits because browser archives do not include the OS fonts needed by screenshots.
 
-Five state runners plus two backend test runners keep CI's peak at 13;
-CodeQL's three, platform's three and workflow checks' one bring concurrent PR
-jobs to the 20-runner allowance. The suite-growth regression checks that the
-job timeout covers both setup and the plan's run allowance. A spec exceeding the planning limit fails
-with `STATES_SPEC_OVER_BUDGET` and its path. If five shards cannot fit, planning
-fails with `STATES_TIMEOUT_LIMIT`. For unmeasured specs, both errors tell the PR
-to add timings; measured oversized specs must be split.
-
-`states-plan` lists the runnable specs and packs whole files longest first. Every
-matrix job downloads that exact plan and runs its file list; `ci-ok` requires the
-planner and every shard. Unknown specs and added tests in measured files use their
-test count times the nearest-rank **P95** of measured per-test wall times
-(`seconds / tests`), with `defaultTestSeconds / workers` as a floor. P95 covers
-the slow measured tail instead of treating new screens as average-speed tests.
-The planner converts wall estimates back to worker-seconds for the shared packer.
-Run the planner regressions with `node --test scripts/states-shards.test.mjs`.
+Five state runners plus the other PR workflows stay within the 20-runner allowance;
+`scripts/ci-backend.test.mjs` checks the combined fan-out. `states-plan` lists runnable
+specs and packs whole files longest first. Every matrix job downloads that exact plan
+and runs its file list; `ci-ok` requires the planner and every shard.
+A spec exceeding the execution limit fails with `STATES_SPEC_OVER_BUDGET` and its path.
+If five shards cannot fit, planning fails with `STATES_TIMEOUT_LIMIT`. Missing
+measurements are named in the error; optimize or split oversized specs rather than
+adding a committed timing row.
 
 Successful dev pushes publish per-spec wall durations and the measurement's worker
-count as `states-timings`. Plans take settings only from committed `timings.json`
-and overlay the latest same-repository dev artifact's spec durations only when its
-worker count matches. Otherwise the committed snapshot and conservative estimates
-apply. Partial, failed, duplicate or mismatched reports cannot refresh measurements.
-CI never overwrites the committed configuration. Local measurements must not
-overwrite CI's trusted artifact. The committed snapshot comes from the complete
-[2026-11-05 dev states results](https://github.com/oyatie/console-next/actions/runs/42107170406):
-92 specs, 1536 passing tests, two workers. It is reproduced by `refreshTimings`
-from every shard report and matches that run's `states-timings` artifact. Only
-new specs or added cases use the conservative estimate. The planner regression
-adds 30 tests and 10% timing drift without extending the run limit.
+count as `states-timings`. Plans restore the latest unexpired same-repository dev
+artifact with matching workers. Artifact lookup examines at most five pages of 100
+entries. If no compatible artifact exists, the newest trusted artifact is scaled by
+`measured workers / configured workers`, with a warning. If none exists, the configured
+four worker-seconds per test bootstrap the suite, also with a warning. This floor
+allows the initial run to produce measurements; it is not a capacity proof.
+Partial, failed, duplicate or worker-mismatched reports cannot refresh measurements.
+CI never overwrites the committed settings.
+
+Unknown specs and added tests use the nearest-rank **P95** of measured worker-seconds
+per test (`seconds × workers / tests`), with `defaultTestSeconds` as a floor.
+The planner converts these estimates for the shared packer. The dev-push timings job
+publishes complete measurements before checking the unchanged **15% headroom** bar
+and growth of 30 tests plus 10% drift. A noisy dev sample reports capacity debt there
+without failing unrelated PRs' capacity checks. PRs still enforce packing limits,
+exact selections and passing state assertions.
+
+Run planner regressions locally with `node --test scripts/states-shards.test.mjs`.
+To include the dev capacity check, first restore measurements with a read-only token
+and the repository environment used by Actions:
+
+```sh
+node scripts/states-shards.mjs restore e2e/mock/timings.json .cache/states-timings/timings.json
+STATES_CHECK_CAPACITY=1 node --test scripts/states-shards.test.mjs
+```
+
+The capacity test skips with a reason outside the dev job; a requested local capacity
+check also skips when its artifact file is absent. CI treats a missing artifact as an error.
+Local measurements must never overwrite CI's trusted artifact.
 
 Use the existing `E2E_SLOT` / `CONSOLE_WEB_PORT` environment variables to isolate
 concurrent runs. The config builds the web app once, then starts Vite preview on
