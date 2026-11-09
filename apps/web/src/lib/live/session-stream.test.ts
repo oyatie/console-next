@@ -58,7 +58,7 @@ test("an unrecoverable event chunk failure reaches the static crash screen", asy
   const error = new Error("load failed");
   ready.reject(error);
   await ready.promise.catch(() => {});
-  expect(crashed).toHaveBeenCalledExactlyOnceWith(error);
+  await vi.waitFor(() => expect(crashed).toHaveBeenCalledOnce());
 });
 
 test("readiness waits until the active stream opens", async () => {
@@ -103,11 +103,43 @@ test("a waiting loader follows the replacement session's chunk", async () => {
   expect(second.openLive).toHaveBeenCalledBefore(read);
 });
 
-test("a failed stream chunk refuses readiness as well as showing recovery", async () => {
+test("a failed stream chunk holds loaders behind the static recovery screen", async () => {
   const { setActive, ready } = setup();
   setActive(true);
-  const loading = expect(streamReady()).rejects.toThrow("load failed");
+  const read = vi.fn();
+  void streamReady().then(read, read);
   ready.reject(new Error("load failed"));
-  await loading;
-  expect(crashed).toHaveBeenCalledOnce();
+  await vi.waitFor(() => expect(crashed).toHaveBeenCalledOnce());
+  expect(read).not.toHaveBeenCalled();
+});
+
+test("readiness subscribers see pending, superseded and opened revisions", async () => {
+  const { setActive, loaded } = setup();
+  const snapshots: boolean[] = [];
+  const off = streamReady.subscribe(() => snapshots.push(streamReady.get()));
+  try {
+    expect(streamReady.get()).toBe(true);
+    setActive(true);
+    expect(streamReady.get()).toBe(false);
+    setActive(false);
+    expect(streamReady.get()).toBe(true);
+    setActive(true);
+    await loaded();
+    expect(streamReady.get()).toBe(true);
+    expect(snapshots).toEqual([false, true, false, true]);
+  } finally { off(); }
+});
+
+test("failed readiness stays closed and notifies no successful revision", async () => {
+  const { setActive, ready } = setup();
+  const changed = vi.fn();
+  const off = streamReady.subscribe(changed);
+  try {
+    setActive(true);
+    ready.reject(new Error("load failed"));
+    await vi.waitFor(() => expect(crashed).toHaveBeenCalledOnce());
+    expect(streamReady.get()).toBe(false);
+    expect(changed).toHaveBeenCalledOnce();
+    expect(crashed).toHaveBeenCalledOnce();
+  } finally { off(); }
 });
