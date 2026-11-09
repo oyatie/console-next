@@ -76,6 +76,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top__name span { min-inline-size: calc(var(--space-6) * 2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top .top__menu { display: none; }
 .top__spacer { flex: 1; }
+@media (--below-wide) {
+  .top[data-task-menu] {
+    gap: var(--space-1);
+    [id="top-needs-me"] > span:not([data-count]), .top__jumpText, .top__kbd { display: none; }
+    .top__jump { display: inline-flex; flex: none; }
+    .top__name { flex-shrink: 0; gap: 0; }
+    .top__menu, > button:last-child { font-size: 0; gap: 0; }
+    > select { max-width: calc(var(--space-6) * 3); }
+  }
+}
+@media (--small) {
+  .top[data-task-menu] .top__name span { font-size: 0; min-inline-size: 0; }
+}
 /* The scroll container is also the containing block: an absolutely placed node inside (a visually hidden input) scrolls and clips with it instead of lengthening the document, which a focus would then scroll (E2-reveal). */
 .main { grid-area: main; overflow: auto; overflow-anchor: none; position: relative; }
 .main:focus-visible { outline-offset: -2px; }

@@ -34,6 +34,7 @@ import type { NavHub } from "./nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
+const NeedsMeMenu = lazy(() => chunk(import("./top-bar/needs-me")).then(m => ({ default: m.NeedsMeMenu })));
 
 export function Shell() {
   const nav = useNavigate();
@@ -170,7 +171,7 @@ export function Shell() {
           ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
           : <QueryState q={modules} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState>)}
       </nav>
-      <header className="top" aria-busy={restoring || undefined}>
+      <header className="top" data-task-menu={!platform || undefined} aria-busy={restoring || undefined}>
         {!restoring && <>
         <button ref={menuButton} className="btn btn--ghost top__menu" aria-expanded={open} aria-controls="rail" onClick={() => (open ? close() : setOpen(true))}>
           <Menu size={16} aria-hidden /> {t("shell.menu")}
@@ -183,6 +184,7 @@ export function Shell() {
           </button>
         )}
         <span className="top__spacer" />
+        {!platform && <Suspense fallback={null}><NeedsMeMenu key={pathname} id="top-needs-me" /></Suspense>}
         <LiveStatus />
         {!platform && <SupportAccessIndicator />}
         <LocaleSelect id="top-locale" label />
