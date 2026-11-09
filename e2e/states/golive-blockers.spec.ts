@@ -51,6 +51,7 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
       await expect(start).not.toHaveAttribute("aria-disabled", "true");
       expect(commands).toBe(0);
     } finally {
+      i18n.set("ko");
       fixture.release();
       expect(fixture.unexpected).toEqual([]);
     }
