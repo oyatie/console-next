@@ -194,8 +194,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/states-shards.mjs restore e2e/mock/timings.json .cache/states-timings/timings.json
       - run: node --test scripts/states-shards.test.mjs
-        env:
-          STATES_TIMINGS_FILE: .cache/states-timings/timings.json
       - name: Plan every state spec
         id: plan
         env:
@@ -300,6 +298,12 @@ jobs:
           include-hidden-files: true
           retention-days: 90
           if-no-files-found: error
+      - run: npm ci --no-audit --no-fund
+      - name: Check measured capacity on dev
+        env:
+          STATES_CHECK_CAPACITY: "1"
+          STATES_TIMINGS_FILE: .cache/states-timings/timings.json
+        run: node --test scripts/states-shards.test.mjs
 
   backend:
     needs: [affected]

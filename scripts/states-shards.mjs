@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { listedTests, plan } from "./e2e-timings.mjs";
 
@@ -29,7 +30,7 @@ export async function restoreDevTimings(settings, { apiUrl, repository, reposito
     return response;
   };
   const artifacts = [];
-  for (let page = 1; ; page++) {
+  for (let page = 1; page <= 5; page++) {
     const response = await get(`${apiUrl}/repos/${repository}/actions/artifacts?name=states-timings&per_page=100&page=${page}`);
     const batch = (await response.json()).artifacts;
     if (!Array.isArray(batch)) refuse("STATES_TIMINGS_FETCH", "missing artifact list");
@@ -39,19 +40,33 @@ export async function restoreDevTimings(settings, { apiUrl, repository, reposito
   const candidates = artifacts.filter(a => !a.expired && a.workflow_run?.head_branch === "dev" &&
     a.workflow_run.repository_id === repositoryId && a.workflow_run.head_repository_id === repositoryId)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
+  let fallback;
   for (const artifact of candidates) {
     const response = await get(`${apiUrl}/repos/${repository}/actions/artifacts/${artifact.id}/zip`);
-    // Read one JSON member without extracting archive paths; Python is already used by the CI evidence gates.
-    const decoded = spawnSync("python3", ["-c", "import io,sys,zipfile; sys.stdout.buffer.write(zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read())).read('timings.json'))"],
-      { input: Buffer.from(await response.arrayBuffer()), maxBuffer: 16 * 1024 * 1024 });
-    if (decoded.status !== 0) refuse("STATES_TIMINGS_FETCH", "cannot read timings archive");
-    const measured = JSON.parse(decoded.stdout.toString());
-    if (measured.workers !== settings.workers) continue;
+    const archive = mkdtempSync(path.join(tmpdir(), "states-timings-"));
+    let measured;
+    try {
+      const file = path.join(archive, "timings.zip");
+      writeFileSync(file, Buffer.from(await response.arrayBuffer()));
+      // Print only the named member; never extract artifact-controlled paths.
+      const decoded = spawnSync("unzip", ["-p", file, "timings.json"], { maxBuffer: 16 * 1024 * 1024 });
+      if (decoded.status !== 0) refuse("STATES_TIMINGS_FETCH", "cannot read timings archive");
+      measured = JSON.parse(decoded.stdout.toString());
+    } finally { rmSync(archive, { recursive: true, force: true }); }
+    if (!Number.isInteger(measured.workers) || measured.workers <= 0) refuse("STATES_INVALID_TIMINGS", "invalid measured workers");
     validateTimings({ ...settings, specs: measured.specs });
     if (!measured.specs || !Object.keys(measured.specs).length) refuse("STATES_INVALID_TIMINGS", "empty measurements");
-    return { timings: { workers: measured.workers, specs: measured.specs }, runId: artifact.workflow_run.id };
+    const restored = { timings: { workers: measured.workers, specs: measured.specs }, runId: artifact.workflow_run.id };
+    if (measured.workers === settings.workers) return restored;
+    fallback ??= restored;
   }
-  refuse("STATES_MISSING_TIMINGS", "no unexpired dev measurements for the configured worker count");
+  if (fallback) {
+    console.warn(`::warning::No compatible dev timings; scaling run ${fallback.runId} from ${fallback.timings.workers} to ${settings.workers} workers`);
+    return { runId: fallback.runId, timings: { workers: settings.workers, specs: Object.fromEntries(
+      Object.entries(fallback.timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * fallback.timings.workers / settings.workers }])) } };
+  }
+  console.warn("::warning::No unexpired dev timings; bootstrapping with the configured per-test floor");
+  return { timings: { workers: settings.workers, specs: {} } };
 }
 
 /** Settings are committed; cached wall durations are reusable only at the same worker count. */
@@ -163,7 +178,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         repositoryId: Number(process.env.GITHUB_REPOSITORY_ID), token: process.env.GH_TOKEN,
       });
       writeJson(second, restored.timings);
-      console.log(`Restored state timings from dev run ${restored.runId}`);
+      console.log(`Restored state timings from ${restored.runId ? `dev run ${restored.runId}` : "the bootstrap floor"}`);
     } else if (command === "plan") {
       const timings = readJson(second);
       const plan = planStates(readJson(first), timings, rest[0] && existsSync(rest[0]) ? readJson(rest[0]) : undefined);
