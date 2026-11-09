@@ -10,7 +10,7 @@ use axum::{
 use console_kernel_core::OrgId;
 use console_platform_authz::{
     Principal,
-    cedar_pbac::actions::support_session::{Action, Facts},
+    cedar_pbac::{actions::support_session::Action, visible::load_facts},
 };
 use console_platform_db::support::{self, SupportError};
 use console_settings_domain::SettingKey;
@@ -62,7 +62,8 @@ async fn active(
     Extension(p): Extension<Principal>,
 ) -> Result<Response, PlatformError> {
     let mut tx = state.pool.begin().await.map_err(SupportError::from)?;
-    let permission = store::tenant_permission(&mut tx, p.org_id, *p.user_id.as_uuid()).await?;
+    let permission =
+        store::tenant_support_permission(&mut tx, p.org_id, *p.user_id.as_uuid()).await?;
     let rows = sqlx::query_as("SELECT id,operator_label,expires_at FROM support_sessions WHERE org_id=$1 AND state='ACTIVE' AND expires_at>clock_timestamp() ORDER BY requested_at")
         .bind(p.org_id.as_uuid()).fetch_all(tx.as_mut()).await.map_err(SupportError::from)?;
     let pending = if permission {
@@ -86,7 +87,8 @@ async fn list(
     Extension(p): Extension<Principal>,
 ) -> Result<Response, PlatformError> {
     let mut tx = state.pool.begin().await.map_err(SupportError::from)?;
-    let permission = store::tenant_permission(&mut tx, p.org_id, *p.user_id.as_uuid()).await?;
+    let permission =
+        store::tenant_support_permission(&mut tx, p.org_id, *p.user_id.as_uuid()).await?;
     if !permission {
         return Err(SupportError::Refused("forbidden").into());
     }
@@ -106,7 +108,10 @@ async fn decide(
     Json(body): Json<DecisionBody>,
 ) -> Result<Response, PlatformError> {
     let mut tx = state.pool.begin().await.map_err(SupportError::from)?;
-    let permission = store::tenant_permission(&mut tx, p.org_id, *p.user_id.as_uuid()).await?;
+    support::arm(&mut tx, p.org_id).await?;
+    let facts = load_facts(&mut tx, p.org_id, *p.user_id.as_uuid())
+        .await
+        .map_err(|e| SupportError::Refused(e.kind.code()))?;
     let label = store::label(&mut tx, p.org_id, *p.user_id.as_uuid(), false).await?;
     let session = support::lock(&mut tx, p.org_id, id).await?;
     support::live(&session, OffsetDateTime::now_utc())?;
@@ -115,12 +120,10 @@ async fn decide(
         p.user_id,
         p.org_id,
         p.org_id,
-        Facts {
-            active: true,
-            actor_holds_permission: permission,
-            operator_approved: session.operator_approver_ref.is_some(),
-            ..Facts::default()
-        },
+        facts
+            .support_session(&mut tx, Some(id))
+            .await
+            .map_err(|_| SupportError::Refused("internal"))?,
     )?;
     if session.state != "OPERATOR_APPROVED" || session.tenant_approved_at.is_some() {
         return Err(SupportError::Refused("conflict").into());
@@ -177,7 +180,10 @@ async fn end(
     Path(id): Path<Uuid>,
 ) -> Result<Response, PlatformError> {
     let mut tx = state.pool.begin().await.map_err(SupportError::from)?;
-    let permission = store::tenant_permission(&mut tx, p.org_id, *p.user_id.as_uuid()).await?;
+    support::arm(&mut tx, p.org_id).await?;
+    let facts = load_facts(&mut tx, p.org_id, *p.user_id.as_uuid())
+        .await
+        .map_err(|e| SupportError::Refused(e.kind.code()))?;
     let label = store::label(&mut tx, p.org_id, *p.user_id.as_uuid(), false).await?;
     let _ = support::lock(&mut tx, p.org_id, id).await?;
     store::authorize(
@@ -185,11 +191,10 @@ async fn end(
         p.user_id,
         p.org_id,
         p.org_id,
-        Facts {
-            active: true,
-            actor_holds_permission: permission,
-            ..Facts::default()
-        },
+        facts
+            .support_session(&mut tx, Some(id))
+            .await
+            .map_err(|_| SupportError::Refused("internal"))?,
     )?;
     sqlx::query("UPDATE support_sessions SET state='REVOKED',ended_at=now() WHERE org_id=$1 AND id=$2 AND state NOT IN ('ENDED','REVOKED','DENIED','EXPIRED')").bind(p.org_id.as_uuid()).bind(id).execute(tx.as_mut()).await.map_err(SupportError::from)?;
     support::decision(
