@@ -63,7 +63,7 @@ test("filings keep the completion link and document evidence stays plain text", 
   const html = renderToStaticMarkup(<TrailItems value={dossier([item({ filing_obligation_id: "filing-1", observed_ref: { document: { name: "입사 계약서", url: "https://files.example/contract.pdf" } } })])} />);
   expect(html).toContain('filing=filing-1');
   expect(html).not.toContain('href="https://files.example/contract.pdf"');
-  expect(html).toContain("https://files.example/contract.pdf");
+  expect(html.replace(/<[^>]*>/g, "")).toContain("https://files.example/contract.pdf");
   expect(html).toContain("입사 계약서");
   expect(html).not.toContain("<code>");
 });

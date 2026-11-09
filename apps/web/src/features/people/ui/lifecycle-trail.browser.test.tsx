@@ -62,18 +62,26 @@ test("a live cancellation keeps the paperwork group in place and retains its row
   expect(await group.getByText("검증 서류", { exact: true }).count()).toBe(1);
 });
 
-test.each([1440, 390].flatMap((width) => ["서명한 입사 계약서", "서명한 입사 계약서 ".repeat(20)].map((name) => ({ width, name }))))("a document receipt preserves the next record control at $width px ($name)", async ({ width, name }) => {
+test.each([1440, 390].flatMap((width) => ["서명한 입사 계약서", "서명한 입사 계약서 ".repeat(20)].map((name) => ({ width, name }))))("a document receipt shows a copyable URL below the name at $width px ($name)", async ({ width, name }) => {
   await page.setViewportSize({ width, height: 1000 });
+  await page.evaluate((dark) => { document.documentElement.dataset.theme = dark ? "dark" : "light"; }, width === 390);
   const show = (recorded: boolean) => page.evaluate((value) => (window as unknown as { showEvidence: (recorded: boolean, name: string) => void }).showEvidence(value.recorded, value.name), { recorded, name });
   await show(false);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   const next = page.locator("#item-next").getByRole("button");
-  const before = (await next.boundingBox())!;
   await show(true);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   expect(await page.getByRole("link", { name, exact: true }).count()).toBe(0);
-  expect(await page.getByText(`${name} · https://evidence.example/document.pdf`, { exact: true }).count()).toBe(1);
-  expect((await next.boundingBox())!.y).toBe(before.y);
+  const title = page.getByText(name, { exact: true });
+  const url = page.getByText("https://evidence.example/document.pdf", { exact: true });
+  expect(await title.isVisible()).toBe(true);
+  expect(await url.isVisible()).toBe(true);
+  expect(await page.getByRole("button", { name: "주소 복사", exact: true }).count()).toBe(1);
+  const titleBox = (await title.boundingBox())!;
+  const urlBox = (await url.boundingBox())!;
+  expect(urlBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
+  expect(await next.isVisible()).toBe(true);
+  expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test.each([1440, 1200, 390])("the exit board gallery arranges six accessible legs at %i px", async (width) => {

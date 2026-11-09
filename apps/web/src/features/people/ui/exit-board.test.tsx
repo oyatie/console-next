@@ -45,7 +45,7 @@ test("payroll integration placeholders retain recorded documents and their compl
   const html = await renderBoard(value);
   expect(html).toContain("급여 연동 전");
   expect(html).not.toContain('href="https://files.example/payroll.pdf"');
-  expect(html).toContain("https://files.example/payroll.pdf");
+  expect(html.replace(/<[^>]*>/g, "")).toContain("https://files.example/payroll.pdf");
   expect(html).not.toContain("D-3");
 });
 

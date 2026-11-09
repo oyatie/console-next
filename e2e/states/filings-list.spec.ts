@@ -11,7 +11,6 @@ import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
-test.beforeEach(() => i18n.set("ko"));
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`filing facts and actions reflow at ${width}px in ${theme} @ui-state`, async ({ page }, info) => {

@@ -8,6 +8,8 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
+test.afterEach(() => i18n.set("ko"));
+
 for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
   test(`citation destinations are inert and unsafe URLs are refused in ${locale} at ${width}px @ui-state`, async ({ page }, info) => {
     await loadCatalog(locale); i18n.set(locale);
@@ -29,9 +31,10 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
       await row.getByText(t("statutory.basis"), { exact: true }).click();
       await expect(row.getByRole("link", { name: /국민연금법/ })).toHaveCount(0);
       await expect(row.getByText(`국민연금법 · 제21조 · ${new URL(citation.source_url).href}`, { exact: true })).toBeVisible();
-      await expect(row.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(0);
+      await expect(row.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(1);
       await expect(row.locator('[data-refusal-code="external_url_https_required"]')).toHaveCount(2);
       for (const refusal of await row.locator('[data-refusal-code="external_url_https_required"]').all()) {
+        await expect(refusal.getByRole("button")).toHaveCount(0);
         await expect(refusal).toContainText(t("common.failed.code.external_url_https_required"));
       }
       await fits(page, "citation destinations");
@@ -76,7 +79,7 @@ for (const locale of ["ko", "en"] as const) {
       const gallery = page.locator(".gallery__section").filter({ has: page.getByRole("heading", { name: t("payroll.reference.title"), exact: true }) });
       await gallery.scrollIntoViewIfNeeded();
       await expect(gallery.locator('a[href^="https:"]')).toHaveCount(0);
-      await expect(gallery.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(0);
+      await expect(gallery.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(2);
       await expect(gallery.getByText(/https:\/\/example.com\/payroll-source/)).toHaveCount(2);
       expect(await gallery.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
       await gallery.screenshot({ path: info.outputPath("citation-gallery.png") });
