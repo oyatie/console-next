@@ -105,7 +105,7 @@ pub(crate) async fn page(
                         &principal.user_id.to_string(), &org.to_string(), &org.to_string(), row.approval_list_facts(), "pending",
                     ).unwrap_or(false).then_some(*id)
                 }).collect();
-            let apply = apply_others || (draft && policy.is_none());
+            let apply = apply_others || (draft && policy.is_none_or(|policy| !policy.routed));
             let today = query.now.to_offset(offset!(+9)).date();
             let count: i64 =
                 sqlx::query_scalar(concat!(eligible!(), "SELECT count(*) FROM eligible"))

@@ -15162,7 +15162,7 @@ export interface components {
             };
             /** @description Opaque command version for pending org-change approval rows; changes after any step decision. */
             version?: string;
-            /** @description Named policy from the request settings snapshot; absent when the class is not routed. Commands recheck live policy. */
+            /** @description Named policy for the stored approval chain, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without stored steps. Commands recheck live policy. */
             policy?: {
                 /** @description Settings key whose catalog label names the approval policy. */
                 key: string;

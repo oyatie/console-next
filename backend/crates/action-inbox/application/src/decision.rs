@@ -21,13 +21,27 @@ impl DecisionPolicy {
         bulk_allowed: bool,
         step_up: bool,
     ) -> Option<Self> {
-        routed.then_some(Self {
+        routed.then(|| Self::new(key, routed, bulk_allowed, step_up))
+    }
+
+    #[must_use]
+    pub fn new(key: SettingKey, routed: bool, bulk_allowed: bool, step_up: bool) -> Self {
+        Self {
             key,
             routed,
             // Distinct people decide stored steps; merging is never an approval policy option.
             merge_consecutive: false,
             bulk_allowed,
             step_up,
+        }
+    }
+
+    /// Stored steps govern existing items even when live routing is turned off.
+    #[must_use]
+    pub fn for_stored_steps(self, has_steps: bool) -> Option<Self> {
+        has_steps.then_some(Self {
+            routed: true,
+            ..self
         })
     }
 }

@@ -42,3 +42,27 @@ fn only_routed_items_expose_policy_and_preserve_resolved_flags() {
         assert_eq!(row["cannot_reason"], code.unwrap_or("forbidden"));
     }
 }
+
+#[test]
+fn stored_chain_preserves_policy_independently_of_live_routing() {
+    for routed in [false, true] {
+        for has_steps in [false, true] {
+            for enabled in [false, true] {
+                let policy = DecisionPolicy::new(
+                    SettingKey::ApprovalPolicyOrgStructure,
+                    routed,
+                    enabled,
+                    enabled,
+                );
+                let governing = policy.for_stored_steps(has_steps);
+                assert_eq!(governing.is_some(), has_steps);
+                if let Some(governing) = governing {
+                    assert!(governing.routed);
+                    assert_eq!(governing.bulk_allowed, enabled);
+                    assert_eq!(governing.step_up, enabled);
+                    assert!(!governing.merge_consecutive);
+                }
+            }
+        }
+    }
+}

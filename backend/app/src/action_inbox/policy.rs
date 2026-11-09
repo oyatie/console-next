@@ -48,7 +48,12 @@ pub(super) fn org_structure(
     let SettingValue::Bool(step_up) = value(SettingKey::ApprovalStepUpOrgStructure)? else {
         return Err(KernelError::internal("inbox step-up policy unavailable"));
     };
-    Ok(DecisionPolicy::routed(key, route != "none", bulk, step_up))
+    Ok(Some(DecisionPolicy::new(
+        key,
+        route != "none",
+        bulk,
+        step_up,
+    )))
 }
 
 #[cfg(all(test, not(feature = "test-postgres")))]
@@ -70,7 +75,7 @@ mod tests {
                 )
             })
             .collect();
-        assert_eq!(org_structure(&defaults).unwrap(), None);
+        assert!(!org_structure(&defaults).unwrap().unwrap().routed);
         for &key in &KEYS[1..] {
             let mut missing = defaults.clone();
             missing.remove(&key);

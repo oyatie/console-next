@@ -35,3 +35,7 @@ mod policy;
 mod statements;
 #[path = "action_inbox_items/withdrawal.rs"]
 mod withdrawal;
+
+#[allow(dead_code)]
+#[path = "support/reference_logs.rs"]
+mod reference_logs;
