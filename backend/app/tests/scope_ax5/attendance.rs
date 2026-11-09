@@ -105,3 +105,20 @@ async fn weekly_totals_follow_the_cedar_workplace_read_set(pool: PgPool) {
     assert_eq!(status, FORBIDDEN, "{body}");
     assert_eq!(body["error"]["code"], "forbidden");
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn weekly_branch_without_workplaces_requires_tenant_read(pool: PgPool) {
+    let mut w = world(pool).await;
+    let reader = w.holder("WORKPLACE", Some(&w.wp_a.clone())).await;
+    let branch: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO branches (org_id,region_id,name) SELECT org_id,region_id,'미배치 지점' FROM branches WHERE id=$1::uuid RETURNING id",
+    ).bind(&w.branch_a).fetch_one(&w.pool).await.unwrap();
+    let path = format!("/api/v1/attendance/week52?week_start=2026-10-26&branch_id={branch}");
+    let (status, body) = reader.call("GET", &path, None).await;
+    assert_eq!(status, FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "forbidden");
+    assert!(body.get("items").is_none());
+    let (status, body) = w.ops.call("GET", &path, None).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["items"], serde_json::json!([]));
+}

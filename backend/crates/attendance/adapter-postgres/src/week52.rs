@@ -112,28 +112,35 @@ pub(super) fn week52_inputs_for_active(
 async fn load_totals(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     first: Date,
+    tenant: Uuid,
     members: Vec<crate::records::roster::Member>,
     org: crate::schedule::org::OrgModel,
 ) -> Result<BTreeMap<Uuid, Option<(f64, f64)>>, crate::ScheduleStoreError> {
-    use crate::{records::entries::current, schedule::universe::Universe};
-    use console_attendance_domain::{
-        records::{EntryKind, evaluate},
-        schedule::DayKind,
+    use crate::{
+        records::{
+            day::{add, evaluate_day},
+            entries::current,
+            thresholds::RecordSettings,
+        },
+        schedule::universe::{Universe, today_kst},
     };
-    use sqlx::Row;
+    use app::records_read::GridTotals;
+    use console_attendance_domain::{records::EntryKind, schedule::DayKind};
 
     let last = first + time::Duration::days(6);
     let universe = Universe::load(tx, org, (first.year(), last.year())).await?;
     let people: Vec<_> = members.iter().map(|m| m.id).collect();
     let entries = current(tx, first, last, Some(&people)).await?;
-    let mut approvals = BTreeMap::new();
-    for row in sqlx::query("SELECT e.employee_id,e.work_date,CASE WHEN COUNT(*)=COUNT(r.ot_hours) THEN SUM(r.ot_hours)::float8 END AS hours FROM attendance_exceptions e JOIN attendance_exception_resolutions r ON r.exception_id=e.id AND r.org_id=e.org_id WHERE e.kind='UNAPPROVED_OVERTIME' AND e.status='RESOLVED' AND r.action='APPROVE_OVERTIME' AND e.work_date BETWEEN $1 AND $2 AND e.employee_id=ANY($3) GROUP BY e.employee_id,e.work_date")
-        .bind(first).bind(last).bind(&people).fetch_all(tx.as_mut()).await? {
-        approvals.insert((row.try_get::<Uuid,_>("employee_id")?, row.try_get::<Date,_>("work_date")?), row.try_get::<Option<f64>,_>("hours")?);
-    }
+    let settings = RecordSettings::load(
+        tx,
+        tenant,
+        members.iter().flat_map(|m| m.setting_entities()),
+    )
+    .await?;
+    let today = today_kst();
     let mut totals = BTreeMap::new();
     for member in members {
-        let mut total = Some((0.0, 0.0));
+        let mut total = Some(GridTotals::default());
         let mut reported = false;
         for offset in 0..7 {
             let date = first + time::Duration::days(offset);
@@ -148,21 +155,32 @@ async fn load_totals(
                 total = None;
                 break;
             };
-            let (_, plan) = universe.day(&person, &universe.layers_for(&person), date);
-            if plan.kind == DayKind::NoSchedule || entry.kind == EntryKind::ClockInOnly {
+            let day = evaluate_day(
+                &universe,
+                &person,
+                date,
+                Some(entry),
+                &[],
+                today,
+                settings.for_entity(person.legal_entity_id)?,
+            );
+            if day.plan.kind == DayKind::NoSchedule || entry.kind == EntryKind::ClockInOnly {
                 total = None;
                 break;
             }
-            let (_, recognition) = evaluate(&plan, Some(entry.kind), &entry.segments, &[]);
-            let approved = approvals
-                .get(&(member.id, date))
-                .copied()
-                .unwrap_or(Some(0.0));
-            total = total
-                .zip(app::week52::approved_day_hours(&recognition, approved))
-                .map(|((r, o), (day_r, day_o))| (r + day_r, o + day_o));
+            if let Some(total) = &mut total {
+                add(total, &day);
+            }
         }
-        totals.insert(member.id, total.filter(|_| reported));
+        totals.insert(
+            member.id,
+            total.filter(|_| reported).map(|t| {
+                (
+                    f64::from(t.recognised) / 60.0,
+                    f64::from(t.outside_scheduled) / 60.0,
+                )
+            }),
+        );
     }
     Ok(totals)
 }
@@ -219,7 +237,7 @@ impl PgAttendanceStore {
             }
             let active_employees = visible;
             let ids: Vec<_> = active_employees.iter().map(|(id, _, _)| *id).collect();
-            let totals = load_totals(tx, week_start, ids.iter().filter_map(|id| members.remove(id)).collect(), org_model).await?;
+            let totals = load_totals(tx, week_start, *org.as_uuid(), ids.iter().filter_map(|id| members.remove(id)).collect(), org_model).await?;
             // Pair the complete employee timeline. Filtering by `work_date` (or by either
             // week boundary) loses a side of a shift that crosses that boundary.
             let rows = sqlx::query("SELECT r.id,r.employee_id,r.kind,r.occurred_at FROM employee_attendance_records r JOIN employees e ON e.id=r.employee_id AND e.org_id=r.org_id WHERE e.employment_status='ACTIVE' AND r.employee_id=ANY($1) ORDER BY r.employee_id,r.occurred_at,r.id")

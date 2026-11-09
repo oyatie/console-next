@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Weekly totals use persisted entries, dated schedules and resolved approvals.
+//! Weekly totals share grid recognition; approvals are evidence only.
 use super::save::{cell, paper, save, scheduled};
-use super::support::{key, seed};
+use super::support::{TestReads, key, seed};
 use serde_json::json;
 use sqlx::PgPool;
 use time::macros::date;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn weekly_totals_exclude_open_overtime_and_preserve_unknown(owner: PgPool) {
+async fn weekly_totals_match_grid_worked_time_and_preserve_unknown(owner: PgPool) {
     let w = scheduled(owner).await;
     w.store
         .save_entries(
@@ -62,12 +62,39 @@ async fn weekly_totals_exclude_open_overtime_and_preserve_unknown(owner: PgPool)
     let rows = read().await;
     let row =
         |id| serde_json::to_value(rows.iter().find(|r| r.employee_id == id).unwrap()).unwrap();
-    assert_eq!(row(w.people[0])["recognized_hours"], json!(8.0));
-    assert_eq!(row(w.people[0])["overtime_hours"], json!(0.0));
+    assert_eq!(row(w.people[0])["recognized_hours"], json!(10.0));
+    assert_eq!(row(w.people[0])["overtime_hours"], json!(2.0));
     assert_eq!(row(w.people[1])["recognized_hours"], json!(0.0));
     assert_eq!(row(w.people[1])["overtime_hours"], json!(0.0));
     assert!(row(w.people[2])["recognized_hours"].is_null());
     assert!(row(w.people[2])["overtime_hours"].is_null());
+    let grid = w
+        .store
+        .month_grid(
+            &w.hr(),
+            console_attendance_adapter_postgres::GridQuery {
+                month: "2026-10".into(),
+                limit: 100,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    let grid = grid
+        .rows
+        .iter()
+        .find(|r| r.employee_id == w.people[0])
+        .unwrap();
+    assert_eq!(grid.totals.recognised, 600);
+    assert_eq!(grid.totals.outside_scheduled, 120);
+    assert_eq!(
+        row(w.people[0])["recognized_hours"],
+        json!(f64::from(grid.totals.recognised) / 60.0)
+    );
+    assert_eq!(
+        row(w.people[0])["overtime_hours"],
+        json!(f64::from(grid.totals.outside_scheduled) / 60.0)
+    );
     let (org, employee, actor) = (w.org, w.people[0], w.admin);
     seed(&w.owner, format!("INSERT INTO attendance_exceptions (org_id,id,code,kind,status,employee_id,work_date,detail,idempotency_key,request_fingerprint,created_by)
       VALUES ('{org}','00000000-0000-4000-8000-000000000901','AT-WEEK','UNAPPROVED_OVERTIME','RESOLVED','{employee}','2026-10-06','verified work','weekly-approved-work',repeat('a',64),'{actor}');
@@ -76,8 +103,8 @@ async fn weekly_totals_exclude_open_overtime_and_preserve_unknown(owner: PgPool)
     let rows = read().await;
     let row =
         serde_json::to_value(rows.iter().find(|r| r.employee_id == employee).unwrap()).unwrap();
-    assert_eq!(row["recognized_hours"], json!(9.25));
-    assert_eq!(row["overtime_hours"], json!(1.25));
+    assert_eq!(row["recognized_hours"], json!(10.0));
+    assert_eq!(row["overtime_hours"], json!(2.0));
     // An approval cannot create worked time.
     seed(
         &w.owner,
@@ -97,8 +124,8 @@ async fn weekly_totals_exclude_open_overtime_and_preserve_unknown(owner: PgPool)
     let rows = read().await;
     let row =
         serde_json::to_value(rows.iter().find(|r| r.employee_id == employee).unwrap()).unwrap();
-    assert_eq!(row.get("recognized_hours"), Some(&serde_json::Value::Null));
-    assert_eq!(row.get("overtime_hours"), Some(&serde_json::Value::Null));
+    assert_eq!(row["recognized_hours"], json!(10.0));
+    assert_eq!(row["overtime_hours"], json!(2.0));
     let rows = w
         .store
         .week52_inputs(&w.hr(), date!(2026 - 10 - 12), None, |_| {

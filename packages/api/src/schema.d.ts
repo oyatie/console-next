@@ -16606,9 +16606,9 @@ export interface components {
             week_start: string;
             current_hours: number;
             projected_hours: number;
-            /** @description Scheduled work plus approved worked overtime; null when no complete scheduled record is available. */
+            /** @description Sum of grid-recognized worked minutes in hours, regardless of approval. Null when there are no live entries, or a live entry is incomplete, unplaced or lacks a schedule. Missing days are not included. */
             recognized_hours?: number | null;
-            /** @description Approved overtime capped at worked excess for each scheduled day; null when unknown. */
+            /** @description Sum of worked minutes outside the schedule in hours, regardless of approval. Null under the same conditions as recognized_hours. */
             overtime_hours?: number | null;
             /**
              * @description UNKNOWN: 확인 불가 — 법정 근로시간 대장 미등록
