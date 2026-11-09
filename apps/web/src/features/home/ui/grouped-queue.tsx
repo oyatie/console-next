@@ -23,6 +23,7 @@ type InboxItem = AttentionInboxItem;
 export type RowAction = (item: InboxItem) => ReactNode;
 type QueueColumn = Column<InboxItem> & { id: "task" | "subject" | "due" | "source" | "owner" | "actions" };
 const KIND_TEXT: Record<string, MessageId> = {
+  privacy_request: "home.inbox.privacyRequest",
   registration_check: "nts.title",
   identifier_correction_waiting: "entityRecord.corrections.title", identifier_correction_decide: "entityRecord.corrections.title", identifier_correction_apply: "entityRecord.corrections.title", identifier_correction_review: "entityRecord.corrections.title",
   support_access: "home.part.support", approval: "home.part.decide", org_change: "home.part.changes", org_change_waiting: "home.part.changes", org_change_scheduled: "home.part.changes", org_change_approve: "home.part.decide",
@@ -49,6 +50,7 @@ const REGISTER_FIELDS: Record<string, { label: MessageId; block: string }> = {
 };
 
 const RECORD_SOURCE: Record<string, MessageId> = {
+  privacy_request: "account.privacy.title",
   employee: "people.title", exit_case: "people.title", change_request: "home.part.requests",
   org_change: "home.part.changes", statutory: "statutory.title", account: "shell.account",
   access: "access.grant.title", period_lock: "home.part.unlocks", support_session: "home.part.support",
@@ -139,7 +141,7 @@ export function GroupedQueue({ items, action }: { items: InboxItem[]; action?: R
 
 function Subject({ item }: { item: InboxItem }) {
   const { unlock, insurance, lifecycle, request, correction } = item.context ?? {};
-  const subject = unlock ? `${domainText(unlock.domain)} ${periodText(unlock)}` : request ? codeText(`requests.kind.${request.kind}`, t("requests.kind.OTHER")) : item.title;
+  const subject = item.kind === "privacy_request" ? (item.context?.privacy_kinds ?? []).map(code => codeText(`account.privacy.kind.${code}`, t("enum.unknown"))).join(" · ") : unlock ? `${domainText(unlock.domain)} ${periodText(unlock)}` : request ? codeText(`requests.kind.${request.kind}`, t("requests.kind.OTHER")) : item.title;
   const facts = correction ? [`${t("entityRecord.corrections.state")}: ${t(`entityRecord.corrections.status.${correction.status}`)}`, item.who && `${t("entityRecord.corrections.requester")}: ${item.who}`] : unlock ? [unlock.requester, unlock.reason_entry || isMessageId(`reason.period_unlock.${unlock.reason_code}`) ? reasonLabel("period_unlock", unlock.reason_code, unlock.reason_entry ?? undefined) : t("enum.unknown")]
     : insurance ? [label(INSURER, insurance.insurer), codeText(`statutory.${insurance.kind}`, t("home.inbox.unknown")), fmtDate(insurance.effective_date)]
     : lifecycle ? [label(LIFECYCLE_EVENT, lifecycle.action_kind), fmtDate(lifecycle.effective_date)]
@@ -157,6 +159,7 @@ function recordAction(item: InboxItem, action?: RowAction) {
   const className = buttonClass("secondary", { size: "sm" });
   const inline = action?.(item);
   switch (link.kind) {
+    case "privacy_request": return <Link to="/account/privacy/intake/$id" params={{ id: link.id }} className={className}>{text}</Link>;
     case "registration_check": {
       const [id, registrationId] = link.id.split("/");
       if (!id || !registrationId) return null;

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import yaml from "js-yaml";
 import { RUN_HEADROOM } from "./states-shards.mjs";
 
+const artifactFile = process.env.STATES_TIMINGS_FILE ?? ".cache/states-timings/timings.json";
 const settings = { setupAllowanceSeconds: 120, budgetSeconds: 300, startupSeconds: 40, workers: 2, defaultTestSeconds: 10, specs: {} };
 const report = (counts, seconds = 4) => ({
   errors: [],
@@ -81,13 +82,13 @@ test("an unknown 30-test spec uses nearest-rank P95 and adds a shard with headro
   assert.equal(plan.testCounts["states/new.spec.ts"], 30);
 });
 
-test("unknown estimates that exceed whole-spec or shard capacity request timings", async () => {
+test("unknown estimates that exceed whole-spec or shard capacity name missing CI measurements", async () => {
   const { planStates } = await load();
   // The run limit leaves a 480 s execution timeout after headroom.
   const timings = { ...settings, timeoutSeconds: 600, runLimitSeconds: 480 * RUN_HEADROOM, maxShards: 1,
     specs: { "mock/known.spec.ts": { seconds: 20, tests: 1 } } };
-  assert.throws(() => planStates(report({ "states/new.spec.ts": 30 }), timings), /STATES_SPEC_OVER_BUDGET.*states\/new\.spec\.ts.*add timings/i);
-  assert.throws(() => planStates(report({ "mock/known.spec.ts": 1, "states/new.spec.ts": 22 }), timings), /STATES_TIMEOUT_LIMIT.*add timings.*states\/new\.spec\.ts/i);
+  assert.throws(() => planStates(report({ "states/new.spec.ts": 30 }), timings), /STATES_SPEC_OVER_BUDGET.*states\/new\.spec\.ts.*CI measurements/i);
+  assert.throws(() => planStates(report({ "mock/known.spec.ts": 1, "states/new.spec.ts": 22 }), timings), /STATES_TIMEOUT_LIMIT.*CI measurements.*states\/new\.spec\.ts/i);
 });
 
 test("packing adds shards before consuming the RUN_HEADROOM run headroom", async () => {
@@ -135,25 +136,62 @@ test("the shard ceiling stretches the budget through whole-file packing without 
   }
 });
 
-test("the real suite allows 30 added tests and ten percent timing drift within the runner cap", async () => {
+test("committed timings contain settings and a floor, never per-spec measurements", () => {
+  const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
+  assert.equal(timings.specs, undefined);
+  assert.ok(timings.defaultTestSeconds > 0);
+});
+
+test("CI checks capacity only on dev after publishing fresh measurements", () => {
+  const steps = workflow.jobs["states-plan"].steps;
+  assert.ok(steps.some(s => s.run?.includes("states-shards.mjs restore")));
+  assert.ok(!steps.some(s => s.env?.STATES_CHECK_CAPACITY === "1"));
+  const refresh = workflow.jobs["states-timings"].steps;
+  const upload = refresh.findIndex(s => s.with?.name === "states-timings");
+  const check = refresh.findIndex(s => s.env?.STATES_CHECK_CAPACITY === "1");
+  assert.ok(upload >= 0 && check > upload, "publish measurements even when the capacity alert fails");
+  assert.equal(refresh[check].run, "node --test scripts/states-shards.test.mjs");
+  assert.equal(refresh[check].env.STATES_TIMINGS_FILE, ".cache/states-timings/timings.json");
+});
+
+test("artifact measurements cover a spec that grew on dev without editing settings", async () => {
+  const { planStates } = await load();
+  const { specs: ignored, ...floor } = settings;
+  const measured = { workers: floor.workers, specs: { "mock/a.spec.ts": { seconds: 20, tests: 10 } } };
+  const planned = planStates(report({ "mock/a.spec.ts": 10 }), floor, measured);
+  assert.equal(planned.shards[0].seconds, floor.startupSeconds + 20);
+  assert.equal(planStates(report({ "mock/a.spec.ts": 11 }), floor, measured).shards[0].seconds, floor.startupSeconds + 25);
+});
+
+test("the real suite allows 30 added tests and ten percent timing drift within the runner cap", async t => {
+  if (process.env.STATES_CHECK_CAPACITY !== "1") return t.skip("capacity is checked on dev pushes with fresh measurements");
+  if (!existsSync(artifactFile) && !process.env.CI) return t.skip("restore dev timings or set STATES_TIMINGS_FILE before checking capacity locally");
   const { planStates, filesForShard } = await load();
   const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--config=e2e/mock/playwright.config.ts", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   const discovered = JSON.parse(result.stdout);
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
-  const timeoutSeconds = timings.runLimitSeconds;
+  const artifact = JSON.parse(readFileSync(artifactFile, "utf8"));
+  assert.equal(artifact.workers, timings.workers, "capacity requires compatible CI measurements");
+  assert.ok(Object.keys(artifact.specs).length, "capacity requires measured specs");
+  const timeoutSeconds = Math.floor(timings.runLimitSeconds / RUN_HEADROOM);
+  const current = planStates(discovered, timings, artifact);
+  const maximum = Math.max(...current.shards.map(s => s.seconds));
+  t.diagnostic(`measured maximum: ${maximum.toFixed(1)}s / ${timeoutSeconds}s; headroom: ${(100 * (1 - maximum / timeoutSeconds)).toFixed(1)}%`);
+  assert.ok(maximum <= timeoutSeconds * 0.85, "the measured suite needs at least fifteen percent headroom");
   assert.equal(timings.timeoutSeconds, 1080, "suite growth must fit without extending the planning limit");
   for (const drift of [1, 1.1]) {
     const input = { ...discovered, suites: [...discovered.suites, ...report({ "states/growth.spec.ts": 30 }).suites] };
-    const measured = { workers: timings.workers, specs: Object.fromEntries(Object.entries(timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * drift }])) };
+    const measured = { workers: timings.workers, specs: Object.fromEntries(Object.entries(artifact.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * drift }])) };
     const plan = planStates(input, timings, measured);
+    t.diagnostic(`30 added tests, drift ${drift}: ${plan.shards.length} shards, maximum ${Math.max(...plan.shards.map(s => s.seconds)).toFixed(1)}s`);
     assert.ok(plan.shards.length <= timings.maxShards);
-    assert.ok(plan.budgetSeconds > timings.budgetSeconds && plan.budgetSeconds <= timings.timeoutSeconds);
+    assert.ok(plan.budgetSeconds >= timings.budgetSeconds && plan.budgetSeconds <= timeoutSeconds);
     assert.ok(plan.budgetSeconds * RUN_HEADROOM <= plan.runTimeoutMinutes * 60);
     assert.equal(plan.jobTimeoutMinutes, Math.ceil(timings.setupAllowanceSeconds / 60) + plan.runTimeoutMinutes);
     assert.deepEqual(plan.shards.flatMap(s => filesForShard(plan, s.id)).sort(), input.suites.map(s => `e2e/${s.file}`).sort());
   }
-  assert.ok(timings.timeoutSeconds < timeoutSeconds - timings.startupSeconds);
+  assert.equal(timeoutSeconds, 937);
 });
 
 test("planning refuses only when a spec or capped packing exceeds the execution timeout", async () => {
@@ -376,25 +414,46 @@ test("ci-ok fails when the planner or any matrix shard fails or is skipped", () 
   assert.notEqual(run("success", "success", "failure").status, 0);
 });
 
-test("CI restores only unexpired dev timings from this repository, never PRs or forks", () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "states-timings-"));
-  try {
-    mkdirSync(path.join(dir, "bin"));
-    writeFileSync(path.join(dir, "bin/curl"), '#!/bin/sh\nprintf "%s" "$ARTIFACTS"\n', { mode: 0o755 });
-    const step = workflow.jobs["states-plan"]?.steps.find(s => s.id === "timings");
-    assert.ok(step);
-    const artifact = (id, run = {}, extra = {}) => ({ expired: false, workflow_run: { id, head_branch: "dev", repository_id: 1, head_repository_id: 1, ...run }, ...extra });
-    for (const artifacts of [[], [artifact(1, {}, { expired: true })], [artifact(2, { head_branch: "feature" })], [artifact(3, { head_repository_id: 9 })], [artifact(4, { head_repository_id: undefined, repository_id: undefined })], [artifact(5)]]) {
-      const output = path.join(dir, "output");
-      writeFileSync(output, "");
-      const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], { encoding: "utf8", env: {
-        ...process.env, PATH: `${dir}/bin:${process.env.PATH}`, RUNNER_TEMP: dir,
-        GITHUB_OUTPUT: output, GITHUB_REPOSITORY_ID: "1", ARTIFACTS: JSON.stringify({ artifacts }),
-      } });
-      assert.equal(result.status, 0, result.stderr);
-      assert.equal(readFileSync(output, "utf8"), artifacts[0]?.workflow_run.id === 5 ? "run-id=5\n" : "");
-    }
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+const artifact = (id, extra = {}) => ({ id, expired: false, created_at: new Date(id * 1000).toISOString(),
+  workflow_run: { id, head_branch: "dev", repository_id: 1, head_repository_id: 1 }, ...extra });
+const zip = data => {
+  const result = spawnSync("python3", ["-c", "import io,sys,zipfile; b=io.BytesIO(); z=zipfile.ZipFile(b,'w',zipfile.ZIP_DEFLATED); z.writestr('timings.json',sys.stdin.read()); z.close(); sys.stdout.buffer.write(b.getvalue())"], { input: JSON.stringify(data) });
+  assert.equal(result.status, 0, result.stderr.toString());
+  return result.stdout;
+};
+const config = { apiUrl: "https://api.github.com", repository: "example/console", repositoryId: 1, token: "test-token" };
+
+test("CI restores the latest compatible unexpired dev artifact across pages", async () => {
+  const { restoreDevTimings } = await load();
+  const compatible = { workers: settings.workers, specs: { "mock/a.spec.ts": { seconds: 12, tests: 3 } } };
+  const pages = [Array.from({ length: 100 }, (_, i) => artifact(i + 10, { expired: true })), [
+    artifact(8, { workflow_run: { head_branch: "feature", repository_id: 1, head_repository_id: 1 } }),
+    artifact(7, { workflow_run: { head_branch: "dev", repository_id: 1, head_repository_id: 9 } }),
+    artifact(6, { workflow_run: { head_branch: "dev" } }),
+    artifact(5, { workflow_run: { head_branch: "dev", repository_id: 9, head_repository_id: 1 } }),
+    artifact(2), artifact(4), artifact(3),
+  ]];
+  const requests = [];
+  const request = async (url, options) => {
+    requests.push(url);
+    assert.equal(options.headers.Authorization, "Bearer test-token");
+    const match = url.match(/artifacts\/(\d+)\/zip$/);
+    return new Response(match ? zip({ ...compatible, workers: Number(match[1]) === 4 ? 1 : settings.workers })
+      : JSON.stringify({ artifacts: pages[Number(new URL(url).searchParams.get("page")) - 1] }));
+  };
+  const restored = await restoreDevTimings(settings, config, request);
+  assert.equal(restored.runId, 3);
+  assert.deepEqual(restored.timings, compatible);
+  assert.deepEqual(requests.slice(2).map(url => url.match(/artifacts\/(\d+)\/zip$/)[1]), ["4", "3"]);
+  const empty = async () => new Response(JSON.stringify({ artifacts: [] }));
+  assert.deepEqual((await restoreDevTimings(settings, config, empty)).timings, { workers: settings.workers, specs: {} });
+  await assert.rejects(restoreDevTimings(settings, config, async () => new Response("denied", { status: 403 })), /STATES_TIMINGS_FETCH.*403/);
+  await assert.rejects(restoreDevTimings(settings, config, async () => new Response("{}")), /STATES_TIMINGS_FETCH.*missing artifact list/);
+  const measurements = data => async url => new Response(url.endsWith("/zip") ? zip(data) : JSON.stringify({ artifacts: [artifact(1)] }));
+  for (const specs of [undefined, {}, { "../bad": { seconds: 1, tests: 1 } }])
+    await assert.rejects(restoreDevTimings(settings, config, measurements({ ...compatible, specs })), /STATES_INVALID_TIMINGS/);
+  const brokenArchive = async url => new Response(url.endsWith("/zip") ? "broken zip" : JSON.stringify({ artifacts: [artifact(1)] }));
+  await assert.rejects(restoreDevTimings(settings, config, brokenArchive), /STATES_TIMINGS_FETCH.*archive/);
 });
 
 test("CI consumes the plan's matrix and exact file list and ci-ok requires planning and all shards", () => {
@@ -445,6 +504,7 @@ test("CI gives state and web checks their full run budget after measured setup",
     "python3 scripts/d10_evidence_test.py",
     "python3 scripts/d8_evidence_test.py",
     "python3 scripts/states_evidence_test.py",
+    "python3 scripts/pull_measured_evidence_test.py",
     "CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts",
   ]);
   assert.equal(web["timeout-minutes"], Math.ceil(timings.setupAllowanceSeconds / 60) + check["timeout-minutes"]);
@@ -501,4 +561,39 @@ test("browser install reports elapsed seconds on success and failure without hid
       }
     }
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("restoration scales the newest trusted artifact when workers change", async () => {
+  const { restoreDevTimings, planStates } = await load();
+  const request = async url => new Response(url.endsWith("/zip")
+    ? zip({ workers: 4, specs: { "mock/a.spec.ts": { seconds: 12, tests: 3 } } })
+    : JSON.stringify({ artifacts: [artifact(2), artifact(1)] }));
+  const restored = await restoreDevTimings(settings, config, request);
+  assert.equal(restored.runId, 2);
+  assert.deepEqual(restored.timings, { workers: 2, specs: { "mock/a.spec.ts": { seconds: 24, tests: 3 } } });
+  assert.equal(planStates(report({ "mock/a.spec.ts": 3 }), settings, restored.timings).shards[0].seconds, 64);
+  for (const workers of [0, -1, 1.5, "4"]) {
+    await assert.rejects(restoreDevTimings(settings, config, async url => new Response(url.endsWith("/zip")
+      ? zip({ workers, specs: { "mock/a.spec.ts": { seconds: 12, tests: 3 } } })
+      : JSON.stringify({ artifacts: [artifact(1)] }))), /STATES_INVALID_TIMINGS/);
+  }
+});
+
+test("artifact pagination is bounded even when the server always returns full pages", async () => {
+  const { restoreDevTimings } = await load();
+  let pages = 0;
+  const restored = await restoreDevTimings(settings, config, async () => {
+    assert.ok(++pages <= 5, "artifact lookup must stop after five pages");
+    return new Response(JSON.stringify({ artifacts: Array.from({ length: 100 }, () => artifact(1, { expired: true })) }));
+  });
+  assert.equal(pages, 5);
+  assert.deepEqual(restored.timings, { workers: settings.workers, specs: {} });
+});
+
+test("a repository without artifacts can bootstrap a fixed suite within the runner cap", async () => {
+  const { planStates } = await load();
+  const timings = { ...settings, maxShards: 2, timeoutSeconds: 600 };
+  const planned = planStates(report({ "mock/a.spec.ts": 30, "mock/b.spec.ts": 30, "mock/c.spec.ts": 30 }), timings);
+  assert.ok(planned.shards.length <= timings.maxShards);
+  assert.ok(planned.budgetSeconds > timings.budgetSeconds);
 });

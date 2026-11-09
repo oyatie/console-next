@@ -1,6 +1,6 @@
 import { inboxAction } from "./inbox-action";
 import { useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Home } from "../features/home/Home";
 import { SetupHome } from "../features/onboarding/ui/setup-home";
 import { useSetupChecklist } from "../features/onboarding/ui/use-setup";
@@ -9,7 +9,8 @@ import { settingsQuery } from "../reference/settings/api";
 import { ReadSkeleton } from "../ui/skeleton/skeleton";
 import { SetupReceipt } from "../features/onboarding/ui/setup-receipt";
 import { useLiveHold } from "../lib/live/hold";
-import { cursorPages } from "../lib/query";
+import { InboxRead } from "../features/home/ui/inbox-read";
+import { useInboxRead } from "../features/home/ui/use-inbox-read";
 import { entitiesRef } from "../reference/entity/api";
 import { unitsQuery } from "../reference/org/api";
 import { readRequirement } from "./route-reads";
@@ -19,7 +20,11 @@ const HISTORY_NEED = readRequirement("/org/history");
 
 /** Setup and operating work share the same server queue. */
 export function HomeScreen() {
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter: "turn", attention: "all" }), refetchOnMount: "always" });
+  return <InboxRead preview><HomeContent /></InboxRead>;
+}
+
+function HomeContent() {
+  const { inbox } = useInboxRead();
   const { phaseQ } = useSetupChecklist();
   const phaseReads = [phaseQ, useQuery(myAccessQuery), useQuery(settingsQuery)];
   const during = inbox.data?.pages[0]?.setup !== undefined;

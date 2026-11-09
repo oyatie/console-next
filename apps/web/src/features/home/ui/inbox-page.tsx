@@ -1,21 +1,27 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
-import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { meQuery } from "../api";
 import type { RowAction } from "./grouped-queue";
 import { InboxQueue } from "./inbox-queue";
 import { inboxFilter, INBOX_FILTERS } from "../domain/inbox-filter";
 import { useTabSearch } from "../../../lib/react/use-tab-search";
-import { cursorPages, freshOnOpen } from "../../../lib/query";
+import { freshOnOpen } from "../../../lib/query";
+import { InboxRead } from "./inbox-read";
+import { useInboxRead } from "./use-inbox-read";
 import { useLiveHold } from "../../../lib/live/hold";
 import { Page } from "../../../ui/page/page";
 
 export function InboxPage({ action }: { action?: RowAction }) {
-  const me = freshOnOpen(useQuery({ ...meQuery, refetchOnMount: "always" }));
   const tab = useTabSearch(INBOX_FILTERS.map(id => ({ id })));
   const filter = inboxFilter(tab.selected);
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter }), placeholderData: keepPreviousData, refetchOnMount: "always" });
+  return <InboxRead filter={filter}><InboxContent filter={filter} action={action} /></InboxRead>;
+}
+
+function InboxContent({ filter, action }: { filter: ReturnType<typeof inboxFilter>; action?: RowAction }) {
+  const me = freshOnOpen(useQuery({ ...meQuery, refetchOnMount: "always" }));
+  const { inbox } = useInboxRead();
   const first = inbox.data?.pages[0];
   const asOf = !me.isPending && me.data?.tenant?.phase !== "SETUP" && !first?.setup && !inbox.error ? first?.as_of : undefined;
   useLiveHold(!me.isPending && !!inbox.data?.pages.some(page => page.items.length > 0), true);

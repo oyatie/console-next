@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { SupportLookup } from "../../../lib/react/support-lookup";
@@ -32,6 +33,7 @@ export function MePage({ locale }: { locale: ReactNode }) {
           <ProfileCard locale={locale} me={me} />
           <PasskeysCard ops={vendor ? false : me.data?.is_tenant_ops} passkeys={keys} />
           <ConsentCard />
+          {!vendor && <Link to="/account/privacy">{t("account.privacy.title")}</Link>}
           {!vendor && <OpsRecoveryNotice />}
           {!vendor && <MyAccessCard />}
           {(vendor || me.data?.is_tenant_ops) && <SupportLookup />}

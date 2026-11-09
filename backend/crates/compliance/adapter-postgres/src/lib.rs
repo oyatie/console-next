@@ -5,6 +5,9 @@
 //! transaction as the state mutation.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod rights;
+mod store;
+pub use store::PgComplianceStore;
 pub mod statutory;
 mod tx_helpers;
 
@@ -42,7 +45,7 @@ use console_platform_request_context::current_org;
 use std::collections::BTreeSet;
 use tx_helpers::{insert_obligation_regulation_link_tx, next_compliance_code_tx};
 
-use sqlx::{PgPool, Postgres, QueryBuilder, Row, Transaction, postgres::PgRow};
+use sqlx::{Postgres, QueryBuilder, Row, Transaction, postgres::PgRow};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PgComplianceError {
@@ -69,11 +72,6 @@ impl PgComplianceError {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PgComplianceStore {
-    pool: PgPool,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RetentionPurge {
     pub dropped_ping_partitions: i32,
@@ -81,16 +79,6 @@ pub struct RetentionPurge {
 }
 
 impl PgComplianceStore {
-    #[must_use]
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
-
-    #[must_use]
-    pub fn pool(&self) -> &PgPool {
-        &self.pool
-    }
-
     pub async fn transition_consent(
         &self,
         command: ConsentTransitionCommand,

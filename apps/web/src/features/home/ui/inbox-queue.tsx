@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, useSyncExternalStore, type ReactNode } from "react";
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { useContext, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { Checklist } from "@console/api/pending";
 import { t, type MessageId } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { liveApplying } from "../../../lib/live/live";
-import { cursorPages } from "../../../lib/query";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
@@ -18,22 +16,29 @@ import { Card } from "../../../ui/card/card";
 import { TabNav } from "../../../ui/tabs/tabs";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { Skeleton } from "../../../ui/skeleton/skeleton";
-import { isAttentionFilter, type AttentionFilter, type AttentionInboxResponse, type InboxFilter } from "../domain/inbox-filter";
+import { isAttentionFilter, type AttentionInboxResponse, type InboxFilter } from "../domain/inbox-filter";
+import { InboxRead } from "./inbox-read";
+import { InboxReadContext, useInboxRead } from "./use-inbox-read";
 import css from "./inbox-queue.module.css";
 
 // Keep the Home preview short enough for the first viewport; full paging belongs to /inbox.
 const HOME_PREVIEW_ROWS = 5;
 const SOURCE_TEXT: Record<string, MessageId> = {
+  privacy_requests: "home.inbox.privacyRequest",
   registration_checks: "nts.title",
   entity_corrections: "entityRecord.corrections.title",
   support_access: "home.part.support", workflow: "home.part.decide", dispatch: "home.inbox.source.dispatch", support: "home.inbox.source.support", work_order: "home.inbox.source.workOrder", payroll: "accessCodes.domain.pay", governance: "home.inbox.source.governance",
   org_change: "home.part.changes", hr_exit: "home.part.exits", hr_lifecycle: "home.part.failedActions", hr_requests: "home.part.requests", hr_register: "home.review.register", hr_insurance: "home.part.insurance", hr_identity: "home.review.identity", hr_branch: "home.review.unplaced", hr_unplaced: "home.review.unplaced", hr_contract: "people.lifecycle.action.CONTRACT_RENEWAL", period_unlock: "home.part.unlocks", setup: "setup.title", grant_notice: "access.grant.title",
 };
 /** Every surface reads this server queue; filters, ownership and deadlines stay with its sources. */
-export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase = false, setupPending = false, action }: { preview?: boolean; filter?: InboxFilter; setup?: (c: Checklist) => ReactNode; setupPhase?: boolean; setupPending?: boolean; action?: RowAction } = {}) {
-  const [attention, setAttention] = useState<AttentionFilter>("all");
-  // Home and InboxPage own arrival refreshes; mounting the queue reuses their read.
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", preview ? { filter, attention } : { filter }), placeholderData: keepPreviousData, refetchOnMount: false });
+type Props = { preview?: boolean; filter?: InboxFilter; setup?: (c: Checklist) => ReactNode; setupPhase?: boolean; setupPending?: boolean; action?: RowAction };
+export function InboxQueue(props: Props = {}) {
+  const read = useContext(InboxReadContext);
+  return read ? <Queue {...props} /> : <InboxRead preview={props.preview} filter={props.filter}><Queue {...props} /></InboxRead>;
+}
+
+function Queue({ preview = false, filter = "turn", setup, setupPhase = false, setupPending = false, action }: Props) {
+  const { inbox, attention, setAttention } = useInboxRead();
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
@@ -60,11 +65,12 @@ export function InboxQueue({ preview = false, filter = "turn", setup, setupPhase
       <QueryState q={loading ? { ...inbox, isPending: true, data: undefined } : inbox} layout="list">{(data) => {
           const pages = data.pages as AttentionInboxResponse[];
           const checklist = pages[0]?.setup;
-          const rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
+          let rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
+          if (!preview && (setupPhase || checklist)) rows = rows.filter(item => item.kind === "privacy_request");
           const head = pages[0];
           const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
           const noWork = !head?.has_work && unavailable.length === 0;
-          if (!preview && (setupPhase || checklist)) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
+          if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
           return <>
             {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
               {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}

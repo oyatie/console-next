@@ -167,6 +167,7 @@ jobs:
           python3 scripts/d10_evidence_test.py
           python3 scripts/d8_evidence_test.py
           python3 scripts/states_evidence_test.py
+          python3 scripts/pull_measured_evidence_test.py
           CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
@@ -188,29 +189,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
       - run: npm ci --no-audit --no-fund
-      - run: node --test scripts/states-shards.test.mjs
-      - name: Find latest trusted dev timings
-        id: timings
+      - name: Restore latest compatible dev timings
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          curl --fail --silent --show-error --retry 4 --get \
-            -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' \
-            --data-urlencode 'name=states-timings' --data-urlencode 'per_page=100' \
-            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/artifacts" > "${RUNNER_TEMP}/states-timings.json"
-          node --input-type=module <<'JS'
-          import { readFileSync, appendFileSync } from 'node:fs';
-          const { artifacts } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/states-timings.json`, 'utf8'));
-          const cached = artifacts.find(a => !a.expired && a.workflow_run?.head_branch === 'dev' && a.workflow_run.head_repository_id === Number(process.env.GITHUB_REPOSITORY_ID) && a.workflow_run.repository_id === Number(process.env.GITHUB_REPOSITORY_ID));
-          if (cached) appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${cached.workflow_run.id}\n`);
-          JS
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        if: steps.timings.outputs.run-id != ''
-        with:
-          name: states-timings
-          run-id: ${{ steps.timings.outputs.run-id }}
-          github-token: ${{ github.token }}
-          path: .cache/states-timings
+        run: node scripts/states-shards.mjs restore e2e/mock/timings.json .cache/states-timings/timings.json
+      - run: node --test scripts/states-shards.test.mjs
       - name: Plan every state spec
         id: plan
         env:
@@ -298,6 +281,14 @@ jobs:
           github-token: ${{ github.token }}
           name: states-plan
           path: .cache/states-plan
+      - name: Produce state evidence independently of live and backend results
+        run: python3 scripts/states-evidence.py .cache/states-evidence/states.json .cache/states-plan/modules.json .cache/states-reports/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: states-evidence
+          path: .cache/states-evidence/states.json
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Refresh measurements from complete CI results
         run: node scripts/states-shards.mjs refresh e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-timings/timings.json .cache/states-reports/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -307,6 +298,12 @@ jobs:
           include-hidden-files: true
           retention-days: 90
           if-no-files-found: error
+      - run: npm ci --no-audit --no-fund
+      - name: Check measured capacity on dev
+        env:
+          STATES_CHECK_CAPACITY: "1"
+          STATES_TIMINGS_FILE: .cache/states-timings/timings.json
+        run: node --test scripts/states-shards.test.mjs
 
   backend:
     needs: [affected]
@@ -591,7 +588,6 @@ jobs:
           CONSOLE_APP_BIN: .cache/home-backend/console-app
         run: |
           npx playwright test e2e/authz/write-refusals.spec.ts --project=parallel
-          PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/d10/beacon.json npx playwright test e2e/error-beacon.spec.ts --project=parallel
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() && github.event_name == 'merge_group' }}
         with:
@@ -600,8 +596,25 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+      - name: Client-error beacon independently of write probes
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        env:
+          E2E_SERVED: "1"
+          E2E_PREBUILT: "1"
+          E2E_REPORTER: line,json
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/beacon/playwright-beacon.json
+          CONSOLE_APP_BIN: .cache/home-backend/console-app
+        run: npx playwright test e2e/error-beacon.spec.ts --project=parallel
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        with:
+          name: beacon-playwright
+          path: .cache/beacon/*.json
+          include-hidden-files: true
+          if-no-files-found: error
+
   release-evidence:
-    if: github.event_name == 'push' && needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true'
+    if: github.event_name == 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true')
     needs: [affected]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -617,14 +630,39 @@ jobs:
         with: {node-version-file: .node-version, cache: npm}
       - run: npm ci --no-audit --no-fund
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: ${{ !cancelled() && needs.affected.outputs.web == 'true' }}
         with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: states-report-*, merge-multiple: true, path: .cache/d7-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: ${{ !cancelled() }}
         with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', name: d7-playwright, path: .cache/d7-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: backend-test-results-*, path: .cache/d7-nextest}
-      - run: python3 scripts/d7-evidence.py .cache/d7-evidence .cache/d7-nextest .cache/d7-input/*.json
+        if: ${{ !cancelled() }}
+        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', name: beacon-playwright, path: .cache/d7-input}
+      - id: e2e
+        if: ${{ !cancelled() }}
+        run: python3 scripts/d7-evidence.py --source e2e .cache/d7-evidence .cache/d7-input/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() }}
+        with:
+          name: e2e-evidence
+          path: .cache/d7-evidence/e2e.json
+          include-hidden-files: true
+          if-no-files-found: error
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: ${{ !cancelled() && needs.affected.outputs.backend == 'true' }}
+        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: backend-test-results-*, path: .cache/d7-nextest}
+      - id: nextest
+        if: ${{ !cancelled() && needs.affected.outputs.backend == 'true' }}
+        run: python3 scripts/d7-evidence.py --source nextest .cache/d7-evidence .cache/d7-nextest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() && needs.affected.outputs.backend == 'true' }}
+        with:
+          name: nextest-evidence
+          path: .cache/d7-evidence/nextest.json
+          include-hidden-files: true
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() && steps.e2e.outcome == 'success' && steps.nextest.outcome == 'success' }}
         with:
           name: d7-evidence
           path: .cache/d7-evidence/*.json
@@ -632,25 +670,31 @@ jobs:
           if-no-files-found: error
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
         with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', name: d10-playwright, path: .cache/d10-input}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
         with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: states-report-*, merge-multiple: true, path: .cache/d8-input}
       - run: node scripts/d10-census.mjs > .cache/d10-census.json
+        if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
       - run: python3 scripts/d10-evidence.py .cache/d10-evidence .cache/d10-census.json .cache/d7-evidence .cache/d10-input/*.json
+        if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
       - run: python3 scripts/d8-evidence.py .cache/d8-evidence .cache/d7-evidence/e2e.json .cache/d8-input/*.json .cache/d10-input/*.json
+        if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
       - name: Produce route-state evidence from the existing reports
+        if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
         run: |
           node scripts/d8-module-routes.mjs .cache/d8-routes.json
           python3 scripts/states-evidence.py .cache/d8-evidence/states.json .cache/d8-routes.json .cache/d8-input/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
         with:
           name: d8-evidence
           path: .cache/d8-evidence/*.json
           include-hidden-files: true
           if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
         with:
           name: d10-evidence
           path: .cache/d10-evidence/*.json
@@ -786,7 +830,7 @@ jobs:
             else if (name === 'dev-artifacts') skip = !push;
             else if (name === 'states-timings') skip = !push || !web;
             else if (name === 'backend-cache') skip = !push || !backend;
-            else if (name === 'release-evidence') skip = !push || !backend || !web;
+            else if (name === 'release-evidence') skip = !push || !backend && !web;
             else if (name === 'backend-gates') skip = !push && !backend;
             else if (name === 'backend-release') skip ||= !backend && !web;
             else if (backendJobs.includes(name)) skip ||= !backend;
