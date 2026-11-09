@@ -9,8 +9,6 @@ use console_payroll_adapter_postgres::reference::PayrollRates;
 use serde::Deserialize;
 use uuid::Uuid;
 
-pub const PAYROLL_REFERENCE_RATES_PATH: &str = "/api/v1/payroll/reference/rates";
-
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct RatesQuery {

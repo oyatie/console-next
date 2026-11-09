@@ -57,6 +57,7 @@ use console_platform_request_context::RequestContextError;
 use serde::Serialize;
 use uuid::Uuid;
 
+pub const PAYROLL_REFERENCE_RATES_PATH: &str = "/api/v1/payroll/reference/rates";
 pub const PAYROLL_RUNS_PATH: &str = "/api/v1/payroll/runs";
 pub const PAYROLL_RUN_PREVIEW_PATH: &str = "/api/v1/payroll/runs/preview";
 pub const PAYROLL_RUN_PATH_TEMPLATE: &str = "/api/v1/payroll/runs/{id}";
@@ -85,7 +86,6 @@ pub use pay_groups::PAYROLL_PAY_GROUPS_PATH;
 pub use payslip_draft::{
     PAYROLL_EMPLOYEE_CONTRACT_WAGES_PATH_TEMPLATE, PAYROLL_EMPLOYEE_PAYSLIP_DRAFT_PATH_TEMPLATE,
 };
-pub use reference::PAYROLL_REFERENCE_RATES_PATH;
 
 pub const PAYROLL_ROUTE_PATHS: &[&str] = &[
     PAYROLL_REFERENCE_RATES_PATH,
