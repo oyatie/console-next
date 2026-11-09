@@ -14,7 +14,7 @@ export function JobTitleEdit({ entry, onClose }: { entry: JobTitle; onClose: () 
   const [label, setLabel] = useState(entry.label);
   const [rank, setRank] = useState(entry.grade_rank?.toString() ?? "");
   const ranked = entry.kind === "GRADE" || entry.kind === "TITLE";
-  const n = rank === "" ? undefined : Number(rank);
+  const n = !rank.trim() ? undefined : /^\d+$/.test(rank) ? Number(rank) : NaN;
   const bad = ranked && ((entry.grade_rank !== null && n === undefined) || (n !== undefined && (!Number.isInteger(n) || n < rules.grade_rank.minimum || n > rules.grade_rank.maximum)));
   const [tried, setTried] = useState(false);
   const run = useCommand({

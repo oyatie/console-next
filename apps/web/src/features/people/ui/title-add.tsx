@@ -5,11 +5,11 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
 import { TextInput } from "../../../ui/field/field";
-import { addJobTitle, updateJobTitle, type JobTitleKind } from "../api";
+import { addJobTitle, jobTitleSchemas, updateJobTitle, type JobTitleKind } from "../api";
 import { Banner } from "../../../ui/banner/banner";
 import s from "./lifecycle.module.css";
 
-const LABEL_MAX = 100;
+const LABEL_MAX = jobTitleSchemas.create.properties.label.maxLength;
 
 /**
  * The add chip at the end of a catalog's chips (spec E5-appoint, BE-EMP-UI §1): the entry is added to the company's list
