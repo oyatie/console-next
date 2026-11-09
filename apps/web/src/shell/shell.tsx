@@ -1,6 +1,6 @@
 import { personName } from "../reference/person/present";
 import { activeSupportQuery } from "../reference/support-access/api";
-import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
+import { ActiveSupportBanner, SupportAccessIndicator } from "../features/support-access/ui/support-access";
 import { DomainNotice } from "../auth/domain-notice";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
@@ -184,6 +184,7 @@ export function Shell() {
         )}
         <span className="top__spacer" />
         <LiveStatus />
+        {!platform && <SupportAccessIndicator />}
         <LocaleSelect id="top-locale" label />
         <button className="btn btn--ghost" onClick={toggle} aria-label={theme === "dark" ? t("shell.theme.toLight") : t("shell.theme.toDark")}>
           {theme === "dark" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}

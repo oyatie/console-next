@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { Link, getRouteApi } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
-import { announce } from "../../../lib/react/announce";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { Banner } from "../../../ui/banner/banner";
@@ -17,6 +16,7 @@ import { Field, TextInput } from "../../../ui/field/field";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { Page } from "../../../ui/page/page";
 import { Table } from "../../../ui/table";
+import { SidePanel } from "../../../ui/side-panel/side-panel";
 import { codeText, SUPPORT_SESSION_STATE } from "../../../lib/labels";
 import { EnumValue } from "../../../ui/enum-value";
 import { buttonClass } from "../../../ui/button/button-class";
@@ -42,7 +42,7 @@ export function ActiveSupportBanner() {
       {data.pending_approvals.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.requestDeadline", { at: fmtDateTime(s.request_expires_at) })}</p>)}
     </Banner>}
     {data.sessions.length > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.banner")}
-      actions={data.can_approve ? <Link to="/audit/support-access" className={buttonClass()}>{t("supportAccess.bannerAction")}</Link> : undefined}>
+      actions={data.can_approve ? <Link to="/audit/support-access" search={{ review: data.sessions[0]?.id }} className={buttonClass()}>{t("supportAccess.bannerAction")}</Link> : undefined}>
       {data.sessions.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.bannerExpiry", { at: s.expires_at ? fmtDateTime(s.expires_at) : "—" })}</p>)}
     </Banner>}
     </>}</QueryState>
@@ -57,9 +57,9 @@ export function SupportAccessIndicator() {
   const pending = q.data.can_approve ? q.data.pending_count : 0;
   if (!active && !pending) return null;
   const label = t("supportAccess.indicatorLabel", { pending: fmtNumber(pending), active: fmtNumber(active) });
-  const count = <Chip tone="warn">{t("supportAccess.indicator", { count: fmtNumber(active + pending) })}</Chip>;
+  const count = <Chip tone="warn"><span className={styles.indicatorText}>{t("supportAccess.indicator", { count: fmtNumber(active + pending) })}</span><span className={styles.indicatorCompact} aria-hidden>{fmtNumber(active + pending)}</span></Chip>;
   return q.data.can_approve
-    ? <Link to="/audit/support-access" className={styles.indicator} aria-label={label} title={label}>{count}</Link>
+    ? <Link to="/audit/support-access" search={{ review: q.data.pending_approvals[0]?.id ?? q.data.sessions[0]?.id }} className={styles.indicator} aria-label={label} title={label}>{count}</Link>
     : <span className={styles.indicator} role="status" aria-label={label} title={label}>{count}</span>;
 }
 
@@ -76,23 +76,15 @@ export function SupportAccess() {
 function SessionsList({ data }: { data: Sessions }) {
   const { review } = route.useSearch();
   const navigate = route.useNavigate();
-  const current = data.sessions.find((s) => s.id === review) ?? data.sessions[0];
-  const titleId = useId();
-  const ticketRef = current?.ticket_ref;
-  useEffect(() => {
-    if (!review || ticketRef === undefined) return;
-    const frame = requestAnimationFrame(() => {
-      const heading = document.getElementById(titleId);
-      const input = heading?.closest("section")?.querySelector("input");
-      (input ?? heading)?.focus({ preventScroll: true });
-      (input?.closest("form") ?? heading)?.scrollIntoView({ block: "center" });
-      announce(ticketRef);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [review, ticketRef, titleId]);
-  return <>
+  const [initial, setInitial] = useState(data.sessions[0]?.id);
+  const current = data.sessions.find((s) => s.id === (review ?? initial));
+  const select = (id?: string) => {
+    setInitial(undefined);
+    void navigate({ search: { review: id }, replace: true, resetScroll: false });
+  };
+  return <div className="split" data-open={Boolean(current)}>
     <Card flush label={t("supportAccess.description")}>
-      <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current?.id} onSelect={(id) => void navigate({ search: { review: id }, replace: true })}
+      <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current?.id} onSelect={select}
         columns={[
           { header: t("supportAccess.operator"), cell: (s) => <>{s.operator_label}<div className="muted">{s.ticket_ref}</div></> },
           { header: t("supportAccess.state"), cell: (s) => <EnumValue e={SUPPORT_SESSION_STATE} value={s.state} /> },
@@ -101,11 +93,12 @@ function SessionsList({ data }: { data: Sessions }) {
         ]}
       />
     </Card>
-    {current && <Card title={current.ticket_ref} titleId={titleId}><SessionDetails key={current.id} session={current} canApprove={data.can_approve} /></Card>}
-  </>;
+    {current && <SessionDetails key={current.id} session={current} canApprove={data.can_approve} onClose={() => select()} />}
+  </div>;
 }
 
-function SessionDetails({ session: s, canApprove }: { session: SupportSession; canApprove: boolean }) {
+function SessionDetails({ session: s, canApprove, onClose }: { session: SupportSession; canApprove: boolean; onClose: () => void }) {
+  const formId = useId();
   const [duration, setDuration] = useState(String(s.requested_duration_seconds / 60));
   const [reveal, setReveal] = useState(false);
   const [tried, setTried] = useState(false);
@@ -119,9 +112,19 @@ function SessionDetails({ session: s, canApprove }: { session: SupportSession; c
     invalidates: SUPPORT_READS, settle: true, announce: () => t("supportAccess.ended"),
   });
   const busy = decide.isPending || end.isPending;
-  return <div className="form">
+  const approval = canApprove && s.state === "OPERATOR_APPROVED" && !s.tenant_approved_at;
+  return <SidePanel open title={s.ticket_ref} crumb={t("supportAccess.ticket")} onClose={onClose}
+    returnFocus={() => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(s.id)}"]`)}
+    openLink={<>
+      {approval && <>
+        <Button variant="primary" type="submit" form={formId} disabled={busy}>{t("supportAccess.approve")}</Button>
+        <Button variant="danger" disabled={busy} onClick={() => decide.mutate({ decision: "DENY", approved_duration_seconds: s.requested_duration_seconds, reveal_classes: [] })}>{t("supportAccess.deny")}</Button>
+      </>}
+      {canApprove && (s.state === "ACTIVE" || (s.state === "OPERATOR_APPROVED" && s.tenant_approved_at)) && <Button variant="danger" disabled={busy} onClick={() => end.mutate(undefined)}>{t("supportAccess.end")}</Button>}
+    </>}
+  >
     <KeyValue items={[
-      { key: "ticket", label: t("supportAccess.ticket"), value: s.ticket_ref },
+      { key: "operator", label: t("supportAccess.operator"), value: s.operator_label },
       { key: "reason", label: t("supportAccess.reason"), value: <>{s.reason} <span className="muted">({s.reason_code})</span></> },
       { key: "scope", label: t("supportAccess.scope"), value: <>{s.scope.map(scopeText).join(" · ")} · {t("supportAccess.readOnly")}</> },
       { key: "requested", label: t("supportAccess.requestedDuration"), value: durationText(s.requested_duration_seconds) },
@@ -130,7 +133,7 @@ function SessionDetails({ session: s, canApprove }: { session: SupportSession; c
       { key: "expiry", label: t("supportAccess.expiresAt"), value: s.expires_at ? fmtDateTime(s.expires_at) : "—" },
     ]} />
     <p>{t(s.masked ? "supportAccess.masked" : "supportAccess.unmasked")}</p>
-    {canApprove && s.state === "OPERATOR_APPROVED" && !s.tenant_approved_at && <Form className="form" noValidate onSubmit={() => {
+    {approval && <Form id={formId} className="form" noValidate onSubmit={() => {
       setTried(true);
       if (validDuration) decide.mutate({ decision: "APPROVE", approved_duration_seconds: Number(duration) * 60, reveal_classes: reveal ? ["personal"] : [] });
     }}>
@@ -140,12 +143,7 @@ function SessionDetails({ session: s, canApprove }: { session: SupportSession; c
       </Field>
       <Check checked={reveal} onChange={setReveal}>{t("supportAccess.revealPersonal")}</Check>
       <p className="muted">{t("supportAccess.revealHint")}</p>
-      <div className="form__actions">
-        <Button variant="primary" type="submit" disabled={busy}>{t("supportAccess.approve")}</Button>
-        <Button variant="danger" disabled={busy} onClick={() => decide.mutate({ decision: "DENY", approved_duration_seconds: s.requested_duration_seconds, reveal_classes: [] })}>{t("supportAccess.deny")}</Button>
-      </div>
     </Form>}
-    {canApprove && (s.state === "ACTIVE" || (s.state === "OPERATOR_APPROVED" && s.tenant_approved_at)) && <Button variant="danger" disabled={busy} onClick={() => end.mutate(undefined)}>{t("supportAccess.end")}</Button>}
     <CommandError error={decide.error ?? end.error} own={supportRefusal} />
     <h3>{t("supportAccess.decisions")}</h3>
     {s.decisions.length ? <Table label={t("supportAccess.decisions")} rows={s.decisions} rowId={(d) => `${d.at}:${d.actor_label}:${d.decision}`} columns={[
@@ -159,5 +157,5 @@ function SessionDetails({ session: s, canApprove }: { session: SupportSession; c
       { header: t("supportAccess.path"), cell: (r) => r.path },
       { header: t("supportAccess.at"), cell: (r) => fmtDateTime(r.at) },
     ]} /> : <p className="muted">{t("supportAccess.noRecords")}</p>}
-  </div>;
+  </SidePanel>;
 }
