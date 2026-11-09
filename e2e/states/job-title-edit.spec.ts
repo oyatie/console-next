@@ -142,4 +142,37 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     } finally { await page.close(); fixture.release(); }
   });
 
+  test(`full length job title actions fit ${width} ${theme} @ui-state`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, screens.find(s => s.key === "people")!, "populated");
+    for (const character of ["가", "W"]) {
+      const entry = { id: id(101), kind: "TITLE" as const, label: character.repeat(100), grade_rank: 10, active: true };
+      await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: true, items: [entry] } });
+      await page.goto("/people/job-titles");
+      const edit = page.getByRole("button", { name: t("titles.edit", { label: entry.label }), exact: true });
+      await expect(edit).toBeVisible();
+      if (width === 1440) for (const column of ["kind", "rank", "state"] as const) {
+        const header = page.getByRole("columnheader", { name: t(`titles.col.${column}`), exact: true });
+        await expect(header).toBeVisible();
+        expect((await header.boundingBox())!.width).toBeGreaterThan(100);
+      }
+      const toggle = page.getByRole("button", { name: t("titles.deactivate", { label: entry.label }), exact: true });
+      for (const action of [edit, toggle]) {
+        expect(await action.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
+        const box = await action.boundingBox();
+        expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+      }
+      await fits(page, `job-title-label/${character}/${width}/${theme}`);
+      await edit.click();
+      const form = page.getByRole("form", { name: t("titles.edit.title", { label: entry.label }), exact: true });
+      await expect(form.getByRole("textbox", { name: t("titles.col.label") })).toHaveValue(entry.label);
+      await fits(page, `job-title-label-edit/${character}/${width}/${theme}`);
+      await expectAxe(page, `job-title-label/${character}/${width}/${theme}`);
+      await page.screenshot({ path: info.outputPath(`label-${character}.png`), fullPage: true });
+    }
+    expect(fixture.unexpected).toEqual([]);
+    await page.close();
+    fixture.release();
+  });
 }

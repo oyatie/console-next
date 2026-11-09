@@ -28,10 +28,10 @@ export function JobTitlesPage() {
   // Who may change the lists is the server's verdict on this user (Cedar job_title_manage, BE-EMP-UI §1).
   const manage = titles.data?.can_manage === true;
   const columns: Column<JobTitle>[] = [
-    { header: t("titles.col.kind"), cell: (x) => enumLabel(JOB_TITLE_KIND, x.kind), card: "fact", fit: true },
-    { header: t("titles.col.label"), cell: (x) => x.label, card: "title" },
-    { header: t("titles.col.rank"), cell: (x) => (x.grade_rank === null ? t("titles.unranked") : <span className="num">{x.grade_rank}</span>), fit: true },
-    { header: t("titles.col.state"), cell: (x) => <EnumValue e={JOB_TITLE_STATUS} value={x.active ? "active" : "inactive"} />, fit: true },
+    { header: t("titles.col.kind"), cell: (x) => enumLabel(JOB_TITLE_KIND, x.kind), card: "fact", width: "status" },
+    { header: t("titles.col.label"), cell: (x) => x.label, card: "title", width: "summary" },
+    { header: t("titles.col.rank"), cell: (x) => (x.grade_rank === null ? t("titles.unranked") : <span className="num">{x.grade_rank}</span>), width: "code" },
+    { header: t("titles.col.state"), cell: (x) => <EnumValue e={JOB_TITLE_STATUS} value={x.active ? "active" : "inactive"} />, width: "status" },
     ...(manage ? [{ header: t("titles.col.actions"), cell: (x: JobTitle) => <Toggle x={x} />, card: "action" as const }] : []),
   ];
   return (
