@@ -104,13 +104,13 @@ async fn list_action_inbox(
         .await
         .map_err(|error| source_failure("clock", error))?;
     let org = principal.org_id;
-    let (created_at, deadline_due_soon_days, org_policy) = console_platform_db::with_org_conn::<
+    let (created_at, deadline_due_soon_days, policies) = console_platform_db::with_org_conn::<
         _,
         _,
         console_settings_adapter_postgres::PgSettingsError,
     >(&state.pool, org, move |tx| {
         Box::pin(async move {
-            let (window, org_policy) = policy::load(tx.as_mut(), org, now).await?;
+            let (window, policies) = policy::load(tx.as_mut(), org, now).await?;
             let created = sqlx::query_scalar::<_, OffsetDateTime>(
                 "SELECT created_at FROM organizations WHERE id = $1",
             )
@@ -118,7 +118,7 @@ async fn list_action_inbox(
             .fetch_one(tx.as_mut())
             .await
             .map_err(console_platform_db::DbError::from)?;
-            Ok((created, window, org_policy))
+            Ok((created, window, policies))
         })
     })
     .await
@@ -136,7 +136,7 @@ async fn list_action_inbox(
         statutory_register: request_register::Register::default(),
         setup_created_at: created_at,
         deadline_due_soon_days,
-        org_policy,
+        policies,
     };
     let mut page = run_action_inbox(
         &sources,
@@ -173,7 +173,7 @@ struct PgActionInboxSources {
     statutory_register: request_register::Register,
     setup_created_at: OffsetDateTime,
     deadline_due_soon_days: i64,
-    org_policy: Option<console_action_inbox_application::decision::DecisionPolicy>,
+    policies: policy::Policies,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     support_reference: String,
 }
@@ -250,7 +250,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     sources::registration_checks::page(&self.pool, &self.principal, query).await
                 }
                 ActionInboxSource::OrgChange => {
-                    sources::org_change::page(&self.pool, &self.principal, query, self.org_policy).await
+                    sources::org_change::page(&self.pool, &self.principal, query, self.policies.get(&console_settings_domain::SettingKey::ApprovalPolicyOrgStructure).copied().flatten()).await
                 }
                 ActionInboxSource::HrExit => {
                     sources::hr_exit::page(&self.pool, &self.principal, query, &self.statutory_register).await
@@ -262,7 +262,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     sources::hr_register::page(&self.pool, &self.principal, query).await
                 }
                 ActionInboxSource::HrRequests => {
-                    sources::hr_requests::page(&self.pool, &self.principal, query).await
+                    sources::hr_requests::page(&self.pool, &self.principal, query, &self.policies).await
                 }
                 ActionInboxSource::HrInsurance => {
                     sources::hr_insurance::page(&self.pool, &self.principal, query, &self.statutory_register).await

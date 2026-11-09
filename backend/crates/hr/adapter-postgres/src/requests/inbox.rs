@@ -21,6 +21,7 @@ pub struct ChangeRequestInboxItem {
     pub subject_id: Uuid,
     pub title: String,
     pub created_at: OffsetDateTime,
+    pub version: String,
 }
 
 pub struct ChangeRequestInboxPage {
@@ -69,7 +70,7 @@ impl HrService {
                 push_where(&mut count);
                 let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
                 let mut q = QueryBuilder::<Postgres>::new(
-                    "SELECT c.id, c.kind, c.reason_code, c.subject_type, c.subject_id, c.created_at, \
+                    "SELECT c.id, c.kind, c.reason_code, c.subject_type, c.subject_id, c.created_at, c.status, c.decided_at, \
                      COALESCE((SELECT e.name FROM person_employees_current e WHERE e.org_id = c.org_id \
                         AND c.subject_type = 'EMPLOYEE' AND e.id = c.subject_id), \
                        (SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = c.org_id \
@@ -99,6 +100,8 @@ impl HrService {
                             subject_id: row.try_get("subject_id")?,
                             title: row.try_get("title")?,
                             created_at: row.try_get("created_at")?,
+                            version: console_hr_domain::requests::decision_version(
+                                row.try_get("status")?, row.try_get("decided_at")?),
                         })
                     })
                     .collect::<Result<Vec<_>, HrError>>()?;

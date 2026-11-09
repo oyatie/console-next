@@ -20,9 +20,10 @@ use console_hr_adapter_postgres::registration_void::list::VoidedEmployee;
 use console_hr_adapter_postgres::registration_void::{
     SetupDeleteRequest, VoidEmployeeRequest, VoidOutcome,
 };
+use console_hr_adapter_postgres::requests::approval_class;
+use console_hr_domain::requests::ChangeRequestKind;
 use console_platform_auth::PasskeyService;
 use console_platform_authz::Principal;
-use console_settings_domain::SettingKey;
 use uuid::Uuid;
 
 use crate::HrApiError;
@@ -91,7 +92,7 @@ async fn correct(
     let holders = holders::second_person_context(
         &state.hr,
         &principal,
-        Some(SettingKey::ApprovalPolicyPeopleCorrection),
+        approval_class(ChangeRequestKind::ProfileCorrection)?,
     )
     .await?;
     let outcome = state
@@ -110,7 +111,7 @@ async fn resolve_identity(
     let holders = holders::second_person_context(
         &state.hr,
         &principal,
-        Some(SettingKey::ApprovalPolicyIdentityMerge),
+        approval_class(ChangeRequestKind::IdentityReview)?,
     )
     .await?;
     let outcome = state
@@ -146,7 +147,7 @@ async fn void(
     let holders = holders::second_person_context(
         &state.hr,
         &principal,
-        Some(SettingKey::ApprovalPolicyRegistrationVoid),
+        approval_class(ChangeRequestKind::EmployeeVoid)?,
     )
     .await?;
     let outcome = state
