@@ -16,3 +16,4 @@ x-extensible-enum:
   - SUPPORT_SESSION
   - PII_REVEAL
   - PII_RECORD
+  - PRIVACY_REQUEST

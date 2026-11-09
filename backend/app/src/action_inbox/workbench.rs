@@ -49,6 +49,7 @@ pub(crate) async fn read_workbench_action_inbox(
         principal: principal.clone(),
         setup: tokio::sync::OnceCell::new(),
         support_can_approve: tokio::sync::OnceCell::new(),
+        privacy_can_handle: tokio::sync::OnceCell::new(),
         statutory_register: request_register::Register::default(),
         setup_created_at: as_of,
         deadline_due_soon_days,

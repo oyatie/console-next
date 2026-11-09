@@ -53,13 +53,12 @@ fn applicability_facts_reject_impossible_calendar_totals_and_negative_income() {
 
 #[test]
 fn rule_metadata_rejects_invalid_intervals_citations_and_clock_values() {
-    for change in 0..6 {
+    for change in 0..5 {
         let mut r = rule("NPS", "ACQUIRE");
         match change {
             0 => r.effective_to_exclusive = Some(r.effective_from.clone()),
             1 => r.citation.enforced_on = "2099-01-01".into(),
-            2 => r.citation.source_url = "https://example.invalid/law".into(),
-            3 => {
+            2 => {
                 r.deadline = Calculation {
                     anchor: FilingAnchor::AcquireDate,
                     kind: FilingRuleKind::Days,
@@ -67,7 +66,7 @@ fn rule_metadata_rejects_invalid_intervals_citations_and_clock_values() {
                     first_day: FirstDay::Excluded,
                 }
             }
-            4 => r.deadline.value = Some(0),
+            3 => r.deadline.value = Some(0),
             _ => r.deadline.value = Some(29),
         }
         assert!(r.validate().is_err());

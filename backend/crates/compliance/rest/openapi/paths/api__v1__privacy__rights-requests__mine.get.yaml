@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [Compliance]
+operationId: listOwnPrivacyRightsRequests
+summary: List the signed-in subject's requests in this tenant
+security: [{ bearerAuth: [] }]
+parameters:
+- { name: cursor, in: query, schema: { type: string, format: uuid } }
+responses:
+  '200':
+    description: Own requests only, ordered by descending receipt ID with keyset paging.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [items, next_cursor, as_of]
+          properties:
+            as_of: { type: string, format: date }
+            items: { type: array, items: { $ref: '#/components/schemas/PrivacyRightsReceipt' } }
+            next_cursor: { type: string, format: uuid, nullable: true }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '422': { $ref: '#/components/responses/ValidationError' }
+  '503': { $ref: '#/components/responses/ServiceUnavailable' }

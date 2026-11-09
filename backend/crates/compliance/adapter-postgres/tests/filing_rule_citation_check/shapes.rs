@@ -2,6 +2,22 @@
 //! The citation CHECK on non-law.go.kr hosts, optional and null citations, and malformed shapes.
 
 use super::*;
+use console_compliance_domain::statutory::filing::FilingRule;
+
+fn assert_domain_refusal(value: &Value) {
+    let parsed = serde_json::from_value::<FilingRule>(value.clone());
+    assert!(
+        parsed.is_err(),
+        "invalid citation passed the domain boundary"
+    );
+    if let Err(error) = parsed {
+        assert!(
+            error
+                .to_string()
+                .contains("filing_citation_source_url_invalid")
+        );
+    }
+}
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn database_rejects_filing_rule_with_non_law_go_kr_penalty_or_applicability_citation(
@@ -30,6 +46,7 @@ async fn database_rejects_filing_rule_with_non_law_go_kr_penalty_or_applicabilit
             Some(bad),
             &["https://www.law.go.kr/법령/국민연금법"],
         );
+        assert_domain_refusal(&bad_penalty);
         assert_check_violation(
             try_insert_filing_rule(&pool, day, bad_penalty).await,
             &format!("penalty.citation.source_url={bad}"),
@@ -40,6 +57,7 @@ async fn database_rejects_filing_rule_with_non_law_go_kr_penalty_or_applicabilit
             Some("https://www.law.go.kr/법령/국민연금법시행령"),
             &["https://www.law.go.kr/법령/국민연금법", bad],
         );
+        assert_domain_refusal(&bad_applicability);
         assert_check_violation(
             try_insert_filing_rule(&pool, day, bad_applicability).await,
             &format!("applicability_citations[].source_url={bad}"),
@@ -50,6 +68,7 @@ async fn database_rejects_filing_rule_with_non_law_go_kr_penalty_or_applicabilit
             Some("https://www.law.go.kr/법령/국민연금법시행령"),
             &["https://www.law.go.kr/법령/국민연금법"],
         );
+        assert_domain_refusal(&bad_primary);
         assert_check_violation(
             try_insert_filing_rule(&pool, day, bad_primary).await,
             &format!("citation.source_url={bad}"),
@@ -86,6 +105,7 @@ async fn database_rejects_filing_rule_with_non_law_go_kr_penalty_or_applicabilit
             "https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=286165&efYd=20270101&chrClsCd=010202",
         ],
     );
+    assert!(serde_json::from_value::<FilingRule>(valid.clone()).is_ok());
     try_insert_filing_rule(&pool, date!(2099 - 06 - 01), valid).await?;
 
     let valid_without_penalty =
