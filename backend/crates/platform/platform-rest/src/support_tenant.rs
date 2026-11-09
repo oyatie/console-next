@@ -115,7 +115,7 @@ async fn decide(
     let label = store::label(&mut tx, p.org_id, *p.user_id.as_uuid(), false).await?;
     let session = support::lock(&mut tx, p.org_id, id).await?;
     support::live(&session, OffsetDateTime::now_utc())?;
-    store::authorize(
+    store::require_support(
         Action::TenantApprove,
         p.user_id,
         p.org_id,
@@ -186,7 +186,7 @@ async fn end(
         .map_err(|e| SupportError::Refused(e.kind.code()))?;
     let label = store::label(&mut tx, p.org_id, *p.user_id.as_uuid(), false).await?;
     let _ = support::lock(&mut tx, p.org_id, id).await?;
-    store::authorize(
+    store::require_support(
         Action::End,
         p.user_id,
         p.org_id,

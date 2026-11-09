@@ -926,12 +926,6 @@
       "count": 1
     },
     {
-      "model": "finding",
-      "file": "backend/crates/platform/platform-rest/src/support_tenant.rs",
-      "kind": "all-boolean-facts-hardcoded-true",
-      "count": 2
-    },
-    {
       "model": "matrix",
       "file": "backend/app/src/action_inbox/legacy.rs",
       "kind": "reference",
@@ -1294,24 +1288,6 @@
     {
       "model": "matrix",
       "file": "backend/crates/platform/platform-rest/src/orgs.rs",
-      "kind": "reference",
-      "count": 3
-    },
-    {
-      "model": "matrix",
-      "file": "backend/crates/platform/platform-rest/src/support_store.rs",
-      "kind": "reference",
-      "count": 1
-    },
-    {
-      "model": "matrix",
-      "file": "backend/crates/platform/platform-rest/src/support_tenant.rs",
-      "kind": "reference",
-      "count": 2
-    },
-    {
-      "model": "matrix",
-      "file": "backend/crates/platform/platform-rest/src/support.rs",
       "kind": "reference",
       "count": 3
     },
