@@ -18,6 +18,7 @@ pub enum HolderCapability {
         branch: Option<BranchId>,
     },
     OrgChangeDecide,
+    OrgRead,
     AccessAdmin,
 }
 
@@ -164,9 +165,12 @@ impl PgHolderResolver<'_, '_> {
                             })
                     })
                 }
-                HolderCapability::OrgChangeDecide | HolderCapability::AccessAdmin => {
+                HolderCapability::OrgChangeDecide
+                | HolderCapability::OrgRead
+                | HolderCapability::AccessAdmin => {
                     let (domain, level) = match self.capability {
                         HolderCapability::OrgChangeDecide => (Domain::Org, Level::Approve),
+                        HolderCapability::OrgRead => (Domain::Org, Level::View),
                         _ => (Domain::Access, Level::Edit),
                     };
                     AccessSlice::compile(&subject)
