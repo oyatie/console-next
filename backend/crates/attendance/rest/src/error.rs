@@ -89,6 +89,11 @@ impl RestError {
                 "validation",
                 "close month is outside the supported date range",
             ),
+            AttendanceStoreError::CloseSourceUnavailable(_) => Self::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                "attendance close check source unavailable",
+            ),
             AttendanceStoreError::Database(_)
             | AttendanceStoreError::Sql(_)
             | AttendanceStoreError::WeeklyPolicyUnavailable => Self::new(

@@ -934,8 +934,8 @@ async fn close_checks(
     branch: Option<Uuid>,
 ) -> Result<CloseChecks, AttendanceStoreError> {
     let next = month_after(month)?;
-    let open:i64=sqlx::query_scalar("SELECT count(*) FROM attendance_exceptions WHERE status='OPEN' AND work_date >= $1 AND work_date < $2 AND ($3::uuid IS NULL OR branch_id=$3)").bind(month).bind(next).bind(branch).fetch_one(tx.as_mut()).await?;
-    let pending:i64=sqlx::query_scalar("SELECT count(*) FROM leave_requests WHERE status IN ('pending','PENDING') AND start_date < $2 AND end_date >= $1 AND ($3::uuid IS NULL OR branch_id=$3)").bind(month).bind(next).bind(branch).fetch_one(tx.as_mut()).await?;
+    let open:i64=sqlx::query_scalar("SELECT count(*) FROM attendance_exceptions WHERE status='OPEN' AND work_date >= $1 AND work_date < $2 AND ($3::uuid IS NULL OR branch_id=$3)").bind(month).bind(next).bind(branch).fetch_one(tx.as_mut()).await.map_err(AttendanceStoreError::CloseSourceUnavailable)?;
+    let pending:i64=sqlx::query_scalar("SELECT count(*) FROM leave_requests WHERE status IN ('pending','PENDING') AND start_date < $2 AND end_date >= $1 AND ($3::uuid IS NULL OR branch_id=$3)").bind(month).bind(next).bind(branch).fetch_one(tx.as_mut()).await.map_err(AttendanceStoreError::CloseSourceUnavailable)?;
     let closed: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM attendance_month_closes WHERE month=$1 AND (branch_id IS NULL OR branch_id=$2))",
     )

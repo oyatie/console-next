@@ -3578,6 +3578,7 @@ paths:
         '200': { description: Typed close board, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceCloseBoard' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
     post:
       tags: [attendance]
       operationId: closeAttendanceMonth
@@ -3590,6 +3591,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/attendance/closes/preflight:
     post:
       tags: [attendance]
@@ -3602,6 +3604,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/attendance/closes/{close_id}/amendments:
     post:
       tags: [attendance]

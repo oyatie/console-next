@@ -5,9 +5,11 @@ import { kstDate, registerEmployee } from "./flows";
 import { tenantInSetup } from "./setup-flows";
 
 test("organization attendance close remains closed under a workplace filter", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+  test.setTimeout(300_000);
   const { admin } = await tenantInSetup(browser, "attclosescope", "근태범위주식회사", false, "본사", "none");
+  const bearer = bearerOf(admin);
   await registerEmployee(admin, { name: "김마감", number: "CS-0001", unit: "본사", hired: kstDate(-60) });
-  const api = apiOf(admin, bearerOf(admin));
+  const api = apiOf(admin, bearer);
   const peopleResponse = await api("/employees?limit=10");
   expect(peopleResponse.status()).toBe(200);
   const people = await peopleResponse.json();

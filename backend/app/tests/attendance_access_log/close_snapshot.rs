@@ -107,7 +107,8 @@ async fn snapshot(pool: PgPool, workplace: bool, filtered: bool) {
     assert_eq!(after, board);
     assert_eq!(access_count(&pool, admin.org).await, before + 1);
     let (status, open) = read(&admin, &path.replace("2026-10", "2026-09"), &admin.token).await;
-    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR, "{open}");
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{open}");
+    unavailable_envelope(&open);
     assert!(
         open.get("items").is_none(),
         "open counts must not be invented"
@@ -137,4 +138,67 @@ async fn workplace_close_preserves_snapshot_without_live_sources(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn organization_close_preserves_snapshot_under_workplace_filter(pool: PgPool) {
     snapshot(pool, false, true).await;
+}
+
+fn unavailable_envelope(body: &Value) {
+    assert_eq!(body["error"]["code"], "unavailable");
+    for key in ["message", "trace_id", "support_ref", "support_ref_at"] {
+        assert!(
+            body["error"][key].as_str().is_some_and(|s| !s.is_empty()),
+            "{key}: {body}"
+        );
+    }
+    assert!(!body.to_string().contains("permission denied"));
+    assert!(!body.to_string().contains("SELECT"));
+}
+
+async fn source_outage(pool: PgPool, source: &'static str) {
+    let (admin, _) = world(&pool).await;
+    sqlx::query(source).execute(&pool).await.unwrap();
+    let before = access_count(&pool, admin.org).await;
+    let (status, body) = read(
+        &admin,
+        "/api/v1/attendance/closes?month=2026-09",
+        &admin.token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    unavailable_envelope(&body);
+    assert!(body.get("items").is_none());
+    assert_eq!(access_count(&pool, admin.org).await, before);
+    for path in [
+        "/api/v1/attendance/closes/preflight",
+        "/api/v1/attendance/closes",
+    ] {
+        let (status, body) = admin
+            .call(
+                "POST",
+                path,
+                Some(json!({"month": "2026-09", "attest": true})),
+            )
+            .await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{path}: {body}");
+        unavailable_envelope(&body);
+    }
+    let closes: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM attendance_month_closes WHERE org_id=$1")
+            .bind(admin.org)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(closes, 0, "source failures must not create a close");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn open_month_refuses_unavailable_exception_source(pool: PgPool) {
+    source_outage(
+        pool,
+        "REVOKE SELECT ON attendance_exceptions FROM console_rt",
+    )
+    .await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn open_month_refuses_unavailable_leave_source(pool: PgPool) {
+    source_outage(pool, "REVOKE SELECT ON leave_requests FROM console_rt").await;
 }
