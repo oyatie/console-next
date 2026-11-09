@@ -220,4 +220,15 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
     } finally { mock.cleanup(); }
   });
 
+  it("keeps product chunk names while shortening vendor preload paths", async () => {
+    const { default: config } = await import("../apps/web/vite.config.ts");
+    const configured = config.build.rolldownOptions.output.chunkFileNames;
+    const name = typeof configured === "function" ? configured : () => configured ?? "assets/[name]-[hash].js";
+    const product = "/workspace/apps/web/src/ui/date/date-calendar.tsx";
+    const vendor = "/workspace/node_modules/vendor/calendar.js";
+    assert.equal(name({ moduleIds: [product] }), "assets/[name]-[hash].js");
+    assert.equal(name({ moduleIds: [vendor] }), "assets/[hash].js");
+    assert.equal(name({ moduleIds: [product, vendor] }), "assets/[name]-[hash].js");
+  });
+
 });

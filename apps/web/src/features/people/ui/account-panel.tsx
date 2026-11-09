@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { KeyRound, X } from "lucide-react";
@@ -7,12 +7,10 @@ import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
-import { Banner } from "../../../ui/banner/banner";
 import { Chip } from "../../../ui/chip";
 import { Dialog } from "../../../ui/dialog";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
@@ -32,7 +30,9 @@ import { PersonLabel, PersonRef } from "../../../reference/person/ui/person-labe
 import { Muted } from "../../../ui/muted/muted";
 import { EmptyState } from "../../../ui/empty-state";
 import { readFailureText } from "../../../lib/refusal";
+import { focusSoon } from "../../../lib/react/announce";
 import { queryView } from "../../../lib/react/query-view";
+import { AccountLinkEditor } from "./account-link-editor";
 
 /** The facts the panel shows: a directory row or the account read on its own (which adds only `phone`). */
 type User = components["schemas"]["DirectoryPerson"];
@@ -58,7 +58,7 @@ export function AccountPanel({ id, row, admin, receipt, onClose, onIssued, onRec
   receipt?: string;
   onClose: () => void;
   onIssued: (r: Issued) => void;
-  onRecorded: (message: string) => void;
+  onRecorded: (message: string, focusId?: string) => void;
 }) {
   // An account the list has not loaded (a deep link, the account just invited under a filter) is read on its own.
   const q = useQuery({ ...get("/api/v1/users/{id}", { params: { path: { id } } }), enabled: !row });
@@ -84,7 +84,7 @@ export function AccountPanel({ id, row, admin, receipt, onClose, onIssued, onRec
   );
 }
 
-function Sections({ u, admin, onIssued, onRecorded }: { u: User; admin: boolean; onIssued: (r: Issued) => void; onRecorded: (m: string) => void }) {
+function Sections({ u, admin, onIssued, onRecorded }: { u: User; admin: boolean; onIssued: (r: Issued) => void; onRecorded: (m: string, focusId?: string) => void }) {
   const st = labeled(ACCOUNT_STATUS, u.account_status);
   const issue = useIssueCode(onIssued);
   return (
@@ -136,20 +136,24 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 );
 
 /** The linked employee record (a link to it), or a server search to link one; unlinking keeps both records. */
-function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRecorded: (m: string) => void }) {
+function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRecorded: (m: string, focusId?: string) => void }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [pickedName, setPickedName] = useState("");
   const [changing, setChanging] = useState(false);
   const [tried, setTried] = useState(false);
+  const changeId = useId();
   const found = useQuery({ ...get("/api/v1/employees", { params: { query: { search: query.trim(), limit: 20 } } }), enabled: admin && query.trim() !== "" });
   const options = found.isError ? [] : found.data?.items.filter((e) => e.id !== u.employee_id) ?? [];
   const link = useCommand({
     run: ({ employeeId, requestId }: { employeeId: string | null; requestId?: string }) => checkedOnAccount(u.id, () => linkAccount(u.id, employeeId, requestId), holdsLink(employeeId)),
     invalidates: [...INVALIDATES, "/api/v1/employees", "/api/v1/person-binding-reviews"],
     onSuccess: (r) => {
-      if (!("account_link" in r)) setChanging(false);
-      onRecorded("account_link" in r ? t("people.account.waiting") : r.employee_name ? t("accounts.employee.linked", { name: personName(u.display_name), employee: r.employee_name }) : t("accounts.employee.unlinked", { name: personName(u.display_name) }));
+      if ("account_link" in r) onRecorded(t("people.account.waiting"));
+      else {
+        setChanging(false);
+        onRecorded(r.employee_name ? t("accounts.employee.linked", { name: personName(u.display_name), employee: r.employee_name }) : t("accounts.employee.unlinked", { name: personName(u.display_name) }), changing ? changeId : undefined);
+      }
     },
   });
   const pending = link.data && "account_link" in link.data ? link.data.account_link : undefined;
@@ -157,24 +161,22 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
   const error = <PasskeyError error={link.error} own={own} />;
   if (pending) return <>
     {u.employee_id && <PersonRef account={u} wrap />}
-    <Banner tone="info" live="polite"
-      title={t("people.account.pending", {
+    <AccountLinkEditor busy={link.isPending} error={link.error} own={own} pending={{
+      title: t("people.account.pending", {
         account: u.display_name,
         employee: pending.employee_id ? pickedName : t("accounts.unlinked"),
         requester: pending.requester_name,
-      })}
-      actions={canChange && pending.requested_by !== mySub() && <Button disabled={link.isPending}
-        onClick={() => link.mutate({ employeeId: pending.employee_id, requestId: pending.request_id })}>
-        {t("uiOverrideSheet.stepUp", { action: t("org.change.step.APPROVED") })}
-      </Button>}
+      }),
+      approve: canChange && pending.requested_by !== mySub()
+        ? () => link.mutate({ employeeId: pending.employee_id, requestId: pending.request_id }) : undefined,
+    }}
     />
-    {error}
   </>;
   if (u.employee_id && !changing)
     return (
       <div className="row">
         <PersonRef account={u} wrap />
-        {canChange && <Button variant="ghost" disabled={link.isPending} onClick={() => setChanging(true)}>{t("accounts.employee.change")}</Button>}
+        {canChange && <Button id={changeId} variant="ghost" disabled={link.isPending} onClick={() => setChanging(true)}>{t("accounts.employee.change")}</Button>}
         {canChange && <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate({ employeeId: null })}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.unlink") })}</Button>}
         {error}
       </div>
@@ -183,26 +185,24 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
   return (
     <>
       {u.employee_id && <PersonRef account={u} wrap />}
-      <ServerPicker
-        label={t("accounts.employee.pick")}
-        query={query}
-        onQueryChange={(value) => { setQuery(value); setPicked(null); setPickedName(""); setTried(false); }}
-        options={options.map((e) => ({ ...personOption(e, options), status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined }))}
-        value={picked}
-        onChange={(id) => { setPicked(id); setPickedName(options.find((e) => e.id === id)?.name ?? ""); }}
-        group={t("accounts.employee.group")}
-        loading={found.isFetching}
-        error={found.isError ? readFailureText(found.error) : undefined}
-        empty={t("accounts.employee.none")}
-      />
-      {picked && <PersonLabel person={{ ...options.find((p) => p.id === picked), id: picked, employee_id: picked }} peers={options} />}
-      {tried && picked === null && <span className="field__error" role="alert">{t("accounts.employee.pickError")}</span>}
-      <div className="row">
-        {found.isError && <Button onClick={() => void found.refetch()}>{t("common.retry")}</Button>}
-        <Button disabled={link.isPending} onClick={() => (setTried(true), picked && link.mutate({ employeeId: picked }))}>{t("uiOverrideSheet.stepUp", { action: t(changing ? "accounts.employee.requestChange" : "accounts.employee.link") })}</Button>
-        {changing && <Button disabled={link.isPending} onClick={() => { setChanging(false); setQuery(""); setPicked(null); setPickedName(""); setTried(false); }}>{t("common.cancel")}</Button>}
-      </div>
-      {error}
+      <AccountLinkEditor busy={link.isPending} error={link.error} own={own} focusPicker={changing} picker={{
+        label: t("accounts.employee.pick"), query,
+        onQueryChange: (value) => { setQuery(value); setPicked(null); setPickedName(""); setTried(false); },
+        options: options.map((e) => ({ ...personOption(e, options), status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined })),
+        value: picked,
+        onChange: (id) => { setPicked(id); setPickedName(options.find((e) => e.id === id)?.name ?? ""); },
+        group: t("accounts.employee.group"), loading: found.isFetching,
+        error: found.isError ? readFailureText(found.error) : undefined,
+        empty: t("accounts.employee.none"),
+      }}>
+        {picked && <PersonLabel person={{ ...options.find((p) => p.id === picked), id: picked, employee_id: picked }} peers={options} />}
+        {tried && picked === null && <span className="field__error" role="alert">{t("accounts.employee.pickError")}</span>}
+        <div className="row">
+          {found.isError && <Button onClick={() => void found.refetch()}>{t("common.retry")}</Button>}
+          <Button disabled={link.isPending} onClick={() => (setTried(true), picked && link.mutate({ employeeId: picked }))}>{t("uiOverrideSheet.stepUp", { action: t(changing ? "accounts.employee.requestChange" : "accounts.employee.link") })}</Button>
+          {changing && <Button disabled={link.isPending} onClick={() => { setChanging(false); setQuery(""); setPicked(null); setPickedName(""); setTried(false); focusSoon(changeId); }}>{t("common.cancel")}</Button>}
+        </div>
+      </AccountLinkEditor>
     </>
   );
 }

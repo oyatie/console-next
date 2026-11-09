@@ -80,6 +80,7 @@ test("a pending account absent from the search uses its returned name, never its
   } };
   const html = card();
   expect(html).toContain("김계정 → 김하나 · 요청자 김요청");
+  expect(html).not.toContain('role="combobox"');
   expect(html).not.toContain(userId);
 });
 
