@@ -130,7 +130,8 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
   it("rejects an initial load 0.1 KB over the ratcheted budget", () => {
     const mock = createMockDist();
     try {
-      const budgetKb = 148.8;
+      const budgetKb = INITIAL_BUDGET_KB;
+      assert.ok(budgetKb <= 149, "the 147 KB target permits at most 2 KB headroom");
       const targetBytes = Math.round((budgetKb + 0.1) * 1024);
       // Deterministic incompressible bytes keep the fixture within one byte of the boundary.
       const data = createHash("shake256", { outputLength: targetBytes }).update("initial bundle boundary").digest();
@@ -141,7 +142,7 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
       const result = checkInitialBudget(mock.dist);
       assert.strictEqual(result.sizeKb.toFixed(1), (budgetKb + 0.1).toFixed(1));
       assert.strictEqual(result.ok, false);
-      assert.match(result.error, /over the 148\.8 KB budget/);
+      assert.ok(result.error.includes(`over the ${budgetKb} KB budget`));
     } finally { mock.cleanup(); }
   });
 
