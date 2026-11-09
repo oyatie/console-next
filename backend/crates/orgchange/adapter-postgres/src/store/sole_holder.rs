@@ -15,6 +15,17 @@ pub async fn sole_holder_eligibility_in_tx(
     actor: UserId,
     id: Uuid,
 ) -> Result<Option<Uuid>, PgOrgChangeError> {
+    Ok(sole_holder_facts_in_tx(tx, org, actor, id)
+        .await?
+        .map(|(step, _)| step))
+}
+
+pub(super) async fn sole_holder_facts_in_tx(
+    tx: Tx<'_, '_>,
+    org: OrgId,
+    actor: UserId,
+    id: Uuid,
+) -> Result<Option<(Uuid, bool)>, PgOrgChangeError> {
     let scope = super::StepDecisionScope::Request(id);
     let Some(viewer) = super::step_decision_facts_in_tx(tx, org, actor, scope.clone())
         .await?
@@ -97,7 +108,10 @@ pub async fn sole_holder_eligibility_in_tx(
             Err(error) => return Err(error.into()),
         }
     }
-    Ok(allowed(facts)?.then_some(step).flatten())
+    Ok(allowed(org_change_sole_holder::Facts { ..facts })?
+        .then_some(step)
+        .flatten()
+        .map(|step| (step, facts.other_holder)))
 }
 
 // This is only a superset; the ordinary fact loader and Cedar decide each candidate.
