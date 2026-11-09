@@ -21,7 +21,9 @@ From the repository root, download and ingest the latest completed **ci dev push
 bash scripts/pull-measured-evidence.sh READER_DIR [OWNER/REPO]
 ```
 
-This validates all three envelopes (`states`, `e2e`, `nextest`) before ingesting any. It checks the dev commit, report freshness and the reader's row schema. Failed and unknown rows stay unchanged. Missing artifacts fail explicitly; the command never selects an older successful run to hide a failed latest run. Before the standalone artifact rolls out, it accepts the existing `d8-evidence` states file. D7 inputs come from `d7-evidence` in the same run. Repository selection uses the argument, `GITHUB_REPOSITORY`, then `gh repo view`.
+This checks producer job conclusions and validates every available envelope (`states`, `e2e`, `nextest`) before ingesting any. The selected `states-evidence` artifact requires `states-timings`; the `d8-evidence` fallback and all E2E/nextest artifacts require `release-evidence`. Each producer must have concluded `success` or `skipped`; a failed, cancelled, unfinished or missing producer refuses the entire set without changing the reader. Missing artifacts are reported with the producer conclusion and left unchanged only after that check. This permits states-only ingestion when release evidence was skipped, and states plus E2E without nextest after a successful web-only run. A run with no measured artifacts fails.
+
+The command checks the dev commit, report freshness and the reader's row schema. Failed and unknown rows stay unchanged. It never selects an older successful run to hide a failed latest run. Before the standalone artifact rolls out, it accepts the existing `d8-evidence` states file. E2E and nextest prefer their independent `e2e-evidence` and `nextest-evidence` artifacts, with `d7-evidence` accepted for older runs. Every source comes from the same selected run. Repository selection uses the argument, `GITHUB_REPOSITORY`, then `gh repo view`.
 
 Then refresh scores from the checkout containing the reader:
 
