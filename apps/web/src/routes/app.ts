@@ -27,7 +27,11 @@ export const flag = (v: unknown) => v === true || v === "true" || undefined;
 
 export { screen };
 
-const guards = () => chunk(import("../lib/react/session"));
+let loadedGuards: typeof import("../lib/react/session") | undefined;
+const guards = () => chunk(import("../lib/react/session")).then(module => (loadedGuards = module));
+// Deferring an already-loaded guard loses consecutive keyboard navigations.
+const ensureSession: typeof import("../lib/react/session").ensureSession = context => loadedGuards
+  ? loadedGuards.ensureSession(context) : guards().then(module => module.ensureSession(context));
 export const root = createRootRoute({ component: RouteFrame });
 export const login = createRoute({
   getParentRoute: () => root,
@@ -38,12 +42,12 @@ export const login = createRoute({
   component: lazyRouteComponent(() => chunk(import("../auth/Login")), "Login"),
 });
 const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(() => chunk(import("../auth/SetupPasskey")), "SetupPasskey") });
-export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await (await guards()).ensureSession(context); await streamReady(); }, component: lazyRouteComponent(screen(() => import("../shell/shell")), "Shell") });
+export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await ensureSession(context); await streamReady(); }, component: lazyRouteComponent(screen(() => import("../shell/shell")), "Shell") });
 
 const tenants = createRoute({
   getParentRoute: () => app,
   path: "/platform", staticData: { access: "signed-in", floorplan: "P-01" },
-  beforeLoad: async context => (await guards()).ensureSession(context),
+  beforeLoad: ensureSession,
   // The tenant, the search and the status view live in the URL, so a support ticket can link to them.
   validateSearch: (s: Record<string, unknown>): TenantsSearch => ({
     sel: str(s.sel),
