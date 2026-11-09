@@ -19,6 +19,13 @@ ignore = [
   # transitively by umya-spreadsheet (Excel export); no runtime attack surface.
   "RUSTSEC-2024-0436", # expires 2027-01-07: paste is unmaintained, not vulnerable; build-time proc-macro via umya-spreadsheet, no runtime surface
   "RUSTSEC-2026-0441", # expires 2027-02-05: pin-utils is unmaintained, not vulnerable; via async-imap (comms IMAP adapter, not in MVP), 0.12 still depends on it
+  # libsqlite3-sys (C SQLite CVE): retained in Cargo.lock by the optional SQLite
+  # driver of sqlx 0.8 (via apalis-postgres) and sqlx 0.9. No workspace crate
+  # enables it, so `cargo tree -i libsqlite3-sys --workspace --target all
+  # -e normal,build,dev` prints nothing and no SQLite is compiled. The fixed
+  # release (>=0.39) is outside sqlx's accepted range; remove this exception
+  # when sqlx moves to it.
+  "RUSTSEC-2026-0459", # expires 2027-01-09: libsqlite3-sys is lockfile-only via sqlx's optional SQLite driver and absent from the all-target build graph; fixed 0.39 is outside sqlx's range
 ]
 
 [licenses]
