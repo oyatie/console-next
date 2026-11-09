@@ -2,10 +2,10 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 import { chunk, crashed } from "../chunk-guard";
-import { sessionStream } from "./session-stream";
+import { sessionStream, streamReady } from "./session-stream";
 
 vi.mock("../chunk-guard", () => ({ chunk: vi.fn(), crashed: vi.fn() }));
-afterEach(() => vi.clearAllMocks());
+afterEach(() => { sessionStream(new QueryClient())(false); vi.clearAllMocks(); });
 
 function setup() {
   const openLive = vi.fn();
@@ -59,4 +59,55 @@ test("an unrecoverable event chunk failure reaches the static crash screen", asy
   ready.reject(error);
   await ready.promise.catch(() => {});
   expect(crashed).toHaveBeenCalledExactlyOnceWith(error);
+});
+
+test("readiness waits until the active stream opens", async () => {
+  const { setActive, loaded, openLive } = setup();
+  setActive(true);
+  const read = vi.fn();
+  const loading = streamReady().then(read);
+  await Promise.resolve();
+  expect(read).not.toHaveBeenCalled();
+  await loaded();
+  await loading;
+  expect(openLive).toHaveBeenCalledBefore(read);
+  setActive(true);
+  await streamReady();
+  expect(openLive).toHaveBeenCalledTimes(2);
+});
+
+test("inactive readiness does not wait for a superseded chunk", async () => {
+  const { setActive, loaded, openLive } = setup();
+  await streamReady();
+  setActive(true);
+  setActive(false);
+  await streamReady();
+  await loaded();
+  expect(openLive).not.toHaveBeenCalled();
+});
+
+test("a waiting loader follows the replacement session's chunk", async () => {
+  const first = setup();
+  first.setActive(true);
+  const read = vi.fn();
+  const loading = streamReady().then(read);
+  first.setActive(false);
+  const second = setup();
+  first.setActive(true);
+  await first.loaded();
+  await Promise.resolve();
+  expect(read).not.toHaveBeenCalled();
+  expect(first.openLive).not.toHaveBeenCalled();
+  await second.loaded();
+  await loading;
+  expect(second.openLive).toHaveBeenCalledBefore(read);
+});
+
+test("a failed stream chunk refuses readiness as well as showing recovery", async () => {
+  const { setActive, ready } = setup();
+  setActive(true);
+  const loading = expect(streamReady()).rejects.toThrow("load failed");
+  ready.reject(new Error("load failed"));
+  await loading;
+  expect(crashed).toHaveBeenCalledOnce();
 });
