@@ -6,6 +6,10 @@ mod support;
 
 #[path = "excess_store/cancel_race.rs"]
 mod cancel_race;
+#[path = "excess_store/foreign_keys.rs"]
+mod foreign_keys;
+#[path = "excess_store/invariants.rs"]
+mod invariants;
 #[path = "excess_store/support.rs"]
 mod store_support;
 
@@ -199,9 +203,9 @@ async fn excess_windows_have_deadline_scope_and_a_unique_identity(pool: PgPool) 
     tx.commit().await.unwrap();
     let mut tx = runtime(&w).await;
     let duplicate = sqlx::query("INSERT INTO attendance_exceptions \
-        (org_id, code, kind, employee_id, work_date, detail, created_by, idempotency_key, request_fingerprint, from_minutes, to_minutes, due_on) \
+        (org_id, code, kind, employee_id, work_date, detail, created_by, idempotency_key, request_fingerprint, from_minutes, to_minutes, due_on, workplace_id, org_unit_id) \
         SELECT org_id, 'another-excess-window', kind, employee_id, work_date, detail, created_by, \
-        'another-excess-window', request_fingerprint, from_minutes, to_minutes, due_on FROM attendance_exceptions WHERE id = $1")
+        'another-excess-window', request_fingerprint, from_minutes, to_minutes, due_on, workplace_id, org_unit_id FROM attendance_exceptions WHERE id = $1")
         .bind(id).execute(&mut *tx).await.unwrap_err();
     assert_eq!(code(duplicate), "23505");
     tx.rollback().await.unwrap();
@@ -241,18 +245,28 @@ async fn new_dispositions_are_final_immutable_and_old_writes_remain_valid(pool: 
         )
         .await;
         let mut tx = runtime(&w).await;
-        let id: Uuid = sqlx::query_scalar(
-            "INSERT INTO attendance_exception_resolutions \
-            (org_id, exception_id, action, reason, linked_work_ref, actor_user_id) \
-            VALUES ($1, $2, $3, '검토 기록', '기록부', $4) RETURNING id",
-        )
-        .bind(w.org)
-        .bind(item_id)
-        .bind(action)
-        .bind(w.admin)
-        .fetch_one(&mut *tx)
-        .await
-        .unwrap();
+        let entry_id = foreign_keys::entry(&w).await;
+        let changes = serde_json::json!({"action": action,
+            "reason_code": if action == "RECORD_CORRECTION" { "TIME_INPUT_ERROR" } else { "PERSONAL_PRESENCE" },
+            "superseding_entry_id": entry_id});
+        let id = if ["CONFIRM", "APPROVE_OVERTIME"].contains(&action) {
+            sqlx::query_scalar(
+                "INSERT INTO attendance_exception_resolutions \
+                (org_id, exception_id, action, reason, linked_work_ref, actor_user_id) \
+                VALUES ($1, $2, $3, '검토 기록', '기록부', $4) RETURNING id",
+            )
+            .bind(w.org)
+            .bind(item_id)
+            .bind(action)
+            .bind(w.admin)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap()
+        } else {
+            invariants::resolution(&mut tx, &w, item_id, changes)
+                .await
+                .unwrap()
+        };
         sqlx::query("UPDATE attendance_exceptions SET status = 'RESOLVED' WHERE id = $1")
             .bind(item_id)
             .execute(&mut *tx)

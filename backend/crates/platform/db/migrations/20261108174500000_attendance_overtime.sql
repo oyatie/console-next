@@ -156,7 +156,14 @@ AS $$
         ('privacy_identity_method', 'AGENT_MANDATE', false, 4),
         ('overtime_approval_method', 'IN_APP', false, 1),
         ('overtime_approval_method', 'WRITTEN', false, 2),
-        ('overtime_approval_method', 'VERBAL', false, 3)
+        ('overtime_approval_method', 'VERBAL', false, 3),
+        ('excess_not_work', 'PERSONAL_PRESENCE', false, 1),
+        ('excess_not_work', 'SHIFT_WAIT_NO_WORK', false, 2),
+        ('excess_not_work', 'OTHER', true, 3),
+        ('attendance_correction', 'TIME_INPUT_ERROR', false, 1),
+        ('attendance_correction', 'MISSING_ENTRY', false, 2),
+        ('attendance_correction', 'WRONG_PERSON', false, 3),
+        ('attendance_correction', 'OTHER', true, 4)
 $$;
 -- END GENERATED
 
@@ -266,7 +273,7 @@ AS $$
         ('action_inbox.source_concurrency', 'int', 1::BIGINT, 8::BIGINT, 4::BIGINT, 'neutral', 'read_only', NULL::TEXT[]),
         ('attendance.excess.notice_minutes', 'int', 0::BIGINT, 30::BIGINT, 0::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
         ('attendance.excess.disposition_due_days', 'int', 1::BIGINT, NULL::BIGINT, 3::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
-        ('attendance.excess.repeat_window_days', 'int', 1::BIGINT, NULL::BIGINT, 28::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
+        ('attendance.excess.repeat_window_days', 'int', 1::BIGINT, NULL::BIGINT, 28::BIGINT, 'lower', 'tenant', NULL::TEXT[]),
         ('attendance.excess.repeat_count', 'int', 1::BIGINT, NULL::BIGINT, 3::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
         ('attendance.entry.long_span_confirm_minutes', 'int', 1::BIGINT, 1440::BIGINT, 960::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
         ('attendance.late.grace_minutes', 'int', 0::BIGINT, 60::BIGINT, 0::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
@@ -392,6 +399,16 @@ ALTER TABLE attendance_exceptions ADD CONSTRAINT attendance_exceptions_window_ch
            (from_minutes IS NOT NULL AND to_minutes IS NOT NULL AND from_minutes BETWEEN 0 AND 2879
             AND to_minutes > from_minutes AND to_minutes <= 2880 AND due_on IS NOT NULL)) NOT VALID;
 ALTER TABLE attendance_exceptions VALIDATE CONSTRAINT attendance_exceptions_window_check;
+ALTER TABLE attendance_exceptions ADD CONSTRAINT attendance_exceptions_excess_scope_check
+    CHECK (kind NOT IN ('UNAPPROVED_OVERTIME', 'HOLIDAY_WORK') OR from_minutes IS NULL
+           OR workplace_id IS NOT NULL OR org_unit_id IS NOT NULL) NOT VALID;
+ALTER TABLE attendance_exceptions VALIDATE CONSTRAINT attendance_exceptions_excess_scope_check;
+ALTER TABLE attendance_exceptions ADD CONSTRAINT attendance_exceptions_holiday_window_check
+    CHECK (kind <> 'HOLIDAY_WORK' OR from_minutes IS NOT NULL) NOT VALID;
+ALTER TABLE attendance_exceptions VALIDATE CONSTRAINT attendance_exceptions_holiday_window_check;
+ALTER TABLE attendance_exceptions ADD CONSTRAINT attendance_exceptions_due_check
+    CHECK (due_on IS NULL OR due_on >= work_date) NOT VALID;
+ALTER TABLE attendance_exceptions VALIDATE CONSTRAINT attendance_exceptions_due_check;
 ALTER TABLE attendance_exceptions ADD CONSTRAINT attendance_exceptions_workplace_fk
     FOREIGN KEY (org_id, workplace_id) REFERENCES workplaces(org_id, id) ON DELETE RESTRICT NOT VALID;
 ALTER TABLE attendance_exceptions VALIDATE CONSTRAINT attendance_exceptions_workplace_fk;
@@ -426,6 +443,43 @@ ALTER TABLE attendance_exception_resolutions VALIDATE CONSTRAINT attendance_exce
 ALTER TABLE attendance_exception_resolutions ADD CONSTRAINT attendance_exception_resolutions_entry_fk
     FOREIGN KEY (superseding_entry_id, org_id) REFERENCES attendance_entries(id, org_id) ON DELETE RESTRICT NOT VALID;
 ALTER TABLE attendance_exception_resolutions VALIDATE CONSTRAINT attendance_exception_resolutions_entry_fk;
+ALTER TABLE attendance_exception_resolutions ADD CONSTRAINT attendance_resolutions_evidence_required
+    CHECK (action NOT IN ('POST_APPROVAL', 'NOT_WORK', 'RECORD_CORRECTION', 'PAID_OVER_CAP')
+           OR (evidence IS NOT NULL AND evidence <> '[]'::jsonb)) NOT VALID;
+ALTER TABLE attendance_exception_resolutions VALIDATE CONSTRAINT attendance_resolutions_evidence_required;
+ALTER TABLE attendance_exception_resolutions ADD CONSTRAINT attendance_resolutions_not_work_required
+    CHECK (action <> 'NOT_WORK' OR (reason_code IS NOT NULL AND btrim(reason_code) <> ''
+           AND worker_notice_via IS NOT NULL)) NOT VALID;
+ALTER TABLE attendance_exception_resolutions VALIDATE CONSTRAINT attendance_resolutions_not_work_required;
+ALTER TABLE attendance_exception_resolutions ADD CONSTRAINT attendance_resolutions_correction_required
+    CHECK (action <> 'RECORD_CORRECTION' OR (superseding_entry_id IS NOT NULL
+           AND reason_code IS NOT NULL AND btrim(reason_code) <> '')) NOT VALID;
+ALTER TABLE attendance_exception_resolutions VALIDATE CONSTRAINT attendance_resolutions_correction_required;
+ALTER TABLE attendance_exception_resolutions ADD CONSTRAINT attendance_resolutions_written_notice_required
+    CHECK (worker_notice_via IS DISTINCT FROM 'WRITTEN' OR worker_notified_on IS NOT NULL) NOT VALID;
+ALTER TABLE attendance_exception_resolutions VALIDATE CONSTRAINT attendance_resolutions_written_notice_required;
+
+CREATE FUNCTION attendance_overtime_resolution_check() RETURNS trigger
+LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
+DECLARE reason_domain TEXT;
+BEGIN
+    reason_domain := CASE NEW.action WHEN 'NOT_WORK' THEN 'excess_not_work'
+                                   WHEN 'RECORD_CORRECTION' THEN 'attendance_correction' END;
+    IF reason_domain IS NOT NULL AND NOT (
+        EXISTS (SELECT 1 FROM system_reason_codes() WHERE domain = reason_domain AND code = NEW.reason_code)
+        OR EXISTS (SELECT 1 FROM reason_codes WHERE org_id = NEW.org_id AND domain = reason_domain
+                   AND code = NEW.reason_code AND active)
+    ) THEN
+        RAISE EXCEPTION 'invalid overtime disposition reason' USING ERRCODE = '23514';
+    END IF;
+    IF NEW.worker_notified_on < (SELECT work_date FROM attendance_exceptions
+                                WHERE org_id = NEW.org_id AND id = NEW.exception_id) THEN
+        RAISE EXCEPTION 'worker notice cannot precede the work date' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END $$;
+CREATE TRIGGER trg_attendance_overtime_resolution_check BEFORE INSERT ON attendance_exception_resolutions
+    FOR EACH ROW EXECUTE FUNCTION attendance_overtime_resolution_check();
 -- Runs before the legacy trigger; legacy actions retain their original SQLSTATE.
 CREATE TRIGGER trg_attendance_exception_resolutions_00_overtime_immutable
     BEFORE UPDATE OR DELETE ON attendance_exception_resolutions FOR EACH ROW
