@@ -72,7 +72,9 @@ use preflight::*;
 use rows::*;
 use schedule_time::*;
 use store::*;
-pub use store::{StepDecisionFacts, StepDecisionScope, step_decision_facts_in_tx};
+pub use store::{
+    StepDecisionFacts, StepDecisionScope, sole_holder_eligibility_in_tx, step_decision_facts_in_tx,
+};
 pub use types::*;
 use util::*;
 
