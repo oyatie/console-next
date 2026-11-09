@@ -194,7 +194,7 @@ export function Shell() {
         <Link to="/account" className="btn btn--ghost top__name">
           <UserRound size={16} aria-hidden /> <span>{personName(session.claims?.name, t(session.claims?.platform ? "account.name.unset.operator" : "account.name.unset"))}</span>
         </Link>
-        <button className="btn btn--ghost" onClick={async () => (await logout(), nav({ to: "/login" }))}>
+        <button className="btn btn--ghost top__logout" onClick={async () => (await logout(), nav({ to: "/login" }))}>
           <LogOut size={16} aria-hidden /> {t("shell.logout")}
         </button>
         </>}

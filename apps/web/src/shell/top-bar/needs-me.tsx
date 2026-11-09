@@ -60,13 +60,13 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
   const turn = (seed ?? (inbox.isSuccess ? inbox.data.pages[0] : undefined))?.counts?.turn;
   const count = turn?.total;
   const exact = turn?.total_is_exact;
-  const label = count == null ? t("shell.needsMe.unknown") : t(count > 0 ? exact ? "shell.needsMe.count" : "shell.needsMe.countMore" : "shell.needsMe", { count });
+  const label = count == null ? t(inbox.isPending ? "shell.needsMe.loading" : "shell.needsMe.unknown") : t(count > 0 ? exact ? "shell.needsMe.count" : "shell.needsMe.countMore" : "shell.needsMe", { count });
   return (
     <DialogTrigger isOpen={open} onOpenChange={setOpen}>
       <Button id={id} className={s.needsMe} aria-label={label}><Inbox size={16} aria-hidden /><span className={s.name}>{t("home.inbox.title")}</span>{!!count && <span className={s.badge} data-count>{exact ? count : `${count}+`}</span>}</Button>
       <Popover className={s.taskPop} placement="bottom end">
         <Dialog className={s.taskPanel} aria-label={t("shell.needsMe")}>
-          {({ close }) => (<><div className={s.taskHead}><strong>{t("shell.needsMe")}</strong><Link to="/inbox" onClick={close}>{t("home.inbox.viewInbox")}</Link></div>{seed ? <TaskItems items={seed.items} onNavigate={close} /> : <QueryState q={separate ? tasks : inbox} layout="list">{data => <TaskItems items={data.pages[0]?.items ?? []} onNavigate={close} />}</QueryState>}</>)}
+          {({ close }) => (<><div className={s.taskHead}><strong>{t("shell.needsMe")}</strong><Link to="/inbox" onClick={close}>{t("home.inbox.viewInbox")}</Link></div>{seed ? <TaskItems items={seed.items} onNavigate={close} /> : <QueryState q={separate ? tasks : inbox} layout="list" denied={<p role="status">{t("shell.needsMe.denied")}</p>}>{data => <TaskItems items={data.pages[0]?.items ?? []} onNavigate={close} />}</QueryState>}</>)}
         </Dialog>
       </Popover>
     </DialogTrigger>

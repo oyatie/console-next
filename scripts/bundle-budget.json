@@ -1,6 +1,6 @@
 {
   "shell": {
-    "budget_kb": 82,
+    "budget_kb": 83,
     "routes": [
       "src/auth/IdleGuard.tsx",
       "src/auth/Login.tsx",

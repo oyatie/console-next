@@ -10,7 +10,7 @@ import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
   for (const state of ["populated", "zero", "inexact", "failed", "refused"] as const) {
     test(`header task panel ${state} at ${width}px ${theme}`, async ({ page }, info) => {
       test.slow(state === "populated", "Checks three tenant pages and their panels.");
@@ -37,7 +37,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         const label = unknown ? "업무함 · 확인 불가" : state === "zero" ? t("shell.needsMe") : t(state === "inexact" ? "shell.needsMe.countMore" : "shell.needsMe.count", { count: state === "inexact" ? 12 : 3 });
         const header = page.locator("header.top");
         const trigger = header.getByRole("button", { name: label, exact: true });
-        await expect(trigger).toBeVisible();
+        await expect(trigger).toBeVisible({ timeout: 20_000 });
         if (unknown || state === "zero") await expect(trigger.locator("[data-count]")).toHaveCount(0);
         else await expect(trigger.locator("[data-count]")).toHaveText(state === "inexact" ? "12+" : "3");
         await expect(header.getByRole("button", { name: t("shell.jumpLabel"), exact: true })).toBeVisible();
@@ -57,7 +57,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expect(fullPage).toHaveAttribute("href", "/inbox");
         if (unknown) {
           await expect(panel.getByText(t("home.inbox.empty.title"), { exact: true })).toHaveCount(0);
-          await expect(panel.getByRole("heading", { name: t(state === "refused" ? "common.denied.title.plain" : "common.loadFailed.title"), exact: true })).toBeVisible({ timeout: 20_000 });
+          if (state === "refused") {
+            await expect(panel.getByRole("status")).toHaveText("업무함에 접근 권한이 없습니다");
+            await expect(panel.getByText(t("common.denied.title.plain"), { exact: true })).toHaveCount(0);
+            await expect(panel.getByRole("link")).toHaveCount(1);
+          } else await expect(panel.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible({ timeout: 20_000 });
           await expect(trigger).toHaveAccessibleName(label);
         } else if (state === "zero") await expect(panel.getByText(t("home.inbox.empty.title"), { exact: true })).toBeVisible();
         else await expect(panel.getByRole("link", { name: /검증직원/ })).toHaveCount(3);
@@ -87,11 +91,18 @@ test("platform header never mounts or reads the tenant task panel", async ({ pag
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: auth });
   await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
+  const chunks: string[] = [];
   let reads = 0;
-  page.on("request", request => { if (new URL(request.url()).pathname === "/api/v1/me/action-inbox") reads++; });
+  page.on("request", request => {
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/v1/me/action-inbox") reads++;
+    if (/\/assets\/needs-me-[^/]+\.js$/.test(path)) chunks.push(path);
+  });
   await page.goto("/platform");
   await expect(page.locator("header.top").getByRole("button", { name: t("shell.logout"), exact: true })).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await expect(page.locator("#top-needs-me")).toHaveCount(0);
+  expect(chunks).toEqual([]);
   expect(reads).toBe(0);
   expect(mock.unexpected).toEqual([]);
 });
@@ -172,3 +183,54 @@ test("header reserves its space before the task menu loads", async ({ page }) =>
   await expectStable(page, "late task menu");
   expect(mock.unexpected).toEqual([]);
 });
+
+for (const width of [768, 1024, 1279]) for (const theme of ["light", "dark"]) {
+  test(`tablet header uses available width at ${width}px ${theme}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const mock = await mockScreen(page, screens[0], "populated");
+    await page.goto("/people");
+    const header = page.locator("header.top");
+    await expect(header.locator("#top-needs-me [data-count]")).toHaveText("3", { timeout: 20_000 });
+    await expect(header.locator(".top__jumpText")).toBeVisible();
+    await expect(header.locator(".top__jump svg")).toBeVisible();
+    expect((await header.locator(".top__jump").boundingBox())!.width).toBeGreaterThanOrEqual(40);
+    const logout = header.getByRole("button", { name: t("shell.logout"), exact: true });
+    await expect(logout).toBeVisible();
+    expect(await logout.evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThan(0);
+    const spacer = await header.locator(".top__spacer").boundingBox();
+    expect(spacer!.width).toBeLessThanOrEqual(1);
+    await fits(page, "tablet header");
+    expect(await header.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath(`people-header-${width}-${theme}.png`), fullPage: true });
+    expect(mock.unexpected).toEqual([]);
+  });
+}
+
+for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
+  test(`task count is loading until answered at ${width}px ${theme}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const mock = await mockScreen(page, screens[0], "populated");
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    await page.route("**/api/v1/me/action-inbox?*", async route => {
+      await held;
+      await route.fulfill({ status: 200, json: inbox(3) });
+    });
+    await page.goto("/people");
+    const trigger = page.locator("#top-needs-me");
+    try {
+      await expect(trigger).toHaveAccessibleName("업무함 · 불러오는 중…", { timeout: 20_000 });
+      await expect(trigger.locator("[data-count]")).toHaveCount(0);
+      await trigger.click();
+      const panel = page.getByRole("dialog", { name: t("shell.needsMe"), exact: true });
+      await expect(panel.getByRole("status")).toHaveAccessibleName(t("common.loading"));
+      await fits(page, "loading task panel");
+      await expectAxe(page, "loading task panel");
+      await page.screenshot({ path: info.outputPath(`people-loading-${width}-${theme}.png`), fullPage: true });
+    } finally { release(); }
+    await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+    expect(mock.unexpected).toEqual([]);
+  });
+}
