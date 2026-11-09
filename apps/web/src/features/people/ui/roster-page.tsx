@@ -89,7 +89,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
   const status = parseStatus(search.status);
   const review = parseReview(search.review);
   const { unit } = search;
-  const { sel: open, sel2: openUnit, select, selectRelated } = columnSelection(search, navigate);
+  const { sel: open, sel2: openUnit, select, selectRelated, full, expand, restore } = columnSelection(search, navigate);
   const unitTrigger = useRef<HTMLButtonElement | null>(null);
   const unitItems = useQuery({ ...unitsQuery, enabled: Boolean(openUnit) }).data?.items ?? [];
   const selectedUnit = openUnit ? unitItems.find((u) => u.id === openUnit) : undefined;
@@ -260,7 +260,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
       </div>
       {manage && search.bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={closePaste} onDone={bulkDone} />}
       {status === "EXITED" && exitView === "voided" ? <VoidedList /> : !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed ? <RosterFirstRun /> : (
-      <FlexibleColumns
+      <FlexibleColumns full={full} onFull={on => on ? expand() : restore()}
         onSelect={select}
         onOpen={openRecord}
         onFind={() => findSlot?.querySelector("input")?.focus()}
