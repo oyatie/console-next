@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Link, getRouteApi } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
+import { announce } from "../../../lib/react/announce";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { Banner } from "../../../ui/banner/banner";
@@ -76,6 +77,19 @@ function SessionsList({ data }: { data: Sessions }) {
   const { review } = route.useSearch();
   const navigate = route.useNavigate();
   const current = data.sessions.find((s) => s.id === review) ?? data.sessions[0];
+  const titleId = useId();
+  const ticketRef = current?.ticket_ref;
+  useEffect(() => {
+    if (!review || ticketRef === undefined) return;
+    const frame = requestAnimationFrame(() => {
+      const heading = document.getElementById(titleId);
+      const input = heading?.closest("section")?.querySelector("input");
+      (input ?? heading)?.focus({ preventScroll: true });
+      (input?.closest("form") ?? heading)?.scrollIntoView({ block: "center" });
+      announce(ticketRef);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [review, ticketRef, titleId]);
   return <>
     <Card flush label={t("supportAccess.description")}>
       <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current?.id} onSelect={(id) => void navigate({ search: { review: id }, replace: true })}
@@ -87,7 +101,7 @@ function SessionsList({ data }: { data: Sessions }) {
         ]}
       />
     </Card>
-    {current && <Card><SessionDetails key={current.id} session={current} canApprove={data.can_approve} /></Card>}
+    {current && <Card title={current.ticket_ref} titleId={titleId}><SessionDetails key={current.id} session={current} canApprove={data.can_approve} /></Card>}
   </>;
 }
 
@@ -133,13 +147,13 @@ function SessionDetails({ session: s, canApprove }: { session: SupportSession; c
     </Form>}
     {canApprove && (s.state === "ACTIVE" || (s.state === "OPERATOR_APPROVED" && s.tenant_approved_at)) && <Button variant="danger" disabled={busy} onClick={() => end.mutate(undefined)}>{t("supportAccess.end")}</Button>}
     <CommandError error={decide.error ?? end.error} own={supportRefusal} />
-    <h2>{t("supportAccess.decisions")}</h2>
+    <h3>{t("supportAccess.decisions")}</h3>
     {s.decisions.length ? <Table label={t("supportAccess.decisions")} rows={s.decisions} rowId={(d) => `${d.at}:${d.actor_label}:${d.decision}`} columns={[
       { header: t("supportAccess.actor"), cell: (d) => d.actor_label },
       { header: t("supportAccess.decision"), cell: (d) => decisionText(d.decision) },
       { header: t("supportAccess.at"), cell: (d) => fmtDateTime(d.at) },
     ]} /> : <p className="muted">{t("supportAccess.noDecisions")}</p>}
-    <h2>{t("supportAccess.records")}</h2>
+    <h3>{t("supportAccess.records")}</h3>
     {s.records.length ? <Table label={t("supportAccess.records")} rows={s.records} rowId={(r) => r.id} columns={[
       { header: t("supportAccess.method"), cell: (r) => r.method },
       { header: t("supportAccess.path"), cell: (r) => r.path },
