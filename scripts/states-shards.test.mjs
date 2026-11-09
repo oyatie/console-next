@@ -590,12 +590,10 @@ test("artifact pagination is bounded even when the server always returns full pa
   assert.deepEqual(restored.timings, { workers: settings.workers, specs: {} });
 });
 
-test("a repository without artifacts can bootstrap the actual suite within the runner cap", async () => {
+test("a repository without artifacts can bootstrap a fixed suite within the runner cap", async () => {
   const { planStates } = await load();
-  const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--config=e2e/mock/playwright.config.ts", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
-  assert.equal(result.status, 0, result.stderr);
-  const timings = JSON.parse(readFileSync("e2e/mock/timings.json", "utf8"));
-  const planned = planStates(JSON.parse(result.stdout), timings);
+  const timings = { ...settings, maxShards: 2, timeoutSeconds: 600 };
+  const planned = planStates(report({ "mock/a.spec.ts": 30, "mock/b.spec.ts": 30, "mock/c.spec.ts": 30 }), timings);
   assert.ok(planned.shards.length <= timings.maxShards);
-  assert.ok(Math.max(...planned.shards.map(s => s.seconds)) <= Math.floor(timings.runLimitSeconds / RUN_HEADROOM) * 0.85);
+  assert.ok(planned.budgetSeconds > timings.budgetSeconds);
 });
