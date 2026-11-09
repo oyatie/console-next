@@ -63,6 +63,18 @@
     "/api/v1/location/arrival-events": [
       "get"
     ],
+    "/api/v1/privacy/rights-requests": [
+      "post"
+    ],
+    "/api/v1/privacy/rights-requests/mine": [
+      "get"
+    ],
+    "/api/v1/privacy/rights-requests/options": [
+      "get"
+    ],
+    "/api/v1/privacy/rights-requests/{id}": [
+      "get"
+    ],
     "/api/v1/statutory/insurance-filings": [
       "get",
       "post"
@@ -133,6 +145,7 @@
     "ObligationRegulationRelationship",
     "ObligationStatus",
     "ObligationType",
+    "PrivacyRightsReceipt",
     "RecordInsuranceFiling",
     "RegulationImpact",
     "RegulationImpactPage",
@@ -144,6 +157,7 @@
     "WorkerRegisterPage"
   ],
   "external_schemas": [
+    "MobilePasskeyStepUpEnvelope",
     "Timestamp",
     "Uuid"
   ]

@@ -17,7 +17,12 @@ export function AccessLogFiltersForm({ value, options, period, onApply }: {
   period: { from: string; to: string };
   onApply: (filters: AccessLogFilters) => void;
 }) {
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState(() => ({
+    ...value,
+    actor: options.actors.some(choice => choice.id === value.actor) ? value.actor : undefined,
+    action: options.actions.some(choice => choice.id === value.action) ? value.action : undefined,
+    target_type: options.target_types.some(choice => choice.id === value.target_type) ? value.target_type : undefined,
+  }));
   const [fromInvalid, setFromInvalid] = useState(false);
   const [toInvalid, setToInvalid] = useState(false);
   const from = draft.from ?? "";

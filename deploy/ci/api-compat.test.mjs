@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -81,13 +81,21 @@ function releaseFixture(change = () => {}) {
   const revision = 'a'.repeat(40);
   const image = `ghcr.io/oyatie/console-next/console@sha256:${'b'.repeat(64)}`;
   const state = {production:{revision}, absent:false, previous:{previousImage:image, image:image.replace(/b/g, 'c')},
-    statement:{subject:[{digest:{sha256:'b'.repeat(64)}}], predicate:{buildDefinition:{resolvedDependencies:[{
+    history:[revision], statement:{subject:[{digest:{sha256:'b'.repeat(64)}}], predicate:{buildDefinition:{resolvedDependencies:[{
       uri:'git+https://github.com/oyatie/console-next@refs/heads/dev', digest:{gitCommit:revision},
     }]}}}, calls:[]};
   change(state);
   const execute = (bin, args) => {
     state.calls.push([bin, ...args]);
-    if (bin === 'cosign') return JSON.stringify([{payload:Buffer.from(JSON.stringify(state.statement)).toString('base64')}]);
+    if (bin === 'cosign') {
+      if (state.verificationError) throw new Error('signature verification failed');
+      const envelopes = (state.statements ?? [state.statement]).map(statement => ({payload:Buffer.from(JSON.stringify(statement)).toString('base64')}));
+      return state.ndjson ? envelopes.map(envelope => JSON.stringify(envelope)).join('\n') : JSON.stringify(envelopes);
+    }
+    if (bin === 'git') {
+      assert.deepEqual(args, ['rev-list', '--first-parent', '--reverse', 'origin/dev']);
+      return state.repository ? execFileSync(bin, ['-C', state.repository, ...args], {encoding:'utf8'}) : state.history.join('\n');
+    }
     if (args[2].endsWith(':production')) {
       if (state.absent) throw Object.assign(new Error('registry'), {stderr:state.absent === true ? 'MANIFEST_UNKNOWN' : state.absent});
       writeFileSync(join(directory, 'revision.json'), JSON.stringify(state.production));
@@ -101,10 +109,49 @@ test('production revision wins and bootstrap uses a distinct verified N-1 source
   assert.equal(releaseFixture().calls.length, 1);
   const fallback = releaseFixture(state => { state.absent = true; });
   assert.equal(fallback.base, 'a'.repeat(40));
-  assert.equal(fallback.calls.length, 3);
+  assert.equal(fallback.calls.length, 4);
+  assert.ok(fallback.calls[2].includes('--type=https://slsa.dev/provenance/v1'));
+  assert.ok(fallback.calls[2].includes('--certificate-oidc-issuer=https://token.actions.githubusercontent.com'));
   assert.ok(fallback.calls[2].includes('--certificate-identity=https://github.com/oyatie/console-next/.github/workflows/platform.yml@refs/heads/dev'));
+  assert.equal(fallback.calls[2].at(-1), `ghcr.io/oyatie/console-next/console@sha256:${'b'.repeat(64)}`);
 });
-for (const [reason, change] of [
+
+test('re-attested N-1 selects the earliest dev first-parent revision regardless of statement order or commit dates', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'api-history-'));
+  const git = (...args) => execFileSync('git', ['-C', directory, ...args], {encoding:'utf8'}).trim();
+  const commit = (date) => {
+    execFileSync('git', ['-C', directory, '-c', 'user.name=Jason Lee', '-c', 'user.email=56489493+jason931225@users.noreply.github.com',
+      'commit', '--quiet', '--allow-empty', '-m', 'test: provenance history'],
+    {env:{...process.env, GIT_AUTHOR_DATE:date, GIT_COMMITTER_DATE:date}});
+    return git('rev-parse', 'HEAD');
+  };
+  try {
+    git('init', '--quiet', '--initial-branch=dev');
+    const earliest = commit('2025-02-02T00:00:00Z');
+    const later = commit('2025-01-01T00:00:00Z');
+    git('checkout', '--quiet', '-b', 'topic', earliest);
+    const side = commit('2025-01-02T00:00:00Z');
+    git('checkout', '--quiet', 'dev');
+    git('-c', 'user.name=Jason Lee', '-c', 'user.email=56489493+jason931225@users.noreply.github.com',
+      'merge', '--quiet', '--no-ff', 'topic', '-m', 'test: merge provenance history');
+    git('update-ref', 'refs/remotes/origin/dev', 'HEAD');
+    const fixture = (revisions, ndjson = false) => releaseFixture(state => {
+      state.absent = true;
+      state.repository = directory;
+      state.ndjson = ndjson;
+      state.statements = revisions.map(revision => {
+        const statement = structuredClone(state.statement);
+        statement.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit = revision;
+        return statement;
+      });
+    });
+    for (const ndjson of [false, true]) for (const revisions of [[later, earliest], [earliest, later], [later, earliest, later]]) {
+      assert.equal(fixture(revisions, ndjson).base, earliest);
+    }
+    assert.throws(() => fixture([side, later]), /dev first-parent history/);
+  } finally { rmSync(directory, {recursive:true, force:true}); }
+});
+for (const [reason, change, error] of [
   ['registry authentication', state => { state.absent = 'unauthorized'; }],
   ['registry network', state => { state.absent = 'timeout'; }],
   ['missing production revision', state => { state.production = {}; }],
@@ -114,6 +161,9 @@ for (const [reason, change] of [
   ['identical N-1', state => { state.absent = true; state.previous.image = state.previous.previousImage; }],
   ['foreign N-1', state => { state.absent = true; state.previous.previousImage = state.previous.previousImage.replace('oyatie', 'other'); }],
   ['wrong subject', state => { state.absent = true; state.statement.subject[0].digest.sha256 = 'c'.repeat(64); }],
+  ['no statements', state => { state.absent = true; state.statements = []; }, /N-1 image needs a verified source revision/],
+  ['unverifiable statements', state => { state.absent = true; state.verificationError = true; }],
   ['foreign source', state => { state.absent = true; state.statement.predicate.buildDefinition.resolvedDependencies[0].uri += '-other'; }],
-  ['ambiguous source', state => { state.absent = true; state.statement.predicate.buildDefinition.resolvedDependencies.push({uri:'git+https://github.com/oyatie/console-next@refs/heads/dev', digest:{gitCommit:'c'.repeat(40)}}); }],
-]) test(`released base refuses ${reason}`, () => assert.throws(() => releaseFixture(change)));
+  ['source outside dev first-parent history', state => { state.absent = true; state.statement.predicate.buildDefinition.resolvedDependencies.push({uri:'git+https://github.com/oyatie/console-next@refs/heads/dev', digest:{gitCommit:'c'.repeat(40)}}); }],
+  ['invalid attested revision', state => { state.absent = true; state.statement.predicate.buildDefinition.resolvedDependencies.push({uri:'git+https://github.com/oyatie/console-next@refs/heads/dev', digest:{gitCommit:'a'.repeat(12)}}); }, /dev first-parent history/],
+]) test(`released base refuses ${reason}`, () => assert.throws(() => releaseFixture(change), error));

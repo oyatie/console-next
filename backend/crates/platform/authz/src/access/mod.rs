@@ -5,6 +5,7 @@
 
 pub mod catalog;
 pub mod cedar;
+mod cedar_schema;
 mod dept;
 pub mod exit;
 pub mod load;

@@ -13,6 +13,8 @@ mod notice;
 #[path = "personal_facts/photo.rs"]
 mod photo;
 mod support;
+#[path = "personal_facts/timestamps.rs"]
+mod timestamps;
 
 use console_hr_adapter_postgres::HrError;
 use console_hr_adapter_postgres::corrections::{CorrectEmployeeRequest, CorrectionOutcome};

@@ -61,19 +61,8 @@ pub struct ClosePreflight {
     pub can_close: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct RunCalcSummary {
-    pub version: i32,
-    pub calculated_at: OffsetDateTime,
-    pub calculated_lines: i64,
-    pub blocked_lines: i64,
-    /// Always `false` until the 노무사/세무사 release gate flips stored rows.
-    pub payable: bool,
-    pub kernel_rate_table: String,
-    /// `None` unless EVERY line of the run calculated — never a partial sum
-    /// presented as a total.
-    pub total_net_won: Option<i64>,
-}
+mod dto;
+pub use dto::RunCalcSummary;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PayrollException {
@@ -90,9 +79,11 @@ pub struct PayrollException {
     pub linked_refs: Value,
     pub status: String,
     pub resolved_by: Option<Uuid>,
+    #[serde(with = "console_kernel_core::timestamp::option")]
     pub resolved_at: Option<OffsetDateTime>,
     pub resolved_reason: Option<String>,
     pub carried_from_run_id: Option<Uuid>,
+    #[serde(with = "console_kernel_core::timestamp")]
     pub created_at: OffsetDateTime,
 }
 
@@ -109,12 +100,16 @@ pub struct ExceptionPage {
 pub struct Disbursement {
     pub id: Uuid,
     pub run_id: Uuid,
+    #[serde(with = "console_kernel_core::timestamp")]
     pub scheduled_at: OffsetDateTime,
     pub status: String,
     pub attested_by: Option<Uuid>,
+    #[serde(with = "console_kernel_core::timestamp::option")]
     pub attested_at: Option<OffsetDateTime>,
     pub reason: Option<String>,
+    #[serde(with = "console_kernel_core::timestamp")]
     pub created_at: OffsetDateTime,
+    #[serde(with = "console_kernel_core::timestamp")]
     pub updated_at: OffsetDateTime,
 }
 
@@ -123,11 +118,13 @@ pub struct PayslipDeliveryItem {
     pub line_id: Uuid,
     pub employee_id: Uuid,
     pub inbox_doc_id: Uuid,
+    #[serde(with = "console_kernel_core::timestamp")]
     pub issued_at: OffsetDateTime,
     /// Read back from `inbox_docs.confirmed_at`. The vault currently only
     /// permits receipt confirmation on `legal_notice` documents, so payslip
     /// acknowledgement stays `None` until that vault capability lands —
     /// reported truthfully rather than simulated.
+    #[serde(with = "console_kernel_core::timestamp::option")]
     pub acknowledged_at: Option<OffsetDateTime>,
 }
 

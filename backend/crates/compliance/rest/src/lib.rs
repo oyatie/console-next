@@ -3,8 +3,10 @@
 
 mod ledger_export;
 mod openapi;
+mod state;
 use ledger_export::ledger_csv;
 pub use openapi::OPENAPI_FRAGMENT;
+pub use state::ComplianceRestState;
 pub mod statutory;
 
 use axum::extract::{Path, Query, State};
@@ -12,7 +14,7 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use console_compliance_adapter_postgres::{PgComplianceError, PgComplianceStore};
+use console_compliance_adapter_postgres::PgComplianceError;
 use console_compliance_application::{
     AcceptEvidenceBindingCommand, ArrivalEventPage, ArrivalEventQuery, AuditStreamPage,
     AuditStreamQuery, AuditStreamReadKind, CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery,
@@ -33,7 +35,6 @@ use console_compliance_domain::{
 use console_kernel_core::{
     BranchId, BranchScope, ErrorKind, KernelError, LocationPingId, Timestamp, TraceContext, UserId,
 };
-use console_platform_auth::JwtVerifier;
 use console_platform_authz::cedar_pbac::engine;
 use console_platform_authz::{
     Action, AuthorizationContext, AuthorizationRequest, AuthorizationResource, CoexistenceMapEntry,
@@ -63,22 +64,6 @@ pub const COMPLIANCE_ROUTE_PATHS: &[&str] = &[
     "/api/v1/audit-streams/ceo-covert/events",
     "/api/v1/audit-streams/ceo-covert/access-events",
 ];
-
-#[derive(Clone)]
-pub struct ComplianceRestState {
-    store: PgComplianceStore,
-    jwt_verifier: Option<JwtVerifier>,
-}
-
-impl ComplianceRestState {
-    #[must_use]
-    pub fn new(store: PgComplianceStore, jwt_verifier: Option<JwtVerifier>) -> Self {
-        Self {
-            store,
-            jwt_verifier,
-        }
-    }
-}
 
 pub fn router(state: ComplianceRestState) -> Router {
     let (verifier, pool) = (state.jwt_verifier.clone(), state.store.pool().clone());

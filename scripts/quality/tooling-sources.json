@@ -1530,9 +1530,12 @@
       "source": "https://api.github.com/repos/moby/buildkit",
       "unavailable": "https://api.github.com/repos/moby/buildkit/releases/latest: HTTP 403"
     },
-    "container:gcr.io/distroless/cc-debian12": {
-      "source": "https://api.github.com/repos/GoogleContainerTools/distroless",
-      "unavailable": "https://api.github.com/repos/GoogleContainerTools/distroless/releases/latest: HTTP 403"
+    "container:gcr.io/distroless/cc-debian13": {
+      "source": "https://gcr.io/v2/distroless/cc-debian13/tags/list",
+      "latest": "nonroot",
+      "lastRelease": "2026-10-31",
+      "maintainers": "GoogleContainerTools",
+      "repository": "https://github.com/GoogleContainerTools/distroless"
     },
     "container:ghcr.io/cloudnative-pg/cloudnative-pg": {
       "source": "https://api.github.com/repos/cloudnative-pg/cloudnative-pg",

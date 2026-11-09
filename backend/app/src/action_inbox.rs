@@ -136,6 +136,7 @@ async fn list_action_inbox(
             .to_owned(),
         setup: tokio::sync::OnceCell::new(),
         support_can_approve: tokio::sync::OnceCell::new(),
+        privacy_can_handle: tokio::sync::OnceCell::new(),
         statutory_register: request_register::Register::default(),
         setup_created_at: created_at,
         deadline_due_soon_days,
@@ -171,6 +172,7 @@ struct PgActionInboxSources {
     principal: Principal,
     setup: tokio::sync::OnceCell<Option<serde_json::Value>>,
     support_can_approve: tokio::sync::OnceCell<bool>,
+    privacy_can_handle: tokio::sync::OnceCell<bool>,
     statutory_register: request_register::Register,
     setup_created_at: OffsetDateTime,
     deadline_due_soon_days: i64,
@@ -239,6 +241,9 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 }
                 ActionInboxSource::SupportAccess => {
                     sources::support_access::page(&self.pool, &self.principal, query, &self.support_can_approve).await
+                }
+                ActionInboxSource::PrivacyRequests => {
+                    sources::privacy_requests::page(&self.pool, &self.principal, query, &self.privacy_can_handle).await
                 }
                 ActionInboxSource::EntityCorrections => {
                     sources::entity_corrections::page(&self.pool, &self.principal, query).await

@@ -26,6 +26,7 @@ pub(super) fn valid_namespaced_id(value: &str) -> bool {
                 | "dispatch"
                 | "support"
                 | "support_access"
+                | "privacy_request"
                 | "work"
                 | "payroll"
                 | "governance"

@@ -1434,6 +1434,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/approvals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a source-authorized approval document
+         * @description Cedar approval_document_read uses the same source facts and inbox membership as the list. Hidden, absent, unsupported, draft and unrouted documents all return not_found. Body contains the source target, effective date and reason; the source record link exposes the full proposal. This read-only envelope exposes no decisions until the source-command adapter is available.
+         */
+        get: operations["getApprovalDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attendance/batches/{batch_id}/undo": {
         parameters: {
             query?: never;
@@ -11566,6 +11586,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/rights-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * File a self-service request with register-backed per-kind deadlines
+         * @description The server supplies the subject and receipt date. Idempotency-Key replays the original receipt; changed payloads conflict. A fresh PRIVACY_REQUEST passkey envelope is bound to the actor UUID and the SHA-256 of the serialized filing (controller, kinds, detail in that order). Refusals include passkey_step_up_required, passkey_step_up_failed, no_employee_record, request_kind_required, request_kind_unavailable and detail_too_long. Unregistered automated-decision and transmission kinds are unavailable. Missing statutory rules leave the per-kind deadline unknown; HOLD rule dispositions remain visible.
+         */
+        post: operations["filePrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the signed-in subject's requests in this tenant */
+        get: operations["listOwnPrivacyRightsRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Filing choices and statutory clock previews for the authenticated subject */
+        get: operations["privacyRightsRequestOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a tenant receipt under the live privacy_request_intake_read Cedar scope */
+        get: operations["readPrivacyRightsIntake"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/production/capacity-slots": {
         parameters: {
             query?: never;
@@ -15022,6 +15113,7 @@ export interface components {
             context?: {
                 /** @description Optional physical work site, separate from the statutory placement path. */
                 worksite_name?: string;
+                privacy_kinds?: string[];
                 /** @description Exact visible total for this review kind under the same reach and snapshot; omitted for bounded counts. */
                 review_count?: number;
                 register?: {
@@ -15338,6 +15430,23 @@ export interface components {
                 kind: "org_change";
                 /** Format: uuid */
                 id: string;
+            };
+        };
+        ApprovalDocumentDetail: components["schemas"]["ApprovalDocument"] & {
+            body: {
+                key: string;
+                label: string;
+                value: string;
+            }[];
+            /** @description Source event sequence length plus one; the fingerprint also covers edits without new events. */
+            revision: number;
+            /** @description Opaque snapshot token covering the source request, proposal, route and displayed facts. */
+            fingerprint: string;
+            consequence: string;
+            opinion_max: number;
+            my_actions: {
+                /** @enum {string} */
+                kind: "none";
             };
         };
         ApprovalDocumentPage: {
@@ -26716,6 +26825,44 @@ export interface components {
                 sha256: string;
             };
         };
+        PrivacyRightsReceipt: {
+            /** Format: uuid */
+            id: string;
+            receipt_no: string;
+            detail: string;
+            /** @enum {string} */
+            status: "RECEIVED" | "DECIDED";
+            receipt: {
+                /** @enum {string} */
+                controller: "TENANT" | "OPERATOR";
+                /** Format: date */
+                received_on: string;
+                /** Format: date-time */
+                identity_at: string;
+            };
+            kinds: {
+                [key: string]: {
+                    due: {
+                        /** Format: date */
+                        on: string | null;
+                        without_delay: boolean;
+                        rule: {
+                            [key: string]: unknown;
+                        } | null;
+                    } | null;
+                    decisions: {
+                        /** Format: date */
+                        on: string;
+                        decision: {
+                            /** @enum {string} */
+                            outcome: "GRANTED" | "PARTIAL" | "REFUSED" | "POSTPONED";
+                            reason: string | null;
+                            note: string | null;
+                        };
+                    }[];
+                };
+            };
+        };
         /** @enum {string} */
         ProcessingStatus: "PROCESSING" | "READY" | "FAILED";
         ProductionCapacityIngress: {
@@ -28857,6 +29004,12 @@ export interface components {
             expires_at: string | null;
             /** Format: date-time */
             tenant_approved_at: string | null;
+            /** Format: date-time */
+            operator_approved_at?: string | null;
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            ended_at?: string | null;
             decisions: components["schemas"]["SupportSessionDecision"][];
             records: components["schemas"]["SupportAccessRecord"][];
         };
@@ -30827,9 +30980,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        items: {
+                        items: ({
+                            occurred_at: components["schemas"]["Timestamp"];
+                        } & {
                             [key: string]: unknown;
-                        }[];
+                        })[];
                         /** Format: int64 */
                         limit: number;
                         /** Format: int64 */
@@ -33700,6 +33855,40 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getApprovalDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Canonical source-prefixed document ID from the inbox. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Visible source document under one consistent snapshot. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDocumentDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description Sanitized approvals.projection_unavailable; includes a support reference. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     undoAttendanceBatch: {
@@ -46024,7 +46213,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        imports?: {
+                            latest_import_at?: components["schemas"]["Timestamp"];
+                        } & {
+                            [key: string]: unknown;
+                        };
                         payroll: {
+                            latest_updated_at?: components["schemas"]["Timestamp"];
                             /**
                              * Format: int64
                              * @description Number of inspectable non-terminal payroll close runs.
@@ -53390,6 +53585,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description contract_wage_exists when a wage already exists for the same employee and effective_from, even if the remaining payload differs. Append a new effective date for a raise. employee_exited_read_only takes priority when the employee has exited, including after the draft was read; request a governed correction of the personnel record. Neither refusal appends a wage or a successful creation audit; existing wages and audits remain unchanged. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
         };
     };
@@ -55047,6 +55251,154 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    filePrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    controller: "TENANT" | "OPERATOR";
+                    kinds: ("ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL")[];
+                    /** @default  */
+                    detail?: string;
+                    step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Filed receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    listOwnPrivacyRightsRequests: {
+        parameters: {
+            query?: {
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own requests only, ordered by descending receipt ID with keyset paging. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        as_of: string;
+                        items: components["schemas"]["PrivacyRightsReceipt"][];
+                        /** Format: uuid */
+                        next_cursor: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    privacyRightsRequestOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Code-only choices admitted by Cedar; dates resolved as of the server KST date. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        subject_user_id: string;
+                        /** Format: date */
+                        as_of: string;
+                        controllers: {
+                            /** @enum {string} */
+                            code: "TENANT" | "OPERATOR";
+                        }[];
+                        kinds: {
+                            /** @enum {string} */
+                            code: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                            /** Format: date */
+                            due_on: string | null;
+                            without_delay: boolean;
+                        }[];
+                        detail_max_length: number;
+                        reply_email_masked: string | null;
+                    };
+                };
+            };
+            /** @description Query parameters are not accepted. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    readPrivacyRightsIntake: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant receipt and requester name. Account-data requests are never returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        request: components["schemas"]["PrivacyRightsReceipt"];
+                        subject_name: string;
+                        /** Format: date */
+                        as_of: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     listProductionCapacitySlots: {

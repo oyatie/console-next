@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koAccessLog = {
+  "accessLog.action.privacy_request.intake_read": "개인정보 권리 요구 조회",
+  "accessLog.target.privacy_rights_request": "개인정보 권리 요구",
   "accessLog.target.employee": "직원",
   "accessLog.target.user": "계정",
   "accessLog.target.access_log": "접속기록",
@@ -62,6 +64,11 @@ export const koAccessLog = {
   "accessLog.title": "접속기록 점검",
   "accessLog.chooseFilters": "필터 선택",
   "accessLog.filters": "접속기록 필터",
+  "accessLog.appliedFilters": "적용한 필터",
+  "accessLog.filterInvalid": "필터를 확인하십시오",
+  "accessLog.actorUnavailable": "선택할 수 없는 접속자",
+  "accessLog.filtersUnavailable": "필터를 사용할 수 없습니다",
+  "accessLog.filtersUnavailableReason": "접속자·IP 주소 검색으로 기록을 확인하십시오.",
   "accessLog.targetType": "대상 종류",
   "accessLog.from": "시작일",
   "accessLog.to": "종료일",

@@ -44997,35 +44997,37 @@
     },
     {
       "kind": "container",
-      "name": "gcr.io/distroless/cc-debian12",
+      "name": "gcr.io/distroless/cc-debian13",
       "direct": true,
       "uses": [
         {
           "file": "deploy/versions.json",
           "user": "deploy",
-          "pin": "gcr.io/distroless/cc-debian12@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f",
+          "pin": "gcr.io/distroless/cc-debian13@sha256:08476c244888bfb425bae1ae4dd7c17f093e972aab8426883d97f3c6f280f7c1",
           "layer": "CI/supply chain"
         },
         {
           "file": "deploy/images/console.Dockerfile",
           "user": "deploy/images/console.Dockerfile",
-          "pin": "gcr.io/distroless/cc-debian12@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f",
+          "pin": "gcr.io/distroless/cc-debian13@sha256:08476c244888bfb425bae1ae4dd7c17f093e972aab8426883d97f3c6f280f7c1",
           "layer": "CI/supply chain"
         }
       ],
       "callsites": [],
       "evidence": [
-        "https://api.github.com/repos/GoogleContainerTools/distroless",
+        "https://gcr.io/v2/distroless/cc-debian13/tags/list",
         "https://github.com/GoogleContainerTools/distroless",
-        "https://github.com/oyatie/console-next/blob/2c05b9034/deploy/versions.json",
-        "docs/quality/dependency-ruling-2026-10-26.md"
+        "https://security-tracker.debian.org/tracker/source-package/openssl",
+        "docs/quality/dependency-ruling-2026-11-08-runtime.md"
       ],
-      "lastRelease": "unavailable: https://api.github.com/repos/GoogleContainerTools/distroless/releases/latest: HTTP 403",
-      "license": "unverified for exact pinned artifact including bundled OS packages",
-      "footprint": "image/download size and execution delta unmeasured",
+      "lastRelease": "2026-10-31",
+      "maintainers": "GoogleContainerTools",
       "sourceSnapshot": {
-        "source": "https://api.github.com/repos/GoogleContainerTools/distroless",
-        "unavailable": "https://api.github.com/repos/GoogleContainerTools/distroless/releases/latest: HTTP 403"
+        "source": "https://gcr.io/v2/distroless/cc-debian13/tags/list",
+        "latest": "nonroot",
+        "lastRelease": "2026-10-31",
+        "maintainers": "GoogleContainerTools",
+        "repository": "https://github.com/GoogleContainerTools/distroless"
       },
       "allowedUsers": [
         "deploy",
@@ -45039,24 +45041,68 @@
       "group": "CI/supply-chain tools",
       "job": "Minimal runtime libraries for the backend image; removal breaks the inherited platform build, deployment or verification caller",
       "verdict": "keep",
-      "convention": "contested / review required",
-      "class": "NEEDS-OWNER",
-      "approval": null,
-      "alternatives": "Scratch if binary can be static; Debian slim; own code approximately 1000 LOC (review estimate)",
-      "reason": "b: shipped runtime base. Repo is Apache-2.0; the contents (glibc, libgcc) carry other licences (UNVERIFIED). Whether a debian13 variant exists is UNVERIFIED.",
+      "convention": "STANDARD under delegated ruling",
+      "class": "STANDARD",
+      "approval": {
+        "owner": "Jason Lee",
+        "date": "2026-11-08",
+        "authority": "Orchestrator under owner delegation",
+        "ruling": "2026-10-26 owner ruling approving distroless as the runtime family, plus the 2026-11-03 owner delegation of clear enterprise best-practice decisions: move distroless/cc from debian12 to maintained debian13 to clear four High and one Critical OpenSSL CVEs.",
+        "source": "docs/quality/dependency-ruling-2026-11-08-runtime.md"
+      },
+      "architectureRecord": "docs/architecture/backend-module-map.md",
+      "approvedUsers": [
+        "deploy",
+        "deploy/images/console.Dockerfile"
+      ],
+      "approvedUses": [
+        {
+          "user": "deploy",
+          "layer": "CI/supply chain"
+        },
+        {
+          "user": "deploy/images/console.Dockerfile",
+          "layer": "CI/supply chain"
+        }
+      ],
+      "alternatives": "Deprecated Debian 12 retains the five fixable OpenSSL findings; Debian slim changes the runtime family; static binary on scratch requires a separate build change.",
+      "reason": "Delegated maintenance decision: stays distroless/cc and moves from debian12 to maintained debian13 to clear four High and one Critical OpenSSL CVEs, as recorded by the Debian security tracker.",
       "allowedLayers": [
         "CI/supply chain"
       ],
       "layer": "CI/supply chain",
       "exitPlan": "Replace only the listed platform callers after image/admission/signature/restore parity, then remove the lock entry and regenerate this register.",
-      "securityProcess": "not independently verified; blocks delegated approval",
+      "securityProcess": "Verify the published Distroless keyless identity, generate the release SPDX SBOM and refuse fixable High/Critical findings with the locked Grype gate.",
       "ruleMapping": "Preserve digest/checksum pin, supported target architecture and deployment/admission/rollback test contract.",
-      "recommendation": "Owner ruling on the runtime base: keep, or move to a static musl build on scratch.",
-      "rulingEvidence": {
-        "source": "docs/quality/dependency-ruling-2026-10-26.md",
-        "checkedOn": "2026-10-26",
-        "reason": "b: shipped runtime base. Repo is Apache-2.0; the contents (glibc, libgcc) carry other licences (UNVERIFIED). Whether a debian13 variant exists is UNVERIFIED."
-      }
+      "standardTest": {
+        "a": {
+          "result": "pass",
+          "source": "docs/quality/dependency-ruling-2026-11-08-runtime.md",
+          "reason": "Preserve the owner's 2026-10-26 distroless runtime-family choice under the 2026-11-03 best-practice delegation; no competing runtime family is introduced."
+        },
+        "b": {
+          "result": "pass",
+          "source": "https://github.com/GoogleContainerTools/distroless/blob/main/LICENSE",
+          "reason": "Apache-2.0 build definitions; bundled Debian package licences are retained in the release SPDX SBOM."
+        },
+        "c": {
+          "result": "pass",
+          "source": "https://github.com/GoogleContainerTools/distroless#base-operating-system",
+          "reason": "Upstream maintains Debian 13 and deprecates Debian 12; the pinned nonroot artifact contains libssl3t64 3.5.7-1~deb13u3, fixing the five OpenSSL CVEs in the Debian tracker."
+        },
+        "d": {
+          "result": "pass",
+          "source": "https://github.com/GoogleContainerTools/distroless#how-do-i-verify-distroless-images",
+          "reason": "Signed nonroot minimal runtime with no added packages; retain the release SPDX SBOM and strict fixable High/Critical scan."
+        },
+        "e": {
+          "result": "pass",
+          "source": "docs/architecture/backend-module-map.md",
+          "reason": "Home layer: CI/supply chain; only deploy and deploy/images/console.Dockerfile are approved users, with the existing exit plan."
+        }
+      },
+      "license": "Apache-2.0 (Distroless build definitions); bundled Debian packages retain their own licences",
+      "footprint": "image/download size and execution delta unmeasured"
     },
     {
       "kind": "container",
@@ -50956,7 +51002,7 @@
         }
       ],
       "callsites": [
-        ".github/dependabot.yml:19",
+        ".github/dependabot.yml:25",
         "package.json:37",
         "scripts/dependency-ruling.test.ts:9",
         "scripts/supply-chain.test.mjs:196"
@@ -52087,7 +52133,7 @@
         }
       ],
       "callsites": [
-        ".github/dependabot.yml:21",
+        ".github/dependabot.yml:27",
         "package.json:39",
         "packages/api/src/ops-schema.d.ts:3",
         "packages/api/src/schema.d.ts:2",
@@ -54461,7 +54507,7 @@
         }
       ],
       "callsites": [
-        ".github/dependabot.yml:21",
+        ".github/dependabot.yml:27",
         ".github/workflows/codeql.yml:30",
         "apps/web/src/lib/react/read-boundaries.test.ts:4",
         "apps/web/src/ui/avatar/avatar.test.tsx:10",

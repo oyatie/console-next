@@ -15,6 +15,17 @@ const item = (id: string, extra: Partial<Item> & { fold_key?: string } = {}): It
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
 const html = (items: Item[]) => renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><RouterContextProvider router={router}><GroupedQueue items={items} /></RouterContextProvider></QueryClientProvider>);
 
+test("privacy intake uses the rights catalog and the server deadline", () => {
+  const markup = html([item("privacy_request:request", { kind: "privacy_request", title: "RR-001", ref: "RR-001", who: "김요구", context: { privacy_kinds: ["ACCESS", "DELETION"] }, due: "2026-11-22T00:00:00+09:00", days_remaining: 17, links: [{ kind: "privacy_request", id: "request" }] })]);
+  expect(markup).toContain("권리 요구");
+  expect(markup).toContain("D-17");
+  expect(markup).not.toContain("home.inbox.reason.privacy_request");
+  expect(markup).toContain("김요구");
+  expect(markup).toContain("열람 · 삭제");
+  expect(markup).toContain('href="/account/privacy/intake/request"');
+  expect(t("account.privacy.status.RECEIVED")).toBe("접수됨");
+});
+
 test("deadline groups put the D-day exit before undated reviews in the server item set", () => {
   const items = [
     item("undated review", { links: [] }),
@@ -63,7 +74,7 @@ test("each deadline group ranks source dates before server insertion order", () 
     item("undated first"),
     item("due in three days", { due: "2026-10-29T00:00:00Z", days_remaining: 3, dueTone: "warn" }),
     item("later overdue", { due: "2026-10-25T00:00:00Z", days_remaining: -1, dueTone: "danger" }),
-    item("D-day exit", { kind: "hr_exit_confirm", due: "2026-10-26T09:00:00+09:00", days_remaining: 0, dueTone: "danger" }),
+    item("D-day exit", { kind: "hr_exit_confirm", due: "2026-10-26T00:00:00Z", days_remaining: 0, dueTone: "danger" }),
     item("earlier overdue", { due: "2026-10-24T00:00:00Z", days_remaining: -2, dueTone: "danger" }),
     item("earlier today", { due: "2026-10-25T23:00:00Z", days_remaining: 0, dueTone: "danger" }),
   ]);

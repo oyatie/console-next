@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[path = "support/approvals.rs"]
+mod fixtures;
 #[path = "../../test-support/org_change_fixtures.rs"]
 mod grants;
 #[path = "support/http.rs"]
@@ -7,7 +9,7 @@ mod http;
 #[path = "../../test-support/person_fixtures.rs"]
 mod people;
 use ::http::StatusCode;
-use console_kernel_core::UserId;
+use fixtures::{document, setup};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -15,22 +17,6 @@ use uuid::Uuid;
 #[path = "approvals_list_api/delivery.rs"]
 mod delivery;
 
-async fn document(pool: &PgPool, org: Uuid, maker: UserId, code: &str) -> Uuid {
-    let id = sqlx::query_scalar("INSERT INTO org_change_requests (org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,proposal,drafted_by,idempotency_key,request_fingerprint) VALUES ($1,$2,'REORG','IN_APPROVAL','REGION','region','조직 개편',CURRENT_DATE,'변경 검토','[]',$3,$4,repeat('a',64)) RETURNING id")
-        .bind(org).bind(code).bind(maker.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(pool).await.unwrap();
-    sqlx::query("INSERT INTO org_change_approval_steps(org_id,request_id,step_order,role_key) VALUES($1,$2,1,'hr'),($1,$2,2,'executive')")
-        .bind(org).bind(id).execute(pool).await.unwrap();
-    id
-}
-async fn setup(pool: &PgPool) -> (Uuid, UserId, UserId) {
-    let (org, maker) = http::tenant(pool, &["SUPER_ADMIN"]).await;
-    let checker = http::add_user(pool, org, &["EXECUTIVE"]).await;
-    for user in [maker, checker] {
-        people::bind_user_to_distinct_person(pool, user).await;
-        grants::grant_org_approve(pool, user).await;
-    }
-    (org, maker, checker)
-}
 async fn get(ctx: &http::Ctx, query: &str) -> Value {
     let _ = tracing_subscriber::fmt()
         .with_env_filter("error")

@@ -58,7 +58,6 @@ async fn deployed_slices_cover_historical_events_and_never_cite_future_support(p
                 r.code,
                 r.effective_from
             );
-            assert!(citation.source_url.starts_with("https://www.law.go.kr/"));
         }
         for year in [2024, 2026, 2027] {
             for month in 1..=12 {

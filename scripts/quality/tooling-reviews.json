@@ -1,4 +1,63 @@
 {
+  "cargo:aws-lc-rs": {
+    "group": "Crypto/auth",
+    "job": "AES-256-GCM payload encryption, AES-256-KWP DEK wrapping, HMAC-SHA256 RRN matching and CSPRNG for credential/RRN envelopes; jsonwebtoken crypto backend",
+    "verdict": "keep",
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-11-07",
+      "ruling": "2026-10-26: aws-lc-rs everywhere; 2026-11-03: approve aws-lc-rs; 2026-11-07: direct workspace dependency for AES-256-GCM replacing XChaCha20-Poly1305 — no reason to pick chacha20poly1305 over aes-256-gcm",
+      "source": "docs/quality/dependency-ruling-2026-11-03.md"
+    },
+    "architectureRecord": "docs/architecture/credential-encryption.md",
+    "approvedUsers": [
+      "console-app",
+      "console-comms-credential-cipher"
+    ],
+    "approvedUses": [
+      {
+        "user": "console-app",
+        "layer": "frameworks & drivers/platform"
+      },
+      {
+        "user": "console-comms-credential-cipher",
+        "layer": "frameworks & drivers/platform"
+      }
+    ],
+    "allowedLayers": [
+      "frameworks & drivers/platform"
+    ],
+    "layer": "frameworks & drivers/platform",
+    "features": {
+      "defaultFeatures": true,
+      "default": [
+        "aws-lc-sys",
+        "alloc",
+        "ring-io",
+        "ring-sig-verify"
+      ],
+      "workspaceResolved": [
+        "alloc",
+        "aws-lc-sys",
+        "default",
+        "prebuilt-nasm",
+        "ring-io",
+        "ring-sig-verify"
+      ],
+      "fips": false
+    },
+    "alternatives": "Retain the legacy XChaCha20-Poly1305 implementation; other audited AES providers require owner approval; never implement crypto primitives in-house",
+    "reason": "Owner-approved standard AES envelope provider and byte-compatible HMAC; existing locked provider also backs jsonwebtoken. JWT use remains governed by its separate dependency review.",
+    "license": "ISC AND (Apache-2.0 OR ISC)",
+    "evidence": [
+      "docs/quality/dependency-ruling-2026-10-26.md",
+      "docs/quality/dependency-ruling-2026-11-03.md",
+      "docs/architecture/credential-encryption.md",
+      "https://github.com/aws/aws-lc-rs"
+    ],
+    "exitPlan": "Replace only after versioned-read, known-answer, persisted-envelope, HMAC-index and JWT compatibility proof; remove legacy ChaCha only after zero v1 rows in every environment."
+  },
   "npm:minimatch": {
     "group": "Test/lint tooling",
     "job": "Security override for Stryker's existing glob matcher",
@@ -7358,35 +7417,69 @@
       "reason": "As buildx (moby org, Apache-2.0)."
     }
   },
-  "container:gcr.io/distroless/cc-debian12": {
+  "container:gcr.io/distroless/cc-debian13": {
     "group": "CI/supply-chain tools",
     "job": "Minimal runtime libraries for the backend image; removal breaks the inherited platform build, deployment or verification caller",
     "verdict": "keep",
-    "convention": "contested / review required",
-    "class": "NEEDS-OWNER",
-    "approval": null,
-    "alternatives": "Scratch if binary can be static; Debian slim; own code approximately 1000 LOC (review estimate)",
-    "reason": "b: shipped runtime base. Repo is Apache-2.0; the contents (glibc, libgcc) carry other licences (UNVERIFIED). Whether a debian13 variant exists is UNVERIFIED.",
+    "convention": "STANDARD under delegated ruling",
+    "class": "STANDARD",
+    "approval": {
+      "owner": "Jason Lee",
+      "date": "2026-11-08",
+      "authority": "Orchestrator under owner delegation",
+      "ruling": "2026-10-26 owner ruling approving distroless as the runtime family, plus the 2026-11-03 owner delegation of clear enterprise best-practice decisions: move distroless/cc from debian12 to maintained debian13 to clear four High and one Critical OpenSSL CVEs.",
+      "source": "docs/quality/dependency-ruling-2026-11-08-runtime.md"
+    },
+    "architectureRecord": "docs/architecture/backend-module-map.md",
+    "approvedUsers": ["deploy", "deploy/images/console.Dockerfile"],
+    "approvedUses": [
+      { "user": "deploy", "layer": "CI/supply chain" },
+      { "user": "deploy/images/console.Dockerfile", "layer": "CI/supply chain" }
+    ],
+    "alternatives": "Deprecated Debian 12 retains the five fixable OpenSSL findings; Debian slim changes the runtime family; static binary on scratch requires a separate build change.",
+    "reason": "Delegated maintenance decision: stays distroless/cc and moves from debian12 to maintained debian13 to clear four High and one Critical OpenSSL CVEs, as recorded by the Debian security tracker.",
     "evidence": [
       "https://github.com/GoogleContainerTools/distroless",
-      "https://github.com/oyatie/console-next/blob/2c05b9034/deploy/versions.json",
-      "docs/quality/dependency-ruling-2026-10-26.md"
+      "https://gcr.io/v2/distroless/cc-debian13/tags/list",
+      "https://security-tracker.debian.org/tracker/source-package/openssl",
+      "docs/quality/dependency-ruling-2026-11-08-runtime.md"
     ],
     "allowedLayers": [
       "CI/supply chain"
     ],
     "layer": "CI/supply chain",
     "exitPlan": "Replace only the listed platform callers after image/admission/signature/restore parity, then remove the lock entry and regenerate this register.",
-    "securityProcess": "not independently verified; blocks delegated approval",
+    "securityProcess": "Verify the published Distroless keyless identity, generate the release SPDX SBOM and refuse fixable High/Critical findings with the locked Grype gate.",
     "ruleMapping": "Preserve digest/checksum pin, supported target architecture and deployment/admission/rollback test contract.",
-    "license": "unverified for exact pinned artifact including bundled OS packages",
-    "footprint": "image/download size and execution delta unmeasured",
-    "recommendation": "Owner ruling on the runtime base: keep, or move to a static musl build on scratch.",
-    "rulingEvidence": {
-      "source": "docs/quality/dependency-ruling-2026-10-26.md",
-      "checkedOn": "2026-10-26",
-      "reason": "b: shipped runtime base. Repo is Apache-2.0; the contents (glibc, libgcc) carry other licences (UNVERIFIED). Whether a debian13 variant exists is UNVERIFIED."
-    }
+    "standardTest": {
+      "a": {
+        "result": "pass",
+        "source": "docs/quality/dependency-ruling-2026-11-08-runtime.md",
+        "reason": "Preserve the owner's 2026-10-26 distroless runtime-family choice under the 2026-11-03 best-practice delegation; no competing runtime family is introduced."
+      },
+      "b": {
+        "result": "pass",
+        "source": "https://github.com/GoogleContainerTools/distroless/blob/main/LICENSE",
+        "reason": "Apache-2.0 build definitions; bundled Debian package licences are retained in the release SPDX SBOM."
+      },
+      "c": {
+        "result": "pass",
+        "source": "https://github.com/GoogleContainerTools/distroless#base-operating-system",
+        "reason": "Upstream maintains Debian 13 and deprecates Debian 12; the pinned nonroot artifact contains libssl3t64 3.5.7-1~deb13u3, fixing the five OpenSSL CVEs in the Debian tracker."
+      },
+      "d": {
+        "result": "pass",
+        "source": "https://github.com/GoogleContainerTools/distroless#how-do-i-verify-distroless-images",
+        "reason": "Signed nonroot minimal runtime with no added packages; retain the release SPDX SBOM and strict fixable High/Critical scan."
+      },
+      "e": {
+        "result": "pass",
+        "source": "docs/architecture/backend-module-map.md",
+        "reason": "Home layer: CI/supply chain; only deploy and deploy/images/console.Dockerfile are approved users, with the existing exit plan."
+      }
+    },
+    "license": "Apache-2.0 (Distroless build definitions); bundled Debian packages retain their own licences",
+    "footprint": "image/download size and execution delta unmeasured"
   },
   "container:ghcr.io/cloudnative-pg/cloudnative-pg": {
     "group": "Kubernetes/GitOps platform images and tools",

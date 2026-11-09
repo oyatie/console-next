@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { expect, test } from "@playwright/test";
+import type { components } from "@console/api/schema";
+import { go } from "./flows";
+import { apiOf, bearerOf } from "./helpers/api";
+import { openTenant } from "./helpers/tenant";
+import { setupCompany, startOperations } from "./setup-flows";
+import { inlineUnitDetails, revealUnit } from "./structure-flows";
+
+test("requester opens a submitted source change in the approval document viewer", { tag: ["@org", "@live"] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  const admin = await openTenant(browser, "approvaldocument", "결재문서회사");
+  const bearer = bearerOf(admin);
+  await setupCompany(admin, "결재문서회사", "본점");
+  await startOperations(admin);
+  await go(admin, "/");
+  await expect.poll(bearer).not.toBe("");
+  const api = apiOf(admin, bearer);
+  const modules = await api("/onboarding/modules");
+  expect(modules.status()).toBe(200);
+  expect(await modules.json()).toEqual(expect.arrayContaining([expect.objectContaining({ key: "approvals", ready: true })]));
+  await expect(admin.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "결재함", exact: true })).toBeVisible();
+  const policy = await api("/settings/approval.policy.org_structure", "POST", { value: "route", reason_code: "POLICY_REVIEW" });
+  expect(policy.status()).toBe(201);
+  await admin.reload();
+  await go(admin, "/org");
+  await revealUnit(admin, "본점");
+  await admin.keyboard.press("a");
+  const name = admin.getByRole("textbox", { name: "본점 아래 새 부서 이름", exact: true });
+  await name.fill("문서확인부");
+  await inlineUnitDetails(admin, admin);
+  const submitted = admin.waitForResponse(r => r.request().method() === "POST" && /\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
+  await name.press("Enter");
+  const source = await (await submitted).json() as components["schemas"]["OrgChangeDetail"];
+  expect(source.status).toBe("IN_APPROVAL");
+  const response = await api(`/approvals/org_change:${source.id}`);
+  expect(response.status(), await response.text()).toBe(200);
+  const document = await response.json() as components["schemas"]["ApprovalDocumentDetail"];
+  expect(document.my_actions).toEqual({ kind: "none" });
+  expect(document.route).toHaveLength(source.approvalSteps.length);
+  await go(admin, `/approvals/org_change:${source.id}`);
+  await expect(admin.getByRole("heading", { level: 1, name: document.title, exact: true })).toBeVisible();
+  await expect(admin.getByRole("region", { name: "문서 내용", exact: true })).toContainText("문서확인부");
+  await expect(admin.getByRole("region", { name: "결재선", exact: true })).toContainText("인사");
+  await expect(admin.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
+  await admin.getByRole("link", { name: "원본 기록 열기", exact: true }).click();
+  await expect(admin).toHaveURL(new RegExp(`/org/changes/${source.id}$`));
+});

@@ -188,7 +188,18 @@ pub async fn insert_contract_wage_in_tx(
     .bind(wage.created_by)
     .fetch_one(tx.as_mut())
     .await
-    .map_err(|err| PgPayrollError::Db(DbError::Sqlx(err)))?;
+    .map_err(|err| {
+        if err.as_database_error().and_then(|db| db.constraint())
+            == Some("employee_contract_wages_org_id_employee_id_effective_from_key")
+        {
+            return console_kernel_core::KernelError::conflict(
+                "a contract wage already exists for this employee and effective date",
+            )
+            .with_code("contract_wage_exists")
+            .into();
+        }
+        PgPayrollError::Db(DbError::Sqlx(err))
+    })?;
     Ok(id)
 }
 
