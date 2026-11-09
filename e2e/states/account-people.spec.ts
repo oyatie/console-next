@@ -144,10 +144,12 @@ for (const [code, status, copy] of [
   ["account_link_second_person_required", 403, "요청자와 다른 확인 권한자가 승인해야 합니다"],
   ["account_link.refuse.identity_unbound", 403, "본인 정보를 확인할 수 없어 거부했습니다"],
   ["account_link_stale", 409, "현재 연결이 바뀌었습니다"],
+  ["account_link.refuse.employee_taken", 409, "이미 다른 계정에 연결된 직원입니다"],
   ["step_up_required", 428, "내 패스키로 본인 확인을 해야 합니다"],
   ["step_up_failed", 401, "패스키를 확인하지 못했습니다"],
 ] as const) {
   test(`direct relink preserves the current employee on ${code} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
     const f = await fixture(page);
     await mockRoute(page, "patch", "/api/v1/users/{id}", { status, json: failure(code) });
     await page.goto(`/people?view=accounts&sel=${linked.id}`);
@@ -159,6 +161,13 @@ for (const [code, status, copy] of [
     await expect(section.getByRole("alert")).toContainText(copy);
     await expect(section.getByRole("link", { name: /김직원.*EMP-12/ })).toBeVisible();
     await expect(section.getByRole("button", { name: "패스키로 확인하고 직원 변경 요청", exact: true })).toBeEnabled();
+    if (code === "account_link.refuse.employee_taken") {
+      for (const theme of ["light", "dark"]) {
+        await page.locator("html").evaluate((el, theme) => { el.dataset.theme = theme; }, theme);
+        await fits(page, `occupied employee refusal ${theme}`);
+        await expectAxe(page, `occupied employee refusal ${theme}`);
+      }
+    }
     expect(f.writes).toEqual([]);
     expect(f.unexpected).toEqual([]);
   });
