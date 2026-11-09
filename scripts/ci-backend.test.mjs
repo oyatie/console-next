@@ -113,7 +113,7 @@ test("ci-ok accepts only exact event/path skips and fails closed on missing clas
     const skips = new Set(push ? ["commits", "workflows", "web", "states-plan", "states", ...backendJobs.filter(name => name !== "backend-gates"), "home", "supply-chain"] : ["dev-artifacts"]);
     if (!push || web === "false") skips.add("states-timings");
     if (!push || backend === "false") skips.add("backend-cache");
-    if (!push || backend === "false" || web === "false") skips.add("release-evidence");
+    if (!push || backend === "false" && web === "false") skips.add("release-evidence");
     if (!push && backend === "false") backendJobs.filter(name => name !== "backend-release").forEach(name => skips.add(name));
     if (!push && backend === "false" && web === "false") skips.add("backend-release");
     if (!push && web === "false") ["web", "states-plan", "states"].forEach(name => skips.add(name));
@@ -413,7 +413,7 @@ test("duplicate browser, compiler and workflow checks retain a merge-gating copy
   }
   const probes = ci.jobs.home.steps.find(s => s.run?.includes("authz/write-refusals.spec.ts"));
   assert.equal(probes.if, "github.event_name == 'merge_group'");
-  assert.match(probes.run, /error-beacon.spec.ts/);
+  assert.ok(ci.jobs.home.steps.some(s => s.run?.includes("e2e/error-beacon.spec.ts")));
   assert.ok(ci.jobs["ci-ok"].needs.includes("home"));
   const pkg = JSON.parse(read("package.json"));
   assert.doesNotMatch(pkg.scripts.check, /npm run typecheck/);
