@@ -23,4 +23,6 @@ macro_rules! d26 { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     ApprovalStepUpPeopleCorrection => "approval.step_up.people_correction" = D::bool(false, Lower);
     ApprovalStepUpIdentityMerge => "approval.step_up.identity_merge" = D::bool(false, Lower);
     ApprovalStepUpImportRollback => "approval.step_up.import_rollback" = D::bool(false, Lower);
+    ApprovalBulkRegistrationVoid => "approval.bulk.registration_void" = D::bool(false, Higher);
+    ApprovalStepUpRegistrationVoid => "approval.step_up.registration_void" = D::bool(false, Lower);
 ] $($rest)* } }; }
