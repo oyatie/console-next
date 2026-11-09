@@ -383,6 +383,44 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   }
 });
 
+test("database builds reclaim hosted disk before restoring Rust and report disk even on failure", () => {
+  const job = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8")).jobs["db-tests"];
+  const cleanup = job.steps.find(step => step.name === "Reclaim runner disk");
+  assert.ok(cleanup && !cleanup.if, "every database shard must reclaim disk");
+  const restoreIndex = job.steps.findIndex(step => step.id === "rust-cache");
+  const runIndex = job.steps.findIndex(step => step.name === "Run duration shard");
+  assert.ok(job.steps.indexOf(cleanup) < restoreIndex && restoreIndex < runIndex);
+  assert.equal(job.env.CARGO_PROFILE_TEST_DEBUG, "0");
+  for (const key of ["key", "restore-keys"]) assert.ok(job.steps[restoreIndex].with[key].includes("debug${{ env.CARGO_PROFILE_TEST_DEBUG }}-"), "old debug artifacts must not consume the reclaimed disk");
+  const report = job.steps.find(step => step.name === "Report disk after database tests");
+  assert.ok(report && job.steps.indexOf(report) > runIndex);
+  assert.equal(report.if, "${{ !cancelled() }}");
+  const root = mkdtempSync(path.join(tmpdir(), "database-disk-"));
+  try {
+    for (const [name, script] of Object.entries({
+      df: `require('node:fs').appendFileSync(process.env.CALLS, 'df\\n'); console.log('available disk');`,
+      sudo: `require('node:fs').appendFileSync(process.env.CALLS, JSON.stringify(process.argv.slice(2)) + '\\n'); process.exit(Number(process.env.CLEANUP_STATUS));`,
+    })) writeFileSync(path.join(root, name), `#!${process.execPath}\n${script}\n`, { mode: 0o755 });
+    for (const status of [0, 73]) {
+      const calls = path.join(root, `calls-${status}`);
+      const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", cleanup.run], { encoding: "utf8", env: {
+        ...process.env, PATH: `${root}:${process.env.PATH}`, CALLS: calls, CLEANUP_STATUS: String(status), GITHUB_WORKSPACE: root,
+      } });
+      assert.equal(result.status, status, result.stdout + result.stderr);
+      const events = readFileSync(calls, "utf8").trim().split("\n");
+      assert.equal(events[0], "df", "measure disk before deleting anything");
+      assert.deepEqual(JSON.parse(events[1]), ["rm", "-rf", "--", "/usr/share/dotnet", "/usr/share/swift", "/opt/hostedtoolcache/CodeQL"]);
+      assert.deepEqual(events.slice(2), status ? [] : ["df"]);
+      assert.equal(result.stdout.match(/available disk/g)?.length, status ? 1 : 2);
+    }
+    const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", report.run], { encoding: "utf8", env: {
+      ...process.env, PATH: `${root}:${process.env.PATH}`, CALLS: path.join(root, "report-calls"), GITHUB_WORKSPACE: root,
+    } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /available disk/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("database wall-clock budgets reserve every test slot without excluding cases", () => {
   const config = readFileSync(new URL("../.config/nextest.toml", import.meta.url), "utf8");
   const overrides = [...config.matchAll(/\[\[profile\.ci\.overrides\]\]\s*\nfilter = '([^']+)'\s*\nthreads-required = "([^"]+)"/g)];
