@@ -1,5 +1,9 @@
 // Korean source for `setup.` ids (apps/web/src/features/onboarding). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koSetup = {
+  "setup.group.company": "법인",
+  "setup.group.operations": "운영",
+  "setup.group.people": "직원",
+  "setup.golive.more": "{count, number}건 더 보기",
   "setup.title": "운영 준비",
   "setup.step.entity": "법인 등록",
   "setup.step.workplace": "사업장 등록",

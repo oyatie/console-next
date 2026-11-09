@@ -40,6 +40,7 @@ export function SetupReceipt({ receiptNeed, historyNeed }: { receiptNeed: Access
   if (!canOpenReceipt && !canOpenHistory) return null;
   const record = !canOpenReceipt || receipt.isError && isAnswer(receipt.error) ? undefined : receipt.data;
   const counts = record?.facts_snapshot_version === 1 ? record.facts_snapshot : null;
+  const register = counts?.employees === 0 && data.steps.some(step => step.key === "employees" && step.can_act);
   const summary = counts
     ? `${t("setup.golive.details.legal_entity")} ${fmtNumber(counts.entities)} · ${t("setup.golive.details.workplace")} ${fmtNumber(counts.workplaces)} · ${t("setup.golive.details.units")} ${fmtNumber(counts.org_units)} · ${t("setup.stats.people")} ${fmtNumber(counts.employees)}`
     : null;
@@ -53,6 +54,8 @@ export function SetupReceipt({ receiptNeed, historyNeed }: { receiptNeed: Access
             {summary && <small>{t("setup.receipt.recorded")} · {summary}</small>}
           </div>
           <div className={s.homeReceiptActions}>
+            {register && <><Link to="/people/new" search={{}} className={buttonClass("primary")}>{t("setup.action.employees")}</Link>
+              <Link to="/people/import" className={buttonClass()}>{t("setup.action.import")}</Link></>}
             {canOpenReceipt && <Link to="/setup/go-live" className={buttonClass()}>{t("setup.receipt.open")}</Link>}
             {canOpenHistory && <Link to="/org/history" className={buttonClass("ghost")}>{t("setup.bulk.history")}</Link>}
           </div>

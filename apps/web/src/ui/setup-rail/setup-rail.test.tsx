@@ -83,3 +83,15 @@ test("each step renders a visible state badge and optional owner metadata while 
     "운영 시작",
   ]);
 });
+
+
+test("collapsed rows hide explanation, owner and actions but retain a blocked reason and fix", () => {
+  const act = "Act", secondary = "Import", fix = "Fix";
+  const out = html(<SetupRail title="Setup" groups={[{ key: "all", title: "All", steps: [
+    { key: "next", title: "Next", state: "todo", collapsed: true, detail: "Why", owner: "Owner", action: <button>{act}</button>, secondary: <button>{secondary}</button> },
+    { key: "blocked", title: "Blocked", state: "blocked", collapsed: true, owner: "Owner", detail: "Why", blocker: "Needs company", remedy: <a href="/org">{fix}</a> },
+  ] }]} />);
+  for (const hidden of ["Why", "Owner", ">Act<", ">Import<"]) expect(out).not.toContain(hidden);
+  expect(out).toContain("Needs company");
+  expect(out).toContain('href="/org"');
+});

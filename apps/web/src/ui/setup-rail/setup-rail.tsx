@@ -11,7 +11,9 @@ export type SetupState = "todo" | "done" | "attention" | "blocked";
  */
 export type SetupStepView = {
   key: string;
-  title: string;
+  title: ReactNode;
+  collapsed?: boolean;
+  blocker?: ReactNode;
   state: SetupState;
   detail?: ReactNode;
   owner?: ReactNode;
@@ -23,7 +25,7 @@ export type SetupStepView = {
 export type SetupGroup = { key: string; title: string; steps: readonly SetupStepView[] };
 
 const ICON = { todo: Circle, done: CheckCircle2, attention: AlertTriangle, blocked: Ban } as const;
-const TONE = { todo: "info", done: "ok", attention: "warn", blocked: "neutral" } as const;
+const TONE = { todo: "neutral", done: "ok", attention: "warn", blocked: "neutral" } as const;
 
 // eslint-disable-next-line react/only-export-components -- Home and the rail share this current-step rule.
 export const currentStep = (steps: readonly Pick<SetupStepView, "key" | "state">[]) =>
@@ -67,7 +69,7 @@ export function SetupRail({ title, summary, groups }: { title: string; summary?:
       {summary != null && <p className={s.summary}>{summary}</p>}
       <div ref={box} className={s.groups}>
         {groups.map((g) => (
-          <div key={g.key} className={s.group}>
+          <div key={`${g.key}-${g.steps[0]?.key ?? "empty"}`} className={s.group}>
             {groups.length > 1 && <h3 className={s.groupTitle}>{g.title}</h3>}
             <ol className={s.steps}>
               {g.steps.map((x) => {
@@ -78,13 +80,13 @@ export function SetupRail({ title, summary, groups }: { title: string; summary?:
                     <span className={s.title}>{x.title}</span>
                     <span className={`chip chip--${TONE[x.state]} ${s.badge}`} data-step-state={x.state}>{t(`uiSetupRail.state.${x.state}`)}</span>
                     <span className={s.actions}>
-                      {x.state === "blocked" ? x.remedy : x.state !== "done" && x.action}
-                      {x.state !== "done" && x.secondary}
+                      {!x.collapsed && (x.state === "blocked" ? x.blocker != null ? x.action : x.remedy : x.state !== "done" && x.action)}
+                      {!x.collapsed && x.state !== "done" && x.secondary}
                     </span>
-                    <div className={s.foot}>
-                      <span className={s.detail}>{x.detail}</span>
-                      {x.owner != null && <small className={s.owner} data-step-owner>{x.owner}</small>}
-                    </div>
+                    {(!x.collapsed || x.state === "blocked") && <div className={s.foot}>
+                      <div className={s.detail}><span>{!x.collapsed && x.detail}</span>{x.state === "blocked" && x.blocker != null && <>{x.blocker}{x.remedy}</>}</div>
+                      {!x.collapsed && x.owner != null && <small className={s.owner} data-step-owner>{x.owner}</small>}
+                    </div>}
                   </li>
                 );
               })}

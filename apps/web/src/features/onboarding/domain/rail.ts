@@ -52,6 +52,7 @@ const LINKS: Record<string, Fix> = {
   grant_access_admin: { to: "/access/grants" },
   // Accepted in place on the go-live preview, by the contracting admin.
   accept_terms: { to: "/setup/go-live" },
+  open_go_live_preview: { to: "/setup/go-live" },
 };
 export const fixFor = (code: string | null | undefined): Fix | undefined => (code ? LINKS[code] : undefined);
 

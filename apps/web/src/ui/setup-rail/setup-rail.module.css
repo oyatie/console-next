@@ -16,6 +16,9 @@
 .actions:empty { display: none; }
 .foot { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-3); }
 .detail { font-size: var(--text-sm); color: var(--steel); min-width: 0; }
+.detail [data-setup-blockers] { list-style: none; margin: 0; padding: 0; }
+.detail [data-setup-blocker] { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); padding-block: var(--space-1); }
+.detail a { overflow-wrap: anywhere; }
 .detail:empty { display: none; }
 .owner { font-size: var(--text-xs); color: var(--steel); margin-left: auto; }
 .step[aria-current="step"] { border-color: var(--primary-bd); background: var(--primary-soft); }
