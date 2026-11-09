@@ -71,7 +71,8 @@ test.each([1440, 390].flatMap((width) => ["서명한 입사 계약서", "서명�
   const before = (await next.boundingBox())!;
   await show(true);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  expect(await page.getByRole("link", { name, exact: true }).count()).toBe(1);
+  expect(await page.getByRole("link", { name, exact: true }).count()).toBe(0);
+  expect(await page.getByText(`${name} · https://evidence.example/document.pdf`, { exact: true }).count()).toBe(1);
   expect((await next.boundingBox())!.y).toBe(before.y);
 });
 

@@ -44,7 +44,8 @@ test("payroll integration placeholders retain recorded documents and their compl
   value.items = [exitItem({ item_key: "X8", basis: { exit_leg: "settlement", payroll_pending: true }, observed_ref: { document: { name: "기존 급여 증빙", url: "https://files.example/payroll.pdf" } } })];
   const html = await renderBoard(value);
   expect(html).toContain("급여 연동 전");
-  expect(html).toContain('href="https://files.example/payroll.pdf"');
+  expect(html).not.toContain('href="https://files.example/payroll.pdf"');
+  expect(html).toContain("https://files.example/payroll.pdf");
   expect(html).not.toContain("D-3");
 });
 

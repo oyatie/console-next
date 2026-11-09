@@ -59,10 +59,11 @@ test("a register rule with an unknown deadline still shows the warning", () => {
   expect(html).toContain(t("statutory.unknown"));
 });
 
-test("filings link to the completion path and evidence is a named linked document", () => {
+test("filings keep the completion link and document evidence stays plain text", () => {
   const html = renderToStaticMarkup(<TrailItems value={dossier([item({ filing_obligation_id: "filing-1", observed_ref: { document: { name: "입사 계약서", url: "https://files.example/contract.pdf" } } })])} />);
   expect(html).toContain('filing=filing-1');
-  expect(html).toContain('href="https://files.example/contract.pdf"');
+  expect(html).not.toContain('href="https://files.example/contract.pdf"');
+  expect(html).toContain("https://files.example/contract.pdf");
   expect(html).toContain("입사 계약서");
   expect(html).not.toContain("<code>");
 });

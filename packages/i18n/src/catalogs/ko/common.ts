@@ -20,6 +20,8 @@ export const koCommon = {
   "common.failed.code.own_record_forbidden": "본인의 인사 기록은 직접 처리할 수 없습니다(플랫폼 규칙: 어떤 역할로도 자기 자신의 인사 기록은 변경할 수 없습니다). 범위 안의 다른 담당자나 운영 계정이 처리합니다.",
   "common.failed.code.employee_number_taken": "다른 직원이 쓰고 있거나 예전 사번으로 묶여 있는 사번입니다. 다른 사번을 쓰거나, 비워 두면 다음 사번을 자동으로 부여합니다.",
   "common.failed.code.parent_not_found": "그 상위 항목이 없습니다. 조직 구조를 다시 여십시오.",
+  "common.failed.code.external_url_https_required": "HTTPS 주소만 사용할 수 있습니다. 출처의 주소를 확인하십시오.",
+  "common.failed.code.filing_citation_source_url_invalid": "법령 출처 주소가 올바르지 않습니다. https://www.law.go.kr/ 주소를 확인하십시오.",
   "common.failed.code.filing_not_applicable_invalid": "선택한 미해당 사유가 보험의 법정 근거 또는 확인된 사실과 맞지 않아 저장하지 않았습니다. 사실과 해당 사유의 근거를 확인하십시오.",
   "common.failed.code.filing_request_invalid": "요청을 저장하지 않았습니다. 해당 인사 기록에 맞는 요청일·근로월과 시행 중인 신고 종류를 선택하고 중복 요청 여부를 확인하십시오.",
   "common.failed.code.filing_remuneration_required": "상실 신고의 보수총액을 입력하지 않아 저장하지 않았습니다. 실제 신고한 보수총액을 입력하십시오.",

@@ -51,7 +51,8 @@ for (const state of Object.keys(employeePayScreen.states)) for (const [width, co
         if (state === "empty") await expect(deductions.getByText(t("payroll.employee.noDeductions"), { exact: true })).toBeVisible();
       } else {
         await expect(deductions.getByText("34,567원", { exact: true })).toHaveCount(2);
-        await expect(deductions.getByRole("link").first()).toHaveAttribute("href", "https://example.com/payroll-source");
+        await expect(deductions.getByRole("link")).toHaveCount(0);
+        await expect(deductions.getByText(/https:\/\/example.com\/payroll-source/).first()).toBeVisible();
       }
       if (state !== "empty") {
         const earnings = main.getByRole("region", { name: t("payroll.employee.earnings"), exact: true });
@@ -65,7 +66,8 @@ for (const state of Object.keys(employeePayScreen.states)) for (const [width, co
           await expect(deductions.getByText("3,422,222원", { exact: true })).toHaveCount(0);
         } else {
           await expect(minimum.getByText("12,345원", { exact: true })).toBeVisible();
-          await expect(minimum.getByRole("link")).toHaveAttribute("href", "https://example.com/payroll-source");
+          await expect(minimum.getByRole("link")).toHaveCount(0);
+          await expect(minimum.getByText(/https:\/\/example.com\/payroll-source/)).toBeVisible();
           await expect(minimum).toContainText("2026. 01. 01.");
           await expect(deductions.getByText("3,422,222원", { exact: true })).toBeVisible();
         }
@@ -75,7 +77,8 @@ for (const state of Object.keys(employeePayScreen.states)) for (const [width, co
         if (state === "below" || state === "incomparable") {
           const refusal = blockers.getByRole("listitem").filter({ hasText: t(state === "below" ? "payroll.employee.minimumBelow" : "payroll.employee.minimumIncomparable") });
           await expect(refusal).toBeVisible();
-          await expect(refusal.getByRole("link")).toHaveAttribute("href", "https://example.com/payroll-source");
+          await expect(refusal.getByRole("link")).toHaveCount(0);
+          await expect(refusal.getByText(/https:\/\/example.com\/payroll-source/)).toBeVisible();
           await expect(refusal).toContainText("2026. 01. 01.");
           await expect(main).not.toContainText("backend sentence must not render");
           await expect(main).not.toContainText("월 소정근로시간이 근로계약에 없다");

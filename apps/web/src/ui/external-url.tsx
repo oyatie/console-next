@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { Copy } from "lucide-react";
 import { t } from "@console/i18n";
+import { externalUrlValue } from "./external-url-value";
 import { announce } from "../lib/react/announce";
 import { IconButton } from "./button/button";
 import styles from "./external-url.module.css";
@@ -50,14 +51,9 @@ function ExternalUrlValue({ href, className }: { href: string; className?: strin
   const copyAttempt = useRef(0);
   useEffect(() => () => { copyAttempt.current++; }, []);
 
-  let parsed: URL | null = null;
-  try {
-    parsed = new URL(href);
-  } catch {
-    parsed = null;
-  }
+  const parsed = externalUrlValue(href);
 
-  if (!parsed || parsed.protocol !== "https:") {
+  if (!parsed) {
     return <span className={[styles.text, className].filter(Boolean).join(" ")}>{href}</span>;
   }
 

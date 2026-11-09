@@ -7,7 +7,7 @@ import type { FilingCitation, FilingTask } from "../../../reference/statutory/ap
 import { filingLabel } from "../present";
 import s from "./statutory.module.css";
 import { buttonClass } from "../../../ui/button/button-class";
-const Citation = ({ value }: { value: FilingCitation }) => <dl className="facts"><dt><ExternalLink className={buttonClass("ghost", { size: "sm", className: s.citation })} href={value.source_url}>{value.instrument} · {value.article}</ExternalLink></dt><dd>{value.promulgation} · {fmtDate(value.enforced_on)}</dd></dl>;
+const Citation = ({ value }: { value: FilingCitation }) => <dl className="facts"><dt><ExternalLink className={s.citation} href={value.source_url}>{value.instrument} · {value.article}</ExternalLink></dt><dd>{value.promulgation} · {fmtDate(value.enforced_on)}</dd></dl>;
 /** A filing's window opens at the earliest day; the legal deadline and its basis come from the register. */
 export function FilingWindow({ task }: { task: FilingTask }) {
   const penalty = task.basis?.penalty;
