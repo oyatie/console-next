@@ -445,6 +445,7 @@ test("CI gives state and web checks their full run budget after measured setup",
     "python3 scripts/d10_evidence_test.py",
     "python3 scripts/d8_evidence_test.py",
     "python3 scripts/states_evidence_test.py",
+    "python3 scripts/pull_measured_evidence_test.py",
     "CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts",
   ]);
   assert.equal(web["timeout-minutes"], Math.ceil(timings.setupAllowanceSeconds / 60) + check["timeout-minutes"]);
