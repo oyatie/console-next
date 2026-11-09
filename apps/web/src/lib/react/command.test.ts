@@ -274,22 +274,19 @@ test("an authoritative non-application replays the original input and key, never
 });
 
 
-test("an unreachable renewal retries once with the refused key without an outcome lookup", async () => {
+test("an unreachable renewal leaves retry to the form without a frozen-input banner recovery", async () => {
   const error = new ApiError(401, "session_renewal_unreachable", "", [], undefined, false, [], { requestKey: transportKey });
   const run = vi.fn<(input: string, key: string) => Promise<string>>().mockRejectedValueOnce(error).mockResolvedValue("saved");
   const verify = vi.fn();
   const { command, client } = capture(run, verify);
   await expect(command.mutateAsync("original")).rejects.toBe(error);
   expect(command.isChecking).toBe(false);
-  const retry = recoveryOf(error);
-  expect(retry).toBeTypeOf("function");
+  expect(recoveryOf(error)).toBeUndefined();
   await Promise.resolve();
   expect(run).toHaveBeenCalledTimes(1);
-  retry!();
-  retry!();
-  await vi.waitFor(() => expect(client.getMutationCache().getAll().at(-1)?.state.status).toBe("success"));
+  await expect(command.mutateAsync("edited")).resolves.toBe("saved");
   expect(run).toHaveBeenCalledTimes(2);
-  expect(run.mock.calls[1]).toEqual(["original", transportKey]);
+  expect(run.mock.calls[1]).toEqual(["edited", transportKey]);
   expect(verify).not.toHaveBeenCalled();
   client.clear();
 });

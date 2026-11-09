@@ -251,7 +251,7 @@ test("a failed renewal says not saved without an uncertain-outcome link", async 
 });
 
 
-test("a known not-saved command offers retry in place unless its screen owns recovery", async () => {
+test("a known not-saved command leaves retry to the editable form", async () => {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   let command!: ReturnType<typeof useCommand<string, string>>;
   function Probe({ collect }: { collect: (value: ReturnType<typeof useCommand<string, string>>) => void }) {
@@ -260,7 +260,7 @@ test("a known not-saved command offers retry in place unless its screen owns rec
   }
   renderToStaticMarkup(<QueryClientProvider client={client}><Probe collect={value => { command = value; }} /></QueryClientProvider>);
   const failure: unknown = await command.mutateAsync("original").catch((error: unknown) => error);
-  expect(await html(failure)).toContain(`>${t("common.retryCommand")}</button>`);
-  expect(await html(failure, { recover: false })).not.toContain(`>${t("common.retryCommand")}</button>`);
+  expect(await html(failure)).not.toContain("</button>");
+  expect(await html(failure, { recover: false })).not.toContain("</button>");
   client.clear();
 });

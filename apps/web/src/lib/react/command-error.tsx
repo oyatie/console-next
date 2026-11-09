@@ -9,7 +9,7 @@ import { Chip } from "../../ui/chip";
 import { ErrorSummary, type ErrorSummaryItem } from "../../ui/error-summary";
 import { catalogRefusal, failureText, readFailureText } from "../refusal";
 import { SupportReference } from "./support-reference";
-import { outcomeUnknown, recoveryOf, renewalUnreachable } from "./command";
+import { outcomeUnknown, recoveryOf } from "./command";
 import { OutcomeLink } from "./outcome-link";
 
 type FieldRefusal = {
@@ -71,7 +71,7 @@ export function CommandError({
   const uncertain = outcomeUnknown(error);
   const readFailure = read || (uncertain && !api?.requestKey);
   const checking = !readFailure && uncertain;
-  const finish = (checking || renewalUnreachable(error)) && recover ? recoveryOf(error) : undefined;
+  const finish = checking && recover ? recoveryOf(error) : undefined;
   // An authentication refusal happens before the operation and has no command outcome to inspect.
   const key = readFailure || api?.status === 401 ? undefined : api?.originalOperationId ?? api?.operationId ?? api?.requestKey;
   const change = api?.status === 409 && api.code === "stale_revision" && !checking ? api.lastChange : undefined;
@@ -115,7 +115,7 @@ export function CommandError({
 
   return (
     <Banner tone={checking ? "info" : "danger"} live={live ?? (checking ? "polite" : "assertive")} title={checking ? t("requestOutcome.checking") : undefined}
-      actions={finish && <Button variant="primary" onClick={finish}>{t(checking ? "requestOutcome.check" : "common.retryCommand")}</Button>}>
+      actions={finish && <Button variant="primary" onClick={finish}>{t("requestOutcome.check")}</Button>}>
       {readFailure ? readFailureText(error, own) : api?.status === 0 ? t("common.networkError") : failureText(error, own)}
       {checking && <p>{t("requestOutcome.remedy")}</p>}
       {change && (change.redacted ? <p>{t("requestOutcome.other")}</p> : <>

@@ -43,7 +43,7 @@ export const app = createRoute({ getParentRoute: () => root, id: "app", staticDa
 const tenants = createRoute({
   getParentRoute: () => app,
   path: "/platform", staticData: { access: "signed-in", floorplan: "P-01" },
-  beforeLoad: async context => { await (await guards()).ensureSession(context); await streamReady(); },
+  beforeLoad: async context => (await guards()).ensureSession(context),
   // The tenant, the search and the status view live in the URL, so a support ticket can link to them.
   validateSearch: (s: Record<string, unknown>): TenantsSearch => ({
     sel: str(s.sel),
