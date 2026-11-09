@@ -79,3 +79,43 @@ test("D7 evidence imports reports on dev pushes; the queue gates solo journeys",
   assert.ok(!ci.jobs["ci-ok"].needs.includes("d7-evidence"));
   assert.ok(!ci.jobs["ci-ok"].steps.some(s => s.run?.includes("needs.d7-evidence")));
 });
+
+
+test("dev evidence publishes E2E and nextest independently and isolates the beacon", async () => {
+  const { default: yaml } = await import("js-yaml");
+  const ci = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
+  const job = ci.jobs["release-evidence"];
+  assert.match(job.if, /outputs.backend == 'true' \|\| needs.affected.outputs.web == 'true'/);
+  for (const source of ["e2e", "nextest"]) {
+    const produce = job.steps.find(s => s.run?.includes(`--source ${source}`));
+    assert.ok(produce, `${source} must normalize without requiring its sibling reports`);
+    assert.match(produce.if, /!cancelled\(\)/);
+    if (source === "nextest") assert.match(produce.if, /outputs.backend == 'true'/);
+    else assert.doesNotMatch(produce.if, /outputs.backend/);
+    const upload = job.steps.find(s => s.with?.name === `${source}-evidence`);
+    assert.ok(upload);
+    assert.match(upload.if, /!cancelled\(\)/);
+    if (source === "nextest") assert.match(upload.if, /outputs.backend == 'true'/);
+    else assert.doesNotMatch(upload.if, /outputs.backend/);
+    assert.equal(upload.with.path, `.cache/d7-evidence/${source}.json`);
+  }
+  const combined = job.steps.find(s => s.with?.name === "d7-evidence");
+  for (const source of ["e2e", "nextest"]) {
+    assert.match(combined.if, new RegExp(`steps\\.${source}\\.outcome == 'success'`));
+  }
+  for (const script of ["d10-evidence.py", "d8-evidence.py"]) {
+    const produce = job.steps.find(s => s.run?.includes(`scripts/${script}`));
+    assert.match(produce.if, /outputs.backend == 'true' && needs.affected.outputs.web == 'true'/);
+  }
+  const beacon = ci.jobs.home.steps.find(s => s.run?.includes("e2e/error-beacon.spec.ts"));
+  assert.doesNotMatch(beacon.run, /write-refusals/);
+  assert.match(beacon.if, /!cancelled\(\)/);
+  assert.equal(beacon.env.PLAYWRIGHT_JSON_OUTPUT_FILE, ".cache/beacon/playwright-beacon.json");
+  const beaconUpload = ci.jobs.home.steps.find(s => s.with?.name === "beacon-playwright");
+  assert.equal(beaconUpload.with.path, ".cache/beacon/*.json");
+  const download = job.steps.find(s => s.with?.name === "beacon-playwright");
+  assert.match(download.if, /!cancelled\(\)/);
+  assert.equal(download.with.path, ".cache/d7-input");
+  for (const step of job.steps.filter(s => s.with?.pattern === "backend-test-results-*"))
+    assert.match(step.if, /!cancelled\(\)/);
+});
