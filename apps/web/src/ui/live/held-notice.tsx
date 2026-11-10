@@ -1,6 +1,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { t } from "@console/i18n";
 import { liveHeld, showHeld } from "../../lib/live/live";
+import { ROW_SELECTOR } from "../long-table/row-keys";
 import { Button } from "../button/button";
 import s from "./live.module.css";
 
@@ -17,8 +18,8 @@ const lists = {
 
 /** Held changes overlay the list; the shell remains the fallback for other notice holds. */
 export function HeldNotice({ placement = "float" }: { placement?: "float" | "list" }) {
-  const count = useSyncExternalStore(liveHeld.subscribe, liveHeld.get);
-  const mounted = useSyncExternalStore(lists.subscribe, lists.get);
+  const count = useSyncExternalStore(liveHeld.subscribe, liveHeld.get, liveHeld.get);
+  const mounted = useSyncExternalStore(lists.subscribe, lists.get, lists.get);
   const notice = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (placement !== "list") return;
@@ -33,7 +34,7 @@ export function HeldNotice({ placement = "float" }: { placement?: "float" | "lis
     // Query observers publish on the next task; focus after their replacement rows commit.
     setTimeout(() => requestAnimationFrame(() => {
       if (!region?.isConnected) return;
-      const target = region.querySelector<HTMLElement>("[data-row-id], [data-id]") ?? region;
+      const target = region.querySelector<HTMLElement>(ROW_SELECTOR) ?? region;
       if (!target.hasAttribute("tabindex")) target.tabIndex = -1;
       target.focus({ preventScroll: true });
     }), 0);

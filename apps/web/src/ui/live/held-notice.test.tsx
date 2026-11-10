@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { renderToStaticMarkup } from "react-dom/server";
+import { HeldNotice } from "./held-notice";
 import { resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
@@ -46,9 +48,11 @@ beforeAll(async () => {
         function Fixture() {
           const [lists, setLists] = useState(Number(params.get('lists') || 1));
           useEffect(() => {
+            const add = () => setLists(n => n + 1);
+            window.addEventListener('add-list', add);
             const remove = () => setLists(n => Math.max(0, n - 1));
             window.addEventListener('remove-list', remove);
-            return () => window.removeEventListener('remove-list', remove);
+            return () => { window.removeEventListener('add-list', add); window.removeEventListener('remove-list', remove); };
           }, []);
           const { data = [] } = useQuery(read('/api/v1/me/action-inbox', async () => {
               const read = ++reads;
@@ -79,6 +83,10 @@ beforeEach(async () => {
 const change = () => page.evaluate(() => window.dispatchEvent(new Event("held-change")));
 const chip = () => page.getByRole("button", { name: "새 항목 1건 · 새로 고침", exact: true });
 
+test("the empty status region can render before browser subscriptions mount", () => {
+  expect(renderToStaticMarkup(<HeldNotice placement="list" />)).toContain('role="status"');
+});
+
 test("the list has an empty mounted status region before changes arrive", async () => {
   const status = page.getByRole("region", { name: "List 0" }).getByRole("status");
   await element(status).toHaveCount(1);
@@ -88,6 +96,17 @@ test("the list has an empty mounted status region before changes arrive", async 
   await element(status).toHaveText("새 항목 1건 · 새로 고침");
   await element(status).toHaveAttribute("data-same-node", "yes");
   await element(page.locator("aside").getByRole("status")).toHaveCount(0);
+});
+
+test("mounting a list hides an existing floater without another change frame", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}held-notice-test?lists=0`);
+  await element(page.locator("html")).toHaveAttribute("data-reads", "1");
+  await change();
+  const floating = page.locator("aside").getByRole("button");
+  await element(floating).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("add-list")));
+  await element(page.locator("section").getByRole("button", { name: "새 항목 1건 · 새로 고침", exact: true })).toBeVisible();
+  await element(floating).toHaveCount(0);
 });
 
 test("only the last list unmount restores the held shell floater", async () => {
@@ -169,4 +188,3 @@ test("a refresh finishing after its list unmounts does not take focus from the n
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await element(destination).toBeFocused();
 });
-

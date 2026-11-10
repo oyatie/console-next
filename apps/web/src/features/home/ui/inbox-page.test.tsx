@@ -23,7 +23,7 @@ vi.mock("@tanstack/react-query", async original => ({
   }),
   useInfiniteQuery: (options: Options) => { view.options = options; return { ...view.list, fetchNextPage: vi.fn(), refetch: vi.fn() }; },
 }));
-vi.mock("../../../lib/live/live", () => ({ liveApplying: { get: () => false, subscribe: () => () => {} }, holdLive: () => () => {} }));
+vi.mock("../../../lib/live/live", async original => ({ ...await original<typeof import("../../../lib/live/live")>(), liveApplying: { get: () => false, subscribe: () => () => {} }, holdLive: () => () => {} }));
 
 const samplePage = (extra: Partial<Page> = {}): Page => ({
   items: [{ id: "row-1", kind: "register_review", lane: "turn", title: "명부 확인", ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id: "row-1" }] }],

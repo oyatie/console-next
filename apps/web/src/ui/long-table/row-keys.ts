@@ -1,3 +1,5 @@
+export const ROW_SELECTOR = "[data-row-id], [data-id]";
+
 // Single-key shortcuts of a long table, live only while focus is inside its region (KWCAG 2.2 6.1.4 / WCAG
 // 2.1.4: no page-wide single-key shortcut). Listened for on the document in the capture phase, so they run
 // before React Aria's type-to-select (which would jump to a row starting with "k").

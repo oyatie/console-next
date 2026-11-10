@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKe
 import { ArrowLeft, Maximize2, Minimize2, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, IconButton } from "../button/button";
-import { editable } from "../long-table/row-keys";
+import { editable, ROW_SELECTOR } from "../long-table/row-keys";
 import { SidePanelReadContext } from "../side-panel/read-context";
 import s from "./flexible-columns.module.css";
 
@@ -14,7 +14,7 @@ type FlexibleColumnPane = {
 };
 
 const FOCUS_SETTLE_MS = 150;
-const rowElOf = (el: EventTarget | null) => (el instanceof Element ? el.closest<HTMLElement>("[data-row-id], [data-id]") : null);
+const rowElOf = (el: EventTarget | null) => (el instanceof Element ? el.closest<HTMLElement>(ROW_SELECTOR) : null);
 const rowKeyOf = (el: Element | null) => el?.getAttribute("data-row-id") ?? el?.getAttribute("data-id") ?? null;
 const setColumnWidth = (el: HTMLElement, kind: Kind, width?: number) => {
   const prop = kind === "related" ? "--col-related-w" : "--col-record-w";
@@ -131,7 +131,7 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
       }
       if (e.shiftKey) return;
       const step = e.code === "KeyJ" || e.key === "ArrowDown" ? 1 : e.code === "KeyK" || e.key === "ArrowUp" ? -1 : 0;
-      const rows = step ? [...el.querySelectorAll<HTMLElement>("[data-row-id], [data-id]")].filter(r => r.getClientRects().length > 0) : [];
+      const rows = step ? [...el.querySelectorAll<HTMLElement>(ROW_SELECTOR)].filter(r => r.getClientRects().length > 0) : [];
       const next = step ? rows[rows.indexOf(currentRow) + step] : undefined;
       if (next) { e.preventDefault(); next.focus(); next.scrollIntoView({ block: "nearest" }); }
     };
