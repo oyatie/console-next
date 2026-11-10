@@ -8,6 +8,7 @@ import { screens } from "../states/registry";
 import { inbox, structure } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
+import { emptyPreview } from "./onboarding";
 
 test.beforeAll(() => loadCatalog("ko"));
 for (const setup of [true, false]) test(`${setup ? "setup" : "registry"} CSV downloads neutralize every formula prefix`, async ({ page }) => {
@@ -19,6 +20,7 @@ for (const setup of [true, false]) test(`${setup ? "setup" : "registry"} CSV dow
     tree.phase = "SETUP";
     departments.forEach((node, i) => { node.name = formulaCases[i]!.value; });
     const checklist = homeSetupChecklist("first");
+    await mockRoute(page, "get", "/api/v1/onboarding/go-live/preview", { status: 200, json: emptyPreview() });
     await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: checklist });
     await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: { ...inbox(0), setup: checklist } });
   }

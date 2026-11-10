@@ -1,6 +1,10 @@
 import type { koSetup } from "../ko/setup";
 
 export const enSetup: Record<keyof typeof koSetup, string> = {
+  "setup.group.company": "Company",
+  "setup.group.operations": "Operations",
+  "setup.group.people": "People",
+  "setup.golive.more": "View {count, number} more",
   "setup.title": "Getting ready",
   "setup.step.entity": "Register the legal entity",
   "setup.step.workplace": "Register workplaces",

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -7,14 +8,15 @@ import { fmtNumber } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Chip } from "../../../ui/chip";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { StatRow } from "../../../ui/key-value/key-value";
 import { entitiesRef } from "../../../reference/entity/api";
 import { currentStep, SetupRail, type SetupStepView } from "../../../ui/setup-rail/setup-rail";
-import { SETUP_READS, skipStep } from "../api";
-import { fixFor } from "../domain/rail";
+import { goLivePreviewQuery, SETUP_READS, skipStep } from "../api";
+import { fixFor, grouped, recordFix } from "../domain/rail";
 import { FixLink } from "./fix-link";
 import { AddPasskey } from "./add-passkey";
 import { SetupBulk } from "./setup-bulk";
@@ -36,6 +38,10 @@ export function SetupHome({ c }: { c: Checklist }) {
   // The entity list fallback waits for a fresh read: stale data (from before the entity existed) would point there.
   const settled = entities.isSuccess && (Boolean(needsWorkplace) || !entities.isFetching);
   const current = currentStep(c.steps);
+  const golive = c.steps.find(s => s.key === "golive");
+  const previewEnabled = golive?.state === "blocked" && golive.can_act;
+  const preview = useQuery({ ...goLivePreviewQuery, enabled: previewEnabled });
+  const blockers = previewEnabled && !preview.isError ? preview.data?.blockers : undefined;
   const orgAllowed = c.steps.some((s) => s.key === "org" && s.can_act);
   const action = (s: ChecklistStep): ReactNode => {
     const variant = s.key === current ? "primary" : undefined;
@@ -59,7 +65,10 @@ export function SetupHome({ c }: { c: Checklist }) {
       case "passkey": return <AddPasskey count={s.count ?? 0} primary={s.key === current} />;
       case "employees": return <Link to="/people/new" search={{}} className={buttonClass(variant)}>{t("setup.action.employees")}</Link>;
       case "roles": return <Link to="/access/roles/new" className={buttonClass(variant)}>{t("setup.action.roles")}</Link>;
-      case "golive": return <Link to="/setup/go-live" className={buttonClass(variant)}>{t("setup.action.golive")}</Link>;
+      case "golive": return s.state === "blocked" ? <DisabledReason
+        control={p => <Button {...p} variant={variant}>{t("setup.golive.start")}</Button>}
+        reason={t("setup.golive.blocked", { count: s.count ?? 0 })}
+      /> : <Link to="/setup/go-live" className={buttonClass(variant)}>{t("setup.action.golive")}</Link>;
     }
   };
   // A step blocked on the missing workplace links to that workplace's form too, once the entities are read.
@@ -72,28 +81,49 @@ export function SetupHome({ c }: { c: Checklist }) {
   const view = (s: ChecklistStep): SetupStepView => {
     const waiting = s.state === "blocked" ? WAITING_FOR[s.remedy ?? ""] : undefined;
     const detail = s.remedy
-      ? codeText(`setup.remedy.${s.remedy}`, s.remedy, { count: s.count ?? 0 })
+      ? codeText(`setup.remedy.${s.remedy}`, t("setup.fix.open"), { count: s.count ?? 0 })
       : s.key === "org" && s.skippable && s.state === "todo" ? t(direct ? "setup.org.placementDirect" : "setup.org.placementDept") : s.key === "passkey" && s.state !== "done" ? t("setup.passkey.why") : undefined;
     const blockedCount = s.key === "golive" && s.state === "blocked" && (s.count ?? 0) > 0
       ? t("setup.golive.blocked", { count: s.count ?? 0 })
       : undefined;
-    const line = [blockedCount, detail].filter(Boolean).join(" · ");
+    const line = s.key === "golive" ? blockedCount : detail;
+    const title = codeText(`setup.step.${s.key}`, s.key);
+    const target = fixFor(s.remedy) ?? fixFor(s.action);
+    const collapsed = s.key !== current;
+    const counts = s.key === "employees" ? <Chip tone="warn">{t("setup.stats.unplacedCount", { count: s.counts.unplaced })} · {t("setup.stats.unknownCount", { count: s.counts.entity_unknown })}</Chip> : undefined;
     const perm = codeText(`setup.permission.${s.needs}`, s.needs);
     return {
       key: s.key,
-      title: codeText(`setup.step.${s.key}`, s.key),
+      title: collapsed && s.can_act && !waiting && target ? <Link {...target}>{title}</Link> : title,
+      collapsed,
+      locked: !s.can_act,
       state: s.state,
       owner: s.can_act ? t("setup.owner", { owner: perm }) : <Chip tone="warn">{t("setup.permissionNeeded", { permission: perm })}</Chip>,
-      detail: waiting ? <Chip>{t("setup.waiting", { step: t(waiting) })}</Chip> : <>
+      detail: collapsed ? counts ?? line : <>
         <small>{codeText(`setup.why.${s.key}`, "")}</small>
         {s.key === "roles" && <><Chip>{t("setup.roles.prepared")}</Chip>
           {(s.skippable || s.remedy === "roles_skipped") && <Chip>{t("setup.skip.rolesConsequence")}</Chip>}</>}
-        {s.key === "employees" && <Chip tone="warn">{t("setup.stats.unplacedCount", { count: s.counts.unplaced })} · {t("setup.stats.unknownCount", { count: s.counts.entity_unknown })}</Chip>}
-        {line && <><br /><span>{line}</span></>}
+        {counts}
+        {s.state !== "blocked" && line && <><br /><span>{line}</span></>}
       </>,
       // Done with something to look at: the action is the fix (when it has a screen), not the step's first act again.
+      blocker: s.state === "blocked" ? <>
+        {waiting ? t("setup.waiting", { step: t(waiting) }) : s.key === "golive" && !collapsed && s.can_act ? undefined : line}
+        {s.key === "golive" && blockers && <ul data-setup-blockers>
+          {blockers.slice(0, 5).map((b) => {
+            const text = codeText(`setup.golive.item.${b.code}`, t("setup.golive.blockers"), { count: b.count ?? 0 });
+            const record = b.records[0];
+            const fix = record && recordFix(record, b.remedy ?? undefined);
+            const stepFix = c.steps.some(step => step.key !== "golive" && fixFor(step.action)?.to === fixFor(b.remedy)?.to);
+            return <li key={b.code} data-setup-blocker>
+              {text}{fix ? <Link {...fix}>{t("setup.golive.fixOf", { fix: codeText(`setup.fix.${b.remedy}`, t("setup.fix.open")), name: record.name })}</Link> : !stepFix && <FixLink code={b.remedy} />}
+            </li>;
+          })}
+          {blockers.length > 5 && <li><Link to="/setup/go-live">{t("setup.golive.more", { count: blockers.length - 5 })}</Link></li>}
+        </ul>}
+      </> : undefined,
       action: s.can_act && !waiting ? (s.state === "attention" && fixFor(s.remedy) ? <FixLink code={s.remedy} /> : action(s)) : undefined,
-      remedy: s.can_act && !waiting && s.remedy ? remedy(s.remedy, s.key === current) : undefined,
+      remedy: s.can_act && !waiting && s.remedy && s.key !== "golive" ? remedy(s.remedy, false) : undefined,
       secondary:
         !s.can_act || waiting ? undefined : s.key === "roles" && s.state !== "done" ? (
           <><Link to="/people" search={{ view: "accounts" }} className={buttonClass()}>{t("setup.action.invite")}</Link>
@@ -139,7 +169,7 @@ export function SetupHome({ c }: { c: Checklist }) {
         // Home's own heading already greets the person by name.
         title={t("setup.title")}
         summary={orgAllowed ? <Link to="/org/history">{t("setup.bulk.history")}</Link> : undefined}
-        groups={[{ key: "setup", title: t("setup.title"), steps: c.steps.map(view) }]}
+        groups={grouped(c).map(g => ({ key: g.key, title: t(`setup.group.${g.key}`), steps: g.steps.map(view) }))}
       />
       <SetupBulk allowed={orgAllowed} />
       <CommandError error={skip.error} own={onboardingError} />

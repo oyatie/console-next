@@ -41,7 +41,7 @@ export function previewData(state: "blocked" | "ready" | "receipt" | "legacy-rec
   };
 }
 
-function emptyPreview(): GoLivePreview {
+export function emptyPreview(): GoLivePreview {
   const preview = previewData("ready");
   return { ...preview, blockers: [
     { code: "terms_not_accepted", count: null, remedy: "accept_terms", records: [] },

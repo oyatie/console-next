@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { tg } from "@console/i18n/gallery";
 import { SetupRail, type SetupGroup } from "./setup-rail";
 
@@ -9,8 +10,8 @@ const GROUPS: SetupGroup[] = [
     key: "company",
     title: tg("rail.company"),
     steps: [
-      { key: "entity", title: tg("rail.entity"), state: "attention", detail: tg("rail.entityDetail") },
-      { key: "workplace", title: tg("rail.workplace"), state: "done" },
+      { key: "entity", title: tg("rail.entity"), state: "attention", collapsed: true, detail: tg("rail.entityDetail") },
+      { key: "workplace", title: tg("rail.workplace"), state: "done", collapsed: true },
     ],
   },
   {
@@ -18,16 +19,16 @@ const GROUPS: SetupGroup[] = [
     title: tg("rail.ops"),
     steps: [
       { key: "org", title: tg("rail.org"), state: "todo", action: act("rail.orgAction"), secondary: <button type="button" className="btn btn--ghost">{tg("rail.skip")}</button> },
-      { key: "approval", title: tg("rail.approval"), state: "todo", action: act("rail.approvalAction") },
-      { key: "contact", title: tg("rail.contact"), state: "todo", action: act("rail.contactAction") },
+      { key: "approval", title: tg("rail.approval"), state: "todo", collapsed: true, action: act("rail.approvalAction") },
+      { key: "contact", title: tg("rail.contact"), state: "todo", collapsed: true, action: act("rail.contactAction") },
     ],
   },
   {
     key: "people",
     title: tg("rail.people"),
     steps: [
-      { key: "employees", title: tg("rail.employees"), state: "blocked", detail: tg("rail.employeesBlocked"), remedy: act("rail.employeesRemedy") },
-      { key: "golive", title: tg("rail.golive"), state: "todo", action: act("rail.goliveAction") },
+      { key: "employees", title: tg("rail.employees"), state: "blocked", collapsed: true, blocker: tg("rail.employeesBlocked"), remedy: act("rail.employeesRemedy") },
+      { key: "golive", title: tg("rail.golive"), state: "todo", collapsed: true, action: act("rail.goliveAction") },
     ],
   },
 ];
