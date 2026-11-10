@@ -173,7 +173,7 @@ test("bulk offers only download and workplace does not duplicate department impo
 });
 
 test("a blocked go-live keeps its fix and disables starting operations", () => {
-  const row = rowsOf(render(checklist([step("golive", true, "tenant_ops", { state: "blocked", remedy: "accept_terms" })])))[0]!;
+  const row = rowsOf(render(checklist([step("golive", true, "tenant_ops", { state: "blocked", remedy: "accept_terms", action: "open_go_live_preview" })])))[0]!;
   expect(row).toContain("이용약관 동의");
   expect(row).toContain('href="/setup/go-live"');
   expect(row).toContain('aria-disabled="true"');
@@ -228,7 +228,7 @@ test("three server groups expand only the next step and retain a quiet prerequis
 
 test.each([3, 7])("go-live lists up to five of %i preview blockers with direct record fixes", (count) => {
   preview.items = Array.from({ length: count }, (_, i) => ({ code: i === 0 ? "future_refusal" : "workplace_incomplete", remedy: "complete_workplace", records: [{ kind: "workplace", id: `wp-${i}`, legal_entity_id: `entity-${i}`, name: `사업장 ${i}` }] }));
-  const html = render(checklist([step("entity", true, "org::edit", { state: "done" }), step("golive", true, "tenant_ops", { state: "blocked", count })]));
+  const html = render(checklist([step("workplace", true, "org::edit", { state: "done", action: "create_primary_workplace" }), step("golive", true, "tenant_ops", { state: "blocked", count })]));
   expect(preview.enabled).toBe(true);
   expect(html.match(/data-setup-blocker=/g)).toHaveLength(Math.min(5, count));
   expect(html).toContain('href="/org/entities/entity-0?wp=wp-0"');
@@ -287,6 +287,30 @@ test("collapsed blocked steps without permission have no remedy or title link", 
   ])))[1]!;
   expect(row).toContain("조직 등록·수정 권한 필요");
   expect(row).not.toContain("href=");
+});
+
+test("the current blocked step without permission has no remedy link", () => {
+  const row = rowsOf(render(checklist([
+    step("org", false, "org::edit", { state: "blocked", remedy: "add_department" }),
+  ])))[0]!;
+  expect(row).toContain('aria-current="step"');
+  expect(row).toContain("조직 등록·수정 권한 필요");
+  expect(row).not.toContain("href=");
+});
+
+test.each([
+  ["entity", "register_legal_entity", "create_legal_entity"],
+  ["workplace", "create_primary_workplace", "create_workplace"],
+  ["org", "add_department", "add_department"],
+] as const)("go-live describes the %s prerequisite without repeating its step action", (key, action, remedy) => {
+  preview.items = [{ code: "no_legal_entity", remedy, records: [] }];
+  const rows = rowsOf(render(checklist([
+    step(key, true, "org::edit", { action }),
+    step("golive", true, "tenant_ops", { state: "blocked", count: 1 }),
+  ])));
+  expect(rows[1]).toContain("data-setup-blocker");
+  expect(rows[1]).toContain("등록된 법인이 없습니다");
+  expect(rows[1]).not.toContain("href=");
 });
 
 test("an uncatalogued step remedy never exposes its refusal code", () => {

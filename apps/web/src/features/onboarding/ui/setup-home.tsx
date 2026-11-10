@@ -114,8 +114,9 @@ export function SetupHome({ c }: { c: Checklist }) {
             const text = codeText(`setup.golive.item.${b.code}`, t("setup.golive.blockers"), { count: b.count ?? 0 });
             const record = b.records[0];
             const fix = record && recordFix(record, b.remedy ?? undefined);
+            const stepFix = c.steps.some(step => step.key !== "golive" && fixFor(step.action)?.to === fixFor(b.remedy)?.to);
             return <li key={b.code} data-setup-blocker>
-              {text}{fix ? <Link {...fix}>{t("setup.golive.fixOf", { fix: codeText(`setup.fix.${b.remedy}`, t("setup.fix.open")), name: record.name })}</Link> : <FixLink code={b.remedy} />}
+              {text}{fix ? <Link {...fix}>{t("setup.golive.fixOf", { fix: codeText(`setup.fix.${b.remedy}`, t("setup.fix.open")), name: record.name })}</Link> : !stepFix && <FixLink code={b.remedy} />}
             </li>;
           })}
           {blockers.length > 5 && <li><Link to="/setup/go-live">{t("setup.golive.more", { count: blockers.length - 5 })}</Link></li>}

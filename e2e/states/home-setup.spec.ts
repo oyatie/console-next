@@ -87,6 +87,11 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
         if (state === "first") {
           await expect(main.getByRole("alert")).toHaveCount(0);
           await expect(rail.locator(".chip--danger, .btn--danger")).toHaveCount(0);
+          await expect(rail.getByRole("link", { name: "법인 등록", exact: true })).toHaveCount(1);
+          await expect(rail.getByRole("link", { name: "사업장 등록", exact: true })).toHaveCount(0);
+          await expect(rows.last().locator("[data-setup-blocker]")).toHaveCount(3);
+          await expect(rows.last().locator("[data-setup-blockers]").getByRole("link")).toHaveCount(1);
+          await expect(rows.last().getByRole("link", { name: "이용약관 동의", exact: true })).toHaveAttribute("href", "/setup/go-live");
         }
         for (const [index, step] of checklist.steps.entries()) {
           if (step.state === "blocked" && ["create_legal_entity", "create_workplace"].includes(step.remedy ?? "")) {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
+import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { apiAs, soloTenant } from "./chaos";
 import { inviteAccount } from "./access-flows";
 import { chooseRadio, go, kstDate } from "./flows";
@@ -59,8 +60,19 @@ test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared r
   await setupCompany(admin, "첫운영정밀", "본사");
   await go(admin, "/org");
   await addDepartments(admin, "본사", ["인사팀"]);
+  await go(admin, "/");
+  await admin.route("**/api/v1/auth/passkey/register/start", async (route) => {
+    await authenticatorOf(admin).remove();
+    await virtualAuthenticator(admin);
+    await route.continue();
+  }, { times: 1 });
+  await rail.locator('[aria-current="step"]').getByRole("button", { name: "패스키 등록", exact: true }).click();
+  const employees = steps.filter({ hasText: "직원 등록" });
+  await expect(employees).toHaveAttribute("aria-current", "step");
+  await expect(employees.getByRole("link", { name: "목록 붙여넣기", exact: true })).toHaveAttribute("href", "/people/import?mode=paste");
+  await expect(employees.getByRole("link", { name: "명부 가져오기", exact: true })).toBeVisible();
   const rows = many("FR", 2000, ["인사팀"]).map((r, i) => ({ ...r, name: `직원${String(i + 1).padStart(4, "0")}`, hired: kstDate(-30), unit: i < 1982 ? "인사팀" : "" }));
-  await go(admin, "/people/import");
+  await employees.getByRole("link", { name: "명부 가져오기", exact: true }).click();
   await chooseWorkbook(admin, "2000명.xlsx", await workbook([plain("첫운영정밀", rows)]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
@@ -71,10 +83,13 @@ test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared r
   await go(admin, "/");
   expect((await refreshed).status()).toBe(200);
   await expect(rail).toContainText("미배치 18");
+  await expect(employees).not.toHaveAttribute("aria-current", "step");
+  await expect(employees.getByRole("link")).toHaveCount(1);
+  await expect(employees.getByRole("link")).toHaveAttribute("href", "/people/unplaced");
   const counts = await read<{ summary: { people: number; placed: number; unplaced: number } }>("/api/v1/onboarding/checklist");
   expect(counts.summary).toMatchObject({ people: 2000, placed: 1982, unplaced: 18 });
   await expect(admin.getByText("일괄 작업", { exact: true })).toBeVisible();
-  for (const name of ["목록 붙여넣기", "조직 시트 내려받기", "설정 단계 기록"]) await expect(admin.getByRole("main").getByText(name, { exact: true }).last()).toBeVisible();
+  for (const name of ["조직 시트 내려받기", "설정 단계 기록"]) await expect(admin.getByRole("main").getByText(name, { exact: true }).last()).toBeVisible();
   await inviteAccount(admin, "테스트 사용자", "none");
   await grantSetupRole(admin, "테스트 사용자", "명부 관리", true);
   await go(admin, "/");
