@@ -12,7 +12,7 @@ import { ChangeNotice } from "../ui/live/change-notice";
 import { HeldNotice } from "../ui/live/held-notice";
 import { LiveStatus } from "../ui/live/live-status";
 import { focusSoon } from "../lib/react/announce";
-import { get, navigationRead, read } from "../lib/query";
+import { navigationRead, read } from "../lib/query";
 import { isAnswer } from "../lib/react/query-defaults";
 import { QueryState } from "../lib/react/query-state";
 import { ReadFailureContext } from "../lib/react/read-failure-context";
@@ -34,7 +34,6 @@ import type { NavHub } from "./nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
-const identityQuery = get("/api/v1/users/me");
 
 export function Shell() {
   const nav = useNavigate();
@@ -50,11 +49,12 @@ export function Shell() {
   const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
   if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
-  const identity = useQuery({ ...identityQuery, enabled: !platform && active });
+  const identity = useQuery({ ...meQuery, enabled: !platform && active });
   const router = useRouter();
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
-  const me = useQuery({ ...navigationRead(meQuery), enabled: !platform && active });
+  // Keep the rail snapshot separate, but share the identity request with the shell and page.
+  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP", retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
