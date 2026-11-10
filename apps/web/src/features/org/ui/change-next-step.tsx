@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { components } from "@console/api/schema";
+import type { OrgChangeDetail } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { focusSoon } from "../../../lib/react/announce";
@@ -16,11 +17,12 @@ import { CancelDialog } from "./cancel-dialog";
 import { ChangeApply } from "./change-apply";
 import { ChangeDecision } from "./change-decision";
 import { ChangeRedraft } from "./change-redraft";
+import { SoleHolderDecisionCard, SoleHolderReview } from "./sole-holder-decision";
 import { elsewhereNote, type Note } from "./use-note";
 import { useOrgRouted } from "./use-org-routed";
 import css from "./org-change.module.css";
 
-type Detail = components["schemas"]["OrgChangeDetail"];
+type Detail = OrgChangeDetail;
 type Report = components["schemas"]["OrgChangePreflightReport"];
 type Refetch = () => Promise<{ data?: Detail }>;
 
@@ -44,11 +46,14 @@ export function ChangeNextStep(p: {
   const lapsed = d.status === "IN_APPROVAL" && d.effectiveDate < p.today;
   const memo = "step" in s ? s.step?.memo : undefined;
   // The decision is its own card (the shared approval card), not a card inside this one.
+  if (d.status === "IN_APPROVAL" && d.sole_holder_decision && !p.hold)
+    return <SoleHolderDecisionCard key={d.sole_holder_decision.payload_hash} d={d} offer={d.sole_holder_decision} n={p.n} onNote={p.onNote} onReopen={p.onReopen} />;
   if (s.kind === "decide" && !p.hold) return <ChangeDecision key={s.step.id} d={d} s={s} n={p.n} refetch={p.refetch} onNote={p.onNote} onReopen={p.onReopen} />;
   return (
     <section className="card panel" aria-labelledby="next-step">
       <h2 id="next-step" className="panel__title" tabIndex={-1}>{t("orgChange.next.title")}</h2>
       <div className={css.next}>
+        {d.sole_holder_exception && <SoleHolderReview exception={d.sole_holder_exception} />}
         {s.kind === "submit" && <Submit d={d} title={title} report={p.report} refetch={p.refetch} onNote={p.onNote} onEdit={p.onEdit} onPreflight={p.onPreflight} />}
         {s.kind === "submit" && p.editor}
         {s.kind === "draftReadOnly" && <p>{t("orgChange.next.draft.readOnly")}</p>}
