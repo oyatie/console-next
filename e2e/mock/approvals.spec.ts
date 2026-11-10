@@ -240,6 +240,9 @@ test("an unavailable approvals module hides the rail entry and refuses a direct 
   await page.goto("/approvals");
   await expect(page.getByRole("navigation", { name: t("shell.nav") }).getByRole("link", { name: "결재함", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1, name: "결재함", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
+  await expect(page.getByText("module_disabled", { exact: true })).toBeHidden();
+  await page.getByText(t("common.denied.why"), { exact: true }).click();
   await expect(page.getByText("module_disabled", { exact: true })).toBeVisible();
   expect(queries).toEqual([]);
   expect(mock.unexpected).toEqual([]);

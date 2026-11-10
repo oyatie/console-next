@@ -101,8 +101,9 @@ export function Denied({ screen, error, title, reason, back, need }: { screen?: 
       <details>
         <summary>{t("common.denied.why")}</summary>
         <p>{reason ?? t(why)}</p>
+        {code && <code translate="no">{code}</code>}
       </details>
-      {error != null && <div className="muted">{code && <code>{code}</code>}<ReadReference error={error} /></div>}
+      <ReadReference error={error} />
       </div>
     </Card></div>
   );

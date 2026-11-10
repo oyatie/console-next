@@ -45,6 +45,8 @@ test("boundary validation refusal lists every named field and keeps the support 
   expect(markup).toContain(operation);
   expect(markup).toContain(`href="/requests/${operation}"`);
   expect(markup).toContain(callerRemedy);
+  expect(markup.replace(/<details>[\s\S]*?<\/details>/g, "")).not.toContain('<code translate="no">validation</code>');
+  expect(markup.match(/<details>[\s\S]*?<\/details>/)?.[0]).toContain('<code translate="no">validation</code>');
 });
 
 test("an untrusted plain object cannot opt into the validation summary", async () => {
