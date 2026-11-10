@@ -19,8 +19,7 @@ export default defineConfig({
   build: {
     assetsInlineLimit: 0, manifest: true,
     rolldownOptions: {
-      // Short vendor paths trim the eager preload map; product chunks retain diagnostic names.
-      output: { chunkFileNames: ({ moduleIds }) => moduleIds.every(id => id.includes("/node_modules/")) ? "assets/[hash].js" : "assets/[name]-[hash].js", codeSplitting: { groups: [
+      output: { codeSplitting: { groups: [
         { name: "initial", tags: ["$initial"] },
         // Field feedback shares the controls chunk to avoid separate gzip overhead on wizard routes.
         { name: "controls", test: /src[\\/]ui[\\/](banner|button|chip|disabled-reason|error-summary|field|skeleton|step-line)([\\/.])/ },
