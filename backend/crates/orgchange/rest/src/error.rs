@@ -72,6 +72,13 @@ impl RestError {
             refusal.current_version = Some(version);
             return refusal;
         }
+        if matches!(&e, PgOrgChangeError::Domain(k) if k.code == Some("step_up_failed")) {
+            return Self::new(
+                StatusCode::UNAUTHORIZED,
+                "step_up_failed",
+                "Identity verification failed. Verify again to approve this step.",
+            );
+        }
         let message = e.message();
         let code = match &e {
             PgOrgChangeError::Domain(k) => k.code,

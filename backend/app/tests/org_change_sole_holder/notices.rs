@@ -152,3 +152,90 @@ async fn duplicate_notice_delivery_and_exception_reuse_are_guarded(pool: PgPool)
         Some("org_change_step_exception_once")
     );
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn another_account_of_the_actor_keeps_the_self_receipt(pool: PgPool) {
+    let w = world(&pool).await;
+    let alias = seed_active_user(&pool, *w.org.as_uuid(), "MEMBER", "alias").await;
+    let person: Uuid = sqlx::query_scalar("SELECT person_id FROM users WHERE id=$1")
+        .bind(w.actor.as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    person_fixtures::bind_user_to_person(&pool, alias, person).await;
+    org_change_fixtures::grant_org_levels(&pool, alias, &["view"]).await;
+    let consent = scope_org(w.org, w.store.sole_holder_consent(w.actor, w.id))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(consent["recipients"], json!([w.actor]));
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn recipient_accounts_are_deduplicated_by_person(pool: PgPool) {
+    let w = world(&pool).await;
+    let reader = seed_active_user(&pool, *w.org.as_uuid(), "MEMBER", "reader").await;
+    let alias = seed_active_user(&pool, *w.org.as_uuid(), "MEMBER", "alias").await;
+    let (_, person) = person_fixtures::bind_user_to_distinct_person(&pool, reader).await;
+    person_fixtures::bind_user_to_person(&pool, alias, person).await;
+    for account in [reader, alias] {
+        org_change_fixtures::grant_org_levels(&pool, account, &["view"]).await;
+    }
+    let consent = scope_org(w.org, w.store.sole_holder_consent(w.actor, w.id))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(consent["payload"]["notice_count"], 1);
+    assert_eq!(consent["recipients"].as_array().unwrap().len(), 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn consent_read_does_not_lock_the_request(pool: PgPool) {
+    let w = world(&pool).await;
+    let mut writer = pool.begin().await.unwrap();
+    sqlx::query("SELECT id FROM org_change_requests WHERE id=$1 FOR NO KEY UPDATE")
+        .bind(w.id)
+        .execute(writer.as_mut())
+        .await
+        .unwrap();
+    let read = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        scope_org(w.org, w.store.sole_holder_consent(w.actor, w.id)),
+    )
+    .await;
+    writer.rollback().await.unwrap();
+    assert!(
+        read.expect("consent read waited for the writer")
+            .unwrap()
+            .is_some()
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn concurrent_document_edit_omits_an_offer_for_the_old_detail(pool: PgPool) {
+    let w = world(&pool).await;
+    let mut writer = pool.begin().await.unwrap();
+    sqlx::query("SELECT id FROM users WHERE id=$1 FOR UPDATE")
+        .bind(w.actor.as_uuid())
+        .execute(writer.as_mut())
+        .await
+        .unwrap();
+    let store = w.store.clone();
+    let org = w.org;
+    let actor = w.actor;
+    let id = w.id;
+    let read = tokio::spawn(async move { scope_org(org, store.get_for_viewer(actor, id)).await });
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        loop {
+            let waiting: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%CROSS JOIN LATERAL public.console_decision_people%')")
+                .fetch_one(&pool).await.unwrap();
+            if waiting { break; }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }).await.expect("viewer did not reach the identity read");
+    sqlx::query("UPDATE org_change_requests SET reason=reason||' amended',updated_at=clock_timestamp() WHERE id=$1")
+        .bind(w.id).execute(writer.as_mut()).await.unwrap();
+    writer.commit().await.unwrap();
+    let detail = read.await.unwrap().unwrap();
+    assert!(detail.sole_holder_decision.is_none());
+}

@@ -167,7 +167,16 @@ impl PgOrgChangeStore {
                     now,
                 )
                 .await?;
-                let detail = require_detail(tx, id).await?;
+                let mut detail = require_detail(tx, id).await?;
+                super::sole_holder_decision::attach_offer(
+                    tx,
+                    org,
+                    actor,
+                    id,
+                    sole_holder_port.as_deref(),
+                    &mut detail,
+                )
+                .await?;
                 Ok((
                     detail,
                     vec![audit(

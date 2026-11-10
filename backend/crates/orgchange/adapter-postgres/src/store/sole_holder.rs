@@ -125,7 +125,8 @@ async fn approval_candidates_in_tx(
          AND (u.is_tenant_ops OR EXISTS(SELECT 1 FROM access_grants g \
            JOIN access_roles r ON r.org_id=g.org_id AND r.id=g.role_id \
            JOIN access_role_lines l ON l.org_id=r.org_id AND l.role_id=r.id AND l.version=r.version \
-           WHERE g.org_id=u.org_id AND g.account_id=u.id AND g.status <> 'REVOKED' \
+           WHERE g.org_id=u.org_id AND g.account_id=u.id AND g.status='ACTIVE' AND r.status='ACTIVE' AND g.valid_from<=now() \
+             AND (g.effective_in_setup OR NOT EXISTS(SELECT 1 FROM tenant_phase p WHERE p.org_id=u.org_id AND p.phase='SETUP')) \
              AND (g.valid_to IS NULL OR g.valid_to>now()) \
              AND l.domain='org' AND 'approve'=ANY(l.levels)))",
     ).bind(org.as_uuid()).bind(actor.as_uuid()).fetch_all(tx.as_mut()).await?)
