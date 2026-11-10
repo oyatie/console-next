@@ -114,7 +114,7 @@ fn app_state(pool: PgPool, keys: &Keys) -> AppState {
 }
 
 async fn seed_super_admin(pool: &PgPool, user_id: UserId, label: &str) {
-    sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
+    sqlx::query(include_str!("workflow_four_eyes_publish/people.sql"))
         .bind(*user_id.as_uuid())
         .bind(format!("four-eyes-{label}"))
         .bind(vec!["SUPER_ADMIN"])

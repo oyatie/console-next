@@ -90,6 +90,7 @@ pub struct PgOrgChangeStore {
     /// The owning OrgUnit port's in-transaction write, injected by the
     /// composition root. `None` fails the `*_ORG_UNIT` ops closed at apply.
     org_unit_write: Option<Arc<dyn OrgUnitWritePort>>,
+    sole_holder_decision: Option<Arc<dyn SoleHolderDecisionPort>>,
 }
 
 impl PgOrgChangeStore {
@@ -99,7 +100,15 @@ impl PgOrgChangeStore {
             pool,
             employment_transfer: None,
             org_unit_write: None,
+            sole_holder_decision: None,
         }
+    }
+
+    /// Wire passkey verification and governed sole-holder exception recording.
+    #[must_use]
+    pub fn with_sole_holder_decision(mut self, port: Arc<dyn SoleHolderDecisionPort>) -> Self {
+        self.sole_holder_decision = Some(port);
+        self
     }
 
     /// Wire the owning OrgUnit port's in-transaction write.
