@@ -133,6 +133,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
             {next ? <>{t("empCard.next.label")} <b className={s.nextWhat}>{t("empCard.next.what", { date: fmtDate(next.date), what: next.what })}</b>{next.by && <span>· {next.by}</span>}</> : t("empCard.next.none")}
             <span>· {t(c.setup ? "empCard.phase.setup" : "empCard.phase.op")}</span>
           </div>
+          <EmployeePayLink employeeId={e.id} />
         </div>
         {!c.manage && e.status !== "EXITED" && (
           <p className={s.readOnly}>
@@ -146,7 +147,6 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
             <Button onClick={() => onAct("multi")}><Pencil size={16} aria-hidden /> {t("empCard.verb.correct")}</Button>
             <Button onClick={() => onAct("print")}><Printer size={16} aria-hidden /> {t("empCard.verb.print")}</Button>
             <Button onClick={() => onAct("cert")}><FileText size={16} aria-hidden /> {t("empCard.verb.cert")}</Button>
-            <EmployeePayLink employeeId={e.id} />
             <MenuButton label={t("empCard.verb.more")} icon={<MoreHorizontal size={16} aria-hidden />} caret={false} items={more} onAction={onAct} />
           </div>
         )}

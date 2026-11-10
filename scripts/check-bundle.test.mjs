@@ -4,7 +4,8 @@ import assert from "node:assert";
 import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { gzipSync } from "node:zlib";
 import { checkRouteBudgets, checkInitialBudget, INITIAL_BUDGET_KB, DEFAULT_BUDGET_FILE } from "./check-bundle.mjs";
 
 describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
@@ -126,10 +127,29 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
     } finally { mock.cleanup(); }
   });
 
-  it("the initial budget check is unchanged", () => {
+  it("rejects an initial load 0.1 KB over the ratcheted budget", () => {
     const mock = createMockDist();
     try {
-      // Small initial chunk set under INITIAL_BUDGET_KB (151 KB)
+      const budgetKb = INITIAL_BUDGET_KB;
+      assert.ok(budgetKb <= 149, "the 147 KB target permits at most 2 KB headroom");
+      const targetBytes = Math.round((budgetKb + 0.1) * 1024);
+      // Deterministic incompressible bytes keep the fixture within one byte of the boundary.
+      const data = createHash("shake256", { outputLength: targetBytes }).update("initial bundle boundary").digest();
+      mock.writeChunk("vendor-boot.js", "vendor");
+      const vendorBytes = gzipSync(readFileSync(path.join(mock.assets, "vendor-boot.js"))).length;
+      const length = targetBytes - vendorBytes - (gzipSync(data).length - data.length);
+      writeFileSync(path.join(mock.assets, "index-main.js"), data.subarray(0, length));
+      const result = checkInitialBudget(mock.dist);
+      assert.strictEqual(result.sizeKb.toFixed(1), (budgetKb + 0.1).toFixed(1));
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.error.includes(`over the ${budgetKb} KB budget`));
+    } finally { mock.cleanup(); }
+  });
+
+  it("the initial budget check includes preloaded chunks", () => {
+    const mock = createMockDist();
+    try {
+      // Small initial chunk set under INITIAL_BUDGET_KB
       mock.writeChunk("index-main.js", "console.log('main');");
       mock.writeChunk("vendor-boot.js", "console.log('vendor');");
 
@@ -144,7 +164,7 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
       const failResult = checkInitialBudget(mock.dist, INITIAL_BUDGET_KB);
       assert.strictEqual(failResult.ok, false);
       assert.ok(failResult.sizeKb > INITIAL_BUDGET_KB);
-      assert.match(failResult.error, /initial load is.*over the 151.*budget/i);
+      assert.match(failResult.error, new RegExp(`initial load is.*over the ${INITIAL_BUDGET_KB}.*budget`, "i"));
     } finally {
       mock.cleanup();
     }
