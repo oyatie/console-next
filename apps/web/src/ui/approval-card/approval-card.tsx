@@ -103,7 +103,7 @@ export function ApprovalCard(p: ReturnProps & {
   }
 
   return (
-    <article ref={cardBox} className={`card ${css.card}`} aria-busy={busy || undefined}>
+    <article ref={cardBox} className={`card ${css.card}`} aria-busy={busy || undefined} data-escape-scope={form && !busy ? "" : undefined}>
       {p.progress && <div className={css.progress}>{p.progress}</div>}
       <div className={css.body}>
         <div className={css.eyebrow}>{p.eyebrow}</div>

@@ -7,4 +7,5 @@ export const enUiChainStepper = {
   "uiChainStepper.state.waiting": "Waiting:",
   "uiChainStepper.state.failed": "Failed:",
   "uiChainStepper.mine": "My turn",
+  "uiChainStepper.more": "+{count}",
 } as const;

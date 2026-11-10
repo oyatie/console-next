@@ -19,6 +19,8 @@ export default function ChainSteppers() {
       <h2 className="toolbar__title">{t("uiChainStepper.name")}</h2>
       <ChainStepper steps={steps} />
       <ChainStepper steps={[{ key: "1", who: who(5), state: "done" }, { key: "2", who: who(6), state: "failed", meta: t("enum.stepDecision.REJECTED") }]} />
+      <ChainStepper variant="chips" steps={steps} />
+      <ChainStepper variant="chips" steps={[...steps, { key: "5", who: who(5), state: "waiting" }, { key: "6", who: who(6), state: "waiting" }]} />
     </section>
   );
 }

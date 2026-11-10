@@ -4,14 +4,16 @@ import { approvalBox, type ApprovalBox } from "../features/approvals/domain/inbo
 import { APPROVALS_MODULE } from "../reference/onboarding/api";
 import { app, screen, str } from "./app";
 
-type ApprovalsSearch = { box?: Exclude<ApprovalBox, "pending">; q?: string; source?: string; focus?: string };
+type ApprovalsSearch = { box?: Exclude<ApprovalBox, "pending">; q?: string; source?: string; sel?: string; full?: 1 };
 export const approvalsRoute = createRoute({
   getParentRoute: () => app,
   path: "/approvals",
   staticData: { access: "signed-in", module: APPROVALS_MODULE, floorplan: "P-03" },
   validateSearch: (search: Record<string, unknown>): ApprovalsSearch => {
     const box = approvalBox(search.box);
-    return { box: box === "pending" ? undefined : box, q: str(search.q), source: str(search.source), focus: str(search.focus) };
+    // Links saved before the document column carried the selection as `focus`.
+    const sel = str(search.sel) ?? str(search.focus);
+    return { box: box === "pending" ? undefined : box, q: str(search.q), source: str(search.source), sel, full: sel && (search.full === 1 || search.full === "1") ? 1 : undefined };
   },
   component: lazyRouteComponent(screen(() => import("../features/approvals/ui/approvals-page")), "ApprovalsPage"),
 });
