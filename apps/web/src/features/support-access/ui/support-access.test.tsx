@@ -13,8 +13,10 @@ import { activeSupportQuery, supportSessionsQuery, supportRefusal, type SupportS
 const state = vi.hoisted(() => ({
   data: undefined as unknown, active: undefined as unknown, error: undefined as unknown,
   review: "session-a" as string | undefined, pending: false, calls: [] as { run: (input: unknown, key: string) => Promise<unknown> }[],
-  get: vi.fn(), post: vi.fn(), query: vi.fn(), auth: { token: null as string | null },
+  get: vi.fn(), post: vi.fn(), query: vi.fn(), auth: { token: null as string | null }, stream: true,
 }));
+vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown, serverSnapshot?: () => unknown) => (serverSnapshot ?? snapshot)() }));
+vi.mock("../../../lib/live/session-stream", () => ({ streamReady: { subscribe: vi.fn(), get: () => state.stream } }));
 vi.mock("@console/api", async (original) => ({ ...await original<object>(), api: { GET: state.get, POST: state.post }, session: state.auth }));
 vi.mock("@console/i18n", async (original) => ({ ...await original<object>(), t: (key: string) => key, isMessageId: () => true }));
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: state.review }), useNavigate: () => vi.fn() }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
@@ -41,6 +43,7 @@ beforeEach(() => {
   state.review = session.id; state.error = undefined; state.pending = false; state.calls = [];
   state.get.mockReset(); state.post.mockReset(); state.query.mockReset();
   state.auth.token = null;
+  state.stream = true;
   state.post.mockResolvedValue({ data: {}, response: new Response(null, { status: 200 }) });
 });
 
@@ -51,6 +54,16 @@ test("support reads wait for a session token", () => {
   state.query.mockClear();
   renderToStaticMarkup(<><ActiveSupportBanner /><SupportAccessIndicator /><SupportAccess /></>);
   expect(state.query.mock.calls.map(([q]) => q.enabled)).toEqual([true, true, true]);
+});
+
+test.each([ActiveSupportBanner, SupportAccessIndicator])("support status reader %# waits for the session stream before reading", Component => {
+  state.auth.token = "session-token";
+  state.stream = false;
+  renderToStaticMarkup(<Component />);
+  expect(state.query).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+  state.stream = true;
+  renderToStaticMarkup(<Component />);
+  expect(state.query).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: true }));
 });
 
 const refusals = [
@@ -100,7 +113,7 @@ test("the banner names an active operator and expiry on any tenant page", () => 
   expect(html).not.toContain("supportAccess.bannerAction");
 });
 test("loading, empty and failed active-session reads remain honest", () => {
-  state.pending = true;
+  state.pending = true; state.data = undefined;
   expect(renderToStaticMarkup(<SupportAccess />)).toContain("common.loading");
   state.pending = false; state.data = { sessions: [], can_approve: true };
   expect(renderToStaticMarkup(<SupportAccess />)).toContain("supportAccess.emptyTitle");

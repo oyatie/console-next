@@ -141,7 +141,7 @@ const MATURITY_RULES = [
   { rule: "prose.운영시제", re: /운영을 시작하면/, when: ({ id }) => /(?:phase|receipt)\.started\./.test(id), use: "the recorded operating start" },
 ];
 const COMPOSER_TERM_RULES = [
-  { rule: "verb.반려", re: /거절/, when: ({ id }) => /\.(?:decline|DECLINED|reject)$/.test(id), use: "반려" },
+  { rule: "verb.반려", re: /거절/, when: ({ id }) => /\.(?:decline|DECLINED|reject)$/.test(id) || /^supportAccess\.(?:decision\.DENY|state\.DENIED)$/.test(id), use: "반려" },
   { rule: "verb.회수", re: /철회/, when: ({ id }) => /\.(?:withdraw|WITHDRAWN)$/.test(id), use: "회수" },
 ];
 export const TERM_RULES = [

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { Headset } from "lucide-react";
+import { useSyncExternalStore } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
+import { streamReady } from "../../../lib/live/session-stream";
 import { Banner } from "../../../ui/banner/banner";
 import { Chip } from "../../../ui/chip";
 import { buttonClass } from "../../../ui/button/button-class";
@@ -13,7 +15,8 @@ import styles from "./support-access.module.css";
 
 /** Visible on every tenant page; the shell's SSE stream invalidates this read. */
 export function ActiveSupportBanner() {
-  const q = useQuery({ ...activeSupportQuery, enabled: !!session.token });
+  const stream = useSyncExternalStore(streamReady.subscribe, streamReady.get);
+  const q = useQuery({ ...activeSupportQuery, enabled: !!session.token && stream });
   if (!q.error && (!q.data || (!q.data.sessions.length && !(q.data.can_approve && q.data.pending_count)))) return null;
   return <section className={styles.status} aria-label={t("supportAccess.title")}>
     <QueryState q={q} own={supportRefusal}>{(data) => <>
@@ -31,7 +34,8 @@ export function ActiveSupportBanner() {
 
 /** The shell header keeps this visible while the page's detailed notice scrolls. */
 export function SupportAccessIndicator() {
-  const q = useQuery({ ...activeSupportQuery, enabled: !!session.token });
+  const stream = useSyncExternalStore(streamReady.subscribe, streamReady.get);
+  const q = useQuery({ ...activeSupportQuery, enabled: !!session.token && stream });
   if (q.error || !q.data) return null;
   const active = q.data.sessions.length;
   const pending = q.data.can_approve ? q.data.pending_count : 0;

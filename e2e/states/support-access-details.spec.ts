@@ -108,7 +108,7 @@ for (const width of [390, 1440]) for (const state of ["OPERATOR_APPROVED", "ACTI
       can_approve: true, sessions: entry === "plain" ? [current, ...history] : [...history, current],
     } });
     await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: {
-      can_approve: true, sessions: state === "ACTIVE" ? [current] : [],
+      can_approve: true, sessions: state === "ACTIVE" ? [{ id: current.id, operator_label: current.operator_label, expires_at: current.expires_at }] : [],
       pending_count: state === "ACTIVE" ? 0 : 1, pending_approvals: state === "ACTIVE" ? [] : [current],
     } });
     await page.setViewportSize({ width, height: 844 });
@@ -232,7 +232,7 @@ for (const width of [390, 1440]) for (const command of ["approve", "deny", "end"
 
 for (const width of [390, 1440]) test(`support indicator distinguishes support from inbox at ${width}px @ui-state`, async ({ page }, info) => {
   const fixture = await mockScreen(page, screens.find(screen => screen.key === "home")!, "empty");
-  await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { can_approve: true, sessions: [{ ...session, state: "ACTIVE", tenant_approved_at: AT }], pending_count: 1, pending_approvals: [session] } });
+  await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { can_approve: true, sessions: [{ id: session.id, operator_label: session.operator_label, expires_at: AT }], pending_count: 1, pending_approvals: [session] } });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(3) });
   await page.setViewportSize({ width, height: 844 });
   await page.goto("/");
