@@ -60318,6 +60318,10 @@ components:
         entities_needing_confirmation:
           type: integer
           format: int64
+        entities_without_registration:
+          type: integer
+          format: int64
+          description: Active legal entities without an active numbered or pending registration.
         registrations:
           type: integer
           format: int64

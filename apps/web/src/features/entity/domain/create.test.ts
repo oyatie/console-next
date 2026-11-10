@@ -14,6 +14,15 @@ const corp = (over: Partial<Draft> = {}): Draft => ({
 });
 const held = { id: "e1", closed_on: null, current: { name: "(주)새온정밀" }, registrations: [{ id: "r1", brn: { value: "0000000034" }, holder_workplace_id: "w1", closed_on: null }], workplaces: [{ id: "w1", current: { name: "서울 본사" } }] } as unknown as LegalEntity;
 
+test("pending registration is explicit, keeps the other requirements and appears in the checklist", () => {
+  const d = corp({ brn: "", brnPendingReason: "NEW_REGISTRATION_PENDING", unitTaxation: false });
+  expect(registrationBody(d)).toMatchObject({ brn: null, brn_pending_reason: "NEW_REGISTRATION_PENDING" });
+  expect(corpItems(d, {}).find(item => item.key === "brn")?.state).toBe("ok");
+  expect(registrationBody({ ...d, brnPendingReason: null })).toBeNull();
+  expect(registrationBody({ ...d, businessAddress: null })).toBeNull();
+  expect(registrationBody({ ...d, brn: "0000000029", brnPendingReason: null })).toMatchObject({ brn: "0000000029", brn_pending_reason: null });
+});
+
 test("steps follow the certificate kind: only a corporation types its registry extract", () => {
   expect(stepsFor("CORPORATION")).toEqual(["basics", "certificate", "registry", "review"]);
   expect(stepsFor("INDIVIDUAL")).toEqual(["basics", "certificate", "review"]);

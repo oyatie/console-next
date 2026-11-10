@@ -2,7 +2,7 @@ import { Plus, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { BIZ_KIND, label, REPRESENTATION } from "../../../lib/labels";
 import { FORMATS } from "../../../lib/pure/formats";
-import { Button } from "../../../ui/button/button";
+import { Button, Check } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { DateField } from "../../../ui/date/date-field";
 import { Field, TextInput } from "../../../ui/field/field";
@@ -32,8 +32,13 @@ export function IdentitySection({ s }: { s: EntityDraftState }) {
         onChange={(v) => set("bizKind", v as typeof d.bizKind)}
         error={problemText(p.bizKind)}
       />}
+      <Check checked={Boolean(d.brnPendingReason)} onChange={(on) => {
+        set("brn", "");
+        set("brnConfirmed", "");
+        set("brnPendingReason", on ? "NEW_REGISTRATION_PENDING" : null);
+      }}>{t("entity.field.brnPending")}</Check>
       <div className="grid-3">
-        <MaskedField
+        {!d.brnPendingReason && <MaskedField
           label={t("entity.field.brn")}
           required
           format={FORMATS.bizRegNo}
@@ -42,7 +47,7 @@ export function IdentitySection({ s }: { s: EntityDraftState }) {
           example={t("entity.field.brnExample")}
           error={problemText(p.brn)}
           warning={p.brn ? undefined : brnWarningText(d, s.brnClasses)}
-        />
+        />}
         <Field label={t(corp ? "entity.field.corpName" : "entity.field.tradeName")} required error={problemText(p.name)}>
           {(c) => <TextInput {...c} maxLength={200} value={d.name} onChange={(e) => set("name", e.target.value)} />}
         </Field>

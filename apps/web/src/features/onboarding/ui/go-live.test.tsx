@@ -39,6 +39,21 @@ afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = n
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/setup/go-live"] }) });
 const render = () => renderToStaticMarkup(<RouterContextProvider router={router}><GoLive /></RouterContextProvider>);
 
+test.each(["ko", "en"] as const)("a missing registration names one entity and one remedy in %s", (locale) => {
+  i18n.set(locale);
+  state.data.blockers = [{ code: "entity_without_registration", count: 1, remedy: "add_registration", records: [
+    { kind: "legal_entity", id: "entity", legal_entity_id: "entity", name: "미등록 법인" },
+  ] }];
+  const html = render();
+  expect(html).toContain(locale === "ko" ? "사업자등록이 없는 법인 1곳" : "1 entity without a business registration");
+  expect(html).toContain(locale === "ko" ? "사업자등록 추가" : "Add business registration");
+  expect(html.match(/href="\/org\/entities\/entity"/g)).toHaveLength(1);
+  expect(html).toContain('aria-disabled="true"');
+  state.data.blockers = [];
+  expect(render()).not.toContain('aria-disabled="true"');
+  expect(state.mutate).not.toHaveBeenCalled();
+});
+
 test("sole-holder confirmation applies only to the preview digest that was reviewed", () => {
   expect(render()).toContain('type="checkbox" checked=""');
   state.data.digest = "changed-preview";

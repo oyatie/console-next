@@ -183,6 +183,28 @@ fn require_ready(
 mod tests {
     use super::*;
     #[test]
+    fn cedar_refuses_an_entity_without_registration_even_if_the_backstop_is_bypassed() {
+        let mut f = console_onboarding_domain::SetupFacts {
+            phase_is_setup: true,
+            entities: 2,
+            workplaces: 2,
+            org_units: 1,
+            terms_accepted: true,
+            entities_without_registration: 1,
+            ..Default::default()
+        };
+        for (missing, allowed) in [(1, false), (0, true)] {
+            f.entities_without_registration = missing;
+            let facts = go_live_facts(&f, true, true, true);
+            assert_eq!(facts.entities_ready, allowed);
+            assert_eq!(
+                tenant_go_live::decide("actor", "tenant", &["SUPER_ADMIN"], facts),
+                Ok(allowed)
+            );
+        }
+    }
+
+    #[test]
     fn cedar_reads_department_readiness_from_the_transaction_facts() {
         let mut f = console_onboarding_domain::SetupFacts {
             phase_is_setup: true,

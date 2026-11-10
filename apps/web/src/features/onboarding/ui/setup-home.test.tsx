@@ -188,3 +188,15 @@ test("each tracker row shows visible state, owner, and gated go-live blocker sum
   expect(goliveRow).toContain("고객 계정의 이용약관 동의가 필요합니다");
   expect(goliveRow).toContain('href="/setup/go-live"');
 });
+
+test("a required entity registration shows its fix instead of another entity form", () => {
+  const row = rowsOf(render(checklist([
+    step("entity", true, "org::edit", { state: "todo", action: "add_registration", remedy: "add_registration", count: 1 }),
+  ])))[0]!;
+  expect(row).toContain(">필요<");
+  expect(row).toContain("법인에 사업자등록을 추가합니다");
+  expect(row).toContain("사업자등록 추가");
+  expect(row).toContain('href="/org/entities"');
+  expect(row).not.toContain('href="/org/entities/new"');
+  expect(row.match(/btn--primary/g)).toHaveLength(1);
+});

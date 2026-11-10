@@ -74,6 +74,8 @@ async fn department_complete(owner: PgPool) {
         .await
         .unwrap();
     tx.commit().await.unwrap();
+    sqlx::query("INSERT INTO business_registrations (org_id,legal_entity_id,brn_pending_reason,created_change_mode) VALUES ($1,$2,'NEW_REGISTRATION_PENDING','MIGRATION')")
+        .bind(org).bind(entity).execute(&owner).await.unwrap();
     let hash = publish(&owner, "dept-test", "Test terms", 1).await;
     store
         .accept_terms(&a, "dept-test".into(), hash)

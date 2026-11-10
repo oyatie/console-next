@@ -31,6 +31,7 @@ const LINKS: Record<string, Fix> = {
   confirm_legal_entity: ENTITIES,
   legal_entity_record_required: ENTITIES,
   confirm_registration: ENTITIES,
+  add_registration: ENTITIES,
   verify_registration: ENTITIES,
   create_primary_workplace: ENTITIES,
   create_workplace: ENTITIES,

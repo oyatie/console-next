@@ -95,6 +95,13 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
             "confirm_legal_entity",
         ));
     }
+    if f.phase_is_setup && f.entities_without_registration > 0 {
+        blockers.push(item(
+            "entity_without_registration",
+            f.entities_without_registration,
+            "add_registration",
+        ));
+    }
     if f.registrations_needing_confirmation > 0 {
         blockers.push(item(
             "registration_needs_confirmation",
@@ -264,6 +271,10 @@ pub fn backstop(
         (step_up, "step_up"),
         (f.phase_is_setup, "phase"),
         (f.entities_ready(), "entities_ready"),
+        (
+            f.entities_without_registration == 0,
+            "entities_without_registration",
+        ),
         (f.primary_workplaces_ready(), "primary_workplaces_ready"),
         (f.org_units > 0, "org_units"),
         (
@@ -296,3 +307,7 @@ pub fn backstop(
 #[cfg(test)]
 #[path = "preview_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "registration_tests.rs"]
+mod registration_tests;

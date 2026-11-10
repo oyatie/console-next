@@ -13,6 +13,17 @@ const filled = (over: Partial<Draft> = {}): Draft => ({
 });
 const facts = (over: Partial<Facts> = {}): Facts => ({ today, ...over });
 
+test("a further pending registration sends the pending reason and still requires its business facts", () => {
+  const d = filled({ scope: "registration", brn: "", brnPendingReason: "NEW_REGISTRATION_PENDING" });
+  const result = planRegistration(d, facts());
+  expect(result.ok).toBe(true);
+  if (result.ok) expect(result.body).toMatchObject({ brn: null, brn_pending_reason: "NEW_REGISTRATION_PENDING" });
+  const missingNumber = planRegistration({ ...d, brnPendingReason: null }, facts());
+  expect(!missingNumber.ok && missingNumber.errors).toMatchObject({ brn: "required" });
+  const missingAddress = planRegistration({ ...d, businessAddress: null }, facts());
+  expect(!missingAddress.ok && missingAddress.errors).toMatchObject({ businessAddress: "required" });
+});
+
 test("nothing consequential is defaulted: an empty draft is missing its required facts in every certificate section", () => {
   expect(missing(emptyDraft(), false)).toEqual({ identity: 5, address: 1, business: 1, certificate: 3, registry: 0 });
   const plan = planEntityCreate(emptyDraft(), facts());
