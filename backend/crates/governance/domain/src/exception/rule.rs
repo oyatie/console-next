@@ -90,6 +90,7 @@ rules! {
     ExportDeclined => "EXPORT_DECLINED", Medium, SoftRule;
     LifecycleBackdatedClosedPeriod => "LIFECYCLE_BACKDATED_CLOSED_PERIOD", High, SoftRule;
     OrgChangeBackdated => "ORG_CHANGE_BACKDATED", High, SoftRule;
+    OrgChangeSoleHolder => "ORG_CHANGE_SOLE_HOLDER", High, SoftRule;
     FixedTermOverTwoYears => "FIXED_TERM_OVER_TWO_YEARS", High, SoftRule;
     SettlementWageDeviation => "SETTLEMENT_WAGE_DEVIATION", High, SoftRule;
     ElevatedRoleSingleAdmin => "ELEVATED_ROLE_SINGLE_ADMIN", High, SoftRule;

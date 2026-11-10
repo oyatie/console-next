@@ -172,10 +172,13 @@ async fn corrupt_registry_value_refuses_a_save_without_writing_entries(owner: Pg
         .store
         .save_entries(&w.hr(), &key(), save(vec![cell(&w, 0, TUE, "9:05-18:10")]))
         .await;
-    assert!(matches!(
-        result,
-        Err(ScheduleStoreError::Corrupt("attendance thresholds"))
-    ));
+    assert!(
+        matches!(
+            &result,
+            Err(ScheduleStoreError::Corrupt("attendance settings"))
+        ),
+        "unexpected save result: {result:?}"
+    );
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM attendance_entries WHERE org_id=$1")
         .bind(w.org)
         .fetch_one(&w.owner)

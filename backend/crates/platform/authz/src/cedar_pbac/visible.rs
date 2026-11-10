@@ -339,4 +339,4 @@ pub async fn load_facts(
 
 #[path = "support_facts.rs"]
 mod support_facts;
-pub use support_facts::load_support_session;
+pub use support_facts::{load_operator_facts, load_support_session};
