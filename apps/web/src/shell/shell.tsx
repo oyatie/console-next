@@ -184,7 +184,7 @@ export function Shell() {
           </button>
         )}
         <span className="top__spacer" />
-        {!platform && <Suspense fallback={null}><NeedsMeMenu key={pathname} id="top-needs-me" /></Suspense>}
+        {!platform && <Suspense fallback={null}><NeedsMeMenu id="top-needs-me" /></Suspense>}
         <LiveStatus />
         {!platform && <SupportAccessIndicator />}
         <LocaleSelect id="top-locale" label />

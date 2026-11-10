@@ -4,7 +4,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { expectStable, recordShifts } from "../stability";
 import { screens } from "../states/registry";
-import { failure, inbox, token } from "./fixtures";
+import { failure, inbox, screenAccess, token } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 
@@ -241,15 +241,47 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
-test("task panel code loads only when the header badge opens", async ({ page }) => {
+test("task badge survives navigation without rereading and loads panel code only when opened", async ({ page }) => {
+  await page.clock.install();
   const mock = await mockScreen(page, screens[0], "populated");
-  const chunks: string[] = [];
-  page.on("request", request => {
-    if (/\/assets\/needs-me-panel-[^/]+\.js$/.test(new URL(request.url()).pathname)) chunks.push(request.url());
+  const people = screenAccess("/people"), org = screenAccess("/org");
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: {
+    ...people, decisions: { ...people.decisions, ...org.decisions }, entries: [...people.entries, ...org.entries],
+  } });
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", async request => {
+    if (!new URL(request.url()).searchParams.has("attention")) await held;
+    return { status: 200, json: inbox(3) };
   });
-  await page.goto("/people");
+  const chunks: string[] = [];
+  let reads = 0;
+  page.on("request", request => {
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/v1/me/action-inbox") reads++;
+    if (/\/assets\/needs-me-panel-[^/]+\.js$/.test(path)) chunks.push(request.url());
+  });
+  await page.goto("/");
   const trigger = page.locator("#top-needs-me");
   await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+  expect(chunks).toEqual([]);
+  const badge = await trigger.elementHandle();
+  try {
+    await page.locator('#rail a[href="/people"]').click();
+    await expect(page).toHaveURL(/\/people$/);
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+    expect(reads).toBe(2);
+  } finally { release(); }
+  for (const path of ["/org", "/people"]) {
+    await page.locator(`#rail a[href="${path}"]`).click();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await page.clock.runFor(1_000);
+    expect(reads).toBe(2);
+    expect(await badge!.evaluate(el => el.isConnected)).toBe(true);
+    await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+  }
   expect(chunks).toEqual([]);
   await trigger.click();
   const panel = page.getByRole("dialog", { name: t("shell.needsMe"), exact: true });

@@ -1,8 +1,8 @@
 import { expect, test, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
-import { ApiError } from "@console/api";
+import { api, ApiError } from "@console/api";
 import { queryDefaults } from "./react/query-defaults";
-import { cursorRead, freshOnOpen, get, invalidatePaths, invalidateWhere, navigationRead, queryPath, read, readIdentity, underPath } from "./query";
+import { cursorPages, cursorRead, freshOnOpen, get, invalidatePaths, invalidateWhere, navigationRead, queryPath, read, readIdentity, underPath } from "./query";
 
 test("a path prefix covers the path and everything under it, not a sibling that shares its text", () => {
   const employees = underPath("/api/v1/employees");
@@ -79,6 +79,20 @@ test("a wrapped cursor read derives its key and passes the next cursor", async (
   expect(descriptor.getNextPageParam(first)).toBe("next");
   await descriptor.queryFn({ pageParam: "next" });
   expect(seen).toBe("next");
+});
+
+test("cursor pages pass cancellation to the transport when a live refresh supersedes a read", async () => {
+  const controller = new AbortController();
+  const cancelled = new DOMException("Read superseded", "AbortError");
+  const transport = vi.spyOn(api, "GET").mockRejectedValueOnce(cancelled);
+  try {
+    const context = { pageParam: "next", signal: controller.signal };
+    const query = cursorPages("/api/v1/me/action-inbox", { filter: "turn" });
+    await expect(query.queryFn(context)).rejects.toBe(cancelled);
+    expect(transport).toHaveBeenCalledWith("/api/v1/me/action-inbox", {
+      params: { query: { filter: "turn", cursor: "next" } }, signal: controller.signal,
+    });
+  } finally { transport.mockRestore(); }
 });
 
 test("background invalidation refreshes page facts while navigation facts wait for a successful command", async () => {

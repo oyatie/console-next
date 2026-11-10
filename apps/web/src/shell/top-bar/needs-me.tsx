@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useState, useSyncExternalStore } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
 import { Button, Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { Inbox } from "lucide-react";
@@ -27,7 +27,7 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
   const shared = home || fullInbox;
   const filter = fullInbox ? inboxFilter(search.tab) : "turn";
   // Queue pages start their arrival read; keep the shared observer live after that answer.
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", home ? { filter, attention: "all" } : { filter }), enabled: query => !seed && !platform && (!shared || !!query.state.data), staleTime: Infinity, refetchOnMount: !shared && "always", notifyOnChangeProps: "all" });
+  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", home ? { filter, attention: "all" } : { filter }), enabled: query => !seed && !platform && (!shared || !!query.state.data), staleTime: Infinity, placeholderData: keepPreviousData, notifyOnChangeProps: "all" });
   const separate = fullInbox && filter !== "turn";
   // Other inbox tabs supply counts, but the task panel always reads my turn when opened.
   const tasks = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter: "turn" }), enabled: !seed && !platform && separate && open, notifyOnChangeProps: "all" });
