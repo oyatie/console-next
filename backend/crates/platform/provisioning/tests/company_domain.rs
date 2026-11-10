@@ -1,5 +1,7 @@
 //! Company-domain aliases reserve identity and resolve under the runtime role.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[path = "../../access/tests/fixtures/db_clock.rs"]
+mod db_clock;
 use console_kernel_core::OrgId;
 use console_platform_auth::current_sign_in_id;
 use console_platform_provisioning::{PlatformProvisioner, ProvisioningError};
@@ -14,7 +16,7 @@ use time::{Duration, OffsetDateTime};
 async fn rename_keeps_alias_sign_in_and_updates_all_accounts(owner: PgPool) {
     let rt = runtime_role_pool(&owner).await;
     let p = PlatformProvisioner::new(Duration::minutes(15));
-    let now = OffsetDateTime::now_utc();
+    let now = db_clock::db_now(&owner).await;
     let created = p
         .onboard_tenant(&rt, None, "domain-before", "Customer", now)
         .await
