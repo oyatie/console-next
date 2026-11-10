@@ -264,8 +264,8 @@ pub async fn activate_due(pool: &PgPool, clock: &dyn Clock) -> AccessResult<usiz
     Ok(activated)
 }
 
-/// Tenant-scoped test time; release builds never read a clock override.
-#[cfg(debug_assertions)]
+/// Tenant-scoped test time; deployable release builds never read an override.
+#[cfg(any(debug_assertions, feature = "e2e-test-support"))]
 async fn activation_clock(org: Uuid, real: OffsetDateTime) -> OffsetDateTime {
     let Some(path) = std::env::var_os("CONSOLE_DEV_LIFECYCLE_TODAY_FILE") else {
         return real;
@@ -278,7 +278,7 @@ async fn activation_clock(org: Uuid, real: OffsetDateTime) -> OffsetDateTime {
     effective_activation_time(real, raw.as_deref())
 }
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, feature = "e2e-test-support"))]
 fn effective_activation_time(real: OffsetDateTime, raw: Option<&str>) -> OffsetDateTime {
     raw.and_then(|s| {
         OffsetDateTime::parse(s.trim(), &time::format_description::well_known::Rfc3339).ok()
@@ -286,18 +286,20 @@ fn effective_activation_time(real: OffsetDateTime, raw: Option<&str>) -> OffsetD
     .map_or(real, |at| at.max(real))
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(not(any(debug_assertions, feature = "e2e-test-support")))]
 async fn activation_clock(_org: Uuid, real: OffsetDateTime) -> OffsetDateTime {
     real
 }
 
-#[cfg(all(test, debug_assertions))]
+#[cfg(test)]
 mod tests {
+    #[cfg(any(debug_assertions, feature = "e2e-test-support"))]
     use super::effective_activation_time;
     use time::{Duration, OffsetDateTime, format_description::well_known::Rfc3339};
 
     #[test]
-    fn debug_clock_rejects_invalid_time_and_never_moves_backwards() {
+    #[cfg(any(debug_assertions, feature = "e2e-test-support"))]
+    fn test_clock_rejects_invalid_time_and_never_moves_backwards() {
         let now = OffsetDateTime::now_utc();
         assert_eq!(effective_activation_time(now, None), now);
         assert_eq!(effective_activation_time(now, Some("not a clock")), now);
@@ -308,5 +310,57 @@ mod tests {
             effective_activation_time(now, Some(&future.format(&Rfc3339).unwrap())),
             future
         );
+    }
+
+    #[tokio::test]
+    async fn activation_clock_is_tenant_scoped_and_build_gated() {
+        use std::{fs, process::Command};
+        use uuid::Uuid;
+
+        const CHILD: &str = "CONSOLE_TEST_GRANT_CLOCK_CHILD";
+        const CLOCK: &str = "CONSOLE_DEV_LIFECYCLE_TODAY_FILE";
+        if std::env::var_os(CHILD).is_some() {
+            let real = OffsetDateTime::now_utc();
+            let file = std::env::var_os(CLOCK).unwrap();
+            let raw = fs::read_to_string(
+                std::path::PathBuf::from(file)
+                    .with_extension("grants")
+                    .join(Uuid::nil().to_string()),
+            )
+            .unwrap();
+            let future = OffsetDateTime::parse(&raw, &Rfc3339).unwrap();
+            let expected = if cfg!(any(debug_assertions, feature = "e2e-test-support")) {
+                future
+            } else {
+                real
+            };
+            assert_eq!(super::activation_clock(Uuid::nil(), real).await, expected);
+            assert_eq!(super::activation_clock(Uuid::new_v4(), real).await, real);
+            return;
+        }
+
+        // Isolate environment changes from the parallel test runner.
+        let root = std::env::temp_dir().join(format!("grant-clock-{}", Uuid::new_v4()));
+        let directory = root.join("today.grants");
+        fs::create_dir_all(&directory).unwrap();
+        fs::write(
+            directory.join(Uuid::nil().to_string()),
+            (OffsetDateTime::now_utc() + Duration::days(1))
+                .format(&Rfc3339)
+                .unwrap(),
+        )
+        .unwrap();
+        let status = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "pending::tests::activation_clock_is_tenant_scoped_and_build_gated",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .env(CLOCK, root.join("today"))
+            .status()
+            .unwrap();
+        fs::remove_dir_all(root).unwrap();
+        assert!(status.success());
     }
 }

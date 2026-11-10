@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { grantAccess } from "./access-flows";
+import { go } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { activatePendingGrants } from "./second-person-fixture";
 import { startOperations, tenantInSetup } from "./setup-flows";
@@ -25,7 +26,9 @@ test("a sole admin's elevated grant waits for the configured deadline", { tag: [
   expect(before[0]!.enforcement).toBe("SCHEDULED");
   expect(Date.parse(before[0]!.activates_at!)).toBeGreaterThan(Date.now());
   const other = await admin.context().newPage();
-  await other.goto("/access/grants");
+  // Firefox can pause a background tab's streaming fetch until the person returns to it.
+  await other.bringToFront();
+  await go(other, "/access/grants");
   const row = other.getByRole("row", { name: /이임원/ });
   await expect(row).toContainText("시작 전");
   await activatePendingGrants(admin, token);

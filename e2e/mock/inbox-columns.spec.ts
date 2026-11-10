@@ -205,6 +205,7 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) {
       await page.getByRole("button", { name: t("common.back"), exact: true }).click();
       await expect(page).not.toHaveURL(/sel=/);
       await expect(page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true })).toHaveCount(0);
+      await expect(first).toBeFocused();
     }
     await first.focus();
     await first.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ" });

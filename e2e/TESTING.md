@@ -9,8 +9,9 @@ require the workspace action inbox; each fails with build instructions when
 that route is unavailable. Global setup allows either profile.
 
 Build synthetic tenants through the product. Pending elevated grants use
-`activatePendingGrants`: it moves only that tenant's debug worker clock to the
-configured deadline. Release builds ignore this clock. This does not advance
+`activatePendingGrants`: it moves only that tenant's test worker clock to the
+configured deadline. Debug and explicit `e2e-test-support` builds honor the clock;
+deployable release builds ignore it. This does not advance
 second-person eligibility or its independent `min_grant_age` setting.
 
 Known gaps:
