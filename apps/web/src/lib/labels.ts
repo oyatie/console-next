@@ -64,6 +64,10 @@ export const SUPPORT_SESSION_STATE = { ...toned("supportSessionState", {
 export const ATTENDANCE_PATTERN_STATUS = toned<S["AttendancePattern"]["status"]>("attendancePatternStatus", {
   ACTIVE: "ok", RETIRED: "neutral",
 }, v => `attendancePatterns.patternStatus.${v}`);
+export const ATTENDANCE_EVIDENCE = {
+  ...values<S["AttendanceEvidence"]["kind"]>("attendanceEvidence", ["PAPER_SHEET", "DEVICE_FILE", "SUPERVISOR_CONFIRM", "EMPLOYEE_STATEMENT", "WORK_OUTPUT", "OTHER"]),
+  extensible: true, message: (v: string) => `attendanceRecords.evidence.${v}`,
+};
 export const ATTENDANCE_MARK = toned<S["AttendanceMark"]>("attendanceMark", {
   NO_RECORD: "danger", MISSING_OUT: "danger", NO_SCHEDULE: "danger", UNAPPROVED_EXCESS: "warn", WORK_ON_REST_DAY: "warn", LATE: "info", EARLY_OUT: "info", AWAY: "info", ABSENT: "info",
 }, v => `attendanceRecords.mark.${v}`);

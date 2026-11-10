@@ -15893,8 +15893,8 @@ export interface components {
             segments: components["schemas"]["AttendanceWindow"][];
             /** @enum {string} */
             source: "MANUAL" | "BULK" | "PASTE" | "SCHEDULE" | "IMPORT" | "CORRECTION" | "VOID";
-            /** @enum {string} */
-            evidence_kind: "PAPER_SHEET" | "SUPERVISOR_CONFIRM" | "DEVICE_FILE" | "EMPLOYEE_STATEMENT" | "WORK_OUTPUT" | "OTHER";
+            /** @description Known evidence kinds; a client must tolerate kinds it does not know. */
+            evidence_kind: string;
             reason?: string | null;
             supersedes_id?: components["schemas"]["Uuid"];
             undone: boolean;

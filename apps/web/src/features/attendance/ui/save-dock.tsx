@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
+import { ATTENDANCE_EVIDENCE, label as enumLabel } from "../../../lib/labels";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Checks } from "../../../ui/choice/checks";
@@ -126,7 +127,7 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
               field: k,
               label: who(k),
               base: c.base_entry_id ? t("attendanceRecords.conflict.baseSaved") : t("attendanceRecords.conflict.baseEmpty"),
-              current: c.current ? t("attendanceRecords.conflict.current", { value: entryText(c.current.kind, c.current.segments), evidence: t(`attendanceRecords.evidence.${c.current.evidence_kind}`) }) : t("attendanceRecords.conflict.baseEmpty"),
+              current: c.current ? t("attendanceRecords.conflict.current", { value: entryText(c.current.kind, c.current.segments), evidence: enumLabel(ATTENDANCE_EVIDENCE, c.current.evidence_kind) }) : t("attendanceRecords.conflict.baseEmpty"),
               mine: c.mine,
               actor: c.current?.created_by_name,
               at: c.current ? fmtDateTime(c.current.created_at) : "",

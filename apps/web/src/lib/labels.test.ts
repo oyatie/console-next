@@ -25,6 +25,21 @@ test("known leave choices remain checked by TypeScript", () => {
   expect(LEAVE_TYPE.values).not.toContain(typo);
 });
 
+test("attendance evidence keeps known words and identifies future kinds without calling them other", () => {
+  for (const kind of enums.ATTENDANCE_EVIDENCE.values) {
+    expect(label(enums.ATTENDANCE_EVIDENCE, kind)).toBe(t(`attendanceRecords.evidence.${kind}`));
+  }
+  expect(label(enums.ATTENDANCE_EVIDENCE, "WORK_OUTPUT")).toBe("작업 기록 · 결과물");
+  expect(label(enums.ATTENDANCE_EVIDENCE, "FUTURE_EVIDENCE")).toBe(t("enum.unknown"));
+  expect(labeled(enums.ATTENDANCE_EVIDENCE, "FUTURE_EVIDENCE")).toEqual({ label: t("enum.unknown"), tone: "neutral", code: "FUTURE_EVIDENCE" });
+});
+
+test("attendance evidence command choices remain checked by TypeScript", () => {
+  // @ts-expect-error Extensible responses do not widen the command's evidence choices.
+  const typo: (typeof enums.ATTENDANCE_EVIDENCE.values)[number] = "WORK_OUPUT";
+  expect(enums.ATTENDANCE_EVIDENCE.values).not.toContain(typo);
+});
+
 // Status enums are checked independently of their page callers.
 const statuses = [
   enums.ACCOUNT_STATUS, enums.TENANT_LIFECYCLE, enums.TENANT_STATUS,

@@ -5,8 +5,34 @@ import { expectAxe, fits } from "../a11y";
 import { chooseRadio } from "../flows";
 import { attendanceBoardScreens } from "../states/attendance";
 import { mockScreen } from "./screen";
+import { attendancePerson } from "./attendance-board";
+import { AT, id } from "./fixtures";
 
 test.beforeAll(() => loadCatalog("ko"));
+
+for (const [kind, text] of [["WORK_OUTPUT", "작업 기록 · 결과물"], ["FUTURE_EVIDENCE", "확인되지 않은 항목"]] as const) {
+  test(`source and history tolerate evidence kind ${kind}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+    const screen = attendanceBoardScreens.find(s => s.key === "attendance-day")!;
+    const fixture = await mockScreen(page, screen, "populated");
+    const entry = { id: id(800), batch_id: id(801), kind: "TIMES", segments: [{ start: 540, end: 1080 }], source: "MANUAL", evidence_kind: kind, undone: false, created_at: AT, created_by_name: "근태담당" };
+    const day = { ...attendancePerson.days[0]!, entry };
+    await page.route(url => url.pathname === `/api/v1/attendance/people/${id(100)}/month`, route => route.fulfill({ json: { ...attendancePerson, days: [day], history: [{ date: day.date, entry }] } }));
+    await page.goto(screen.path);
+    await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).first().click();
+    const dock = page.getByRole("dialog");
+    for (const tab of ["source", "history"] as const) {
+      await dock.getByRole("tab", { name: t(`attendanceRecords.day.tab.${tab}`), exact: true }).click();
+      await expect(dock.getByRole("list", { name: t("attendanceRecords.day.historyLabel") })).toContainText(text);
+      await expect(dock).not.toContainText("FUTURE_EVIDENCE");
+      await expect(dock.getByText(t("attendanceRecords.evidence.OTHER"), { exact: true })).toHaveCount(0);
+    }
+    await fits(page, `evidence ${kind}`);
+    await expectAxe(page, `evidence ${kind}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+}
 
 for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) {
   test(`work output evidence is chosen explicitly and sent on save at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {

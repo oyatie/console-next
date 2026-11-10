@@ -21,7 +21,6 @@ export function EvidenceField({ value, onChange, disabled }: { value: EvidenceDr
         label={t("attendanceRecords.evidence.label")}
         required
         look="chips"
-        columns={2}
         value={value.kind}
         onChange={(k) => onChange({ ...value, kind: k as Evidence["kind"] })}
         options={EVIDENCE.map((k) => ({ value: k, label: t(`attendanceRecords.evidence.${k}`) }))}
