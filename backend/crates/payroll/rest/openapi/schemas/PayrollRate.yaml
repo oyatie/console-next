@@ -6,11 +6,11 @@ allOf:
   properties:
     name:
       type: string
-      description: The stored statutory instrument name, without a client-side code lookup.
+      description: Per-code Korean item label from the copy catalog; 미분류 for codes without declared display meaning.
     value:
       type: [string, 'null']
-      description: Exact stored numerator/denominator or lower–upper won band. Null when the quantities needed for display are unknown.
+      description: Code-specific stored quantities. Contributions show numerator/denominator; minimum wage shows hourly won and monthly equivalent won; income and premium bands show lower–upper won. Null for unknown codes or missing quantities.
     status:
       type: string
       enum: [ACTIVE, HELD, SCHEDULED]
-      description: ACTIVE for a current stored quantity; HELD for unknown quantities. This read excludes future and expired rows.
+      description: ACTIVE for a current stored quantity; SCHEDULED for a future effective date; HELD for unknown codes or quantities. Expired rows are excluded.

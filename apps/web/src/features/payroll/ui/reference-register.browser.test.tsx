@@ -23,7 +23,7 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         const rate=${JSON.stringify(rate)}; const root=createRoot(document.getElementById('root'));
-        window.draw=(mode)=>root.render(React.createElement(ReferenceRegister,{data:{adopted:mode!=='unsupported',country_code:'US',items:[{...rate,instrument_ko:mode==='held'?'':rate.instrument_ko}]}}));
+        window.draw=(mode)=>root.render(React.createElement(ReferenceRegister,{data:{adopted:mode!=='unsupported',country_code:'US',items:mode==='scheduled'?[rate,{...rate,effective_from:'2027-01-01',status:'SCHEDULED',value:'500/10000'}]:[{...rate,instrument_ko:mode==='held'?'':rate.instrument_ko}]}}));
         window.draw('held');
       ` : undefined,
       configureServer: vite => { vite.middlewares.use((req, res, next) => {
@@ -53,4 +53,13 @@ test("register hides uncited and unadopted figures in the browser", async () => 
     await dom(page.getByText("0.123456%", { exact: true })).toHaveCount(0);
     await dom(page.getByRole("link")).toHaveCount(0);
     expect(errors).toEqual([]);
+});
+
+test("dated rows keep distinct identities and internal research notes stay hidden", async () => {
+  await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("scheduled"));
+  await dom(page.getByText("0.123456%", { exact: true })).toBeVisible();
+  await dom(page.getByText("500/10000", { exact: true })).toBeVisible();
+  await dom(page.getByText("적용 예정", { exact: true })).toBeVisible();
+  await dom(page.getByText('화면 검증용 가상 기준 · 실제 계산에 사용하지 않음', { exact: false })).toHaveCount(0);
+  expect(errors).toEqual([]);
 });

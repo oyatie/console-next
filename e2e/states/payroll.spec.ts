@@ -42,7 +42,7 @@ for (const screen of payrollScreens) for (const state of Object.keys(screen.stat
           await expect(main.getByText(rate.value, { exact: true })).toBeVisible();
           await expect(main.getByRole("link", { name: `${rate.instrument_ko} · ${rate.article_ko} · ${rate.promulgation_ko}`, exact: true })).toHaveCount(0);
           await expect(main.getByText(`${rate.instrument_ko} · ${rate.article_ko} · ${rate.promulgation_ko} · ${new URL(rate.source_url).href}`, { exact: true })).toBeVisible();
-          await expect(main.getByText(rate.provenance_ko, { exact: false })).toBeVisible();
+          await expect(main.getByText(rate.provenance_ko, { exact: false })).toHaveCount(0);
         }
       } else if (state === "empty") {
         await expect(main.getByRole("region", { name: t("payroll.setup.title") })).toBeVisible();

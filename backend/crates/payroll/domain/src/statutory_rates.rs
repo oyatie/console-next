@@ -241,14 +241,31 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
 /// Display stored quantities exactly, without estimating missing inputs.
 #[must_use]
 pub fn reference_value(
+    code: &str,
     numerator: Option<i64>,
     denominator: Option<i64>,
     floor_won: Option<i64>,
     cap_won: Option<i64>,
 ) -> Option<String> {
-    match (numerator, denominator, floor_won, cap_won) {
-        (Some(num), Some(den), _, _) => Some(format!("{num}/{den}")),
-        (None, None, Some(floor), Some(cap)) => Some(format!("{floor}–{cap}원")),
+    match code {
+        "NATIONAL_PENSION_EMPLOYEE"
+        | "HEALTH_INSURANCE_TOTAL"
+        | "LONG_TERM_CARE_TOTAL"
+        | "EMPLOYMENT_INSURANCE_EMPLOYEE"
+        | "INDUSTRIAL_ACCIDENT_EMPLOYEE" => match (numerator, denominator) {
+            (Some(num), Some(den)) => Some(format!("{num}/{den}")),
+            _ => None,
+        },
+        "MINIMUM_WAGE" => match (floor_won, cap_won) {
+            (Some(hourly), Some(monthly)) => {
+                Some(format!("시간급 {hourly}원 · 월 환산액 {monthly}원"))
+            }
+            _ => None,
+        },
+        "PENSION_STANDARD_INCOME_BAND" | "HEALTH_PREMIUM_BAND" => match (floor_won, cap_won) {
+            (Some(floor), Some(cap)) => Some(format!("{floor}–{cap}원")),
+            _ => None,
+        },
         _ => None,
     }
 }

@@ -24,13 +24,31 @@ test("payroll reference renders the entity's live statutory register", { tag: ["
   expect(rates.items.length).toBeGreaterThan(0);
   const active = rates.items.find((item: { status: string }) => item.status === "ACTIVE");
   expect(active).toBeDefined();
+  const wage = rates.items.find((item: { code: string; effective_from: string }) => item.code === "MINIMUM_WAGE" && item.effective_from === "2026-01-01");
+  expect(wage.name).toBe("최저임금");
+  expect(wage.value).toBe("시간급 10320원 · 월 환산액 2156880원");
+  const scheduled = rates.items.find((item: { code: string; effective_from: string }) => item.code === "NATIONAL_PENSION_EMPLOYEE" && item.effective_from === "2027-01-01");
+  expect(scheduled?.status).toBe("SCHEDULED");
   await go(admin, `/payroll/reference?entity=${entity}`);
+  const grid = admin.getByRole("grid");
+  for (const value of [wage.value, scheduled.value]) {
+    const displayed = admin.getByText(value, { exact: true }).first();
+    await expect.poll(async () => {
+      if (await displayed.isVisible()) return true;
+      await grid.evaluate(el => { el.scrollTop += el.clientHeight / 2; });
+      return false;
+    }, { intervals: [100] }).toBe(true);
+    await displayed.scrollIntoViewIfNeeded();
+  }
+  await expect(admin.getByText("적용 예정", { exact: true }).first()).toBeVisible();
+  await expect(admin.getByText(active.provenance_ko, { exact: false })).toHaveCount(0);
+  await grid.evaluate(el => { el.scrollTop = 0; });
   await expect(admin.getByText(active.value, { exact: true }).first()).toBeVisible();
   await expect(admin.getByRole("link", { name: `${active.instrument_ko} · ${active.article_ko} · ${active.promulgation_ko}`, exact: true }).first()).toHaveAttribute("href", active.source_url);
   await admin.setViewportSize({ width: 390, height: 844 });
   await admin.emulateMedia({ colorScheme: "dark" });
   await admin.locator("html").evaluate(el => { el.dataset.theme = "dark"; });
   await expect(admin.getByText(active.value, { exact: true }).first()).toBeVisible();
-  expect(await admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await expect.poll(() => admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await admin.screenshot({ path: testInfo.outputPath("reference-mobile-dark.png"), fullPage: true });
 });

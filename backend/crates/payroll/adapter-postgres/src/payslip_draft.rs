@@ -261,6 +261,12 @@ pub(crate) async fn statutory_citations_for_country_in_tx(
     .await
     .map_err(|err| PgPayrollError::Db(DbError::Sqlx(err)))?;
 
+    decode_statutory_citations(rows)
+}
+
+pub(crate) fn decode_statutory_citations(
+    rows: Vec<sqlx::postgres::PgRow>,
+) -> Result<Vec<StatutoryCitation>, PgPayrollError> {
     rows.into_iter()
         .map(|row| {
             Ok(StatutoryCitation {

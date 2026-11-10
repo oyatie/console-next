@@ -24,7 +24,7 @@ fn uri(entity: Uuid) -> String {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn rates_returns_exact_current_register_and_nullable_fields(pool: PgPool) {
+async fn rates_returns_exact_current_and_scheduled_register(pool: PgPool) {
     let (service, token, entity, _) = setup(&pool).await;
     let response = get(service, &uri(entity), &token).await;
     assert_eq!(response.status, StatusCode::OK, "{}", response.json);
@@ -32,7 +32,7 @@ async fn rates_returns_exact_current_register_and_nullable_fields(pool: PgPool) 
     assert_eq!(response.json["country_code"], "KR");
     assert_eq!(response.json["adopted"], true);
     // rls-arming: ok owner independently reads the public citation source for comparison.
-    let expected: Vec<Value> = sqlx::query_scalar("SELECT to_jsonb(r)-'country_code' FROM payroll_statutory_rates r WHERE effective_from<=entity_today() AND (effective_to_exclusive IS NULL OR effective_to_exclusive>entity_today()) ORDER BY code,effective_from")
+    let expected: Vec<Value> = sqlx::query_scalar("SELECT to_jsonb(r)-'country_code' FROM payroll_statutory_rates r WHERE (effective_to_exclusive IS NULL OR effective_to_exclusive>entity_today()) ORDER BY code,effective_from")
         .fetch_all(&pool).await.unwrap();
     let items = response.json["items"].as_array().unwrap();
     assert!(!items.is_empty());
@@ -40,21 +40,9 @@ async fn rates_returns_exact_current_register_and_nullable_fields(pool: PgPool) 
     for (item, citation) in items.iter().zip(expected) {
         let mut actual = item.clone();
         let actual = actual.as_object_mut().unwrap();
-        assert_eq!(actual.remove("name").unwrap(), citation["instrument_ko"]);
-        let value = actual.remove("value").unwrap();
-        let status = actual.remove("status").unwrap();
-        let expected_value = match (
-            citation["rate_num"].as_i64(),
-            citation["rate_den"].as_i64(),
-            citation["floor_won"].as_i64(),
-            citation["cap_won"].as_i64(),
-        ) {
-            (Some(num), Some(den), _, _) => json!(format!("{num}/{den}")),
-            (_, _, Some(floor), Some(cap)) => json!(format!("{floor}–{cap}원")),
-            _ => Value::Null,
-        };
-        assert_eq!(value, expected_value);
-        assert_eq!(status, if value.is_null() { "HELD" } else { "ACTIVE" });
+        actual.remove("name").unwrap();
+        actual.remove("value").unwrap();
+        actual.remove("status").unwrap();
         assert_eq!(json!(actual), citation);
     }
 }
@@ -140,4 +128,74 @@ async fn rates_validates_required_uuid_and_rejects_anonymous_reads(pool: PgPool)
         assert_eq!(response.status, StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response.json["error"]["code"], "validation");
     }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn rates_minimum_wage_has_hourly_and_monthly_units(pool: PgPool) {
+    let (service, token, entity, _) = setup(&pool).await;
+    let response = get(service, &uri(entity), &token).await;
+    assert_eq!(response.status, StatusCode::OK);
+    let wage = response.json["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["code"] == "MINIMUM_WAGE" && row["effective_from"] == "2026-01-01")
+        .unwrap();
+    assert_eq!(wage["floor_won"], 10320);
+    assert_eq!(wage["cap_won"], 2156880);
+    assert_eq!(wage["value"], "시간급 10320원 · 월 환산액 2156880원");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn rates_labels_identify_bearer_and_unknown_codes_are_held(pool: PgPool) {
+    let (service, token, entity, _) = setup(&pool).await;
+    let response = get(service.clone(), &uri(entity), &token).await;
+    assert_eq!(response.status, StatusCode::OK);
+    let items = response.json["items"].as_array().unwrap();
+    for (code, name) in [
+        ("EMPLOYMENT_INSURANCE_EMPLOYEE", "고용보험 근로자 부담 요율"),
+        ("HEALTH_INSURANCE_TOTAL", "건강보험 전체 요율"),
+        ("MINIMUM_WAGE", "최저임금"),
+    ] {
+        let row = items.iter().find(|row| row["code"] == code).unwrap();
+        assert_eq!(row["name"], name);
+        assert_ne!(row["name"], row["instrument_ko"]);
+    }
+    // rls-arming: ok owner models a register code without a declared display meaning.
+    sqlx::query("DELETE FROM payroll_statutory_rates WHERE code='SIMPLIFIED_WITHHOLDING_TABLE'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    // rls-arming: ok owner retains populated quantities to prove unknown codes fail closed.
+    sqlx::query("UPDATE payroll_statutory_rates SET code='SIMPLIFIED_WITHHOLDING_TABLE' WHERE code='NATIONAL_PENSION_EMPLOYEE'")
+        .execute(&pool).await.unwrap();
+    let response = get(service, &uri(entity), &token).await;
+    let unknown = response.json["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["code"] == "SIMPLIFIED_WITHHOLDING_TABLE")
+        .unwrap();
+    assert_eq!(unknown["name"], "미분류");
+    assert_eq!(unknown["value"], Value::Null);
+    assert_eq!(unknown["status"], "HELD");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn rates_includes_stored_2027_pension_as_scheduled(pool: PgPool) {
+    let (service, token, entity, _) = setup(&pool).await;
+    let response = get(service, &uri(entity), &token).await;
+    assert_eq!(response.status, StatusCode::OK);
+    let pension = response.json["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| {
+            row["code"] == "NATIONAL_PENSION_EMPLOYEE" && row["effective_from"] == "2027-01-01"
+        })
+        .expect("stored future pension row must be available for preparation");
+    assert_eq!(pension["rate_num"], 500);
+    assert_eq!(pension["rate_den"], 10000);
+    assert_eq!(pension["value"], "500/10000");
+    assert_eq!(pension["status"], "SCHEDULED");
 }

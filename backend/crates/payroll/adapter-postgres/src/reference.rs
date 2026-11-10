@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     PgPayrollError, PgPayrollStore,
-    payslip_draft::{StatutoryCitation, statutory_citations_for_country_in_tx},
+    payslip_draft::{StatutoryCitation, decode_statutory_citations},
 };
 
 #[derive(Debug, Serialize)]
@@ -73,16 +73,26 @@ impl PgPayrollStore {
                 let Some((country_code, today, adopted)) = pack else {
                     return Ok(PayrollRates { country_code: None, adopted: false, items: vec![] });
                 };
-                let items = statutory_citations_for_country_in_tx(tx, today, Some(&country_code))
-                    .await?
+                let labels: std::collections::HashMap<String, String> = serde_json::from_str(
+                    include_str!("../../../../../packages/i18n/src/catalogs/payroll-reference-labels.json"),
+                ).map_err(|_| KernelError::unavailable("payroll reference labels unavailable"))?;
+                let rows = sqlx::query(
+                    "SELECT * FROM payroll_statutory_rates
+                     WHERE country_code=$1
+                       AND (effective_to_exclusive IS NULL OR effective_to_exclusive > $2)
+                     ORDER BY code,effective_from",
+                ).bind(&country_code).bind(today).fetch_all(tx.as_mut()).await?;
+                let items = decode_statutory_citations(rows)?
                     .into_iter()
                     .map(|citation| {
                         let value = reference_value(
-                            citation.rate_num, citation.rate_den, citation.floor_won, citation.cap_won,
+                            &citation.code, citation.rate_num, citation.rate_den, citation.floor_won, citation.cap_won,
                         );
                         PayrollRate {
-                            name: citation.instrument_ko.clone(),
-                            status: if value.is_some() { "ACTIVE" } else { "HELD" },
+                            name: labels.get(&citation.code).unwrap_or(&labels["unknown"]).clone(),
+                            status: if value.is_none() { "HELD" }
+                                else if citation.effective_from > today { "SCHEDULED" }
+                                else { "ACTIVE" },
                             value,
                             citation,
                         }
