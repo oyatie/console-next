@@ -7,6 +7,8 @@ type Step = components["schemas"]["SetupStep"];
 export const homeSetupScreen = screens[0];
 export const homeSetupCases = [
   { state: "first", registry: "home--setup-phase-first-landing-after-enrolment" },
+  { state: "permissions", registry: "home--setup-rail-populated" },
+  { state: "attention", registry: "home--setup-rail-populated" },
   { state: "mid", registry: "home--setup-rail-populated" },
   { state: "passkey", registry: "home--setup-phase-after-passkey-sign-in" },
   { state: "blocked-3", registry: "home--setup-rail-populated" },
@@ -46,6 +48,8 @@ export function homeSetupChecklist(state: HomeSetupState): Checklist {
     steps = steps.map((s, i) => ({ ...s, state: i < index ? "done" : "todo", remedy: null }));
   }
   if (state !== "ready") steps[steps.length - 1] = { ...steps.at(-1)!, state: "blocked", remedy: "accept_terms", count: state === "blocked-7" ? 7 : 3, can_act: state !== "preview-unavailable" };
+  if (state === "permissions") steps = steps.map(s => ({ ...s, can_act: s.key === "employees", state: s.key === "entity" ? "done" : "todo", remedy: null, needs: ["entity", "workplace", "org"].includes(s.key) ? "org::edit" : "tenant_ops" }));
+  if (state === "attention") steps = steps.map(s => s.key === "org" ? { ...s, state: "attention", remedy: "assign_department", count: 3 } : s.key === "employees" ? { ...s, state: "attention", remedy: "place_people", counts: { ...s.counts, unplaced: 18 } } : s);
   const done = steps.filter(s => s.state === "done" || s.state === "attention").length;
   return { phase: "SETUP", go_live_at: null, steps, done, total: steps.length,
     summary: { people: counts.people, placed: 0, unplaced: 0, entity_unknown: 0, progress: 99 } };

@@ -62,7 +62,8 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
         for (const [index, step] of checklist.steps.entries()) {
           await expect(rows.nth(index)).toContainText(t(`setup.step.${step.key}` as Parameters<typeof t>[0]));
           await expect(rows.nth(index).locator("[data-step-state]")).toBeVisible();
-          if (await rows.nth(index).getAttribute("aria-current") === "step") await expect(rows.nth(index)).toContainText(step.can_act ? "담당 ·" : t("setup.permissionNeeded", { permission: t("setup.permission.tenant_ops") }));
+          if (!step.can_act) await expect(rows.nth(index)).toContainText(t("setup.permissionNeeded", { permission: t(`setup.permission.${step.needs}` as Parameters<typeof t>[0]) }));
+          else if (await rows.nth(index).getAttribute("aria-current") === "step") await expect(rows.nth(index)).toContainText(step.can_act ? "담당 ·" : t("setup.permissionNeeded", { permission: t("setup.permission.tenant_ops") }));
           else await expect(rows.nth(index).locator("[data-step-owner]")).toHaveCount(0);
         }
         const progress = rail.getByRole("progressbar", { name: t("setup.title"), exact: true });
@@ -71,7 +72,7 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
         await expect(main.locator("progress")).toHaveCount(0);
         const golive = checklist.steps.at(-1)!;
         const blockedCurrent = golive.state === "blocked" && checklist.steps.slice(0, -1).every(s => s.state === "done");
-        await expect(rail.locator(".btn--primary")).toHaveCount(state === "preview-unavailable" ? 0 : 1);
+        await expect(rail.locator(".btn--primary")).toHaveCount(checklist.steps.find(s => s.state !== "done" && s.state !== "attention")?.can_act ? 1 : 0);
         if (blockedCurrent && golive.can_act) await expect(rail.locator('[aria-disabled="true"]')).toBeVisible();
         if (state === "blocked-3" || state === "blocked-7") {
           await expect(rail.locator("[data-setup-blocker]")).toHaveCount(state === "blocked-7" ? 5 : 3);
@@ -90,11 +91,18 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
         for (const [index, step] of checklist.steps.entries()) {
           if (step.state === "blocked" && ["create_legal_entity", "create_workplace"].includes(step.remedy ?? "")) {
             await expect(rows.nth(index)).toContainText("대기 ·");
-            await expect(rows.nth(index).getByRole("link", { name: t(step.remedy === "create_legal_entity" ? "setup.fix.create_legal_entity" : "setup.fix.create_workplace"), exact: true }).last()).toBeVisible();
+            await expect(rows.nth(index).getByRole("link")).toHaveCount(0);
           }
         }
-        await expect(rail.getByRole("link", { name: "설정 단계 기록", exact: true })).toHaveAttribute("href", "/org/history");
+        const history = rail.getByRole("link", { name: "설정 단계 기록", exact: true });
+        if (checklist.steps.some(s => s.key === "org" && s.can_act)) await expect(history).toHaveAttribute("href", "/org/history");
+        else await expect(history).toHaveCount(0);
         await expect(main.locator('#setup-bulk').locator("..").getByRole("link")).toHaveCount(0);
+        if (state === "attention") {
+          await expect(rows.nth(2)).toContainText("부서 없는 직원 3명");
+          await expect(rows.nth(6)).toContainText("미배치 18");
+          await expect(rows.nth(6).getByRole("link")).toHaveCount(1);
+        }
         if (state === "long") await expect(main.getByText("2,000", { exact: true })).toBeVisible();
         if (state === "passkey") await expect(rail.locator('[aria-current="step"]')).toContainText("패스키 등록");
       }

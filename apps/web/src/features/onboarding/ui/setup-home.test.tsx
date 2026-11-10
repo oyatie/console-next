@@ -54,6 +54,9 @@ test("an employees-only setup grant keeps other steps readable with permissions 
   expect(html).not.toContain('href="/setup/go-live"');
   expect(html).not.toContain('href="/org/history"');
   expect(html).toContain("조직 등록·수정 권한 필요");
+  expect(html).toContain("운영 계정 필요");
+  expect(rowsOf(html)[0]).toContain("조직 등록·수정 권한 필요");
+  expect(rowsOf(html)[3]).toContain("운영 계정 필요");
   expect(html).toContain("미배치 18");
   expect(commands.mutate).not.toHaveBeenCalled();
 });
@@ -108,7 +111,7 @@ test("the placement remedy has one control in the setup step", () => {
 
 test("Home keeps the server's department gap and one bulk fix for a solo admin", () => {
   const html = render(checklist([step("org", true, "org::edit", { state: "attention", remedy: "assign_department", count: 3 })]));
-  expect(html).toContain("조직 구성");
+  expect(html).toContain("부서 없는 직원 3명");
   expect(html.match(/href="\/people\?review=department"/g)).toHaveLength(1);
 });
 
@@ -155,7 +158,7 @@ test.each(["create_legal_entity", "create_workplace"])("a prerequisite %s leaves
   const html = render(checklist([step("entity", true, "org::edit"), step("workplace", true, "org::edit", { state: "blocked", remedy })]));
   const blocked = rowsOf(html)[1]!;
   expect(blocked).toContain(remedy === "create_legal_entity" ? "대기 · 법인 등록 후" : "대기 · 사업장 등록 후");
-  expect(blocked).toContain('href="/org/entities');
+  expect(blocked).not.toContain("href=");
 });
 
 test("bulk offers only download and workplace does not duplicate department import paths", () => {
@@ -206,7 +209,7 @@ test("a required entity registration shows its fix instead of another entity for
   expect(row.match(/btn--primary/g)).toHaveLength(1);
 });
 
-test("three server groups expand only the next step and retain a collapsed blocker fix", () => {
+test("three server groups expand only the next step and retain a quiet prerequisite", () => {
   const html = render(checklist([
     step("entity", true, "org::edit", { group: "company" }),
     step("org", true, "org::edit", { group: "operations", state: "blocked", remedy: "create_workplace" }),
@@ -217,7 +220,7 @@ test("three server groups expand only the next step and retain a collapsed block
   expect(rows[0]).toContain("근로기준법 제41조");
   expect(rows[0]).toContain('href="/org/entities/bulk?mode=paste"');
   expect(rows[1]).toContain("대기 · 사업장 등록 후");
-  expect(rows[1]).toContain('href="/org/entities"');
+  expect(rows[1]).not.toContain("href=");
   expect(rows[1]).not.toContain("근로기준법 시행령 제20조");
   expect(rows[2]).not.toContain("담당 ·");
   expect(rows[2]).not.toContain("/people/import");
@@ -264,4 +267,29 @@ test("a blocker counting many employees offers its one bulk fix", () => {
   preview.items = [{ code: "people_without_department", remedy: "assign_department", records: Array.from({ length: 2000 }, (_, i) => ({ kind: "employee", id: `employee-${i}`, legal_entity_id: "entity", name: `직원 ${i}` })) }];
   const html = render(checklist([step("golive", true, "tenant_ops", { state: "blocked", count: 1 })]));
   expect(html.match(/href="\/people\?review=department"/g)).toHaveLength(1);
+});
+
+
+test("collapsed attention keeps employee counts without expanded explanations or duplicate fixes", () => {
+  const row = rowsOf(render(checklist([step("employees", true, "hr_basic::edit", { state: "attention", remedy: "place_people" })])))[0]!;
+  expect(row).toContain("미배치 18");
+  expect(row).toContain("법인 미정 3");
+  expect(row.match(/href="\/people\/unplaced"/g)).toHaveLength(1);
+  expect(row).not.toContain("담당 ·");
+  expect(row).not.toContain("근로기준법 제41조");
+  expect(row).not.toContain("<br");
+});
+
+test("collapsed blocked steps without permission have no remedy or title link", () => {
+  const row = rowsOf(render(checklist([
+    step("entity", true, "org::edit"),
+    step("org", false, "org::edit", { state: "blocked", remedy: "add_department" }),
+  ])))[1]!;
+  expect(row).toContain("조직 등록·수정 권한 필요");
+  expect(row).not.toContain("href=");
+});
+
+test("an uncatalogued step remedy never exposes its refusal code", () => {
+  const html = render(checklist([step("org", true, "org::edit", { state: "blocked", remedy: "future_refusal" })]));
+  expect(html).not.toContain("future_refusal");
 });

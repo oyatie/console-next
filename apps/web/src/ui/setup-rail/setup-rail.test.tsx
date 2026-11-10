@@ -95,3 +95,23 @@ test("collapsed rows hide explanation, owner and actions but retain a blocked re
   expect(out).toContain("Needs company");
   expect(out).toContain('href="/org"');
 });
+
+
+test("collapsed attention retains its count summary without owner or actions", () => {
+  const act = "Act", secondary = "Import";
+  const out = html(<SetupRail title="Setup" groups={[{ key: "all", title: "All", steps: [
+    { key: "review", title: "Review", state: "attention", collapsed: true, detail: "미배치 18", owner: "Owner", action: <button>{act}</button>, secondary: <button>{secondary}</button> },
+  ] }]} />);
+  expect(out).toContain("미배치 18");
+  for (const hidden of ["Owner", ">Act<", ">Import<"]) expect(out).not.toContain(hidden);
+});
+
+
+test.each(["todo", "done", "attention", "blocked"] as const)("a collapsed locked %s row keeps only its permission line", (state) => {
+  const fix = "Fix";
+  const out = html(<SetupRail title="Setup" groups={[{ key: "all", title: "All", steps: [
+    { key: "locked", title: "Step", state, collapsed: true, locked: true, owner: "Permission needed", detail: "Expanded why", blocker: "Blocked reason", remedy: <a href="/org">{fix}</a> },
+  ] }]} />);
+  expect(out).toContain("Permission needed");
+  for (const hidden of ["Expanded why", "Blocked reason", 'href="/org"']) expect(out).not.toContain(hidden);
+});

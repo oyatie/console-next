@@ -90,18 +90,20 @@ export function SetupHome({ c }: { c: Checklist }) {
     const title = codeText(`setup.step.${s.key}`, s.key);
     const target = fixFor(s.remedy) ?? fixFor(s.action);
     const collapsed = s.key !== current;
+    const counts = s.key === "employees" ? <Chip tone="warn">{t("setup.stats.unplacedCount", { count: s.counts.unplaced })} · {t("setup.stats.unknownCount", { count: s.counts.entity_unknown })}</Chip> : undefined;
     const perm = codeText(`setup.permission.${s.needs}`, s.needs);
     return {
       key: s.key,
-      title: collapsed && s.can_act && target ? <Link {...target}>{title}</Link> : title,
+      title: collapsed && s.can_act && !waiting && target ? <Link {...target}>{title}</Link> : title,
       collapsed,
+      locked: !s.can_act,
       state: s.state,
       owner: s.can_act ? t("setup.owner", { owner: perm }) : <Chip tone="warn">{t("setup.permissionNeeded", { permission: perm })}</Chip>,
-      detail: <>
+      detail: collapsed ? counts ?? line : <>
         <small>{codeText(`setup.why.${s.key}`, "")}</small>
         {s.key === "roles" && <><Chip>{t("setup.roles.prepared")}</Chip>
           {(s.skippable || s.remedy === "roles_skipped") && <Chip>{t("setup.skip.rolesConsequence")}</Chip>}</>}
-        {s.key === "employees" && <Chip tone="warn">{t("setup.stats.unplacedCount", { count: s.counts.unplaced })} · {t("setup.stats.unknownCount", { count: s.counts.entity_unknown })}</Chip>}
+        {counts}
         {s.state !== "blocked" && line && <><br /><span>{line}</span></>}
       </>,
       // Done with something to look at: the action is the fix (when it has a screen), not the step's first act again.
@@ -120,7 +122,7 @@ export function SetupHome({ c }: { c: Checklist }) {
         </ul>}
       </> : undefined,
       action: s.can_act && !waiting ? (s.state === "attention" && fixFor(s.remedy) ? <FixLink code={s.remedy} /> : action(s)) : undefined,
-      remedy: s.can_act && s.remedy && s.key !== "golive" ? remedy(s.remedy, false) : undefined,
+      remedy: s.can_act && !waiting && s.remedy && s.key !== "golive" ? remedy(s.remedy, false) : undefined,
       secondary:
         !s.can_act || waiting ? undefined : s.key === "roles" && s.state !== "done" ? (
           <><Link to="/people" search={{ view: "accounts" }} className={buttonClass()}>{t("setup.action.invite")}</Link>

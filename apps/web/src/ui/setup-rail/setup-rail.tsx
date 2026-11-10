@@ -13,6 +13,7 @@ export type SetupStepView = {
   key: string;
   title: ReactNode;
   collapsed?: boolean;
+  locked?: boolean;
   blocker?: ReactNode;
   state: SetupState;
   detail?: ReactNode;
@@ -83,9 +84,9 @@ export function SetupRail({ title, summary, groups }: { title: string; summary?:
                       {!x.collapsed && (x.state === "blocked" ? x.blocker != null ? x.action : x.remedy : x.state !== "done" && x.action)}
                       {!x.collapsed && x.state !== "done" && x.secondary}
                     </span>
-                    {(!x.collapsed || x.state === "blocked") && <div className={s.foot}>
-                      <div className={s.detail}><span>{!x.collapsed && x.detail}</span>{x.state === "blocked" && x.blocker != null && <>{x.blocker}{x.remedy}</>}</div>
-                      {!x.collapsed && x.owner != null && <small className={s.owner} data-step-owner>{x.owner}</small>}
+                    {(!x.collapsed || x.state === "blocked" || x.state === "attention" || x.locked) && <div className={s.foot}>
+                      <div className={s.detail}><span>{(!x.collapsed || (!x.locked && x.state === "attention")) && x.detail}</span>{x.state === "blocked" && (!x.collapsed || !x.locked) && x.blocker != null && <>{x.blocker}{x.remedy}</>}</div>
+                      {(!x.collapsed || x.locked) && x.owner != null && <small className={s.owner} data-step-owner>{x.owner}</small>}
                     </div>}
                   </li>
                 );
