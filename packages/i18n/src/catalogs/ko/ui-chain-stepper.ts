@@ -7,4 +7,5 @@ export const koUiChainStepper = {
   "uiChainStepper.state.waiting": "대기:",
   "uiChainStepper.state.failed": "실패:",
   "uiChainStepper.mine": "내 차례",
+  "uiChainStepper.more": "+{count}",
 } as const;
