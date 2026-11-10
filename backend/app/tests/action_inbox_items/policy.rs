@@ -60,7 +60,7 @@ async fn org_inbox_resolves_policy_once_for_two_hundred_rows_and_refreshes_next_
     tracing_subscriber::registry().try_init().ok();
     let (org, maker) = http::tenant(&pool, &["MEMBER"]).await;
     http::add_user(&pool, org, &["MEMBER"]).await;
-    super::org_change_fixtures::grant_org_levels(&pool, maker, &["view"]).await;
+    super::org_change_fixtures::grant_org_levels(&pool, maker, &["view", "edit"]).await;
     sqlx::query("INSERT INTO org_change_requests(org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,proposal,drafted_by,idempotency_key,request_fingerprint) SELECT $1,'OC-2026-'||lpad(n::text,4,'0'),'REORG','IN_APPROVAL','REGION','region','조직 개편',CURRENT_DATE,'검토','[]',$2,gen_random_uuid()::text,repeat('a',64) FROM generate_series(1,200) n")
         .bind(org).bind(maker.as_uuid()).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO org_change_approval_steps(org_id,request_id,step_order,role_key) SELECT org_id,id,1,'hr' FROM org_change_requests WHERE org_id=$1")
@@ -155,7 +155,7 @@ async fn org_inbox_resolves_policy_once_for_two_hundred_rows_and_refreshes_next_
             !org_events.is_empty(),
             "org-change source span must be observed"
         );
-        // Other sources own different settings; this slice reuses the org policy snapshot.
+        // The org-change source reuses the request settings snapshot.
         assert_eq!(
             org_events
                 .iter()
