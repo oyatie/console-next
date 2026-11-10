@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { acceptConsent, configure, session } from "@console/api";
-import { consentDestination, ensureSession, ensureEnrolling } from "./session";
+import { consentDestination, ensureSession, ensureEnrolling, rememberInterrupted } from "./session";
 
 const pair = (accepted?: boolean) => ({
   access_token: `h.${btoa(JSON.stringify({ sub: "user", org: "tenant", platform: false }))}.s`,
@@ -71,6 +71,18 @@ test("changed documents preserve the interrupted URL for this account only", asy
   await expect(ensureEnrolling()).resolves.toBeUndefined();
   session.setConsentAccepted(true);
   expect(consentDestination()).toBe("/people?q=Kim#person");
+  session.set({ ...pair(true), access_token: `h.${btoa(JSON.stringify({ sub: "other", org: "tenant" }))}.s` });
+  expect(consentDestination()).toBe("/");
+});
+
+
+test("reset return URL belongs only to the interrupted principal", () => {
+  session.set(pair(true));
+  vi.stubGlobal("location", { pathname: "/people/person", search: "?view=history", hash: "#report" });
+  rememberInterrupted();
+  session.expire("session_passkey_reset");
+  session.set({ ...pair(true), requires_passkey_setup: true, access_token: `h.${btoa(JSON.stringify({ sub: "user", org: "tenant", enrollment: true }))}.s` });
+  expect(consentDestination()).toBe("/people/person?view=history#report");
   session.set({ ...pair(true), access_token: `h.${btoa(JSON.stringify({ sub: "other", org: "tenant" }))}.s` });
   expect(consentDestination()).toBe("/");
 });

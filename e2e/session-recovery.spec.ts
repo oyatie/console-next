@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { apiAs, soloTenant } from "./chaos";
-import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, routeReady, stepUp, takeCode } from "./flows";
+import { acceptConsent, firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, routeReady, stepUp, takeCode } from "./flows";
 import { setupCompany, startOperations, tenantInSetup } from "./setup-flows";
 import { expectAccessible } from "./a11y";
+import { inviteAccount } from "./access-flows";
+import { forgetResize } from "./stability";
 import { authenticatorOf } from "./auth";
 import { apiOf, bearerOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
@@ -119,6 +121,9 @@ test("exit-report draft survives close/reload, discards explicitly, and never cr
   let form = await openDraft(admin);
   await expect.poll(() => drafts(admin)).toHaveLength(1);
   await admin.keyboard.press("Escape");
+  await admin.keyboard.press("Escape");
+  await expect(form).toBeHidden();
+  await expect(admin).toHaveURL(new RegExp(`${record}$`));
   await admin.reload();
   await admin.getByRole("button", { name: "퇴직 보고", exact: true }).click();
   form = admin.getByRole("dialog", { name: "퇴직 보고", exact: true });
@@ -229,3 +234,84 @@ test("S23 passkey reset and S25 deactivation deliver their actual server reasons
   await end.getByRole("button", { name: "입력 내용 복사" }).click();
   await expect.poll(() => end.getByRole("textbox", { name: "입력 내용 복사" }).inputValue()).toContain(note);
 });
+
+
+async function recoveryScreenProof(page: Page, name: string) {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await forgetResize(page);
+    await expectAccessible(page, `${name} ${width}`);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, nextTheme) => { el.dataset.theme = nextTheme; }, theme);
+      expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: test.info().outputPath(`${name}-${width}-${theme}.png`) });
+    }
+  }
+}
+
+for (const different of [false, true]) {
+  test(`reset code sign-in restores only the interrupted account (different=${different})`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    const admin = await soloTenant(browser, different ? "resetother" : "resetreturn", "로그인복구상사");
+    const user = await firstSignIn(browser, await inviteAccount(admin, "김복구계정", "full"));
+    const otherCode = different ? await inviteAccount(admin, "이다른계정", "none") : null;
+    await setupCompany(admin, "로그인복구상사");
+    await startOperations(admin);
+    await registerEmployee(admin, { name: "김복귀", number: "REC-0005", hired: kstDate(-30), unit: "본점" });
+    const record = new URL(admin.url()).pathname;
+    await go(user, record);
+    const form = await openDraft(user);
+    const returnUrl = user.url();
+    await expect.poll(() => drafts(user)).toHaveLength(1);
+    await admin.goto("/people?view=accounts");
+    await admin.getByRole("row", { name: /김복구계정/ }).click();
+    await admin.getByRole("complementary", { name: "김복구계정" }).getByRole("button", { name: "패스키 초기화" }).click();
+    await stepUp(admin.getByRole("dialog", { name: "패스키 초기화" }), "패스키로 확인하고 패스키 초기화", admin.getByRole("dialog", { name: "패스키 초기화 로그인 코드" }));
+    const code = await takeCode(admin);
+    const keys: string[] = [];
+    user.on("request", request => {
+      if (request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/hr/exit-cases") keys.push(request.headers()["idempotency-key"]!);
+    });
+    await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
+    const recovery = user.getByRole("dialog", { name: "다시 로그인" });
+    await expect(recovery).toContainText("관리자가 패스키를 초기화했습니다");
+    await expect(recovery.getByRole("button", { name: "패스키로 다시 로그인" })).toHaveCount(0);
+    await expect(recovery.getByRole("button", { name: "코드로 로그인" })).toBeVisible();
+    await copyInput(user);
+    if (!different) await recoveryScreenProof(user, "reset");
+    await recovery.getByRole("button", { name: "코드로 로그인" }).click();
+    await expect(user).toHaveURL(/\/login\?code=true/);
+    expect(await drafts(user)).toHaveLength(1);
+    if (!different) {
+      await recoveryScreenProof(user, "code-login");
+      await user.goBack();
+      await recovery.getByRole("button", { name: "코드로 로그인" }).click();
+    }
+    await authenticatorOf(user).clear();
+    await user.getByLabel("일회용 코드").fill(otherCode ?? code);
+    await user.getByRole("button", { name: "코드로 로그인" }).click();
+    await expect(user).toHaveURL(/\/setup-passkey/, { timeout: 20_000 });
+    if (different) await acceptConsent(user);
+    if (!different) await recoveryScreenProof(user, "setup-passkey");
+    await user.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/, disabled: false }).click();
+    await expect(user).toHaveURL(different ? /\/$/ : returnUrl, { timeout: 20_000 });
+    await routeReady(user);
+    expect(keys).toHaveLength(1);
+    if (different) {
+      expect(await drafts(user)).toEqual([]);
+      expect(await user.evaluate(() => Object.values(sessionStorage).some(value => value.includes("개인 사정으로 사직 (작성 중)")))).toBe(false);
+      await expect(user.getByText(note)).toHaveCount(0);
+    } else {
+      await expect(form.getByRole("textbox", { name: /^퇴직 경위/ })).toHaveValue(note);
+      await expect(form).toContainText("작성 중이던 내용을 불러왔습니다");
+      await expect(form.getByRole("button", { name: "폐기" })).toBeVisible();
+      await recoveryScreenProof(user, "restored");
+      const saved = user.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/hr/exit-cases");
+      await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
+      expect((await saved).ok()).toBe(true);
+      await expect(form).toBeHidden({ timeout: 20_000 });
+      expect(keys).toHaveLength(2);
+      expect(await drafts(user)).toEqual([]);
+    }
+  });
+}

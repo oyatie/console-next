@@ -79,7 +79,7 @@ function useAutofill(signedIn: () => Promise<void>) {
 
 export function Login() {
   const nav = useNavigate();
-  const { enrolled, cancelled } = loginRoute.useSearch();
+  const { enrolled, cancelled, code } = loginRoute.useSearch();
   const [otp, setOtp] = useState("");
   const [id, setId] = useState("");
   const [idError, setIdError] = useState<string | null>(null);
@@ -184,7 +184,7 @@ export function Login() {
         <Button disabled={busy} onClick={() => run(() => loginWithPasskey(), passkeyRecovery)}>
           <KeyRound size={16} aria-hidden /> {t("auth.login.passkey")}
         </Button>
-        <details>
+        <details open={code || undefined}>
         <summary>{t("auth.login.or")}</summary>
         <Form className="form" onSubmit={submitOtp}>
           <Field label={t("auth.login.code")} required={null} hint={t("auth.login.codeHint", { count: otp.replaceAll("-", "").length, length: OTP_LENGTH })}>

@@ -33,7 +33,7 @@ const login = createRoute({
   getParentRoute: () => root,
   path: "/login",
   // `enrolled`: a passkey was just registered but the automatic sign-in with it failed (e.g. rate-limited).
-  validateSearch: (s: Record<string, unknown>): { enrolled?: boolean; cancelled?: 1 } => ({ enrolled: flag(s.enrolled), cancelled: s.cancelled === 1 || s.cancelled === "1" ? 1 : undefined }),
+  validateSearch: (s: Record<string, unknown>): { enrolled?: boolean; cancelled?: 1; code?: boolean } => ({ enrolled: flag(s.enrolled), code: flag(s.code), cancelled: s.cancelled === 1 || s.cancelled === "1" ? 1 : undefined }),
   beforeLoad: leaveSignInWhenSignedIn,
   component: lazyRouteComponent(() => chunk(import("../auth/Login")), "Login"),
 });
