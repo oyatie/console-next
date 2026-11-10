@@ -82,6 +82,14 @@ test("the filtered empty state offers exactly one reset", () => {
   expect(render().split(t("people.filter.reset"))).toHaveLength(2);
 });
 
+test("a unit-filtered empty roster keeps its reset above the stats", () => {
+  state.search = { unit: "department" };
+  state.empty = true;
+  const html = render();
+  expect(html.split(t("people.filter.reset"))).toHaveLength(2);
+  expect(html.indexOf(t("people.filter.reset"))).toBeLessThan(html.indexOf(`aria-label="${t("people.filter.label")}"`));
+});
+
 test.each(VIEWS.filter(view => view.id !== "current"))("the $id view uses the current tab to reset and keeps a reset for extra filters or empty results", (view) => {
   state.search = { status: view.status, review: view.review?.join(","), sort: "hire_date" };
   for (const loading of [false, true]) {
