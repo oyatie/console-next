@@ -31,7 +31,7 @@ vi.mock("@tanstack/react-query", async (original) => ({
   },
   useInfiniteQuery: (options: Options) => { view.options = options; return { ...view.list, fetchNextPage: view.next, refetch: view.retry }; },
 }));
-vi.mock("../../../lib/live/live", () => ({ liveApplying: { get: () => view.applying, subscribe: () => () => {} } }));
+vi.mock("../../../lib/live/live", async original => ({ ...await original<typeof import("../../../lib/live/live")>(), liveApplying: { get: () => view.applying, subscribe: () => () => {} } }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({}) }));
 vi.mock("../../../ui/button/button", async (original) => {
   const actual = await original<typeof import("../../../ui/button/button")>();

@@ -5,12 +5,14 @@ import type { Checklist } from "@console/api/pending";
 import { t, type MessageId } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { liveApplying } from "../../../lib/live/live";
+import { queryView } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
 import { Banner } from "../../../ui/banner/banner";
 import { GroupedQueue, type RowAction } from "./grouped-queue";
+import { HeldNotice } from "../../../ui/live/held-notice";
 import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
 import { columnSelection } from "../../../lib/react/use-column-selection";
 import { InboxRecord } from "./inbox-record";
@@ -77,6 +79,29 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
   const applying = useSyncExternalStore(liveApplying.subscribe, liveApplying.get, liveApplying.get);
   const loading = setupPending || rereading || applying;
   const tools = preview ? (first?.as_of ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time> : loading || inbox.isPending ? <Skeleton decorative bones={["short"]} /> : null) : undefined;
+  const recordVisible = !loading && inbox.data !== undefined && ["ready", "stale", "offline"].includes(queryView(inbox));
+  const columns = !setupPhase && !first?.setup;
+  const selectItem = (id: string) => { if (inbox.data?.pages.some(page => page.items.some(item => item.id === id))) select(id); };
+  const list = <><HeldNotice placement="list" />
+      <QueryState q={loading ? { ...inbox, isPending: true, data: undefined } : inbox} layout="list">{(data) => {
+          const pages = data.pages as AttentionInboxResponse[];
+          const checklist = pages[0]?.setup;
+          let rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
+          if (!preview && (setupPhase || checklist)) rows = rows.filter(item => item.kind === "privacy_request");
+          const head = pages[0];
+          const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
+          const noWork = !head?.has_work && unavailable.length === 0;
+          if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
+          return <>
+            {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
+              {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
+            </Banner>)}
+            {checklist && setup?.(checklist)}
+            {!checklist && noWork && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
+            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} selected={columns ? sel : undefined} onSelect={columns ? selectItem : undefined} onOpen={focusRecord} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
+            {!preview && inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
+          </>;
+        }}</QueryState></>;
   return (
     <Card title={preview && !loading ? t("home.inbox.title") : undefined} titleId={preview ? "inbox-title" : undefined} label={t("home.inbox.title")} tools={tools}>
       {preview && !setupPhase && !first?.setup && (first?.has_work || !!first?.available_filters.length) && first?.attention_filters?.length ? <div role="group" aria-label={t("home.attention.label")} className={css.attention}>
@@ -92,32 +117,11 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
           </Link>;
         })}
       </TabNav>}
-      <QueryState q={loading ? { ...inbox, isPending: true, data: undefined } : inbox} layout="list">{(data) => {
-          const pages = data.pages as AttentionInboxResponse[];
-          const checklist = pages[0]?.setup;
-          let rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
-          if (!preview && (setupPhase || checklist)) rows = rows.filter(item => item.kind === "privacy_request");
-          const head = pages[0];
-          const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
-          const noWork = !head?.has_work && unavailable.length === 0;
-          if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
-          const selectItem = (id: string) => { if (rows.some(item => item.id === id)) select(id); };
-          const columns = !setupPhase && !checklist;
-          const list = <>
-            {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
-              {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
-            </Banner>)}
-            {checklist && setup?.(checklist)}
-            {!checklist && noWork && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
-            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} selected={columns ? sel : undefined} onSelect={columns ? selectItem : undefined} onOpen={focusRecord} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
-            {!preview && inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
-          </>;
-          return columns ? <div ref={surface}><FlexibleColumns list={list} onSelect={selectItem} onOpen={focusRecord}
-            record={!removed && sel && { id: sel, label: t("home.inbox.record.title"), title: t("home.inbox.record.title"), onClose: () => select(undefined),
-              returnFocus: () => surface.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
-              children: <InboxRecord item={rows.find(item => item.id === sel)} action={action} onBack={() => select(undefined)} />,
-            }} /></div> : list;
-        }}</QueryState>
+      {columns ? <div ref={surface}><FlexibleColumns list={list} onSelect={selectItem} onOpen={focusRecord}
+        record={recordVisible && !removed && sel && { id: sel, label: t("home.inbox.record.title"), title: t("home.inbox.record.title"), onClose: () => select(undefined),
+          returnFocus: () => surface.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
+          children: <InboxRecord item={selectedItem} action={action} onBack={() => select(undefined)} />,
+        }} /></div> : list}
       {preview && first && (first.has_work || first.available_filters.length > 0) && !loading && !inbox.error && !first.setup && <Link to="/inbox">{t("home.inbox.viewInbox")}</Link>}
     </Card>
   );
