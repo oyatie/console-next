@@ -50,7 +50,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await basis.click();
       await expect(row.getByText(t("statutory.hold"), { exact: true })).toHaveCount(1);
       await expect(row.getByText(t("statutory.hold"), { exact: true })).toBeVisible();
-      await expect(row.getByRole("link", { name: /국민연금법/ })).toBeVisible();
+      await expect(row.getByRole("link", { name: /국민연금법/ })).toHaveCount(0);
+      await expect(row.getByText(new RegExp(new URL(filingTask.basis!.citation.source_url).pathname))).toBeVisible();
       expect(await row.evaluate(element => {
         const bounds = element.getBoundingClientRect();
         return [...element.querySelectorAll("*")].filter(child => {
@@ -163,6 +164,7 @@ for (const width of [768, 600]) test(`filing words and actions stay whole at ${w
         range.selectNodeContents(node);
         if (!range.getBoundingClientRect().width) continue;
         const font = getComputedStyle(node.parentElement!);
+        if (font.overflowWrap === "anywhere") continue;
         canvas.font = `${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
         for (const word of node.textContent!.trim().split(/[\s-]+/)) {
           if (canvas.measureText(word).width > available + 1) broken.push(word);

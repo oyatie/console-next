@@ -23,6 +23,8 @@ export const koCommon = {
   "common.failed.code.job_title_label_taken": "같은 목록에 이 이름의 직위가 있습니다. 다른 이름을 입력하십시오.",
   "common.failed.code.job_title_rank_invalid": "허용 범위를 벗어난 서열이거나 서열을 둘 수 없는 항목이라 저장하지 않았습니다. 직급·직위의 서열을 확인한 뒤 다시 시도하십시오.",
   "common.failed.code.parent_not_found": "그 상위 항목이 없습니다. 조직 구조를 다시 여십시오.",
+  "common.failed.code.external_url_https_required": "HTTPS 주소만 사용할 수 있습니다. 출처의 주소를 확인하십시오.",
+  "common.failed.code.filing_citation_source_url_invalid": "법령 출처 주소가 올바르지 않습니다. https://www.law.go.kr/ 주소를 확인하십시오.",
   "common.failed.code.filing_not_applicable_invalid": "선택한 미해당 사유가 보험의 법정 근거 또는 확인된 사실과 맞지 않아 저장하지 않았습니다. 사실과 해당 사유의 근거를 확인하십시오.",
   "common.failed.code.filing_request_invalid": "요청을 저장하지 않았습니다. 해당 인사 기록에 맞는 요청일·근로월과 시행 중인 신고 종류를 선택하고 중복 요청 여부를 확인하십시오.",
   "common.failed.code.filing_remuneration_required": "상실 신고의 보수총액을 입력하지 않아 저장하지 않았습니다. 실제 신고한 보수총액을 입력하십시오.",

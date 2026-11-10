@@ -23,6 +23,8 @@ export const enCommon = {
   "common.failed.code.job_title_label_taken": "This list already has a position with that name. Enter a different name.",
   "common.failed.code.job_title_rank_invalid": "The rank is outside the allowed range or this item cannot have a rank, so nothing was saved. Check the grade or title rank and try again.",
   "common.failed.code.parent_not_found": "That parent no longer exists. Reopen the org structure.",
+  "common.failed.code.external_url_https_required": "Only HTTPS addresses are allowed. Check the source address.",
+  "common.failed.code.filing_citation_source_url_invalid": "The legal citation address is invalid. Check the https://www.law.go.kr/ address.",
   "common.failed.code.filing_not_applicable_invalid": "Nothing was saved because the exclusion conflicts with this insurer's cited grounds or the known facts. Confirm the facts and the exclusion basis.",
   "common.failed.code.filing_request_invalid": "Nothing was saved. Choose a request date or work month and an in-force filing kind matching the employment event, and check for an existing request.",
   "common.failed.code.filing_remuneration_required": "Nothing was saved because the loss filing needs total remuneration. Enter the amount actually reported.",

@@ -5,7 +5,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
-import { ExternalLink } from "../../../ui/external-link";
+import { ExternalUrl } from "../../../ui/external-url";
 import { FilingDeadline } from "../../../reference/statutory/ui/filing-deadline";
 import { filingLabel } from "../../../reference/statutory/present";
 import { trailItemLabel, ownerLabel, trailText } from "../present";
@@ -58,7 +58,7 @@ function ItemEvidence({ item, employeeId }: { item: CaseItem; employeeId: string
   const ref = item.observed_ref;
   if (!ref) return null;
   const document = ref.document;
-  if (document && typeof document === "object" && "name" in document && "url" in document && typeof document.url === "string" && document.url.startsWith("https://")) return <p className={s.evidence} title={String(document.name)}><ExternalLink href={document.url}>{String(document.name)}</ExternalLink></p>;
+  if (document && typeof document === "object" && "name" in document && "url" in document && typeof document.url === "string" && document.url.startsWith("https://")) return <div><p className={s.evidence} title={String(document.name)}><cite>{String(document.name)}</cite></p><ExternalUrl href={document.url} /></div>;
   const event = ref.table === "employee_lifecycle_events";
   const filing = ref.table === "insurance_filing_records";
   if (filing && item.filing_obligation_id) return <p className={s.evidence}><Link to="/statutory" search={{ filing: item.filing_obligation_id }}>{t("lifecycle.trail.filingReceipt")}</Link></p>;

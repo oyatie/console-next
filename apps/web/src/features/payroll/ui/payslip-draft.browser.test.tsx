@@ -104,7 +104,8 @@ test("blockers list retains attendance and cites the typed minimum-wage failure"
     await dom(blockers.getByText("근태 기록이 충분하지 않습니다.", { exact: true })).toBeVisible();
     const minimum = blockers.getByRole("listitem").filter({ hasText: label });
     await dom(minimum).toBeVisible();
-    await dom(minimum.getByRole("link")).toHaveAttribute("href", "https://example.com/payroll-source");
+    await dom(minimum.getByRole("link")).toHaveCount(0);
+    await dom(minimum.getByText(/https:\/\/example.com\/payroll-source/)).toBeVisible();
     await dom(minimum).toContainText("2026. 01. 01.");
     await dom(page.getByText(/raw backend sentence/)).toHaveCount(0);
   }

@@ -50,6 +50,7 @@
   },
   "record": {
     "budget_kb": 252,
+    "deferred": ["src/ui/external-url-host.tsx"],
     "routes": [
       "src/features/account/Account.tsx",
       "src/features/approvals/ui/approval-viewer.tsx",
