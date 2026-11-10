@@ -90,6 +90,15 @@ test.each([["requests.status.DECLINED", "거절됨"], ["requests.status.WITHDRAW
   expect(checkComposer("packages/i18n/src/catalogs/ko/test.ts", `export const ko = {\n "${id}": "${text}",\n};`).join("\n")).toContain("composer.verb");
 });
 
+test.each(["supportAccess.state.DENIED", "supportAccess.decision.DENY"])("support denial uses the governed verb: %s", id => {
+  expect(checkTerms([{ id, where: "ko/support-access.ts", text: "고객 거절" }], [])).not.toEqual([]);
+  expect(checkTerms([{ id, where: "ko/support-access.ts", text: "고객 반려" }], [])).toEqual([]);
+});
+
+test("access refusals retain their distinct outcome wording", () => {
+  expect(checkTerms([{ id: "accessLog.outcome.DENIED", where: "ko/access-log.ts", text: "거절" }], [])).toEqual([]);
+});
+
 const src = [`t("org.title"); t(\`exit.action.\${k}\`); const id = \`org.change.event.\${e.action}\`;`];
 
 test("reads the quoted keys of a catalog file", () => {

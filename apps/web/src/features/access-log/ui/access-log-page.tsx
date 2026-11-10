@@ -59,7 +59,7 @@ export function AccessLogPage() {
   const choices = useInfiniteQuery({ ...accessLogPages(search.period, false, undefined, {}, 1), enabled: filterInvalid && !first?.filter_options });
   const source = first ?? (filterInvalid ? choices.data?.pages[0] : undefined);
   const appliedFilters = [
-    { key: "actor", label: t("accessLog.actor"), value: actor && (source?.filter_options?.actors.find(choice => choice.id === actor)?.label ?? t("accessLog.actorUnavailable")) },
+    { key: "actor", label: t("accessLog.actor"), value: actor && source?.filter_options && (source.filter_options.actors.find(choice => choice.id === actor)?.label ?? t("accessLog.actorUnavailable")) },
     { key: "action", label: t("accessLog.action"), value: action && codeText(`accessLog.action.${action}`, action) },
     { key: "target_type", label: t("accessLog.targetType"), value: target_type && codeText(`accessLog.target.${target_type}`, target_type) },
     { key: "from", label: t("accessLog.from"), value: from && fmtDate(from) },
