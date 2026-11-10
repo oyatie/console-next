@@ -1,4 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { jobTitleSchemas } from "@console/api";
+import { i18n, loadCatalog, t } from "@console/i18n";
+import { apiOf, bearerOf } from "./api";
 import { expectAccessible } from "../a11y";
 import { go, option } from "../flows";
 import { hrAct } from "../record";
@@ -7,7 +10,9 @@ import { reasonChip } from "./lifecycle";
 
 export async function inlineAdd(s: Locator, what: string, label: string) {
   await s.getByRole("button", { name: `${what} 추가`, exact: true }).click();
-  await s.getByRole("textbox", { name: `새 ${what} 이름` }).fill(label);
+  const input = s.getByRole("textbox", { name: `새 ${what} 이름` });
+  await expect(input).toHaveAttribute("maxlength", String(jobTitleSchemas.create.properties.label.maxLength));
+  await input.fill(label);
   await s.getByRole("button", { name: "추가", exact: true }).click();
   await expect(s.getByRole("radio", { name: label, exact: true })).toBeChecked();
 }
@@ -20,8 +25,40 @@ export async function openGradeFix(page: Page, correct: boolean) {
   return sheet(page, correct ? "직급 정정" : "직급 수정 · 변경");
 }
 
+/** The form refuses invalid input; the authenticated API independently enforces the same contract. */
+export async function assertRankRefusal(page: Page, edit: Locator, label: string, api: ReturnType<typeof apiOf>) {
+  await loadCatalog("ko");
+  i18n.set("ko");
+  const { minimum, maximum } = jobTitleSchemas.update.properties.grade_rank;
+  const writes: string[] = [];
+  const watch = (request: import("@playwright/test").Request) => {
+    if (request.method() === "PATCH" && /\/api\/v1\/job-titles\/[^/]+$/.test(new URL(request.url()).pathname)) writes.push(request.url());
+  };
+  page.on("request", watch);
+  try {
+    const rank = edit.getByRole("textbox", { name: t("titles.col.rank") });
+    await rank.fill(String(maximum + 1));
+    await expect(edit.getByRole("button", { name: t("titles.edit.commit"), exact: true })).toHaveAttribute("aria-disabled", "true");
+    await expect(rank).toHaveAttribute("aria-invalid", "true");
+    await expect(edit).toContainText(t("titles.rank.bad", { min: minimum, max: maximum }));
+    await rank.press("Enter");
+    await edit.evaluate(element => (element as HTMLFormElement).requestSubmit());
+    await expect(edit).toBeVisible();
+    expect(writes).toEqual([]);
+  } finally { page.off("request", watch); }
+  const entries = (await (await api("/job-titles")).json()).items as { id: string; label: string; grade_rank: number | null }[];
+  const entry = entries.find(item => item.label === label)!;
+  expect(entry).toBeDefined();
+  const refused = await api(`/job-titles/${entry.id}`, "PATCH", { grade_rank: maximum + 1 });
+  expect(refused.status()).toBe(422);
+  expect((await refused.json()).error.code).toBe("job_title_rank_invalid");
+  const after = (await (await api("/job-titles")).json()).items;
+  expect(after.find((item: { id: string }) => item.id === entry.id)).toMatchObject(entry);
+}
+
 /** All five CX-grade-fix paths on the already-open card, as one administrator. */
 export async function gradeJourney(page: Page) {
+  const api = apiOf(page, bearerOf(page));
   const card = new URL(page.url()).pathname;
   const change = await openGradeFix(page, false);
   await expect(change).toContainText("등록된 새 직급 항목이 없습니다");
@@ -62,13 +99,7 @@ export async function gradeJourney(page: Page) {
   const row = page.getByRole("row").filter({ hasText: "G3" });
   await row.getByRole("button", { name: "G3 수정", exact: true }).click();
   const edit = page.getByRole("form", { name: "G3 목록 항목 수정" });
-  await edit.getByRole("textbox", { name: /^서열/ }).fill("1001");
-  const refusedRank = page.waitForResponse((response) => response.request().method() === "PATCH" && /\/api\/v1\/job-titles\/[^/]+$/.test(new URL(response.url()).pathname));
-  await edit.getByRole("button", { name: "목록 항목 저장", exact: true }).click();
-  const refused = await refusedRank;
-  expect(refused.status()).toBe(422);
-  expect((await refused.json()).error.code).toBe("job_title_rank_invalid");
-  await expect(edit.getByRole("alert")).toBeVisible();
+  await assertRankRefusal(page, edit, "G3", api);
   await expect(row.getByRole("cell", { name: "G3", exact: true })).toBeVisible();
   await edit.getByRole("textbox", { name: /^직위 이름/ }).fill("Senior grade");
   await edit.getByRole("textbox", { name: /^서열/ }).fill("20");

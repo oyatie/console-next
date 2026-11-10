@@ -1,7 +1,7 @@
 // Planted negative controls for the client contract gate (scripts/check-api-schema.mjs), on a
 // throwaway backend repo so the test needs no real backend tree.
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, symlinkSync, chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, expect, test } from "vitest";
@@ -112,3 +112,47 @@ test("pay group runtime constraints follow the committed contract and reject han
   writeFileSync(runtimeOut, generated.replace("23", "40"));
   expect(checkApiSchema({ repo, out, runtimeOut })).toMatchObject({ ok: false, message: expect.stringContaining("runtime schema drift") });
 });
+
+test("job title form limits are generated from both committed write contracts", () => {
+  const jobTitleOut = path.join(dir, "job-title-schema.ts");
+  const schema = { type: "object", properties: { label: { type: "string", maxLength: 37 }, grade_rank: { type: "integer", minimum: 3, maximum: 71 } } };
+  const operation = { requestBody: { content: { "application/json": { schema } } }, responses: { "200": { description: "OK" } } };
+  writeFileSync(path.join(repo, "backend/openapi/openapi.yaml"), JSON.stringify({ openapi: "3.1.0", info: { title: "t", version: "1" }, paths: { "/api/v1/job-titles": { post: operation }, "/api/v1/job-titles/{id}": { patch: operation } } }));
+  git("add", "-A");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-qm", "test job title constraints");
+  expect(checkApiSchema({ repo, out, jobTitleOut, write: true }).ok).toBe(true);
+  const generated = readFileSync(jobTitleOut, "utf8");
+  expect(JSON.parse(generated.slice(generated.indexOf("= ") + 2, generated.lastIndexOf(" as const")))).toEqual({ create: schema, update: schema });
+  expect(checkApiSchema({ repo, out, jobTitleOut }).ok).toBe(true);
+  writeFileSync(jobTitleOut, generated.replace("71", "1000"));
+  expect(checkApiSchema({ repo, out, jobTitleOut })).toMatchObject({ ok: false, message: expect.stringContaining("runtime schema drift") });
+});
+
+
+test("the CLI checks job title runtime schema drift", () => {
+  const root = path.join(dir, "cli");
+  mkdirSync(path.join(root, "scripts"), { recursive: true });
+  mkdirSync(path.join(root, "packages/api/src"), { recursive: true });
+  mkdirSync(path.join(root, "backend/openapi"), { recursive: true });
+  copyFileSync(path.resolve(import.meta.dirname, "check-api-schema.mjs"), path.join(root, "scripts/check-api-schema.mjs"));
+  symlinkSync(path.resolve(import.meta.dirname, "../node_modules"), path.join(root, "node_modules"), "dir");
+  for (const file of ["openapi.yaml", "ops.yaml"]) copyFileSync(path.resolve(import.meta.dirname, `../backend/openapi/${file}`), path.join(root, "backend/openapi", file));
+  const runGit = (...args: string[]) => execFileSync("git", ["-C", root, ...args]);
+  runGit("init", "-q");
+  runGit("add", "backend");
+  runGit("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-qm", "test CLI contract");
+  const cli = (...args: string[]) => spawnSync(process.execPath, ["scripts/check-api-schema.mjs", ...args], { cwd: root, encoding: "utf8", env: { ...process.env, PATH: `${path.join(root, "bin")}${path.delimiter}${process.env.PATH}` } });
+  const generated = cli("--write");
+  expect(generated.status, generated.stdout + generated.stderr).toBe(0);
+  const runtime = path.join(root, "packages/api/src/job-title-schema.ts");
+  expect(readFileSync(runtime, "utf8")).toContain("jobTitleSchemas");
+  // Composition is checked separately; this control isolates the CLI's runtime-output wiring.
+  mkdirSync(path.join(root, "bin"));
+  writeFileSync(path.join(root, "bin/cargo"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  expect(cli().status).toBe(0);
+  writeFileSync(runtime, readFileSync(runtime, "utf8") + "// drift\n");
+  const drift = cli();
+  expect(drift.status).toBe(1);
+  expect(drift.stderr).toContain("runtime schema drift");
+  expect(drift.stderr).toContain("job-title-schema.ts");
+}, 60_000);

@@ -12,8 +12,8 @@ import path from "node:path";
 import { leakedCopy } from "./bundle-copy.mjs";
 import { gzipSync } from "node:zlib";
 
-// Measured 136.7 KB gz at the initial gate introduction, with about 10% headroom.
-export const INITIAL_BUDGET_KB = 151;
+// Measured 146.8 KB gz locally, with 2 KB headroom for CI and ordinary feature growth.
+export const INITIAL_BUDGET_KB = 148.8;
 export const DEFAULT_BUDGET_FILE = "scripts/bundle-budget.json";
 
 export const kb = (dist, f) => gzipSync(readFileSync(path.join(dist, f))).length / 1024;

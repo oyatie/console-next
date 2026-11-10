@@ -161,8 +161,10 @@ async function recordRoutes(admin: Page, urls: Record<string, string>, depts: st
   await admin.getByLabel(/^번호 접두어/).fill("LAB");
   await admin.getByLabel(/^일련번호 자릿수/).fill("6");
   await admin.getByLabel(/^직인 표기/).fill("가상성능법인 대표이사");
-  await admin.getByRole("button", { name: "설정 저장" }).click();
-  await admin.getByRole("dialog").getByRole("button", { name: "닫기", exact: true }).click();
+  const saved = admin.waitForResponse((r) => r.url().endsWith("/api/v1/hr/certificate-settings") && r.request().method() === "PUT");
+  await admin.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(admin.getByRole("dialog")).toBeHidden();
   await go(admin, urls["/people/$id"]!);
   await admin.getByRole("button", { name: "증명서", exact: true }).press("Enter");
   const certificate = admin.getByRole("dialog", { name: "증명서 발급" });

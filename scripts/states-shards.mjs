@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { listedTests, plan } from "./e2e-timings.mjs";
 
@@ -12,17 +13,66 @@ export const RUN_HEADROOM = 1.6;
 const specPath = file => /^(?:(?:mock|states)\/[^/]+\.spec\.ts|layout\/layout\.spec\.ts)$/.test(file);
 
 function validateTimings(timings) {
-  const { budgetSeconds, timeoutSeconds = budgetSeconds, runLimitSeconds = timeoutSeconds * RUN_HEADROOM, setupAllowanceSeconds, startupSeconds, workers, defaultTestSeconds, specs, maxShards = 256 } = timings;
+  const { budgetSeconds, timeoutSeconds = budgetSeconds, runLimitSeconds = timeoutSeconds * RUN_HEADROOM, setupAllowanceSeconds, startupSeconds, workers, defaultTestSeconds, specs = {}, maxShards = 256 } = timings;
   if (![budgetSeconds, timeoutSeconds, runLimitSeconds, setupAllowanceSeconds, startupSeconds, workers, defaultTestSeconds].every(positive) || timeoutSeconds < budgetSeconds || runLimitSeconds < timeoutSeconds || !Number.isInteger(workers) || !Number.isInteger(maxShards) || maxShards < 1 || maxShards > 256 || startupSeconds >= Math.min(budgetSeconds, runLimitSeconds / RUN_HEADROOM) || !specs || typeof specs !== "object")
     refuse("STATES_INVALID_TIMINGS", "expected positive run/setup budgets, startup, workers, default and per-spec durations");
   for (const [file, entry] of Object.entries(specs)) if (!specPath(file) || !positive(entry?.seconds) || !Number.isInteger(entry?.tests) || entry.tests <= 0)
     refuse("STATES_INVALID_TIMINGS", file);
 }
 
+/** Only this repository's dev artifacts may supply timings; PRs cannot replace trusted measurements. */
+export async function restoreDevTimings(settings, { apiUrl, repository, repositoryId, token }, request = fetch) {
+  validateTimings(settings);
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
+  const get = async url => {
+    const response = await request(url, { headers, signal: AbortSignal.timeout(60_000) });
+    if (!response.ok) refuse("STATES_TIMINGS_FETCH", `HTTP ${response.status}`);
+    return response;
+  };
+  const artifacts = [];
+  for (let page = 1; page <= 5; page++) {
+    const response = await get(`${apiUrl}/repos/${repository}/actions/artifacts?name=states-timings&per_page=100&page=${page}`);
+    const batch = (await response.json()).artifacts;
+    if (!Array.isArray(batch)) refuse("STATES_TIMINGS_FETCH", "missing artifact list");
+    artifacts.push(...batch);
+    if (batch.length < 100) break;
+  }
+  const candidates = artifacts.filter(a => !a.expired && a.workflow_run?.head_branch === "dev" &&
+    a.workflow_run.repository_id === repositoryId && a.workflow_run.head_repository_id === repositoryId)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
+  let fallback;
+  for (const artifact of candidates) {
+    const response = await get(`${apiUrl}/repos/${repository}/actions/artifacts/${artifact.id}/zip`);
+    const archive = mkdtempSync(path.join(tmpdir(), "states-timings-"));
+    let measured;
+    try {
+      const file = path.join(archive, "timings.zip");
+      writeFileSync(file, Buffer.from(await response.arrayBuffer()));
+      // Print only the named member; never extract artifact-controlled paths.
+      const decoded = spawnSync("unzip", ["-p", file, "timings.json"], { maxBuffer: 16 * 1024 * 1024 });
+      if (decoded.status !== 0) refuse("STATES_TIMINGS_FETCH", "cannot read timings archive");
+      measured = JSON.parse(decoded.stdout.toString());
+    } finally { rmSync(archive, { recursive: true, force: true }); }
+    if (!Number.isInteger(measured.workers) || measured.workers <= 0) refuse("STATES_INVALID_TIMINGS", "invalid measured workers");
+    validateTimings({ ...settings, specs: measured.specs });
+    if (!measured.specs || !Object.keys(measured.specs).length) refuse("STATES_INVALID_TIMINGS", "empty measurements");
+    const restored = { timings: { workers: measured.workers, specs: measured.specs }, runId: artifact.workflow_run.id };
+    if (measured.workers === settings.workers) return restored;
+    fallback ??= restored;
+  }
+  if (fallback) {
+    console.warn(`::warning::No compatible dev timings; scaling run ${fallback.runId} from ${fallback.timings.workers} to ${settings.workers} workers`);
+    return { runId: fallback.runId, timings: { workers: settings.workers, specs: Object.fromEntries(
+      Object.entries(fallback.timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * fallback.timings.workers / settings.workers }])) } };
+  }
+  console.warn("::warning::No unexpired dev timings; bootstrapping with the configured per-test floor");
+  return { timings: { workers: settings.workers, specs: {} } };
+}
+
 /** Settings are committed; cached wall durations are reusable only at the same worker count. */
 export function planStates(report, timings, measured) {
   validateTimings(timings);
-  const specs = measured?.workers === timings.workers ? { ...timings.specs, ...measured.specs } : timings.specs;
+  const specs = measured?.workers === timings.workers ? { ...(timings.specs ?? {}), ...measured.specs } : (timings.specs ?? {});
   validateTimings({ ...timings, specs });
   if (report.errors?.length) refuse("STATES_DISCOVERY_FAILED", JSON.stringify(report.errors));
   const counts = new Map();
@@ -59,7 +109,7 @@ export function planStates(report, timings, measured) {
     }
     if (jobs.length > maxShards) refuse("STATES_TIMEOUT_LIMIT", `${attempts} planning attempts exhausted`);
   } catch (error) {
-    const guidance = unmeasured.length ? `; add timings for unmeasured specs in this PR: ${unmeasured.join(", ")}` : "";
+    const guidance = unmeasured.length ? `; CI measurements are not yet available for: ${unmeasured.join(", ")}` : "";
     throw new Error(error.message.replace(/^E2E_/, "STATES_") + guidance);
   }
   const runTimeoutMinutes = Math.ceil(budgetSeconds * RUN_HEADROOM / 60);
@@ -122,7 +172,14 @@ function writeJson(file, value) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [command, first, second, third, ...rest] = process.argv.slice(2);
-    if (command === "plan") {
+    if (command === "restore") {
+      const restored = await restoreDevTimings(readJson(first), {
+        apiUrl: process.env.GITHUB_API_URL, repository: process.env.GITHUB_REPOSITORY,
+        repositoryId: Number(process.env.GITHUB_REPOSITORY_ID), token: process.env.GH_TOKEN,
+      });
+      writeJson(second, restored.timings);
+      console.log(`Restored state timings from ${restored.runId ? `dev run ${restored.runId}` : "the bootstrap floor"}`);
+    } else if (command === "plan") {
       const timings = readJson(second);
       const plan = planStates(readJson(first), timings, rest[0] && existsSync(rest[0]) ? readJson(rest[0]) : undefined);
       writeJson(third, plan);
@@ -142,7 +199,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       process.exitCode = result.status ?? 1;
     } else if (command === "refresh") {
       writeJson(third, refreshTimings(readJson(first), readJson(second), rest.map(readJson)));
-    } else refuse("STATES_INVALID_COMMAND", "use plan <listing> <settings> <plan> [measurements], run <plan> <shard>, or refresh <settings> <plan> <output> <reports...>");
+    } else refuse("STATES_INVALID_COMMAND", "use restore <settings> <measurements>, plan <listing> <settings> <plan> [measurements], run <plan> <shard>, or refresh <settings> <plan> <output> <reports...>");
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

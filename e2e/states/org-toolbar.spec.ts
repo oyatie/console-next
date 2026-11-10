@@ -59,6 +59,18 @@ for (const width of [1440, 390]) {
           const late = document.createElement("style");
           late.textContent = rule.cssText;
           document.head.append(late);
+          const hint = document.querySelector('[class*="findStatus"]')!;
+          for (const edge of ["top", "bottom"]) {
+            const bar = layer.parentElement!.parentElement!.querySelector(`:scope > [class*="${edge}"]`)!;
+            const rule = rules.find(rule => rule instanceof CSSStyleRule && rule.selectorText.endsWith("> *") && bar.classList.contains(rule.selectorText.match(/\.([\w-]+)/)?.[1] ?? ""));
+            if (!rule) throw new Error("Canvas edge interaction rule missing");
+            late.textContent += rule.cssText;
+            const decoration = hint.cloneNode(false) as HTMLElement;
+            bar.append(decoration);
+            try {
+              if (getComputedStyle(decoration).pointerEvents !== "none") throw new Error("Canvas edge decoration intercepts the pointer");
+            } finally { decoration.remove(); }
+          }
           const decorations = layer.querySelectorAll(':scope > svg, :scope > [role="tooltip"]');
           if (!decorations.length) throw new Error("Chart preview missing");
           for (const decoration of decorations) {

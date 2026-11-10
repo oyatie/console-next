@@ -24,6 +24,7 @@ import { PLATFORM_NAV, TENANT_NAV, activeLink, rememberedRail, tenantNav } from 
 import { Skeleton } from "../ui/skeleton/skeleton";
 import { PhaseBand } from "./phase-band";
 import { SessionRecovery } from "./session-recovery";
+import { streamReady } from "../lib/live/session-stream";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
 import { PageMain } from "../ui/page/page-main";
 import { meQuery } from "../features/account/api";
@@ -40,6 +41,8 @@ export function Shell() {
   const { pathname } = useLocation();
   const [theme, toggle] = useTheme();
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
+  const stream = useSyncExternalStore(streamReady.subscribe, streamReady.get);
+  const active = Boolean(session.token) && stream;
   const restore = useQuery({ ...read("/api/v1/auth/token/refresh", refresh), enabled: false });
   const restoring = !claims && restore.isPending;
   const principal = session.principal;
@@ -47,14 +50,14 @@ export function Shell() {
   const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
   if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
-  const identity = useQuery({ ...identityQuery, enabled: !platform && Boolean(session.token) });
+  const identity = useQuery({ ...identityQuery, enabled: !platform && active });
   const router = useRouter();
-  const access = useQuery({ ...myAccessQuery, enabled: !platform && Boolean(session.token) });
-  const support = useQuery({ ...activeSupportQuery, enabled: !platform && Boolean(session.token) });
-  const me = useQuery({ ...navigationRead(meQuery), enabled: !platform && Boolean(session.token) });
+  const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
+  const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
+  const me = useQuery({ ...navigationRead(meQuery), enabled: !platform && active });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
-  const checklist = useQuery({ ...checklistQuery, enabled: !platform && phase === "SETUP", retry: false });
-  const modules = useQuery({ ...modulesQuery, enabled: !platform && Boolean(session.token) });
+  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP", retry: false });
+  const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
   const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
   const { isEnabled: modulesEnabled } = modules;

@@ -98,6 +98,26 @@ impl DecisionFacts {
         )
     }
 
+    /// Own-request reads are independent of HR grants and employee linkage.
+    pub fn authorize_privacy_request_read(&self, subject: Uuid) -> Result<bool, String> {
+        super::actions::privacy_request_file::read(
+            &self.actor.to_string(),
+            &self.org.to_string(),
+            self.actor == subject,
+        )
+    }
+
+    /// Privacy self-service uses the same live identity snapshot as other Cedar decisions.
+    pub fn authorize_privacy_request(&self, subject: Uuid, is_hr: bool) -> Result<bool, String> {
+        super::actions::privacy_request_file::decide(
+            &self.actor.to_string(),
+            &self.org.to_string(),
+            self.actor == subject,
+            is_hr,
+            self.employee_id.is_some(),
+        )
+    }
+
     /// The caller's employee link, resolved under the same tenant RLS snapshot.
     #[must_use]
     pub fn linked_employee_id(&self) -> Option<Uuid> {
@@ -319,4 +339,4 @@ pub async fn load_facts(
 
 #[path = "support_facts.rs"]
 mod support_facts;
-pub use support_facts::load_support_session;
+pub use support_facts::{load_operator_facts, load_support_session};

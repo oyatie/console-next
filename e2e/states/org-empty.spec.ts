@@ -44,6 +44,7 @@ for (const path of routes) for (const width of [1440, 390]) {
         await expect(main.getByRole("button", { name: t("orgBulk.import.apply", { count: 0 }), exact: true })).toHaveCount(0);
       } else if (path === "/org/move") {
         await expect(main.getByText(t("bulkMove.nothing"), { exact: true })).toBeVisible({ timeout: 20_000 });
+        await expect(main.getByRole("button", { name: t("composer.dismiss"), exact: true })).toHaveCount(0);
         await expect(main.getByRole("link", { name: t("orgChange.list.empty.action"), exact: true })).toHaveAttribute("href", "/org");
       } else {
         await expect(main.getByRole("link", { name: t("entity.empty.action"), exact: true })).toHaveAttribute("href", "/org/entities/new", { timeout: 20_000 });

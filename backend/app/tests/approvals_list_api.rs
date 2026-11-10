@@ -16,6 +16,8 @@ use uuid::Uuid;
 
 #[path = "approvals_list_api/delivery.rs"]
 mod delivery;
+#[path = "approvals_list_api/errors.rs"]
+mod errors;
 
 async fn get(ctx: &http::Ctx, query: &str) -> Value {
     let _ = tracing_subscriber::fmt()
@@ -27,6 +29,20 @@ async fn get(ctx: &http::Ctx, query: &str) -> Value {
         .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     body
+}
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn machine_kind_fallback_is_not_an_approval_summary(pool: PgPool) {
+    let (org, maker, checker) = setup(&pool).await;
+    let id = document(&pool, org, maker, "OC-2026-0001").await;
+    sqlx::query("UPDATE org_change_requests SET reason=kind WHERE id=$1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    let page = get(&ctx, &format!("box=pending&focus=org_change:{id}")).await;
+    assert_eq!(page["items"][0]["summary"], "");
+    assert_eq!(page["focused"]["summary"], "");
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {
@@ -51,6 +67,7 @@ async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {
     assert_eq!(first["items"][0]["source"]["key"], "org_change");
     assert_eq!(first["items"][0]["source"]["label"], "조직 변경");
     assert_eq!(first["sources"][0]["label"], "조직 변경");
+    assert_eq!(first["items"][0]["summary"], "변경 검토");
     assert_eq!(first["items"][0]["route"].as_array().unwrap().len(), 2);
     assert_eq!(first["items"][0]["route"][0]["state"], "current");
     assert_eq!(first["items"][0]["route"][0]["role_key"], "hr");
@@ -103,24 +120,6 @@ async fn outsiders_and_revoked_grants_leak_no_items_counts_facets_or_focus(pool:
             assert!(page["focused"].is_null());
             assert!(page["counts"].as_object().unwrap().values().all(|v| v == 0));
         }
-    }
-}
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn invalid_list_queries_are_refused_without_reading_documents(pool: PgPool) {
-    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
-    let ctx = fixtures::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
-    for query in [
-        "box=invalid",
-        "box=pending&cursor=bad",
-        "box=pending&limit=0",
-        "box=pending&limit=101",
-    ] {
-        assert_eq!(
-            ctx.call("GET", &format!("/api/v1/approvals?{query}"), None)
-                .await
-                .0,
-            StatusCode::UNPROCESSABLE_ENTITY
-        );
     }
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -236,26 +235,6 @@ async fn view_only_reader_cannot_receive_another_persons_pending_approval(pool: 
     }
 }
 
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn projection_failures_return_a_code_without_database_details(pool: PgPool) {
-    let (org, maker, checker) = setup(&pool).await;
-    document(&pool, org, maker, "OC-2026-0001").await;
-    let ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
-    sqlx::query("ALTER TABLE org_units RENAME TO unavailable_org_units")
-        .execute(&pool)
-        .await
-        .unwrap();
-    let (status, body) = ctx.call("GET", "/api/v1/approvals?box=pending", None).await;
-    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR, "{body}");
-    assert_eq!(body["error"]["code"], "approvals.projection_unavailable");
-    assert_eq!(body["error"]["message"], "internal server error");
-    assert!(
-        body["error"]["support_ref"]
-            .as_str()
-            .is_some_and(|s| !s.is_empty())
-    );
-    assert!(!body.to_string().contains("org_units"));
-}
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn same_person_alias_is_hidden_while_unbound_approver_sees_verification_needed(pool: PgPool) {
     let (org, maker, _) = setup(&pool).await;

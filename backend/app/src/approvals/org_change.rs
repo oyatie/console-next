@@ -67,7 +67,7 @@ pub(super) async fn page(
            ORDER BY created_at DESC,id DESC LIMIT $9+1), \
          wanted AS (SELECT * FROM selected UNION SELECT * FROM eligible WHERE box=$6 AND 'org_change:'||id=$10), \
          documents AS (SELECT r.id,r.created_at,jsonb_build_object( \
-           'id','org_change:'||r.id,'box',r.box,'title',r.target_label,'summary',r.reason, \
+           'id','org_change:'||r.id,'box',r.box,'title',r.target_label,'summary',CASE WHEN r.reason=r.kind THEN '' ELSE r.reason END, \
            'document_no',r.code,'decision_refusal',r.refusal,'source',jsonb_build_object('key','org_change','label',$12::text), \
            'status',jsonb_build_object('key',r.status), \
            'requester',jsonb_build_object('id',r.drafted_by,'name',u.display_name), \

@@ -1,6 +1,7 @@
+import { ApiError } from "@console/api";
 import { afterEach, expect, test, vi } from "vitest";
 import { get } from "../../lib/query";
-import { scheduledUnitChangesQuery, myChangesQuery } from "./api";
+import { scheduledUnitChangesQuery, myChangesQuery, refusalOf } from "./api";
 
 vi.mock("../../lib/query", async (original) => ({ ...await original<typeof import("../../lib/query")>(), get: vi.fn() }));
 const { fetchPage } = vi.hoisted(() => ({ fetchPage: vi.fn() }));
@@ -38,4 +39,10 @@ test("a failed timeline page never presents the first page as complete", async (
 test("a premature empty timeline page refuses to publish an incomplete list", async () => {
   fetchPage.mockResolvedValueOnce({ data: { items: [{ id: "one" }], total: 2 }, response: new Response(null, { status: 200 }) }).mockResolvedValueOnce({ data: { items: [], total: 2 }, response: new Response(null, { status: 200 }) });
   await expect(scheduledUnitChangesQuery("unit").queryFn()).rejects.toThrow("incomplete");
+});
+
+test("a server permission refusal locks the command while retryable errors do not", () => {
+  expect(refusalOf(new ApiError(403, "org_change_scheduled_locked", "denied"))).toBe("denied");
+  for (const status of [409, 422, 503]) expect(refusalOf(new ApiError(status, "conflict", "failed"))).not.toBe("denied");
+  expect(refusalOf(new Error("failed"))).not.toBe("denied");
 });

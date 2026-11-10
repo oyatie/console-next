@@ -90,6 +90,12 @@ pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
         ignored_route_refs: &[],
     },
     RouteSource {
+        name: "privacy rights REST router",
+        surface: "privacy-rights",
+        source: include_str!("../../src/privacy.rs"),
+        ignored_route_refs: &[],
+    },
+    RouteSource {
         name: "compliance REST router",
         surface: "compliance",
         source: include_str!("../../../crates/compliance/rest/src/lib.rs"),

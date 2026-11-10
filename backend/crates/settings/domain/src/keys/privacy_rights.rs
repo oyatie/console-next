@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Objection review is an operational clock, not a statutory deadline.
+//! Filing limits and the operational (nonstatutory) objection review clock.
 macro_rules! privacy_rights { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
+    PrivacyRightsDetailMaxLength => "privacy.rights.detail_max_length" = D::int(Count, Some(1), None, 2000, Neutral).governed(Governance::ReadOnly);
     PrivacyRightsObjectionReviewDays => "privacy.rights.objection_review_days" = D::int(Days, Some(1), Some(30), 10, Higher).cited(crate::keys::privacy_rights::PIPA_38_5);
 ] $($rest)* } }; }
 

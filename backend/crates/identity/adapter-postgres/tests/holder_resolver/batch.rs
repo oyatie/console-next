@@ -128,6 +128,7 @@ async fn set_based_holders_match_live_cedar_and_respect_all_exclusions(pool: PgP
         let now = OffsetDateTime::now_utc();
         for capability in [
             HolderCapability::OrgChangeDecide,
+            HolderCapability::OrgRead,
             HolderCapability::AccessAdmin,
             HolderCapability::Feature {
                 feature: Feature::OrgChangeApprove,
@@ -157,10 +158,10 @@ async fn set_based_holders_match_live_cedar_and_respect_all_exclusions(pool: PgP
                                 } else {
                                     Domain::Org
                                 },
-                                if matches!(capability, HolderCapability::AccessAdmin) {
-                                    Level::Edit
-                                } else {
-                                    Level::Approve
+                                match capability {
+                                    HolderCapability::AccessAdmin => Level::Edit,
+                                    HolderCapability::OrgRead => Level::View,
+                                    _ => Level::Approve,
                                 },
                             ),
                             &NodePath::tenant(OrgId::one()),

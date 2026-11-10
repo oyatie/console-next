@@ -4,16 +4,18 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button, Form } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
-import { updateJobTitle } from "../api";
+import { jobTitleSchemas, updateJobTitle } from "../api";
 import type { JobTitle } from "../domain/titles";
+
+const rules = jobTitleSchemas.update.properties;
 
 export function JobTitleEdit({ entry, onClose }: { entry: JobTitle; onClose: () => void }) {
   const [opened] = useState(entry);
   const [label, setLabel] = useState(entry.label);
   const [rank, setRank] = useState(entry.grade_rank?.toString() ?? "");
   const ranked = entry.kind === "GRADE" || entry.kind === "TITLE";
-  const n = rank === "" ? undefined : Number(rank);
-  const bad = ranked && ((entry.grade_rank !== null && n === undefined) || (n !== undefined && !Number.isInteger(n)));
+  const n = !rank.trim() ? undefined : /^\d+$/.test(rank) ? Number(rank) : NaN;
+  const bad = ranked && ((entry.grade_rank !== null && n === undefined) || (n !== undefined && (!Number.isInteger(n) || n < rules.grade_rank.minimum || n > rules.grade_rank.maximum)));
   const [tried, setTried] = useState(false);
   const run = useCommand({
     run: () => updateJobTitle(entry.id, { label: label.trim() !== opened.label ? label.trim() : undefined, grade_rank: ranked && (n ?? null) !== opened.grade_rank ? n : undefined }),
@@ -23,9 +25,9 @@ export function JobTitleEdit({ entry, onClose }: { entry: JobTitle; onClose: () 
   const changed = label.trim() !== opened.label || (ranked && (n ?? null) !== opened.grade_rank);
   return <Form aria-label={t("titles.edit.title", { label: entry.label })} noValidate onSubmit={() => { setTried(true); if (!missing) { if (changed) run.mutate(undefined); else onClose(); } }}>
     <Field label={t("titles.col.label")} required error={tried && !label.trim() ? t("titles.label.missing") : undefined}>
-      {(p) => <TextInput {...p} value={label} maxLength={100} onChange={(e) => setLabel(e.target.value)} />}
+      {(p) => <TextInput {...p} value={label} maxLength={rules.label.maxLength} onChange={(e) => setLabel(e.target.value)} />}
     </Field>
-    {ranked && <Field label={t("titles.col.rank")} required={entry.grade_rank !== null} error={bad ? t("titles.rank.integer") : undefined}>
+    {ranked && <Field label={t("titles.col.rank")} required={entry.grade_rank !== null} error={bad ? t("titles.rank.bad", { min: rules.grade_rank.minimum, max: rules.grade_rank.maximum }) : undefined}>
       {(p) => <TextInput {...p} inputMode="numeric" value={rank} onChange={(e) => setRank(e.target.value)} />}
     </Field>}
     <CommandError error={run.error} />

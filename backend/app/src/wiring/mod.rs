@@ -6,5 +6,6 @@ pub(crate) mod dispatch;
 pub(crate) mod mail;
 pub(crate) mod orgchange_people;
 pub(crate) mod orgchange_ports;
+pub(crate) mod orgchange_sole_holder;
 pub(crate) mod realtime;
 pub(crate) mod tenant_config;

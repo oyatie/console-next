@@ -273,3 +273,6 @@ mod policy;
 
 #[path = "support_sessions/timestamps.rs"]
 mod timestamps;
+
+#[path = "support_sessions/facts.rs"]
+mod facts;

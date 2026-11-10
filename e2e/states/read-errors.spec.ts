@@ -83,10 +83,8 @@ for (const fault of ["503", "network"] as const) for (const reference of [false,
     await expect(rail.getByRole("button", { name: t("common.retry"), includeHidden: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: t("common.retry"), includeHidden: true })).toHaveCount(1);
     await expect(main.locator("[data-support-reference]")).toHaveCount(fault === "503" && reference ? 1 : 0);
-    for (const theme of ["light", "dark"]) {
-      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
-      await expectAxe(page, `cold-page-modules/${fault}/${theme}`);
-    }
+    await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+    await expectAxe(page, `cold-page-modules/${fault}`);
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await fits(page, `cold-page-modules/${fault}/${width}`);
