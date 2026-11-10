@@ -189,6 +189,7 @@ pub(crate) async fn decide(
                     memo: b.memo,
                     expected_version: b.expected_version,
                     through_step: b.through_step,
+                    step_up: None,
                 },
             )
             .await

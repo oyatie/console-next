@@ -10,13 +10,15 @@ import type { Card } from "./use-card";
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { items: [] } }) }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: ReactNode }) => <span>{children}</span>, useNavigate: () => vi.fn() }));
 vi.mock("./use-case-actions", () => ({ useOwnRecord: () => false }));
+vi.mock("../../../reference/payroll/ui/employee-pay-link", () => ({ EmployeePayLink: ({ employeeId }: { employeeId: string }) => <span data-payroll-employee={employeeId} /> }));
+vi.mock("./end-actions", () => ({ EndActions: () => null }));
 vi.mock("./employee-warnings", () => ({ EmployeeWarnings: () => null }));
 vi.mock("../ExitCase", () => ({ ExitCases: () => null }));
 beforeAll(() => loadCatalog("ko"));
 
 const card = (status: Card["e"]["status"], planned = false): Card => ({
   e: { id: "employee", name: "경계직원", status, exit_date: "2026-10-31" },
-  d: { classification: {} }, personal: {}, events: { data: { items: [] } },
+  d: { classification: {}, allowed_events: [], allowed_scheduled_events: [] }, personal: {}, events: { data: { items: [] } },
   place: { entity: "법인", path: [] }, title: () => undefined,
   planned: planned ? { event_type: "TERMINATE", effective_date: "2026-10-31" } : undefined,
 }) as unknown as Card;
@@ -46,4 +48,15 @@ test.each([true, false])("the next exit agrees with the exit panel (history avai
   c.e.next_event = { id: "exit", event_type: "TERMINATE", effective_date: "2026-10-31" } as Card["e"]["next_event"];
   expect(head(c)).toContain("2026. 11. 01. 퇴직 예정");
   expect(head(c)).not.toContain("2026. 10. 31.");
+});
+
+test.each([
+  ["ACTIVE", true], ["EXITED", true], ["ACTIVE", false], ["EXITED", false],
+] as const)("payroll entry is independent of HR edit permission (%s, manage %s)", (status, manage) => {
+  const c = card(status);
+  c.d.employee = c.e;
+  c.manage = c.readable = manage;
+  c.editable = manage && status !== "EXITED";
+  const html = head(c);
+  expect(html.match(/data-payroll-employee="employee"/g)).toHaveLength(1);
 });

@@ -43,6 +43,15 @@ pub(super) async fn admit(
     {
         return Err(PgOrgChangeError::StaleVersion(version));
     }
+    if command.step_up.is_some()
+        && command.approved
+        && command.through_step.is_none()
+        && super::sole_holder_eligibility_in_tx(tx, org, actor, id)
+            .await?
+            .is_some()
+    {
+        return Ok(());
+    }
     org_change_step_decide::enforce(
         &actor.to_string(),
         &org.to_string(),

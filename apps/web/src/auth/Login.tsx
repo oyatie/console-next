@@ -12,7 +12,8 @@ import { Button, Form } from "../ui/button/button";
 import { Field, TextInput } from "../ui/field/field";
 import { PageHead } from "../ui/page-head/page-head";
 import { IDLE_EXPIRED } from "./idle";
-import { autofillPaused, parseSignInId, rememberDomain, rememberedDomains, resumeAutofill } from "./sign-in-id";
+import { autofillPaused, rememberDomain, rememberedDomains, resumeAutofill } from "./sign-in-id";
+import { parseSignInId } from "./sign-in-id-input";
 
 export { SetupPasskey } from "./SetupPasskey";
 

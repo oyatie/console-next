@@ -14,6 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => () => {},
   getRouteApi: () => ({ useSearch: () => ({}), useNavigate: () => () => {} }),
 }));
+vi.mock("../../../reference/payroll/ui/employee-pay-link", () => ({ EmployeePayLink: () => null }));
 vi.mock("./use-case-actions", () => ({ useOwnRecord: () => false }));
 
 beforeAll(() => loadCatalog("ko"));
