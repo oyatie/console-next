@@ -1,22 +1,26 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 import { timelineStates } from "./states";
 import { bootKo } from "../../../../../packages/i18n/src/catalogs/boot";
 import { koTimeline } from "../../../../../packages/i18n/src/catalogs/ko/timeline";
-import { tg } from "../../../../../packages/i18n/src/gallery";
 
 for (const theme of ["light", "dark"] as const) {
   for (const width of [1280, 390]) {
     test(`timeline lifecycle at ${width}px, ${theme}`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: theme });
       await page.setViewportSize({ width, height: 900 });
-      await page.goto("/_gallery");
+      const apiRequests: string[] = [];
+      page.on("request", request => {
+        if (new URL(request.url()).pathname.startsWith("/api/")) apiRequests.push(request.url());
+      });
+      await page.goto("/_gallery?entry=timeline-line");
       const gallery = page.locator("#gallery-timeline-line");
       await expect(gallery).toBeVisible();
+      // Use the supported fallback face so optional-font timing cannot change visual baselines.
+      await page.locator("html").evaluate(html => { html.dataset.fontFallback = ""; });
       await page.evaluate(() => document.fonts.ready);
-      // Unrelated error-copy wrapping must not change the timeline's screenshot pixel phase.
-      const errors = page.locator(".gallery__section").filter({ has: page.getByRole("heading", { name: tg("section.errors"), exact: true }) });
-      await errors.evaluate((section) => { section.style.height = `${Math.ceil(section.getBoundingClientRect().height)}px`; });
+      expect(apiRequests).toEqual([]);
       for (const state of timelineStates) {
         const line = page.locator(`#gallery-timeline-${state}`);
         await expect(line).toContainText(({ ...bootKo, ...koTimeline })[`timeline.state.${state}`]);
@@ -45,6 +49,7 @@ for (const theme of ["light", "dark"] as const) {
       await expect(changed).toHaveScreenshot(`timeline-long-expanded-${width}-${theme}.png`, { animations: "disabled" });
       await page.keyboard.press("Space");
       await expect(changed.locator("details").first()).not.toHaveAttribute("open", "");
+      expect(apiRequests).toEqual([]);
     });
   }
 }
