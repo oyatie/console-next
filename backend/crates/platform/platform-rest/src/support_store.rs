@@ -60,7 +60,7 @@ pub async fn tenant_support_permission(
         .support_session(tx, None)
         .await
         .map_err(|_| SupportError::Refused("internal"))?;
-    authorize(Action::ActiveList, UserId::from_uuid(user), org, org, facts)?;
+    require_support(Action::ActiveList, UserId::from_uuid(user), org, org, facts)?;
     Ok(support_session::decide(
         Action::List,
         PrincipalKind::Tenant,
@@ -148,7 +148,7 @@ pub(super) async fn step_up(
     Ok((tx, assertion))
 }
 
-pub(super) fn authorize(
+pub(super) fn require_support(
     action: Action,
     user: UserId,
     actor_org: OrgId,
@@ -181,7 +181,7 @@ pub(super) async fn list(
     let facts = load_operator_facts(&mut tx, p.user_id, None, None)
         .await
         .map_err(|e| SupportError::Refused(e.kind.code()))?;
-    authorize(Action::List, p.user_id, OrgId::platform(), org, facts)?;
+    require_support(Action::List, p.user_id, OrgId::platform(), org, facts)?;
     support::arm(&mut tx, org).await?;
     // No ticket, stated reason, tenant identity, decisions or payload crosses back into the vendor tier.
     let rows:Vec<serde_json::Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'org_id',org_id,'operator_ref',operator_ref,'state',state,'requested_at',requested_at,'expires_at',expires_at) FROM support_sessions WHERE org_id=$1 ORDER BY requested_at DESC")
@@ -199,7 +199,7 @@ pub(super) async fn end(
     let mut tx = state.pool.begin().await.map_err(SupportError::from)?;
     let org = OrgId::from_uuid(body.org_id);
     let session = support::lock(&mut tx, org, id).await?;
-    authorize(
+    require_support(
         Action::End,
         p.user_id,
         OrgId::platform(),
