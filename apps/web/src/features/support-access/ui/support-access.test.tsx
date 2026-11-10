@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApiError } from "../../../reference/support-access/api";
+import { commitLabel } from "../../../ui/composer/actions";
 import { readIdentity } from "../../../lib/query";
 import { SupportAccess } from "./support-access";
 import { ActiveSupportBanner, SupportAccessIndicator } from "./support-access-status";
@@ -26,7 +27,6 @@ vi.mock("../../../lib/react/command", () => ({ useCommand: (opts: typeof state.c
   return { mutate: vi.fn(), isPending: false, error: undefined };
 }, outcomeUnknown: () => false, recoveryOf: () => undefined }));
 
-vi.mock("../../../ui/composer/composer", () => ({ Composer: ({ title, children, secondary, notice, kicker, action }: { title: string; children: ReactNode; secondary: ReactNode; notice: ReactNode; kicker: ReactNode; action: { mode: string } }) => <section role="dialog" aria-label={title} data-action={action.mode}><h2>{title}</h2>{kicker}{children}{notice}<button>composer.commit</button>{secondary}</section> }));
 
 const session: SupportSession = {
   id: "session-a", operator_label: "공급사 · 운영자 A", ticket_ref: "HELP-123", reason_code: "DIAGNOSE", reason: "조회 화면 오류 확인",
@@ -72,9 +72,8 @@ test("the tenant sees purpose, scope, bounded duration, decisions and access rec
   const html = renderToStaticMarkup(<SupportAccess />);
   expect(html).toContain("supportAccess.title");
   expect(html).not.toContain("audit.title");
-  for (const text of ["HELP-123", session.reason, session.operator_label, "supportAccess.duration", "supportAccess.masked", "supportAccess.approve", "composer.commit", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
-  expect(html).toContain("max=\"30\"");
-  expect(html).toContain("supportAccess.revealPersonal");
+  for (const text of ["HELP-123", session.reason, session.operator_label, "supportAccess.duration", "supportAccess.masked", "supportAccess.approve", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
+  expect(html).not.toContain("supportAccess.durationMinutes");
 });
 test("support details are named and their history follows the ticket heading", () => {
   const html = renderToStaticMarkup(<SupportAccess />);
@@ -132,7 +131,7 @@ test("the tenant can withdraw approval before the operator starts", () => {
 test("non-approvers have no approval, denial, or termination controls", () => {
   state.data = { sessions: [session], can_approve: false };
   const html = renderToStaticMarkup(<SupportAccess />);
-  for (const control of ["supportAccess.approve", "supportAccess.deny", "supportAccess.end"])
+  for (const control of ["supportAccess.approve", commitLabel({ kind: "supportAccess", mode: "reject" }), "supportAccess.end"])
     expect(html).not.toContain(`>${control}</button>`);
 });
 test("the live notification deep-links to the pending request for approvers only", () => {
@@ -178,7 +177,7 @@ test("a revoked approver cannot retain cached support details or controls after 
   expect(html).not.toContain(session.operator_label);
   expect(html).not.toContain("audit.nav");
   expect(html).not.toContain(">supportAccess.approve</button>");
-  expect(html).not.toContain(">supportAccess.deny</button>");
+  expect(html).not.toContain(commitLabel({ kind: "supportAccess", mode: "reject" }));
 });
 
 vi.mock("../../../ui/enum-value", async original => {
@@ -211,8 +210,9 @@ test("an active session stays read-only for a non-approver", () => {
   expect(html).not.toContain('>supportAccess.end</button>');
 });
 
-test("approval details use the action sheet instead of the read-only peek", () => {
+test.each(["OPERATOR_APPROVED", "ACTIVE", "ENDED"])("%s details stay in the read-only peek until a command is opened", value => {
+  state.data = { sessions: [{ ...session, state: value }], can_approve: true };
   const html = renderToStaticMarkup(<SupportAccess />);
-  expect(html).toContain('role="dialog"');
-  expect(html).not.toContain('data-side-panel');
+  expect(html).not.toContain('role="dialog"');
+  expect(html).toContain('data-side-panel');
 });

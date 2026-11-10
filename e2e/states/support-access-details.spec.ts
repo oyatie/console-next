@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
-import { AT, failure, id } from "../mock/fixtures";
+import { AT, failure, id, inbox } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
@@ -34,7 +34,7 @@ for (const state of ["OPERATOR_APPROVED", "ACTIVE", "ENDED"] as const) for (cons
     const main = page.getByRole("main");
     const grid = main.getByRole("grid", { name: "지원 접근", exact: true });
     await expect(grid).toBeVisible();
-    const panel = page.getByRole(state === "ENDED" ? "complementary" : "dialog", { name: session.ticket_ref, exact: true });
+    const panel = page.getByRole("complementary", { name: session.ticket_ref, exact: true });
     await expect(main.getByRole("complementary")).toHaveCount(0);
     await expect(page.locator("#route-heading")).toBeFocused();
     // Selecting a row opens the house panel outside the grid's scroll area.
@@ -66,26 +66,29 @@ for (const state of ["OPERATOR_APPROVED", "ACTIVE", "ENDED"] as const) for (cons
         decisions.push(request.postDataJSON());
         return { status: 200, json: { id: current.id, decision: "APPROVE" } };
       });
-      await page.getByRole("spinbutton").fill("31");
       await approve.click();
+      const sheet = page.getByRole("dialog");
+      const commit = sheet.getByRole("button", { name: "지원 접근 승인", exact: true });
+      await page.getByRole("spinbutton").fill("31");
+      await commit.click();
       await expect(page.getByRole("spinbutton")).toHaveAttribute("aria-invalid", "true");
       expect(decisions).toEqual([]);
       await page.getByRole("spinbutton").fill("10");
       await page.getByRole("checkbox").check();
-      await approve.click();
+      await commit.click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect.poll(() => decisions).toEqual([{ decision: "APPROVE", approved_duration_seconds: 600, reveal_classes: ["personal"] }]);
     }
-    const close = panel.getByRole("button", { name: state === "ENDED" ? (width === 390 ? "돌아가기" : "상세 패널 닫기") : "닫기", exact: true });
+    const close = panel.getByRole("button", { name: width === 390 ? "돌아가기" : "상세 패널 닫기", exact: true });
     await close.click();
-    if (state === "OPERATOR_APPROVED") await close.click();
     await row.focus();
     await row.press("ArrowDown");
     await page.keyboard.press("Enter");
     await expect(page.locator(`[data-id="${next.id}"]`)).toHaveAttribute("aria-selected", "true");
+    await approve.click();
     await expect(page.getByRole("spinbutton")).toHaveValue("15");
     await expect(page.getByRole("checkbox")).not.toBeChecked();
-    await expect(approve).toHaveCount(1);
-    await expect(approve).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole("dialog").getByRole("button", { name: "지원 접근 승인", exact: true })).toBeInViewport({ ratio: 1 });
     await expect(end).toHaveCount(0);
     await expect(grid.getByRole("spinbutton")).toHaveCount(0);
     expect(fixture.unexpected).toEqual([]);
@@ -130,7 +133,7 @@ for (const width of [390, 1440]) for (const state of ["OPERATOR_APPROVED", "ACTI
     }
     // Assert before any focus, click, or screenshot can scroll the target into view.
     await expect(action).toBeInViewport({ ratio: 1 });
-    const panel = page.getByRole("dialog", { name: current.ticket_ref, exact: true });
+    const panel = page.getByRole("complementary", { name: current.ticket_ref, exact: true });
     await expect(panel).toBeVisible();
     await expect(panel.getByText(current.reason, { exact: false })).toBeInViewport();
     for (const theme of ["light", "dark"]) {
@@ -203,9 +206,9 @@ for (const width of [390, 1440]) for (const command of ["approve", "deny", "end"
   });
   await page.setViewportSize({ width, height: 844 });
   await page.goto(`/audit/support-access?review=${session.id}`);
+  await page.getByRole("complementary").getByRole("button", { name: command === "end" ? "지원 종료" : "지원 접근 승인", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: session.ticket_ref, exact: true });
   await expect(sheet).toBeVisible();
-  await expect(page.getByRole("complementary")).toHaveCount(0);
   const action = sheet.getByRole("button", { name: command === "end" ? "지원 종료" : command === "deny" ? "지원 접근 반려" : "지원 접근 승인", exact: true });
   await expect(action).toBeInViewport({ ratio: 1 });
   await action.click();
@@ -227,18 +230,58 @@ for (const width of [390, 1440]) for (const command of ["approve", "deny", "end"
   fixture.release();
 });
 
-for (const width of [390, 1440]) test(`support indicator distinguishes support from inbox at ${width}px @ui-state`, async ({ page }) => {
+for (const width of [390, 1440]) test(`support indicator distinguishes support from inbox at ${width}px @ui-state`, async ({ page }, info) => {
   const fixture = await mockScreen(page, screens.find(screen => screen.key === "home")!, "empty");
-  await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { can_approve: true, sessions: [session], pending_count: 1, pending_approvals: [session] } });
+  await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { can_approve: true, sessions: [{ ...session, state: "ACTIVE", tenant_approved_at: AT }], pending_count: 1, pending_approvals: [session] } });
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(3) });
   await page.setViewportSize({ width, height: 844 });
   await page.goto("/");
+  await expect(page.getByRole("button", { name: "업무함 3건", exact: true })).toBeVisible();
   const indicator = page.getByRole("link", { name: /공급사 지원 접근 · 승인 대기/ });
   if (width === 390) {
     await expect(indicator.locator("svg")).toBeVisible();
     await expect(indicator.getByText("2", { exact: true })).toHaveCount(0);
   } else await expect(indicator.getByText("지원 2", { exact: true })).toBeVisible();
   await expect(indicator).toBeInViewport({ ratio: 1 });
-  await fits(page, `support indicator/${width}`);
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeInViewport({ ratio: 1 });
+    await fits(page, `support indicator/${width}/${theme}`);
+    await page.screenshot({ path: info.outputPath(`support-header-${width}-${theme}.png`) });
+  }
+  expect(fixture.unexpected).toEqual([]);
+  fixture.release();
+});
+
+for (const width of [390, 1440]) for (const command of ["approve", "deny", "end"] as const) test(`support ${command} success returns a receipt to the peek at ${width}px @ui-state`, async ({ page }, info) => {
+  const fixture = await mockScreen(page, screens.find(screen => screen.key === "home")!, "empty");
+  let saved = false;
+  const current = command === "end" ? { ...session, state: "ACTIVE", tenant_approved_at: AT } : session;
+  await mockRoute(page, "get", "/api/v1/support-sessions", () => ({ status: 200, json: {
+    can_approve: true, sessions: [saved ? { ...current, state: command === "end" ? "ENDED" : command === "deny" ? "DENIED" : "OPERATOR_APPROVED", tenant_approved_at: AT } : current],
+  } }));
+  await mockRoute(page, "post", `/api/v1/support-sessions/{id}/${command === "end" ? "end" : "decision"}`, () => {
+    saved = true;
+    return { status: 200, json: { id: session.id, decision: command === "deny" ? "DENY" : "APPROVE" } };
+  });
+  await page.setViewportSize({ width, height: 844 });
+  await page.goto(`/audit/support-access?review=${session.id}`);
+  const panel = page.getByRole("complementary", { name: session.ticket_ref, exact: true });
+  await expect(panel).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(panel.getByRole("spinbutton")).toHaveCount(0);
+  await panel.getByRole("button", { name: command === "end" ? "지원 종료" : "지원 접근 승인", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: session.ticket_ref, exact: true });
+  await sheet.getByRole("button", { name: command === "end" ? "지원 종료" : command === "deny" ? "지원 접근 반려" : "지원 접근 승인", exact: true }).click();
+  await expect.poll(() => saved).toBe(true);
+  await expect(sheet).toHaveCount(0);
+  await expect(panel.getByText(command === "end" ? "지원을 종료했습니다. 다음 요청부터 접근이 거절됩니다." : "지원 접근 결정을 기록했습니다.", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("heading", { level: 2 })).toBeFocused();
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await fits(page, `support receipt/${command}/${width}/${theme}`);
+    await page.screenshot({ path: info.outputPath(`support-receipt-${command}-${width}-${theme}.png`) });
+  }
   expect(fixture.unexpected).toEqual([]);
   fixture.release();
 });

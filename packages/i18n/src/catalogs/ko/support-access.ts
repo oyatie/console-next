@@ -28,7 +28,6 @@ export const koSupportAccess = {
   "supportAccess.unmasked": "고객이 승인한 개인정보 항목만 열람할 수 있습니다.",
   "supportAccess.readOnly": "조회 전용",
   "supportAccess.approve": "지원 접근 승인",
-  "supportAccess.deny": "지원 접근 거절",
   "supportAccess.end": "지원 종료",
   "supportAccess.decisionSaved": "지원 접근 결정을 기록했습니다.",
   "supportAccess.endConsequence": "지원을 종료하면 다음 요청부터 접근이 거절됩니다.",

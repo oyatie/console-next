@@ -37,7 +37,7 @@ export function SupportAccessIndicator() {
   const pending = q.data.can_approve ? q.data.pending_count : 0;
   if (!active && !pending) return null;
   const label = t("supportAccess.indicatorLabel", { pending: fmtNumber(pending), active: fmtNumber(active) });
-  const count = <Chip tone="warn"><span className={styles.indicatorText}>{t("supportAccess.indicator", { count: fmtNumber(active + pending) })}</span><span className={styles.indicatorCompact} aria-hidden><Headset size={16} /></span></Chip>;
+  const count = <><span className={styles.indicatorText}><Chip tone="warn">{t("supportAccess.indicator", { count: fmtNumber(active + pending) })}</Chip></span><span className={styles.indicatorCompact} aria-hidden><Headset size={16} /></span></>;
   return q.data.can_approve
     ? <Link to="/audit/support-access" search={{ review: q.data.pending_approvals[0]?.id ?? q.data.sessions[0]?.id }} className={styles.indicator} aria-label={label} title={label}>{count}</Link>
     : <span className={styles.indicator} role="status" aria-label={label} title={label}>{count}</span>;

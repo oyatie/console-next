@@ -135,11 +135,12 @@ test("two operators and the customer authorize support; every read arrives live 
     expect(await codeOf(denied)).toBe("forbidden");
   }
   await expect(tenant.getByRole("button", { name: "지원 접근 승인", exact: true })).toBeVisible();
+  await tenant.getByRole("complementary").getByRole("button", { name: "지원 접근 승인", exact: true }).click();
   await expect(tenant.getByRole("checkbox", { name: "이 세션에서 개인정보 열람을 허용합니다" })).not.toBeChecked();
   await expect(tenant.getByLabel("허용할 시간(분)")).toHaveValue(String(duration / 60));
   await auditLayouts(tenant, "support approval");
   const decision = tenant.waitForResponse((r) => new URL(r.url()).pathname === `${TENANT_SUPPORT}/${id}/decision` && r.request().method() === "POST");
-  await tenant.getByRole("button", { name: "지원 접근 승인", exact: true }).click();
+  await tenant.getByRole("dialog").getByRole("button", { name: "지원 접근 승인", exact: true }).click();
   const recordedDecision = await decision;
   expect(recordedDecision.ok()).toBe(true);
   const decidedList = await apiOf(tenant, tenantBearer)("/support-sessions");
@@ -159,7 +160,7 @@ test("two operators and the customer authorize support; every read arrives live 
   expect(metadata).not.toHaveProperty("reason");
   await expect(tenant.getByText("공급사 지원 접근이 진행 중입니다", { exact: true })).toBeVisible();
   await expect(tenant.getByRole("button", { name: "지원 종료", exact: true })).toBeVisible();
-  await tenant.getByRole("dialog").getByRole("button", { name: "닫기", exact: true }).click();
+  await expect(tenant.getByRole("dialog")).toHaveCount(0);
   let documentLoads = 0;
   tenant.on("load", () => { documentLoads++; });
   const liveRead = tenant.waitForResponse((r) => new URL(r.url()).pathname === TENANT_SUPPORT && r.request().method() === "GET");
@@ -212,8 +213,9 @@ test("two operators and the customer authorize support; every read arrives live 
   await go(tenant, "/account");
   await expect(tenant.getByText("공급사 지원 접근이 진행 중입니다", { exact: true })).toBeVisible();
   await tenant.getByRole("link", { name: "지원 기록 확인 · 종료", exact: true }).click();
+  await tenant.getByRole("complementary").getByRole("button", { name: "지원 종료", exact: true }).click();
   const ended = tenant.waitForResponse((r) => new URL(r.url()).pathname === `${TENANT_SUPPORT}/${id}/end` && r.request().method() === "POST");
-  await tenant.getByRole("button", { name: "지원 종료", exact: true }).click();
+  await tenant.getByRole("dialog").getByRole("button", { name: "지원 종료", exact: true }).click();
   expect((await ended).ok()).toBe(true);
   await expect(tenant.getByText("공급사 지원 접근이 진행 중입니다", { exact: true })).toBeHidden();
   const refused = await operator.request.get("/api/v1/org-structure", { headers: { authorization: `Bearer ${token}` } });

@@ -28,7 +28,6 @@ export const enSupportAccess = {
   "supportAccess.unmasked": "Only personal data covered by the customer's grant may be revealed.",
   "supportAccess.readOnly": "Read only",
   "supportAccess.approve": "Approve support access",
-  "supportAccess.deny": "Deny support access",
   "supportAccess.end": "End support",
   "supportAccess.decisionSaved": "Support access decision recorded.",
   "supportAccess.endConsequence": "Ending support refuses access from the next request.",
