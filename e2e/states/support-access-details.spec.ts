@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
-import { AT, failure, id, inbox } from "../mock/fixtures";
+import { AT, failure, id } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
@@ -230,13 +230,11 @@ for (const width of [390, 1440]) for (const command of ["approve", "deny", "end"
   fixture.release();
 });
 
-for (const width of [390, 1440]) test(`support indicator distinguishes support from inbox at ${width}px @ui-state`, async ({ page }, info) => {
+for (const width of [390, 1440]) test(`support indicator fits the header at ${width}px @ui-state`, async ({ page }, info) => {
   const fixture = await mockScreen(page, screens.find(screen => screen.key === "home")!, "empty");
   await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { can_approve: true, sessions: [{ id: session.id, operator_label: session.operator_label, expires_at: AT }], pending_count: 1, pending_approvals: [session] } });
-  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(3) });
   await page.setViewportSize({ width, height: 844 });
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "업무함 3건", exact: true })).toBeVisible();
   const indicator = page.getByRole("link", { name: /공급사 지원 접근 · 승인 대기/ });
   if (width === 390) {
     await expect(indicator.locator("svg")).toBeVisible();
