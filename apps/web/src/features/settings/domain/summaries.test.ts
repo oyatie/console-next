@@ -22,8 +22,10 @@ test("every displayed policy key has Korean and English copy; unknown keys are n
 });
 
 test("area summaries use only served values and distinguish empty data", () => {
-  expect(domainSummary({ pending_domain: "example.test" }, t)).toBe("example.test · 신청 중");
-  expect(domainSummary({ pending_domain: null }, t)).toBe("신청 전");
+  expect(domainSummary({ pending_domain: "example.test" }, t, "operator@current.test")).toBe("current.test · example.test · 신청 중");
+  expect(domainSummary({ pending_domain: null }, t, "operator@current.test")).toBe("current.test");
+  expect(domainSummary({ pending_domain: null }, t, null)).toBe("확인 불가");
+  expect(domainSummary({ pending_domain: "example.test" }, t, "operator")).toBe("확인 불가");
   expect(numberingSummary([], t)).toBe("규칙 없음");
   expect(numberingSummary([{ scope_kind: "WORKPLACE", scope_id: "workplace", prefix: "W-", width: 4, next_number: "W-0001" }], t)).toBe("규칙 없음");
   expect(numberingSummary([{ scope_kind: "TENANT", scope_id: "tenant", prefix: "E-", width: 4, next_number: "E-0012" }], t)).toBe("E-0012");
@@ -43,7 +45,7 @@ test("latest active closed period is selected per domain, regardless of response
 test("approval summary derives classes by prefix and keeps scheduled, inherited and fixed facts", () => {
   const routed = { ...entry(), value: "route", governance: "fixed" as const, source: { layer: "platform" as const, scope_entity_id: null }, scheduled: [{ id: "later", value: "none", scope_entity_id: null, effective_from: "2026-12-01T00:00:00Z" }] };
   const result = approvalSummary({ can_change: false, items: [routed, entry("exit"), { ...entry(), key: "other.key", value: "route" }] }, t, date);
-  expect(result.value).toBe("조직 개편 · 결재");
+  expect(result.value).toBe("조직 개편");
   expect(result.hints.join(" ")).toContain("2026-12-01");
   expect(result.hints.join(" ")).toContain("바로 적용");
   expect(result.hints.join(" ")).toContain("플랫폼");
@@ -59,6 +61,19 @@ test("setting values preserve false, zero and unknown codes", () => {
   expect(settingValue({ ...entry(), kind: { type: "bool" } }, false, t)).toBe("꺼짐");
   expect(settingValue({ ...entry(), kind: { type: "bool" } }, true, t)).toBe("켜짐");
   expect(settingValue({ ...entry(), kind: { type: "int", unit: "days" } }, 0, t)).toBe("0일");
+  expect(settingValue({ ...entry(), kind: { type: "int" } }, null, t)).toBe("확인 불가");
+  expect(settingValue({ ...entry(), kind: { type: "bool" } }, "route", t)).toBe("확인 불가");
   expect(settingValue(entry(), null, t)).toBe("확인 불가");
   expect(settingValue(entry(), "unlabelled", t)).toBe("확인 불가");
+});
+
+test("fresh tenant code defaults add no inherited hints for all served policy keys", () => {
+  const items = keys.map(key => ({ ...entry(key), source: { layer: "code_default" as const, scope_entity_id: null } }));
+  expect(approvalSummary({ can_change: true, items }, t, date)).toEqual({ value: "모두 바로 적용", hints: [] });
+});
+
+test("approval values follow served allowed kinds and routed classes omit the repeated card title", () => {
+  const restricted: components["schemas"]["SettingEntry"] = { ...entry(), kind: { type: "code", allowed: ["none"] }, value: "route" };
+  expect(approvalSummary({ can_change: true, items: [restricted] }, t, date).value).toBe("확인 불가");
+  expect(approvalSummary({ can_change: true, items: [entry(), { ...entry("identity_merge"), value: "route" }, { ...entry("exit"), value: "route" }] }, t, date).value).toBe("동일인 병합, 퇴직 확인");
 });

@@ -5,8 +5,10 @@ export type SummaryCopy = (id: string, values?: Record<string, string | number>)
 type S = components["schemas"];
 type Entry = S["SettingEntry"];
 type Read<O extends keyof operations> = operations[O] extends { responses: { 200: { content: { "application/json": infer D } } } } ? D : never;
-export const domainSummary = (data: S["CompanyDomainRequestState"], t: SummaryCopy) => data.pending_domain
-  ? t("settingsHub.domain.pending", { domain: data.pending_domain }) : t("settingsHub.domain.empty");
+export function domainSummary(data: S["CompanyDomainRequestState"], t: SummaryCopy, signInId?: string | null) {
+  const domain = signInId?.split("@")[1];
+  return domain ? [domain, ...(data.pending_domain ? [t("settingsHub.domain.pending", { domain: data.pending_domain })] : [])].join(" · ") : t("settingsHub.unknown");
+}
 export const numberingSummary = (data: S["EmployeeNumberRule"][], t: SummaryCopy) =>
   data.find(row => row.scope_kind === "TENANT")?.next_number ?? t("settingsHub.numbering.empty");
 export const titlesSummary = (data: Read<"listJobTitles">, t: SummaryCopy) => t("settingsHub.titles.count", {
@@ -31,12 +33,12 @@ export function settingValue(entry: Entry, value: Entry["value"], t: SummaryCopy
 }
 export function approvalSummary(data: Read<"listSettings">, t: SummaryCopy, fmtDate: (date: string) => string) {
   const entries = data.items.filter(row => row.key.startsWith("approval.policy."));
-  const unknown = !entries.length || entries.some(row => settingLabel(row.key, t) === t("settingsHub.unknown") || !["none", "route"].includes(String(row.value)));
+  const unknown = !entries.length || entries.some(row => settingLabel(row.key, t) === t("settingsHub.unknown") || row.kind.type !== "code" || !row.kind.allowed?.includes(String(row.value)));
   const routed = entries.filter(row => row.value === "route");
   const value = unknown ? t("settingsHub.unknown") : routed.length
-    ? routed.map(row => `${settingLabel(row.key, t)} · ${settingValue(row, row.value, t)}`).join(" · ") : t("settingsHub.approval.direct");
+    ? routed.map(row => settingLabel(row.key, t)).join(", ") : t("settingsHub.approval.direct");
   const hints = entries.flatMap(row => [
-    ...(row.source.layer !== "tenant" ? [t("settingsHub.source", { key: settingLabel(row.key, t), source: t(`settingsHub.layer.${row.source.layer}`) })] : []),
+    ...(["platform", "legal_entity", "workplace"].includes(row.source.layer) ? [t("settingsHub.source", { key: settingLabel(row.key, t), source: t(`settingsHub.layer.${row.source.layer}`) })] : []),
     ...(row.governance !== "tenant" ? [t("settingsHub.governance", { key: settingLabel(row.key, t), governance: t(`settingsHub.governance.${row.governance}`) })] : []),
     ...row.scheduled.map(next => t("settingsHub.scheduled", { key: settingLabel(row.key, t), date: fmtDate(next.effective_from), value: settingValue(row, next.value, t) })),
   ]);

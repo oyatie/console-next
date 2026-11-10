@@ -264,3 +264,4 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enDirectoryViews,
 };
 import { enDirectoryViews } from "./en/directory-views";
+import { enSettingsHub } from "./en/settings-hub";

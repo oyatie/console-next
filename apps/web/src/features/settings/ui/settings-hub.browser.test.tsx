@@ -47,7 +47,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const path = new URL(route.request().url()).pathname;
       const json = path.endsWith("company-domain/request") ? { pending_domain: "example.test" }
         : path.endsWith("employee-number-rules") ? [{ scope_kind: "TENANT", scope_id: "tenant", prefix: "E-", width: 4, next_number: "E-0012" }]
-        : path.endsWith("settings") ? { can_change: false, items: [{ key: "approval.policy.org_structure", kind: { type: "code" }, value: "route", governance: "tenant", source: { layer: "tenant" }, scheduled: [{ value: "none", effective_from: "2026-12-01T00:00:00Z" }] }] }
+        : path.endsWith("users/me") ? { sign_in_id: "operator@current.test" }
+        : path.endsWith("settings") ? { can_change: false, items: [{ key: "approval.policy.org_structure", kind: { type: "code", allowed: ["none", "route"] }, value: "route", governance: "tenant", source: { layer: "tenant" }, scheduled: [{ value: "none", effective_from: "2026-12-01T00:00:00Z" }] }] }
         : { items: [] };
       return route.fulfill({ json });
     });
@@ -55,7 +56,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { level: 1, name: t("shell.link.settings"), exact: true })).toBeVisible();
-    await expect(main.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText("example.test");
+    await expect(main.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText("current.test · example.test · 신청 중");
     await expect(main.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
     const approval = main.getByRole("region", { name: "결재", exact: true });
     await expect(approval).toContainText("조직 개편");
@@ -83,4 +84,38 @@ for (const status of [403, 503]) test(`one ${status} summary leaves other cards 
   await expect(main.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
   await expect(main.getByRole("link")).toHaveCount(4);
   await page.unroute("**/api/v1/tenant/company-domain/request");
+});
+
+for (const status of [403, 503]) test(`approval ${status} keeps its unavailable state within the card`, async () => {
+  await page.route("**/api/v1/settings", route => route.fulfill({ status, json: { error: { code: "forbidden", message: "" } } }));
+  await page.goto(`${server.resolvedUrls!.local[0]}settings-test`);
+  await expect(page.getByRole("region", { name: "결재", exact: true })).toContainText("확인 불가");
+  await expect(page.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
+  await page.unroute("**/api/v1/settings");
+});
+
+test("a live domain stays visible without a pending request", async () => {
+  await page.route("**/api/v1/tenant/company-domain/request", route => route.fulfill({ json: { pending_domain: null } }));
+  await page.goto(`${server.resolvedUrls!.local[0]}settings-test`);
+  const card = page.getByRole("region", { name: t("shell.settings.domain"), exact: true });
+  await expect(card).toContainText("current.test");
+  await expect(card).not.toContainText("신청");
+  await page.unroute("**/api/v1/tenant/company-domain/request");
+});
+
+test("unlabelled policy keys use the unavailable copy", async () => {
+  await page.route("**/api/v1/settings", route => route.fulfill({ json: { can_change: true, items: [{ key: "approval.policy.unlabelled", kind: { type: "code", allowed: ["none", "route"] }, value: "route", governance: "tenant", source: { layer: "tenant" }, scheduled: [] }] } }));
+  await page.goto(`${server.resolvedUrls!.local[0]}settings-test`);
+  const card = page.getByRole("region", { name: "결재", exact: true });
+  await expect(card).toContainText("확인 불가");
+  await expect(card).not.toContainText("unlabelled");
+  await page.unroute("**/api/v1/settings");
+});
+
+test("an unavailable identity cannot present a pending request as the live domain", async () => {
+  await page.route("**/api/v1/users/me", route => route.fulfill({ status: 503, json: { error: { code: "service_unavailable", message: "" } } }));
+  await page.goto(`${server.resolvedUrls!.local[0]}settings-test`);
+  await expect(page.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText("확인 불가");
+  await expect(page.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
+  await page.unroute("**/api/v1/users/me");
 });

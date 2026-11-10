@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
+import { ChevronRight } from "lucide-react";
+import { get } from "../../../lib/query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { myAccessQuery } from "../../../reference/authz/api";
@@ -9,7 +11,7 @@ import { settingsViews, type SettingsView } from "../../../shell/settings-views"
 import { QueryState } from "../../../lib/react/query-state";
 import { Page } from "../../../ui/page/page";
 import { Card } from "../../../ui/card/card";
-import { approvalSummary, summaryFormatters, type SummaryCopy } from "../domain/summaries";
+import { domainSummary, approvalSummary, summaryFormatters, type SummaryCopy } from "../domain/summaries";
 import s from "./settings-hub.module.css";
 
 export function SettingsHub() {
@@ -22,10 +24,14 @@ export function SettingsHub() {
 const settingsCopy: SummaryCopy = (id, values) => isMessageId(id) ? t(id, values) : t("settingsHub.unknown");
 
 function SettingsCard({ row }: { row: SettingsView }) {
+  const domain = row.summary.format === "domain";
+  const me = useQuery({ ...get("/api/v1/users/me"), enabled: domain, staleTime: Infinity, retry: false });
   const format = summaryFormatters[row.summary.format] as (data: unknown, copy: SummaryCopy, date: (value: string) => string) => string;
-  const q = useQuery<unknown, Error, string>({ ...row.summary, select: data => format(data, settingsCopy, fmtDate), retry: false });
-  return <Card title={<Link to={row.to} className={s.link}>{t(row.label)}</Link>}>
-    <QueryState q={q} inline own={() => t("settingsHub.unknown")}>
+  const q = useQuery<unknown, Error, string>({ ...row.summary, select: data => domain
+    ? domainSummary(data as Parameters<typeof domainSummary>[0], settingsCopy, me.data?.sign_in_id)
+    : format(data, settingsCopy, fmtDate), retry: false });
+  return <Card title={<Link to={row.to} className={s.link}>{t(row.label)}<ChevronRight size={16} aria-hidden /></Link>}>
+    <QueryState q={domain && me.error ? { ...q, error: me.error } : q} inline own={() => t("settingsHub.unknown")}>
       {value => <div className={s.value}>{value}</div>}
     </QueryState>
   </Card>;

@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
 .grid > * { min-width: 0; }
-.link { display: block; overflow-wrap: anywhere; }
+.link { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); overflow-wrap: anywhere; }
+.link > svg { flex-shrink: 0; }
 .link:focus-visible { outline: 2px solid var(--primary); outline-offset: var(--space-1); }
 .value { margin: 0; overflow-wrap: anywhere; }
 .hints { margin: var(--space-3) 0 0; padding-left: var(--space-4); overflow-wrap: anywhere; }

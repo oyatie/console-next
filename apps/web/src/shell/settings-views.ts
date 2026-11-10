@@ -5,16 +5,14 @@ import { accessRefusal, type AccessRequirement } from "../reference/authz/domain
 
 import type { MessageId } from "@console/i18n";
 import { get } from "../lib/query";
-import { routeReads } from "../routes/route-reads";
 
 type Destination = "/settings/company-domain" | "/people/numbering" | "/people/job-titles" | "/people/period-locks";
-const readPath = <P extends Destination>(to: P) => routeReads[to].reads[0].slice(4) as typeof routeReads[P]["reads"][0] extends `GET ${infer Path}` ? Path : never;
-/** Route metadata owns access; summaries share the destination's raw read cache. */
+/** Route metadata owns access; the route contract test pins each shared read path. */
 export const SETTINGS_VIEWS = [
-  { to: "/settings/company-domain", label: "shell.settings.domain", summary: { ...get(readPath("/settings/company-domain")), format: "domain" } },
-  { to: "/people/numbering", label: "identifiers.numbering.title", summary: { ...get(readPath("/people/numbering")), format: "numbering" } },
-  { to: "/people/job-titles", label: "shell.settings.titles", summary: { ...get(readPath("/people/job-titles")), format: "titles" } },
-  { to: "/people/period-locks", label: "periodLocks.title", summary: { ...get(readPath("/people/period-locks"), { params: { query: { limit: 200 } } }), format: "periods" } },
+  { to: "/settings/company-domain", label: "shell.settings.domain", summary: { ...get("/api/v1/tenant/company-domain/request"), format: "domain" } },
+  { to: "/people/numbering", label: "identifiers.numbering.title", summary: { ...get("/api/v1/employee-number-rules"), format: "numbering" } },
+  { to: "/people/job-titles", label: "shell.settings.titles", summary: { ...get("/api/v1/job-titles"), format: "titles" } },
+  { to: "/people/period-locks", label: "periodLocks.title", summary: { ...get("/api/v1/period-locks", { params: { query: { limit: 200 } } }), format: "periods" } },
 ] as const satisfies readonly { to: Destination; label: MessageId; summary: object }[];
 export type SettingsView = (typeof SETTINGS_VIEWS)[number];
 type Route = { options: { path?: string; staticData?: StaticDataRouteOption } };

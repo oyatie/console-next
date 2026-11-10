@@ -17,15 +17,18 @@ test("a first-run tenant operator reaches the served settings pages from one hub
   ] as const;
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
+    const identity = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/users/me" && response.ok());
     await go(page, "/settings");
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { name: t("shell.link.settings"), exact: true })).toBeVisible();
     await expect(main.getByRole("link")).toHaveCount(4);
-    await expect(main.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText(t("settingsHub.domain.empty"));
+    const { sign_in_id } = await (await identity).json();
+    await expect(main.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText(sign_in_id.split("@")[1]);
     await expect(main.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText(t("settingsHub.numbering.empty"));
     const approval = main.getByRole("region", { name: t("settingsHub.approval"), exact: true });
     await expect(approval).toContainText(t("settingsHub.approval.direct"));
     await expect(approval.getByRole("link")).toHaveCount(0);
+    await expect(approval.getByRole("list")).toHaveCount(0);
     await fits(page, `live settings/${width}`);
     await expectAxe(page, `live settings/${width}`);
     for (const [path, label, title] of rows) {
