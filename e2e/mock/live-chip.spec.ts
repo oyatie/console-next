@@ -8,8 +8,8 @@ import { screens } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`held changes overlay ${path} at ${width}px ${theme}`, async ({ page }, info) => {
+for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) for (const selected of width === 390 ? [false, true] : [false]) for (const theme of ["light", "dark"]) {
+  test(`held changes overlay ${path} at ${width}px ${theme}${selected ? " with a record open" : ""}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "populated");
@@ -37,23 +37,41 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) for (const 
       return { status: 200, json: queue };
     });
     try {
-      await page.goto(path);
+      await page.goto(selected ? `${path}?sel=${encodeURIComponent(queue.items[0]!.id)}` : path);
       const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
       const row = list.locator("[data-row-id], [data-id]").first();
-      await expect(row).toBeVisible();
+      await expect(row).toBeAttached();
+      if (!selected) await expect(row).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
-      const before = (await row.boundingBox())!;
+      const before = await row.boundingBox();
       const initialReads = reads;
+      const column = list.locator('[data-flexible-columns] > div').first();
       const status = list.locator('[data-flexible-columns] > div').first().locator(':scope > [role="status"]:not([aria-busy])');
       await expect(status).toHaveText("");
+      if (selected) await expect(column).toBeHidden();
       await status.evaluate(el => { el.dataset.sameNode = "yes"; });
       await page.screenshot({ path: info.outputPath(`before-${path === "/" ? "home" : "inbox"}-${width}-${theme}.png`), fullPage: true });
       await page.evaluate(() => window.dispatchEvent(new Event("list-change")));
-      const chip = list.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true });
+      const chip = (selected ? page : list).getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true });
       await expect(chip).toBeVisible();
       await expect(page.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true })).toHaveCount(1);
-      expect(await chip.evaluate(el => getComputedStyle(el.parentElement!).position)).toBe("sticky");
-      expect((await row.boundingBox())!.y).toBe(before.y);
+      expect(await chip.evaluate(el => getComputedStyle(el.parentElement!).position)).toBe(selected ? "fixed" : "sticky");
+      if (selected) {
+        expect((await chip.boundingBox())!.x).toBeGreaterThanOrEqual(0);
+        const bounds = (await chip.boundingBox())!;
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+        expect(reads).toBe(initialReads);
+        await page.screenshot({ path: info.outputPath(`held-record-${path === "/" ? "home" : "inbox"}-${width}-${theme}.png`), fullPage: true });
+        await chip.click();
+        await expect.poll(() => reads).toBe(initialReads + 1);
+        release();
+        await expect(chip).toHaveCount(0);
+        await expect(page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true })).toContainText(queue.items[0]!.title);
+        expect(reads).toBe(initialReads + 1);
+        expect(mock.unexpected).toEqual([]);
+        return;
+      }
+      expect((await row.boundingBox())!.y).toBe(before!.y);
       expect(reads).toBe(initialReads);
       const trailing = row.locator('[role="cell"], [role="gridcell"], td').last();
       const cellBounds = (await trailing.boundingBox())!;
@@ -61,7 +79,7 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) for (const 
       expect(buttonBounds.y + buttonBounds.height <= cellBounds.y || buttonBounds.y >= cellBounds.y + cellBounds.height || buttonBounds.x + buttonBounds.width <= cellBounds.x || buttonBounds.x >= cellBounds.x + cellBounds.width).toBe(true);
       const chipBounds = (await chip.boundingBox())!;
       expect(chipBounds.y).toBeGreaterThanOrEqual((await list.boundingBox())!.y);
-      expect(chipBounds.y).toBeLessThan(before.y + before.height);
+      expect(chipBounds.y).toBeLessThan(before!.y + before!.height);
       expect(chipBounds.x).toBeGreaterThanOrEqual(0);
       expect(chipBounds.x + chipBounds.width).toBeLessThanOrEqual(width);
       await page.screenshot({ path: info.outputPath(`live-${path === "/" ? "home" : "inbox"}-${width}-${theme}.png`), fullPage: true });

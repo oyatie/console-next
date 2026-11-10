@@ -34,6 +34,7 @@ beforeAll(async () => {
         import { HeldNotice } from '/apps/web/src/ui/live/held-notice.tsx';
         import { holdLive, openLive } from '/apps/web/src/lib/live/live.ts';
         import { read } from '/apps/web/src/lib/query.ts';
+        import liveStyles from '/apps/web/src/ui/live/live.module.css';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         const client = new QueryClient();
@@ -62,7 +63,9 @@ beforeAll(async () => {
           }));
           return React.createElement(React.Fragment, null,
             React.createElement('button', { id: 'destination' }, 'Destination'),
-            React.createElement('aside', null, React.createElement(HeldNotice)),
+            React.createElement('aside', null, params.has('notice')
+              ? React.createElement('div', { className: 'notice ' + liveStyles.notice }, React.createElement('button', null, 'Changed record'))
+              : React.createElement(HeldNotice)),
             ...Array.from({ length: lists }, (_, index) => React.createElement('section', { key: index, 'aria-label': 'List ' + index, tabIndex: -1 },
               React.createElement(HeldNotice, { placement: 'list' }),
               ...data.map(id => React.createElement(params.has('plain') ? 'div' : 'button', { key: id, 'data-id': id, tabIndex: params.has('tab') ? 0 : undefined }, id)))));
@@ -122,6 +125,51 @@ test("only the last list unmount restores the held shell floater", async () => {
   await element(page.locator("section")).toHaveCount(0);
   await element(page.locator("aside").getByRole("button", { name: "새 항목 1건 · 새로 고침" })).toBeVisible();
 });
+
+test.each([1, 2])("hiding every mounted list restores the floater with %i lists", async lists => {
+  await page.goto(`${server.resolvedUrls!.local[0]}held-notice-test?lists=${lists}`);
+  await element(page.locator("section")).toHaveCount(lists);
+  await change();
+  await element(chip()).toHaveCount(lists);
+  const floating = page.locator("aside").getByRole("button");
+  await page.locator("section").first().evaluate(el => { el.style.display = "none"; });
+  if (lists > 1) {
+    await element(floating).toHaveCount(0);
+    await element(page.getByRole("status")).toHaveCount(1);
+    await page.locator("section").last().evaluate(el => { el.style.display = "none"; });
+  }
+  await element(page.locator("section").getByRole("button")).toHaveCount(0);
+  await element(floating).toBeVisible();
+  await page.locator("section").first().evaluate(el => { el.style.removeProperty("display"); });
+  await element(page.locator("section").first().getByRole("button", { name: "새 항목 1건 · 새로 고침" })).toBeVisible();
+  await element(floating).toHaveCount(0);
+  await page.evaluate(() => window.dispatchEvent(new Event("remove-list")));
+  if (lists > 1) await page.evaluate(() => window.dispatchEvent(new Event("remove-list")));
+  await element(floating).toBeVisible();
+});
+
+for (const width of [1440, 390]) for (const placement of ["notice", "held"]) {
+  test(`the shell ${placement} stays above sheets and panels at ${width}px`, async () => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${server.resolvedUrls!.local[0]}held-notice-test?lists=0&${placement}`);
+    await element(page.locator("html")).toHaveAttribute("data-reads", "1");
+    if (placement === "held") await change();
+    const button = page.locator("aside").getByRole("button");
+    await element(button).toBeVisible();
+    for (const layer of ["--z-sheet", "--z-panel"]) {
+      const onTop = await button.evaluate((el, layer) => {
+        const cover = document.createElement("div");
+        cover.style.cssText = `position: fixed; inset: 0; z-index: var(${layer})`;
+        document.body.append(cover);
+        const rect = el.getBoundingClientRect();
+        const hit = el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+        cover.remove();
+        return hit;
+      }, layer);
+      expect(onTop, layer).toBe(true);
+    }
+  });
+}
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`the chip overlays its list without moving rows at ${width}px ${theme}`, async () => {
