@@ -32,7 +32,6 @@ export const enApprovals: Record<keyof typeof koApprovals, string> = {
   "approvals.empty.completed": "No completed approvals",
   "approvals.empty.reason": "Documents matching these filters will appear here.",
   "approvals.more": "Show more",
-  "approvals.open": "Open approval document",
   "approvals.openSource": "Open source record",
   "approvals.document.title": "Approval document",
   "approvals.viewer.body": "Document body",

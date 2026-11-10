@@ -35,13 +35,16 @@ for (const preview of [false, true])
         items: [item], focused: null, next_cursor: null, sources: [],
         counts: { pending: 1, upcoming: 0, requested: 0, reference: 0, completed: 0 },
       } }));
+      await page.route(url => url.pathname === "/api/v1/approvals/approval-layout", route => route.fulfill({ json: {
+        ...item, body: [], revision: 1, fingerprint: "sha256:approval-layout-r1", consequence: value.title, opinion_max: 1000, my_actions: { kind: "none" },
+      } }));
       await page.goto("/approvals");
       const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
       const row = grid.getByRole("row", { name: new RegExp(value.title) });
       await expect(row).toBeVisible();
       if (preview) {
         await row.click();
-        await expect(page.locator("[data-side-panel]")).toBeVisible();
+        await expect(page.getByRole("complementary", { name: t("approvals.document.title"), exact: true })).toBeVisible();
       }
       // The data and preview stay fixed; exercise every container breakpoint on the same render.
       for (const width of [1024, 1100, 1152, 1216, 1280, 1366, 1440, 1472, 1536, 1600, 1920]) {
@@ -59,6 +62,8 @@ for (const preview of [false, true])
             const range = document.createRange();
             range.selectNodeContents(statusText);
             return {
+              // Beside an open document a narrow list falls back to the card layout, which has no column tracks.
+              cards: getComputedStyle(table).display !== "grid",
               containerWidth: container.clientWidth,
               // Measure intrinsic values independently of the production cap and hide conditions.
               naturalWidths: cells.map((cell, index) => {
@@ -115,6 +120,7 @@ for (const preview of [false, true])
             };
           });
           expect(metrics.overflows, "table and every enclosing surface fit without scrolling").toEqual([0, 0, 0, 0]);
+          if (metrics.cards) return void expect(preview && width < 1280, "only a list squeezed by the document column uses cards").toBe(true);
           expect(metrics.tableRight).toBeLessThanOrEqual(metrics.cardRight);
           expect(metrics.statusFits, "entire status chip fits inside the card").toBe(true);
           expect(metrics.statusHeaderFits).toBe(true);
@@ -141,7 +147,8 @@ for (const preview of [false, true])
           }
           for (const cell of metrics.secondary) {
             expect(cell.headerVisible).toBe(cell.visible);
-            if (cell.visible) expect(cell.fullValue).toBe(cell.text);
+            // The route cell is a list of chips; its tooltip names every step, which the chips abbreviate.
+            if (cell.visible && cell.index !== 3) expect(cell.fullValue).toBe(cell.text);
           }
           expect(metrics.titleWidth).toBeGreaterThanOrEqual(metrics.minimum);
           expect(parseFloat(metrics.titleMinimum)).toBe(metrics.minimum);

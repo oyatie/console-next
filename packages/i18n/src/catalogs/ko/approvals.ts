@@ -31,7 +31,6 @@ export const koApprovals = {
   "approvals.empty.completed": "완료된 결재가 없습니다",
   "approvals.empty.reason": "선택한 조건에 맞는 문서가 생기면 여기에 표시합니다.",
   "approvals.more": "더 보기",
-  "approvals.open": "결재 문서 열기",
   "approvals.openSource": "원본 기록 열기",
   "approvals.document.title": "결재 문서",
   "approvals.viewer.body": "문서 내용",

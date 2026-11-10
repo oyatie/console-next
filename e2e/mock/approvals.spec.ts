@@ -35,12 +35,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`an
   await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ status: 200, json: {
     ...response(), items: [{ ...item, decision_refusal: "org_change.refuse.identity_unbound" }],
   } }));
+  await mockDocument(page);
   await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
   await page.setViewportSize({ width, height: 900 });
   await page.goto("/approvals");
   await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
   await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
-  const panel = page.locator("[data-side-panel]");
+  const panel = column(page);
   await expect(panel).toContainText("계정을 인사카드에 연결하거나 동일인 확인을 완료");
   await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
   await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveCount(0);
@@ -49,6 +50,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`an
   await expectAxe(page, `blocked approval ${width}px ${theme}`);
   if (width === 390) await fits(page, "blocked approval");
 });
+
+const documentOf = (source: object) => ({ ...source, body: [{ key: "change", label: "변경 내용", value: "영업1팀과 영업2팀을 영업팀으로 통합" }],
+  revision: 1, fingerprint: "sha256:approval-1-r1", consequence: "승인하면 조직 변경이 시행일에 반영됩니다.", opinion_max: 1000, my_actions: { kind: "none" } });
+/** The document column reads the selected document by id. */
+const mockDocument = (page: Page, source: object = item) => page.route(url => /^\/api\/v1\/approvals\/[^/]+$/.test(url.pathname),
+  route => route.fulfill({ status: 200, json: documentOf({ ...source, id: decodeURIComponent(new URL(route.request().url()).pathname.split("/").pop()!) }) }));
+const column = (page: Page) => page.getByRole("complementary", { name: "결재 문서", exact: true });
 
 async function mockApprovals(page: Page, reply: "ready" | "failed" | "refused" = "ready") {
   const queries: URLSearchParams[] = [];
@@ -70,6 +78,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "empty");
     const queries = await mockApprovals(page);
+    await mockDocument(page);
     await page.goto("/approvals");
     await expect(page.getByRole("heading", { level: 1, name: "결재함", exact: true })).toBeVisible();
     if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
@@ -86,7 +95,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     if (width === 390) await fits(page, "approval list");
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-before.png`), fullPage: true });
     await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
-    const panel = page.locator("[data-side-panel]");
+    const panel = column(page);
     await expect(panel.getByRole("heading", { name: "영업 조직 개편안", exact: true })).toBeVisible();
     await expect(panel.getByText(t("enum.orgChangeStatus.IN_APPROVAL"), { exact: true })).toBeVisible();
     await expect(panel.getByText(/hr|executive|IN_APPROVAL/, { exact: true })).toHaveCount(0);
@@ -106,8 +115,12 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         expect(metrics.height, `${text} stays on one line in the split list`).toBeLessThanOrEqual(metrics.lineHeight + 1);
       }
     }
-    await expect(row.getByRole("list")).toHaveCount(0);
-    await expect(row.locator('[aria-current="step"]')).toHaveText(`${t("enum.approvalRole.legal")} · 박결재`);
+    if (width === 1440) {
+      // The row carries the 결재선 as chips: the steps around the current one, the rest counted.
+      const chips = row.getByRole("list", { name: "결재선", exact: true });
+      await expect(chips.locator('[aria-current="step"]')).toContainText(`${t("enum.approvalRole.legal")} · 박결재`);
+      await expect(chips.getByRole("listitem").last()).toHaveText("+2");
+    }
     await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-preview.png`), fullPage: true });
@@ -140,6 +153,7 @@ for (const width of [1280, 1440]) for (const theme of ["light", "dark"]) {
     await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({
       json: { ...response(), items: Array.from({ length: 50 }, (_, i) => ({ ...longItem, id: `approval-${i + 1}` })) },
     }));
+    await mockDocument(page, longItem);
     await page.goto("/approvals");
     const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
     const rows = grid.getByRole("row").filter({ hasText: longItem.title });
@@ -201,7 +215,7 @@ for (const width of [1280, 1440]) for (const theme of ["light", "dark"]) {
       await fits(page, "approval list");
       await page.screenshot({ path: info.outputPath(`approvals-columns-${width}-${theme}-${preview}.png`), fullPage: true });
       if (!preview) await rows.first().click();
-      else await page.locator("[data-side-panel]").getByRole("button", { name: t("common.closePanel"), exact: true }).click();
+      else await column(page).getByRole("button", { name: t("common.closePanel"), exact: true }).click();
     }
     expect(mock.unexpected).toEqual([]);
   });
@@ -226,12 +240,14 @@ test("a completed route does not invent a current signer", async ({ page }) => {
   await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ json: {
     ...response(), items: [{ ...item, box: "completed", status: { key: "APPLIED" }, route: item.route.map(step => ({ ...step, state: "done" })) }],
   } }));
+  await mockDocument(page, { ...item, box: "completed", status: { key: "APPLIED" }, route: item.route.map(step => ({ ...step, state: "done" })) });
   await page.goto("/approvals?box=completed");
   const row = page.getByRole("row", { name: /영업 조직 개편안/ });
-  await expect(row.getByRole("gridcell", { name: "—", exact: true })).toHaveCount(1);
+  await expect(row.getByRole("gridcell", { name: "—", exact: true })).toHaveCount(0);
   await expect(row.locator('[aria-current="step"]')).toHaveCount(0);
   await row.click();
-  await expect(page.locator("[data-side-panel]").getByRole("listitem")).toHaveCount(item.route.length);
+  await expect(column(page).getByRole("list", { name: "결재선", exact: true }).getByRole("listitem")).toHaveCount(item.route.length);
+  await expect(column(page).locator('[aria-current="step"]')).toHaveCount(0);
 });
 
 test("an unavailable approvals module hides the rail entry and refuses a direct URL", async ({ page }) => {
