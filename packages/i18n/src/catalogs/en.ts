@@ -1,5 +1,4 @@
 import { enUiFlexibleColumns } from "./en/ui-flexible-columns";
-import { enSettingsHub } from "./en/settings-hub";
 import { enGovernanceRefusals } from "./en/governance";
 import { enAccountLinkRefusals } from "./en/account_link";
 import { enPeriodUnlockRefusals } from "./en/period_unlock";

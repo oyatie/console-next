@@ -40,7 +40,12 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       ? { status: state === "failed" ? 503 : 403, json: failure(state === "failed" ? "service_unavailable" : "forbidden") }
       : { status: 200, json: { pending_domain: state === "fresh" ? null : "example.test" } });
     await mockRoute(page, "get", "/api/v1/employee-number-rules", { status: 200, json: [{ scope_kind: "TENANT", scope_id: id(2), prefix: "E-", width: 4, next_number: "E-0012" }] });
-    await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: true, items: [{ id: id(11), kind: "GRADE", label: "대리", grade_rank: 1, active: true }, { id: id(12), kind: "POSITION", label: "팀장", grade_rank: null, active: true }] } });
+    await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: true, items: [
+      { id: id(11), kind: "GRADE", label: "대리", grade_rank: 1, active: true },
+      { id: id(14), kind: "TITLE", label: "선임", grade_rank: null, active: true },
+      { id: id(12), kind: "POSITION", label: "팀장", grade_rank: null, active: true },
+      { id: id(15), kind: "GRADE", label: "과장", grade_rank: 2, active: false },
+    ] } });
     await mockRoute(page, "get", "/api/v1/period-locks", { status: 200, json: { items: [{ id: id(13), domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", reason: "월 마감", lockedAt: "2026-10-01T00:00:00Z", active: true, unlockReviewRequired: false }] } });
     await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: state !== "fixed", items: policyKeys.map(key => policy(state, key)) } });
     await mockRoute(page, "get", "/api/v1/reason-codes", { status: 200, json: { domain: "employee_number_change", items: [] } });
@@ -61,17 +66,18 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       for (const [path, label] of rows) {
         const card = main.getByRole("region", { name: t(label), exact: true });
         await expect(card.getByRole("heading", { level: 2 }).getByRole("link")).toHaveAttribute("href", path);
+        await expect(card.getByRole("link").locator("svg[aria-hidden=true]")).toHaveCount(1);
       }
       await expect(main.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText(state === "failed" || state === "refused" ? t("settingsHub.unknown") : state === "fresh" ? "current.test" : "current.test · example.test · 신청 중");
       await expect(main.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
-      await expect(main.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText("직위 1 · 직책 1");
+      await expect(main.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText("직급 1 · 직위 1 · 직책 1");
       await expect(main.getByRole("region", { name: t("periodLocks.title"), exact: true })).toContainText("2026. 09. 30.");
       const approval = main.getByRole("region", { name: t("settingsHub.approval"), exact: true });
       await expect(approval).toContainText(state === "direct" || state === "fresh" ? t("settingsHub.approval.direct") : t("settingsHub.key.approval.policy.org_structure"));
       await expect(approval.getByRole("link")).toHaveCount(0);
       if (state === "fresh") { await expect(approval.getByRole("list")).toHaveCount(0); await expect(main).not.toContainText("신청 전"); }
       if (state === "scheduled") { await expect(approval).toContainText("2026. 12. 01."); await expect(approval).toContainText(t("settingsHub.code.none")); }
-      if (state === "fixed") { await expect(approval).toContainText(t("settingsHub.governance.fixed")); await expect(approval).toContainText(t("settingsHub.readOnly")); await expect(approval).toContainText(t("settingsHub.layer.platform")); }
+      if (state === "fixed") { await expect(approval.getByRole("listitem")).toHaveCount(2); await expect(approval).toContainText(t("settingsHub.governance.fixed")); await expect(approval).toContainText(t("settingsHub.readOnly")); await expect(approval).toContainText(t("settingsHub.layer.platform")); }
       expect(reads.toSorted()).toEqual(paths.toSorted());
       expect(identityReads).toBe(2);
       await fits(page, `settings/${state}/${width}/${theme}`);
@@ -112,7 +118,7 @@ for (const width of [1440, 390]) for (const profile of ["branch", "none"] as con
         await expect(page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link", { name: t("shell.link.settings"), exact: true })).toHaveCount(0);
         expect(reads.filter(path => path !== settingsQuery.queryKey[0])).toEqual([]);
       } else {
-        await expect(main.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText("직위 0 · 직책 0");
+        await expect(main.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText(t("settingsHub.titles.empty"));
         await expect(main.getByRole("region", { name: t("settingsHub.approval"), exact: true })).toContainText(t("settingsHub.approval.direct"));
         await expect(main.getByRole("link")).toHaveCount(1);
         expect(reads.toSorted()).toEqual([routeReads["/people/job-titles"].reads[0].slice(4), settingsQuery.queryKey[0]].toSorted());
@@ -136,6 +142,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`se
   await expect(demo.getByRole("heading", { name: t("shell.link.settings"), exact: true })).toBeVisible();
   await expect(demo.getByRole("link")).toHaveCount(4);
   await expect(demo).toContainText("example.test");
+  await expect(demo.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText("직급 1 · 직위 1 · 직책 1");
   await expect(demo).toContainText(t("settingsHub.unknown"));
   await expectAxe(page, `settings gallery/${width}/${theme}`, { include: "[data-settings-gallery]" });
 });

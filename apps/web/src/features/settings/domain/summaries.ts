@@ -11,10 +11,11 @@ export function domainSummary(data: S["CompanyDomainRequestState"], t: SummaryCo
 }
 export const numberingSummary = (data: S["EmployeeNumberRule"][], t: SummaryCopy) =>
   data.find(row => row.scope_kind === "TENANT")?.next_number ?? t("settingsHub.numbering.empty");
-export const titlesSummary = (data: Read<"listJobTitles">, t: SummaryCopy) => t("settingsHub.titles.count", {
-  grades: data.items.filter(row => row.kind === "GRADE").length,
-  positions: data.items.filter(row => row.kind === "POSITION").length,
-});
+export function titlesSummary(data: Read<"listJobTitles">, t: SummaryCopy) {
+  const counts = new Map<S["JobTitleKind"], number>();
+  for (const row of data.items) if (row.active) counts.set(row.kind, (counts.get(row.kind) ?? 0) + 1);
+  return [...counts].map(([kind, value]) => `${t(`enum.jobTitleKind.${kind}`)} ${t("settingsHub.number", { value })}`).join(" · ") || t("settingsHub.titles.empty");
+}
 export function periodsSummary(data: S["PeriodLockList"], t: SummaryCopy, fmtDate: (date: string) => string) {
   const latest = new Map<string, S["PeriodLock"]>();
   for (const row of data.items) if (row.active && (!latest.has(row.domain) || latest.get(row.domain)!.periodEnd < row.periodEnd)) latest.set(row.domain, row);
@@ -37,11 +38,16 @@ export function approvalSummary(data: Read<"listSettings">, t: SummaryCopy, fmtD
   const routed = entries.filter(row => row.value === "route");
   const value = unknown ? t("settingsHub.unknown") : routed.length
     ? routed.map(row => settingLabel(row.key, t)).join(", ") : t("settingsHub.approval.direct");
-  const hints = entries.flatMap(row => [
-    ...(["platform", "legal_entity", "workplace"].includes(row.source.layer) ? [t("settingsHub.source", { key: settingLabel(row.key, t), source: t(`settingsHub.layer.${row.source.layer}`) })] : []),
-    ...(row.governance !== "tenant" ? [t("settingsHub.governance", { key: settingLabel(row.key, t), governance: t(`settingsHub.governance.${row.governance}`) })] : []),
-    ...row.scheduled.map(next => t("settingsHub.scheduled", { key: settingLabel(row.key, t), date: fmtDate(next.effective_from), value: settingValue(row, next.value, t) })),
-  ]);
+  const groups = new Map<string, string[]>();
+  for (const row of entries) {
+    const facts = [
+      ...(["platform", "legal_entity", "workplace"].includes(row.source.layer) ? [t(`settingsHub.layer.${row.source.layer}`)] : []),
+      ...(row.governance !== "tenant" ? [t(`settingsHub.governance.${row.governance}`)] : []),
+    ].join(" · ");
+    if (facts) groups.set(facts, [...(groups.get(facts) ?? []), settingLabel(row.key, t)]);
+  }
+  const hints = [...groups].map(([source, labels]) => t("settingsHub.source", { key: labels.length === entries.length ? t("settingsHub.all") : labels.join(", "), source }));
+  hints.push(...entries.flatMap(row => row.scheduled.map(next => t("settingsHub.scheduled", { key: settingLabel(row.key, t), date: fmtDate(next.effective_from), value: settingValue(row, next.value, t) }))));
   if (!data.can_change) hints.push(t("settingsHub.readOnly"));
   return { value, hints };
 }

@@ -31,7 +31,7 @@ function SettingsCard({ row }: { row: SettingsView }) {
     ? domainSummary(data as Parameters<typeof domainSummary>[0], settingsCopy, me.data?.sign_in_id)
     : format(data, settingsCopy, fmtDate), retry: false });
   return <Card title={<Link to={row.to} className={s.link}>{t(row.label)}<ChevronRight size={16} aria-hidden /></Link>}>
-    <QueryState q={domain && me.error ? { ...q, error: me.error } : q} inline own={() => t("settingsHub.unknown")}>
+    <QueryState q={domain ? { ...q, isPending: q.isPending || me.isPending, error: q.error || me.error } : q} inline own={() => t("settingsHub.unknown")}>
       {value => <div className={s.value}>{value}</div>}
     </QueryState>
   </Card>;

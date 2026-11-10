@@ -14,7 +14,12 @@ export default function SettingsHubGallery() {
     const query = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false, retryOnMount: false } } });
     query.setQueryData(get("/api/v1/users/me").queryKey, { sign_in_id: "operator@current.test" });
     query.setQueryData(settingsQuery.queryKey, { can_change: false, items: [] });
-    const values = [{ pending_domain: "example.test" }, [{ scope_kind: "TENANT", next_number: "E-0012" }], { items: [] }];
+    const values = [{ pending_domain: "example.test" }, [{ scope_kind: "TENANT", next_number: "E-0012" }], { items: [
+      { id: "grade", kind: "GRADE", label: t("enum.jobTitleKind.GRADE"), grade_rank: 1, active: true },
+      { id: "title", kind: "TITLE", label: t("enum.jobTitleKind.TITLE"), grade_rank: null, active: true },
+      { id: "position", kind: "POSITION", label: t("enum.jobTitleKind.POSITION"), grade_rank: null, active: true },
+      { id: "inactive", kind: "GRADE", label: t("enum.jobTitleKind.GRADE"), grade_rank: 2, active: false },
+    ] }];
     values.forEach((value, index) => query.setQueryData(SETTINGS_VIEWS[index]!.summary.queryKey, value));
     return query;
   });

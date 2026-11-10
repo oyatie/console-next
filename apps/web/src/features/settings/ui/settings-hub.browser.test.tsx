@@ -64,6 +64,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(approval.getByRole("link")).toHaveCount(0);
     const links = main.getByRole("link");
     await expect(links).toHaveCount(4);
+    for (const link of await links.all()) await expect(link.locator("svg[aria-hidden=true]")).toHaveCount(1);
     await page.keyboard.press("Tab");
     await expect(links.first()).toBeFocused();
     for (let i = 1; i < 4; i++) {
@@ -118,4 +119,20 @@ test("an unavailable identity cannot present a pending request as the live domai
   await expect(page.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText("확인 불가");
   await expect(page.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
   await page.unroute("**/api/v1/users/me");
+});
+
+test("the domain waits for identity while other summaries are ready", async () => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/v1/users/me", async route => { await held; await route.fulfill({ json: { sign_in_id: "operator@current.test" } }); });
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}settings-test`);
+    await expect(page.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
+    const card = page.getByRole("region", { name: t("shell.settings.domain"), exact: true });
+    await expect(card.getByRole("status", { name: t("common.loading") })).toBeVisible();
+    await expect(card).not.toContainText(t("settingsHub.unknown"));
+    release();
+    await expect(card).toContainText("current.test");
+    await expect(card.getByRole("status")).toHaveCount(0);
+  } finally { release(); await page.unroute("**/api/v1/users/me"); }
 });
