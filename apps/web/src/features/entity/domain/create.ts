@@ -88,7 +88,7 @@ const requirementMet: Record<EntityGap | RegistrationRequirement, (d: Draft) => 
   representationMode: (d) => namedReps(d).length <= 1 || d.representationMode !== null,
   crn: (d) => d.crn.length === FORMATS.corpRegNo.max,
   headOffice: (d) => headOfficeAddress(d) !== null,
-  brn: (d) => d.brn.length === FORMATS.bizRegNo.max,
+  brn: (d) => d.brn.length === FORMATS.bizRegNo.max || d.brnPendingReason === "NEW_REGISTRATION_PENDING",
   openedOn: (d) => d.openedOn !== "",
   businessAddress: (d) => d.businessAddress !== null,
   businessTypes: (d) => d.businessTypes.length > 0 && d.businessTypes.every((b) => !blank(b.sector) && !blank(b.item)),
@@ -147,7 +147,8 @@ export function registrationBody(d: Draft): RegistrationInput | null {
   if (isFounding(d) || !registrationReady(d)) return null;
   return {
     ...(d.bizKind === "INDIVIDUAL" ? { trade_name: d.name.trim() } : {}),
-    brn: d.brn,
+    brn: d.brnPendingReason ? null : d.brn,
+    brn_pending_reason: d.brnPendingReason ?? null,
     classification_reason: d.classificationReason.trim() || null,
     opened_on: d.openedOn,
     business_address: krAddress(d.businessAddress!),
@@ -177,7 +178,7 @@ export function corpItems(d: Draft, p: Partial<Record<CreateField, CreateProblem
   const has = (ok: boolean): ItemState => (ok ? "ok" : "todo");
   return [
     { key: "taxType", state: has(d.taxType !== null) },
-    { key: "brn", state: p.brn ? "err" : brnChecksumOff(d.brn) || brnWarnings(d, classes).includes("kindMismatch") ? "warn" : has(d.brn !== "") },
+    { key: "brn", state: p.brn ? "err" : brnChecksumOff(d.brn) || brnWarnings(d, classes).includes("kindMismatch") ? "warn" : has(d.brn !== "" || Boolean(d.brnPendingReason)) },
     { key: "name", no: 1, state: has(!blank(d.name)) },
     { key: "representatives", no: 2, state: has(d.representatives.some((n) => !blank(n))) },
     { key: "openedOn", no: 3, state: p.openedOn ? "err" : brnWarnings(d).includes("openedBeforeIncorporated") ? "warn" : has(d.openedOn !== "") },

@@ -121,7 +121,7 @@ fn unit_sql(
 }
 
 impl Tenant {
-    /// A caller holding `role` (ADMIN: may draft, may not apply).
+    /// A caller with only the legacy role and no live grant.
     pub async fn caller(&self, role: &str) -> Caller {
         let id = user(&self.owner, self.org, role).await;
         Caller {

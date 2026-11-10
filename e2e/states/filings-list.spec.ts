@@ -29,6 +29,16 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         expect(await region.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(0);
       }
       const row = grid.getByRole("row").filter({ hasText: filingTask.name });
+      if (width === 390) {
+        const title = row.locator('[data-card="title"]');
+        await expect(title).toHaveAttribute("data-label", t("statutory.employee"));
+        await expect(title).toContainText(filingTask.name);
+        for (const key of ["statutory.workplace", "statutory.event", "statutory.date", "statutory.deadline", "statutory.evidence"] as const) {
+          const cell = row.locator(`[data-card="fact"][data-label="${t(key)}"]`);
+          await expect(cell).toBeVisible();
+          expect(await cell.evaluate(element => getComputedStyle(element, "::before").content)).toBe(JSON.stringify(t(key)));
+        }
+      }
       await expect(row.getByRole("link", { name: new RegExp(filingTask.name) })).toHaveAttribute("href", `/people/${id(100)}`);
       for (const value of [filingTask.employee_number!, filingTask.workplace_name!, t("statutory.NPS"), t("statutory.ACQUIRE"), fmtDate(filingTask.effective_date), t("statutory.days", { days: 3 })]) {
         await expect(row).toContainText(value);
@@ -40,7 +50,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await basis.click();
       await expect(row.getByText(t("statutory.hold"), { exact: true })).toHaveCount(1);
       await expect(row.getByText(t("statutory.hold"), { exact: true })).toBeVisible();
-      await expect(row.getByRole("link", { name: /국민연금법/ })).toBeVisible();
+      await expect(row.getByRole("link", { name: /국민연금법/ })).toHaveCount(0);
+      await expect(row.getByText(new RegExp(new URL(filingTask.basis!.citation.source_url).pathname))).toBeVisible();
       expect(await row.evaluate(element => {
         const bounds = element.getBoundingClientRect();
         return [...element.querySelectorAll("*")].filter(child => {
@@ -153,6 +164,7 @@ for (const width of [768, 600]) test(`filing words and actions stay whole at ${w
         range.selectNodeContents(node);
         if (!range.getBoundingClientRect().width) continue;
         const font = getComputedStyle(node.parentElement!);
+        if (font.overflowWrap === "anywhere") continue;
         canvas.font = `${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
         for (const word of node.textContent!.trim().split(/[\s-]+/)) {
           if (canvas.measureText(word).width > available + 1) broken.push(word);

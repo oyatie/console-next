@@ -3,7 +3,7 @@
 
 use crate::audit;
 #[path = "records_access.rs"]
-mod access;
+pub(crate) mod access;
 
 use axum::Json;
 use axum::extract::{Path, State};
@@ -37,7 +37,7 @@ pub const BATCH_UNDO_PATH: &str = "/api/v1/attendance/batches/{batch_id}/undo";
 pub const ENTRY_CORRECT_PATH: &str = "/api/v1/attendance/entries/{entry_id}/correct";
 pub const ENTRY_VOID_PATH: &str = "/api/v1/attendance/entries/{entry_id}/void";
 
-fn read_scope(p: &Principal) -> CallerScope {
+pub(crate) fn read_scope(p: &Principal) -> CallerScope {
     CallerScope {
         org_id: *p.org_id.as_uuid(),
         user_id: *p.user_id.as_uuid(),

@@ -29,3 +29,36 @@ allOf:
       type: array
       items:
         $ref: '#/components/schemas/OrgChangeEvent'
+    sole_holder_decision:
+      type: object
+      nullable: true
+      description: Viewer-specific offer for the first pending stored step; null when Cedar refuses case B. review_due_at projects the configured review period from the read time; the receipt stores the deadline from the decision time.
+      required: [step_id, expected_version, payload_hash, notice_count, review_due_at]
+      properties:
+        step_id:
+          $ref: '#/components/schemas/Uuid'
+        expected_version:
+          type: string
+        payload_hash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        notice_count:
+          type: integer
+          minimum: 1
+        review_due_at:
+          type: string
+          format: date-time
+    sole_holder_exception:
+      type: object
+      nullable: true
+      description: Persisted receipt for the latest sole-holder decision, including after approval completes.
+      required: [id, notice_count, review_due_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        notice_count:
+          type: integer
+          minimum: 1
+        review_due_at:
+          type: string
+          format: date-time

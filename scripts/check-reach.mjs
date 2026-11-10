@@ -159,14 +159,44 @@ export function checkOperations({ gaps, operations, previous, uncalled }) {
   const problems = [];
   for (const [op, allow] of Object.entries(operations)) {
     if (![allow?.lane, allow?.reason].every((s) => typeof s === "string" && s.trim())) problems.push(`operation-owner: ${op} needs a lane and reason`);
-    if (uncalled && !uncalled.includes(op)) problems.push(`operation-stale: ${op} is called or no longer served; remove it (node scripts/check-reach.mjs --lower)`);
+    if (uncalled && allow.scope !== "route" && !uncalled.includes(op)) problems.push(`operation-stale: ${op} is called or no longer served; remove it (node scripts/check-reach.mjs --lower)`);
   }
   for (const op of gaps) if (!Object.hasOwn(operations, op)) problems.push(`operation-unreachable: ${op} has no product call site or owned allowance`);
-  if (previous !== undefined) problems.push(...baselineGrowth(counts(Object.keys(operations)), counts(Object.keys(previous))).map((p) => `operations: ${p}`));
+  if (previous !== undefined) problems.push(...baselineGrowth(counts(Object.keys(callAllowances(operations))), counts(Object.keys(callAllowances(previous)))).map((p) => `operations: ${p}`));
   return problems;
 }
 
-export const lowerOperations = (operations, uncalled) => Object.fromEntries(Object.entries(operations).filter(([op]) => uncalled.includes(op)));
+export const lowerOperations = (operations, uncalled) => Object.fromEntries(Object.entries(operations).filter(([op, allow]) => allow.scope === "route" || uncalled.includes(op)));
+
+const callAllowances = operations => Object.fromEntries(Object.entries(operations).filter(([, allow]) => allow.scope !== "route"));
+const routeAllowances = operations => Object.fromEntries(Object.entries(operations).filter(([, allow]) => allow.scope === "route"));
+
+/** Product dispositions also cover dormant wrappers, which the operation-call ratchet cannot see. */
+export function checkDispositions({ document, served, gaps, operations, capabilities = {}, previous }) {
+  const problems = [], rows = new Map();
+  for (const line of document.split("\n")) {
+    if (!/^\| `(?:GET|POST|PUT|PATCH|DELETE) /.test(line)) continue;
+    const [, operation, measured, disposition, detail] = line.split("|").map(s => s.trim());
+    const op = operation.replaceAll("`", "");
+    if (rows.has(op)) problems.push(`disposition: duplicate ${op}`);
+    rows.set(op, disposition);
+    if (!served.has(op)) problems.push(`disposition: ${op} is not served`);
+    if (disposition === "allow-list") {
+      const allow = operations[op] ?? capabilities[op];
+      if (!allow) problems.push(`disposition: ${op} has no owned allowance`);
+      else if (![allow.lane, allow.reason, allow.when].every(s => typeof s === "string" && s.trim())) problems.push(`disposition: ${op} needs a lane, reason and release gate`);
+    } else if (disposition === "expose") {
+      if (measured === "hidden" || gaps.includes(op)) problems.push(`disposition: ${op} is not exposed; deliver it or record an owned allowance`);
+      if (!/`\/[^`]+`.*`\w+`/.test(detail)) problems.push(`disposition: ${op} needs a route and component`);
+    } else if (disposition !== "internal" || !detail) problems.push(`disposition: ${op} has an invalid disposition or empty reason`);
+  }
+  for (const op of gaps) if (!rows.has(op)) problems.push(`disposition: ${op} is unclassified`);
+  for (const op of Object.keys(capabilities)) {
+    if (rows.get(op) !== "allow-list" || Object.hasOwn(operations, op)) problems.push(`disposition: ${op} has a stale allowance`);
+  }
+  if (previous !== undefined) problems.push(...baselineGrowth(counts(Object.keys(capabilities)), counts(Object.keys(previous))).map(p => `capabilities: ${p}`));
+  return problems;
+}
 
 function operationTree(files, root = ROOT) {
   const metadata = spawnSync("cargo", ["metadata", "--offline", "--no-deps", "--format-version", "1"], { cwd: path.join(root, "backend"), encoding: "utf8", maxBuffer: 1 << 26 });
@@ -190,7 +220,8 @@ function operationTree(files, root = ROOT) {
   // Path filenames omit parameter braces; join through the contract rather than guessing parameter names.
   const owners = new Map(Object.entries(spec.paths).flatMap(([p, item]) => Object.keys(item).map((m) => [`${m.toUpperCase()} ${p}`, crates.get(`${m.toUpperCase()} ${p.replace(/[{}]/g, "")}`)]).filter(([, c]) => c)));
   const uncalled = operationGaps({ spec, files, crates: owners });
-  return { uncalled, gaps: uncalled.filter((op) => !owners.has(op) || releaseCrates.has(owners.get(op))) };
+  const modules = new Set(["identity", "orgchange", "attendance", "payroll"]);
+  return { uncalled, gaps: uncalled.filter((op) => !owners.has(op) || releaseCrates.has(owners.get(op))), served: new Set(owners.keys()), dispositionGaps: uncalled.filter(op => modules.has(owners.get(op))) };
 }
 
 const walk = (dir) => readdirSync(dir).flatMap((n) => { const p = path.join(dir, n); return statSync(p).isDirectory() ? walk(p) : /\.[jt]sx?$/.test(n) && !/\.(test|gallery)\./.test(n) ? [p] : []; });
@@ -260,7 +291,7 @@ async function atBaseOf(base) {
   const data = json === undefined ? undefined : JSON.parse(json);
   // Promotion may seed existing dormant APIs; already shipped APIs retain the shrink-only baseline.
   const dormant = data?.operations && atBase(ROOT, base, "backend/Cargo.toml") !== undefined ? operationsAtBase(base, true) : {};
-  return { baseline: Array.isArray(data) ? data : data?.records, operations: data?.operations ? { ...dormant, ...data.operations } : operationsAtBase(base), untracked };
+  return { baseline: Array.isArray(data) ? data : data?.records, operations: data?.operations ? { ...dormant, ...data.operations } : operationsAtBase(base), capabilities: data?.version >= 2 ? routeAllowances(data.operations ?? {}) : undefined, untracked };
 }
 
 async function main() {
@@ -280,12 +311,13 @@ async function main() {
     const need = new Set(required(lifecycle).map((p) => pairKey(p.record, p.op)));
     const reached = new Set(REACH.map((e) => pairKey(e.record, e.op)));
     const keep = baseline.filter((b, i) => need.has(pairKey(b.record, b.op)) && !reached.has(pairKey(b.record, b.op)) && baseline.findIndex((x) => pairKey(x.record, x.op) === pairKey(b.record, b.op)) === i);
-    writeFileSync(basePath, `${JSON.stringify({ records: keep, operations: lowerOperations(operations, opTree.uncalled) }, null, 1)}\n`);
+    writeFileSync(basePath, `${JSON.stringify({ ...data, records: keep, operations: lowerOperations(operations, opTree.uncalled) }, null, 1)}\n`);
     return;
   }
   const at = process.argv.indexOf("--base");
   tree.previous = await atBaseOf(at > 0 ? process.argv[at + 1] : qualityRef(ROOT));
-  const problems = [...check(tree), ...checkOperations({ ...opTree, operations, previous: tree.previous.operations })];
+  const document = readFileSync(path.join(ROOT, "docs/product/capability-dispositions.md"), "utf8");
+  const problems = [...check(tree), ...checkOperations({ ...opTree, operations, previous: tree.previous.operations }), ...checkDispositions({ document, served: opTree.served, gaps: opTree.dispositionGaps, operations: callAllowances(operations), capabilities: routeAllowances(operations), previous: tree.previous.capabilities })];
   if (problems.length) {
     console.error(`reach: ${problems.length} problem(s):\n${problems.join("\n")}`);
     process.exit(1);

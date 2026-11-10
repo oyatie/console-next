@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::Week52Input;
+use time::{Date, OffsetDateTime};
+use uuid::Uuid;
 
 pub const WARN_HOURS_KEY: console_settings_domain::SettingKey =
     console_settings_domain::SettingKey::AttendanceWeek52WarnHours;
@@ -32,4 +34,18 @@ pub fn week52_tone(input: &Week52Input, limits: Week52Limits) -> Week52Tone {
             None => Week52Tone::Unknown,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Week52Read {
+    pub employee_id: Uuid,
+    pub name: String,
+    pub team: Option<String>,
+    pub week_start: Date,
+    pub current_hours: f64,
+    pub projected_hours: f64,
+    pub recognized_hours: Option<f64>,
+    pub overtime_hours: Option<f64>,
+    pub tone: Week52Tone,
+    pub acknowledged_at: Option<OffsetDateTime>,
 }

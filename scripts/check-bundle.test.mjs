@@ -208,10 +208,11 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
   it("keeps conditional import answers out of wizard first paint", () => {
     const mock = createMockDist();
     try {
-      for (const file of ["index-main.js", "vendor-boot.js", "dryrun.js", "calendar.js", "answers.js"]) mock.writeChunk(file, file);
+      for (const file of ["index-main.js", "vendor-boot.js", "dryrun.js", "calendar.js", "answers.js", "host.js"]) mock.writeChunk(file, file);
       const source = "src/features/import/ui/resolve-controls.tsx";
       const route = "src/features/import/ui/dryrun-step.tsx";
       mock.dynamic("src/ui/date/date-calendar.tsx", "calendar.js");
+      mock.dynamic("src/ui/external-url-host.tsx", "host.js");
       mock.dynamic(source, "answers.js");
       mock.dynamic(route, "dryrun.js", [source]);
       assert.match(checkRouteBudgets(mock.dist, DEFAULT_BUDGET_FILE).error, /resolve-controls.*statically loaded/);

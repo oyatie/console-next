@@ -112,7 +112,11 @@ pub(crate) async fn detail(
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
     allow_read(&p)?;
-    let detail = s.store.get(id).await.map_err(RestError::store)?;
+    let detail = s
+        .store
+        .get_for_viewer(p.user_id, id)
+        .await
+        .map_err(RestError::store)?;
     access_log::detail(&s, &p, &detail).await?;
     respond(&detail)
 }
@@ -189,7 +193,7 @@ pub(crate) async fn decide(
                     memo: b.memo,
                     expected_version: b.expected_version,
                     through_step: b.through_step,
-                    step_up: None,
+                    step_up: b.step_up,
                 },
             )
             .await

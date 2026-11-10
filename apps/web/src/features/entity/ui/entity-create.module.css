@@ -89,6 +89,11 @@
   .steps { order: 2; flex-basis: 100%; min-width: 0; flex-wrap: wrap; white-space: normal; }
   .body { grid-template-columns: minmax(0, 1fr); }
   .grid { grid-template-columns: minmax(0, 1fr); }
+  .reviewLayout { grid-template-columns: minmax(0, 1fr); }
+  .reviewRows li { grid-template-columns: var(--space-5) minmax(0, 1fr) auto; }
+  .reviewRows li > span { grid-column: 2 / -1; }
+  .reviewRows li > button { grid-column: 3; grid-row: 1; }
+  .root { min-width: 0; width: 100%; }
   .rowsHead { display: none; }
   .rowsLine { grid-template-columns: minmax(0, 1fr); }
   .rowLabel { display: block; }

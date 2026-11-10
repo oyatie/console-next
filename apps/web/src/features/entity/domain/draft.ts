@@ -1,7 +1,7 @@
 // The register sheet's draft of a legal entity and its first business registration (design §3.2, §3.3, as
 // amended by the challenge). Pure: values as typed, codes for problems; the view adds copy. The server
 // re-validates everything; these rules only tell the user early.
-import type { BizKind, CodeRef, CorrectionReason, DirectorRole, IssueReasonKind, KrAddress, NtsTaxType, RepresentationMode } from "@console/api/pending";
+import type { BizKind, CodeRef, CorrectionReason, DirectorRole, IssueReasonKind, KrAddress, NtsTaxType, RegistrationInput, RepresentationMode } from "@console/api/pending";
 import { FORMATS, phoneE164, validEmail } from "../../../lib/pure/formats";
 import { brnNeedsLook } from "./brn";
 
@@ -21,6 +21,7 @@ export type Draft = {
   scope: "entity" | "registration";
   bizKind: BizKind | null;
   brn: string;
+  brnPendingReason: RegistrationInput["brn_pending_reason"];
   /** being founded (company-08): a corporation recorded before its incorporation registry, with no corporate registration number and no certificate yet. */
   founding: boolean;
   /** The registration number the user confirmed is printed as typed despite its check digit (worst-case-25). */
@@ -65,7 +66,7 @@ export type Draft = {
 };
 
 export const emptyDraft = (scope: Draft["scope"] = "entity"): Draft => ({
-  scope, bizKind: null, founding: false, brn: "", brnConfirmed: "", name: "", representatives: [""], representationMode: null, openedOn: "", crn: "", incorporatedOn: "",
+  scope, bizKind: null, founding: false, brn: "", brnPendingReason: null, brnConfirmed: "", name: "", representatives: [""], representationMode: null, openedOn: "", crn: "", incorporatedOn: "",
   businessAddress: null, headOffice: null, headOfficeAddress: null, headOfficeWorkplace: null,
   businessTypes: [{ sector: "", item: "", ntsCode: null, ksic: null }], productionFactor: "", taxType: null, issueReason: null, correction: null,
   issueReasonPrinted: "", certIssuedOn: "", taxOfficePrinted: "", taxOfficeCode: null, coOwners: [], liquorLicenseNo: "", unitTaxation: null,
@@ -91,7 +92,7 @@ function required(d: Draft, withDocument: boolean): Record<Section, [FieldKey, b
   return {
     identity: [
       ...(own(d) ? ([["bizKind", d.bizKind !== null]] as [FieldKey, boolean][]) : []),
-      ["brn", d.brn.length > 0],
+      ["brn", d.brn.length > 0 || d.brnPendingReason === "NEW_REGISTRATION_PENDING"],
       ["name", !blank(d.name)],
       // The representatives are the entity's: a further certificate does not ask (or send) them again.
       ...(own(d) ? ([["representatives.0", !blank(d.representatives[0] ?? "")]] as [FieldKey, boolean][]) : []),

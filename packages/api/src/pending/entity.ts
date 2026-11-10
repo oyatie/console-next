@@ -14,6 +14,7 @@ export type { PayGroup, PayGroups, PayrollRate, PayrollRates, PayrollRun, Payrol
 import type { StatutoryPaths } from "./statutory";
 export type { FilingTask, FilingPage, RegisterPage, RecordFiling, FilingFacts, FilingReason, FilingCitation } from "./statutory";
 import type { components, paths } from "../schema";
+export type { OrgChangeDetail, SoleHolderDecision, SoleHolderException } from "./org-change";
 export type { ReorderRequest, SetupOp, SetupReceipt, SetupUnitResult, Structure, StructureNode, UnitHead, WorkplaceKind } from "./structure";
 
 type S = components["schemas"];

@@ -6,15 +6,14 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { linkAccount, mySub } from "../api";
 import { useCommand } from "../../../lib/react/command";
-import { PasskeyError } from "../../../lib/react/passkey-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { ROLE, label } from "../../../lib/labels";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
-import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { Card } from "../../../ui/card/card";
 import { buttonClass } from "../../../ui/button/button-class";
 import { directorySearch, useLinkedAccount } from "./use-linked-account";
+import { AccountLinkEditor } from "./account-link-editor";
 
 type Employee = components["schemas"]["Employee"];
 
@@ -63,39 +62,27 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
             {!pending && <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate({ id: null })}>{t("uiOverrideSheet.stepUp", { action: t("people.account.unlink") })}</Button>}
           </>}
         </div>
-      ) : (
-        <>
-          {/* The invite opens on this person: the accounts view's invite sheet preselects them (design §3.6, §7.4). */}
-          <ServerPicker
-            label={t("person.account.picker")}
-            group={t("person.account.group")}
-            query={query}
-            onQueryChange={setQuery}
-            options={candidates.map((p) => ({ id: p.id, name: personName(p.display_name), status: p.roles.map((r) => label(ROLE, r)).join(", ") }))}
-            value={account}
-            onChange={setAccount}
-            loading={found.isFetching}
-            empty={t("person.account.empty")}
-            escape={{ kind: "add", label: t("people.account.invite"), onAdd: () => void navigate({ to: "/people", search: { view: "accounts", act: "invite", employee: employee.id } }) }}
-          />
-          {account && !pending && (
-            <div className="row">
-              <Button variant="primary" disabled={link.isPending} onClick={() => link.mutate({ id: account })}>{t("uiOverrideSheet.stepUp", { action: t("people.account.link") })}</Button>
-            </div>
-          )}
-        </>
-      )}
-      {pending && <Banner tone="info" live="polite"
-        title={t("people.account.pending", {
-          account: personName(link.data?.display_name),
-          employee: pending.employee_id ? employee.name : t("accounts.unlinked"), requester: pending.requester_name,
-        })}
-        actions={pending.requested_by !== mySub() && <Button variant="primary" disabled={link.isPending}
-          onClick={() => link.mutate({ id: pending.employee_id ? pending.user_id : null, requestId: pending.request_id })}>
-          {t("uiOverrideSheet.stepUp", { action: t("org.change.step.APPROVED") })}
-        </Button>}
-      />}
-      <PasskeyError error={link.error} />
+      ) : null}
+      <AccountLinkEditor busy={link.isPending} error={link.error}
+        pending={pending ? {
+          title: t("people.account.pending", {
+            account: personName(link.data?.display_name),
+            employee: pending.employee_id ? employee.name : t("accounts.unlinked"), requester: pending.requester_name,
+          }),
+          approve: pending.requested_by !== mySub()
+            ? () => link.mutate({ id: pending.employee_id ? pending.user_id : null, requestId: pending.request_id }) : undefined,
+        } : undefined}
+        picker={mine.isSuccess && canChange && !linked ? {
+          label: t("person.account.picker"), group: t("person.account.group"), query, onQueryChange: setQuery,
+          options: candidates.map((p) => ({ id: p.id, name: personName(p.display_name), status: p.roles.map((r) => label(ROLE, r)).join(", ") })),
+          value: account, onChange: setAccount, loading: found.isFetching, empty: t("person.account.empty"),
+          escape: { kind: "add", label: t("people.account.invite"), onAdd: () => void navigate({ to: "/people", search: { view: "accounts", act: "invite", employee: employee.id } }) },
+        } : undefined}
+      >
+        {account && <div className="row">
+          <Button variant="primary" disabled={link.isPending} onClick={() => link.mutate({ id: account })}>{t("uiOverrideSheet.stepUp", { action: t("people.account.link") })}</Button>
+        </div>}
+      </AccountLinkEditor>
       {found.error != null && <QueryState q={found}>{() => null}</QueryState>}
     </Card>
   );

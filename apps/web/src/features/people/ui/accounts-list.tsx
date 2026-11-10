@@ -79,9 +79,9 @@ export function Accounts({ sel, head }: { sel?: string; head?: (available: boole
   const rows = (list.data?.pages.flatMap((p) => p.items) ?? []).filter((p) => !seen.has(p.id) && seen.add(p.id));
   const total = list.data?.pages[0]?.total;
   const sheet = sheetOf(s.act);
-  const recorded = (id: string) => (message: string) => {
+  const recorded = (id: string) => (message: string, focusId = "acct-title") => {
     setReceipt({ id, message });
-    focusSoon("acct-title");
+    focusSoon(focusId);
   };
   const filtered = Boolean(s.inactive);
   const select = (id: string | null) => (setReceipt(undefined), set({ sel: id ?? undefined }));

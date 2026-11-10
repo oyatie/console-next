@@ -164,6 +164,28 @@ pub struct OrgChangeDetail {
     pub approval_steps: Vec<ApprovalStepView>,
     pub settlement_items: Vec<SettlementItemView>,
     pub events: Vec<OrgChangeEventView>,
+    #[serde(rename = "sole_holder_decision")]
+    pub sole_holder_decision: Option<SoleHolderDecision>,
+    #[serde(rename = "sole_holder_exception")]
+    pub sole_holder_exception: Option<SoleHolderException>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SoleHolderDecision {
+    pub step_id: Uuid,
+    pub expected_version: String,
+    pub payload_hash: String,
+    pub notice_count: i64,
+    #[serde(with = "time::serde::rfc3339")]
+    pub review_due_at: OffsetDateTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SoleHolderException {
+    pub id: Uuid,
+    pub notice_count: i64,
+    #[serde(with = "time::serde::rfc3339")]
+    pub review_due_at: OffsetDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

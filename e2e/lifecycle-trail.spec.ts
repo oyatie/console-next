@@ -323,7 +323,10 @@ test("a solo admin attests a named document and closes a hire case from the card
   await dialog.getByRole("button", { name: "패스키로 확인하고 증빙 확인 완료", exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(document).toContainText("증빙 확인 완료");
-  await expect(document.getByRole("link", { name: documentName, exact: true })).toHaveAttribute("href", "https://evidence.example/hire-contract.pdf");
+  await expect(document.getByRole("link", { name: documentName, exact: true })).toHaveCount(0);
+  await expect(document.getByText(documentName, { exact: true })).toBeVisible();
+  await expect(document.getByText("https://evidence.example/hire-contract.pdf", { exact: true })).toBeVisible();
+  await expect(document.getByRole("button", { name: "주소 복사", exact: true })).toBeVisible();
   await trail.getByRole("button", { name: "처리 종료", exact: true }).click();
   await expect(trail).toContainText("종료");
   await expect(trail.getByRole("button", { name: "처리 종료", exact: true })).toHaveCount(0);

@@ -1443,7 +1443,7 @@ export interface paths {
         };
         /**
          * Read a source-authorized approval document
-         * @description Cedar approval_document_read uses the same source facts and inbox membership as the list. Hidden, absent, unsupported, draft and unrouted documents all return not_found. Body contains the source target, effective date and reason; the source record link exposes the full proposal. This read-only envelope exposes no decisions until the source-command adapter is available.
+         * @description Cedar approval_document_read uses the same source facts and inbox membership as the list. Hidden, absent, unsupported, draft and unrouted documents all return not_found. Proposal contains typed source operations and effective_date is a business date; body does not repeat the header. This read-only envelope exposes no decisions until the source-command adapter is available.
          */
         get: operations["getApprovalDocument"];
         put?: never;
@@ -2971,6 +2971,7 @@ export interface paths {
         put?: never;
         /**
          * Propose creating a branch inside a region
+         * @deprecated
          * @description Creates a governed DRAFT containing one CREATE_BRANCH proposal. The live branches table is unchanged until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns the existing org-change request with 200. Cedar draft admission precedes proposal validation; a caller without draft authority receives 403 (org_change.refuse.missing_grant), even for invalid proposal content, rather than 422.
          */
         post: operations["createBranch"];
@@ -2996,6 +2997,7 @@ export interface paths {
         post?: never;
         /**
          * Propose deactivating a branch
+         * @deprecated
          * @description Creates a governed DRAFT containing one DEACTIVATE_BRANCH proposal. The live row is unchanged; preflight and apply retain the active-user and equipment guards.
          */
         delete: operations["deactivateBranch"];
@@ -3003,6 +3005,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a branch or move it to another region
+         * @deprecated
          * @description Creates a governed DRAFT containing one RENAME_BRANCH proposal; it does not mutate the live row.
          */
         patch: operations["updateBranch"];
@@ -10224,7 +10227,7 @@ export interface paths {
         put?: never;
         /**
          * Decide one approval step
-         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.details.current_version. Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
+         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. The sole-holder exception requires the viewer-specific GET offer, expected_version and a bound step_up. A successful solo decision returns sole_holder_exception and, when another step remains, the next offer. Invalid step-up returns 401 step_up_failed. The review period and notice audience are fingerprinted. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.details.current_version. Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
          */
         post: operations["decideOrgChangeApprovalStep"];
         delete?: never;
@@ -12272,6 +12275,7 @@ export interface paths {
         put?: never;
         /**
          * Propose creating a region
+         * @deprecated
          * @description Creates a governed DRAFT containing one CREATE_REGION proposal. The live regions table is unchanged until the org-change lifecycle is approved and effectuated. Requires an Idempotency-Key; an exact replay returns the existing org-change request with 200. Cedar draft admission precedes proposal validation; a caller without draft authority receives 403 (org_change.refuse.missing_grant), even for invalid proposal content, rather than 422.
          */
         post: operations["createRegion"];
@@ -12293,6 +12297,7 @@ export interface paths {
         post?: never;
         /**
          * Propose deactivating a region
+         * @deprecated
          * @description Creates a governed DRAFT containing one DEACTIVATE_REGION proposal. The live row is unchanged; preflight and apply retain the active-branch guard.
          */
         delete: operations["deactivateRegion"];
@@ -12300,6 +12305,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a region
+         * @deprecated
          * @description Creates a governed DRAFT containing one RENAME_REGION proposal; it does not rename the live row.
          */
         patch: operations["updateRegion"];
@@ -15404,6 +15410,8 @@ export interface components {
                 id: string;
                 name: string;
             };
+            /** Format: date */
+            effective_date?: string;
             /** Format: date-time */
             requested_at: string;
             facts: {
@@ -15432,6 +15440,11 @@ export interface components {
                 label: string;
                 value: string;
             }[];
+            proposal?: components["schemas"]["OrgProposalOp"][];
+            /** @description Current names of same-tenant organization units referenced by the proposal, covered by the fingerprint. */
+            proposal_names?: {
+                [key: string]: string;
+            };
             /** @description Source event sequence length plus one; the fingerprint also covers edits without new events. */
             revision: number;
             /** @description Opaque snapshot token covering the source request, proposal, route and displayed facts. */
@@ -16606,6 +16619,10 @@ export interface components {
             week_start: string;
             current_hours: number;
             projected_hours: number;
+            /** @description Sum of grid-recognized worked minutes in hours, regardless of approval. Null when there are no live entries, or a live entry is incomplete, unplaced or lacks a schedule. Missing days are not included. */
+            recognized_hours?: number | null;
+            /** @description Sum of worked minutes outside the schedule in hours, regardless of approval. Null under the same conditions as recognized_hours. */
+            overtime_hours?: number | null;
             /**
              * @description UNKNOWN: 확인 불가 — 법정 근로시간 대장 미등록
              * @enum {string}
@@ -24773,6 +24790,8 @@ export interface components {
         OrgChangeDecisionRequest: {
             /** @description Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.details.current_version. */
             expected_version?: string;
+            /** @description Required for the sole-holder path. EXCEPTION_DECIDE binds the request id and offered payload_hash; reason_key is passkey_step_up_exception_decide and replay_attempt is null. Requires expected_version and forbids through_step. */
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
             /** @description Merging stored steps is refused with 409 lifecycle.refuse.merge_not_allowed. Each step requires a distinct natural person. */
             through_step?: components["schemas"]["Uuid"];
             /** @enum {string} */
@@ -24787,6 +24806,22 @@ export interface components {
             approvalSteps: components["schemas"]["OrgChangeApprovalStep"][];
             settlementItems: components["schemas"]["OrgChangeSettlementItem"][];
             events: components["schemas"]["OrgChangeEvent"][];
+            /** @description Viewer-specific offer for the first pending stored step; null when Cedar refuses case B. review_due_at projects the configured review period from the read time; the receipt stores the deadline from the decision time. */
+            sole_holder_decision?: {
+                step_id: components["schemas"]["Uuid"];
+                expected_version: string;
+                payload_hash: string;
+                notice_count: number;
+                /** Format: date-time */
+                review_due_at: string;
+            } | null;
+            /** @description Persisted receipt for the latest sole-holder decision, including after approval completes. */
+            sole_holder_exception?: {
+                id: components["schemas"]["Uuid"];
+                notice_count: number;
+                /** Format: date-time */
+                review_due_at: string;
+            } | null;
         };
         OrgChangeEvent: {
             at: components["schemas"]["Timestamp"];
@@ -28518,6 +28553,11 @@ export interface components {
             entities: number;
             /** Format: int64 */
             entities_needing_confirmation: number;
+            /**
+             * Format: int64
+             * @description Active legal entities without an active numbered or pending registration.
+             */
+            entities_without_registration?: number;
             /** Format: int64 */
             registrations: number;
             /** Format: int64 */
@@ -33939,6 +33979,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     closeAttendanceMonth: {
@@ -33967,6 +34008,7 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     preflightAttendanceClose: {
@@ -33994,6 +34036,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     amendAttendanceClose: {

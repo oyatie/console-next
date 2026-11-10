@@ -46,7 +46,8 @@ test("register hides uncited and unadopted figures in the browser", async () => 
     await dom(page.getByRole("link")).toHaveCount(0);
     await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("cited"));
     await dom(page.getByText("0.123456%", { exact: true })).toBeVisible();
-    await dom(page.getByRole("link")).toHaveAttribute("href", "https://example.com/payroll-source");
+    await dom(page.getByRole("link")).toHaveCount(0);
+    await dom(page.getByText(/https:\/\/example.com\/payroll-source/)).toBeVisible();
     await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("unsupported"));
     await dom(page.getByText("기준표 없음", { exact: true })).toBeVisible();
     await dom(page.getByText("0.123456%", { exact: true })).toHaveCount(0);

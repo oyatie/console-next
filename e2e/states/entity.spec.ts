@@ -66,6 +66,28 @@ for (const kind of ["CORPORATION", "INDIVIDUAL"] as const) for (const width of [
       ));
       expect(missing, "every radio description and error reference resolves").toEqual([]);
       await fits(page, `entity-create/${kind}/${width}`);
+      const pending = page.getByRole("checkbox", { name: t("entity.field.brnPending"), exact: true });
+      await pending.check();
+      await expect(brn).toHaveCount(0);
+      await expect(pending).toHaveCount(1);
+      await pending.uncheck();
+      await expect(brn).toHaveValue("");
+      await pending.check();
+      for (const theme of ["light", "dark"]) {
+        await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+        await fits(page, `pending registration/${kind}/${width}`);
+        await page.screenshot({ path: test.info().outputPath(`pending-${kind}-${width}-${theme}.png`), fullPage: true });
+      }
+      await expectAxe(page, `pending registration/${kind}/${width}`);
+      if (kind === "CORPORATION") {
+        await page.getByLabel(t("entityCreate.field.headOfficeSame")).check();
+        await page.getByRole("button", { name: "다음: 등기·대표자" }).click();
+      }
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+      await expect(page.getByText(t("entity.field.brnPending"), { exact: false })).toBeVisible();
+      await fits(page, `pending registration review/${kind}/${width}`);
+      await expectAxe(page, `pending registration review/${kind}/${width}`);
+      await page.screenshot({ path: test.info().outputPath(`pending-review-${kind}-${width}-dark.png`), fullPage: true });
       expect(fixture.unexpected, "register every supporting read").toEqual([]);
     } finally {
       await page.close();

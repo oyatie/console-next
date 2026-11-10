@@ -24,7 +24,7 @@ export function ReviewStep({ c, goTo }: { c: CreateState; goTo: (s: WizardStep) 
     { key: "basics", step: "basics", title: t("entityCreate.review.basics"), text: [d.bizKind && label(BIZ_KIND, d.bizKind), d.name.trim(), d.displayName.trim() && t("entityCreate.review.short", { name: d.displayName.trim() })].filter(Boolean).join(" · "), state: "ok" },
     ...(founding ? [] : [{
       key: "certificate", step: "certificate" as const, title: t(d.bizKind === "ID_NUMBER_ORG" ? "entityCreate.step.idCert" : "entityCreate.step.certificate"),
-      text: [d.brn && FORMATS.bizRegNo.display(d.brn), d.taxType && label(TAX_TYPE, d.taxType), d.openedOn && t("entityCreate.review.opened", { date: fmtDate(d.openedOn) }), d.businessAddress?.road, d.businessTypes.filter((b) => b.sector.trim()).map((b) => `${b.sector}/${b.item}`).join(", ")].filter(Boolean).join(" · ") || t("entityCreate.review.empty"),
+      text: [d.brnPendingReason ? t("entity.field.brnPending") : d.brn && FORMATS.bizRegNo.display(d.brn), d.taxType && label(TAX_TYPE, d.taxType), d.openedOn && t("entityCreate.review.opened", { date: fmtDate(d.openedOn) }), d.businessAddress?.road, d.businessTypes.filter((b) => b.sector.trim()).map((b) => `${b.sector}/${b.item}`).join(", ")].filter(Boolean).join(" · ") || t("entityCreate.review.empty"),
       state: c.registers ? ("ok" as const) : ("todo" as const),
     }]),
     // company-08: a entity being founded has no certificate yet; it is typed when it arrives.

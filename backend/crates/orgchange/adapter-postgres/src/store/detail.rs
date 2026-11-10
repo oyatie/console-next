@@ -99,6 +99,16 @@ pub(crate) async fn load_detail(
         });
     }
 
+    let receipt: Option<(Uuid, i64, OffsetDateTime)> = sqlx::query_as(
+        "SELECT e.id, (SELECT count(*) FROM notifications n WHERE n.org_id=e.org_id \
+         AND n.dedup_key='org_change.sole_holder:'||e.id::text), e.review_due_at \
+         FROM org_change_approval_steps s JOIN governed_exceptions e \
+           ON e.id=s.sole_holder_exception_id AND e.org_id=s.org_id \
+         WHERE s.request_id=$1 ORDER BY s.step_order DESC LIMIT 1",
+    )
+    .bind(id)
+    .fetch_optional(tx.as_mut())
+    .await?;
     Ok(Some(OrgChangeDetail {
         version: console_orgchange_domain::decision_version(
             row.try_get("updated_at")?,
@@ -110,6 +120,14 @@ pub(crate) async fn load_detail(
         approval_steps,
         settlement_items,
         events,
+        sole_holder_decision: None,
+        sole_holder_exception: receipt.map(|(id, notice_count, review_due_at)| {
+            console_orgchange_domain::SoleHolderException {
+                id,
+                notice_count,
+                review_due_at,
+            }
+        }),
     }))
 }
 

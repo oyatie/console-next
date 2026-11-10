@@ -1,4 +1,5 @@
 {
+ "version": 2,
  "records": [
   {
    "record": "Entity.business_registration",
@@ -1153,6 +1154,90 @@
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
+  },
+  "GET /api/platform/support-sessions": {
+   "lane": "Platform administration",
+   "reason": "The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release.",
+   "when": "mvp",
+   "scope": "route"
+  },
+  "POST /api/platform/support-sessions": {
+   "lane": "Platform administration",
+   "reason": "The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release.",
+   "when": "mvp",
+   "scope": "route"
+  },
+  "POST /api/platform/support-sessions/{id}/approve": {
+   "lane": "Platform administration",
+   "reason": "The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release.",
+   "when": "mvp",
+   "scope": "route"
+  },
+  "POST /api/platform/support-sessions/{id}/end": {
+   "lane": "Platform administration",
+   "reason": "The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release.",
+   "when": "mvp",
+   "scope": "route"
+  },
+  "POST /api/platform/support-sessions/{id}/start": {
+   "lane": "Platform administration",
+   "reason": "The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release.",
+   "when": "mvp",
+   "scope": "route"
+  },
+  "POST /api/v1/branches": {
+   "lane": "Organization structure",
+   "reason": "Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement.",
+   "when": "place-model compatibility retirement",
+   "scope": "route"
+  },
+  "PATCH /api/v1/branches/{id}": {
+   "lane": "Organization structure",
+   "reason": "Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement.",
+   "when": "place-model compatibility retirement",
+   "scope": "route"
+  },
+  "DELETE /api/v1/branches/{id}": {
+   "lane": "Organization structure",
+   "reason": "Only legacy region and branch closures remain supported. These pre-workplace cleanup commands stay outside the primary organization editor until place-model compatibility retirement.",
+   "when": "place-model compatibility retirement",
+   "scope": "route"
+  },
+  "POST /api/v1/policy/users/{id}/assignment-preview": {
+   "lane": "Access management",
+   "reason": "Policy preview has no rendered caller. Deliver assignment impact review on the person access screen before MVP release.",
+   "when": "mvp",
+   "scope": "route"
+  },
+  "POST /api/v1/regions": {
+   "lane": "Organization structure",
+   "reason": "Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement.",
+   "when": "place-model compatibility retirement",
+   "scope": "route"
+  },
+  "PATCH /api/v1/regions/{id}": {
+   "lane": "Organization structure",
+   "reason": "Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement.",
+   "when": "place-model compatibility retirement",
+   "scope": "route"
+  },
+  "DELETE /api/v1/regions/{id}": {
+   "lane": "Organization structure",
+   "reason": "Only legacy region and branch closures remain supported. These pre-workplace cleanup commands stay outside the primary organization editor until place-model compatibility retirement.",
+   "when": "place-model compatibility retirement",
+   "scope": "route"
+  },
+  "PUT /api/v1/employees/{id}/home-branch": {
+   "lane": "Personnel placement",
+   "reason": "The contract marks this write as N-1 compatibility only; current consoles derive routing from effective placement. Retain the legacy URL until compatibility retirement instead of adding a second placement editor.",
+   "when": "N-1 compatibility retirement",
+   "scope": "route"
+  },
+  "GET /api/v1/employees/{id}/onboarding-checklist": {
+   "lane": "Personnel onboarding",
+   "reason": "The contract deprecates this legacy fact-derived checklist. Retain it for N-1 clients until compatibility retirement; remaining onboarding work belongs with the current personnel lifecycle surface.",
+   "when": "N-1 compatibility retirement",
+   "scope": "route"
   }
  }
 }

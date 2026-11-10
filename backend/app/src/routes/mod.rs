@@ -252,6 +252,11 @@ pub fn build_router(state: AppState) -> Router {
             let r = r.merge(crate::approvals::router(
                 pool.clone(),
                 state.jwt_verifier.clone(),
+                state
+                    .config
+                    .release_toggles
+                    .iter()
+                    .any(|name| name == "approvals"),
             ));
             // Workflow studio and the workspace.
             #[cfg(feature = "workspace")]

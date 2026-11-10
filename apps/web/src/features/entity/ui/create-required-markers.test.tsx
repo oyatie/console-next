@@ -5,6 +5,8 @@ import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { emptyDraft, type Draft } from "../domain/draft";
 import { CertForm } from "./create-cert-form";
+import { IdentitySection } from "./identity-section";
+import type { EntityDraftState } from "./use-entity-draft";
 import type { CreateState } from "./use-create";
 
 const view = vi.hoisted(() => ({ loaded: false }));
@@ -22,6 +24,14 @@ const { primary: { brn: completeBrn } } = JSON.parse(readFileSync(new URL("../..
 const draft = (kind: Draft["bizKind"]): Draft => ({ ...emptyDraft(), bizKind: kind, headOffice: "SAME", businessAddress: address, representatives: ["대표자"] });
 const render = (d: Draft, problems: CreateState["problems"] = {}) => renderToStaticMarkup(<CertForm c={{ draft: d, put: vi.fn(), problems, brnClasses: [], today: "2026-10-24", crnWarn: false, checkAvailability: { available: false } } as unknown as CreateState} />);
 const markers = (html: string) => [...html.matchAll(/([^<>]+)<span\b[^>]*>필수<\/span>/g)].map((match) => match[1]!.trim()).sort();
+
+test.each(["entity", "registration"] as const)("%s pending entry hides the number field without a verification status", scope => {
+  const d = { ...draft("CORPORATION"), scope, brnPendingReason: "NEW_REGISTRATION_PENDING" as const };
+  const html = scope === "entity" ? render(d) : renderToStaticMarkup(<IdentitySection s={{ draft: d, problems: {}, brnClasses: [], today: "2026-10-24", set: vi.fn() } as unknown as EntityDraftState} />);
+  expect(html).toContain(t("entity.field.brnPending"));
+  expect(html).not.toContain(t("entity.field.brn"));
+  expect(html).not.toContain(t("nts.state.unavailable"));
+});
 
 test.each(["CORPORATION", "INDIVIDUAL"] as const)("%s certificate marks exactly the server-required fields", (kind) => {
   view.loaded = false;

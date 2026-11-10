@@ -20,3 +20,32 @@ pub async fn setup(pool: &PgPool) -> (Uuid, UserId, UserId) {
     }
     (org, maker, checker)
 }
+
+pub async fn ctx(
+    pool: &PgPool,
+    org: Uuid,
+    user: UserId,
+    roles: &[&str],
+    session: Option<&'static str>,
+) -> http::Ctx {
+    let mut ctx = http::ctx(pool, org, user, roles, session).await;
+    let keys = http::keys();
+    let config = console_app::AppConfig::from_pairs([
+        ("CONSOLE_JWT_PUBLIC_KEY_PEM", keys.1.clone()),
+        ("CONSOLE_JWT_ISSUER", "console-platform-auth".into()),
+        ("CONSOLE_JWT_AUDIENCE", "console-api".into()),
+        ("CONSOLE_RELEASE_TOGGLES", "approvals".into()),
+    ])
+    .unwrap();
+    ctx.token = http::token(pool, &keys, org, user, roles).await;
+    ctx.service = console_app::build_router(
+        console_app::AppState::new(
+            config,
+            console_app::DatabaseDependency::Postgres(
+                http::role_pool(pool, "console_rt", session).await,
+            ),
+        )
+        .unwrap(),
+    );
+    ctx
+}

@@ -54,6 +54,14 @@ pub(super) async fn command(pool: &PgPool, w: &mut World) -> StepDecisionCommand
         .await
         .unwrap()
         .unwrap();
+    command_for_consent(pool, w, consent).await
+}
+
+pub(super) async fn command_for_consent(
+    pool: &PgPool,
+    w: &mut World,
+    consent: Value,
+) -> StepDecisionCommand {
     let binding = MobilePasskeyStepUpBinding::bound(
         MobileStepUpActionKind::ExceptionDecide,
         w.id,

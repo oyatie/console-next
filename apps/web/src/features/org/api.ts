@@ -19,7 +19,6 @@ export const OPEN_CHANGE_STATUSES = ["DRAFT", "PRECHECKED", "IN_APPROVAL", "APPR
 // Commands the proposal card sends. Drafting carries an Idempotency-Key (a retry replays the same draft);
 // the PATCH and the submit carry none, so the card probes the record after a lost response (lib/react/landed).
 type S = components["schemas"];
-const once = (key: string) => ({ "Idempotency-Key": key });
 const at = (id: string) => ({ path: { id } });
 
 export { draftChange, dateDraft, submitDraft, governed } from "../../reference/org/api";
@@ -35,16 +34,6 @@ export async function appendOp(id: string, op: S["OrgProposalOp"]) {
   const has = (d: S["OrgChangeDetail"]) => d.proposal.filter(same).length > before.filter(same).length;
   await landed(() => unwrap(api.PATCH("/api/v1/org-changes/{id}", { params: at(id), body: { proposal: [...before, op] } })), () => readChange(id), has);
 }
-
-// Region and branch drafts go through their own URLs: those add the region/branch capability check and the
-// tenant's target checks that the generic create does not.
-export const draftRegion = (key: string, name: string) => unwrap(api.POST("/api/v1/regions", { params: { header: once(key) }, body: { name } }));
-export const draftRegionRename = (key: string, id: string, name: string) => unwrap(api.PATCH("/api/v1/regions/{id}", { params: { header: once(key), ...at(id) }, body: { name } }));
-export const draftRegionClose = (key: string, id: string) => unwrap(api.DELETE("/api/v1/regions/{id}", { params: { header: once(key), ...at(id) } }));
-export const draftBranch = (key: string, regionId: string, name: string) => unwrap(api.POST("/api/v1/branches", { params: { header: once(key) }, body: { region_id: regionId, name } }));
-export const draftBranchUpdate = (key: string, id: string, body: { name?: string; region_id?: string }) =>
-  unwrap(api.PATCH("/api/v1/branches/{id}", { params: { header: once(key), ...at(id) }, body }));
-export const draftBranchClose = (key: string, id: string) => unwrap(api.DELETE("/api/v1/branches/{id}", { params: { header: once(key), ...at(id) } }));
 
 /** The change list's saved views (routes/org.ts `view`): which statuses, and whose drafts. */
 export const CHANGE_VIEWS = {
@@ -113,9 +102,10 @@ export function changeUnitId(d: { target: Detail["target"]; proposal?: Op[] }): 
 export const NO_REF = "00000000-0000-0000-0000-000000000000";
 
 /** How a refused command reads on the record. Everything else is shown as the server's message. */
-export type Refusal = "preflight_blocked" | "frozen" | "conflict" | "date" | "other";
+export type Refusal = "preflight_blocked" | "frozen" | "conflict" | "date" | "denied" | "other";
 export function refusalOf(e: unknown, effectiveDate?: string): Refusal {
   if (!(e instanceof ApiError)) return "other";
+  if (e.status === 403) return "denied";
   if (e.code === "preflight_blocked") return "preflight_blocked";
   // the payroll/accounting freeze is a 409 `conflict` whose message names the effective date
   // (orgchange assert_change_window_open); switch to its own code once the backend sends one (§9 effective_date_frozen).

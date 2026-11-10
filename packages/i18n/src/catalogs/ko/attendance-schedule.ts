@@ -19,8 +19,6 @@ export const koAttendanceSchedule = {
   "attendanceSchedule.tree.clear": "조건 초기화",
   "attendanceSchedule.tree.allScheduled": "{people} 모두 근무 일정이 있습니다",
   // Month
-  "attendanceSchedule.month.prev": "이전 달",
-  "attendanceSchedule.month.next": "다음 달",
   "attendanceSchedule.calendar.label": "{scope} {month} 근무 일정",
   "attendanceSchedule.calendar.scopeLine": "{pattern} · {shift} · {decided}",
   "attendanceSchedule.calendar.noSchedule": "{scope}에는 근무 일정이 없습니다 · 이 범위에 근무 일정을 지정하십시오",

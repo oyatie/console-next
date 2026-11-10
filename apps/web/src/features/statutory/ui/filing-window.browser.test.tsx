@@ -44,9 +44,10 @@ test.each([1440, 390])("a filing rule owns its review and keeps reachable target
   await summary.waitFor();
   expect(await page.getByText(t("statutory.hold"), { exact: true }).isVisible()).toBe(false);
   await summary.click();
-  const citation = page.getByRole("link", { name: "국민연금법 · 제21조" });
+  const citation = page.locator("cite");
   expect((await summary.boundingBox())!.height).toBeGreaterThanOrEqual(24);
-  expect((await citation.boundingBox())!.height).toBeGreaterThanOrEqual(24);
+  expect(await citation.isVisible()).toBe(true);
+  expect(await page.getByRole("link").count()).toBe(0);
   await page.evaluate(() => (window as unknown as { showRule: (basis: boolean) => void }).showRule(false));
   expect(await page.locator("summary").count()).toBe(0);
   expect(await page.getByText(t("statutory.hold"), { exact: true }).isVisible()).toBe(true);

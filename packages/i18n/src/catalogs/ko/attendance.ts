@@ -2,6 +2,10 @@
 // Rules: the header of ../ko.ts and packages/i18n/GUIDE.md; words per docs/design/copy-conventions.md.
 export const koAttendance = {
   "attendance.refuse.missing_grant": "근태를 기록할 권한이 없어 처리하지 않았습니다. 권한 관리 담당자에게 해당 직원의 근태 기록 권한을 요청하십시오.",
+  "attendance.period.label": "기간 이동",
+  "attendance.period.thisMonth": "이번 달",
+  "attendance.period.thisWeek": "이번 주",
+  "attendance.period.thisYear": "올해",
   "attendance.title": "근태",
   "attendance.phase.operating": "운영 중 · 근무 일정은 적용 시작일부터 반영되고, 지난 일정은 이력에 남습니다",
   "attendance.phase.setup": "설정 단계 · 근무 일정은 운영 시작 전에도 지정할 수 있습니다",
@@ -28,7 +32,6 @@ export const koAttendance = {
   "attendance.exception.EARLY_LEAVE": "조퇴",
   "attendance.exception.OPEN": "확인 필요",
   "attendance.exception.RESOLVED": "해결됨",
-  "attendance.close.heading": "{month} 월 마감",
   "attendance.close.empty": "이 달에 마감할 사업장이 없습니다",
   "attendance.close.unavailable": "사업장 이름 확인 불가",
   "attendance.close.closed": "마감됨",

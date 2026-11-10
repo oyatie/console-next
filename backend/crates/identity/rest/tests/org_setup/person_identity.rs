@@ -2,7 +2,7 @@
 use super::*;
 
 #[path = "../../../../../test-support/person_fixtures.rs"]
-mod people;
+pub(super) mod people;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn unlinked_target_can_be_linked_by_two_distinct_people(pool: PgPool) {

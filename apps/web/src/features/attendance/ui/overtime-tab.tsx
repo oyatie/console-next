@@ -13,7 +13,7 @@ import { ReadPeriod } from "./read-period";
 
 const route = getRouteApi("/app/attendance");
 const tones = { OK: "ok", WARN: "warn", DANGER: "danger", UNKNOWN: "neutral" } as const;
-const hours = (value?: number) => value === undefined ? t("attendance.overtime.notReported") : t("attendance.hours", { hours: value });
+const hours = (value?: number | null) => value == null ? t("attendance.overtime.notReported") : t("attendance.hours", { hours: value });
 export function OvertimeTab() {
   const search = route.useSearch();
   const board = useQuery(week52Query(search.date ?? todayKst(), search.wp));

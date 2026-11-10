@@ -42,7 +42,8 @@ test.each(["forbidden", "out_of_scope", "scope_tenant_wide_only", "access_denied
   expect(html).not.toContain('href="/account"');
   expect(html).toContain('href="/org/entities"');
   expect(html).toMatch(/class="page"/);
-  expect(html.replace(/<details>[\s\S]*?<\/details>/g, "")).toContain(`<code>${code}</code>`);
+  expect(html.replace(/<details>[\s\S]*?<\/details>/g, "")).not.toContain(`<code translate="no">${code}</code>`);
+  expect(html.match(/<details>[\s\S]*?<\/details>/)?.[0]).toContain(`<code translate="no">${code}</code>`);
 });
 
 test("a failed read uses catalog copy instead of raw server text", async () => {

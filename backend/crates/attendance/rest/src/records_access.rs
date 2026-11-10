@@ -7,11 +7,11 @@ use console_platform_authz::Feature;
 use console_platform_authz::access::{NodeKind, NodeRef};
 use console_platform_authz::cedar_pbac::visible::DecisionFacts;
 
-pub(super) fn unavailable(_: impl std::fmt::Display) -> ScheduleStoreError {
+pub(crate) fn unavailable(_: impl std::fmt::Display) -> ScheduleStoreError {
     ScheduleStoreError::Corrupt("attendance read access")
 }
 
-pub(super) fn read_access(
+pub(crate) fn read_access(
     facts: DecisionFacts,
     org: OrgId,
 ) -> Result<BoardReadAccess, ScheduleStoreError> {
@@ -63,4 +63,4 @@ macro_rules! load {
         }
     }};
 }
-pub(super) use load;
+pub(crate) use load;

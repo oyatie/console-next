@@ -15,6 +15,7 @@ RUN npm ci --ignore-scripts --no-audit --no-fund && npm run build -w @console/we
 FROM ${RUST_IMAGE} AS backend
 WORKDIR /src/backend
 COPY backend ./
+COPY packages/i18n/src/catalogs/approval-sources.json /src/packages/i18n/src/catalogs/approval-sources.json
 COPY third-party/rust/vendor /src/third-party/rust/vendor
 COPY rustfmt.toml /src/rustfmt.toml
 COPY docs/specs/cedar-pbac-coexistence-map.json /src/docs/specs/

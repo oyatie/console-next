@@ -15,6 +15,12 @@ second-person eligibility or its independent `min_grant_age` setting.
 
 Known gaps:
 
+- `org-sole-holder-live.spec.ts` uses `helpers/sole-holder.ts` to bind the sole
+  administrator to an employee and natural person through SQL. The product
+  forbids self-binding, so this proves approval only after identity binding.
+  The first-run solo fallback remains a fixme until a governed self-binding
+  path has an owner decision and a backend implementation.
+
 - `second-person-fixture.ts::letGrantsAge` still backdates the grant ledger and
   role-definition timestamps for minimum-age scenarios. It is test-only; replace
   it when the eligibility SQL and authorization readers share the kernel clock.

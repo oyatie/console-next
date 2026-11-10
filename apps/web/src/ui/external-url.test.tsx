@@ -119,6 +119,19 @@ test("server rendering also keeps https inert", async () => {
   expect(markup).not.toContain("<a ");
 });
 
+test("Copy stays available while domain emphasis loads", async () => {
+  let release!: () => void;
+  const held = new Promise<void>(complete => { release = complete; });
+  await page.route("**/apps/web/src/ui/external-url-host.tsx", async route => { await held; await route.continue(); });
+  try {
+    await render("https://notice.law.go.kr/info");
+    expect(await page.locator("strong").textContent()).toBe("notice.law.go.kr");
+    await page.getByRole("button").click();
+    expect(await page.evaluate(() => window.copies)).toEqual(["https://notice.law.go.kr/info"]);
+  } finally { release(); }
+  await expect.poll(() => page.locator("strong").textContent()).toBe("law.go.kr");
+});
+
 test("no anchors; only https offers Copy", async () => {
   for (const href of [
     "javascript:alert(1)", " java\tscript:alert(1)", "JaVaScRiPt:alert(1)",
@@ -147,7 +160,7 @@ test.each([
   ["https://localhost/", "localhost"],
 ])("punycode and registrable domain: %s", async (href, domain) => {
   await render(href);
-  expect(await page.locator("strong").textContent()).toBe(domain);
+  await expect.poll(() => page.locator("strong").textContent()).toBe(domain);
   expect(await page.locator("#root > span > span").first().textContent()).toBe(new URL(href).href);
   expect(await page.locator(".test-url").count()).toBe(1);
   await page.getByRole("button").click();
@@ -174,7 +187,7 @@ test.each([
 ])("shows userinfo that Copy includes: %s", async (href) => {
   await render(href);
   expect(await page.locator("#root > span > span").first().textContent()).toBe(new URL(href).href);
-  expect(await page.locator("strong").textContent()).toBe(new URL(href).hostname.replace(/^sub\./, ""));
+  await expect.poll(() => page.locator("strong").textContent()).toBe(new URL(href).hostname.replace(/^sub\./, ""));
   await page.getByRole("button").click();
   expect(await page.evaluate(() => window.copies)).toEqual([new URL(href).href]);
 });

@@ -60,3 +60,6 @@ async fn unavailable_weekly_policy_is_internal_and_never_a_write_conflict(pool: 
     );
     assert_eq!(response.json["error"]["code"], "internal");
 }
+
+#[path = "weekly_totals.rs"]
+mod weekly_totals;

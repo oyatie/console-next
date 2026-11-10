@@ -6,7 +6,7 @@
   },
   "newScreens": {
     "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": {
-      "FACT": 56,
+      "FACT": 55,
       "REFUSAL": 17,
       "EMPTY": 4,
       "LEGAL": 0,
@@ -14,7 +14,7 @@
       "EXPLANATION": 0
     },
     "apps/web/src/features/attendance/ui/attendance-page.tsx#MonthPage": {
-      "FACT": 51,
+      "FACT": 50,
       "REFUSAL": 18,
       "EMPTY": 4,
       "LEGAL": 0,

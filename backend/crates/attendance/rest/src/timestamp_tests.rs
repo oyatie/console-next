@@ -106,6 +106,8 @@ fn attendance_timestamps_normalize_offsets_to_utc() {
             week_start: at.date(),
             current_hours: 40.0,
             projected_hours: 40.0,
+            recognized_hours: None,
+            overtime_hours: None,
             tone: Week52Tone::Ok,
             acknowledged_at,
         })

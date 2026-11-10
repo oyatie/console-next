@@ -49,6 +49,8 @@ const RECORDS: &str = concat!(
     base!(),
     "SELECT x.code, x.kind, x.id::text AS id, COALESCE(x.label, '') AS name, x.entity::text AS entity FROM ( \
        SELECT 'entity_needs_confirmation' AS code, 'legal_entity' AS kind, id, label, id AS entity FROM ent WHERE needs_confirmation \
+       UNION ALL SELECT 'entity_without_registration', 'legal_entity', id, label, id FROM ent \
+         WHERE NOT EXISTS (SELECT 1 FROM reg WHERE reg.legal_entity_id = ent.id) \
        UNION ALL SELECT 'no_primary_workplace', 'legal_entity', id, label, id FROM ent \
          WHERE primary_workplace_id IS NULL OR NOT EXISTS (SELECT 1 FROM wp WHERE wp.id = ent.primary_workplace_id) \
        UNION ALL SELECT 'registration_needs_confirmation', 'registration', id, label, legal_entity_id FROM reg WHERE needs_confirmation \
@@ -165,6 +167,7 @@ pub(crate) async fn setup_facts(
         terms_accepted,
         entities: r.try_get("entities")?,
         entities_needing_confirmation: count(&listed, "entity_needs_confirmation"),
+        entities_without_registration: count(&listed, "entity_without_registration"),
         registrations: r.try_get("registrations")?,
         registrations_needing_confirmation: count(&listed, "registration_needs_confirmation"),
         registrations_unverified: count(&listed, "registration_unverified"),

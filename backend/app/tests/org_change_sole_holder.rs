@@ -69,7 +69,7 @@ async fn each_step_persists_its_bound_exception_notices_and_configured_review(po
                 )
             );
             let notice:(String,Value)=sqlx::query_as("SELECT body,link FROM notifications WHERE recipient_user_id=$1 ORDER BY created_at DESC LIMIT 1").bind(recipient.as_uuid()).fetch_one(&pool).await.unwrap();
-            assert!(notice.0.contains("조직 변경"));
+            assert_eq!(notice.0, "org_change.sole_holder.recorded.v1");
             assert_eq!(notice.1["id"], w.id.to_string());
             assert_eq!(notice.1["type"], "object");
             assert_eq!(notice.1["kind"], "org_change");
@@ -143,19 +143,9 @@ async fn replay_wrong_step_binding_and_stale_consent_have_no_effects(pool: PgPoo
         )
         .await
         .unwrap_err();
-        if matches!(
-            changed,
-            "object"
-                | "hash"
-                | "reason"
-                | "action"
-                | "replay"
-                | "proposal"
-                | "review"
-                | "recipients"
-        ) {
+        if matches!(changed, "object" | "hash" | "reason" | "action" | "replay") {
             assert!(
-                matches!(error,console_orgchange_adapter_postgres::PgOrgChangeError::Domain(e) if e.code==Some("step_up_failed")),
+                matches!(error,console_orgchange_adapter_postgres::PgOrgChangeError::Domain(ref e) if e.code==Some("step_up_failed")),
                 "{changed}"
             );
         } else if matches!(changed, "version" | "missing_version") {
@@ -165,6 +155,12 @@ async fn replay_wrong_step_binding_and_stale_consent_have_no_effects(pool: PgPoo
                     console_orgchange_adapter_postgres::PgOrgChangeError::StaleVersion(_)
                 ),
                 "{changed}"
+            );
+        }
+        if matches!(changed, "proposal" | "review" | "recipients") {
+            assert!(
+                matches!(error, console_orgchange_adapter_postgres::PgOrgChangeError::Domain(ref e) if e.kind == console_kernel_core::ErrorKind::Conflict && e.code == Some("lifecycle.refuse.stale_version")),
+                "{changed}: {error}"
             );
         }
         assert_eq!(snapshot(&pool, &w).await, before, "{changed}");

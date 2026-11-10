@@ -6,7 +6,7 @@ security: [{bearerAuth: []}]
 description: >-
   Cedar approval_document_read uses the same source facts and inbox membership as the list.
   Hidden, absent, unsupported, draft and unrouted documents all return not_found.
-  Body contains the source target, effective date and reason; the source record link exposes the full proposal.
+  Proposal contains typed source operations and effective_date is a business date; body does not repeat the header.
   This read-only envelope exposes no decisions until the source-command adapter is available.
 parameters:
 - {name: id, in: path, required: true, schema: {type: string}, description: Canonical source-prefixed document ID from the inbox.}

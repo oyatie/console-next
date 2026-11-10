@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .root { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .text { font-family: var(--font-mono); font-size: var(--text-sm); overflow-wrap: anywhere; word-break: normal; min-width: 0; }
+cite.text { font-style: normal; }
 .registrable { font-weight: var(--fw-strong); }

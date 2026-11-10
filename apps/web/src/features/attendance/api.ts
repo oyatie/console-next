@@ -45,8 +45,7 @@ export const exceptionsQuery = (month: string, branch_id?: string) => ({
 });
 export const closesQuery = (month: string, branch_id?: string) => get("/api/v1/attendance/closes", { params: { query: { month, branch_id } } });
 export const week52Query = (date: string, branch_id?: string) => get("/api/v1/attendance/week52", { params: { query: { week_start: isDate(date) ? addDays(nextMonday(date), -7) : date, branch_id } } });
-// NEEDS-BACKEND: week52 must report these ledger totals; missing values stay unknown, never inferred from projections.
-export type Week52Row = S["AttendanceWeek52Row"] & { recognized_hours?: number; overtime_hours?: number };
+export type Week52Row = S["AttendanceWeek52Row"];
 
 // Previews write nothing: they answer what a command would do, and the server re-checks it at commit.
 export const previewAssign = (body: AssignInput) => unwrap(api.POST("/api/v1/attendance/schedule/layers/preview", { body }));

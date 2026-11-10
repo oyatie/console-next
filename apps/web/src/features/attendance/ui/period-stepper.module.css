@@ -1,0 +1,4 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); min-width: 0; }
+.stepper { display: inline-flex; align-items: center; gap: var(--space-1); max-width: 100%; }
+.text { min-width: calc(var(--space-6) * 4); text-align: center; font-variant-numeric: tabular-nums; }

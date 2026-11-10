@@ -97,7 +97,8 @@ function registrationOf(d: Draft, documentId?: string): CreateRegistrationReques
   return {
     ...(documentId ? { document_id: documentId } : {}),
     ...(d.bizKind === "INDIVIDUAL" ? { trade_name: d.name.trim() } : {}),
-    brn: d.brn,
+    brn: d.brnPendingReason ? null : d.brn,
+    brn_pending_reason: d.brnPendingReason ?? null,
     opened_on: d.openedOn,
     business_address: krAddress(d.businessAddress!),
     business_types: d.businessTypes.map((b, i) => ({ is_main: i === 0, sector: b.sector.trim(), item: b.item.trim(), nts_code: b.ntsCode, ksic: b.ksic })),

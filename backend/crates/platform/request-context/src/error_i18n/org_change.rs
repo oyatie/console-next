@@ -2,6 +2,10 @@
 
 /// Exact English message → Korean (합니다체).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
+    (
+        "Identity verification failed. Verify again to approve this step.",
+        "본인 확인에 실패했습니다. 이 결재 단계를 승인하려면 다시 본인 확인을 해 주십시오.",
+    ),
     // Org change / org units
     (
         "role is not allowed to read org changes",

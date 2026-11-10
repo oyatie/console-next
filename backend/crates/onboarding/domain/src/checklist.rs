@@ -98,9 +98,18 @@ fn step(key: &'static str, group: &'static str, state: StepState, action: &'stat
 pub fn checklist(f: &SetupFacts) -> Checklist {
     use StepState::{Attention, Blocked, Done, Todo};
     let mut steps = Vec::with_capacity(7);
+    let p = preview(f, &crate::Records::new());
 
     let mut entity = step("entity", "company", Todo, "register_legal_entity");
-    if f.entities > 0 {
+    if let Some(blocker) = p
+        .blockers
+        .iter()
+        .find(|b| b.code == "entity_without_registration")
+    {
+        entity.action = "add_registration";
+        entity.remedy = blocker.remedy;
+        entity.count = blocker.count;
+    } else if f.entities > 0 {
         let pending = f.entities_needing_confirmation + f.registrations_needing_confirmation;
         entity.state = if pending > 0 { Attention } else { Done };
         if pending > 0 {
@@ -208,7 +217,6 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
     }
     steps.push(roles);
 
-    let p = preview(f, &crate::Records::new());
     let mut golive = step("golive", "people", Todo, "open_go_live_preview");
     if !f.phase_is_setup {
         golive.state = Done;
