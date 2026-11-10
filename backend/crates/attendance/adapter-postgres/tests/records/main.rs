@@ -7,6 +7,7 @@ mod closed_month_order;
 mod conflict;
 mod detail;
 mod edits;
+mod evidence;
 mod grammar;
 mod issues;
 mod long_spans;

@@ -35463,7 +35463,7 @@ components:
     AttendanceEntry:
       type: object
       required: [id, batch_id, kind, segments, source, evidence_kind, undone, created_at, created_by_name]
-      properties: { id: { $ref: '#/components/schemas/Uuid' }, batch_id: { $ref: '#/components/schemas/Uuid' }, kind: { $ref: '#/components/schemas/AttendanceEntryKind' }, segments: { type: array, items: { $ref: '#/components/schemas/AttendanceWindow' } }, source: { type: string, enum: [MANUAL, BULK, PASTE, SCHEDULE, IMPORT, CORRECTION, VOID] }, evidence_kind: { type: string, enum: [PAPER_SHEET, SUPERVISOR_CONFIRM, DEVICE_FILE, EMPLOYEE_STATEMENT, OTHER] }, reason: { type: string, nullable: true }, supersedes_id: { $ref: '#/components/schemas/Uuid', nullable: true }, undone: { type: boolean }, created_at: { type: string, format: date-time }, created_by_name: { type: string } }
+      properties: { id: { $ref: '#/components/schemas/Uuid' }, batch_id: { $ref: '#/components/schemas/Uuid' }, kind: { $ref: '#/components/schemas/AttendanceEntryKind' }, segments: { type: array, items: { $ref: '#/components/schemas/AttendanceWindow' } }, source: { type: string, enum: [MANUAL, BULK, PASTE, SCHEDULE, IMPORT, CORRECTION, VOID] }, evidence_kind: { type: string, description: 'Known evidence kinds; a client must tolerate kinds it does not know.', x-extensible-enum: [PAPER_SHEET, SUPERVISOR_CONFIRM, DEVICE_FILE, EMPLOYEE_STATEMENT, WORK_OUTPUT, OTHER] }, reason: { type: string, nullable: true }, supersedes_id: { $ref: '#/components/schemas/Uuid', nullable: true }, undone: { type: boolean }, created_at: { type: string, format: date-time }, created_by_name: { type: string } }
     AttendanceEntryConflictBody:
       type: object
       required: [error]
@@ -35474,7 +35474,7 @@ components:
     AttendanceEvidence:
       type: object
       required: [kind]
-      properties: { kind: { type: string, enum: [PAPER_SHEET, SUPERVISOR_CONFIRM, DEVICE_FILE, EMPLOYEE_STATEMENT, OTHER] }, note: { type: string, maxLength: 500 }, confirmer_employee_id: { $ref: '#/components/schemas/Uuid', description: required for SUPERVISOR_CONFIRM } }
+      properties: { kind: { type: string, enum: [PAPER_SHEET, SUPERVISOR_CONFIRM, DEVICE_FILE, EMPLOYEE_STATEMENT, WORK_OUTPUT, OTHER] }, note: { type: string, maxLength: 500 }, confirmer_employee_id: { $ref: '#/components/schemas/Uuid', description: required for SUPERVISOR_CONFIRM } }
     AttendanceException:
       type: object
       required: [id, code, kind, status, employee_id, employee_name, work_date, occurred_at, detail, evidence, links, created_at]

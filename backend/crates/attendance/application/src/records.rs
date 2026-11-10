@@ -34,6 +34,7 @@ pub enum EvidenceKind {
     SupervisorConfirm,
     DeviceFile,
     EmployeeStatement,
+    WorkOutput,
     Other,
 }
 
@@ -45,6 +46,7 @@ impl EvidenceKind {
             Self::SupervisorConfirm => "SUPERVISOR_CONFIRM",
             Self::DeviceFile => "DEVICE_FILE",
             Self::EmployeeStatement => "EMPLOYEE_STATEMENT",
+            Self::WorkOutput => "WORK_OUTPUT",
             Self::Other => "OTHER",
         }
     }

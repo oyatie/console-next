@@ -184,6 +184,8 @@ reason_domains! {
     PrivacyPostponeAccess => "privacy_postpone_access" ["JUSTIFIED_REASON"] closed;
     PrivacyIdentityMethod => "privacy_identity_method" ["SIGNED_IN", "ID_DOCUMENT_SEEN", "KNOWN_CONTACT", "AGENT_MANDATE"] closed;
     OvertimeApprovalMethod => "overtime_approval_method" ["IN_APP", "WRITTEN", "VERBAL"] closed;
+    ExcessPostApproval => "excess_post_approval" ["WORK_CONFIRMED"];
+    ExcessPaidOverCap => "excess_paid_over_cap" ["STATUTORY_CAP_EXCEEDED"];
     ExcessNotWork => "excess_not_work" ["PERSONAL_PRESENCE", "SHIFT_WAIT_NO_WORK"];
     AttendanceCorrection => "attendance_correction" ["TIME_INPUT_ERROR", "MISSING_ENTRY", "WRONG_PERSON"];
 }

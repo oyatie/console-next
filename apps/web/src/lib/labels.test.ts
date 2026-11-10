@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test } from "vitest";
 import { isMessageId, loadCatalog, t } from "@console/i18n";
-import { LEAVE_TYPE, actor, label, labeled } from "./labels";
+import { ATTENDANCE_EVIDENCE, LEAVE_TYPE, actor, label, labeled } from "./labels";
 import * as enums from "./labels";
 import type { Enum } from "./labels";
 
@@ -23,6 +23,21 @@ test("known leave choices remain checked by TypeScript", () => {
   // @ts-expect-error A future response is readable, but a misspelled command choice is not valid.
   const typo: (typeof LEAVE_TYPE.values)[number] = "CHILDCAR";
   expect(LEAVE_TYPE.values).not.toContain(typo);
+});
+
+test("attendance evidence keeps known words and identifies future kinds without calling them other", () => {
+  for (const kind of ATTENDANCE_EVIDENCE.values) {
+    expect(label(ATTENDANCE_EVIDENCE, kind)).toBe(t(`attendanceRecords.evidence.${kind}`));
+  }
+  expect(label(ATTENDANCE_EVIDENCE, "WORK_OUTPUT")).toBe("작업 기록 · 결과물");
+  expect(label(ATTENDANCE_EVIDENCE, "FUTURE_EVIDENCE")).toBe(t("enum.unknown"));
+  expect(labeled(ATTENDANCE_EVIDENCE, "FUTURE_EVIDENCE")).toEqual({ label: t("enum.unknown"), tone: "neutral", code: "FUTURE_EVIDENCE" });
+});
+
+test("attendance evidence command choices remain checked by TypeScript", () => {
+  // @ts-expect-error Extensible responses do not widen the command's evidence choices.
+  const typo: (typeof ATTENDANCE_EVIDENCE.values)[number] = "WORK_OUPUT";
+  expect(ATTENDANCE_EVIDENCE.values).not.toContain(typo);
 });
 
 // Status enums are checked independently of their page callers.

@@ -50,8 +50,8 @@ async fn incomplete_dispositions_cannot_become_permanent(pool: sqlx::PgPool) {
         json!({"worker_notice_via": "WRITTEN"}),
         json!({"worker_notice_via": "WRITTEN", "worker_notified_on": "2020-01-01"}),
         json!({"action": "RECORD_CORRECTION", "reason_code": "TIME_INPUT_ERROR"}),
-        json!({"action": "POST_APPROVAL", "evidence": null}),
-        json!({"action": "PAID_OVER_CAP", "evidence": null}),
+        json!({"action": "POST_APPROVAL", "reason_code": "WORK_CONFIRMED", "evidence": null}),
+        json!({"action": "PAID_OVER_CAP", "reason_code": "STATUTORY_CAP_EXCEEDED", "evidence": null}),
     ] {
         let mut tx = runtime(&w).await;
         let error = resolution(&mut tx, &w, id, invalid.clone())

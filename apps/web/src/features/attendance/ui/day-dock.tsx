@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
+import { ATTENDANCE_EVIDENCE, label } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -118,7 +119,7 @@ function History({ rows }: { rows: Entry[] }) {
         key: e.id,
         text: (
           <>
-            {e.kind === "VOID" || e.undone ? <s>{entryText(e.kind, e.segments)}</s> : entryText(e.kind, e.segments)} · <Chip>{t(`attendanceRecords.source.${e.source}`)}</Chip> · {t(`attendanceRecords.evidence.${e.evidence_kind}`)}
+            {e.kind === "VOID" || e.undone ? <s>{entryText(e.kind, e.segments)}</s> : entryText(e.kind, e.segments)} · <Chip>{t(`attendanceRecords.source.${e.source}`)}</Chip> · {label(ATTENDANCE_EVIDENCE, e.evidence_kind)}
             {e.reason && <> · {e.reason}</>}
             {e.undone && <> · {t("attendanceRecords.day.undone")}</>}
           </>

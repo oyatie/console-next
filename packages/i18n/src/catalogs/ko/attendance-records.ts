@@ -108,6 +108,7 @@ export const koAttendanceRecords = {
   "attendanceRecords.evidence.label": "근거 · 무엇을 보고 입력했습니까",
   "attendanceRecords.evidence.hint": "선택한 값 없음 · 이력과 근태 확인서에 남습니다",
   "attendanceRecords.evidence.PAPER_SHEET": "출근부 (종이)",
+  "attendanceRecords.evidence.WORK_OUTPUT": "작업 기록 · 결과물",
   "attendanceRecords.evidence.DEVICE_FILE": "타각기 출력 · 파일",
   "attendanceRecords.evidence.SUPERVISOR_CONFIRM": "관리자 확인 · 확인자 지정",
   "attendanceRecords.evidence.EMPLOYEE_STATEMENT": "본인 진술",
