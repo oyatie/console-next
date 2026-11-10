@@ -132,6 +132,7 @@ import { enPeopleJump } from "./en/people-jump";
 // Partial: missing ids fall back to Korean (index.test.ts fails on any).
 export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enUiFlexibleColumns,
+  ...enSettingsHub,
   ...enGovernanceRefusals,
   ...enAccountLinkRefusals,
   ...enPeriodUnlockRefusals,
@@ -262,3 +263,4 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enDirectoryViews,
 };
 import { enDirectoryViews } from "./en/directory-views";
+import { enSettingsHub } from "./en/settings-hub";

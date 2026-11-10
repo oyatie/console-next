@@ -134,9 +134,11 @@ import { koEmpFix } from "./ko/emp-fix";
 import { koEmpRec } from "./ko/emp-rec";
 import { koEmpDoc } from "./ko/emp-doc";
 import { koPeopleJump } from "./ko/people-jump";
+import { koSettingsHub } from "./ko/settings-hub";
 
 export const ko = {
   ...koUiFlexibleColumns,
+  ...koSettingsHub,
   ...koGovernanceRefusals,
   ...koAccountLinkRefusals,
   ...koPeriodUnlockRefusals,

@@ -7,6 +7,8 @@ import { routeTree } from "./tree";
 import { routeReads, readRequirement } from "./route-reads";
 import { accessRefusal, type Requirement } from "../reference/authz/domain/access";
 import type { AccessEffective } from "../reference/authz/api";
+import { queryPath } from "../lib/query";
+import { SETTINGS_VIEWS } from "../shell/settings-views";
 import { pendingPayrollReads } from "./pending-payroll-reads";
 import { operationAccess } from "../reference/authz/domain/operation-access";
 
@@ -93,4 +95,8 @@ test("org reads use entity reach or the branch-less capability floor; neither wi
 
 test("payroll read allow-list expires as soon as S1a generates its Cedar metadata", () => {
   for (const op of Object.keys(pendingPayrollReads)) expect(operationAccess).not.toHaveProperty(op);
+});
+
+test.each(SETTINGS_VIEWS)("$to hub summary shares its destination read path", view => {
+  expect(queryPath(view.summary)).toBe(routeReads[view.to].reads[0].slice(4));
 });
