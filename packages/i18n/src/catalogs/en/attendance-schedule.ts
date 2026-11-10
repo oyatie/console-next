@@ -17,8 +17,6 @@ export const enAttendanceSchedule: Partial<Record<keyof typeof koAttendanceSched
   "attendanceSchedule.tree.noMatch.reason": "No entity, workplace, department or crew is named “{query}”.",
   "attendanceSchedule.tree.clear": "Reset filter",
   "attendanceSchedule.tree.allScheduled": "All {people} have a schedule",
-  "attendanceSchedule.month.prev": "Previous month",
-  "attendanceSchedule.month.next": "Next month",
   "attendanceSchedule.calendar.label": "{scope} work schedule, {month}",
   "attendanceSchedule.calendar.scopeLine": "{pattern} · {shift} · {decided}",
   "attendanceSchedule.calendar.noSchedule": "{scope} has no work schedule · assign one to this scope",
