@@ -1,5 +1,6 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import { autofillPaused, forgetDomains, parseSignInId, pauseAutofill, rememberDomain, rememberedDomains, resumeAutofill } from "./sign-in-id";
+import { autofillPaused, forgetDomains, pauseAutofill, rememberDomain, rememberedDomains, resumeAutofill } from "./sign-in-id";
+import { parseSignInId } from "./sign-in-id-input";
 
 /** A Map-backed Storage (the tests run in Node, which has none). */
 const storage = () => {

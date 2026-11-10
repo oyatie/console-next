@@ -164,7 +164,7 @@ async fn effective_employer_policy_wins_and_corrupt_policy_fails_closed_even_wit
         .await;
     assert!(matches!(
         result,
-        Err(ScheduleStoreError::Corrupt("attendance thresholds"))
+        Err(ScheduleStoreError::Corrupt("attendance settings"))
     ));
     assert_eq!(rows(&w, "attendance_entries").await, 0);
 }
