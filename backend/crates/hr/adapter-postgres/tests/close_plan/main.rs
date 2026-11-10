@@ -15,10 +15,14 @@ mod fixture;
 mod group;
 mod refusals;
 mod scheduled;
+#[allow(dead_code)]
+#[path = "../support/trail_queries.rs"]
+mod trail_queries;
 
 use fixture::*;
 use serde_json::json;
 use sqlx::PgPool;
+use tracing::instrument::WithSubscriber;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_staffed_workplace_closes_today_by_one_plan(owner: PgPool) {
@@ -37,7 +41,37 @@ async fn regression_a_staffed_workplace_closes_today_by_one_plan(owner: PgPool) 
         ],
     });
     let key = uuid::Uuid::new_v4();
-    let job = s.plan_with(key, plan.clone()).await.unwrap();
+    let queries = trail_queries::Queries::default();
+    let job = s
+        .plan_with(key, plan.clone())
+        .with_subscriber(queries.clone())
+        .await
+        .unwrap();
+    let statements = queries.statements();
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|sql| sql.contains("SELECT filing_rule,trigger_event_kinds"))
+            .count(),
+        1,
+        "one statutory register read for the entire close"
+    );
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|sql| sql.contains("INSERT INTO lifecycle_cases (org_id,id,kind,variant"))
+            .count(),
+        1
+    );
+    assert_eq!(
+        statements
+            .iter()
+            .filter(
+                |sql| sql.contains("SELECT i.id,c.id AS case_id,i.kind,i.requested_on,i.due_basis")
+            )
+            .count(),
+        1
+    );
     assert_eq!(job.state, "APPLIED", "{job:?}");
 
     // The 사업장 is closed today: closed_on, a CLOSED revision, its SITE unit gone.
@@ -55,6 +89,11 @@ async fn regression_a_staffed_workplace_closes_today_by_one_plan(owner: PgPool) 
     }
     let events: i64 = scalar(&owner, "SELECT count(*) FROM employee_lifecycle_events WHERE batch_id = $1 AND event_type = 'TRANSFER' AND state = 'APPLIED'", job.id).await;
     assert_eq!(events, 4);
+    let observed: i64 = scalar(&owner, "SELECT count(*) FROM lifecycle_cases c JOIN employee_lifecycle_events l ON l.org_id=c.org_id AND l.id=c.trigger_id JOIN lifecycle_case_items i ON i.org_id=c.org_id AND i.case_id=c.id WHERE l.batch_id=$1 AND i.item_key='R1' AND i.status='DONE_OBSERVED' AND i.observed_ref->>'id'=l.id::text", job.id).await;
+    assert_eq!(
+        observed, 4,
+        "every transfer retains its observed event receipt"
+    );
     // 개발팀 (and 품질팀 with it) now sits under 본사; 물류팀 is 폐지.
     assert_eq!(
         common::unit_head(&owner, s.dev).await.2,

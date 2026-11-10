@@ -147,3 +147,54 @@ async fn stray_duplicate_and_half_lines_are_refused(owner: PgPool) {
     assert_eq!((e.status.as_u16(), e.code), (422, "invalid_date"));
     assert_eq!(nothing_written(&owner).await, (0, 0, 0, 0));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_bad_case_rule_retains_every_line_refusal_and_rolls_back(owner: PgPool) {
+    use tracing::instrument::WithSubscriber;
+    let s = Site::new(&owner).await;
+    // Model an incompatible catalog rule without changing the production catalog or its constraints.
+    sqlx::query("ALTER TABLE case_template_items DROP CONSTRAINT case_template_items_due_shape")
+        .execute(&owner)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE case_template_items SET due_anchor=NULL WHERE template_key='APPOINT' AND due_rule_kind<>'UNKNOWN' AND mode<>'REQUESTED'")
+        .execute(&owner).await.unwrap();
+    let queries = crate::trail_queries::Queries::default();
+    let error = s
+        .plan(json!({
+            "closed_on": today().to_string(),
+            "units": [
+                { "org_unit_id": s.dev, "action": "MOVE", "to_parent_id": s.hq_unit },
+                { "org_unit_id": s.logistics, "action": "DISSOLVE" },
+            ],
+            "people": [
+                { "employee_id": s.kim, "action": "TRANSFER", "to_org_unit_id": s.dev },
+                { "employee_id": s.lee, "action": "TRANSFER", "to_org_unit_id": s.qa },
+                { "employee_id": s.park, "action": "TRANSFER", "to_org_unit_id": s.hr_team },
+                { "employee_id": s.choi, "action": "TRANSFER", "to_org_unit_id": s.hq_unit },
+            ],
+        }))
+        .with_subscriber(queries.clone())
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "close_plan_refused");
+    let refused = error.refusals.as_ref().unwrap().as_array().unwrap();
+    let actual: std::collections::BTreeSet<_> = refused
+        .iter()
+        .map(|r| r["employee_id"].as_str().unwrap().to_owned())
+        .collect();
+    let expected = [s.kim, s.lee, s.park, s.choi]
+        .into_iter()
+        .map(|id| id.to_string())
+        .collect();
+    assert_eq!(actual, expected);
+    assert_eq!(nothing_written(&owner).await, (0, 0, 0, 0));
+    assert_eq!(
+        queries
+            .statements()
+            .iter()
+            .filter(|sql| sql.contains("SELECT filing_rule,trigger_event_kinds"))
+            .count(),
+        1
+    );
+}
