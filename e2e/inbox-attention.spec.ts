@@ -18,6 +18,7 @@ test("Home attention shares the authorized worklist and preserves item aging", {
     items: { id: string; title: string; kind: string; lane: string; context?: { review_count?: number; reason?: string }; age_days: number }[];
     attention_filters: { key: string; total: number; total_is_exact: boolean }[];
     next_cursor: string | null;
+    unavailable: unknown[];
   };
   const all = await api<Inbox>("/api/v1/me/action-inbox?attention=all&limit=200");
   expect(all.attention_filters.map(c => c.key)).toEqual(["all", "approvals", "today", "overdue"]);
@@ -38,5 +39,15 @@ test("Home attention shares the authorized worklist and preserves item aging", {
   expect(home.items.every(item => item.lane === "turn")).toBe(true);
   expect(home.attention_filters.find(count => count.key === "all")?.total).toBe(home.items.length);
   expect(second.items[0]!.id).not.toBe(first.items[0]!.id);
+  const burst = await Promise.all(Array.from({ length: 3 }, () => Promise.all([
+    api<Inbox>("/api/v1/me/action-inbox?attention=all&limit=200"),
+    api<Inbox>("/api/v1/me/action-inbox?filter=turn&attention=all&limit=200"),
+  ])));
+  for (const [worklist, turn] of burst) {
+    expect(worklist.unavailable).toEqual([]);
+    expect(turn.unavailable).toEqual([]);
+    expect(worklist.attention_filters).toEqual(all.attention_filters);
+    expect(turn.attention_filters).toEqual(home.attention_filters);
+  }
   await page.context().close();
 });
