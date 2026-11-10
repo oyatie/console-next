@@ -13,6 +13,7 @@ mod access_facts;
 mod choices;
 mod facts;
 mod go_live;
+mod inbox;
 mod people_facts;
 mod receipt;
 mod refusal_audit;
@@ -220,25 +221,11 @@ impl PgOnboardingStore {
     pub async fn checklist(&self, actor: &OnboardingActor) -> Result<Checklist, PgOnboardingError> {
         let refusal_actor = actor.clone();
         let actor = actor.clone();
-        let (user, org) = (*actor.user.as_uuid(), actor.org);
         let result = with_org_conn(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
                 let p = phase(tx, false).await?;
-                let (f, _, _) =
-                    facts::setup_facts(tx, (org, user), p == TenantPhase::Setup).await?;
-                let mut c = checklist(&f);
-                viewer::checklist_permissions(tx, &actor, &mut c).await?;
-                let at: Option<time::OffsetDateTime> =
-                    sqlx::query_scalar("SELECT go_live_at FROM tenant_phase WHERE org_id = $1")
-                        .bind(org.as_uuid())
-                        .fetch_optional(tx.as_mut())
-                        .await?
-                        .flatten();
-                c.go_live_at = at
-                    .map(|at| at.format(&time::format_description::well_known::Rfc3339))
-                    .transpose()
-                    .map_err(|_| refused(ErrorKind::Internal, "internal", None))?;
-                Ok(c)
+                let (subject, slice) = viewer::load_permissions(tx, &actor).await?;
+                inbox::read_checklist(tx, &actor, p, &subject, &slice).await
             })
         })
         .await;

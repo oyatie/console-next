@@ -23,8 +23,12 @@ pub(crate) async fn load(
             .collect(),
         trace: TraceContext::generate(),
     };
-    let checklist = match PgOnboardingStore::new(pool.clone()).checklist(&actor).await {
-        Ok(c) => c,
+    let checklist = match PgOnboardingStore::new(pool.clone())
+        .actionable_checklist(&actor)
+        .await
+    {
+        Ok(Some(c)) => c,
+        Ok(None) => return Ok(None),
         Err(PgOnboardingError::Refused {
             kind: ErrorKind::Forbidden,
             ..
@@ -34,9 +38,6 @@ pub(crate) async fn load(
             return Err(KernelError::internal("failed to load setup work"));
         }
     };
-    if checklist.phase != "SETUP" {
-        return Ok(None);
-    }
     serde_json::to_value(checklist)
         .map(Some)
         .map_err(|_| KernelError::internal("failed to project setup work"))
