@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { isModuleNotFoundError } from "@tanstack/router-core";
 import { i18n, t } from "@console/i18n";
-import { chunk, isChunkError, localChunk } from "./chunk-guard";
+import { chunk, crashed, isChunkError, localChunk } from "./chunk-guard";
 
 const SRC = readFileSync(new URL("../../public/chunk-guard.js", import.meta.url), "utf8");
 type Guard = { handled(error: unknown): void; recover(): boolean; loaded(): void; start(): void };
@@ -118,7 +118,16 @@ test("the static error screen says what the app's crashed screen says", () => {
   }
 });
 
-afterEach(() => void delete (globalThis as { consoleChunkGuard?: unknown }).consoleChunkGuard);
+afterEach(() => { delete (globalThis as { consoleChunkGuard?: unknown }).consoleChunkGuard; vi.unstubAllGlobals(); });
+
+test("static crash recovery hides the previous screen before showing its reload", () => {
+  const root = { hidden: false };
+  vi.stubGlobal("document", { getElementById: () => root });
+  const fail = vi.fn(() => expect(root.hidden).toBe(true));
+  vi.stubGlobal("consoleChunkGuard", { fail });
+  crashed();
+  expect(fail).toHaveBeenCalledOnce();
+});
 
 test("a lazy import reloads through the guard, then fails with an error TanStack's own reload does not act on", async () => {
   const gone = new Error("Failed to fetch dynamically imported module: http://localhost/assets/Account-X.js");

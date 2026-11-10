@@ -91,7 +91,7 @@ async fn request(
         store::step_up(&state, &claims, body.id, payload, body.step_up).await?;
     let label = store::label(&mut tx, OrgId::platform(), *p.user_id.as_uuid(), true).await?;
     let org = OrgId::from_uuid(body.org_id);
-    store::authorize(
+    store::require_support(
         Action::Request,
         p.user_id,
         OrgId::platform(),
@@ -163,7 +163,7 @@ async fn approve(
     let org = OrgId::from_uuid(body.org_id);
     let session = support::lock(&mut tx, org, id).await?;
     support::live(&session, OffsetDateTime::now_utc())?;
-    store::authorize(
+    store::require_support(
         Action::OperatorApprove,
         p.user_id,
         OrgId::platform(),
@@ -215,7 +215,7 @@ async fn start(
     let facts = load_operator_facts(&mut tx, p.user_id, Some((assertion, id)), Some((org, id)))
         .await
         .map_err(|e| SupportError::Refused(e.kind.code()))?;
-    store::authorize(Action::Start, p.user_id, OrgId::platform(), org, facts)?;
+    store::require_support(Action::Start, p.user_id, OrgId::platform(), org, facts)?;
     if session.state != "OPERATOR_APPROVED" {
         return Err(SupportError::Refused("conflict").into());
     }
