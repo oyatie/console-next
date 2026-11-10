@@ -35,7 +35,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`an
   await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ status: 200, json: {
     ...response(), items: [{ ...item, decision_refusal: "org_change.refuse.identity_unbound" }],
   } }));
-  await mockDocument(page);
+  await mockDocument(page, { ...item, decision_refusal: "org_change.refuse.identity_unbound" });
   await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
   await page.setViewportSize({ width, height: 900 });
   await page.goto("/approvals");

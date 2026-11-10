@@ -21,17 +21,20 @@ const column = (page: Page) => page.getByRole("complementary", { name: t("approv
 /** The list read plus the per-document read the column makes; `document` picks the reply for one id. */
 async function mock(page: Page, document: (id: string) => { status: number; json: object } | undefined = () => undefined) {
   const screen = await mockScreen(page, screens[0], "empty");
-  await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ json: {
-    items, focused: null, next_cursor: null, sources: [], counts: { pending: 3, upcoming: 0, requested: 0, reference: 0, completed: 0 },
-  } }));
+  const reads = { list: 0 };
+  await page.route(url => url.pathname === "/api/v1/approvals", route => {
+    reads.list++;
+    return route.fulfill({ json: { items, focused: null, next_cursor: null, sources: [], counts: { pending: 3, upcoming: 0, requested: 0, reference: 0, completed: 0 } } });
+  });
   await page.route(url => /^\/api\/v1\/approvals\/[^/]+$/.test(url.pathname), route => {
     const id = decodeURIComponent(new URL(route.request().url()).pathname.split("/").pop()!);
-    const found = items.find(entry => entry.id === id);
+    // approval-9 exists but is not on the loaded list page.
+    const found = [...items, item(9)].find(entry => entry.id === id);
     return route.fulfill(document(id) ?? (found
       ? { status: 200, json: { ...found, body: [{ key: "change", label: "변경 내용", value: "영업팀으로 통합" }], revision: 1, fingerprint: `sha256:${id}-r1`, consequence: "승인하면 시행일에 반영됩니다.", opinion_max: 1000, my_actions: { kind: "none" } } }
       : { status: 404, json: failure("not_found") }));
   });
-  return screen;
+  return Object.assign(screen, { reads });
 }
 
 for (const theme of ["light", "dark"]) test(`the document opens beside the list, follows J/K and survives a reload (${theme})`, async ({ page }, info) => {
@@ -51,10 +54,13 @@ for (const theme of ["light", "dark"]) test(`the document opens beside the list,
   await expectAxe(page, `approval document column ${theme}`);
   await page.screenshot({ path: info.outputPath(`approvals-column-1440-${theme}.png`), fullPage: true });
 
+  const listReads = screen.reads.list;
   await row(1).focus();
   await page.keyboard.press("j");
   await expect(page).toHaveURL(/sel=approval-2/);
   await expect(column(page).getByRole("heading", { name: "조직 개편안 2", exact: true })).toBeVisible();
+  await expect(column(page).getByRole("link", { name: t("approvals.openSource"), exact: true })).toHaveAttribute("href", "/org/changes/change-2");
+  expect(screen.reads.list, "selecting a document leaves the list as it is").toBe(listReads);
   await page.keyboard.press("k");
   await expect(page).toHaveURL(/sel=approval-1/);
 
@@ -77,6 +83,40 @@ test("a link saved with the old focus parameter opens the same document", async 
   await mock(page);
   await page.goto("/approvals?focus=approval-2");
   await expect(column(page).getByRole("heading", { name: "조직 개편안 2", exact: true })).toBeVisible();
+});
+
+test("a shared link opens a document the loaded list does not hold", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mock(page);
+  await page.goto("/approvals?sel=approval-9");
+  await expect(column(page).getByRole("heading", { name: "조직 개편안 9", exact: true })).toBeVisible();
+  await expect(column(page).getByText("AP-2026-009", { exact: true }).first()).toBeVisible();
+  await expect(column(page).getByRole("link", { name: t("approvals.openSource"), exact: true })).toHaveAttribute("href", "/org/changes/change-9");
+});
+
+test("the decision panel works in the column and an open reason form keeps Escape", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const reason = { codes: [{ code: "POLICY", label: "정책에 맞지 않음" }, { code: "OTHER", label: "기타" }], other: "OTHER", memo_max: 1000 };
+  await mock(page, id => ({ status: 200, json: { ...item(Number(id.split("-")[1])), body: [], revision: 1, fingerprint: `sha256:${id}-r1`, consequence: "승인하면 시행일에 반영됩니다.", opinion_max: 1000,
+    my_actions: { kind: "approve", return: { consequence: "기안자에게 돌아갑니다.", reason }, reject: { consequence: "문서가 종결됩니다.", reason } } } }));
+  await page.goto("/approvals?sel=approval-1");
+  const approve = column(page).getByRole("button", { name: "승인", exact: true });
+  await expect(approve).toBeVisible();
+  // 승인 is the one filled button; 반려 and 보완 요청 stay secondary.
+  await expect(column(page).locator(".btn--primary")).toHaveCount(1);
+  await expect(approve).toHaveClass(/btn--primary/);
+  const opinion = column(page).getByRole("textbox", { name: /^의견/ });
+  await opinion.fill("검토 의견");
+  await column(page).getByRole("button", { name: "반려", exact: true }).click();
+  const radio = column(page).getByRole("radio", { name: "정책에 맞지 않음", exact: true });
+  await radio.focus();
+  await page.keyboard.press("Escape");
+  await expect(column(page).getByRole("radio")).toHaveCount(0);
+  await expect(column(page)).toBeVisible();
+  await expect(opinion).toHaveValue("검토 의견");
+  await expect(column(page).getByRole("button", { name: "반려", exact: true })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(column(page)).toHaveCount(0);
 });
 
 for (const theme of ["light", "dark"]) test(`at phone width the document replaces the list and goes back (${theme})`, async ({ page }, info) => {

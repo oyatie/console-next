@@ -155,7 +155,7 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
       if (!root || !(target instanceof Node) || !root.contains(target) || e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === "/" && onFind && !editable(target)) return void (e.preventDefault(), e.stopPropagation(), onFind());
       if (e.key !== "Escape" || (!openRelated && !openRecord) || editable(target)) return;
-      if (target instanceof Element && target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [aria-expanded="true"]')) return;
+      if (target instanceof Element && target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [data-escape-scope], [aria-expanded="true"]')) return;
       if (document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"], dialog[open]')) return;
       e.preventDefault();
       e.stopPropagation();

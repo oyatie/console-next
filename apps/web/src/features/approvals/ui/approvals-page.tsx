@@ -35,7 +35,7 @@ const CLOSED = { sel: undefined, full: undefined };
 export function ApprovalInboxView({ items, sel, selected, record, onSelect, onClose, onFind, full, onFull, hasNext, loadingMore, onMore, emptyTitle }: {
   items: ApprovalItem[];
   sel?: string;
-  /** The list row for `sel`, when the list has it: it titles the column before the document arrives. */
+  /** The document for `sel`, or its list row until the document arrives: it titles the column. */
   selected?: ApprovalItem;
   record?: ReactNode;
   onSelect: (id: string) => void;
@@ -80,12 +80,6 @@ export function ApprovalInboxView({ items, sel, selected, record, onSelect, onCl
   }} />;
 }
 
-/** The same document the full page shows, read by id so a shared or reloaded link opens it without the list. */
-function ApprovalRecord({ id }: { id: string }) {
-  const q = useQuery({ ...approvalDocumentQuery(id), refetchOnMount: "always" });
-  return <QueryState q={q} layout="record">{document => <ApprovalDocumentView document={document} />}</QueryState>;
-}
-
 export function ApprovalsPage() {
   const search = route.useSearch();
   const { box = "pending", q: urlQuery = "", source } = search;
@@ -106,11 +100,13 @@ export function ApprovalsPage() {
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [query, set]);
-  const inbox = useInfiniteQuery({ ...approvalPages({ box, q: urlQuery || undefined, source, focus: sel }), placeholderData: keepPreviousData, refetchOnMount: "always" });
+  const inbox = useInfiniteQuery({ ...approvalPages({ box, q: urlQuery || undefined, source }), placeholderData: keepPreviousData, refetchOnMount: "always" });
   const pages = inbox.data?.pages;
   const first = pages?.[0];
   const items = pages?.flatMap(page => page.items) ?? [];
-  const selected = first?.focused ?? items.find(item => item.id === sel);
+  // The document is read by its id, so selecting never re-reads the list and a shared or reloaded link needs no list row.
+  const opened = useQuery({ ...approvalDocumentQuery(sel ?? ""), enabled: Boolean(sel), refetchOnMount: "always" });
+  const selected = (opened.data?.id === sel ? opened.data : undefined) ?? items.find(item => item.id === sel);
   const filtered = Boolean(urlQuery || source);
   const tabs = <TabNav label={t("approvals.tabs")} overflow="scroll">{APPROVAL_BOXES.map(id => <Link
     key={id} to="/approvals" search={{ box: id === "pending" ? undefined : id, q: urlQuery || undefined, source }}
@@ -124,7 +120,7 @@ export function ApprovalsPage() {
     {filtered && <Button variant="ghost" onClick={reset}>{t("approvals.filters.reset")}</Button>}
   </div>}>
     <QueryState q={inbox} layout="list">{() => <ApprovalInboxView
-      items={items} sel={sel} selected={selected ?? undefined} record={sel && <ApprovalRecord key={sel} id={sel} />}
+      items={items} sel={sel} selected={selected ?? undefined} record={sel && <QueryState key={sel} q={opened} layout="record">{document => <ApprovalDocumentView document={document} />}</QueryState>}
       onSelect={select} onClose={() => select(undefined)} onFind={() => filters.current?.querySelector("input")?.focus()}
       full={full} onFull={on => on ? expand() : restore()}
       hasNext={inbox.hasNextPage} loadingMore={inbox.isFetchingNextPage} onMore={() => void inbox.fetchNextPage()}
