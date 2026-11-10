@@ -11,7 +11,10 @@ use console_kernel_core::OrgId;
 use console_platform_auth::{
     AccessClaims, AccessTokenInput, ActorSession, MobilePasskeyStepUpEnvelope,
 };
-use console_platform_authz::{PlatformPrincipal, cedar_pbac::actions::support_session::Action};
+use console_platform_authz::{
+    PlatformPrincipal,
+    cedar_pbac::{actions::support_session::Action, visible::load_operator_facts},
+};
 use console_platform_db::support::{self, SupportError};
 use console_settings_domain::SettingKey;
 use serde::Deserialize;
@@ -86,26 +89,16 @@ async fn request(
     ]);
     let (mut tx, assertion) =
         store::step_up(&state, &claims, body.id, payload, body.step_up).await?;
-    let other = store::eligible(&mut tx, *p.user_id.as_uuid()).await?;
-    if other == 0 {
-        return Err(SupportError::Refused("support.refuse.no_second_operator").into());
-    }
     let label = store::label(&mut tx, OrgId::platform(), *p.user_id.as_uuid(), true).await?;
     let org = OrgId::from_uuid(body.org_id);
-    store::authorize(
+    store::require_support(
         Action::Request,
         p.user_id,
         OrgId::platform(),
         org,
-        store::vendor_facts(
-            &mut tx,
-            p.user_id,
-            *p.user_id.as_uuid(),
-            other,
-            Some(assertion),
-            None,
-        )
-        .await?,
+        load_operator_facts(&mut tx, p.user_id, Some((assertion, body.id)), None)
+            .await
+            .map_err(|e| SupportError::Refused(e.kind.code()))?,
     )?;
     support::arm(&mut tx, org).await?;
     let active: Option<bool> =
@@ -166,28 +159,18 @@ async fn approve(
         body.step_up,
     )
     .await?;
-    let other = store::eligible(&mut tx, *p.user_id.as_uuid()).await?;
-    if other == 0 {
-        return Err(SupportError::Refused("support.refuse.no_second_operator").into());
-    }
     let label = store::label(&mut tx, OrgId::platform(), *p.user_id.as_uuid(), true).await?;
     let org = OrgId::from_uuid(body.org_id);
     let session = support::lock(&mut tx, org, id).await?;
     support::live(&session, OffsetDateTime::now_utc())?;
-    store::authorize(
+    store::require_support(
         Action::OperatorApprove,
         p.user_id,
         OrgId::platform(),
         org,
-        store::vendor_facts(
-            &mut tx,
-            p.user_id,
-            session.operator_ref,
-            other,
-            Some(assertion),
-            Some(&session),
-        )
-        .await?,
+        load_operator_facts(&mut tx, p.user_id, Some((assertion, id)), Some((org, id)))
+            .await
+            .map_err(|e| SupportError::Refused(e.kind.code()))?,
     )?;
     if session.state != "REQUESTED" {
         return Err(SupportError::Refused("conflict").into());
@@ -223,23 +206,16 @@ async fn start(
         body.step_up,
     )
     .await?;
-    let other = store::eligible(&mut tx, *p.user_id.as_uuid()).await?;
     let org = OrgId::from_uuid(body.org_id);
     let session = support::lock(&mut tx, org, id).await?;
     support::live(&session, OffsetDateTime::now_utc())?;
     if session.tenant_approved_at.is_none() {
         return Err(SupportError::Refused("support.refuse.not_tenant_approved").into());
     }
-    let facts = store::vendor_facts(
-        &mut tx,
-        p.user_id,
-        session.operator_ref,
-        other,
-        Some(assertion),
-        Some(&session),
-    )
-    .await?;
-    store::authorize(Action::Start, p.user_id, OrgId::platform(), org, facts)?;
+    let facts = load_operator_facts(&mut tx, p.user_id, Some((assertion, id)), Some((org, id)))
+        .await
+        .map_err(|e| SupportError::Refused(e.kind.code()))?;
+    store::require_support(Action::Start, p.user_id, OrgId::platform(), org, facts)?;
     if session.state != "OPERATOR_APPROVED" {
         return Err(SupportError::Refused("conflict").into());
     }

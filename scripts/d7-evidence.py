@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 """Normalize built-in Playwright JSON and nextest JUnit for screens/evidence.py."""
+import argparse
 import json
 from pathlib import Path
 import re
@@ -85,26 +86,35 @@ def nextest_rows(xml, index):
 
 
 def main():
-    if len(sys.argv) < 4: raise ValueError("usage: d7-evidence.py <output-dir> <nextest.xml> <playwright.json>...")
-    output, junit, *reports = sys.argv[1:]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source", choices=("e2e", "nextest"))
+    parser.add_argument("output")
+    parser.add_argument("reports", nargs="+")
+    args = parser.parse_args()
+    files = args.reports
+    if not args.source and len(files) < 2: raise ValueError("nextest JUnit and Playwright JSON required")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     index = json.loads(subprocess.check_output(["node", "scripts/negative-index.mjs"], text=True))
-    reports = [json.loads(Path(file).read_text()) for file in reports]
-    paths = sorted(Path(junit).rglob("junit.xml")) if Path(junit).is_dir() else [Path(junit)]
-    if not paths: raise ValueError("nextest JUnit required")
-    xmls = [file.read_text() for file in paths]
-    roots = [ET.fromstring(xml) for xml in xmls]
-    # nextest's report timestamp is the proof time; copying an old artifact cannot refresh it.
-    times = [[fresh(e.get("timestamp")) for e in root.iter() if e.tag in ("testsuites", "testsuite") and e.get("timestamp")] for root in roots]
-    if any(not timestamps for timestamps in times): raise ValueError("nextest JUnit timestamp required for every shard")
-    timestamps = [timestamp for shard in times for timestamp in shard]
-    source = "python3 " + " ".join(sys.argv)
-    envelopes = {
-        "e2e": {"run_at": min(fresh(r["stats"]["startTime"]) for r in reports), "rows": [row for r in reports for row in e2e_rows(r, index)]},
-        "nextest": {"run_at": min(timestamps), "rows": [row for xml in xmls for row in nextest_rows(xml, index)]}}
-    Path(output).mkdir(parents=True, exist_ok=True)
+    envelopes = {}
+    if args.source != "nextest":
+        reports = [json.loads(Path(file).read_text()) for file in (files if args.source else files[1:])]
+        envelopes["e2e"] = {"run_at": min(fresh(r["stats"]["startTime"]) for r in reports),
+                            "rows": [row for r in reports for row in e2e_rows(r, index)]}
+    if args.source != "e2e":
+        paths = [path for file in (files if args.source else files[:1])
+                 for path in (sorted(Path(file).rglob("junit.xml")) if Path(file).is_dir() else [Path(file)])]
+        if not paths: raise ValueError("nextest JUnit required")
+        xmls = [file.read_text() for file in paths]
+        roots = [ET.fromstring(xml) for xml in xmls]
+        # Preserve each shard's proof time; copying an old artifact cannot refresh it.
+        times = [[fresh(e.get("timestamp")) for e in root.iter() if e.tag in ("testsuites", "testsuite") and e.get("timestamp")] for root in roots]
+        if any(not timestamps for timestamps in times): raise ValueError("nextest JUnit timestamp required for every shard")
+        envelopes["nextest"] = {"run_at": min(timestamp for shard in times for timestamp in shard),
+                                "rows": [row for xml in xmls for row in nextest_rows(xml, index)]}
+    source = "python3 scripts/d7-evidence.py " + (f"--source {args.source} OUTPUT_DIR REPORT..." if args.source else "OUTPUT_DIR NEXTEST_JUNIT PLAYWRIGHT_JSON...")
+    Path(args.output).mkdir(parents=True, exist_ok=True)
     for name, data in envelopes.items():
-        Path(output, name + ".json").write_text(json.dumps({"commit": commit, "source_command": source, **data}, indent=2) + "\n")
+        Path(args.output, name + ".json").write_text(json.dumps({"commit": commit, "source_command": source, **data}, indent=2) + "\n")
 
 
 if __name__ == "__main__":

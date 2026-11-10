@@ -14,17 +14,17 @@ import { Card } from "../../../ui/card/card";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { buttonClass } from "../../../ui/button/button-class";
 import { ApiError, outcomeQuery, recordHref } from "../api";
+import { requestKey } from "../../../lib/pure/request-key";
 
 export function RequestLookup() {
   const [key,setKey]=useState(""); const nav=useNavigate();
   const input=useRef<HTMLInputElement>(null);
-  const length=Array.from(key.trim()).length;
-  const valid=length>=16 && length<=200;
+  const valid=requestKey(key);
   return <main className="page"><PageHead title={t("requestOutcome.title")} />
     <Card><div className="form">
       <p>{t("requestOutcome.empty")}</p>
       <Field label={t("requestOutcome.lookup")} required hint={t("requestOutcome.invalid")}>{c=><TextInput {...c} ref={input} value={key} onChange={e=>setKey(e.target.value)} autoComplete="off" />}</Field>
-      {valid ? <Button onClick={()=>void nav({to:"/requests/$id",params:{id:key.trim()}})}>{t("requestOutcome.find")}</Button>
+      {valid ? <Button onClick={()=>void nav({to:"/requests/$id",params:{id:valid}})}>{t("requestOutcome.find")}</Button>
       : <DisabledReason reason={t("requestOutcome.invalid")} control={p=><Button {...p} onClick={e=>{p.onClick(e);input.current?.focus();}}>{t("requestOutcome.find")}</Button>} />}
     </div></Card></main>;
 }
@@ -39,7 +39,7 @@ export function RequestPage() {
       <dl><dt>{t("requestOutcome.created")}</dt><dd>{fmtDateTime(out.created_at)}</dd>
         {out.deadline && <><dt>{t("requestOutcome.deadline")}</dt><dd>{fmtDateTime(out.deadline)}</dd></>}</dl>
       {out.masked && <Banner tone="warn">{t("requestOutcome.masked")}</Banner>}
-      {out.refusal_code && <Banner tone="danger">{failureText(new ApiError(409,out.refusal_code,out.refusal_code))}</Banner>}
+      {out.refusal_code && <Banner tone="danger" actions={out.refusal_code.startsWith("change_request_") && <Link to="/people/requests" className={buttonClass("ghost")}>{t("requests.title")}</Link>}>{failureText(new ApiError(409,out.refusal_code,out.refusal_code))}</Banner>}
       {out.state === "PROCESSING" && <p>{t("requestOutcome.remedy")}</p>}
       <h3>{t("requestOutcome.result")}</h3>
       {out.result==null ? <p>{t("requestOutcome.none")}</p> : <p>{resultText(out.result)}</p>}

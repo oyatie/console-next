@@ -11,7 +11,7 @@ import { chunk, crashed, loaded, started } from "./lib/chunk-guard";
 import { CrashScreen } from "./lib/react/crash-screen";
 import { STALE_TIME_MS } from "./lib/freshness";
 import { queryDefaults } from "./lib/react/query-defaults";
-import { closeLive, openLive } from "./lib/live/live";
+import { sessionStream } from "./lib/live/session-stream";
 import { EmptyState } from "./ui/empty-state";
 import { initLocale } from "./shell/locale";
 import { IDLE_EXPIRED, watchSession } from "./auth/idle";
@@ -124,6 +124,7 @@ watchSession(queryClient, () => {
 // The shell's one event stream follows the principal (registered after watchSession, so a new principal's
 // cache is already dropped when it opens). Full tenant and platform sessions use their own readers.
 // An enrollment session does not stream; a lost session keeps its stream until re-auth decides.
+const setStreamActive = sessionStream(queryClient);
 let streaming: string | null = null;
 // A sign-out (not a session lost in use), or a reload after the server ended the session for inactivity, pauses the
 // sign-in field's autofill in this tab (auth/sign-in-id.ts): nobody is signed back in by the first suggestion.
@@ -145,9 +146,8 @@ session.subscribe(() => {
     void queryClient.resetQueries({ predicate: q => q.state.error instanceof ApiError && q.state.error.code === "privacy_consent_required" });
     // Consent review can miss change frames; shown data re-reads after acceptance.
     void queryClient.invalidateQueries({ refetchType: "none" });
-    openLive(queryClient);
   }
-  else closeLive();
+  setStreamActive(Boolean(streams));
 });
 
 /** Re-renders the app when the locale changes; server data is refetched in the new language. */

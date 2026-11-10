@@ -130,6 +130,39 @@ class EvidenceTest(unittest.TestCase):
             self.assertIn("stale", result.stderr)
             self.assertEqual((root / "out/e2e.json").read_text(), before)
 
+    def test_cli_publishes_each_source_without_the_other_reports(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "node").write_text(f'#!{sys.executable}\nprint({json.dumps(json.dumps(self.index))})\n')
+            (root / "node").chmod(0o755)
+            self.report["suites"][0]["specs"][0]["file"] = "error-beacon.spec.ts"
+            (root / "report.json").write_text(json.dumps(self.report))
+            (root / "junit.xml").write_text(f'<testsuites timestamp="{self.time}"><testsuite><testcase classname="sample::refusals" name="refuses"><failure/></testcase></testsuite></testsuites>')
+            env = {**os.environ, "PATH": directory + os.pathsep + os.environ["PATH"]}
+            for name, file, expected in (("e2e", "report.json", "pass"), ("nextest", "junit.xml", "fail")):
+                with self.subTest(source=name):
+                    output = root / name
+                    result = subprocess.run([sys.executable, str(Path(producer.__file__).resolve()),
+                                             "--source", name, str(output), str(root / file)],
+                                            env=env, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual([p.name for p in output.iterdir()], [name + ".json"])
+                    data = json.loads((output / (name + ".json")).read_text())
+                    self.assertEqual(data["run_at"], self.time)
+                    self.assertEqual(data["rows"][0]["status"], expected)
+                    self.assertNotIn(directory, data["source_command"])
+                    if name == "e2e": self.assertEqual(data["rows"][0]["kind"], "client-errors")
+
+    def test_legacy_cli_requires_both_reports_before_reading_inputs(self):
+        from unittest.mock import patch
+        with patch("sys.argv", ["d7-evidence.py", "unused-output", "missing-junit.xml"]), \
+                patch.object(producer.subprocess, "check_output") as command:
+            with self.assertRaisesRegex(ValueError, "nextest JUnit and Playwright JSON required"):
+                producer.main()
+            command.assert_not_called()
+
     def test_cli_merges_all_shard_reports_and_retains_failures(self):
         import subprocess
         import sys
