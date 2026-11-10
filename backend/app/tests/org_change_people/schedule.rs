@@ -69,7 +69,7 @@ async fn a_scheduled_change_is_cancelled_moved_and_applied_on_its_date(pool: PgP
         json!("MOVE_ORG_UNIT")
     );
 
-    // Under routing, someone who may not apply cannot touch an approved change.
+    // Under routing, a caller without a live grant cannot touch an approved change.
     t.route_org_changes().await;
     let admin = t.caller("ADMIN").await;
     let (status, body) = admin
@@ -80,9 +80,9 @@ async fn a_scheduled_change_is_cancelled_moved_and_applied_on_its_date(pool: PgP
             false,
         )
         .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
-    assert_eq!(code(&body), "org_change_scheduled_locked");
-    let (status, _) = admin
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+    assert_eq!(code(&body), "org_change.refuse.missing_grant");
+    let (status, body) = admin
         .send(
             "PATCH",
             &path,
@@ -90,7 +90,8 @@ async fn a_scheduled_change_is_cancelled_moved_and_applied_on_its_date(pool: PgP
             false,
         )
         .await;
-    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+    assert_eq!(code(&body), "org_change.refuse.missing_grant");
     assert_eq!(t.request(&id).await["status"], json!("APPROVED"));
     assert_eq!(t.request(&id).await["effectiveDate"], json!(day(3)));
     assert_eq!(
