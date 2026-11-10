@@ -9,6 +9,7 @@ import { get } from "../../../lib/query";
 import { pathTo, type ChartNode } from "../domain/model";
 import { findHits } from "../domain/search";
 import { useStructure } from "./use-structure";
+import { requestKey } from "../../../lib/pure/request-key";
 
 const ICON = { entity: Building2, site: MapPin, dept: Network, tenant: Network } as const;
 const MAX = 6;
@@ -24,6 +25,7 @@ export function JumpPalette({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const query = useDeferredValue(q.trim());
+  const request = requestKey(q);
   const { s } = useStructure();
   const people = useQuery({ ...peopleSearchQuery(query), enabled: query.length > 0 });
   const hits = useMemo(() => (s && query ? findHits(s, query).ids.map((id) => s.byId.get(id)!) : []), [s, query]);
@@ -59,6 +61,7 @@ export function JumpPalette({ onClose }: { onClose: () => void }) {
         onAction: () => void navigate({ to: "/people/$id", params: { id: p.id } }),
       })),
     },
+    { id: "requests", title: t("requestOutcome.title"), items: request ? [{ id: "request", label: t("requestOutcome.find"), detail: request, onAction: () => void navigate({ to: "/requests/$id", params: { id: request } }) }] : [] },
     { id: "tasks", title: t("structure.jump.tasks"), items: tasks },
   ];
   return (
@@ -71,7 +74,7 @@ export function JumpPalette({ onClose }: { onClose: () => void }) {
       onQuery={setQ}
       sections={sections}
       empty={t("structure.find.none", { q: query })}
-      footer={<span>{t("structure.jump.keys", { total: fmtNumber(hits.length) })}</span>}
+      footer={request ? undefined : <span>{t("structure.jump.keys", { total: fmtNumber(hits.length) })}</span>}
     />
   );
 }

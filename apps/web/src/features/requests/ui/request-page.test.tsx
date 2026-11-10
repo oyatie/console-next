@@ -188,4 +188,13 @@ test("expired receipt preserves the refusal and terminal remedy with optional de
   expect(markup).toContain(t("requestOutcome.code.command_expired"));
   expect(markup).toContain('href="/requests"');
   expect(markup).not.toContain(`<dt>${t("requestOutcome.deadline")}</dt>`);
+  expect(markup).not.toContain('href="/people/requests"');
+});
+
+test.each(["change_request_closed", "change_request_self_decision", "change_request_not_assignee", "change_request_not_requester"])("%s offers the request list inside its refusal banner", async (refusal_code) => {
+  view.query!.data = outcome({ state: "REFUSED", refusal_code });
+  const markup = await html();
+  const banner = markup.slice(markup.indexOf('data-tone="danger"'), markup.indexOf("<h3>"));
+  expect(banner).toContain('href="/people/requests"');
+  expect(banner).toContain(t("requests.title"));
 });

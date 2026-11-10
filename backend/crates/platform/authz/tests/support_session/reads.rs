@@ -53,6 +53,8 @@ fn support_principal_reads_only_its_active_approved_scope() {
 #[test]
 fn support_principal_cannot_request_approve_start_or_end() {
     for action in [
+        Action::ActiveList,
+        Action::List,
         Action::Request,
         Action::OperatorApprove,
         Action::TenantApprove,
@@ -79,7 +81,7 @@ fn every_write_feature_is_default_denied_to_support() {
     for feature in Feature::ALL {
         let expected = matches!(access::tag(feature), Some((_, access::Level::View)));
         assert_eq!(
-            decide_feature(feature, "session", "tenant", eligible()),
+            require_feature(feature, "session", "tenant", eligible()).is_ok(),
             expected,
             "{feature:?}"
         );
@@ -88,23 +90,22 @@ fn every_write_feature_is_default_denied_to_support() {
         }
     }
     assert!(writes > 0);
-    assert!(!decide_feature(
-        Feature::EmployeeDirectoryRead,
-        "session",
-        "tenant",
-        Facts {
-            in_scope: false,
-            ..eligible()
-        }
-    ));
+    assert!(
+        require_feature(
+            Feature::EmployeeDirectoryRead,
+            "session",
+            "tenant",
+            Facts {
+                in_scope: false,
+                ..eligible()
+            }
+        )
+        .is_err()
+    );
 }
 
 #[test]
 fn personal_fields_stay_masked_without_their_granted_class() {
-    assert!(field_visible(false, false));
-    assert!(field_visible(false, true));
-    assert!(!field_visible(true, false));
-    assert!(field_visible(true, true));
     for (personal, reveal_granted, allowed) in [
         (false, false, true),
         (false, true, true),
@@ -132,6 +133,8 @@ fn personal_fields_stay_masked_without_their_granted_class() {
 #[test]
 fn absent_authority_defaults_to_deny_for_every_action() {
     for action in [
+        Action::ActiveList,
+        Action::List,
         Action::Request,
         Action::OperatorApprove,
         Action::TenantApprove,
@@ -151,7 +154,19 @@ fn absent_authority_defaults_to_deny_for_every_action() {
                 "actor",
                 "tenant",
                 "tenant",
-                Facts::default()
+                Facts {
+                    active: false,
+                    vendor: false,
+                    step_up: false,
+                    other_eligible_holders: 0,
+                    actor_is_requester: false,
+                    actor_holds_permission: false,
+                    operator_approved: false,
+                    tenant_approved: false,
+                    in_scope: false,
+                    personal: false,
+                    reveal_granted: false,
+                }
             ));
         }
     }
@@ -159,7 +174,7 @@ fn absent_authority_defaults_to_deny_for_every_action() {
 
 #[test]
 fn mutation_refusal_is_the_cedar_forbid_reason() {
-    use console_platform_authz::cedar_pbac::actions::support_session::require;
+    use crate::cedar_pbac::actions::support_session::require;
     assert_eq!(
         require(
             Action::Write,
@@ -182,4 +197,44 @@ fn mutation_refusal_is_the_cedar_forbid_reason() {
         ),
         Err("forbidden")
     );
+}
+
+#[test]
+fn metadata_list_requires_live_operator_or_tenant_permission() {
+    assert!(vendor(Action::List, eligible()));
+    for facts in [
+        Facts {
+            active: false,
+            ..eligible()
+        },
+        Facts {
+            vendor: false,
+            ..eligible()
+        },
+    ] {
+        assert!(!vendor(Action::List, facts));
+    }
+    let tenant = Facts {
+        vendor: false,
+        ..eligible()
+    };
+    let list = |org, facts| {
+        decide(
+            Action::List,
+            PrincipalKind::Tenant,
+            "tenant-user",
+            org,
+            "tenant",
+            facts,
+        )
+    };
+    assert!(list("tenant", tenant));
+    assert!(!list("other", tenant));
+    assert!(!list(
+        "tenant",
+        Facts {
+            actor_holds_permission: false,
+            ..tenant
+        }
+    ));
 }

@@ -35,6 +35,7 @@ impl PgOrgChangeStore {
             bounded_text(memo, "memo", 2000)?;
         }
         let org = current_org().map_err(KernelError::from)?;
+        let sole_holder_port = self.sole_holder_decision.clone();
         with_audits(&self.pool, org, |tx| {
             Box::pin(async move {
                 let request = lock_request(tx, id).await?;
@@ -75,21 +76,39 @@ impl PgOrgChangeStore {
                 }
 
                 let now = OffsetDateTime::now_utc();
+                let exception = if let Some(assertion) = command.step_up.clone() {
+                    Some(
+                        super::sole_holder_decision::record(
+                            tx,
+                            org,
+                            actor,
+                            id,
+                            &command,
+                            assertion,
+                            sole_holder_port.as_deref(),
+                        )
+                        .await?,
+                    )
+                } else {
+                    None
+                };
                 // Record the decision through gov_approvals so the DB-level
                 // approver <> requester CHECK is the second SoD net.
-                sqlx::query(
-                    "INSERT INTO gov_approvals \
+                if exception.is_none() {
+                    sqlx::query(
+                        "INSERT INTO gov_approvals \
                      (org_id, request_ref, kind, requested_by, approver_id, decision, decided_at) \
                      VALUES ($1, $2, 'org_change_step', $3, $4, $5, $6)",
-                )
-                .bind(*org.as_uuid())
-                .bind(step_id)
-                .bind(request.drafted_by)
-                .bind(*actor.as_uuid())
-                .bind(if approved { "approved" } else { "rejected" })
-                .bind(now)
-                .execute(tx.as_mut())
-                .await?;
+                    )
+                    .bind(*org.as_uuid())
+                    .bind(step_id)
+                    .bind(request.drafted_by)
+                    .bind(*actor.as_uuid())
+                    .bind(if approved { "approved" } else { "rejected" })
+                    .bind(now)
+                    .execute(tx.as_mut())
+                    .await?;
+                }
 
                 let next_decision = if approved {
                     StepDecision::Approved
@@ -98,13 +117,14 @@ impl PgOrgChangeStore {
                 };
                 sqlx::query(
                     "UPDATE org_change_approval_steps SET decision = $2, decided_by = $3, \
-                     decided_at = $4, memo = $5 WHERE id = $1",
+                     decided_at = $4, memo = $5, sole_holder_exception_id = $6 WHERE id = $1",
                 )
                 .bind(step_id)
                 .bind(next_decision.as_db())
                 .bind(*actor.as_uuid())
                 .bind(now)
                 .bind(command.memo.as_deref())
+                .bind(exception)
                 .execute(tx.as_mut())
                 .await?;
 

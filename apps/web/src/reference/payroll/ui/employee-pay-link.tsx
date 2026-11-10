@@ -10,5 +10,5 @@ export function EmployeePayLink({ employeeId }: { employeeId: string }) {
   const modules = useQuery(modulesQuery);
   const need = useRouter().routesByPath["/payroll/employees/$employeeId"].options.staticData?.access;
   return access.data && need && need !== "signed-in" && !accessRefusal(access.data, need) && modules.data && moduleReady(modules.data, "payroll")
-    ? <Link to="/payroll/employees/$employeeId" params={{ employeeId }} search={{ period: undefined, pay_date: undefined }}>{t("payroll.employee.title")}</Link> : null;
+    ? <Link className="link" to="/payroll/employees/$employeeId" params={{ employeeId }} search={{ period: undefined, pay_date: undefined }}>{t("payroll.employee.title")}</Link> : null;
 }

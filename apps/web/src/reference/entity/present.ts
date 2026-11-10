@@ -2,7 +2,7 @@ import type { LegalEntity } from "@console/api/pending";
 import { entityNames } from "./domain/names";
 // Words for the legal entity facts other slices show: a workplace kind's label (decision #18: a label only).
 import type { WorkplaceKind } from "@console/api/pending";
-import { codeText } from "../../lib/labels";
+import { codeText } from "../../lib/code-text";
 
 /** A workplace kind's label: the tenant's own, else the platform default's catalog label. */
 export const kindLabel = (k: Pick<WorkplaceKind, "code" | "label">) => k.label || codeText(`workplace.kind.${k.code}`, k.code);

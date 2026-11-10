@@ -176,6 +176,11 @@ async fn seeded_855_statutory_urls_pass_and_register_loads(pool: PgPool) -> sqlx
         "expected at least 855 seeded statutory URLs, got {}",
         urls.len()
     );
+    // Preserve established coverage while allowing sourced catalog additions.
+    assert!(
+        urls.len() >= 4612,
+        "expected at least 4612 materialized statutory URLs across all seeded rows"
+    );
     assert!(
         urls.iter()
             .all(|u| u.starts_with("https://www.law.go.kr/")

@@ -16,6 +16,14 @@ use crate::wiring::orgchange_ports::{PgEmploymentTransferPort, PgOrgUnitWritePor
 
 pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     let (state, pool) = (deps.state, deps.pool);
+    let mut org_changes = PgOrgChangeStore::new(pool.clone())
+        .with_employment_transfer(Arc::new(PgEmploymentTransferPort))
+        .with_org_unit_write(Arc::new(PgOrgUnitWritePort));
+    if let Some(passkeys) = state.policy_step_up.clone() {
+        org_changes = org_changes.with_sole_holder_decision(Arc::new(
+            crate::wiring::orgchange_sole_holder::PgSoleHolderDecisionPort(passkeys),
+        ));
+    }
     router
         .merge(
             crate::privacy::router(
@@ -46,9 +54,7 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
         // Org-change lifecycle engine (조직 개편 결재): draft → preflight
         // → ordered SoD approval → effective-dated apply (§15/§16).
         .merge(console_orgchange_rest::router(OrgChangeRestState::new(
-            PgOrgChangeStore::new(pool.clone())
-                .with_employment_transfer(Arc::new(PgEmploymentTransferPort))
-                .with_org_unit_write(Arc::new(PgOrgUnitWritePort)),
+            org_changes,
             state.jwt_verifier.clone(),
         )))
         // 법인 · 사업장 + setup phase (운영 시작); composed in entity_wiring.rs.
