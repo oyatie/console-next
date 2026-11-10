@@ -9,7 +9,7 @@ export const koUiOverrideSheet = {
   "uiOverrideSheet.auto": "자동",
   "uiOverrideSheet.sole.passkey": "패스키로 본인 확인",
   "uiOverrideSheet.sole.passkey.meta": "이 요청에 묶임",
-  "uiOverrideSheet.sole.notify": "임원·최고 관리자 {count, plural, other {#명}}에게 알림",
+  "uiOverrideSheet.sole.notify": "알림 기록 {count}건",
   "uiOverrideSheet.sole.review": "검토 대상으로 표시",
   "uiOverrideSheet.sole.review.meta": "월간 예외 검토",
   "uiOverrideSheet.stepUp": "패스키로 확인하고 {action}",

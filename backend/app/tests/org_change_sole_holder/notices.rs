@@ -84,7 +84,7 @@ async fn equal_count_recipient_replacement_invalidates_consent(pool: PgPool) {
     .await
     .unwrap_err();
     assert!(
-        matches!(error, console_orgchange_adapter_postgres::PgOrgChangeError::Domain(e) if e.code==Some("step_up_failed"))
+        matches!(error, console_orgchange_adapter_postgres::PgOrgChangeError::Domain(e) if e.kind == console_kernel_core::ErrorKind::Conflict && e.code==Some("lifecycle.refuse.stale_version"))
     );
     assert_eq!(snapshot(&pool, &w).await, before);
 }

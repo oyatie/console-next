@@ -49,7 +49,7 @@ export const koLifecycleTrail = {
   "lifecycle.refuse.close_blocked": "필수 항목을 모두 처리한 뒤 종료하십시오.",
   "lifecycle.refuse.deadline_unknown": "기한은 법정 기준에서만 정합니다. 미확인 기한을 날짜로 입력할 수 없습니다.",
   "lifecycle.refuse.withdrawn": "철회된 변경은 결재할 수 없습니다. 변경 내역에서 현재 상태를 확인하십시오.",
-  "lifecycle.refuse.stale_version": "다른 담당자가 변경을 처리했습니다. 최신 내역을 다시 확인한 뒤 진행하십시오.",
+  "lifecycle.refuse.stale_version": "변경 내용이 달라졌습니다. 최신 내역을 다시 확인한 뒤 진행하십시오.",
   "lifecycle.refuse.merge_not_allowed": "여러 결재 단계를 한 번에 처리할 수 없습니다. 각 단계의 담당자가 차례로 결재하십시오.",
   "lifecycle.trail.documents.hire": "입사 서류 · 근로계약 확인",
   "lifecycle.trail.documents.appoint": "발령 서류 확인",
