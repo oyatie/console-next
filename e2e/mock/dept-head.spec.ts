@@ -248,7 +248,7 @@ for (const width of [1440, 390]) test(`keyboard appointment adopts the pressed c
   expect(fixture.unexpected).toEqual([]);
 });
 
-for (const width of [1440, 390]) test(`list boundary keys and order and add targets at ${width}px`, async ({ page }) => {
+for (const width of [1440, 390]) for (const key of ["Home", "End", "PageUp", "PageDown"]) test(`list boundary ${key} and order and add targets at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screens[2], "populated");
   const tree = structure(3);
@@ -259,17 +259,13 @@ for (const width of [1440, 390]) test(`list boundary keys and order and add targ
   const row = page.getByRole("row").filter({ hasText: "검증부서 2" });
   const head = row.getByRole("button", { name: "부서장 지정", exact: true });
   await expect(head).toBeVisible();
-  for (const key of ["Home", "End", "PageUp", "PageDown"]) {
-    // Paging virtualizes the origin out; bring it back before the next independent key.
-    if (width === 390) await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
-    await head.focus();
-    const startIndex = Number(await row.getAttribute("aria-rowindex"));
-    await page.keyboard.press(key);
-    const destination = page.getByRole("row").filter({ hasText: "검증부서 3" });
-    if (key === "PageDown") await expect.poll(() => destination.evaluate(el => el.contains(document.activeElement))).toBe(true);
-    else if (key === "PageUp") await expect.poll(() => page.evaluate(() => Number(document.activeElement?.closest('[role="row"]')?.getAttribute("aria-rowindex")))).toBeLessThan(startIndex);
-    else if (width === 1440 || key === "Home") await expect(head).not.toBeFocused();
-  }
+  await head.focus();
+  const startIndex = Number(await row.getAttribute("aria-rowindex"));
+  await page.keyboard.press(key);
+  const destination = page.getByRole("row").filter({ hasText: "검증부서 3" });
+  if (key === "PageDown") await expect.poll(() => destination.evaluate(el => el.contains(document.activeElement))).toBe(true);
+  else if (key === "PageUp") await expect.poll(() => page.evaluate(() => Number(document.activeElement?.closest('[role="row"]')?.getAttribute("aria-rowindex")))).toBeLessThan(startIndex);
+  else if (width === 1440 || key === "Home") await expect(head).not.toBeFocused();
   if (width === 1440) {
     // Arrive with arrows so the roving cell, rather than a non-roving tabindex, is measured.
     for (const [header, label] of [["순서", "검증부서 2 위로"], ["작업", "검증부서 2 이름 변경"]]) {
