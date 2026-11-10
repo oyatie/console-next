@@ -84,13 +84,14 @@ const people = createRoute({
   } }),
   // The search term (a person's name) stays out of the URL and so out of history; only ids, filters and the view go here.
   // The accounts view adds its role chip, inactive toggle, open sheet (`act`) and the person to invite.
-  validateSearch: (s: Record<string, unknown>): PeopleSearch & AccountsSearch => ({
+  validateSearch: (s: Record<string, unknown>): PeopleSearch & AccountsSearch & { full?: 1 } => ({
     ...accountsSearch(s),
     tab: parsePeopleTab(s.tab) === "roster" ? undefined : parsePeopleTab(s.tab),
     exitStatus: parseExitFilter(s.exitStatus),
     placement: s.placement === "unplaced" ? "unplaced" : undefined,
     sel: str(s.sel),
     sel2: str(s.sel2),
+    full: str(s.sel) && (s.full === 1 || s.full === "1") ? 1 : undefined,
     view: s.view === "accounts" ? "accounts" : undefined,
     unit: str(s.unit),
     status: str(s.status),

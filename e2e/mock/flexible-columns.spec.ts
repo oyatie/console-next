@@ -40,6 +40,7 @@ async function setupRoster(page: Page) {
 }
 
 test("people roster proves flexible 3-column layout, URL ?sel=/&sel2= reload, J/K + arrows + / + Enter + Esc, and drag-resize", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   const fixture = await setupRoster(page);
   await page.goto("/people");
@@ -98,6 +99,23 @@ test("people roster proves flexible 3-column layout, URL ?sel=/&sel2= reload, J/
   await page.keyboard.press("/");
   await expect(page.getByRole("searchbox", { name: t("roster.find") })).toBeFocused();
 
+  // Full screen is shareable; Escape restores before closing the selected unit.
+  const full = related.getByRole("button", { name: t("uiFlexibleColumns.full"), exact: true });
+  await full.click();
+  await expect(page).toHaveURL(/full=1/);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(full).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(new RegExp(`sel=${id(101)}`));
+  await expect(page).toHaveURL(new RegExp(`sel2=${id(4003)}`));
+  await expect(grid).toBeHidden();
+  await expect(record).toBeHidden();
+  await full.focus();
+  await page.keyboard.press("Escape");
+  await expect(page).not.toHaveURL(/full=/);
+  await expect(full).toHaveAttribute("aria-pressed", "false");
+  await expect(full).toBeFocused();
+  await expect(grid).toBeVisible();
+
   // Esc closes rightmost column first (?sel2=), then second Esc closes ?sel= and restores row focus.
   await related.getByRole("link", { name: t("roster.panel.openOrg"), exact: true }).focus();
   await page.keyboard.press("Escape");
@@ -121,7 +139,7 @@ test("people roster proves flexible 3-column layout, URL ?sel=/&sel2= reload, J/
 });
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const) {
-  test(`people roster 3-column and single-column + Back fit ${width}px in ${theme} @ui-state`, async ({ page }) => {
+  test(`people roster 3-column and single-column + Back fit ${width}px in ${theme} @ui-state`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await setupRoster(page);
@@ -131,6 +149,28 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const)
     const record = page.getByRole("complementary", { name: t("people.panel"), exact: true });
     const related = page.getByRole("complementary", { name: t("roster.panel.unit"), exact: true });
     await expect(related).toBeVisible({ timeout: 15_000 });
+
+    await page.screenshot({ path: testInfo.outputPath(`${width}-${theme}-columns.png`), fullPage: true });
+    const full = related.getByRole("button", { name: t("uiFlexibleColumns.full"), exact: true });
+    if (width === 1440) {
+      await full.click();
+      await expect(full).toHaveAttribute("aria-pressed", "true");
+      await expect(grid).toBeHidden();
+      await expect(record).toBeHidden();
+      await fits(page, `people full ${width} ${theme}`);
+      await page.screenshot({ path: testInfo.outputPath(`${width}-${theme}-full.png`), fullPage: true });
+      await full.press("Escape");
+      await expect(full).toHaveAttribute("aria-pressed", "false");
+      await expect(full).toBeFocused();
+    } else {
+      await expect(full).toHaveCount(0);
+      await page.goto(`/people?sel=${id(100)}&sel2=${id(4003)}&full=1`);
+      await expect(related).toBeVisible();
+      await expect(full).toHaveCount(0);
+      await fits(page, `people full ${width} ${theme}`);
+      await page.screenshot({ path: testInfo.outputPath(`${width}-${theme}-full.png`), fullPage: true });
+    }
+    await page.screenshot({ path: testInfo.outputPath(`${width}-${theme}-restored.png`), fullPage: true });
 
     if (width === 1440) {
       await expect(grid).toBeVisible();
@@ -170,6 +210,10 @@ for (const theme of ["light", "dark"] as const) {
     const dock = page.getByRole("complementary", { name: "26칸 저장", exact: true }).or(page.getByRole("dialog", { name: "26칸 저장", exact: true }));
     await dock.getByRole("button", { name: "돌아가기", exact: true }).click();
     await expect(dock).toHaveCount(0);
+
+    const examples = page.getByRole("heading", { name: t("uiFlexibleColumns.full"), exact: true }).locator("..");
+    await expect(examples.getByRole("button", { name: t("uiFlexibleColumns.full"), pressed: true, exact: true })).toHaveCount(1);
+    await expect(examples.getByRole("button", { name: t("uiFlexibleColumns.full"), pressed: false, exact: true })).toHaveCount(1);
 
     const trigger = page.locator("#gallery-needs-me-OPERATING");
     await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));

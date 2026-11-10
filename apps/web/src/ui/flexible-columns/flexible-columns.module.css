@@ -23,10 +23,14 @@
   .columns[data-depth="2"] > .list, .columns[data-depth="2"] > .splitter:first-of-type { display: none; }
   .columns[data-depth="2"] > .record { flex: 1 1 0%; width: auto; max-width: none; border-inline-start: 0; }
 }
+@media (min-width: 640px) {
+  .columns[data-full] > .list, .columns[data-full] > .splitter, .columns[data-full] > .record:not(:last-child) { display: none; }
+  .columns[data-full] > :last-child { flex: 1 1 0%; width: auto; max-width: none; border-inline-start: 0; }
+}
 @media (max-width: 639px) {
   .columns:not([data-depth="0"]) > .list, .splitter, .columns[data-depth="2"] > .record { display: none; }
   .record, .related, .columns[data-depth="2"] > .record { position: static; max-height: none; flex: 1 1 100%; width: 100%; max-width: 100%; min-width: 0; border-inline-start: 0; }
   .head, .head:not([data-titled]) { padding: var(--space-2) var(--space-4) 0; }
   .head .back { display: inline-flex; }
-  .head .close { display: none; }
+  .head .full, .head .close { display: none; }
 }
