@@ -161,20 +161,22 @@ async fn rates_labels_identify_bearer_and_unknown_codes_are_held(pool: PgPool) {
         assert_eq!(row["name"], name);
         assert_ne!(row["name"], row["instrument_ko"]);
     }
-    // rls-arming: ok owner models a register code without a declared display meaning.
-    sqlx::query("DELETE FROM payroll_statutory_rates WHERE code='SIMPLIFIED_WITHHOLDING_TABLE'")
-        .execute(&pool)
-        .await
-        .unwrap();
+    // rls-arming: ok owner permits an undeclared code only in this isolated fixture.
+    sqlx::query(
+        "ALTER TABLE payroll_statutory_rates DROP CONSTRAINT payroll_statutory_rates_code_check",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
     // rls-arming: ok owner retains populated quantities to prove unknown codes fail closed.
-    sqlx::query("UPDATE payroll_statutory_rates SET code='SIMPLIFIED_WITHHOLDING_TABLE' WHERE code='NATIONAL_PENSION_EMPLOYEE'")
+    sqlx::query("UPDATE payroll_statutory_rates SET code='UNDECLARED_REFERENCE' WHERE code='NATIONAL_PENSION_EMPLOYEE'")
         .execute(&pool).await.unwrap();
     let response = get(service, &uri(entity), &token).await;
     let unknown = response.json["items"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|row| row["code"] == "SIMPLIFIED_WITHHOLDING_TABLE")
+        .find(|row| row["code"] == "UNDECLARED_REFERENCE")
         .unwrap();
     assert_eq!(unknown["name"], "미분류");
     assert_eq!(unknown["value"], Value::Null);
@@ -198,4 +200,41 @@ async fn rates_includes_stored_2027_pension_as_scheduled(pool: PgPool) {
     assert_eq!(pension["rate_den"], 10000);
     assert_eq!(pension["value"], "500/10000");
     assert_eq!(pension["status"], "SCHEDULED");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn rates_every_stored_code_has_a_declared_label(pool: PgPool) {
+    let labels: std::collections::HashMap<String, String> = serde_json::from_str(include_str!(
+        "../../../../../../packages/i18n/src/catalogs/payroll-reference-labels.json"
+    ))
+    .unwrap();
+    // rls-arming: ok owner checks the entire stored register, including expired rows.
+    let codes: Vec<String> =
+        sqlx::query_scalar("SELECT DISTINCT code FROM payroll_statutory_rates")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert!(!codes.is_empty());
+    for code in codes {
+        let label = labels
+            .get(&code)
+            .unwrap_or_else(|| panic!("missing label: {code}"));
+        assert!(!label.trim().is_empty(), "blank label: {code}");
+        assert_ne!(label, &labels["unknown"], "unclassified label: {code}");
+    }
+    let (service, token, entity, _) = setup(&pool).await;
+    let response = get(service, &uri(entity), &token).await;
+    assert_eq!(response.status, StatusCode::OK);
+    for row in response.json["items"].as_array().unwrap() {
+        assert_eq!(row["name"], labels[row["code"].as_str().unwrap()]);
+    }
+    let table = response.json["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["code"] == "SIMPLIFIED_WITHHOLDING_TABLE")
+        .unwrap();
+    assert_eq!(table["name"], "근로소득 간이세액표");
+    assert_eq!(table["value"], Value::Null);
+    assert_eq!(table["status"], "HELD");
 }

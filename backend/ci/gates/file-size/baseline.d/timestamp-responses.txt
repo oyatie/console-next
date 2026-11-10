@@ -1,8 +1,0 @@
-# SPDX-License-Identifier: LicenseRef-Proprietary
-# Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
-# Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
-app/src/hr.rs	3519
-app/tests/audit_api.rs	754
-app/tests/hr_attendance_self_read.rs	287
-crates/compliance/application/src/lib.rs	463
-crates/equipment/adapter-postgres/src/lib.rs	1189

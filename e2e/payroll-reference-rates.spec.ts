@@ -29,26 +29,35 @@ test("payroll reference renders the entity's live statutory register", { tag: ["
   expect(wage.value).toBe("시간급 10320원 · 월 환산액 2156880원");
   const scheduled = rates.items.find((item: { code: string; effective_from: string }) => item.code === "NATIONAL_PENSION_EMPLOYEE" && item.effective_from === "2027-01-01");
   expect(scheduled?.status).toBe("SCHEDULED");
+  const table = rates.items.find((item: { code: string }) => item.code === "SIMPLIFIED_WITHHOLDING_TABLE");
+  expect(table.name).toBe("근로소득 간이세액표");
+  expect(table.value).toBeNull();
+  expect(table.status).toBe("HELD");
   await go(admin, `/payroll/reference?entity=${entity}`);
-  const grid = admin.getByRole("grid");
-  for (const value of [wage.value, scheduled.value]) {
-    const displayed = admin.getByText(value, { exact: true }).first();
-    await expect.poll(async () => {
-      if (await displayed.isVisible()) return true;
-      await grid.evaluate(el => { el.scrollTop += el.clientHeight / 2; });
-      return false;
-    }, { intervals: [100] }).toBe(true);
-    await displayed.scrollIntoViewIfNeeded();
-  }
-  await expect(admin.getByText("적용 예정", { exact: true }).first()).toBeVisible();
-  await expect(admin.getByText(active.provenance_ko, { exact: false })).toHaveCount(0);
-  await grid.evaluate(el => { el.scrollTop = 0; });
+  await expect(admin.getByRole("heading", { name: "급여 기준표", exact: true })).toBeVisible();
   await expect(admin.getByText(active.value, { exact: true }).first()).toBeVisible();
-  await expect(admin.getByRole("link", { name: `${active.instrument_ko} · ${active.article_ko} · ${active.promulgation_ko}`, exact: true }).first()).toHaveAttribute("href", active.source_url);
+  await expect(admin.getByRole("link", { name: `${active.instrument_ko} · ${active.article_ko} · ${active.promulgation_ko}`, exact: true })).toHaveCount(0);
+  await expect(admin.getByText(`${active.instrument_ko} · ${active.article_ko} · ${active.promulgation_ko} · ${new URL(active.source_url).href}`, { exact: true }).first()).toBeVisible();
+  const grid = admin.getByRole("grid");
+  await grid.press("Control+Home");
+  const reveal = async (value: string) => {
+    const displayed = admin.getByText(value, { exact: false }).first();
+    await expect(async () => {
+      if (!(await displayed.isVisible())) await grid.press("ArrowDown");
+      await displayed.scrollIntoViewIfNeeded({ timeout: 500 });
+      await expect(displayed).toBeInViewport({ timeout: 500 });
+    }).toPass({ intervals: [100], timeout: 15_000 });
+  };
+  for (const value of [wage.value, scheduled.value, table.name]) await reveal(value);
+  await expect(admin.getByText("근거 확인 필요", { exact: true }).first()).toBeVisible();
+  await expect(admin.getByText(active.provenance_ko, { exact: false })).toHaveCount(0);
+  await admin.screenshot({ path: testInfo.outputPath("reference-desktop-light.png"), fullPage: true });
   await admin.setViewportSize({ width: 390, height: 844 });
   await admin.emulateMedia({ colorScheme: "dark" });
+  await admin.reload();
   await admin.locator("html").evaluate(el => { el.dataset.theme = "dark"; });
-  await expect(admin.getByText(active.value, { exact: true }).first()).toBeVisible();
+  await expect(grid).toHaveAttribute("data-layout", "cards");
+  await expect(admin.getByText(active.value, { exact: true }).first()).toBeInViewport();
   await expect.poll(() => admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await admin.screenshot({ path: testInfo.outputPath("reference-mobile-dark.png"), fullPage: true });
 });
