@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import type { components } from "@console/api/schema";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { todayPreset } from "./sheet";
 import { expectAccessible } from "./a11y";
@@ -83,8 +85,15 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
     let id = "";
     await expect(async () => {
       const people = ((await (await api(`/employees?search=${encodeURIComponent("이이번")}&limit=1`)).json()) as { items: { id: string }[] }).items;
-      const evs = ((await (await api(`/employees/${people[0]!.id}/lifecycle-events`)).json()) as { items: { batch_id?: string; event_type: string }[] }).items;
-      id = evs.find((x) => x.event_type === "TRANSFER" && x.batch_id)!.batch_id!;
+      const evs = ((await (await api(`/employees/${people[0]!.id}/lifecycle-events`)).json()) as { items: { id: string; batch_id?: string; event_type: string }[] }).items;
+      const event = evs.find((x) => x.event_type === "TRANSFER" && x.batch_id)!;
+      id = event.batch_id!;
+      const cases = await (await api(`/employees/${people[0]!.id}/lifecycle-cases`)).json() as components["schemas"]["LifecycleCase"][];
+      const trail = cases.filter((item) => item.trigger_id === event.id);
+      expect(trail).toHaveLength(1);
+      expect(trail[0]!.items.find((item) => item.item_key === "R1")).toMatchObject({
+        status: "DONE_OBSERVED", observed_ref: { table: "employee_lifecycle_events", id: event.id },
+      });
     }).toPass({ timeout: 15_000 });
     return id;
   };

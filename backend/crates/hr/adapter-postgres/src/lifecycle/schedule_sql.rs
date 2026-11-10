@@ -51,24 +51,20 @@ pub async fn replay_lifecycle_schedule(
     .fetch_all(tx.as_mut())
     .await?
     .into_iter()
-    .map(|row| {
-        Ok(ScheduledLifecycleRow {
-            id: row.try_get("id")?,
-            event_type: row.try_get("event_type")?,
-            effective_date: row.try_get("effective_date")?,
-            to_org_unit: row.try_get("to_org_unit")?,
-            exit_owned: row.try_get("exit_owned")?,
-            transition: row
-                .try_get::<Option<Value>, _>("scheduled_request")?
-                .and_then(|request| serde_json::from_value(request).ok()),
-        })
-    })
+    .map(scheduled_from_row)
     .collect::<Result<Vec<_>, sqlx::Error>>()?;
+    replay_loaded_schedule(&rows, live, change)
+}
 
-    let (_, baseline) = simulate_lifecycle_schedule(&rows, live, live.clone(), None, None)?;
+pub(crate) fn replay_loaded_schedule(
+    rows: &[ScheduledLifecycleRow],
+    live: &EmployeeForLifecycle,
+    change: ScheduleChange<'_>,
+) -> Result<(EmployeeForLifecycle, Option<Uuid>), HrError> {
+    let (_, baseline) = simulate_lifecycle_schedule(rows, live, live.clone(), None, None)?;
     let (met, replaces, failures) = match change {
         ScheduleChange::Head(after) => {
-            let (met, failures) = simulate_lifecycle_schedule(&rows, live, *after, None, None)?;
+            let (met, failures) = simulate_lifecycle_schedule(rows, live, *after, None, None)?;
             (met, None, failures)
         }
         ScheduleChange::Insert(transition) => {
@@ -81,12 +77,12 @@ pub async fn replay_lifecycle_schedule(
                 })
                 .map(|row| row.id);
             let (met, failures) =
-                simulate_lifecycle_schedule(&rows, live, live.clone(), Some(transition), replaces)?;
+                simulate_lifecycle_schedule(rows, live, live.clone(), Some(transition), replaces)?;
             (met, replaces, failures)
         }
         ScheduleChange::Withdraw(id) => {
             let (met, failures) =
-                simulate_lifecycle_schedule(&rows, live, live.clone(), None, Some(id))?;
+                simulate_lifecycle_schedule(rows, live, live.clone(), None, Some(id))?;
             (met, None, failures)
         }
     };
@@ -109,6 +105,40 @@ pub async fn replay_lifecycle_schedule(
         return Err(HrError::schedule_conflict(refusals));
     }
     Ok((met, replaces))
+}
+
+fn scheduled_from_row(row: sqlx::postgres::PgRow) -> Result<ScheduledLifecycleRow, sqlx::Error> {
+    Ok(ScheduledLifecycleRow {
+        id: row.try_get("id")?,
+        event_type: row.try_get("event_type")?,
+        effective_date: row.try_get("effective_date")?,
+        to_org_unit: row.try_get("to_org_unit")?,
+        exit_owned: row.try_get("exit_owned")?,
+        transition: row
+            .try_get::<Option<Value>, _>("scheduled_request")?
+            .and_then(|request| serde_json::from_value(request).ok()),
+    })
+}
+
+pub(crate) async fn load_schedules_many(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org: Uuid,
+    employees: &[Uuid],
+) -> Result<BTreeMap<Uuid, Vec<ScheduledLifecycleRow>>, HrError> {
+    let rows = sqlx::query("SELECT l.employee_id,l.id,l.event_type,l.effective_date,l.to_org_unit,l.scheduled_request, \
+        l.event_type <> 'GROUP_TRANSFER' AND EXISTS (SELECT 1 FROM employee_exit_cases c \
+            WHERE c.org_id=l.org_id AND c.exit_lifecycle_event_id=l.id) AS exit_owned \
+        FROM employee_lifecycle_events l WHERE l.org_id=$1 AND l.employee_id=ANY($2) AND l.state='SCHEDULED' \
+        ORDER BY l.employee_id,l.effective_date,l.created_at")
+        .bind(org).bind(employees).fetch_all(tx.as_mut()).await?;
+    let mut schedules: BTreeMap<Uuid, Vec<ScheduledLifecycleRow>> = BTreeMap::new();
+    for row in rows {
+        schedules
+            .entry(row.try_get("employee_id")?)
+            .or_default()
+            .push(scheduled_from_row(row)?);
+    }
+    Ok(schedules)
 }
 
 /// One pass of [`replay_lifecycle_schedule`]: `head` through `rows` (minus

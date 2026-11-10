@@ -7,15 +7,55 @@ use console_compliance_domain::statutory::{
 pub use console_compliance_domain::statutory::{StatutoryUnit, codes};
 use console_kernel_core::KernelError;
 use sqlx::{PgConnection, Row, postgres::PgRow};
+use time::Date;
 
 pub async fn load_statutory_register(
     conn: &mut PgConnection,
 ) -> Result<StatutoryRegister, KernelError> {
-    let rules = sqlx::query(
-        "SELECT code, effective_from, effective_to_exclusive, unit, value_num, value_den, \
-                instrument_ko, article_ko, source_url, release_disposition, review_receipt_ref \
-         FROM lifecycle_statutory_rules ORDER BY code, effective_from",
-    )
+    load_register(conn, None, &[]).await
+}
+
+/// Load case dates and their loss-date offsets, preserving first filing dates and numeric rules.
+pub async fn load_statutory_register_for_codes(
+    conn: &mut PgConnection,
+    filing_codes: &[String],
+    dates: &[Date],
+) -> Result<StatutoryRegister, KernelError> {
+    load_register(conn, Some(filing_codes), dates).await
+}
+
+async fn load_register(
+    conn: &mut PgConnection,
+    filing_codes: Option<&[String]>,
+    dates: &[Date],
+) -> Result<StatutoryRegister, KernelError> {
+    macro_rules! register_sql {
+        ($columns:literal, $tail:literal) => {
+            concat!(
+                "WITH available AS MATERIALIZED (SELECT r.*, \
+                   min(effective_from) FILTER (WHERE filing_rule IS NOT NULL) OVER (PARTITION BY code) AS first_from, \
+                   min(LEAST(COALESCE((filing_rule->>'loss_offset_days')::int,0),0)) OVER () AS min_offset, \
+                   max(GREATEST(COALESCE((filing_rule->>'loss_offset_days')::int,0),0)) OVER () AS max_offset \
+                 FROM lifecycle_statutory_rules r \
+                 WHERE $1::text[] IS NULL OR filing_rule IS NULL OR code=ANY($1)) SELECT ",
+                $columns,
+                " FROM available WHERE ($2::date IS NULL OR filing_rule IS NULL OR effective_from=first_from \
+                   OR (effective_from<=$3::date+max_offset AND (effective_to_exclusive IS NULL OR effective_to_exclusive>$2::date+min_offset)))",
+                $tail,
+                " ORDER BY code,effective_from"
+            )
+        };
+    }
+    let from = dates.iter().min().copied();
+    let through = dates.iter().max().copied();
+    let rules = sqlx::query(register_sql!(
+        "code, effective_from, effective_to_exclusive, unit, value_num, value_den, \
+         instrument_ko, article_ko, source_url, release_disposition, review_receipt_ref",
+        ""
+    ))
+    .bind(filing_codes)
+    .bind(from)
+    .bind(through)
     .fetch_all(&mut *conn)
     .await
     .map_err(db_error)?
@@ -34,8 +74,16 @@ pub async fn load_statutory_register(
     .iter()
     .map(loss_code_from_row)
     .collect::<Result<Vec<_>, _>>()?;
-    let filing_rows = sqlx::query("SELECT filing_rule,trigger_event_kinds FROM lifecycle_statutory_rules WHERE filing_rule IS NOT NULL ORDER BY code,effective_from")
-        .fetch_all(&mut *conn).await.map_err(db_error)?;
+    let filing_rows = sqlx::query(register_sql!(
+        "filing_rule,trigger_event_kinds",
+        " AND filing_rule IS NOT NULL"
+    ))
+    .bind(filing_codes)
+    .bind(from)
+    .bind(through)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(db_error)?;
     let filing_rules = filing_rows
         .into_iter()
         .map(|row| {

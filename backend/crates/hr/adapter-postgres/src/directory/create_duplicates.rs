@@ -47,15 +47,20 @@ pub async fn duplicate_candidates(
     org_uuid: Uuid,
     request: &NormalizedCreateEmployeeRequest,
 ) -> Result<Vec<DuplicateCandidate>, HrError> {
+    // Resolve canonical names before looking up contact facts for candidate records.
     let rows: Vec<(Uuid, String, Option<String>, bool)> = sqlx::query_as(
-        "SELECT e.id, e.employment_status, e.employee_number, \
-                COALESCE((CASE WHEN console_employee_facts(e.org_id,e.id) ? 'phone' THEN console_employee_facts(e.org_id,e.id)->>'phone' ELSE p.phone_e164 END) = $3, false) AS phone_match \
-         FROM person_employees_current e \
+        "WITH named AS MATERIALIZED ( \
+           SELECT e.id,e.org_id,e.employment_status,e.employee_number,e.birth_date,e.created_at \
+           FROM person_employees_current e WHERE e.org_id=$1 AND e.merged_into_employee_id IS NULL \
+             AND regexp_replace(e.name, '\\s', '', 'g')=regexp_replace($2, '\\s', '', 'g') \
+         ) SELECT e.id, e.employment_status, e.employee_number, \
+                COALESCE((CASE WHEN facts.attributes ? 'phone' THEN facts.attributes->>'phone' ELSE p.phone_e164 END) = $3, false) AS phone_match \
+         FROM named e \
+         LEFT JOIN LATERAL (SELECT console_employee_facts(e.org_id,e.id) AS attributes OFFSET 0) facts ON true \
          LEFT JOIN employee_employment_profiles p \
            ON p.org_id = e.org_id AND p.employee_id = e.id \
-         WHERE e.org_id = $1 AND e.merged_into_employee_id IS NULL \
-           AND regexp_replace(COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name), '\\s', '', 'g') = regexp_replace($2, '\\s', '', 'g') \
-           AND ((CASE WHEN console_employee_facts(e.org_id,e.id) ? 'phone' THEN console_employee_facts(e.org_id,e.id)->>'phone' ELSE p.phone_e164 END) = $3 OR ($4::DATE IS NOT NULL AND (CASE WHEN console_employee_facts(e.org_id,e.id) ? 'birth_date' THEN (console_employee_facts(e.org_id,e.id)->>'birth_date')::DATE ELSE e.birth_date END) = $4::DATE)) \
+         WHERE e.org_id = $1 \
+           AND ((CASE WHEN facts.attributes ? 'phone' THEN facts.attributes->>'phone' ELSE p.phone_e164 END) = $3 OR ($4::DATE IS NOT NULL AND e.birth_date = $4::DATE)) \
          ORDER BY e.created_at, e.id",
     )
     .bind(org_uuid)
