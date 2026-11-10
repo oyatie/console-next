@@ -4113,14 +4113,16 @@ mod tests {
             .execute(&pool)
             .await
             .map_err(|error| error.to_string())?;
+        // Cedar facts require tenant RLS; reserve the owner pool for seeding and the scan.
+        let runtime = console_platform_test_support::runtime_role_pool(&pool).await;
         let command_store = PgLeaveStore::new(
-            pool.clone(),
+            runtime.clone(),
             std::sync::Arc::new(console_inbox_adapter_postgres::PgInboxStore::new(
-                pool.clone(),
+                runtime.clone(),
             )),
         )
         .with_leave_command_pool(pool.clone());
-        let state = HrState::new(pool.clone(), None).with_leave_command_store(command_store);
+        let state = HrState::new(runtime, None).with_leave_command_store(command_store);
         let principal = Principal::new(
             UserId::from_uuid(actor_id),
             OrgId::from_uuid(org_id),
