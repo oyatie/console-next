@@ -46,6 +46,10 @@ async fn filing(f: &Fixture) -> (Uuid, Uuid, BranchId, Value) {
     sqlx::query("INSERT INTO employee_lifecycle_events (org_id,id,employee_id,event_type,to_status,effective_date,comment,created_by,state) VALUES ($1,$2,$3,'ONBOARD','ACTIVE','2026-09-01','hire',$4,'APPLIED')")
         .bind(f.submitter.org_id.as_uuid()).bind(event).bind(employee).bind(f.submitter.user_id.as_uuid())
         .execute(&f.owner).await.unwrap(); // rls-arming: ok owner fixture
+    // The receipt's hire must belong to the tenant's operating period.
+    sqlx::query("UPDATE tenant_phase SET phase='OPERATING',go_live_at=(SELECT effective_date::date::timestamptz FROM employee_lifecycle_events WHERE org_id=$1 AND id=$2),go_live_by=$3,go_live_preview_digest=repeat('0',64) WHERE org_id=$1")
+        .bind(f.submitter.org_id.as_uuid()).bind(event).bind(f.submitter.user_id.as_uuid())
+        .execute(&f.owner).await.unwrap(); // rls-arming: ok owner fixture
     let register = PgComplianceStore::new(f.rt.clone())
         .statutory_register()
         .await
