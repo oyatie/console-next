@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useContext, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Link, useNavigate, useRouterState, type AnyRouter } from "@tanstack/react-router";
 import type { Checklist } from "@console/api/pending";
 import { t, type MessageId } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
@@ -11,6 +11,9 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
 import { Banner } from "../../../ui/banner/banner";
 import { GroupedQueue, type RowAction } from "./grouped-queue";
+import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
+import { columnSelection } from "../../../lib/react/use-column-selection";
+import { InboxRecord } from "./inbox-record";
 import { QuietQueue } from "./quiet-queue";
 import { Card } from "../../../ui/card/card";
 import { TabNav } from "../../../ui/tabs/tabs";
@@ -39,6 +42,33 @@ export function InboxQueue(props: Props = {}) {
 
 function Queue({ preview = false, filter = "turn", setup, setupPhase = false, setupPending = false, action }: Props) {
   const { inbox, attention, setAttention } = useInboxRead();
+  const surface = useRef<HTMLDivElement>(null);
+  const search = useRouterState({ select: state => state.location.search as { sel?: string; sel2?: string } });
+  const navigate = useNavigate();
+  const { sel, select } = columnSelection(search, options => navigate<AnyRouter, string>(options));
+  const [foundSelection, setFoundSelection] = useState<string>();
+  const restoreList = useRef(false);
+  const selectedItem = inbox.data?.pages.flatMap(page => page.items).find(item => item.id === sel);
+  if (selectedItem && foundSelection !== sel) setFoundSelection(sel);
+  else if (foundSelection && foundSelection !== sel) setFoundSelection(undefined);
+  const removed = !!sel && foundSelection === sel && inbox.isSuccess && !inbox.isPlaceholderData && !selectedItem;
+  useEffect(() => {
+    if (removed) {
+      restoreList.current = true;
+      select(undefined);
+    } else if (!sel && restoreList.current) {
+      let nextFrame = 0;
+      // Inline commands restore the heading in two frames; the surviving list row owns the final focus.
+      const frame = requestAnimationFrame(() => {
+        nextFrame = requestAnimationFrame(() => {
+          restoreList.current = false;
+          surface.current?.querySelector<HTMLElement>("[data-id], a[href], button")?.focus();
+        });
+      });
+      return () => { cancelAnimationFrame(frame); cancelAnimationFrame(nextFrame); };
+    }
+  }, [removed, sel, select]);
+  const focusRecord = () => surface.current?.querySelector<HTMLElement>("aside h2[tabindex]")?.focus();
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
@@ -71,15 +101,22 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
           const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
           const noWork = !head?.has_work && unavailable.length === 0;
           if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
-          return <>
+          const selectItem = (id: string) => { if (rows.some(item => item.id === id)) select(id); };
+          const columns = !setupPhase && !checklist;
+          const list = <>
             {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
               {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
             </Banner>)}
             {checklist && setup?.(checklist)}
             {!checklist && noWork && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
-            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
+            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} selected={columns ? sel : undefined} onSelect={columns ? selectItem : undefined} onOpen={focusRecord} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
             {!preview && inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
           </>;
+          return columns ? <div ref={surface}><FlexibleColumns list={list} onSelect={selectItem} onOpen={focusRecord}
+            record={!removed && sel && { id: sel, label: t("home.inbox.record.title"), title: t("home.inbox.record.title"), onClose: () => select(undefined),
+              returnFocus: () => surface.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
+              children: <InboxRecord item={rows.find(item => item.id === sel)} action={action} onBack={() => select(undefined)} />,
+            }} /></div> : list;
         }}</QueryState>
       {preview && first && (first.has_work || first.available_filters.length > 0) && !loading && !inbox.error && !first.setup && <Link to="/inbox">{t("home.inbox.viewInbox")}</Link>}
     </Card>
