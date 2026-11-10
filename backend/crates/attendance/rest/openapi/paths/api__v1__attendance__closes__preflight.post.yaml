@@ -8,3 +8,4 @@ responses:
   '401': { $ref: '#/components/responses/Unauthorized' }
   '403': { $ref: '#/components/responses/Forbidden' }
   '422': { $ref: '#/components/responses/ValidationError' }
+  '503': { $ref: '#/components/responses/ServiceUnavailable' }

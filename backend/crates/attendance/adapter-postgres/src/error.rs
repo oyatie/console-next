@@ -18,6 +18,8 @@ pub enum AttendanceStoreError {
     Conflict,
     #[error("weekly policy read unavailable")]
     WeeklyPolicyUnavailable,
+    #[error("close check source unavailable")]
+    CloseSourceUnavailable(#[source] sqlx::Error),
     #[error("close is blocked")]
     CloseBlocked,
     #[error("invalid close month")]
