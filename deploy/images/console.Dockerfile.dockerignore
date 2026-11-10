@@ -12,6 +12,7 @@
 !docs/specs/cedar-pbac-coexistence-map.json
 !backend/**
 !third-party/rust/vendor/**
+!third-party/public-suffix-list/**
 **/node_modules
 **/dist
 **/target
