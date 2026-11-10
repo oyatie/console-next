@@ -2,20 +2,13 @@ import { lazy, Suspense, useId, useRef, useState, type ButtonHTMLAttributes, typ
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
 import type { ErrorSummaryItem } from "../error-summary";
-import { buttonClass, type ButtonSize, type ButtonVariant } from "./button-class";
+import type { ButtonSize, ButtonVariant } from "./button-class";
+import { Button } from "./button-base";
+export { Button } from "./button-base";
 
 const ErrorSummary = lazy(() => chunk(import("../error-summary")).then(m => ({ default: m.ErrorSummary })));
 
 export type { ButtonSize, ButtonVariant };
-
-/**
- * A button for feature views, which may not render raw controls. The label is a verb and its object.
- * `type` defaults to "button", so only an explicit submit submits a form. A hard-blocked command is not
- * this with `disabled`: use DisabledReason, which stays focusable and says why.
- */
-export function Button({ variant = "secondary", size, icon, type = "button", className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize; icon?: boolean; ref?: Ref<HTMLButtonElement> }) {
-  return <button {...rest} type={type} className={buttonClass(variant, { size, icon, className })} />;
-}
 
 /**
  * An icon-only button (a close ×, a row's ⋯, a zoom step): square, its name in `label` (the accessible name and the

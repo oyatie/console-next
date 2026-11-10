@@ -31,5 +31,9 @@ export const reloadPage = () => (guard() ? guard()!.reload() : location.reload()
 export const started = () => guard()?.start();
 /** The first screen rendered with its catalog: a later deploy may reload once again. */
 export const loaded = () => guard()?.loaded();
-/** The React root crashed and unmounted: the static error screen, never a blank page. */
-export const crashed = () => guard()?.fail();
+/** A fatal failure replaces the React UI with the static recovery screen. */
+export const crashed = () => {
+  const root = globalThis.document?.getElementById("root");
+  if (root) root.hidden = true;
+  guard()?.fail();
+};
