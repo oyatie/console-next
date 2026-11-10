@@ -25,11 +25,25 @@ struct ListQuery {
     cursor: Option<String>,
     limit: Option<usize>,
 }
-pub fn router(pool: sqlx::PgPool, verifier: Option<console_platform_auth::JwtVerifier>) -> Router {
+pub fn router(
+    pool: sqlx::PgPool,
+    verifier: Option<console_platform_auth::JwtVerifier>,
+    released: bool,
+) -> Router {
     console_platform_request_context::with_request_context(
         Router::new()
             .route("/api/v1/approvals", get(list))
             .route("/api/v1/approvals/{id}", get(document::get))
+            .route_layer(axum::middleware::from_fn(
+                move |request: axum::extract::Request, next: axum::middleware::Next| async move {
+                    if !released {
+                        return Err(InboxError::from(KernelError::not_found(
+                            "approval feature not found",
+                        )));
+                    }
+                    Ok(next.run(request).await)
+                },
+            ))
             .with_state(pool.clone()),
         verifier,
         pool,

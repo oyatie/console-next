@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
 import type { components } from "@console/api/schema";
-import { label, ORG_CHANGE_KIND } from "../../lib/labels";
+import { label, ORG_CHANGE_KIND, UNIT_KIND } from "../../lib/labels";
 
 type Unit = components["schemas"]["OrgUnitHead"];
 type Summary = components["schemas"]["OrgChangeSummary"];
@@ -191,3 +192,36 @@ export function applyOps(units: Unit[], ops: Op[]): { units: Unit[]; marks: Map<
 /** Direct members and the subtree total have the same meaning on every unit surface. */
 export const unitCounts = (n: { headcount: number; children: readonly { headcount: number }[] }) =>
   t("structure.unitCounts", { direct: Math.max(0, n.headcount - n.children.reduce((sum, c) => sum + c.headcount, 0)), total: n.headcount });
+
+/** Name lookups over the loaded org; `undefined` when the id is not (or no longer) known. */
+export type Names = { unit: (id?: string | null) => string | undefined; region: (id?: string | null) => string | undefined; branch: (id?: string | null) => string | undefined };
+
+const short = (id?: string | null) => (id ? id.slice(0, 8) : "—");
+
+/** One proposal op as a sentence. */
+export function describeOp(op: Op, n: Names): string {
+  const unit = (id?: string | null) => n.unit(id) ?? short(id);
+  const region = (id?: string | null) => n.region(id) ?? short(id);
+  switch (op.op) {
+    case "CREATE_REGION": return t("org.change.op.CREATE_REGION", { name: op.name });
+    case "RENAME_REGION": return t("org.change.op.RENAME_REGION", { region: region(op.regionId), name: op.name });
+    case "DEACTIVATE_REGION": return t("org.change.op.DEACTIVATE_REGION", { region: region(op.regionId) });
+    case "CREATE_BRANCH": return t("org.change.op.CREATE_BRANCH", { region: region(op.regionId), name: op.name });
+    case "RENAME_BRANCH": {
+      const v = { branch: n.branch(op.branchId) ?? short(op.branchId), name: op.name, region: op.regionId ? region(op.regionId) : undefined };
+      return t(op.name ? (op.regionId ? "org.change.op.RENAME_BRANCH.both" : "org.change.op.RENAME_BRANCH.name") : op.regionId ? "org.change.op.RENAME_BRANCH.region" : "org.change.op.RENAME_BRANCH", v);
+    }
+    case "DEACTIVATE_BRANCH": return t("org.change.op.DEACTIVATE_BRANCH", { branch: n.branch(op.branchId) ?? short(op.branchId) });
+    case "CREATE_SITE": return t("org.change.op.CREATE_SITE", { name: op.name });
+    case "UPDATE_SITE": return t("org.change.op.UPDATE_SITE", { name: op.name });
+    case "REASSIGN_ORG_UNIT":
+      return op.employeeIds
+        ? t("orgChange.op.reassignSome", { from: unit(op.fromOrgUnit), to: unit(op.toOrgUnit), count: op.employeeIds.length })
+        : t("org.change.op.REASSIGN_ORG_UNIT", { from: unit(op.fromOrgUnit), to: unit(op.toOrgUnit) });
+    case "CREATE_ORG_UNIT": return t("org.change.op.CREATE_ORG_UNIT", { kind: label(UNIT_KIND, op.kind), parent: unit(op.parentId), name: op.name });
+    case "RENAME_ORG_UNIT": return t("org.change.op.RENAME_ORG_UNIT", { unit: unit(op.orgUnitId), name: op.name });
+    case "MOVE_ORG_UNIT": return t("org.change.op.MOVE_ORG_UNIT", { unit: unit(op.orgUnitId), parent: unit(op.parentId) });
+    case "DISSOLVE_ORG_UNIT":
+      return op.mergedInto ? t("orgChange.op.merge", { unit: unit(op.orgUnitId), into: unit(op.mergedInto) }) : t("org.change.op.DISSOLVE_ORG_UNIT", { unit: unit(op.orgUnitId) });
+  }
+}

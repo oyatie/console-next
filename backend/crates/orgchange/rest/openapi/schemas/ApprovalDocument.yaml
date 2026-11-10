@@ -25,6 +25,7 @@ properties:
     properties:
       id: {type: string, format: uuid}
       name: {type: string}
+  effective_date: {type: string, format: date}
   requested_at: {type: string, format: date-time}
   facts:
     type: array

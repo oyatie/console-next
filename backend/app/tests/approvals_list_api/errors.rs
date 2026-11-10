@@ -4,7 +4,7 @@ use super::*;
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn invalid_list_queries_are_refused_without_reading_documents(pool: PgPool) {
     let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
-    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let ctx = fixtures::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
     for query in [
         "box=invalid",
         "box=pending&cursor=bad",
@@ -24,7 +24,7 @@ async fn invalid_list_queries_are_refused_without_reading_documents(pool: PgPool
 async fn projection_failures_return_a_code_without_database_details(pool: PgPool) {
     let (org, maker, checker) = setup(&pool).await;
     document(&pool, org, maker, "OC-2026-0001").await;
-    let ctx = http::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
+    let ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
     sqlx::query("ALTER TABLE org_units RENAME TO unavailable_org_units")
         .execute(&pool)
         .await
