@@ -94,6 +94,14 @@ pub(crate) async fn observe(
     org: Uuid,
     case: Uuid,
 ) -> Result<(), HrError> {
+    observe_many(tx, org, std::slice::from_ref(&case)).await
+}
+
+pub(crate) async fn observe_many(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    cases: &[Uuid],
+) -> Result<(), HrError> {
     sqlx::query(
         "UPDATE lifecycle_case_items i SET status='DONE_OBSERVED',status_code=NULL,done_at=now(),version=i.version+1, \
            observed_ref=jsonb_build_object('table','employee_group_transfers','id',g.lifecycle_event_id, \
@@ -101,7 +109,7 @@ pub(crate) async fn observe(
              'succession_evidence_ref',g.succession_evidence_ref) \
          FROM lifecycle_cases c LEFT JOIN employee_exit_cases x ON x.org_id=c.org_id AND x.id=c.exit_case_id \
          JOIN employee_group_transfers g ON g.org_id=c.org_id AND g.lifecycle_event_id=COALESCE(x.exit_lifecycle_event_id,c.trigger_id) \
-         WHERE i.org_id=$1 AND c.org_id=i.org_id AND c.id=i.case_id AND c.id=$2 AND c.state='OPEN' \
+         WHERE i.org_id=$1 AND c.org_id=i.org_id AND c.id=i.case_id AND c.id=ANY($2) AND c.state='OPEN' \
            AND i.status IN ('OPEN','PENDING_TRIGGER','BLOCKED') \
            AND ((i.item_key='GT2' AND i.kind='REC') \
              OR (i.item_key='GT1' AND i.kind='DOC' AND g.consent_date IS NOT NULL \
@@ -110,7 +118,7 @@ pub(crate) async fn observe(
                AND NULLIF(btrim(g.succession_evidence_ref),'') IS NOT NULL))",
     )
     .bind(org)
-    .bind(case)
+    .bind(cases)
     .execute(tx.as_mut())
     .await?;
     Ok(())

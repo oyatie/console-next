@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import type { components } from "@console/api/schema";
+import { apiAs } from "./chaos";
 import { loadCatalog, t } from "@console/i18n";
 import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
@@ -24,6 +26,7 @@ const shot = (p: Page, name: string) => (SHOTS ? p.screenshot({ path: `${SHOTS}/
 
 test("regression: a staffed workplace closes today in one act by its plan (company-01, worst-case-18)", { tag: "@org" }, async ({ browser }) => {
   const { admin } = await tenantInSetup(browser, "wpclose", "닫는회사", false, "본사");
+  const read = apiAs(admin);
   await addDepts(admin, "본사", ["인사팀"]);
   await registerBranch(admin, "닫는회사", "판교지점", "0008512347");
   await addDepts(admin, "판교지점", ["개발팀", "물류팀"]);
@@ -70,7 +73,25 @@ test("regression: a staffed workplace closes today in one act by its plan (compa
   await shot(admin, "after-02-plan-filled");
   await expectAccessible(admin, "workplace close plan");
 
+  const closed = admin.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/close-plan"));
   await commit.click();
+  const response = await closed;
+  expect(response.status()).toBe(200);
+  const job = await response.json() as components["schemas"]["WorkplaceCloseJob"];
+  expect(job.state).toBe("APPLIED");
+  const transfers = job.lines.filter((line) => line.action === "TRANSFER");
+  expect(transfers).toHaveLength(2);
+  for (const line of transfers) {
+    expect(line.done).toBe(true);
+    expect(line.lifecycle_event_id).not.toBeNull();
+    const cases = await read<components["schemas"]["LifecycleCase"][]>(`/api/v1/employees/${line.employee_id}/lifecycle-cases`);
+    const trail = cases.filter((value) => value.trigger_id === line.lifecycle_event_id);
+    expect(trail).toHaveLength(1);
+    expect(trail[0]?.kind).toBe("APPOINT");
+    expect(trail[0]?.items.find((item) => item.item_key === "R1")).toMatchObject({
+      status: "DONE_OBSERVED", observed_ref: { table: "employee_lifecycle_events", id: line.lifecycle_event_id },
+    });
+  }
   await expect(s.getByRole("status").filter({ hasText: /닫힘/ })).toBeVisible();
   await shot(admin, "after-03-closed");
   await s.getByRole("button", { name: "닫기", exact: true }).last().click();

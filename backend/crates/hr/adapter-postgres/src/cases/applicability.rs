@@ -44,7 +44,7 @@ fn carried(group: bool, item: &str, severance: Option<&str>, annual: Option<&str
 pub(crate) async fn apply(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
-    case: Uuid,
+    cases: &[Uuid],
     register: &StatutoryRegister,
 ) -> Result<(), HrError> {
     let rows = sqlx::query(
@@ -70,9 +70,9 @@ pub(crate) async fn apply(
          LEFT JOIN LATERAL (SELECT a.legal_entity_id FROM employment_assignments a \
            WHERE a.org_id=c.org_id AND a.employee_id=c.employee_id AND a.superseded_at IS NULL \
              AND a.valid_from<=c.effective_date ORDER BY a.valid_from DESC LIMIT 1) anchor ON true \
-         WHERE i.org_id=$1 AND c.id=$2 AND c.state='OPEN' AND i.status IN ('OPEN','PENDING_TRIGGER','BLOCKED') \
+         WHERE i.org_id=$1 AND c.id=ANY($2) AND c.state='OPEN' AND i.status IN ('OPEN','PENDING_TRIGGER','BLOCKED') \
          FOR UPDATE OF i",
-    ).bind(org).bind(case).fetch_all(tx.as_mut()).await?;
+    ).bind(org).bind(cases).fetch_all(tx.as_mut()).await?;
     let mut updates = Vec::with_capacity(rows.len());
     for row in rows {
         let on: Date = row.try_get("effective_date")?;

@@ -53,9 +53,7 @@ pub(crate) async fn events_with_register(
           AND EXISTS(SELECT 1 FROM case_template_items t WHERE t.template_key=c.template_key AND t.version=c.template_version \
             AND (t.variants IS NULL OR c.variant=ANY(t.variants)) AND (t.legal OR t.due_rule_kind<>'UNKNOWN' OR t.opens_on IS NOT NULL OR t.opens_rule_ref IS NOT NULL OR cardinality(t.applicability)>0))")
             .bind(org).bind(&cases).fetch_all(tx.as_mut()).await?;
-        for id in dated {
-            super::dates::refresh(tx, org, id, register).await?;
-        }
+        super::dates::refresh_many(tx, org, &dated, register).await?;
     } else {
         for id in cases {
             initialise(tx, org, id).await?;
@@ -142,14 +140,14 @@ pub(crate) async fn cancel(
 pub(crate) async fn filings(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
-    case: Uuid,
+    cases: &[Uuid],
     register: &console_compliance_domain::statutory::StatutoryRegister,
 ) -> Result<(), HrError> {
     let rows = sqlx::query("SELECT i.id,i.due_rule_ref,c.effective_date,c.trigger_id,c.exit_case_id,x.exit_lifecycle_event_id \
       FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id \
       LEFT JOIN employee_exit_cases x ON x.org_id=c.org_id AND x.id=c.exit_case_id \
-      WHERE i.org_id=$1 AND c.id=$2 AND i.kind='FIL' AND i.filing_obligation_id IS NULL AND i.status<>'NOT_APPLICABLE'")
-        .bind(org).bind(case).fetch_all(tx.as_mut()).await?;
+      WHERE i.org_id=$1 AND c.id=ANY($2) AND i.kind='FIL' AND i.filing_obligation_id IS NULL AND i.status<>'NOT_APPLICABLE'")
+        .bind(org).bind(cases).fetch_all(tx.as_mut()).await?;
     let mut links = Vec::with_capacity(rows.len());
     for row in rows {
         let Some(code) = row.try_get::<Option<String>, _>("due_rule_ref")? else {
