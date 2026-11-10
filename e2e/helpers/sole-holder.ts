@@ -92,8 +92,9 @@ COMMIT;`, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"],
   detail = await (await refreshed).json();
   expect(detail.sole_holder_exception).toBeNull();
   expect(detail.approvalSteps.every(s => s.decision === "PENDING")).toBe(true);
-  await expect(dialog).toHaveCount(0);
-  await open.click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("alert")).toContainText("결재 내용이 바뀌어 승인하지 않았습니다. 바뀐 내용을 확인하고 다시 승인하십시오.");
+  await expect(dialog).toContainText(detail.sole_holder_decision!.payload_hash.slice(0, 12));
   await expect(admin).toHaveURL(new RegExp(`/org/changes/${detail.id}$`));
 
   for (const [index, step] of steps.entries()) {
@@ -152,6 +153,6 @@ COMMIT;`, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"],
   expect((await read()).sole_holder_exception).toEqual(detail.sole_holder_exception);
   expect((await read()).sole_holder_decision).toBeNull();
   await expect(open).toHaveCount(0);
-  await expect(admin.getByText(`알림 ${detail.sole_holder_exception!.notice_count}건`, { exact: false })).toBeVisible();
+  await expect(admin.getByText(`알림 기록 ${detail.sole_holder_exception!.notice_count}건`, { exact: false })).toBeVisible();
   await atPhoneWidth(admin, async () => { await fits(admin, "sole-holder receipt"); await expectAxe(admin, "sole-holder receipt"); });
 }

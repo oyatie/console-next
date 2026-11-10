@@ -49,7 +49,7 @@ export const enLifecycleTrail = {
   "lifecycle.refuse.close_blocked": "Complete all blocking items before closing.",
   "lifecycle.refuse.deadline_unknown": "Deadlines come from the register. An unknown deadline cannot be entered as a date.",
   "lifecycle.refuse.withdrawn": "A withdrawn change cannot be decided. Check its current status in the change history.",
-  "lifecycle.refuse.stale_version": "Another person has processed this change. Review the latest history before continuing.",
+  "lifecycle.refuse.stale_version": "The change details have changed. Review the latest history before continuing.",
   "lifecycle.refuse.merge_not_allowed": "Approval steps cannot be combined. Each step must be decided in order by its assigned person.",
   "lifecycle.trail.documents.hire": "Hiring documents and employment contract",
   "lifecycle.trail.documents.appoint": "Appointment documents",

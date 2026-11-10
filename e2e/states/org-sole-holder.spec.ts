@@ -11,8 +11,8 @@ import { orgChangeScreens } from "./registry";
 
 const offer = { step_id: id(6000), expected_version: "17", payload_hash: "a".repeat(64), notice_count: 2, review_due_at: "2026-11-09T03:00:00Z" };
 const words = {
-  ko: { open: "단독 예외 처리", commit: "패스키로 확인하고 조직 변경 승인", receipt: "단독 예외로 승인했습니다" },
-  en: { open: "Sole-holder exception", commit: "Confirm with a passkey and approve org change", receipt: "Approved as a sole-holder exception" },
+  ko: { open: "단독 예외 처리", commit: "패스키로 확인하고 조직 변경 승인", receipt: "단독 예외로 승인했습니다", notices: "알림 기록 2건", changed: "결재 내용이 바뀌어 승인하지 않았습니다. 바뀐 내용을 확인하고 다시 승인하십시오." },
+  en: { open: "Sole-holder exception", commit: "Confirm with a passkey and approve org change", receipt: "Approved as a sole-holder exception", notices: "2 notice records", changed: "The approval details changed, so this change was not approved. Review the updated details before approving again." },
 };
 
 async function setup(page: Page, locale: "ko" | "en", offered = true) {
@@ -61,7 +61,7 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
       const dialog = page.getByRole("dialog", { name: words[locale].open, exact: true });
       await expect(dialog).toContainText(record.reason);
       await expect(dialog).toContainText(record.target.label!);
-      await expect(dialog).toContainText(t("uiOverrideSheet.sole.notify", { count: 2 }));
+      await expect(dialog).toContainText(words[locale].notices);
       for (const theme of ["light", "dark"]) {
         await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
         await fits(page, `sole-holder/${locale}/${width}/${theme}`);
@@ -75,6 +75,7 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
       expect(writes).toBe(1);
       await page.reload();
       await expect(page.getByText(t("uiOverrideSheet.mark"), { exact: true })).toBeVisible();
+      await expect(page.getByText(words[locale].notices, { exact: false })).toBeVisible();
       await expect(page.getByRole("button", { name: words[locale].open, exact: true })).toHaveCount(0);
       for (const theme of ["light", "dark"]) {
         await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
@@ -98,6 +99,48 @@ for (const locale of ["ko", "en"] as const) {
     } finally { await page.close(); fixture.release(); }
   });
 
+  test(`org sole holder: changed consent stays open and retries the refreshed offer in ${locale} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    const { fixture, record } = await setup(page, locale);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator.credentials, "get", { value: async () => ({ toJSON: () => ({ id: "test-credential", type: "public-key" }) }) });
+    });
+    const updated = { ...offer, payload_hash: "b".repeat(64), review_due_at: "2026-11-12T03:00:00Z" };
+    const hashes: string[] = [];
+    await mockRoute(page, "post", "/api/v1/auth/passkey/step-up/start", request => {
+      hashes.push(request.postDataJSON().binding.payload_hash);
+      return { status: 200, json: { ceremony_id: id(7000 + hashes.length), expires_at: updated.review_due_at,
+        binding: request.postDataJSON().binding, challenge: { publicKey: { challenge: "dGVzdA", rpId: "localhost" } } } };
+    });
+    let writes = 0;
+    await mockRoute(page, "post", "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision", async request => {
+      writes++;
+      expect(request.postDataJSON().step_up.binding.payload_hash).toBe(writes === 1 ? offer.payload_hash : updated.payload_hash);
+      await mockRoute(page, "get", "/api/v1/org-changes/{id}", { status: 200, json: { ...record, sole_holder_decision: updated } });
+      return { status: 409, json: failure("lifecycle.refuse.stale_version") };
+    });
+    try {
+      await page.goto(orgChangeScreens[1].path);
+      await page.getByRole("button", { name: words[locale].open, exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: words[locale].open, exact: true });
+      await dialog.getByRole("button", { name: words[locale].commit, exact: true }).click();
+      await expect(dialog).toContainText(updated.payload_hash.slice(0, 12));
+      await expect(dialog.getByRole("alert")).toContainText(words[locale].changed);
+      await expect(page.getByText(words[locale].receipt, { exact: false })).toHaveCount(0);
+      expect(writes).toBe(1);
+      for (const theme of ["light", "dark"]) {
+        await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+        await fits(page, `changed consent/${locale}/${theme}`);
+        await expectAxe(page, `changed consent/${locale}/${theme}`);
+        await page.screenshot({ path: test.info().outputPath(`changed-${theme}.png`), fullPage: true });
+      }
+      await dialog.getByRole("button", { name: words[locale].commit, exact: true }).click();
+      await expect.poll(() => writes).toBe(2);
+      expect(hashes).toEqual([offer.payload_hash, updated.payload_hash]);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+
   for (const code of ["org_change.refuse.missing_grant", "lifecycle.refuse.stale_version", "step_up_failed"] as const) {
     test(`org sole holder: ${code} retains the review in ${locale} @ui-state`, async ({ page }) => {
       const { fixture, record } = await setup(page, locale);
@@ -113,7 +156,7 @@ for (const locale of ["ko", "en"] as const) {
         const dialog = page.getByRole("dialog", { name: words[locale].open, exact: true });
         await dialog.getByRole("button", { name: words[locale].commit, exact: true }).click();
         await expect(dialog.getByRole("alert")).toBeVisible();
-        await expect(dialog.getByRole("alert")).toContainText(t(code === "step_up_failed" ? "orgChange.sole.stepUpFailed" : code));
+        await expect(dialog.getByRole("alert")).toContainText(code === "lifecycle.refuse.stale_version" ? words[locale].changed : t(code === "step_up_failed" ? "orgChange.sole.stepUpFailed" : code));
         await expect(dialog.getByRole("alert")).not.toContainText("Untranslated server message");
         await expect(dialog).toContainText(record.reason);
         await expect(page.getByText(words[locale].receipt, { exact: false })).toHaveCount(0);

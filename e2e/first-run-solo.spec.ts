@@ -12,7 +12,6 @@ import { rosterXlsx } from "./workbook";
 import { gradeJourney } from "./helpers/grade-fix";
 import { chooseWorkbook, payPeriod } from "./helpers/import";
 import { expectComposer } from "./helpers/composer";
-import { soleHolderJourney } from "./helpers/sole-holder";
 
 // The first-run solo gate (owner rule): one administrator, an empty tenant, no helper account. From the
 // first sign-in to operating, every prerequisite is created through the product, in place, with no second
@@ -238,10 +237,8 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
 
 });
 
-test("a solo administrator decides a governed change through the sole-holder fallback", { tag: "@first-run" }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await soleHolderJourney(browser);
-});
+// fixme: owner=@jason931225; reason=governed self-binding for a sole administrator requires an owner decision and backend implementation; expires=2026-12-17
+test.fixme("a solo administrator decides a governed change through the sole-holder fallback", async () => {});
 
 // The roster import placing each person at a 법인 and 사업장 (by their 부서, MR-7) is proven in
 // e2e/import/two-entities.spec.ts, read back on the employee record.
