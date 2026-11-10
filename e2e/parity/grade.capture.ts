@@ -6,7 +6,8 @@ import { setupCompany, startOperations } from "../setup-flows";
 import { cardVerbs, hrAct, hrMenu, openHistory } from "../record";
 import { reasonBox, sheet, signOff, statement, todayPreset } from "../sheet";
 import { reasonChip } from "../helpers/lifecycle";
-import { inlineAdd, openGradeFix } from "../helpers/grade-fix";
+import { apiOf, bearerOf } from "../helpers/api";
+import { assertRankRefusal, inlineAdd, openGradeFix } from "../helpers/grade-fix";
 import { capture, inspect, ROOT } from "./capture";
 
 test.use({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
@@ -26,6 +27,7 @@ async function supplement(page: Page, name: string, observation: string) {
 test("parity grade: catalog-backed change, correction, promotion, roster and settings", async ({ browser }) => {
   test.setTimeout(300_000);
   const a = await openTenant(browser, "parity-grade", "직급재검토");
+  const api = apiOf(a, bearerOf(a));
   await setupCompany(a, "직급재검토", "본사");
   await startOperations(a);
   await registerEmployee(a, { name: "직급직원", number: "PG-001", unit: "본사", hired: "2025-01-01" });
@@ -89,15 +91,9 @@ test("parity grade: catalog-backed change, correction, promotion, roster and set
   await supplement(a, "grade-catalog", "Actual settings catalog contains three UI-created grades; no dedicated catalog frame exists in the manifest.");
   await a.getByRole("button", { name: "대리 수정", exact: true }).click();
   const edit = a.getByRole("form", { name: "대리 목록 항목 수정" });
-  await edit.getByRole("textbox", { name: /^서열/ }).fill("1001");
-  const response = a.waitForResponse((r) => r.request().method() === "PATCH" && /\/api\/v1\/job-titles\/[^/]+$/.test(new URL(r.url()).pathname));
-  await edit.getByRole("button", { name: "목록 항목 저장", exact: true }).click();
-  const refused = await response;
-  expect(refused.status()).toBe(422);
-  expect((await refused.json()).error.code).toBe("job_title_rank_invalid");
-  await expect(edit.getByRole("alert")).toBeVisible();
+  await assertRankRefusal(a, edit, "대리", api);
   await expect(a.getByRole("row").filter({ hasText: "대리" }).getByRole("cell", { name: "대리", exact: true })).toBeVisible();
-  await supplement(a, "grade-catalog-refused", "Real server 422 job_title_rank_invalid retains input and original label; no invalid rank is stored.");
+  await supplement(a, "grade-catalog-refused", "Client rank refusal retains input and original label; authenticated API independently returns 422 job_title_rank_invalid without storing the invalid rank.");
   await edit.getByRole("textbox", { name: /^직위 이름/ }).fill("선임");
   await edit.getByRole("textbox", { name: /^서열/ }).fill("20");
   await edit.getByRole("button", { name: "목록 항목 저장", exact: true }).click();
