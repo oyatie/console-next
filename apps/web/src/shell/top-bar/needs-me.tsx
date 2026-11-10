@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useState, useSyncExternalStore } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "@tanstack/react-router";
+import { useLocation } from "@tanstack/react-router";
 import { Button, Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { Inbox } from "lucide-react";
 import { session } from "@console/api";
@@ -9,37 +9,12 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { cursorPages } from "../../lib/query";
 import { inboxFilter } from "../../features/home/domain/inbox-filter";
-import { QueryState } from "../../lib/react/query-state";
-import { DeadlineChip } from "../../ui/deadline-chip/deadline-chip";
-import { EmptyState } from "../../ui/empty-state";
+import { chunk } from "../../lib/chunk-guard";
+import { ReadSkeleton } from "../../ui/skeleton/skeleton";
 import s from "./top-bar.module.css";
 
 type InboxPage = components["schemas"]["ActionInboxResponse"];
-type InboxItem = components["schemas"]["ActionInboxItem"];
-const PREVIEW_LIMIT = 5;
-
-function TaskRow({ item, onNavigate }: { item: InboxItem; onNavigate: () => void }) {
-  const link = item.links[0];
-  const targetId = link?.id.trim();
-  const content = <><span className={s.name}>{item.title}</span>{item.days_remaining != null && <DeadlineChip days={item.days_remaining} severity={item.dueTone === "danger" ? "over" : item.dueTone === "warn" ? "due" : "far"} />}</>;
-  const props = { className: s.taskLink, onClick: onNavigate, children: content };
-  if (!link || !targetId) return <Link to="/inbox" {...props} />;
-  switch (link.kind) {
-    case "org_change": return <Link to="/org/changes/$id" params={{ id: targetId }} {...props} />;
-    case "employee": return <Link to="/people/$id" params={{ id: targetId }} {...props} />;
-    case "exit_case": return <Link to="/people/exits/$id" params={{ id: targetId }} {...props} />;
-    case "change_request": return <Link to="/people/requests" search={{ sel: targetId }} {...props} />;
-    case "period_lock": return <Link to="/people/period-locks" search={{ review: targetId }} {...props} />;
-    case "support_session": return <Link to="/audit/support-access" search={{ review: targetId }} {...props} />;
-    case "statutory": return <Link to="/statutory" search={{ event: targetId }} {...props} />;
-    default: return <Link to="/inbox" {...props} />;
-  }
-}
-
-function TaskItems({ items, onNavigate }: { items: InboxItem[]; onNavigate: () => void }) {
-  if (!items.length) return <EmptyState title={t("home.inbox.empty.title")} reason={null} />;
-  return <ul className={s.taskList}>{items.slice(0, PREVIEW_LIMIT).map(item => <li key={item.id}><TaskRow item={item} onNavigate={onNavigate} /></li>)}</ul>;
-}
+const NeedsMePanel = lazy(() => chunk(import("./needs-me-panel")).then(m => ({ default: m.NeedsMePanel })));
 
 /** Header 'needs me' badge and popover task panel driven by `/api/v1/me/action-inbox` (`filter: "turn"`). */
 export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
@@ -66,7 +41,7 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
       <Button id={id} className={s.needsMe} aria-label={label}><Inbox size={16} aria-hidden /><span className={s.name}>{t("home.inbox.title")}</span>{!!count && <span className={s.badge} data-count>{exact ? count : `${count}+`}</span>}</Button>
       <Popover className={s.taskPop} placement="bottom end">
         <Dialog className={s.taskPanel} aria-label={t("shell.needsMe")}>
-          {({ close }) => (<><div className={s.taskHead}><strong>{t("shell.needsMe")}</strong><Link to="/inbox" onClick={close}>{t("home.inbox.viewInbox")}</Link></div>{seed ? <TaskItems items={seed.items} onNavigate={close} /> : <QueryState q={separate ? tasks : inbox} layout="list" denied={<p role="status">{t("shell.needsMe.denied")}</p>}>{data => <TaskItems items={data.pages[0]?.items ?? []} onNavigate={close} />}</QueryState>}</>)}
+          {({ close }) => <Suspense fallback={<ReadSkeleton layout="list" />}><NeedsMePanel seed={seed} inbox={separate ? tasks : inbox} onNavigate={close} /></Suspense>}
         </Dialog>
       </Popover>
     </DialogTrigger>

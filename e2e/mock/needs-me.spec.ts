@@ -184,7 +184,7 @@ test("header reserves its space before the task menu loads", async ({ page }) =>
   expect(mock.unexpected).toEqual([]);
 });
 
-for (const width of [768, 1024, 1279]) for (const theme of ["light", "dark"]) {
+for (const width of [641, 700, 767, 768, 769, 1024, 1279]) for (const theme of ["light", "dark"]) {
   test(`tablet header uses available width at ${width}px ${theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
@@ -192,14 +192,20 @@ for (const width of [768, 1024, 1279]) for (const theme of ["light", "dark"]) {
     await page.goto("/people");
     const header = page.locator("header.top");
     await expect(header.locator("#top-needs-me [data-count]")).toHaveText("3", { timeout: 20_000 });
-    await expect(header.locator(".top__jumpText")).toBeVisible();
+    const prompt = header.locator(".top__jumpText");
+    await expect(prompt).toBeVisible();
+    expect(await prompt.evaluate(el => el.clientWidth / el.scrollWidth)).toBeGreaterThanOrEqual(1);
     await expect(header.locator(".top__jump svg")).toBeVisible();
     expect((await header.locator(".top__jump").boundingBox())!.width).toBeGreaterThanOrEqual(40);
     const logout = header.getByRole("button", { name: t("shell.logout"), exact: true });
     await expect(logout).toBeVisible();
     expect(await logout.evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThan(0);
     const spacer = await header.locator(".top__spacer").boundingBox();
-    expect(spacer!.width).toBeLessThanOrEqual(1);
+    if (spacer!.width > 1) {
+      const jump = header.locator(".top__jump");
+      // Spare space is valid only after the search field reaches its desktop basis.
+      expect((await jump.boundingBox())!.width).toBeGreaterThanOrEqual(await jump.evaluate(el => Number.parseFloat(getComputedStyle(el).flexBasis)));
+    }
     await fits(page, "tablet header");
     expect(await header.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath(`people-header-${width}-${theme}.png`), fullPage: true });
@@ -234,3 +240,25 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
     expect(mock.unexpected).toEqual([]);
   });
 }
+
+test("task panel code loads only when the header badge opens", async ({ page }) => {
+  const mock = await mockScreen(page, screens[0], "populated");
+  const chunks: string[] = [];
+  page.on("request", request => {
+    if (/\/assets\/needs-me-panel-[^/]+\.js$/.test(new URL(request.url()).pathname)) chunks.push(request.url());
+  });
+  await page.goto("/people");
+  const trigger = page.locator("#top-needs-me");
+  await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+  expect(chunks).toEqual([]);
+  await trigger.click();
+  const panel = page.getByRole("dialog", { name: t("shell.needsMe"), exact: true });
+  await expect(panel.getByRole("link", { name: /검증직원/ })).toHaveCount(3);
+  expect(chunks).toHaveLength(1);
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await expect(panel.getByRole("link", { name: /검증직원/ })).toHaveCount(3);
+  expect(chunks).toHaveLength(1);
+  expect(mock.unexpected).toEqual([]);
+});

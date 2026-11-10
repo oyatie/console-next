@@ -1,6 +1,6 @@
 {
   "shell": {
-    "budget_kb": 83,
+    "budget_kb": 82,
     "routes": [
       "src/auth/IdleGuard.tsx",
       "src/auth/Login.tsx",
@@ -10,7 +10,8 @@
       "src/lib/react/route-error.tsx",
       "src/lib/react/session.ts",
       "src/shell/shell.tsx",
-      "src/shell/top-bar/needs-me.tsx"
+      "src/shell/top-bar/needs-me.tsx",
+      "src/shell/top-bar/needs-me-panel.tsx"
     ]
   },
   "list": {
