@@ -8,6 +8,7 @@ pub struct StepDecisionCommand {
     pub memo: Option<String>,
     pub expected_version: Option<String>,
     pub through_step: Option<Uuid>,
+    pub step_up: Option<serde_json::Value>,
 }
 
 /// A read-time token: partial step decisions change it even before status changes.

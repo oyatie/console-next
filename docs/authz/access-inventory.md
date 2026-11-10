@@ -170,7 +170,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | finding | backend/crates/attendance/rest/src/lib.rs | branch-required-for-scoped-holder | 1 |
 | finding | backend/crates/hr/adapter-postgres/src/import/rollback.rs | all-boolean-facts-hardcoded-true | 1 |
 | finding | backend/crates/hr/adapter-postgres/src/requests/cedar.rs | all-boolean-facts-hardcoded-true | 1 |
-| finding | backend/crates/platform/platform-rest/src/support_tenant.rs | all-boolean-facts-hardcoded-true | 2 |
 | matrix | backend/app/src/action_inbox/legacy.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/response.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 4 |
@@ -232,9 +231,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/platform/platform-rest/src/onboard.rs | reference | 2 |
 | matrix | backend/crates/platform/platform-rest/src/ops_recovery.rs | reference | 1 |
 | matrix | backend/crates/platform/platform-rest/src/orgs.rs | reference | 3 |
-| matrix | backend/crates/platform/platform-rest/src/support_store.rs | reference | 1 |
-| matrix | backend/crates/platform/platform-rest/src/support_tenant.rs | reference | 2 |
-| matrix | backend/crates/platform/platform-rest/src/support.rs | reference | 3 |
 | matrix | backend/crates/platform/platform-rest/src/tenant_delete.rs | reference | 1 |
 | matrix | backend/crates/platform/platform-rest/src/tenant_erase.rs | reference | 1 |
 | matrix | backend/crates/platform/realtime/src/filter.rs | reference | 8 |
