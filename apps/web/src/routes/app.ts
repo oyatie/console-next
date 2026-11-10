@@ -4,6 +4,7 @@ import { createRootRoute, createRoute, lazyRouteComponent } from "@tanstack/reac
 import { chunk } from "../lib/chunk-guard";
 import { screen } from "../lib/fonts";
 import { ensureEnrolling, ensureSession, leaveSignInWhenSignedIn } from "../lib/react/session";
+import { streamReady } from "../lib/live/session-stream";
 import { RouteFrame } from "../lib/react/route-ready";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
 import type { AccessRequirement } from "../reference/authz/domain/access";
@@ -37,7 +38,7 @@ const login = createRoute({
   component: lazyRouteComponent(() => chunk(import("../auth/Login")), "Login"),
 });
 const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: ensureEnrolling, component: lazyRouteComponent(() => chunk(import("../auth/SetupPasskey")), "SetupPasskey") });
-export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: ensureSession, component: lazyRouteComponent(screen(() => import("../shell/shell")), "Shell") });
+export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await ensureSession(context); await streamReady(); }, component: lazyRouteComponent(screen(() => import("../shell/shell")), "Shell") });
 
 const tenants = createRoute({
   getParentRoute: () => app,
