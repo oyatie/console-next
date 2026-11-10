@@ -45,6 +45,11 @@ for (const refusal of cases) for (const width of [1440, 390]) {
       await expect(alert).toContainText(t(`common.failed.code.${refusal.code}`));
       await expect(alert).not.toContainText("Untranslated server message");
       await expect(reason).toHaveValue("시행 계획 재검토");
+      const confirm = dialog.getByRole("button", { name: commitLabel({ kind: "orgChange", mode: refusal.cancel ? "cancel" : "change" }), exact: true });
+      if (refusal.status === 403) {
+        await expect(confirm).toBeDisabled();
+        await page.keyboard.press("ControlOrMeta+Enter");
+      } else await expect(confirm).toBeEnabled();
       expect(writes).toBe(1);
       for (const theme of ["light", "dark"]) {
         await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);

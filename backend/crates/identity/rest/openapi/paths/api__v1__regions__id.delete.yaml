@@ -1,3 +1,4 @@
+deprecated: true
 tags:
   - regions
 operationId: deactivateRegion

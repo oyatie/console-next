@@ -82,7 +82,7 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
   const changedAt = fmtDateTime(d.updatedAt);
   return (
     <Composer title={t(scheduled ? "orgChange.scheduled.edit" : "orgChange.edit")} dirty={Object.keys(body).length > 0} onClose={onClose}
-      pending={save.isPending} action={{ kind: "orgChange", mode: "change" }} onSubmit={press}
+      pending={save.isPending} locked={refusalOf(save.error) === "denied"} action={{ kind: "orgChange", mode: "change" }} onSubmit={press}
       blocked={conflicts.length ? { reason: t("uiConflict.left", { count: conflicts.length }) } : undefined}
       consequence={scheduled ? t("orgChange.scheduled.edit.consequence") : undefined}
     ><div className={css.form}>
