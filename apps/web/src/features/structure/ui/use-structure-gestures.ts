@@ -67,7 +67,7 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     c.setRenaming(null);
     cmd.apply({ ops: [{ op: "RENAME", ...pin(n), name }], ...setupDated(t("structure.receipt.renamed", { from: n.name, name }), values.effectiveDate) });
   };
-  /** `day`: the move's 적용일 in setup (the picker asks; a drag applies today). */
+  /** `day`: the move's effective date in setup (the picker asks; a drag applies today). */
   const moveTo = (nodes: ChartNode[], target: ChartNode, day = todayKst()) => {
     if (readOnly || !nodes.length) return;
     // A legal entity or a workplace is dragged only to reorder it (at once in either phase): it lands right after the sibling it is dropped on.
