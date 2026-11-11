@@ -43,6 +43,7 @@ mod legal_entity_tx;
 pub mod name_evidence;
 mod name_review;
 mod org_batch;
+mod org_batch_date;
 mod org_batch_undo;
 mod org_details;
 // --- lane: CRUD ---

@@ -25094,6 +25094,11 @@ export interface components {
         };
         OrgSetupBatchRequest: {
             ops: components["schemas"]["OrgSetupOp"][];
+            /**
+             * Format: date
+             * @description The day every change of the batch takes effect; today (KST) when absent. Refused on effective_date, nothing written: org_setup_date_future (setup applies at once; a change that waits for its day is an org change), org_setup_date_before_parent (a unit dated before the first record of the unit or 사업장 it goes under), org_setup_date_before_current (a change dated before the unit's current record).
+             */
+            effective_date?: string;
         };
         OrgSetupBatchView: {
             /** Format: uuid */

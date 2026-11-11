@@ -97,7 +97,10 @@ pub(crate) async fn apply_batch(
     Json(b): Json<OrgSetupBatch>,
 ) -> Result<Response> {
     let a = writer(&s, &h, Need::Structure).await?;
-    let receipt = s.store.apply_org_setup_batch(&a, b.ops, port(&s)?).await?;
+    let receipt = s
+        .store
+        .apply_org_setup_batch_on(&a, b.ops, b.effective_date, port(&s)?)
+        .await?;
     Ok((StatusCode::CREATED, Json(receipt)).into_response())
 }
 
