@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Approval reads use source relationships, never an administrator bypass.
+//! A document sits in one box per viewer. A person who has decided a step keeps
+//! reading it under `completed` (their part is done) while later steps are
+//! pending; its requester keeps it under `requested` until it is finished.
 use super::{ActionBundle, Fact};
 use std::sync::OnceLock;
 const SCHEMA: &str = r#"entity Subject = { "org": String, "roles": Set<String> };
@@ -12,7 +15,7 @@ const POLICIES: &str = r#"permit(principal, action == Action::"approval_document
 when { principal.org == resource.org && context.read && (
  (context.box == "pending" && !context.completed && context.can_review && !context.requester && !context.participant) ||
  (context.box == "requested" && !context.completed && context.requester) ||
- (context.box == "completed" && context.completed && (context.requester || context.participant))
+ (context.box == "completed" && (context.requester || context.participant) && (context.completed || !context.requester))
 ) };"#;
 #[derive(Clone, Copy)]
 pub struct Facts {
@@ -136,6 +139,40 @@ mod tests {
                 Ok(false)
             );
         }
+        // regression: the person who approved an earlier step lost the document
+        // (no box, so a 404) until every later step was decided.
+        let decided = Facts {
+            participant: true,
+            can_review: true,
+            ..f
+        };
+        let boxes = |facts: Facts| -> Vec<&str> {
+            ["pending", "upcoming", "requested", "reference", "completed"]
+                .into_iter()
+                .filter(|name| decide("u", "o", "o", facts, name) == Ok(true))
+                .collect()
+        };
+        assert_eq!(boxes(decided), ["completed"]);
+        assert_eq!(
+            boxes(Facts {
+                completed: true,
+                ..decided
+            }),
+            ["completed"]
+        );
+        // A requester who also decided (the sole-holder case) keeps one box at a time.
+        let both = Facts {
+            requester: true,
+            ..decided
+        };
+        assert_eq!(boxes(both), ["requested"]);
+        assert_eq!(
+            boxes(Facts {
+                completed: true,
+                ..both
+            }),
+            ["completed"]
+        );
         let bundle = ActionBundle::compile("approval_document_list", SCHEMA, POLICIES).unwrap();
         assert!(bundle.decide("u", "o", &[], "o", &[]).is_err());
         assert!(

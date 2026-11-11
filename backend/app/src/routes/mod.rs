@@ -251,6 +251,7 @@ pub fn build_router(state: AppState) -> Router {
             let r = r.merge(crate::action_inbox::router(inbox.clone()));
             let r = r.merge(crate::approvals::router(
                 pool.clone(),
+                org::org_change_store(&deps),
                 state.jwt_verifier.clone(),
                 state
                     .config

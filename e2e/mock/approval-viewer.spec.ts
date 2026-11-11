@@ -19,13 +19,16 @@ const document: ApprovalDocument = {
     { id: "approve", label: "인사팀장 결재", assignee: "박결재", state: "current", meta: "내 차례" },
   ],
   viewer: { kind: "org_change", id: "change-1" }, revision: 1, fingerprint: "sha256:approval-1-r1",
-  consequence: "승인하면 조직 변경이 시행일에 반영됩니다.", opinion_max: 1000,
+  consequence: "final", opinion_max: 998,
+  // The server names the action and its reason catalog; the screen owns the words.
   my_actions: {
     kind: "approve",
-    return: { consequence: "같은 문서가 기안자에게 돌아갑니다.", reason: { codes: [{ code: "CONTENT", label: "내용 보완 필요" }, { code: "OTHER", label: "기타" }], other: "OTHER", memo_max: 1000 } },
-    reject: { consequence: "문서가 종결되며 다시 진행하려면 재기안해야 합니다.", reason: { codes: [{ code: "POLICY", label: "정책에 맞지 않음" }, { code: "OTHER", label: "기타" }], other: "OTHER", memo_max: 1000 } },
+    return: { consequence: "back_to_drafter", reason_domain: "approval_return" },
+    reject: { consequence: "request_ends", reason_domain: "org_change_reject" },
   },
 };
+const reasonCodes: Record<string, string[]> = { approval_return: ["NEEDS_SUPPLEMENT", "OTHER"], org_change_reject: ["POLICY_VIOLATION", "OTHER"] };
+const receipts = { APPROVE: "승인했습니다. 결재가 완료되었습니다.", REJECT: "반려했습니다. 결재가 끝났습니다.", RETURN: "결재를 기록했습니다." } as const;
 
 async function mockViewer(page: Page, options: { actions?: boolean; return?: boolean; stale?: boolean; holdSuccessRead?: boolean } = {}) {
   const decisions: { body: unknown; key: string | null }[] = [];
@@ -44,6 +47,10 @@ async function mockViewer(page: Page, options: { actions?: boolean; return?: boo
       route: current.route.map(step => ({ ...step, role_key: step.id === "draft" ? "hr" : "executive" })),
     } });
   });
+  await page.route(url => url.pathname === "/api/v1/reason-codes", route => route.fulfill({ status: 200, json: {
+    items: (reasonCodes[new URL(route.request().url()).searchParams.get("domain") ?? ""] ?? []).map(code => ({
+      code, system: true, requires_note: code === "OTHER", involuntary: false, notice_required: false, active: true, label_ko: null, label_en: null })),
+  } }));
   await page.route(url => url.pathname === "/api/v1/approvals/approval-1/decision", async route => {
     const body = route.request().postDataJSON();
     decisions.push({ body, key: route.request().headers()["idempotency-key"] ?? null });
@@ -54,7 +61,9 @@ async function mockViewer(page: Page, options: { actions?: boolean; return?: boo
     decided = true;
     current = { ...current, status: { key: "approved", label: "결재 완료", tone: "ok" },
       route: current.route.map(step => ({ ...step, state: "done", meta: "결재 완료" })), my_actions: { kind: "none" } };
-    return route.fulfill({ status: 200, json: { message: "결재를 기록했습니다." } });
+    const decision = (body as { decision: keyof typeof receipts }).decision;
+    return route.fulfill({ status: 200, json: decision === "APPROVE" ? { decision: "APPROVED", status: "APPROVED" }
+      : decision === "REJECT" ? { decision: "REJECTED", status: "REJECTED" } : { decision: "RETURNED", status: "DRAFT" } });
   });
   return { decisions, reads: () => reads, resumeRead };
 }
@@ -87,7 +96,7 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 1440, 
     await expectAxe(page, `approval reason form ${width}px ${theme}`);
     await page.getByRole("button", { name: "돌아가기", exact: true }).click();
     await page.getByRole("button", { name: "승인", exact: true }).click();
-    await expect(page.locator("p[role=status]", { hasText: "결재를 기록했습니다." })).toHaveText("결재를 기록했습니다.");
+    await expect(page.locator("p[role=status]", { hasText: receipts.APPROVE })).toHaveText(receipts.APPROVE);
     await expect.poll(reads).toBe(2);
     await expect(page.getByText(t("enum.orgChangeStatus.APPROVED"), { exact: true })).toBeVisible();
     await expect(chain).not.toContainText("내 차례");
@@ -133,7 +142,7 @@ test("a changed approval is re-read before retrying with its latest fingerprint"
   await expect(page.getByText("2차 상신", { exact: true })).toBeVisible();
   await expect(page.getByRole("alert")).toContainText("문서가 변경되었습니다");
   await page.getByRole("button", { name: "승인", exact: true }).click();
-  await expect(page.locator("p[role=status]", { hasText: "결재를 기록했습니다." })).toBeVisible();
+  await expect(page.locator("p[role=status]", { hasText: receipts.APPROVE })).toBeVisible();
   expect(decisions.map(d => d.body)).toEqual([
     { decision: "APPROVE", seen_fingerprint: document.fingerprint, opinion: "" },
     { decision: "APPROVE", seen_fingerprint: "sha256:approval-1-r2", opinion: "" },
@@ -150,9 +159,9 @@ test("request changes is absent without the server action", async ({ page }) => 
 });
 
 for (const action of [
-  { label: "반려", decision: "REJECT", code: "POLICY", reason: "정책에 맞지 않음" },
-  { label: "보완 요청", decision: "RETURN", code: "CONTENT", reason: "내용 보완 필요" },
-]) {
+  { label: "반려", decision: "REJECT", code: "POLICY_VIOLATION", reason: "규정 위반" },
+  { label: "보완 요청", decision: "RETURN", code: "NEEDS_SUPPLEMENT", reason: "내용 보완 필요" },
+] as const) {
   test(`Escape closes the ${action.decision} reason form and restores focus`, async ({ page }) => {
     await mockScreen(page, screens[0], "empty");
     const { decisions } = await mockViewer(page);
@@ -181,7 +190,7 @@ for (const action of [
       await page.getByRole("textbox", { name: /^메모/ }).fill(" 보완할 내용을 확인했습니다. ");
     }
     await commit.click();
-    await expect(page.locator("p[role=status]", { hasText: "결재를 기록했습니다." })).toBeVisible();
+    await expect(page.locator("p[role=status]", { hasText: receipts[action.decision] })).toBeVisible();
     expect(decisions[0]?.body).toEqual({ decision: action.decision, seen_fingerprint: document.fingerprint, opinion: "검토 의견",
       reason_code: other ? "OTHER" : action.code, ...(other ? { note: "보완할 내용을 확인했습니다." } : {}) });
     expect(decisions[0]?.key).toMatch(/^[0-9a-f-]{36}$/);
@@ -196,8 +205,8 @@ test("the receipt waits for the updated document", async ({ page }) => {
   await approve.click();
   await expect.poll(reads).toBe(2);
   await expect(approve).toBeDisabled();
-  await expect(page.locator("p[role=status]", { hasText: "결재를 기록했습니다." })).toHaveCount(0);
+  await expect(page.locator("p[role=status]", { hasText: receipts.APPROVE })).toHaveCount(0);
   resumeRead();
-  await expect(page.locator("p[role=status]", { hasText: "결재를 기록했습니다." })).toBeVisible();
+  await expect(page.locator("p[role=status]", { hasText: receipts.APPROVE })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /^의견/ })).toHaveCount(0);
 });

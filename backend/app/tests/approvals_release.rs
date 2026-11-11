@@ -80,17 +80,35 @@ async fn approvals_readiness_and_endpoints_require_the_deployment_release_toggle
                             && body.get("document_no").is_none()))),
             "{toggles:?}: {responses:?}"
         );
+        if !expected {
+            // An unreleased feature takes no decision either.
+            let decision =
+                serde_json::json!({"decision": "APPROVE", "seen_fingerprint": "", "opinion": ""});
+            let (status, body) = ctx
+                .call(
+                    "POST",
+                    &format!("/api/v1/approvals/org_change:{id}/decision"),
+                    Some(decision),
+                )
+                .await;
+            assert_eq!(status, ::http::StatusCode::NOT_FOUND, "{toggles:?}: {body}");
+            assert_eq!(body["error"]["code"], "not_found");
+        }
     }
 }
 
 #[test]
-fn approvals_inventory_includes_both_mounted_routes() {
+fn approvals_inventory_includes_every_mounted_route() {
     let approvals = CONFIGURED_ROUTE_SURFACES
         .iter()
         .find(|s| s.name == "approvals")
         .unwrap();
     assert_eq!(
         approvals.paths,
-        ["/api/v1/approvals", "/api/v1/approvals/{id}"]
+        [
+            "/api/v1/approvals",
+            "/api/v1/approvals/{id}",
+            "/api/v1/approvals/{id}/decision"
+        ]
     );
 }

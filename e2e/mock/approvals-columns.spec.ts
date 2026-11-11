@@ -100,19 +100,23 @@ test("a shared link opens a document the loaded list does not hold", async ({ pa
 
 test("the decision panel works in the column and an open reason form keeps Escape", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const reason = { codes: [{ code: "POLICY", label: "정책에 맞지 않음" }, { code: "OTHER", label: "기타" }], other: "OTHER", memo_max: 1000 };
-  await mock(page, id => ({ status: 200, json: { ...item(Number(id.split("-")[1])), body: [], revision: 1, fingerprint: `sha256:${id}-r1`, consequence: "승인하면 시행일에 반영됩니다.", opinion_max: 1000,
-    my_actions: { kind: "approve", return: { consequence: "기안자에게 돌아갑니다.", reason }, reject: { consequence: "문서가 종결됩니다.", reason } } } }));
+  await mock(page, id => ({ status: 200, json: { ...item(Number(id.split("-")[1])), body: [], revision: 1, fingerprint: `sha256:${id}-r1`, consequence: "final", opinion_max: 998,
+    my_actions: { kind: "approve", reject: { consequence: "request_ends", reason_domain: "org_change_reject" } } } }));
+  // The reasons come from the catalog domain the document names.
+  await page.route(url => url.pathname === "/api/v1/reason-codes", route => route.fulfill({ status: 200, json: { items: ["POLICY_VIOLATION", "OTHER"].map(code => ({
+    code, system: true, requires_note: code === "OTHER", involuntary: false, notice_required: false, active: true, label_ko: null, label_en: null })) } }));
   await page.goto("/approvals?sel=approval-1");
   const approve = column(page).getByRole("button", { name: "승인", exact: true });
   await expect(approve).toBeVisible();
-  // 승인 is the one filled button; 반려 and 보완 요청 stay secondary.
+  // 승인 is the one filled button; 반려 stays secondary, and 보완 요청 is absent because no source offers it.
+  await expect(column(page).getByRole("button", { name: "보완 요청", exact: true })).toHaveCount(0);
+  await expect(column(page).getByText(t("approvals.consequence.final"), { exact: true })).toBeVisible();
   await expect(column(page).locator(".btn--primary")).toHaveCount(1);
   await expect(approve).toHaveClass(/btn--primary/);
   const opinion = column(page).getByRole("textbox", { name: /^의견/ });
   await opinion.fill("검토 의견");
   await column(page).getByRole("button", { name: "반려", exact: true }).click();
-  const radio = column(page).getByRole("radio", { name: "정책에 맞지 않음", exact: true });
+  const radio = column(page).getByRole("radio", { name: "규정 위반", exact: true });
   await radio.focus();
   await page.keyboard.press("Escape");
   await expect(column(page).getByRole("radio")).toHaveCount(0);

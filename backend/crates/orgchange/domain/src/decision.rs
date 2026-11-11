@@ -9,6 +9,9 @@ pub struct StepDecisionCommand {
     pub expected_version: Option<String>,
     pub through_step: Option<Uuid>,
     pub step_up: Option<serde_json::Value>,
+    /// The catalog reason of a rejection, validated by the caller
+    /// (`org_change_reject`); its note is `memo`. Never kept on an approval.
+    pub reason_code: Option<String>,
 }
 
 /// A read-time token: partial step decisions change it even before status changes.
