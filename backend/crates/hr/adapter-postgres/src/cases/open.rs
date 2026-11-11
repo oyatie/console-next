@@ -55,9 +55,7 @@ pub(crate) async fn events_with_register(
             .bind(org).bind(&cases).fetch_all(tx.as_mut()).await?;
         super::dates::refresh_many(tx, org, &dated, register).await?;
     } else {
-        for id in cases {
-            initialise(tx, org, id).await?;
-        }
+        initialise_many(tx, org, &cases).await?;
     }
     // Applying a scheduled event releases only its event gate; legal windows remain separate.
     sqlx::query("UPDATE lifecycle_case_items i SET status='OPEN',version=i.version+1 FROM lifecycle_cases c,employee_lifecycle_events l \
@@ -192,10 +190,40 @@ pub(crate) async fn initialise(
     org: Uuid,
     case: Uuid,
 ) -> Result<(), HrError> {
-    let register = console_platform_db::statutory_read::load_statutory_register(tx.as_mut())
-        .await
-        .map_err(|e| HrError::internal(e.to_string()))?;
-    super::dates::refresh(tx, org, case, &register).await
+    initialise_many(tx, org, std::slice::from_ref(&case)).await
+}
+
+async fn initialise_many(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    cases: &[Uuid],
+) -> Result<(), HrError> {
+    if cases.is_empty() {
+        return Ok(());
+    }
+    let rows: Vec<(Option<String>, time::Date, time::Date)> = sqlx::query_as("SELECT DISTINCT COALESCE(i.due_rule_ref,t.due_register_code),c.effective_date, \
+      (now() AT TIME ZONE lifecycle_time_zone(c.org_id,c.employee_id,c.effective_date,c.workplace_id))::date \
+      FROM lifecycle_cases c LEFT JOIN lifecycle_case_items i ON i.org_id=c.org_id AND i.case_id=c.id \
+      LEFT JOIN case_template_items t ON t.template_key=c.template_key AND t.version=c.template_version AND t.item_key=i.item_key \
+      WHERE c.org_id=$1 AND c.id=ANY($2)")
+        .bind(org).bind(cases).fetch_all(tx.as_mut()).await?;
+    let codes: Vec<_> = rows
+        .iter()
+        .filter_map(|(code, _, _)| code.as_deref())
+        .map(|code| console_compliance_domain::statutory::codes::resolve(code).to_owned())
+        .collect();
+    let dates: Vec<_> = rows
+        .iter()
+        .flat_map(|(_, on, today)| [*on, *today])
+        .collect();
+    let register = console_platform_db::statutory_read::load_statutory_register_for_codes(
+        tx.as_mut(),
+        &codes,
+        &dates,
+    )
+    .await
+    .map_err(|e| HrError::internal(e.to_string()))?;
+    super::dates::refresh_many(tx, org, cases, &register).await
 }
 
 pub(crate) async fn place(

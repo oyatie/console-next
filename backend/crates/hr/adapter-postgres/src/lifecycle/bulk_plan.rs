@@ -19,10 +19,12 @@ use super::bulk_selection::{
     BulkSelection, BulkTransferLine, resolve_selection, validate_bulk_targets,
 };
 use super::fixed_term::check_fixed_term_renewal;
-use super::guards::{RecordGuards, check_record_guards};
+use super::guards::{RecordGuards, check_record_guards_with_facts};
 use super::normalize::normalize_lifecycle_transition;
-use super::prepare::{PreparedLifecycleEvent, prepare_lifecycle_event};
+use super::prepare::{PreparedLifecycleEvent, prepare_lifecycle_event_with_context};
 use super::requests::{BulkEmployeeLifecycleEventRequest, CreateEmployeeLifecycleEventRequest};
+use super::schedule_sql::load_schedules_many;
+use super::store::{LifecycleHead, load_employee_heads};
 use super::title_reason::validate_lifecycle_reason;
 use crate::HrError;
 use crate::directory::create::require_assignable_org_unit;
@@ -165,10 +167,22 @@ pub(super) async fn plan_bulk(
         require_assignable_org_unit(tx, org_uuid, org_unit_id).await?;
     }
     let distinct: BTreeSet<Uuid> = employee_ids.iter().copied().collect();
+    let mut heads = load_employee_heads(tx, org_uuid, &employee_ids).await?;
+    let mut schedules = load_schedules_many(tx, org_uuid, &employee_ids).await?;
     let (mut loaded, mut refusals) = (BTreeMap::new(), Vec::new());
     for employee_id in distinct {
         let transition = transition_for(&input.transition, &input.units, employee_id);
-        match prepare_one(tx, org, employee_id, transition, today).await {
+        match prepare_one(
+            tx,
+            org,
+            employee_id,
+            transition,
+            today,
+            heads.remove(&employee_id),
+            schedules.remove(&employee_id).unwrap_or_default(),
+        )
+        .await
+        {
             Ok(prepared) => {
                 loaded.insert(employee_id, prepared);
             }
@@ -200,17 +214,29 @@ async fn prepare_one(
     employee_id: Uuid,
     transition: NormalizedEmployeeLifecycleTransition,
     today: Date,
+    head: Option<LifecycleHead>,
+    schedule: Vec<console_hr_domain::lifecycle::schedule::ScheduledLifecycleRow>,
 ) -> Result<PreparedBulkEvent, HrError> {
     let org_uuid = *org.as_uuid();
-    let mut prepared =
-        prepare_lifecycle_event(tx, org_uuid, employee_id, transition, today).await?;
+    let context = (head.as_ref().map(|head| &head.current), schedule.as_slice());
+    let mut prepared = prepare_lifecycle_event_with_context(
+        tx,
+        org_uuid,
+        employee_id,
+        transition,
+        today,
+        Some(context),
+    )
+    .await?;
+    let head = head.ok_or_else(|| HrError::internal("prepared bulk employee was not loaded"))?;
     // BW-11: the hire-date floor and no silent supersede, per employee.
-    check_record_guards(
+    check_record_guards_with_facts(
         tx,
         org,
         employee_id,
         &mut prepared,
         &RecordGuards::default(),
+        head.guards,
     )
     .await?;
     if prepared.transition.event_type == "CONTRACT_RENEWAL" {

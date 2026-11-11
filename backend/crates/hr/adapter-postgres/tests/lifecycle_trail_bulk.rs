@@ -7,6 +7,9 @@
 mod fixture;
 #[path = "support/lifecycle_grant.rs"]
 mod lifecycle_grant;
+#[allow(dead_code)]
+#[path = "support/trail_queries.rs"]
+mod trail_queries;
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -17,6 +20,7 @@ use console_leave_adapter_postgres::PgLeaveStore;
 use serde_json::json;
 use sqlx::PgPool;
 use time::Duration;
+use tracing::instrument::WithSubscriber;
 use uuid::Uuid;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -30,6 +34,7 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
     .await;
     let people = 2_000;
     let mut employees = Vec::with_capacity(people);
+    let hiring = Instant::now();
     for n in 0..people {
         let mut body = f.body(&format!("lifecycle-scale-{n}"), "REGULAR");
         body.name = format!("합성 직원 {n}");
@@ -42,6 +47,9 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
                 .await
                 .unwrap();
         employees.push(employee.employee_id());
+        if (n + 1) % 500 == 0 {
+            eprintln!("product hires: {}, {:?}", n + 1, hiring.elapsed());
+        }
     }
     let started = Instant::now();
     let (job, _) =
@@ -53,8 +61,12 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
         )
         .await
         .unwrap();
+    let queries = trail_queries::Queries::default();
     f.hr.drive_bulk_lifecycle_job(f.principal.clone(), job.id)
+        .with_subscriber(queries.clone())
         .await;
+    let statements = queries.statements();
+    eprintln!("bulk SQL statements: {}", statements.len());
     let (state, result, error): (String, Option<serde_json::Value>, Option<serde_json::Value>) =
         sqlx::query_as(
             "SELECT state,result,error FROM employee_lifecycle_bulk_jobs WHERE org_id=$1 AND id=$2",
@@ -68,6 +80,17 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
         state, "done",
         "the product bulk budget refused the batch: {error:?}"
     );
+    for query in [
+        "SELECT filing_rule,trigger_event_kinds",
+        "INSERT INTO lifecycle_cases (org_id,id,kind,variant",
+        "INSERT INTO lifecycle_case_items (org_id,case_id,item_key",
+    ] {
+        assert_eq!(
+            statements.iter().filter(|sql| sql.contains(query)).count(),
+            1,
+            "one batched query for {query}"
+        );
+    }
     let result = result.unwrap();
     println!(
         "bulk appointment of {people} product-created employees: {:?}",
