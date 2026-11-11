@@ -96,6 +96,7 @@ pub fn router(state: LifecycleState) -> Router {
 
 mod error;
 pub(crate) mod inbox;
+pub(crate) mod inbox_done;
 mod period_lock_view;
 mod period_locks;
 pub(crate) mod period_relock;

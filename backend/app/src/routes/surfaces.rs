@@ -46,7 +46,13 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     ),
     #[cfg(feature = "support")]
     surface("support", console_support_rest::SUPPORT_ROUTE_PATHS),
-    surface("action-inbox", &[crate::action_inbox::ME_ACTION_INBOX_PATH]),
+    surface(
+        "action-inbox",
+        &[
+            crate::action_inbox::ME_ACTION_INBOX_PATH,
+            crate::action_inbox::ME_ACTION_INBOX_DONE_PATH,
+        ],
+    ),
     surface(
         "approvals",
         &[

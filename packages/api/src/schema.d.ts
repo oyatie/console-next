@@ -9015,6 +9015,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/action-inbox/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 완료 - what the caller decided, newest first
+         * @description The 업무함 완료 tab. Items the caller decided, newest first by completed_at, merged across sources with one keyset: change requests the caller applied or declined, period unlocks the caller approved, and 정정 the caller approved or declined. Each source keeps the grant its open queue requires, so a row shows only while the caller may still read it (a revoked grant hides it). Not counted and never part of the open list or its filters. A name on a row is a personnel read and is access-logged like the open list. 422 validation on a cursor this route did not issue.
+         */
+        get: operations["listMyActionInboxDone"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/authz": {
         parameters: {
             query?: never;
@@ -15116,6 +15136,19 @@ export interface components {
             label: string;
             /** @enum {string} */
             kind: "automation" | "policy";
+        };
+        /** @description An item the caller decided, as the 완료 tab lists it. */
+        ActionInboxDoneItem: {
+            /** @description The namespaced id the open item had ("{kind}:{uuid}"). */
+            id: string;
+            kind: string;
+            /** @description The subject (a person or legal entity name). */
+            title: string;
+            /** @description The source's own end state. */
+            outcome: string;
+            /** Format: date-time */
+            completed_at: string;
+            links: components["schemas"]["ActionInboxLink"][];
         };
         /** @description One unified actionable item. Field names mirror the overview prototype's items[] shape. Source-partial fields (site/who/due/submitted) are absent when the originating source does not carry them. */
         ActionInboxItem: {
@@ -49738,6 +49771,37 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    listMyActionInboxDone: {
+        parameters: {
+            query?: {
+                /** @description Rows per page, 1 to 100 (default 50). */
+                limit?: number;
+                /** @description The previous page's next_cursor. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of finished items. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["ActionInboxDoneItem"][];
+                        /** @description Present when another page exists. */
+                        next_cursor: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
         };
     };
     getCurrentUserAuthz: {

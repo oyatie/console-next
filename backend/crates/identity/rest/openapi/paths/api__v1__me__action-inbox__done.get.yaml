@@ -1,0 +1,49 @@
+tags:
+  - me
+operationId: listMyActionInboxDone
+summary: 완료 - what the caller decided, newest first
+description: >-
+  The 업무함 완료 tab. Items the caller decided, newest first by completed_at, merged across
+  sources with one keyset: change requests the caller applied or declined, period unlocks the
+  caller approved, and 정정 the caller approved or declined. Each source keeps the grant its
+  open queue requires, so a row shows only while the caller may still read it (a revoked grant
+  hides it). Not counted and never part of the open list or its filters. A name on a row is a
+  personnel read and is access-logged like the open list. 422 validation on a cursor this
+  route did not issue.
+security:
+- bearerAuth: []
+parameters:
+- name: limit
+  in: query
+  required: false
+  description: Rows per page, 1 to 100 (default 50).
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+- name: cursor
+  in: query
+  required: false
+  description: The previous page's next_cursor.
+  schema:
+    type: string
+responses:
+  '200':
+    description: One page of finished items.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [items, next_cursor]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ActionInboxDoneItem'
+            next_cursor:
+              type: [string, 'null']
+              description: Present when another page exists.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '422':
+    $ref: '#/components/responses/ValidationError'
