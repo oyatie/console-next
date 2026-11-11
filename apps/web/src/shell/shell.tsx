@@ -34,6 +34,7 @@ import type { NavHub } from "./nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
+const NeedsMeMenu = lazy(() => chunk(import("./top-bar/needs-me")).then(m => ({ default: m.NeedsMeMenu })));
 
 export function Shell() {
   const nav = useNavigate();
@@ -170,7 +171,7 @@ export function Shell() {
           ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
           : <QueryState q={modules} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState>)}
       </nav>
-      <header className="top" aria-busy={restoring || undefined}>
+      <header className="top" data-task-menu={!platform || undefined} aria-busy={restoring || undefined}>
         {!restoring && <>
         <button ref={menuButton} className="btn btn--ghost top__menu" aria-expanded={open} aria-controls="rail" onClick={() => (open ? close() : setOpen(true))}>
           <Menu size={16} aria-hidden /> {t("shell.menu")}
@@ -178,11 +179,12 @@ export function Shell() {
         {!platform && (
           <button type="button" className="btn top__jump" onClick={() => setJump(true)} aria-label={t("shell.jumpLabel")} aria-keyshortcuts="Meta+K Control+K">
             <Search size={16} aria-hidden />
-            <span className="top__jumpText">{t("shell.jump")}</span>
+            <span className="top__jumpText"><span className="top__jumpHint">{t("shell.jump")}</span><span className="top__jumpLabel">{t("shell.jumpLabel")}</span></span>
             <kbd className="top__kbd">{t("shell.jumpKey")}</kbd>
           </button>
         )}
         <span className="top__spacer" />
+        {!platform && <Suspense fallback={null}><NeedsMeMenu id="top-needs-me" /></Suspense>}
         <LiveStatus />
         {!platform && <SupportAccessIndicator />}
         <LocaleSelect id="top-locale" label />
@@ -192,7 +194,7 @@ export function Shell() {
         <Link to="/account" className="btn btn--ghost top__name">
           <UserRound size={16} aria-hidden /> <span>{personName(session.claims?.name, t(session.claims?.platform ? "account.name.unset.operator" : "account.name.unset"))}</span>
         </Link>
-        <button className="btn btn--ghost" onClick={async () => (await logout(), nav({ to: "/login" }))}>
+        <button className="btn btn--ghost top__logout" onClick={async () => (await logout(), nav({ to: "/login" }))}>
           <LogOut size={16} aria-hidden /> {t("shell.logout")}
         </button>
         </>}
