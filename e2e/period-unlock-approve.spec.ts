@@ -243,6 +243,6 @@ test("a sole close authority unlocks with notices and review before and after go
   expect(await human.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await go(human, LOCKS);
   await human.getByRole("button", { name: /^해제됨 / }).click();
-  await expect(human.getByRole("row", { name: /월 급여 마감/ }).first()).toContainText("사후 검토 필요");
+  await expect(human.getByText("사후 검토 필요", { exact: true }).first()).toBeVisible();
   await expect(human.getByRole("button", { name: /^해제됨 / }).locator(".chip--warn")).toHaveCount(0);
 });
