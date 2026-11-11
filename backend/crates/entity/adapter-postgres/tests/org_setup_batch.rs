@@ -281,3 +281,24 @@ async fn ops_are_pinned_moves_carry_people_and_dissolve_needs_an_empty_subtree(o
         ("phase_not_setup", Some("submit_org_change"))
     );
 }
+
+/// regression: a 사업장's own tree unit was recorded from the day it was
+/// entered, while the 사업장 record starts at 개설일, so a 기준일 before the day
+/// of entry showed the 사업장 without its place in the tree.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_workplaces_own_unit_starts_on_its_opening_day(owner: PgPool) {
+    let (store, actor) = tenant(&owner, ORG, "A").await;
+    let (_, [(hq, hq_site), _]) = two_workplaces(&store, &actor).await;
+    let (unit_from, placed_from, opened): (String, String, String) = sqlx::query_as(
+        "SELECT (SELECT attributes->>'effective_from' FROM org_unit_revisions WHERE org_unit_id = $1 ORDER BY version LIMIT 1), \
+                (SELECT valid_from::text FROM org_unit_placements WHERE org_unit_id = $1 AND represents_workplace), \
+                (SELECT min(effective_from)::text FROM workplace_revisions WHERE workplace_id = $2)",
+    )
+    .bind(hq_site)
+    .bind(hq)
+    .fetch_one(&owner)
+    .await
+    .unwrap();
+    assert_eq!(opened, "2020-03-02", "the fixture's 개설일");
+    assert_eq!((unit_from, placed_from), (opened.clone(), opened));
+}
