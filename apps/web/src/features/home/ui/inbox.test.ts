@@ -162,13 +162,15 @@ test("an unregistered record kind stays readable without a guessed destination",
 test("each filter shows its server count and an inexact lower bound without inventing an all count on filtered views", () => {
   view.list.data = { pages: [page([item("work")], { counts: { turn: { total: 7, total_is_exact: true }, waiting: { total: 2, total_is_exact: false } } })] };
   const markup = html();
-  expect(markup).toContain(`${t("home.inbox.filter.turn")} 7`);
-  expect(markup).toContain(`${t("home.inbox.filter.waiting")} 2+`);
+  expect(markup).toContain(`${t("home.inbox.tab.turn")} 7`);
+  expect(markup).toContain(`${t("home.inbox.tab.waiting")} 2+`);
+  // 예정 is a chip under 해야 할 일: the tab keeps its own count and stays current.
   view.filter = "scheduled";
-  view.list.data = { pages: [page([], { total: 0, counts: { turn: { total: 7, total_is_exact: true }, scheduled: { total: 0, total_is_exact: true } } })] };
+  view.list.data = { pages: [page([], { total: 0, available_filters: ["turn", "scheduled"], counts: { turn: { total: 7, total_is_exact: true }, scheduled: { total: 0, total_is_exact: true } } })] };
   const filtered = html();
-  expect(filtered).toContain(`>${t("home.inbox.filter.all")}</a>`);
-  expect(filtered).not.toContain(`${t("home.inbox.filter.all")} 0`);
+  expect(filtered).toContain(`aria-current="page" href="/inbox">${t("home.inbox.tab.turn")} 7</a>`);
+  expect(filtered).toContain(`aria-pressed="true"`);
+  expect(filtered).not.toContain(`>${t("home.inbox.filter.all")}</a>`);
 });
 test("one failed source keeps healthy rows, names the outage and offers retry with its support reference", () => {
   view.list.data = { pages: [page([item("healthy work")], { total_is_exact: false, unavailable: [{ source: "hr_register", support_reference: "0123456789abcdef0123456789abcdef" }] })] };
@@ -184,7 +186,10 @@ test("no work grant shows the honest account page without dead filters", () => {
   const markup = html();
   expect(markup).toContain(t("home.noWork.title"));
   expect(markup).toContain('href="/account"');
-  expect(markup).not.toContain('aria-label="'+t("home.lanes")+'"');
+  // No 요청한 일 or chips without work; 완료 stays reachable for my own decisions.
+  expect(markup).not.toContain('href="/inbox?tab=waiting"');
+  expect(markup).not.toContain('aria-pressed=');
+  expect(markup).toContain('href="/inbox?tab=done"');
 });
 test("empty turn offers permitted starts, next scheduled work and the as-of stamp", () => {
   view.list.data = { pages: [page([], { quick_starts: ["register", "import", "org", "invite"], upcoming: [item("next change", { kind: "org_change_scheduled", lane: "scheduled", links: [{ kind: "org_change", id: "next" }] })] })] };
@@ -205,13 +210,15 @@ test("grant confirmation is preceded by scope, start/end and authority reach", (
 test("only usable server filters are offered", () => {
   view.list.data = { pages: [page([item("work")], { available_filters: ["turn", "deadlines"] })] };
   const markup = html();
-  expect(markup).toContain(t("home.inbox.filter.deadlines"));
-  expect(markup).not.toContain(t("home.inbox.filter.waiting"));
+  // 기한 임박 is no tab of its own: those rows lead 해야 할 일 in its due-soon bucket.
+  expect(markup).toContain(t("home.inbox.tab.turn"));
+  expect(markup).not.toContain(t("home.inbox.tab.waiting"));
   expect(markup).not.toContain(t("home.inbox.filter.failures"));
+  expect(markup).not.toContain(t("home.inbox.filter.scheduled"));
 });
 test("the server can offer a personal view without work capabilities", () => {
   view.list.data = { pages: [page([], { has_work: false, available_filters: ["waiting"] })] };
-  expect(html()).toContain(t("home.inbox.filter.waiting"));
+  expect(html()).toContain(t("home.inbox.tab.waiting"));
 });
 
 test.each(["approve", "effectuate"] as const)("server command %s reaches the inline control beside a distinct record link", (command) => {

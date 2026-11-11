@@ -20,7 +20,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const filter = query.get("filter")!;
       reads.push(`${filter}:${query.get("cursor") ?? "first"}`);
       const queue = inbox(3);
-      return { status: 200, json: { ...queue, items: query.has("cursor") ? [{ ...queue.items[0]!, id: "next-page" }] : queue.items, next_cursor: query.has("cursor") ? null : "next" } };
+      return { status: 200, json: { ...queue, available_filters: ["turn" as const, "waiting" as const], items: query.has("cursor") ? [{ ...queue.items[0]!, id: "next-page" }] : queue.items, next_cursor: query.has("cursor") ? null : "next" } };
     });
     await page.goto("/");
     const open = page.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true });
@@ -37,17 +37,17 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       reads.length = 0;
       const received = page.waitForResponse(response => {
         const url = new URL(response.url());
-        return url.pathname === "/api/v1/me/action-inbox" && url.searchParams.get("filter") === "all" && response.ok();
+        return url.pathname === "/api/v1/me/action-inbox" && url.searchParams.get("filter") === "turn" && response.ok();
       });
       await open.click();
       await expect(page).toHaveURL(/\/inbox$/);
-      await expect.poll(() => reads).toEqual(["all:first"]);
+      await expect.poll(() => reads).toEqual(["turn:first"]);
       // The inbox response is cached before its child mounts after the user read.
       await (await received).finished();
       await page.evaluate(() => new Promise(requestAnimationFrame));
       release();
       await expect(queue.locator("[data-id]")).toHaveCount(3);
-      expect(reads).toEqual(["all:first"]);
+      expect(reads).toEqual(["turn:first"]);
       await expect(page.locator("main header time[datetime]")).toBeVisible();
       await fits(page, `inbox arrival ${width}px ${theme}`);
       await expectAxe(page, `inbox arrival ${width}px ${theme}`);
@@ -59,13 +59,14 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     }
 
     reads.length = 0;
-    const turn = page.getByRole("navigation", { name: t("home.lanes"), exact: true }).getByRole("link", { name: /^내 차례/ });
-    await turn.click();
-    await expect(turn).toHaveAttribute("aria-current", "page");
-    await expect.poll(() => reads).toEqual(["turn:first"]);
+    // Another tab reads its own first page once, then pages on.
+    const requested = page.getByRole("navigation", { name: t("home.lanes"), exact: true }).getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.waiting")}`) });
+    await requested.click();
+    await expect(requested).toHaveAttribute("aria-current", "page");
+    await expect.poll(() => reads).toEqual(["waiting:first"]);
     await queue.getByRole("button", { name: t("home.inbox.more"), exact: true }).click();
     await expect(queue.locator('[data-id="next-page"]')).toBeVisible();
-    expect(reads).toEqual(["turn:first", "turn:next"]);
+    expect(reads).toEqual(["waiting:first", "waiting:next"]);
     expect(mock.unexpected).toEqual([]);
   });
 }
