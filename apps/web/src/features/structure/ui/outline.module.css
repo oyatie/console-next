@@ -1,6 +1,5 @@
-/* features/structure: the outline docked beside the live chart (mockup S2b). */
-.split { display: flex; flex: 1; min-width: 0; gap: var(--space-3); }
-.pane { width: 600px; flex: none; display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+/* features/structure: the outline, the unit tree that fills the list column (mockup S2b). */
+.pane { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
 .head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; }
 .rows { flex: 1; overflow: auto; }
 .colhead, .row { display: grid; grid-template-columns: minmax(0, 1fr) var(--target) calc(var(--target) * 2) calc(var(--target) * 4); align-items: center; gap: var(--space-2); padding: 0 var(--space-4); }
@@ -23,8 +22,6 @@
 .pasteList li { display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--border-soft); }
 .pasteList li[data-bad] { color: var(--danger-tx); }
 @media (max-width: 960px) {
-  .split { flex-direction: column; }
-  .pane { width: auto; }
   .colhead, .row > .level, .row[data-new] > :not(:first-child) { display: none; }
   .row { display: flex; flex-wrap: wrap; justify-content: space-between; min-height: var(--row-h); align-items: center; }
   .name { flex-basis: 100%; }
