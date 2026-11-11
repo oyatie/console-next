@@ -122,6 +122,7 @@ MANUAL_PREFIXES = [
     ("/api/v1/change-requests", "orgchange"),
     ("/api/v1/change-sets", "orgchange"),
     ("/api/v1/job-titles", "orgchange"),
+    ("/api/v1/roster-fields", "orgchange"),
     ("/api/v1/appointment-notices", "orgchange"),
     ("/api/v1/employee-import-runs", "orgchange"),
     ("/api/v1/employee-records", "orgchange"),

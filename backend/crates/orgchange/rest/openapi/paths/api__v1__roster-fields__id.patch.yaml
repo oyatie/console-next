@@ -1,0 +1,54 @@
+tags:
+  - employees
+operationId: updateRosterField
+summary: Rename a field, change its options, or retire or restore it
+description: Omitted parts stay; type and section never change. choices replaces the option list and must
+  name every existing option by id exactly once (relabelled as sent); an option without an id is added. A
+  field is never deleted; active false retires it (hidden from new entry, values kept) and active true
+  restores it within active_limit. Who may change is Cedar's roster_field_manage, as for POST. 404
+  roster_field_not_found; 409 roster_field_label_taken, roster_field_limit; 422 roster_field_label_invalid,
+  roster_field_choices_invalid. Audited as roster_field.update.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          label:
+            type: string
+            minLength: 1
+            maxLength: 60
+          choices:
+            type: array
+            maxItems: 50
+            items:
+              $ref: '#/components/schemas/RosterFieldChoiceInput'
+          active:
+            type: boolean
+responses:
+  '200':
+    description: The changed field.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RosterField'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

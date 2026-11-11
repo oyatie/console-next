@@ -23,9 +23,10 @@ pub const fn tag(feature: Feature) -> Option<(Domain, Level)> {
         | F::OrgUnitManage => Some((D::Org, L::Edit)),
         F::OrgChangeApprove => Some((D::Org, L::Approve)),
         F::EmployeeDirectoryRead => Some((D::HrBasic, L::View)),
-        F::EmployeeDirectoryManage | F::MasterListImport | F::PrivacyRequestDecide => {
-            Some((D::HrBasic, L::Edit))
-        }
+        F::EmployeeDirectoryManage
+        | F::MasterListImport
+        | F::PrivacyRequestDecide
+        | F::RosterFieldManage => Some((D::HrBasic, L::Edit)),
         // governance-04: the 명부 download is the 인사기본 내보내기 level.
         F::ExcelDownload => Some((D::HrBasic, L::Export)),
         F::LifecycleManage => Some((D::Appointment, L::Edit)),

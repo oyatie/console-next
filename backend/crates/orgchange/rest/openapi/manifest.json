@@ -381,6 +381,13 @@
     ],
     "/api/v1/person-binding-reviews": [
       "get"
+    ],
+    "/api/v1/roster-fields": [
+      "get",
+      "post"
+    ],
+    "/api/v1/roster-fields/{id}": [
+      "patch"
     ]
   },
   "schemas": [
@@ -576,6 +583,11 @@
     "RehireEmployeeRequest",
     "ReportEmployeeExitCaseRequest",
     "ResolveEmployeeIdentityRequest",
+    "RosterField",
+    "RosterFieldChoice",
+    "RosterFieldChoiceInput",
+    "RosterFieldSection",
+    "RosterFieldValueType",
     "SetEmployeeHomeBranchRequest",
     "SetEmployeeImportReconcileRowRequest",
     "SetupDeleteEmployeeRequest",

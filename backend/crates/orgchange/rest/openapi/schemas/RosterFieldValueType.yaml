@@ -1,0 +1,3 @@
+type: string
+x-extensible-enum: [TEXT, INTEGER, DECIMAL, DATE, CHOICE]
+description: TEXT, INTEGER (whole number), DECIMAL, DATE, or CHOICE (one option from the field's list).

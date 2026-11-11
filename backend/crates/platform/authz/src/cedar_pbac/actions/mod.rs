@@ -13,6 +13,7 @@ pub mod privacy_request_file;
 pub mod purchase_request_read;
 // --- lane: BE-EMP-UI ---
 pub mod job_title_manage;
+pub mod roster_field_manage;
 // --- lane: CRUD ---
 pub mod org_change_cancel;
 pub mod org_change_draft;
@@ -35,6 +36,7 @@ pub const ACTION_SCHEMAS: &[ActionSchema] = &[
     legal_entity_manage::SCHEMA,
     change_request_decide::SCHEMA,
     job_title_manage::SCHEMA,
+    roster_field_manage::SCHEMA,
     org_unit_manage::SCHEMA,
     settings_manage::SCHEMA,
     reason_code_manage::SCHEMA,

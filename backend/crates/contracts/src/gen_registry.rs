@@ -10868,6 +10868,32 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
             ),
         }],
     },
+    PathItem {
+        path: "/api/v1/roster-fields",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../orgchange/rest/openapi/paths/api__v1__roster-fields.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../orgchange/rest/openapi/paths/api__v1__roster-fields.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/roster-fields/{id}",
+        operations: &[Operation {
+            method: "patch",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__roster-fields__id.patch.yaml"
+            ),
+        }],
+    },
 ];
 
 const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
@@ -11702,6 +11728,26 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!(
             "../../orgchange/rest/openapi/schemas/ResolveEmployeeIdentityRequest.yaml"
         ),
+    },
+    NamedYaml {
+        name: "RosterField",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RosterField.yaml"),
+    },
+    NamedYaml {
+        name: "RosterFieldChoice",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RosterFieldChoice.yaml"),
+    },
+    NamedYaml {
+        name: "RosterFieldChoiceInput",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RosterFieldChoiceInput.yaml"),
+    },
+    NamedYaml {
+        name: "RosterFieldSection",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RosterFieldSection.yaml"),
+    },
+    NamedYaml {
+        name: "RosterFieldValueType",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RosterFieldValueType.yaml"),
     },
     NamedYaml {
         name: "SetEmployeeHomeBranchRequest",

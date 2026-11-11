@@ -1105,6 +1105,7 @@ mod tests {
             Feature::ApprovalRouteManage,
             Feature::ChangeRequestDecide,
             Feature::JobTitleManage,
+            Feature::RosterFieldManage,
             Feature::RetainedRecordsRead,
             Feature::TenantOffboard,
             Feature::LegalEntityManage,

@@ -22,6 +22,7 @@ pub mod fixed_term;
 pub mod job_title;
 pub mod lifecycle_void;
 pub mod requests;
+pub mod roster_field;
 // --- lane: PEOPLE-B ---
 mod directory;
 pub use directory::{employee_facets, export_employees_csv};

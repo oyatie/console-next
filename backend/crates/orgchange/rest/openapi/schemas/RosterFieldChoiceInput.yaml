@@ -1,0 +1,12 @@
+type: object
+additionalProperties: false
+required: [label]
+properties:
+  id:
+    description: An existing option's id; absent for a new option.
+    allOf:
+    - $ref: '#/components/schemas/Uuid'
+  label:
+    type: string
+    minLength: 1
+    maxLength: 40
