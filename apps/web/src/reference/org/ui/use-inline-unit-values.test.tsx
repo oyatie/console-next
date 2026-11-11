@@ -15,7 +15,10 @@ test.each([
   [false, true, "2026-11-04", "   ", false],
   [false, true, "2026-11-04", "Growth", true],
   [false, false, "2026-12-01", "", true],
-  [true, true, "", "", true],
+  [true, true, "2026-11-04", "", true],
+  [true, false, "2021-03-02", "", true],
+  [true, false, "2026-11-05", "", false],
+  [true, false, "", "", false],
 ])("setup=%s routed=%s date=%s note=%s valid=%s", (setup, routed, date, reason, valid) => {
   Object.assign(state, { routed, date, reason, ready: true });
   function Probe() {

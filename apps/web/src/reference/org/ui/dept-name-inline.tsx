@@ -8,7 +8,7 @@ import { CommandError } from "../../../lib/react/command-error";
 import { useFocusInside } from "../../../lib/react/use-focus-inside";
 import { Button, Form } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
-import { applySetup, governed, inlineUnitBody, changeReceipt, STRUCTURE_READS } from "../api";
+import { applySetup, governed, inlineUnitBody, changeReceipt, setupDated, STRUCTURE_READS } from "../api";
 import { depts, parentRef, unitIdOf, type Node } from "../domain/structure";
 import { noteChange } from "./use-change-note";
 import { InlineUnitFields } from "./inline-unit-fields";
@@ -30,14 +30,14 @@ export function DeptNameInline({ parent, unit, setup = true, onDone }: { parent:
   const [name, setName] = useState(baseUnit?.name ?? "");
   const save = useCommand({
     run: async ({ name: n, submit }: { name: string; submit: boolean }, key: string) => setup
-      ? (await applySetup(key, [baseUnit ? { op: "RENAME", org_unit_id: baseUnit.id, expected_version: baseUnit.version, name: n } : { op: "CREATE", name: n, ...parentRef(baseParent) }]), undefined)
+      ? (await applySetup(key, [baseUnit ? { op: "RENAME", org_unit_id: baseUnit.id, expected_version: baseUnit.version, name: n } : { op: "CREATE", name: n, ...parentRef(baseParent) }], state.values.effectiveDate), undefined)
       : governed(key, inlineUnitBody(baseUnit ? { kind: "rename", orgUnitId: baseUnit.id, fromName: baseUnit.name, name: n, ...state.values, submit } : { kind: "create", parentUnitId: unitIdOf(baseParent), name: n, ...state.values, submit }), submit),
     invalidates: STRUCTURE_READS,
     awaitFirstRead: true,
     onSuccess: (out, { name: n }) => {
       if (out && out.sent !== "sent") return void nav({ to: "/org/changes/$id", params: { id: out.id }, search: { done: "drafted", unsent: out.sent === "unsent" || undefined } });
       if (out) noteChange({ id: out.id, code: out.code, message: changeReceipt(out.status, baseUnit ? t("orgChange.title.rename", { from: baseUnit.name, to: n }) : t("orgChange.title.create", { name: n }), out.code, state.values.effectiveDate) });
-      else announce(baseUnit ? t("orgUnit.rename.done", { from: baseUnit.name, name: n }) : t("orgUnit.add.done", { name: n, parent: baseParent.name }));
+      else announce(setupDated(baseUnit ? t("orgUnit.rename.done", { from: baseUnit.name, name: n }) : t("orgUnit.add.done", { name: n, parent: baseParent.name }), state.values.effectiveDate).message);
       if (baseUnit) onDone(); else setName("");
       if (out?.select) void nav({ to: "/org", search: (q: Record<string, unknown>) => ({ ...q, sel: out.select, act: undefined }) });
     },
