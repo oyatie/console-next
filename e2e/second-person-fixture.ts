@@ -25,7 +25,7 @@ COMMIT;`,
 
 /**
  * Advance only this tenant's pending-grant worker clock to the configured deadline.
- * The debug server reads these per-tenant files; release builds never read them.
+ * Debug and e2e-test-support servers read these files; deployable releases ignore them.
  * No grant data is written and other tenants' clocks stay put.
  */
 export async function activatePendingGrants(page: import("@playwright/test").Page, token: () => string) {

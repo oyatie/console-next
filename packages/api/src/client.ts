@@ -32,7 +32,13 @@ export async function authFetch(input: Request): Promise<Response> {
     noteServerDate(res);
     const stepUp = res.status === 401 && ApiError.fromBody(res, await res.clone().json().catch(() => null)).code.includes("step_up");
     if (res.status === 401 && !stepUp && !NO_REFRESH.some((p) => path.startsWith(p))) {
-      const renewed = await refresh();
+      const renewed = await refresh().catch((error: unknown) => {
+        if (!writable) throw error;
+        // The write was refused; an unreachable renewal cannot make its outcome uncertain.
+        throw new ApiError(401, "session_renewal_unreachable", "", [], undefined, false, [], {
+          requestKey: key, retryAfterMs: error instanceof ApiError ? error.retryAfterMs : undefined,
+        });
+      });
       // A 401 refused the write before application. Keep its frozen body/key while recovery owns the screen.
       const resumed = !renewed && writable && principal && session.lost && await reauthenticated(principal, input.signal);
       if ((renewed || resumed) && session.principal === principal) {

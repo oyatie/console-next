@@ -17,7 +17,7 @@ import { Table } from "../../../ui/table";
 import { holidaysQuery, retireHoliday, type ContractualHoliday, type ScheduleTree } from "../api";
 import { refusalText, ruleText } from "../present";
 import { HolidaySheet } from "./holiday-sheet";
-import { YearStepper } from "./year-stepper";
+import { PeriodStepper } from "./period-stepper";
 
 
 /**
@@ -37,7 +37,7 @@ export function HolidaysView({ tree, onDone }: { tree: ScheduleTree; onDone: (me
         flush
         tools={!q.error &&
           <>
-            <YearStepper year={year} onYear={setYear} />
+            <PeriodStepper unit="year" value={String(year)} onChange={value => setYear(Number(value))} />
             <Button size="sm" variant="primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden /> {t("attendanceHolidays.holidays.add")}</Button>
           </>
         }

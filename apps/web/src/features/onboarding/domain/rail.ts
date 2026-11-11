@@ -31,6 +31,7 @@ const LINKS: Record<string, Fix> = {
   confirm_legal_entity: ENTITIES,
   legal_entity_record_required: ENTITIES,
   confirm_registration: ENTITIES,
+  add_registration: ENTITIES,
   verify_registration: ENTITIES,
   create_primary_workplace: ENTITIES,
   create_workplace: ENTITIES,
@@ -51,6 +52,7 @@ const LINKS: Record<string, Fix> = {
   grant_access_admin: { to: "/access/grants" },
   // Accepted in place on the go-live preview, by the contracting admin.
   accept_terms: { to: "/setup/go-live" },
+  open_go_live_preview: { to: "/setup/go-live" },
 };
 export const fixFor = (code: string | null | undefined): Fix | undefined => (code ? LINKS[code] : undefined);
 

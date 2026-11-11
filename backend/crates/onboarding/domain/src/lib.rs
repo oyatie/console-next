@@ -26,6 +26,8 @@ pub struct SetupFacts {
     pub terms_accepted: bool,
     pub entities: i64,
     pub entities_needing_confirmation: i64,
+    /// Active legal entities without an active numbered or pending registration.
+    pub entities_without_registration: i64,
     pub registrations: i64,
     pub registrations_needing_confirmation: i64,
     pub registrations_unverified: i64,
@@ -90,11 +92,12 @@ impl SetupFacts {
         }
     }
 
-    /// ≥ 1 entity; none (and none of its registrations) awaiting confirmation.
+    /// Every active entity has a registration; none await confirmation.
     #[must_use]
     pub fn entities_ready(&self) -> bool {
         self.entities > 0
             && self.entities_needing_confirmation == 0
+            && self.entities_without_registration == 0
             && self.registrations_needing_confirmation == 0
     }
 

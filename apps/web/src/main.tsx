@@ -1,7 +1,7 @@
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createRouter, Link, RouterProvider } from "@tanstack/react-router";
+import { createRouter, Link, RouterProvider, useRouterState } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 import { I18nProvider } from "react-aria-components";
 import { ApiError, configure, session } from "@console/api";
@@ -11,11 +11,12 @@ import { chunk, crashed, loaded, started } from "./lib/chunk-guard";
 import { CrashScreen } from "./lib/react/crash-screen";
 import { STALE_TIME_MS } from "./lib/freshness";
 import { queryDefaults } from "./lib/react/query-defaults";
-import { closeLive, openLive } from "./lib/live/live";
+import { sessionStream } from "./lib/live/session-stream";
 import { EmptyState } from "./ui/empty-state";
 import { initLocale } from "./shell/locale";
 import { IDLE_EXPIRED, watchSession } from "./auth/idle";
 import { pauseAutofill } from "./auth/sign-in-id";
+import { login } from "./routes/app";
 import { routeTree } from "./routes/tree";
 import "./app.css";
 import { prepareFonts } from "./lib/fonts";
@@ -124,6 +125,7 @@ watchSession(queryClient, () => {
 // The shell's one event stream follows the principal (registered after watchSession, so a new principal's
 // cache is already dropped when it opens). Full tenant and platform sessions use their own readers.
 // An enrollment session does not stream; a lost session keeps its stream until re-auth decides.
+const setStreamActive = sessionStream(queryClient);
 let streaming: string | null = null;
 // A sign-out (not a session lost in use), or a reload after the server ended the session for inactivity, pauses the
 // sign-in field's autofill in this tab (auth/sign-in-id.ts): nobody is signed back in by the first suggestion.
@@ -145,21 +147,21 @@ session.subscribe(() => {
     void queryClient.resetQueries({ predicate: q => q.state.error instanceof ApiError && q.state.error.code === "privacy_consent_required" });
     // Consent review can miss change frames; shown data re-reads after acceptance.
     void queryClient.invalidateQueries({ refetchType: "none" });
-    openLive(queryClient);
   }
-  else closeLive();
+  setStreamActive(Boolean(streams));
 });
 
 /** Re-renders the app when the locale changes; server data is refetched in the new language. */
 function Root() {
   const locale = useSyncExternalStore(i18n.subscribe, () => i18n.locale);
+  const signingIn = useRouterState({ router, select: state => state.location.pathname === login.fullPath });
   return (
     <QueryClientProvider client={queryClient}>
       {/* React Aria's own strings (tree chevrons, dismiss buttons, combobox announcements) follow the app locale. */}
       <I18nProvider locale={locale === "ko" ? "ko-KR" : "en-US"}>
         <RouterProvider router={router} key={locale} />
         <Suspense fallback={null}>
-          <IdleGuard />
+          <IdleGuard signingIn={signingIn} onCodeSignIn={() => void router.navigate({ to: login.fullPath, search: { code: true } })} />
         </Suspense>
       </I18nProvider>
     </QueryClientProvider>

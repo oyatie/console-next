@@ -8,6 +8,7 @@
       "src/auth/SetupPasskey.tsx",
       "src/features/structure/ui/jump-palette.tsx",
       "src/lib/react/route-error.tsx",
+      "src/lib/react/session.ts",
       "src/shell/shell.tsx"
     ]
   },
@@ -42,6 +43,7 @@
       "src/features/platform/Tenants.tsx",
       "src/features/settings/ui/settings-hub.tsx",
       "src/features/statutory/ui/statutory-page.tsx",
+      "src/features/support-access/ui/support-access.tsx",
       "src/routes/home-screen.tsx",
       "src/routes/inbox-screen.tsx",
       "src/routes/org-screen.tsx",
@@ -50,6 +52,7 @@
   },
   "record": {
     "budget_kb": 252,
+    "deferred": ["src/ui/external-url-host.tsx"],
     "routes": [
       "src/features/account/Account.tsx",
       "src/features/approvals/ui/approval-viewer.tsx",

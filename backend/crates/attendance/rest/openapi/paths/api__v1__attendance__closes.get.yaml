@@ -9,3 +9,4 @@ responses:
   '200': { description: Typed close board, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceCloseBoard' } } } }
   '401': { $ref: '#/components/responses/Unauthorized' }
   '403': { $ref: '#/components/responses/Forbidden' }
+  '503': { $ref: '#/components/responses/ServiceUnavailable' }

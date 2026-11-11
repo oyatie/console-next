@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { koAccessLog } from "../ko/access-log";
 export const enAccessLog: Record<keyof typeof koAccessLog, string> = {
+  "accessLog.action.privacy_request.intake_read": "Privacy rights request read",
+  "accessLog.target.privacy_rights_request": "Privacy rights request",
   "accessLog.target.employee": "Employee",
   "accessLog.target.user": "Account",
   "accessLog.target.access_log": "Access log",
@@ -63,6 +65,11 @@ export const enAccessLog: Record<keyof typeof koAccessLog, string> = {
   "accessLog.title": "Access-log review",
   "accessLog.chooseFilters": "Choose filters",
   "accessLog.filters": "Access-log filters",
+  "accessLog.appliedFilters": "Applied filters",
+  "accessLog.filterInvalid": "Check the filters",
+  "accessLog.actorUnavailable": "Unavailable actor",
+  "accessLog.filtersUnavailable": "Filters are unavailable",
+  "accessLog.filtersUnavailableReason": "Use actor or IP address search to find records.",
   "accessLog.targetType": "Target kind",
   "accessLog.from": "Start date",
   "accessLog.to": "End date",

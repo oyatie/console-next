@@ -33,7 +33,9 @@ impl RestError {
                 || ORG_CHANGE_CODES.contains(c)
                 || matches!(
                     *c,
-                    "lifecycle.refuse.withdrawn" | "lifecycle.refuse.merge_not_allowed"
+                    "lifecycle.refuse.withdrawn"
+                        | "lifecycle.refuse.merge_not_allowed"
+                        | "lifecycle.refuse.stale_version"
                 )
         }) {
             self.code = code;
@@ -71,6 +73,13 @@ impl RestError {
             );
             refusal.current_version = Some(version);
             return refusal;
+        }
+        if matches!(&e, PgOrgChangeError::Domain(k) if k.code == Some("step_up_failed")) {
+            return Self::new(
+                StatusCode::UNAUTHORIZED,
+                "step_up_failed",
+                "Identity verification failed. Verify again to approve this step.",
+            );
         }
         let message = e.message();
         let code = match &e {
@@ -116,5 +125,25 @@ impl IntoResponse for RestError {
             }),
         )
             .into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn changed_consent_is_a_stale_read_instead_of_a_failed_passkey() {
+        let error = RestError::store(PgOrgChangeError::Domain(
+            KernelError::conflict("sole-holder consent changed")
+                .with_code("lifecycle.refuse.stale_version"),
+        ));
+        assert_eq!(error.status, StatusCode::CONFLICT);
+        assert_eq!(error.code, "lifecycle.refuse.stale_version");
+        let invalid = RestError::store(PgOrgChangeError::Domain(
+            KernelError::forbidden("invalid assertion").with_code("step_up_failed"),
+        ));
+        assert_eq!(invalid.status, StatusCode::UNAUTHORIZED);
+        assert_eq!(invalid.code, "step_up_failed");
     }
 }

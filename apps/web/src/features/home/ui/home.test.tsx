@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { expect, test, vi } from "vitest";
+import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import { Home } from "../Home";
 
 const state = vi.hoisted(() => ({ caps: [] as object[], reads: [] as string[] }));
@@ -23,6 +24,7 @@ test.each([
   const client = new QueryClient();
   state.caps = [{ feature, org_wide, permission: "allow", scoped: !org_wide }];
   state.reads = [];
-  renderToStaticMarkup(<QueryClientProvider client={client}><Home setupPending /></QueryClientProvider>);
+  const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
+  renderToStaticMarkup(<QueryClientProvider client={client}><RouterContextProvider router={router}><Home setupPending /></RouterContextProvider></QueryClientProvider>);
   expect(state.reads).not.toContain("/api/v1/entity-identifier-corrections");
 });

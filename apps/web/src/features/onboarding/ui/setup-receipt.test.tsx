@@ -28,6 +28,9 @@ const state = vi.hoisted(() => ({
     caveats: never[];
   }>,
   days: 7,
+  employees: 23,
+  canRegister: true,
+  snapshotVersion: 1,
   updatedAt: Date.parse("2026-11-04T12:00:00Z"),
 }));
 
@@ -44,11 +47,11 @@ vi.mock("../ui/use-setup", () => ({
         total: 8,
         summary: { people: 42, placed: 42, unplaced: 0, entity_unknown: 0, progress: 100 },
         steps: [{
-          key: "entity",
+          key: "employees",
           group: "company",
           state: "done",
           action: "register",
-          can_act: true,
+          can_act: state.canRegister,
           needs: "org::edit",
           skippable: false,
           paths: ["one"],
@@ -82,8 +85,8 @@ vi.mock("@tanstack/react-query", () => ({
       };
     }
     if (opts.queryFn === goLiveReceiptQuery.queryFn) return { data: {
-      go_live_at: state.goLiveAt, facts_snapshot_version: 1,
-      facts_snapshot: { entities: 7, workplaces: 3, org_units: 8, employees: 23 },
+      go_live_at: state.goLiveAt, facts_snapshot_version: state.snapshotVersion,
+      facts_snapshot: { entities: 7, workplaces: 3, org_units: 8, employees: state.employees },
     } };
     return { data: undefined };
   },
@@ -96,6 +99,9 @@ afterEach(() => {
   state.isOps = true;
   state.entries = [];
   state.days = 7;
+  state.employees = 23;
+  state.canRegister = true;
+  state.snapshotVersion = 1;
   state.updatedAt = Date.parse("2026-11-04T12:00:00Z");
 });
 
@@ -120,6 +126,7 @@ test("renders post-go-live receipt link and setup history link on Home within th
     expect(html).toContain('href="/org/history"');
     expect(html).toContain("23");
     expect(html).not.toContain("42");
+    expect(html).not.toContain('href="/people/new"');
     expect(html).not.toMatch(/aria-label="운영 준비"/);
   } finally {
     vi.useRealTimers();
@@ -160,4 +167,22 @@ test("a history-only viewer cannot see a cached receipt summary", () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+
+test("a zero-employee receipt offers registration and import from the server checklist", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+  try {
+    state.employees = 0;
+    const out = render();
+    expect(out).toMatch(/class="btn btn--primary"[^>]*href="\/people\/new"/);
+    expect(out).toContain('href="/people/import"');
+    expect(out).toContain('href="/setup/go-live"');
+    state.canRegister = false;
+    expect(render()).not.toContain('href="/people/new"');
+    state.canRegister = true;
+    state.snapshotVersion = 2;
+    expect(render()).not.toContain('href="/people/new"');
+  } finally { vi.useRealTimers(); }
 });

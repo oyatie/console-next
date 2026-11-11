@@ -118,7 +118,6 @@
     "apps/web/src/features/people/ui/account-panel.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [8b9fe3dc4c8b7ab53040]",
     "apps/web/src/features/people/ui/account-panel.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [c0c7aa07f8421bef94d4]",
     "apps/web/src/features/people/ui/account-panel.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [c7a1a751645138b427ed]",
-    "apps/web/src/features/people/ui/account-panel.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [eee28ecfc576ed443876]",
     "apps/web/src/features/people/ui/account-sign-in-id.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [147c75d9f4e17982743e]",
     "apps/web/src/features/people/ui/certificate-page.tsx: composer.verb: parallel governed frame; use Composer's typed action and canonical dismiss [7d10cb0f665b55a857ed]",
     "apps/web/src/features/people/ui/certificate-page.tsx: composer.verb: per-screen commit control; use Composer's typed action and canonical dismiss [ae489cbc16a4486c721b]",

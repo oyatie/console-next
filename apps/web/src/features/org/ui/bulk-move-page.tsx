@@ -48,7 +48,8 @@ export function BulkMovePage() {
   const { roots, carried } = collapse(places, chosen);
   const { entity, excluded } = targetsFor(places, roots);
   const first = roots[0] && places.get(roots[0].id);
-  const available = first && entity && ["ready", "stale", "offline"].includes(queryView(st.q));
+  const resolved = ["ready", "stale", "offline"].includes(queryView(st.q));
+  const available = first && entity && resolved;
   const ei = useEiUnit(entity?.id);
   const [to, setTo] = useState<string | null>(null);
   const [res, setRes] = useState<Map<string, Resolution>>(new Map());
@@ -84,7 +85,7 @@ export function BulkMovePage() {
       kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...(first ? first.path : [])].join(" › ")}{available && entity && <Chip tone={labeled(ENTITY_PHASE, setup ? "setup" : "operating").tone}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip>}</span>}
       subtitle={first && t("bulkMove.titleSub", { m: total })}
       tools={available && entity && <AddMore entity={entity} chosen={chosen} canDraft={canDraft} show={showTarget} />}
-      onClose={close}
+      onClose={resolved && (!first || !entity) ? undefined : close}
       pending={run.isPending || submit.isPending}
       action={{ kind: "orgMove", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count }}
       onSubmit={available ? () => { if (blockers.length === 0) { setInFlight(true); if (setup) run.mutate(undefined); else submit.mutate(true); } } : undefined}

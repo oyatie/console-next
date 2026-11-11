@@ -23,3 +23,6 @@ test("no adopted pack never falls back to Korean rates", () => {
 test("held rates hide the figure even with a complete citation", () => {
   expect(rateValue({ ...rate, status: "HELD" })).toBe("근거 확인 필요");
 });
+test("unknown quantities remain held even with a complete active citation", () => {
+  expect(rateValue({ ...rate, value: null })).toBe("근거 확인 필요");
+});

@@ -4,7 +4,8 @@
 .page { display: flex; flex-direction: column; min-height: 100%; }
 .band { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-5) 0; }
 .views { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding-bottom: var(--space-2); }
-.findSlot { display: flex; flex: 1 1 auto; justify-content: flex-end; min-width: min(100%, calc(var(--panel-w) / 1.6)); min-height: calc(var(--target) + var(--space-1)); }
+/* The table portals its search here after loading; its intrinsic size must not reflow the filter band. */
+.findSlot { display: flex; flex: 1 1 auto; justify-content: flex-end; min-width: min(100%, calc(var(--panel-w) / 1.6)); min-height: var(--row-h); }
 .scope { display: flex; align-items: center; gap: var(--space-2); min-height: calc(var(--target) + var(--space-1) + var(--space-2) * 2); box-sizing: border-box; padding: var(--space-2) var(--space-5); flex-wrap: wrap; }
 .stats { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-5); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
 .stats[data-pending] .chips { visibility: hidden; }

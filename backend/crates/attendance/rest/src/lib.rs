@@ -36,7 +36,9 @@ mod read_dto;
 mod self_service;
 #[cfg(test)]
 mod timestamp_tests;
-use read_dto::{SubstitutionCandidateDto, Week52BoardDto, Week52RowDto};
+use read_dto::{SubstitutionCandidateDto, Week52RowDto};
+mod week52;
+use week52::week52;
 // --- lane: ATT-BUILD ---
 mod auth;
 mod error;
@@ -1095,48 +1097,6 @@ async fn close_month(
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Week52Query {
-    week_start: String,
-    branch_id: Option<Uuid>,
-}
-async fn week52(
-    State(state): State<AttendanceRestState>,
-    headers: HeaderMap,
-    AttendanceQuery(q): AttendanceQuery<Week52Query>,
-) -> Result<Json<Week52BoardDto>, RestError> {
-    let p = principal(&state, &headers).await?;
-    require_for_branch(&p, READ, q.branch_id)?;
-    record_read("week52");
-    let week_start =
-        validate_week52_start(parse_date(&q.week_start, "weekStart")?).map_err(|e| {
-            RestError::new(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "validation",
-                e.to_string(),
-            )
-        })?;
-    let items = state
-        .store
-        .week52_inputs(&scope(&p), week_start, q.branch_id)
-        .await
-        .map_err(RestError::store)?;
-    let subjects = items.iter().map(|row| row.employee_id).collect::<Vec<_>>();
-    audit::read(
-        &state,
-        &p,
-        "attendance.week52_read",
-        "query".to_owned(),
-        &subjects,
-        None,
-    )
-    .await?;
-    Ok(Json(Week52BoardDto {
-        week_start: week_start.to_string(),
-        items: items.into_iter().map(Week52RowDto::from).collect(),
-    }))
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct Week52AckBody {
     employee_id: Uuid,
     week_start: String,
@@ -1165,14 +1125,14 @@ async fn acknowledge_week52(
             },
         )?,
     };
-    state
+    let mut row = state
         .store
-        .acknowledge_week52(&scope(&p), command.clone())
-        .await
-        .map_err(RestError::store)?;
-    let row = state
-        .store
-        .week52_inputs(&scope(&p), command.week_start, branch)
+        .week52_inputs(
+            &scope(&p),
+            command.week_start,
+            branch,
+            records::access::load!(p.org_id, *p.user_id.as_uuid()),
+        )
         .await
         .map_err(RestError::store)?
         .into_iter()
@@ -1180,6 +1140,12 @@ async fn acknowledge_week52(
         .ok_or_else(|| {
             RestError::new(StatusCode::NOT_FOUND, "not_found", "resource was not found")
         })?;
+    let ack = state
+        .store
+        .acknowledge_week52(&scope(&p), command)
+        .await
+        .map_err(RestError::store)?;
+    row.acknowledged_at = Some(ack.acknowledged_at);
     Ok(Json(Week52RowDto::from(row)))
 }
 
@@ -1318,7 +1284,7 @@ mod tests {
         assert_invalid_query::<closes_read::CloseListQuery>(
             "/api/v1/attendance/closes?unexpected=true",
         );
-        assert_invalid_query::<Week52Query>("/api/v1/attendance/week52?unexpected=true");
+        assert_invalid_query::<week52::Week52Query>("/api/v1/attendance/week52?unexpected=true");
         assert_invalid_query::<self_service::OwnExceptionsQuery>(
             "/api/v1/attendance/me/exceptions?employee_id=00000000-0000-0000-0000-000000000001",
         );

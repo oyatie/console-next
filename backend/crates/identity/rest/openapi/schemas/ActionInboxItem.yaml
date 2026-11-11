@@ -73,6 +73,7 @@ properties:
     - setup_golive
     - support_access
     - registration_check
+    - privacy_request
   urg:
     type: string
     enum:
@@ -120,6 +121,9 @@ properties:
       worksite_name:
         type: string
         description: Optional physical work site, separate from the statutory placement path.
+      privacy_kinds:
+        type: array
+        items: { type: string }
       review_count:
         type: integer
         minimum: 0
@@ -215,6 +219,23 @@ properties:
   version:
     type: string
     description: Opaque command version for pending org-change approval rows; changes after any step decision.
+  policy:
+    type: object
+    description: Named policy for the stored approval chain, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without stored steps. Commands recheck live policy.
+    required: [key, routed, merge_consecutive, bulk_allowed, step_up]
+    properties:
+      key:
+        type: string
+        description: Settings key whose catalog label names the approval policy.
+      routed:
+        type: boolean
+      merge_consecutive:
+        type: boolean
+        description: Always false; stored steps require distinct deciders.
+      bulk_allowed:
+        type: boolean
+      step_up:
+        type: boolean
   can_decide:
     type: boolean
     description: Present on pending org-change approval rows; evaluated by the command's Cedar action and batch fact loader. Commands recheck current facts.

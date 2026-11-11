@@ -1,6 +1,17 @@
 import type { koReason } from "../ko/reason";
 
 export const enReason: Partial<Record<keyof typeof koReason, string>> = {
+  "reason.excess_post_approval.WORK_CONFIRMED": "Work confirmed",
+  "reason.excess_post_approval.OTHER": "Other",
+  "reason.excess_paid_over_cap.STATUTORY_CAP_EXCEEDED": "Work exceeding the statutory cap confirmed",
+  "reason.excess_paid_over_cap.OTHER": "Other",
+  "reason.excess_not_work.PERSONAL_PRESENCE": "Presence for personal matters",
+  "reason.excess_not_work.SHIFT_WAIT_NO_WORK": "Waiting for a shift (no work)",
+  "reason.excess_not_work.OTHER": "Other",
+  "reason.attendance_correction.TIME_INPUT_ERROR": "Time entry error",
+  "reason.attendance_correction.MISSING_ENTRY": "Missing record",
+  "reason.attendance_correction.WRONG_PERSON": "Another person's record",
+  "reason.attendance_correction.OTHER": "Other",
   "reason.business_registration_end.DUPLICATE": "Registered twice",
   "reason.business_registration_end.TEST_ENTRY": "Test entry",
   "reason.business_registration_end.WRONG_DOCUMENT": "Another business’s certificate",

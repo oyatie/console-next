@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
-import { forgetResize } from "./stability";
+import { clearShifts, forgetResize } from "./stability";
 import { apiOf, bearerOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
 import { chooseRadio, firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
 
-// Slice 1: the paid-time rule, before approval storage and disposition screens land.
+test.beforeAll(() => loadCatalog("ko"));
+
 test("unapproved worked time is recognised immediately for a solo administrator", { tag: "@hr" }, async ({ browser }) => {
   test.setTimeout(600_000);
   const vendor = await vendorPage(browser);
@@ -28,6 +30,8 @@ test("unapproved worked time is recognised immediately for a solo administrator"
   const people = await response.json() as { items: { id: string; name: string }[] };
   const employeeId = people.items.find((p) => p.name === "윤하준")!.id;
   const { month, date } = await pastWorkDay(api, employeeId);
+  // Track record-screen stability after the company, employee and schedule setup.
+  await admin.evaluate(clearShifts);
   const grid = await openMonth(admin, month);
   await cellOf(admin, "윤하준", date).click();
   await admin.keyboard.type("9-20");
@@ -42,7 +46,7 @@ test("unapproved worked time is recognised immediately for a solo administrator"
   await cellOf(admin, "윤하준", date).click();
   await admin.keyboard.press("p");
   const dock = admin.getByRole("complementary", { name: /하루 기록/ });
-  await expect(dock.getByText("10:00 · 소정 안 8:00", { exact: true })).toBeVisible();
+  await expect(dock.getByText(t("attendanceOverview.day.sourceBasis", { source: t("attendanceRecords.source.MANUAL"), recognised: "10:00", regular: "8:00" }), { exact: true })).toBeVisible();
   await expect(dock.getByText("2:00 · 미승인 초과 2:00", { exact: true })).toBeVisible();
   await expect(dock.getByText("승인이 없어도 근로시간으로 인정 · 마감 전에 처리", { exact: true })).toBeVisible();
   await expectAccessible(admin, "paid time dock");

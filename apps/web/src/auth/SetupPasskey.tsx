@@ -43,7 +43,7 @@ export function SetupPasskey() {
         const signInId = await registerPasskey();
         if (signInId) rememberDomain(signInId.split("@")[1]!);
       }
-      await nav({ href: isAppSession ? consentDestination() : session.claims?.platform ? "/platform" : "/" });
+      await nav({ href: consentDestination() });
     } catch (e) {
       // Registration succeeded; a failed automatic sign-in continues on the login screen.
       if (e instanceof Error && e.message === PASSKEY_ENROLLED) return void (await nav({ to: "/login", search: { enrolled: true } }));

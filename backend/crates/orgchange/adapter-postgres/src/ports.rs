@@ -1,5 +1,26 @@
 use crate::*;
 
+/// The composition root verifies the assertion and records the governed exception
+/// and notices inside the caller's locked decision transaction.
+pub trait SoleHolderDecisionPort: Send + Sync {
+    fn recipients<'tx>(
+        &self,
+        tx: &'tx mut Transaction<'_, Postgres>,
+        org: OrgId,
+        actor: UserId,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Vec<Uuid>, KernelError>> + Send + 'tx>,
+    >;
+
+    fn record<'tx>(
+        &self,
+        tx: &'tx mut Transaction<'_, Postgres>,
+        actor: UserId,
+        consent: Value,
+        step_up: Value,
+    ) -> OrgUnitWriteFuture<'tx>;
+}
+
 /// Why people move: the org change that moves them and its 시행일. Every
 /// event the move records carries the change's id as its batch, so a person's
 /// 인사 이력 links back to the change.

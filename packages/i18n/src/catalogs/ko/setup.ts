@@ -1,5 +1,9 @@
 // Korean source for `setup.` ids (apps/web/src/features/onboarding). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koSetup = {
+  "setup.group.company": "법인",
+  "setup.group.operations": "운영",
+  "setup.group.people": "직원",
+  "setup.golive.more": "{count, number}건 더 보기",
   "setup.title": "운영 준비",
   "setup.step.entity": "법인 등록",
   "setup.step.workplace": "사업장 등록",
@@ -54,6 +58,7 @@ export const koSetup = {
   "setup.remedy.map_company_names": "정리하지 않은 회사 이름 {count, number}건",
   "setup.remedy.accept_terms": "고객 계정의 이용약관 동의가 필요합니다",
   "setup.remedy.confirm_registration": "확인할 등록 정보가 {count, number}건 있습니다",
+  "setup.remedy.add_registration": "법인에 사업자등록을 추가합니다",
   "setup.remedy.set_primary_workplace": "대표 사업장을 정하지 않은 법인 {count, number}곳",
   "setup.remedy.attach_registration": "등록증을 연결하지 않은 사업장 {count, number}곳",
   "setup.remedy.record_security_contact": "보안 연락처가 없습니다",
@@ -64,6 +69,7 @@ export const koSetup = {
   "setup.fix.confirm_legal_entity": "법인 확인",
   "setup.fix.verify_registration": "등록 확인",
   "setup.fix.confirm_registration": "등록 확인",
+  "setup.fix.add_registration": "사업자등록 추가",
   "setup.fix.create_workplace": "사업장 등록",
   "setup.fix.complete_workplace": "사업장 확인",
   "setup.fix.set_primary_workplace": "대표 사업장 지정",
@@ -78,6 +84,7 @@ export const koSetup = {
   "setup.golive.item.terms_not_accepted": "고객 계정의 이용약관 동의가 없습니다",
   "setup.golive.item.no_legal_entity": "등록된 법인이 없습니다",
   "setup.golive.item.entity_needs_confirmation": "확인하지 않은 법인 {count, number}곳",
+  "setup.golive.item.entity_without_registration": "사업자등록이 없는 법인 {count, number}곳",
   "setup.golive.item.registration_needs_confirmation": "확인하지 않은 등록 {count, number}건",
   "setup.golive.item.no_workplace": "등록된 사업장이 없습니다",
   "setup.golive.item.no_primary_workplace": "대표 사업장이 없는 법인 {count, number}곳",

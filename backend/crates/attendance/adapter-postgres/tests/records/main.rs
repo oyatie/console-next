@@ -7,6 +7,7 @@ mod closed_month_order;
 mod conflict;
 mod detail;
 mod edits;
+mod evidence;
 mod grammar;
 mod issues;
 mod long_spans;
@@ -18,3 +19,5 @@ mod security_support;
 mod support;
 mod thresholds;
 mod unscheduled;
+
+mod week52;

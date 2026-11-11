@@ -28,7 +28,7 @@ path = "src/lib.rs"
 # by default so normal unit tests need no database topology.
 test-postgres = []
 # E2E-only HTTP fixture API. Never enable in a deployable binary.
-e2e-test-support = []
+e2e-test-support = ["console-platform-access/e2e-test-support"]
 # Local role-switch dev-auth endpoint. NOT in `default` (nor in `mvp` or `full`)
 # and MUST NEVER be added to one — `console-gate-dev-auth-absence` asserts this
 # via `cargo metadata` and is wired into CI as a blocking gate.
@@ -97,6 +97,7 @@ workspace = ["dep:console-workflow-domain", "dep:console-workflow-runtime", "dep
 office = []
 
 [dependencies]
+aws-lc-rs = { workspace = true }
 axum = { workspace = true }
 base64 = { workspace = true }
 calamine = { workspace = true }

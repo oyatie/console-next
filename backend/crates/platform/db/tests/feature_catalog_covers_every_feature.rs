@@ -58,5 +58,41 @@ async fn the_catalog_is_populated_rather_than_vacuously_satisfied(pool: PgPool) 
     );
 }
 
+#[sqlx::test(migrations = false)]
+async fn privacy_features_upgrade_preserves_existing_catalog_rows(pool: PgPool) {
+    MIGRATOR.run_to(20261109010000000, &pool).await.unwrap();
+    let file = Feature::PrivacyRequestFile.as_str();
+    let decide = Feature::PrivacyRequestDecide.as_str();
+    sqlx::query("INSERT INTO feature_catalog (feature_key) VALUES ($1)")
+        .bind(file)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let before: Vec<(String, time::OffsetDateTime)> =
+        sqlx::query_as("SELECT feature_key, created_at FROM feature_catalog ORDER BY feature_key")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    MIGRATOR.run(&pool).await.unwrap();
+
+    let registered: Vec<String> = sqlx::query_scalar(
+        "SELECT feature_key FROM feature_catalog WHERE feature_key = ANY($1) ORDER BY feature_key",
+    )
+    .bind([decide, file].as_slice())
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(registered, [decide, file]);
+    let after: Vec<(String, time::OffsetDateTime)> = sqlx::query_as(
+        "SELECT feature_key, created_at FROM feature_catalog WHERE feature_key = ANY($1) ORDER BY feature_key",
+    )
+    .bind(before.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>())
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(after, before);
+}
+
 /// One migrator for every `#[sqlx::test]` in this file (expanded once, not per test).
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");

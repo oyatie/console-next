@@ -8,7 +8,7 @@ export const enUiOverrideSheet = {
   "uiOverrideSheet.auto": "Automatic",
   "uiOverrideSheet.sole.passkey": "Confirm it is you with a passkey",
   "uiOverrideSheet.sole.passkey.meta": "Bound to this request",
-  "uiOverrideSheet.sole.notify": "Notify {count, plural, one {# executive or super admin} other {# executives and super admins}}",
+  "uiOverrideSheet.sole.notify": "{count, plural, one {# notice record} other {# notice records}}",
   "uiOverrideSheet.sole.review": "Flag for review",
   "uiOverrideSheet.sole.review.meta": "Monthly exception review",
   "uiOverrideSheet.stepUp": "Confirm with a passkey and {action}",

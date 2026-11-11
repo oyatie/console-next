@@ -5,7 +5,7 @@ import { OUTPUT_DIR } from "./slot";
 
 /**
  * The backend's date for applying scheduled personnel actions (CONSOLE_DEV_LIFECYCLE_TODAY_FILE, honoured by a
- * debug `console-app` only): it applies events due on the later of the real KST date and the date in this file,
+ * debug or e2e-test-support `console-app` only): it applies events due on the later of the real KST date and the date in this file,
  * checking every second. Absent at boot. It is one clock for the whole backend, so a test that moves it is tagged
  * `@clock` (the "clock" project runs those alone, one at a time) and puts it back (`withLifecycleDate`).
  */

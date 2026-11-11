@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [country_code, adopted, items]
+properties:
+  country_code:
+    type: [string, 'null']
+    description: Installed country pack for the entity timezone, or null when unknown. An absent entity timezone uses the configured default pack.
+  adopted:
+    type: boolean
+    description: The installed country pack has a classified payroll citation register, even if no rows are currently in force.
+  items:
+    type: array
+    items: {$ref: '#/components/schemas/PayrollRate'}

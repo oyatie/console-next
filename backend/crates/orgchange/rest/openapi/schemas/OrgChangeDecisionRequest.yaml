@@ -6,6 +6,9 @@ properties:
   expected_version:
     type: string
     description: Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.details.current_version.
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    description: Required for the sole-holder path. EXCEPTION_DECIDE binds the request id and offered payload_hash; reason_key is passkey_step_up_exception_decide and replay_attempt is null. Requires expected_version and forbids through_step.
   through_step:
     $ref: '#/components/schemas/Uuid'
     description: Merging stored steps is refused with 409 lifecycle.refuse.merge_not_allowed. Each step requires a distinct natural person.

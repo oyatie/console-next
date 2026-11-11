@@ -224,3 +224,6 @@ async fn a_second_account_of_the_requesters_person_cannot_approve(pool: PgPool) 
 
 #[path = "person_identity.rs"]
 mod person_identity;
+
+#[path = "account_relink.rs"]
+mod relink;

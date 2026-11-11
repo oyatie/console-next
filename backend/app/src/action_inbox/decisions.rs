@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Decision hints enrich visible rows; commands always recheck live admission.
 use super::*;
+use console_action_inbox_application::decision::{DecisionFacts, DecisionPolicy};
 use console_platform_authz::cedar_pbac::actions::org_change_step_decide;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -11,6 +12,7 @@ pub(super) async fn load(
     principal: &Principal,
     ids: Vec<Uuid>,
     mut facts: HashMap<Uuid, org_change_step_decide::Facts>,
+    policy: Option<DecisionPolicy>,
 ) -> Result<HashMap<Uuid, Value>, crate::error::AppError> {
     if ids.is_empty() {
         return Ok(HashMap::new());
@@ -33,8 +35,8 @@ pub(super) async fn load(
         .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
         facts.extend(waiting.into_iter().map(|row| (row.id, row.decision)));
     }
-    let versions = sqlx::query_as::<_, (Uuid, OffsetDateTime)>(
-        "SELECT r.id, greatest(r.updated_at, max(s.decided_at)) FROM org_change_requests r \
+    let versions = sqlx::query_as::<_, (Uuid, OffsetDateTime, bool)>(
+        "SELECT r.id, greatest(r.updated_at, max(s.decided_at)), count(s.id) > 0 FROM org_change_requests r \
                  LEFT JOIN org_change_approval_steps s ON s.org_id=r.org_id AND s.request_id=r.id \
                  WHERE r.org_id=$1 AND r.id=ANY($2) GROUP BY r.id, r.updated_at",
     )
@@ -44,20 +46,18 @@ pub(super) async fn load(
     .await?;
     Ok(versions
         .into_iter()
-        .filter_map(|(id, timestamp)| {
+        .filter_map(|(id, timestamp, has_steps)| {
             let decision = org_change_step_decide::enforce(
                 &principal.user_id.to_string(),
                 &org.to_string(),
                 &org.to_string(),
                 *facts.get(&id)?,
             );
-            let mut fields = json!({
-                "version": console_orgchange_domain::decision_version(timestamp, None),
-                "can_decide": decision.is_ok(),
-            });
-            if let Err(error) = decision {
-                fields["cannot_reason"] = json!(error.code.unwrap_or("forbidden"));
-            }
+            let fields = json!(DecisionFacts::new(
+                console_orgchange_domain::decision_version(timestamp, None),
+                policy.and_then(|policy| policy.for_stored_steps(has_steps)),
+                decision,
+            ));
             Some((id, fields))
         })
         .collect())

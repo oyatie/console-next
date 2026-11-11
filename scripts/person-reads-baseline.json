@@ -7,7 +7,6 @@
   "backend/crates/attendance/adapter-postgres/src/lib.rs:employees.name:c39b9648c0a6c74439c3": 1,
   "backend/crates/attendance/adapter-postgres/src/lib.rs:employees.name:e2933ffcf7aefd6bb630": 1,
   "backend/crates/attendance/adapter-postgres/src/lib.rs:employees.name:eaef2a5957464a449ce9": 1,
-  "backend/crates/attendance/adapter-postgres/src/lib.rs:employees.name:f224899bcb598299d27d": 1,
   "backend/crates/attendance/adapter-postgres/src/records/roster.rs:employees.name:7e1ae4acc4f0c747fe05": 1,
   "backend/crates/attendance/adapter-postgres/src/schedule/crews.rs:employees.name:058fa6ff5440a343dd21": 1,
   "backend/crates/attendance/adapter-postgres/src/schedule/holidays.rs:users.display_name:fd422b29e463b5453fab": 1,

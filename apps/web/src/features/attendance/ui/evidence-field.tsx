@@ -9,7 +9,7 @@ import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { peopleQuery, type Evidence } from "../api";
 import { EVIDENCE, NOTE_MAX_LENGTH, type EvidenceDraft } from "../domain/evidence";
 
-/** What a write was taken from: a paper sheet, a device file, a supervisor (named), the employee's statement or other. */
+/** What a write was taken from, including work output and a named supervisor's confirmation. */
 export function EvidenceField({ value, onChange, disabled }: { value: EvidenceDraft; onChange: (v: EvidenceDraft) => void; disabled?: boolean }) {
   const [query, setQuery] = useState("");
   const found = useQuery({ ...peopleQuery(query.trim()), enabled: query.trim().length > 0, placeholderData: keepPreviousData });
@@ -20,7 +20,7 @@ export function EvidenceField({ value, onChange, disabled }: { value: EvidenceDr
       <ChoiceField
         label={t("attendanceRecords.evidence.label")}
         required
-        columns={2}
+        look="chips"
         value={value.kind}
         onChange={(k) => onChange({ ...value, kind: k as Evidence["kind"] })}
         options={EVIDENCE.map((k) => ({ value: k, label: t(`attendanceRecords.evidence.${k}`) }))}

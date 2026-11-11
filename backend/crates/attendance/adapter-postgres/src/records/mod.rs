@@ -6,13 +6,13 @@ mod board;
 mod board_issues;
 mod board_page;
 mod cells;
-mod day;
+pub(crate) mod day;
 mod edits;
-mod entries;
+pub(crate) mod entries;
 mod grid;
-mod roster;
+pub(crate) mod roster;
 mod save;
-mod thresholds;
+pub(crate) mod thresholds;
 
 pub use board::{BoardAccessFuture, BoardQuery, BoardReadAccess, BoardReadTarget};
 pub use grid::GridQuery;

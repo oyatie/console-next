@@ -46,6 +46,9 @@ test("embedded composers use the caller's heading level and keep signoffs in pre
 });
 
 test.each([
+  [{ kind: "supportAccess", mode: "approve" }, "지원 접근 승인"],
+  [{ kind: "supportAccess", mode: "reject" }, "지원 접근 반려"],
+  [{ kind: "support", mode: "end" }, "지원 종료"],
   [{ kind: "TRANSFER", mode: "apply", count: 1 }, "전보 1명 적용"],
   [{ kind: "TRANSFER", mode: "apply", count: 2 }, "전보 2명 적용"],
   [{ kind: "CONTRACT_RENEWAL", mode: "apply", count: 1 }, "계약 갱신 1명 적용"],

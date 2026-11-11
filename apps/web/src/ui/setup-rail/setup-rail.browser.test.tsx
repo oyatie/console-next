@@ -34,3 +34,21 @@ test("setup actions fit at 390px and leave room for the step title", async () =>
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   }
 }, 30_000);
+
+
+test("collapsed steps keep only their linked title, state and blocker at 390px in both themes", async () => {
+  const act = "다음 단계", why = "단계 설명", fix = "사업장 등록";
+  const html = renderToStaticMarkup(<SetupRail title="운영 준비" groups={[{ key: "all", title: "설정", steps: [
+    { key: "next", title: "법인 등록", state: "todo", action: <button>{act}</button> },
+    { key: "later", title: "직원 등록", state: "todo", collapsed: true, detail: why, action: <button>{act}</button> },
+    { key: "blocked", title: "운영 시작", state: "blocked", collapsed: true, blocker: "사업장이 먼저 있어야 합니다", remedy: <a href="/org/entities">{fix}</a> },
+  ] }]} />);
+  await page.setContent(`<!doctype html><html lang="ko"><head><style>${appCss}\n${railCss}</style></head><body><main style="padding:24px">${html}</main></body></html>`);
+  expect(await page.getByRole("button", { name: act }).count()).toBe(1);
+  expect(await page.getByText(why).count()).toBe(0);
+  expect(await page.getByRole("link", { name: fix }).isVisible()).toBe(true);
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  }
+});

@@ -3,7 +3,7 @@
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
-import { APPROVAL_ROLE, ORG_CHANGE_KIND, ORG_CHANGE_STATUS, UNIT_KIND, actor, label, labeled } from "../../lib/labels";
+import { APPROVAL_ROLE, ORG_CHANGE_KIND, ORG_CHANGE_STATUS, actor, label, labeled } from "../../lib/labels";
 import { labelTitle, opsTitle, subjectOf, type Names } from "./domain/change-title";
 import { todayKst } from "../../lib/pure/today";
 import { addDays, daysBetween, nextWeekday } from "../../ui/date/days";
@@ -45,35 +45,7 @@ export const awaitingRedraft = <C extends Summary>(mine: readonly C[], seen: rea
   return mine.filter((c) => c.status === "REJECTED" && !redrafted.has(c.id));
 };
 
-const short = (id?: string | null) => (id ? id.slice(0, 8) : "—");
-
-/** One proposal op as a sentence. */
-export function describeOp(op: Op, n: Names): string {
-  const unit = (id?: string | null) => n.unit(id) ?? short(id);
-  const region = (id?: string | null) => n.region(id) ?? short(id);
-  switch (op.op) {
-    case "CREATE_REGION": return t("org.change.op.CREATE_REGION", { name: op.name });
-    case "RENAME_REGION": return t("org.change.op.RENAME_REGION", { region: region(op.regionId), name: op.name });
-    case "DEACTIVATE_REGION": return t("org.change.op.DEACTIVATE_REGION", { region: region(op.regionId) });
-    case "CREATE_BRANCH": return t("org.change.op.CREATE_BRANCH", { region: region(op.regionId), name: op.name });
-    case "RENAME_BRANCH": {
-      const v = { branch: n.branch(op.branchId) ?? short(op.branchId), name: op.name, region: op.regionId ? region(op.regionId) : undefined };
-      return t(op.name ? (op.regionId ? "org.change.op.RENAME_BRANCH.both" : "org.change.op.RENAME_BRANCH.name") : op.regionId ? "org.change.op.RENAME_BRANCH.region" : "org.change.op.RENAME_BRANCH", v);
-    }
-    case "DEACTIVATE_BRANCH": return t("org.change.op.DEACTIVATE_BRANCH", { branch: n.branch(op.branchId) ?? short(op.branchId) });
-    case "CREATE_SITE": return t("org.change.op.CREATE_SITE", { name: op.name });
-    case "UPDATE_SITE": return t("org.change.op.UPDATE_SITE", { name: op.name });
-    case "REASSIGN_ORG_UNIT":
-      return op.employeeIds
-        ? t("orgChange.op.reassignSome", { from: unit(op.fromOrgUnit), to: unit(op.toOrgUnit), count: op.employeeIds.length })
-        : t("org.change.op.REASSIGN_ORG_UNIT", { from: unit(op.fromOrgUnit), to: unit(op.toOrgUnit) });
-    case "CREATE_ORG_UNIT": return t("org.change.op.CREATE_ORG_UNIT", { kind: label(UNIT_KIND, op.kind), parent: unit(op.parentId), name: op.name });
-    case "RENAME_ORG_UNIT": return t("org.change.op.RENAME_ORG_UNIT", { unit: unit(op.orgUnitId), name: op.name });
-    case "MOVE_ORG_UNIT": return t("org.change.op.MOVE_ORG_UNIT", { unit: unit(op.orgUnitId), parent: unit(op.parentId) });
-    case "DISSOLVE_ORG_UNIT":
-      return op.mergedInto ? t("orgChange.op.merge", { unit: unit(op.orgUnitId), into: unit(op.mergedInto) }) : t("org.change.op.DISSOLVE_ORG_UNIT", { unit: unit(op.orgUnitId) });
-  }
-}
+export { describeOp } from "../../reference/org/present";
 
 // The change's own event actions (orgchange insert_event), not its audit actions (org_change.*).
 const EVENT = {

@@ -20,9 +20,10 @@ use super::rows::{self, Head, Line};
 use super::types::{entity_error, plan_refused};
 use crate::HrError;
 use crate::lifecycle::guards::{RecordGuards, check_record_guards};
+use crate::lifecycle::hooks::LifecycleTrailHooks;
 use crate::lifecycle::normalize::normalize_lifecycle_transition;
 use crate::lifecycle::prepare::prepare_lifecycle_event;
-use crate::lifecycle::record::record_lifecycle_event_tx;
+use crate::lifecycle::record::record_lifecycle_event_with_hooks;
 use crate::lifecycle::requests::CreateEmployeeLifecycleEventRequest;
 
 type Tx<'a, 'b> = &'a mut Transaction<'b, Postgres>;
@@ -66,14 +67,32 @@ pub(crate) async fn advance(
         rows::mark_done(tx, job.id, l.seq, None).await?;
     }
     let mut refusals = Vec::new();
+    let register = if lines.iter().any(|l| !l.done && l.action == "TRANSFER") {
+        Some(
+            console_platform_db::statutory_read::load_statutory_register(tx.as_mut())
+                .await
+                .map_err(|e| HrError::internal(e.to_string()))?,
+        )
+    } else {
+        None
+    };
+    let hooks = LifecycleTrailHooks {
+        register: register.as_ref(),
+        defer_cases: true,
+    };
+    let mut recorded = Vec::new();
     for l in lines.iter().filter(|l| !l.done && l.action == "TRANSFER") {
-        match transfer(tx, org, who.user, job, l, today).await? {
+        match transfer(tx, org, job, l, today, &hooks).await? {
             Ok((event_id, audit)) => {
+                recorded.push((l.employee_id.unwrap_or_default(), event_id));
                 events.push(audit);
                 rows::mark_done(tx, job.id, l.seq, Some(event_id)).await?;
             }
             Err(r) => refusals.push(r),
         }
+    }
+    if let Some(register) = register.as_ref() {
+        refusals.extend(open_trails(tx, org, &recorded, register).await?);
     }
     if !refusals.is_empty() {
         return Err(plan_refused("close_plan_refused", refusals));
@@ -125,10 +144,10 @@ pub(crate) async fn advance(
 async fn transfer(
     tx: Tx<'_, '_>,
     org: OrgId,
-    actor: UserId,
     job: &Head,
     l: &Line,
     today: Date,
+    hooks: &LifecycleTrailHooks<'_>,
 ) -> Result<Result<(Uuid, AuditEvent), Value>, HrError> {
     let employee = l.employee_id.unwrap_or_default();
     // A savepoint per line: a refusal raised by the database (a trigger)
@@ -167,9 +186,16 @@ async fn transfer(
             &RecordGuards::default(),
         )
         .await?;
-        let (item, audit) =
-            record_lifecycle_event_tx(&mut sp, org, actor, employee, &prepared, Some(job.id))
-                .await?;
+        let (item, audit) = record_lifecycle_event_with_hooks(
+            &mut sp,
+            org,
+            UserId::from_uuid(job.actor_id),
+            employee,
+            &prepared,
+            Some(job.id),
+            hooks,
+        )
+        .await?;
         Ok::<_, HrError>((item.id, audit))
     };
     let result = attempt.await;
@@ -180,16 +206,63 @@ async fn transfer(
         }
         Err(e) if e.status.is_client_error() => {
             sp.rollback().await?;
-            let mut r = json!({ "employee_id": employee, "code": e.code, "message": e.message });
-            if let Some(field) = e
-                .refusals
-                .as_ref()
-                .and_then(|x| x.get(0))
-                .and_then(|x| x.get("field"))
-            {
-                r["field"] = field.clone();
+            Ok(Err(line_refusal(employee, e)))
+        }
+        Err(e) => Err(e),
+    }
+}
+
+fn line_refusal(employee: Uuid, e: HrError) -> Value {
+    let mut r = json!({ "employee_id": employee, "code": e.code, "message": e.message });
+    if let Some(field) = e
+        .refusals
+        .as_ref()
+        .and_then(|x| x.get(0))
+        .and_then(|x| x.get("field"))
+    {
+        r["field"] = field.clone();
+    }
+    r
+}
+
+async fn open_trails(
+    tx: Tx<'_, '_>,
+    org: OrgId,
+    recorded: &[(Uuid, Uuid)],
+    register: &console_compliance_domain::statutory::StatutoryRegister,
+) -> Result<Vec<Value>, HrError> {
+    let ids: Vec<_> = recorded.iter().map(|(_, id)| *id).collect();
+    let mut sp = sqlx::Acquire::begin(&mut *tx).await?;
+    match crate::cases::open::events_with_register(&mut sp, *org.as_uuid(), &ids, Some(register))
+        .await
+    {
+        Ok(()) => {
+            sp.commit().await?;
+            Ok(Vec::new())
+        }
+        Err(e) if e.status.is_client_error() => {
+            sp.rollback().await?;
+            // Preserve each line's refusal even when a batch's dated checklist cannot open.
+            let mut refusals = Vec::new();
+            for &(employee, id) in recorded {
+                let mut sp = sqlx::Acquire::begin(&mut *tx).await?;
+                match crate::cases::open::event_with_register(
+                    &mut sp,
+                    *org.as_uuid(),
+                    id,
+                    Some(register),
+                )
+                .await
+                {
+                    Ok(()) => sp.commit().await?,
+                    Err(e) if e.status.is_client_error() => {
+                        sp.rollback().await?;
+                        refusals.push(line_refusal(employee, e));
+                    }
+                    Err(e) => return Err(e),
+                }
             }
-            Ok(Err(r))
+            Ok(refusals)
         }
         Err(e) => Err(e),
     }

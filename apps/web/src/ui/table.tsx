@@ -3,6 +3,7 @@ import { cardRoles, type CardColumn } from "./long-table/card-columns";
 import cards from "./long-table/table-cards.module.css";
 import { columnWidths, type ColumnType } from "./long-table/column-types";
 import types from "./long-table/column-types.module.css";
+import { rowStep } from "./long-table/row-keys";
 
 /** `width` reserves a stable share for live content; `fit` shrinks the column to its content (codes, dates, chips); `wide` hides it at phone widths (secondary detail). */
 export type Column<R> = CardColumn & { header: ReactNode; cell: (r: R) => ReactNode; type?: ColumnType; fit?: boolean; width?: "code" | "status" | "summary" | "datetime" };
@@ -28,7 +29,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   detail?: (r: R) => ReactNode;
   groups?: { id: string; header: ReactNode; rows: R[] }[];
   density?: "regular" | "compact";
-  /** Keep row geometry on phones when an editing workflow depends on column alignment. */
+  /** Override the automatic phone layout: rows preserve column alignment, cards keep inline forms in view. */
   mobileLayout?: "cards" | "rows";
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,7 +38,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   const [active, setActive] = useState<string>();
   const [hasEditor, setHasEditor] = useState(false);
   const [scrollState, setScrollState] = useState({ overflows: false, clipped: false, focusable: false });
-  const rowsOnPhone = mobileLayout === "rows" || hasEditor;
+  const rowsOnPhone = mobileLayout === "rows" || (mobileLayout !== "cards" && hasEditor);
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
@@ -78,7 +79,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
       onSelect(current);
       return;
     }
-    const step = { j: 1, ArrowDown: 1, k: -1, ArrowUp: -1 }[e.key];
+    const step = rowStep(e.nativeEvent);
     if (!step) return;
     e.preventDefault();
     const next = ids[Math.min(ids.length - 1, Math.max(0, ids.indexOf(current) + step))]!;

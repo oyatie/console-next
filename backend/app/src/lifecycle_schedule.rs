@@ -12,7 +12,7 @@
 //! and re-checked as still SCHEDULED, so any number of replicas apply each
 //! event exactly once.
 //!
-//! # Deterministic apply for E2E (debug builds only)
+//! # Deterministic apply for E2E (debug or e2e-test-support builds only)
 //!
 //! `CONSOLE_DEV_LIFECYCLE_TODAY_FILE=<path>`, read once at start, makes this
 //! loop tick every second and apply events due on
@@ -21,9 +21,8 @@
 //! Only this loop's notion of "today" moves: scheduling, validation and every
 //! other date check keep the real KST date, so an E2E schedules an event for
 //! tomorrow as usual, writes tomorrow's date into the file, and sees the event
-//! APPLIED within a tick. The override is compiled out of release builds — a
-//! release binary ignores the variable (and logs that it did), so it is never
-//! reachable in production.
+//! APPLIED within a tick. Deployable release builds compile out the override
+//! and ignore the variable (and log that they did).
 
 use std::time::Duration;
 
@@ -168,21 +167,21 @@ async fn run_case_clock_tick(pool: &sqlx::PgPool, today: Date) -> Result<usize, 
         .await
 }
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, feature = "e2e-test-support"))]
 fn dev_today_file() -> Option<std::path::PathBuf> {
     let path = std::env::var_os(DEV_TODAY_FILE_ENV).filter(|value| !value.is_empty())?;
     tracing::warn!(
         path = %std::path::Path::new(&path).display(),
-        "{DEV_TODAY_FILE_ENV} is set: scheduled lifecycle events apply on the date in that file (debug build only)"
+        "{DEV_TODAY_FILE_ENV} is set: scheduled lifecycle events apply on the date in that file (test build only)"
     );
     Some(path.into())
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(not(any(debug_assertions, feature = "e2e-test-support")))]
 fn dev_today_file() -> Option<std::path::PathBuf> {
     if std::env::var_os(DEV_TODAY_FILE_ENV).is_some() {
         tracing::error!(
-            "{DEV_TODAY_FILE_ENV} is ignored: the lifecycle date override exists only in debug builds"
+            "{DEV_TODAY_FILE_ENV} is ignored: the lifecycle date override requires a debug or e2e-test-support build"
         );
     }
     None
@@ -218,5 +217,35 @@ mod tests {
             date!(2026 - 10 - 02)
         );
         assert_eq!(effective_today(real, Some("2026-09-01")), real);
+    }
+
+    #[test]
+    fn clock_file_is_available_only_in_test_builds() {
+        use std::process::Command;
+        const CHILD: &str = "CONSOLE_TEST_LIFECYCLE_CLOCK_CHILD";
+        if std::env::var_os(CHILD).is_some() {
+            let expected = if cfg!(any(debug_assertions, feature = "e2e-test-support")) {
+                std::env::var_os(super::DEV_TODAY_FILE_ENV)
+                    .filter(|value| !value.is_empty())
+                    .map(Into::into)
+            } else {
+                None
+            };
+            assert_eq!(super::dev_today_file(), expected);
+            return;
+        }
+        for path in ["", "test-clock"] {
+            let status = Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "lifecycle_schedule::tests::clock_file_is_available_only_in_test_builds",
+                    "--nocapture",
+                ])
+                .env(CHILD, "1")
+                .env(super::DEV_TODAY_FILE_ENV, path)
+                .status()
+                .unwrap();
+            assert!(status.success());
+        }
     }
 }

@@ -8,6 +8,8 @@ WORKDIR /src
 COPY package.json package-lock.json tsconfig.json tsconfig.base.json postcss.config.mjs ./
 COPY packages ./packages
 COPY apps/web ./apps/web
+# The SPA bundles the public suffix list as raw text (apps/web/src/ui/external-url-host.tsx).
+COPY third-party/public-suffix-list ./third-party/public-suffix-list
 COPY scripts/font-subsets.mjs ./scripts/font-subsets.mjs
 # Builds only the shipped web app; type-checking tests and e2e/ (outside this context) is CI's npm run check.
 RUN npm ci --ignore-scripts --no-audit --no-fund && npm run build -w @console/web
@@ -15,6 +17,8 @@ RUN npm ci --ignore-scripts --no-audit --no-fund && npm run build -w @console/we
 FROM ${RUST_IMAGE} AS backend
 WORKDIR /src/backend
 COPY backend ./
+COPY packages/i18n/src/catalogs/approval-sources.json /src/packages/i18n/src/catalogs/approval-sources.json
+COPY packages/i18n/src/catalogs/payroll-reference-labels.json /src/packages/i18n/src/catalogs/payroll-reference-labels.json
 COPY third-party/rust/vendor /src/third-party/rust/vendor
 COPY rustfmt.toml /src/rustfmt.toml
 COPY docs/specs/cedar-pbac-coexistence-map.json /src/docs/specs/

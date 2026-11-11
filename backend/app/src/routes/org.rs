@@ -16,7 +16,27 @@ use crate::wiring::orgchange_ports::{PgEmploymentTransferPort, PgOrgUnitWritePor
 
 pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     let (state, pool) = (deps.state, deps.pool);
+    let mut org_changes = PgOrgChangeStore::new(pool.clone())
+        .with_employment_transfer(Arc::new(PgEmploymentTransferPort))
+        .with_org_unit_write(Arc::new(PgOrgUnitWritePort));
+    if let Some(passkeys) = state.policy_step_up.clone() {
+        org_changes = org_changes.with_sole_holder_decision(Arc::new(
+            crate::wiring::orgchange_sole_holder::PgSoleHolderDecisionPort(passkeys),
+        ));
+    }
     router
+        .merge(
+            crate::privacy::router(
+                pool.clone(),
+                state.jwt_verifier.clone(),
+                state.policy_step_up.clone(),
+            )
+            .layer(axum::Extension(
+                console_platform_request_context::record_access::outcome::Reader(
+                    read_privacy_outcome,
+                ),
+            )),
+        )
         // Settings registry + reason-code catalog (BW-00/07): reads for any
         // signed-in member; every write is a Cedar `enforce_action` call.
         .merge(
@@ -34,9 +54,7 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
         // Org-change lifecycle engine (조직 개편 결재): draft → preflight
         // → ordered SoD approval → effective-dated apply (§15/§16).
         .merge(console_orgchange_rest::router(OrgChangeRestState::new(
-            PgOrgChangeStore::new(pool.clone())
-                .with_employment_transfer(Arc::new(PgEmploymentTransferPort))
-                .with_org_unit_write(Arc::new(PgOrgUnitWritePort)),
+            org_changes,
             state.jwt_verifier.clone(),
         )))
         // 법인 · 사업장 + setup phase (운영 시작); composed in entity_wiring.rs.
@@ -46,6 +64,11 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             state.policy_step_up.clone(),
             state.juso.clone(),
             state.nts.clone(),
+            state
+                .config
+                .release_toggles
+                .iter()
+                .any(|name| name == "approvals"),
         ))
 }
 
@@ -140,4 +163,31 @@ pub(super) fn mount_governance(router: Router, deps: &TenantDeps<'_>) -> Router 
             deps.state.jwt_verifier.clone(),
         ),
     ))
+}
+
+// Filing always makes the authenticated actor the subject; replay rechecks that identity in Cedar.
+fn read_privacy_outcome<'a>(
+    pool: &'a sqlx::PgPool,
+    actor: &'a console_platform_authz::Principal,
+    outcome: &'a mut console_platform_db::command_outcomes::CommandOutcome,
+) -> console_platform_request_context::record_access::outcome::ReadFuture<'a> {
+    Box::pin(async move {
+        let Ok(mut tx) =
+            console_compliance_adapter_postgres::rights::begin(pool, actor.org_id).await
+        else {
+            return false;
+        };
+        let Ok(facts) = console_platform_authz::cedar_pbac::visible::load_facts(
+            &mut tx,
+            actor.org_id,
+            *actor.user_id.as_uuid(),
+        )
+        .await
+        else {
+            return false;
+        };
+        facts
+            .authorize_privacy_request_read(outcome.actor_id)
+            .unwrap_or(false)
+    })
 }

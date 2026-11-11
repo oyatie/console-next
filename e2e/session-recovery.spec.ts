@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
+import { commitLabel } from "../apps/web/src/ui/composer/actions";
 import { apiAs, soloTenant } from "./chaos";
-import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, routeReady, stepUp, takeCode } from "./flows";
+import { acceptConsent, firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, routeReady, stepUp, takeCode } from "./flows";
 import { setupCompany, startOperations, tenantInSetup } from "./setup-flows";
 import { expectAccessible } from "./a11y";
+import { inviteAccount } from "./access-flows";
+import { clearShifts, forgetResize } from "./stability";
 import { authenticatorOf } from "./auth";
 import { apiOf, bearerOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
@@ -55,6 +59,8 @@ for (const [reason, message, passkey] of [
       return denied ? route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: { code: "unauthorized", message: "ended" } }) }) : route.fallback();
     });
     await page.route(REFRESH, (route) => route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: { code: reason, message: "ended" } }) }));
+    // Audit the interrupted write and recovery, after the fixture's earlier screen transitions.
+    await page.evaluate(clearShifts);
     await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
     const recovery = page.getByRole("dialog", { name: "다시 로그인" });
     await expect(recovery).toContainText(message);
@@ -119,6 +125,9 @@ test("exit-report draft survives close/reload, discards explicitly, and never cr
   let form = await openDraft(admin);
   await expect.poll(() => drafts(admin)).toHaveLength(1);
   await admin.keyboard.press("Escape");
+  await admin.keyboard.press("Escape");
+  await expect(form).toBeHidden();
+  await expect(admin).toHaveURL(new RegExp(`${record}$`));
   await admin.reload();
   await admin.getByRole("button", { name: "퇴직 보고", exact: true }).click();
   form = admin.getByRole("dialog", { name: "퇴직 보고", exact: true });
@@ -146,8 +155,11 @@ test("exit-report draft survives close/reload, discards explicitly, and never cr
   await admin.context().addCookies(execPair);
   const sibling = await admin.context().newPage();
   await sibling.goto(record);
-  await expect(admin).toHaveURL(/\/login/);
+  await routeReady(sibling);
+  // The changed shared cookie restores the sibling account after the sign-out transition.
+  await expect(admin).toHaveURL(new URL("/", admin.url()).href);
   await routeReady(admin);
+  await expect(admin.getByRole("link", { name: "이임원", exact: true })).toBeVisible();
   expect(await drafts(admin)).toHaveLength(0);
   await expect(admin.getByText(note)).toHaveCount(0);
   await sibling.getByRole("button", { name: "퇴직 보고", exact: true }).click();
@@ -228,4 +240,193 @@ test("S23 passkey reset and S25 deactivation deliver their actual server reasons
   await again.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => { throw new Error("denied"); } } }));
   await end.getByRole("button", { name: "입력 내용 복사" }).click();
   await expect.poll(() => end.getByRole("textbox", { name: "입력 내용 복사" }).inputValue()).toContain(note);
+});
+
+
+async function recoveryScreenProof(page: Page, name: string) {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await forgetResize(page);
+    await expectAccessible(page, `${name} ${width}`);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, nextTheme) => { el.dataset.theme = nextTheme; }, theme);
+      expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: test.info().outputPath(`${name}-${width}-${theme}.png`) });
+    }
+  }
+}
+
+for (const different of [false, true]) {
+  test(`reset code sign-in restores only the interrupted account (different=${different})`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    const admin = await soloTenant(browser, different ? "resetother" : "resetreturn", "로그인복구상사");
+    const user = await firstSignIn(browser, await inviteAccount(admin, "김복구계정", "full"));
+    const otherCode = different ? await inviteAccount(admin, "이다른계정", "none") : null;
+    await setupCompany(admin, "로그인복구상사");
+    await startOperations(admin);
+    await registerEmployee(admin, { name: "김복귀", number: "REC-0005", hired: kstDate(-30), unit: "본점" });
+    const record = new URL(admin.url()).pathname;
+    await go(user, record);
+    const form = await openDraft(user);
+    const returnUrl = user.url();
+    await expect.poll(() => drafts(user)).toHaveLength(1);
+    await admin.goto("/people?view=accounts");
+    await admin.getByRole("row", { name: /김복구계정/ }).click();
+    await admin.getByRole("complementary", { name: "김복구계정" }).getByRole("button", { name: "패스키 초기화" }).click();
+    await stepUp(admin.getByRole("dialog", { name: "패스키 초기화" }), "패스키로 확인하고 패스키 초기화", admin.getByRole("dialog", { name: "패스키 초기화 로그인 코드" }));
+    const code = await takeCode(admin);
+    const keys: string[] = [];
+    user.on("request", request => {
+      if (request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/hr/exit-cases") keys.push(request.headers()["idempotency-key"]!);
+    });
+    await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
+    const recovery = user.getByRole("dialog", { name: "다시 로그인" });
+    await expect(recovery).toContainText("관리자가 패스키를 초기화했습니다");
+    await expect(recovery.getByRole("button", { name: "패스키로 다시 로그인" })).toHaveCount(0);
+    await expect(recovery.getByRole("button", { name: "코드로 로그인" })).toBeVisible();
+    await copyInput(user);
+    if (!different) await recoveryScreenProof(user, "reset");
+    await recovery.getByRole("button", { name: "코드로 로그인" }).click();
+    await expect(user).toHaveURL(/\/login\?code=true/);
+    expect(await drafts(user)).toHaveLength(2);
+    if (!different) {
+      await user.goBack();
+      await recovery.getByRole("button", { name: "코드로 로그인" }).click();
+      await user.reload();
+      await expect(user.getByLabel("일회용 코드")).toBeFocused();
+      await expect(user.locator("summary")).not.toContainText("처음이면");
+      await recoveryScreenProof(user, "code-login");
+    }
+    await authenticatorOf(user).clear();
+    await user.getByLabel("일회용 코드").fill(otherCode ?? code);
+    await user.getByRole("button", { name: "코드로 로그인" }).click();
+    await expect(user).toHaveURL(/\/setup-passkey/, { timeout: 20_000 });
+    if (different) await acceptConsent(user);
+    if (!different) {
+      await recoveryScreenProof(user, "setup-passkey");
+      await user.route("**/api/v1/auth/passkey/login/start", route => route.abort());
+    }
+    await user.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/, disabled: false }).click();
+    if (!different) {
+      await expect(user).toHaveURL(/\/login\?enrolled=true/);
+      expect(await drafts(user)).toHaveLength(2);
+      await user.unroute("**/api/v1/auth/passkey/login/start");
+      await passkeyLogin(user);
+    }
+    await expect(user).toHaveURL(different ? /\/$/ : returnUrl, { timeout: 20_000 });
+    await routeReady(user);
+    expect(keys).toHaveLength(1);
+    if (different) {
+      expect(await drafts(user)).toEqual([]);
+      expect(await user.evaluate(() => Object.values(sessionStorage).some(value => value.includes("개인 사정으로 사직 (작성 중)")))).toBe(false);
+      await expect(user.getByText(note)).toHaveCount(0);
+    } else {
+      await expect(form.getByRole("textbox", { name: /^퇴직 경위/ })).toHaveValue(note);
+      await expect(form).toContainText("작성 중이던 내용을 불러왔습니다");
+      await expect(form.getByRole("button", { name: "폐기" })).toBeVisible();
+      await recoveryScreenProof(user, "restored");
+      const saved = user.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/hr/exit-cases");
+      await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
+      expect((await saved).ok()).toBe(true);
+      await expect(form).toBeHidden({ timeout: 20_000 });
+      expect(keys).toHaveLength(2);
+      expect(await drafts(user)).toEqual([]);
+    }
+  });
+}
+
+
+test("a refused exit report with unreachable renewal retries edited input from the form under its original key", async ({ browser }) => {
+  const page = await soloTenant(browser, "renewalform", "저장복구상사");
+  const api = apiAs(page);
+  await setupCompany(page, "저장복구상사");
+  await startOperations(page);
+  await registerEmployee(page, { name: "김재시도", number: "REC-0006", hired: kstDate(-30), unit: "본점" });
+  const employee = new URL(page.url()).pathname.split("/").pop()!;
+  const form = await openDraft(page);
+  const keys: string[] = [];
+  let refused = true;
+  await page.route(REPORT, route => {
+    if (route.request().method() !== "POST") return route.continue();
+    keys.push(route.request().headers()["idempotency-key"]!);
+    return refused ? route.fulfill({ status: 401, json: { error: { code: "unauthorized" } } }) : route.continue();
+  });
+  await page.route(REFRESH, route => route.abort());
+  await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
+  await expect(form).toContainText("연결되지 않아 저장하지 않았습니다");
+  await expect(form.getByRole("button", { name: "기록됐는지 확인" })).toHaveCount(0);
+  await expect(form.getByRole("button", { name: "다시 시도", exact: true })).toHaveCount(0);
+  await recoveryScreenProof(page, "not-saved");
+  refused = false;
+  await page.unroute(REFRESH);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  expect(keys).toHaveLength(1);
+  const saved = page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/hr/exit-cases", { timeout: 15_000 });
+  const edited = "고친 퇴직 경위";
+  await form.getByRole("textbox", { name: /^퇴직 경위/ }).fill(edited);
+  await form.getByRole("button", { name: "퇴직 보고 1명 적용", exact: true }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(form).toBeHidden();
+  expect(keys[0]).toBeTruthy();
+  expect(keys).toEqual([keys[0], keys[0]]);
+  const cases = await api<{ items: { site_manager_note: string }[] }>(`/api/v1/hr/exit-cases?employee_id=${employee}`);
+  expect(cases.items).toHaveLength(1);
+  expect(cases.items[0]!.site_manager_note).toBe(edited);
+});
+
+test("a refused pay group retries the edited explicit input under its original key", async ({ browser }) => {
+  await loadCatalog("ko");
+  const page = await soloTenant(browser, "renewalpaygroup", "급여복구상사");
+  const api = apiAs(page);
+  await setupCompany(page, "급여복구상사");
+  await go(page, "/payroll/setup");
+  await page.getByRole("main").getByRole("button", { name: t("payroll.setup.add"), exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: t("payroll.setup.add"), exact: true });
+  await sheet.getByLabel(t("payroll.entity"), { exact: false }).selectOption({ label: "주식회사 급여복구상사" });
+  const name = sheet.getByLabel(t("payroll.setup.name"), { exact: false });
+  await name.fill("원래 그룹");
+  const pay = sheet.getByRole("group", { name: t("payroll.payDateRule"), exact: false });
+  await pay.getByLabel(t("payroll.setup.month"), { exact: false }).selectOption("0");
+  await pay.getByLabel(t("payroll.setup.day"), { exact: false }).selectOption("LAST_DAY");
+  await pay.getByLabel(t("payroll.setup.holiday"), { exact: false }).selectOption("PREVIOUS");
+  for (const period of ["basePeriod", "variablePeriod"] as const) {
+    const group = sheet.getByRole("group", { name: t(`payroll.${period}`), exact: false });
+    await group.getByLabel(t("payroll.setup.month"), { exact: false }).selectOption("0");
+    await group.getByLabel(t("payroll.setup.startDay"), { exact: false }).selectOption("FIRST");
+  }
+  await sheet.getByLabel(t("payroll.proration"), { exact: false }).selectOption("CALENDAR_DAYS");
+  await sheet.getByLabel(t("payroll.channel"), { exact: false }).selectOption("ATTESTATION_ONLY");
+  await sheet.getByLabel(t("payroll.sensitive"), { exact: false }).selectOption("false");
+  await sheet.getByRole("checkbox", { name: t("payroll.rule.MONTHLY"), exact: true }).press("Space");
+  const keys: string[] = [];
+  const bodies: unknown[] = [];
+  let refused = true;
+  await page.route("**/api/v1/payroll/pay-groups", route => {
+    if (route.request().method() !== "POST") return route.continue();
+    keys.push(route.request().headers()["idempotency-key"]!);
+    bodies.push(route.request().postDataJSON());
+    return refused ? route.fulfill({ status: 401, json: { error: { code: "unauthorized" } } }) : route.continue();
+  });
+  await page.route(REFRESH, route => route.abort());
+  const submit = sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true });
+  await submit.click();
+  await expect(sheet).toContainText("연결되지 않아 저장하지 않았습니다");
+  await expect(sheet.getByRole("button", { name: "기록됐는지 확인" })).toHaveCount(0);
+  await expect(sheet.getByRole("button", { name: "다시 시도", exact: true })).toHaveCount(0);
+  await expect(submit).toBeEnabled();
+  await name.fill("고친 그룹");
+  await recoveryScreenProof(page, "pay-group-not-saved");
+  refused = false;
+  await page.unroute(REFRESH);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  expect(keys).toHaveLength(1);
+  const saved = page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/payroll/pay-groups");
+  await submit.click();
+  expect((await saved).status()).toBe(201);
+  await expect(sheet).toBeHidden();
+  expect(keys[0]).toBeTruthy();
+  expect(keys).toEqual([keys[0], keys[0]]);
+  expect(bodies).toEqual([expect.objectContaining({ name: "원래 그룹" }), expect.objectContaining({ name: "고친 그룹" })]);
+  const groups = await api<{ items: { name: string }[] }>("/api/v1/payroll/pay-groups");
+  expect(groups.items).toEqual([expect.objectContaining({ name: "고친 그룹" })]);
 });

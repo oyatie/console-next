@@ -93,6 +93,12 @@ impl PgOrgStore {
                 let exists: Option<uuid::Uuid> = sqlx::query_scalar("SELECT id FROM employees WHERE org_id = $1 AND id = $2 FOR SHARE")
                     .bind(org.as_uuid()).bind(employee).fetch_optional(tx.as_mut()).await?;
                 if exists.is_none() { return Err(KernelError::validation("직원 기록을 찾을 수 없습니다").into()); }
+                let taken: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM users WHERE org_id=$1 AND employee_id=$2 AND id<>$3)")
+                    .bind(org.as_uuid()).bind(employee).bind(target.as_uuid()).fetch_one(tx.as_mut()).await?;
+                if taken {
+                    return Err(KernelError::conflict("Employee is already linked to another account")
+                        .with_code("account_link.refuse.employee_taken").into());
+                }
             }
             let key = SettingKey::AuthzSecondPersonMinGrantAge;
             let settings = resolve_in_tx(tx.as_mut(), org, &[key], None, now).await?;

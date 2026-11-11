@@ -124,3 +124,22 @@ test("a refused registration name never creates an authenticator credential", as
   await expect(registerPasskey({ stepUp: true, label: "거절할 이름" })).rejects.toMatchObject({ code: "passkey_label_invalid" });
   expect(create).not.toHaveBeenCalled();
 });
+
+
+test.each(["cancelled", "refused"])("%s sign-in after enrollment retains the draft principal", async failure => {
+  configure({ baseUrl: "https://console.example", passkeys: { get: async () => failure === "cancelled" ? null : {}, create: async () => ({}) }, refresh: { kind: "cookie" } });
+  session.set({ access_token: `h.${btoa(JSON.stringify({ sub: "user", org: "tenant", enrollment: true }))}.s`, token_type: "Bearer", refresh_expires_at: "2027-01-01T00:00:00Z", requires_passkey_setup: true });
+  const owner = session.principal;
+  vi.stubGlobal("fetch", async (input: Request | string, init?: RequestInit) => {
+    const path = new URL(new Request(input, init).url).pathname;
+    if (path.endsWith("/login/finish")) return new Response(JSON.stringify({ error: { code: "rate_limited" } }), { status: 429 });
+    return new Response(JSON.stringify(path.endsWith("/start") ? { ceremony_id: "ceremony", challenge: { publicKey: {} } } : { sign_in_id: "kim@company" }));
+  });
+  await expect(registerPasskey()).rejects.toThrow("passkey_enrolled_signin_failed");
+  expect(session.token).toBeNull();
+  expect(session.principal).toBe(owner);
+  expect(session.lost).toBe(true);
+  session.set({ access_token: `h.${btoa(JSON.stringify({ sub: "user", org: "tenant" }))}.s`, token_type: "Bearer", refresh_expires_at: "2027-01-01T00:00:00Z", requires_passkey_setup: false });
+  expect(session.principal).toBe(owner);
+  expect(session.lost).toBe(false);
+});

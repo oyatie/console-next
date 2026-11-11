@@ -71,7 +71,7 @@ async fn world(owner: &PgPool) -> World {
 }
 
 impl World {
-    async fn confirm(&self, last_day: Date) {
+    async fn confirm(&self, last_day: Date) -> Uuid {
         let principal = Principal::new(
             self.actor.user,
             self.actor.org,
@@ -98,6 +98,7 @@ impl World {
             .confirm_exit_case(principal, None, id, confirm)
             .await
             .unwrap();
+        id
     }
 
     fn count(&self, tree: &OrgStructure) -> i64 {

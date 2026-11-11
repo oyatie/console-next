@@ -18,6 +18,9 @@ use console_kernel_core::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
+mod ledger_entry;
+pub use ledger_entry::LocationConsentLedgerEntry;
+
 /// Consent transition requested by an outer adapter/use case.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConsentTransitionKind {
@@ -99,21 +102,6 @@ pub struct LocationConsentLedgerQuery {
     pub offset: i64,
 }
 
-/// One audited consent lifecycle transition.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LocationConsentLedgerEntry {
-    pub id: String,
-    pub consent_id: String,
-    pub user_id: UserId,
-    pub branch_id: BranchId,
-    pub actor: Option<UserId>,
-    pub action: String,
-    pub from_status: LocationConsentState,
-    pub to_status: LocationConsentState,
-    pub occurred_at: Timestamp,
-    pub created_at: Timestamp,
-}
-
 /// Paged consent lifecycle ledger.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocationConsentLedgerPage {
@@ -147,6 +135,7 @@ pub struct ArrivalEvent {
     pub latitude: Option<f64>,
     pub longitude: Option<f64>,
     pub kind: String,
+    #[serde(with = "console_kernel_core::timestamp")]
     pub occurred_at: Timestamp,
 }
 
@@ -232,7 +221,9 @@ pub struct AuditStreamRecord {
     pub after_snap: Option<serde_json::Value>,
     pub trace_id: String,
     pub span_id: String,
+    #[serde(with = "console_kernel_core::timestamp")]
     pub occurred_at: Timestamp,
+    #[serde(with = "console_kernel_core::timestamp")]
     pub created_at: Timestamp,
 }
 

@@ -5,6 +5,7 @@ import { expectAxe, fits } from "../a11y";
 import { checklist as operatingChecklist, failure, id, inbox, LONG_NAME, screenAccess, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
+import { previewData } from "../mock/onboarding";
 import { homeSetupCases, homeSetupChecklist, homeSetupScreen } from "./home-setup";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -19,6 +20,21 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
     if (!["loading", "failed", "refused"].includes(state)) {
       await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: { ...inbox(0), setup: checklist } });
     }
+    const preview = previewData("ready");
+    const blockers = [
+      { code: "no_legal_entity", remedy: "create_legal_entity", records: [] },
+      { code: "no_workplace", remedy: "create_workplace", records: [] },
+      { code: "terms_not_accepted", remedy: "accept_terms", records: [] },
+      { code: "no_department", remedy: "add_department", records: [] },
+      { code: "no_access_admin", remedy: "grant_access_admin", records: [] },
+      { code: "no_org_change_approver", remedy: "invite_executive", records: [] },
+      { code: "company_names_to_map", remedy: "map_company_names", records: [] },
+    ];
+    let previewReads = 0;
+    await mockRoute(page, "get", "/api/v1/onboarding/go-live/preview", () => {
+      previewReads++;
+      return state === "preview-refused" ? { status: 403, json: failure("forbidden") } : { status: 200, json: { ...preview, blockers: blockers.slice(0, state === "blocked-7" ? 7 : state === "ready" ? 0 : 3) } };
+    });
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     try {
@@ -38,34 +54,74 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
         await expect(rail).toHaveCount(0);
       } else {
         await expect(rail).toBeVisible({ timeout: 20_000 });
-        await expect(rail.getByRole("list")).toHaveCount(1);
-        await expect(rail.getByRole("heading", { level: 3 })).toHaveCount(0);
+        const groups = checklist.steps.filter((s, i) => i === 0 || s.group !== checklist.steps[i - 1]!.group);
+        await expect(rail.locator("ol")).toHaveCount(groups.length);
+        await expect(rail.getByRole("heading", { level: 3 })).toHaveText(groups.map(s => t(`setup.group.${s.group}`)));
         const rows = rail.locator("[data-step]");
         await expect(rows).toHaveCount(checklist.steps.length);
         for (const [index, step] of checklist.steps.entries()) {
           await expect(rows.nth(index)).toContainText(t(`setup.step.${step.key}` as Parameters<typeof t>[0]));
           await expect(rows.nth(index).locator("[data-step-state]")).toBeVisible();
-          await expect(rows.nth(index)).toContainText("담당 ·");
+          if (!step.can_act) await expect(rows.nth(index)).toContainText(t("setup.permissionNeeded", { permission: t(`setup.permission.${step.needs}` as Parameters<typeof t>[0]) }));
+          else if (await rows.nth(index).getAttribute("aria-current") === "step") await expect(rows.nth(index)).toContainText(step.can_act ? "담당 ·" : t("setup.permissionNeeded", { permission: t("setup.permission.tenant_ops") }));
+          else await expect(rows.nth(index).locator("[data-step-owner]")).toHaveCount(0);
         }
         const progress = rail.getByRole("progressbar", { name: t("setup.title"), exact: true });
         await expect(progress).toHaveAttribute("aria-valuenow", String(checklist.done));
         await expect(progress).toHaveAttribute("aria-valuemax", String(checklist.total));
         await expect(main.locator("progress")).toHaveCount(0);
-        await expect(rail.locator(".btn--primary")).toHaveCount(state === "mid" ? 0 : 1);
-        if (state !== "mid") await expect(rail.locator('[aria-current="step"] .btn--primary')).toHaveCount(1);
+        const golive = checklist.steps.at(-1)!;
+        const blockedCurrent = golive.state === "blocked" && checklist.steps.slice(0, -1).every(s => s.state === "done");
+        await expect(rail.locator(".btn--primary")).toHaveCount(checklist.steps.find(s => s.state !== "done" && s.state !== "attention")?.can_act ? 1 : 0);
+        if (blockedCurrent && golive.can_act) await expect(rail.locator('[aria-disabled="true"]')).toBeVisible();
+        if (state === "blocked-3" || state === "blocked-7") {
+          await expect(rail.locator("[data-setup-blocker]")).toHaveCount(state === "blocked-7" ? 5 : 3);
+          if (state === "blocked-7") await expect(rail.getByRole("link", { name: "2건 더 보기" })).toHaveAttribute("href", "/setup/go-live");
+        }
+        if (state === "preview-unavailable" || state === "ready") expect(previewReads).toBe(0);
+        if (state === "preview-refused") {
+          await expect(rail.locator("[data-setup-blocker]")).toHaveCount(0);
+          await expect(main.getByRole("alert")).toHaveCount(0);
+          await expect(rail).toContainText("시작 전에 할 일 3건");
+        }
+        if (state === "first") {
+          await expect(main.getByRole("alert")).toHaveCount(0);
+          await expect(rail.locator(".chip--danger, .btn--danger")).toHaveCount(0);
+          await expect(rail.getByRole("link", { name: "법인 등록", exact: true })).toHaveCount(1);
+          await expect(rail.getByRole("link", { name: "사업장 등록", exact: true })).toHaveCount(0);
+          await expect(rows.last().locator("[data-setup-blocker]")).toHaveCount(3);
+          await expect(rows.last().locator("[data-setup-blockers]").getByRole("link")).toHaveCount(1);
+          await expect(rows.last().getByRole("link", { name: "이용약관 동의", exact: true })).toHaveAttribute("href", "/setup/go-live");
+        }
         for (const [index, step] of checklist.steps.entries()) {
           if (step.state === "blocked" && ["create_legal_entity", "create_workplace"].includes(step.remedy ?? "")) {
             await expect(rows.nth(index)).toContainText("대기 ·");
-            await expect(rows.nth(index).locator("a,button")).toHaveCount(0);
+            await expect(rows.nth(index).getByRole("link")).toHaveCount(0);
           }
         }
-        await expect(rail.getByRole("link", { name: "설정 단계 기록", exact: true })).toHaveAttribute("href", "/org/history");
+        const history = rail.getByRole("link", { name: "설정 단계 기록", exact: true });
+        if (checklist.steps.some(s => s.key === "org" && s.can_act)) await expect(history).toHaveAttribute("href", "/org/history");
+        else await expect(history).toHaveCount(0);
         await expect(main.locator('#setup-bulk').locator("..").getByRole("link")).toHaveCount(0);
+        if (state === "attention") {
+          await expect(rows.nth(2)).toContainText("부서 없는 직원 3명");
+          await expect(rows.nth(6)).toContainText("미배치 18");
+          await expect(rows.nth(6).getByRole("link")).toHaveCount(1);
+        }
         if (state === "long") await expect(main.getByText("2,000", { exact: true })).toBeVisible();
         if (state === "passkey") await expect(rail.locator('[aria-current="step"]')).toContainText("패스키 등록");
       }
-      await fits(page, `home-setup/${state}/${width}`);
-      await expectAxe(page, `home-setup/${state}/${width}`);
+      for (const theme of ["light", "dark"]) {
+        await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+        await fits(page, `home-setup/${state}/${width}/${theme}`);
+        await page.screenshot({ path: info.outputPath(`home-${width}-${theme}.png`), fullPage: true });
+        await expectAxe(page, `home-setup/${state}/${width}/${theme}`);
+        if (await rail.count()) {
+          await rail.locator("[data-step]").last().scrollIntoViewIfNeeded();
+          await page.screenshot({ path: info.outputPath(`home-${width}-${theme}-go-live.png`), fullPage: true });
+          await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector("main")?.scrollTo(0, 0); });
+        }
+      }
       expect(errors).toEqual([]);
       expect(fixture.unexpected).toEqual([]);
     } finally {
@@ -115,10 +171,10 @@ for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width
   });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", {
     status: 200,
-    json: { ...operatingChecklist, phase: "OPERATING", go_live_at: startedAt, done: 8, total: 8 },
+    json: { ...operatingChecklist, steps: homeSetupChecklist("ready").steps, phase: "OPERATING", go_live_at: startedAt, done: 9, total: 9 },
   });
   await mockRoute(page, "get", "/api/v1/onboarding/go-live/receipt", { status: 200, json: {
-    go_live_at: startedAt, go_live_by: id(1), preview_digest: "a".repeat(64), facts_snapshot: null, facts_snapshot_version: 1,
+    go_live_at: startedAt, go_live_by: id(1), preview_digest: "a".repeat(64), facts_snapshot: { ...previewData("ready").facts, employees: 0 }, facts_snapshot_version: 1,
   } });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(0) });
   try {
@@ -127,7 +183,9 @@ for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width
     await expect(main.getByRole("region", { name: /운영 준비|^시작$/ })).toHaveCount(0);
     await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: "운영 시작 기록 보기", exact: true })).toHaveAttribute("href", "/setup/go-live");
     await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: t("setup.bulk.history"), exact: true })).toHaveAttribute("href", "/org/history");
-    await expect(main.locator("[data-setup-receipt]").getByText(t("setup.receipt.unrecorded"), { exact: true })).toBeVisible();
+    await expect(main.locator("[data-setup-receipt]").getByText(t("setup.receipt.recorded"), { exact: false })).toBeVisible();
+    await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: t("setup.action.employees"), exact: true })).toHaveClass(/btn--primary/);
+    await expect(main.locator("[data-setup-receipt]").getByRole("link", { name: t("setup.action.import"), exact: true })).toHaveAttribute("href", "/people/import");
     for (const theme of ["light", "dark"]) {
       await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
       await fits(page, `home-setup/receipt/${width}/${theme}`);

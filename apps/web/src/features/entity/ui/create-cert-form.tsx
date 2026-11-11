@@ -56,7 +56,14 @@ export function CertForm({ c, onOpenTaken }: { c: CreateState; onOpenTaken?: () 
           onChange={(v) => put("taxType", v as typeof d.taxType)}
         />
       </div>
-      <MaskedField
+      <div className={s.span}>
+        <Checkbox checked={Boolean(d.brnPendingReason)} onChange={(on) => {
+          put("brn", "");
+          put("brnConfirmed", "");
+          put("brnPendingReason", on ? "NEW_REGISTRATION_PENDING" : null);
+        }}>{t("entity.field.brnPending")}</Checkbox>
+      </div>
+      {!d.brnPendingReason && <MaskedField
         label={t("entityCreate.field.brn")}
         required={required.has("brn")}
         format={FORMATS.bizRegNo}
@@ -66,7 +73,7 @@ export function CertForm({ c, onOpenTaken }: { c: CreateState; onOpenTaken?: () 
         warning={p.brn ? undefined : brnWarningText(d, c.brnClasses)}
         hint={t("entityCreate.brn.hint")}
         status={d.brn.length === FORMATS.bizRegNo.max && !p.brn && <Chip tone={checkState(c.preview?.answer, c.checkAvailability?.available).tone}>{checkState(c.preview?.answer, c.checkAvailability?.available).label}</Chip>}
-      />
+      />}
       <BrnConfirm brn={d.brn} confirmed={d.brnConfirmed} onConfirm={(v) => put("brnConfirmed", v)} />
       {!ind && (
         <Item no={4}>

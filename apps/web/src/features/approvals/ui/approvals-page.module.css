@@ -3,7 +3,9 @@
 .filters > :first-child { flex: 1 1 calc(var(--panel-w) * 1.25); }
 .filters > :nth-child(2) { flex: 0 1 calc(var(--panel-w) * .6); }
 .more { display: flex; justify-content: center; }
-.preview { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* In the card layout the cell is a flex row: without this a long signer name widens the card instead of truncating. */
+.route { min-width: 0; max-width: 100%; }
 @media (max-width: 639px) {
   .filters > * { flex: 1 1 100%; min-width: 0; }
 }

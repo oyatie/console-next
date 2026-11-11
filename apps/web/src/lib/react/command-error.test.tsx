@@ -17,11 +17,14 @@ test.each([403, 404, 405])("permanent HTTP %s has no retry prompt or raw fallbac
   expect(banner).not.toMatch(/다시 시도|http_\d+|diagnostic/);
 });
 
-test("a catalog-backed refusal keeps its diagnostic code non-translatable beside the explanation", async () => {
+test("a catalog-backed refusal keeps its diagnostic non-translatable inside the reason disclosure", async () => {
   const code = "lifecycle.refuse.close_blocked";
   const banner = await html(new ApiError(409, code, "internal diagnostic"));
   expect(banner).toContain(t(code));
-  expect(banner).toContain(`<code translate="no">${code}</code>`);
+  expect(banner.replace(/<details>[\s\S]*?<\/details>/g, "")).not.toContain(`<code translate="no">${code}</code>`);
+  const details = banner.match(/<details>[\s\S]*?<\/details>/)?.[0];
+  expect(details).toContain(t("common.denied.why"));
+  expect(details).toContain(`<code translate="no">${code}</code>`);
   expect(banner).not.toContain("internal diagnostic");
 });
 
@@ -236,4 +239,28 @@ test("failed passkey verification cannot offer a command outcome", async () => {
   expect(markup).toContain("본인 확인에 실패해 표시하지 않았습니다.");
   expect(markup).not.toContain(t("requestOutcome.open"));
   expect(markup).not.toContain("/requests/");
+});
+
+
+test("a failed renewal says not saved without an uncertain-outcome link", async () => {
+  const banner = await html(new ApiError(401, "session_renewal_unreachable", "", [], undefined, false, [], { requestKey: key }));
+  expect(banner).toContain("연결되지 않아 저장하지 않았습니다");
+  expect(banner).not.toContain(t("requestOutcome.check"));
+  expect(banner).not.toContain(t("requestOutcome.remedy"));
+  expect(banner).not.toContain("/requests/");
+});
+
+
+test("a known not-saved command leaves retry to the editable form", async () => {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+  let command!: ReturnType<typeof useCommand<string, string>>;
+  function Probe({ collect }: { collect: (value: ReturnType<typeof useCommand<string, string>>) => void }) {
+    collect(useCommand<string, string>({ run: async () => { throw new ApiError(401, "session_renewal_unreachable", "", [], undefined, false, [], { requestKey: key }); } }));
+    return null;
+  }
+  renderToStaticMarkup(<QueryClientProvider client={client}><Probe collect={value => { command = value; }} /></QueryClientProvider>);
+  const failure: unknown = await command.mutateAsync("original").catch((error: unknown) => error);
+  expect(await html(failure)).not.toContain("</button>");
+  expect(await html(failure, { recover: false })).not.toContain("</button>");
+  client.clear();
 });

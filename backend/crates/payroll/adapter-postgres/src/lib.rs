@@ -18,6 +18,7 @@ pub use pay_groups::run_preview::PayrollRunSummary;
 /// `console-workflow-runtime-adapter-postgres`.
 pub mod pay_run;
 pub mod payslip_draft;
+pub mod reference;
 pub mod roster;
 
 use console_kernel_core::{KernelError, UserId};
@@ -33,7 +34,7 @@ mod error;
 pub use error::PgPayrollError;
 
 mod my_lines;
-pub use my_lines::list_my_lines_in_tx;
+pub use my_lines::{MyPayrollLinePage, list_my_lines_in_tx};
 
 const DEFAULT_LIMIT: i64 = 100;
 const MAX_LIMIT: i64 = 500;
@@ -103,14 +104,6 @@ pub struct MyPayrollLine {
     pub leave_remaining: Option<f64>,
     pub gross_pay_source_present: bool,
     pub net_pay_source_present: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct MyPayrollLinePage {
-    pub items: Vec<MyPayrollLine>,
-    pub total: i64,
-    pub limit: i64,
-    pub offset: i64,
 }
 
 /// One SUBMITTED run visible to a distinct org-wide manager (inbox list only).

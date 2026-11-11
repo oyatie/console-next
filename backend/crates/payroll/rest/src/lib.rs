@@ -37,6 +37,7 @@ mod access;
 mod lifecycle;
 mod pay_groups;
 mod payslip_draft;
+mod reference;
 mod self_service;
 
 pub(crate) use access::principal_from_headers;
@@ -53,9 +54,10 @@ use console_payroll_adapter_postgres::{
 use console_platform_auth::JwtVerifier;
 use console_platform_db::{DbError, with_audits};
 use console_platform_request_context::RequestContextError;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use uuid::Uuid;
 
+pub const PAYROLL_REFERENCE_RATES_PATH: &str = "/api/v1/payroll/reference/rates";
 pub const PAYROLL_RUNS_PATH: &str = "/api/v1/payroll/runs";
 pub const PAYROLL_RUN_PREVIEW_PATH: &str = "/api/v1/payroll/runs/preview";
 pub const PAYROLL_RUN_PATH_TEMPLATE: &str = "/api/v1/payroll/runs/{id}";
@@ -86,6 +88,7 @@ pub use payslip_draft::{
 };
 
 pub const PAYROLL_ROUTE_PATHS: &[&str] = &[
+    PAYROLL_REFERENCE_RATES_PATH,
     PAYROLL_PAY_GROUPS_PATH,
     PAYROLL_RUNS_PATH,
     PAYROLL_RUN_PREVIEW_PATH,
@@ -126,6 +129,7 @@ pub fn router(state: PayrollRestState) -> Router {
     let pool = state.store.pool().clone();
     let router = Router::new()
         .merge(pay_groups::router())
+        .route(PAYROLL_REFERENCE_RATES_PATH, get(reference::list))
         .route(PAYROLL_RUNS_PATH, get(list_runs))
         .route(PAYROLL_RUN_PATH_TEMPLATE, get(get_run))
         .route(PAYROLL_MY_PAYSLIPS_PATH, get(self_service::list_my_lines))
@@ -187,11 +191,7 @@ pub fn router(state: PayrollRestState) -> Router {
     pay_groups::with_replay_context(router, verifier, pool)
 }
 
-#[derive(Debug, Deserialize)]
-pub(crate) struct PageParams {
-    pub(crate) limit: Option<i64>,
-    pub(crate) offset: Option<i64>,
-}
+pub(crate) use self_service::PageParams;
 
 async fn list_runs_page(
     state: &PayrollRestState,

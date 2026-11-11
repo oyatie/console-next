@@ -3,7 +3,7 @@
 use crate::action_inbox::error::InboxError;
 use axum::{
     Extension, Json, Router,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     routing::get,
 };
 use console_kernel_core::KernelError;
@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use time::OffsetDateTime;
 use uuid::Uuid;
+mod document;
 mod org_change;
 const BOXES: [&str; 5] = ["pending", "upcoming", "requested", "reference", "completed"];
 #[derive(Deserialize)]
@@ -24,10 +25,25 @@ struct ListQuery {
     cursor: Option<String>,
     limit: Option<usize>,
 }
-pub fn router(pool: sqlx::PgPool, verifier: Option<console_platform_auth::JwtVerifier>) -> Router {
+pub fn router(
+    pool: sqlx::PgPool,
+    verifier: Option<console_platform_auth::JwtVerifier>,
+    released: bool,
+) -> Router {
     console_platform_request_context::with_request_context(
         Router::new()
             .route("/api/v1/approvals", get(list))
+            .route("/api/v1/approvals/{id}", get(document::get))
+            .route_layer(axum::middleware::from_fn(
+                move |request: axum::extract::Request, next: axum::middleware::Next| async move {
+                    if !released {
+                        return Err(InboxError::from(KernelError::not_found(
+                            "approval feature not found",
+                        )));
+                    }
+                    Ok(next.run(request).await)
+                },
+            ))
             .with_state(pool.clone()),
         verifier,
         pool,

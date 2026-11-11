@@ -188,7 +188,18 @@ pub async fn insert_contract_wage_in_tx(
     .bind(wage.created_by)
     .fetch_one(tx.as_mut())
     .await
-    .map_err(|err| PgPayrollError::Db(DbError::Sqlx(err)))?;
+    .map_err(|err| {
+        if err.as_database_error().and_then(|db| db.constraint())
+            == Some("employee_contract_wages_org_id_employee_id_effective_from_key")
+        {
+            return console_kernel_core::KernelError::conflict(
+                "a contract wage already exists for this employee and effective date",
+            )
+            .with_code("contract_wage_exists")
+            .into();
+        }
+        PgPayrollError::Db(DbError::Sqlx(err))
+    })?;
     Ok(id)
 }
 
@@ -226,6 +237,14 @@ pub async fn statutory_citations_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     pay_date: Date,
 ) -> Result<Vec<StatutoryCitation>, PgPayrollError> {
+    statutory_citations_for_country_in_tx(tx, pay_date, None).await
+}
+
+pub(crate) async fn statutory_citations_for_country_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    pay_date: Date,
+    country: Option<&str>,
+) -> Result<Vec<StatutoryCitation>, PgPayrollError> {
     let rows = sqlx::query(
         "SELECT code, effective_from, effective_to_exclusive, rate_num, rate_den, floor_won, \
                 cap_won, basis, bearer, instrument_ko, article_ko, promulgation_ko, enforced_on, \
@@ -233,13 +252,21 @@ pub async fn statutory_citations_in_tx(
          FROM payroll_statutory_rates \
          WHERE effective_from <= $1 \
            AND (effective_to_exclusive IS NULL OR effective_to_exclusive > $1) \
+           AND ($2::text IS NULL OR country_code = $2) \
          ORDER BY code, effective_from",
     )
     .bind(pay_date)
+    .bind(country)
     .fetch_all(tx.as_mut())
     .await
     .map_err(|err| PgPayrollError::Db(DbError::Sqlx(err)))?;
 
+    decode_statutory_citations(rows)
+}
+
+pub(crate) fn decode_statutory_citations(
+    rows: Vec<sqlx::postgres::PgRow>,
+) -> Result<Vec<StatutoryCitation>, PgPayrollError> {
     rows.into_iter()
         .map(|row| {
             Ok(StatutoryCitation {

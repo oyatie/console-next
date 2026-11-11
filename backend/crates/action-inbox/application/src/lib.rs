@@ -2,6 +2,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod attention;
+pub mod decision;
 pub use attention::{Attention, AttentionCount};
 mod projection;
 use projection::project_item;
@@ -121,14 +122,14 @@ pub struct ActionInboxItem {
     pub who: Option<String>,
     #[serde(
         rename = "due",
-        with = "time::serde::rfc3339::option",
+        with = "console_kernel_core::timestamp::option",
         skip_serializing_if = "Option::is_none"
     )]
     pub due: Option<OffsetDateTime>,
     #[serde(rename = "dueTone")]
     pub due_tone: &'static str,
     #[serde(
-        with = "time::serde::rfc3339::option",
+        with = "console_kernel_core::timestamp::option",
         skip_serializing_if = "Option::is_none"
     )]
     pub submitted: Option<OffsetDateTime>,
@@ -380,6 +381,7 @@ mod tests {
                 ActionInboxSource::Setup,
                 ActionInboxSource::GrantNotice,
                 ActionInboxSource::SupportAccess,
+                ActionInboxSource::PrivacyRequests,
             ]
         );
         for source in ActionInboxSource::ALL {
@@ -1088,6 +1090,7 @@ mod tests {
             ActionInboxSource::Setup => "setup_entity",
             ActionInboxSource::GrantNotice => "grant_notice",
             ActionInboxSource::SupportAccess => "support_access",
+            ActionInboxSource::PrivacyRequests => "privacy_request",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
         }
     }

@@ -43,6 +43,7 @@ export const operationAccess = {
   "GET /api/v1/payroll/employees/{employeeId}/payslip-draft": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
   "GET /api/v1/payroll/pay-groups": {"domain":"pay","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "POST /api/v1/payroll/pay-groups": {"domain":"pay","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "GET /api/v1/payroll/reference/rates": {"domain":"pay","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "GET /api/v1/payroll/runs": {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]},
   "POST /api/v1/payroll/runs": {"domain":"pay","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "GET /api/v1/payroll/runs/preview": {"domain":"pay","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, IconButton } from "../button/button";
-import { editable } from "../long-table/row-keys";
+import { editable, ROW_SELECTOR } from "../long-table/row-keys";
 import { SidePanelReadContext } from "../side-panel/read-context";
 import s from "./flexible-columns.module.css";
 
@@ -14,7 +14,7 @@ type FlexibleColumnPane = {
 };
 
 const FOCUS_SETTLE_MS = 150;
-const rowElOf = (el: EventTarget | null) => (el instanceof Element ? el.closest<HTMLElement>("[data-row-id], [data-id]") : null);
+const rowElOf = (el: EventTarget | null) => (el instanceof Element ? el.closest<HTMLElement>(ROW_SELECTOR) : null);
 const rowKeyOf = (el: Element | null) => el?.getAttribute("data-row-id") ?? el?.getAttribute("data-id") ?? null;
 const setColumnWidth = (el: HTMLElement, kind: Kind, width?: number) => {
   const prop = kind === "related" ? "--col-related-w" : "--col-record-w";
@@ -54,7 +54,8 @@ function Splitter({ kind, container, pane }: { kind: Kind; container: RefObject<
     aria-valuemin={20} aria-valuemax={80} aria-valuenow={pct} className={s.splitter} onPointerDown={onPointerDown} onKeyDown={onKeyDown} />;
 }
 
-function ColumnPane({ kind, pane, paneRef, listRef, onCloseRequest }: {
+function ColumnPane({ kind, pane, paneRef, listRef, onCloseRequest, full, onFull }: {
+  full?: boolean; onFull?: (on: boolean) => void;
   kind: Kind; pane: FlexibleColumnPane; paneRef: RefObject<HTMLElement | null>; listRef: RefObject<HTMLDivElement | null>; onCloseRequest: (pane: FlexibleColumnPane) => void;
 }) {
   const backRef = useRef<HTMLButtonElement>(null);
@@ -75,7 +76,10 @@ function ColumnPane({ kind, pane, paneRef, listRef, onCloseRequest }: {
         {pane.crumb != null && <div className={s.crumb}>{pane.crumb}</div>}
         <div className={s.headRow}>
           {pane.title != null && <h2 ref={titleRef} tabIndex={-1} className={s.title}>{pane.title}</h2>}
-          <div className={s.actions}>{pane.expand}<IconButton ref={closeRef} className={s.close} label={closeLabel} onClick={() => onCloseRequest(pane)}><X size={16} aria-hidden /></IconButton></div>
+          <div className={s.actions}>
+            {onFull && <IconButton className={s.full} label={t("uiFlexibleColumns.full")} aria-pressed={Boolean(full)} onClick={() => onFull(!full)}>{full ? <Minimize2 size={16} aria-hidden /> : <Maximize2 size={16} aria-hidden />}</IconButton>}
+            {pane.expand}<IconButton ref={closeRef} className={s.close} label={closeLabel} onClick={() => onCloseRequest(pane)}><X size={16} aria-hidden /></IconButton>
+          </div>
         </div>
       </div>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Scrollable read content must be keyboard reachable (WCAG 2.1.1). */}
@@ -85,7 +89,8 @@ function ColumnPane({ kind, pane, paneRef, listRef, onCloseRequest }: {
 }
 
 /** Shared list + record + optional related-record columns with URL-driven depth, J/K list-follow, splitter resize, and phone Back. */
-export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFind }: {
+export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFind, full, onFull }: {
+  full?: boolean; onFull?: (on: boolean) => void;
   list: ReactNode; record?: FlexibleColumnPane | false | "" | null; related?: FlexibleColumnPane | false | "" | null;
   onSelect?: (id: string) => void; onOpen?: (id: string) => void; onFind?: () => void;
 }) {
@@ -106,7 +111,9 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
     const el = listRef.current;
     if (!el) return;
     const onFocusIn = (e: FocusEvent) => {
-      const id = rowKeyOf(rowElOf(e.target));
+      const row = rowElOf(e.target);
+      if (row?.closest('[role="tree"]')) return;
+      const id = rowKeyOf(row);
       if (!id) return;
       clearTimeout(settleRef.current);
       settleRef.current = setTimeout(() => { if (liveRef.current.openId && id !== liveRef.current.openId) liveRef.current.onSelect?.(id); }, FOCUS_SETTLE_MS);
@@ -115,7 +122,7 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
       if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || editable(e.target)) return;
       const currentRow = rowElOf(e.target);
       const currentId = rowKeyOf(currentRow);
-      if (!currentRow || !currentId || currentRow.closest('[role="grid"]')) return;
+      if (!currentRow || !currentId || currentRow.closest('[role="grid"], [role="tree"]')) return;
       const { openId, onSelect: pick, onOpen: expand } = liveRef.current;
       if (e.key === "Enter" && e.target === currentRow && (pick || expand)) {
         if (currentRow.tagName === "BUTTON" && (!openId || openId !== currentId)) return;
@@ -124,7 +131,7 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
       }
       if (e.shiftKey) return;
       const step = e.code === "KeyJ" || e.key === "ArrowDown" ? 1 : e.code === "KeyK" || e.key === "ArrowUp" ? -1 : 0;
-      const rows = step ? [...el.querySelectorAll<HTMLElement>("[data-row-id], [data-id]")].filter(r => r.getClientRects().length > 0) : [];
+      const rows = step ? [...el.querySelectorAll<HTMLElement>(ROW_SELECTOR)].filter(r => r.getClientRects().length > 0) : [];
       const next = step ? rows[rows.indexOf(currentRow) + step] : undefined;
       if (next) { e.preventDefault(); next.focus(); next.scrollIntoView({ block: "nearest" }); }
     };
@@ -148,21 +155,22 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
       if (!root || !(target instanceof Node) || !root.contains(target) || e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === "/" && onFind && !editable(target)) return void (e.preventDefault(), e.stopPropagation(), onFind());
       if (e.key !== "Escape" || (!openRelated && !openRecord) || editable(target)) return;
-      if (target instanceof Element && target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [aria-expanded="true"]')) return;
+      if (target instanceof Element && target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [data-escape-scope], [aria-expanded="true"]')) return;
       if (document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"], dialog[open]')) return;
       e.preventDefault();
       e.stopPropagation();
-      closePane((openRelated ?? openRecord)!);
+      if (full && onFull && !window.matchMedia("(max-width: 639px)").matches) onFull(false);
+      else closePane((openRelated ?? openRecord)!);
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [closePane, onFind, openRecord, openRelated]);
+  }, [closePane, onFind, openRecord, openRelated, full, onFull]);
 
   return (
-    <div ref={rootRef} className={s.columns} data-flexible-columns data-depth={depth}>
+    <div ref={rootRef} className={s.columns} data-flexible-columns data-depth={depth} data-full={full && depth > 0 || undefined}>
       <div ref={listRef} className={s.list}>{list}</div>
-      {openRecord && <><Splitter kind="record" container={rootRef} pane={recordRef} /><ColumnPane kind="record" pane={openRecord} paneRef={recordRef} listRef={listRef} onCloseRequest={closePane} /></>}
-      {openRelated && <><Splitter kind="related" container={rootRef} pane={relatedRef} /><ColumnPane kind="related" pane={openRelated} paneRef={relatedRef} listRef={listRef} onCloseRequest={closePane} /></>}
+      {openRecord && <><Splitter kind="record" container={rootRef} pane={recordRef} /><ColumnPane kind="record" full={full} onFull={!openRelated ? onFull : undefined} pane={openRecord} paneRef={recordRef} listRef={listRef} onCloseRequest={closePane} /></>}
+      {openRelated && <><Splitter kind="related" container={rootRef} pane={relatedRef} /><ColumnPane kind="related" full={full} onFull={onFull} pane={openRelated} paneRef={relatedRef} listRef={listRef} onCloseRequest={closePane} /></>}
     </div>
   );
 }

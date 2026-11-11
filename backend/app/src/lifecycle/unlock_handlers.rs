@@ -132,7 +132,7 @@ pub(super) async fn unlock_period_lock(
                     }))?;
                     let lock = load_period_lock(tx, lock_id).await?;
                     (StatusCode::ACCEPTED, json!({
-                        "status": "PENDING_SECOND_PERSON", "lock": lock, "request": request_json(&request),
+                        "status": "PENDING_SECOND_PERSON", "lock": lock, "request": request_json(&request)?,
                     }), event)
             } else {
                     let unlocked = unlock_in_tx(tx, lock_id, &UnlockWrite {

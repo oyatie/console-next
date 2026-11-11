@@ -209,7 +209,7 @@ async fn one_person_goes_from_an_empty_tenant_to_operating(pool: PgPool) {
         .call("POST", "/api/v1/employees", Some(json!({
             "employee_number": "E-000", "name": "이현장", "company": "주식회사 가나", "employment_type": "REGULAR",
             "phone": "010-1234-0000", "position": "사원", "site": "본사", "home_branch_id": branch,
-            "base_pay": "3000000", "idempotency_key": "fr-emp-0", "hire_date": "2026-01-02", "org_unit_id": dept,
+            "base_pay": "3000000", "idempotency_key": "fr-emp-0", "hire_date": "2026-01-02", "org_unit_id": wp["record"]["org_unit_id"],
         })))
         .await;
     assert_eq!(status, StatusCode::CREATED, "{direct}");
@@ -228,6 +228,30 @@ async fn one_person_goes_from_an_empty_tenant_to_operating(pool: PgPool) {
     org_setup_routes(&ctx, &dept, &tree).await;
     workplace_kind_routes(&ctx, &workplace_id).await;
     structure_label_routes(&ctx, &workplace_id).await;
+
+    // Department readiness: direct workplace placement is allowed during setup, then resolved before go-live.
+    let (status, preview) = ctx
+        .call("GET", "/api/v1/onboarding/go-live/preview", None)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{preview}");
+    assert_eq!(
+        preview["blockers"][0]["code"], "people_without_department",
+        "{preview}"
+    );
+    let (status, placed) = ctx
+        .call(
+            "POST",
+            &format!(
+                "/api/v1/employees/{}/lifecycle-events",
+                direct["employee"]["id"].as_str().unwrap()
+            ),
+            Some(json!({
+                "event_type": "TRANSFER", "to_org_unit_id": dept,
+                "effective_date": "2026-01-02", "comment": "이관: 부서 배치",
+            })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{placed}");
 
     let (status, created) = ctx
         .call("POST", "/api/v1/employees", Some(json!({

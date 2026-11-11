@@ -95,19 +95,15 @@ impl HrService {
                 let people = entity::people_at(tx, workplace, &ids, today)
                     .await
                     .map_err(entity_error)?;
-                let mut exit_cases = Vec::new();
-                for p in &people {
-                    if let Some((case_id, status, date)) =
-                        exits::open_case(tx, *org.as_uuid(), p.employee_id).await?
-                    {
-                        exit_cases.push(OpenExitCase {
-                            employee_id: p.employee_id,
-                            case_id,
-                            status,
-                            effective_exit_date: date,
-                        });
-                    }
-                }
+                let employees: Vec<_> = people.iter().map(|p| p.employee_id).collect();
+                let exit_cases = sqlx::query_as::<_, (Uuid, Uuid, String, String)>(
+                    "SELECT employee_id,id,status,effective_exit_date::TEXT FROM employee_exit_cases \
+                     WHERE org_id=$1 AND employee_id=ANY($2) AND status NOT IN ('REJECTED','CANCELLED','SUBMITTED') ORDER BY array_position($2,employee_id)",
+                )
+                .bind(org.as_uuid()).bind(&employees).fetch_all(tx.as_mut()).await?
+                .into_iter().map(|(employee_id,case_id,status,effective_exit_date)| OpenExitCase {
+                    employee_id,case_id,status,effective_exit_date,
+                }).collect();
                 let job = match rows::latest_for(tx, workplace).await? {
                     Some(id) => Some(rows::view(tx, id).await?),
                     None => None,

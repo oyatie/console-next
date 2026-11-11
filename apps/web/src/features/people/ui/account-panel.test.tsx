@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { beforeAll, beforeEach, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadCatalog, t } from "@console/i18n";
 import { AccountPanel } from "./account-panel";
+import { chromium, type Browser, type Page } from "../../../lib/browser-test";
 
 type LinkCommand = {
   run: (input: { employeeId: string | null; requestId?: string }) => Promise<unknown>;
@@ -38,7 +39,14 @@ const panel = (id = "account", employeeId: string | null = "employee", admin = t
 const pending = (requestedBy = "01a15d08-533d-780f-8624-5284d9060bf9") => ({ ...row, account_link: {
   status: "PENDING", request_id: "request", requested_by: requestedBy, requester_name: "김요청", employee_id: null, user_id: "account",
 } });
-beforeAll(() => loadCatalog("ko"));
+let browser: Browser;
+let page: Page;
+beforeAll(async () => {
+  await loadCatalog("ko");
+  browser = await chromium.launch();
+  page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+}, 60_000);
+afterAll(async () => { await browser?.close(); });
 beforeEach(() => {
   state.command = undefined; state.result = undefined; state.recorded.mockReset();
   state.assertion.mockReset().mockResolvedValue({ ceremony_id: "ceremony", credential: {} });
@@ -47,6 +55,14 @@ beforeEach(() => {
 
 test("unlink explains the passkey check before submission", () => {
   expect(panel()).toContain(t("uiOverrideSheet.stepUp", { action: t("accounts.employee.unlink") }));
+});
+test("a linked account offers a direct employee change without unlinking first", async () => {
+  await page.setContent(panel());
+  expect(await page.getByRole("button", { name: "직원 변경", exact: true }).count()).toBe(1);
+  await page.setContent(panel("account", "employee", false));
+  expect(await page.getByRole("button", { name: "직원 변경", exact: true }).count()).toBe(0);
+  await page.setContent(panel("01a15d08-533d-780f-8624-5284d9060bf9"));
+  expect(await page.getByRole("button", { name: "직원 변경", exact: true }).count()).toBe(0);
 });
 test("the linked person includes their own name, employee number and placement", () => {
   const html = panel();

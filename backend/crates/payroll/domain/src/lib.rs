@@ -11,7 +11,7 @@ mod premium_bands;
 mod statutory_component;
 mod statutory_rates;
 pub use premium_bands::{health_premium_band_on, health_premium_bands};
-pub use statutory_rates::statutory_contribution_rates;
+pub use statutory_rates::{reference_value, statutory_contribution_rates};
 pub mod severance_window;
 
 pub use minimum_wage::*;

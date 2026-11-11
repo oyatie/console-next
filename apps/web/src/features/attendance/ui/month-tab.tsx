@@ -1,5 +1,4 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -7,7 +6,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
-import { Button, IconButton } from "../../../ui/button/button";
+import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
@@ -15,14 +14,16 @@ import { Kbd } from "../../../ui/kbd/kbd";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { at, rectIn, rectSize, type Range } from "../../../ui/sheet-grid/range";
 import { monthGridPages, type GridRow, type SaveReceipt } from "../api";
+import { shiftMonth } from "../domain/month";
 import { cellKey, draftState, splitKey } from "../domain/grid";
 import { suggestFix } from "../domain/grammar";
 import { pageState } from "../domain/month-state";
-import { monthText, refusalText } from "../present";
+import { refusalText } from "../present";
 import { DayDock } from "./day-dock";
 import { MonthGridView, type GridAct } from "./month-grid-view";
 import { MonthStateBanner } from "./month-state-banner";
 import { SaveDock } from "./save-dock";
+import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";
 import { PersonScheduleSheet } from "./person-schedule-sheet";
 import type { AssignTarget } from "./assign-sheet";
@@ -35,10 +36,6 @@ import s from "./records.module.css";
 const route = getRouteApi("/app/attendance");
 const CAP = 10_000;
 type Dock = { kind: "save" } | { kind: "day"; employeeId: string; date: string; own: boolean } | null;
-const stepMonth = (m: string, by: number) => {
-  const d = new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1 + by, 1));
-  return d.toISOString().slice(0, 7);
-};
 const daysOf = (m: string) => Array.from({ length: new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).getUTCDate() }, (_, i) => `${m}-${String(i + 1).padStart(2, "0")}`);
 
 /**
@@ -77,7 +74,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const fix = focusDraft && focusState && !focusState.ok ? suggestFix(focusDraft.value) : null;
   const act = (a: GridAct) => {
     if (a.kind === "save") setDock({ kind: "save" });
-    else if (a.kind === "month") go({ month: stepMonth(month, a.step) });
+    else if (a.kind === "month") go({ month: shiftMonth(month, a.step) });
     else if (a.kind === "note") setNote(a.message);
     else if (a.kind === "assign") setAssign({ kind: "PERSON", id: a.row.employee_id, name: a.row.name });
     else setDock({ kind: "day", employeeId: a.row.employee_id, date: days[a.day]!, own: a.row.own });
@@ -100,11 +97,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
       <PageReadGate q={grid} own={refusalText} recovery={search.wp ? <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} /> : undefined}>
       {!empty && <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
         <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
-        <div className={s.stepper}>
-          <IconButton size="sm" label={t("attendanceRecords.toolbar.prevMonth")} onClick={() => go({ month: stepMonth(month, -1) })}><ChevronLeft size={16} aria-hidden /></IconButton>
-          <span className={s.stepText}>{monthText(month)}</span>
-          <IconButton size="sm" label={t("attendanceRecords.toolbar.nextMonth")} onClick={() => go({ month: stepMonth(month, 1) })}><ChevronRight size={16} aria-hidden /></IconButton>
-        </div>
+        <PeriodStepper unit="month" value={month} onChange={month => go({ month })} />
         {drafts.length > 0 && !grid.error && <>
           <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts.length, refused: bad.length })}</span>
           {saveWhy ? <DisabledReason reason={saveWhy} control={() => saveButton} /> : saveButton}

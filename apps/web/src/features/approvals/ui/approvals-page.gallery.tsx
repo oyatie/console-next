@@ -28,7 +28,7 @@ const document: ApprovalDocument = {
 export default function ApprovalsGallery() {
   const [selected, setSelected] = useState(false);
   return <Section title={t("approvals.title")}>
-    <ApprovalInboxView items={[item]} selected={selected ? item : undefined} onSelect={() => setSelected(true)} onClose={() => setSelected(false)} />
+    <ApprovalInboxView items={[item]} sel={selected ? item.id : undefined} selected={selected ? item : undefined} record={<ApprovalDocumentView document={document} />} onSelect={() => setSelected(true)} onClose={() => setSelected(false)} />
     <ApprovalDocumentView document={document} />
   </Section>;
 }

@@ -4,12 +4,13 @@ import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadCatalog } from "@console/i18n";
 import { chromium, type Browser, type Page } from "../../../lib/browser-test";
-import { ActiveSupportBanner } from "./support-access";
+import { ActiveSupportBanner } from "./support-access-status";
 import appCss from "../../../app.css?inline";
 import tokensCss from "@console/tokens/tokens.css?inline";
 
 const supportCss = readFileSync(new URL("./support-access.module.css", import.meta.url), "utf8");
 const bannerCss = readFileSync(new URL("../../../ui/banner/banner.module.css", import.meta.url), "utf8");
+vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown, serverSnapshot?: () => unknown) => (serverSnapshot ?? snapshot)() }));
 vi.mock("./support-access.module.css", () => ({ default: new Proxy({}, { get: (_, key) => key }) }));
 vi.mock("../../../ui/banner/banner.module.css", () => ({ default: new Proxy({}, { get: (_, key) => key }) }));
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({}), Link: ({ children }: { children: React.ReactNode }) => <span role="link" tabIndex={0}>{children}</span> }));

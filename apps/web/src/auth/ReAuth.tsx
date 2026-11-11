@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Copy, KeyRound, LogOut } from "lucide-react";
 import { lastSignInId, loginWithPasskey, logout, session } from "@console/api";
 import { t } from "@console/i18n";
@@ -8,15 +8,20 @@ import { Dialog } from "../ui/dialog";
 import { TextArea } from "../ui/field/text-area";
 import { PasskeyError } from "../lib/react/passkey-error";
 import { recoveryDraftText } from "../lib/react/use-draft";
+import { rememberInterrupted } from "../lib/react/session";
 import { sessionRecovery } from "./session-recovery";
 
 /** Sign in again over the screen the session ended on; signing out instead discards what was typed. */
-export default function ReAuth() {
+export default function ReAuth({ onCodeSignIn }: { onCodeSignIn: () => void }) {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const reason = useSyncExternalStore(session.subscribe, () => session.ended);
   const recovery = sessionRecovery(reason);
   const draftText = recoveryDraftText();
+  const noSafeAction = !recovery.passkey && !recovery.code && !draftText;
+  const reasonRef = useRef<HTMLSpanElement>(null);
+  const actionRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => { (noSafeAction ? reasonRef : actionRef).current?.focus(); }, [noSafeAction]);
   const [copyStatus, setCopyStatus] = useState<"copied" | "copyFailed" | null>(null);
   const [manualCopy, setManualCopy] = useState<string | null>(null);
   const copy = async () => {
@@ -46,7 +51,7 @@ export default function ReAuth() {
   };
   return (
     <Dialog open title={t("idle.reauth.title")} onClose={() => undefined} dismissable={false}>
-      <span>{t(!draftText && !recovery.passkey ? `${recovery.message}.bare` : recovery.message)}</span>
+      <span tabIndex={noSafeAction ? -1 : undefined} ref={reasonRef}>{t(!draftText && !recovery.passkey ? `${recovery.message}.bare` : recovery.message)}</span>
       {recovery.passkey && <span className="muted">{t("idle.reauth.other")}</span>}
       <PasskeyError error={error} />
       <span role="status">{draftText && copyStatus ? t(`idle.reauth.${copyStatus}`) : null}</span>
@@ -54,13 +59,17 @@ export default function ReAuth() {
       <ActionBar
         actions={
           <>
-            {/* The dialog opens on its first control: signing in again, never signing out. */}
-            {recovery.passkey && <Button variant="primary" disabled={busy} onClick={() => void signIn()}>
+            {/* Focus the first safe action, or the reason when only sign-out remains. */}
+            {recovery.passkey && <Button ref={actionRef} variant="primary" disabled={busy} onClick={() => void signIn()}>
               <KeyRound size={16} aria-hidden /> {t("idle.reauth.signIn")}
             </Button>}
-            {draftText && <Button onClick={() => void copy()}>
+            {draftText && <Button ref={!recovery.passkey ? actionRef : undefined} onClick={() => void copy()}>
               <Copy size={16} aria-hidden /> {t("idle.reauth.copy")}
             </Button>}
+            {recovery.code && <Button ref={!draftText ? actionRef : undefined} variant="primary" onClick={() => {
+              rememberInterrupted();
+              onCodeSignIn();
+            }}>{t("auth.login.submitCode")}</Button>}
             <Button variant="ghost" disabled={busy} onClick={() => void logout()}>
               <LogOut size={16} aria-hidden /> {t("idle.reauth.signOut")}
             </Button>

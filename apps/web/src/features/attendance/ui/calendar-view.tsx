@@ -2,11 +2,11 @@ import { EmptyState } from "../../../ui/empty-state";
 import { Banner } from "../../../ui/banner/banner";
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { QueryState } from "../../../lib/react/query-state";
-import { Button, IconButton } from "../../../ui/button/button";
+import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { SectionHead } from "../../../ui/card/section-head";
@@ -19,6 +19,7 @@ import type { AssignTarget } from "./assign-sheet";
 import type { AttendanceSearch } from "./attendance-page";
 import { LayerHistory } from "./layer-history";
 import { LayerStack } from "./layer-stack";
+import { PeriodStepper } from "./period-stepper";
 import { ScopeTree } from "./scope-tree";
 import { inField, useKeys } from "./use-keys";
 import s from "./attendance.module.css";
@@ -76,11 +77,7 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
     <QueryState q={cal} layout="grid">{c => <div ref={keys} className={s.calendarLayout}>
       <ScopeTree tree={tree} selected={scope.id} onSelect={(n: TreeNode) => onScope(n.kind, n.id)} onPerson={(id) => onScope("PERSON", id)} />
       <div className={s.centerCol}>
-        <div className={s.toolbar}>
-          <IconButton label={t("attendanceSchedule.month.prev")} onClick={() => onMonth(shiftMonth(month, -1))}><ChevronLeft size={16} aria-hidden /></IconButton>
-          <strong className={s.monthText}>{monthText(month)}</strong>
-          <IconButton label={t("attendanceSchedule.month.next")} onClick={() => onMonth(shiftMonth(month, 1))}><ChevronRight size={16} aria-hidden /></IconButton>
-        </div>
+        <PeriodStepper unit="month" value={month} onChange={onMonth} />
         <Month c={c} month={month} weeks={weeks} />
         <LayerHistory kind={scope.kind} id={scope.id} onCancel={onCancel} />
       </div>

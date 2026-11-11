@@ -21,7 +21,7 @@ function CommandReference({ requestKey, api }: { requestKey?: string; api?: ApiE
   return (
     <>
       {requestKey && <p><OutcomeLink id={requestKey} /></p>}
-      {api && !api.code.startsWith("http_") && <div className="muted"><code translate="no">{api.code}</code></div>}
+      {api && !api.code.startsWith("http_") && <details><summary>{t("common.denied.why")}</summary><code translate="no">{api.code}</code></details>}
       <SupportReference reference={api?.supportRef ?? api?.operationId} at={api?.supportRefAt} compact={Boolean(api?.supportRef)} />
     </>
   );

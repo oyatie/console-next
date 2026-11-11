@@ -1,6 +1,6 @@
 {
   "baseline": {
-    "apps/web/src/features/support-access/ui/support-access.tsx#SupportAccess": 26
+    "apps/web/src/features/support-access/ui/support-access.tsx#SupportAccess": 24
   },
   "newScreens": {
     "apps/web/src/features/support-access/ui/support-access.tsx#SupportAccess": {

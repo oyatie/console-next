@@ -281,6 +281,7 @@ mod tests {
             S::PeriodUnlock,
             S::SupportAccess,
             S::EntityCorrections,
+            S::PrivacyRequests,
         ];
         for (filter, expected) in [
             (

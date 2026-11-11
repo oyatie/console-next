@@ -1,12 +1,11 @@
 // What an org change is called: by what it does (org-25: a rename or a merge reads as what it does), the same in the
 // list, the record, its receipts and the chart's receipt. Pure: it says which phrase and its values; present.ts words it.
 import type { components } from "@console/api/schema";
+import type { Names } from "../../../reference/org/present";
+export type { Names } from "../../../reference/org/present";
 
 type Summary = components["schemas"]["OrgChangeSummary"];
 type Op = components["schemas"]["OrgProposalOp"];
-
-/** Name lookups over the loaded org; `undefined` when the id is not (or no longer) known. */
-export type Names = { unit: (id?: string | null) => string | undefined; region: (id?: string | null) => string | undefined; branch: (id?: string | null) => string | undefined };
 
 const UUID_LABEL = /^\S+ ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 const short = (id?: string | null) => (id ? id.slice(0, 8) : "—");

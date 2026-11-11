@@ -1,5 +1,4 @@
 import { useId, useMemo, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -8,7 +7,7 @@ import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { ATTENDANCE_MARK } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
-import { Button, IconButton, ToggleButton } from "../../../ui/button/button";
+import { Button, ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -18,7 +17,7 @@ import { addDays } from "../../../ui/date/days";
 import { dayBoardQuery } from "../api";
 import { baseOf, cellKey, fillSchedule, ledgerParts } from "../domain/grid";
 import { closed, pageState } from "../domain/month-state";
-import { dateText, refusalText } from "../present";
+import { refusalText } from "../present";
 import { DayDetail } from "./day-detail";
 import { DayDock } from "./day-dock";
 import { DayBars } from "./day-bar";
@@ -26,6 +25,7 @@ import { DayRow } from "./day-row";
 import { IssueGroups } from "./issue-groups";
 import { MonthStateBanner } from "./month-state-banner";
 import { SaveDock } from "./save-dock";
+import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";
 import { PersonScheduleSheet } from "./person-schedule-sheet";
 import type { AssignTarget } from "./assign-sheet";
@@ -69,11 +69,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
       <PageReadGate q={board} own={refusalText} recovery={search.wp ? <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} /> : undefined}>
       {!empty && <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
         <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
-        <div className={s.stepper}>
-          <IconButton size="sm" label={t("attendanceRecords.toolbar.prevDay")} onClick={() => go({ date: addDays(date, -1) })}><ChevronLeft size={16} aria-hidden /></IconButton>
-          <span className={s.stepText}>{dateText(date)}</span>
-          <IconButton size="sm" label={t("attendanceRecords.toolbar.nextDay")} onClick={() => go({ date: addDays(date, 1) })}><ChevronRight size={16} aria-hidden /></IconButton>
-        </div>
+        <PeriodStepper unit="day" value={date} onChange={date => go({ date })} />
         <ToggleButton size="sm" pressed={!!search.issues} onClick={() => go({ issues: search.issues ? undefined : true, mark: undefined })}>{t("attendanceRecords.board.issuesOnly")}</ToggleButton>
         {search.mark && <Button size="sm" variant="ghost" onClick={() => go({ mark: undefined })}>{t("attendanceOverview.issues.clear")}</Button>}
         <ToggleButton size="sm" pressed={!!search.unscheduled} onClick={() => go({ unscheduled: search.unscheduled ? undefined : true })}>{t("attendanceRecords.unscheduled.only")}</ToggleButton>

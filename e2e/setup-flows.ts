@@ -68,15 +68,16 @@ export async function typeAddress(page: Page, group: string, road: string, zip: 
 }
 
 /** An entity's registration facts typed by hand (the certificate's sections), shared by an entity and a branch. */
-async function typeCertificate(page: Page, f: { brn: string; name: string; road: string; zip: string }, c: C) {
-  await page.getByLabel("사업자등록번호").fill(f.brn);
+export async function typeCertificate(page: Page, f: { brn: string | null; name: string; road: string; zip: string }, c: C = plain) {
+  if (f.brn === null) await page.getByRole("checkbox", { name: "신규 사업자등록 신청 중", exact: true }).check();
+  else await page.getByLabel("사업자등록번호").fill(f.brn);
   await page.getByLabel("법인명(단체명)").fill(f.name);
   await page.getByLabel("개업연월일").fill("2020-03-02");
   await typeAddress(page, "사업장 소재지", f.road, f.zip, c);
 }
 
 /** The certificate's business and tax sections (no NTS list loaded on this server: the office is taken as printed). */
-async function typeBusiness(page: Page, c: C) {
+export async function typeBusiness(page: Page, c: C = plain) {
   await page.getByRole("textbox", { name: /^업태/ }).fill("정보통신업");
   await page.getByRole("textbox", { name: /^종목/ }).fill("응용 소프트웨어 개발");
   // The radio first: in Firefox a press right after a native select's change can start without committing.
@@ -158,7 +159,7 @@ export async function registerWorkplace(page: Page, entity: string, name: string
 }
 
 /** The two statutory answers (원천징수 with the head office, 4대보험 numbers later) and the save; the chart shows it. */
-async function finishWorkplace(page: Page, name: string, audit: boolean, c: C) {
+export async function finishWorkplace(page: Page, name: string, audit = false, c: C = plain) {
   const sheet = workplaceSheet(page);
   await pickKind(sheet, c);
   await c.click(sheet.getByRole("radiogroup", { name: /^원천징수 신고/ }).getByText(/에서 함께 신고$/));
@@ -241,7 +242,9 @@ export async function acceptSetupTerms(admin: Page, c: C = plain) {
     await expect(accept).toBeVisible();
   }
   if (await accept.isVisible()) {
+    const preview = admin.waitForResponse(response => response.request().method() === "GET" && new URL(response.url()).pathname === "/api/v1/onboarding/go-live/preview");
     await c.click(accept);
+    await preview;
     await expect(accept).toBeHidden();
   }
 }

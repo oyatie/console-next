@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# Test clock only; never enable in a deployable binary.
+e2e-test-support = []
+
 [dependencies]
 console-identity-application.workspace = true
 console-identity-adapter-postgres.workspace = true

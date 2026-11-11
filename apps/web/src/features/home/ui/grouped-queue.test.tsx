@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import { beforeAll, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, t, type MessageId } from "@console/i18n";
 import { inboxFilter } from "../domain/inbox-filter";
 import { GroupedQueue } from "./grouped-queue";
 
@@ -14,6 +14,17 @@ type Item = components["schemas"]["ActionInboxItem"] & { age_days?: number | nul
 const item = (id: string, extra: Partial<Item> & { fold_key?: string } = {}): Item => ({ id, kind: "register_review", lane: "turn", title: id, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id }], ...extra });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
 const html = (items: Item[]) => renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><RouterContextProvider router={router}><GroupedQueue items={items} /></RouterContextProvider></QueryClientProvider>);
+
+test("privacy intake uses the rights catalog and the server deadline", () => {
+  const markup = html([item("privacy_request:request", { kind: "privacy_request", title: "RR-001", ref: "RR-001", who: "김요구", context: { privacy_kinds: ["ACCESS", "DELETION"] }, due: "2026-11-22T00:00:00+09:00", days_remaining: 17, links: [{ kind: "privacy_request", id: "request" }] })]);
+  expect(markup).toContain("권리 요구");
+  expect(markup).toContain("D-17");
+  expect(markup).not.toContain("home.inbox.reason.privacy_request");
+  expect(markup).toContain("김요구");
+  expect(markup).toContain("열람 · 삭제");
+  expect(markup).toContain('href="/account/privacy/intake/request"');
+  expect(t("account.privacy.status.RECEIVED")).toBe("접수됨");
+});
 
 test("deadline groups put the D-day exit before undated reviews in the server item set", () => {
   const items = [
@@ -63,7 +74,7 @@ test("each deadline group ranks source dates before server insertion order", () 
     item("undated first"),
     item("due in three days", { due: "2026-10-29T00:00:00Z", days_remaining: 3, dueTone: "warn" }),
     item("later overdue", { due: "2026-10-25T00:00:00Z", days_remaining: -1, dueTone: "danger" }),
-    item("D-day exit", { kind: "hr_exit_confirm", due: "2026-10-26T09:00:00+09:00", days_remaining: 0, dueTone: "danger" }),
+    item("D-day exit", { kind: "hr_exit_confirm", due: "2026-10-26T00:00:00Z", days_remaining: 0, dueTone: "danger" }),
     item("earlier overdue", { due: "2026-10-24T00:00:00Z", days_remaining: -2, dueTone: "danger" }),
     item("earlier today", { due: "2026-10-25T23:00:00Z", days_remaining: 0, dueTone: "danger" }),
   ]);
@@ -192,4 +203,34 @@ test("folded org-change rows use the same inbox reason path", () => {
   expect(markup).toContain('aria-expanded="false"');
   expect(markup).toContain(t("home.inbox.reason.org_change_draft"));
   for (const raw of ["NEW", "REORG"]) expect(markup).not.toContain(raw);
+});
+
+test("every registered operational source kind has Korean and English task and verb copy", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { KIND_TEXT } = await import("./grouped-queue");
+  const rowSource = readFileSync(new URL("./grouped-queue.tsx", import.meta.url), "utf8");
+  const verbs = rowSource.split("const VERB_TEXT:")[1]!.split("};")[0]!;
+  const VERB_TEXT = Object.fromEntries([...verbs.matchAll(/(\w+): "([^"]+)"/g)].map(match => [match[1], match[2] as MessageId]));
+  const bySource: Record<string, string[]> = {
+    Workflow: ["approval"], Dispatch: ["dispatch"], Support: ["support"], WorkOrder: ["work"], Payroll: ["payroll"], Governance: ["governance"],
+    EntityCorrections: ["identifier_correction_waiting", "identifier_correction_decide", "identifier_correction_apply", "identifier_correction_review"],
+    RegistrationChecks: ["registration_check"], OrgChange: ["org_change_draft", "org_change_rejected", "org_change_settle", "org_change_scheduled", "org_change_apply", "org_change_waiting", "org_change_approve"],
+    HrExit: ["hr_exit_confirm", "hr_exit_confirm_hq", "hr_exit_settle"], HrLifecycle: ["lifecycle_apply_failed"], HrRequests: ["hr_request"], HrRegister: ["register_review"], HrInsurance: ["insurance_filing"],
+    HrIdentity: ["identity_review"], HrUnplaced: ["unplaced"], HrContract: ["contract_renewal"], PeriodUnlock: ["period_unlock"],
+    Setup: [], // Setup work is rendered by the checklist, never as selectable queue rows.
+    GrantNotice: ["grant_notice", "account_security"], SupportAccess: ["support_access"], PrivacyRequests: ["privacy_request"],
+  };
+  const registry = readFileSync("backend/crates/action-inbox/application/src/source.rs", "utf8").split("pub const ALL")[1]!;
+  const sources = [...registry.matchAll(/Self::(\w+)/g)].map(match => match[1]!);
+  expect(Object.keys(bySource).sort()).toEqual(sources.sort());
+  for (const locale of ["ko", "en"] as const) {
+    await loadCatalog(locale);
+    i18n.set(locale);
+    try {
+      for (const kind of Object.values(bySource).flat()) for (const labels of [KIND_TEXT, VERB_TEXT]) {
+        expect(labels[kind], `${locale} ${kind}`).toBeDefined();
+        expect(t(labels[kind]!, { domain: "Payroll", period: "2026-11" })).not.toBe(labels[kind]);
+      }
+    } finally { i18n.set("ko"); }
+  }
 });

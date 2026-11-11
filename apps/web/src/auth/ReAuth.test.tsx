@@ -5,13 +5,15 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { syncDraftPrincipal, useDraft } from "../lib/react/use-draft";
 import ReAuth from "./ReAuth";
+import { consentDestination } from "../lib/react/session";
 
 const view = vi.hoisted(() => ({
   reason: "session_expired", rendering: false, index: 0, states: [] as unknown[],
-  cleanups: [] as (() => void)[], buttons: new Map<string, () => void>(),
+  navigate: vi.fn(), logout: vi.fn(), cleanups: [] as (() => void)[], buttons: new Map<string, () => void>(),
 }));
 vi.mock("@console/api", async (original) => ({
   ...await original<typeof import("@console/api")>(),
+  logout: view.logout,
   session: { principal: "account-a", get ended() { return view.reason; }, subscribe: () => () => undefined },
 }));
 vi.mock("react", async (original) => {
@@ -31,7 +33,7 @@ vi.mock("react", async (original) => {
     },
   };
 });
-vi.mock("../ui/dialog", () => ({ Dialog: ({ children }: { children: ReactNode }) => <section>{children}</section> }));
+vi.mock("../ui/dialog", () => ({ Dialog: ({ children, title }: { children: ReactNode; title: string }) => <section aria-label={title}>{children}</section> }));
 vi.mock("../ui/button/button", () => ({ Button: ({ children, onClick }: ButtonHTMLAttributes<HTMLButtonElement>) => {
   if (onClick) view.buttons.set(renderToStaticMarkup(<>{children}</>), () => onClick({} as never));
   return <button>{children}</button>;
@@ -45,7 +47,7 @@ function render() {
   view.index = 0;
   view.buttons.clear();
   view.rendering = true;
-  try { return renderToStaticMarkup(<ReAuth />); }
+  try { return renderToStaticMarkup(<ReAuth onCodeSignIn={view.navigate} />); }
   finally { view.rendering = false; }
 }
 const copyAction = () => [...view.buttons].find(([label]) => label.includes(t("idle.reauth.copy")))?.[1];
@@ -53,6 +55,9 @@ const writeText = vi.fn().mockResolvedValue(undefined);
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   view.states = [];
+  view.navigate.mockReset();
+  view.logout.mockReset();
+  vi.stubGlobal("location", { pathname: "/people/person", search: "?view=history", hash: "#report" });
   view.reason = "session_expired";
   writeText.mockReset().mockResolvedValue(undefined);
   vi.stubGlobal("navigator", { clipboard: { writeText } });
@@ -113,4 +118,28 @@ test("a draft removed after rendering cannot copy an empty string or announce su
   await Promise.resolve();
   expect(writeText).not.toHaveBeenCalled();
   expect(render()).not.toContain(t("idle.reauth.copied"));
+});
+
+
+test("reset opens code sign-in with the interrupted URL and no logout", () => {
+  view.reason = "session_passkey_reset";
+  renderToStaticMarkup(<Draft text="작성 중인 퇴직 경위" />);
+  const html = render();
+  const action = [...view.buttons].find(([label]) => label.includes(t("auth.login.submitCode")))?.[1];
+  expect(action).toBeDefined();
+  expect(html).not.toContain(t("idle.reauth.signIn"));
+  const labels = [...view.buttons.keys()].join("|");
+  expect(labels.indexOf(t("idle.reauth.copy"))).toBeLessThan(labels.indexOf(t("auth.login.submitCode")));
+  expect(labels.indexOf(t("auth.login.submitCode"))).toBeLessThan(labels.indexOf(t("idle.reauth.signOut")));
+  action!();
+  expect(view.logout).not.toHaveBeenCalled();
+  expect(view.navigate).toHaveBeenCalledOnce();
+  expect(consentDestination()).toBe("/people/person?view=history#report");
+});
+
+test("deactivation offers neither sign-in method", () => {
+  view.reason = "session_deactivated";
+  const html = render();
+  expect(html).not.toContain(t("idle.reauth.signIn"));
+  expect(html).not.toContain(t("auth.login.submitCode"));
 });

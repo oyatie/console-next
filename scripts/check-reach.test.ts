@@ -1,4 +1,5 @@
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { REACH } from "../e2e/record-actions/reach";
@@ -161,6 +162,29 @@ test("operations: --lower removes an allowance once its operation is called or d
   expect(lowerOperations(operations, allUncalled)).toEqual({ [deferred]: allowance });
 });
 
+test("operations: an excluded allowance cannot hide a live operation served at the base", () => {
+  const excluded = { ...allowance, when: "excluded" };
+  expect(checkOperations({ gaps: [plantedOp], operations: { [plantedOp]: excluded }, previous: {}, uncalled: [plantedOp], existing: [plantedOp] }))
+    .toContainEqual(expect.stringContaining("baseline must only shrink"));
+});
+
+test("operations: legacy hierarchy writes are deprecated and served; hidden live reads still fail", () => {
+  const spec = createRequire(import.meta.url)("js-yaml").load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
+  const paths: Record<string, Record<string, { deprecated?: boolean }>> = {};
+  for (const resource of ["regions", "branches"]) {
+    for (const [method, suffix] of [["post", ""], ["patch", "/{id}"], ["delete", "/{id}"]]) {
+      const url = `/api/v1/${resource}${suffix}`;
+      const operation = spec.paths[url][method!];
+      expect(operation?.deprecated, `${method} ${url}`).toBe(true);
+      (paths[url] ??= {})[method!] = operation;
+    }
+  }
+  paths["/api/v1/branches"]!.get = spec.paths["/api/v1/branches"].get;
+  const gaps = operationGaps({ spec: { paths }, files: [], crates: new Map() });
+  expect(gaps).toEqual(["GET /api/v1/branches"]);
+  expect(checkOperations({ gaps, operations: {} })).toEqual([expect.stringContaining("operation-unreachable: GET /api/v1/branches")]);
+});
+
 test("operations: parameter calls prefer literal endpoints and never reach the sibling static path", () => {
   const spec = { paths: { "/api/v1/employees/{id}": { get: {} }, "/api/v1/employees/facets": { get: {} } } };
   expect(operationGaps({ spec, files: [["apps/web/src/probe.ts", 'get(`/api/v1/employees/${id}`)']], crates: new Map() })).toEqual(["GET /api/v1/employees/facets"]);
@@ -172,6 +196,14 @@ test("operations: release packages follow default features and optional dependen
     { name: "console-hr-rest", optional: false }, { name: "console-attendance-rest", optional: true }, { name: "console-payroll-rest", optional: true },
   ] };
   expect([...releasePackages(app)]).toEqual(["console-hr-rest", "console-attendance-rest"]);
+});
+
+test("privacy self-service does not promote dormant compliance operations into the release", () => {
+  const result = spawnSync("cargo", ["metadata", "--offline", "--no-deps", "--format-version", "1", "--manifest-path", "backend/Cargo.toml"], { encoding: "utf8", maxBuffer: 1 << 26 });
+  expect(result.status, result.stderr).toBe(0);
+  const app = JSON.parse(result.stdout).packages.find((p: { name: string }) => p.name === "console-app");
+  expect(releasePackages(app).has("console-compliance-rest")).toBe(false);
+  expect(app.features.compliance).toContain("dep:console-compliance-rest");
 });
 
 

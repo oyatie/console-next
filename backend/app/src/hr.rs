@@ -1,3 +1,7 @@
+#[path = "hr/attendance_import_response.rs"]
+mod attendance_import_response;
+use attendance_import_response::AttendanceImportSummaryItem;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use axum::extract::{Multipart, Path, Query, State};
@@ -359,6 +363,7 @@ struct AttendanceSummaryItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     last_kind: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "console_kernel_core::timestamp::option")]
     last_event_at: Option<time::OffsetDateTime>,
 }
 #[derive(Debug, Deserialize)]
@@ -396,6 +401,7 @@ struct EmployeeAttendanceRecordResponse {
     employee_id: Uuid,
     employee_display_name: String,
     kind: String,
+    #[serde(with = "console_kernel_core::timestamp")]
     occurred_at: time::OffsetDateTime,
     work_date: String,
     state_after: String,
@@ -429,6 +435,7 @@ struct HrImportReadinessSummary {
     preserved_rows: i64,
     ledger_rows: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "console_kernel_core::timestamp::option")]
     latest_import_at: Option<time::OffsetDateTime>,
 }
 
@@ -454,6 +461,7 @@ struct HrPayrollReadinessSummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     latest_period_end: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "console_kernel_core::timestamp::option")]
     latest_updated_at: Option<time::OffsetDateTime>,
 }
 
@@ -1934,23 +1942,6 @@ struct AttendanceImportApplyReport {
     inserted: usize,
     skipped: usize,
     error_rows: usize,
-}
-
-#[derive(Debug, Serialize)]
-struct AttendanceImportSummaryItem {
-    run_id: Uuid,
-    status: String,
-    source_filename: String,
-    source_format: String,
-    source_sha256: String,
-    input_rows: i32,
-    candidate_rows: i32,
-    preserved_rows: i32,
-    dry_run_summary: Value,
-    apply_summary: Value,
-    created_at: OffsetDateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    applied_at: Option<OffsetDateTime>,
 }
 
 #[derive(Debug, Serialize)]
@@ -4122,14 +4113,16 @@ mod tests {
             .execute(&pool)
             .await
             .map_err(|error| error.to_string())?;
+        // Cedar facts require tenant RLS; reserve the owner pool for seeding and the scan.
+        let runtime = console_platform_test_support::runtime_role_pool(&pool).await;
         let command_store = PgLeaveStore::new(
-            pool.clone(),
+            runtime.clone(),
             std::sync::Arc::new(console_inbox_adapter_postgres::PgInboxStore::new(
-                pool.clone(),
+                runtime.clone(),
             )),
         )
         .with_leave_command_pool(pool.clone());
-        let state = HrState::new(pool.clone(), None).with_leave_command_store(command_store);
+        let state = HrState::new(runtime, None).with_leave_command_store(command_store);
         let principal = Principal::new(
             UserId::from_uuid(actor_id),
             OrgId::from_uuid(org_id),
@@ -7796,3 +7789,7 @@ mod unknown_fields_tests;
 #[path = "hr_bodies.rs"]
 mod hr_bodies;
 use hr_bodies::*;
+
+#[cfg(test)]
+#[path = "hr/timestamp_tests.rs"]
+mod timestamp_tests;

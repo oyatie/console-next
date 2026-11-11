@@ -3,6 +3,17 @@
 // `reason.field.` ids are the shared reason-code field (reference/reason). Only the domains these screens record;
 // a lane recording another domain appends its block.
 export const koReason = {
+  "reason.excess_post_approval.WORK_CONFIRMED": "근로 확인",
+  "reason.excess_post_approval.OTHER": "기타",
+  "reason.excess_paid_over_cap.STATUTORY_CAP_EXCEEDED": "법정 한도 초과 근로 확인",
+  "reason.excess_paid_over_cap.OTHER": "기타",
+  "reason.excess_not_work.PERSONAL_PRESENCE": "개인 용무로 머무름",
+  "reason.excess_not_work.SHIFT_WAIT_NO_WORK": "교대 대기 (업무 없음)",
+  "reason.excess_not_work.OTHER": "기타",
+  "reason.attendance_correction.TIME_INPUT_ERROR": "시각 입력 오류",
+  "reason.attendance_correction.MISSING_ENTRY": "기록 누락",
+  "reason.attendance_correction.WRONG_PERSON": "다른 사람 기록",
+  "reason.attendance_correction.OTHER": "기타",
   "reason.business_registration_end.DUPLICATE": "중복 등록",
   "reason.business_registration_end.TEST_ENTRY": "시험 입력",
   "reason.business_registration_end.WRONG_DOCUMENT": "다른 사업자의 등록증",

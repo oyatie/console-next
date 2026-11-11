@@ -1,3 +1,9 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .status { flex: none; }
 .indicator { display: inline-flex; flex: none; align-items: center; min-block-size: var(--target); text-decoration: none; white-space: nowrap; }
+
+.indicatorCompact { display: none; }
+@media (--phone) {
+  .indicatorText { display: none; }
+  .indicatorCompact { display: inline-flex; }
+}

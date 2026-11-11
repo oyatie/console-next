@@ -7,6 +7,6 @@ export const inboxRoute = createRoute({
   getParentRoute: () => app,
   path: "/inbox",
   staticData: { access: "signed-in", floorplan: "P-03" },
-  validateSearch: (search: Record<string, unknown>): { tab?: InboxFilter } => ({ tab: inboxFilter(search.tab) === "all" ? undefined : inboxFilter(search.tab) }),
+  validateSearch: (search: Record<string, unknown>): { tab?: InboxFilter; sel?: string } => ({ sel: typeof search.sel === "string" ? search.sel : undefined, tab: inboxFilter(search.tab) === "all" ? undefined : inboxFilter(search.tab) }),
   component: lazyRouteComponent(screen(() => import("./inbox-screen")), "InboxScreen"),
 });

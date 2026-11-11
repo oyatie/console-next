@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { koApprovals } from "../ko/approvals";
+import sourceLabels from "../approval-sources.json" with { type: "json" };
 
 export const enApprovals: Record<keyof typeof koApprovals, string> = {
   "approvals.field.verification": "Before deciding",
@@ -31,7 +32,6 @@ export const enApprovals: Record<keyof typeof koApprovals, string> = {
   "approvals.empty.completed": "No completed approvals",
   "approvals.empty.reason": "Documents matching these filters will appear here.",
   "approvals.more": "Show more",
-  "approvals.open": "Open approval document",
   "approvals.openSource": "Open source record",
   "approvals.document.title": "Approval document",
   "approvals.viewer.body": "Document body",
@@ -47,4 +47,7 @@ export const enApprovals: Record<keyof typeof koApprovals, string> = {
   "approvals.field.requester": "Requester",
   "approvals.field.requestedAt": "Requested",
   "approvals.field.dueAt": "Due",
+  "approvals.source.orgChange": sourceLabels.en,
+  "approvals.field.effectiveDate": "Effective date",
+  "approvals.field.proposal": "Proposed change",
 };

@@ -1,6 +1,7 @@
 import type { koHome } from "../ko/home";
 
 export const enHome: Partial<Record<keyof typeof koHome, string>> = {
+  "home.inbox.privacyRequest": "Rights request",
   "home.inbox.correction.decide": "Review correction request",
   "home.requests.review": "Review request",
   "home.inbox.bucket.overdue": "Overdue",
@@ -13,6 +14,10 @@ export const enHome: Partial<Record<keyof typeof koHome, string>> = {
   "home.inbox.column.source": "Source",
   "home.inbox.column.owner": "Owner",
   "home.inbox.column.actions": "Task actions",
+  "home.inbox.record.reason": "Reason",
+  "home.inbox.record.title": "Work item",
+  "home.inbox.record.original": "Open original",
+  "home.inbox.record.back": "Back to list",
   "home.inbox.title": "Inbox",
   "home.inbox.filter.all": "All",
   "home.inbox.filter.turn": "My turn",

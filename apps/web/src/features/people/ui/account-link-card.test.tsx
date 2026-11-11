@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog } from "@console/i18n";
 import { AccountLinkCard } from "./account-link-card";
 
 const state = vi.hoisted(() => ({
   hasLinked: true,
   linked: { id: "account", display_name: "김하나", roles: [] },
   result: undefined as unknown,
+  error: undefined as unknown,
   run: undefined as undefined | ((input: { id: string | null; requestId?: string }) => Promise<unknown>),
   assertion: vi.fn(), patch: vi.fn(),
 }));
@@ -17,14 +18,14 @@ vi.mock("@tanstack/react-router", () => ({ Link: () => null, useNavigate: () => 
 vi.mock("./use-linked-account", () => ({
   directorySearch: () => ({}), useLinkedAccount: () => ({ mine: { isSuccess: true }, linked: state.hasLinked ? state.linked : undefined }),
 }));
-vi.mock("../../../lib/react/command", () => ({ useCommand: (opts: { run: typeof state.run }) => {
+vi.mock("../../../lib/react/command", async (original) => ({ ...await original<object>(), useCommand: (opts: { run: typeof state.run }) => {
   state.run = opts.run;
-  return { data: state.result, mutate: vi.fn() };
+  return { data: state.result, error: state.error, mutate: vi.fn() };
 } }));
 const card = () => renderToStaticMarkup(<AccountLinkCard employee={{ id: "employee", name: "김하나" } as Parameters<typeof AccountLinkCard>[0]["employee"]} manage />);
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
-  state.hasLinked = true; state.linked.id = "account"; state.result = undefined;
+  state.hasLinked = true; state.linked.id = "account"; state.result = undefined; state.error = undefined;
   state.assertion.mockReset().mockResolvedValue({ ceremony_id: "ceremony", credential: {} });
   state.patch.mockReset().mockResolvedValue({});
 });
@@ -79,5 +80,21 @@ test("a pending account absent from the search uses its returned name, never its
   } };
   const html = card();
   expect(html).toContain("김계정 → 김하나 · 요청자 김요청");
+  expect(html).not.toContain('role="combobox"');
   expect(html).not.toContain(userId);
+});
+
+test.each([
+  ["ko", "이미 다른 계정에 연결된 직원입니다"],
+  ["en", "This employee is already linked to another account"],
+] as const)("an occupied employee refusal uses shared %s copy", async (locale, copy) => {
+  await loadCatalog(locale);
+  i18n.set(locale);
+  const { ApiError } = await vi.importActual<typeof import("@console/api")>("@console/api");
+  state.error = new ApiError(409, "account_link.refuse.employee_taken", "server fallback");
+  const html = card();
+  expect(html).toContain(copy);
+  expect(html).toContain("account_link.refuse.employee_taken");
+  expect(html).not.toContain("server fallback");
+  i18n.set("ko");
 });

@@ -426,3 +426,4 @@ export const noticeCandidatesPages = {
 };
 
 export type NoticeCandidate = components["schemas"]["AppointmentNoticeCandidate"];
+export { jobTitleSchemas } from "@console/api";

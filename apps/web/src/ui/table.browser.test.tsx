@@ -40,10 +40,11 @@ beforeAll(async () => {
           window.toggleNestedEditor = setNestedEditor;
           const mode = location.hash.slice(1);
           const item = [{ id: 'MOB-0', name: 'MOB-0' }];
-          if (mode === 'stateful' || mode === 'focus') return h('main', null, h(Table, {
+          if (mode === 'stateful' || mode === 'focus' || mode === 'forced-cards') return h('main', null, h(Table, {
+            mobileLayout: mode === 'forced-cards' ? 'cards' : undefined,
             label: 'Inline editing', rows: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], rowId: r => r.id, columns: [
               { header: 'Name', cell: r => r.name },
-              { header: 'Edit', cell: r => mode === 'stateful' ? h(EditCell, { name: r.name })
+              { header: 'Edit', cell: r => mode !== 'focus' ? h(EditCell, { name: r.name })
                 : r.id === 'a' ? (nestedEditor ? h('input', { 'aria-label': 'Nested editor' }) : r.name)
                 : h('button', null, 'Keep focus') },
             ],
@@ -141,6 +142,10 @@ test("grouped tables preserve row detail, tone and keyboard selection across nat
   await expectElement(last).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowDown");
   await expectElement(first).toBeFocused();
+  await first.dispatchEvent("keydown", { key: "ㅏ", code: "KeyK" });
+  await expectElement(last).toBeFocused();
+  await last.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ" });
+  await expectElement(first).toBeFocused();
 });
 
 test("editing tables never add wrapper tab stops or duplicate regions at any width", async () => {
@@ -224,6 +229,21 @@ test("selection cards, contenteditable=false and dynamic nested editors switch b
   await expectElement(dynamic.locator("tbody > tr").first()).toHaveCSS("display", "table-row");
   await page.evaluate(() => (window as unknown as { toggleNestedEditor: (on: boolean) => void }).toggleNestedEditor(false));
   await expectElement(dynamic.locator("tbody > tr").first()).toHaveCSS("display", "grid");
+});
+
+test("explicit card layout keeps inline editors visible without remounting them", async () => {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("about:blank");
+    await page.goto(`${server.resolvedUrls!.local[0]}table-test#forced-cards`);
+    await page.getByRole("button", { name: "Edit A", exact: true }).click();
+    const editor = page.getByRole("textbox", { name: "Rename A", exact: true });
+    await editor.fill("Renamed");
+    await expectElement(page.locator("tbody > tr").first()).toHaveCSS("display", width === 390 ? "grid" : "table-row");
+    await expectElement(editor).toBeFocused();
+    await expectElement(editor).toHaveValue("Renamed");
+    expect(await page.evaluate(() => (window as unknown as { cellMounts: number }).cellMounts)).toBe(2);
+  }
 });
 
 for (const width of [1440, 390]) {

@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[derive(Debug, Clone, Serialize)]
+pub struct MyPayrollLinePage {
+    pub items: Vec<MyPayrollLine>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
 /// Read own readiness after the caller's Cedar decision in this transaction.
 pub async fn list_my_lines_in_tx(
     tx: &mut Transaction<'_, Postgres>,

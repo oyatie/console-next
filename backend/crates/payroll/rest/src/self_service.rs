@@ -7,7 +7,14 @@ use axum::response::{IntoResponse, Response};
 use console_payroll_adapter_postgres::{MyPayrollLinePage, list_my_lines_in_tx};
 use console_platform_authz::cedar_pbac::visible::load_facts;
 
-use crate::{PageParams, PayrollRestState, RestError, principal_from_headers};
+use crate::{PayrollRestState, RestError, principal_from_headers};
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct PageParams {
+    pub(crate) limit: Option<i64>,
+    pub(crate) offset: Option<i64>,
+}
 
 pub(super) async fn list_my_lines(
     State(state): State<PayrollRestState>,

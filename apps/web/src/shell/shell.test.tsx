@@ -34,7 +34,7 @@ vi.mock("../ui/live/live-status", () => ({ LiveStatus: () => null }));
 vi.mock("../ui/live/change-notice", () => ({ ChangeNotice: () => null }));
 vi.mock("../ui/live/held-notice", () => ({ HeldNotice: () => null }));
 vi.mock("../auth/domain-notice", () => ({ DomainNotice: () => null }));
-vi.mock("../features/support-access/ui/support-access", () => ({ ActiveSupportBanner: () => null }));
+vi.mock("../features/support-access/ui/support-access-status", () => ({ ActiveSupportBanner: () => null, SupportAccessIndicator: () => null }));
 beforeAll(() => loadCatalog("ko"));
 
 test("go-live invalidates the cached tenant phase used by the shell", async () => {

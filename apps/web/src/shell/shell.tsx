@@ -1,6 +1,6 @@
 import { personName } from "../reference/person/present";
 import { activeSupportQuery } from "../reference/support-access/api";
-import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
+import { ActiveSupportBanner, SupportAccessIndicator } from "../features/support-access/ui/support-access-status";
 import { DomainNotice } from "../auth/domain-notice";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
@@ -12,7 +12,7 @@ import { ChangeNotice } from "../ui/live/change-notice";
 import { HeldNotice } from "../ui/live/held-notice";
 import { LiveStatus } from "../ui/live/live-status";
 import { focusSoon } from "../lib/react/announce";
-import { get, navigationRead, read } from "../lib/query";
+import { navigationRead, read } from "../lib/query";
 import { isAnswer } from "../lib/react/query-defaults";
 import { QueryState } from "../lib/react/query-state";
 import { ReadFailureContext } from "../lib/react/read-failure-context";
@@ -24,6 +24,7 @@ import { PLATFORM_NAV, TENANT_NAV, activeLink, rememberedRail, tenantNav } from 
 import { Skeleton } from "../ui/skeleton/skeleton";
 import { PhaseBand } from "./phase-band";
 import { SessionRecovery } from "./session-recovery";
+import { streamReady } from "../lib/live/session-stream";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
 import { PageMain } from "../ui/page/page-main";
 import { meQuery } from "../features/account/api";
@@ -33,13 +34,14 @@ import type { NavHub } from "./nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
-const identityQuery = get("/api/v1/users/me");
 
 export function Shell() {
   const nav = useNavigate();
   const { pathname } = useLocation();
   const [theme, toggle] = useTheme();
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
+  const stream = useSyncExternalStore(streamReady.subscribe, streamReady.get);
+  const active = Boolean(session.token) && stream;
   const restore = useQuery({ ...read("/api/v1/auth/token/refresh", refresh), enabled: false });
   const restoring = !claims && restore.isPending;
   const principal = session.principal;
@@ -47,14 +49,15 @@ export function Shell() {
   const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
   if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
-  const identity = useQuery({ ...identityQuery, enabled: !platform && Boolean(session.token) });
+  const identity = useQuery({ ...meQuery, enabled: !platform && active });
   const router = useRouter();
-  const access = useQuery({ ...myAccessQuery, enabled: !platform && Boolean(session.token) });
-  const support = useQuery({ ...activeSupportQuery, enabled: !platform && Boolean(session.token) });
-  const me = useQuery({ ...navigationRead(meQuery), enabled: !platform && Boolean(session.token) });
+  const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
+  const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
+  // Keep the rail snapshot separate, but share the identity request with the shell and page.
+  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
-  const checklist = useQuery({ ...checklistQuery, enabled: !platform && phase === "SETUP", retry: false });
-  const modules = useQuery({ ...modulesQuery, enabled: !platform && Boolean(session.token) });
+  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP", retry: false });
+  const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
   const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
   const { isEnabled: modulesEnabled } = modules;
@@ -181,6 +184,7 @@ export function Shell() {
         )}
         <span className="top__spacer" />
         <LiveStatus />
+        {!platform && <SupportAccessIndicator />}
         <LocaleSelect id="top-locale" label />
         <button className="btn btn--ghost" onClick={toggle} aria-label={theme === "dark" ? t("shell.theme.toLight") : t("shell.theme.toDark")}>
           {theme === "dark" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}

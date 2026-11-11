@@ -33,6 +33,7 @@ export const koEntity = {
   "entity.bizKind.hint.INDIVIDUAL": "대표자 개인 명의의 사업",
   "entity.bizKind.hint.ID_NUMBER_ORG": "고유번호증을 받은 단체·비영리 조직",
   "entity.field.brn": "사업자등록번호",
+  "entity.field.brnPending": "신규 사업자등록 신청 중",
   "entity.field.brnExample": "123-45-67890",
   "entity.field.corpName": "법인명(단체명)",
   "entity.field.tradeName": "상호",

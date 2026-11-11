@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { apiOf } from "./api";
-import { draftWeekly, openSchedule } from "./attendance";
+import { draftWeekly, openSchedule, type AttendanceEntry } from "./attendance";
 import { chooseRadio, kstDate } from "../flows";
 import { sheet } from "../sheet";
 
@@ -9,8 +9,8 @@ import { sheet } from "../sheet";
  * A weekly 09–18 pattern assigned to the first workplace from 40 days ago, through the UI (S1 screens), so the
  * month timesheet has past work days to record.
  */
-export async function officeSchedule(admin: Page) {
-  await openSchedule(admin);
+export async function officeSchedule(admin: Page, entry: AttendanceEntry = "direct") {
+  await openSchedule(admin, entry);
   await admin.getByRole("tab", { name: /근무 유형/ }).click();
   const p = await draftWeekly(admin, "사무 09–18", ["09:00", "18:00", "12:00", "13:00"]);
   await p.getByRole("button", { name: "사무 09–18 추가" }).click();

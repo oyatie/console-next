@@ -7,7 +7,10 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
+mod principal;
+mod templates;
 pub use openapi::OPENAPI_FRAGMENT;
+use principal::principal_from_headers;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -132,7 +135,7 @@ async fn list_notifications(
     Query(params): Query<ListParams>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    let page = state
+    let mut page = state
         .store
         .list(ListNotificationsQuery {
             recipient: principal.user_id,
@@ -142,6 +145,9 @@ async fn list_notifications(
         })
         .await
         .map_err(RestError::from_store)?;
+    for item in &mut page.items {
+        templates::localize(item, &headers);
+    }
     Ok(Json(page).into_response())
 }
 
@@ -181,7 +187,7 @@ async fn mark_read(
     Path(notification_id): Path<NotificationId>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    let summary = state
+    let mut summary = state
         .store
         .mark_read(MarkNotificationReadCommand {
             recipient: principal.user_id,
@@ -191,6 +197,7 @@ async fn mark_read(
         })
         .await
         .map_err(RestError::from_store)?;
+    templates::localize(&mut summary, &headers);
     Ok(Json(summary).into_response())
 }
 
@@ -217,7 +224,7 @@ async fn list_object_groups(
     Query(params): Query<GroupListParams>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    let page = state
+    let mut page = state
         .store
         .list_object_groups(ListNotificationObjectGroupsQuery {
             recipient: principal.user_id,
@@ -227,6 +234,9 @@ async fn list_object_groups(
         })
         .await
         .map_err(RestError::from_store)?;
+    for item in &mut page.items {
+        templates::localize(&mut item.latest, &headers);
+    }
     Ok(Json(page).into_response())
 }
 
@@ -236,7 +246,7 @@ async fn mark_unread(
     Path(notification_id): Path<NotificationId>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    let summary = state
+    let mut summary = state
         .store
         .mark_unread(MarkNotificationUnreadCommand {
             recipient: principal.user_id,
@@ -246,6 +256,7 @@ async fn mark_unread(
         })
         .await
         .map_err(RestError::from_store)?;
+    templates::localize(&mut summary, &headers);
     Ok(Json(summary).into_response())
 }
 
@@ -376,18 +387,6 @@ impl IntoResponse for RestError {
         )
             .into_response()
     }
-}
-
-async fn principal_from_headers(
-    state: &NotificationRestState,
-    headers: &HeaderMap,
-) -> Result<Principal, RestError> {
-    let verifier = state.jwt_verifier.as_ref().ok_or_else(|| {
-        RestError::unavailable("JWT verification is not configured for notifications API")
-    })?;
-    console_platform_request_context::resolve_principal(verifier, state.store.pool(), headers)
-        .await
-        .map_err(rest_error_from_request_context)
 }
 
 fn rest_error_from_request_context(err: RequestContextError) -> RestError {

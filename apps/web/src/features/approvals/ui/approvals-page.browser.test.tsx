@@ -43,7 +43,7 @@ beforeAll(async () => {
         import {ApprovalDocumentView} from '/apps/web/src/features/approvals/ui/approval-viewer.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko'); const items=${JSON.stringify(items)},approvalDocument=${JSON.stringify(approvalDocument)};
-        function Demo(){const [id,setId]=useState();return React.createElement(ApprovalInboxView,{items,selected:items.find(x=>x.id===id),onSelect:setId,onClose:()=>setId(undefined)});}
+        function Demo(){const [id,setId]=useState();return React.createElement(ApprovalInboxView,{items,sel:id,selected:items.find(x=>x.id===id),record:React.createElement(ApprovalDocumentView,{document:approvalDocument}),onSelect:setId,onClose:()=>setId(undefined)});}
         const root=createRootRoute({component:Outlet});
         const inbox=createRoute({getParentRoute:()=>root,path:'/',component:Demo});
         const destination=createRoute({getParentRoute:()=>root,path:'/org/changes/$id',component:()=>null});
@@ -68,7 +68,7 @@ beforeAll(async () => {
 
 afterAll(async () => { await Promise.all(sessions.map(({ browser }) => browser.close())); await server?.close(); });
 
-test.each(ENGINES.map((_, engine) => ({ engine })))("preview remains usable at phone and desktop widths in engine $engine", async ({ engine }) => {
+test.each(ENGINES.map((_, engine) => ({ engine })))("the document opens beside the list at phone and desktop widths in engine $engine", async ({ engine }) => {
   const { page } = sessions[engine]!;
   for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 900 });
@@ -76,20 +76,41 @@ test.each(ENGINES.map((_, engine) => ({ engine })))("preview remains usable at p
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
     const row = page.getByRole("row", { name: /영업 조직 개편안/ });
     await expect(row.getByText("AP-2026-001", { exact: true })).toBeVisible();
-    await expect(row.getByRole("list")).toHaveCount(0);
-    await expect(row.locator('[aria-current="step"]')).toHaveText("인사팀장 결재 · 박결재");
-    await expect(row.getByText("김기안", { exact: true })).toBeVisible();
-    await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
-    const panel = page.locator("[data-side-panel]");
-    await expect(panel.getByRole("heading", { name: "영업 조직 개편안", exact: true })).toBeVisible();
-    await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
-    await expect(panel.getByText("인사팀장 결재", { exact: false })).toBeVisible();
+    const chips = row.getByRole("list", { name: "결재선", exact: true });
+    await expect(chips.getByRole("listitem")).toHaveCount(2);
+    await expect(chips.locator('[aria-current="step"]')).toContainText("인사팀장 결재 · 박결재");
+    await expect(row.getByText("김기안", { exact: true }).first()).toBeVisible();
+    await row.click();
+    const column = page.getByRole("complementary", { name: "결재 문서", exact: true });
+    await expect(column.getByRole("heading", { name: "영업 조직 개편안", exact: true })).toBeVisible();
+    await expect(column.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
+    const chain = column.getByRole("region", { name: "결재선", exact: true });
+    const body = column.getByRole("region", { name: "문서 내용", exact: true });
+    await expect(chain).toContainText("인사팀장 결재");
+    expect((await chain.boundingBox())!.y).toBeLessThan((await body.boundingBox())!.y);
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
     expect(await page.locator("main").evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
-    await panel.getByRole("button", { name: width === 390 ? "돌아가기" : "상세 패널 닫기", exact: true }).click();
-    await expect(panel).toHaveCount(0);
+    // At phone width the list gives way to the document, so only 「돌아가기」 leads back.
+    if (width === 390) await expect(row).toBeHidden();
+    await column.getByRole("button", { name: width === 390 ? "돌아가기" : "상세 패널 닫기", exact: true }).click();
+    await expect(column).toHaveCount(0);
+    await expect(row).toBeFocused();
   }
+}, 30_000);
+
+test.each(ENGINES.map((_, engine) => ({ engine })))("Enter opens the document and Escape closes it in engine $engine", async ({ engine }) => {
+  const { page } = sessions[engine]!;
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}approvals-view-test`);
+  const row = page.getByRole("row", { name: /영업 조직 개편안/ });
+  await row.focus();
+  await page.keyboard.press("Enter");
+  const column = page.getByRole("complementary", { name: "결재 문서", exact: true });
+  await expect(column).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(column).toHaveCount(0);
+  await expect(row).toBeFocused();
 }, 30_000);
 
 test.each(ENGINES.map((_, engine) => ({ engine })))("document viewer remains usable at phone and desktop widths in engine $engine", async ({ engine }) => {

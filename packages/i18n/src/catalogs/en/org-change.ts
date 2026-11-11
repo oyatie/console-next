@@ -1,6 +1,15 @@
 import type { koOrgChange } from "../ko/org-change";
 
 export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
+  "orgChange.sole.open": "Sole-holder exception",
+  "orgChange.sole.next": "Open the next approval step",
+  "orgChange.sole.rule": "Approve as a sole-holder exception because no other approver is eligible",
+  "orgChange.sole.approve": "approve org change",
+  "orgChange.sole.review": "{count, plural, one {# notice record} other {# notice records}} · review due {at}",
+  "orgChange.sole.recorded": "Approved as a sole-holder exception",
+  "orgChange.sole.cancelled": "Passkey confirmation was cancelled, so the change was not approved. Press again to confirm.",
+  "orgChange.sole.offerChanged": "The approval details changed, so this change was not approved. Review the updated details before approving again.",
+  "orgChange.sole.stepUpFailed": "Passkey confirmation failed, so the change was not approved. Confirm with your passkey again.",
   "orgChange.subject": "Organization change",
   "orgChange.list.range": "{from} ~ {to}",
   "orgChange.timeline.scheduled": "Scheduled",

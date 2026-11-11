@@ -99,7 +99,7 @@ fn privacy_filing_is_self_only_and_hr_requires_a_linked_employee() {
                     json!({"actor_is_requester":is_self,"is_hr":is_hr,"has_employee":has_employee});
                 assert_eq!(
                     evaluate(spec, "org", facts.clone()).unwrap().0,
-                    is_self && (!is_hr || has_employee)
+                    is_self && is_hr && has_employee
                 );
                 assert!(!evaluate(spec, "foreign", facts.clone()).unwrap().0);
                 for fact in spec.facts {
@@ -107,6 +107,24 @@ fn privacy_filing_is_self_only_and_hr_requires_a_linked_employee() {
                     incomplete.as_object_mut().unwrap().remove(fact.name);
                     assert!(evaluate(spec, "org", incomplete).is_err());
                 }
+            }
+        }
+    }
+}
+
+#[test]
+fn runtime_privacy_bundles_refuse_other_subjects_and_missing_hr_links() {
+    for own in [true, false] {
+        assert_eq!(
+            privacy_request_file::read("actor", "org", own).unwrap(),
+            own
+        );
+        for hr in [true, false] {
+            for linked in [true, false] {
+                assert_eq!(
+                    privacy_request_file::decide("actor", "org", own, hr, linked).unwrap(),
+                    own && hr && linked
+                );
             }
         }
     }

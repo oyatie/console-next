@@ -4,18 +4,22 @@ import type { ReactNode } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApiError } from "../../../reference/support-access/api";
+import { commitLabel } from "../../../ui/composer/actions";
 import { readIdentity } from "../../../lib/query";
-import { ActiveSupportBanner, SupportAccess, SupportAccessIndicator } from "./support-access";
+import { SupportAccess } from "./support-access";
+import { ActiveSupportBanner, SupportAccessIndicator } from "./support-access-status";
 import { activeSupportQuery, supportSessionsQuery, supportRefusal, type SupportSession } from "../../../reference/support-access/api";
 
 const state = vi.hoisted(() => ({
   data: undefined as unknown, active: undefined as unknown, error: undefined as unknown,
-  pending: false, calls: [] as { run: (input: unknown, key: string) => Promise<unknown> }[],
-  get: vi.fn(), post: vi.fn(), query: vi.fn(), auth: { token: null as string | null },
+  review: "session-a" as string | undefined, pending: false, calls: [] as { run: (input: unknown, key: string) => Promise<unknown> }[],
+  get: vi.fn(), post: vi.fn(), query: vi.fn(), auth: { token: null as string | null }, stream: true,
 }));
+vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown, serverSnapshot?: () => unknown) => (serverSnapshot ?? snapshot)() }));
+vi.mock("../../../lib/live/session-stream", () => ({ streamReady: { subscribe: vi.fn(), get: () => state.stream } }));
 vi.mock("@console/api", async (original) => ({ ...await original<object>(), api: { GET: state.get, POST: state.post }, session: state.auth }));
 vi.mock("@console/i18n", async (original) => ({ ...await original<object>(), t: (key: string) => key, isMessageId: () => true }));
-vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: undefined }), useNavigate: () => vi.fn() }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
+vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: state.review }), useNavigate: () => vi.fn() }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
 vi.mock("@tanstack/react-query", async (original) => ({ ...await original<object>(), useQuery: (q: Parameters<typeof readIdentity>[0]) => { state.query(q); return {
   data: readIdentity(q) === readIdentity(activeSupportQuery) ? state.active : readIdentity(q) === readIdentity(supportSessionsQuery) ? state.data : undefined,
   error: state.error, isError: !!state.error, isPending: state.pending, refetch: vi.fn(),
@@ -24,6 +28,7 @@ vi.mock("../../../lib/react/command", () => ({ useCommand: (opts: typeof state.c
   state.calls.push(opts);
   return { mutate: vi.fn(), isPending: false, error: undefined };
 }, outcomeUnknown: () => false, recoveryOf: () => undefined }));
+
 
 const session: SupportSession = {
   id: "session-a", operator_label: "공급사 · 운영자 A", ticket_ref: "HELP-123", reason_code: "DIAGNOSE", reason: "조회 화면 오류 확인",
@@ -35,9 +40,10 @@ const session: SupportSession = {
 beforeEach(() => {
   state.data = { sessions: [session], can_approve: true };
   state.active = { sessions: [], can_approve: true, pending_count: 0, pending_approvals: [] };
-  state.error = undefined; state.pending = false; state.calls = [];
+  state.review = session.id; state.error = undefined; state.pending = false; state.calls = [];
   state.get.mockReset(); state.post.mockReset(); state.query.mockReset();
   state.auth.token = null;
+  state.stream = true;
   state.post.mockResolvedValue({ data: {}, response: new Response(null, { status: 200 }) });
 });
 
@@ -48,6 +54,16 @@ test("support reads wait for a session token", () => {
   state.query.mockClear();
   renderToStaticMarkup(<><ActiveSupportBanner /><SupportAccessIndicator /><SupportAccess /></>);
   expect(state.query.mock.calls.map(([q]) => q.enabled)).toEqual([true, true, true]);
+});
+
+test.each([ActiveSupportBanner, SupportAccessIndicator])("support status reader %# waits for the session stream before reading", Component => {
+  state.auth.token = "session-token";
+  state.stream = false;
+  renderToStaticMarkup(<Component />);
+  expect(state.query).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+  state.stream = true;
+  renderToStaticMarkup(<Component />);
+  expect(state.query).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: true }));
 });
 
 const refusals = [
@@ -69,9 +85,14 @@ test("the tenant sees purpose, scope, bounded duration, decisions and access rec
   const html = renderToStaticMarkup(<SupportAccess />);
   expect(html).toContain("supportAccess.title");
   expect(html).not.toContain("audit.title");
-  for (const text of ["HELP-123", session.reason, session.operator_label, "supportAccess.duration", "supportAccess.masked", "supportAccess.approve", "supportAccess.deny", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
-  expect(html).toContain("max=\"30\"");
-  expect(html).toContain("supportAccess.revealPersonal");
+  for (const text of ["HELP-123", session.reason, session.operator_label, "supportAccess.duration", "supportAccess.masked", "supportAccess.approve", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
+  expect(html).not.toContain("supportAccess.durationMinutes");
+});
+test("support details are named and their history follows the ticket heading", () => {
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).toMatch(/<h2[^>]*>HELP-123<\/h2>/);
+  for (const heading of ["supportAccess.decisions", "supportAccess.records"])
+    expect(html).toContain(`<h3>${heading}</h3>`);
 });
 test("the support-access head has no navigation while it is the only served audit view", () => {
   expect(renderToStaticMarkup(<SupportAccess />)).not.toContain("<nav");
@@ -92,7 +113,7 @@ test("the banner names an active operator and expiry on any tenant page", () => 
   expect(html).not.toContain("supportAccess.bannerAction");
 });
 test("loading, empty and failed active-session reads remain honest", () => {
-  state.pending = true;
+  state.pending = true; state.data = undefined;
   expect(renderToStaticMarkup(<SupportAccess />)).toContain("common.loading");
   state.pending = false; state.data = { sessions: [], can_approve: true };
   expect(renderToStaticMarkup(<SupportAccess />)).toContain("supportAccess.emptyTitle");
@@ -123,7 +144,7 @@ test("the tenant can withdraw approval before the operator starts", () => {
 test("non-approvers have no approval, denial, or termination controls", () => {
   state.data = { sessions: [session], can_approve: false };
   const html = renderToStaticMarkup(<SupportAccess />);
-  for (const control of ["supportAccess.approve", "supportAccess.deny", "supportAccess.end"])
+  for (const control of ["supportAccess.approve", commitLabel({ kind: "supportAccess", mode: "reject" }), "supportAccess.end"])
     expect(html).not.toContain(`>${control}</button>`);
 });
 test("the live notification deep-links to the pending request for approvers only", () => {
@@ -169,7 +190,7 @@ test("a revoked approver cannot retain cached support details or controls after 
   expect(html).not.toContain(session.operator_label);
   expect(html).not.toContain("audit.nav");
   expect(html).not.toContain(">supportAccess.approve</button>");
-  expect(html).not.toContain(">supportAccess.deny</button>");
+  expect(html).not.toContain(commitLabel({ kind: "supportAccess", mode: "reject" }));
 });
 
 vi.mock("../../../ui/enum-value", async original => {
@@ -183,4 +204,28 @@ test.each(["REQUESTED", "OPERATOR_APPROVED", "ACTIVE", "ENDED", "EXPIRED", "DENI
   const out = renderToStaticMarkup(<SupportAccess />);
   expect(vi.mocked(EnumValue).mock.calls.map(([p]) => [p.e.type, p.value])).toEqual([["supportSessionState", value]]);
   expect(out).toContain(`<span class="chip chip--${value === "ACTIVE" ? "warn" : "neutral"}">supportAccess.state.${value}</span>`);
+});
+
+test("plain navigation leaves support history unselected", () => {
+  state.review = undefined;
+  state.data = { sessions: [{ ...session, state: "ENDED" }], can_approve: true };
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).not.toContain('data-side-panel');
+  expect(html).not.toContain('role="dialog"');
+  expect(html).not.toContain('aria-selected="true"');
+});
+
+test("an active session stays read-only for a non-approver", () => {
+  state.data = { sessions: [{ ...session, state: "ACTIVE", tenant_approved_at: session.requested_at }], can_approve: false };
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).toContain('data-side-panel');
+  expect(html).not.toContain('role="dialog"');
+  expect(html).not.toContain('>supportAccess.end</button>');
+});
+
+test.each(["OPERATOR_APPROVED", "ACTIVE", "ENDED"])("%s details stay in the read-only peek until a command is opened", value => {
+  state.data = { sessions: [{ ...session, state: value }], can_approve: true };
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).not.toContain('role="dialog"');
+  expect(html).toContain('data-side-panel');
 });

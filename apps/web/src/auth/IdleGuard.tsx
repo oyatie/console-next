@@ -4,6 +4,7 @@ import { api, refresh, session } from "@console/api";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { chunk } from "../lib/chunk-guard";
+import { streamReady } from "../lib/live/session-stream";
 import { get } from "../lib/query";
 import { Banner } from "../ui/banner/banner";
 import { Button } from "../ui/button/button";
@@ -12,6 +13,7 @@ import s from "./idle.module.css";
 
 // The dialog (React Aria's modal) is its own chunk: the initial load carries only the warning.
 const ReAuth = lazy(() => chunk(import("./ReAuth")));
+const settingsRead = get("/api/v1/settings");
 
 /** Input that can move the last-input time while the warning shows (or before the first input). */
 const INPUT = ["pointerdown", "keydown", "touchstart"] as const;
@@ -20,11 +22,12 @@ const INPUT = ["pointerdown", "keydown", "touchstart"] as const;
  * Mounted beside the router, outside it: a session that ends in use gets a sign-in dialog over the screen it was
  * on (the screen, and any draft in it, stays mounted), and a session near the server's idle cut-off gets a warning.
  */
-export function IdleGuard() {
+export function IdleGuard({ onCodeSignIn, signingIn }: { onCodeSignIn: () => void; signingIn: boolean }) {
   const lost = useSyncExternalStore(session.subscribe, () => session.lost);
+  if (signingIn) return null;
   return lost ? (
     <Suspense fallback={null}>
-      <ReAuth />
+      <ReAuth onCodeSignIn={onCodeSignIn} />
     </Suspense>
   ) : (
     <IdleWarning />
@@ -35,7 +38,10 @@ function IdleWarning() {
   // Tenant passkey sessions read the tenant's value; the vendor tier has no tenant settings to read.
   const tenant = useSyncExternalStore(session.subscribe, () => Boolean(session.token) && session.stage === "app" && !session.claims?.platform);
   // Read once per session: the full registry is large, and a change made in the settings screen refreshes it.
-  const settings = useQuery({ ...get("/api/v1/settings"), enabled: tenant, staleTime: Infinity, refetchInterval: false, refetchOnWindowFocus: false });
+  const settings = useQuery({ ...settingsRead, queryFn: async () => {
+    await streamReady();
+    return settingsRead.queryFn();
+  }, enabled: tenant, staleTime: Infinity, refetchInterval: false, refetchOnWindowFocus: false });
   const minutes = settings.data?.items.find((e) => e.key === IDLE_KEY)?.value;
   const [now, setNow] = useState(Date.now);
   // When the server last held the session past this tab's own cut-off (another tab's input reached it, or a fault

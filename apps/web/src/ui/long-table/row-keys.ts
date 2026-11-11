@@ -1,3 +1,5 @@
+export const ROW_SELECTOR = "[data-row-id], [data-id]";
+
 // Single-key shortcuts of a long table, live only while focus is inside its region (KWCAG 2.2 6.1.4 / WCAG
 // 2.1.4: no page-wide single-key shortcut). Listened for on the document in the capture phase, so they run
 // before React Aria's type-to-select (which would jump to a row starting with "k").
@@ -5,6 +7,11 @@
 /** Typing goes to text entry; a focused checkbox or row is not text entry. */
 export const editable = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.isContentEditable || /^(TEXTAREA|SELECT)$/.test(el.tagName) || (el instanceof HTMLInputElement && !/^(checkbox|radio|button)$/.test(el.type)));
+
+/** Physical J/K positions work with Korean input; composing and modified keys belong to the input source. */
+export const rowStep = (e: Pick<KeyboardEvent, "key" | "code" | "isComposing" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">) =>
+  e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey ? 0 :
+    e.code === "KeyJ" || e.key === "ArrowDown" ? 1 : e.code === "KeyK" || e.key === "ArrowUp" ? -1 : 0;
 
 export type RowKeyHandlers = {
   /** `/`: focus the in-app search. */

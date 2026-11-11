@@ -21,21 +21,12 @@ pub(crate) async fn read_workbench_action_inbox(
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
 ) -> Result<WorkbenchActionInboxPage, WorkbenchSourceFailure> {
     let org = principal.org_id;
-    let deadline_due_soon_days = console_platform_db::with_org_conn::<
+    let (deadline_due_soon_days, org_policy) = console_platform_db::with_org_conn::<
         _,
         _,
         console_settings_adapter_postgres::PgSettingsError,
     >(pool, org, move |tx| {
-        Box::pin(async move {
-            Ok(
-                console_settings_adapter_postgres::deadline_due_soon_days_in_tx(
-                    tx.as_mut(),
-                    org,
-                    as_of,
-                )
-                .await?,
-            )
-        })
+        Box::pin(async move { Ok(policy::load(tx.as_mut(), org, as_of).await?) })
     })
     .await
     .map_err(|error| {
@@ -49,9 +40,11 @@ pub(crate) async fn read_workbench_action_inbox(
         principal: principal.clone(),
         setup: tokio::sync::OnceCell::new(),
         support_can_approve: tokio::sync::OnceCell::new(),
+        privacy_can_handle: tokio::sync::OnceCell::new(),
         statutory_register: request_register::Register::default(),
         setup_created_at: as_of,
         deadline_due_soon_days,
+        org_policy,
         read_permits,
         support_reference: crate::telemetry::current_trace_context()
             .trace_id()

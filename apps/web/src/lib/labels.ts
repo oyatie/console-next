@@ -4,6 +4,7 @@ import type { components } from "@console/api/schema";
 import type * as P from "@console/api/pending";
 import { personName } from "../reference/person/present";
 import { isMessageId, t } from "@console/i18n";
+export { codeText } from "./code-text";
 
 type S = components["schemas"];
 type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
@@ -63,6 +64,10 @@ export const SUPPORT_SESSION_STATE = { ...toned("supportSessionState", {
 export const ATTENDANCE_PATTERN_STATUS = toned<S["AttendancePattern"]["status"]>("attendancePatternStatus", {
   ACTIVE: "ok", RETIRED: "neutral",
 }, v => `attendancePatterns.patternStatus.${v}`);
+export const ATTENDANCE_EVIDENCE = {
+  ...values<S["AttendanceEvidence"]["kind"]>("attendanceEvidence", ["PAPER_SHEET", "DEVICE_FILE", "SUPERVISOR_CONFIRM", "EMPLOYEE_STATEMENT", "WORK_OUTPUT", "OTHER"]),
+  extensible: true, message: (v: string) => `attendanceRecords.evidence.${v}`,
+};
 export const ATTENDANCE_MARK = toned<S["AttendanceMark"]>("attendanceMark", {
   NO_RECORD: "danger", MISSING_OUT: "danger", NO_SCHEDULE: "danger", UNAPPROVED_EXCESS: "warn", WORK_ON_REST_DAY: "warn", LATE: "info", EARLY_OUT: "info", AWAY: "info", ABSENT: "info",
 }, v => `attendanceRecords.mark.${v}`);
@@ -173,6 +178,3 @@ export const labeled = (e: Enum, v: string): Labeled => {
 
 /** A server-resolved actor name; unknown renders as a dash; an unset name uses the shared person label. */
 export const actor = (name?: string | null) => name == null ? "—" : personName(name);
-
-/** A server code in words when the catalog has `id` (written as a template so the copy gate sees it), else the code itself. */
-export const codeText = (id: string, code: string, vars?: Record<string, string | number>) => (isMessageId(id) ? t(id, vars as never) : code);

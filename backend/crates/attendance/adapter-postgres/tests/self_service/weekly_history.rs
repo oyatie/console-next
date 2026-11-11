@@ -41,7 +41,7 @@ async fn weekly_policy_uses_week_start_and_preserves_known_danger(owner: PgPool)
         ] {
             sqlx::query("UPDATE statutory_rules SET value_num=CASE code WHEN 'WEEKLY_STANDARD_HOURS' THEN $1 ELSE $2 END WHERE code IN ('WEEKLY_STANDARD_HOURS','WEEKLY_OVERTIME_MAX_HOURS') AND effective_from='2026-10-08'")
                 .bind(standard).bind(overtime).execute(&owner).await.unwrap();
-            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid())).await.unwrap();
+            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid()), |_| Box::pin(async { Ok(Box::new(|_| Ok(true)) as console_attendance_adapter_postgres::BoardReadAccess) })).await.unwrap();
             assert_eq!(manager[0].tone, expected, "standard={standard}, overtime={overtime}");
             let projection = store.read_own_week52(own, ReadOwnWeek52::new(monday).unwrap()).await.unwrap().unwrap();
             assert_eq!(projection.tone, expected);
@@ -51,7 +51,7 @@ async fn weekly_policy_uses_week_start_and_preserves_known_danger(owner: PgPool)
         seed_attendance_record(&owner, employee, *actor.as_uuid(), "CLOCK_OUT", thursday + Duration::hours(1), "OFF_DUTY").await;
         for (overtime, expected) in [(12_i64, Week52Tone::Warn), (5, Week52Tone::Danger), (4, Week52Tone::Danger)] {
             sqlx::query("UPDATE statutory_rules SET value_num=$1 WHERE code='WEEKLY_OVERTIME_MAX_HOURS' AND effective_from='2026-10-08'").bind(overtime).execute(&owner).await.unwrap();
-            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid())).await.unwrap();
+            let manager = store.week52_inputs(&caller, monday, Some(*branch.as_uuid()), |_| Box::pin(async { Ok(Box::new(|_| Ok(true)) as console_attendance_adapter_postgres::BoardReadAccess) })).await.unwrap();
             assert_eq!(manager[0].tone, expected);
             assert_eq!(store.read_own_week52(own, ReadOwnWeek52::new(monday).unwrap()).await.unwrap().unwrap().tone, expected);
         }

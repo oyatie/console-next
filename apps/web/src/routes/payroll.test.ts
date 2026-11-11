@@ -7,11 +7,10 @@ import { operationAccess } from "../reference/authz/domain/operation-access";
 for (const path of ["/payroll", "/payroll/reference"]) test(`${path} declares pay read access`, () => {
   const router = createRouter({ routeTree });
   const route = Object.values(router.routesById).find(candidate => candidate.fullPath === path);
-  const pending = { domain: "pay", level: "view" };
   const groups = operationAccess["GET /api/v1/payroll/pay-groups"];
   expect(route?.options.staticData?.access).toEqual(path === "/payroll"
     ? { allOf: [groups, operationAccess["GET /api/v1/payroll/runs"]] }
-    : { allOf: [groups, pending] });
+    : operationAccess["GET /api/v1/payroll/reference/rates"]);
 });
 
 test("/payroll/setup declares its generated read and create requirements", () => {
