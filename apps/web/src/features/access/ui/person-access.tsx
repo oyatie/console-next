@@ -82,12 +82,16 @@ function CanDo({ entries, order, grants, roots }: { entries: AccessEffectiveEntr
 }
 
 /** effective access by person (mockup M6): what one account may do and the grants behind it, with grant, end change and revoke in place. */
-export function PersonAccess({ accountId, grant: openGrant = false }: { accountId: string; grant?: boolean }) {
+export function PersonAccess({ accountId, grant: granting = false, onGrant }: {
+  accountId: string;
+  /** The grant sheet is open exactly while the link says so, so back, forward and a shared link agree with the screen. */
+  grant?: boolean;
+  onGrant: (open: boolean) => void;
+}) {
   const ctx = useAccessContext();
   const tree = useQuery(orgStructureRef);
   const eff = useQuery(effectiveQuery(accountId));
   const grants = useQuery(grantsQuery({ account_id: accountId }));
-  const [granting, setGranting] = useState(openGrant);
   const [changing, setChanging] = useState<{ g: AccessGrant; mode: ChangeMode } | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [operationId, setOperationId] = useState<string>();
@@ -109,7 +113,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
         {account ? <PersonHead a={account} ops={account.id === ctx.ops} details={!account.employee_id} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
         {account && <PersonRef account={account} wrap />}
         <span className="grow" />
-        {account && !e.is_ops && <Button variant="primary" onClick={() => setGranting(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
+        {account && !e.is_ops && <Button variant="primary" onClick={() => onGrant(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
       </div>
       {done && <Banner live="polite">{done}{operationId && <p><Link to="/requests/$id" params={{ id: operationId }}>{t("requestOutcome.open")}</Link></p>}</Banner>}
         <div className={s.editor}>
@@ -144,7 +148,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
           </Card>
         </div>
       {granting && account && !eff.data!.is_ops && ctx.cat.data && ctx.rolesLoaded && (
-        <GrantSheet account={account} me={ctx.me} ops={ctx.ops} cat={ctx.cat.data} roles={ctx.roles} setup={ctx.setup} onClose={() => setGranting(false)} onGranted={(m, _made, id) => (setGranting(false), setDone(m), setOperationId(id))} />
+        <GrantSheet account={account} me={ctx.me} ops={ctx.ops} cat={ctx.cat.data} roles={ctx.roles} setup={ctx.setup} onClose={() => onGrant(false)} onGranted={(m, _made, id) => (onGrant(false), setDone(m), setOperationId(id))} />
       )}
       <GrantChange key={changing ? `${changing.g.id}:${changing.mode}` : "none"} grant={changing?.g ?? null} mode={changing?.mode} onClose={() => setChanging(null)} onDone={(m) => (setChanging(null), setDone(m), setOperationId(undefined))} />
       </>
