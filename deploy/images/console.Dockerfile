@@ -18,6 +18,7 @@ FROM ${RUST_IMAGE} AS backend
 WORKDIR /src/backend
 COPY backend ./
 COPY packages/i18n/src/catalogs/approval-sources.json /src/packages/i18n/src/catalogs/approval-sources.json
+COPY packages/i18n/src/catalogs/payroll-reference-labels.json /src/packages/i18n/src/catalogs/payroll-reference-labels.json
 COPY third-party/rust/vendor /src/third-party/rust/vendor
 COPY rustfmt.toml /src/rustfmt.toml
 COPY docs/specs/cedar-pbac-coexistence-map.json /src/docs/specs/

@@ -2,8 +2,7 @@
 import { operationAccess } from "../reference/authz/domain/operation-access";
 import type { Requirement } from "../reference/authz/domain/access";
 
-import { pendingPayrollReads } from "./pending-payroll-reads";
-const readAccess = { ...operationAccess, ...pendingPayrollReads };
+const readAccess = operationAccess;
 type Operation = keyof typeof readAccess;
 type Reads = { reads: readonly Operation[]; command?: Operation };
 const structure = "GET /api/v1/org-structure";

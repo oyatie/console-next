@@ -14,6 +14,9 @@
     "/api/v1/payroll/payslips/me": [
       "get"
     ],
+    "/api/v1/payroll/reference/rates": [
+      "get"
+    ],
     "/api/v1/payroll/runs": [
       "get",
       "post"
@@ -86,6 +89,8 @@
     "PayrollPayslipDraft",
     "PayrollPayslipDraftDeduction",
     "PayrollPreflightCheck",
+    "PayrollRate",
+    "PayrollRates",
     "PayrollRunCalcSummary",
     "PayrollRunDetail",
     "PayrollRunKind",

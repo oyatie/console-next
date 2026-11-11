@@ -11801,6 +11801,15 @@ const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/payroll/reference/rates",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../payroll/rest/openapi/paths/api__v1__payroll__reference__rates.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/payroll/runs",
         operations: &[
             Operation {
@@ -12043,6 +12052,14 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PayrollPreflightCheck",
         body: include_str!("../../payroll/rest/openapi/schemas/PayrollPreflightCheck.yaml"),
+    },
+    NamedYaml {
+        name: "PayrollRate",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayrollRate.yaml"),
+    },
+    NamedYaml {
+        name: "PayrollRates",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayrollRates.yaml"),
     },
     NamedYaml {
         name: "PayrollRunCalcSummary",

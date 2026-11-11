@@ -9,7 +9,6 @@ import { accessRefusal, type Requirement } from "../reference/authz/domain/acces
 import type { AccessEffective } from "../reference/authz/api";
 import { queryPath } from "../lib/query";
 import { SETTINGS_VIEWS } from "../shell/settings-views";
-import { pendingPayrollReads } from "./pending-payroll-reads";
 import { operationAccess } from "../reference/authz/domain/operation-access";
 
 const router = createRouter({ routeTree });
@@ -48,7 +47,7 @@ for (const [path, contract] of Object.entries(routeReads)) {
   });
   for (const kind of [...scopeKinds, null]) {
     test(`${path} × ${kind ?? "no grant"}: route admits iff required first reads and form door admit`, () => {
-      const requirements: Requirement[] = ops.map(op => ({ ...operationAccess, ...pendingPayrollReads })[op]);
+      const requirements: Requirement[] = ops.map(op => operationAccess[op]);
       const held = { is_ops: false,
         decisions: Object.fromEntries(requirements.flatMap(need => "action" in need ? [[need.action, kind === "TENANT"]] : [])),
         entries: kind ? requirements.flatMap((need, i) => "action" in need ? [] : [{ ...need, grant_id: String(i), enforcement: "ENFORCED", scope: { kind } }]) : [],
@@ -93,8 +92,8 @@ test("org reads use entity reach or the branch-less capability floor; neither wi
   }
 });
 
-test("payroll read allow-list expires as soon as S1a generates its Cedar metadata", () => {
-  for (const op of Object.keys(pendingPayrollReads)) expect(operationAccess).not.toHaveProperty(op);
+test("payroll reference uses the generated entity pay:view contract", () => {
+  expect(operationAccess).toHaveProperty("GET /api/v1/payroll/reference/rates", { domain: "pay", level: "view", scopes: ["TENANT", "LEGAL_ENTITY", "WORKPLACE"] });
 });
 
 test.each(SETTINGS_VIEWS)("$to hub summary shares its destination read path", view => {

@@ -1,0 +1,13 @@
+{
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "NATIONAL_PENSION_EMPLOYEE": "국민연금 근로자 부담 요율",
+  "HEALTH_INSURANCE_TOTAL": "건강보험 전체 요율",
+  "LONG_TERM_CARE_TOTAL": "장기요양보험 전체 요율",
+  "EMPLOYMENT_INSURANCE_EMPLOYEE": "고용보험 근로자 부담 요율",
+  "INDUSTRIAL_ACCIDENT_EMPLOYEE": "산재보험 근로자 부담 요율",
+  "PENSION_STANDARD_INCOME_BAND": "국민연금 기준소득월액 상·하한",
+  "HEALTH_PREMIUM_BAND": "건강보험료 상·하한",
+  "MINIMUM_WAGE": "최저임금",
+  "SIMPLIFIED_WITHHOLDING_TABLE": "근로소득 간이세액표",
+  "unknown": "미분류"
+}

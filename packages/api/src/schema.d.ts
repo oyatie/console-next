@@ -10834,6 +10834,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payroll/reference/rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the legal entity's current statutory rate register */
+        get: operations["listPayrollReferenceRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payroll/runs": {
         parameters: {
             query?: never;
@@ -25850,6 +25867,24 @@ export interface components {
             note: string | null;
             /** @description Up to 50 fix-link ids (draft lines missing attendance material, or pending leave requests); the note carries the full count. */
             blocking_refs: components["schemas"]["Uuid"][];
+        };
+        PayrollRate: components["schemas"]["PayrollStatutoryCitation"] & {
+            /** @description Per-code Korean item label from the copy catalog; 미분류 for codes without declared display meaning. */
+            name: string;
+            /** @description Code-specific stored quantities. Contributions show numerator/denominator; minimum wage shows hourly won and monthly equivalent won; income and premium bands show lower–upper won. Null for unknown codes or missing quantities. */
+            value: string | null;
+            /**
+             * @description ACTIVE for a current stored quantity; SCHEDULED for a future effective date; HELD for unknown codes or quantities. Expired rows are excluded.
+             * @enum {string}
+             */
+            status: "ACTIVE" | "HELD" | "SCHEDULED";
+        };
+        PayrollRates: {
+            /** @description Installed country pack for the entity timezone, or null when unknown. An absent entity timezone uses the configured default pack. */
+            country_code: string | null;
+            /** @description The installed country pack has a classified payroll citation register, even if no rows are currently in force. */
+            adopted: boolean;
+            items: components["schemas"]["PayrollRate"][];
         };
         PayrollRunCalcSummary: {
             /** Format: int32 */
@@ -53774,6 +53809,50 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
+            };
+        };
+    };
+    listPayrollReferenceRates: {
+        parameters: {
+            query: {
+                legal_entity_id: components["schemas"]["Uuid"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Citations in force today in the installed country pack's timezone. Unknown or unadopted packs return no rates. Quantities are never estimated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollRates"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Cedar refuses entity pay:view */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description validation for missing or malformed legal_entity_id or unknown query fields. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cedar facts or evaluation unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

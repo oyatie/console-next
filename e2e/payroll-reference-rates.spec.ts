@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { expect, test } from "@playwright/test";
+import { go } from "./flows";
+import { registerEntity, tenantBeforeSetup } from "./setup-flows";
+import { apiOf, bearerOf } from "./helpers/api";
+
+test("payroll reference renders the entity's live statutory register", { tag: ["@hr", "@regression"] }, async ({ browser }, testInfo) => {
+  test.setTimeout(300_000);
+  const { admin } = await tenantBeforeSetup(browser, "rateread", "요율조회상사", false, "none");
+  const token = bearerOf(admin);
+  await go(admin, "/org/entities/new");
+  await registerEntity(admin, "요율조회상사");
+  await admin.reload();
+  await expect.poll(token).toMatch(/^Bearer /);
+  const api = apiOf(admin, token);
+  const groupsResponse = await api("/payroll/pay-groups");
+  expect(groupsResponse.status()).toBe(200);
+  const groups = await groupsResponse.json();
+  const entity = groups.legal_entities[0].id as string;
+  const response = await api(`/payroll/reference/rates?legal_entity_id=${entity}`);
+  expect(response.status()).toBe(200);
+  const rates = await response.json();
+  expect(rates.adopted).toBe(true);
+  expect(rates.items.length).toBeGreaterThan(0);
+  const active = rates.items.find((item: { status: string }) => item.status === "ACTIVE");
+  expect(active).toBeDefined();
+  const wage = rates.items.find((item: { code: string; effective_from: string }) => item.code === "MINIMUM_WAGE" && item.effective_from === "2026-01-01");
+  expect(wage.name).toBe("최저임금");
+  expect(wage.value).toBe("시간급 10320원 · 월 환산액 2156880원");
+  const scheduled = rates.items.find((item: { code: string; effective_from: string }) => item.code === "NATIONAL_PENSION_EMPLOYEE" && item.effective_from === "2027-01-01");
+  expect(scheduled?.status).toBe("SCHEDULED");
+  const table = rates.items.find((item: { code: string }) => item.code === "SIMPLIFIED_WITHHOLDING_TABLE");
+  expect(table.name).toBe("근로소득 간이세액표");
+  expect(table.value).toBeNull();
+  expect(table.status).toBe("HELD");
+  await go(admin, `/payroll/reference?entity=${entity}`);
+  await expect(admin.getByRole("heading", { name: "급여 기준표", exact: true })).toBeVisible();
+  await expect(admin.getByText(active.value, { exact: true }).first()).toBeVisible();
+  await expect(admin.getByRole("link", { name: `${active.instrument_ko} · ${active.article_ko} · ${active.promulgation_ko}`, exact: true })).toHaveCount(0);
+  await expect(admin.getByText(`${active.instrument_ko} · ${active.article_ko} · ${active.promulgation_ko} · ${new URL(active.source_url).href}`, { exact: true }).first()).toBeVisible();
+  const grid = admin.getByRole("grid");
+  await grid.press("Control+Home");
+  const reveal = async (value: string) => {
+    const displayed = admin.getByText(value, { exact: false }).first();
+    await expect(async () => {
+      if (!(await displayed.isVisible())) await grid.press("ArrowDown");
+      await displayed.scrollIntoViewIfNeeded({ timeout: 500 });
+      await expect(displayed).toBeInViewport({ timeout: 500 });
+    }).toPass({ intervals: [100], timeout: 15_000 });
+  };
+  for (const value of [wage.value, scheduled.value, table.name]) await reveal(value);
+  await expect(admin.getByText("근거 확인 필요", { exact: true }).first()).toBeVisible();
+  await expect(admin.getByText(active.provenance_ko, { exact: false })).toHaveCount(0);
+  await admin.screenshot({ path: testInfo.outputPath("reference-desktop-light.png"), fullPage: true });
+  await admin.setViewportSize({ width: 390, height: 844 });
+  await admin.emulateMedia({ colorScheme: "dark" });
+  await admin.reload();
+  await admin.locator("html").evaluate(el => { el.dataset.theme = "dark"; });
+  await expect(grid).toHaveAttribute("data-layout", "cards");
+  await expect(admin.getByText(active.value, { exact: true }).first()).toBeInViewport();
+  await expect.poll(() => admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await admin.screenshot({ path: testInfo.outputPath("reference-mobile-dark.png"), fullPage: true });
+});

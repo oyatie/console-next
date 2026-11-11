@@ -13,7 +13,8 @@ const tracked = execFileSync('git', ['ls-files', '-z'], {cwd:root,encoding:'utf8
 const copies = [...read('deploy/images/console.Dockerfile').matchAll(/^COPY (?!\-\-from=)(.+)$/gm)].map(m => m[1].split(/\s+/));
 const ignores = read('deploy/images/console.Dockerfile.dockerignore').split('\n').filter(l => l && !l.startsWith('#'));
 const admitted = path => ignores.reduce((included, pattern) => matchesGlob(path, pattern.replace(/^!/, '')) ? pattern.startsWith('!') : included, true);
-const copied = path => copies.some(parts => parts.slice(0,-1).some(src => path === src || path.startsWith(`${src}/`)));
+const backendCopies = [...read('deploy/images/console.Dockerfile').split(' AS backend')[1].split(/^FROM /m)[0].matchAll(/^COPY (?!\-\-from=)(.+)$/gm)].map(m => m[1].split(/\s+/));
+const copied = path => backendCopies.some(parts => parts.slice(0,-1).some(src => path === src || path.startsWith(`${src}/`)));
 
 test('the actual native-build guard accepts each runner and refuses the opposite architecture', () => {
   const workflow = yaml.load(read('.github/workflows/platform.yml'));

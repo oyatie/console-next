@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[path = "reference_rates_api.rs"]
+mod reference_rates_api;
+
 #[path = "nullable_pay_groups.rs"]
 mod nullable_pay_groups;
 #[path = "run_create_api.rs"]
