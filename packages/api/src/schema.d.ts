@@ -16134,7 +16134,7 @@ export interface components {
             /** @enum {string|null} */
             target?: "employee_number" | "employee_name" | "branch_name" | "work_date" | "check_in_at" | "check_out_at" | "minutes_worked" | null;
             /**
-             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`.
+             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no longer produced and appears only on runs made before that rule.
              * @enum {string}
              */
             classification: "canonical" | "retained" | "restricted";
@@ -19817,7 +19817,7 @@ export interface components {
             normalized_header: string;
             target?: string | null;
             /**
-             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`.
+             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no longer produced and appears only on runs made before that rule.
              * @enum {string}
              */
             classification: "canonical" | "retained" | "restricted" | "location";
