@@ -20,6 +20,9 @@ use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
 
+#[path = "recruiting_pipeline_api/preflight.rs"]
+mod preflight;
+
 const ISSUER: &str = "console-platform-auth";
 const AUDIENCE: &str = "console-api";
 const POSTINGS: &str = "/api/v1/recruiting/postings";
@@ -129,15 +132,7 @@ async fn recruiting_pipeline_publish_offer_hire_with_full_audit_lineage(pool: Pg
         StatusCode::UNPROCESSABLE_ENTITY,
         "publish without attest must fail closed: {unattested}"
     );
-    assert_eq!(unattested["error"]["code"], "PREFLIGHT_FAILED");
-    assert!(
-        unattested["checks"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|check| check["key"] == "exposure_attested" && check["ok"] == false),
-        "check vector must name the unmet attest: {unattested}"
-    );
+    preflight::assert_unattested_publish(&unattested);
     let (status, published) = send(
         &service,
         "POST",
