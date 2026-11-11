@@ -2,21 +2,24 @@
 //! Executable Consulting engagement contract over the composed app router and
 //! the genuine non-owner `console_rt` role.
 
-use axum::body::{Body, to_bytes};
+use axum::body::Body;
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
 use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
+use console_platform_test_support::runtime_role_pool;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use time::format_description::well_known::Rfc3339;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
+
+#[path = "../../test-support/person_fixtures.rs"]
+mod person_fixtures;
 
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
@@ -864,17 +867,12 @@ async fn send(
     if body.is_some() {
         builder = builder.header(header::CONTENT_TYPE, "application/json");
     }
-    let response = service
-        .oneshot(
-            builder
-                .body(body.map_or_else(Body::empty, |body| Body::from(body.to_string())))
-                .unwrap(),
-        )
-        .await
+    let request = builder
+        .body(body.map_or_else(Body::empty, |body| Body::from(body.to_string())))
         .unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    let json = serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({}));
+    let response = service.oneshot(request).await.unwrap();
+    let (status, json) =
+        console_platform_test_support::json_response::json_response(response).await;
     JsonResponse { status, json }
 }
 
@@ -957,22 +955,6 @@ fn app_state(pool: PgPool, keys: &Keys) -> AppState {
     AppState::new(config, DatabaseDependency::Postgres(pool)).unwrap()
 }
 
-async fn runtime_role_pool(owner_pool: &PgPool) -> PgPool {
-    PgPoolOptions::new()
-        .max_connections(8)
-        .after_connect(|connection, _meta| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt")
-                    .execute(connection)
-                    .await?;
-                Ok(())
-            })
-        })
-        .connect_with(owner_pool.connect_options().as_ref().clone())
-        .await
-        .unwrap()
-}
-
 async fn seed_fixture(pool: &PgPool) -> Fixture {
     let org = OrgId::one();
     let other_org = OrgId::from_uuid(Uuid::new_v4());
@@ -984,6 +966,8 @@ async fn seed_fixture(pool: &PgPool) -> Fixture {
     let other_user = UserId::new();
     seed_user(pool, org, requester, "Consulting Requester").await;
     seed_user(pool, org, approver, "Consulting Approver").await;
+    person_fixtures::bind_user_to_distinct_person(pool, requester).await;
+    person_fixtures::bind_user_to_distinct_person(pool, approver).await;
     seed_user(pool, other_org, other_user, "Other Tenant User").await;
     seed_consulting_policy(pool, org, &[requester, approver]).await;
 
@@ -1144,18 +1128,24 @@ async fn seed_approval(
     approver: UserId,
     engagement_id: Uuid,
 ) -> Uuid {
-    sqlx::query_scalar(
-        "INSERT INTO gov_approvals \
-         (org_id, request_ref, kind, requested_by, approver_id, decision, target_ref) \
-         VALUES ($1, $2, 'consulting.engagement.approval', $3, $4, 'approved', $5) \
-         RETURNING id",
-    )
-    .bind(*org.as_uuid())
-    .bind(Uuid::new_v4())
-    .bind(*requester.as_uuid())
-    .bind(*approver.as_uuid())
-    .bind(engagement_id)
-    .fetch_one(pool)
+    console_platform_db::with_org_conn::<_, _, console_platform_db::DbError>(pool, org, move |tx| {
+        Box::pin(async move {
+            sqlx::query_scalar(
+                "INSERT INTO gov_approvals \
+                 (org_id, request_ref, kind, requested_by, approver_id, decision, target_ref) \
+                 VALUES ($1, $2, 'consulting.engagement.approval', $3, $4, 'approved', $5) \
+                 RETURNING id",
+            )
+            .bind(*org.as_uuid())
+            .bind(Uuid::new_v4())
+            .bind(*requester.as_uuid())
+            .bind(*approver.as_uuid())
+            .bind(engagement_id)
+            .fetch_one(tx.as_mut())
+            .await
+            .map_err(console_platform_db::DbError::from)
+        })
+    })
     .await
     .unwrap()
 }
