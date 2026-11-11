@@ -77,9 +77,14 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
         after: None,
         limit: 20,
     };
-    let actual = page(&runtime_role_pool(&pool).await, &principal, query.clone())
-        .await
-        .unwrap();
+    let actual = page(
+        &runtime_role_pool(&pool).await,
+        &principal,
+        query.clone(),
+        None,
+    )
+    .await
+    .unwrap();
     assert_eq!(actual.total, 8);
     for kind in [
         "org_change_draft",
@@ -120,7 +125,7 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
         .execute(&pool)
         .await
         .unwrap();
-    let without_grant = page(&runtime_role_pool(&pool).await, &principal, query)
+    let without_grant = page(&runtime_role_pool(&pool).await, &principal, query, None)
         .await
         .unwrap();
     assert_eq!(without_grant.total, 7);
@@ -145,6 +150,7 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
             after: None,
             limit: 20,
         },
+        None,
     )
     .await
     .unwrap();
@@ -174,9 +180,60 @@ async fn no_org_change_grant_does_not_query_or_disclose_a_source() {
             after: None,
             limit: 10,
         },
+        None,
     )
     .await
     .unwrap();
     assert!(result.items.is_empty());
     assert_eq!(result.total, 0);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn draft_only_holder_applies_and_settles_own_work_only_without_routing(pool: PgPool) {
+    let org = OrgId::new();
+    seed_org_and_super_admin(&pool, *org.as_uuid(), "org-policy").await;
+    let me = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "drafter").await;
+    let principal = Principal::new(me, org, BTreeSet::from([Role::Admin]), BranchScope::All);
+    assert!(holds(&principal, Feature::OrgChangeDraft));
+    assert!(!holds(&principal, Feature::OrgChangeApply));
+    for (index, status) in ["SETTLING", "APPROVED"].into_iter().enumerate() {
+        sqlx::query("INSERT INTO org_change_requests(org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,drafted_by,idempotency_key,request_fingerprint) VALUES($1,$2,'REORG',$3,'REGION','region','조직 개편',(now() AT TIME ZONE 'Asia/Seoul')::date,'검토',$4,$5,repeat('a',64))")
+            .bind(org.as_uuid()).bind(format!("OC-2026-{:04}", index + 1))
+            .bind(status).bind(me.as_uuid()).bind(Uuid::new_v4().to_string())
+            .execute(&pool).await.unwrap();
+    }
+    let now = sqlx::query_scalar("SELECT clock_timestamp()")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let query = ActionInboxSourceQuery {
+        filter: console_action_inbox_application::InboxFilter::Turn,
+        require_exact_total: true,
+        now,
+        as_of: now,
+        after: None,
+        limit: 20,
+    };
+    let runtime = runtime_role_pool(&pool).await;
+    for routed in [true, false] {
+        let policy = Some(DecisionPolicy::new(
+            console_settings_domain::SettingKey::ApprovalPolicyOrgStructure,
+            routed,
+            false,
+            false,
+        ));
+        let actual = page(&runtime, &principal, query.clone(), policy)
+            .await
+            .unwrap();
+        assert_eq!(actual.total, if routed { 0 } else { 2 });
+        let kinds: BTreeSet<_> = actual.items.iter().map(|row| row.kind.as_str()).collect();
+        assert_eq!(
+            kinds,
+            if routed {
+                BTreeSet::new()
+            } else {
+                BTreeSet::from(["org_change_apply", "org_change_settle"])
+            }
+        );
+    }
 }

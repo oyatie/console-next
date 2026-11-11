@@ -2,6 +2,7 @@
 //! Org-change work uses the same feature floors, policy and person SoD as its record.
 
 use crate::error::AppError;
+use console_action_inbox_application::decision::DecisionPolicy;
 use console_action_inbox_application::{
     ActionInboxLink, ActionInboxSourceItem, ActionInboxSourcePage, ActionInboxSourceQuery,
 };
@@ -10,8 +11,6 @@ use console_platform_authz::{
     Action, Feature, PermissionLevel, Principal, authorize_capability, permission_for,
 };
 use console_platform_db::with_org_conn;
-use console_settings_adapter_postgres::approval_routes_in_tx;
-use console_settings_domain::SettingKey;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use time::{Date, OffsetDateTime, PrimitiveDateTime, Time, macros::offset};
@@ -79,6 +78,7 @@ pub(crate) async fn page(
     pool: &PgPool,
     principal: &Principal,
     query: ActionInboxSourceQuery,
+    policy: Option<DecisionPolicy>,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     if !holds(principal, Feature::OrgChangeRead) {
         return Ok(super::super::empty_source_page());
@@ -105,15 +105,7 @@ pub(crate) async fn page(
                         &principal.user_id.to_string(), &org.to_string(), &org.to_string(), row.approval_list_facts(), "pending",
                     ).unwrap_or(false).then_some(*id)
                 }).collect();
-            let apply = apply_others
-                || (draft
-                    && !approval_routes_in_tx(
-                        tx.as_mut(),
-                        org,
-                        SettingKey::ApprovalPolicyOrgStructure,
-                    )
-                    .await
-                    .map_err(|error| AppError::Internal(error.to_string()))?);
+            let apply = apply_others || (draft && policy.is_none_or(|policy| !policy.routed));
             let today = query.now.to_offset(offset!(+9)).date();
             let count: i64 =
                 sqlx::query_scalar(concat!(eligible!(), "SELECT count(*) FROM eligible"))
@@ -152,7 +144,7 @@ pub(crate) async fn page(
             let ids = rows.iter().take(query.limit)
                 .filter(|row| matches!(row.kind.as_str(), "org_change_approve" | "org_change_waiting"))
                 .map(|row| row.id).collect();
-            let decisions = super::super::decisions::load(tx, &principal, ids, facts.into_iter().map(|(id, row)| (id, row.decision)).collect()).await?;
+            let decisions = super::super::decisions::load(tx, &principal, ids, facts.into_iter().map(|(id, row)| (id, row.decision)).collect(), policy).await?;
             Ok((rows, count, decisions))
         })
     })

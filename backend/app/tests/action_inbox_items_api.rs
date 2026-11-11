@@ -28,5 +28,14 @@ mod org_change;
 mod org_change_fixtures;
 #[path = "../../test-support/person_fixtures.rs"]
 mod person_fixtures;
+#[path = "action_inbox_items/policy.rs"]
+mod policy;
+#[path = "access_log_review_flags/statements.rs"]
+#[allow(dead_code)]
+mod statements;
 #[path = "action_inbox_items/withdrawal.rs"]
 mod withdrawal;
+
+#[allow(dead_code)]
+#[path = "support/reference_logs.rs"]
+mod reference_logs;

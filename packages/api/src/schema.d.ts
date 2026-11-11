@@ -15179,6 +15179,16 @@ export interface components {
             };
             /** @description Opaque command version for pending org-change approval rows; changes after any step decision. */
             version?: string;
+            /** @description Named policy for the stored approval chain, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without stored steps. Commands recheck live policy. */
+            policy?: {
+                /** @description Settings key whose catalog label names the approval policy. */
+                key: string;
+                routed: boolean;
+                /** @description Always false; stored steps require distinct deciders. */
+                merge_consecutive: boolean;
+                bulk_allowed: boolean;
+                step_up: boolean;
+            };
             /** @description Present on pending org-change approval rows; evaluated by the command's Cedar action and batch fact loader. Commands recheck current facts. */
             can_decide?: boolean;
             /** @description Command refusal code when can_decide is false; absent when allowed. */
