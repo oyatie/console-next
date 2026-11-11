@@ -28,20 +28,21 @@ pub fn employee_import_target_for_header(header: &str) -> Option<&'static str> {
     employee_import_field_for_header(header).map(|field| field.target)
 }
 
+/// How a column is treated. Only a column a field takes is stored: one with
+/// no target is `restricted` whatever its header says, so a roster's pay,
+/// bank or note columns never persist because no word list named them.
+/// (`retained`, raw text kept without a field, is no longer produced.)
 pub fn employee_import_column_classification(header: &str, target: Option<&str>) -> &'static str {
     if let Some(field) = target.and_then(employee_import_field_for_target) {
         return field.classification;
     }
-    if is_restricted_employee_import_header(header) {
+    if target.is_none() || is_restricted_employee_import_header(header) {
         return "restricted";
     }
     if is_location_header(header) {
         return "location";
     }
-    if target.is_some() {
-        return "canonical";
-    }
-    "retained"
+    "canonical"
 }
 
 pub fn employee_import_field_for_header(
@@ -68,10 +69,14 @@ pub fn is_location_header(header: &str) -> bool {
     header.contains("위치") || header.contains("주소")
 }
 
-/// A restricted header no canonical target claims: its cells never persist.
+/// A header that is restricted by its own wording (a restricted field's
+/// label, or a restricted word no built-in field claims): its cells never
+/// persist, even when the operator maps the column to another field.
 pub fn is_dropped_employee_import_header(header: &str) -> bool {
-    employee_import_column_classification(header, employee_import_target_for_header(header))
-        == "restricted"
+    match employee_import_field_for_header(header) {
+        Some(field) => field.classification == "restricted",
+        None => is_restricted_employee_import_header(header),
+    }
 }
 
 pub fn is_restricted_employee_import_header(header: &str) -> bool {
@@ -109,4 +114,44 @@ pub fn target_header_aliases(target: &str) -> &'static [&'static str] {
     employee_import_field_for_target(target)
         .map(|field| field.aliases)
         .unwrap_or(&[])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// regression: a roster's pay columns (기본급, 상여금, 교통비) were kept as
+    /// raw text because no restricted word named them.
+    #[test]
+    fn regression_a_column_no_field_takes_is_never_stored() {
+        for header in [
+            "기본급",
+            "상여금",
+            "교통비",
+            "비고",
+            "국적",
+            "현주소",
+            "Remarks",
+        ] {
+            assert_eq!(
+                employee_import_column_classification(header, None),
+                "restricted",
+                "{header}"
+            );
+        }
+        // A mapped column keeps its field's treatment, whatever its header.
+        assert_eq!(
+            employee_import_column_classification("소속팀", Some("org_unit")),
+            "canonical"
+        );
+        assert_eq!(
+            employee_import_column_classification("연락처", Some("phone")),
+            "restricted"
+        );
+        // A header's own wording is judged apart from the mapping: a column the
+        // operator maps under a custom header still reaches the stored row.
+        assert!(!is_dropped_employee_import_header("소속팀"));
+        assert!(is_dropped_employee_import_header("급여계좌"));
+        assert!(is_dropped_employee_import_header("연락처"));
+    }
 }
