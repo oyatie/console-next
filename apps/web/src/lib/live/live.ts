@@ -157,7 +157,8 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
 
   const s = source({ url, token: () => session.token, refresh, onFrame, tune: REALTIME, fetch: async (input, init) => {
     const principal = session.principal;
-    const response = await fetch(input, { headers: init.headers, signal: init.signal as AbortSignal });
+    // Firefox otherwise serializes identical open-ended requests across tabs through its cache.
+    const response = await fetch(input, { cache: "no-store", headers: init.headers, signal: init.signal as AbortSignal });
     if (response.status === 403) await ApiError.from(ApiError.withRequestKey(response.clone(), undefined, principal));
     return response;
   } });
