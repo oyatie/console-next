@@ -3,10 +3,8 @@ import { getRouteApi, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { QueryState } from "../../../lib/react/query-state";
 import { entityQuery } from "../api";
-import { EntityWizard } from "./entity-wizard";
 import { EntityList } from "./entity-list";
 import { EntityBulkPage } from "./entity-bulk-page";
-import { EntityRecord } from "./entity-record";
 
 // The slice's screens as route components (routes/entity.ts loads this module lazily).
 const listRoute = getRouteApi("/app/org");
@@ -20,19 +18,6 @@ const bulkRoute = getRouteApi("/app/org/entities/bulk");
 export function EntityBulkScreen() {
   const { mode } = bulkRoute.useSearch();
   return <Navigate to="/org" search={{ tab: "entities", bulk: mode }} hash replace />;
-}
-
-const newRoute = getRouteApi("/app/org/entities/new");
-export function NewEntityScreen() {
-  const { kind, name } = newRoute.useSearch();
-  return <AccessGate domain="org" level="edit" tenant><EntityWizard kind={kind} name={name} /></AccessGate>;
-}
-
-const entityRoute = getRouteApi("/app/org/entities/$id");
-export function EntityScreen() {
-  const { id } = entityRoute.useParams();
-  const { wp } = entityRoute.useSearch();
-  return <EntityRecord key={`${id}:${wp ?? ""}`} id={id} workplace={wp} />;
 }
 
 const wpRoute = getRouteApi("/app/org/entities/$id/workplaces/new");
