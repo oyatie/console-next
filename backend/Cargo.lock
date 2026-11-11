@@ -916,6 +916,7 @@ dependencies = [
  "console-notices-adapter-postgres",
  "console-notices-rest",
  "console-notifications-adapter-postgres",
+ "console-notifications-application",
  "console-notifications-domain",
  "console-notifications-rest",
  "console-onboarding-adapter-postgres",

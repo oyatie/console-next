@@ -1,0 +1,26 @@
+tags:
+  - me
+operationId: markMyActionInboxReferenceRead
+summary: 확인 - mark one of the caller's notices read
+description: >-
+  Marks one of the caller's own notices read. A notice that is not the caller's is 404,
+  indistinguishable from an unknown id.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The notice, now read.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/NotificationSummary'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '404':
+    $ref: '#/components/responses/NotFound'

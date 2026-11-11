@@ -33,14 +33,11 @@
   "schemas": [
     "NotificationCategoryCount",
     "NotificationCountsSummary",
-    "NotificationLink",
     "NotificationObjectGroup",
     "NotificationObjectGroupPage",
-    "NotificationPage",
     "NotificationPolicyList",
     "NotificationPolicySummary",
     "NotificationReadAllResponse",
-    "NotificationSummary",
     "UnreadNotificationCountResponse",
     "UpsertNotificationPolicyRequest"
   ],
@@ -49,6 +46,9 @@
     "AuditLastChange",
     "ErrorBody",
     "FieldError",
+    "NotificationLink",
+    "NotificationPage",
+    "NotificationSummary",
     "Timestamp",
     "Uuid"
   ]

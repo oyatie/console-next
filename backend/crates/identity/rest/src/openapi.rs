@@ -25,6 +25,9 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
     "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",
+    "NotificationLink",
+    "NotificationPage",
+    "NotificationSummary",
     "OrgChangeApprovalRoleKey",
     "OrgChangeApprovalStep",
     "OrgChangeDetail",
@@ -749,6 +752,29 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/action-inbox/done",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__me__action-inbox__done.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/action-inbox/reference",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__me__action-inbox__reference.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/action-inbox/reference/{id}/read",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__me__action-inbox__reference__id__read.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/authz",
         operations: &[Operation {
             method: "get",
@@ -1284,6 +1310,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AccountStatus",
         body: include_str!("../openapi/schemas/AccountStatus.yaml"),
+    },
+    NamedYaml {
+        name: "ActionInboxDoneItem",
+        body: include_str!("../openapi/schemas/ActionInboxDoneItem.yaml"),
     },
     NamedYaml {
         name: "ActionInboxItem",
