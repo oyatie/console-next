@@ -30,6 +30,8 @@ export const enImportReview: Partial<Record<keyof typeof koImportReview, string>
   "importReview.reason.unresolved_identity": "Who is this? (same name)",
   "importReview.reason.summary_row_skipped": "Total row · not a person",
   "importReview.reason.phone_invalid": "Not readable as a mobile number",
+  "importReview.reason.number_invalid": "Not a number, so not imported",
+  "importReview.reason.work_period_missing": "No pay period, so days and hours worked are not imported",
   "importReview.groups.title": "Leave out by reason · {count, number}",
   "importReview.groups.row": "{why} · {field} · {rows, number} rows",
   "importReview.groups.run": "Leave all {rows, number} rows out this time",

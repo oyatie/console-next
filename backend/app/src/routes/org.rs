@@ -14,7 +14,8 @@ use super::TenantDeps;
 use crate::lifecycle;
 use crate::wiring::orgchange_ports::{PgEmploymentTransferPort, PgOrgUnitWritePort};
 
-pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
+/// The org-change store with its ports, as every route that runs its commands uses it.
+pub(super) fn org_change_store(deps: &TenantDeps<'_>) -> PgOrgChangeStore {
     let (state, pool) = (deps.state, deps.pool);
     let mut org_changes = PgOrgChangeStore::new(pool.clone())
         .with_employment_transfer(Arc::new(PgEmploymentTransferPort))
@@ -24,6 +25,12 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             crate::wiring::orgchange_sole_holder::PgSoleHolderDecisionPort(passkeys),
         ));
     }
+    org_changes
+}
+
+pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
+    let (state, pool) = (deps.state, deps.pool);
+    let org_changes = org_change_store(deps);
     router
         .merge(
             crate::privacy::router(

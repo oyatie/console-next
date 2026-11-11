@@ -112,6 +112,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/approvals/{id}/decision",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__approvals__id__decision.post.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/change-requests",
         operations: &[
             Operation {
@@ -1161,6 +1168,14 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AppointmentNoticeSummary",
         body: include_str!("../openapi/schemas/AppointmentNoticeSummary.yaml"),
+    },
+    NamedYaml {
+        name: "ApprovalDecisionReceipt",
+        body: include_str!("../openapi/schemas/ApprovalDecisionReceipt.yaml"),
+    },
+    NamedYaml {
+        name: "ApprovalDecisionRequest",
+        body: include_str!("../openapi/schemas/ApprovalDecisionRequest.yaml"),
     },
     NamedYaml {
         name: "ApprovalDocument",

@@ -31,6 +31,12 @@ pub struct RecordGuards {
     pub replace_reason_code: Option<String>,
 }
 
+pub(crate) struct RecordGuardFacts {
+    pub hire: Option<String>,
+    pub version: i32,
+    pub contract_end: Option<String>,
+}
+
 fn refused(status: StatusCode, code: &'static str, message: String, detail: Value) -> HrError {
     HrError {
         errors: None,
@@ -89,6 +95,35 @@ pub async fn check_record_guards(
     .bind(employee)
     .fetch_one(tx.as_mut())
     .await?;
+    check_record_guards_with_facts(
+        tx,
+        org,
+        employee,
+        prepared,
+        guards,
+        RecordGuardFacts {
+            hire,
+            version,
+            contract_end,
+        },
+    )
+    .await
+}
+
+pub(crate) async fn check_record_guards_with_facts(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org: OrgId,
+    employee: Uuid,
+    prepared: &mut PreparedLifecycleEvent,
+    guards: &RecordGuards,
+    facts: RecordGuardFacts,
+) -> Result<(), HrError> {
+    let org_uuid = *org.as_uuid();
+    let RecordGuardFacts {
+        hire,
+        version,
+        contract_end,
+    } = facts;
     let transition = &prepared.transition;
     let effective = parse_yyyy_mm_dd(&transition.effective_date)?;
     // An imported hire date that does not parse sets no floor.

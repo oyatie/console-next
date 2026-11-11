@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { inlineUnitDetails } from "../structure-flows";
 import { expect, type Browser, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
+import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 import { bizRegNoChecksumOk, corpRegNoChecksumOk } from "../../apps/web/src/lib/pure/formats";
-import { chooseRadio, go, kstDate } from "../flows";
+import { chooseRadio, firstSignIn, go, kstDate, stepUp, takeCode } from "../flows";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
 import { firstWorkplace } from "../helpers/entity";
 import { chooseWorkbook, payPeriod } from "../helpers/import";
@@ -26,7 +28,7 @@ export function registration(index: number) {
   return { brn: next(REGISTRATION_FIXTURES.primary.brn, bizRegNoChecksumOk), crn: next(REGISTRATION_FIXTURES.primary.crn, corpRegNoChecksumOk) };
 }
 
-/** All writes use product controls. GET probes verify the saved shape and supply concrete route ids. */
+/** Records use product controls. GET probes verify the saved shape and supply concrete route ids. */
 export async function buildTenant(browser: Browser) {
   const admin = await openTenant(browser, "route-load", "가상성능그룹");
   admin.setDefaultTimeout(300_000);
@@ -114,7 +116,9 @@ export async function buildTenant(browser: Browser) {
   return { admin, urls };
 }
 
-async function recordRoutes(admin: Page, urls: Record<string, string>, depts: string[], departmentId: string) {
+export async function recordRoutes(admin: Page, urls: Record<string, string>, depts: string[], departmentId: string) {
+  await loadCatalog("ko");
+  const api = apiOf(admin, bearerOf(admin));
   await go(admin, "/access/roles/new");
   await admin.getByRole("textbox", { name: /^역할 이름/ }).fill("가상 조회 역할");
   await admin.getByRole("checkbox", { name: "인사기본 조회" }).click();
@@ -175,6 +179,10 @@ async function recordRoutes(admin: Page, urls: Record<string, string>, depts: st
   await admin.waitForURL(/\/people\/certificates\/[0-9a-f-]+$/);
   urls["/people/certificates/$certificateId"] = new URL(admin.url()).pathname;
 
+  // shortcut: no approval-policy editor exists; use its governed API until the editor ships.
+  const policy = await api("/settings/approval.policy.org_structure", "POST", { value: "route", reason_code: "POLICY_REVIEW" });
+  expect(policy.status()).toBe(201);
+  await admin.reload();
   await go(admin, `/org?sel=${departmentId}`);
   const selected = panel(admin, depts.at(-1)!);
   await expect(selected).toBeVisible();
@@ -186,5 +194,59 @@ async function recordRoutes(admin: Page, urls: Record<string, string>, depts: st
   await selected.getByRole("button", { name: "이름 변경", exact: true }).click();
   expect((await change).status()).toBe(200);
   urls["/org/changes/$id"] = `/org/changes/${new URL((await change).url()).pathname.split("/").at(-2)!}`;
+  const submitted = await (await change).json();
+  expect(submitted.status).toBe("IN_APPROVAL");
+  expect(submitted.approvalSteps.length).toBeGreaterThan(0);
+  urls["/approvals/$approvalId"] = `/approvals/org_change:${submitted.id as string}`;
   await expect(renameInput).toBeHidden();
+
+  await go(admin, urls["/people/$id"]!);
+  await admin.getByRole("button", { name: "계정 초대", exact: true }).click();
+  await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
+  const subject = await firstSignIn(admin.context().browser()!, await takeCode(admin));
+  subject.setDefaultTimeout(30_000);
+  try {
+    await go(subject, "/account/privacy");
+    await chooseRadio(subject.getByRole("main"), new RegExp(t("account.privacy.information.TENANT")));
+    await subject.getByRole("checkbox", { name: new RegExp(`^${t("account.privacy.kind.ACCESS")} ·`) }).press("Space");
+    await subject.getByLabel(t("account.privacy.detail"), { exact: false }).fill("가상 성능 측정용 열람 요구");
+    const filed = subject.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/privacy/rights-requests");
+    await subject.getByRole("button", { name: t("account.privacy.submit"), exact: true }).click();
+    expect((await filed).status()).toBe(200);
+    urls["/account/privacy/intake/$id"] = `/account/privacy/intake/${(await (await filed).json()).id as string}`;
+  } finally { await subject.context().close(); }
+
+  await go(admin, "/payroll/setup");
+  await admin.getByRole("main").getByRole("button", { name: t("payroll.setup.add"), exact: true }).click();
+  const sheet = admin.getByRole("dialog", { name: t("payroll.setup.add"), exact: true });
+  await sheet.getByLabel(t("payroll.entity"), { exact: false }).selectOption(urls["/org/entities/$id"]!.split("/").at(-1)!);
+  await sheet.getByLabel(t("payroll.setup.name"), { exact: false }).fill("가상 성능 급여");
+  const pay = sheet.getByRole("group", { name: t("payroll.payDateRule"), exact: false });
+  await pay.getByLabel(t("payroll.setup.month"), { exact: false }).selectOption("0");
+  await pay.getByLabel(t("payroll.setup.day"), { exact: false }).selectOption("LAST_DAY");
+  await pay.getByLabel(t("payroll.setup.holiday"), { exact: false }).selectOption("PREVIOUS");
+  for (const period of ["basePeriod", "variablePeriod"] as const) {
+    const group = sheet.getByRole("group", { name: t(`payroll.${period}`), exact: false });
+    await group.getByLabel(t("payroll.setup.month"), { exact: false }).selectOption("0");
+    await group.getByLabel(t("payroll.setup.startDay"), { exact: false }).selectOption("FIRST");
+  }
+  await sheet.getByLabel(t("payroll.proration"), { exact: false }).selectOption("CALENDAR_DAYS");
+  await sheet.getByLabel(t("payroll.channel"), { exact: false }).selectOption("ATTESTATION_ONLY");
+  await sheet.getByLabel(t("payroll.sensitive"), { exact: false }).selectOption("false");
+  await sheet.getByRole("checkbox", { name: t("payroll.rule.MONTHLY"), exact: true }).press("Space");
+  const groupSaved = admin.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/payroll/pay-groups");
+  await sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true }).click();
+  expect((await groupSaved).status()).toBe(201);
+  await expect(sheet).toBeHidden();
+
+  await go(admin, "/payroll/runs/new");
+  await chooseRadio(admin.getByRole("main"), /^가상 성능 급여 ·/);
+  await chooseRadio(admin.getByRole("main"), new RegExp(`^${t("payroll.create.kind.REGULAR")}$`));
+  const runSaved = admin.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/payroll/runs");
+  await admin.getByRole("button", { name: t("payroll.create.submit"), exact: true }).click();
+  expect((await runSaved).status()).toBe(201);
+  const run = await (await runSaved).json();
+  await admin.waitForURL(`/payroll/runs/${run.id as string}`);
+  urls["/payroll/runs/$id"] = new URL(admin.url()).pathname;
+  urls["/payroll/employees/$employeeId"] = `${urls["/people/$id"]!.replace("/people/", "/payroll/employees/")}?${new URLSearchParams({ period: run.attribution_month, pay_date: run.pay_date })}`;
 }

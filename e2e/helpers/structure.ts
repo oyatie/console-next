@@ -16,7 +16,9 @@ export const sheet = (page: Page, title: string | RegExp) => page.getByRole("dia
 
 /** Opens a unit's panel from the chart (its row in the chart's tree). */
 export async function openUnit(page: Page, name: string, c: C = plain) {
-  if (!new URL(page.url()).pathname.endsWith("/org")) await go(page, "/org");
+  const url = new URL(page.url());
+  // Entity/change routes redirect to /org too; finding a unit requires its chart view.
+  if (!url.pathname.endsWith("/org") || url.searchParams.has("tab") || url.searchParams.has("view")) await go(page, "/org");
   // Already open (clicking its row again would close it).
   if (await panel(page, name).isVisible()) return panel(page, name);
   // The chart's find brings a unit inside a collapsed branch into view; selecting its box opens its panel.

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from "react";
 import { Link } from "@tanstack/react-router";
 import { CornerDownRight, History } from "lucide-react";
 import { t } from "@console/i18n";
@@ -29,6 +29,7 @@ import { isStale, myId } from "../api";
 import { HitPreview, SitePreview } from "./site-preview";
 import { useChartState } from "./use-chart-state";
 import { useDragMove } from "./use-drag-move";
+import type { ViewCommands } from "./page-head";
 import type { Commands } from "./use-structure-commands";
 import { useStructureGestures } from "./use-structure-gestures";
 import css from "./chart.module.css";
@@ -38,8 +39,11 @@ import css from "./chart.module.css";
  * toolbar, inline add and rename, drag and M to move, the selection bar, and the receipt docked in the gutter.
  * During setup every change applies at once (undoable); after go-live the gestures open the governed proposal.
  */
-export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick, dimmed, covered }: {
+export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimmed, covered, find: q, ref }: {
   s: Structure;
+  /** The page toolbar's find text and its commands for this view. */
+  find?: string;
+  ref?: Ref<ViewCommands>;
   /** The tree shown is the last one read (a re-read failed). */
   dimmed?: boolean;
   /** A unit picked from outside the chart: shown in place (its branch opened, the view panned), never by redrawing. */
@@ -50,12 +54,10 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
   /** The selection shared with list and the outline (the same ids). */
   sel: ReadonlySet<string>;
   onSelect: (ids: ReadonlySet<string>, gather?: boolean) => void;
-  /** The receipt is shown elsewhere (the outline's foot). */
-  quiet?: boolean;
   /** A proposal covers the chart, so its floating controls leave the inert background. */
   covered?: boolean;
 }) {
-  const c = useChartState(s, focusId, onFocus, sel, onSelect);
+  const c = useChartState(s, focusId, onFocus, sel, onSelect, q);
   const [picked, setPicked] = useState(pick?.n);
   if (pick && pick.n !== picked) {
     setPicked(pick.n);
@@ -72,6 +74,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
   const open = (n: ChartNode) => (n.kind === "dept" ? (c.select(n.id), c.setCursor(n.id)) : openDetail(n));
   const g = useStructureGestures(s, c, cmd, { move: setMoving, remove: setDeleting, onFocus });
   const drag = useDragMove(s, c.sel, (nodes, target) => g.moveTo(nodes, target));
+  useImperativeHandle(ref, () => ({ find: c.stepHit, fold: () => c.setExpanded(new Set([c.focus.id])), add: g.add }));
 
   // An open editor comes into view clear of the floating bars (its field must not sit under the zoom bar).
   const editing = c.L.boxes.find((b) => b.ghost) ?? (c.renaming ? c.shown.get(c.renaming) : undefined);
@@ -148,12 +151,13 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
     <div className={css.failed}><CommandError error={cmd.error} /><Button variant="ghost" onClick={cmd.reset}>{t("structure.dismiss")}</Button></div>
   ) : c.q.trim() ? (
     <FindStatus s={s} c={c} />
-  ) : cmd.last && !quiet ? receipt : note ? (
+  ) : cmd.last ? receipt : note ? (
     <ChangeReceipt />
   ) : null;
 
   return (
-    <div className={css.chartWrap}>
+    // While a drag is live its Esc cancels the drag; the column beside the chart must not take the key first.
+    <div className={css.chartWrap} data-escape-scope={drag.view ? "" : undefined}>
       <OrgCanvas
         ref={canvas}
         label={t("structure.chart.label")}
@@ -165,9 +169,8 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
         top={drag.view ? (
           // While dragging, the top edge says what is moving and how a drop is judged (S2-chart-drag).
           <p className={`${css.dragBanner} card`} role="status"><CornerDownRight size={16} aria-hidden /><b>{t("structure.drop.moving", { name: drag.view.nodes.map((n) => n.name).join(", ") })}</b>{t("structure.drop.rules")}</p>
-        ) : <ChartTop s={s} c={c} onFocus={onFocus} onFind={(id) => c.reveal(id)} />}
+        ) : <ChartTop s={s} c={c} onFocus={onFocus} />}
         gutter={gutter}
-        tools={<Button variant="ghost" onClick={() => c.setExpanded(new Set([c.focus.id]))}>{t("structure.collapseAll")}</Button>}
         layer={(zoom, visible) => (
           <>
             <ChartEditors s={s} c={c} zoom={zoom} visible={visible} pending={cmd.pending} batch={cmd.last?.batchId} onAdd={g.create} onRename={g.saveName} />

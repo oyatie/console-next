@@ -60,11 +60,32 @@ pub async fn prepare_lifecycle_event(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org_uuid: Uuid,
     employee_id: Uuid,
-    mut transition: NormalizedEmployeeLifecycleTransition,
+    transition: NormalizedEmployeeLifecycleTransition,
     today: Date,
 ) -> Result<PreparedLifecycleEvent, HrError> {
+    prepare_lifecycle_event_with_context(tx, org_uuid, employee_id, transition, today, None).await
+}
+
+pub(crate) async fn prepare_lifecycle_event_with_context(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org_uuid: Uuid,
+    employee_id: Uuid,
+    mut transition: NormalizedEmployeeLifecycleTransition,
+    today: Date,
+    context: Option<(
+        Option<&EmployeeForLifecycle>,
+        &[console_hr_domain::lifecycle::schedule::ScheduledLifecycleRow],
+    )>,
+) -> Result<PreparedLifecycleEvent, HrError> {
     let change_mode = lifecycle_change_mode(tx, org_uuid, &transition.event_type).await?;
-    let live = load_employee_for_lifecycle(tx, org_uuid, employee_id).await?;
+    let live = match context {
+        Some((head, _)) => head.cloned().ok_or_else(|| {
+            HrError::from_kernel(console_kernel_core::KernelError::not_found(
+                "employee not found",
+            ))
+        })?,
+        None => load_employee_for_lifecycle(tx, org_uuid, employee_id).await?,
+    };
     fill_promote_title(tx, org_uuid, &mut transition).await?;
     fill_classification(tx, org_uuid, &mut transition).await?;
     // Exit dates store 마지막 근무일: employment ends only after that day.
@@ -80,14 +101,11 @@ pub async fn prepare_lifecycle_event(
                 "ONBOARD cannot be scheduled; effective_date must not be in the future (KST)",
             ));
         }
-        let (current, replaces) = replay_lifecycle_schedule(
-            tx,
-            org_uuid,
-            employee_id,
-            &live,
-            ScheduleChange::Insert(&mut transition),
-        )
-        .await?;
+        let change = ScheduleChange::Insert(&mut transition);
+        let (current, replaces) = match context {
+            Some((_, rows)) => super::schedule_sql::replay_loaded_schedule(rows, &live, change)?,
+            None => replay_lifecycle_schedule(tx, org_uuid, employee_id, &live, change).await?,
+        };
         let target =
             resolve_lifecycle_target(tx, org_uuid, employee_id, &current, &transition).await?;
         return Ok(PreparedLifecycleEvent {
@@ -116,14 +134,11 @@ pub async fn prepare_lifecycle_event(
     if let Some(binding) = target.rebind {
         after.org_unit_id = binding;
     }
-    replay_lifecycle_schedule(
-        tx,
-        org_uuid,
-        employee_id,
-        &live,
-        ScheduleChange::Head(Box::new(after)),
-    )
-    .await?;
+    let change = ScheduleChange::Head(Box::new(after));
+    match context {
+        Some((_, rows)) => super::schedule_sql::replay_loaded_schedule(rows, &live, change)?,
+        None => replay_lifecycle_schedule(tx, org_uuid, employee_id, &live, change).await?,
+    };
     Ok(PreparedLifecycleEvent {
         current: live,
         transition,

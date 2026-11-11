@@ -47,3 +47,5 @@ pub mod close_plan;
 pub mod bulk_job;
 mod bulk_job_read;
 mod bulk_job_slot;
+#[cfg(test)]
+mod context_tests;

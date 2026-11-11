@@ -180,24 +180,23 @@ pub(crate) async fn decide(
     Json(b): Json<OrgChangeDecisionRequest>,
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
-    allow_approve(&p)?;
     let approved = matches!(b.decision, WireDecision::Approved);
     respond(
-        &s.store
-            .decide_step_command(
-                p.user_id,
-                id,
-                step_id,
-                console_orgchange_domain::StepDecisionCommand {
-                    approved,
-                    memo: b.memo,
-                    expected_version: b.expected_version,
-                    through_step: b.through_step,
-                    step_up: b.step_up,
-                },
-            )
-            .await
-            .map_err(RestError::store)?,
+        &decide_step_as(
+            &s.store,
+            &p,
+            id,
+            step_id,
+            console_orgchange_domain::StepDecisionCommand {
+                approved,
+                memo: b.memo,
+                expected_version: b.expected_version,
+                through_step: b.through_step,
+                step_up: b.step_up,
+                reason_code: None,
+            },
+        )
+        .await?,
     )
 }
 

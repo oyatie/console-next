@@ -5,7 +5,7 @@
 //! through the HR-owned employee core — plus PBAC denial without leakage,
 //! cross-tenant concealment, and audit readback.
 
-use axum::body::{Body, to_bytes};
+use axum::body::Body;
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
 use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
@@ -826,14 +826,5 @@ async fn send(
         builder.body(Body::empty()).unwrap()
     };
     let response = service.clone().oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    (
-        status,
-        if bytes.is_empty() {
-            Value::Null
-        } else {
-            serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({}))
-        },
-    )
+    console_platform_test_support::json_response::json_response(response).await
 }

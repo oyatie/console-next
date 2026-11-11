@@ -5,11 +5,15 @@
 mod fixture;
 #[path = "support/lifecycle_grant.rs"]
 mod lifecycle_grant;
+#[allow(dead_code)]
+#[path = "support/trail_queries.rs"]
+mod trail_queries;
 
 use console_hr_adapter_postgres::clock::today_kst;
 use serde_json::json;
 use sqlx::PgPool;
 use time::Duration;
+use tracing::instrument::WithSubscriber;
 use uuid::Uuid;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -60,14 +64,24 @@ async fn bulk_cases_roll_back_with_the_event_and_scheduled_replay_keeps_one_pend
     sqlx::raw_sql(sqlx::AssertSqlSafe("DROP TRIGGER synthetic_case_failure ON lifecycle_cases; DROP FUNCTION synthetic_case_failure();".to_owned())).execute(&pool).await.unwrap();
     let request = body((today_kst() + Duration::days(1)).to_string());
     let key = Uuid::new_v4().to_string();
+    let queries = trail_queries::Queries::default();
     let first =
         f.hr.bulk_lifecycle_events(
             f.principal.clone(),
             key.clone(),
             serde_json::from_value(request.clone()).unwrap(),
         )
+        .with_subscriber(queries.clone())
         .await
         .unwrap();
+    let statements = queries.statements();
+    for query in ["FOR UPDATE OF e", "AS exit_owned"] {
+        assert_eq!(
+            statements.iter().filter(|sql| sql.contains(query)).count(),
+            1,
+            "prepare the whole selection with one read: {query}"
+        );
+    }
     let replay =
         f.hr.bulk_lifecycle_events(
             f.principal.clone(),

@@ -40,7 +40,6 @@
   "backend/crates/messenger/adapter-postgres/src/lib.rs:users.display_name:cea8f56e604e513a85c7": 1,
   "backend/crates/orgchange/adapter-postgres/src/store/queries.rs:employees.name:fa77453aa902be21795b": 1,
   "backend/crates/payroll/adapter-postgres/src/payslip_draft.rs:employees.name:8fccc7422cdb106e4bd2": 1,
-  "backend/crates/payroll/adapter-postgres/src/roster.rs:employees.name:f73c1ba3416d797eb936": 1,
   "backend/crates/platform/access/src/effective.rs:users.display_name:a32bed499aada60d620f": 1,
   "backend/crates/platform/db/src/period_lock/request.rs:users.display_name:2e492edf8e3f7e9e4253": 1,
   "backend/crates/support/adapter-postgres/src/lib.rs:users.display_name:0052b7c4af10689e0eb4": 1,
