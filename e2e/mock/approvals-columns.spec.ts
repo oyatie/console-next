@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
 import { failure } from "./fixtures";
 import { mockScreen } from "./screen";
@@ -11,7 +12,7 @@ test.beforeAll(() => loadCatalog("ko"));
 const item = (n: number) => ({
   id: `approval-${n}`, box: "pending", title: `조직 개편안 ${n}`, summary: "영업1팀과 영업2팀을 하나의 조직으로 합칩니다.", document_no: `AP-2026-00${n}`,
   source: { key: "org_change", label: "조직 변경" }, status: { key: "IN_APPROVAL" },
-  requester: { id: "account-1", name: "김기안", role: "인사팀" }, requested_at: "2026-11-03T01:00:00Z", due_at: null, facts: [],
+  requester: { id: "account-1", name: "김기안", role: "인사팀" }, requested_at: "2026-11-03T01:00:00Z", due_at: null, facts: [], effective_date: n === 2 ? null : "2026-11-20",
   route: [{ id: "first", role_key: "hr", assignee: "김기안", state: "done" }, { id: "approve", role_key: "legal", assignee: "박결재", state: "current" }],
   viewer: { kind: "org_change", id: `change-${n}` },
 });
@@ -51,6 +52,9 @@ for (const theme of ["light", "dark"]) test(`the document opens beside the list,
   const body = column(page).getByRole("region", { name: t("approvals.viewer.body"), exact: true });
   expect((await chain.boundingBox())!.y).toBeLessThan((await body.boundingBox())!.y);
   await expect(row(1)).toBeVisible();
+  // A row says when its document takes effect, beside the title; a document with no date says nothing.
+  await expect(row(1)).toContainText(`조직 개편안 1 · ${t("approvals.row.effective", { date: fmtDate("2026-11-20") })}`);
+  await expect(row(2).getByText(t("approvals.row.effective", { date: "" }).trim())).toHaveCount(0);
   await expectAxe(page, `approval document column ${theme}`);
   await page.screenshot({ path: info.outputPath(`approvals-column-1440-${theme}.png`), fullPage: true });
 

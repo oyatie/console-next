@@ -20,6 +20,7 @@ export const enApprovals: Record<keyof typeof koApprovals, string> = {
   "approvals.source.count": "{label} · {count, number}",
   "approvals.list": "Approval documents",
   "approvals.col.title": "Document",
+  "approvals.row.effective": "Effective {date}",
   "approvals.col.source": "Type",
   "approvals.col.requester": "Requester",
   "approvals.col.requestedAt": "Requested",
