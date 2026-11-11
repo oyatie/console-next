@@ -35,8 +35,8 @@
 .chip[data-hovered] { background: var(--muted); }
 .chip[data-selected] { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); font-weight: var(--fw-medium); outline: 1px solid var(--primary); outline-offset: -2px; }
 .chip[data-focus-visible] { box-shadow: var(--focus); }
-.tick { display: none; }
-.chip[data-selected] .tick { display: inline; }
+.tick { visibility: hidden; }
+.chip[data-selected] .tick { visibility: visible; }
 .chipAdd { composes: chip; border-style: dashed; color: var(--steel); }
 .cards[data-columns="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .cards[data-columns="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
