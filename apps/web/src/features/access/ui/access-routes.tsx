@@ -37,8 +37,9 @@ const personRoute = getRouteApi("/app/access/people/$accountId");
 export function PersonScreen() {
   const { accountId } = personRoute.useParams();
   const { grant } = personRoute.useSearch();
+  const navigate = personRoute.useNavigate();
   const account = useQuery(accountQuery(accountId));
   return <QueryState q={account} back={{ to: "/access/grants", label: t("access.nav.grants") }} layout="record">{data =>
-    <AccessAccountContext value={data}><PersonAccess accountId={accountId} grant={grant} /></AccessAccountContext>
+    <AccessAccountContext value={data}><PersonAccess accountId={accountId} grant={grant} onGrant={(open) => void navigate({ search: { grant: open || undefined }, replace: !open })} /></AccessAccountContext>
   }</QueryState>;
 }
