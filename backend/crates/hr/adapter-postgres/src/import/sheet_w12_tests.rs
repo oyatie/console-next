@@ -66,6 +66,40 @@ fn regression_a_footer_row_is_kept_but_never_a_candidate() -> Result<(), String>
     Ok(())
 }
 
+/// regression: a roster whose 입사일 column is written with two-digit years
+/// reaches the plan as people, each cell as written; the plan asks how such
+/// years read. The header row and the footer are found as before.
+#[test]
+fn regression_two_digit_year_rows_reach_the_plan_as_written() -> Result<(), String> {
+    let sheet = roster(&[
+        ["E-1", "김일", "24.03.04", ""],
+        ["E-2", "김이", "98.11.30", ""],
+        ["합계", "2명", "", ""],
+    ]);
+    let parsed = parse(
+        &[sheet],
+        &BTreeMap::new(),
+        &WorkbookMappingRequest::default(),
+    )?;
+    let read: Vec<_> = parsed
+        .rows
+        .iter()
+        .map(|r| {
+            let hire = r.canonical.as_ref().and_then(|c| c.hire_date.clone());
+            (r.row_status, hire)
+        })
+        .collect();
+    assert_eq!(
+        read,
+        [
+            (ImportRowStatus::Candidate, Some("24.03.04".to_owned())),
+            (ImportRowStatus::Candidate, Some("98.11.30".to_owned())),
+            (ImportRowStatus::Preserved, None),
+        ]
+    );
+    Ok(())
+}
+
 /// regression (W12): 연락처 was 저장하지 않음; now it is read as E.164 and
 /// still never kept in the raw row or shown in a preview.
 #[test]

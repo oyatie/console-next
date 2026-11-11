@@ -23,7 +23,7 @@
 
 use std::collections::BTreeMap;
 
-use super::cells::parse_import_date;
+use super::cells::{ShortYearDate, TWO_DIGIT_YEAR, read_import_date, years};
 use super::numbering::Numbering;
 use super::plan::{Decisions, ImportRow, NewPerson, PlanFacts, PlannedRow};
 use super::plan_group;
@@ -31,6 +31,14 @@ use super::plan_identity::{Identity, identify};
 use super::plan_people::existing;
 use super::plan_place;
 use super::plan_status;
+
+/// The run's answer for two-digit years, if its operator gave one.
+pub(super) fn short_years(decisions: &Decisions) -> Option<&str> {
+    decisions
+        .group_answers
+        .get(TWO_DIGIT_YEAR)
+        .map(String::as_str)
+}
 
 pub(super) fn refused(mut row: PlannedRow, code: &'static str, field: &'static str) -> PlannedRow {
     row.outcome = "refused";
@@ -125,9 +133,19 @@ fn plan_row(
         ("birth_date", &row.birth_date),
     ]) {
         if let Some(raw) = raw {
-            match parse_import_date(raw) {
-                Some(date) => *slot = Some(date),
-                None => return refused(base, "invalid_date", field),
+            // A two-digit year reads only by the operator's answer, and only
+            // where one century is plausible: a person aged 15 at a hire up to
+            // a year ahead and under 100, a hire or exit in the last 80 years.
+            let today = facts.today;
+            let (earliest, latest) = if field == "birth_date" {
+                (today - years(100), today - years(14))
+            } else {
+                (today - years(80), today + years(1))
+            };
+            let century = |short: ShortYearDate| short.between(earliest, latest);
+            match read_import_date(raw, short_years(decisions), century) {
+                Ok(date) => *slot = Some(date),
+                Err(code) => return refused(base, code, field),
             }
         }
     }
@@ -169,8 +187,9 @@ fn new_person(
         ("probation_end_date", &row.probation_end_date),
     ]) {
         if let Some(raw) = raw {
-            match parse_import_date(raw) {
-                Some(date) if date >= hire => *slot = Some(date.to_string()),
+            match read_import_date(raw, short_years(decisions), |short| short.after(hire)) {
+                Ok(date) if date >= hire => *slot = Some(date.to_string()),
+                Err(TWO_DIGIT_YEAR) => return refused(base, TWO_DIGIT_YEAR, field),
                 _ => return refused(base, "invalid_date", field),
             }
         }

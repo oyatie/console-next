@@ -3,7 +3,7 @@
 
 use time::{Date, Duration, Month};
 
-use super::parse_import_date;
+use super::{TWO_DIGIT_YEAR, parse_import_date, parse_short_year_date, read_import_date};
 
 fn every_day() -> impl Iterator<Item = Date> {
     let first = Date::from_calendar_date(1900, Month::March, 1).unwrap();
@@ -28,6 +28,8 @@ fn every_spelling_of_every_day_reads_as_that_day() {
             serial.to_string(),
         ] {
             assert_eq!(parse_import_date(&raw), Some(date), "{raw}");
+            // A full date is never also a two-digit-year one.
+            assert_eq!(parse_short_year_date(&raw), None, "{raw}");
         }
     }
 }
@@ -54,6 +56,12 @@ fn a_two_digit_year_is_never_read() {
             format!("{y:02}-{m:02}-{d:02}"),
         ] {
             assert_eq!(parse_import_date(&raw), None, "{raw}");
+            // It waits for the answer, and with it reads as that day.
+            let unasked = read_import_date(&raw, None, |_| unreachable!());
+            assert_eq!(unasked, Err(TWO_DIGIT_YEAR), "{raw}");
+            let last = first + Duration::days(3_653);
+            let read = read_import_date(&raw, Some("recent"), |s| s.between(first, last));
+            assert_eq!(read, Ok(date), "{raw}");
         }
     }
 }

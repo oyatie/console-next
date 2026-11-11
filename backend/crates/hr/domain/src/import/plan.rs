@@ -48,9 +48,12 @@ pub struct OnFile {
 }
 
 /// The group answers a run takes (`Decisions::group_answers`).
-pub const GROUP_ANSWERS: [(&str, &[&str]); 2] = [
+pub const GROUP_ANSWERS: [(&str, &[&str]); 3] = [
     ("workplace_conflict", &["follow_unit", "follow_workplace"]),
     ("status_conflict", &["pre_hire"]),
+    // A file whose dates carry two-digit years: read them as the nearest
+    // plausible year (`cells::ShortYearDate`), or leave the rows out.
+    ("two_digit_year", &["recent"]),
 ];
 
 /// One field the row changes (`from` is the value on file).

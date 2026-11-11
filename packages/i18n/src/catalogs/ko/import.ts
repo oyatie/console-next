@@ -123,6 +123,7 @@ export const koImport = {
   "import.route.value_map": "값을 연결하면 반영합니다",
   "import.refusal.duplicate_in_file": "파일 안에 같은 사번이 또 있습니다",
   "import.refusal.invalid_date": "날짜로 읽을 수 없습니다",
+  "import.refusal.two_digit_year": "연도가 두 자리입니다",
   "import.refusal.identity_mismatch": "같은 사번의 직원과 다릅니다. 반영하지 않으니 직원 정보 정정으로 바로잡으십시오",
   "import.refusal.hire_date_required": "입사일이 없습니다",
   "import.refusal.former_load_closed": "첫 급여 기간을 확정한 뒤에는 퇴직자를 명부로 들일 수 없습니다",

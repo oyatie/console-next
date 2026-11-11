@@ -4,7 +4,7 @@
 
 use console_kernel_core::kr::PhoneE164;
 
-use super::cells::{half_width, parse_import_date};
+use super::cells::{half_width, parse_import_date, parse_short_year_date};
 use super::detect::memory_key;
 use super::grid::GridRow;
 
@@ -50,7 +50,11 @@ pub fn is_summary_row(row: &GridRow, name: Option<u32>, hire: Option<u32>) -> bo
     let name_text = name.map(|c| row.text(c)).unwrap_or_default();
     let not_a_name = name_text.is_empty() || token(&name_text) || is_count(&name_text);
     let hire_text = hire.map(|c| row.text(c)).unwrap_or_default();
-    has_token && not_a_name && parse_import_date(&hire_text).is_none()
+    // A two-digit year is a date here too: the row waits for the operator's
+    // answer as a person, it is not a footer.
+    let dated =
+        parse_import_date(&hire_text).is_some() || parse_short_year_date(&hire_text).is_some();
+    has_token && not_a_name && !dated
 }
 
 /// A phone cell as E.164. A number cell lost its leading 0 (`1012345678` is

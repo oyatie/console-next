@@ -14,7 +14,15 @@ fuzz_target!(|bytes: &[u8]| {
     let Ok(text) = std::str::from_utf8(bytes) else {
         return;
     };
-    let _ = cells::parse_import_date(text);
+    let date = cells::parse_import_date(text);
+    // A cell is a full date or a two-digit-year one, never both; and a
+    // two-digit year is read in no span without its answer.
+    let short = cells::parse_short_year_date(text);
+    assert!(date.is_none() || short.is_none(), "{text:?}");
+    if short.is_some() {
+        let unasked = cells::read_import_date(text, None, |s| s.after(time::Date::MIN));
+        assert_eq!(unasked, Err(cells::TWO_DIGIT_YEAR), "{text:?}");
+    }
     let _ = cells::name_key(text);
     let _ = parse_yyyy_mm_dd(text);
     let _ = normalize::employee_number(text);

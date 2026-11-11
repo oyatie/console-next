@@ -117,4 +117,5 @@ test("a group answer is kept once per pattern and taken back", () => {
   expect(withGroupAnswer(p, "workplace_conflict", "follow_workplace").group_answers).toEqual({ workplace_conflict: "follow_workplace" });
   expect(withGroupAnswer(p, "workplace_conflict", null).group_answers).toEqual({});
   expect(isAnsweredPattern("status_conflict") && !isAnsweredPattern("invalid_date")).toBe(true);
+  expect(withGroupAnswer(initialPicks(), "two_digit_year", "recent").group_answers).toEqual({ two_digit_year: "recent" });
 });

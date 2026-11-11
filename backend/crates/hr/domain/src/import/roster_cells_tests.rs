@@ -50,6 +50,12 @@ fn a_person_is_never_a_totals_row() {
         Some(2)
     ));
     assert!(!is_summary_row(&row(&["", "", ""]), Some(1), Some(2)));
+    // A two-digit year is still an 입사일: the row waits for its answer.
+    assert!(!is_summary_row(
+        &row(&["E-1", "계", "24.03.04"]),
+        Some(1),
+        Some(2)
+    ));
 }
 
 /// regression (W12): 연락처 was dropped (저장하지 않음), so every imported

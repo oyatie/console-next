@@ -3,9 +3,10 @@
 //! setup fact. A stated status must agree with the dates; a text the catalog
 //! and the operator's map do not know is a question, never a guess.
 
-use super::cells::parse_import_date;
+use super::cells::read_import_date;
 use super::normalize::{known_code, leave_type_code, status_code};
 use super::plan::{Decisions, ImportRow, PlanFacts, SetupLeave};
+use super::plan_rows::short_years;
 
 /// A refusal as `(code, field)`; the planner turns it into the plan row.
 pub(super) type Refusal = (&'static str, &'static str);
@@ -39,9 +40,11 @@ fn leave(row: &ImportRow, hire: time::Date, decisions: &Decisions) -> Result<Set
         .leave_start_date
         .as_deref()
         .ok_or(("leave_start_required", "leave_start_date"))?;
-    let start = parse_import_date(raw)
-        .filter(|start| *start >= hire)
-        .ok_or(("invalid_date", "leave_start_date"))?;
+    let start = read_import_date(raw, short_years(decisions), |short| short.after(hire))
+        .map_err(|code| (code, "leave_start_date"))?;
+    if start < hire {
+        return Err(("invalid_date", "leave_start_date"));
+    }
     let text = row.leave_type.as_deref().unwrap_or("");
     let leave_type = leave_type_code(text)
         .or_else(|| {
@@ -52,11 +55,14 @@ fn leave(row: &ImportRow, hire: time::Date, decisions: &Decisions) -> Result<Set
         })
         .ok_or(("leave_type_unmapped", "leave_type"))?;
     let back = match row.leave_return_date.as_deref() {
-        Some(raw) => Some(
-            parse_import_date(raw)
-                .filter(|back| *back > start)
-                .ok_or(("invalid_date", "leave_return_date"))?,
-        ),
+        Some(raw) => {
+            let back = read_import_date(raw, short_years(decisions), |short| short.after(start))
+                .map_err(|code| (code, "leave_return_date"))?;
+            if back <= start {
+                return Err(("invalid_date", "leave_return_date"));
+            }
+            Some(back)
+        }
         // 0264: 육아휴직 and 출산전후휴가 name their return date.
         None if matches!(leave_type, "CHILDCARE" | "MATERNITY") => {
             return Err(("leave_return_required", "leave_return_date"));

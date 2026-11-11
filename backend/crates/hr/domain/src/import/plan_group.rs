@@ -10,8 +10,9 @@ use super::plan::{Decisions, Exclusion, PlannedRow};
 use super::review::{Resolution, ReviewItem};
 
 /// The row-level reasons a group answer may name.
-pub const GROUP_REASONS: [&str; 15] = [
+pub const GROUP_REASONS: [&str; 16] = [
     "invalid_date",
+    "two_digit_year",
     "hire_date_required",
     "duplicate_in_file",
     "employee_number_taken",

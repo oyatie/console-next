@@ -62,8 +62,8 @@ export function withRowAnswer(c: Picks, sourceKey: string, a: { employeeId: stri
  */
 export const withGroupExclusion = (c: Picks, key: string, exclude: Exclusion | null) => set(c, "group_exclusions", key, exclude ?? undefined);
 
-/** The conflict patterns one answer settles for every row (r3:hire-19), and the answers each takes. */
-export const GROUP_ANSWERS = { workplace_conflict: ["follow_unit", "follow_workplace"], status_conflict: ["pre_hire"] } as const;
+/** The patterns one answer settles for every row (r3:hire-19; a file's two-digit years), and the answers each takes. */
+export const GROUP_ANSWERS = { workplace_conflict: ["follow_unit", "follow_workplace"], status_conflict: ["pre_hire"], two_digit_year: ["recent"] } as const;
 export type AnsweredPattern = keyof typeof GROUP_ANSWERS;
 export const isAnsweredPattern = (reason: string): reason is AnsweredPattern => reason in GROUP_ANSWERS;
 /** One answer for a conflict pattern; null takes it back. */

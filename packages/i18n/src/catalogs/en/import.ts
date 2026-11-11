@@ -117,6 +117,7 @@ export const enImport: Partial<Record<keyof typeof koImport, string>> = {
   "import.route.value_map": "applied once the value is matched",
   "import.refusal.duplicate_in_file": "The same employee number appears again in the file",
   "import.refusal.invalid_date": "Not a date",
+  "import.refusal.two_digit_year": "The year has two digits",
   "import.refusal.identity_mismatch": "Differs from the employee with this number. It is not applied; fix it with a record correction",
   "import.refusal.hire_date_required": "No hire date",
   "import.refusal.former_load_closed": "Former employees cannot be loaded once the first pay period is confirmed",

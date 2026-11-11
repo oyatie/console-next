@@ -19849,12 +19849,14 @@ export interface components {
                     note?: string;
                 };
             };
-            /** @description r3:hire-19: one answer for a conflict pattern, never row by row — workplace_conflict: follow_unit (the 부서's 사업장) or follow_workplace (the 근무지, the 부서 left 미배치); status_conflict: pre_hire (재직 with a future 입사일 comes in 입사 예정). Any other key or answer is 422 validation. */
+            /** @description r3:hire-19: one answer for a conflict pattern, never row by row — workplace_conflict: follow_unit (the 부서's 사업장) or follow_workplace (the 근무지, the 부서 left 미배치); status_conflict: pre_hire (재직 with a future 입사일 comes in 입사 예정); two_digit_year: recent (a date written 24.03.04 reads as year.month.day in the one plausible century — a hire or exit within the last 80 years up to a year ahead, a birth 14 to 100 years ago, an end or leave date within 50 years after the date it follows; with no such year the row stays refused invalid_date). Without it such a row is refused two_digit_year. Any other key or answer is 422 validation. */
             group_answers?: {
                 /** @enum {string} */
                 workplace_conflict?: "follow_unit" | "follow_workplace";
                 /** @enum {string} */
                 status_conflict?: "pre_hire";
+                /** @enum {string} */
+                two_digit_year?: "recent";
             };
         };
         EmployeeImportDryRunSummary: {
