@@ -19994,7 +19994,7 @@ export interface components {
                 probation_end_date?: string;
             };
             /** @enum {string} */
-            refusal_code?: "duplicate_in_file" | "invalid_date" | "identity_mismatch" | "hire_date_required" | "former_load_closed" | "workplace_conflict" | "identity_conflict" | "employee_number_taken" | "status_unmapped" | "status_conflict" | "exit_date_required" | "leave_start_required" | "leave_type_unmapped" | "leave_return_required";
+            refusal_code?: "duplicate_in_file" | "invalid_date" | "two_digit_year" | "identity_mismatch" | "hire_date_required" | "former_load_closed" | "workplace_conflict" | "identity_conflict" | "employee_number_taken" | "status_unmapped" | "status_conflict" | "exit_date_required" | "leave_start_required" | "leave_type_unmapped" | "leave_return_required";
             refusal_field?: string;
             /** @enum {string} */
             matched_by?: "employee_number" | "alias" | "rrn" | "pick";

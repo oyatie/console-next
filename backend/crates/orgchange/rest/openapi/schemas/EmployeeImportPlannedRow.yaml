@@ -135,7 +135,7 @@ properties:
         description: 'r3:hire-16: the employment profile''s 수습종료일.'
   refusal_code:
     type: string
-    enum: [duplicate_in_file, invalid_date, identity_mismatch, hire_date_required, former_load_closed,
+    enum: [duplicate_in_file, invalid_date, two_digit_year, identity_mismatch, hire_date_required, former_load_closed,
       workplace_conflict, identity_conflict, employee_number_taken, status_unmapped, status_conflict,
       exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required]
   refusal_field:
