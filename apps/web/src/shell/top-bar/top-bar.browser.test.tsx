@@ -20,9 +20,10 @@ beforeAll(async () => {
         import React, { useSyncExternalStore } from 'react';
         import { createRoot } from 'react-dom/client';
         import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-        import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
         import { i18n, loadCatalog } from '@console/i18n';
         import { setLocale } from '/apps/web/src/shell/locale.ts';
+        import { invalidatePaths } from '/apps/web/src/lib/query.ts';
         import { TenantHead } from '/apps/web/src/shell/top-bar/tenant-head.tsx';
         import { NeedsMeMenu } from '/apps/web/src/shell/top-bar/needs-me.tsx';
         import { AccountMenu } from '/apps/web/src/shell/top-bar/account-menu.tsx';
@@ -30,13 +31,14 @@ beforeAll(async () => {
         await loadCatalog('ko');
         await setLocale('ko');
         const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        window.addEventListener('refetch-inbox', () => Promise.all(invalidatePaths(client, ['/api/v1/me/action-inbox'])));
         const tenant = { name: '이름이 아주 긴 고객 계정 이름 전체', phase: location.hash === '#operating' ? 'OPERATING' : 'SETUP', go_live_at: null };
         const root = createRootRoute({ component: () => React.createElement('main', null,
           React.createElement('header', { className: 'top' },
             React.createElement(TenantHead, { tenant }),
             React.createElement(NeedsMeMenu, { id: 'test-needs-me' }),
             React.createElement(AccountMenu, { id: 'test-account', name: '남궁가나다라마바사 전체 이름', onLogout: () => document.body.dataset.logout = 'yes' }))) });
-        const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ['/'] }) });
+        const router = createRouter({ routeTree: root.addChildren([createRoute({ getParentRoute: () => root, path: '/people' })]), history: createMemoryHistory({ initialEntries: ['/people'] }) });
         function App() {
           const locale = useSyncExternalStore(i18n.subscribe, () => i18n.locale);
           return React.createElement(QueryClientProvider, { client }, React.createElement(RouterProvider, { router, key: locale }));
@@ -134,7 +136,7 @@ test.each(["dark", "light"])("theme radio selects %s on the document", async the
 test.each([1440, 390])("needs-me badge shows turn count, opens task panel with /inbox link, and closes on Escape at %spx", async width => {
   await page.setViewportSize({ width, height: 900 });
   await open();
-  const trigger = page.getByRole("button", { name: "대기 업무 3건", exact: true });
+  const trigger = page.getByRole("button", { name: "업무함 3건", exact: true });
   await element(trigger).toBeVisible();
   await element(trigger.locator("[data-count]")).toHaveText("3");
   await element(trigger.getByText("업무함", { exact: true })).toBeVisible({ visible: width > 640 });
@@ -162,4 +164,35 @@ test("needs-me badge omits count pill when 0 items need action and renders empty
   await element(trigger.locator("[data-count]")).toHaveCount(0);
   await trigger.click();
   await element(page.getByRole("dialog", { name: "대기 업무", exact: true }).getByText("처리할 업무가 없습니다", { exact: true })).toBeVisible();
+});
+
+test.each([500, 403])("needs-me keeps an unknown badge after a %s read, including a cached count", async status => {
+  await page.route("**/api/v1/me/action-inbox**", route => route.fulfill({ status: 200, json: { counts: { turn: { total: 3, total_is_exact: true } }, items: [{ id: "task", title: "검증 업무", links: [], days_remaining: null }] } }));
+  await open();
+  await element(page.locator("#test-needs-me [data-count]")).toHaveText("3");
+  await page.route("**/api/v1/me/action-inbox**", route => route.fulfill({ status, json: { error: { code: status === 403 ? "forbidden" : "unavailable", message: "" } } }));
+  await page.evaluate(() => window.dispatchEvent(new Event("refetch-inbox")));
+  const trigger = page.getByRole("button", { name: "업무함 · 확인 불가", exact: true });
+  await element(trigger).toBeVisible();
+  await element(trigger.locator("[data-count]")).toHaveCount(0);
+  await trigger.click();
+  await element(page.getByRole("dialog").getByText("처리할 업무가 없습니다", { exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await element(trigger).toBeFocused();
+  await page.unroute("**/api/v1/me/action-inbox**");
+});
+
+test("needs-me does not poll between live invalidations", async () => {
+  let reads = 0;
+  await page.route("**/api/v1/me/action-inbox**", route => {
+    reads++;
+    return route.fulfill({ status: 200, json: { counts: { turn: { total: 3, total_is_exact: true } }, items: [] } });
+  });
+  await page.clock.install();
+  try {
+    await open();
+    await element(page.locator("#test-needs-me [data-count]")).toHaveText("3");
+    await page.clock.fastForward(60_000);
+    expect(reads).toBe(1);
+  } finally { await page.clock.resume(); }
 });

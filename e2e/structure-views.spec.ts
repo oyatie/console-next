@@ -52,8 +52,10 @@ test("jump, outline, paste, list and export work on one structure", { tag: "@org
   await nested.press("Enter");
   await expect(outline.getByRole("treeitem", { name: /^영업1팀/ })).toBeVisible();
   await nested.press("Escape");
-  await expect(box(admin, "영업부")).toBeVisible(); // the chart beside it follows
-  await expectAccessible(admin, "outline beside the chart");
+  // The tree is the whole view now: the clicked 사업장's panel sits beside it, not a second chart.
+  await expect(admin.getByRole("complementary", { name: "평택공장", exact: true })).toBeVisible();
+  await expect(admin.getByRole("region", { name: "조직도", exact: true })).toHaveCount(0);
+  await expectAccessible(admin, "outline with the unit panel");
   expect(c.done("two 부서 by outline keyboard")).toBeLessThanOrEqual(2);
 
   // The sole import menu opens the shared paste page; existing departments link instead of being duplicated.

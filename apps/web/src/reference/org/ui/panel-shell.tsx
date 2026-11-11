@@ -1,13 +1,15 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useContext, useEffect, useId, useRef, type ReactNode } from "react";
 import { ChevronRight, Maximize2, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { focusSoon } from "../../../lib/react/announce";
 import { Button } from "../../../ui/button/button";
+import { SidePanelReadContext } from "../../../ui/side-panel/read-context";
 import css from "./structure.module.css";
 
 /**
  * The side panel's anatomy (S5-panel, S6-panel): a crumb, the title with its chips, in-panel anchors, then the body.
- * It sits beside the chart (the chart stays live); Esc and ✕ close it and return focus to the chart.
+ * It sits beside the chart (the chart stays live); Esc and ✕ close it and return focus to the chart. Inside a column
+ * the column is the frame: it names the region and owns ✕, Esc and back, so this draws the anatomy only.
  */
 export function PanelShell({ crumb, icon, title, chips, anchors, open, children, onClose }: {
   crumb: readonly string[];
@@ -21,6 +23,7 @@ export function PanelShell({ crumb, icon, title, chips, anchors, open, children,
   onClose: () => void;
 }) {
   const ref = useRef<HTMLElement>(null);
+  const column = useContext(SidePanelReadContext);
   const close = () => {
     onClose();
     focusSoon("org-tree");
@@ -33,8 +36,8 @@ export function PanelShell({ crumb, icon, title, chips, anchors, open, children,
     return () => el?.removeEventListener("keydown", key);
   });
   const id = useId();
-  return (
-    <aside ref={ref} className={css.panel} aria-labelledby={`${id}-title`}>
+  const anatomy = (
+    <>
       <div className={css.panelHead}>
         <nav className={css.crumb} aria-label={t("orgStructure.panel.where")}>
           {crumb.map((c, i) => (
@@ -50,15 +53,16 @@ export function PanelShell({ crumb, icon, title, chips, anchors, open, children,
           {chips}
           <span className="grow" />
           {open}
-          <Button variant="ghost" onClick={close} aria-label={t("common.closePanel")}><X size={16} aria-hidden /></Button>
+          {!column && <Button variant="ghost" onClick={close} aria-label={t("common.closePanel")}><X size={16} aria-hidden /></Button>}
         </div>
         <nav className={css.tabs} aria-label={t("orgStructure.panel.sections")}>
           {anchors.map((a) => <Button key={a.id} variant="ghost" className="btn--sm" onClick={() => document.getElementById(a.id)?.scrollIntoView({ block: "start" })}>{a.label}</Button>)}
         </nav>
       </div>
       <div className={css.panelBody}>{children}</div>
-    </aside>
+    </>
   );
+  return column ? <div className={css.inColumn}>{anatomy}</div> : <aside ref={ref} className={css.panel} aria-labelledby={`${id}-title`}>{anatomy}</aside>;
 }
 
 /** The panel's open-in-full control (an icon link to the record's page). */

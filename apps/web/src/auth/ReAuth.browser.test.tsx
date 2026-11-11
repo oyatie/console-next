@@ -86,6 +86,8 @@ test("reset code action leaves the dialog without a logout request", async () =>
 
 test("code sign-in focuses the single code field", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}reauth-test?view=login`);
+  // The app boots after the load event; wait for the field itself so a slow runner cannot outlast the poll.
+  await page.getByLabel("일회용 코드").waitFor();
   await expect.poll(() => page.getByLabel("일회용 코드").evaluate(el => el === document.activeElement)).toBe(true);
   expect(await page.getByText("처음이면", { exact: false }).count()).toBe(0);
 });

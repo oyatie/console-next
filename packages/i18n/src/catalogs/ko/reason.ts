@@ -3,6 +3,16 @@
 // `reason.field.` ids are the shared reason-code field (reference/reason). Only the domains these screens record;
 // a lane recording another domain appends its block.
 export const koReason = {
+  "reason.org_change_reject.EFFECTIVE_DATE_REVIEW": "시행일 재검토",
+  "reason.org_change_reject.INSUFFICIENT_BASIS": "근거 부족",
+  "reason.org_change_reject.WRONG_TARGET": "대상 오류",
+  "reason.org_change_reject.POLICY_VIOLATION": "규정 위반",
+  "reason.org_change_reject.OTHER": "기타",
+  "reason.approval_return.NEEDS_SUPPLEMENT": "내용 보완 필요",
+  "reason.approval_return.ADD_EVIDENCE": "증빙 추가",
+  "reason.approval_return.ADJUST_EFFECTIVE_DATE": "시행일 조정",
+  "reason.approval_return.CORRECT_TARGET": "대상 정정",
+  "reason.approval_return.OTHER": "기타",
   "reason.excess_post_approval.WORK_CONFIRMED": "근로 확인",
   "reason.excess_post_approval.OTHER": "기타",
   "reason.excess_paid_over_cap.STATUTORY_CAP_EXCEEDED": "법정 한도 초과 근로 확인",

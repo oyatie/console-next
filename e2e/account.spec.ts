@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectAccessible, fits } from "./a11y";
+import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { clickCounter } from "./clicks";
 import { acceptConsent, go, newContext, passkeyLogin, vendorPage } from "./flows";
@@ -9,7 +9,7 @@ import { openTenant } from "./helpers/tenant";
 
 // My account: a second passkey (step-up with the first), sign-in with the new one, then removing the old one.
 test("my account: add a second passkey, sign in with it, remove the first", { tag: "@auth" }, async ({ browser }) => {
-  const { admin } = await tenantWithExecutive(browser, "acctco", "계정주식회사");
+  const admin = await openTenant(browser, "acctco", "계정주식회사");
   const c = clickCounter();
   // The signed-in name in the top bar opens My account.
   await c.click(admin.getByRole("banner").locator('a[href="/account"]'));
@@ -34,17 +34,14 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   const passkeys = admin.getByRole("table", { name: "패스키" });
   await expect(passkeys.getByRole("row")).toHaveCount(2); // header + the enrolled passkey
   await expect(main.getByText(/공급사에 본인 확인 후 운영 계정 복구를 요청하고 대기 기간을 거쳐야 합니다/)).toHaveCount(1);
-  // Passkeys have no stored name: each is named by its registration day.
-  const only = passkeys.getByRole("button", { name: /등록 패스키 삭제$/ });
-  // The last passkey's removal stays focusable and says why, with the way out next to it.
-  await expect(only).toHaveAttribute("aria-disabled", "true");
-  await expect(only).toHaveAccessibleDescription("마지막 패스키는 삭제할 수 없습니다");
-  await only.focus();
-  await admin.keyboard.press("Enter");
+  // The last passkey can be renamed; deletion is absent, and recovery advice stays visible.
+  await expect(passkeys.getByRole("button", { name: "패스키 1 이름 변경", exact: true })).toBeVisible();
+  await expect(passkeys.getByRole("button", { name: / 삭제$/ })).toHaveCount(0);
   await expect(admin.getByRole("dialog")).toHaveCount(0);
-  await passkeys.getByRole("button", { name: "패스키 등록", exact: true }).click();
-  const addButton = main.getByRole("button", { name: "패스키로 확인하고 새 패스키 등록" });
-  await expect(addButton).toBeFocused();
+  await main.getByRole("button", { name: "패스키 등록", exact: true }).click();
+  const naming = admin.getByRole("dialog", { name: "패스키 등록", exact: true });
+  await naming.getByLabel("패스키 이름").fill("추가 보안 키");
+  const addButton = naming.getByRole("button", { name: "패스키 등록", exact: true });
   await expectAccessible(admin, "my account");
 
   // The step-up assertion uses the first passkey; the new one is created on a second device (the
@@ -60,9 +57,9 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   // A receipt, not just a refreshed list: focus lands on it.
   await expect(admin.locator("#acct-passkey-receipt")).toBeFocused();
   await expect(main.getByRole("status").filter({ hasText: "새 패스키를 등록했습니다" })).toBeVisible();
-  // Two passkeys added the same day are numbered within that day.
-  await expect(passkeys.getByRole("button", { name: /등록 패스키 1 삭제$/ })).toBeEnabled();
-  await expect(passkeys.getByRole("button", { name: /등록 패스키 2 삭제$/ })).toBeEnabled();
+  // The enrolled key has a default name; the second keeps the name supplied at registration.
+  await expect(passkeys.getByRole("button", { name: "패스키 1 삭제", exact: true })).toBeEnabled();
+  await expect(passkeys.getByRole("button", { name: "추가 보안 키 삭제", exact: true })).toBeEnabled();
   expect(c.done("add a second passkey")).toBeLessThanOrEqual(2);
   await admin.unroute("**/api/v1/auth/passkey/register/start");
 
@@ -74,28 +71,31 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   await go(admin, "/account");
   // The new passkey signed in last: it carries 「최근 사용」, so the oldest is the one to remove.
   await expect(passkeys.getByRole("row").nth(2)).toContainText("최근 사용");
-  const oldest = passkeys.getByRole("button", { name: /등록 패스키 1 삭제$/ });
+  const oldest = passkeys.getByRole("button", { name: "패스키 1 삭제", exact: true });
   await c.click(oldest);
-  const dialog = admin.getByRole("dialog", { name: /등록 패스키 1 삭제$/ });
+  const dialog = admin.getByRole("dialog", { name: "패스키 1 삭제", exact: true });
   await expect(dialog).toContainText("더 이상 로그인할 수 없고");
   await expect(dialog).not.toContainText("방금 쓴 패스키");
   await expectAccessible(admin, "remove passkey dialog");
   // Removal first asserts my own (remaining) passkey: the server deletes nothing without that step-up.
   const stepUp = admin.waitForResponse((r) => r.url().endsWith("/api/v1/auth/passkey/login/start"));
   const removal = admin.waitForResponse((r) => r.request().method() === "DELETE" && r.url().includes("/api/v1/auth/passkeys/"));
-  await c.click(dialog.getByRole("button", { name: /^패스키로 확인하고 .+ 등록 패스키 1 삭제$/ }));
+  await c.click(dialog.getByRole("button", { name: "패스키로 확인하고 패스키 1 삭제", exact: true }));
   expect((await stepUp).ok()).toBe(true);
   expect((await removal).ok()).toBe(true);
   await expect(passkeys.getByRole("row")).toHaveCount(2);
-  // The survivor is now alone on its day: no number, and its removal says why it cannot go.
-  await expect(passkeys.getByRole("button", { name: /등록 패스키 삭제$/ })).toHaveAttribute("aria-disabled", "true");
+  // The survivor keeps its name across sign-in and removal, and cannot be deleted alone.
+  await expect(passkeys.getByRole("button", { name: "추가 보안 키 이름 변경", exact: true })).toBeVisible();
+  await expect(passkeys.getByRole("button", { name: / 삭제$/ })).toHaveCount(0);
   // The removed row cannot hold focus: the receipt naming what was removed does.
   await expect(admin.locator("#acct-passkey-receipt")).toBeFocused();
-  await expect(main.getByRole("status").filter({ hasText: /패스키를 삭제했습니다 · .+ 등록 패스키 1/ })).toBeVisible();
+  await expect(main.getByRole("status").filter({ hasText: "패스키를 삭제했습니다 · 패스키 1" })).toBeVisible();
   expect(c.done("remove a passkey")).toBeLessThanOrEqual(2);
 
-  await admin.setViewportSize({ width: 390, height: 844 });
-  await fits(admin, "my account");
+  await atPhoneWidth(admin, async () => {
+    await fits(admin, "my account");
+    await expectAccessible(admin, "my account at phone width");
+  });
 });
 
 test("a failed account-facts read uses the page refusal and retry restores the account", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
@@ -112,14 +112,16 @@ test("a failed account-facts read uses the page refusal and retry restores the a
   const keys = admin.getByRole("region", { name: "패스키", exact: true });
   await expect(keys.getByRole("table").getByRole("row")).toHaveCount(2);
   await expect(keys.getByText(/권한 관리 담당자에게 로그인 코드를 다시 받아야/)).toHaveCount(0);
-  await expect(keys.getByRole("button", { name: /등록 패스키 삭제$/ })).toHaveAttribute("aria-disabled", "true");
+  await expect(keys.getByRole("button", { name: "패스키 1 이름 변경", exact: true })).toBeVisible();
+  await expect(keys.getByRole("button", { name: / 삭제$/ })).toHaveCount(0);
   await expectAccessible(admin, "my account: account facts restored");
 });
 
 // The vendor's account is a platform token: no employee link to read (that read answers 404 there), never an error.
 test("my account for the platform vendor shows its tier, passkey and consent without an employee row", { tag: "@auth" }, async ({ browser }) => {
   const vendor = await vendorPage(browser);
-  await go(vendor, "/account");
+  // The cached vendor page carries layout history from other tests' tenant setup.
+  await vendor.goto("/account");
   const main = vendor.getByRole("main");
   const accountLink = vendor.getByRole("banner").locator('a[href="/account"]');
   await expect(accountLink).toBeVisible();
@@ -132,7 +134,10 @@ test("my account for the platform vendor shows its tier, passkey and consent wit
   await expect(main.getByText("소속", { exact: true })).toHaveCount(0);
   await expect(main.getByRole("region", { name: "동의 내역", exact: true }).locator("summary")).toContainText(/.+ · .+ 판 · 전문 보기/);
   await expect(main.getByRole("region", { name: "동의 내역", exact: true }).locator("summary")).not.toContainText(/kr-/);
-  await expect(main.getByRole("table", { name: "패스키" }).getByRole("button", { name: /등록 패스키 삭제$/ })).toHaveAttribute("aria-disabled", "true");
+  const passkeys = main.getByRole("table", { name: "패스키" });
+  await expect(passkeys.getByRole("row")).toHaveCount(2);
+  await expect(passkeys.getByRole("button", { name: / 이름 변경$/ })).toHaveCount(1);
+  await expect(passkeys.getByRole("button", { name: / 삭제$/ })).toHaveCount(0);
   await expect(vendor.getByRole("alert")).toHaveCount(0);
   await expectAccessible(vendor, "my account (vendor)");
 });

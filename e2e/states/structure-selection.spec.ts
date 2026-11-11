@@ -41,7 +41,10 @@ async function edit(page: Page, view: string, workplace: string, dept: string, r
     else await page.getByRole("toolbar", { name: t("structure.tools.label", { name: workplace }), exact: true }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
   } else if (view === "outline") {
     const tree = page.getByRole("tree", { name: t("structure.outline.label"), exact: true });
-    if (rename) await tree.getByText(dept, { exact: true }).dblclick();
+    if (rename) {
+      await tree.getByRole("treeitem", { name: new RegExp(`^${dept}\\s`) }).focus();
+      await page.keyboard.press("F2");
+    }
     else await tree.getByRole("treeitem", { name: new RegExp(`^${workplace}\\s`) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
   } else if (rename) await page.getByRole("button", { name: `${dept} ${t("orgUnit.rename.action")}`, exact: true }).click();
   else await page.getByRole("row", { name: new RegExp(workplace) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
@@ -178,7 +181,8 @@ for (const view of ["chart", "outline"] as const) test(`org: inline ${view} edit
         if (mode === "rename") await page.keyboard.press("F2");
         else await page.getByRole("toolbar", { name: t("structure.tools.label", { name: workplace.name }), exact: true }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
       } else if (mode === "rename") {
-        await surface.getByText(department.name, { exact: true }).dblclick();
+        await surface.getByRole("treeitem", { name: new RegExp(`^${department.name}\\s`) }).focus();
+        await page.keyboard.press("F2");
       } else {
         await surface.getByRole("treeitem", { name: new RegExp(`^${workplace.name}\\s`) }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
       }

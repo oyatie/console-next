@@ -8,7 +8,7 @@
 //! the mutation nor the audit row persists — atomicity is the hard contract.
 
 use console_kernel_core::{AuditEvent, OrgId, UserId};
-use sqlx::{PgPool, Postgres, Row, Transaction};
+use sqlx::{Acquire, PgPool, Postgres, Row, Transaction};
 
 use crate::audit_write::insert_audit_event_tx;
 use crate::error::DbError;
@@ -182,25 +182,35 @@ where
     >,
     E: From<DbError>,
 {
-    let mut tx = pool.begin().await.map_err(|e| E::from(DbError::begin(e)))?;
-    if snapshot {
-        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
-            .execute(tx.as_mut())
-            .await
-            .map_err(|e| E::from(DbError::Sqlx(e)))?;
-    }
-    set_current_org(&mut tx, org).await.map_err(E::from)?;
+    let mut conn = pool
+        .acquire()
+        .await
+        .map_err(|e| E::from(DbError::begin(e)))?;
+    let result = async {
+        let mut tx = conn.begin().await.map_err(|e| E::from(DbError::begin(e)))?;
+        if snapshot {
+            sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+                .execute(tx.as_mut())
+                .await
+                .map_err(|e| E::from(DbError::Sqlx(e)))?;
+        }
+        set_current_org(&mut tx, org).await.map_err(E::from)?;
 
-    match f(&mut tx).await {
-        Err(e) => {
-            let _ = tx.rollback().await;
-            Err(e)
-        }
-        Ok(value) => {
-            tx.commit().await.map_err(|e| E::from(DbError::Sqlx(e)))?;
-            Ok(value)
+        match f(&mut tx).await {
+            Err(e) => {
+                let _ = tx.rollback().await;
+                Err(e)
+            }
+            Ok(value) => {
+                tx.commit().await.map_err(|e| E::from(DbError::Sqlx(e)))?;
+                Ok(value)
+            }
         }
     }
+    .await;
+    // Await the lease return for source concurrency; detach it if the caller is cancelled.
+    let _ = tokio::spawn(conn.return_to_pool()).await;
+    result
 }
 
 /// Run a closure inside a tenant-scoped transaction that is ALWAYS rolled back —

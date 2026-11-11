@@ -1,6 +1,7 @@
 use crate::*;
 
-pub(crate) struct RestError {
+/// A refusal of an org-change command, as its routes answer it.
+pub struct RestError {
     status: StatusCode,
     code: &'static str,
     message: String,
@@ -19,6 +20,12 @@ impl RestError {
             reasons: Vec::new(),
             current_version: None,
         }
+    }
+
+    /// The machine-readable code of the refusal.
+    #[must_use]
+    pub fn code(&self) -> &'static str {
+        self.code
     }
 
     pub(crate) fn internal(message: impl Into<String>) -> Self {

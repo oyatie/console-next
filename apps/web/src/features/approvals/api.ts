@@ -40,4 +40,4 @@ export const approvalDocumentQuery = (id: string) => read("/api/v1/approvals/{id
   ] };
 }, { id });
 export const decideApproval = (id: string, body: ApprovalDecision, key: string) =>
-  unwrap(api.POST("/api/v1/approvals/{id}/decision", { params: { path: { id } }, headers: { "Idempotency-Key": key }, body }));
+  unwrap(api.POST("/api/v1/approvals/{id}/decision", { params: { path: { id }, header: { "Idempotency-Key": key } }, body }));

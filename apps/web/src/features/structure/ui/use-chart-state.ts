@@ -21,6 +21,8 @@ export function useChartState(
   sel: ReadonlySet<string>,
   /** `gather`: chosen with Shift or Ctrl, the start of several (no side panel for a single one). */
   setSel: (next: ReadonlySet<string>, gather?: boolean) => void,
+  /** The find's text (the page toolbar owns the field). */
+  q = "",
 ) {
   const focus = (focusId && s.byId.get(focusId)) || s.root;
   const before = kept.get(focus.id);
@@ -40,8 +42,13 @@ export function useChartState(
   const [cursor, setCursor] = useState<string>(arrived?.id ?? focus.id);
   const [adding, setAdding] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
-  const [q, setQ] = useState("");
   const [hit, setHit] = useState(0);
+  // A new text starts at its first result.
+  const [asked, setAsked] = useState(q);
+  if (asked !== q) {
+    setAsked(q);
+    setHit(0);
+  }
   /** Counts every find or pick that asks for a box to be shown, even one the cursor is already on (it may be off screen). */
   const [seek, setSeek] = useState(0);
   /** The last change to the selection came from the keyboard (the selection bar then shows the keys). */
@@ -96,11 +103,7 @@ export function useChartState(
     setHit(i);
     reveal(hits.ids[i]!);
   };
-  const search = (text: string) => {
-    setQ(text);
-    setHit(0);
-  };
 
-  return { focus, depth, setDepth, expanded, toggle, setExpanded, L, shown, order, sel, select, setSel, clear, byKeys, setByKeys, cursor, setCursor, adding, setAdding, renaming, setRenaming, q, search, hits, hit, stepHit, reveal, seek };
+  return { focus, depth, setDepth, expanded, toggle, setExpanded, L, shown, order, sel, select, setSel, clear, byKeys, setByKeys, cursor, setCursor, adding, setAdding, renaming, setRenaming, q, hits, hit, stepHit, reveal, seek };
 }
 export type ChartState = ReturnType<typeof useChartState>;

@@ -24,8 +24,13 @@ pub(super) async fn visible(
         let refusal = org_change_step_decide::enforce(&actor, &org, &org, row.decision)
             .err()
             .filter(|_| !row.completed)
-            .and_then(|error| error.code)
-            .map(str::to_owned);
+            // A refusal without a code is still a refusal: the read offers nothing.
+            .map(|error| {
+                error
+                    .code
+                    .unwrap_or("approval_decision_unavailable")
+                    .to_owned()
+            });
         let facts = row.approval_list_facts();
         for box_name in BOXES {
             if approval_document_list::decide(&actor, &org, &org, facts, box_name).map_err(db)? {

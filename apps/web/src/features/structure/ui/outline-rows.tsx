@@ -22,7 +22,8 @@ import css from "./outline.module.css";
 export type OutlineEdit = { kind: "new"; parent: string } | { kind: "rename"; id: string };
 
 /**
- * The outline's rows (a tree of treeitems, roving focus): ↑↓ move, ←→ fold, Enter adds below, F2 renames. While a
+ * The outline's rows (a tree of treeitems, roving focus): ↑↓ move, ←→ fold, Enter adds below, F2 renames, a click or
+ * Space selects (the unit's panel opens beside the tree) and Esc clears the selection. While a
  * new row is typed, Tab nests it under the row above and Shift+Tab takes it out one level; a workplace row takes no
  * Tab (a workplace sits only right under its legal entity). Every save applies at once in setup.
  */
@@ -50,7 +51,8 @@ export function OutlineRows(p: {
   const newParent = edit?.kind === "new" ? s.byId.get(edit.parent) : undefined;
   const after = newParent && [...rows].reverse().find((r) => r.id === newParent.id || pathHas(s, r, newParent.id))?.id;
   useEffect(() => {
-    if (!edit) document.getElementById(`outline-${cursor}`)?.focus({ preventScroll: false });
+    // A find step moves the cursor while the typing stays in the find field.
+    if (!edit && document.activeElement?.id !== "structure-find") document.getElementById(`outline-${cursor}`)?.focus({ preventScroll: false });
   }, [cursor, edit]);
 
   const onKey = (e: KeyboardEvent) => {
@@ -71,6 +73,7 @@ export function OutlineRows(p: {
       else if (n.kind === "dept" && n.parentId) p.setEdit({ kind: "new", parent: n.parentId });
     } else if (key === "F2" && g.canEdit && n.kind === "dept") p.setEdit({ kind: "rename", id: n.id });
     else if (key === " ") p.onSelect(new Set([n.id]));
+    else if (key === "Escape" && p.sel.size > 0) p.onSelect(new Set());
     else return;
     e.preventDefault();
   };
@@ -117,7 +120,10 @@ export function OutlineRows(p: {
               data-diff={n.diffMarks?.join(" ")}
               data-current={cursor === n.id || undefined}
               onFocus={() => p.setCursor(n.id)}
-              onClick={() => p.setCursor(n.id)}
+              onClick={(e) => {
+                p.setCursor(n.id);
+                if (!(e.target as HTMLElement).closest("input, button, a")) p.onSelect(new Set([n.id]));
+              }}
               onKeyDown={onKey}
             >
               <span className={css.name} ref={place({ "padding-left": (n.depth - 1) * 24 })}>

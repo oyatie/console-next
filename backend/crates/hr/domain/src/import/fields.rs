@@ -168,6 +168,39 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         classification: "canonical",
         required: false,
     },
+    // Days and hours worked in the file's pay period: typed here and read by
+    // the payroll roster, in place of twelve header words it read as raw
+    // text. Those words are the suggestions; no word is added.
+    EmployeeImportFieldDefinition {
+        target: "work_days",
+        aliases: &["근무일수", "근무일"],
+        classification: "canonical",
+        required: false,
+    },
+    EmployeeImportFieldDefinition {
+        target: "regular_hours",
+        aliases: &["근무시간", "기본시간", "기본근무"],
+        classification: "canonical",
+        required: false,
+    },
+    EmployeeImportFieldDefinition {
+        target: "overtime_hours",
+        aliases: &["연장시간", "특근연장시간", "특근연장"],
+        classification: "canonical",
+        required: false,
+    },
+    EmployeeImportFieldDefinition {
+        target: "night_hours",
+        aliases: &["심야시간"],
+        classification: "canonical",
+        required: false,
+    },
+    EmployeeImportFieldDefinition {
+        target: "holiday_hours",
+        aliases: &["특근시간"],
+        classification: "canonical",
+        required: false,
+    },
     // MR-7: 고용형태, recorded on the employment profile. A code maps as is;
     // a label (정규직, 촉탁) is mapped by the operator, since the labels live
     // in the client catalogs.

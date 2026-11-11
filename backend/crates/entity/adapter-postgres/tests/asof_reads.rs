@@ -146,14 +146,8 @@ async fn chart_rename_diff_and_change_dates_share_the_effective_timeline(owner: 
     let id = port().write(&mut tx, actor.org, actor.user, Uuid::new_v4(), None,
         json!({"name":"Old","kind":"department","parent_id":site,"status":"active","effective_from":(d-Duration::days(30)).to_string()})).await.unwrap();
     tx.commit().await.unwrap();
-    // The parent and its placement existed before the two dated department revisions.
-    revise_unit(&owner, &actor, site, json!({"name":"HQ", "kind":"site", "status":"active", "effective_from":(d-Duration::days(100)).to_string()})).await;
-    sqlx::query("INSERT INTO org_unit_placements (org_id,org_unit_id,legal_entity_id,workplace_id,valid_from,valid_to,represents_workplace,change_mode,actor_id,command_id) SELECT org_id,org_unit_id,legal_entity_id,workplace_id,$2,valid_from,true,'MIGRATION',NULL,gen_random_uuid() FROM org_unit_placements WHERE org_unit_id=$1")
-        .bind(site)
-        .bind(d - Duration::days(100))
-        .execute(&owner)
-        .await
-        .unwrap();
+    // The parent and its placement exist from the 사업장's 개설일, well before
+    // the two dated department revisions; nothing is back-dated by hand.
     let attrs = |name: &str, date: Date| json!({"name":name,"kind":"department","parent_id":site,"status":"active","effective_from":date.to_string()});
     revise_unit(&owner, &actor, id, attrs("Old", d - Duration::days(30))).await;
     revise_unit(&owner, &actor, id, attrs("New", d - Duration::days(10))).await;

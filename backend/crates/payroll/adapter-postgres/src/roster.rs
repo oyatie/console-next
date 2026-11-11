@@ -52,6 +52,9 @@ WITH import_rows AS (
         run.source_filename,
         COALESCE(NULLIF(r.canonical_row->>'source_key', ''), NULLIF(r.source_key, '')) AS canonical_source_key,
         r.raw_row,
+        r.canonical_row->'canonical' AS typed,
+        -- A run that knows the period targets was mapped with them on offer.
+        COALESCE(run.mapping_profile->'target_allowlist', '[]'::jsonb) ? 'work_days' AS reads_typed,
         present.keys && array['기본시급','통상시급','공제총액','소득세','건강보험','건강/장기요양','고용보험','급여산정일','지급일','연차수당','상여금','은행','계좌','주민번호'] AS is_payroll_source,
         present.keys && array['근무일자','출근','퇴근','근무시간','기본시간','기본근무','연장시간','심야시간','특근시간','특근연장시간','특근연장','근무일명칭','지각,조퇴시간'] AS is_attendance_source,
         present.keys && array['기본급','상여금','월계','합계','총합','연차수당'] AS has_gross_pay_source,
@@ -85,24 +88,41 @@ WITH import_rows AS (
       -- Scope: the declared period, by equality.
       AND run.pay_period_start = $3
       AND run.pay_period_end = $4
-), row_metrics AS (
+), row_values AS (
+    -- Days, hours and leave are what a column was mapped to, typed at import.
+    -- shortcut: a run applied before those were targets keeps its header-keyed
+    -- read of the kept raw text; delete that branch once such rows are backfilled.
     SELECT
         ir.*,
-        CASE WHEN btrim(COALESCE(ir.raw_row->>'근무일수', ir.raw_row->>'근무일', '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
-             THEN btrim(COALESCE(ir.raw_row->>'근무일수', ir.raw_row->>'근무일'))::numeric END AS work_days_value,
-        CASE WHEN btrim(COALESCE(ir.raw_row->>'근무시간', ir.raw_row->>'기본시간', ir.raw_row->>'기본근무', '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
-             THEN btrim(COALESCE(ir.raw_row->>'근무시간', ir.raw_row->>'기본시간', ir.raw_row->>'기본근무'))::numeric END AS regular_hours_value,
-        CASE WHEN btrim(COALESCE(ir.raw_row->>'연장시간', ir.raw_row->>'특근연장시간', ir.raw_row->>'특근연장', '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
-             THEN btrim(COALESCE(ir.raw_row->>'연장시간', ir.raw_row->>'특근연장시간', ir.raw_row->>'특근연장'))::numeric END AS overtime_hours_value,
-        CASE WHEN btrim(COALESCE(ir.raw_row->>'심야시간', '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
-             THEN btrim(ir.raw_row->>'심야시간')::numeric END AS night_hours_value,
-        CASE WHEN btrim(COALESCE(ir.raw_row->>'특근시간', '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
-             THEN btrim(ir.raw_row->>'특근시간')::numeric END AS holiday_hours_value,
-        CASE WHEN btrim(COALESCE(ir.raw_row->>'사용연차', '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
-             THEN btrim(ir.raw_row->>'사용연차')::numeric END AS leave_used_value,
-        CASE WHEN btrim(COALESCE(ir.raw_row->>'잔여연차', '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
-             THEN btrim(ir.raw_row->>'잔여연차')::numeric END AS leave_remaining_value
+        CASE WHEN ir.reads_typed THEN ir.typed->>'work_days'
+             ELSE COALESCE(ir.raw_row->>'근무일수', ir.raw_row->>'근무일') END AS work_days_text,
+        CASE WHEN ir.reads_typed THEN ir.typed->>'regular_hours'
+             ELSE COALESCE(ir.raw_row->>'근무시간', ir.raw_row->>'기본시간', ir.raw_row->>'기본근무') END AS regular_hours_text,
+        CASE WHEN ir.reads_typed THEN ir.typed->>'overtime_hours'
+             ELSE COALESCE(ir.raw_row->>'연장시간', ir.raw_row->>'특근연장시간', ir.raw_row->>'특근연장') END AS overtime_hours_text,
+        CASE WHEN ir.reads_typed THEN ir.typed->>'night_hours' ELSE ir.raw_row->>'심야시간' END AS night_hours_text,
+        CASE WHEN ir.reads_typed THEN ir.typed->>'holiday_hours' ELSE ir.raw_row->>'특근시간' END AS holiday_hours_text,
+        CASE WHEN ir.reads_typed THEN ir.typed->>'leave_used' ELSE ir.raw_row->>'사용연차' END AS leave_used_text,
+        CASE WHEN ir.reads_typed THEN ir.typed->>'leave_remaining' ELSE ir.raw_row->>'잔여연차' END AS leave_remaining_text
     FROM import_rows ir
+), row_metrics AS (
+    SELECT
+        rv.*,
+        CASE WHEN btrim(COALESCE(rv.work_days_text, '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
+             THEN btrim(rv.work_days_text)::numeric END AS work_days_value,
+        CASE WHEN btrim(COALESCE(rv.regular_hours_text, '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
+             THEN btrim(rv.regular_hours_text)::numeric END AS regular_hours_value,
+        CASE WHEN btrim(COALESCE(rv.overtime_hours_text, '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
+             THEN btrim(rv.overtime_hours_text)::numeric END AS overtime_hours_value,
+        CASE WHEN btrim(COALESCE(rv.night_hours_text, '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
+             THEN btrim(rv.night_hours_text)::numeric END AS night_hours_value,
+        CASE WHEN btrim(COALESCE(rv.holiday_hours_text, '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
+             THEN btrim(rv.holiday_hours_text)::numeric END AS holiday_hours_value,
+        CASE WHEN btrim(COALESCE(rv.leave_used_text, '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
+             THEN btrim(rv.leave_used_text)::numeric END AS leave_used_value,
+        CASE WHEN btrim(COALESCE(rv.leave_remaining_text, '')) ~ '^-?[0-9]+([.]?[0-9]+)?$'
+             THEN btrim(rv.leave_remaining_text)::numeric END AS leave_remaining_value
+    FROM row_values rv
 ), employee_basis AS (
     -- The person key. Kept employee-driven ON PURPOSE: `data_import_rows.source_key`
     -- is per ROW, so grouping on it would yield one line per spreadsheet row.
@@ -114,7 +134,8 @@ WITH import_rows AS (
         COALESCE(certificate.name, 'UNKNOWN_COMPANY') AS employee_company,
         e.leave_used,
         e.leave_remaining
-    FROM employees e
+    -- The person projection: the name is the bound person's current legal name.
+    FROM person_employees_current e
     LEFT JOIN LATERAL (
         SELECT legal_entity_id FROM employment_assignments a
         WHERE a.org_id = e.org_id AND a.employee_id = e.id AND a.valid_from <= $4 AND a.superseded_at IS NULL

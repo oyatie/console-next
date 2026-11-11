@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [decision, seen_fingerprint]
+properties:
+  decision: {type: string, enum: [APPROVE, REJECT, RETURN]}
+  seen_fingerprint: {type: string, description: The fingerprint of the document the decision was made on.}
+  opinion: {type: string, description: Optional; at most the document's opinion_max characters.}
+  reason_code: {type: string, description: Required to reject; a code of my_actions.reject.reason_domain.}
+  note: {type: string, description: The reason's note; required where the code requires one.}

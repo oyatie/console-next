@@ -1,5 +1,5 @@
 import { EntityName } from "../../../reference/entity/ui/entity-name";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useImperativeHandle, useMemo, useState, type Ref } from "react";
 import { Building2, ChevronDown, ChevronRight, MapPin, Network, PencilLine } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, ToggleButton } from "../../../ui/button/button";
@@ -15,6 +15,7 @@ import { temporalLabel, unitCounts } from "../present";
 import { AddUnit } from "./add-unit";
 import { InlineUnitInput, type OutlineEdit } from "./outline-rows";
 import { HeadCell, OrderCell, RegistryActions, RegistryFilters } from "./registry-bar";
+import type { ViewCommands } from "./page-head";
 import { useStructureGesturesBare } from "./use-outline-edit";
 import type { Commands } from "./use-structure-commands";
 import css from "./chart.module.css";
@@ -22,16 +23,15 @@ import css from "./chart.module.css";
 const ICON = { entity: Building2, site: MapPin, dept: Network } as const;
 
 /**
- * list (spec S2-registry): every level in one table, "all levels" as an indented tree or one level flat, a find and
- * quick filters that keep each hit's path, the same selection as the chart with its acts, each level's head and a
+ * list (spec S2-registry): every level in one table, "all levels" as an indented tree or one level flat, the page
+ * toolbar's find and quick filters that keep each hit's path, the same selection as the chart with its acts, each level's head and a
  * department's code (CS-BE), direct/total people, and the rows as an org sheet. A workplace's manager is not served;
  * the table says nothing it cannot show.
  */
-export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Structure; cmd: Commands; sel: ReadonlySet<string>; onSelect: (ids: ReadonlySet<string>) => void; onVisibleRows?: (rows: readonly ChartNode[]) => void }) {
+export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "", ref }: { s: Structure; cmd: Commands; sel: ReadonlySet<string>; onSelect: (ids: ReadonlySet<string>) => void; onVisibleRows?: (rows: readonly ChartNode[]) => void; find?: string; ref?: Ref<ViewCommands> }) {
   const g = useStructureGesturesBare(s, cmd);
   const [edit, setEdit] = useState<OutlineEdit | null>(null);
   const [level, setLevel] = useState<Level>("all");
-  const [q, setQ] = useState("");
   const [filters, setFilters] = useState<ReadonlySet<ListFilter>>(new Set());
   // Every row starts open (the mockup's "all levels"); folding is per row.
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
@@ -39,6 +39,15 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
   const none = t("entityOps.info.none");
   const rows = useMemo(() => registryRows(s, { level, q, filters, closed }), [s, level, q, filters, closed]);
   useEffect(() => { onVisibleRows?.(rows); }, [onVisibleRows, rows]);
+  // The find keeps the rows that match as it is typed, so a step has nowhere to go.
+  useImperativeHandle(ref, () => ({
+    find: () => undefined,
+    fold: () => setClosed(new Set([...s.byId.values()].filter((n) => n.children.length > 0).map((n) => n.id))),
+    add: (parent) => {
+      setClosed((o) => new Set([...o].filter((x) => x !== parent.id)));
+      setEdit({ kind: "new", parent: parent.id });
+    },
+  }));
   const toggle = (id: string) => setClosed((o) => (o.has(id) ? new Set([...o].filter((x) => x !== id)) : new Set([...o, id])));
   const editTarget = edit ? s.byId.get(edit.kind === "new" ? edit.parent : edit.id) : undefined;
   const columns: LongColumn<ChartNode>[] = [
@@ -147,7 +156,6 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
         onLoadMore={() => undefined}
         density="compact"
         empty={q ? t("structure.find.none", { q }) : t("structureChart.list.none")}
-        find={{ label: t("structure.find.placeholder"), onFind: setQ, defaultValue: q }}
         selection={{ kind: "ids", ids: sel }}
         onSelectionChange={(x) => x.kind === "ids" && onSelect(x.ids)}
         selectionActions={sel.size > 0 && <RegistryActions s={s} sel={sel} />}
