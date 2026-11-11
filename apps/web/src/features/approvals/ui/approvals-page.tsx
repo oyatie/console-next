@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
 import { codeText } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
@@ -52,7 +52,11 @@ export function ApprovalInboxView({ items, sel, selected, record, onSelect, onCl
     {items.length ? <div className={s.list}>
       <Table label={t("approvals.list")} rows={items} rowId={item => item.id} selected={sel} onSelect={onSelect} columns={[
         { header: t("approvals.field.documentNo"), card: "fact", fit: true, cell: item => <code className={s.secondary} title={item.document_no ?? "—"}>{item.document_no ?? "—"}</code> },
-        { header: t("approvals.col.title"), card: "title", cell: item => <span className={s.title} title={item.title}>{item.title}</span> },
+        // The date the document takes effect reads with its title, so a row says what it is and when it applies.
+        { header: t("approvals.col.title"), card: "title", cell: item => {
+          const effective = item.effective_date ? ` · ${t("approvals.row.effective", { date: fmtDate(item.effective_date) })}` : "";
+          return <span className={s.title} title={`${item.title}${effective}`}>{item.title}{effective && <time dateTime={item.effective_date!}>{effective}</time>}</span>;
+        } },
         { header: t("approvals.col.source"), card: "fact", fit: true, cell: item => <div className={s.secondary} title={item.source.label}>{item.source.label}</div> },
         { header: t("approvals.preview.route"), card: "fact", fit: true, cell: item => item.route.length
           // Only the current step names its role; the others show who signs, so the whole approval line fits one row.

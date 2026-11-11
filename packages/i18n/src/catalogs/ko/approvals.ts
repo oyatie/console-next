@@ -19,6 +19,7 @@ export const koApprovals = {
   "approvals.source.count": "{label} · {count, number}건",
   "approvals.list": "결재 문서",
   "approvals.col.title": "문서",
+  "approvals.row.effective": "{date} 시행",
   "approvals.col.source": "구분",
   "approvals.col.requester": "기안자",
   "approvals.col.requestedAt": "요청일",

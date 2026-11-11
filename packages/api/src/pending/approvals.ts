@@ -17,6 +17,8 @@ export type ApprovalItem = {
   status: { key: string; label: string; tone: "ok" | "warn" | "danger" | "info" | "neutral" };
   requester?: { id: string; name: string; role?: string | null } | null;
   requested_at: string;
+  /** The date the document takes effect, when it has one; shown beside the title in the list. */
+  effective_date?: string | null;
   due_at?: string | null;
   facts: { key: string; label: string; value: string }[];
   route: { id: string; label: string; assignee?: string | null; state: "done" | "current" | "waiting" | "failed"; meta?: string | null }[];
