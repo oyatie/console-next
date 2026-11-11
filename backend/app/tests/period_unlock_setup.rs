@@ -7,7 +7,7 @@ mod period_unlock_support;
 use console_kernel_core::OrgId;
 use console_platform_test_support::soft_passkey::passkey_service;
 use http::StatusCode;
-use period_unlock_support::{LOCKS, admin_in, router, send, step_up};
+use period_unlock_support::{LOCKS, admin_in, read, router, send, step_up};
 use serde_json::json;
 use sqlx::PgPool;
 use time::format_description::well_known::Rfc3339;
@@ -73,7 +73,7 @@ async fn setup_with_ops_and_one_linked_admin_unlocks_via_solo_review(owner: PgPo
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn operating_bound_sole_holder_unlocks_with_exception_notices_and_review(owner: PgPool) {
+async fn operating_bound_sole_holder_unlocks_with_exception_and_inbox_review(owner: PgPool) {
     let (service, issuer) = router(&owner).await;
     let svc = passkey_service();
     let org = setup_tenant(&owner).await;
@@ -115,17 +115,15 @@ async fn operating_bound_sole_holder_unlocks_with_exception_notices_and_review(o
     .await
     .unwrap();
     assert_eq!(recorded, (false, 1, 1));
-    let recipients: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT recipient_user_id FROM notifications WHERE org_id=$1 \
-         AND category='period_lock.sole_holder' ORDER BY recipient_user_id",
-    )
-    .bind(org.as_uuid())
-    .fetch_all(&owner)
-    .await
-    .unwrap();
-    let mut expected = vec![human.id, ops.id];
-    expected.sort();
-    assert_eq!(recipients, expected);
+    let (status, inbox) = read(&service, "/api/v1/me/action-inbox", &ops.token).await;
+    assert_eq!(status, StatusCode::OK, "{inbox}");
+    assert!(
+        inbox["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["context"]["unlock"]["exceptionId"] == unlocked["exception"]["id"])
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

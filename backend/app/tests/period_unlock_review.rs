@@ -113,6 +113,12 @@ async fn operating_review_is_owned_acknowledged_and_repeat_unlock_is_a_new_item(
     let (status, body) = send(&app, &review_path(&first), &human.token, None, json!({})).await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
     assert_eq!(body["error"]["code"], "forbidden");
+    let wrong_lock = review_path(&first).replace(
+        first["lock"]["id"].as_str().unwrap(),
+        &Uuid::new_v4().to_string(),
+    );
+    let (status, body) = send(&app, &wrong_lock, &ops.token, None, json!({})).await;
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
     // A valid session without a close grant may neither see nor close the work.
     let nobody = admin_in(&owner, &svc, &issuer, org, "권한 없음").await;
     sqlx::query("UPDATE users SET roles=ARRAY['MEMBER'] WHERE id=$1")
@@ -159,4 +165,36 @@ async fn operating_review_is_owned_acknowledged_and_repeat_unlock_is_a_new_item(
     let (status, body) = send(&app, &review_path(&third), &human.token, None, json!({})).await;
     assert_eq!(status, StatusCode::OK, "{body}");
     assert!(reviews(&app, &human.token).await.is_empty());
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn review_without_entitlement_is_refused_before_record_lookup(owner: PgPool) {
+    let (app, issuer) = router(&owner).await;
+    let nobody = admin_in(
+        &owner,
+        &passkey_service(),
+        &issuer,
+        OrgId::one(),
+        "권한 없음",
+    )
+    .await;
+    sqlx::query("UPDATE users SET roles=ARRAY['MEMBER'] WHERE id=$1")
+        .bind(nobody.id)
+        .execute(&owner)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM access_grants WHERE account_id=$1")
+        .bind(nobody.id)
+        .execute(&owner)
+        .await
+        .unwrap();
+    let token = session_token(&owner, &issuer, OrgId::one(), nobody.id, "MEMBER").await;
+    let path = format!(
+        "{LOCKS}/{}/unlock/reviews/{}/acknowledge",
+        Uuid::new_v4(),
+        Uuid::new_v4()
+    );
+    let (status, body) = send(&app, &path, &token, None, json!({})).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "forbidden");
 }

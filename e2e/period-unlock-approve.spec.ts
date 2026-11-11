@@ -188,7 +188,7 @@ test("period unlock: a second close authority refuses, then approves; the reques
   await expect(exec.locator('[data-id^="period_unlock:"]')).toHaveCount(0);
 });
 
-test("a sole close authority unlocks with notices and review before and after go-live", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+test("a sole close authority delivers separate inbox reviews before and after go-live", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(8 * 60_000);
   const slug = "unlocksolo";
   const { admin: operator } = await tenantInSetup(browser, slug, "단독마감회사", false, "본사", "none");
@@ -246,4 +246,17 @@ test("a sole close authority unlocks with notices and review before and after go
   await human.getByRole("button", { name: /^해제됨 / }).click();
   await expect(human.getByText("사후 검토 필요", { exact: true }).first()).toBeVisible();
   await expect(human.getByRole("button", { name: /^해제됨 / }).locator(".chip--warn")).toHaveCount(0);
+  await go(human, "/inbox");
+  await expect(human.locator(`[data-id="period_unlock:${recorded.exception.id}"]`)).toHaveCount(0);
+  await go(operator, "/inbox");
+  for (const exception of [outcome.exception, recorded.exception]) {
+    const review = operator.locator(`[data-id="period_unlock:${exception.id}"]`);
+    await expect(review).toContainText("단독 해제 사후 검토");
+    const receipt = operator.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith(`/reviews/${exception.id}/acknowledge`));
+    await review.getByRole("button", { name: "사후 검토 확인 기록", exact: true }).click();
+    expect((await receipt).status()).toBe(200);
+    await expect(review).toBeHidden();
+  }
+  await operator.reload();
+  await expect(operator.locator('[data-id^="period_unlock:"]')).toHaveCount(0);
 });

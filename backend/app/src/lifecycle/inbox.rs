@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! The queue uses the lock record's exact second-person decision.
-use super::{
-    LifecycleError, period_locks::authorize_period_lock_manage, period_unlock::SETTING_KEYS,
-    unlock_decision::decider_stands,
-};
+use super::{LifecycleError, period_unlock::SETTING_KEYS, unlock_decision::decider_stands};
 use console_action_inbox_application::{
     ActionInboxLink, ActionInboxSourceItem, ActionInboxSourcePage, ActionInboxSourceQuery,
 };
@@ -19,12 +16,15 @@ pub(crate) async fn page(
     principal: &Principal,
     query: ActionInboxSourceQuery,
 ) -> Result<ActionInboxSourcePage, KernelError> {
-    if authorize_period_lock_manage(principal).is_err() {
-        return Ok(crate::action_inbox::empty_source_page());
-    }
     let principal = principal.clone();
     let org = principal.org_id;
     with_org_conn::<_, _, LifecycleError>(pool, org, move |tx| Box::pin(async move {
+        let facts = console_platform_authz::cedar_pbac::visible::load_facts(tx, org, *principal.user_id.as_uuid()).await?;
+        use console_platform_authz::access::{NodeKind, NodeRef};
+        if !facts.authorize(console_platform_authz::Feature::PeriodLockManage.as_str(), NodeRef { kind: NodeKind::Tenant, id: *org.as_uuid() })
+            .map_err(|e| console_kernel_core::KernelError::internal(e.to_string()))? {
+            return Ok(crate::action_inbox::empty_source_page());
+        }
         type Row = (Uuid, Uuid, Uuid, String, Option<String>, OffsetDateTime, Uuid, OffsetDateTime, String, time::Date, time::Date, String, Option<serde_json::Value>);
         let rows: Vec<Row> = sqlx::query_as("SELECT r.id, r.lock_id, r.requested_by, r.reason_code, r.reason_note, r.relock_at, r.step_up_assertion_id, r.requested_at, l.domain, l.period_start, l.period_end, (SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = r.org_id AND u.id = r.requested_by), (SELECT jsonb_build_object('system', false, 'label_ko', c.label_ko, 'label_en', c.label_en) FROM reason_codes c WHERE c.org_id = r.org_id AND c.domain = 'period_unlock' AND c.code = r.reason_code) FROM period_unlock_requests r JOIN period_locks l ON l.org_id = r.org_id AND l.id = r.lock_id WHERE r.org_id = $1 AND r.outcome IS NULL AND r.relock_at > $2 AND r.requested_at <= $3 AND period_lock_effective(l) ORDER BY r.requested_at, r.id")
             .bind(org.as_uuid()).bind(query.now).bind(query.as_of).fetch_all(tx.as_mut()).await?;
@@ -47,46 +47,9 @@ pub(crate) async fn page(
                 links: vec![ActionInboxLink { kind: "period_lock".into(), id: lock_id.to_string(), label: None }],
             });
         }
+        items.extend(super::unlock_review::items(tx, &principal, query.as_of).await?);
         let total = items.len();
         let (items, has_more) = console_action_inbox_application::page_source_items(items, &query);
         Ok(ActionInboxSourcePage { items, total, total_is_exact: true, has_more })
     })).await.map_err(|e| { tracing::error!(error = ?e, "unlock inbox source failed"); KernelError::internal("failed to load unlock work") })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use console_kernel_core::{BranchScope, OrgId, UserId};
-    use std::collections::BTreeSet;
-
-    #[tokio::test]
-    async fn no_period_lock_manage_grant_does_not_query_or_disclose_a_source() {
-        let pool = sqlx::postgres::PgPoolOptions::new()
-            .acquire_timeout(std::time::Duration::from_millis(50))
-            .connect_lazy("postgres://unused:unused@127.0.0.1:1/unused")
-            .unwrap();
-        let principal = Principal::new(
-            UserId::new(),
-            OrgId::new(),
-            BTreeSet::new(),
-            BranchScope::All,
-        );
-        let now = OffsetDateTime::now_utc();
-        let result = page(
-            &pool,
-            &principal,
-            ActionInboxSourceQuery {
-                filter: Default::default(),
-                require_exact_total: false,
-                now,
-                as_of: now,
-                after: None,
-                limit: 10,
-            },
-        )
-        .await
-        .unwrap();
-        assert!(result.items.is_empty());
-        assert_eq!(result.total, 0);
-    }
 }

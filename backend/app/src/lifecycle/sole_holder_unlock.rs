@@ -6,7 +6,7 @@
 //! (`review.sole_holder_exception.due`) is the 사후 검토 item, and consumes it
 //! with this write in the same transaction (the ORG-SOLE pattern).
 //!
-//! Current close authorities receive an in-app notice in the same transaction.
+//! The work inbox reads each consumed exception until its review is acknowledged.
 
 use std::time::Duration;
 
@@ -17,9 +17,7 @@ use console_governance_adapter_postgres::exception::{
 use console_governance_domain::exception::{
     ExceptionSettings, RuleCode, SoleHolderMode, SubjectType,
 };
-use console_identity_adapter_postgres::second_person::{HolderCapability, PgHolderResolver};
-use console_kernel_core::{OrgId, UserId};
-use console_platform_authz::Feature;
+use console_kernel_core::UserId;
 use console_settings_adapter_postgres::ResolvedSettings;
 use console_settings_domain::SettingKey;
 use serde_json::json;
@@ -39,7 +37,6 @@ pub(super) struct SoleHolderException {
 
 /// What the sole holder unlocked.
 pub(super) struct SoleHolderUnlock<'a> {
-    pub(super) org: OrgId,
     pub(super) unlocked: Uuid,
     pub(super) actor: Uuid,
     pub(super) reason_code: &'a str,
@@ -90,48 +87,10 @@ pub(super) async fn record_sole_holder_exception(
     )
     .await
     .map_err(governance)?;
-    notify_holders(tx, unlock, exception.id).await?;
     Ok(SoleHolderException {
         id: exception.id,
         review_due_at: exception.admission.review_due_at,
     })
-}
-
-async fn notify_holders(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    unlock: &SoleHolderUnlock<'_>,
-    exception: Uuid,
-) -> Result<(), LifecycleError> {
-    // Notice current holders, including those whose grants are not yet aged for approval.
-    let mut recipients = PgHolderResolver {
-        tx,
-        org: unlock.org,
-        capability: HolderCapability::Feature {
-            feature: Feature::PeriodLockManage,
-            branch: None,
-        },
-        exclude_account: None,
-        exclude_employee: None,
-        include_ops: true,
-        now: OffsetDateTime::now_utc(),
-    }
-    .resolve_at_most(usize::MAX)
-    .await
-    .map_err(LifecycleError::from_kernel)?;
-    recipients.insert(unlock.actor);
-    sqlx::query(
-        "INSERT INTO notifications (org_id, recipient_user_id, category, body, link, dedup_key) \
-         SELECT $1, recipient, 'period_lock.sole_holder', $3, $4, $5 \
-         FROM unnest($2::uuid[]) recipient ON CONFLICT DO NOTHING",
-    )
-    .bind(unlock.org.as_uuid())
-    .bind(recipients.into_iter().collect::<Vec<_>>())
-    .bind("다른 마감 권한자가 없어 기간 잠금을 단독 해제했습니다. 예외 처리와 사후 검토 기한을 확인해 주십시오.")
-    .bind(json!({"type": "screen", "screen": "people/period-locks"}))
-    .bind(format!("period_lock.sole_holder:{exception}"))
-    .execute(tx.as_mut())
-    .await?;
-    Ok(())
 }
 
 /// Only reached in `step_up_notice_review` mode (the handler refuses before

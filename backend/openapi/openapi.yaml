@@ -24756,6 +24756,41 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [period-locks]
+      operationId: acknowledgePeriodUnlockReview
+      summary: Acknowledge a consumed sole-holder unlock exception
+      description: Cedar rechecks current close entitlement and requires an independent reviewer when available.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: lockId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: exceptionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Review acknowledged; repeated acknowledgement returns the same receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [REVIEWED] }
+        '401':
+          description: No session.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/person-binding-reviews:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -34169,6 +34204,10 @@ components:
                   type: [string, 'null']
                 reason_code:
                   type: string
+                exceptionId:
+                  type: string
+                  format: uuid
+                  description: Consumed sole-holder exception awaiting acknowledgement, rather than an unlock approval.
                 reason_entry:
                   type: [object, 'null']
                   description: Tenant-defined reason labels, using the owning reason catalog's presentation contract.

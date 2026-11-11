@@ -19,7 +19,7 @@ for (const locale of ["ko", "en"] as const) for (const refused of [false, true])
     const queue = inbox(1);
     const exception = id(902);
     const lock = id(900);
-    queue.items[0] = { ...queue.items[0]!, id: `period_unlock:${exception}`, kind: "period_unlock", title: "해제 요청자",
+    queue.items[0] = { ...queue.items[0]!, due: "2026-10-29T09:00:00Z", id: `period_unlock:${exception}`, kind: "period_unlock", title: "해제 요청자",
       links: [{ kind: "period_lock", id: lock }],
       context: { unlock: { domain: "payroll", periodStart: "2026-06-01", periodEnd: "2026-06-30", requester: "해제 요청자", reason_code: "RETRO_CORRECTION", exceptionId: exception } } };
     let done = false;
@@ -38,17 +38,19 @@ for (const locale of ["ko", "en"] as const) for (const refused of [false, true])
     await fits(page, "solo unlock review at 390px dark");
     await expectAxe(page, "solo unlock review");
     await page.screenshot({ path: test.info().outputPath("review-dark-mobile.png"), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => { localStorage.setItem("console.theme", "light"); });
+    await page.reload();
+    await expect(row).toBeVisible();
+    await fits(page, "solo unlock review desktop");
+    await expectAxe(page, "solo unlock review desktop");
+    await page.screenshot({ path: test.info().outputPath("review-light-desktop.png"), fullPage: true });
     await acknowledge.click();
     await expect.poll(() => posts).toBe(1);
     if (refused) {
       await expect(row).toBeVisible();
       await expect(row.getByRole("alert")).toBeVisible();
     } else await expect(row).toBeHidden();
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.evaluate(() => { localStorage.setItem("console.theme", "light"); });
-    await page.reload();
-    await fits(page, "solo unlock review desktop");
-    await expectAxe(page, "solo unlock review desktop");
-    await page.screenshot({ path: test.info().outputPath("review-light-desktop.png"), fullPage: true });
+
   });
 }
