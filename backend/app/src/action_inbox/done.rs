@@ -10,8 +10,8 @@ use console_action_inbox_application::{
     ActionInboxLink, ActionInboxSourceItem, ActionInboxSourcePage,
 };
 use console_hr_adapter_postgres::HrService;
-use console_kernel_core::{BranchScope, KernelError};
-use console_platform_authz::{Action, Feature, Principal, authorize_capability};
+use console_kernel_core::KernelError;
+use console_platform_authz::Principal;
 use serde::Deserialize;
 use sqlx::PgPool;
 use time::OffsetDateTime;
@@ -93,11 +93,7 @@ async fn identifier_corrections(
     before: Before,
     limit: i64,
 ) -> Result<Vec<DoneItem>, KernelError> {
-    if principal.branch_scope != BranchScope::All
-        || ![Feature::LegalEntityManage, Feature::OrgChangeApply]
-            .into_iter()
-            .any(|f| authorize_capability(principal, Action::new(f)).is_ok())
-    {
+    if !super::sources::entity_corrections::reviews(principal) {
         return Ok(Vec::new());
     }
     let (org, me) = (principal.org_id, *principal.user_id.as_uuid());
