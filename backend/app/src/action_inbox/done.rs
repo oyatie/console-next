@@ -44,12 +44,12 @@ pub(super) async fn list(
         .map(|c| (c.completed_at, c.id));
     let fetch = i64::try_from(limit + 1).unwrap_or(i64::MAX);
     let pool = &state.pool;
-    let (requests, unlocks, corrections) = tokio::try_join!(
-        hr_requests(pool, &principal, before.clone(), fetch),
-        crate::lifecycle::inbox_done::done(pool, &principal, before.clone(), fetch),
-        identifier_corrections(pool, &principal, before.clone(), fetch),
-    )?;
-    let (items, next) = merge_done([requests, unlocks, corrections].concat(), limit);
+    // One read at a time: this route takes no share of the open list's read permits.
+    let mut items = hr_requests(pool, &principal, before.clone(), fetch).await?;
+    items
+        .extend(crate::lifecycle::inbox_done::done(pool, &principal, before.clone(), fetch).await?);
+    items.extend(identifier_corrections(pool, &principal, before, fetch).await?);
+    let (items, next) = merge_done(items, limit);
     record_access(pool, &principal, &items).await?;
     Ok(Json(serde_json::json!({
         "items": items,

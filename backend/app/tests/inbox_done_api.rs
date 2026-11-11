@@ -81,8 +81,18 @@ async fn a_decided_request_moves_to_the_deciders_done_list_newest_first(pool: Pg
     decide(&requester, &withdrawn, "WITHDRAW").await;
 
     // Newest first, two per page, and the cursor carries on where the page ended.
+    // The names on the page are a personnel read: one access-log row per page.
+    let logged = || async {
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM audit_events WHERE org_id = $1")
+            .bind(org)
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+    };
+    let before = logged().await;
     let (status, page) = reviewer.call("GET", &format!("{DONE}?limit=2"), None).await;
     assert_eq!(status, StatusCode::OK, "{page}");
+    assert_eq!(logged().await, before + 1);
     assert_eq!(
         ids(&page),
         [

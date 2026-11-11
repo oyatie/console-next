@@ -333,4 +333,38 @@ async fn a_replaced_or_expired_request_is_refused_and_the_reviewed_one_is_approv
         (Some("APPROVED"), Some("승인자")),
         "{seen}"
     );
+
+    // 업무함 완료: the approver finds it there; the requester decided nothing.
+    let done = |token: String| {
+        let service = service.clone();
+        async move {
+            let request = Request::builder()
+                .uri("/api/v1/me/action-inbox/done")
+                .header(header::AUTHORIZATION, format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap();
+            let response = service.oneshot(request).await.unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            serde_json::from_slice::<Value>(&bytes).unwrap()["items"]
+                .as_array()
+                .unwrap()
+                .clone()
+        }
+    };
+    let finished = done(approver.token.clone()).await;
+    let row = finished
+        .iter()
+        .find(|i| i["id"] == format!("period_unlock:{second}"))
+        .unwrap();
+    assert_eq!(
+        (row["outcome"].as_str(), row["title"].as_str()),
+        (Some("APPROVED"), Some("요청자")),
+        "{row}"
+    );
+    assert_eq!(
+        row["links"][0],
+        json!({"kind": "period_lock", "id": lock_id})
+    );
+    assert!(done(requester.token.clone()).await.is_empty());
 }
