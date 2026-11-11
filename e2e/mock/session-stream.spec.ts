@@ -3,16 +3,23 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { screens } from "../states/registry";
+import { accountScreens } from "../states/account";
+import { accountReads } from "./account";
 import { failure, token } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-for (const screen of screens.filter(screen => screen.path === "/" || screen.path === "/people")) {
-  for (const theme of ["light", "dark"] as const) test(`cold load and reload ${screen.path}: stream before first read at 390px ${theme}`, async ({ page }) => {
+for (const { screen, path } of [
+  ...screens.filter(screen => screen.path === "/" || screen.path === "/people").map(screen => ({ screen, path: screen.path })),
+  { screen: screens[0], path: "/inbox" },
+  ...accountScreens.map(screen => ({ screen, path: screen.path })),
+]) {
+  for (const theme of ["light", "dark"] as const) test(`cold load and reload ${path}: stream before first read at 390px ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const fixture = await mockScreen(page, screen, "populated");
+    if (path === "/account") await accountReads(page, "save-unchanged");
     await page.addInitScript(value => {
       localStorage.setItem("console.theme", value);
       const log: string[] = [];
@@ -25,13 +32,15 @@ for (const screen of screens.filter(screen => screen.path === "/" || screen.path
         return original(input, init);
       };
     }, theme);
-    await page.goto(screen.path);
+    await page.goto(path);
     for (const reload of [false, true]) {
       if (reload) await page.reload();
-      await expect.poll(() => page.evaluate(() => (window as unknown as { streamRequests: string[] }).streamRequests)).toContain(screen.read);
+      await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", path);
       const requests = await page.evaluate(() => (window as unknown as { streamRequests: string[] }).streamRequests);
       expect(requests[0], "the stream opens before shell and screen reads").toBe("/api/v1/events");
       expect(requests.filter(path => path === "/api/v1/events")).toHaveLength(1);
+      expect(requests).toContain(screen.read);
+      expect(requests.filter(path => path === "/api/v1/users/me"), "shell and page share one identity read").toHaveLength(1);
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await expect(page.locator("#main")).toBeVisible();
       await fits(page, `${screen.key} ${theme}`);
@@ -68,6 +77,7 @@ for (const theme of ["light", "dark"] as const) test(`sign-in opens the stream b
   expect(requests).toContain("/api/v1/me/action-inbox");
   expect(requests[0], "the stream opens before the first data read").toBe("/api/v1/events");
   expect(requests.filter(path => path === "/api/v1/events")).toHaveLength(1);
+  expect(requests.filter(path => path === "/api/v1/users/me"), "sign-in shares the shell's identity read").toHaveLength(1);
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
   await fits(page, `signed-in Home ${theme}`);
   expect(fixture.unexpected).toEqual([]);

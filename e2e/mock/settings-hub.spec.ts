@@ -79,7 +79,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       if (state === "scheduled") { await expect(approval).toContainText("2026. 12. 01."); await expect(approval).toContainText(t("settingsHub.code.none")); }
       if (state === "fixed") { await expect(approval.getByRole("listitem")).toHaveCount(2); await expect(approval).toContainText(t("settingsHub.governance.fixed")); await expect(approval).toContainText(t("settingsHub.readOnly")); await expect(approval).toContainText(t("settingsHub.layer.platform")); }
       expect(reads.toSorted()).toEqual(paths.toSorted());
-      expect(identityReads).toBe(2);
+      expect(identityReads).toBe(1);
       await fits(page, `settings/${state}/${width}/${theme}`);
       await expectAxe(page, `settings/${state}/${width}/${theme}`);
       await main.evaluate(el => { el.scrollTop = 0; });
