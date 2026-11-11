@@ -73,10 +73,10 @@ test("org: structure list becomes readable cards at 390px @ui-state", async ({ p
     await expect(grid.locator("[data-row-id]").first().getByText(t("entityOps.info.none"), { exact: true })).toHaveCount(2);
     await expect(grid.locator(`[data-row-id="${site.id}"]`).getByText(t("structure.chip.suspended"), { exact: true })).toBeVisible();
     const region = grid.locator("xpath=ancestor::section");
-    const caption = region.getByText(t("structure.list.caption", { count: 5 }), { exact: true });
-    const find = region.getByRole("searchbox", { name: t("structure.find.placeholder"), exact: true });
-    const [captionBox, findBox] = await Promise.all([caption.boundingBox(), find.boundingBox()]);
-    expect(captionBox!.y + captionBox!.height).toBeLessThanOrEqual(findBox!.y);
+    await expect(region.getByText(t("structure.list.caption", { count: 5 }), { exact: true })).toBeVisible();
+    // The list is searched from the page toolbar: one find field, none of its own.
+    await expect(region.getByRole("searchbox")).toHaveCount(0);
+    await expect(page.getByRole("searchbox", { name: t("structure.find.label"), exact: true })).toHaveCount(1);
     for (const theme of ["light", "dark"]) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
       await page.screenshot({ path: test.info().outputPath(`structure-list-390-${theme}.png`), fullPage: true });
@@ -175,7 +175,9 @@ test("org: every bottom-bar button stays inside the canvas and clickable at 390p
     await page.goto("/org");
     const canvas = page.getByRole("region", { name: t("structure.chart.label"), exact: true });
     const zoom = canvas.getByRole("group", { name: t("uiOrgCanvas.zoom"), exact: true });
-    await expect(zoom.getByRole("button", { name: t("structure.collapseAll"), exact: true })).toBeVisible();
+    // Fold all is one toolbar command for every view, not a canvas button.
+    await expect(zoom.getByRole("button", { name: t("structure.collapseAll"), exact: true })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: t("structure.toolbar"), exact: true }).getByRole("button", { name: t("structure.collapseAll"), exact: true })).toBeVisible();
     for (const theme of ["light", "dark"]) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
       const buttons = zoom.locator("..").getByRole("button");

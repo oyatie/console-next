@@ -31,6 +31,8 @@ export const koImportReview = {
   "importReview.reason.unresolved_identity": "누구인지 확인(동명이인)",
   "importReview.reason.summary_row_skipped": "합계 행 · 사람이 아님",
   "importReview.reason.phone_invalid": "휴대전화로 읽을 수 없음",
+  "importReview.reason.number_invalid": "숫자로 읽을 수 없어 가져오지 않음",
+  "importReview.reason.work_period_missing": "급여 기간이 없어 근무일수와 근무시간은 가져오지 않음",
   "importReview.groups.title": "같은 이유로 묶어 제외 · {count, number}가지",
   "importReview.groups.row": "{why} · {field} · {rows, number}행",
   "importReview.groups.run": "{rows, number}행 모두 이번에는 제외",

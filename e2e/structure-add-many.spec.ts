@@ -54,7 +54,7 @@ for (const [width, height] of [[1280, 720], [1920, 1080]]) {
             const menu = page.getByRole("menu", { name: `${entity} 더 보기` });
             await expect(menu.getByRole("menuitem").first()).toHaveText(/사업장 추가/);
             await menu.getByRole("menuitem", { name: /^사업장 추가/ }).click();
-          } else if (i === 3) await page.locator(".page__head").getByRole("link", { name: "사업장 추가" }).click();
+          } else if (i === 3) await page.getByRole("group", { name: "보기 도구", exact: true }).getByRole("link", { name: "사업장 추가" }).click();
           else await page.getByRole("toolbar", { name: `${entity} 작업` }).getByRole("link", { name: "사업장 추가" }).click();
         }
         if (i === 1) await registerWorkplace(page, "자녀추가", "사업장1");

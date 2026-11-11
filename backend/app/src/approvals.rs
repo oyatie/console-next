@@ -4,16 +4,25 @@ use crate::action_inbox::error::InboxError;
 use axum::{
     Extension, Json, Router,
     extract::{Path, Query, State},
-    routing::get,
+    routing::{get, post},
 };
 use console_kernel_core::KernelError;
+use console_orgchange_adapter_postgres::PgOrgChangeStore;
 use console_platform_authz::Principal;
 use serde::Deserialize;
 use serde_json::Value;
 use time::OffsetDateTime;
 use uuid::Uuid;
+mod decision;
 mod document;
 mod org_change;
+
+#[derive(Clone)]
+struct Approvals {
+    pool: sqlx::PgPool,
+    /// The only approval source today; a decision runs its own command.
+    org_changes: PgOrgChangeStore,
+}
 const BOXES: [&str; 5] = ["pending", "upcoming", "requested", "reference", "completed"];
 #[derive(Deserialize)]
 struct ListQuery {
@@ -27,6 +36,7 @@ struct ListQuery {
 }
 pub fn router(
     pool: sqlx::PgPool,
+    org_changes: PgOrgChangeStore,
     verifier: Option<console_platform_auth::JwtVerifier>,
     released: bool,
 ) -> Router {
@@ -34,6 +44,7 @@ pub fn router(
         Router::new()
             .route("/api/v1/approvals", get(list))
             .route("/api/v1/approvals/{id}", get(document::get))
+            .route("/api/v1/approvals/{id}/decision", post(decision::post))
             .route_layer(axum::middleware::from_fn(
                 move |request: axum::extract::Request, next: axum::middleware::Next| async move {
                     if !released {
@@ -44,13 +55,16 @@ pub fn router(
                     Ok(next.run(request).await)
                 },
             ))
-            .with_state(pool.clone()),
+            .with_state(Approvals {
+                pool: pool.clone(),
+                org_changes,
+            }),
         verifier,
         pool,
     )
 }
 async fn list(
-    State(pool): State<sqlx::PgPool>,
+    State(Approvals { pool, .. }): State<Approvals>,
     Extension(principal): Extension<Principal>,
     Query(q): Query<ListQuery>,
 ) -> Result<Json<Value>, InboxError> {

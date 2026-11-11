@@ -1,36 +1,53 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 use console_platform_authz::cedar_pbac::actions::approval_document_read;
+use console_settings_domain::code_lists::{NOTE_MAX_CHARS, ReasonDomain};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
+/// The longest opinion a decision takes: it shares the step's 2000-character
+/// memo with a rejection's note, so neither is ever dropped.
+pub(super) const OPINION_MAX: usize = 2000 - NOTE_MAX_CHARS - 2;
+
+/// A document as its viewer reads it, with what a decision on it needs.
+pub(super) struct Loaded {
+    pub document: Value,
+    /// The source's decision version in this snapshot.
+    pub version: String,
+    /// The step awaiting a decision, only where the viewer is offered one.
+    pub step: Option<Uuid>,
+}
+
+/// The source record an approval id names (`org_change:<uuid>` today).
+pub(super) fn source_id(key: &str) -> Option<Uuid> {
+    key.strip_prefix("org_change:")
+        .and_then(|s| Uuid::parse_str(s).ok())
+}
+
 pub(super) async fn get(
-    State(pool): State<sqlx::PgPool>,
+    State(state): State<Approvals>,
     Extension(principal): Extension<Principal>,
     Path(key): Path<String>,
 ) -> Result<Json<Value>, InboxError> {
-    let id = key
-        .strip_prefix("org_change:")
-        .and_then(|s| Uuid::parse_str(s).ok());
-    let Some(id) = id else {
+    let Some(id) = source_id(&key) else {
         return Err(missing().into());
     };
-    let document = console_platform_db::with_org_locking_snapshot::<_, _, crate::error::AppError>(
-        &pool,
+    let loaded = console_platform_db::with_org_locking_snapshot::<_, _, crate::error::AppError>(
+        &state.pool,
         principal.org_id,
         move |tx| Box::pin(async move { Ok(read(tx, &principal, id, key).await) }),
     )
     .await
     .map_err(db)??;
-    Ok(Json(document.ok_or_else(missing)?))
+    Ok(Json(loaded.ok_or_else(missing)?.document))
 }
 
-async fn read(
+pub(super) async fn read(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     p: &Principal,
     id: Uuid,
     key: String,
-) -> Result<Option<Value>, KernelError> {
+) -> Result<Option<Loaded>, KernelError> {
     let membership = org_change::visible(tx, p).await?;
     let box_name = membership
         .iter()
@@ -83,13 +100,53 @@ async fn read(
     document["proposal"] = proposal;
     document["revision"] = json!(revision);
     document["fingerprint"] = json!(fingerprint);
-    // shortcut: read-only envelope until the canonical source-command adapter ships.
-    document["consequence"] = json!("");
-    document["opinion_max"] = json!(0);
-    document["my_actions"] = json!({"kind":"none"});
-    Ok(Some(document))
+    // A decision is offered exactly where the source command takes one from
+    // this viewer: their turn, no refusal, in approval, a step awaiting it.
+    // Added after the fingerprint: it describes the viewer, not the document.
+    let route = document["route"].as_array().cloned().unwrap_or_default();
+    let offered = document["box"] == "pending"
+        && document["decision_refusal"].is_null()
+        && document["status"]["key"] == "IN_APPROVAL";
+    let step = route
+        .iter()
+        .find(|step| step["state"] == "current")
+        .and_then(|step| step["id"].as_str())
+        .and_then(|id| Uuid::parse_str(id).ok())
+        .filter(|_| offered);
+    let undecided = route
+        .iter()
+        .filter(|step| step["state"] == "current" || step["state"] == "waiting")
+        .count();
+    document["consequence"] = json!(match step {
+        Some(_) if undecided == 1 => "final",
+        Some(_) => "next_step",
+        None => "",
+    });
+    document["opinion_max"] = json!(if step.is_some() { OPINION_MAX } else { 0 });
+    // 보완 요청 (return) is not offered: the source has no such transition.
+    document["my_actions"] = if step.is_some() {
+        json!({"kind":"approve","reject":{"consequence":"request_ends","reason_domain":ReasonDomain::OrgChangeReject.as_str()}})
+    } else {
+        json!({"kind":"none"})
+    };
+    // The same timestamp the source command checks `expected_version` against.
+    let changed: OffsetDateTime = sqlx::query_scalar(
+        "SELECT greatest(r.updated_at, max(s.decided_at)) FROM org_change_requests r \
+         LEFT JOIN org_change_approval_steps s ON s.request_id=r.id \
+         WHERE r.org_id=$1 AND r.id=$2 GROUP BY r.updated_at",
+    )
+    .bind(p.org_id.as_uuid())
+    .bind(id)
+    .fetch_one(tx.as_mut())
+    .await
+    .map_err(db)?;
+    Ok(Some(Loaded {
+        document,
+        version: console_orgchange_domain::decision_version(changed, None),
+        step,
+    }))
 }
 
-fn missing() -> KernelError {
+pub(super) fn missing() -> KernelError {
     KernelError::not_found("approval document not found")
 }

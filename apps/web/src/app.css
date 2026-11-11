@@ -76,6 +76,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top__name span { min-inline-size: calc(var(--space-6) * 2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top .top__menu { display: none; }
 .top__spacer { flex: 1; }
+.top__jumpLabel { display: none; }
+.top[data-task-menu] .top__jump { min-width: var(--target); }
+@media (--below-wide) {
+  .top[data-task-menu] { gap: var(--space-1); }
+  .top[data-task-menu] .btn { padding-inline: var(--space-2); }
+  .top[data-task-menu] .top__kbd, .top__jumpHint { display: none; }
+  .top__jumpLabel { display: inline; }
+}
+@media (--small) {
+  .top[data-task-menu] {
+    gap: var(--space-1);
+    .top__jumpText, .top__kbd { display: none; }
+    .top__jump { display: inline-flex; flex: none; }
+    .top__name { flex-shrink: 0; gap: 0; }
+    .top__name span { font-size: 0; min-inline-size: 0; }
+    .top__menu, .top__logout { font-size: 0; gap: 0; }
+    > select { max-width: calc(var(--space-6) * 3); }
+  }
+}
 /* The scroll container is also the containing block: an absolutely placed node inside (a visually hidden input) scrolls and clips with it instead of lengthening the document, which a focus would then scroll (E2-reveal). */
 .main { grid-area: main; overflow: auto; overflow-anchor: none; position: relative; }
 .main:focus-visible { outline-offset: -2px; }

@@ -17,6 +17,9 @@
     "/api/v1/approvals/{id}": [
       "get"
     ],
+    "/api/v1/approvals/{id}/decision": [
+      "post"
+    ],
     "/api/v1/change-requests": [
       "get",
       "post"
@@ -391,6 +394,8 @@
     "AppointmentNoticeLine",
     "AppointmentNoticePage",
     "AppointmentNoticeSummary",
+    "ApprovalDecisionReceipt",
+    "ApprovalDecisionRequest",
     "ApprovalDocument",
     "ApprovalDocumentDetail",
     "ApprovalDocumentPage",

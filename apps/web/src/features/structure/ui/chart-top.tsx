@@ -1,7 +1,6 @@
-import { ChevronRight, Maximize2, Search } from "lucide-react";
+import { ChevronRight, Maximize2 } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, ToggleButton } from "../../../ui/button/button";
-import { TextInput } from "../../../ui/field/field";
 import { HeadcountBasis } from "../../../reference/org/ui/headcount-basis";
 import type { Depth } from "../domain/layout";
 import { pathTo, type ChartNode, type Structure } from "../domain/model";
@@ -12,16 +11,11 @@ const DEPTHS: Depth[] = ["sites", "one", "all"];
 /** The root's crumb is "All", never the account's name (decision #29). */
 const crumb = (n: ChartNode) => (n.kind === "tenant" ? t("structure.root.word") : n.name);
 
-/** The canvas's top edge: crumbs to the focus, find (/), and the depth control. */
-export function ChartTop({ s, c, onFocus, onFind }: { s: Structure; c: ChartState; onFocus: (id: string | undefined) => void; onFind: (id: string) => void }) {
+/** The canvas's top edge: crumbs to the focus and the depth control (the find sits in the page toolbar). */
+export function ChartTop({ s, c, onFocus }: { s: Structure; c: ChartState; onFocus: (id: string | undefined) => void }) {
   const current = c.hits.ids[c.hit];
   // While finding, the crumbs follow the result shown (S2-chart-scale-search); a crumb still focuses its unit.
   const path = pathTo(s, c.q.trim() && current ? current : c.focus.id);
-  const step = (d: number) => {
-    if (!c.hits.ids.length) return;
-    c.stepHit(d);
-    onFind(c.hits.ids[(c.hit + d + c.hits.ids.length) % c.hits.ids.length]!);
-  };
   return (
     <>
       <nav className={`${css.crumbs} card`} aria-label={t("structure.crumbs")}>
@@ -37,31 +31,6 @@ export function ChartTop({ s, c, onFocus, onFind }: { s: Structure; c: ChartStat
       )}
       <span className="grow" />
       <HeadcountBasis>{t("structure.headcount.total", { count: c.focus.headcount })}</HeadcountBasis>
-      <div className={css.findWrap}>
-        <label className={`${css.find} card`} htmlFor="structure-find">
-          <Search size={16} aria-hidden />
-          <TextInput
-            id="structure-find"
-            type="search"
-            className={css.findInput}
-            aria-label={t("structure.find.label")}
-            placeholder={t("structure.find.placeholder")}
-            value={c.q}
-            onChange={(e) => c.search(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-              const d = { Enter: 0, ArrowDown: 1, ArrowUp: -1 }[e.key];
-              if (d !== undefined) {
-                e.preventDefault();
-                step(d);
-              }
-              if (e.key === "Escape") c.search("");
-            }}
-          />
-          {c.q.trim() !== "" && c.hits.ids.length > 0 && <span className={css.findAt}>{t("structureChart.find.at", { at: c.hit + 1, total: c.hits.ids.length })}</span>}
-          <kbd className={css.kbd}>/</kbd>
-        </label>
-      </div>
       <div className={`${css.seg} card`} role="group" aria-label={t("structure.depth.label")}>
         {DEPTHS.map((d) => <ToggleButton key={d} pressed={c.depth === d} onClick={() => c.setDepth(d)}>{t(`structure.depth.${d}`)}</ToggleButton>)}
       </div>

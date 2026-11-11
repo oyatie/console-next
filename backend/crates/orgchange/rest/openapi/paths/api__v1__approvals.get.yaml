@@ -6,6 +6,8 @@ security: [{bearerAuth: []}]
 description: >-
   Projects canonical org-change records. Cedar approval_document_list filters every box, count, facet and focus
   under one snapshot. Assigned upcoming and reference relationships are not stored by this source.
+  A document is in one box per viewer: a person who decided a step keeps it under completed while later steps
+  are pending, and its requester under requested until it is finished.
   Search and source apply to counts before descending created-at/UUID keyset paging.
 parameters:
 - {name: box, in: query, required: true, schema: {type: string, enum: [pending, upcoming, requested, reference, completed]}}

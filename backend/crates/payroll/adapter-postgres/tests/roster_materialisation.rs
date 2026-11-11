@@ -18,7 +18,7 @@ mod seed;
 
 use seed::{
     PERIOD_END, PERIOD_START, attendance_row, materialise, roster, seed_employee, seed_import,
-    seed_import_with_dropped, seed_org_and_run,
+    seed_import_with_dropped, seed_mapped_import, seed_org_and_run,
 };
 use sqlx::PgPool;
 use time::macros::date;
@@ -250,4 +250,98 @@ async fn a_dropped_restricted_payroll_header_is_still_payroll_material(pool: PgP
     assert_eq!(materialise(&pool, &f).await, 1);
     let lines = roster(&pool, &f).await;
     assert_eq!(lines, vec![("emp-1".to_owned(), 1, 0)]);
+}
+
+/// The line's days, hours and leave as the roster wrote them (`-`: none).
+async fn period_figures(pool: &PgPool, run: uuid::Uuid) -> Vec<String> {
+    let figures: (String, String, String, String, String, String, String) = sqlx::query_as(
+        "SELECT coalesce(trim_scale(work_days)::text, '-'), coalesce(trim_scale(regular_hours)::text, '-'), \
+                coalesce(trim_scale(overtime_hours)::text, '-'), coalesce(trim_scale(night_hours)::text, '-'), \
+                coalesce(trim_scale(holiday_hours)::text, '-'), coalesce(trim_scale(leave_used)::text, '-'), \
+                coalesce(trim_scale(leave_remaining)::text, '-') \
+         FROM payroll_draft_lines WHERE run_id = $1",
+    )
+    .bind(run)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    let (days, regular, overtime, night, holiday, used, remaining) = figures;
+    vec![days, regular, overtime, night, holiday, used, remaining]
+}
+
+/// regression: days, hours and leave reached the roster only when the file's
+/// headers were one of twelve fixed Korean words. A run whose columns were
+/// mapped reads what each column was mapped to, whatever the header says.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_mapped_run_reads_its_typed_values_whatever_the_headers_say(pool: PgPool) {
+    let f = seed_org_and_run(&pool).await;
+    seed_employee(&pool, f.org, "emp-1", "홍길동").await;
+    seed_mapped_import(
+        &pool,
+        f.org,
+        "APPLIED",
+        "CANDIDATE",
+        (PERIOD_START, PERIOD_END),
+        "emp-1",
+        // A tenant's own wording, mapped by the operator.
+        serde_json::json!({ "출근": "09:00", "당월 근무": "21", "정상": "168", "OT": "12.5" }),
+        &[],
+        Some(serde_json::json!({
+            "work_days": "21", "regular_hours": "168", "overtime_hours": "12.5",
+            "night_hours": "4", "holiday_hours": "8", "leave_used": "3", "leave_remaining": "12"
+        })),
+    )
+    .await;
+    assert_eq!(materialise(&pool, &f).await, 1);
+    assert_eq!(
+        period_figures(&pool, f.run).await,
+        ["21", "168", "12.5", "4", "8", "3", "12"]
+    );
+}
+
+/// In a mapped run a column nobody mapped is not read, even under one of the
+/// old fixed headers: "not imported" means not read.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_mapped_run_never_reads_an_unmapped_column_by_its_header(pool: PgPool) {
+    let f = seed_org_and_run(&pool).await;
+    seed_employee(&pool, f.org, "emp-1", "홍길동").await;
+    seed_mapped_import(
+        &pool,
+        f.org,
+        "APPLIED",
+        "CANDIDATE",
+        (PERIOD_START, PERIOD_END),
+        "emp-1",
+        serde_json::json!({ "출근": "09:00", "근무일수": "21", "근무시간": "168", "사용연차": "3" }),
+        &[],
+        Some(serde_json::json!({ "regular_hours": "160" })),
+    )
+    .await;
+    assert_eq!(materialise(&pool, &f).await, 1);
+    assert_eq!(
+        period_figures(&pool, f.run).await,
+        ["0", "160", "0", "0", "0", "-", "-"]
+    );
+}
+
+/// A run applied before days and hours were targets keeps its header-keyed read.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_run_from_before_the_targets_still_reads_its_headers(pool: PgPool) {
+    let f = seed_org_and_run(&pool).await;
+    seed_employee(&pool, f.org, "emp-1", "홍길동").await;
+    seed_import(
+        &pool,
+        f.org,
+        "APPLIED",
+        "CANDIDATE",
+        (PERIOD_START, PERIOD_END),
+        "emp-1",
+        serde_json::json!({ "출근": "09:00", "근무일수": "21", "기본시간": "168", "특근연장": "6", "사용연차": "3" }),
+    )
+    .await;
+    assert_eq!(materialise(&pool, &f).await, 1);
+    assert_eq!(
+        period_figures(&pool, f.run).await,
+        ["21", "168", "6", "0", "0", "3", "-"]
+    );
 }
