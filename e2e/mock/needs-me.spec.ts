@@ -144,11 +144,12 @@ test("Home shares its arrival read and refreshes held work after attention chang
   expect(mock.unexpected).toEqual([]);
 });
 
-// 완료 is a list of its own: the page keeps my turn read, so the badge shares it. Old 전체 links land on my turn.
-for (const [tab, filter] of [["all", "turn"], ["waiting", "waiting"], ["scheduled", "scheduled"], ["turn", "turn"], ["done", "turn"]] as const) {
+// 참조 and 완료 are lists of their own: the page keeps my turn read, so the badge shares it. Old 전체 links land on my turn.
+for (const [tab, filter] of [["all", "turn"], ["waiting", "waiting"], ["scheduled", "scheduled"], ["turn", "turn"], ["reference", "turn"], ["done", "turn"]] as const) {
   test(`inbox ${tab} shares arrival counts and opens only my turn in the header panel`, async ({ page }) => {
     const mock = await mockScreen(page, screens[0], "populated");
     const reads: string[] = [];
+    await mockRoute(page, "get", "/api/v1/me/action-inbox/reference", { status: 200, json: { items: [], next_cursor: null } });
     await mockRoute(page, "get", "/api/v1/me/action-inbox/done", { status: 200, json: { items: [], next_cursor: null } });
     await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
       const selected = new URL(request.url()).searchParams.get("filter")!;

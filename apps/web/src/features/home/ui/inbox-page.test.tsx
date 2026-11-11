@@ -25,7 +25,7 @@ vi.mock("@tanstack/react-query", async original => ({
   useInfiniteQuery: (options: Options) => {
     const read = JSON.parse(readIdentity(options));
     view.reads.push(read);
-    // The done tab reads its own (empty) list beside the queue.
+    // The reference and done tabs read their own (empty) lists beside the queue.
     if (read[0] !== "/api/v1/me/action-inbox") return { ...view.list, data: { pages: [{ items: [], next_cursor: null }] }, fetchNextPage: vi.fn(), refetch: vi.fn() };
     view.options = options;
     return { ...view.list, fetchNextPage: vi.fn(), refetch: vi.fn() };
@@ -54,13 +54,14 @@ beforeEach(() => {
 test.each([
   ["/inbox", "turn"], ["/inbox?tab=all", "turn"], ["/inbox?tab=deadlines", "turn"], ["/inbox?tab=turn", "turn"],
   ["/inbox?tab=waiting", "waiting"], ["/inbox?tab=scheduled", "scheduled"], ["/inbox?tab=failures", "failures"],
-  ["/inbox?tab=done", "turn"],
+  ["/inbox?tab=reference", "turn"], ["/inbox?tab=done", "turn"],
 ])("%s reads the queue with filter=%s", (url, filter) => {
   html(url);
   expect(view.reads[0]).toEqual(["/api/v1/me/action-inbox", { query: { filter } }, "cursor"]);
 });
 
 test.each([
+  ["reference", "/api/v1/me/action-inbox/reference"],
   ["done", "/api/v1/me/action-inbox/done"],
 ])("tab=%s keeps my turn read for counts and shows its own list as the current tab", (tab, path) => {
   const markup = html(`/inbox?tab=${tab}`);
@@ -68,7 +69,7 @@ test.each([
   expect(markup).toContain(`aria-current="page" href="/inbox?tab=${tab}"`);
   expect(markup.match(/aria-current="page"/g)).toHaveLength(1);
   expect(markup).toMatch(new RegExp(`href="/inbox">${t("home.inbox.tab.turn")} <span[^>]*>1</span></a>`));
-  expect(markup).toContain(t("home.inbox.done.empty"));
+  expect(markup).toContain(t(tab === "done" ? "home.inbox.done.empty" : "home.inbox.reference.empty"));
 });
 
 test.each([false, true])("an empty inbox with an unavailable source stays partial (has_work=%s)", has_work => {
