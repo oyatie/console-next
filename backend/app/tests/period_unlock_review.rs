@@ -155,11 +155,18 @@ async fn operating_review_is_owned_acknowledged_and_repeat_unlock_is_a_new_item(
     .unwrap();
     assert_eq!(count, 0, "the work inbox is the only delivery surface");
     // With no other current reviewer, the solo holder can acknowledge their work.
-    sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
+    let mut transfer = owner.begin().await.unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=false,is_active=false WHERE id=$1")
         .bind(ops.id)
-        .execute(&owner)
+        .execute(transfer.as_mut())
         .await
         .unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+        .bind(human.id)
+        .execute(transfer.as_mut())
+        .await
+        .unwrap();
+    transfer.commit().await.unwrap();
     let third = unlock(&owner, &app, &mut human).await;
     assert_eq!(reviews(&app, &human.token).await.len(), 1);
     let (status, body) = send(&app, &review_path(&third), &human.token, None, json!({})).await;

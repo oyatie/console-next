@@ -40,8 +40,9 @@ for (const locale of ["ko", "en"] as const) for (const refused of [false, true])
     await page.screenshot({ path: test.info().outputPath("review-dark-mobile.png"), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.evaluate(() => { localStorage.setItem("console.theme", "light"); });
-    await page.reload();
+    await page.goto(`/inbox?sel=${encodeURIComponent(`period_unlock:${exception}`)}`);
     await expect(row).toBeVisible();
+    await expect(page.getByRole("heading", { name: locale === "ko" ? "단독 해제 사후 검토" : "Sole-holder unlock review", exact: true })).toBeVisible();
     await fits(page, "solo unlock review desktop");
     await expectAxe(page, "solo unlock review desktop");
     await page.screenshot({ path: test.info().outputPath("review-light-desktop.png"), fullPage: true });
