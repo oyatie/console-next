@@ -1,7 +1,7 @@
 // Query descriptors whose keys derive from the API path: `[path, params]`. A command invalidates by
 // path prefix, so a read is refreshed by every write under its path, and two screens asking the
 // same path with the same params share one cache entry.
-import { hashKey, type QueryClient } from "@tanstack/react-query";
+import { hashKey, type Query, type QueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "@console/api";
 import type { AllPaths as paths } from "@console/api/pending";
 
@@ -41,6 +41,23 @@ export type PathPrefix = Exclude<Prefix<keyof paths & string>, "" | "/api">;
 /** A query's API path for commands that refresh that read and its lists. */
 export const queryPath = (q: { queryKey: readonly [PathPrefix, ...unknown[]] }) => q.queryKey[0];
 
+/**
+ * A background read (`meta.background`: a count the shell shows on every page) never runs ahead of the page's own
+ * reads. An invalidation marks it stale at once and re-reads it once after invalidations have been quiet for a
+ * moment, so a command's own re-reads and the live stream's echo of that command are answered first.
+ */
+export const BACKGROUND_SETTLE_MS = 1500;
+const isBackground = (q: Query) => q.meta?.background === true;
+let settling: ReturnType<typeof setTimeout> | undefined;
+const invalidate = (qc: QueryClient, match: (q: Query) => boolean, refetch = true) => {
+  if (refetch && qc.getQueryCache().findAll({ predicate: (q) => match(q) && isBackground(q) }).length > 0) {
+    void qc.invalidateQueries({ predicate: (q) => match(q) && isBackground(q), refetchType: "none" });
+    clearTimeout(settling);
+    settling = setTimeout(() => void qc.refetchQueries({ type: "active", predicate: (q) => isBackground(q) && q.state.isInvalidated }), BACKGROUND_SETTLE_MS);
+  }
+  return qc.invalidateQueries({ predicate: (q) => match(q) && !(refetch && isBackground(q)), refetchType: refetch ? "active" : "none" });
+};
+
 /** A derived key whose path is `prefix` or under it (a sibling like "/api/v1/employees-x" is not). */
 export const underPath = (prefix: string) => ([k]: readonly unknown[]) => typeof k === "string" && (k === prefix || k.startsWith(prefix + "/"));
 
@@ -49,7 +66,7 @@ export const underPath = (prefix: string) => ([k]: readonly unknown[]) => typeof
  * command's earlier prefixes: a read re-read twice has its first fetch cancelled, ending a wait on it before it lands).
  */
 const invalidatePath = (qc: QueryClient, prefix: PathPrefix, done: readonly PathPrefix[] = []) =>
-  qc.invalidateQueries({ predicate: (q) => underPath(prefix)(q.queryKey) && !done.some((d) => underPath(d)(q.queryKey)) });
+  invalidate(qc, (q) => underPath(prefix)(q.queryKey) && !done.some((d) => underPath(d)(q.queryKey)));
 /** Each command's reads once, by the first of `prefixes` that covers it; one promise per prefix, in order. */
 export const invalidatePaths = (qc: QueryClient, prefixes: readonly PathPrefix[]) => prefixes.map((p, i) => invalidatePath(qc, p, prefixes.slice(0, i)));
 
@@ -59,7 +76,7 @@ export const invalidatePaths = (qc: QueryClient, prefixes: readonly PathPrefix[]
  * Navigation snapshots wait for a successful command's invalidatePaths or the next navigation.
  */
 export const invalidateWhere = (qc: QueryClient, match: (path: string, params: unknown) => boolean, refetch = true) =>
-  qc.invalidateQueries({ predicate: (q) => !q.meta?.navigation && typeof q.queryKey[0] === "string" && match(q.queryKey[0], q.queryKey[1]), refetchType: refetch ? "active" : "none" });
+  invalidate(qc, (q) => !q.meta?.navigation && typeof q.queryKey[0] === "string" && match(q.queryKey[0], q.queryKey[1]), refetch);
 
 /** Whether a read on screen now (an active query) has a derived key that passes `match`. */
 export const shownWhere = (qc: QueryClient, match: (path: string, params: unknown) => boolean) =>
