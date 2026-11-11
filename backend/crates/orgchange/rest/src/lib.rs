@@ -16,6 +16,7 @@ mod legacy;
 mod openapi;
 mod org_units;
 mod requests;
+mod step_decision;
 
 use access::*;
 use dto::*;
@@ -24,8 +25,8 @@ use error::*;
 use legacy::*;
 pub use openapi::OPENAPI_FRAGMENT;
 use org_units::*;
-pub use requests::decide_step_as;
 use requests::*;
+pub use step_decision::decide_step_as;
 
 use axum::{
     Json, Router,
