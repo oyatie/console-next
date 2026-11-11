@@ -7,6 +7,8 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
+test.afterEach(() => i18n.set("ko"));
+
 for (const locale of ["ko", "en"] as const) for (const state of ["populated", "empty", "loading", "failed"] as const) {
   test(`period unlock inbox: ${state} in ${locale} at 390px in dark mode @ui-state`, async ({ page }) => {
     await loadCatalog(locale);
