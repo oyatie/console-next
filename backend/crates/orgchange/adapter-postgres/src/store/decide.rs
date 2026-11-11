@@ -117,7 +117,8 @@ impl PgOrgChangeStore {
                 };
                 sqlx::query(
                     "UPDATE org_change_approval_steps SET decision = $2, decided_by = $3, \
-                     decided_at = $4, memo = $5, sole_holder_exception_id = $6 WHERE id = $1",
+                     decided_at = $4, memo = $5, sole_holder_exception_id = $6, \
+                     reason_code = $7 WHERE id = $1",
                 )
                 .bind(step_id)
                 .bind(next_decision.as_db())
@@ -125,6 +126,7 @@ impl PgOrgChangeStore {
                 .bind(now)
                 .bind(command.memo.as_deref())
                 .bind(exception)
+                .bind(command.reason_code.as_deref().filter(|_| !approved))
                 .execute(tx.as_mut())
                 .await?;
 

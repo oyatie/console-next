@@ -31,5 +31,20 @@ allOf:
     my_actions:
       type: object
       required: [kind]
+      description: >-
+        What the viewer may decide now. approve carries reject, and return only where the source takes one
+        (none does yet). Each names the consequence and the reason-code catalog domain its reason_code comes from.
       properties:
-        kind: {type: string, enum: [none]}
+        kind: {type: string, x-extensible-enum: [none, approve]}
+        reject:
+          type: object
+          required: [consequence, reason_domain]
+          properties:
+            consequence: {type: string, x-extensible-enum: [request_ends]}
+            reason_domain: {type: string}
+        return:
+          type: object
+          required: [consequence, reason_domain]
+          properties:
+            consequence: {type: string, x-extensible-enum: [back_to_drafter]}
+            reason_domain: {type: string}

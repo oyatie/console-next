@@ -19,10 +19,12 @@ mod requests;
 
 use access::*;
 use dto::*;
+pub use error::RestError as OrgChangeRefusal;
 use error::*;
 use legacy::*;
 pub use openapi::OPENAPI_FRAGMENT;
 use org_units::*;
+pub use requests::decide_step_as;
 use requests::*;
 
 use axum::{

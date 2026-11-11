@@ -1423,7 +1423,7 @@ export interface paths {
         };
         /**
          * List visible approval documents
-         * @description Projects canonical org-change records. Cedar approval_document_list filters every box, count, facet and focus under one snapshot. Assigned upcoming and reference relationships are not stored by this source. Search and source apply to counts before descending created-at/UUID keyset paging.
+         * @description Projects canonical org-change records. Cedar approval_document_list filters every box, count, facet and focus under one snapshot. Assigned upcoming and reference relationships are not stored by this source. A document is in one box per viewer: a person who decided a step keeps it under completed while later steps are pending, and its requester under requested until it is finished. Search and source apply to counts before descending created-at/UUID keyset paging.
          */
         get: operations["listApprovalDocuments"];
         put?: never;
@@ -1443,11 +1443,31 @@ export interface paths {
         };
         /**
          * Read a source-authorized approval document
-         * @description Cedar approval_document_read uses the same source facts and inbox membership as the list. Hidden, absent, unsupported, draft and unrouted documents all return not_found. Proposal contains typed source operations and effective_date is a business date; body does not repeat the header. This read-only envelope exposes no decisions until the source-command adapter is available.
+         * @description Cedar approval_document_read uses the same source facts and inbox membership as the list. Hidden, absent, unsupported, draft and unrouted documents all return not_found. Proposal contains typed source operations and effective_date is a business date; body does not repeat the header. my_actions offers a decision exactly where the source command takes one from this viewer: the document is in their pending box with no decision_refusal, in approval, with a step awaiting it. consequence is then next_step or final (the last step), and opinion_max the longest opinion; otherwise my_actions is none.
          */
         get: operations["getApprovalDocument"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide the step of an approval document that awaits the caller
+         * @description An adapter over the source's own decision command (org change: decideOrgChangeApprovalStep), taken only where the document read offered my_actions.kind approve. Hidden and absent documents return the read's not_found first. A seen_fingerprint that no longer matches, or a source version that moved before the command ran, returns 409 approval_document_changed and decides nothing. Where the read offers none the answer is 409 approval_decision_unavailable. The source command then re-checks authority, separation of duties and step order and answers with its own codes. REJECT requires a reason_code of the org_change_reject catalog, with a note where the code requires one; the note and the opinion are both kept in the step's memo. RETURN is 422: no source takes a return yet. A repeated Idempotency-Key answers 409 command_applied.
+         */
+        post: operations["decideApprovalDocument"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15417,6 +15437,23 @@ export interface components {
             issued_at: string;
             line_count: number;
         };
+        ApprovalDecisionReceipt: {
+            decision: string;
+            /** @description The source document's status key after the decision. */
+            status: string;
+        };
+        ApprovalDecisionRequest: {
+            /** @enum {string} */
+            decision: "APPROVE" | "REJECT" | "RETURN";
+            /** @description The fingerprint of the document the decision was made on. */
+            seen_fingerprint: string;
+            /** @description Optional; at most the document's opinion_max characters. */
+            opinion?: string;
+            /** @description Required to reject; a code of my_actions.reject.reason_domain. */
+            reason_code?: string;
+            /** @description The reason's note; required where the code requires one. */
+            note?: string;
+        };
         ApprovalDocument: {
             id: string;
             /** @enum {string} */
@@ -15478,9 +15515,17 @@ export interface components {
             fingerprint: string;
             consequence: string;
             opinion_max: number;
+            /** @description What the viewer may decide now. approve carries reject, and return only where the source takes one (none does yet). Each names the consequence and the reason-code catalog domain its reason_code comes from. */
             my_actions: {
-                /** @enum {string} */
-                kind: "none";
+                kind: string;
+                reject?: {
+                    consequence: string;
+                    reason_domain: string;
+                };
+                return?: {
+                    consequence: string;
+                    reason_domain: string;
+                };
             };
         };
         ApprovalDocumentPage: {
@@ -33959,6 +34004,57 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            /** @description Sanitized approvals.projection_unavailable; includes a support reference. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    decideApprovalDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Canonical source-prefixed document ID from the inbox. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Decision recorded by the source command. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDecisionReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description approval_document_changed, approval_decision_unavailable, command_applied, or the source command's own refusal. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
             /** @description Sanitized approvals.projection_unavailable; includes a support reference. */
             500: {
                 headers: {

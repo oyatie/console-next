@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [decision, status]
+properties:
+  decision: {type: string, x-extensible-enum: [APPROVED, REJECTED]}
+  status: {type: string, description: The source document's status key after the decision.}

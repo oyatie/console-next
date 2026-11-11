@@ -180,25 +180,44 @@ pub(crate) async fn decide(
     Json(b): Json<OrgChangeDecisionRequest>,
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
-    allow_approve(&p)?;
     let approved = matches!(b.decision, WireDecision::Approved);
     respond(
-        &s.store
-            .decide_step_command(
-                p.user_id,
-                id,
-                step_id,
-                console_orgchange_domain::StepDecisionCommand {
-                    approved,
-                    memo: b.memo,
-                    expected_version: b.expected_version,
-                    through_step: b.through_step,
-                    step_up: b.step_up,
-                },
-            )
-            .await
-            .map_err(RestError::store)?,
+        &decide_step_as(
+            &s.store,
+            &p,
+            id,
+            step_id,
+            console_orgchange_domain::StepDecisionCommand {
+                approved,
+                memo: b.memo,
+                expected_version: b.expected_version,
+                through_step: b.through_step,
+                step_up: b.step_up,
+                reason_code: None,
+            },
+        )
+        .await?,
     )
+}
+
+/// The one way to a step decision: this route's permission floor, command
+/// and refusals, for a caller that already holds the request's principal
+/// (the approval document decides through it).
+///
+/// # Errors
+/// The refusal the step-decision route answers with.
+pub async fn decide_step_as(
+    store: &PgOrgChangeStore,
+    principal: &Principal,
+    id: Uuid,
+    step_id: Uuid,
+    command: console_orgchange_domain::StepDecisionCommand,
+) -> Result<console_orgchange_domain::OrgChangeDetail, OrgChangeRefusal> {
+    allow_approve(principal)?;
+    store
+        .decide_step_command(principal.user_id, id, step_id, command)
+        .await
+        .map_err(RestError::store)
 }
 
 pub(crate) async fn effectuate(
