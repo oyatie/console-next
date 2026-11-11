@@ -103,8 +103,10 @@ export function StructurePage({ proposal, panel, sheets }: {
         id: paneled.id,
         label: paneled.name,
         onClose: () => select(new Set()),
-        // The box or row the panel was opened from, in whichever view is shown.
-        returnFocus: () => document.getElementById(`node-${paneled.id}`) ?? document.getElementById(`outline-${paneled.id}`) ?? document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(paneled.id)}"]`),
+        // The box or row the panel was opened from, in whichever view is shown. A close from the view itself (Esc on
+        // a row or box) leaves focus where it is: returning it a frame later would pull it back from the next key press.
+        returnFocus: () => document.activeElement?.closest('[role="tree"], [role="grid"]') ? null
+          : document.getElementById(`node-${paneled.id}`) ?? document.getElementById(`outline-${paneled.id}`) ?? document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(paneled.id)}"]`),
         children: panel(paneled.id, tree.data!, cmd.readOnly),
       };
   const onFocus = (id: string | undefined) => void navigate({ search: (q) => ({ ...q, focus: id }) });
