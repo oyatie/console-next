@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# Checks workflow changes with actionlint (with shellcheck).
-name: workflows-check
+# Checks commit subjects and workflow changes together (actionlint includes shellcheck).
+name: Commit and workflow checks
 on:
   workflow_call:
 permissions: {}
@@ -17,5 +17,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Commit grammar and Git history regression tests
+        run: node --test scripts/check-commit-subjects.test.mjs
+      - name: Check every new commit subject
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        env:
+          COMMIT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          COMMIT_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          COMMIT_EVENT: ${{ github.event_name }}
+        run: node scripts/check-commit-subjects.mjs "$COMMIT_BASE" "$COMMIT_HEAD" "$COMMIT_EVENT"
       - name: actionlint
         run: docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color

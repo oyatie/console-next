@@ -142,6 +142,18 @@ test("committed timings contain settings and a floor, never per-spec measurement
   assert.ok(timings.defaultTestSeconds > 0);
 });
 
+test("the configured runner cap adds a sixth shard before measured headroom is exhausted", async () => {
+  const { planStates, filesForShard } = await load();
+  const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
+  const specs = Object.fromEntries(Array.from({ length: 126 }, (_, i) => [`mock/${i}.spec.ts`, { seconds: 30, tests: 10 }]));
+  const input = report(Object.fromEntries(Object.keys(specs).map(file => [file, 10])));
+  const measured = { workers: timings.workers, specs };
+  const planned = planStates(input, timings, measured);
+  assert.equal(planned.shards.length, 6);
+  assert.ok(planned.shards.every(s => s.seconds <= Math.floor(timings.runLimitSeconds / RUN_HEADROOM) * 0.85));
+  assert.deepEqual(planned.shards.flatMap(s => filesForShard(planned, s.id)).sort(), Object.keys(specs).map(f => `e2e/${f}`).sort());
+});
+
 test("CI checks capacity only on dev after publishing fresh measurements", () => {
   const steps = workflow.jobs["states-plan"].steps;
   assert.ok(steps.some(s => s.run?.includes("states-shards.mjs restore")));
