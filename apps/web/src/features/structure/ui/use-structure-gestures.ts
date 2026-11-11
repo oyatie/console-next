@@ -5,10 +5,10 @@ import { useUnitEdit } from "../../../reference/org/ui/use-unit-edit";
 import type { InlineUnitValues } from "../../../reference/org/api";
 import type { SetupOp } from "../api";
 import type { ChartNode, Structure } from "../domain/model";
-import { orderStep, parentOf, placeAfter, reorderedByDrag, transfers } from "../domain/rules";
-import { moveEffect } from "../present";
+import { orderStep, reorderedByDrag } from "../domain/rules";
 import type { ChartState } from "./use-chart-state";
 import type { Commands } from "./use-structure-commands";
+import { useStructureGesturesBare } from "./use-outline-edit";
 
 const route = getRouteApi("/app/org");
 const pin = (n: ChartNode) => ({ org_unit_id: n.id, expected_version: n.version ?? 1 });
@@ -31,6 +31,7 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
   const setup = s.phase === "SETUP";
   const readOnly = s.readOnly || cmd.readOnly;
   const canEdit = useUnitEdit(setup, readOnly);
+  const bare = useStructureGesturesBare(s, cmd);
   const propose = (n: ChartNode, act: "create" | "rename" | "move" | "dissolve") => {
     if (readOnly) return;
     if (act === "move") return void navigate({ to: "/org/move", search: { ids: n.id } });
@@ -67,21 +68,9 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     cmd.apply({ ops: [{ op: "RENAME", ...pin(n), name }], message: t("structure.receipt.renamed", { from: n.name, name }) });
   };
   const moveTo = (nodes: ChartNode[], target: ChartNode) => {
-    if (readOnly || !nodes.length) return;
-    // A legal entity or a workplace is dragged only to reorder it (at once in either phase): it lands right after the sibling it is dropped on.
-    if (reorderedByDrag(nodes[0]!)) {
-      const body = placeAfter(s, nodes[0]!, target);
-      return body && cmd.order(body, t("structureChart.drop.siteDone", { name: nodes[0]!.name, target: target.name }));
-    }
-    if (!setup) return propose(nodes[0]!, "move");
-    const moved = nodes.reduce((k, n) => k + transfers(n, target), 0);
-    const name = nodes.length === 1 ? nodes[0]!.name : t("structure.move.many", { count: nodes.length });
-    const sub = nodes.reduce((k, n) => k + n.children.length, 0);
     // The new parent opens, so the moved boxes are in view where they landed once the tree is read again.
-    c.toggle(target.id, true);
-    // Each moved box says where it came from until the receipt goes (S2-chart-moved).
-    const from = new Map(nodes.map((n) => [n.id, (n.parentId && s.byId.get(n.parentId)?.name) || ""]));
-    cmd.apply({ ops: nodes.map((n) => ({ op: "MOVE", ...pin(n), ...parentOf(target) })), message: t("structure.receipt.moved", { name, target: target.name, sub, moved }), moved: from });
+    if (!readOnly && setup && nodes[0] && !reorderedByDrag(nodes[0])) c.toggle(target.id, true);
+    bare.moveTo(nodes, target);
   };
   const dissolve = (nodes: ChartNode[]) => {
     if (readOnly || !nodes.length) return;
@@ -108,10 +97,5 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     c.setSel(new Set());
     ui.onFocus(n.kind === "tenant" ? undefined : n.id);
   };
-  const effect = (nodes: ChartNode[], overId: string) => {
-    const target = s.byId.get(overId);
-    if (target && nodes[0] && reorderedByDrag(nodes[0])) return t(nodes[0].kind === "entity" ? "structureChart.drop.entityAfter" : "structureChart.drop.siteAfter", { name: nodes[0].name, target: target.name });
-    return target ? moveEffect(nodes, target) : "";
-  };
-  return { canEdit, setup, add, create, rename, saveName, move, remove, moveTo, dissolve, dissolveOne, focusOn, merge, order, effect };
+  return { canEdit, setup, add, create, rename, saveName, move, remove, moveTo, dissolve, dissolveOne, focusOn, merge, order, effect: bare.effect };
 }

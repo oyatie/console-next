@@ -7,7 +7,7 @@ import { SiteSlot } from "./site-slot";
 import { buildStructure } from "../domain/model";
 import { OutlineView } from "./outline-view";
 import type { Commands } from "./use-structure-commands";
-vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useNavigate: () => vi.fn() }), Link: ({ children, to, hash, className }: { children: import("react").ReactNode; to: string; hash?: string; className?: string }) => <span data-href={`${to}${hash ? `#${hash}` : ""}`} className={className}>{children}</span> }));
+vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useNavigate: () => vi.fn() }), useNavigate: () => vi.fn(), Link: ({ children, to, hash, className }: { children: import("react").ReactNode; to: string; hash?: string; className?: string }) => <span data-href={`${to}${hash ? `#${hash}` : ""}`} className={className}>{children}</span> }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { steps: [] } }) }));
 beforeAll(() => loadCatalog("ko"));
 test("first run has one primary action and leaves importing to the header", () => {

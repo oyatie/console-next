@@ -10,8 +10,10 @@ import { Button } from "../../../ui/button/button";
 import { AddUnit } from "./add-unit";
 import { TextInput } from "../../../ui/field/field";
 import { place } from "../../../ui/org-canvas/place";
-import type { ChartNode, Structure } from "../domain/model";
-import { nameClash } from "../domain/rules";
+import { descendants, type ChartNode, type Structure } from "../domain/model";
+import { movable, nameClash, reorderedByDrag } from "../domain/rules";
+import { MovePicker } from "./move-picker";
+import { useDragMove } from "./use-drag-move";
 import { useStructureGesturesBare } from "./use-outline-edit";
 import type { Commands } from "./use-structure-commands";
 import { Chip } from "../../../ui/chip";
@@ -23,7 +25,9 @@ export type OutlineEdit = { kind: "new"; parent: string } | { kind: "rename"; id
 
 /**
  * The outline's rows (a tree of treeitems, roving focus): ↑↓ move, ←→ fold, Enter adds below, F2 renames, a click or
- * Space selects (the unit's panel opens beside the tree) and Esc clears the selection. While a
+ * Space selects (the unit's panel opens beside the tree) and Esc clears the selection. A department is dragged onto its
+ * new parent, a workplace or legal entity among its siblings; a line shows where it will land and M opens the same move
+ * as a picker (the keyboard twin, SC 2.5.7). While a
  * new row is typed, Tab nests it under the row above and Shift+Tab takes it out one level; a workplace row takes no
  * Tab (a workplace sits only right under its legal entity). Every save applies at once in setup.
  */
@@ -41,6 +45,13 @@ export function OutlineRows(p: {
 }) {
   const { s, cursor, edit } = p;
   const g = useStructureGesturesBare(s, p.cmd);
+  const [moving, setMoving] = useState<ChartNode[] | null>(null);
+  const open = (id: string) => p.setClosed(new Set([...p.closed].filter((x) => x !== id)));
+  // A department lands inside the row it is dropped on, so that row opens to show it.
+  const drag = useDragMove(s, p.sel, (nodes, target) => {
+    if (!reorderedByDrag(nodes[0]!)) open(target.id);
+    g.moveTo(nodes, target);
+  });
   const rows: ChartNode[] = [];
   const walk = (n: ChartNode) => {
     rows.push(n);
@@ -55,8 +66,16 @@ export function OutlineRows(p: {
     if (!edit && document.activeElement?.id !== "structure-find") document.getElementById(`outline-${cursor}`)?.focus({ preventScroll: false });
   }, [cursor, edit]);
 
+  // Where a drop would land: after the last shown row under the target, one level in for a department (it becomes the
+  // last child), at the target's own level for a workplace or legal entity (it takes the next place).
+  const over = drag.view?.over ? s.byId.get(drag.view.over) : undefined;
+  const verdict = over && drag.view!.verdicts.get(over.id);
+  const reorder = drag.view ? reorderedByDrag(drag.view.nodes[0]!) : false;
+  const below = over && verdict?.ok ? new Set(descendants(over).map((d) => d.id)) : undefined;
+  const lineAfter = below && over ? ([...rows].reverse().find((r) => below.has(r.id)) ?? over).id : undefined;
+
   const onKey = (e: KeyboardEvent) => {
-    if ((e.target as HTMLElement).closest("input, button, a")) return;
+    if (drag.view || (e.target as HTMLElement).closest("input, button, a")) return;
     const at = rows.findIndex((r) => r.id === cursor);
     const n = rows[at];
     if (!n) return;
@@ -74,6 +93,11 @@ export function OutlineRows(p: {
     } else if (key === "F2" && g.canEdit && n.kind === "dept") p.setEdit({ kind: "rename", id: n.id });
     else if (key === " ") p.onSelect(new Set([n.id]));
     else if (key === "Escape" && p.sel.size > 0) p.onSelect(new Set());
+    // By position, so a Korean layout moves too; in setup the picker asks where, after go-live the move page does.
+    else if (e.code === "KeyM" && !e.altKey && !e.ctrlKey && !e.metaKey && g.canEdit && movable(n)) {
+      if (g.setup) setMoving([n]);
+      else g.moveTo([n], n);
+    }
     else return;
     e.preventDefault();
   };
@@ -101,7 +125,9 @@ export function OutlineRows(p: {
   );
 
   return (
-    <div className={css.rows} role="tree" aria-label={t("structure.outline.label")} tabIndex={-1}>
+    <>
+    {/* While a drag is live its Esc cancels the drag; the column beside the tree must not take the key first. */}
+    <div className={css.rows} role="tree" aria-label={t("structure.outline.label")} tabIndex={-1} data-dragging={drag.view ? "" : undefined} data-escape-scope={drag.view ? "" : undefined}>
       <div className={css.colhead} aria-hidden><span>{t("structure.list.name")}</span><span title={t("structure.outline.levelHint")}>{t("structure.outline.levelCol")}</span><span>{t("orgUnit.stat.total")}</span></div>
       {rows.map((n) => {
         const renaming = edit?.kind === "rename" && edit.id === n.id;
@@ -119,6 +145,12 @@ export function OutlineRows(p: {
               data-scheduled={n.scheduledBy ? "true" : undefined}
               data-diff={n.diffMarks?.join(" ")}
               data-current={cursor === n.id || undefined}
+              data-box
+              data-id={n.id}
+              data-drop={drag.view?.over === n.id ? (verdict?.ok ? "ok" : "no") : undefined}
+              data-moving={drag.view?.moving.has(n.id) || undefined}
+              // A finger on this list scrolls it, so a drag starts from a mouse or a pen only; touch moves a unit from its panel.
+              onPointerDown={(e) => { if (e.pointerType !== "touch" && g.canEdit && !edit && !(e.target as HTMLElement).closest("input, button, a")) drag.onPointerDown(e, n.id); }}
               onFocus={() => p.setCursor(n.id)}
               onClick={(e) => {
                 p.setCursor(n.id);
@@ -136,6 +168,7 @@ export function OutlineRows(p: {
               <span className="num">{t("common.headcount", { count: n.headcount })}</span>
               {g.canEdit && <AddUnit n={n} onAdd={g.canEdit ? () => { p.setCursor(n.id); p.setClosed(new Set([...p.closed].filter((id) => id !== n.id))); p.setEdit({ kind: "new", parent: n.id }); } : undefined} />}
             </div>
+            {lineAfter === n.id && over && <div className={css.insert} role="presentation" data-insert ref={place({ "margin-left": (reorder ? over.depth - 1 : over.depth) * 24 })} />}
             {newHere && (
               <div className={css.row} data-new role="treeitem" aria-level={newParent.depth + 1} aria-label={t("structure.outline.newUnder", { parent: newParent.name })}>
                 <span className={css.name} ref={place({ "padding-left": newParent.depth * 24 })}>{input(newParent)}</span>
@@ -147,6 +180,9 @@ export function OutlineRows(p: {
         );
       })}
     </div>
+    {drag.view && <div className={`${css.row} muted`} role="status"><span className={css.dropHint}>{over ? (verdict?.ok ? g.effect(drag.view.nodes, over.id) : t(`structure.drop.${verdict?.reason ?? "here"}`)) : t("structure.outline.dropIdle")}</span></div>}
+    {moving && <MovePicker s={s} moving={moving} onClose={() => setMoving(null)} onMove={(target) => { open(target.id); g.moveTo(moving, target); setMoving(null); }} />}
+    </>
   );
 }
 
