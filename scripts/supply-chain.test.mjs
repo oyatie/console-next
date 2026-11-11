@@ -155,7 +155,7 @@ test("affected paths uses full history, the event base and the checked-out merge
 
 test("ci-ok requires the affected-path aggregate and its regression controls", () => {
   assert.equal(workflow.jobs["ci-ok"].if, "${{ always() }}");
-  assert.deepEqual([...workflow.jobs["ci-ok"].needs].sort(), ["affected", "backend", "backend-cache", "backend-gates", "backend-release", "backend-tests", "commits", "dev-artifacts", "home", "release-evidence", "states", "states-plan", "states-timings", "supply-chain", "web", "workflows"]);
+  assert.deepEqual([...workflow.jobs["ci-ok"].needs].sort(), ["affected", "backend", "backend-cache", "backend-gates", "backend-release", "backend-tests", "dev-artifacts", "home", "release-evidence", "states", "states-plan", "states-timings", "supply-chain", "web", "workflows"]);
   assert.ok(workflow.jobs.web.steps.some(s => s.run?.includes("node --test scripts/ci-backend.test.mjs")));
 });
 

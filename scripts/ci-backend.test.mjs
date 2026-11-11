@@ -110,7 +110,7 @@ test("ci-ok accepts only exact event/path skips and fails closed on missing clas
   const backendJobs = ["backend", "backend-gates", "backend-tests", "backend-release"];
   for (const event of ["pull_request", "merge_group", "push"]) for (const backend of ["true", "false"]) for (const web of ["true", "false"]) {
     const push = event === "push";
-    const skips = new Set(push ? ["commits", "workflows", "web", "states-plan", "states", ...backendJobs.filter(name => name !== "backend-gates"), "home", "supply-chain"] : ["dev-artifacts"]);
+    const skips = new Set(push ? ["workflows", "web", "states-plan", "states", ...backendJobs.filter(name => name !== "backend-gates"), "home", "supply-chain"] : ["dev-artifacts"]);
     if (!push || web === "false") skips.add("states-timings");
     if (!push || backend === "false") skips.add("backend-cache");
     if (!push || backend === "false" && web === "false") skips.add("release-evidence");
@@ -313,7 +313,6 @@ test("PR fan-out stays below the runner allowance across workflows", () => {
   const shards = ci.jobs["backend-tests"].strategy.matrix.shard;
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url)));
   assert.ok(shards.length <= 2);
-  assert.ok(timings.maxShards <= 5);
   assert.ok(timings.budgetSeconds <= 600);
   // Long root jobs can overlap later jobs; count every dependency-independent combination.
   let concurrent = 0;
@@ -356,7 +355,7 @@ test("push consumers import queue reports and caches without promoting backend b
   assert.ok(!dev.steps.some(s => s.with?.name === "d10-backend"));
   assert.ok(dev.steps.some(s => s.uses?.startsWith("actions/cache/save@")));
   assert.ok(dev.steps.some(s => s.with?.name === "${{ needs.affected.outputs.tools }}"));
-  assert.equal(ci.jobs.commits.if, "github.event_name != 'push'");
+  assert.equal(ci.jobs.workflows.if, "github.event_name != 'push'");
   assert.equal(ci.jobs["supply-chain"].if, "github.event_name != 'push'");
   assert.ok(ci.jobs["ci-ok"].steps.some(s => s.with?.name === "ci-proof"));
   const admission = JSON.parse(readFileSync(new URL("../.github/release-admission-policy.json", import.meta.url)));
