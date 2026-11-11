@@ -57,6 +57,18 @@ pub struct EmployeeCanonicalFields {
     pub leave_used: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub leave_remaining: Option<String>,
+    /// Days and hours worked in the run's pay period, as decimals: what a
+    /// column was mapped to. The payroll roster reads these, never a header.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub work_days: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub regular_hours: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overtime_hours: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub night_hours: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub holiday_hours: Option<String>,
     /// IMPORT-2: 재직상태, 휴직 시작일, 휴직 유형 cell text (typed by the dry run).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
