@@ -3,18 +3,21 @@ import { useStructureEdit } from "./use-structure-gestures";
 import { RegistryExportContext } from "./export-scope";
 import type { ChartNode } from "../domain/model";
 import type { OrgStructure } from "@console/api/pending";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { todayKst } from "../../../lib/pure/today";
 import { t } from "@console/i18n";
+import { focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { freshOnOpen, get } from "../../../lib/query";
+import { useNarrow } from "../../../ui/dock-sheet/use-narrow";
 import { EmptyState } from "../../../ui/empty-state";
+import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
 import { ChartView } from "./chart-view";
 import { FirstRun } from "./first-run";
 import { OutlineView } from "./outline-view";
-import { PageHead } from "./page-head";
+import { PageHead, type ViewCommands } from "./page-head";
 import { CompareResults } from "./compare-control";
 import { RegistryView } from "./registry-view";
 import { ChartSkeleton } from "./chart-skeleton";
@@ -28,9 +31,10 @@ const PROPOSAL_ACTS: readonly string[] = ["create", "rename", "move", "dissolve"
 
 /**
  * company structure (spec S1): one page, three views of the same tree and the same selection (org chart · list · outline), the
- * phase stated in the head. An empty tenant shows the first run
- * (S10) in the chart's place. One selected box opens its side panel (S5 workplace, S6 department) and its acts open the structure
- * sheets over the page; a proposal card a link names (`?act=create` …) opens in the panel slot instead.
+ * phase stated in the head, one toolbar for all three. An empty tenant shows the first run (S10) in the chart's place.
+ * One selected workplace or department opens its panel (S5, S6) as the column beside the view, in every view, and its
+ * acts open the structure sheets over the page; a proposal card a link names (`?act=create` …) takes that column instead.
+ * Below 960 px the chart keeps the panel under it, so a box and its tools stay on screen while it is selected.
  */
 export function StructurePage({ proposal, panel, sheets }: {
   /** The proposal card for `?act=` (the org slice). */
@@ -42,6 +46,9 @@ export function StructurePage({ proposal, panel, sheets }: {
 }) {
   const search = route.useSearch();
   const [exportRows, setExportRows] = useState<readonly ChartNode[] | null>(null);
+  const [find, setFind] = useState("");
+  const commands = useRef<ViewCommands>(null);
+  const narrow = useNarrow();
   const { view = "chart", focus, act, sel: picked } = search;
   const navigate = route.useNavigate();
   const { s, tree, ready, diff } = useStructure(search);
@@ -88,27 +95,43 @@ export function StructurePage({ proposal, panel, sheets }: {
   };
   const proposing = Boolean(act && PROPOSAL_ACTS.includes(act) && (!s?.readOnly || (act === "create" && s?.asOf && s.asOf > todayKst() && !s.knownAt && !diff)));
   // Reserve the selected panel in the click's render, before its URL write arrives and moves the chart controls.
-  const paneled = Boolean(url.last && sel.size === 1 && view === "chart" && ["site", "dept"].includes(s?.byId.get(url.last)?.kind ?? ""));
+  const one = url.last && sel.size === 1 ? s?.byId.get(url.last) : undefined;
+  const paneled = one && (one.kind === "site" || one.kind === "dept") && tree.data ? one : undefined;
+  const stacked = view === "chart" && narrow;
+  const side = proposing ? { id: "proposal", label: t("structure.side"), onClose: () => void navigate({ search: (q) => ({ ...q, act: undefined }), replace: true }), children: proposal }
+    : paneled && {
+        id: paneled.id,
+        label: paneled.name,
+        onClose: () => select(new Set()),
+        // The box or row the panel was opened from, in whichever view is shown.
+        returnFocus: () => document.getElementById(`node-${paneled.id}`) ?? document.getElementById(`outline-${paneled.id}`) ?? document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(paneled.id)}"]`),
+        children: panel(paneled.id, tree.data!, cmd.readOnly),
+      };
   const onFocus = (id: string | undefined) => void navigate({ search: (q) => ({ ...q, focus: id }) });
   const empty = s && s.root.children.length === 0;
   return (
     <UnitEdit.Provider value={canEdit}>
     <RegistryExportContext.Provider value={view === "list" ? exportRows : null}>
     <div className={css.page}>
-      <PageHead s={s} view={view} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} />
+      <PageHead s={s} view={view} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} find={find} onFind={setFind} commands={commands} inline={canEdit} />
       {!ready.error && dates.isError && <QueryState q={dates} inline own={() => t("asof.error")}>{() => null}</QueryState>}
       <QueryState q={pageRead} loading={<ChartSkeleton />}>{() => <>
       <div className={css.body}>
-          {
+        {/* No list-follow here: the tree moves its own cursor, and the list's checkboxes are a multi-selection that focus must not replace. */}
+        <FlexibleColumns
+          onFind={() => focusSoon("structure-find")}
+          record={!stacked && side}
+          list={<div className={css.view}>
+            {
               !s ? null
               : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
-              : view === "list" ? <RegistryView s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
-              : view === "outline" ? <OutlineView s={s} cmd={cmd} sel={sel} onSelect={select} />
-              : <ChartView key={focus ?? "tenant"} pick={jump} covered={Boolean(act)} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
+              : view === "list" ? <RegistryView ref={commands} find={find} s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
+              : view === "outline" ? <OutlineView ref={commands} find={find} follow={!act} pick={jump} s={s} cmd={cmd} sel={sel} onSelect={select} />
+              : <ChartView ref={commands} find={find} key={focus ?? "tenant"} pick={jump} covered={Boolean(act)} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
             }
-
-        {proposing ? <aside className={css.side} aria-label={t("structure.side")}>{proposal}</aside>
-          : paneled && tree.data ? <div className={css.side}>{panel(url.last!, tree.data, cmd.readOnly)}</div> : null}
+            {stacked && side && (proposing ? <aside className={css.side} aria-label={side.label}>{side.children}</aside> : <div className={css.side}>{side.children}</div>)}
+          </div>}
+        />
       </div>
       {!cmd.readOnly && sheets}
     {/* Late comparison records follow the full-height chart so they cannot shrink its canvas. */}
