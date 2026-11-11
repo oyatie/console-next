@@ -54851,13 +54851,7 @@ components:
       type: object
       required:
       - items
-      - soleHolderNotices
       properties:
-        soleHolderNotices:
-          type: integer
-          format: int64
-          minimum: 0
-          description: Unread governed solo-unlock notices addressed to the current account.
         items:
           type: array
           items:

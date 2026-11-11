@@ -68,7 +68,6 @@ export const enPeriodLocks: Partial<Record<keyof typeof koPeriodLocks, string>> 
   "periodLocks.unlock.commit": "Confirm with passkey and unlock",
   "periodLocks.unlock.review": "With no other close authority it is flagged for review.",
   "periodLocks.unlock.reviewChip": "Needs review",
-  "periodLocks.unlock.notices": "{count, plural, one {# solo unlock notice} other {# solo unlock notices}}",
   "periodLocks.unlock.approved": "Confirmed by another close authority",
   "periodLocks.relockNow": "Lock {domain} {period} again now",
   // Refused for a closed period, named (UX-R1-HOME)

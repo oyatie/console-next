@@ -2,13 +2,13 @@
 import { expect, test } from "@playwright/test";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { failure } from "../mock/fixtures";
+import { failure, id, inbox } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
 for (const locale of ["ko", "en"] as const) for (const state of ["populated", "empty", "loading", "failed"] as const) {
-  test(`period unlock notices: ${state} in ${locale} at 390px in dark mode @ui-state`, async ({ page }) => {
+  test(`period unlock inbox: ${state} in ${locale} at 390px in dark mode @ui-state`, async ({ page }) => {
     await loadCatalog(locale);
     i18n.set(locale);
     await page.addInitScript(value => localStorage.setItem("console.locale", value), locale);
@@ -20,11 +20,13 @@ for (const locale of ["ko", "en"] as const) for (const state of ["populated", "e
     let reads = 0;
     let recovered = false;
     const held = new Promise<void>(resolve => { release = resolve; });
+    // A cached response from the retired count contract must not restore a second task surface.
+    const legacyLocks = { items: [], soleHolderNotices: 3 };
     await mockRoute(page, "get", "/api/v1/period-locks", async () => {
       reads++;
       if (state === "loading") await held;
       return state === "failed" && !recovered ? { status: 503, json: failure("service_unavailable") } : {
-        status: 200, json: { items: [], soleHolderNotices: state === "empty" && !recovered ? 0 : 3 },
+        status: 200, json: legacyLocks,
       };
     });
     await page.goto("/people/period-locks");
@@ -41,17 +43,27 @@ for (const locale of ["ko", "en"] as const) for (const state of ["populated", "e
       await expect(retry).toBeVisible({ timeout: test.info().timeout });
       recovered = true;
       await retry.click();
-    } else if (state === "empty") {
-      await expect(page.getByText(/단독 해제 알림|solo unlock notices/)).toHaveCount(0);
-      recovered = true;
-      await page.reload();
     }
     const unlocked = page.getByRole("button", { name: t("periodLocks.view.unlocked", { count: 0 }) });
-    await expect(unlocked.locator(".chip--warn")).toHaveText(t("periodLocks.unlock.notices", { count: 3 }));
+    await expect(unlocked).toBeVisible();
+    await expect(unlocked.locator(".chip--warn")).toHaveCount(0);
     await unlocked.click();
     await expect(unlocked).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("heading", { name: t("periodLocks.unlocked.section", { count: 0 }), exact: true })).toBeVisible();
-    await fits(page, `period unlock notices/${state}`);
-    await expectAxe(page, `period unlock notices/${state}`);
+    await fits(page, `period locks/${state}`);
+    await expectAxe(page, `period locks/${state}`);
+    await page.screenshot({ path: test.info().outputPath("period-locks.png"), fullPage: true });
+    const data = inbox(1);
+    data.items[0] = { ...data.items[0]!, id: `period_unlock:${id(901)}`, kind: "period_unlock",
+      title: "해제 요청자", links: [{ kind: "period_lock", id: id(900) }],
+      context: { unlock: { domain: "payroll", periodStart: "2026-06-01", periodEnd: "2026-06-30", requester: "해제 요청자", reason_code: "RETRO_CORRECTION" } } };
+    await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: data });
+    await page.goto("/inbox");
+    const item = page.locator(`[data-id="${data.items[0]!.id}"]`);
+    await expect(item).toContainText("해제 요청자");
+    await expect(item.getByRole("link").first()).toHaveAttribute("href", `/people/period-locks?review=${id(900)}`);
+    await fits(page, `period unlock inbox/${state}`);
+    await expectAxe(page, `period unlock inbox/${state}`);
+    await page.screenshot({ path: test.info().outputPath("inbox.png"), fullPage: true });
   });
 }

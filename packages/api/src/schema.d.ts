@@ -26105,11 +26105,6 @@ export interface components {
             unlockRequest?: components["schemas"]["PeriodUnlockRequestState"];
         };
         PeriodLockList: {
-            /**
-             * Format: int64
-             * @description Unread governed solo-unlock notices addressed to the current account.
-             */
-            soleHolderNotices: number;
             items: components["schemas"]["PeriodLock"][];
         };
         PeriodUnlockOutcome: {

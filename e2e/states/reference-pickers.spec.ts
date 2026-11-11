@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
-import { loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { AT, authz, id, user } from "../mock/fixtures";
 import { orgPanelReads } from "../mock/org-work";
@@ -19,7 +19,7 @@ const units: components["schemas"]["OrgUnitHead"][] = ([
   effectiveFrom: "2026-01-01", headcount: 1, updatedAt: AT,
 }));
 
-test.beforeAll(() => loadCatalog("ko"));
+test.beforeAll(async () => { await loadCatalog("ko"); i18n.set("ko"); });
 
 for (const host of ["move", "reassign", "bulk"] as const) for (const width of [1440, 390]) {
   test(`unit list exposes its surroundings in ${host} at ${width}px @ui-state`, async ({ page }, info) => {

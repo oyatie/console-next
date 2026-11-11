@@ -96,39 +96,15 @@ pub(super) async fn list_period_locks(
     let active = query.active;
     let org = principal.org_id;
 
-    let response = with_org_conn::<_, _, LifecycleError>(&state.pool, org, move |tx| {
+    let items = with_org_conn::<_, _, LifecycleError>(&state.pool, org, move |tx| {
         Box::pin(async move {
-            let recipient = *principal.user_id.as_uuid();
-            let access =
-                console_platform_authz::cedar_pbac::visible::load_facts(tx, org, recipient)
-                    .await
-                    .map_err(LifecycleError::from_kernel)?;
-            let allowed = access
-                .authorize_period_unlock_notice_count(org, recipient)
-                .map_err(|error| LifecycleError::from_kernel(KernelError::internal(error)))?;
-            if !allowed {
-                return Err(LifecycleError::from_kernel(
-                    KernelError::forbidden("notice count refused").with_code("access_denied"),
-                ));
-            }
-            let sole_holder_notices = sqlx::query_scalar(
-                "SELECT count(*) FROM notifications WHERE org_id=$1 AND recipient_user_id=$2 \
-                 AND category='period_lock.sole_holder' AND unread",
-            )
-            .bind(org.as_uuid())
-            .bind(recipient)
-            .fetch_one(tx.as_mut())
-            .await?;
             let mut items = list_locks(tx, domain, limit, active).await?;
             attach_unlock_requests(tx, &principal, &mut items).await?;
-            Ok(PeriodLockListResponse {
-                items,
-                sole_holder_notices,
-            })
+            Ok(items)
         })
     })
     .await?;
-    Ok(Json(response))
+    Ok(Json(PeriodLockListResponse { items }))
 }
 
 pub(super) async fn create_period_lock(

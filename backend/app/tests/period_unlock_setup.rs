@@ -7,7 +7,7 @@ mod period_unlock_support;
 use console_kernel_core::OrgId;
 use console_platform_test_support::soft_passkey::passkey_service;
 use http::StatusCode;
-use period_unlock_support::{LOCKS, admin_in, read, router, send, step_up};
+use period_unlock_support::{LOCKS, admin_in, router, send, step_up};
 use serde_json::json;
 use sqlx::PgPool;
 use time::format_description::well_known::Rfc3339;
@@ -56,11 +56,6 @@ async fn setup_with_ops_and_one_linked_admin_unlocks_via_solo_review(owner: PgPo
     .await
     .unwrap();
     assert_eq!(exception, (human.id, id, "RECORDED".to_owned()));
-    for token in [&human.token, &ops.token] {
-        let (status, page) = read(&service, LOCKS, token).await;
-        assert_eq!(status, StatusCode::OK, "{page}");
-        assert_eq!(page["soleHolderNotices"], 1, "{page}");
-    }
     // The linked human prevents unbound ops from taking the setup solo exception.
     let (status, refused) = send(
         &service,
@@ -185,40 +180,6 @@ async fn setup_counts_only_reviewed_employee_bound_second_people(owner: PgPool) 
             assert_eq!(outcome["lock"]["unlockReviewRequired"], true);
         }
     }
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn notice_count_excludes_read_notifications(owner: PgPool) {
-    let (service, issuer) = router(&owner).await;
-    let svc = passkey_service();
-    let org = setup_tenant(&owner).await;
-    let human = admin_in(&owner, &svc, &issuer, org, "관리자").await;
-    sqlx::query(
-        "INSERT INTO notifications (org_id,recipient_user_id,category,body,unread,read_at) \
-         VALUES ($1,$2,'period_lock.sole_holder','Unread unlock',true,NULL), \
-                ($1,$2,'period_lock.sole_holder','Read unlock',false,now())",
-    )
-    .bind(org.as_uuid())
-    .bind(human.id)
-    .execute(&owner)
-    .await
-    .unwrap();
-    let (status, page) = read(&service, LOCKS, &human.token).await;
-    assert_eq!(status, StatusCode::OK, "{page}");
-    assert_eq!(page["soleHolderNotices"], 1, "{page}");
-
-    sqlx::query(
-        "UPDATE notifications SET unread=false,read_at=now() \
-         WHERE org_id=$1 AND recipient_user_id=$2 AND unread",
-    )
-    .bind(org.as_uuid())
-    .bind(human.id)
-    .execute(&owner)
-    .await
-    .unwrap();
-    let (status, page) = read(&service, LOCKS, &human.token).await;
-    assert_eq!(status, StatusCode::OK, "{page}");
-    assert_eq!(page["soleHolderNotices"], 0, "{page}");
 }
 
 async fn setup_tenant(owner: &PgPool) -> OrgId {

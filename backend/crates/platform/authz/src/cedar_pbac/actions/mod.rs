@@ -60,7 +60,6 @@ pub mod platform_listing;
 pub mod grant_notice;
 pub mod period_unlock;
 pub mod period_unlock_decide;
-pub(crate) mod period_unlock_notice_count;
 // --- lane: LC-B3 ---
 pub mod lifecycle_event;
 pub mod lifecycle_item;

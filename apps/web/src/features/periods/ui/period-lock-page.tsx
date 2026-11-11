@@ -6,7 +6,6 @@ import { fmtDateTime } from "@console/i18n/format";
 import { focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { EmptyState } from "../../../ui/empty-state";
-import { Chip } from "../../../ui/chip";
 import { Card } from "../../../ui/card/card";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { Receipt } from "../../../ui/receipt/receipt";
@@ -48,7 +47,6 @@ export function PeriodLockPage() {
   const [preset, setPreset] = useState<{ domain: Domain; month: string } | null>(null);
   const [receipt, setReceipt] = useState<{ message: string; at: string } | null>(null);
   const items = locks.data?.items ?? [];
-  const noticeCount = locks.data?.soleHolderNotices ?? 0;
   const rows = { active: items.filter(inForce), unlocked: items.filter((l) => !inForce(l)) };
   // Open by default while nothing is locked; after that it follows the head button.
   const open = formOpen ?? (locks.isSuccess && rows.active.length === 0);
@@ -135,7 +133,6 @@ export function PeriodLockPage() {
                 {(["active", "unlocked"] as const).map((v) => (
                   <ToggleButton key={v} size="sm" pressed={view === v} onClick={() => setView(v)}>
                     {t(`periodLocks.view.${v}`, { count: rows[v].length })}
-                    {v === "unlocked" && noticeCount > 0 && <Chip tone="warn">{t("periodLocks.unlock.notices", { count: noticeCount })}</Chip>}
                   </ToggleButton>
                 ))}
               </div>
