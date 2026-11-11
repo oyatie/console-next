@@ -79,11 +79,13 @@ pub(crate) async fn page(
     principal: &Principal,
     query: ActionInboxSourceQuery,
     policy: Option<DecisionPolicy>,
+    authorization: &console_platform_request_context::Authorization,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     if !holds(principal, Feature::OrgChangeRead) {
         return Ok(super::super::empty_source_page());
     }
     let principal = principal.clone();
+    let authorization = authorization.clone();
     let org = principal.org_id;
     let draft = holds(&principal, Feature::OrgChangeDraft);
     let apply_others = holds(&principal, Feature::OrgChangeApply);
@@ -96,8 +98,10 @@ pub(crate) async fn page(
     };
     let (rows, total, decisions) = with_org_conn::<_, _, AppError>(pool, org, move |tx| {
         Box::pin(async move {
-            let facts: HashMap<_, _> = console_orgchange_adapter_postgres::step_decision_facts_in_tx(
+            let access = authorization.get_in(tx, org, *principal.user_id.as_uuid()).await.map_err(|e| AppError::Internal(e.to_string()))?;
+            let facts: HashMap<_, _> = console_orgchange_adapter_postgres::step_decision_facts_with_access_in_tx(
                 tx, org, principal.user_id, console_orgchange_adapter_postgres::StepDecisionScope::OpenQueue,
+                &access,
             ).await.map_err(|e| AppError::Internal(e.to_string()))?
                 .into_iter().map(|row| (row.id, row)).collect();
             let approve: Vec<Uuid> = facts.iter().filter_map(|(id, row)| {
@@ -144,7 +148,7 @@ pub(crate) async fn page(
             let ids = rows.iter().take(query.limit)
                 .filter(|row| matches!(row.kind.as_str(), "org_change_approve" | "org_change_waiting"))
                 .map(|row| row.id).collect();
-            let decisions = super::super::decisions::load(tx, &principal, ids, facts.into_iter().map(|(id, row)| (id, row.decision)).collect(), policy).await?;
+            let decisions = super::super::decisions::load(tx, &principal, ids, facts.into_iter().map(|(id, row)| (id, row.decision)).collect(), policy, &access).await?;
             Ok((rows, count, decisions))
         })
     })

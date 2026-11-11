@@ -22,6 +22,9 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod access;
+pub use access::current_access_snapshot;
+mod authorization;
+pub use authorization::Authorization;
 mod current_claims;
 pub use current_claims::{validate_current_claims, validate_current_claims_in_tx};
 pub mod audit_context;

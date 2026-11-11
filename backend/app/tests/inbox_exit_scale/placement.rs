@@ -108,9 +108,15 @@ async fn scoped_directory_home_and_exit_actions_share_the_current_node(pool: PgP
             .fetch_one(&pool)
             .await
             .unwrap();
-        let home = page(&runtime, &p, query(now, 5), &Default::default())
-            .await
-            .unwrap();
+        let home = page(
+            &runtime,
+            &p,
+            query(now, 5),
+            &Default::default(),
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             home.items.iter().any(|i| i.id == format!("hr_exit:{case}")),
             allowed,
@@ -158,10 +164,16 @@ async fn no_directory_read_anywhere_costs_zero_statements(pool: PgPool) {
                 .is_none()
         );
         let queries = trail_queries::Queries::default();
-        let result = page(&runtime, &p, query(now, 5), &Default::default())
-            .with_subscriber(queries.clone())
-            .await
-            .unwrap();
+        let result = page(
+            &runtime,
+            &p,
+            query(now, 5),
+            &Default::default(),
+            &Default::default(),
+        )
+        .with_subscriber(queries.clone())
+        .await
+        .unwrap();
         assert!(result.items.is_empty());
         assert!(result.total_is_exact);
         assert_eq!(queries.statements().len(), 0, "exit grant={exit_grant}");
@@ -193,6 +205,7 @@ async fn hidden_first_batches_do_not_lose_the_last_visible_case(pool: PgPool) {
         &runtime_role_pool(&pool).await,
         &p,
         query(now, 5),
+        &Default::default(),
         &Default::default(),
     )
     .await

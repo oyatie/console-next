@@ -6,9 +6,7 @@ use console_action_inbox_application::{
 };
 use console_kernel_core::KernelError;
 use console_platform_authz::{
-    Principal,
-    access::cedar::PRIVACY_REQUEST_INTAKE_READ,
-    cedar_pbac::visible::{EmployeePlacement, load_facts},
+    Principal, access::cedar::PRIVACY_REQUEST_INTAKE_READ, cedar_pbac::visible::EmployeePlacement,
 };
 use sqlx::PgPool;
 use time::{Date, OffsetDateTime, Time};
@@ -36,6 +34,7 @@ pub(crate) async fn page(
     principal: &Principal,
     query: ActionInboxSourceQuery,
     permission: &tokio::sync::OnceCell<bool>,
+    authorization: &console_platform_request_context::Authorization,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     let mut tx = pool.begin().await.map_err(failure)?;
     sqlx::query("SELECT set_config('app.current_org',$1,true)")
@@ -43,7 +42,9 @@ pub(crate) async fn page(
         .execute(tx.as_mut())
         .await
         .map_err(failure)?;
-    let facts = load_facts(&mut tx, principal.org_id, *principal.user_id.as_uuid()).await?;
+    let facts = authorization
+        .get_in(&mut tx, principal.org_id, *principal.user_id.as_uuid())
+        .await?;
     let nodes = facts
         .permitted_nodes(PRIVACY_REQUEST_INTAKE_READ)
         .map_err(failure)?;

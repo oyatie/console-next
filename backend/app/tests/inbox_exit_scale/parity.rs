@@ -144,9 +144,15 @@ async fn home_matches_confirm_and_preflight_for_every_placement_and_legacy_role(
             .fetch_one(&pool)
             .await
             .unwrap();
-        let home = page(&runtime, &p, query(now, 20), &Default::default())
-            .await
-            .unwrap();
+        let home = page(
+            &runtime,
+            &p,
+            query(now, 20),
+            &Default::default(),
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         let listed = home.items.iter().any(|i| i.id == format!("hr_exit:{case}"));
         let hr = HrService::new(runtime.clone());
         let preflight = hr
@@ -201,9 +207,15 @@ async fn exit_permit_without_directory_read_never_discloses_the_person(pool: PgP
         .fetch_one(&pool)
         .await
         .unwrap();
-    let home = page(&runtime, &p, query(now, 20), &Default::default())
-        .await
-        .unwrap();
+    let home = page(
+        &runtime,
+        &p,
+        query(now, 20),
+        &Default::default(),
+        &Default::default(),
+    )
+    .await
+    .unwrap();
     assert_eq!(
         home.items.len(),
         1,
@@ -263,6 +275,7 @@ async fn deadlines_follow_the_configured_workplace_time_zone(pool: PgPool) {
         &runtime_role_pool(&pool).await,
         &p,
         query(now, 20),
+        &Default::default(),
         &Default::default(),
     )
     .await

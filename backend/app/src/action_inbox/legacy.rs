@@ -172,6 +172,7 @@ impl PgActionInboxSources {
     ) -> Result<ActionInboxSourcePage, KernelError> {
         let store = PgPayrollStore::new(self.pool.clone());
         let facts_store = store.clone();
+        let authorization = self.authorization.clone();
         let (org, actor) = (self.principal.org_id, self.principal.user_id);
         let allowed = console_platform_db::with_org_conn::<
             _,
@@ -179,14 +180,12 @@ impl PgActionInboxSources {
             console_payroll_adapter_postgres::PgPayrollError,
         >(&self.pool, org, move |tx| {
             Box::pin(async move {
-                use console_platform_authz::cedar_pbac::visible::{
-                    load_facts, require_payroll_module,
-                };
+                use console_platform_authz::cedar_pbac::visible::require_payroll_module;
                 match require_payroll_module(tx, org, *actor.as_uuid(), &facts_store).await {
                     Err(error) if error.code == Some("module_disabled") => return Ok(false),
                     result => result?,
                 }
-                let facts = load_facts(tx, org, *actor.as_uuid()).await?;
+                let facts = authorization.get_in(tx, org, *actor.as_uuid()).await?;
                 facts
                     .authorize(
                         Feature::PayrollRunManage.as_str(),

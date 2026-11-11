@@ -13,7 +13,7 @@ use console_platform_authz::PlatformPrincipal;
 use console_platform_authz::cedar_pbac::actions::support_session::{
     self, Action, Facts, PrincipalKind,
 };
-use console_platform_authz::cedar_pbac::visible::{load_facts, load_operator_facts};
+use console_platform_authz::cedar_pbac::visible::{DecisionFacts, load_facts, load_operator_facts};
 use console_platform_db::support::{self, SupportError};
 use console_settings_domain::{SettingKey, SettingValue};
 use serde_json::{Value, json};
@@ -56,7 +56,20 @@ pub async fn tenant_support_permission(
     let facts = load_facts(tx, org, user)
         .await
         .map_err(|e| SupportError::Refused(e.kind.code()))?;
-    let facts = facts
+    tenant_support_permission_with_facts(tx, org, user, &facts).await
+}
+
+/// Reuse the inbox's account snapshot; session actions keep their native Cedar checks.
+pub async fn tenant_support_permission_with_facts(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    user: Uuid,
+    access: &DecisionFacts,
+) -> Result<bool, SupportError> {
+    access
+        .access_permissions(org, user)
+        .map_err(|e| SupportError::Refused(e.kind.code()))?;
+    let facts = access
         .support_session(tx, None)
         .await
         .map_err(|_| SupportError::Refused("internal"))?;

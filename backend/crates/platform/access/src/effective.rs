@@ -52,7 +52,14 @@ async fn effective_of(
         .ok_or_else(|| AccessError::not_found("account_not_found", "no such account"))?;
     let now = OffsetDateTime::now_utc();
     let phase = load_tenant_phase(tx, org).await?;
-    let subject = load_access_subject(tx, org, account, now).await?;
+    let cached = console_platform_request_context::current_access_snapshot(org, account);
+    let loaded;
+    let subject = if let Some(access) = &cached {
+        access.subject()
+    } else {
+        loaded = load_access_subject(tx, org, account, now).await?;
+        &loaded
+    };
     let held: BTreeMap<Uuid, _> = subject
         .grants
         .iter()
@@ -60,7 +67,13 @@ async fn effective_of(
         .collect();
     let support_ref = console_platform_request_context::current_audit_context()
         .map(|context| context.trace.trace_id().to_owned());
-    let slice = fail_closed_decision(AccessSlice::compile(&subject), support_ref.as_deref());
+    let compiled;
+    let slice = if let Some(access) = &cached {
+        fail_closed_decision(access.slice(), support_ref.as_deref())
+    } else {
+        compiled = fail_closed_decision(AccessSlice::compile(subject), support_ref.as_deref());
+        compiled.as_ref()
+    };
     let mut decisions = serde_json::Map::new();
     if account_active && let Some(slice) = slice.as_ref() {
         for action in [BULK_APPOINTMENT, SETTINGS_MANAGE] {

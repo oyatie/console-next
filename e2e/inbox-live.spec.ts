@@ -56,8 +56,8 @@ test("one server queue supplies Home and every inbox filter and holds remote res
   expect(body.unavailable).toEqual([]);
   expect(body.items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "org_change_draft", links: expect.arrayContaining([expect.objectContaining({ kind: "org_change", id: draft.id })]) })]));
   const draftItem = body.items.find(item => item.links.some(link => link.kind === "org_change" && link.id === draft.id))!;
-  for (let read = 0; read < 3; read++) {
-    const response = await api(`${INBOX_API}?filter=turn`);
+  const concurrentReads = await Promise.all(Array.from({ length: 3 }, () => api(`${INBOX_API}?filter=turn`)));
+  for (const response of concurrentReads) {
     expect(response.status()).toBe(200);
     const queue = await response.json() as Inbox;
     expect(queue.unavailable).toEqual([]);

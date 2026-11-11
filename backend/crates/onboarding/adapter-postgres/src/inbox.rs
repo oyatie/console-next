@@ -1,17 +1,31 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! The inbox needs readiness details only when the viewer has setup actions.
 use super::*;
-use console_platform_authz::access::{AccessSlice, AccessSubject};
+use console_kernel_core::KernelError;
+use console_platform_authz::{
+    access::{AccessSlice, AccessSubject},
+    cedar_pbac::visible::DecisionFacts,
+};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 impl PgOnboardingStore {
     /// Read setup details only when the current viewer can act on the setup rail.
     ///
     /// # Errors
     /// Database faults or a refused checklist read.
-    pub async fn actionable_checklist(
+    pub async fn actionable_checklist<F>(
         &self,
         actor: &OnboardingActor,
-    ) -> Result<Option<Checklist>, PgOnboardingError> {
+        authorization: F,
+    ) -> Result<Option<Checklist>, PgOnboardingError>
+    where
+        F: for<'a> FnOnce(
+                &'a mut Transaction<'_, Postgres>,
+            ) -> Pin<
+                Box<dyn Future<Output = Result<Arc<DecisionFacts>, KernelError>> + Send + 'a>,
+            > + Send
+            + 'static,
+    {
         let viewer = actor.clone();
         let result = with_org_conn(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
@@ -19,14 +33,16 @@ impl PgOnboardingStore {
                 if phase != TenantPhase::Setup {
                     return Ok(None);
                 }
-                let (subject, slice) = viewer::load_permissions(tx, &viewer).await?;
+                let access = authorization(tx).await?;
+                let (subject, slice) =
+                    access.access_permissions(viewer.org, *viewer.user.as_uuid())?;
                 let mut candidate =
                     checklist(&facts::permission_facts(tx, viewer.org, true).await?);
-                viewer::apply_permissions(&subject, &slice, &mut candidate)?;
+                viewer::apply_permissions(subject, slice, &mut candidate)?;
                 if !candidate.steps.iter().any(|step| step.can_act) {
                     return Ok(None);
                 }
-                read_checklist(tx, &viewer, phase, &subject, &slice)
+                read_checklist(tx, &viewer, phase, subject, slice)
                     .await
                     .map(Some)
             })

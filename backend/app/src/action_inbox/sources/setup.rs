@@ -12,6 +12,7 @@ use time::OffsetDateTime;
 pub(crate) async fn load(
     pool: &sqlx::PgPool,
     principal: &Principal,
+    authorization: &console_platform_request_context::Authorization,
 ) -> Result<Option<Value>, KernelError> {
     let actor = OnboardingActor {
         org: principal.org_id,
@@ -23,8 +24,12 @@ pub(crate) async fn load(
             .collect(),
         trace: TraceContext::generate(),
     };
+    let authorization = authorization.clone();
+    let (org, user) = (actor.org, actor.user);
     let checklist = match PgOnboardingStore::new(pool.clone())
-        .actionable_checklist(&actor)
+        .actionable_checklist(&actor, move |tx| {
+            Box::pin(async move { authorization.get_in(tx, org, *user.as_uuid()).await })
+        })
         .await
     {
         Ok(Some(c)) => c,

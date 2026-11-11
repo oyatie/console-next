@@ -55,6 +55,7 @@ impl WorkbenchReaders for NativeWorkbenchReaders {
                 context.as_of,
                 context.limits.action,
                 self.read_permits.clone(),
+                context.authorization,
             )
             .await
         })

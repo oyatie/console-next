@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn employee_node_uses_the_most_specific_placement_including_tenant_fallback() {
-        use crate::access::{AccessSlice, AccessSubject, NodePath};
+        use crate::access::{AccessSnapshot, AccessSubject, NodePath};
         use console_kernel_core::TenantPhase;
 
         let org = OrgId::new();
@@ -169,15 +169,15 @@ mod tests {
             kind: NodeKind::Tenant,
             id: *org.as_uuid(),
         };
+        let subject = AccessSubject {
+            org,
+            account: actor,
+            is_ops: false,
+            phase: TenantPhase::Operating,
+            grants: Vec::new(),
+        };
         let mut facts = DecisionFacts {
-            slice: AccessSlice::compile(&AccessSubject {
-                org,
-                account: actor,
-                is_ops: false,
-                phase: TenantPhase::Operating,
-                grants: Vec::new(),
-            })
-            .unwrap(),
+            access: std::sync::Arc::new(AccessSnapshot::new(subject)),
             paths: [
                 (NodeKind::Department, department),
                 (NodeKind::Workplace, workplace),

@@ -8,7 +8,6 @@ use console_hr_adapter_postgres::authz::{HrCaseFacts, exit_hq_second_person};
 use console_hr_adapter_postgres::own_record::{OwnRecord, own_record_decision};
 use console_hr_adapter_postgres::{HrError, exits::settlement_deadlines};
 use console_kernel_core::KernelError;
-use console_platform_authz::cedar_pbac::visible::load_facts;
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_org_conn;
 use console_settings_adapter_postgres::approval_routes_in_tx;
@@ -39,6 +38,7 @@ pub(crate) async fn page(
     principal: &Principal,
     query: ActionInboxSourceQuery,
     register: &super::super::request_register::Register,
+    authorization: &console_platform_request_context::Authorization,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     // No node can permit directory disclosure without a projected Cedar grant or ops.
     if principal
@@ -53,6 +53,7 @@ pub(crate) async fn page(
     let org = reader.org_id;
     let input = query.clone();
     let register = register.clone();
+    let authorization = authorization.clone();
     let (rows, exhausted) = with_org_conn::<_, _, HrError>(pool, org, move |tx| {
         Box::pin(async move {
             let routed = approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyExit)
@@ -62,7 +63,6 @@ pub(crate) async fn page(
                 .await
                 .map_err(HrError::from_kernel)?;
             let bands = read::deadline_bands(&register)?;
-            let decisions = tokio::sync::OnceCell::new();
             let mut visible = Vec::new();
             let mut scan = input.clone();
             let mut exhausted = false;
@@ -75,8 +75,8 @@ pub(crate) async fn page(
                 }
                 let ids: Vec<_> = candidates.iter().map(|c| c.employee_id).collect();
                 let resources = HrCaseFacts::load(tx, *reader.user_id.as_uuid(), &ids).await?;
-                let facts = decisions
-                    .get_or_try_init(|| load_facts(tx, org, *reader.user_id.as_uuid()))
+                let facts = authorization
+                    .get_in(tx, org, *reader.user_id.as_uuid())
                     .await
                     .map_err(HrError::from_kernel)?;
                 for row in candidates {
@@ -90,12 +90,12 @@ pub(crate) async fn page(
                         "HR_CONFIRMED" => (Feature::ExitCaseHqConfirm, "hr_exit_confirm_hq"),
                         _ => (Feature::ExitSettlementManage, "hr_exit_settle"),
                     };
-                    if !resources.readable(facts, org, row.employee_id)? {
+                    if !resources.readable(&facts, org, row.employee_id)? {
                         continue;
                     }
                     match resources.authorize(
                         &reader,
-                        Some(facts),
+                        Some(&facts),
                         feature,
                         row.branch_id,
                         row.employee_id,
@@ -233,6 +233,7 @@ mod tests {
                 limit: 20,
             },
             &Default::default(),
+            &Default::default(),
         )
         .await
         .unwrap();
@@ -274,6 +275,7 @@ mod tests {
                 limit: 20,
             },
             &Default::default(),
+            &Default::default(),
         )
         .await
         .unwrap();
@@ -312,9 +314,15 @@ mod tests {
         };
         let principal = scale_tests::principal(&pool, org, me, true).await;
         let runtime = runtime_role_pool(&pool).await;
-        let denied = page(&runtime, &principal, query.clone(), &Default::default())
-            .await
-            .unwrap();
+        let denied = page(
+            &runtime,
+            &principal,
+            query.clone(),
+            &Default::default(),
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         assert!(
             denied.items.is_empty(),
             "ordinary HR cannot confirm their own HQ tier"
@@ -330,6 +338,7 @@ mod tests {
             &runtime,
             &principal.with_tenant_ops(true),
             query,
+            &Default::default(),
             &Default::default(),
         )
         .await
@@ -375,6 +384,7 @@ mod tests {
                 after: None,
                 limit: 10,
             },
+            &Default::default(),
             &Default::default(),
         )
         .await

@@ -29,5 +29,5 @@ pub use model::{
     AccessSubject, Enforcement, GrantState, HeldGrant, NodeKind, NodePath, NodeRef, RoleLine,
     ScopeGrant, union_branches,
 };
-pub use project::{Projection, project};
+pub use project::{AccessSnapshot, Projection, project, project_with_access};
 pub use tags::{tag, tagged};

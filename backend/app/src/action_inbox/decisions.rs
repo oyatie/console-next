@@ -13,6 +13,7 @@ pub(super) async fn load(
     ids: Vec<Uuid>,
     mut facts: HashMap<Uuid, org_change_step_decide::Facts>,
     policy: Option<DecisionPolicy>,
+    access: &console_platform_authz::cedar_pbac::visible::DecisionFacts,
 ) -> Result<HashMap<Uuid, Value>, crate::error::AppError> {
     if ids.is_empty() {
         return Ok(HashMap::new());
@@ -25,11 +26,12 @@ pub(super) async fn load(
         .copied()
         .collect::<Vec<_>>();
     if !missing.is_empty() {
-        let waiting = console_orgchange_adapter_postgres::step_decision_facts_in_tx(
+        let waiting = console_orgchange_adapter_postgres::step_decision_facts_with_access_in_tx(
             tx,
             org,
             principal.user_id,
             console_orgchange_adapter_postgres::StepDecisionScope::Requests(missing),
+            access,
         )
         .await
         .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;

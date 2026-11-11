@@ -5,7 +5,7 @@ app/src/collaboration.rs	1499
 app/src/hr.rs	3491
 app/src/objects.rs	2007
 app/src/office.rs	891
-app/src/workbench.rs	660
+app/src/workbench.rs	658
 app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7162
 app/tests/action_inbox_api.rs	877
@@ -20,7 +20,7 @@ app/tests/compliance_api.rs	520
 app/tests/compliance_catalog_api.rs	310
 app/tests/console_kill_switch.rs	304
 app/tests/console_route_telemetry.rs	312
-app/tests/consulting_engagement_api.rs	1089
+app/tests/consulting_engagement_api.rs	1079
 app/tests/current_authority.rs	729
 app/tests/equipment_3r_api.rs	1344
 app/tests/evaluation_cycle_api.rs	1301
@@ -45,7 +45,7 @@ app/tests/org_units_api.rs	603
 app/tests/platform_onboarding_e2e.rs	544
 app/tests/purchase_request_collection_api.rs	645
 app/tests/realtime_authority.rs	649
-app/tests/recruiting_pipeline_api.rs	782
+app/tests/recruiting_pipeline_api.rs	767
 app/tests/registry_api.rs	577
 app/tests/search_api.rs	505
 app/tests/submittable_definitions_api.rs	385
