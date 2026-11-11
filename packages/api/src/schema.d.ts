@@ -20163,7 +20163,7 @@ export interface components {
             source_column?: string;
             /** @description Stable across dry runs of one run. */
             id: string;
-            /** @description A refusal_code, or sheet_needs_mapping, rrn_unavailable, rrn_invalid, unresolved_identity, status_unmapped, leave_type_unmapped, unit_unmapped, workplace_unmapped, employment_type_unmapped (blocking, W02), employee_number_missing (사번 미부여), deferred_change, summary_row_skipped and phone_invalid (W12, non-blocking). */
+            /** @description A refusal_code, or sheet_needs_mapping, rrn_unavailable, rrn_invalid, unresolved_identity, status_unmapped, leave_type_unmapped, unit_unmapped, workplace_unmapped, employment_type_unmapped (blocking, W02), employee_number_missing (사번 미부여), deferred_change, summary_row_skipped and phone_invalid (W12, non-blocking). number_invalid (a number column's cell that is not a number, left out) and work_period_missing (the run has no pay period, so days and hours worked are left out) are non-blocking. */
             reason: string;
             blocking: boolean;
             sheet: string;

@@ -26,6 +26,11 @@ properties:
     - leave_accrued
     - leave_used
     - leave_remaining
+    - work_days
+    - regular_hours
+    - overtime_hours
+    - night_hours
+    - holiday_hours
     - company
     - sex
     - contract_end_date
