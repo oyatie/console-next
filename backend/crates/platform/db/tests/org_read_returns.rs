@@ -69,3 +69,48 @@ async fn tenant_reads_return_their_lease_before_completing_on_commit_or_rollback
         }
     }
 }
+
+#[sqlx::test(migrations = false)]
+async fn cancelled_tenant_reads_finish_returning_their_lease(pool: PgPool) {
+    for snapshot in [false, true] {
+        for refuse in [false, true] {
+            let returning = Arc::new(Semaphore::new(0));
+            let release = Arc::new(Semaphore::new(0));
+            let (entered, gate) = (returning.clone(), release.clone());
+            let reader = PgPoolOptions::new()
+                .max_connections(1)
+                .after_release(move |_, _| {
+                    let (entered, gate) = (entered.clone(), gate.clone());
+                    Box::pin(async move {
+                        entered.add_permits(1);
+                        gate.acquire().await.unwrap().forget();
+                        Ok(true)
+                    })
+                })
+                .connect_lazy_with(pool.connect_options().as_ref().clone());
+            let task_pool = reader.clone();
+            let operation = tokio::spawn(async move {
+                let org = OrgId::new();
+                if snapshot {
+                    with_org_snapshot(&task_pool, org, |tx| Box::pin(read(tx, refuse))).await
+                } else {
+                    with_org_conn(&task_pool, org, |tx| Box::pin(read(tx, refuse))).await
+                }
+            });
+            returning.acquire().await.unwrap().forget();
+            operation.abort();
+            assert!(operation.await.unwrap_err().is_cancelled());
+            release.add_permits(1);
+            tokio::time::timeout(std::time::Duration::from_secs(5), async {
+                while reader.size() != 0 && reader.num_idle() == 0 {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            assert_eq!(reader.size(), 1, "cancelled read destroyed its connection");
+            assert_eq!(reader.num_idle(), 1);
+            reader.close().await;
+        }
+    }
+}

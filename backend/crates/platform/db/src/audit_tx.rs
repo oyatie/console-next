@@ -208,8 +208,8 @@ where
         }
     }
     .await;
-    // Source concurrency must include SQLx's asynchronous lease return.
-    conn.return_to_pool().await;
+    // Await the lease return for source concurrency; detach it if the caller is cancelled.
+    let _ = tokio::spawn(conn.return_to_pool()).await;
     result
 }
 
