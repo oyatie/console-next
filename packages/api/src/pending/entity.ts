@@ -84,7 +84,6 @@ type Path<Ops> = { parameters: { query?: never; header?: never; path?: never; co
 
 export type IdentifierCorrectionReason = S["IdentifierCorrectionReason"];
 export type CloseReason = S["EntityCloseReason"];
-export type OrgChangeCounts = Record<"open" | "mine" | "approval" | "ready" | "done" | "closed" | "all", number>;
 /** Personal roster filters; search text and employee identifiers are never persisted. */
 export type EmployeeViewFilters = { status?: string; review?: string; unit?: string; sort?: string };
 export type EmployeeView = { id: string; name: string; filters: EmployeeViewFilters };
@@ -97,8 +96,6 @@ type Requested = {
     NonNullable<paths["/api/v1/directory/people"]["get"]["parameters"]["query"]> & { cursor?: string }> }>;
   /** Cedar authorizes list/create for the current account and tenant; POST is idempotent on id. */
   "/api/v1/me/employee-views": Path<{ get: Op<{ items: EmployeeView[] }>; post: Op<EmployeeView, EmployeeView> }>;
-  /** Pending grouped read; the web count query falls back on older backends. */
-  "/api/v1/org-changes/counts": Path<{ get: Op<OrgChangeCounts, never, { effective_from?: string; effective_to?: string }> }>;
   /** The out-of-band security contact (decision #7); recorded only, no mail is sent (decisions #16). */
   "/api/v1/onboarding/security-contact": Path<{ post: Op<Record<string, never>, { role: "REPRESENTATIVE" | "CPO" | "SELF"; name: string; email: string }> }>;
 };
