@@ -30,7 +30,7 @@ export function DeptNameInline({ parent, unit, setup = true, onDone }: { parent:
   const [name, setName] = useState(baseUnit?.name ?? "");
   const save = useCommand({
     run: async ({ name: n, submit }: { name: string; submit: boolean }, key: string) => setup
-      ? (await applySetup(key, [baseUnit ? { op: "RENAME", org_unit_id: baseUnit.id, expected_version: baseUnit.version, name: n } : { op: "CREATE", name: n, ...parentRef(baseParent) }], state.values.effectiveDate), undefined)
+      ? (await applySetup(key, [baseUnit ? { op: "RENAME", org_unit_id: baseUnit.id, expected_version: baseUnit.version, name: n } : { op: "CREATE", name: n, ...parentRef(baseParent) }], setupDated("", state.values.effectiveDate).effectiveDate), undefined)
       : governed(key, inlineUnitBody(baseUnit ? { kind: "rename", orgUnitId: baseUnit.id, fromName: baseUnit.name, name: n, ...state.values, submit } : { kind: "create", parentUnitId: unitIdOf(baseParent), name: n, ...state.values, submit }), submit),
     invalidates: STRUCTURE_READS,
     awaitFirstRead: true,

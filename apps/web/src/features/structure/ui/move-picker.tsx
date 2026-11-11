@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { t } from "@console/i18n";
+import { todayKst } from "../../../lib/pure/today";
+import { dayAllowed } from "../../../reference/org/api";
+import { EffectiveDateChip } from "../../../reference/org/ui/effective-date-chip";
 import { Button } from "../../../ui/button/button";
 import { Dialog } from "../../../ui/dialog";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -12,7 +15,9 @@ import { moveEffect } from "../present";
  * The keyboard twin of drag (M; WCAG 2.2 SC 2.5.7): a tree of the places that can take every moving department. Other legal entity
  * are hidden, not dimmed (department never cross a legal entity), and so is each moving department' own subtree. Nothing is preselected.
  */
-export function MovePicker({ s, moving, onMove, onClose }: { s: Structure; moving: ChartNode[]; onMove: (target: ChartNode) => void; onClose: () => void }) {
+export function MovePicker({ s, moving, onMove, onClose }: { s: Structure; moving: ChartNode[]; onMove: (target: ChartNode, day: string) => void; onClose: () => void }) {
+  const today = todayKst();
+  const [day, setDay] = useState(today);
   const entity = moving[0]?.entityId ? s.byId.get(moving[0].entityId) : undefined;
   const v = useMemo(() => verdicts(s, moving), [s, moving]);
   const hidden = useMemo(() => new Set(moving.flatMap((m) => [m.id, ...descendants(m).map((d) => d.id)])), [moving]);
@@ -43,9 +48,10 @@ export function MovePicker({ s, moving, onMove, onClose }: { s: Structure; movin
       )}
       <p className="muted" role="status">{target && verdict?.ok ? moveEffect(moving, target) : t("structure.move.pick")}</p>
       <div className="form__actions">
+        <EffectiveDateChip setup today={today} value={day} onChange={setDay} />
         <Button variant="ghost" onClick={onClose}>{t("structure.cancel")}</Button>
         {target && verdict?.ok ? (
-          <Button variant="primary" onClick={() => onMove(target)}>{t("structure.move.submit", { name: target.name })}</Button>
+          <Button variant="primary" disabled={!dayAllowed(true, today, day)} onClick={() => onMove(target, day)}>{t("structure.move.submit", { name: target.name })}</Button>
         ) : (
           <DisabledReason control={(p) => <Button variant="primary" {...p}>{t("structure.move.submitIdle")}</Button>} reason={target ? t("structure.drop.here") : t("structure.move.pick")} />
         )}

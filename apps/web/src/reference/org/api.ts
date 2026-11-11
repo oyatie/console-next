@@ -23,9 +23,9 @@ export const ORG_READS: PathPrefix[] = ["/api/v1/regions", "/api/v1/branches", "
 export const STRUCTURE_READS: PathPrefix[] = ["/api/v1/org-structure", "/api/v1/org-units", "/api/v1/branches", "/api/v1/legal-entities", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/org-changes", "/api/v1/employees"];
 /** Applies setup department ops in one transaction (at once, during setup); the receipt's batch_id undoes them all. */
 export const applySetup = (key: string, ops: SetupOp[], effectiveDate?: string) => unwrap(api.POST("/api/v1/org-structure/batches", { params: { header: { "Idempotency-Key": key } }, body: { ops, effective_date: effectiveDate } }));
-/** A setup change's day and its receipt, which names the day when it is before today. */
-export const setupDated = (message: string, effectiveDate: string) =>
-  ({ effectiveDate, message: effectiveDate < todayKst() ? t("orgUnit.gov.datedReceipt", { message, date: fmtDate(effectiveDate) }) : message });
+/** A setup change dated before today: its day for the batch and a receipt naming it. Today sends no day (the server's today). */
+export const setupDated = (message: string, day: string) =>
+  day < todayKst() ? { effectiveDate: day, message: t("orgUnit.gov.datedReceipt", { message, date: fmtDate(day) }) } : { effectiveDate: undefined, message };
 /** Sets the order of a parent's children (a legal entity's workplaces, a workplace's or department's departments): every current child once. */
 export const reorder = (key: string, body: ReorderRequest) => unwrap(api.PUT("/api/v1/org-structure/order", { params: { header: { "Idempotency-Key": key } }, body }));
 

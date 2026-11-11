@@ -1,5 +1,6 @@
 import { useNavigate, getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { todayKst } from "../../../lib/pure/today";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { useUnitEdit } from "../../../reference/org/ui/use-unit-edit";
 import { setupDated, type InlineUnitValues } from "../../../reference/org/api";
@@ -66,7 +67,8 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     c.setRenaming(null);
     cmd.apply({ ops: [{ op: "RENAME", ...pin(n), name }], ...setupDated(t("structure.receipt.renamed", { from: n.name, name }), values.effectiveDate) });
   };
-  const moveTo = (nodes: ChartNode[], target: ChartNode) => {
+  /** `day`: the move's 적용일 in setup (the picker asks; a drag applies today). */
+  const moveTo = (nodes: ChartNode[], target: ChartNode, day = todayKst()) => {
     if (readOnly || !nodes.length) return;
     // A legal entity or a workplace is dragged only to reorder it (at once in either phase): it lands right after the sibling it is dropped on.
     if (reorderedByDrag(nodes[0]!)) {
@@ -81,7 +83,7 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     c.toggle(target.id, true);
     // Each moved box says where it came from until the receipt goes (S2-chart-moved).
     const from = new Map(nodes.map((n) => [n.id, (n.parentId && s.byId.get(n.parentId)?.name) || ""]));
-    cmd.apply({ ops: nodes.map((n) => ({ op: "MOVE", ...pin(n), ...parentOf(target) })), message: t("structure.receipt.moved", { name, target: target.name, sub, moved }), moved: from });
+    cmd.apply({ ops: nodes.map((n) => ({ op: "MOVE", ...pin(n), ...parentOf(target) })), ...setupDated(t("structure.receipt.moved", { name, target: target.name, sub, moved }), day), moved: from });
   };
   const dissolve = (nodes: ChartNode[]) => {
     if (readOnly || !nodes.length) return;
