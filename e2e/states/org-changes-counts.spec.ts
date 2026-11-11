@@ -6,9 +6,35 @@ import { mockScreen } from "../mock/screen";
 import { mockOrgChangeCounts, type CountState } from "../mock/org-changes-web";
 import { orgChangeScreens } from "./registry";
 import { failure } from "../mock/fixtures";
+import { mockRoute } from "../mock/route";
 
 test.beforeAll(() => loadCatalog("ko"));
-for (const state of ["loading", "failed", "counts-failed", "counts-loading", "populated", "legacy"] as CountState[]) for (const width of [1440, 390]) {
+
+for (const path of ["/org/changes", "/org/history"]) test(`org counts use contracted reads on ${path} @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, orgChangeScreens[0], "empty");
+  await mockRoute(page, "get", "/api/v1/org-structure/batches", { status: 200, json: { items: [] } });
+  await mockRoute(page, "get", "/api/v1/entity-setup/batches", { status: 200, json: { items: [] } });
+  const probes: string[] = [];
+  await page.route(url => url.pathname === "/api/v1/org-changes/counts", async route => {
+    probes.push(route.request().url());
+    await route.fulfill({ status: 400, json: failure("bad_request") });
+  });
+  try {
+    await page.goto(path);
+    const tabs = page.getByRole("group", { name: t("orgChange.list.views") });
+    await expect(tabs.getByRole("button", { name: "전체 0", exact: true })).toBeVisible();
+    expect(probes, "the API has list totals, not a counts endpoint").toEqual([]);
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      await fits(page, `${path}/${theme}`);
+      await page.screenshot({ path: test.info().outputPath(`counts-${theme}.png`), fullPage: true });
+    }
+    await expectAxe(page, path);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+for (const state of ["loading", "failed", "counts-failed", "counts-loading", "populated"] as CountState[]) for (const width of [1440, 390]) {
   test(`org change counts: ${state} at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const screen = orgChangeScreens[0];
@@ -26,9 +52,9 @@ for (const state of ["loading", "failed", "counts-failed", "counts-loading", "po
         await expect(tabs.locator('span[aria-hidden="true"]')).toHaveCount(6);
       } else {
         await expect(tabs.getByRole("button", { name: "전체 3", exact: true })).toBeVisible();
-        expect(counts.requests).toHaveLength(1);
+        expect(counts.requests).toHaveLength(7);
       }
-      if (!["populated", "legacy"].includes(state)) await expect(tabs.getByRole("button").filter({ hasText: /\d/ })).toHaveCount(0);
+      if (state !== "populated") await expect(tabs.getByRole("button").filter({ hasText: /\d/ })).toHaveCount(0);
       if (state === "loading" || state === "failed") {
         await expect(tabs.locator('button[aria-disabled="true"]')).toHaveCount(6);
         const first = tabs.getByRole("button").first();
@@ -73,7 +99,8 @@ for (const width of [1440, 390]) test(`saved-view changes preserve the effective
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   await page.route(url => url.pathname === screen.read, async route => {
-    if (new URL(route.request().url()).searchParams.get("status") === "APPROVED") await held;
+    const query = new URL(route.request().url()).searchParams;
+    if (query.get("status") === "APPROVED" && query.get("limit") !== "1") await held;
     await route.fallback();
   });
   page.on("request", request => {
@@ -92,10 +119,12 @@ for (const width of [1440, 390]) test(`saved-view changes preserve the effective
     release();
     await expect(page.getByRole("link", { name: "OC-2026-0002", exact: true })).toBeVisible();
     expect((await tabs.boundingBox())!.height).toBe(height);
-    expect(counts.requests).toHaveLength(1);
-    expect(counts.requests[0]!.searchParams.get("effective_from")).toBe("2026-11-01");
-    expect(counts.requests[0]!.searchParams.get("effective_to")).toBe("2026-11-30");
-    expect(listQueries.some(url => url.searchParams.get("limit") === "1")).toBe(false);
+    expect(counts.requests).toHaveLength(7);
+    for (const url of counts.requests) {
+      expect(url.searchParams.get("effective_from")).toBe("2026-11-01");
+      expect(url.searchParams.get("effective_to")).toBe("2026-11-30");
+    }
+    expect(listQueries.filter(url => url.searchParams.get("limit") === "1")).toHaveLength(7);
     expect(fixture.unexpected).toEqual([]);
   } finally {
     release();
@@ -110,7 +139,8 @@ for (const width of [1440, 390]) test(`a failed mine read leaves a failed open c
   const screen = orgChangeScreens[0];
   const fixture = await mockScreen(page, screen, "populated");
   await page.route(url => url.pathname === screen.read, async route => {
-    if (new URL(route.request().url()).searchParams.has("drafted_by")) return route.fulfill({ status: 503, json: failure("service_unavailable") });
+    const query = new URL(route.request().url()).searchParams;
+    if (query.has("drafted_by") && query.get("limit") !== "1") return route.fulfill({ status: 503, json: failure("service_unavailable") });
     await route.fallback();
   });
   try {

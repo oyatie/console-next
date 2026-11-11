@@ -84,7 +84,7 @@ jobs:
         env:
           CONSOLE_DEV_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
           PERF_EVIDENCE_DIR: ${{ runner.temp }}/route-load
-        run: npx playwright test e2e/perf/route-load.spec.ts --project=parallel --retries=0
+        run: npx playwright test e2e/perf/route-load.spec.ts e2e/perf/record-routes.spec.ts --project=parallel --retries=0
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
         with:
