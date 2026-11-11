@@ -130,16 +130,26 @@ async fn get_json(service: axum::Router, uri: &str, token: &str) -> (StatusCode,
         .await
         .unwrap();
     let status = response.status();
-    assert!(
-        response
-            .headers()
-            .get(header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .is_some_and(|value| value.starts_with("application/json")),
-        "{uri} must return application/json"
-    );
+    let content_type = response.headers().get(header::CONTENT_TYPE).cloned();
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    (status, serde_json::from_slice(&body).unwrap_or(Value::Null))
+    let expected_content_type = if status.is_success() {
+        "application/json"
+    } else {
+        "application/problem+json"
+    };
+    assert_eq!(
+        content_type.as_ref().and_then(|value| value.to_str().ok()),
+        Some(expected_content_type),
+        "{uri}: {status}, {}",
+        String::from_utf8_lossy(&body)
+    );
+    let body: Value = serde_json::from_slice(&body).expect("response must be valid JSON");
+    if !status.is_success() {
+        assert_eq!(body["type"], "about:blank", "{uri}: {body}");
+        assert_eq!(body["status"], status.as_u16(), "{uri}: {body}");
+        assert!(body["error"]["code"].is_string(), "{uri}: {body}");
+    }
+    (status, body)
 }
 
 async fn issue_token(
