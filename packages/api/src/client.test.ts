@@ -167,3 +167,43 @@ test.each(["step_up_required", "passkey_step_up_required", "step_up_failed", "pa
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(session.token).toBe("fresh");
 });
+
+
+test.each(["network", "429", "503"])("a refused write with %s renewal failure is definitely not saved", async failure => {
+  configure({ baseUrl: "https://console.example", passkeys, refresh: { kind: "cookie" } });
+  const token = `h.${btoa(JSON.stringify({ sub: "user", org: "tenant" }))}.s`;
+  session.set({ access_token: token, token_type: "Bearer", refresh_expires_at: "2027-01-01T00:00:00Z", requires_passkey_setup: false });
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", async (request: Request | string) => {
+    const url = typeof request === "string" ? request : request.url;
+    calls.push(url);
+    if (url.endsWith("/auth/token/refresh")) {
+      if (failure === "network") throw new TypeError("offline");
+      return new Response(JSON.stringify({ error: { code: "service_unavailable" } }), { status: Number(failure), headers: { "retry-after": "3" } });
+    }
+    return json(401, { error: { code: "unauthorized" } });
+  });
+  const { authFetch } = await import("./client");
+  await expect(authFetch(new Request("https://console.example/api/v1/report", { method: "POST", headers: { "idempotency-key": "refused-key" }, body: "original" }))).rejects.toMatchObject({
+    status: 401, code: "session_renewal_unreachable", requestKey: "refused-key", retryAfterMs: failure === "network" ? undefined : 3000,
+  });
+  expect(session.lost).toBe(false);
+  expect(session.token).toBe(token);
+  expect(calls).toHaveLength(2);
+  await Promise.resolve();
+  expect(calls).toHaveLength(2);
+});
+
+
+test("an unanswered write remains uncertain; a read's unreachable renewal stays a read failure", async () => {
+  configure({ baseUrl: "https://console.example", passkeys, refresh: { kind: "cookie" } });
+  session.set({ access_token: "token", token_type: "Bearer", refresh_expires_at: "2027-01-01T00:00:00Z", requires_passkey_setup: false });
+  const { authFetch } = await import("./client");
+  vi.stubGlobal("fetch", async () => { throw new TypeError("offline"); });
+  await expect(authFetch(new Request("https://console.example/api/v1/report", { method: "POST" }))).rejects.toMatchObject({ status: 0, code: "command_unknown", requestKey: expect.any(String) });
+  vi.stubGlobal("fetch", async (input: Request | string) => {
+    if ((typeof input === "string" ? input : input.url).endsWith("/auth/token/refresh")) throw new TypeError("offline");
+    return json(401, { error: { code: "unauthorized" } });
+  });
+  await expect(authFetch(new Request("https://console.example/api/v1/report"))).rejects.toBeInstanceOf(TypeError);
+});

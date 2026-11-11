@@ -272,3 +272,39 @@ test("an authoritative non-application replays the original input and key, never
   expect(run.mock.calls[1]?.[0]).toBe("original");
   client.clear();
 });
+
+
+test("an unreachable renewal leaves retry to the form without a frozen-input banner recovery", async () => {
+  const error = new ApiError(401, "session_renewal_unreachable", "", [], undefined, false, [], { requestKey: transportKey });
+  const run = vi.fn<(input: string, key: string) => Promise<string>>().mockRejectedValueOnce(error).mockResolvedValue("saved");
+  const verify = vi.fn();
+  const { command, client } = capture(run, verify);
+  await expect(command.mutateAsync("original")).rejects.toBe(error);
+  expect(command.isChecking).toBe(false);
+  expect(recoveryOf(error)).toBeUndefined();
+  await Promise.resolve();
+  expect(run).toHaveBeenCalledTimes(1);
+  await expect(command.mutateAsync("edited")).resolves.toBe("saved");
+  expect(run).toHaveBeenCalledTimes(2);
+  expect(run.mock.calls[1]).toEqual(["edited", transportKey]);
+  expect(verify).not.toHaveBeenCalled();
+  client.clear();
+});
+
+test.each(["mutate", "mutateAsync", "reset then mutate"])("an unreachable renewal leaves %s available for the current input under the refused key", async (method) => {
+  const error = new ApiError(401, "session_renewal_unreachable", "", [], undefined, false, [], { requestKey: transportKey });
+  const run = vi.fn<(input: string, key: string) => Promise<string>>().mockRejectedValueOnce(error).mockResolvedValue("edited result");
+  const verify = vi.fn();
+  const { command, client } = capture(run, verify);
+  await expect(command.mutateAsync("original")).rejects.toBe(error);
+  expect(keepsKey(error)).toBe(false);
+  await Promise.resolve();
+  expect(run).toHaveBeenCalledTimes(1);
+  if (method === "reset then mutate") command.reset();
+  if (method === "mutateAsync") await expect(command.mutateAsync("edited")).resolves.toBe("edited result");
+  else command.mutate("edited");
+  await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(2));
+  expect(run.mock.calls[1]).toEqual(["edited", transportKey]);
+  expect(verify).not.toHaveBeenCalled();
+  client.clear();
+});

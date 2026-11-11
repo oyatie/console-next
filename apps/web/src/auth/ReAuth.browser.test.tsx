@@ -84,6 +84,12 @@ test("reset code action leaves the dialog without a logout request", async () =>
 });
 
 
+test("code sign-in focuses the single code field", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}reauth-test?view=login`);
+  await expect.poll(() => page.getByLabel("일회용 코드").evaluate(el => el === document.activeElement)).toBe(true);
+  expect(await page.getByText("처음이면", { exact: false }).count()).toBe(0);
+});
+
 test.each(["reset", "login", "setup"])("%s recovery screen fits phone and desktop in both themes", async view => {
   await page.route("**/api/v1/onboarding/terms", route => route.fulfill({ json: { version: "terms", sha256: "hash", body: "서비스 이용약관", privacy: { version: "privacy", sha256: "hash", body: "개인정보 수집·이용", policy_url: "https://example.com/privacy", review_pending: false } } }));
   await page.goto(`${server.resolvedUrls!.local[0]}reauth-test?${view === "reset" ? "reason=session_passkey_reset&draft" : `view=${view}`}`);

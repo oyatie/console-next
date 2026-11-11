@@ -1,6 +1,7 @@
 // Route guards over the signed-in session: who may see sign-in, passkey set-up and the app.
 import { notFound, redirect } from "@tanstack/react-router";
 import { logout, refresh, session } from "@console/api";
+import { draftKey } from "./draft-owner";
 
 /** A session whose token and passkey state disagree cannot recover in place: sign out and sign in again. */
 async function signInAgain(): Promise<never> {
@@ -10,12 +11,26 @@ async function signInAgain(): Promise<never> {
 
 const home = () => (session.claims?.platform ? "/platform" : "/");
 let interrupted: { principal: string | null; href: string } | null = null;
+session.subscribe(() => { if (interrupted?.principal !== session.principal) interrupted = null; });
+const interruptedKey = () => session.principal && draftKey(session.principal, "session", "", "return");
+function readInterrupted() {
+  if (interrupted?.principal === session.principal) return interrupted;
+  try {
+    const key = interruptedKey();
+    const href = key && sessionStorage.getItem(key);
+    return href?.startsWith("/") && !href.startsWith("//") ? { principal: session.principal, href } : null;
+  } catch { return null; }
+}
 /** Remember the current screen before consent or code sign-in unmounts its forms. */
 export function rememberInterrupted(href = location.pathname + location.search + location.hash) {
-  interrupted = { principal: session.principal, href };
+  interrupted = readInterrupted() ?? { principal: session.principal, href };
+  try {
+    const key = interruptedKey();
+    if (key) sessionStorage.setItem(key, interrupted.href);
+  } catch { return; /* Storage blocked: keep this tab's in-memory return URL. */ }
 }
 /** Only the interrupted account resumes its URL, including search and fragment. */
-export const consentDestination = () => interrupted?.principal === session.principal ? interrupted.href : home();
+export const consentDestination = () => readInterrupted()?.href ?? home();
 
 /** A reload loses the in-memory access token; the refresh cookie restores it. */
 export async function ensureSession({ location }: { location: { pathname: string; href?: string } }) {
@@ -30,6 +45,10 @@ export async function ensureSession({ location }: { location: { pathname: string
     throw redirect({ to: "/setup-passkey" });
   }
   interrupted = null;
+  try {
+    const key = interruptedKey();
+    if (key) sessionStorage.removeItem(key);
+  } catch { interrupted = { principal: session.principal, href: home() }; }
   // Vendor-tier tokens are refused by tenant routes and vice versa; send each tier home.
   // My account (own passkeys, language) serves both tiers.
   if (location.pathname === "/account") return;

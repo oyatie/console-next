@@ -28,6 +28,7 @@ export const koCommon = {
   "common.failed.code.record_single_entry_exists": "이미 기록된 항목이라 추가하지 않았습니다. 기존 항목을 확인하고 정정하십시오.",
   "common.failed.code.record_version_conflict": "다른 사람이 먼저 기록을 변경해 저장하지 않았습니다. 인사카드를 다시 조회한 뒤 정정하십시오.",
   "common.failed.code.rehire_requires_exited": "퇴직 상태인 직원만 재입사할 수 있습니다. 인사 이력에서 현재 상태를 확인하십시오.",
+  "common.failed.code.session_renewal_unreachable": "연결되지 않아 저장하지 않았습니다. 연결되면 다시 시도하십시오.",
   "common.failed.code.filter_invalid": "필터의 선택 항목과 기간을 확인한 뒤 다시 조회하십시오.",
   "common.failed.code.search_invalid": "검색어의 제어문자를 제거하고 길이를 줄인 뒤 다시 검색하십시오.",
   "common.more": "더 보기",

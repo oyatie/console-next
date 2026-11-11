@@ -16,6 +16,7 @@ export const outcomeUnknown = (error: unknown) => error instanceof TypeError || 
 ));
 /** An authoritative read found no application; an idempotent command may replay its frozen intent. */
 export const COMMAND_NOT_APPLIED = Symbol("command_not_applied");
+const renewalUnreachable = (error: unknown): error is ApiError => error instanceof ApiError && error.code === "session_renewal_unreachable";
 export const keepsKey = outcomeUnknown;
 
 /** Each uncertain failure's recovery (its command's `check`), so the shared refusal can offer it in place. */
@@ -108,7 +109,8 @@ export function useCommand<I, O>(opts: {
         if (error instanceof ApiError && error.requestKey) key.current = error.requestKey;
         if (typeof error === "object" && error !== null) recoveries.set(error, () => check());
       } else {
-        key.current = null;
+        // A 401 never records an outcome: keep its key, but allow the form's current input.
+        key.current = renewalUnreachable(error) ? error.requestKey ?? key.current : null;
         checking.current = undefined;
       }
       if (readsAreStale(error)) void invalidateWhere(qc, path => (opts.invalidates ?? []).some(prefix => underPath(prefix)([path])));
