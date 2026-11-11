@@ -65,8 +65,9 @@ test("period unlock: a second close authority refuses, then approves; the reques
     const notices = page.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: page.getByRole("button", { name: "기간 마감 부여 확인 기록", exact: true }) });
     await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 });
     await expectAccessible(page, "grant notice");
+    const acknowledged = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/notice"));
     await notices.getByRole("button", { name: "기간 마감 부여 확인 기록" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "기간 마감 부여 확인을 기록했습니다" })).toBeVisible();
+    expect((await acknowledged).status()).toBe(200);
     await expect(notices).toBeHidden();
     letGrantsAge(unique(slug), name);
   }
