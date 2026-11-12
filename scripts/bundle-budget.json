@@ -40,6 +40,7 @@
       "src/features/people/ui/notice-list-page.tsx",
       "src/features/people/ui/people-route.tsx",
       "src/features/people/ui/requests-page.tsx",
+      "src/features/people/ui/roster-fields-page.tsx",
       "src/features/people/ui/unplaced-page.tsx",
       "src/features/periods/ui/period-lock-page.tsx",
       "src/features/platform/Tenants.tsx",

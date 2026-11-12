@@ -174,6 +174,7 @@ impl Feature {
             | Self::ApprovalRouteManage
             | Self::ChangeRequestDecide
             | Self::JobTitleManage
+            | Self::RosterFieldManage
             | Self::RetainedRecordsRead
             | Self::TenantOffboard
             // decisions #14.2: entity administration decides in Cedar

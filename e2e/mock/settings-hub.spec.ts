@@ -15,6 +15,7 @@ const rows = [
   ["/settings/company-domain", "shell.settings.domain", "account.domain.title"],
   ["/people/numbering", "identifiers.numbering.title", "identifiers.numbering.title"],
   ["/people/job-titles", "shell.settings.titles", "titles.title"],
+  ["/people/roster-fields", "rosterFields.title", "rosterFields.title"],
   ["/people/period-locks", "periodLocks.title", "periodLocks.title"],
 ] as const;
 const states = ["populated", "failed", "refused", "direct", "scheduled", "fixed", "fresh"] as const;
@@ -46,6 +47,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       { id: id(12), kind: "POSITION", label: "팀장", grade_rank: null, active: true },
       { id: id(15), kind: "GRADE", label: "과장", grade_rank: 2, active: false },
     ] } });
+    await mockRoute(page, "get", "/api/v1/roster-fields", { status: 200, json: { can_manage: true, active_limit: 30, items: [
+      { id: id(21), label: "사물함 번호", value_type: "TEXT", section: "PERSONAL", visibility: "MANAGERS", choices: [], active: true },
+      { id: id(22), label: "옛 항목", value_type: "TEXT", section: "JOB", visibility: "MANAGERS", choices: [], active: false },
+    ] } });
     await mockRoute(page, "get", "/api/v1/period-locks", { status: 200, json: { items: [{ id: id(13), domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", reason: "월 마감", lockedAt: "2026-10-01T00:00:00Z", active: true, unlockReviewRequired: false }] } });
     await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: state !== "fixed", items: policyKeys.map(key => policy(state, key)) } });
     await mockRoute(page, "get", "/api/v1/reason-codes", { status: 200, json: { domain: "employee_number_change", items: [] } });
@@ -72,6 +77,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       await expect(main.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
       await expect(main.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText("직급 1 · 직위 1 · 직책 1");
       await expect(main.getByRole("region", { name: t("periodLocks.title"), exact: true })).toContainText("2026. 09. 30.");
+      await expect(main.getByRole("region", { name: t("rosterFields.title"), exact: true })).toContainText("1");
       const approval = main.getByRole("region", { name: t("settingsHub.approval"), exact: true });
       await expect(approval).toContainText(state === "direct" || state === "fresh" ? t("settingsHub.approval.direct") : t("settingsHub.key.approval.policy.org_structure"));
       await expect(approval.getByRole("link")).toHaveCount(0);
@@ -105,6 +111,7 @@ for (const width of [1440, 390]) for (const profile of ["branch", "none"] as con
     if (profile === "branch") for (const entry of access.entries) entry.scope.kind = "WORKPLACE";
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: access });
     await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: false, items: [] } });
+    await mockRoute(page, "get", "/api/v1/roster-fields", { status: 200, json: { can_manage: false, active_limit: 30, items: [] } });
     await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [policy("direct")] } });
     const paths = [...rows.map(([to]) => routeReads[to].reads[0].slice(4)), settingsQuery.queryKey[0]];
     const reads: string[] = [];
@@ -120,11 +127,13 @@ for (const width of [1440, 390]) for (const profile of ["branch", "none"] as con
       } else {
         await expect(main.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText(t("settingsHub.titles.empty"));
         await expect(main.getByRole("region", { name: t("settingsHub.approval"), exact: true })).toContainText(t("settingsHub.approval.direct"));
-        await expect(main.getByRole("link")).toHaveCount(1);
-        expect(reads.toSorted()).toEqual([routeReads["/people/job-titles"].reads[0].slice(4), settingsQuery.queryKey[0]].toSorted());
+        await expect(main.getByRole("region", { name: t("rosterFields.title"), exact: true })).toContainText(t("settingsHub.rosterFields.empty"));
+        await expect(main.getByRole("link")).toHaveCount(2);
+        const branchReads = [routeReads["/people/job-titles"].reads[0].slice(4), routeReads["/people/roster-fields"].reads[0].slice(4), settingsQuery.queryKey[0]].toSorted();
+        await expect.poll(() => reads.toSorted()).toEqual(branchReads);
         await main.getByRole("link", { name: t("shell.settings.titles"), exact: true }).click();
         await expect(main.getByRole("heading", { name: t("titles.title"), exact: true })).toBeVisible();
-        expect(reads.toSorted()).toEqual([routeReads["/people/job-titles"].reads[0].slice(4), settingsQuery.queryKey[0]].toSorted());
+        expect(reads.toSorted()).toEqual(branchReads);
       }
       await fits(page, `settings/${profile}/${width}`);
       await expectAxe(page, `settings/${profile}/${width}`);
@@ -140,7 +149,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`se
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
   const demo = page.locator("[data-settings-gallery]");
   await expect(demo.getByRole("heading", { name: t("shell.link.settings"), exact: true })).toBeVisible();
-  await expect(demo.getByRole("link")).toHaveCount(4);
+  await expect(demo.getByRole("link")).toHaveCount(5);
   await expect(demo).toContainText("example.test");
   await expect(demo.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText("직급 1 · 직위 1 · 직책 1");
   await expect(demo).toContainText(t("settingsHub.unknown"));

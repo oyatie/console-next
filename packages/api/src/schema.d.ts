@@ -12551,6 +12551,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/roster-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The fields the tenant adds to its personnel card
+         * @description Every field definition of the tenant, active first, then in the order they were added; retired fields (active false) stay listed so their values keep resolving. No field is seeded. Takes employee_directory_read.
+         */
+        get: operations["listRosterFields"];
+        put?: never;
+        /**
+         * Add a field to the personnel card
+         * @description Adds a field definition. Type and section are fixed once added. First release, the 인적사항 (PERSONAL) and 재직·배치 (JOB) sections only, values read by managers only; a field is never a pay item. Who may add is Cedar's roster_field_manage (fail-closed), a tenant-wide holder of roster_field_manage or employee_directory_manage; a 법인/사업장-scoped grant is 403. 409 roster_field_label_taken (any field of the tenant, retired included, has the label ignoring case), roster_field_limit (the tenant has active_limit active fields); 422 roster_field_label_invalid, roster_field_choices_invalid. Audited as roster_field.create.
+         */
+        post: operations["createRosterField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster-fields/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a field, change its options, or retire or restore it
+         * @description Omitted parts stay; type and section never change. choices replaces the option list and must name every existing option by id exactly once (relabelled as sent); an option without an id is added. A field is never deleted; active false retires it (hidden from new entry, values kept) and active true restores it within active_limit. Who may change is Cedar's roster_field_manage, as for POST. 404 roster_field_not_found; 409 roster_field_label_taken, roster_field_limit; 422 roster_field_label_invalid, roster_field_choices_invalid. Audited as roster_field.update.
+         */
+        patch: operations["updateRosterField"];
+        trace?: never;
+    };
     "/api/v1/sales/inquiries": {
         parameters: {
             query?: never;
@@ -28309,6 +28353,32 @@ export interface components {
             target_version: number;
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
+        /** @description A field the tenant adds to its personnel card. */
+        RosterField: {
+            id: components["schemas"]["Uuid"];
+            label: string;
+            value_type: components["schemas"]["RosterFieldValueType"];
+            section: components["schemas"]["RosterFieldSection"];
+            /** @description Who reads the field's values. MANAGERS, not the person themselves (first release). */
+            visibility: string;
+            /** @description A CHOICE field's options; empty for any other type. An option keeps its id when relabelled. */
+            choices: components["schemas"]["RosterFieldChoice"][];
+            /** @description false = retired (hidden from new entry, values kept). */
+            active: boolean;
+        };
+        RosterFieldChoice: {
+            id: components["schemas"]["Uuid"];
+            label: string;
+        };
+        RosterFieldChoiceInput: {
+            /** @description An existing option's id; absent for a new option. */
+            id?: components["schemas"]["Uuid"];
+            label: string;
+        };
+        /** @description The card section a field sits in - PERSONAL 인적사항, JOB 재직·배치. */
+        RosterFieldSection: string;
+        /** @description TEXT, INTEGER (whole number), DECIMAL, DATE, or CHOICE (one option from the field's list). */
+        RosterFieldValueType: string;
         RouteAdoptionMetric: {
             release_cycle: string;
             /** Format: int64 */
@@ -57419,6 +57489,103 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    listRosterFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The definitions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["RosterField"][];
+                        /** @description The caller may add or change fields (Cedar roster_field_manage). */
+                        can_manage: boolean;
+                        /** @description The most active fields a tenant may have; a retired field frees its place. */
+                        active_limit: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createRosterField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    label: string;
+                    value_type: components["schemas"]["RosterFieldValueType"];
+                    section: components["schemas"]["RosterFieldSection"];
+                    /** @description CHOICE only, 1 to 50 options with distinct labels; new options carry no id. */
+                    choices?: components["schemas"]["RosterFieldChoiceInput"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterField"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    updateRosterField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    label?: string;
+                    choices?: components["schemas"]["RosterFieldChoiceInput"][];
+                    active?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The changed field. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterField"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };

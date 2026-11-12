@@ -33,7 +33,8 @@ fn the_projection_carries_only_cedar_allowed_keys_over_the_grant_branches() {
             "employee_directory_read",
             "login",
             "master_list_import",
-            "privacy_request_decide"
+            "privacy_request_decide",
+            "roster_field_manage"
         ]
     );
     assert!(

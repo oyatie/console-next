@@ -5,6 +5,7 @@ export const enSettingsHub = {
   "settingsHub.approval.direct": "All changes apply directly",
   "settingsHub.domain.pending": "{domain} · Requested",
   "settingsHub.numbering.empty": "No rule",
+  "settingsHub.rosterFields.empty": "No fields added",
   "settingsHub.titles.empty": "No entries",
   "settingsHub.periods.empty": "No closed periods",
   "settingsHub.number": "{value, number}",

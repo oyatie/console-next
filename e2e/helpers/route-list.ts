@@ -62,6 +62,7 @@ const paths = [
   "/people/period-locks",
   "/people/renew",
   "/people/requests",
+  "/people/roster-fields",
   "/people/run",
   "/people/unplaced",
   "/payroll",

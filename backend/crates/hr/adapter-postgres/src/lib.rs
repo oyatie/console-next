@@ -29,6 +29,7 @@ pub mod profile;
 pub mod bulk_corrections;
 pub mod change_sets;
 pub mod job_title;
+pub mod roster_field;
 // --- lane: PEOPLE-A ---
 pub mod corrections;
 pub mod registration_void;
