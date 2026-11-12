@@ -29,8 +29,16 @@ async function signIn(page: Page, stored: Record<string, string>) {
   return fixture;
 }
 
-test("sign-in is dark from a stored dark theme before the app's bundle runs, and stays dark when it has", async ({ page }) => {
-  const fixture = await signIn(page, { "console.theme": "dark" });
+// What is stored, what the system prefers, and the theme sign-in begins with: a stored theme wins, anything else follows the system.
+const starts = [
+  ["a stored dark theme on a light system", { "console.theme": "dark" }, "light", "dark"],
+  ["a dark system when no known theme is stored", { "console.theme": "midnight", "console.experience": "calm" }, "dark", "dark"],
+  ["a light system when no known theme is stored", { "console.theme": "midnight", "console.experience": "calm" }, "light", "light"],
+] as const;
+
+for (const [from, stored, system, theme] of starts) test(`sign-in is ${theme} from ${from} before the app's bundle runs, and stays ${theme} when it has`, async ({ page }) => {
+  await page.emulateMedia({ colorScheme: system });
+  const fixture = await signIn(page, stored);
   const writes = await themeWrites(page);
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
@@ -39,34 +47,25 @@ test("sign-in is dark from a stored dark theme before the app's bundle runs, and
   await page.goto("/login", { waitUntil: "commit" });
   await entry;
   const html = page.locator("html");
-  await expect(html).toHaveAttribute("data-theme", "dark");
+  await expect(html).toHaveAttribute("data-theme", theme);
   await expect(page.locator("#root")).toBeEmpty();
 
   release();
   await expect(page.getByRole("heading", { name: t("auth.login.title"), exact: true })).toBeVisible();
-  await expect(html).toHaveAttribute("data-theme", "dark");
-  expect(await writes()).toEqual(["dark"]);
-  expect(fixture.unexpected).toEqual([]);
-});
-
-test("a stored value that is no known theme or experience sets nothing on sign-in", async ({ page }) => {
-  const fixture = await signIn(page, { "console.theme": "midnight", "console.experience": "calm" });
-  const writes = await themeWrites(page);
-  await page.goto("/login");
-  await expect(page.getByRole("heading", { name: t("auth.login.title"), exact: true })).toBeVisible();
-  const html = page.locator("html");
-  await expect(html).not.toHaveAttribute("data-theme");
+  await expect(html).toHaveAttribute("data-theme", theme);
+  // No experience is known, so a stored id is never applied.
   await expect(html).not.toHaveAttribute("data-experience");
-  expect(await writes()).toEqual([]);
+  expect(await writes()).toEqual([theme]);
   expect(fixture.unexpected).toEqual([]);
 });
 
-test("the shell keeps the theme the page began with, writes it only on a change, and stores the change", async ({ page }) => {
+for (const from of ["a stored theme", "the system"] as const) test(`the shell keeps the theme the page began with from ${from}, writes it only on a change, and stores the change`, async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
-  await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+  if (from === "the system") await page.emulateMedia({ colorScheme: "dark" });
+  else await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
   const writes = await themeWrites(page);
   await page.goto("/people");
-  // The shell's own switch: it has mounted, and it holds the stored theme.
+  // The shell's own switch: it has mounted, and it holds the theme the page began with.
   const toLight = page.getByRole("button", { name: t("shell.theme.toLight"), exact: true });
   await expect(toLight).toBeVisible();
   const html = page.locator("html");

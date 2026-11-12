@@ -16,7 +16,7 @@ const stored = (): Theme | null => {
 export function useTheme(): [Theme, () => void] {
   const [theme, setTheme] = useState<Theme>(() => stored() ?? system());
   useEffect(() => {
-    // public/prefs.js applied a stored theme before the first paint: write only a change, never the same value again.
+    // public/prefs.js put this same theme on <html> before the first paint: write only a change, never the same value again.
     const root = document.documentElement;
     if (root.dataset.theme !== theme) root.dataset.theme = theme;
   }, [theme]);

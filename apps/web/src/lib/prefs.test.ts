@@ -7,12 +7,19 @@ import { THEME_KEY, THEMES } from "./prefs";
 const SRC = readFileSync(new URL("../../public/prefs.js", import.meta.url), "utf8");
 type Published = Record<"theme" | "experience", { key: string; values: string[] }>;
 
-/** One page load of public/prefs.js over what the device has stored: the attributes it put on <html>, and what it published. */
-function boot(stored: Record<string, string> | "blocked" | "unreadable", source = SRC) {
+/**
+ * One page load of public/prefs.js over what the device has stored and the theme its system prefers (none given: a
+ * browser with no matchMedia): the attributes it put on <html>, and what it published.
+ */
+function boot(stored: Record<string, string> | "blocked" | "unreadable", source = SRC, system?: "light" | "dark" | "throws") {
   const attributes: Record<string, string> = {};
   const window: { consolePrefs?: Published } = {};
   const document = { documentElement: { setAttribute: (name: string, value: string) => void (attributes[name] = value) } };
-  const context = Object.defineProperty({ window, document }, "localStorage", {
+  const matchMedia = (query: string) => {
+    if (system === "throws") throw new Error("matchMedia is refused");
+    return { matches: query === `(prefers-color-scheme: ${system})` };
+  };
+  const context = Object.defineProperty({ window, document, ...(system && { matchMedia }) }, "localStorage", {
     get() {
       if (stored === "blocked") throw new Error("storage is blocked");
       return {
@@ -29,22 +36,34 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
 // The same script once an experience id has been added to its list.
 const withCalm = SRC.replace('experience: { key: "console.experience", values: [] }', 'experience: { key: "console.experience", values: ["calm"] }');
 
-test("a stored theme is on <html> as soon as the script has run", () => {
-  expect(boot({ "console.theme": "dark" }).attributes).toEqual({ "data-theme": "dark" });
-  expect(boot({ "console.theme": "light" }).attributes).toEqual({ "data-theme": "light" });
+test("a stored theme is on <html> as soon as the script has run, whatever the system prefers", () => {
+  expect(boot({ "console.theme": "dark" }, SRC, "light").attributes).toEqual({ "data-theme": "dark" });
+  expect(boot({ "console.theme": "light" }, SRC, "dark").attributes).toEqual({ "data-theme": "light" });
 });
 
-test("a missing, unknown or malformed value sets nothing", () => {
-  expect(boot({}).attributes).toEqual({});
-  for (const value of ["", "DARK", "dark ", " dark", '"dark"', "light,dark", "auto", "system", "null", "0", "constructor", "__proto__", "toString", "length"]) {
-    expect(boot({ "console.theme": value, "console.experience": value }).attributes, value).toEqual({});
+test("a missing, unknown or malformed theme follows the system, and such an experience sets nothing", () => {
+  for (const system of ["dark", "light"] as const) {
+    expect(boot({}, SRC, system).attributes).toEqual({ "data-theme": system });
+    for (const value of ["", "DARK", "dark ", " dark", '"dark"', "light,dark", "auto", "system", "null", "0", "constructor", "__proto__", "toString", "length"]) {
+      expect(boot({ "console.theme": value, "console.experience": value }, SRC, system).attributes, value).toEqual({ "data-theme": system });
+    }
   }
 });
 
-test("storage that refuses the read sets nothing and lets the page go on", () => {
+test("storage that refuses the read leaves the theme to the system and lets the page go on", () => {
   for (const storage of ["blocked", "unreadable"] as const) {
-    const page = boot(storage);
-    expect(page.attributes).toEqual({});
+    const page = boot(storage, SRC, "dark");
+    expect(page.attributes).toEqual({ "data-theme": "dark" });
+    expect(page.published.theme.values).toEqual(["light", "dark"]);
+  }
+});
+
+test("a browser that cannot say what the system prefers sets a stored theme and no other", () => {
+  for (const system of [undefined, "throws"] as const) {
+    expect(boot({}, SRC, system).attributes, system).toEqual({});
+    expect(boot({ "console.theme": "midnight" }, SRC, system).attributes, system).toEqual({});
+    const page = boot({ "console.theme": "dark" }, SRC, system);
+    expect(page.attributes, system).toEqual({ "data-theme": "dark" });
     expect(page.published.theme.values).toEqual(["light", "dark"]);
   }
 });
