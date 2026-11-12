@@ -5,7 +5,7 @@ import path from "node:path";
 
 const [label, ...command] = process.argv.slice(2);
 if (!/^[a-zA-Z0-9-]+$/.test(label ?? "")) throw new Error("RUNNER_DISK_CONFIG: provide a checkpoint name");
-const directory = ".cache/runner-disk";
+const directory = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), ".cache/runner-disk");
 mkdirSync(directory, { recursive: true });
 const log = path.join(directory, `${label}.log`);
 const record = text => { appendFileSync(log, text); process.stdout.write(text); };

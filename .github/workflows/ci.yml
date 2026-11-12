@@ -16,6 +16,8 @@ on:
   pull_request:
   merge_group:
 permissions: {}
+env:
+  RUNNER_DISK_MIN_BYTES: ${{ vars.RUNNER_DISK_MIN_BYTES || '2147483648' }}
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -108,17 +110,25 @@ jobs:
           fetch-depth: 0
       - name: local dev branch for the ratchet base
         run: git rev-parse --verify -q refs/heads/dev >/dev/null || git branch dev origin/dev
-      # npm run secrets and scripts/hygiene.test.ts need the real scanner (pinned release, checksum-verified).
-      - name: gitleaks 8.30.1
-        run: |
-          curl -sSfL --retry 4 -o /tmp/gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
-          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tgz" | sha256sum -c -
-          sudo tar -xzf /tmp/gitleaks.tgz -C /usr/local/bin gitleaks
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
-      - run: npm ci --no-audit --no-fund
+      - &disk-start
+        name: Check runner disk before restores
+        working-directory: .
+        run: |
+          node scripts/runner-disk.mjs before-cache
+          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+      # npm run secrets and scripts/hygiene.test.ts need the real scanner (pinned release, checksum-verified).
+      - name: gitleaks 8.30.1
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: |
+          curl -sSfL --retry 4 -o /tmp/gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tgz" | sha256sum -c -
+          sudo tar -xzf /tmp/gitleaks.tgz -C /usr/local/bin gitleaks
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: npm ci --no-audit --no-fund
       - &playwright-version
         name: Locked Playwright version
         id: playwright
@@ -136,6 +146,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
       - &playwright-install
         name: Chromium headless shell for browser-backed tests
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           install_started=$SECONDS
           report_install_duration() {
@@ -145,12 +156,14 @@ jobs:
           npx playwright install --with-deps --only-shell chromium
       - name: Export browser cache for dev
         if: github.event_name == 'merge_group'
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: tar -czf "$RUNNER_TEMP/playwright.tgz" -C "$HOME/.cache" ms-playwright
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: github.event_name == 'merge_group'
         with: {name: playwright-cache, path: '${{ runner.temp }}/playwright.tgz', retention-days: 1, if-no-files-found: error}
       - name: Web checks
         timeout-minutes: 30
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           npm run check
           node --test scripts/ci-backend.test.mjs
@@ -163,6 +176,15 @@ jobs:
           python3 scripts/states_evidence_test.py
           python3 scripts/pull_measured_evidence_test.py
           CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
+
+      - &disk-evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: runner-disk-${{ github.job }}-${{ strategy.job-index || '0' }}
+          path: .cache/runner-disk/
+          include-hidden-files: true
+          if-no-files-found: error
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
   states-plan:
@@ -182,7 +204,9 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
-      - run: npm ci --no-audit --no-fund
+      - *disk-start
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: npm ci --no-audit --no-fund
       - name: Restore latest compatible dev timings
         env:
           GH_TOKEN: ${{ github.token }}
@@ -192,6 +216,7 @@ jobs:
         id: plan
         env:
           E2E_MODULES_FILE: .cache/states-plan/modules.json
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           mkdir -p .cache
           node scripts/d8-module-routes.mjs "$E2E_MODULES_FILE"
@@ -203,6 +228,7 @@ jobs:
           path: .cache/states-plan
           include-hidden-files: true
           if-no-files-found: error
+      - *disk-evidence
 
   states:
     needs: states-plan
@@ -225,7 +251,9 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
-      - run: npm ci --no-audit --no-fund
+      - *disk-start
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: npm ci --no-audit --no-fund
       - *playwright-version
       - *playwright-cache
       - *playwright-install
@@ -234,7 +262,8 @@ jobs:
           name: states-plan
           path: .cache/states-plan
       # Workers stay at the timing configuration's default; go wider with shards, not workers.
-      - run: node scripts/states-shards.mjs run .cache/states-plan/plan.json "${{ matrix.shard }}"
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: node scripts/states-shards.mjs run .cache/states-plan/plan.json "${{ matrix.shard }}"
         timeout-minutes: ${{ matrix.runTimeoutMinutes }}
         env:
           E2E_MODULES_FILE: .cache/states-plan/modules.json
@@ -246,6 +275,7 @@ jobs:
           path: .cache/states-report-${{ matrix.shard }}.json
           include-hidden-files: true
           if-no-files-found: error
+      - *disk-evidence
 
   states-timings:
     if: github.event_name == 'push' && needs.affected.outputs.web == 'true'
@@ -262,6 +292,7 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version}
+      - *disk-start
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           run-id: ${{ needs.affected.outputs.run-id }}
@@ -292,12 +323,14 @@ jobs:
           include-hidden-files: true
           retention-days: 90
           if-no-files-found: error
-      - run: npm ci --no-audit --no-fund
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: npm ci --no-audit --no-fund
       - name: Check measured capacity on dev
         env:
           STATES_CHECK_CAPACITY: "1"
           STATES_TIMINGS_FILE: .cache/states-timings/timings.json
         run: node --test scripts/states-shards.test.mjs
+      - *disk-evidence
 
   backend:
     needs: [affected]
@@ -322,6 +355,9 @@ jobs:
       # All workers restore the same cache; only the dev-only collector saves their union.
       # registry/src is left out: cargo keeps crate mtimes when it unpacks, so a -newer delta would carry only .cargo-ok
       # markers without sources, and cargo then refuses to build. It re-unpacks from registry/cache quickly.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - *disk-start
       - &rust-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: rust-cache
@@ -340,12 +376,14 @@ jobs:
           mkdir -p "$HOME/.cargo/registry/index" "$HOME/.cargo/registry/cache" "$HOME/.cargo/git/db" "$GITHUB_WORKSPACE/backend/target"
           touch "$RUNNER_TEMP/rust-cache-start"
       - run: cargo fmt --check
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - &cache-collect
         name: Collect Rust cache changes
         if: github.event_name == 'merge_group'
         continue-on-error: true
         timeout-minutes: 2
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           mkdir -p "$RUNNER_TEMP/rust-cache"
           cd "$HOME"
@@ -367,6 +405,7 @@ jobs:
           retention-days: 1
           compression-level: 0
           if-no-files-found: error
+      - *disk-evidence
 
   backend-gates:
     needs: [affected]
@@ -383,11 +422,15 @@ jobs:
     steps:
       - *backend-harden
       - *backend-checkout
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - *disk-start
       - *rust-cache
       - *cache-mark
-      - run: cargo test --locked -p console-gate-migration-safety
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: cargo test --locked -p console-gate-migration-safety
       - name: Backend code gates (release parity)
-        shell: bash
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           pkgs="$(sed -n 's/^name = "\(console-gate-[a-z0-9-]*\)"$/\1/p' ci/gates/*/Cargo.toml | sort -u)"
           test -n "$pkgs"
@@ -402,6 +445,7 @@ jobs:
           exit "$failed"
       - *cache-collect
       - *cache-upload
+      - *disk-evidence
 
   backend-release:
     needs: [affected]
@@ -414,9 +458,13 @@ jobs:
     steps:
       - *backend-harden
       - *backend-checkout
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - *disk-start
       - *rust-cache
       - *cache-mark
       - name: Release backend for Home probe
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: cargo build --release --locked -p console-app --features e2e-test-support
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
@@ -426,6 +474,7 @@ jobs:
           if-no-files-found: error
       - *cache-collect
       - *cache-upload
+      - *disk-evidence
 
   backend-tests:
     needs: [affected]
@@ -448,18 +497,21 @@ jobs:
     steps:
       - *backend-harden
       - *backend-checkout
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - *disk-start
       - *rust-cache
       - *cache-mark
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: {node-version-file: .node-version}
       - name: Install pinned Rust test runner
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           curl --fail --silent --show-error --retry 8 --retry-delay 15 --retry-all-errors --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
             "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
           echo "e1c85dbe02dcf5b963803b3f96f4f561757f5c37cab68c932411dea20d57284e  ${RUNNER_TEMP}/nextest.tar.gz" | sha256sum -c -
           tar -xzf "${RUNNER_TEMP}/nextest.tar.gz" -C "${RUNNER_TEMP}" cargo-nextest
           echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
-      - run: node scripts/backend-tests.mjs
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: node scripts/backend-tests.mjs
         working-directory: .
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() }}
@@ -471,6 +523,8 @@ jobs:
       - *cache-collect
       - *cache-upload
 
+      - *disk-evidence
+
   # Import only the successful queue proof; all cache writes stay on dev.
   backend-cache:
     if: github.event_name == 'push' && needs.affected.outputs.backend == 'true'
@@ -481,6 +535,9 @@ jobs:
     steps:
       - *backend-harden
       - *backend-checkout
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - *disk-start
       - *rust-cache
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         continue-on-error: true
@@ -494,6 +551,7 @@ jobs:
       - name: Merge Rust cache changes
         continue-on-error: true
         timeout-minutes: 5
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           shopt -s nullglob
           for archive in "$RUNNER_TEMP"/rust-cache/registry-*.tgz; do tar -xzf "$archive" -C "$HOME"; done
@@ -508,6 +566,7 @@ jobs:
             ~/.cargo/git/db
             backend/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+      - *disk-evidence
 
   home:
     needs: [affected, backend-release]
@@ -523,7 +582,9 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
+      - *disk-start
       - name: Served Home probe prerequisites
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           npm ci --no-audit --no-fund
           npx playwright install --with-deps --only-shell chromium
@@ -539,6 +600,7 @@ jobs:
           E2E_PREBUILT: "1"
           E2E_WORKERS: "1"
           CONSOLE_APP_BIN: .cache/home-backend/console-app
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: npx playwright test e2e/performance/home-inbox.spec.ts --project=parallel
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ always() }}
@@ -549,6 +611,7 @@ jobs:
 
       - name: Firefox for D7 solo journey
         if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: npx playwright install --with-deps firefox
       - name: Solo journey on Chromium and Firefox
         if: ${{ !cancelled() && github.event_name == 'merge_group' }}
@@ -557,6 +620,7 @@ jobs:
           E2E_PREBUILT: "1"
           E2E_REPORTER: line,json
           CONSOLE_APP_BIN: .cache/home-backend/console-app
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           failed=0
           for browser in 0 1; do
@@ -580,6 +644,7 @@ jobs:
           E2E_REPORTER: line,json
           PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/d10/playwright.json
           CONSOLE_APP_BIN: .cache/home-backend/console-app
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           npx playwright test e2e/authz/write-refusals.spec.ts --project=parallel
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -598,6 +663,7 @@ jobs:
           E2E_REPORTER: line,json
           PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/beacon/playwright-beacon.json
           CONSOLE_APP_BIN: .cache/home-backend/console-app
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: npx playwright test e2e/error-beacon.spec.ts --project=parallel
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() && github.event_name == 'merge_group' }}
@@ -606,6 +672,7 @@ jobs:
           path: .cache/beacon/*.json
           include-hidden-files: true
           if-no-files-found: error
+      - *disk-evidence
 
   release-evidence:
     if: github.event_name == 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true')
@@ -622,7 +689,9 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
-      - run: npm ci --no-audit --no-fund
+      - *disk-start
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: npm ci --no-audit --no-fund
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         if: ${{ !cancelled() && needs.affected.outputs.web == 'true' }}
         with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: states-report-*, merge-multiple: true, path: .cache/d7-input}
@@ -694,6 +763,7 @@ jobs:
           path: .cache/d10-evidence/*.json
           include-hidden-files: true
           if-no-files-found: error
+      - *disk-evidence
 
   supply-chain:
     if: github.event_name != 'push'
@@ -712,6 +782,7 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version}
+      - *disk-start
       # Reuse approved artifact actions for a cross-run binary cache; only dev writes it.
       - name: Find trusted tool cache
         id: cache
@@ -740,6 +811,7 @@ jobs:
           path: ${{ env.TOOL_ROOT }}/bin
       - name: Install pinned tools on cache miss
         if: steps.cache.outputs.run-id == ''
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           cargo install cargo-deny --locked --version "${CARGO_DENY_VERSION}" --root "$TOOL_ROOT"
           cargo install cargo-audit --locked --version "${CARGO_AUDIT_VERSION}" --root "$TOOL_ROOT"
@@ -760,6 +832,7 @@ jobs:
           path: ${{ env.TOOL_ROOT }}/bin/cargo-*
           retention-days: 90
           if-no-files-found: error
+      - *disk-evidence
 
   dev-artifacts:
     if: github.event_name == 'push'
@@ -772,6 +845,7 @@ jobs:
       - *backend-checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version}
+      - *disk-start
       - *playwright-version
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
@@ -789,6 +863,7 @@ jobs:
           run-id: ${{ needs.affected.outputs.run-id }}
           github-token: ${{ github.token }}
       - if: needs.affected.outputs.web == 'true'
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           mkdir -p "$HOME/.cache"
           tar -xzf .cache/dev-browser/playwright.tgz -C "$HOME/.cache"
@@ -797,6 +872,7 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+      - *disk-evidence
 
   ci-ok:
     permissions: {contents: read}

@@ -12,7 +12,7 @@ const script = fileURLToPath(new URL('./ci-notify.mjs', import.meta.url));
 function run(overrides = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'ci-notify-'));
   try {
-    writeFileSync(path.join(root, 'gh'), `#!${process.execPath}\nconsole.log(JSON.stringify([{jobs:[{name:'db-tests (2)',conclusion:'failure',html_url:'https://example.com/job/2',steps:[{name:'Build',conclusion:'failure'}]},{name:'db-tests (1)',conclusion:'success',steps:[]}]}]));\n`, {mode: 0o755});
+    writeFileSync(path.join(root, 'gh'), `#!${process.execPath}\nconsole.log(JSON.stringify([{jobs:[{name:'db-tests (2)',conclusion:'failure',html_url:'https://example.com/job/2',steps:[{name:'Build',conclusion:'failure'}]},{name:'db-tests (1)',conclusion:'success',steps:[]},{name:'alert-nightly',conclusion:null,status:'in_progress',steps:[]}]}]));\n`, {mode: 0o755});
     writeFileSync(path.join(root, 'docker'), `#!${process.execPath}\nconst fs=require('node:fs'); const args=process.argv.slice(2); const mount=args[args.indexOf('-v')+1].split(':')[0]; fs.writeFileSync(process.env.CAPTURE,JSON.stringify({args,config:fs.readFileSync(mount+'/config','utf8'),mode:fs.statSync(mount+'/key.pem').mode&511})); process.exit(Number(process.env.DOCKER_STATUS||0));\n`, {mode: 0o755});
     const result = spawnSync(process.execPath, [script], {cwd: root, encoding: 'utf8', env: {...process.env,
       PATH: `${root}:${process.env.PATH}`, RUNNER_TEMP: root, CAPTURE: path.join(root, 'capture'),
@@ -33,7 +33,7 @@ test('failure dry run retains failed shard, step, run and artifact links without
   assert.match(result.payload.body, /db-tests \(2\).*failure.*Build/);
   assert.match(result.payload.body, /https:\/\/example.com\/job\/2/);
   assert.match(result.payload.body, /https:\/\/example.com\/run\/123#artifacts/);
-  assert.doesNotMatch(result.payload.body, /db-tests \(1\)/);
+  assert.doesNotMatch(result.payload.body, /db-tests \(1\)|alert-nightly/);
   assert.equal(result.capture, undefined);
 });
 
@@ -51,9 +51,12 @@ test('publisher uses existing ONS adapter, private credentials and always remove
 });
 
 test('publisher refuses missing credentials and invalid dry-run values', () => {
-  for (const overrides of [{NOTIFY_DRY_RUN: 'false', OCI_CONFIG: '', OCI_API_KEY: '', ONS_TOPIC_ID: ''}, {NOTIFY_DRY_RUN: 'invalid'}, {NOTIFY_BODY: ''}]) {
+  for (const overrides of [{NOTIFY_DRY_RUN: 'false', OCI_CONFIG: '', OCI_API_KEY: '', ONS_TOPIC_ID: ''}, {NOTIFY_DRY_RUN: 'invalid', OCI_CONFIG: '[DEFAULT]', OCI_API_KEY: 'fixture', ONS_TOPIC_ID: 'fixture'}, {NOTIFY_BODY: ''}]) {
     const result = run(overrides);
     assert.equal(result.status, 1);
+    const message = overrides.NOTIFY_DRY_RUN === 'invalid' ? /NOTIFY_DRY_RUN must be true or false/
+      : overrides.NOTIFY_BODY === '' ? /notification title, body and run URL are required/ : /OCI_CONFIG is required/;
+    assert.match(result.stderr, message);
     assert.equal(result.capture, undefined);
   }
 });

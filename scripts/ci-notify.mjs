@@ -22,7 +22,7 @@ function main() {
   if (env.NOTIFY_FAILED_JOBS === 'true') {
     const pages = JSON.parse(execute('gh', ['api', '--paginate', '--slurp', `repos/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}/attempts/${env.GITHUB_RUN_ATTEMPT || '1'}/jobs?per_page=100`]));
     for (const job of pages.flatMap(page => page.jobs)) {
-      if (['success', 'skipped'].includes(job.conclusion)) continue;
+      if (!job.conclusion || ['success', 'skipped'].includes(job.conclusion)) continue;
       const steps = job.steps.filter(step => step.conclusion === 'failure').map(step => step.name).join(', ');
       body += `\n${job.name}: ${job.conclusion ?? job.status}${steps ? ` (${steps})` : ''} ${job.html_url}`;
     }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -80,4 +80,39 @@ test("database shards guard heavy phases and upload evidence before cache work",
   const budget = job.steps.find(step => step.id === "cache-budget");
   assert.doesNotMatch(budget.run, /-o "\$cache_archive"/);
   assert.match(budget.run, /zstd.*\|.*wc -c/);
+});
+
+test("backend working directories write evidence under the workspace artifact root", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "runner-workspace-"));
+  try {
+    const result = spawnSync(process.execPath, [script, "nested", "bash", "-e", "-o", "pipefail", "-c", "printf 'compiler output'"], {
+      cwd: tmpdir(), encoding: "utf8", env: { ...process.env, GITHUB_WORKSPACE: root, RUNNER_DISK_MIN_BYTES: "1" },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(readFileSync(path.join(root, ".cache/runner-disk/nested.log"), "utf8"), /compiler output/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("custom workflow shell preserves scripts, environment, working directory and pipe failures", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "runner-shell-"));
+  try {
+    symlinkSync(new URL(".", import.meta.url).pathname, path.join(root, "scripts"), "dir");
+    mkdirSync(path.join(root, "backend"));
+    const fixture = path.join(root, "fixture.sh");
+    for (const [body, expected] of [["printf '%s\\n' \"$VALUE:$PWD\"; exit 23", 23], ["false | true", 1]]) {
+      writeFileSync(fixture, body);
+      const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", 'exec runner-disk-shell.sh "$1"', "--", fixture], {
+        cwd: path.join(root, "backend"), encoding: "utf8", env: {...process.env, PATH: `${path.join(root, "scripts")}:${process.env.PATH}`, VALUE: "fixture", GITHUB_WORKSPACE: root, RUNNER_DISK_MIN_BYTES: "1"},
+      });
+      assert.equal(result.status, expected, result.stdout + result.stderr);
+    }
+    writeFileSync(fixture, "echo must-not-run");
+    const refused = spawnSync("bash", [new URL("./runner-disk-shell.sh", import.meta.url).pathname, fixture], {
+      cwd: root, encoding: "utf8", env: {...process.env, GITHUB_WORKSPACE: root, RUNNER_DISK_MIN_BYTES: String(Number.MAX_SAFE_INTEGER)},
+    });
+    assert.equal(refused.status, 1);
+    assert.match(refused.stdout, /RUNNER_DISK_LOW/);
+    assert.doesNotMatch(refused.stdout, /must-not-run/);
+    assert.match(readFileSync(path.join(root, ".cache/runner-disk/fixture.log"), "utf8"), /fixture:.*backend/);
+  } finally { rmSync(root, {recursive: true, force: true}); }
 });
