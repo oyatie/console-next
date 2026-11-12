@@ -1,8 +1,11 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { pickKind, registerEntity, registerWorkplace, typeAddress } from "./setup-flows";
 import { box, leaveScreen, revealUnit } from "./structure-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 async function emptyEntity(browser: Browser, slug: string, width = 1280, height = 720) {
   const vendor = await vendorPage(browser);
@@ -15,7 +18,7 @@ async function emptyEntity(browser: Browser, slug: string, width = 1280, height 
   await page.setViewportSize({ width, height });
   await page.locator("html").evaluate((el) => { el.dataset.theme = "light"; });
   await go(page, "/org");
-  await page.getByRole("link", { name: "법인 추가" }).click();
+  await page.getByRole("link", { name: t("structure.first.addEntity"), exact: true }).click();
   await registerEntity(page, "자녀추가");
   return page;
 }
@@ -106,6 +109,7 @@ for (const [width, height] of [[1280, 720], [1920, 1080]]) {
       // The list has the same visible per-row add, even with existing children.
       await page.getByRole("button", { name: "목록", exact: true }).click();
       const grid = page.getByRole("grid", { name: "조직 구조 목록" });
+      await grid.evaluate((el) => (el.scrollLeft = el.scrollWidth));
       for (const [name, label] of [[entity, "사업장 추가"], ["사업장1", "부서 추가"], ["부서1", "하위 부서 추가"]] as const)
         await expect(grid.getByRole("row", { name: new RegExp(name) }).filter({ has: page.getByText(name, { exact: true }) }).getByRole(name === entity ? "link" : "button", { name: label, exact: true })).toBeVisible();
     });
