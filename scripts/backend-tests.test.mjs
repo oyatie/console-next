@@ -295,16 +295,32 @@ test("database result collection proves all shards and preserves measured durati
   assert.throws(() => backendTests.collectDatabaseResults(plan, [junit(ids).replace('tests="2"', 'tests="3"')]), /count/);
 });
 
+test("database nightly and manual runs cannot replace pending dev or PR runs", () => {
+  const { concurrency } = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  const group = (event_name, ref = "refs/heads/dev", run_id = "1") => concurrency.group.replace(
+    /\$\{\{(.*?)\}\}/g, (_, expression) => new Function("github", `return ${expression}`)({ event_name, ref, run_id }),
+  );
+  assert.equal(concurrency["cancel-in-progress"], false);
+  const trunk = group("push"), nightly = group("schedule"), manual = group("workflow_dispatch");
+  assert.equal(trunk, "db-tests-trunk");
+  assert.equal(group("push", "refs/heads/dev", "2"), trunk, "dev pushes retain one serialized group");
+  assert.equal(group("schedule", "refs/heads/dev", "2"), nightly, "nightly runs retain one serialized group");
+  const pr = group("pull_request", "refs/pull/1/merge");
+  assert.equal(group("pull_request", "refs/pull/1/merge", "2"), pr);
+  assert.equal(new Set([trunk, nightly, manual, group("workflow_dispatch", "refs/heads/dev", "2"),
+    pr, group("pull_request", "refs/pull/2/merge")]).size, 6,
+  "nightly, dev, distinct manual rehearsals and separate PRs must not replace each other's pending run");
+});
+
 test("the database workflow is tiered, pinned and limited to four duration shards", () => {
   const file = readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8");
   const dbWorkflow = yaml.load(file);
-  assert.deepEqual(Object.keys(dbWorkflow.on).sort(), ["pull_request", "push", "schedule"]);
+  assert.deepEqual(Object.keys(dbWorkflow.on).sort(), ["pull_request", "push", "schedule", "workflow_dispatch"]);
   assert.doesNotMatch(file, /^\s*merge_group:/m);
   assert.match(file, /merge_group.*queue timeout/);
   assert.doesNotMatch(file, /CI-[A-Z]+/);
   assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
   assert.match(file, /schedule:\s*\n\s*- cron:/);
-  assert.equal(dbWorkflow.concurrency.group, "db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}");
   assert.equal(dbWorkflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(dbWorkflow.on.pull_request.paths, [
     ".github/workflows/db-tests.yml",
@@ -347,7 +363,7 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   assert.equal(budget.env.RUST_CACHE_MAX_BYTES, "3221225472");
   assert.equal(budget.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' }}");
   assert.match(budget.run, /find.*\.cargo\/registry.*find backend\/target.*\.fingerprint.*build.*deps/s);
-  assert.match(budget.run, /tar.*zstd.*stat -c %s/s);
+  assert.match(budget.run, /tar.*zstd.*wc -c/s);
   const overBudget = budget.run.match(/if \(\( cache_bytes > RUST_CACHE_MAX_BYTES \)\); then(?<body>[\s\S]*?)\n\s*else/)?.groups?.body;
   assert.ok(overBudget);
   assert.match(overBudget, /::warning::/);
@@ -374,10 +390,10 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   assert.equal(results.if, "${{ !cancelled() }}");
   assert.equal(results.with["if-no-files-found"], "error");
   const alert = dbWorkflow.jobs["alert-nightly"];
-  assert.deepEqual(alert.permissions, { contents: "read", issues: "write" });
-  assert.equal(alert.if, "${{ always() && github.event_name == 'schedule' && (needs.db-test-timing-source.result != 'success' || needs.db-tests.result != 'success' || needs.db-test-timings.result != 'success') }}");
-  assert.match(alert.steps.map((step) => step.run ?? "").join("\n"), /issues.*comments|comments.*issues/s);
-  for (const workflowJob of Object.values(dbWorkflow.jobs)) for (const step of workflowJob.steps) {
+  assert.deepEqual(alert.permissions, { contents: "read", actions: "read" });
+  assert.match(alert.if, /always\(\).*schedule.*alert_dry_run/);
+  assert.equal(alert.uses, "./.github/workflows/notify.yml");
+  for (const workflowJob of Object.values(dbWorkflow.jobs)) for (const step of workflowJob.steps ?? []) {
     if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
     assert.ok(!step["continue-on-error"]);
   }
@@ -404,7 +420,7 @@ test("database builds reclaim hosted disk before restoring Rust and report disk 
     for (const status of [0, 73]) {
       const calls = path.join(root, `calls-${status}`);
       const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", cleanup.run], { encoding: "utf8", env: {
-        ...process.env, PATH: `${root}:${process.env.PATH}`, CALLS: calls, CLEANUP_STATUS: String(status), GITHUB_WORKSPACE: root,
+        ...process.env, PATH: `${root}:${process.env.PATH}`, GITHUB_PATH: path.join(root, "github-path"), CALLS: calls, CLEANUP_STATUS: String(status), GITHUB_WORKSPACE: root, RUNNER_DISK_MIN_BYTES: "1",
       } });
       assert.equal(result.status, status, result.stdout + result.stderr);
       const events = readFileSync(calls, "utf8").trim().split("\n");
@@ -414,7 +430,7 @@ test("database builds reclaim hosted disk before restoring Rust and report disk 
       assert.equal(result.stdout.match(/available disk/g)?.length, status ? 1 : 2);
     }
     const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", report.run], { encoding: "utf8", env: {
-      ...process.env, PATH: `${root}:${process.env.PATH}`, CALLS: path.join(root, "report-calls"), GITHUB_WORKSPACE: root,
+      ...process.env, PATH: `${root}:${process.env.PATH}`, CALLS: path.join(root, "report-calls"), GITHUB_WORKSPACE: root, RUNNER_DISK_MIN_BYTES: "1",
     } });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /available disk/);
@@ -522,27 +538,25 @@ test("cache budget measures an archive containing registry and all restored targ
     }
     mkdirSync(path.join(root, "bin"));
     mkdirSync(path.join(root, "temp"));
-    // Keep tar's real input, with portable fixtures for compression and GNU stat.
+    // Capture the real tar stream to verify exactly what the byte counter receives.
     writeFileSync(path.join(root, "bin/zstd"), `#!${process.execPath}
 const fs = require('node:fs');
-fs.writeFileSync(process.argv[process.argv.indexOf('-o') + 1], fs.readFileSync(0));
-`, { mode: 0o755 });
-    writeFileSync(path.join(root, "bin/stat"), `#!${process.execPath}
-console.log(require('node:fs').statSync(process.argv.at(-1)).size);
+const data = fs.readFileSync(0); fs.writeFileSync(process.env.TEST_ARCHIVE, data); process.stdout.write(data);
 `, { mode: 0o755 });
     const output = path.join(root, "output"), summary = path.join(root, "summary");
     const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", budget.run], { cwd: root, encoding: "utf8", env: {
       ...process.env, HOME: path.join(root, "home"), RUNNER_TEMP: path.join(root, "temp"), PATH: `${root}/bin:${process.env.PATH}`,
-      GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary, ...budget.env,
+      GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary, TEST_ARCHIVE: path.join(root, "archive"), ...budget.env,
     } });
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    const archive = path.join(root, "temp/db-tests-rust-cache.tar.zst");
+    assert.deepEqual(readdirSync(path.join(root, "temp")), ["db-tests-rust-cache-files"], "budgeting must not retain an archive");
+    const archive = path.join(root, "archive");
     const entries = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
     assert.equal(entries.status, 0, entries.stderr);
     const names = entries.stdout.trim().split("\n");
     assert.deepEqual(names.map(name => name.replace(/^.*\.cargo\//, "home/.cargo/")).sort(), files.sort());
     assert.ok(readFileSync(archive).length > 0);
-    assert.match(readFileSync(summary, "utf8"), new RegExp(`candidate: ${readFileSync(archive).length} bytes`));
+    assert.match(readFileSync(summary, "utf8"), new RegExp(`candidate: \\s*${readFileSync(archive).length} bytes`));
     assert.equal(readFileSync(output, "utf8"), "save=true\n");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

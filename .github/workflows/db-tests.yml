@@ -11,11 +11,23 @@ on:
       - .config/nextest.toml
   push:
     branches: [dev]
+  workflow_dispatch:
+    inputs:
+      alert_dry_run:
+        description: Rehearse the failure alert without publishing a notification
+        type: boolean
+        default: false
+      disk_min_bytes:
+        description: Free disk reserve in bytes (override for guard rehearsals)
+        type: string
+        required: false
   schedule:
     - cron: '47 17 * * *'
 permissions: {}
 concurrency:
-  group: db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}
+  # Pending runs replace each other even when cancel-in-progress is false; isolate nightly and manual runs.
+  # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+  group: db-tests-${{ github.event_name == 'pull_request' && github.ref || github.event_name == 'schedule' && 'nightly' || github.event_name == 'workflow_dispatch' && github.run_id || 'trunk' }}
   cancel-in-progress: false
 
 jobs:
@@ -85,6 +97,8 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_NEXTEST_VERSION: 0.9.138
       CARGO_TERM_COLOR: always
+      # Keep headroom for runner diagnostics and failure artifacts during compilation.
+      RUNNER_DISK_MIN_BYTES: ${{ inputs.disk_min_bytes || vars.RUNNER_DISK_MIN_BYTES || '2147483648' }}
       DATABASE_URL: postgres://console_buck_admin@127.0.0.1:5432/console_ci_contract?options%5Bconsole.sqlx_test_bootstrap%5D=buck-sqlx-superuser-v1
       SQLX_OFFLINE: 'true'
     steps:
@@ -102,6 +116,8 @@ jobs:
           sudo rm -rf -- /usr/share/dotnet /usr/share/swift /opt/hostedtoolcache/CodeQL
           echo 'Disk after cleanup, before cache restore and build:'
           df -h "$GITHUB_WORKSPACE"
+          node scripts/runner-disk.mjs before-cache
+          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: rust-cache
         with:
@@ -113,7 +129,9 @@ jobs:
           key: db-tests-${{ runner.os }}-${{ runner.arch }}-debug${{ env.CARGO_PROFILE_TEST_DEBUG }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
           restore-keys: db-tests-${{ runner.os }}-${{ runner.arch }}-debug${{ env.CARGO_PROFILE_TEST_DEBUG }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-
       - name: Install pinned Rust test runner
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
+          node scripts/runner-disk.mjs after-cache
           curl --fail --silent --show-error --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
             "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
           echo "e1c85dbe02dcf5b963803b3f96f4f561757f5c37cab68c932411dea20d57284e  ${RUNNER_TEMP}/nextest.tar.gz" | sha256sum -c -
@@ -169,23 +187,38 @@ jobs:
           }
           JS
       - name: Run duration shard
-        run: node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
+        run: node scripts/runner-disk.mjs db-shard-${{ matrix.shard }} node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
       - name: Report disk after database tests
         if: ${{ !cancelled() }}
         run: |
           echo 'Disk after database build and tests:'
           df -h "$GITHUB_WORKSPACE"
+          node scripts/runner-disk.mjs after-tests
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0
+        if: ${{ !cancelled() }}
+        with:
+          name: db-test-results-${{ matrix.shard }}
+          path: backend/target/nextest/ci/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0
+        if: ${{ !cancelled() }}
+        with:
+          name: db-test-diagnostics-${{ matrix.shard }}
+          path: .cache/runner-disk/
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Check Rust cache budget
         id: cache-budget
         if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' }}
         env:
           RUST_CACHE_MAX_BYTES: '3221225472'
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
-          cache_archive="${RUNNER_TEMP}/db-tests-rust-cache.tar.zst"
           find "$HOME/.cargo/registry" -type f -print0 > "${RUNNER_TEMP}/db-tests-rust-cache-files"
           find backend/target -type f \( -path 'backend/target/*/.fingerprint/*' -o -path 'backend/target/*/build/*' -o -path 'backend/target/*/deps/*' \) -print0 >> "${RUNNER_TEMP}/db-tests-rust-cache-files"
-          tar --null -T "${RUNNER_TEMP}/db-tests-rust-cache-files" -cf - | zstd -q -T0 -3 -o "$cache_archive"
-          cache_bytes="$(stat -c %s "$cache_archive")"
+          # Count compressed bytes without retaining a second copy on the runner.
+          # Standard runner storage: https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+          cache_bytes="$(tar --null -T "${RUNNER_TEMP}/db-tests-rust-cache-files" -cf - | zstd -q -T0 -3 | wc -c)"
           echo "Rust cache candidate: ${cache_bytes} bytes / ${RUST_CACHE_MAX_BYTES} bytes." >> "$GITHUB_STEP_SUMMARY"
           if (( cache_bytes > RUST_CACHE_MAX_BYTES )); then
             echo "::warning::Rust cache candidate is over budget; this shard remains green and the cache will not be saved."
@@ -202,12 +235,6 @@ jobs:
             backend/target/*/build
             backend/target/*/deps
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0
-        if: ${{ !cancelled() }}
-        with:
-          name: db-test-results-${{ matrix.shard }}
-          path: backend/target/nextest/ci/
-          if-no-files-found: error
 
   db-test-timings:
     if: ${{ always() && needs.db-tests.result != 'cancelled' }}
@@ -241,34 +268,12 @@ jobs:
           if-no-files-found: error
 
   alert-nightly:
-    if: ${{ always() && github.event_name == 'schedule' && (needs.db-test-timing-source.result != 'success' || needs.db-tests.result != 'success' || needs.db-test-timings.result != 'success') }}
+    if: ${{ always() && ((github.event_name == 'schedule' && (needs.db-test-timing-source.result != 'success' || needs.db-tests.result != 'success' || needs.db-test-timings.result != 'success')) || (github.event_name == 'workflow_dispatch' && inputs.alert_dry_run)) }}
     needs: [db-test-timing-source, db-tests, db-test-timings]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions: {contents: read, issues: write}
-    steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
-        with: {egress-policy: audit}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: {persist-credentials: false}
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: {node-version-file: .node-version}
-      - name: Open or update the nightly failure issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          JOB_RESULTS: timing-source=${{ needs.db-test-timing-source.result }}, shards=${{ needs.db-tests.result }}, reconciliation=${{ needs.db-test-timings.result }}
-        run: |
-          node --input-type=module <<'JS'
-          const headers = { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28" };
-          const base = `${process.env.GITHUB_API_URL}/repos/${process.env.GITHUB_REPOSITORY}/issues`;
-          const request = async (url, init = {}) => {
-            const response = await fetch(url, { ...init, headers: { ...headers, ...init.headers } });
-            if (!response.ok) throw new Error(`${response.status}: ${await response.text()}`);
-            return response.json();
-          };
-          const title = "Nightly database tests failed";
-          const body = `${process.env.RUN_URL}\n\nJob results: ${process.env.JOB_RESULTS}`;
-          const issue = (await request(`${base}?state=open&per_page=100`)).find(candidate => candidate.title === title);
-          await request(issue ? `${base}/${issue.number}/comments` : base, { method: "POST", body: JSON.stringify(issue ? { body } : { title, body }) });
-          JS
+    permissions: {contents: read, actions: read}
+    uses: ./.github/workflows/notify.yml
+    with:
+      title: Nightly database tests failed
+      body: 'Job results: timing-source=${{ needs.db-test-timing-source.result }}, shards=${{ needs.db-tests.result }}, reconciliation=${{ needs.db-test-timings.result }}'
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.alert_dry_run }}
+      failed-jobs: true
