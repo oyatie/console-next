@@ -16,6 +16,16 @@ use uuid::Uuid;
 
 use crate::HrError;
 
+/// Convert the domain's class name at the settings boundary; unknown keys fail closed.
+pub fn approval_class(
+    kind: console_hr_domain::requests::ChangeRequestKind,
+) -> Result<Option<console_settings_domain::SettingKey>, HrError> {
+    console_hr_domain::requests::approval_class(kind)
+        .map(str::parse)
+        .transpose()
+        .map_err(|_| HrError::internal("unregistered HR approval class"))
+}
+
 /// The only assignee role today: org-wide employee-directory managers (HR).
 pub const ASSIGNEE_ROLE_HR: &str = "HR";
 

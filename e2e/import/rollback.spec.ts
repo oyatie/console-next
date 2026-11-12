@@ -2,6 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { readDevSecrets } from "../../scripts/dev-secrets";
 import { expect, test, type Page } from "@playwright/test";
+import type { components } from "@console/api/schema";
 import { OWN_ECHO_MS } from "../../apps/web/src/lib/freshness";
 import { expectAccessible } from "../a11y";
 import { go, option, registerEmployee, unique } from "../flows";
@@ -219,7 +220,16 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   });
   expect([self.status(), await codeOf(self)]).toEqual([403, "authz_sod_requester"]);
   expect(await headcount(api)).toBe(2);
+  const reviewerApi = apiOf(exec, bearerOf(exec));
   await go(exec, "/people/requests?sel=" + outcome.request_id);
+  const inbox = await reviewerApi("/me/action-inbox?filter=turn");
+  expect(inbox.status()).toBe(200);
+  const pending = (await inbox.json() as components["schemas"]["ActionInboxResponse"])
+    .items.find(item => item.id === `hr_request:${outcome.request_id}`);
+  expect(pending).toMatchObject({ version: expect.any(String), policy: {
+    key: "approval.policy.import_rollback", routed: true,
+    merge_consecutive: false, bulk_allowed: false, step_up: false,
+  } });
   const request = exec.getByRole("complementary", { name: "요청 상세" });
   await expect(request).toContainText("되돌리기");
   await request.getByRole("button", { name: "반영", exact: true }).click();

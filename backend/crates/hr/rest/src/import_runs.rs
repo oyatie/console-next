@@ -12,11 +12,12 @@ use console_hr_adapter_postgres::import::rollback::{
 use console_hr_adapter_postgres::import::run_record::{
     EmployeeImportRun, EmployeeImportRunPage, RunListQuery,
 };
+use console_hr_adapter_postgres::requests::approval_class;
 use console_hr_adapter_postgres::{HrError, HrService};
+use console_hr_domain::requests::ChangeRequestKind;
 use console_platform_auth::PasskeyService;
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::idempotency::{IDEMPOTENCY_KEY_HEADER, validate_idempotency_key};
-use console_settings_domain::SettingKey;
 use uuid::Uuid;
 
 use crate::HrApiError;
@@ -77,7 +78,7 @@ async fn preview(
         let holders = crate::corrections::holders::second_person_context(
             &state.hr,
             &principal,
-            Some(SettingKey::ApprovalPolicyImportRollback),
+            approval_class(ChangeRequestKind::ImportRollback)?,
         )
         .await?;
         if holders.other_eligible_holders == 0 {
@@ -115,7 +116,7 @@ async fn rollback(
     let holders = crate::corrections::holders::second_person_context(
         &state.hr,
         &principal,
-        Some(SettingKey::ApprovalPolicyImportRollback),
+        approval_class(ChangeRequestKind::ImportRollback)?,
     )
     .await?;
     let asynchronous = crate::lifecycle_bulk_job::prefers_async(&headers);

@@ -6,6 +6,9 @@
 use console_kernel_core::KernelError;
 use uuid::Uuid;
 
+mod decision;
+pub use decision::{approval_class, decision_version};
+
 /// What the request asks for. `OTHER` is the unforeseen case: a note is
 /// required and the request is flagged for review. `ACCESS_EXPLANATION` (the
 /// access log review's request for explanation, governance S7) and

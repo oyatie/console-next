@@ -15359,9 +15359,9 @@ export interface components {
                 grants?: components["schemas"]["AccessEffectiveEntry"][];
                 is_ops?: boolean;
             };
-            /** @description Opaque command version for pending org-change approval rows; changes after any step decision. */
+            /** @description Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes. */
             version?: string;
-            /** @description Named policy for the stored approval chain, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without stored steps. Commands recheck live policy. */
+            /** @description Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy. */
             policy?: {
                 /** @description Settings key whose catalog label names the approval policy. */
                 key: string;

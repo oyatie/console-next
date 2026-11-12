@@ -22,7 +22,7 @@ pub(crate) async fn read_workbench_action_inbox(
     authorization: Authorization,
 ) -> Result<WorkbenchActionInboxPage, WorkbenchSourceFailure> {
     let org = principal.org_id;
-    let (deadline_due_soon_days, org_policy) = console_platform_db::with_org_conn::<
+    let (deadline_due_soon_days, policies) = console_platform_db::with_org_conn::<
         _,
         _,
         console_settings_adapter_postgres::PgSettingsError,
@@ -46,7 +46,7 @@ pub(crate) async fn read_workbench_action_inbox(
         statutory_register: request_register::Register::default(),
         setup_created_at: as_of,
         deadline_due_soon_days,
-        org_policy,
+        policies,
         read_permits,
         support_reference: crate::telemetry::current_trace_context()
             .trace_id()
