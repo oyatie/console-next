@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const enCommon = {
+  "common.failed.code.nationality_unknown": "This code is not in the country catalog. Select a country from the list. The United Kingdom uses GB.",
   "common.failed.code.bulk_register_facts_refused": "Nothing was saved because some register entries cannot be recorded. Review the indicated employees and fields, then apply again.",
   "common.failed.code.bulk_selection_changed": "Nothing was processed because the selected employee count changed. Refresh the list and review the selection.",
   "common.failed.code.correction_required": "An existing value must be changed through a correction. Correct this field on the personnel card.",

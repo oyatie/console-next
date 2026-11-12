@@ -20758,6 +20758,12 @@ export interface components {
             };
             /** Format: date */
             group_service_start_date: string | null;
+            /** @description Active ISO country catalog options for nationality. */
+            countries: {
+                code: string;
+                label_ko: string;
+                label_en: string;
+            }[];
         };
         EmployeePhotoUpload: {
             upload_id: components["schemas"]["Uuid"];

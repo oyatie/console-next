@@ -35,6 +35,7 @@ export function ServerPicker(p: {
   loading?: boolean;
   /** What is missing and why (no such branch; HQ HR opens branches), shown beside the escape. */
   empty: ReactNode;
+  instructions?: ReactNode;
   escape?: PickerEscape;
   isRequired?: boolean;
   /** Total matching results when the server returns a page. */
@@ -120,7 +121,7 @@ export function ServerPicker(p: {
               </ListBoxItem>
             )}
           </ListBox>
-          <div className={css.foot}>{truncated ? t("uiServerPicker.narrow", { count: p.options.length }) : t("uiServerPicker.keys")}</div>
+          <div className={css.foot}>{truncated ? t("uiServerPicker.narrow", { count: p.options.length }) : p.instructions ?? t("uiServerPicker.keys")}</div>
         </Popover>
       </ComboBox>
       {pending && homonyms.length > 1 && (

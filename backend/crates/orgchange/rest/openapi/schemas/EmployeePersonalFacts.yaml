@@ -1,5 +1,5 @@
 type: object
-required: [employee_id, updated_at, name_hanja, name_en, nationality, personal_email, emergency_contacts, photo, group_service_start_date]
+required: [employee_id, updated_at, name_hanja, name_en, nationality, countries, personal_email, emergency_contacts, photo, group_service_start_date]
 properties:
   employee_id:
     $ref: '#/components/schemas/Uuid'
@@ -35,3 +35,17 @@ properties:
   group_service_start_date:
     type: [string, 'null']
     format: date
+  countries:
+    type: array
+    description: Active ISO country catalog options for nationality.
+    items:
+      type: object
+      required: [code, label_ko, label_en]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        label_ko:
+          type: string
+        label_en:
+          type: string

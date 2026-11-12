@@ -15,6 +15,23 @@ pub(crate) async fn check_in_tx(
     fields: &[FieldValue],
 ) -> Result<(), HrError> {
     for (field, value) in fields {
+        if let ("nationality", Some(code)) = (field.as_str(), value.as_ref()) {
+            let known: bool = sqlx::query_scalar(
+                "SELECT EXISTS (SELECT 1 FROM country_code_versions WHERE code = $1 \
+             AND valid_from <= CURRENT_DATE AND (valid_to IS NULL OR CURRENT_DATE < valid_to))",
+            )
+            .bind(code)
+            .fetch_one(tx.as_mut())
+            .await?;
+            if !known {
+                return Err(super::refusal(
+                    http::StatusCode::UNPROCESSABLE_ENTITY,
+                    "nationality_unknown",
+                    "nationality must be an active ISO 3166-1 alpha-2 country code",
+                ));
+            }
+        }
+
         if kind_for_field(field).is_none() {
             continue;
         }

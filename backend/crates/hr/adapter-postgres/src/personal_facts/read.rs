@@ -29,6 +29,13 @@ pub struct PersonalPhoto {
 }
 
 #[derive(Debug, Serialize)]
+pub struct CountryOption {
+    pub code: String,
+    pub label_ko: String,
+    pub label_en: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct PersonalFactsResponse {
     pub employee_id: Uuid,
     /// The employee's version: send it as `expected_updated_at` with the
@@ -39,6 +46,8 @@ pub struct PersonalFactsResponse {
     pub name_en: Option<String>,
     /// ISO 3166-1 alpha-2; null = 미입력.
     pub nationality: Option<String>,
+    /// Active official reference options for the nationality editor.
+    pub countries: Vec<CountryOption>,
     pub personal_email: Option<String>,
     /// `[{name, relation, phone}]`; null = 미입력.
     pub emergency_contacts: Value,
@@ -91,6 +100,12 @@ impl HrService {
                     ))
                 })?;
                 let row = load_in_tx(tx, org_uuid, employee_id).await?;
+                let countries = sqlx::query_as::<_, (String, String, String)>(
+                    "SELECT code, label_ko, label_en FROM country_code_versions \
+                     WHERE valid_from <= CURRENT_DATE AND (valid_to IS NULL OR CURRENT_DATE < valid_to) \
+                     ORDER BY code",
+                ).fetch_all(tx.as_mut()).await?.into_iter()
+                    .map(|(code, label_ko, label_en)| CountryOption { code, label_ko, label_en }).collect();
                 let photo = match row.photo.as_deref().map(Uuid::parse_str) {
                     Some(Ok(upload_id)) => {
                         let found = sqlx::query(
@@ -136,6 +151,7 @@ impl HrService {
                     name_hanja: row.name_hanja,
                     name_en: row.name_en,
                     nationality: row.nationality,
+                    countries,
                     personal_email: row.personal_email,
                     emergency_contacts: if contacts.is_empty() {
                         Value::Null

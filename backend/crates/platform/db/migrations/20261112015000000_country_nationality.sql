@@ -310,7 +310,7 @@ BEGIN
               AND NOT EXISTS (SELECT 1 FROM country_codes c WHERE c.code = nationality)
             GROUP BY nationality ORDER BY nationality
         LOOP
-            RAISE WARNING 'nationality_unknown: code=%, records=%; existing values retained', invalid.nationality, invalid.records;
+            RAISE WARNING 'nationality_unknown: org_id=%, code=%, records=%; existing values retained', tenant, invalid.nationality, invalid.records;
         END LOOP;
     END LOOP;
     PERFORM set_config('app.current_org', coalesce(previous_org, ''), true);

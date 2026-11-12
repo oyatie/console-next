@@ -25,17 +25,30 @@ test("nationality refuses unassigned country codes and saves an assigned code", 
   });
   expect(refused.status()).toBe(422);
   expect(await codeOf(refused)).toBe("nationality_unknown");
+  const filed = await api("/change-requests", "POST", {
+    kind: "PROFILE_CORRECTION", subject_type: "EMPLOYEE", subject_id: employee,
+    payload: { changes: { nationality: "UK" } }, reason_code: "DATA_ENTRY_ERROR",
+  });
+  expect(filed.status()).toBe(422);
+  expect(await codeOf(filed)).toBe("nationality_unknown");
   const unchanged = await (await api(`/employees/${employee}/personal-facts`)).json() as { nationality: string | null };
   expect(unchanged.nationality).toBeNull();
   await page.getByRole("button", { name: "국적 · 신분증 수정", exact: true }).click();
-  const input = page.getByRole("textbox", { name: "국적 · 신분증", exact: true });
-  await input.fill("vn");
+  const input = page.getByRole("combobox", { name: "국적 · 신분증", exact: true });
+  await input.fill("VN");
+  await input.press("ArrowDown");
   const saved = page.waitForResponse((r) => r.request().method() === "PATCH" && new URL(r.url()).pathname === `/api/v1/employees/${employee}`);
   await input.press("Enter");
   expect((await saved).status()).toBe(200);
   const facts = await (await api(`/employees/${employee}/personal-facts`)).json() as { nationality: string | null };
   expect(facts.nationality).toBe("VN");
-  await expect(page.getByText(/국적 VN/)).toBeVisible();
+  await expect(page.getByRole("main").getByText("베트남 · VN", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "국적 · 신분증 수정", exact: true }).click();
+  const cleared = page.waitForResponse(r => r.request().method() === "PATCH" && new URL(r.url()).pathname === `/api/v1/employees/${employee}`);
+  await page.getByRole("button", { name: "국적 입력 해제", exact: true }).click();
+  expect((await cleared).status()).toBe(200);
+  const empty = await (await api(`/employees/${employee}/personal-facts`)).json() as { nationality: string | null };
+  expect(empty.nationality).toBeNull();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("nationality-mobile-dark.png"), fullPage: true });
 });
