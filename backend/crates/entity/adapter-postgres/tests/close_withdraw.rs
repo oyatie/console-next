@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R3 STRUCT company-15 (catalog company-19) as `console_rt`: a closed
-//! 법인's close is withdrawn (종료 취소) when the business goes on. The 법인,
-//! the 사업장 and the 사업자등록 that closed with it read open again, each
-//! 사업장 with its SITE unit; refusals write nothing, a replay is not a second
+//! UX-R3 STRUCT company-15 (catalog company-19) as `console_rt`: a closed legal entity's
+//! close is withdrawn (end cancellation) when the business goes on. The legal entity, the
+//! workplace and the business registration that closed with it read open again, each
+//! workplace with its SITE unit; refusals write nothing, a replay is not a second
 //! withdrawal, and the close stays set-once for every other writer.
 
 mod close_support;
@@ -29,7 +29,8 @@ async fn audits(owner: &PgPool, action: &str) -> i64 {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_close_is_withdrawn_and_what_closed_with_it_reopens(owner: PgPool) {
-    // regression: r3 company-15 — only 종료 정정 existed; a business that went on had no way back.
+    // regression: r3 company-15 — only end correction existed; a business that went on had
+    // no way back.
     let w = world(&owner).await;
     let open = w
         .store
@@ -106,7 +107,8 @@ async fn regression_a_close_is_withdrawn_and_what_closed_with_it_reopens(owner: 
         .unwrap_err();
     assert_eq!(code(again).0, "legal_entity_not_closed");
 
-    // The 법인 closes again normally, and no other writer clears a close (0266, kept by 0336).
+    // The legal entity closes again normally, and no other writer clears a close (0266,
+    // kept by 0336).
     let close = CloseLegalEntity {
         closed_on: Some("2026-02-28".into()),
         reason_code: Some("DISSOLVED".into()),

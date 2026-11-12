@@ -24,7 +24,7 @@ fn created<T: serde::Serialize>(value: T) -> Response {
     (StatusCode::CREATED, Json(value)).into_response()
 }
 
-/// Each record's verbs for this reader: the 법인 and each 사업장 it shows.
+/// Each record's verbs for this reader: the legal entity and each workplace it shows.
 pub(crate) fn mark(gate: &Gate, e: &mut LegalEntityView) {
     e.can_manage = !e.read.read_only && gate.may(&[e.id]);
     for w in &mut e.workplaces {
@@ -108,7 +108,8 @@ pub(crate) async fn set_roles(
     Ok(Json(s.store.set_entity_roles(&a, id, b).await?).into_response())
 }
 
-/// Settle a one-time 법인명 review (20261013153646645): keep the name, or take the 상호 by 정정.
+/// Settle a one-time legal entity name review (20261013153646645): keep the name, or take the
+/// trade name by correction.
 pub(crate) async fn settle_name_review(
     State(s): State<EntityRestState>,
     h: HeaderMap,
@@ -130,7 +131,8 @@ pub(crate) async fn void_entity(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
-/// MR-15: 해산 or 폐업; its open 사업장 and 사업자등록 close with it.
+/// MR-15: dissolution or business closure; its open workplaces and business registrations
+/// close with it.
 pub(crate) async fn close_entity(
     State(s): State<EntityRestState>,
     h: HeaderMap,
@@ -141,7 +143,7 @@ pub(crate) async fn close_entity(
     Ok(Json(s.store.close_entity(&a, id, b, port(&s)?).await?).into_response())
 }
 
-/// catalog company-19: correct a closed 법인's 종료일 / 종료 사유 (never reopens).
+/// catalog company-19: correct a closed legal entity's end date / end reason (never reopens).
 pub(crate) async fn correct_close(
     State(s): State<EntityRestState>,
     h: HeaderMap,
@@ -152,7 +154,8 @@ pub(crate) async fn correct_close(
     Ok(Json(s.store.correct_close(&a, id, b).await?).into_response())
 }
 
-/// UX-R3 company-15: withdraw a closed 법인's close (종료 취소); what closed with it reopens.
+/// UX-R3 company-15: withdraw a closed legal entity's close (close withdrawn); what closed
+/// with it reopens.
 pub(crate) async fn withdraw_close(
     State(s): State<EntityRestState>,
     h: HeaderMap,

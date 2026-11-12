@@ -1,7 +1,8 @@
-//! MR-18: a 사업장 moves to another 사업자등록 (its own certificate, or a
-//! 종사업장 of a 사업자단위과세 one) or gets another 종사업장 일련번호, from a
-//! date. The head follows; `workplace_registration_changes` keeps before and
-//! after (부가세법 §8③–⑤; 시행규칙 별지 제7호서식 부표).
+//! MR-18: a workplace moves to another business registration (its own
+//! certificate, or a sub-workplace of a business-unit taxation one) or gets
+//! another sub-workplace serial number, from a date. The head follows;
+//! `workplace_registration_changes` keeps before and after (VAT Act §8③–⑤;
+//! Enforcement Rule Form 7 (annexed), its supplementary table).
 
 use console_entity_application::{Actor, Saved, WorkplaceView};
 use console_entity_domain::Refusal;
@@ -17,7 +18,7 @@ use crate::workplace::{lock_entity, lock_workplace, one_view, registration_facts
 use crate::workplace_tx::{answer_event, observe_answer, registration_answer};
 use crate::{PgEntityError, PgEntityStore, Tx, admit, audit, today_kst};
 
-/// The 사업장 leaves the registration it holds (its own certificate): only
+/// The workplace leaves the registration it holds (its own certificate): only
 /// when nobody else files under it; then it has no holder.
 async fn release_holder(
     tx: &mut Tx<'_>,
@@ -53,8 +54,8 @@ async fn release_holder(
 }
 
 impl PgEntityStore {
-    /// Change the registration link and/or 종사업장 일련번호 of a 사업장, dated
-    /// on or before today (SETUP: immediate; OPERATING: governed).
+    /// Change the registration link and/or sub-workplace serial number of a
+    /// workplace, dated on or before today (SETUP: immediate; OPERATING: governed).
     ///
     /// # Errors
     /// Field issues (`registration_unchanged`, `registration_of_other_entity`,

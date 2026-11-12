@@ -1,5 +1,5 @@
-//! 사업자등록 typed revision rows (+ business types, co-owners), and the
-//! revise step every registration revision goes through.
+//! Business registration typed revision rows (+ business types, co-owners),
+//! and the revise step every registration revision goes through.
 
 use console_entity_application::{Actor, RegistrationRevision, RegistrationStatusInput};
 use console_entity_domain::Refusal;
@@ -101,9 +101,10 @@ pub(crate) async fn insert_revision(
 }
 
 /// The certificate a registration revision of `registration` is recorded
-/// from: a kept 사업자등록증, not another record's, and new — never the one in
-/// force nor one already superseded (the same file dropped again is the same
-/// document). Checked before the revision names it (its FK would fault).
+/// from: a kept business registration certificate, not another record's, and
+/// new — never the one in force nor one already superseded (the same file
+/// dropped again is the same document). Checked before the revision names it
+/// (its FK would fault).
 pub(crate) async fn new_certificate(
     tx: &mut Tx<'_>,
     doc: Uuid,
@@ -129,7 +130,7 @@ pub(crate) async fn new_certificate(
 }
 
 /// Append a full-state revision of registration `id` inside the caller's
-/// transaction (linked to `evidence` when given). Returns the 법인.
+/// transaction (linked to `evidence` when given). Returns the legal entity.
 pub(crate) async fn revise_registration_in_tx(
     tx: &mut Tx<'_>,
     actor: &Actor,
@@ -166,7 +167,7 @@ pub(crate) async fn revise_registration_in_tx(
     crate::revision_copy::ensure_registration_version(tx, id, env.expected_version).await?;
     let entity: Uuid = head.try_get("legal_entity_id")?;
     let facts = lock_entity(tx, entity).await?;
-    // After the 법인's lock, as on create: one lock order for the document.
+    // After the legal entity's lock, as on create: one lock order for the document.
     if let Some(doc) = evidence {
         new_certificate(tx, doc, entity, id).await?;
     }

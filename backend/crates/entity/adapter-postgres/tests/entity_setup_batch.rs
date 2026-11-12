@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-29: bulk 법인 · 사업장 create and update from a sheet, as the runtime
-//! role (FORCE RLS): a dry run writes nothing and diffs; the apply needs the
-//! dry run's digest and writes one receipt; the SETUP undo restores the exact
-//! prior records and voids what the batch created; never a blind revert.
+//! MR-29: bulk legal entity · workplace create and update from a sheet, as the runtime
+//! role (FORCE RLS): a dry run writes nothing and diffs; the apply needs the dry run's
+//! digest and writes one receipt; the SETUP undo restores the exact prior records and
+//! voids what the batch created; never a blind revert.
 
 mod common;
 mod sheet_support;
@@ -112,7 +112,7 @@ async fn version(f: &Fixture) -> i32 {
     a.current.unwrap().version
 }
 
-/// Preview, then apply, one REVISE of 법인 A; the apply's result.
+/// Preview, then apply, one REVISE of legal entity A; the apply's result.
 async fn revise_a(
     f: &Fixture,
     input: console_entity_domain::legal_entity::LegalEntityInput,
@@ -210,7 +210,7 @@ async fn a_setup_undo_restores_the_exact_records_once_and_never_blindly(owner: P
         .unwrap_err();
     assert_eq!(code(err).0, "undo_conflict");
 
-    // After 운영 시작 the receipts stay; their undo is gone.
+    // After go-live the receipts stay; their undo is gone.
     set_operating(&owner, ORG).await;
     let err = f
         .store
@@ -226,7 +226,7 @@ async fn a_setup_undo_restores_the_exact_records_once_and_never_blindly(owner: P
             .iter()
             .any(|b| b.undoable)
     );
-    // The bulk path stays open after 운영 시작, governed like the single routes.
+    // The bulk path stays open after go-live, governed like the single routes.
     let mut capital = corporation("주식회사 가나", "000211-0006241");
     capital.capital_won = Some(9);
     // The pin is the newest version; the backdated revise above is not `current`.
@@ -244,7 +244,7 @@ async fn a_setup_undo_restores_the_exact_records_once_and_never_blindly(owner: P
     );
 }
 
-/// The registration reads the 법인명 without storing a copy in any revision.
+/// The registration reads the legal entity name without storing a copy in any revision.
 async fn assert_registration_name(owner: &PgPool, f: &Fixture, expected: &str) {
     let stored: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM business_registration_revisions r JOIN business_registrations b ON b.id = r.registration_id \

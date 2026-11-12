@@ -19477,6 +19477,62 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/me/action-inbox/items/{id}/activity:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - me
+      operationId: listMyActionInboxItemActivity
+      summary: Activity on one of my inbox items
+      description: >-
+        The record column's activity list for an item in the caller's inbox. The item is resolved
+        through the caller's own sources, the same read as the list, so another person's item, an
+        unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item
+        was not found while a source was unavailable. Rows are the audit events on the item's own
+        record (the request, change, lock, grant or case its first link names; for an org change,
+        also its approval steps), newest first, at most 50: what happened (a verb from a closed set,
+        other for anything else), who did it (absent for system events) and when. Events on the
+        person or account behind an item are not served, and audit snapshots never are.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: The item id as the list serves it (kind:uuid).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The item's activity, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 50
+                    items:
+                      type: object
+                      required: [verb, occurred_at]
+                      properties:
+                        verb:
+                          type: string
+                          x-extensible-enum: [create, submit, approve, reject, decide, apply, withdraw, cancel, update, confirm, other]
+                        actor_name:
+                          type: string
+                          description: The acting account's display name; absent for system events.
+                        occurred_at:
+                          type: string
+                          format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/me/action-inbox/reference:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -27479,6 +27535,7 @@ paths:
         '422': {$ref: '#/components/responses/ValidationError'}
   /api/v1/roster-fields:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
       tags:
         - employees
@@ -27513,6 +27570,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - employees
       operationId: createRosterField
@@ -27566,6 +27624,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/roster-fields/{id}:
     patch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - employees
       operationId: updateRosterField
@@ -59828,6 +59887,7 @@ components:
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
     RosterField:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       description: A field the tenant adds to its personnel card.
       required: [id, label, value_type, section, visibility, choices, active]
@@ -59853,6 +59913,7 @@ components:
           type: boolean
           description: false = retired (hidden from new entry, values kept).
     RosterFieldChoice:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [id, label]
       properties:
@@ -59861,6 +59922,7 @@ components:
         label:
           type: string
     RosterFieldChoiceInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required: [label]
@@ -59874,10 +59936,12 @@ components:
           minLength: 1
           maxLength: 40
     RosterFieldSection:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       x-extensible-enum: [PERSONAL, JOB]
       description: The card section a field sits in - PERSONAL 인적사항, JOB 재직·배치.
     RosterFieldValueType:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       x-extensible-enum: [TEXT, INTEGER, DECIMAL, DATE, CHOICE]
       description: TEXT, INTEGER (whole number), DECIMAL, DATE, or CHOICE (one option from the field's list).

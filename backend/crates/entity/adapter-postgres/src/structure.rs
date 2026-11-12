@@ -1,12 +1,14 @@
-//! `GET /api/v1/org-structure`: 전체 → 법인 → 사업장 → 부서 (any depth), composed
-//! from the entity records and the canonical OrgUnits (read only). A SITE
-//! unit that represents a 사업장 is drawn AS that 사업장, so nothing appears
-//! twice; SITE units with no placement are listed as `unplaced` (a to-do).
+//! `GET /api/v1/org-structure`: all → legal entity → workplace → department
+//! (any depth), composed from the entity records and the canonical OrgUnits
+//! (read only). A SITE unit that represents a workplace is drawn AS that
+//! workplace, so nothing appears twice; SITE units with no placement are
+//! listed as `unplaced` (a to-do).
 //!
-//! Counts (spec D1, D2; review R13): 부서 count their members
-//! (`employees.org_unit_id`), 사업장 and 법인 their assignments today; a
-//! 법인 adds its 미배치 (a 법인 but no 사업장), and the root's 법인 미정 is
-//! everyone who has not left and has no 법인 today. Children follow 순서
+//! Counts (spec D1, D2; review R13): departments count their members
+//! (`employees.org_unit_id`), workplaces and legal entities their
+//! assignments today; a legal entity adds its unplaced (a legal entity but no
+//! workplace), and the root's "legal entity undecided" is everyone who has
+//! not left and has no legal entity today. Children follow the order
 //! (`org_unit_positions`, `workplaces.sort_order`, `legal_entities.sort_order`),
 //! then name or creation.
 
@@ -145,7 +147,7 @@ pub(crate) async fn compose(
     let mut roots: Vec<Uuid> = tree
         .units
         .iter()
-        // Unplaced units belong to no 법인: only a tenant-wide scope sees them.
+        // Unplaced units belong to no legal entity: only a tenant-wide scope sees them.
         .filter(|(id, u)| granted.is_none() && u.parent.is_none() && !placed.contains(id))
         .map(|(id, _)| *id)
         .collect();
@@ -158,7 +160,8 @@ pub(crate) async fn compose(
     };
     roots.sort_by(|a, b| sibling_cmp(&entry(a), &entry(b)));
     let mut unplaced: Vec<OrgStructureNode> = roots.into_iter().map(|id| tree.node(id)).collect();
-    // 법인 미정 belong to no 법인: only a tenant-wide scope sees them.
+    // People with no legal entity yet ("legal entity undecided") belong to no legal entity:
+    // only a tenant-wide scope sees them.
     let entity_unknown_headcount = granted.is_none().then_some(counts.unknown);
     for node in nodes.iter_mut().chain(unplaced.iter_mut()) {
         crate::asof::dates::mark(node, &scheduled, &changed);

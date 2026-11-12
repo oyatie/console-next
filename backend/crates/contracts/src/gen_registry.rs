@@ -6429,6 +6429,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/action-inbox/items/{id}/activity",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__action-inbox__items__id__activity.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/action-inbox/reference",
         operations: &[Operation {
             method: "get",

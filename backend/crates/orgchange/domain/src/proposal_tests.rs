@@ -143,11 +143,12 @@ fn org_unit_ops_round_trip_and_enforce_nesting() {
     use OrgUnitKind as K;
     assert!(K::Site.admits_parent(None));
     assert!(K::Department.admits_parent(Some(K::Site)));
-    // One 부서 kind (decisions #18): a 부서 under a 부서, at any depth.
+    // One department kind (decisions #18): a department under a department, at
+    // any depth.
     assert!(K::Department.admits_parent(Some(K::Department)));
     assert!(!K::Department.admits_parent(None));
     assert!(!K::Site.admits_parent(Some(K::Department)));
-    // The retired TEAM still deserializes, as a 부서.
+    // The retired TEAM still deserializes, as a department.
     assert_eq!(
         serde_json::from_value::<K>(serde_json::json!("TEAM")).unwrap(),
         K::Department

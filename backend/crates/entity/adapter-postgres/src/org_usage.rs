@@ -1,7 +1,7 @@
-//! What a 부서 and its active sub-부서 were used for (CRUD): the facts that
-//! decide whether it is erased (never used) or 폐지 (used), and the typed
-//! refusal for the way not offered. Read inside the write's transaction, so
-//! the decision and the write see the same rows.
+//! What a department and its active sub-departments were used for (CRUD):
+//! the facts that decide whether it is erased (never used) or abolished
+//! (used), and the typed refusal for the way not offered. Read inside the
+//! write's transaction, so the decision and the write see the same rows.
 
 use console_entity_application::{Actor, OrgSetupOp};
 use console_entity_domain::Refusal;
@@ -12,7 +12,7 @@ use crate::org_tree::{self, Head};
 use crate::org_units::OrgUnitSetupWritePort;
 use crate::{Admitted, PgEntityError, Tx, read_phase};
 
-/// What a unit and its active sub-부서 were used for.
+/// What a unit and its active sub-departments were used for.
 pub(crate) struct Usage {
     pub units: Vec<Uuid>,
     pub members: i64,
@@ -105,8 +105,8 @@ pub(crate) fn erase_refusal(u: &Usage) -> Option<&'static str> {
     }
 }
 
-/// Why the unit cannot be dissolved (폐지), if it cannot. A never-used unit
-/// is erased instead, so 폐지 is not offered for it.
+/// Why the unit cannot be dissolved (abolished), if it cannot. A never-used
+/// unit is erased instead, so abolition is not offered for it.
 pub(crate) fn dissolve_refusal(u: &Usage, routed: bool) -> Option<&'static str> {
     if erase_refusal(u).is_none() {
         Some("org_unit_never_used")
@@ -122,7 +122,7 @@ pub(crate) fn dissolve_refusal(u: &Usage, routed: bool) -> Option<&'static str> 
     }
 }
 
-/// An active 부서 (a 사업장's own unit ends with the 사업장).
+/// An active department (a workplace's own unit ends with the workplace).
 pub(crate) async fn department(tx: &mut Tx<'_>, id: Uuid) -> Result<Head, PgEntityError> {
     let head = org_tree::head(tx, id)
         .await?
@@ -162,11 +162,11 @@ pub(crate) fn refuse(code: &'static str) -> PgEntityError {
     Refusal::conflict(code, message).with_remedy(remedy).into()
 }
 
-/// Admit a direct 부서 write ([`PgEntityStore::run_batch`] with `direct`):
-/// SETUP as a setup write; after 운영 시작 GOVERNED, unless the tenant routes
-/// org changes or an open org change names a unit the ops touch. A 폐지
-/// (`Dissolve`) is refused for a unit nobody ever used (erase it) and while
-/// anyone is placed in it or moving into it, in either phase.
+/// Admit a direct department write ([`PgEntityStore::run_batch`] with
+/// `direct`): SETUP as a setup write; after go-live GOVERNED, unless the
+/// tenant routes org changes or an open org change names a unit the ops
+/// touch. An abolition (`Dissolve`) is refused for a unit nobody ever used
+/// (erase it) and while anyone is placed in it or moving into it, in either phase.
 pub(crate) async fn admit_direct(
     tx: &mut Tx<'_>,
     actor: &Actor,

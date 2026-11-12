@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! CRUD: after 운영 시작 a 사업장 or 법인 nothing ever used is deleted (its
-//! void), one with 부서 under it says so (erase them first), and one that was
-//! used is refused with `record_has_history` (close it), writing nothing.
+//! CRUD: after go-live a workplace or legal entity nothing ever used is deleted (its
+//! void), one with departments under it says so (erase them first), and one that was used
+//! is refused with `record_has_history` (close it), writing nothing.
 
 mod common;
 
@@ -53,7 +53,7 @@ async fn after_go_live_an_unused_workplace_is_deleted_and_a_used_one_is_refused(
     person(&owner, &store, &actor, (entity, hq, dept), "kim").await;
     set_operating(&owner, ORG).await;
 
-    // 공장 has only a never-used 부서: erase it first, then the 사업장 goes.
+    // The factory has only a never-used department: erase it first, then the workplace goes.
     let options = store
         .record_end_options(&actor, "workplace_id", plant)
         .await
@@ -88,7 +88,7 @@ async fn after_go_live_an_unused_workplace_is_deleted_and_a_used_one_is_refused(
     .unwrap();
     assert_eq!(mode, "GOVERNED");
 
-    // 본사 was used (someone was assigned there): refused, close instead.
+    // Headquarters was used (someone was assigned there): refused, close instead.
     let options = store
         .record_end_options(&actor, "workplace_id", hq)
         .await
@@ -106,7 +106,7 @@ async fn after_go_live_an_unused_workplace_is_deleted_and_a_used_one_is_refused(
         ("record_has_history", Some("close_record_instead"))
     );
     assert!(!voided(&owner, hq).await);
-    // The 법인 holds the used 본사: the same refusal.
+    // The legal entity holds the used headquarters: the same refusal.
     let options = store
         .record_end_options(&actor, "legal_entity_id", entity)
         .await
@@ -121,9 +121,9 @@ async fn after_go_live_an_unused_workplace_is_deleted_and_a_used_one_is_refused(
     assert_eq!(c, "record_has_history");
 }
 
-/// UX-R2 ENDS (company-52), regression: a 법인's end options name every exit
-/// case still open for someone placed there, with its date, so its close
-/// sheet can show the 금품청산 clock instead of closing over it silently.
+/// UX-R2 ENDS (company-52), regression: a legal entity's end options name every exit case
+/// still open for someone placed there, with its date, so its close sheet can show the
+/// final-pay settlement clock instead of closing over it silently.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_end_options_name_the_open_exit_cases(owner: PgPool) {
     let (store, actor) = tenant(&owner, ORG, "C").await;
@@ -156,7 +156,7 @@ async fn regression_end_options_name_the_open_exit_cases(owner: PgPool) {
             .collect::<Vec<_>>(),
         vec![(case, "2026-09-30", "HQ_CONFIRMED")]
     );
-    // Another 사업장 of the 법인 nobody worked at has none.
+    // Another workplace of the legal entity nobody worked at has none.
     let plant = store
         .record_end_options(&actor, "workplace_id", plant)
         .await

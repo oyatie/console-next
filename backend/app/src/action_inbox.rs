@@ -18,6 +18,7 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 use tracing::Instrument;
 
+mod activity;
 use console_platform_request_context::Authorization;
 #[cfg(all(test, feature = "test-postgres"))]
 #[path = "../tests/action_inbox/authorization.rs"]

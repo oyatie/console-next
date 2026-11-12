@@ -1,6 +1,6 @@
-//! 사업장 kind list and a 사업장's kind (decisions #18). Reads take the
+//! Workplace kind list and a workplace's kind (decisions #18). Reads take the
 //! entity read permission; writes take `legal_entity_manage` (the list on the
-//! whole tenant, a kind on its 사업장).
+//! whole tenant, a kind on its workplace).
 
 use axum::Json;
 use axum::extract::{Path, State};

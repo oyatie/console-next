@@ -1,14 +1,15 @@
 //! Setup-phase org units, one at a time: create, rename/move and dissolve a
-//! 부서 immediately, without an org-change proposal (the solo-admin
+//! department immediately, without an org-change proposal (the solo-admin
 //! IN_APPROVAL dead end), through the canonical OrgUnit owner
 //! (`organization.create_org_unit` / `revise_org_unit`). Each call is a
 //! batch of one (`org_batch`), so it is pinned, recorded and undoable like
 //! any batch.
 //!
-//! One 부서 kind (decisions #18): a 부서 sits in a 사업장 (under the SITE unit
-//! that `represents_workplace`, created with the 사업장, decisions #14.1;
-//! a 사업장 from before that change gets it on first use here) or under
-//! another 부서, at any depth. The client never creates SITE units (§3.7).
+//! One department kind (decisions #18): a department sits in a workplace
+//! (under the SITE unit that `represents_workplace`, created with the
+//! workplace, decisions #14.1; a workplace from before that change gets it on
+//! first use here) or under another department, at any depth. The client
+//! never creates SITE units (§3.7).
 
 use console_entity_application::{
     Actor, CreateSetupOrgUnit, OrgParent, OrgSetupOp, OrgSetupReceipt, RenameSetupOrgUnit,
@@ -41,9 +42,9 @@ pub trait OrgUnitSetupWritePort: Send + Sync {
         attributes: Value,
     ) -> OrgUnitSetupFuture<'tx>;
 
-    /// Whether the tenant routes org changes through 결재
+    /// Whether the tenant routes org changes through approval
     /// (`approval.policy.org_structure` ≠ `none`, decisions #26), read in the
-    /// write's transaction. A direct 부서 write after 운영 시작 is refused
+    /// write's transaction. A direct department write after go-live is refused
     /// then (`org_change_routed`). Fail closed: routed unless the root says not.
     fn org_changes_routed<'tx>(
         &self,
@@ -63,7 +64,7 @@ pub(crate) fn port_refusal(err: KernelError) -> PgEntityError {
 }
 
 impl PgEntityStore {
-    /// Create one 부서 in a 사업장 or under a 부서.
+    /// Create one department in a workplace or under a department.
     ///
     /// # Errors
     /// `phase_not_setup` (remedy: submit an org change), field issues, or the
@@ -100,8 +101,8 @@ impl PgEntityStore {
         .await
     }
 
-    /// Rename and/or move one 부서 (a move to another 사업장 takes its people's
-    /// 사업장 placement with it).
+    /// Rename and/or move one department (a move to another workplace takes
+    /// its people's workplace placement with it).
     ///
     /// # Errors
     /// `phase_not_setup`, field issues, `stale_revision`, `site_is_a_workplace`,
@@ -147,7 +148,8 @@ impl PgEntityStore {
         .await
     }
 
-    /// Dissolve one 부서 and the 부서 under it (refused while people are placed there).
+    /// Dissolve one department and the departments under it (refused while
+    /// people are placed there).
     ///
     /// # Errors
     /// `phase_not_setup`, `stale_revision`, `org_unit_has_members`, `site_is_a_workplace`.

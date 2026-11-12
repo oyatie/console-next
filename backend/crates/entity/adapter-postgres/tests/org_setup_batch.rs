@@ -1,8 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-12 (decisions #18), as `console_rt` with the canonical OrgUnit owner
-//! behind the port: one 부서 kind nesting to any depth, setup batches with a
-//! per-op version pin, move (people's 사업장 follow), dissolve, and the
-//! go-live refusal.
+//! MR-12 (decisions #18), as `console_rt` with the canonical OrgUnit owner behind the
+//! port: one department kind nesting to any depth, setup batches with a per-op version
+//! pin, move (people's workplaces follow), dissolve, and the go-live refusal.
 
 mod common;
 
@@ -40,7 +39,7 @@ async fn one_department_kind_nests_at_any_depth_in_one_batch(owner: PgPool) {
         assert_eq!(p, Some(parent.to_string()));
         parent = *id;
     }
-    // The tree shows four DEPARTMENT levels under the 사업장, each with its version.
+    // The tree shows four DEPARTMENT levels under the workplace, each with its version.
     let tree = store.org_structure(&actor).await.unwrap();
     let wp = &tree.entities[0].children[0];
     assert_eq!(wp.org_unit_id, Some(hq_site));
@@ -192,7 +191,7 @@ async fn ops_are_pinned_moves_carry_people_and_dissolve_needs_an_empty_subtree(o
     );
     assert_eq!(fields, vec![("ops[0].expected_version".into(), "required")]);
 
-    // Moving the 부서 to the 공장 moves its people's 사업장 placement with it.
+    // Moving the department to the factory moves its people's workplace placement with it.
     let to_plant = RenameSetupOrgUnit {
         name: None,
         expected_version: Some(2),
@@ -221,7 +220,7 @@ async fn ops_are_pinned_moves_carry_people_and_dissolve_needs_an_empty_subtree(o
     .unwrap();
     assert_eq!(superseded, 1, "the old placement is kept, superseded");
 
-    // Dissolve is refused while anyone who has not left is under the 부서 …
+    // Dissolve is refused while anyone who has not left is under the department …
     let dissolve = OrgSetupOp::Dissolve {
         org_unit_id: Some(dept),
         expected_version: Some(3),
@@ -254,7 +253,7 @@ async fn ops_are_pinned_moves_carry_people_and_dissolve_needs_an_empty_subtree(o
     assert_eq!(unit_head(&owner, dept).await.1, "dissolved");
     assert_eq!(unit_head(&owner, team).await.1, "dissolved");
 
-    // A 사업장's own unit is changed through the 사업장.
+    // A workplace's own unit is changed through the workplace.
     let site_op = OrgSetupOp::Dissolve {
         org_unit_id: Some(plant_site),
         expected_version: Some(1),
@@ -267,7 +266,7 @@ async fn ops_are_pinned_moves_carry_people_and_dissolve_needs_an_empty_subtree(o
     );
     assert_eq!(code_, "site_is_a_workplace");
 
-    // After 운영 시작 the setup routes refuse and point at the governed path.
+    // After go-live the setup routes refuse and point at the governed path.
     set_operating(&owner, ORG).await;
     let late = vec![under_workplace("x", "신규부", hq)];
     let (code_, _, remedy) = code(
@@ -282,9 +281,9 @@ async fn ops_are_pinned_moves_carry_people_and_dissolve_needs_an_empty_subtree(o
     );
 }
 
-/// regression: a 사업장's own tree unit was recorded from the day it was
-/// entered, while the 사업장 record starts at 개설일, so a 기준일 before the day
-/// of entry showed the 사업장 without its place in the tree.
+/// regression: a workplace's own tree unit was recorded from the day it was entered, while
+/// the workplace record starts at its opening date, so an as-of date before the day of entry
+/// showed the workplace without its place in the tree.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_workplaces_own_unit_starts_on_its_opening_day(owner: PgPool) {
     let (store, actor) = tenant(&owner, ORG, "A").await;

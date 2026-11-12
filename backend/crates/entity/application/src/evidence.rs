@@ -1,5 +1,5 @@
 //! Wire shapes for kept documents, dated history and the derived
-//! 상시근로자수 placeholder (ENT-CAPTURE).
+//! regular-employee-count placeholder (ENT-CAPTURE).
 
 use console_entity_domain::document::{DocumentKind, retain_until};
 use serde::Serialize;
@@ -49,9 +49,9 @@ impl EntityDocumentView {
         self
     }
 
-    /// Kept as the evidence of another 법인 or another 사업자등록 than
-    /// `entity` / `registration` (one kept on the 법인 alone may move onto
-    /// its registration).
+    /// Kept as the evidence of another legal entity or another business
+    /// registration than `entity` / `registration` (one kept on the legal
+    /// entity alone may move onto its registration).
     #[must_use]
     pub fn attached_elsewhere(&self, entity: Uuid, registration: Option<Uuid>) -> bool {
         self.legal_entity_id.is_some_and(|e| e != entity)
@@ -85,13 +85,14 @@ pub struct RevisionEntry {
     pub reason_code: Option<String>,
     pub changes: Vec<FieldChange>,
     /// The kept certificate a registration revision was recorded from
-    /// (등록증 재발급·정정); `null` otherwise.
+    /// (certificate reissue / correction); `null` otherwise.
     pub evidence_document_id: Option<Uuid>,
 }
 
-/// 상시근로자 수 (근로기준법 시행령 §7의2) of a 법인 or 사업장. Derived, never
-/// typed, and HOLD until a 노무사 signs the method off (BW-35): the threshold
-/// and look-back rows are not in the statutory register and no 가동일
+/// Regular employee count (Enforcement Decree of the Labor Standards Act
+/// §7-2) of a legal entity or workplace. Derived, never typed, and HOLD until
+/// a labor attorney signs the method off (BW-35): the threshold and
+/// look-back rows are not in the statutory register and no operating-day
 /// calendar exists, so no number is shown (never a guessed one).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RegularWorkers {

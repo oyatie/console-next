@@ -1,7 +1,7 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Shared by the 등록증 재발급·정정 tests: a 법인 with one certificate and
-//! its original, the 정정 신고 that moves it to 부산 with a new 대표자, and
-//! the refusal codes a call answered with.
+//! Shared by the certificate reissue/correction tests: a legal entity with one certificate
+//! and its original, the correction filing that moves it to Busan with a new
+//! representative, and the refusal codes a call answered with.
 
 use crate::common::*;
 use console_entity_adapter_postgres::{PgEntityError, PgEntityStore};
@@ -34,7 +34,7 @@ pub async fn upload(store: &PgEntityStore, actor: &Actor, tag: &str) -> Uuid {
         .id
 }
 
-/// A 법인 with one certificate and its first original attached.
+/// A legal entity with one certificate and its first original attached.
 pub async fn setup(store: &PgEntityStore, actor: &Actor) -> (Uuid, Uuid, Uuid) {
     let entity = store
         .create_entity(&cmd(actor), corporation("주식회사 가나", CRN))
@@ -67,7 +67,8 @@ pub async fn versions(store: &PgEntityStore, actor: &Actor, entity: Uuid, reg: U
     )
 }
 
-/// 정정 신고 from 10-01: the certificate moved to 부산, and 대표자 is now 김대표.
+/// Correction filing from 10-01: the certificate moved to Busan, and the representative is
+/// now "Kim Daepyo".
 pub async fn moved(
     store: &PgEntityStore,
     actor: &Actor,

@@ -1,5 +1,5 @@
-//! A dated change to a 사업장's 4대보험 relations (insurance PUT): one new
-//! revision per listed insurer, in one audited, idempotent transaction.
+//! A dated change to a workplace's four-social-insurance relations (insurance
+//! PUT): one new revision per listed insurer, in one audited, idempotent transaction.
 
 use console_entity_application::{Actor, InsuranceRevision, Saved, WorkplaceView};
 use console_entity_domain::insurance_change::validate_insurance_change;
@@ -17,9 +17,9 @@ use crate::{
 };
 
 impl PgEntityStore {
-    /// `expected_version` is the highest 4대보험 revision version of the
-    /// 사업장 the client read (0 when it has none): any insurance change since
-    /// is 409 `stale_revision`.
+    /// `expected_version` is the highest four-social-insurance revision
+    /// version of the workplace the client read (0 when it has none): any
+    /// insurance change since is 409 `stale_revision`.
     ///
     /// # Errors
     /// Field refusals, `stale_revision`, the phase refusal, or database faults.
@@ -39,7 +39,7 @@ impl PgEntityStore {
                     return Ok((Saved { record, warnings: Vec::new(), change_mode: done.change_mode.unwrap_or_default() }, vec![]));
                 }
                 let admitted = admit(tx, WriteClass::EntityStructure).await?;
-                // The envelope wants expected_version ≥ 1; a 사업장 with no
+                // The envelope wants expected_version ≥ 1; a workplace with no
                 // insurance row yet is read as version 0.
                 let mut envelope_rev = rev.clone();
                 envelope_rev.expected_version = rev.expected_version.map(|v| v.max(1));

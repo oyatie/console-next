@@ -1,4 +1,5 @@
-//! 4대보험 relation of a 사업장, per insurer, and the one-choice setup shortcut.
+//! The four social insurances' relation of a workplace, per insurer, and the
+//! one-choice setup shortcut.
 
 use console_kernel_core::kr::InsuranceMgmtNo;
 use serde::{Deserialize, Serialize};
@@ -31,7 +32,8 @@ pub struct InsurerInput {
     pub prime_contractor_mgmt_no: Option<String>,
 }
 
-/// 「4대보험: 모두 성립·번호는 나중에 · 모두 성립·지금 입력 · 아직 없음 · 공단별로 다름」,
+/// "Four social insurances: all established, numbers later · all established,
+/// enter now · none yet · differs by insurer",
 /// with no default. `insurers` carries the per-insurer detail the choice needs.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InsuranceSetupInput {
@@ -79,8 +81,8 @@ impl InsuranceDraft {
     }
 }
 
-/// Expand the shortcut into one draft per insurer. A new 사업장 is its own
-/// unit (OWN) unless the detail says PART_OF a 주된 사업장.
+/// Expand the shortcut into one draft per insurer. A new workplace is its own
+/// unit (OWN) unless the detail says PART_OF a main workplace.
 pub fn validate_insurance_setup(
     is: &mut Issues,
     input: &InsuranceSetupInput,

@@ -41,9 +41,9 @@ pub(crate) fn diff(before: &Map<String, Value>, after: &Map<String, Value>) -> V
 
 /// The state a revision dated `at` replaces, among those recorded before it
 /// (in recorded order): the latest-dated one on or before `at`, the later
-/// recorded on a tie. A 정정 of today recorded after a change scheduled for a
-/// later date is compared with today's state, not with the scheduled one.
-/// A revision dated before every earlier one falls back to the last recorded.
+/// recorded on a tie. A correction of today recorded after a change scheduled
+/// for a later date is compared with today's state, not with the scheduled
+/// one. A revision dated before every earlier one falls back to the last recorded.
 pub(crate) fn predecessor(
     earlier: &[(time::Date, Map<String, Value>)],
     at: time::Date,
@@ -96,9 +96,10 @@ mod tests {
         );
     }
 
-    /// Regression (parity S3, 2026-10-07): a 대표전화 정정 of today recorded
-    /// after a 대표자 변경 scheduled for next month listed 대표자 and 대표 방식
-    /// as changed too, because it was diffed against the scheduled state.
+    /// Regression (parity S3, 2026-10-07): a main phone number correction of
+    /// today recorded after a representative change scheduled for next month
+    /// listed the representative and the representation method as changed
+    /// too, because it was diffed against the scheduled state.
     #[test]
     fn a_correction_after_a_scheduled_change_is_diffed_against_the_state_in_force() {
         let today = map(json!({ "reps": ["홍길동"], "mode": "SINGLE", "phone": null }));

@@ -1,6 +1,6 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The MR-29 sheet fixture: 법인 A with its certificate, 본사 and a second
-//! 사업장, and the batch a sheet import would send.
+//! The MR-29 sheet fixture: legal entity A with its certificate, headquarters and a second
+//! workplace, and the batch a sheet import would send.
 
 use crate::common::*;
 use console_entity_application::{EntitySetupBatch, EntitySetupOp, EntitySetupResult};
@@ -60,7 +60,7 @@ pub struct Fixture {
     pub branch: Uuid,
 }
 
-/// 법인 A with its certificate, 본사 (head office) and one more 사업장.
+/// Legal entity A with its certificate, headquarters (head office) and one more workplace.
 pub async fn fixture(owner: &PgPool) -> Fixture {
     let (store, actor) = tenant(owner, ORG, "S").await;
     let e = store
@@ -101,8 +101,8 @@ pub async fn fixture(owner: &PgPool) -> Fixture {
     }
 }
 
-/// The sheet: a new 법인 with a new 사업장, a capital change of A, its 평택공장
-/// renamed and made 본사.
+/// The sheet: a new legal entity with a new workplace, a capital change of A, its
+/// Pyeongtaek factory renamed and made headquarters.
 pub async fn sheet(f: &Fixture) -> EntitySetupBatch {
     let a = f.store.get_entity(&f.actor, f.entity, true).await.unwrap();
     let mut capital = corporation("주식회사 가나", "000211-0006241");

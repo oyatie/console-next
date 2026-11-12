@@ -1,9 +1,10 @@
-//! Who may call what. Reads take `org_change_read`; 부서/팀 setup units keep
-//! `org_change_apply`; 법인 · 사업자등록 · 사업장 writes take their own Cedar
-//! action `legal_entity_manage` (decisions #14.2), decided with the scope
-//! facts (decisions #15) and failing closed; placement writes take
-//! `employee_directory_manage`. Restricted personal fields (대표자, 공동사업자)
-//! go only to callers who may manage the record.
+//! Who may call what. Reads take `org_change_read`; department/team setup
+//! units keep `org_change_apply`; legal entity, business registration and
+//! workplace writes take their own Cedar action `legal_entity_manage`
+//! (decisions #14.2), decided with the scope facts (decisions #15) and failing
+//! closed; placement writes take `employee_directory_manage`. Restricted
+//! personal fields (representatives, joint business operators) go only to
+//! callers who may manage the record.
 
 use axum::http::HeaderMap;
 use console_entity_application::{Actor, EntityScope, Target};
@@ -26,7 +27,7 @@ type Result<T> = std::result::Result<T, RestError>;
 #[derive(Clone, Copy)]
 pub(crate) enum Need {
     Read,
-    /// 부서/팀 setup units: the org-change grant.
+    /// Department/team setup units: the org-change grant.
     Structure,
     People,
 }
@@ -159,7 +160,8 @@ pub(crate) async fn writer(s: &EntityRestState, headers: &HeaderMap, need: Need)
     with_key(actor, headers)
 }
 
-/// A 법인 · 사업자등록 · 사업장 writer: `legal_entity_manage` on `target`.
+/// A legal entity, business registration or workplace writer:
+/// `legal_entity_manage` on `target`.
 pub(crate) async fn manager(
     s: &EntityRestState,
     headers: &HeaderMap,
@@ -184,8 +186,8 @@ pub(crate) async fn manager_or_ops(
     Ok((with_key(actor, headers)?, principal.is_tenant_ops))
 }
 
-/// A bulk 법인 · 사업장 writer (MR-29): `legal_entity_manage` on every
-/// subject of the batch (C16: each one evaluated, any refusal denies all).
+/// A bulk legal entity and workplace writer (MR-29): `legal_entity_manage` on
+/// every subject of the batch (C16: each one evaluated, any refusal denies all).
 /// A dry run writes nothing and needs no `Idempotency-Key`.
 pub(crate) async fn manager_of(
     s: &EntityRestState,
@@ -215,8 +217,9 @@ pub(crate) async fn manager_of(
 }
 
 // --- lane: CRUD ---
-/// Cedar `org_unit_manage` (direct 부서 erase, 폐지, 부서장 · 코드): its one
-/// fact is a tenant-wide `org_change_apply` door (the ops account holds it).
+/// Cedar `org_unit_manage` (direct department erase, abolition, department
+/// head and code): its one fact is a tenant-wide `org_change_apply` door (the
+/// ops account holds it).
 fn may_change_units(principal: &Principal) -> bool {
     let holds = authorize_capability(principal, Action::new(Feature::OrgChangeApply)).is_ok();
     let facts = Facts::new().bool("actor_holds_permission", holds);
@@ -230,7 +233,7 @@ fn may_change_units(principal: &Principal) -> bool {
     .is_ok()
 }
 
-/// A direct 부서 writer: 403 unless Cedar allows `org_unit_manage`.
+/// A direct department writer: 403 unless Cedar allows `org_unit_manage`.
 pub(crate) async fn unit_manager(s: &EntityRestState, headers: &HeaderMap) -> Result<Actor> {
     let principal = principal(s, headers).await?;
     if !may_change_units(&principal) {
@@ -246,7 +249,7 @@ pub(crate) async fn unit_reader(s: &EntityRestState, headers: &HeaderMap) -> Res
     Ok((actor_of(&principal), may_change_units(&principal)))
 }
 
-/// A reader of a 법인/사업장's end options, and whether it may manage `target`.
+/// A reader of a legal entity's or workplace's end options, and whether it may manage `target`.
 pub(crate) async fn record_reader(
     s: &EntityRestState,
     headers: &HeaderMap,

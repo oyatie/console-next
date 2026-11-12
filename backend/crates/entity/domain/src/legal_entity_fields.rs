@@ -44,9 +44,9 @@ pub(super) fn directors(
         .collect()
 }
 
-/// A KSIC code (한국표준산업분류: optional section letter A–U, then 2–5
-/// digits), stamped `UNVERIFIED` with the printed text (or the code) as its
-/// label until a reference list is loaded.
+/// A KSIC code (Korean Standard Industrial Classification: optional section
+/// letter A–U, then 2–5 digits), stamped `UNVERIFIED` with the printed text (or
+/// the code) as its label until a reference list is loaded.
 pub(crate) fn code_ref(
     is: &mut Issues,
     field: &str,
