@@ -14,8 +14,9 @@ import { chooseRadio, go, stepUp, takeCode } from "./flows";
  * What a colleague may do: everything the grid offers, or oversight (조회, 퇴직 확인, 예외·정정 결정 and — on a routed
  * row — 결재, no edit or export). #26: 결재 is a cell only where the tenant routes that change class.
  */
-export type Access = "full" | "oversight" | "close";
+export type Access = "full" | "oversight" | "close" | "org";
 const ROLE: Record<Access, { name: string; levels: string[] }> = {
+  org: { name: "조직 업무", levels: ["조직 등록·수정", "조직 결재"] },
   full: { name: "전체 업무", levels: ["등록·수정", "확인", "결정", "결재", "내보내기", "조회"] },
   oversight: { name: "조회·결재", levels: ["확인", "결정", "결재", "조회"] },
   // One domain's cell: the period-close authority (기간 잠금 is a 예외·정정 등록·수정 operation).
