@@ -7,4 +7,4 @@ enum:
 - '05'
 - '06'
 - '07'
-description: '과세유형, 국세청 tax_type_cd: 01 일반 · 02 간이 · 03 과세특례 · 04 면세 · 05 비영리(수익사업 없음) · 06 고유번호 단체 · 07 간이(세금계산서 발급).'
+description: 'Taxation type, National Tax Service tax_type_cd: 01 general · 02 simplified · 03 special taxation · 04 tax-exempt · 05 non-profit (no profit-making business) · 06 unique-number organization · 07 simplified (issues tax invoices).'

@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: correctEmployeeLifecycleEvent
-summary: Correct (정정) an applied lifecycle event on its date (BW-11)
+summary: Correct an applied lifecycle event on its date (BW-11)
 description: The same voidability rules as rescind. The employee is restored and the replacement (same
   event_type and effective_date, else 422) is recorded in the same transaction with voids_event_id naming the
   original, which then shows voided_by. A replacement that changes contract_end_date or expected_return_date

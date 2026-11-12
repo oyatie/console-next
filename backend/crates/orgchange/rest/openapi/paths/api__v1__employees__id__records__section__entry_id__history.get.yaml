@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: getEmployeeRecordHistory
-summary: Every revision of one 인사카드 entry, oldest first
+summary: Every revision of one personnel card entry, oldest first
 description: A restricted section (discipline, disability, veteran) needs a purpose and is audited, as for
   the list. Cache-Control no-store.
 security:

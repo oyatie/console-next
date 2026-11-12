@@ -1,9 +1,9 @@
 tags:
   - employees
 operationId: getMinimumWageHint
-summary: The 최저임금 floor beside a pay input (EMP-CREATE E5)
+summary: The minimum wage floor beside a pay input (EMP-CREATE E5)
 description: The floor a wage in pay_unit is compared with on a day, from payroll's statutory register, with the
-  고시 that sets it. A part-time week takes the 209-hour monthly floor in proportion to weekly_minutes; under 15
+  public notice that sets it. A part-time week takes the 209-hour monthly floor in proportion to weekly_minutes; under 15
   hours a week no monthly or annual floor is derived (floor_won null). The body is null when the register has no
   figure for the day. Org-wide employee_directory_manage.
 security:

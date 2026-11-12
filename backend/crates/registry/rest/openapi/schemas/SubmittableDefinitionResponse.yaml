@@ -1,5 +1,5 @@
 type: object
-description: An ACTIVE workflow definition the caller may start from the 기안 template gallery. Carries only the
+description: An ACTIVE workflow definition the caller may start from the draft template gallery. Carries only the
   metadata definitions actually hold; active_version is the version a start binds to.
 required:
 - id

@@ -1,7 +1,7 @@
 tags:
   - period-locks
 operationId: rejectPeriodUnlock
-summary: Refuse the waiting unlock request as the second person (반려)
+summary: Refuse the waiting unlock request as the second person
 description: 'Close-authority gated (PeriodLockManage, org-wide), audited (BW-15). The same second person who may
   approve (never the requester''s own person: 403 second_person_required / second_person_ineligible) refuses the
   request with a note; the lock stays in force and the requester sees the note on the lock

@@ -17,7 +17,7 @@ properties:
     description: "Typed identity problems, computed on read: legal_name_unconfirmed, legal_name_not_hangul, legal_name_is_person, display_name_is_person, english_name_is_person, primary_registration_classification, legal_name_review."
   name_reviews:
     type: array
-    description: Open one-time reviews (personal readers only) - a registration 상호 that differed from the name when it became single-source.
+    description: Open one-time reviews (personal readers only) - a registration trade name that differed from the name when it became single-source.
     items: { $ref: '#/components/schemas/LegalEntityNameReview' }
   id:
     type: string
@@ -35,10 +35,10 @@ properties:
   identity_locked:
     type: boolean
   founding:
-    description: 설립 중 — recorded before its 설립등기 (no 법인등록번호 yet); ends when the number is entered.
+    description: Being incorporated — recorded before its incorporation registration (no corporate registration number yet); ends when the number is entered.
     type: boolean
   can_manage:
-    description: Whether this reader may manage the 법인 itself (Cedar legal_entity_manage within their scope).
+    description: Whether this reader may manage the legal entity itself (Cedar legal_entity_manage within their scope).
     type: boolean
   closed_on:
     type:

@@ -22,4 +22,4 @@ properties:
   monthly_ordinary_wage_won:
     type: integer
     format: int64
-    description: Monthly 통상임금; mandatory so the ordinary-wage floor is never skipped.
+    description: Monthly ordinary wage; mandatory so the ordinary-wage floor is never skipped.

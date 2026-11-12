@@ -1,12 +1,12 @@
 tags:
 - entity
 operationId: reissueBusinessRegistration
-summary: 등록증 재발급·정정 — a newly issued certificate and the facts it changed, as one dated, evidenced change
-description: The registration's new state (and, when the certificate changed what the 법인 records — 대표자,
-  법인명, 본점 — the 법인's) is appended from effective_from with the certificate linked as its evidence; the
-  certificate kept before stays, superseded. Setup applies at once; after 운영 시작 the change is governed and
-  audited. Never dated before the registration state in force nor before a scheduled registration or 법인
-  state (full-state revisions would hide or undo it); a 법인 state in force from a later date moves the 법인's
+summary: Certificate reissue / correction — a newly issued certificate and the facts it changed, as one dated, evidenced change
+description: The registration's new state (and, when the certificate changed what the legal entity records — representative,
+  legal entity name, head office — the legal entity's) is appended from effective_from with the certificate linked as its evidence; the
+  certificate kept before stays, superseded. Setup applies at once; after go-live the change is governed and
+  audited. Never dated before the registration state in force nor before a scheduled registration or legal entity
+  state (full-state revisions would hide or undo it); a legal entity state in force from a later date moves the legal entity's
   part to that date, with the warning entity_change_from_later_state.
 security:
 - bearerAuth: []

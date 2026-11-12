@@ -2,7 +2,7 @@ x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
 tags:
 - entity
 operationId: getLegalEntity
-summary: One 법인
+summary: One legal entity
 security:
 - bearerAuth: []
 parameters:

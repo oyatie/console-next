@@ -1,10 +1,10 @@
 tags:
   - employees
 operationId: getEmployeeFixedTerm
-summary: Cumulative fixed-term service (BW-12, 기간제법 §4①)
+summary: Cumulative fixed-term service (BW-12, Fixed-Term Workers Act §4①)
 description: Service as of today (KST) from the live contract history (employee_contracts), else the profile's
-  contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). 육아휴직 is not counted
-  (남녀고용평등법 §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract
+  contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). Parental leave is not counted
+  (Equal Employment Opportunity Act §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract
   row; the other fields are then null. Takes org-wide employee_directory_read.
 security:
 - bearerAuth: []

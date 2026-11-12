@@ -24,7 +24,7 @@ properties:
     type: object
     additionalProperties: false
     description: HR tier only. Required for a reason whose catalog entry requires written notice under
-      근로기준법 제27조. Missing or blank evidence, or service after the statutory exit date, is 422
+      Labor Standards Act Article 27. Missing or blank evidence, or service after the statutory exit date, is 422
       notice_evidence_missing. Ignored for other reasons; the HQ tier refuses this field.
     properties:
       reason_text:

@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: listEntityDocuments
-summary: Originals kept as evidence for a 법인 (superseded ones too), newest first
+summary: Originals kept as evidence for a legal entity (superseded ones too), newest first
 security:
 - bearerAuth: []
 parameters:

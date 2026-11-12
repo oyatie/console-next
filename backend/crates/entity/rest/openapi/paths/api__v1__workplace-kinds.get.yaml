@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: listWorkplaceKinds
-summary: 사업장 kinds (platform defaults, then the tenant's own; inactive ones included)
+summary: Workplace kinds (platform defaults, then the tenant's own; inactive ones included)
 security:
 - bearerAuth: []
 responses:

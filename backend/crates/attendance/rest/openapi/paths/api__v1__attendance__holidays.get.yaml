@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: listAttendanceHolidays
-summary: The year's 공휴일 (bundled reference data, read-only) and 약정휴일
+summary: The year's public holidays (bundled reference data, read-only) and contractual holidays
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: year, in: query, required: true, schema: { type: integer, minimum: 2000, maximum: 2100 } }

@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: commitBulkEmployeeCorrection
-summary: Commit a previewed bulk 정정 as one job (MR-27)
+summary: Commit a previewed bulk correction as one job (MR-27)
 description: >-
   The preview body plus preview_digest (and step_up when the preview said step_up_required). One
   transaction: the employees are locked in id order and planned again; if the plan differs from the

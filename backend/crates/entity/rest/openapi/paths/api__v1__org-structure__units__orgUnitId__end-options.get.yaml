@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: orgUnitEndOptions
-summary: Whether a 부서 is deleted (never used) or 폐지 (used), and why not the other
+summary: Whether a department is deleted (never used) or abolished (used), and why not the other
 description: CRUD. Read the moment an end is offered. can_manage is Cedar org_unit_manage for the caller.
 security:
 - bearerAuth: []

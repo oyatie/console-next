@@ -61,11 +61,11 @@ properties:
   org_unit_unbound_rows:
     type: integer
     minimum: 0
-    description: New people with no unit (a blank cell, or a name that binds no unit, 미배치) or former employees
+    description: New people with no unit (a blank cell, or a name that binds no unit, unplaced) or former employees
       (unit text only). Imports never create units.
   unresolved_org_units:
     type: array
-    description: Unit names that bind no unit; their people come in 미배치 (unit_map binds them).
+    description: Unit names that bind no unit; their people come in as unplaced (unit_map binds them).
     items:
       type: string
   dry_run_digest:
@@ -111,11 +111,11 @@ properties:
   employment_type_empty_rows:
     type: integer
     minimum: 0
-    description: 'W02: new people who come in with no 고용형태 (the apply button names it).'
+    description: 'W02: new people who come in with no employment type (the apply button names it).'
   unplaced:
     $ref: '#/components/schemas/EmployeeImportUnplaced'
   phone_unstored_rows:
     type: integer
     minimum: 0
-    description: 'W12: rows whose 휴대전화 is not stored — a new person with no 고용형태 (the phone lives on the
-      employment profile), or a person on file (their phone is changed on the 인사카드).'
+    description: 'W12: rows whose mobile phone is not stored — a new person with no employment type (the phone lives on the
+      employment profile), or a person on file (their phone is changed on the personnel card).'

@@ -21,7 +21,7 @@ properties:
     maxLength: 200
   company:
     type: string
-    description: Defaults to the 법인 of the last period.
+    description: Defaults to the legal entity of the last period.
   contract_end_date:
     type: string
     format: date

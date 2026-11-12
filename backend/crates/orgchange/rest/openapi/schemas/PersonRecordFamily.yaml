@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-description: 가족. Never a 주민등록번호; no 부양 flag (payroll).
+description: Family. Never a resident registration number; no dependant flag (payroll).
 required: [relation, name]
 properties:
   relation:

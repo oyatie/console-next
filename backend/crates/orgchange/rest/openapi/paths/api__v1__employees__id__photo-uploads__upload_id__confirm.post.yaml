@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: confirmEmployeePhotoUpload
-summary: Confirm a 사진 upload once the PUT is done
+summary: Confirm a photo upload once the PUT is done
 description: >-
   MR-34. Org-wide employee_directory_manage. Checks that the object is in
   storage at the declared size (409 `photo_upload_missing`, 409

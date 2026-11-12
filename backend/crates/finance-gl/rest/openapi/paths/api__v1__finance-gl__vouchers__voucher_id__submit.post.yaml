@@ -1,7 +1,7 @@
 tags:
 - finance-gl
 operationId: submitVoucher
-summary: 기표 → 차대검증 (balance gate; unbalanced is rejected)
+summary: DRAFT → BALANCE_CHECKED (balance gate; unbalanced is rejected)
 security:
 - bearerAuth: []
 parameters:
@@ -12,7 +12,7 @@ parameters:
     $ref: '#/components/schemas/Uuid'
 responses:
   '200':
-    description: Voucher advanced to 차대검증.
+    description: Voucher advanced to BALANCE_CHECKED.
     content:
       application/json:
         schema:

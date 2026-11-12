@@ -3,7 +3,7 @@ tags:
 operationId: archiveOrgChange
 summary: Archive a settled dissolve
 description: SETTLING only, and refused while any settlement item is open. The deferred dissolve ops replay inside
-  the archive transaction, so uncleared dependents roll the whole action back (참조 무결성).
+  the archive transaction, so uncleared dependents roll the whole action back (referential integrity).
 security:
 - bearerAuth: []
 parameters:

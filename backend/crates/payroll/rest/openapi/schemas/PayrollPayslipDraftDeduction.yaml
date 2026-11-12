@@ -1,7 +1,7 @@
 type: object
 description: >
-  One 공제 component, carrying its own basis, rate and instrument so the
-  payslip is recomputable under 근로기준법 제42조. An amount this engine did
+  One deduction component, carrying its own basis, rate and instrument so the
+  payslip is recomputable under Labor Standards Act Article 42. An amount this engine did
   not compute is null, never 0.
 required:
 - code
@@ -28,33 +28,33 @@ properties:
     type: string
     enum: [MonthlyStandardIncome, MonthlyRemuneration, HealthInsurancePremium, IndustryTariff]
     description: >
-      장기요양's basis is HealthInsurancePremium — the COMPUTED 건강보험료액
-      under 노인장기요양보험법 제9조제1항, not 보수월액.
+      Long-term care's basis is HealthInsurancePremium — the COMPUTED health insurance premium
+      under Long-Term Care Insurance Act Article 9(1), not the monthly remuneration.
   basis_won:
     type: [integer, 'null']
     format: int64
     description: >
-      Null for 산재 only: its 사업종류별 요율 and the basis that rate applies
-      to are per-employer figures from an un-ingested 별지.
+      Null for industrial accident insurance only: its rate by business type and the basis that rate applies
+      to are per-employer figures from an un-ingested annexed form.
   rate_num:
     type: [integer, 'null']
     format: int64
-    description: Integer numerator, never a decimal. Null for 산재, with `rate_den`.
+    description: Integer numerator, never a decimal. Null for industrial accident insurance, with `rate_den`.
   rate_den: { type: [integer, 'null'], format: int64 }
   total_won:
     type: [integer, 'null']
     format: int64
     description: >
-      Null for 산재 (the employer premium is unknown, not zero) and null for
+      Null for industrial accident insurance (the employer premium is unknown, not zero) and null for
       any component whose rounding unit is unsettled — see `blocked_by`.
   employee_won:
     type: [integer, 'null']
     format: int64
-    description: Always null when `employer_only` is true — 산재 has no employee line.
+    description: Always null when `employer_only` is true — industrial accident insurance has no employee line.
   employer_only:
     type: boolean
     description: >
-      True for 산재 alone (징수법 제13조제5항). The absence of an employee
+      True for industrial accident insurance alone (Insurance Premium Collection Act Article 13(5)). The absence of an employee
       line is STATED here rather than left silent.
   blocked_by:
     type: [string, 'null']

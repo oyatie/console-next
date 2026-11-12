@@ -1,9 +1,9 @@
 tags:
   - employees
 operationId: getEmployeeRrn
-summary: The masked 주민등록번호 of an employee (IMPORT-2)
-description: 'Decisions #25. Masked by default (생년월일 + 성별 digit); recorded false when none is stored.
-  Org-wide employee_directory_manage; each read leaves a 접속기록 row.'
+summary: The masked resident registration number of an employee (IMPORT-2)
+description: 'Decisions #25. Masked by default (date of birth + sex digit); recorded false when none is stored.
+  Org-wide employee_directory_manage; each read leaves an access log row.'
 security:
 - bearerAuth: []
 parameters:

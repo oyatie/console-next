@@ -7,8 +7,8 @@ properties:
   start_date:
     type: string
     format: date
-    description: Inclusive alternate 시기 start (YYYY-MM-DD); must differ from the original span.
+    description: Inclusive alternate timing start (YYYY-MM-DD); must differ from the original span.
   end_date:
     type: string
     format: date
-    description: Inclusive alternate 시기 end (YYYY-MM-DD); must differ from the original span.
+    description: Inclusive alternate timing end (YYYY-MM-DD); must differ from the original span.

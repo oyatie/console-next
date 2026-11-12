@@ -1,9 +1,9 @@
 tags:
 - entity
 operationId: dissolveOrgUnit
-summary: 폐지 a used 부서 and its empty sub-부서 now (either phase)
+summary: Abolish a used department and its empty sub-departments now (either phase)
 description: CRUD. History kept (a dissolved revision). Refused for a unit nobody ever used (org_unit_never_used, erase it instead), while
-  anyone is placed in it or moving into it (org_unit_has_members), while an org change names it, and after 운영 시작
+  anyone is placed in it or moving into it (org_unit_has_members), while an org change names it, and after go-live
   while org changes are routed. Audited org_unit.setup_dissolve per unit.
 security:
 - bearerAuth: []

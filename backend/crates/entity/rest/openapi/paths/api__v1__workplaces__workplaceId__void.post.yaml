@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: voidWorkplace
-summary: Undo a mistaken 사업장 during setup
+summary: Undo a mistaken workplace during setup
 security:
 - bearerAuth: []
 parameters:

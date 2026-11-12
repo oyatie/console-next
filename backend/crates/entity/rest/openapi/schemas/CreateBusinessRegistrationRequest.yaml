@@ -7,7 +7,7 @@ allOf:
       - string
       - 'null'
       format: uuid
-      description: The kept 사업자등록증 this registration is typed from, attached in the same transaction and named
+      description: The kept business registration certificate this registration is typed from, attached in the same transaction and named
         as the first revision's evidence (422 document_not_found, document_not_certificate,
         document_attached_elsewhere, document_not_new).
     check_preview:

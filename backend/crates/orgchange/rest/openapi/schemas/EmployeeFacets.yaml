@@ -21,7 +21,7 @@ properties:
       $ref: '#/components/schemas/EmployeeFacetCount'
   workplace:
     type: array
-    description: Counts per workplace_id (value is the id; null counts rows with no 사업장), with every filter
+    description: Counts per workplace_id (value is the id; null counts rows with no workplace), with every filter
       except workplace_id.
     items:
       $ref: '#/components/schemas/EmployeeFacetCount'

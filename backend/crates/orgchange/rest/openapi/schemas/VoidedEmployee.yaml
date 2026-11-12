@@ -9,7 +9,7 @@ properties:
     description: Null once a SETUP delete freed it.
   name:
     type: string
-    description: (파기됨) once the personal data is destroyed.
+    description: (파기됨) ("destroyed") once the personal data is destroyed.
   void_reason_code:
     type: string
   void_mode:

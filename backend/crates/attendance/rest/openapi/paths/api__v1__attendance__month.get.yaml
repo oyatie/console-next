@@ -1,7 +1,7 @@
 x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "entity", "engine": "cedar"}
 tags: [attendance]
 operationId: readAttendanceMonthGrid
-summary: The 월간 근무표 — people × days, 100 people a page by keyset, with the four totals per row
+summary: The monthly roster — people × days, 100 people a page by keyset, with the four totals per row
 description: Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and every person's dated workplace use one fact snapshot.
 security: [{ bearerAuth: [] }]
 parameters:
