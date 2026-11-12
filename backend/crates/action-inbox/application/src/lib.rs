@@ -21,6 +21,11 @@ use rank::{compare_items, item_after_cursor};
 pub use rank::{compare_key, page_source_items};
 mod source;
 pub use source::ActionInboxSource;
+mod snooze;
+pub use snooze::{
+    DueBasis, Snooze, SnoozeBlock, SnoozeFacts, SnoozeMode, SnoozePreset, SnoozeRefusal,
+    SnoozedPort, Snoozes, kst_date, presets,
+};
 
 use std::future::Future;
 use std::pin::Pin;
@@ -59,14 +64,6 @@ pub struct ActionInboxLink {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
-}
-
-/// Where an item's due date comes from, when that limits what may be done with it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DueBasis {
-    /// The due date is a legal deadline read from the statutory register.
-    Statutory,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +146,7 @@ pub struct ActionInboxItem {
     pub done: bool,
     pub lane: &'static str,
     pub days_remaining: Option<i64>,
+    pub snooze: SnoozeFacts,
     #[serde(skip)]
     pub created_at: OffsetDateTime,
 }
@@ -412,6 +410,11 @@ mod tests {
                 )
                 .is_ok(),
                 "{source:?} cursor must round-trip"
+            );
+            assert_eq!(
+                namespaced_id::source_of(encoded.rsplit('~').next().unwrap()),
+                Some(source),
+                "an id names the source that issued it"
             );
         }
     }

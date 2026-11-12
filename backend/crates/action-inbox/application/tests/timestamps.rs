@@ -26,6 +26,7 @@ fn inbox_deadlines_and_submissions_are_fractional_utc_strings() {
             done: false,
             lane: "turn",
             days_remaining: None,
+            snooze: Default::default(),
             created_at: at,
         };
         let wire = serde_json::to_value(item).unwrap();
