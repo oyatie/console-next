@@ -1,40 +1,52 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Actions cache retention
 
-The Rust cache producer in `ci.yml` maintains the `backend` policy in
-`scripts/cache-retention.config.json` after a successful merge and save. Readers
-are the Rust check, test, release and collector jobs on dev, PRs and merge groups.
-The archive contains downloaded crates and compiled targets; it is not release
-evidence. Retention does not change cache keys or archive paths.
+`scripts/cache-retention.mjs` owns Actions cache planning and deletion. Policies in
+`scripts/cache-retention.config.json` state each family's purpose, readers and
+copy counts. The existing `platform.yml` cleanup job sweeps all families on each
+dev push; post-job saves are collected by the next push. The Rust producer in
+`ci.yml` also plans immediately after a successful merge and save. Neither cleanup
+failure can block delivery; failed or skipped cleanup writes a summary warning.
 
-The shared planner keeps the newest two archives per runner family and cache
-version, and the newest one per compatible restore prefix and version. It also
-protects the producer's saved and restored keys, including during concurrent
-builds. These sets overlap; they are not a global two-archive limit. Keeping each
-compatible prefix preserves the fallback used by a PR with an older lockfile.
-Only superseded archives in this family on dev and this family's PR merge-ref
-archives are eligible for deletion. Other families and branch refs are preserved.
+| Family | Reader | Retained copies per cache version |
+| --- | --- | --- |
+| backend | Rust checks, tests, release and collector on dev/PRs | Two per runner, with the current saved prefix and saved/restored keys protected |
+| db-tests | DB test shards | One per runner/debug profile |
+| npm | setup-node in all workflows | One per OS/architecture |
+| playwright | Web and states browser jobs | One per OS/architecture/browser |
+| codeql | Overlay analysis | One per language |
+| buildkit | Native image builds | One index per architecture/scope; shared blobs remain protected |
+
+Only the configured newest compatibility prefixes retain their configured fallback
+copies. Old lockfile hashes do not each reserve an archive. Rust first restores
+its current manifest prefix, then the runner prefix, so the previous manifest's
+archive can warm the first build after a manifest change. Concurrent saves may
+require extra protected entries; the summary reports their actual byte cost.
+Caches contain rebuildable inputs and targets, not release rollback evidence.
+
+Legacy image indexes have no reader and are removed. Shared BuildKit blobs are
+reset only when legacy indexes exist and no current or unrelated index exists.
+The cache REST inventory does not expose blob references, so pruning an individual
+blob behind a live index would risk a cold or incomplete restore. Unknown cache
+families and non-PR branch refs are preserved. Superseded dev entries and known
+families' PR merge-ref entries are eligible for deletion.
 
 GitHub scopes caches by key, version and branch; prefix restoration selects the
 most recently created compatible entry. See GitHub's
 [cache matching and access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
 The planner uses the paginated [cache REST API](https://docs.github.com/en/rest/actions/cache)
 and deletes by ID, tolerating an already-evicted ID (404). Other API failures stop
-cleanup. An API inventory that does not contain the saved key refuses cleanup.
+cleanup. A producer inventory missing its saved key refuses cleanup before deletion.
 
-Cleanup defaults to dry-run. Each producer summary lists the keep/delete IDs,
-purpose, readers, count policy, observed usage and projected usage against the
-configured 70% target. A projection never changes the observed budget status.
-Rust readers report `exact hit`, `warm fallback` or `MISS`; an exact-key miss
-that restored a fallback is warm. These lines identify the actual restored key.
+Cleanup defaults to dry-run. Each summary lists keep/delete IDs, purpose, readers,
+count policy, observed usage and projected usage against the configured target.
+A projection never changes the observed budget status. Rust readers report
+`exact hit`, `warm fallback` or `MISS`, identifying the actual restored key.
 
-Before enabling deletion, review the dry-run keep set and hosted restore logs.
-Set repository variable `CACHE_RETENTION_APPLY=true` to let the dev producer apply
-its plan; unset it to return to dry-run. No branch or manual local invocation
-should perform a live prune. GitHub documents workflow-based cleanup in
+Before enabling deletion, review the dry-run keep set and three consecutive dev
+restores plus a PR restore. Set repository variable `CACHE_RETENTION_APPLY=true`
+to apply the plan; unset it to return to dry-run. Only workflows perform live
+pruning. GitHub describes this approach in
 [managing caches](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manage-caches).
-
-The planner preserves warmth before attempting to meet the byte target. New
-compatibility prefixes and cache versions can increase the retained size; the
-summary stays over budget when this happens, so operators can reduce archive
-size or explicitly retire obsolete compatibility policies with reader evidence.
+The public history replay fixture records dev pushes and manifest fingerprints;
+at measured archive sizes it verifies the configured target after every prune.

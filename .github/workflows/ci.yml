@@ -335,6 +335,7 @@ jobs:
           key: backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
           restore-keys: |
             backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-
+            backend-${{ runner.os }}-${{ runner.arch }}-
       - &rust-cache-report
         name: Report Rust cache restore
         env:
@@ -529,6 +530,8 @@ jobs:
             backend/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       - name: Retain Rust caches by purpose and count
+        id: rust-cache-retention
+        continue-on-error: true
         if: steps.rust-cache-save.outcome == 'success' && steps.rust-cache-merge.outcome == 'success'
         timeout-minutes: 2
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -544,6 +547,10 @@ jobs:
               dryRun: process.env.CACHE_RETENTION_APPLY !== 'true',
             });
             await core.summary.addRaw(result.summary).write();
+      - name: Warn when Rust cache cleanup fails
+        if: "!cancelled() && steps.rust-cache-retention.outcome != 'success'"
+        run: |
+          echo '**Warning:** Rust cache cleanup failed or was skipped. Delivery continues; cache usage may remain above the configured limit.' >> "$GITHUB_STEP_SUMMARY"
 
   home:
     needs: [affected, backend-release]

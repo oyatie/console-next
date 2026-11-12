@@ -6,7 +6,8 @@ const config = JSON.parse(readFileSync(new URL('./cache-retention.config.json', 
 export function planCaches(caches, policy, {family, savedKey, restoredKey}) {
   const rule = policy.families[family];
   if (!rule?.purpose || !rule.readers?.length || !Number.isSafeInteger(rule.copies) || rule.copies < 1 ||
-      !Number.isSafeInteger(rule.restoreCopies) || rule.restoreCopies < 1) throw new Error('CACHE_POLICY');
+      !Number.isSafeInteger(rule.restoreCopies) || rule.restoreCopies < 1 ||
+      !Number.isSafeInteger(rule.prefixes) || rule.prefixes < 1) throw new Error('CACHE_POLICY');
   const pattern = new RegExp(rule.keyPattern);
   const owned = caches.filter(c => pattern.test(c.key));
   for (const c of caches) {
@@ -17,17 +18,31 @@ export function planCaches(caches, policy, {family, savedKey, restoredKey}) {
       throw new Error('CACHE_METADATA');
     }
   }
-  if (!owned.some(c => c.ref === policy.trustedRef && c.key === savedKey)) throw new Error('CACHE_SAVE_MISSING');
+  if (savedKey !== undefined && !owned.some(c => c.ref === policy.trustedRef && c.key === savedKey)) throw new Error('CACHE_SAVE_MISSING');
   const trusted = owned.filter(c => c.ref === policy.trustedRef)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
   const keep = new Set();
-  const families = new Map(), prefixes = new Map();
+  const families = new Map(), prefixes = new Map(), retainedPrefixes = new Map();
+  const savedPrefix = savedKey?.match(pattern)?.slice(1, 3).join('');
+  const legacy = c => rule.legacyPattern && new RegExp(rule.legacyPattern).test(c.key);
+  const blob = c => rule.blobPattern && new RegExp(rule.blobPattern).test(c.key);
+  // BuildKit blobs have no reference graph in the REST inventory; any live index protects them.
+  const resetBlobs = owned.some(legacy) && !caches.some(c => c.key.startsWith('index-') && !legacy(c));
   for (const c of trusted) {
+    if (legacy(c)) continue;
+    if (blob(c)) {
+      if (!resetBlobs) keep.add(c.id);
+      continue;
+    }
     const [, runner, compatible] = c.key.match(pattern);
     const group = JSON.stringify([runner, c.version]);
     const prefix = JSON.stringify([runner, compatible, c.version]);
     const count = families.get(group) ?? 0, compatibleCount = prefixes.get(prefix) ?? 0;
-    if (count < rule.copies || compatibleCount < rule.restoreCopies || c.key === savedKey || c.key === restoredKey) {
+    const selected = retainedPrefixes.get(group) ?? new Set();
+    if (selected.size < rule.prefixes) selected.add(compatible);
+    retainedPrefixes.set(group, selected);
+    const currentPrefix = selected.has(compatible) || runner + compatible === savedPrefix;
+    if (count < rule.copies || currentPrefix && compatibleCount < rule.restoreCopies || c.key === savedKey || c.key === restoredKey) {
       keep.add(c.id);
     }
     families.set(group, count + 1);
@@ -44,19 +59,25 @@ export function restoreSummary(family, primary, matched) {
   return `${family} cache restore: ${!matched ? 'MISS' : matched === primary ? 'exact hit' : 'warm fallback'}; matched=${matched || 'none'}\n`;
 }
 
-export async function maintainCaches(github, context, options) {
+export async function maintainCaches(github, context, options = {}) {
   if (context.eventName !== 'push' || context.ref !== config.trustedRef ||
       context.ref !== `refs/heads/${context.payload.repository?.default_branch}`) throw new Error('CACHE_TRUST');
   const caches = await github.paginate(github.rest.actions.getActionsCacheList, {...context.repo, per_page: 100});
-  const plan = planCaches(caches, config, options);
+  const families = options.family ? [options.family] : Object.keys(config.families);
+  const plans = families.map(family => planCaches(caches, config, {...options, family}));
+  const obsolete = new Map(plans.flatMap(p => p.delete).map(c => [c.id, c]));
+  const beforeBytes = caches.reduce((sum, c) => sum + c.size_in_bytes, 0);
+  const plan = {keep: caches.filter(c => !obsolete.has(c.id)), delete: [...obsolete.values()], beforeBytes,
+    projectedBytes: beforeBytes - [...obsolete.values()].reduce((sum, c) => sum + c.size_in_bytes, 0)};
   const dryRun = options.dryRun !== false;
-  const rule = config.families[options.family];
   const percent = bytes => (100 * bytes / config.budgetBytes).toFixed(1);
   const rows = (label, entries) => entries.map(c => `| ${label} | ${c.id} | ${c.key.replaceAll('|', '\\|')} | ${c.size_in_bytes} |`);
   const summary = [
-    `### ${options.family} cache retention — ${dryRun ? 'DRY RUN' : 'APPLY'}`,
-    `Purpose: ${rule.purpose}. Readers: ${rule.readers.join('; ')}.`,
-    `Keep newest ${rule.copies} per runner/version, ${rule.restoreCopies} per compatible restore prefix/version, plus saved/restored keys.`,
+    `### ${options.family ?? 'Repository'} cache retention — ${dryRun ? 'DRY RUN' : 'APPLY'}`,
+    ...families.map(family => {
+      const rule = config.families[family];
+      return `${family}: ${rule.purpose}. Readers: ${rule.readers.join('; ')}. Keep ${rule.copies} per family/version, ${rule.restoreCopies} per prefix for ${rule.prefixes} newest prefixes, plus saved/restored keys.`;
+    }),
     `Observed: ${plan.beforeBytes} bytes (${percent(plan.beforeBytes)}%). Projected: ${plan.projectedBytes} bytes (${percent(plan.projectedBytes)}%).`,
     `Budget: ${config.budgetBytes} bytes; target ${100 * config.targetFraction}%. Observed budget status: ${plan.beforeBytes <= config.budgetBytes * config.targetFraction ? 'PASS' : 'OVER'}.`,
     '| Decision | ID | Key | Bytes |', '| --- | --- | --- | --- |',

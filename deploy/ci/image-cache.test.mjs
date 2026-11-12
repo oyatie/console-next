@@ -19,7 +19,7 @@ test('only default-branch pushes may export image caches or prune old caches', (
   const prune = workflow.jobs['prune-image-cache'];
   assert.equal(prune.if, `${trustedPush} && github.ref == 'refs/heads/dev'`);
   assert.equal(prune.permissions.actions, 'write');
-  assert.match(JSON.stringify(prune.steps), /prune-image-cache\.mjs/);
+  assert.match(JSON.stringify(prune.steps), /cache-retention\.mjs/);
 });
 
 test('cache pruning runs alongside release jobs without bypassing failed release prerequisites', () => {
@@ -91,15 +91,15 @@ ${build.run}`], {cwd: root, encoding: 'utf8', env: {...process.env,
 }
 
 const context = {eventName: 'push', ref: 'refs/heads/dev', repo: {owner: 'example', repo: 'console'}, payload: {repository: {default_branch: 'dev'}}};
-const blob = {id: 1, key: `buildkit-blob-1-sha256:${'a'.repeat(64)}`, size_in_bytes: 8000};
-const old = {id: 2, key: 'index-platform-amd64-1-5a70b200#87', size_in_bytes: 100};
+const blob = {id: 1, key: `buildkit-blob-1-sha256:${'a'.repeat(64)}`, size_in_bytes: 8000, ref: 'refs/heads/dev', version: 'v', created_at: new Date(0).toISOString()};
+const old = {id: 2, key: 'index-platform-amd64-1-5a70b200#87', size_in_bytes: 100, ref: 'refs/heads/dev', version: 'v', created_at: new Date(0).toISOString()};
 const npm = {id: 3, key: 'node-cache-Linux-x64-npm-lock', size_in_bytes: 200};
-const current = {id: 4, key: 'index-console-platform-arm64-1-5a70b200#1', size_in_bytes: 100};
+const current = {id: 4, key: 'index-console-platform-arm64-1-5a70b200#1', size_in_bytes: 100, ref: 'refs/heads/dev', version: 'v', created_at: new Date(0).toISOString()};
 
 test('failed or skipped cache prune writes a visible summary warning', () => {
   assert.equal(workflow.jobs['prune-image-cache']['continue-on-error'], true);
   const steps = workflow.jobs['prune-image-cache'].steps;
-  const cleanup = steps.find(step => step.with?.script?.includes('pruneImageCache'));
+  const cleanup = steps.find(step => step.with?.script?.includes('maintainCaches'));
   const dir = mkdtempSync(join(tmpdir(), 'image-cache-failure-'));
   try {
     const failure = spawnSync(process.execPath, ['--input-type=module', '-e', `
@@ -132,7 +132,7 @@ await assert.rejects((async () => { ${cleanup.with.script} })(), /cache API unav
 });
 
 async function prune(caches, ctx = context, failure) {
-  const {pruneImageCache} = await import(pathToFileURL(join(root, 'deploy/ci/prune-image-cache.mjs')));
+  const {maintainCaches} = await import(pathToFileURL(join(root, 'scripts/cache-retention.mjs')));
   const deleted = [];
   const github = {rest: {actions: {
     getActionsCacheList() {},
@@ -142,7 +142,7 @@ async function prune(caches, ctx = context, failure) {
     assert.deepEqual(args, {...context.repo, per_page: 100});
     return caches;
   }};
-  const result = await pruneImageCache(github, ctx);
+  const result = await maintainCaches(github, ctx, {family: 'buildkit', dryRun: false});
   return {deleted, result};
 }
 
@@ -150,7 +150,8 @@ test('migration reclaims legacy BuildKit blobs and scopes, preserving npm and Co
   const codeql = {...npm, id: 5, key: 'codeql-trap-1'};
   const {deleted, result} = await prune([blob, old, npm, codeql]);
   assert.deepEqual(deleted, [1, 2]);
-  assert.deepEqual(result, {deleted: 2, bytes: 8100});
+  assert.deepEqual(result.delete.map(c => c.id), [1, 2]);
+  assert.equal(result.beforeBytes - result.projectedBytes, 8100);
 });
 
 test('existing new or unrelated image indexes protect shared blobs; legacy indexes still go', async () => {
@@ -163,13 +164,13 @@ test('existing new or unrelated image indexes protect shared blobs; legacy index
 
 test('cleanup refuses PRs, merge groups, manual runs and pushes to other branches before any API call', async () => {
   for (const eventName of ['pull_request', 'merge_group', 'workflow_dispatch', 'schedule']) {
-    await assert.rejects(prune([blob, old], {...context, eventName}), /default-branch push/);
+    await assert.rejects(prune([blob, old], {...context, eventName}), /CACHE_TRUST/);
   }
-  await assert.rejects(prune([blob, old], {...context, ref: 'refs/heads/topic'}), /default-branch push/);
-  assert.deepEqual((await prune([old], {...context, ref: 'refs/heads/main', payload: {repository: {default_branch: 'main'}}})).deleted, [2]);
+  await assert.rejects(prune([blob, old], {...context, ref: 'refs/heads/topic'}), /CACHE_TRUST/);
+  await assert.rejects(prune([old], {...context, ref: 'refs/heads/main', payload: {repository: {default_branch: 'main'}}}), /CACHE_TRUST/);
 });
 
 test('cleanup tolerates entries already evicted but propagates API failures', async () => {
-  assert.deepEqual((await prune([old], context, {status: 404})).result, {deleted: 0, bytes: 0});
+  assert.deepEqual((await prune([old], context, {status: 404})).deleted, [2]);
   await assert.rejects(prune([old], context, new Error('permission denied')), /permission denied/);
 });
