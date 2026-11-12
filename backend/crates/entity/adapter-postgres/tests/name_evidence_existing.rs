@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Production 0h: 법인명 has one stored source (the entity's name). Every
-//! registration's ① derives from it; records saved before the rules are typed
-//! problems on read; diverged legacy 상호 become one-time reviews (20261013153646645).
+//! Production 0h: the legal entity name has one stored source (the entity's name). Every
+//! registration's ① derives from it; records saved before the rules are typed problems on
+//! read; diverged legacy trade names become one-time reviews (20261013153646645).
 mod common;
 use common::*;
 use console_entity_application::{LegalEntityRevision, LegalEntityView, SettleNameReview};
@@ -44,7 +44,7 @@ fn codes(v: &LegalEntityView) -> Vec<&'static str> {
     v.identity_problems.iter().map(|p| p.code).collect()
 }
 
-/// A 법인 with its 등록증 and 본사, named `name`.
+/// A legal entity with its certificate and headquarters, named `name`.
 async fn entity(
     store: &console_entity_adapter_postgres::PgEntityStore,
     actor: &console_entity_application::Actor,
@@ -91,7 +91,7 @@ fn correction(v: &LegalEntityView, name: &str, alias: &str) -> LegalEntityRevisi
 async fn the_registration_name_is_the_entity_name_and_follows_its_edit(owner: PgPool) {
     let org = Uuid::new_v4();
     let (store, actor) = tenant(&owner, org, "single-source").await;
-    // No 등록증 yet: the name is shown, its evidence is the problem.
+    // No certificate yet: the name is shown, its evidence is the problem.
     let bare = store
         .create_entity(&cmd(&actor), corporation("주식회사 가나", "000111-0012348"))
         .await
@@ -105,11 +105,12 @@ async fn the_registration_name_is_the_entity_name_and_follows_its_edit(owner: Pg
         view.registrations[0].current.as_ref().unwrap().trade_name,
         "NURI"
     );
-    // A 법인's registered 상호 is never without 한글 (상업등기규칙 §2).
+    // A legal entity's registered trade name is never without Hangul (Commercial
+    // Registration Rules §2).
     assert_eq!(codes(&view), ["legal_name_not_hangul"]);
     assert!(candidates(&owner, org).await.is_empty());
 
-    // regression (0h): ① 수정 edits the one name, and every reader sees the new one.
+    // regression (0h): the ① edit edits the one name, and every reader sees the new one.
     store
         .revise_entity(&cmd(&actor), id, correction(&view, "주식회사 누리", "NURI"))
         .await
@@ -123,7 +124,8 @@ async fn the_registration_name_is_the_entity_name_and_follows_its_edit(owner: Pg
     assert!(codes(&view).is_empty(), "{:?}", codes(&view));
     assert_eq!(candidates(&owner, org).await, ["주식회사 누리"]);
 
-    // A 지점 number saved as 대표 등록번호 before the classification rule existed.
+    // A branch number saved as the representative registration number before the
+    // classification rule existed.
     sqlx::query("UPDATE business_registrations SET brn = $2 WHERE id = $1")
         .bind(reg)
         .bind(BRANCH_TEST_BRN)
@@ -141,7 +143,8 @@ async fn a_person_shaped_alias_saved_before_the_guard_is_typed(owner: PgPool) {
     let org = Uuid::new_v4();
     let (store, actor) = tenant(&owner, org, "alias-person").await;
     let (id, _) = entity(&store, &actor, "주식회사 누리", "000-81-00009").await;
-    // As production's one production 법인: 「김예시,박예시」 typed into the 약칭.
+    // As production's one production legal entity: two personal names ("Kim Yesi,Park
+    // Yesi") typed into the short name.
     let mut tx = owner.begin().await.unwrap();
     sqlx::query(
         "ALTER TABLE legal_entity_revisions DISABLE TRIGGER trg_legal_entity_revisions_append_only",
@@ -164,7 +167,7 @@ async fn a_person_shaped_alias_saved_before_the_guard_is_typed(owner: PgPool) {
     let view = store.get_entity(&actor, id, true).await.unwrap();
     assert_eq!(codes(&view), ["display_name_is_person"]);
     assert_eq!(view.identity_problems[0].field, "display_name");
-    // The one-action fix: the record's 약칭 수정 (here: cleared).
+    // The one-action fix: the record's short-name edit (here: cleared).
     let mut fix = correction(&view, "주식회사 누리", "");
     fix.input.display_name = None;
     store.revise_entity(&cmd(&actor), id, fix).await.unwrap();
@@ -172,7 +175,7 @@ async fn a_person_shaped_alias_saved_before_the_guard_is_typed(owner: PgPool) {
     assert!(codes(&view).is_empty(), "{:?}", codes(&view));
 }
 
-/// A registration revision written by the old code, with its own 상호.
+/// A registration revision written by the old code, with its own trade name.
 async fn diverge(owner: &PgPool, reg: Uuid, name: &str) {
     sqlx::query(
         "INSERT INTO business_registration_revisions (org_id, registration_id, version, effective_from, trade_name, opened_on, \
@@ -227,7 +230,8 @@ async fn diverged_legacy_names_become_reviews_a_person_settles(owner: PgPool) {
     let hidden = store.get_entity(&actor, kept, false).await.unwrap();
     assert!(hidden.name_reviews.is_empty(), "personal readers only");
 
-    // Refusals, each without a write: a name that is neither value, another 법인's review.
+    // Refusals, each without a write: a name that is neither value, another legal
+    // entity's review.
     let other = store.get_entity(&actor, taken, true).await.unwrap();
     let bad = SettleNameReview {
         revision: Some(correction(&view, "아무개 상사", "NURI")),
@@ -273,7 +277,8 @@ async fn diverged_legacy_names_become_reviews_a_person_settles(owner: PgPool) {
     );
     assert_eq!(refused.0, "name_review_not_found");
 
-    // Take the registration's 상호 by a dated 정정; the old name is kept as 약칭.
+    // Take the registration's trade name by a dated correction; the old name is kept as
+    // the short name.
     let take = SettleNameReview {
         revision: Some(correction(&other, "주식회사 가나", "가나")),
     };

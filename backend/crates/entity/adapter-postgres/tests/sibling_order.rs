@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! One stored order per sibling set (org-sibling-order): the tenant's 법인
-//! reorder like 사업장 and 부서, every read shows it, a stale order is 409
-//! `children_changed` (no lost reorder), and a moved 부서 lands last.
+//! One stored order per sibling set (org-sibling-order): the tenant's legal entities
+//! reorder like workplaces and departments, every read shows it, a stale order is 409
+//! `children_changed` (no lost reorder), and a moved department lands last.
 
 mod common;
 
@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 const ORG: Uuid = Uuid::from_u128(0xA000_0000_0000_0000_0000_0000_0000_0C61);
 
-/// The 법인 order as the 법인 list and the 조직도 read it.
+/// The legal entity order as the legal entity list and the org chart read it.
 async fn listed(store: &PgEntityStore, actor: &Actor) -> (Vec<Uuid>, Vec<Uuid>) {
     let list = store
         .list_entities(actor, false)
@@ -147,7 +147,8 @@ async fn a_moved_department_lands_last_among_its_new_siblings(owner: PgPool) {
         .await
         .unwrap();
     let [a, b, c, d] = [0, 1, 2, 3].map(|i| receipt.units[i].org_unit_id);
-    // 가부 sat first in 본사 (position 0); moved to 공장 it goes after 다부, 라부.
+    // "Ga-bu" sat first in headquarters (position 0); moved to the factory it goes after
+    // "Da-bu", "Ra-bu".
     store
         .apply_org_setup_batch(
             &cmd(&actor),
@@ -174,8 +175,8 @@ async fn a_moved_department_lands_last_among_its_new_siblings(owner: PgPool) {
     assert_eq!((kids(0), kids(1)), (vec![b], vec![c, d, a]));
 }
 
-/// A 사업장 close plan lists its 부서 as the chart does: stored order (not
-/// name), each 부서 followed by those under it.
+/// A workplace close plan lists its departments as the chart does: stored order (not
+/// name), each department followed by those under it.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_close_plan_lists_departments_in_the_charts_order(owner: PgPool) {
     let (store, actor) = tenant(&owner, ORG, "P").await;
@@ -206,8 +207,8 @@ async fn a_close_plan_lists_departments_in_the_charts_order(owner: PgPool) {
     assert_eq!(ids, vec![a, a1, b]);
 }
 
-/// A 부서 left at the tenant root (a legacy or migrated unit no 사업장 holds)
-/// follows the same sibling rule: its stored 순서 first, never only the name.
+/// A department left at the tenant root (a legacy or migrated unit no workplace holds)
+/// follows the same sibling rule: its stored order first, never only the name.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn unplaced_departments_follow_the_stored_order(owner: PgPool) {
     let (store, actor) = tenant(&owner, ORG, "O").await;

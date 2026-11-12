@@ -15,7 +15,7 @@ fn allows_each_documented_transition() {
         (S::InApproval, S::Rejected),
         (S::InApproval, S::Cancelled),
         (S::Approved, S::Applied),
-        // A legacy SETTLING 폐지 still archives (org-05: none opens now).
+        // A legacy SETTLING abolition still archives (org-05: none opens now).
         (S::Settling, S::Archived),
         (S::Draft, S::Cancelled),
         (S::Prechecked, S::Cancelled),
@@ -39,7 +39,7 @@ fn rejects_illegal_terminal_and_skip_transitions() {
         (S::Rejected, S::InApproval),
         (S::Cancelled, S::Draft),
         (S::Settling, S::Applied),
-        // org-05: an applied 폐지 never opens a tick list again.
+        // org-05: an applied abolition never opens a tick list again.
         (S::Approved, S::Settling),
     ] {
         assert!(from.can_transition_to(to).is_err(), "{from:?} -> {to:?}");

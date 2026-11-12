@@ -4,7 +4,8 @@
 //!
 //! The point of this file is that the golden case is not a unit-test artifact:
 //! a real employee, a real stored contract, a real July 2026 timesheet, one
-//! `GET`, and every 4대보험 figure matching the hand calculation to the won.
+//! `GET`, and every figure of the four social insurances matching the hand
+//! calculation to the won.
 //!
 //! It also pins the two things a payslip must never do quietly: it must not
 //! emit a zero for a deduction it did not compute, and its stored citations
@@ -237,12 +238,11 @@ async fn seed_employee(owner_pool: &PgPool, org: Uuid, name: &str) -> Uuid {
     id
 }
 
-/// The real July 2026 timesheet: 23 소정근로일 (July 2026 starts on a Wednesday;
-/// 4 Saturdays, 4 Sundays, and 제헌절 7/17 is not a public holiday), one
-/// CLOCK_IN/CLOCK_OUT pair each.
-/// Seeds the FIRST `days` weekdays of July 2026, each with a paired
-/// CLOCK_IN/CLOCK_OUT. `days = 23` is the whole month; anything less is a
-/// partial-but-balanced timesheet.
+/// The real July 2026 timesheet: 23 prescribed working days (July 2026 starts
+/// on a Wednesday; 4 Saturdays, 4 Sundays, and Constitution Day 7/17 is not a
+/// public holiday), one CLOCK_IN/CLOCK_OUT pair each. Seeds the FIRST `days`
+/// weekdays of July 2026, each with a paired CLOCK_IN/CLOCK_OUT. `days = 23` is
+/// the whole month; anything less is a partial-but-balanced timesheet.
 async fn seed_july_2026_timesheet(
     owner_pool: &PgPool,
     org: Uuid,
@@ -347,8 +347,9 @@ async fn golden_case_gc_2026_07_kr_monthly_a_over_http_matches_the_hand_calculat
         seed_july_2026_timesheet(&owner_pool, *org.as_uuid(), employee, actor, 23).await;
     let token = bearer(&owner_pool, &keys, actor, org, "EXECUTIVE").await;
 
-    // 근로계약: 월 기본급 3,000,000원, 월 소정근로시간 209h, 시행 2025-03-02.
-    // Written over HTTP, so the whole vertical is reachable by a user.
+    // Employment contract: monthly base pay 3,000,000 won, monthly prescribed
+    // working hours 209h, effective 2025-03-02. Written over HTTP, so the whole
+    // vertical is reachable by a user.
     let created = post(
         app(pool.clone(), &keys),
         &format!("/api/v1/payroll/employees/{employee}/contract-wages"),
@@ -383,19 +384,20 @@ async fn golden_case_gc_2026_07_kr_monthly_a_over_http_matches_the_hand_calculat
     assert_eq!(body["attendance"]["worked_days"], 23);
     assert_eq!(body["attendance"]["clock_out_events"], 23);
 
-    // ── 지급 ──
+    // ── Payments ──
     assert_eq!(body["gross_won"], 3_000_000);
     assert_eq!(body["earnings"][0]["amount_won"], 3_000_000);
 
-    // ── 공제, to the won ──
-    // 1-2. 기준소득월액 3,000,000 (clamp 410,000..6,590,000 미구속)
+    // ── Deductions, to the won ──
+    // 1-2. Standard monthly income 3,000,000 (clamp 410,000..6,590,000 not binding)
     //      × 475/10,000 = 142,500
     let pension = deduction(&body, "NationalPension");
     assert_eq!(pension["basis_won"], 3_000_000);
     assert_eq!(pension["employee_won"], 142_500);
     assert_eq!(pension["instrument"]["promulgation_ko"], "법률 제20903호");
 
-    // 3-4. 3,000,000 × 719/10,000 = 215,700 → trunc10 → clamp → 215,700; 절반 107,850
+    // 3-4. 3,000,000 × 719/10,000 = 215,700 → trunc10 → clamp → 215,700; half
+    // 107,850
     let health = deduction(&body, "HealthInsurance");
     assert_eq!(health["total_won"], 215_700);
     assert_eq!(health["employee_won"], 107_850);
@@ -407,8 +409,9 @@ async fn golden_case_gc_2026_07_kr_monthly_a_over_http_matches_the_hand_calculat
             .contains("100분의 50씩")
     );
 
-    // 5-6. 215,700 × 9,448/71,900 = 28,344 → trunc10 → 28,340; 절반 14,170.
-    //      basis is the 건강보험료액, NOT 보수월액 — the fix this slice exists for.
+    // 5-6. 215,700 × 9,448/71,900 = 28,344 → trunc10 → 28,340; half 14,170.
+    //      basis is the health insurance premium amount, NOT monthly
+    //      remuneration — the fix this slice exists for.
     let ltc = deduction(&body, "LongTermCare");
     assert_eq!(ltc["basis_kind"], "HealthInsurancePremium");
     assert_eq!(ltc["basis_won"], 215_700);
@@ -423,7 +426,8 @@ async fn golden_case_gc_2026_07_kr_monthly_a_over_http_matches_the_hand_calculat
         27_000
     );
 
-    // 8. 산재 — 사업주 전액 부담. Present and STATED, not silently missing.
+    // 8. Industrial accident insurance — borne entirely by the employer. Present
+    //    and STATED, not silently missing.
     let industrial = deduction(&body, "IndustrialAccident");
     assert_eq!(industrial["employer_only"], true);
     assert!(industrial["employee_won"].is_null());
@@ -433,9 +437,10 @@ async fn golden_case_gc_2026_07_kr_monthly_a_over_http_matches_the_hand_calculat
             .unwrap()
             .contains("제13조제5항")
     );
-    // Every EMPLOYER figure is null, never 0: the 사업종류별 요율 is in 고시
-    // 제2025-91호's unparsed 별지, so a 0 anywhere here would publish "산재 costs
-    // nothing" — the silently-zero failure this engine exists to refuse.
+    // Every EMPLOYER figure is null, never 0: the per-industry rate is in
+    // Public Notice No. 2025-91's unparsed annexed form, so a 0 anywhere here
+    // would publish "industrial accident insurance costs nothing" — the
+    // silently-zero failure this engine exists to refuse.
     for field in ["total_won", "basis_won", "rate_num", "rate_den"] {
         assert!(
             industrial[field].is_null(),
@@ -443,7 +448,8 @@ async fn golden_case_gc_2026_07_kr_monthly_a_over_http_matches_the_hand_calculat
         );
     }
     // The other four components DID compute their basis and rate, so the nulls
-    // above are 산재's own refusal and not a serializer that dropped everything.
+    // above are industrial accident insurance's own refusal and not a
+    // serializer that dropped everything.
     for code in [
         "NationalPension",
         "HealthInsurance",
@@ -456,11 +462,11 @@ async fn golden_case_gc_2026_07_kr_monthly_a_over_http_matches_the_hand_calculat
         assert!(line["rate_den"].is_i64(), "{code}: {line}");
     }
 
-    // 4대보험 공제계 291,520 / 잔액 2,708,480
+    // Four social insurances deduction total 291,520 / remainder 2,708,480
     assert_eq!(body["total_employee_insurance_won"], 291_520);
     assert_eq!(body["remainder_after_insurance_won"], 2_708_480);
 
-    // 최저임금 CHECK: 3,000,000 ÷ 209 = 14,354 ≥ 10,320
+    // Minimum wage CHECK: 3,000,000 ÷ 209 = 14,354 ≥ 10,320
     assert_eq!(body["minimum_wage_check"]["effective_hourly_won"], 14_354);
     assert_eq!(body["minimum_wage_check"]["passes"], true);
     assert_eq!(body["minimum_wage_check"]["hourly_floor_won"], 10_320);
@@ -531,7 +537,8 @@ async fn withholding_is_explicitly_deferred_and_never_a_silent_zero(owner_pool: 
             .unwrap()
             .contains("소득세법 시행령 별표 2")
     );
-    // The version anchor is the semantic 별표HWP파일명, never the unstable flSeq.
+    // The version anchor is the semantic annex HWP file name, never the
+    // unstable flSeq.
     let article = income_tax["instrument"]["article_ko"].as_str().unwrap();
     assert!(article.contains("law0039562026052236343KC_000200E_20260701.hwp"));
     assert!(!article.contains("flSeq"));
@@ -1023,7 +1030,7 @@ async fn a_period_with_no_attendance_records_blocks_instead_of_paying_a_full_mon
     );
 
     // The regression this closes: the two drafts used to be identical apart
-    // from the employee id. Every 공제 figure still matches — the fix is a
+    // from the employee id. Every deduction figure still matches — the fix is a
     // blocker, not a silent proration — but the blocker lists now differ.
     assert_eq!(
         deduction(&with_timesheet, "NationalPension")["employee_won"],
@@ -1041,7 +1048,8 @@ async fn a_period_with_no_attendance_records_blocks_instead_of_paying_a_full_mon
 /// A partial-but-BALANCED timesheet passed every check the previous round had:
 /// `worked_days > 0` and `clock_in == clock_out`. The draft came back as a full
 /// month with no attendance blocker at all, while its own earnings line reads
-/// 완전출근 기준. Half a month of records is not evidence of a full month.
+/// "based on full attendance". Half a month of records is not evidence of a
+/// full month.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_partial_but_balanced_timesheet_blocks_although_every_punch_is_paired(
     owner_pool: PgPool,
@@ -1129,7 +1137,7 @@ async fn a_partial_but_balanced_timesheet_blocks_although_every_punch_is_paired(
     assert_eq!(attendance_blocker(&full_month), None);
 
     // And attendance still drives no FIGURE: the fix is a refusal, not a
-    // 일할계산 this slice has no statutory basis to perform.
+    // daily proration this slice has no statutory basis to perform.
     assert_eq!(full_month["gross_won"], half_month["gross_won"]);
     for code in [
         "NationalPension",
@@ -1150,7 +1158,7 @@ async fn a_partial_but_balanced_timesheet_blocks_although_every_punch_is_paired(
 /// The pre-existing citation test compares each row to the PAY DATE, so a row
 /// citing a decree enforced after its own `effective_from` passed it. The class
 /// is closed by a CHECK rather than by three corrections, because corrections
-/// do not survive the next 개정.
+/// do not survive the next amendment.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_rate_row_backdated_before_its_own_instrument_is_rejected(owner_pool: PgPool) {
     // That the migration ran at all proves every seeded row satisfies the
@@ -1177,8 +1185,9 @@ async fn a_rate_row_backdated_before_its_own_instrument_is_rejected(owner_pool: 
         }
     };
 
-    // In force from 2027-01-02 (away from the seeded annual row), citing a 고시 enforced 2027-06-01 — exactly the
-    // shape 건강보험(2026-01-01 → 제36116호/2026-02-19) shipped in.
+    // In force from 2027-01-02 (away from the seeded annual row), citing a
+    // public notice enforced 2027-06-01 — exactly the shape health insurance
+    // (2026-01-01 → No. 36116/2026-02-19) shipped in.
     let error = plant("2027-01-02", "2027-06-01")
         .await
         .expect_err("a row cannot be in force before the document that sets it");

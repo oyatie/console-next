@@ -1,5 +1,5 @@
-//! Bulk 법인 · 사업장 batch (MR-29): the request's shape, its digest, the
-//! op savepoints and the 대표 / 본점 role pins (`entity_batch`).
+//! Bulk legal entity · workplace batch (MR-29): the request's shape, its
+//! digest, the op savepoints and the representative / head-office role pins (`entity_batch`).
 
 use std::collections::BTreeSet;
 
@@ -84,7 +84,7 @@ pub(crate) fn at_op(index: usize, mut refusal: Refusal) -> Refusal {
 }
 
 /// sha256 over the batch, each revised record's newest version, today and
-/// the phase (a 운영 시작 in between forces a fresh preview).
+/// the phase (a go-live in between forces a fresh preview).
 pub(crate) async fn digest(
     tx: &mut Tx<'_>,
     batch: &EntitySetupBatch,
@@ -109,8 +109,9 @@ pub(crate) async fn digest(
     )
 }
 
-/// Existing 법인 whose 대표 / 본점 사업장 a workplace op may move (a 법인 the
-/// batch creates is voided whole by an undo: no roles to pin).
+/// Existing legal entities whose representative / head-office workplace a
+/// workplace op may move (a legal entity the batch creates is voided whole by
+/// an undo: no roles to pin).
 pub(crate) async fn touched_entities(
     tx: &mut Tx<'_>,
     batch: &EntitySetupBatch,
@@ -135,7 +136,7 @@ pub(crate) async fn touched_entities(
     Ok(entities.into_iter().collect())
 }
 
-/// The 대표 / 본점 roles of `entities`, in order.
+/// The representative / head-office roles of `entities`, in order.
 pub(crate) async fn roles(tx: &mut Tx<'_>, entities: &[Uuid]) -> Result<Vec<Value>, PgEntityError> {
     Ok(sqlx::query_scalar(
         "SELECT jsonb_build_object('id', id, 'primary_workplace_id', primary_workplace_id, \

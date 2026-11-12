@@ -225,7 +225,7 @@ async fn re_materialising_updates_rather_than_duplicates(pool: PgPool) {
     assert_eq!(roster(&pool, &f).await.len(), 1, "no duplicate line");
 }
 
-/// A payroll cell the importer dropped as restricted (소득세 here) still marks
+/// A payroll cell the importer dropped as restricted (income tax here) still marks
 /// the row as payroll material: the importer keeps only the header name, in
 /// `canonical_row.source_metadata.dropped_restricted_columns`, never the value.
 /// Near miss: the same row without the dropped header is no material at all.

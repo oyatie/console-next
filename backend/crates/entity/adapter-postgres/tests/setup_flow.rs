@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The solo first-run path, as the runtime role `console_rt` (FORCE RLS):
-//! 법인 → 사업자등록 → 사업장 in SETUP with no second person, audited and
-//! marked SETUP; then the OPERATING refusals and tenant isolation.
+//! The solo first-run path, as the runtime role `console_rt` (FORCE RLS): legal entity →
+//! business registration → workplace in SETUP with no second person, audited and marked
+//! SETUP; then the OPERATING refusals and tenant isolation.
 
 mod common;
 
@@ -111,7 +111,7 @@ async fn duplicates_and_undecided_vat_unit_are_refused_with_fields(owner: PgPool
             vec![("brn".into(), "brn_already_registered")]
         )
     );
-    // A second 사업장 registration: the VAT unit is now a choice (no default).
+    // A second workplace registration: the VAT unit is now a choice (no default).
     let (_, fields, remedy) = code(
         store
             .create_registration(&cmd(&actor), id, certificate("000-81-00071"))
@@ -275,7 +275,8 @@ async fn tenants_never_see_each_others_entities(owner: PgPool) {
         .unwrap()
         .record
         .id;
-    // Same 법인등록번호 in another tenant is allowed (a 노무법인 manages clients).
+    // Same corporate registration number in another tenant is allowed (a labor attorney
+    // firm manages clients).
     store_b
         .create_entity(&cmd(&actor_b), corporation("가나", "000211-0006241"))
         .await

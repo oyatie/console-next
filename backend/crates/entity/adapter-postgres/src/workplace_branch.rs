@@ -1,15 +1,15 @@
-//! The branch that backs a 사업장 (design §3.6, INTEG-5).
+//! The branch that backs a workplace (design §3.6, INTEG-5).
 
 use console_entity_domain::Refusal;
 use uuid::Uuid;
 
 use crate::{PgEntityError, Tx};
 
-/// The branch backing a 사업장 (design §3.6). Never matched by name
+/// The branch backing a workplace (design §3.6). Never matched by name
 /// (INTEG-5): a same-named branch may carry someone's scope. An explicit
 /// `default_branch_id` binds an existing open, unbound branch; otherwise a
 /// new branch is created in the entity's region (found by id through its
-/// other 사업장) or in a new region named after the entity. Names are unique
+/// other workplaces) or in a new region named after the entity. Names are unique
 /// (regions per tenant, branches per region), so a taken name gets 「 (2)」.
 pub(crate) async fn default_branch(
     tx: &mut Tx<'_>,
@@ -18,10 +18,11 @@ pub(crate) async fn default_branch(
     name: &str,
     explicit: Option<Uuid>,
 ) -> Result<Uuid, PgEntityError> {
-    // adopting a legacy 지점 here leaves its `('branch', id)`
+    // adopting a legacy branch here leaves its `('branch', id)`
     // source binding on the old name-only anchor unit (0263 re-pointed only
-    // the branches that already backed a 사업장). Re-point it to the 사업장's
-    // SITE unit through the canonical owner's port when an adoption UI ships.
+    // the branches that already backed a workplace). Re-point it to the
+    // workplace's SITE unit through the canonical owner's port when an
+    // adoption UI ships.
     if let Some(branch) = explicit {
         let free: bool = sqlx::query_scalar(
             "SELECT EXISTS (SELECT 1 FROM branches b WHERE b.id = $1 AND b.deactivated_at IS NULL \

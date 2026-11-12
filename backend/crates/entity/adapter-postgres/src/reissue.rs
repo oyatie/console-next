@@ -1,9 +1,10 @@
-//! 등록증 재발급·정정: a newly issued 사업자등록증 recorded as one dated,
-//! evidenced change. The registration's revision (and, when the certificate
-//! changed what the 법인 records — 대표자, 법인명, 본점 — the 법인's) is
+//! Certificate reissue / correction: a newly issued business registration
+//! certificate recorded as one dated, evidenced change. The registration's
+//! revision (and, when the certificate changed what the legal entity records
+//! — representative, legal entity name, head office — the legal entity's) is
 //! appended with the certificate linked as its evidence; the certificate kept
-//! before stays, superseded. SETUP applies at once; after 운영 시작 the write is
-//! governed (legal_entity_manage, change mode GOVERNED, audited).
+//! before stays, superseded. SETUP applies at once; after go-live the write
+//! is governed (legal_entity_manage, change mode GOVERNED, audited).
 
 use console_entity_application::{Actor, RegistrationReissue, RegistrationView, Revision, Saved};
 use console_entity_domain::correction::{ReissueInput, validate_reissue};
@@ -21,11 +22,12 @@ use crate::registration_revision::revise_registration_in_tx;
 use crate::{PgEntityError, PgEntityStore, admit, audit, today_kst};
 
 impl PgEntityStore {
-    /// Record a reissued or corrected 사업자등록증 of registration `id`.
+    /// Record a reissued or corrected business registration certificate of
+    /// registration `id`.
     ///
     /// # Errors
     /// Field issues (`document_id`, `reason`, `effective_from`,
-    /// `cert_issued_on`, the registration's and the 법인's own), the document's
+    /// `cert_issued_on`, the registration's and the legal entity's own), the document's
     /// refusals (`document_not_found`, `document_attached_elsewhere`,
     /// `document_not_certificate`, `document_not_new`), `stale_revision`, or
     /// database faults.

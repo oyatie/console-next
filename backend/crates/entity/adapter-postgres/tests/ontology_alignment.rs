@@ -24,7 +24,7 @@ async fn count(owner: &PgPool, sql: &'static str) -> i64 {
         .unwrap()
 }
 
-/// 법인 + 사업자등록, ready for 사업장.
+/// Legal entity + business registration, ready for a workplace.
 async fn entity_with_registration(
     store: &console_entity_adapter_postgres::PgEntityStore,
     actor: &Actor,
@@ -254,7 +254,7 @@ async fn integ3_a_back_dated_registration_revise_keeps_its_vat_unit(owner: PgPoo
         .revise_entity(&cmd(&actor), entity, later)
         .await
         .unwrap();
-    // ... then the certificate is corrected back to 2025 as 사업자단위과세.
+    // ... then the certificate is corrected back to 2025 as business-unit taxation.
     let mut input = certificate("000-81-00009");
     input.unit_taxation = Some(true);
     let back: RegistrationRevision = Revision {

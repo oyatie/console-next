@@ -29,21 +29,22 @@ pub struct LegalEntityView {
     pub crn: Option<Formatted>,
     pub needs_confirmation: bool,
     pub identity_locked: bool,
-    /// 설립 중: recorded before its 설립등기 (no 법인등록번호 yet).
+    /// Being incorporated: recorded before its incorporation registration (no
+    /// corporate registration number yet).
     pub founding: bool,
-    /// Whether the reader may manage this 법인 itself (Cedar
+    /// Whether the reader may manage this legal entity itself (Cedar
     /// `legal_entity_manage` within their scope): edit verbs are offered only
     /// then. Set by the REST face; `false` from the store.
     pub can_manage: bool,
     #[serde(with = "crate::iso_date::option")]
     pub closed_on: Option<time::Date>,
-    /// Why it closed (해산 / 폐업); set with `closed_on`.
+    /// Why it closed (dissolution / business closure); set with `closed_on`.
     pub close_reason_code: Option<CloseReason>,
     pub primary_workplace_id: Option<Uuid>,
     pub head_office_workplace_id: Option<Uuid>,
     pub head_office_has_no_workplace: bool,
     pub identity_problems: Vec<Warning>,
-    /// Open one-time reviews: a registration 상호 that differed from the name
+    /// Open one-time reviews: a registration trade name that differed from the name
     /// when the name became single-source. Personal readers only.
     pub name_reviews: Vec<NameReview>,
     pub current: Option<LegalEntityState>,
@@ -51,7 +52,8 @@ pub struct LegalEntityView {
     pub scheduled: Vec<LegalEntityState>,
     pub registrations: Vec<RegistrationView>,
     pub workplaces: Vec<WorkplaceView>,
-    /// 상시근로자 수 of the 법인 (the 근기법 unit by default, 대법원 2023두57876).
+    /// Regular employee count of the legal entity (the Labor Standards Act
+    /// unit by default, Supreme Court 2023Du57876).
     pub regular_workers: crate::RegularWorkers,
 }
 
@@ -69,7 +71,7 @@ pub struct LegalEntityState {
     #[serde(with = "crate::iso_date")]
     pub effective_from: time::Date,
     /// The as-of date is before the first record: this is that first record
-    /// (INTEG-3), shown so the screen is never blank before 개업일.
+    /// (INTEG-3), shown so the screen is never blank before the business start date.
     pub before_first_record: bool,
     pub name: String,
     pub display_name: Option<String>,
@@ -83,7 +85,7 @@ pub struct LegalEntityState {
     pub incorporated_on: Option<time::Date>,
     pub fiscal_year_end_month: Option<i16>,
     pub capital_won: Option<i64>,
-    /// 임원 (상법 §317②8), printed order. Omitted (`null`) for callers
+    /// Executives (Commercial Act §317②8), printed order. Omitted (`null`) for callers
     /// without the restricted-read permission, like the representatives.
     pub directors: Option<Vec<DirectorView>>,
     pub vat_unit_mode: Option<VatUnitMode>,
@@ -129,10 +131,10 @@ pub struct RegistrationState {
     #[serde(with = "crate::iso_date")]
     pub effective_from: time::Date,
     /// The as-of date is before the first record: this is that first record
-    /// (INTEG-3), shown so the screen is never blank before 개업일.
+    /// (INTEG-3), shown so the screen is never blank before the business start date.
     pub before_first_record: bool,
-    /// INDIVIDUAL: the certificate's own 상호 (legacy NULL falls back to the entity name).
-    /// Other kinds: the entity's 법인명, derived.
+    /// INDIVIDUAL: the certificate's own trade name (legacy NULL falls back to
+    /// the entity name). Other kinds: the entity's legal entity name, derived.
     pub trade_name: String,
     pub classification_reason: Option<String>,
     #[serde(with = "crate::iso_date::option")]
@@ -155,7 +157,7 @@ pub struct RegistrationState {
     pub status: OperatingStatus,
     #[serde(with = "crate::iso_date::option")]
     pub status_since: Option<time::Date>,
-    /// 휴업's expected end, as reported (SUSPENDED only).
+    /// The business suspension's expected end, as reported (SUSPENDED only).
     #[serde(with = "crate::iso_date::option")]
     pub status_until: Option<time::Date>,
     pub change_mode: String,
@@ -188,14 +190,14 @@ pub struct WorkplaceView {
     pub registration_todo: bool,
     pub filing_registration_id: Option<Uuid>,
     pub default_branch_id: Option<Uuid>,
-    /// 사업장 kind code (decisions #18); `None` = 미지정.
+    /// Workplace kind code (decisions #18); `None` = unassigned.
     pub kind_code: Option<String>,
-    /// 사업장 code (review R16): unique among open 사업장; `None` = none.
+    /// Workplace code (review R16): unique among open workplaces; `None` = none.
     pub code: Option<String>,
     pub is_primary: bool,
     pub is_head_office: bool,
     pub needs_confirmation: bool,
-    /// Whether the reader may manage this 사업장 (set by the REST face).
+    /// Whether the reader may manage this workplace (set by the REST face).
     pub can_manage: bool,
     #[serde(with = "crate::iso_date::option")]
     pub closed_on: Option<time::Date>,
@@ -204,10 +206,10 @@ pub struct WorkplaceView {
     pub withholding: WithholdingTarget,
     /// Active people assigned here today (KST).
     pub headcount: i64,
-    /// The 사업장's own SITE org unit (decisions #14.1): register people with
-    /// this `org_unit_id` to place them here with no 부서.
+    /// The workplace's own SITE org unit (decisions #14.1): register people
+    /// with this `org_unit_id` to place them here with no department.
     pub org_unit_id: Option<Uuid>,
-    /// 상시근로자 수 of this 사업장 (HOLD; BW-35).
+    /// Regular employee count of this workplace (HOLD; BW-35).
     pub regular_workers: crate::RegularWorkers,
 }
 
@@ -217,7 +219,7 @@ pub struct WorkplaceState {
     #[serde(with = "crate::iso_date")]
     pub effective_from: time::Date,
     /// The as-of date is before the first record: this is that first record
-    /// (INTEG-3), shown so the screen is never blank before 개업일.
+    /// (INTEG-3), shown so the screen is never blank before the business start date.
     pub before_first_record: bool,
     pub name: String,
     pub address: Option<KrAddress>,
@@ -236,14 +238,14 @@ pub struct WorkplaceState {
     pub status: OperatingStatus,
     #[serde(with = "crate::iso_date::option")]
     pub status_since: Option<time::Date>,
-    /// 휴업's expected end, as reported (SUSPENDED only).
+    /// The business suspension's expected end, as reported (SUSPENDED only).
     #[serde(with = "crate::iso_date::option")]
     pub status_until: Option<time::Date>,
     pub withholding_mode: Option<WithholdingMode>,
     #[serde(with = "crate::iso_date::option")]
     pub bulk_filed_on: Option<time::Date>,
     pub independent_lsa_unit: Option<bool>,
-    /// Why this 사업장 is its own 근기법 unit (required while flagged); sent
+    /// Why this workplace is its own Labor Standards Act unit (required while flagged); sent
     /// back so a revise can resend it (MR-6).
     pub independent_lsa_evidence: Option<String>,
     pub change_mode: String,
@@ -256,7 +258,7 @@ pub struct InsuranceView {
     #[serde(with = "crate::iso_date")]
     pub effective_from: time::Date,
     /// The as-of date is before the first record: this is that first record
-    /// (INTEG-3), shown so the screen is never blank before 개업일.
+    /// (INTEG-3), shown so the screen is never blank before the business start date.
     pub before_first_record: bool,
     pub status: InsuranceStatus,
     pub mgmt_no: Option<Formatted>,
@@ -266,7 +268,7 @@ pub struct InsuranceView {
     pub main_workplace_id: Option<Uuid>,
 }
 
-/// A write's result: the record and its soft warnings (checksum, 상호 differs…).
+/// A write's result: the record and its soft warnings (checksum, trade name differs…).
 #[derive(Debug, Clone, Serialize)]
 pub struct Saved<T> {
     pub record: T,
@@ -274,7 +276,7 @@ pub struct Saved<T> {
     pub change_mode: String,
 }
 
-/// One distinct legacy company text with no mapped 법인 (「회사 이름 정리」).
+/// One distinct legacy company text with no mapped legal entity ("Tidy company names").
 #[derive(Debug, Clone, Serialize)]
 pub struct UnmappedCompany {
     pub company_text: String,

@@ -1,4 +1,4 @@
-//! `KrAddress`: a structured Korean address (도로명주소 juso fields, or
+//! `KrAddress`: a structured Korean address (road-name address juso fields, or
 //! structured manual entry when the search is unavailable; R3 no dead end).
 
 use serde::{Deserialize, Serialize};
@@ -7,7 +7,8 @@ use crate::codes::AddressSource;
 use crate::refusal::{INVALID_OPTION, Issues, REQUIRED};
 
 /// What the client sends: either the juso result it picked (all codes), or a
-/// structured manual entry (시도 + 시군구 + 도로명 and number typed).
+/// structured manual entry (province / metropolitan city + city / county /
+/// district + road name and number typed).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AddressInput {
     pub source: Option<String>,
@@ -62,7 +63,7 @@ pub struct KrAddress {
 }
 
 impl KrAddress {
-    /// One line for display: `roadAddrPart1, 상세 roadAddrPart2` (juso guide).
+    /// One line for display: `roadAddrPart1, detail roadAddrPart2` (juso guide).
     #[must_use]
     pub fn one_line(&self) -> String {
         let mut out = self.road_addr_part1.clone();
@@ -123,8 +124,9 @@ pub fn validate_address(
         true,
     );
     let si_nm = issues.text(&f("si_nm"), input.si_nm.as_deref(), 40, true);
-    // Manual entry still needs the 시군구 the user picked; juso always has it
-    // except for 세종 (no 시군구), so it is required only for manual rows.
+    // Manual entry still needs the city / county / district the user picked;
+    // juso always has it except for Sejong (no city / county / district), so it
+    // is required only for manual rows.
     let sgg_nm = issues.text(&f("sgg_nm"), input.sgg_nm.as_deref(), 40, !juso);
     let zip_no = digits(issues, &f("zip_no"), input.zip_no.as_deref(), 5, juso);
     let adm_cd = digits(issues, &f("adm_cd"), input.adm_cd.as_deref(), 10, juso);

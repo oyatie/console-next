@@ -59,7 +59,7 @@ async fn backdated_exit_overrides_the_earlier_recorded_canonical_snapshot(owner:
 async fn exit_scheduled_for_today_still_counts_on_its_last_working_day(owner: PgPool) {
     let w = world(&owner, "asof-last-working-day").await;
     let p = source_person(&owner, &w, "scheduled-exit").await;
-    // The writer stores 마지막 근무일; 퇴직일/상실일 is the following day.
+    // The writer stores the last working day; the exit / coverage-loss date is the following day.
     let last_working_day = w.d;
     let exit_date = last_working_day + Duration::days(1);
     lifecycle(&owner, &w, p, "TERMINATE", last_working_day).await;

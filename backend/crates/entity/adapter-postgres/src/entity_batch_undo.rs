@@ -1,7 +1,9 @@
-//! Undo of a bulk 법인 · 사업장 batch during SETUP (MR-29; onboarding-and-migration §5.4, C4).
+//! Undo of a bulk legal entity · workplace batch during SETUP (MR-29;
+//! onboarding-and-migration §5.4, C4).
 //!
 //! Never a blind revert: every record must still be at the version the batch
-//! left it, and every 법인's 대표 / 본점 roles as the batch left them;
+//! left it, and every legal entity's representative / head-office roles as
+//! the batch left them;
 //! otherwise 409 `undo_conflict` and nothing is applied. A record the batch
 //! created is voided by the setup void (people placed there refuse it:
 //! `record_in_use`). A revised record gets a new revision that copies the
@@ -233,7 +235,7 @@ async fn revert(
             .bind(confirm)
             .execute(tx.as_mut())
             .await?;
-        // The restored 법인명 reaches the registrations' N-1 `trade_name` too.
+        // The restored legal entity name reaches the registrations' N-1 `trade_name` too.
         let name: String =
             sqlx::query_scalar("SELECT name FROM legal_entity_revisions WHERE id = $1")
                 .bind(new_id)

@@ -1,6 +1,7 @@
-//! One-time 법인명 reviews (20261013153646645): a registration 상호 that differed from the
-//! entity's name when the name became single-source. A person settles each:
-//! keep the entity's name, or take the 상호 by a dated 정정.
+//! One-time legal entity name reviews (20261013153646645): a registration
+//! trade name that differed from the entity's name when the name became
+//! single-source. A person settles each: keep the entity's name, or take the
+//! trade name by a dated correction.
 
 use console_entity_application::{Actor, LegalEntityView, NameReview, Saved, SettleNameReview};
 use console_entity_domain::Refusal;
@@ -44,11 +45,12 @@ pub(crate) async fn open(
 }
 
 impl PgEntityStore {
-    /// Settle one open review of 법인 `id`.
+    /// Settle one open review of legal entity `id`.
     ///
     /// # Errors
-    /// `name_review_not_found` (unknown, settled, or another 법인's), a
-    /// `revision` whose name is not the review's 상호 (`name_review_choice`),
+    /// `name_review_not_found` (unknown, settled, or another legal entity's),
+    /// a `revision` whose name is not the review's trade name
+    /// (`name_review_choice`), the revision's own refusals, or database faults.
     /// the revision's own refusals, or database faults.
     pub async fn settle_name_review(
         &self,

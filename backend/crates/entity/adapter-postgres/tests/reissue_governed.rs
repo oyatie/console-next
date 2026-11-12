@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 등록증 재발급·정정 after 운영 시작: governed (change mode GOVERNED) and
+//! Certificate reissue/correction after go-live: governed (change mode GOVERNED) and
 //! audited, the revision still naming its certificate.
 
 mod common;

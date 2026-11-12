@@ -1,13 +1,13 @@
-//! 「되돌리기」 of a setup 부서 batch (design OM §3.5, §5.4), the replay of
-//! a batch command, and the batch list behind 「설정 단계 기록」.
+//! "Undo" of a setup department batch (design OM §3.5, §5.4), the replay of
+//! a batch command, and the batch list behind "setup phase records".
 //!
 //! An undo puts every unit the batch touched back to its before-image (a
-//! unit the batch created is dissolved), through the same writer, so a 부서
-//! moved back to its old 사업장 takes its people's placement back too. It is
-//! never blind: a unit that no longer holds what the batch left refuses the
-//! whole undo (later batches first, LIFO), and a created unit that has people or
-//! 부서 of its own by now stays. Setup only; the receipt's 되돌리기 ends at
-//! 운영 시작.
+//! unit the batch created is dissolved), through the same writer, so a
+//! department moved back to its old workplace takes its people's placement
+//! back too. It is never blind: a unit that no longer holds what the batch
+//! left refuses the whole undo (later batches first, LIFO), and a created
+//! unit that has people or departments of its own by now stays. Setup only;
+//! the receipt's undo ends at go-live.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -204,7 +204,7 @@ impl PgEntityStore {
         .await
     }
 
-    /// The tenant's recent setup 부서 batches, newest first.
+    /// The tenant's recent setup department batches, newest first.
     ///
     /// the latest 200; page by `created_at` if a setup ever runs
     /// more batches than a screen can list.

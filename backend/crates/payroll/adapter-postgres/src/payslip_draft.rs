@@ -17,7 +17,7 @@
 //! `data_import_rows.canonical_row->'payroll'`: both have zero production
 //! writers, so a run has an empty roster and calculates nothing. Building the
 //! roster is the next step; it is not a prerequisite for computing one real
-//! employee's 4대보험 from data that already exists.
+//! employee's four social insurances from data that already exists.
 
 use console_platform_db::DbError;
 use serde::Serialize;

@@ -65,8 +65,8 @@ pub(crate) async fn unit_headcounts(
     Ok(rows.into_iter().collect())
 }
 
-/// Each unit's stored 순서 among its siblings: a 부서's `org_unit_positions`
-/// row, a SITE's place in the 법인-then-사업장 order the chart shows.
+/// Each unit's stored order among its siblings: a department's `org_unit_positions`
+/// row, a SITE's place in the legal-entity-then-workplace order the chart shows.
 pub(crate) async fn unit_positions(
     tx: Tx<'_, '_>,
 ) -> Result<BTreeMap<Uuid, i32>, PgOrgChangeError> {
@@ -84,7 +84,7 @@ pub(crate) async fn unit_positions(
     )
     .fetch_all(tx.as_mut())
     .await?;
-    // A SITE's rank is read last, so it wins over any stray 부서 row.
+    // A SITE's rank is read last, so it wins over any stray department row.
     Ok(rows.into_iter().collect())
 }
 

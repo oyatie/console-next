@@ -1,4 +1,5 @@
-//! A dated assignment and the 법인명 in force (once its 등록증 is confirmed), never an employee's imported label, own payslip names.
+//! A dated assignment and the legal entity name in force (once its certificate
+//! is confirmed), never an employee's imported label, own payslip names.
 use super::seed::*;
 use console_kernel_core::kr::synthetic;
 use sqlx::PgPool;
@@ -18,7 +19,8 @@ async fn payroll_uses_the_periods_exact_certificate_spelling(pool: PgPool) {
         (1, PERIOD_START, "주식회사 가나테크"),
         (2, time::macros::date!(2030 - 01 - 01), "주식회사 미래"),
     ] {
-        // The 법인명 has one stored source; the registration's own column is a shadow nobody reads.
+        // The legal entity name has one stored source; the registration's own
+        // column is a shadow nobody reads.
         sqlx::query("INSERT INTO legal_entity_revisions (org_id,legal_entity_id,version,command_id,effective_from,name,change_mode,reason_code,payload_digest,settings_snapshot) VALUES ($1,$2,$3,$4,$5,$6,'MIGRATION','CREATE',decode(repeat('00',32),'hex'),'{}')")
             .bind(f.org).bind(entity).bind(version).bind(Uuid::new_v4()).bind(on).bind(name).execute(&pool).await.unwrap();
         sqlx::query("INSERT INTO business_registration_revisions (org_id,registration_id,version,command_id,effective_from,trade_name,opened_on,status,change_mode,reason_code,payload_digest,settings_snapshot) VALUES ($1,$2,$3,$4,$5,'GANATECH',$5,'CONTINUING','MIGRATION','CREATE',decode(repeat('00',32),'hex'),'{}')")

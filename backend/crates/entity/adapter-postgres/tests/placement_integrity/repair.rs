@@ -8,11 +8,12 @@ async fn regression_the_one_time_correction_repairs_same_entity_rows_and_lists_t
     let (store, actor) = tenant(&owner, ORG, "A").await;
     let user = *actor.user.as_uuid();
     let (entity, hq, plant, _, team) = chart(&store, &actor).await;
-    // org-01 shape: bound at 본사 from the start, 부서 under 공장.
+    // org-01 shape: bound at headquarters from the start, department under factory.
     let whole = person(&owner, &store, &actor, (entity, plant, team), "w").await;
-    // move-02 shape: hired at 본사, an applied 전보 into 조립파트 on 05-01.
+    // move-02 shape: hired at headquarters, an applied reassignment into the assembly part
+    // on 05-01.
     let moved = person(&owner, &store, &actor, (entity, plant, team), "m").await;
-    // move-01 shape: a 부서 of another 법인.
+    // move-01 shape: a department of another legal entity.
     let crossed = person(&owner, &store, &actor, (entity, plant, team), "x").await;
     let fine = person(&owner, &store, &actor, (entity, plant, team), "f").await;
     let (other, other_wp, site, far) = (
@@ -99,7 +100,7 @@ async fn regression_the_one_time_correction_repairs_same_entity_rows_and_lists_t
             ("2026-05-01".into(), None, plant, "TRANSFER".into()),
         ]
     );
-    // Only the 전적-shaped row is left, untouched, for a person to decide.
+    // Only the group-transfer-shaped row is left, untouched, for a person to decide.
     assert_eq!(detect().await, vec![(crossed, plant, other_wp, true)]);
     // Zero loss: the replaced rows stay, superseded; each repair is audited.
     let kept = "SELECT count(*) FROM employment_assignments WHERE employee_id = $1 AND superseded_at IS NOT NULL AND workplace_id IS NOT NULL";

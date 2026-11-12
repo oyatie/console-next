@@ -1,6 +1,6 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Shared by the MR-14 / MR-15 close tests: a 법인 with a registration, its
-//! 본사 and a 지점, people, and the stored state of a close.
+//! Shared by the MR-14 / MR-15 close tests: a legal entity with a registration, its
+//! headquarters and a branch, people, and the stored state of a close.
 
 use crate::common::*;
 use console_entity_adapter_postgres::PgEntityStore;
@@ -83,7 +83,7 @@ pub fn bind(w: &World, employee: Uuid, workplace: Uuid, from: &str) -> BindAssig
     }
 }
 
-/// A full-state 사업장 revision carrying `status` since `since`.
+/// A full-state workplace revision carrying `status` since `since`.
 pub async fn set_status(
     w: &World,
     workplace: Uuid,

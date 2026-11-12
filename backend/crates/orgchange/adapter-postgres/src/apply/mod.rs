@@ -15,7 +15,7 @@ pub(crate) struct Applied {
 }
 
 /// Replays `request`'s ops in order inside the caller's transaction. A move of
-/// a unit to another 사업장 moves its people with it, and a reassign moves the
+/// a unit to another workplace moves its people with it, and a reassign moves the
 /// members, each as a dated event caused by the change (org-01, org-04).
 pub(crate) async fn apply_ops(
     tx: Tx<'_, '_>,
@@ -162,7 +162,7 @@ async fn apply_one(
             )
             .await?;
             let mut moved = match op {
-                // The unit is re-parented now: its people follow its 사업장.
+                // The unit is re-parented now: its people follow its workplace.
                 OrgProposalOp::MoveOrgUnit { org_unit_id, .. } => {
                     let units = subtree(tx, *org_unit_id).await?;
                     let what = PeopleMove::Follow { units };

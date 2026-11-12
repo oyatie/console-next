@@ -16,7 +16,8 @@
 //!   (`data_import_rows.canonical_row.payroll`) actually carry the figures.
 //!   Anything else records a truthful blocker; income tax is never estimated.
 //! - Stored calculations are always drafts (`payable = FALSE`); nothing here
-//!   flips that flag — only the 노무사/세무사 release gate charter may.
+//!   flips that flag — only the labor attorney/tax accountant release gate
+//!   charter may.
 //! - Disbursement statuses are operator attestations (no bank API exists).
 //! - Payslip issuance is hard-gated by
 //!   [`console_payroll_domain::validate_release_gate`] over the release-gate
@@ -256,10 +257,10 @@ async fn preflight_for(
     // A run with NO lines had `missing_total == 0` and so passed this check
     // vacuously: `COUNT(*) WHERE ... = 0` over an empty roster is 0, and 0 == 0.
     // Since `can_close` is the AND of the hard checks, an empty run closed on the
-    // period lock alone, took a 근태 원천 확보 attestation over zero evidence, and
-    // carried on down the lifecycle. A guard that examines no subject must fail,
-    // not pass -- the same rule this repository already applies to the canonical
-    // enforcement floor and the preflight gate sweep.
+    // period lock alone, took an "attendance source secured" attestation over
+    // zero evidence, and carried on down the lifecycle. A guard that examines no
+    // subject must fail, not pass -- the same rule this repository already
+    // applies to the canonical enforcement floor and the preflight gate sweep.
     let roster_total: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM payroll_draft_lines WHERE run_id = $1")
             .bind(run.id)
@@ -273,7 +274,8 @@ async fn preflight_for(
         note: if roster_total == 0 {
             // Distinct from the missing-material note: nothing to attest is a
             // different problem from someone lacking attendance, and an attestor
-            // reading "근태 원천 누락 0명" would reasonably read it as clean.
+            // reading "attendance source missing: 0 people" would reasonably
+            // read it as clean.
             Some("명세 대상 없음(로스터 0명)".to_owned())
         } else {
             (missing_total > 0).then(|| format!("근태 원천 누락 {missing_total}명"))
@@ -570,8 +572,9 @@ pub async fn calculate_run_in_tx(
         }
 
         // Real attendance-derived signal: overtime hours on the roster line
-        // mean the 연장수당 must be confirmed against the gross source. The
-        // delta is NOT derivable from a verified source, so it stays NULL.
+        // mean the overtime allowance must be confirmed against the gross
+        // source. The delta is NOT derivable from a verified source, so it
+        // stays NULL.
         if overtime_hours.unwrap_or(0.0) > 0.0 {
             let inserted = sqlx::query(
                 "INSERT INTO payroll_run_exceptions \
@@ -1585,10 +1588,11 @@ mod tests {
 
     #[test]
     fn release_gate_record_whose_nts_tax_row_omits_a_field_is_refused() {
-        // The 간이세액표 row is the professionally verified half of the case.
-        // A zero-defaulted 근로소득세 would understate the recomputed total by
-        // exactly the tax and still be compared against something, so the
-        // refusal has to happen at the parse, not at the arithmetic.
+        // The simplified withholding tax table row is the professionally
+        // verified half of the case. A zero-defaulted earned income tax would
+        // understate the recomputed total by exactly the tax and still be
+        // compared against something, so the refusal has to happen at the
+        // parse, not at the arithmetic.
         for key in [
             "table_version",
             "monthly_income_tax_won",
@@ -1631,10 +1635,10 @@ mod tests {
     #[test]
     fn release_gate_record_carries_a_declared_pension_standard_monthly_income_into_the_kernel() {
         // The one OPTIONAL kernel input, and the only one that moves a figure
-        // without moving the gross. 2,000,000 is inside the 2026-06 국민연금
-        // base window (400,000..6,370,000) so the clamp does not erase it: the
-        // pension line drops by 47,500 and the total lands on 325,802. A parser
-        // that dropped the key would recompute 373,302 here.
+        // without moving the gross. 2,000,000 is inside the 2026-06 National
+        // Pension base window (400,000..6,370,000) so the clamp does not erase
+        // it: the pension line drops by 47,500 and the total lands on 325,802.
+        // A parser that dropped the key would recompute 373,302 here.
         let mut declared =
             with_golden_case_key("pension_standard_monthly_income_won", json!(2_000_000));
         declared["release_gate"]["golden_cases"][0]["expected_total_employee_deductions_won"] =
@@ -1734,17 +1738,18 @@ mod tests {
 
     #[test]
     fn release_gate_record_pins_both_reviewer_kinds_and_refuses_any_third() {
-        // 세무사 is half of the "노무사/세무사" this whole gate exists for and no
-        // test had ever constructed one: llvm-cov reported the `tax_accountant`
-        // arm and the unknown-kind refusal (lifecycle.rs:1254-1258) unexecuted.
-        // `reviewed_on` (1261-1264) was unexercised for the same reason
-        // `pay_date` was.
+        // The tax accountant is half of the "labor attorney/tax accountant"
+        // this whole gate exists for and no test had ever constructed one:
+        // llvm-cov reported the `tax_accountant` arm and the unknown-kind
+        // refusal (lifecycle.rs:1254-1258) unexecuted. `reviewed_on`
+        // (1261-1264) was unexercised for the same reason `pay_date` was.
         //
         // The mapping is asserted against `parse_release_gate` directly, NOT
         // through `validate_run_release_gate`: the gate never reads
-        // `reviewer_kind`, so an arm that mapped 세무사 to LaborAttorney would
-        // still validate. Going through the gate here would have pinned only
-        // that the STRING is accepted, which is not what this claims.
+        // `reviewer_kind`, so an arm that mapped tax accountant to
+        // LaborAttorney would still validate. Going through the gate here would
+        // have pinned only that the STRING is accepted, which is not what this
+        // claims.
         let mut tax_accountant = release_gate_record();
         tax_accountant["release_gate"]["professional_validation"]["reviewer_kind"] =
             json!("tax_accountant");

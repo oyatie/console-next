@@ -1,5 +1,5 @@
-//! Identifier corrections (MR-17), 사업장 registration-link changes (MR-18)
-//! and 등록증 재발급·정정.
+//! Identifier corrections (MR-17), workplace registration-link changes (MR-18)
+//! and certificate reissue / correction.
 
 use axum::Json;
 use axum::extract::{Path, State};
@@ -56,7 +56,8 @@ pub(crate) async fn change_registration(
     Ok(Json(s.store.change_workplace_registration(&a, id, b).await?).into_response())
 }
 
-/// 등록증 재발급·정정: the new certificate and the facts it changed, one change.
+/// Certificate reissue / correction: the new certificate and the facts it
+/// changed, one change.
 pub(crate) async fn reissue(
     State(s): State<EntityRestState>,
     h: HeaderMap,

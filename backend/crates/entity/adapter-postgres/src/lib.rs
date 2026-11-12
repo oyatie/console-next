@@ -1,13 +1,13 @@
-//! Postgres adapter for 법인 · 사업자등록 · 사업장 (the one writer of the
-//! entity and assignment migration tables).
+//! Postgres adapter for legal entity · business registration · workplace (the
+//! one writer of the entity and assignment migration tables).
 //!
 //! Every command runs in ONE `with_audits` transaction (RLS armed by the
-//! org): it reads the tenant phase `FOR SHARE` (a concurrent 운영 시작 takes
+//! org): it reads the tenant phase `FOR SHARE` (a concurrent go-live takes
 //! `FOR UPDATE`, so the two serialise), admits the write for that phase,
 //! validates with the domain, writes the head + typed revision and returns the
 //! audit events, which commit with it. Revision rows store `change_mode` and a
 //! settings snapshot holding the phase; audit events carry the same in `after`
-//! and the `setup` badge (the 「설정 단계 기록」 filter).
+//! and the `setup` badge (the "setup phase records" filter).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod address;

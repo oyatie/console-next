@@ -1,4 +1,4 @@
-//! 사업장 writes (with their default branch and 4대보험 rows) and views.
+//! Workplace writes (with their default branch and four-social-insurance rows) and views.
 
 use console_entity_application::{Actor, CreateWorkplace, Saved, WorkplaceRevision, WorkplaceView};
 use console_entity_domain::codes::BizKind;
@@ -49,7 +49,7 @@ pub(crate) async fn lock_entity(tx: &mut Tx<'_>, id: Uuid) -> Result<EntityFacts
 }
 
 /// The registration a workplace points at: same entity, open, and whether it
-/// is a 사업자단위과세 registration held by another 사업장.
+/// is a business-unit taxation registration held by another workplace.
 pub(crate) async fn registration_facts(
     tx: &mut Tx<'_>,
     entity: Uuid,
@@ -79,7 +79,7 @@ pub(crate) async fn registration_facts(
 }
 
 impl PgEntityStore {
-    /// Create a 사업장 under `entity` (SETUP: immediate; OPERATING: governed),
+    /// Create a workplace under `entity` (SETUP: immediate; OPERATING: governed),
     /// with its own SITE org unit (decisions #14.1).
     ///
     /// # Errors
@@ -153,7 +153,7 @@ impl PgEntityStore {
         .await
     }
 
-    /// A new effective-dated revision of a 사업장 (full state).
+    /// A new effective-dated revision of a workplace (full state).
     ///
     /// # Errors
     /// Domain refusals or database faults.
@@ -252,8 +252,9 @@ pub(crate) async fn lock_workplace(
     ))
 }
 
-/// First 사업장 ⇒ 대표 사업장 (a fact: it is the only one). A certificate's own
-/// 사업장 becomes the registration's holder when the registration has none.
+/// First workplace ⇒ representative workplace (a fact: it is the only one). A
+/// certificate's own workplace becomes the registration's holder when the
+/// registration has none.
 pub(crate) async fn set_roles_on_create(
     tx: &mut Tx<'_>,
     entity: Uuid,
@@ -294,7 +295,7 @@ pub(crate) async fn set_roles_on_create(
     Ok(())
 }
 
-/// A replayed 사업장 command: the record as it is now.
+/// A replayed workplace command: the record as it is now.
 async fn replay(tx: &mut Tx<'_>, done: Outcome) -> Result<Saved<WorkplaceView>, PgEntityError> {
     let id = done
         .target
@@ -312,7 +313,7 @@ async fn replay(tx: &mut Tx<'_>, done: Outcome) -> Result<Saved<WorkplaceView>, 
     })
 }
 
-/// One 사업장 as its writer sees it (personal fields included).
+/// One workplace as its writer sees it (personal fields included).
 pub(crate) async fn one_view(
     tx: &mut Tx<'_>,
     entity: Uuid,
