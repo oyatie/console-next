@@ -79,6 +79,7 @@ pub(crate) async fn page(
             continue;
         }
         items.push(ActionInboxSourceItem {
+            due_basis: None,
             context: Some(serde_json::json!({"grants": access["entries"].as_array().into_iter().flatten().filter(|line| line["grant_id"] == id).collect::<Vec<_>>() })),
             id: format!("grant_notice:{id}"),
             kind: "grant_notice".into(),
@@ -98,6 +99,7 @@ pub(crate) async fn page(
     }
     if let Some((created_at, display_name)) = security.filter(|(at, _)| *at <= query.as_of) {
         items.push(ActionInboxSourceItem {
+            due_basis: None,
             context: Some(serde_json::json!({"is_ops": access["is_ops"]})),
             id: format!("account_security:{}", principal.user_id),
             kind: "account_security".into(),
