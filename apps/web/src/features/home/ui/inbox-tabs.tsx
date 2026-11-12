@@ -2,6 +2,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
+import { focusSoon } from "../../../lib/react/announce";
 import { ToggleButton } from "../../../ui/button/button";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { tabClass } from "../../../ui/tabs/tab-class";
@@ -24,9 +25,10 @@ export function InboxTabs({ view }: { view: InboxView }) {
   const current = (TODO_CHIPS as readonly string[]).includes(view) || view === SNOOZED ? "turn" : view;
   // The tabs are fixed by relation and paint before the read with empty count slots, so nothing moves when it
   // lands; only the chips depend on what the server offers, and they share the tab line.
-  // What I postponed is a chip while anything is postponed, and stays while its view is open.
+  // What I postponed is a chip while anything may be postponed (a lower bound of 0 may hide some), and stays while
+  // its view is open.
   const snoozed = first?.counts[SNOOZED];
-  const chips = [...TODO_CHIPS.filter(key => offered.includes(key)), ...(snoozed?.total || view === SNOOZED ? [SNOOZED] as const : [])];
+  const chips = [...TODO_CHIPS.filter(key => offered.includes(key)), ...(snoozed && (snoozed.total || !snoozed.total_is_exact) || view === SNOOZED ? [SNOOZED] as const : [])];
   return <div className={css.tabRow}>
     <TabNav label={t("home.lanes")} overflow="scroll">
       {INBOX_TABS.map(tab => <Link key={tab} to="/inbox" search={{ tab: tab === "turn" ? undefined : tab }} replace resetScroll={false} activeOptions={{ exact: true, includeSearch: true }} className={tabClass} aria-current={current === tab ? "page" : undefined}>
@@ -34,7 +36,8 @@ export function InboxTabs({ view }: { view: InboxView }) {
       </Link>)}
     </TabNav>
     {chips.length > 0 && <div role="group" aria-label={t("home.inbox.tab.turn")} className={css.attention}>
-      {chips.map(key => <ToggleButton key={key} look="chip" pressed={view === key} count={chipCount(first?.counts[key])} onClick={() => void navigate({ to: "/inbox", search: { tab: view === key ? undefined : key }, replace: true, resetScroll: false })}>
+      {/* The snoozed view is a different card, so the chip remounts; focus follows it to the new one. */}
+      {chips.map(key => <ToggleButton key={key} id={`inbox-chip-${key}`} look="chip" pressed={view === key} count={chipCount(first?.counts[key])} onClick={() => void navigate({ to: "/inbox", search: { tab: view === key ? undefined : key }, replace: true, resetScroll: false }).then(() => focusSoon(`inbox-chip-${key}`))}>
         {t(`home.inbox.filter.${key}`)}
       </ToggleButton>)}
     </div>}

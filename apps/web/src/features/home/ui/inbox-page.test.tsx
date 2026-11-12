@@ -106,3 +106,12 @@ test("InboxPage places as-of in the page head and never mounts a headless card h
   expect(setup).not.toContain("<time");
   expect(setup).not.toContain(cardCss.head);
 });
+
+test.each([
+  [{ total: 0, total_is_exact: false }, true],
+  [{ total: 2, total_is_exact: true }, true],
+  [{ total: 0, total_is_exact: true }, false],
+])("the snoozed chip shows while anything may be postponed (%j)", (snoozed, shown) => {
+  view.list.data = { pages: [samplePage({ counts: { turn: { total: 1, total_is_exact: true }, snoozed } })] };
+  expect(html().includes(`id="inbox-chip-snoozed"`)).toBe(shown);
+});

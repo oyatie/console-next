@@ -78,7 +78,8 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
   if (!rereading && !inbox.isPending && !caughtUp) setCaughtUp(true);
   const first = inbox.data?.pages[0] as AttentionInboxResponse | undefined;
-  const snooze: RowAction = item => <SnoozeMenu item={item} presets={first?.snooze_presets ?? []} />;
+  // A row that cannot be postponed returns nothing, so the actions column can still be left out.
+  const snooze: RowAction = item => item.snooze?.allowed ? <SnoozeMenu item={item} presets={first?.snooze_presets ?? []} asOf={first?.as_of} /> : null;
   const applying = useSyncExternalStore(liveApplying.subscribe, liveApplying.get, liveApplying.get);
   const loading = setupPending || rereading || applying;
   const tools = preview ? (first?.as_of ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time> : loading || inbox.isPending ? <Skeleton decorative bones={["short"]} /> : null) : undefined;

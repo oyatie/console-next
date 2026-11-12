@@ -5,6 +5,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { cursorPages } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
+import { focusSoon } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
@@ -25,21 +26,23 @@ const PICK = "pick";
  * Postpones an item in my own list: the server's presets with their days, or a day I pick. A decision someone else is
  * waiting on offers no control. A legal deadline bounds the day; the server refuses what the menu does not.
  */
-export function SnoozeMenu({ item, presets }: { item: AttentionInboxItem; presets: readonly SnoozePreset[] }) {
-  return item.snooze?.allowed ? <Snooze item={item} latest={item.snooze.latest} presets={presets} /> : null;
+export function SnoozeMenu({ item, presets, asOf }: { item: AttentionInboxItem; presets: readonly SnoozePreset[]; asOf?: string }) {
+  return item.snooze?.allowed ? <Snooze item={item} latest={item.snooze.latest} presets={presets} asOf={asOf} /> : null;
 }
 
-function Snooze({ item, latest, presets }: { item: AttentionInboxItem; latest?: string; presets: readonly SnoozePreset[] }) {
+function Snooze({ item, latest, presets, asOf }: { item: AttentionInboxItem; latest?: string; presets: readonly SnoozePreset[]; asOf?: string }) {
   const [picking, setPicking] = useState(false);
   const [until, setUntil] = useState("");
   const snooze = useCommand({
     run: (day: string) => snoozeItem(item.id, day),
     invalidates: [INBOX],
-    onSuccess: () => setPicking(false),
+    // The row leaves the list and takes its trigger with it, so focus goes to the list's title.
+    onSuccess: () => { setPicking(false); focusSoon("inbox-title"); },
     announce: (_, day) => t("home.inbox.snooze.done", { date: fmtDate(day) }),
   });
   const bound = latest && t("home.inbox.snooze.latest", { date: fmtDate(latest) });
-  const today = todayKst();
+  // Tomorrow on the server's clock, from the read's as-of instant: a device clock a day off would refuse or allow the wrong day.
+  const today = todayKst(asOf ? new Date(asOf) : undefined);
   const min = addDays(today, 1);
   return <>
     <MenuButton label={t("home.inbox.snooze")} items={[
@@ -73,6 +76,7 @@ function SnoozedUntil({ item }: { item: AttentionInboxItem }) {
   const back = useCommand({
     run: () => unsnoozeItem(item.id),
     invalidates: [INBOX],
+    onSuccess: () => focusSoon("inbox-title"),
     announce: () => t("home.inbox.snooze.back.done"),
   });
   return <div>
