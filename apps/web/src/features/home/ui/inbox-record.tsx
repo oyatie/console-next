@@ -25,7 +25,7 @@ export function InboxRecord({ item, action, onBack }: { item?: AttentionInboxIte
   const reason = reasonLines(item).join(" · ");
   if (reason) facts.push({ key: "reason", label: t("home.inbox.record.reason"), value: reason });
   return <>
-    <h3>{t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</h3>
+    <h3>{t(item.context?.unlock?.exceptionId ? "periodLocks.review.title" : KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</h3>
     <div><Chip tone={item.dueTone}>{t(`home.inbox.filter.${item.lane}`)}</Chip></div>
     <KeyValue items={facts} />
     <div className="row">{action?.(item)}{recordAction(item, undefined, "home.inbox.record.original")}</div>

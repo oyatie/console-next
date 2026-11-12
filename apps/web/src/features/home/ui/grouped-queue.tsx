@@ -88,7 +88,7 @@ export function GroupedQueue({ items, action, selected, onSelect, onOpen }: { it
   const allColumns: QueueColumn[] = [
     { id: "task", header: t("home.inbox.column.task"), cell: item => {
       return <div role="presentation" onClick={e => { if (e.target instanceof Element && e.target.closest("a, button")) e.stopPropagation(); }} id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
-      {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={e => { e.stopPropagation(); toggle(item.id); }}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</strong>}
+      {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={e => { e.stopPropagation(); toggle(item.id); }}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(item.context?.unlock?.exceptionId ? "periodLocks.review.title" : KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</strong>}
       {reasonLines(item).map(line => <div className="muted" key={line}>{line}</div>)}
       {(() => {
         const labels = [...new Set((item.context?.register?.missing_fields ?? []).flatMap(key => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!.label] : []))];
@@ -184,7 +184,7 @@ export function recordAction(item: InboxItem, action?: RowAction, textId?: Messa
     case "support_session": return <Link to="/audit/support-access" search={{ review: link.id }} className={className}>{text}</Link>;
     case "change_request": return <Link to="/people/requests" search={{ sel: link.id }} className={className}>{text}</Link>;
     case "exit_case": return <Link to="/people/exits/$id" params={{ id: link.id }} search={{ act: item.kind === "hr_exit_confirm" ? "confirm_exit" : item.kind === "hr_exit_confirm_hq" ? "confirm_exit_hq" : "prepare_settlement" }} className={className}>{text}</Link>;
-    case "period_lock": return <Link to="/people/period-locks" search={{ review: link.id }} className={className}>{text}</Link>;
+    case "period_lock": return unlock?.exceptionId ? inline : <Link to="/people/period-locks" search={{ review: link.id }} className={className}>{text}</Link>;
     case "account": return <>{inline}<Link to="/account" className={buttonClass("ghost")}>{t(textId ?? "shell.account")}</Link></>;
     case "access": return <GrantNotice id={link.id} role={item.title} entries={item.context?.grants ?? []} />;
     case "statutory": return <Link to="/statutory" search={{ event: link.id }} className={className}>{text}</Link>;
@@ -194,7 +194,7 @@ export function recordAction(item: InboxItem, action?: RowAction, textId?: Messa
 
 // oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
 export function reasonLines(item: InboxItem) {
-  const reason = item.kind === "account_security" ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")
+  const reason = item.context?.unlock?.exceptionId ? "" : item.kind === "account_security" ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")
     : REVIEW_FILTER[item.kind] || item.kind === "contract_renewal" && !item.due ? "" : codeText(`home.inbox.reason.${item.kind}`, "");
   return [...new Set([reason, item.kind.startsWith("org_change") ? undefined : item.context?.reason])]
     .filter((line): line is string => !!line && line !== item.title && line !== t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"));

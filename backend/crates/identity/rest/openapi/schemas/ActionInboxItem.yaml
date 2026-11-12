@@ -158,6 +158,10 @@ properties:
             type: [string, 'null']
           reason_code:
             type: string
+          exceptionId:
+            type: string
+            format: uuid
+            description: Consumed sole-holder exception awaiting acknowledgement, rather than an unlock approval.
           reason_entry:
             type: [object, 'null']
             description: Tenant-defined reason labels, using the owning reason catalog's presentation contract.

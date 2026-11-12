@@ -11211,6 +11211,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge a consumed sole-holder unlock exception
+         * @description Cedar rechecks current close entitlement and requires an independent reviewer when available.
+         */
+        post: operations["acknowledgePeriodUnlockReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/person-binding-reviews": {
         parameters: {
             query?: never;
@@ -15166,6 +15186,11 @@ export interface components {
                     periodEnd: string;
                     requester: string | null;
                     reason_code: string;
+                    /**
+                     * Format: uuid
+                     * @description Consumed sole-holder exception awaiting acknowledgement, rather than an unlock approval.
+                     */
+                    exceptionId?: string;
                     /** @description Tenant-defined reason labels, using the owning reason catalog's presentation contract. */
                     reason_entry?: {
                         system: boolean;
@@ -54680,6 +54705,43 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    acknowledgePeriodUnlockReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lockId: string;
+                exceptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review acknowledged; repeated acknowledgement returns the same receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        status: "REVIEWED";
+                    };
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listPersonBindingReviews: {
