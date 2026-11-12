@@ -246,6 +246,7 @@ for (const [width, colorScheme] of [[1440, "light"], [1440, "dark"], [390, "ligh
         await copy.focus();
         await expect(copy).toBeFocused();
       }
+      await expect(row.getByText(deduction.provenance_ko, { exact: true })).toHaveCount(1);
       await expect(row.getByRole("cell")).toHaveCount(3);
       expect(await row.getByRole("cell").evaluateAll(cells => cells.every(cell => cell.scrollWidth <= cell.clientWidth + 1 && cell.scrollHeight <= cell.clientHeight + 1))).toBe(true);
     }

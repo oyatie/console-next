@@ -79,8 +79,15 @@ for (const locale of ["ko", "en"] as const) {
       const gallery = page.locator(".gallery__section").filter({ has: page.getByRole("heading", { name: t("payroll.reference.title"), exact: true }) });
       await gallery.scrollIntoViewIfNeeded();
       await expect(gallery.locator('a[href^="https:"]')).toHaveCount(0);
-      await expect(gallery.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(2);
-      await expect(gallery.getByText(/https:\/\/example.com\/payroll-source/)).toHaveCount(2);
+      const minimum = gallery.getByRole("region", { name: t("payroll.employee.minimumWage"), exact: true });
+      const deductions = gallery.getByRole("region", { name: t("payroll.employee.deductions"), exact: true });
+      const register = gallery.getByRole("region", { name: t("payroll.reference.title"), exact: true });
+      for (const surface of [minimum, deductions, register]) {
+        await expect(surface.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(1);
+        await expect(surface.getByText(/https:\/\/example.com\/payroll-source/)).toHaveCount(1);
+      }
+      await expect(gallery.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(3);
+      await expect(gallery.getByText(/https:\/\/example.com\/payroll-source/)).toHaveCount(3);
       expect(await gallery.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
       await gallery.screenshot({ path: info.outputPath("citation-gallery.png") });
       expect(fixture.unexpected).toEqual([]);

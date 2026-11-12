@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
+import { jsonEqual } from "../../../lib/pure/three-way";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
@@ -65,7 +66,10 @@ export function PayslipDraftView({ data }: { data: PayslipDraft }) {
       {data.deductions?.length ? <Table label={t("payroll.employee.deductions")} rows={data.deductions} rowId={row => row.code} columns={[
         { header: t("payroll.reference.item"), card: "title", cell: row => row.label_ko },
         { header: t("payroll.employee.employeeAmount"), card: "fact", cell: row => row.employer_only ? t("payroll.employee.employerOnly") : deductionCited(row) ? won(row.employee_won!) : t("payroll.reference.held") },
-        { header: t("payroll.reference.citation"), card: "action", cell: row => <div className="form">{deductionSourcesCited(row) ? <><Source instrument={row.instrument} provenance={row.provenance_ko} />{row.share_instrument && <Source instrument={row.share_instrument} provenance={row.provenance_ko} />}</> : <span>{t("payroll.reference.held")}</span>}{row.blocked_by && <p>{t("payroll.employee.blocker", { code: row.blocked_by })}</p>}</div> },
+        { header: t("payroll.reference.citation"), card: "action", cell: row => <div className="form">{deductionSourcesCited(row) ? <>
+          <Source instrument={row.instrument} provenance={row.provenance_ko} />
+          {row.share_instrument && !jsonEqual(row.instrument, row.share_instrument) && <Source instrument={row.share_instrument} />}
+        </> : <span>{t("payroll.reference.held")}</span>}{row.blocked_by && <p>{t("payroll.employee.blocker", { code: row.blocked_by })}</p>}</div> },
       ]} /> : <EmptyState title={t("payroll.employee.noDeductions")} reason={t("payroll.employee.noDeductionsReason")} />}
       {data.total_employee_insurance_won !== undefined && <KeyValue readOnly items={[
         { key: "insurance", label: t("payroll.employee.insuranceTotal"), value: amount(data.total_employee_insurance_won, insuranceCited(data)) },

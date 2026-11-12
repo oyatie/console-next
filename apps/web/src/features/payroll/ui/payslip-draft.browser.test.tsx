@@ -8,6 +8,7 @@ import { loadCatalog } from "@console/i18n";
 import { commitLabel } from "../../../ui/composer/actions";
 import { screenAccess } from "../../../../../../e2e/mock/fixtures";
 import { draft } from "../../../../../../e2e/mock/employee-pay";
+import type { Instrument } from "../present";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
 
 let server: ViteDevServer;
@@ -33,6 +34,7 @@ beforeAll(async () => {
         await loadCatalog('ko');
         const draft=${JSON.stringify(draft)}; const root=createRoot(document.getElementById('root'));
         window.draw=(mode)=>root.render(React.createElement(PayslipDraftView,{data:{...draft,issuable:true,gross_won:mode==='unsafe'?Number.MAX_SAFE_INTEGER+1:draft.gross_won,minimum_wage_check:{...draft.minimum_wage_check,instrument:{...draft.minimum_wage_check.instrument,url:mode==='held'?'':draft.minimum_wage_check.instrument.url},hourly_floor_won:mode==='unsafe'?1.5:draft.minimum_wage_check.hourly_floor_won,passes:mode==='below'?false:mode==='incomparable'?null:true},blockers:[...draft.blockers,...(mode==='below'?['최저임금 미달: raw backend sentence']:[])],contract:mode==='no-source'?{...draft.contract,source_note:''}:draft.contract,deductions:draft.deductions.map(row=>({...row,blocked_by:mode==='blocked'?'unresolved':null,share_instrument:mode==='held'?{...row.instrument,url:''}:null,instrument:{...row.instrument,url:mode==='held'?'':row.instrument.url}}))}}));
+        window.drawSources=(share)=>root.render(React.createElement(PayslipDraftView,{data:{...draft,deductions:[{...draft.deductions[0],share_instrument:share}]}}));
         window.drawLink=async(allowed,ready)=>{
           const client=new QueryClient({defaultOptions:{queries:{staleTime:Infinity}}});
           window.linkSettled=()=>client.getQueryCache().getAll().length===2&&client.getQueryCache().getAll().every(q=>q.state.status==='success');
@@ -128,4 +130,22 @@ test("draft facts hold unsafe amounts", async () => {
   await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("unsafe"));
   await dom(page.getByText("9,007,199,254,740,992원", { exact: true })).toHaveCount(0);
   await dom(page.getByText("1.5원", { exact: true })).toHaveCount(0);
+});
+
+test("deductions show identical sources once, preserve distinct facts and share one provenance note", async () => {
+  await page.waitForFunction(() => "drawSources" in window);
+  const deduction = draft.deductions![0]!;
+  const identical = Object.fromEntries(Object.entries(deduction.instrument).reverse()) as Instrument;
+  const different: Instrument = { name_ko: "모의 분담 고시", article_ko: "모의 제2조", promulgation_ko: "모의 제2호", enforced_on: "2027-01-01", url: "https://example.com/share-source", retrieved_on: "2026-11-01" };
+  const variants: [Instrument | null, number][] = [[null, 1], [identical, 1],
+    ...(Object.keys(different) as (keyof Instrument)[]).map((key): [Instrument, number] => [{ ...deduction.instrument, [key]: different[key] }, 2]),
+  ];
+  const row = page.getByRole("region", { name: "공제 초안과 근거", exact: true }).getByRole("row").filter({ hasText: deduction.label_ko });
+  for (const [share, count] of variants) {
+    await page.evaluate(value => (window as unknown as { drawSources: (share: Instrument | null) => void }).drawSources(value), share);
+    await dom(row.locator("cite")).toHaveCount(count);
+    await dom(row.getByRole("button", { name: "주소 복사", exact: true })).toHaveCount(count);
+    await dom(row.getByText(deduction.provenance_ko, { exact: true })).toHaveCount(1);
+  }
+  expect(errors).toEqual([]);
 });
