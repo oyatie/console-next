@@ -9055,6 +9055,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/action-inbox/items/{id}/snooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Postpone one of my inbox items
+         * @description Hides an item from the caller's own list, pages and counts until the given day. Nothing on the item changes and nobody else's list does. Postponing an item that is already postponed moves its day. The item returns by itself on that day, and earlier when its decision version changes or its deadline passes after it was postponed. The item is resolved through the caller's own sources, the same read as the list, so another person's item, an unknown id and a malformed id answer the same 404 lifecycle.refuse.scope. A refusal writes nothing.
+         */
+        post: operations["snoozeMyActionInboxItem"];
+        /**
+         * Bring one of my postponed inbox items back
+         * @description Ends the caller's own snooze of an item, so it returns to their list at once. Bringing back an item that is not postponed changes nothing and still answers 204. The item is resolved through the caller's own sources, postponed or not, so another person's item, an unknown id and a malformed id answer the same 404 lifecycle.refuse.scope.
+         */
+        delete: operations["unsnoozeMyActionInboxItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/action-inbox/reference": {
         parameters: {
             query?: never;
@@ -15308,6 +15332,26 @@ export interface components {
             lane: "turn" | "waiting" | "scheduled";
             /** @description Calendar days remaining in the source deadline's timezone, computed from the database clock. */
             days_remaining: number | null;
+            /** @description Whether the caller may postpone this item in their own list, and to which day at most. The snooze command enforces the same facts. */
+            snooze?: {
+                /** @description False when the item is a decision someone else is waiting on; no snooze control is offered then. */
+                allowed: boolean;
+                /**
+                 * @description Why the item cannot be postponed; present only when allowed is false.
+                 * @enum {string}
+                 */
+                reason?: "blocks_others";
+                /**
+                 * Format: date
+                 * @description The day the item returns to the list; present only in the snoozed view.
+                 */
+                until?: string;
+                /**
+                 * Format: date
+                 * @description The last day the item may be postponed to, the day before its legal deadline in Korea. Absent when the day is unbounded. When it is not later than today, no day is left.
+                 */
+                latest?: string;
+            };
             /** @description Source-owned facts for the row's command and informed grant confirmation. */
             context?: {
                 /** @description Optional physical work site, separate from the statutory placement path. */
@@ -15411,7 +15455,7 @@ export interface components {
                 source: string;
                 support_reference: string;
             }[];
-            /** @description Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. */
+            /** @description Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted. */
             counts: {
                 [key: string]: {
                     total: number;
@@ -15420,6 +15464,13 @@ export interface components {
             };
             /** @description Up to three scheduled changes from the admitted source pages, in deadline order. */
             upcoming: components["schemas"]["ActionInboxItem"][];
+            /** @description The snooze presets with their days resolved by the server in Korea's calendar. short and long are day counts from the tenant's settings; next_week is the coming Monday. A preset later than an item's snooze.latest is not available for that item. */
+            snooze_presets?: {
+                /** @enum {string} */
+                key: "short" | "next_week" | "long";
+                /** Format: date */
+                date: string;
+            }[];
             /** @description Whether this account holds any capability the console offers. */
             has_work: boolean;
             quick_starts: ("register" | "import" | "org" | "invite")[];
@@ -21450,6 +21501,11 @@ export interface components {
                 details?: {
                     /** @description Current opaque decision version; re-read the document before deciding again. */
                     current_version?: string;
+                    /**
+                     * Format: date
+                     * @description The last day an inbox item may be postponed to, present on a snooze_past_legal_due refusal.
+                     */
+                    latest?: string;
                 };
                 code: string;
                 message: string;
@@ -49887,6 +49943,8 @@ export interface operations {
                 attention?: "all" | "approvals" | "today" | "overdue";
                 /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
                 filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures" | "notices";
+                /** @description With only, lists the items the caller postponed, each with snooze.until. Without it the list, its pages and its counts leave those items out. Takes no filter and no attention value. */
+                snoozed?: "only";
                 /** @description Page size, clamped server-side to 1..=200. */
                 limit?: number;
                 /** @description Opaque immutable-traversal cursor returned as `next_cursor` by the previous page. */
@@ -49917,7 +49975,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description The cursor is malformed or attention was combined with a saved filter other than all or turn. */
+            /** @description The cursor is malformed, attention was combined with a saved filter other than all or turn, or snoozed was combined with a filter or attention value. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -50008,6 +50066,98 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    snoozeMyActionInboxItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The item id as the list serves it (kind:uuid). */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: date
+                     * @description The day the item returns, later than today in Korea and no later than the item's snooze.latest.
+                     */
+                    until: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The item is postponed until that day. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description lifecycle.refuse.scope - the item is not in the caller's inbox or does not exist, one answer for both. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description snooze_not_allowed - the item is a decision someone else is waiting on (snooze.allowed is false). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description snooze_past when the day is today or earlier in Korea; snooze_past_legal_due when the item's due date is a legal deadline and the day is on or after it, with the last allowed day in error.details.latest; validation when until is not a date. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    unsnoozeMyActionInboxItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The item id as the list serves it (kind:uuid). */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item is in the caller's list again. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description lifecycle.refuse.scope - the item is not in the caller's inbox or does not exist, one answer for both. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             503: components["responses"]["ServiceUnavailable"];
         };
     };
