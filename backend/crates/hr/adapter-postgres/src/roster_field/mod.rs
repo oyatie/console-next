@@ -248,6 +248,13 @@ impl HrService {
                     Some(sent) => rules::choices(&current.value_type, &current.choices, sent)?,
                     None => current.choices.clone(),
                 };
+                // A request that changes nothing writes nothing and records no event.
+                if label.as_ref().is_none_or(|l| *l == current.label)
+                    && choices == current.choices
+                    && request.active.is_none_or(|a| a == current.active)
+                {
+                    return Ok((current, vec![]));
+                }
                 if request.active == Some(true) && !current.active {
                     room(tx, org).await?;
                 }

@@ -37,11 +37,16 @@ fn invalid(field: &'static str, code: &'static str, message: &str) -> HrError {
     )
 }
 
+/// A control or invisible format character (zero-width, direction marks, BOM, soft hyphen).
+fn hidden(c: char) -> bool {
+    c.is_control()
+        || matches!(c, '\u{00AD}' | '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2060}'..='\u{2064}' | '\u{FEFF}')
+}
+
 /// The trimmed label, 1 to 60 characters.
 pub(super) fn label(raw: &str) -> Result<String, HrError> {
     let label = raw.trim();
-    if label.is_empty() || label.chars().count() > LABEL_MAX || label.chars().any(char::is_control)
-    {
+    if label.is_empty() || label.chars().count() > LABEL_MAX || label.chars().any(hidden) {
         return Err(invalid(
             "label",
             "roster_field_label_invalid",
@@ -76,9 +81,7 @@ pub(super) fn choices(
     let mut out = Vec::with_capacity(sent.len());
     for input in sent {
         let label = input.label.trim();
-        if label.is_empty()
-            || label.chars().count() > CHOICE_LABEL_MAX
-            || label.chars().any(char::is_control)
+        if label.is_empty() || label.chars().count() > CHOICE_LABEL_MAX || label.chars().any(hidden)
         {
             return Err(choices_invalid("an option label is 1 to 40 characters"));
         }

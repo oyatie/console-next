@@ -90,6 +90,8 @@ async fn bad_definitions_are_refused_with_their_codes(pool: PgPool) {
     for (v, code) in [
         (text(" "), (422, "roster_field_label_invalid")),
         (text(&"가".repeat(61)), (422, "roster_field_label_invalid")),
+        (text("\u{200B}"), (422, "roster_field_label_invalid")),
+        (text("Locker\u{200B}"), (422, "roster_field_label_invalid")),
         (
             json!({"label": "a", "value_type": "TEXT", "section": "PERSONAL", "choices": [{"label": "x"}]}),
             (422, "roster_field_choices_invalid"),
@@ -120,6 +122,27 @@ async fn bad_definitions_are_refused_with_their_codes(pool: PgPool) {
         (409, "roster_field_label_taken")
     );
     assert_eq!(f.audits("roster_field.create").await, 1);
+    // A rename into another field's label is refused the same way.
+    let second = add(&f, &f.ops, text("사물함")).await.unwrap();
+    let renamed =
+        f.hr.update_roster_field(f.ops.clone(), second.id, change(json!({"label": "LOCKER"})));
+    assert_eq!(
+        renamed.await.map_err(|e| status(&e)).unwrap_err(),
+        (409, "roster_field_label_taken")
+    );
+    // A change that changes nothing writes no event.
+    let before = f.audits("roster_field.update").await;
+    f.hr.update_roster_field(f.ops.clone(), second.id, change(json!({})))
+        .await
+        .unwrap();
+    f.hr.update_roster_field(
+        f.ops.clone(),
+        second.id,
+        change(json!({"label": "사물함", "active": true})),
+    )
+    .await
+    .unwrap();
+    assert_eq!(f.audits("roster_field.update").await, before);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
