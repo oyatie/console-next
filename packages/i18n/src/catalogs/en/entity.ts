@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { koEntity } from "../ko/entity";
-
-export const enEntity: Record<keyof typeof koEntity, string> = {
+export const enEntity = {
   "entity.list.title": "Entities & workplaces",
   "entity.list.register": "Register entity",
   "entity.list.table": "Legal entities",
@@ -265,4 +263,4 @@ export const enEntity: Record<keyof typeof koEntity, string> = {
   "entity.refused.name_review_not_found": "This review was already settled or does not exist.",
   "entity.refusal.registration_unchanged": "The registration is unchanged. Choose another registration or serial.",
   "entity.refusal.use_registration_change": "Use the registration change action to change the registration or serial.",
-};
+} as const;

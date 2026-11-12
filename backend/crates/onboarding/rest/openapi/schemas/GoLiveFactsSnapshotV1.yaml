@@ -97,16 +97,16 @@ properties:
     format: int64
   org_change_routed:
     type: boolean
-    description: approval.policy.org_structure = route (decisions
+    description: True when approval.policy.org_structure is route, so an org change goes through approval before it applies.
   employees:
     type: integer
     format: int64
-    description: People employed today (재직 or 휴직); never a 입사 예정, a 퇴직 or a cancelled
+    description: People employed today (employed or on leave of absence); never a pending hire, an exited person or a cancelled
       registration.
   employees_starting_later:
     type: integer
     format: int64
-    description: 입사 예정 people, shown apart from the headcount.
+    description: Pending hires, shown apart from the headcount.
   unmapped_assignments:
     type: integer
     format: int64

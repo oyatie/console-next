@@ -1,10 +1,10 @@
 tags:
   - employees
 operationId: issueAppointmentNotice
-summary: Issue a 발령 공고 with the next 발령 번호 (BE-EMP-UI, EMP-UI 10)
+summary: Issue a personnel order notice with the next order number (BE-EMP-UI, EMP-UI 10)
 description: >-
   Announces recorded lifecycle events (APPLIED or SCHEDULED, not a RESCIND or exit reversal, not undone) named
-  by exactly one of event_ids (printed in that order) or batch_id (a bulk 발령, in employee order). The server
+  by exactly one of event_ids (printed in that order) or batch_id (a bulk personnel order, in employee order). The server
   assigns notice_no YYYY-NNNN, per tenant and notice_date year, gapless at issue and never reused; a refused
   issue takes no number. An event is on one notice only. Issued once, never rewritten; no approval step (#26).
   Audited appointment_notice.issue. Needs employee_directory_manage org-wide.

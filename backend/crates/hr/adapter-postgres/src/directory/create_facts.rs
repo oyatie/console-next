@@ -128,6 +128,10 @@ fn normalize_contract(
         wage_won: raw.wage_won.or(pay.map(|(won, _)| won)).unwrap_or(0),
         pay_unit,
         weekly_minutes: raw.weekly_minutes,
+        daily_minutes: None,
+        scheduled_days_per_week: None,
+        weekly_paid_minutes: None,
+        terms_effective_from: None,
     };
     validate_terms(&terms)?;
     Ok(NormalizedContract {
@@ -250,6 +254,10 @@ pub async fn record_registration_facts(
             wage_won: contract.wage_won,
             pay_unit: contract.pay_unit,
             weekly_minutes: contract.weekly_minutes,
+            daily_minutes: None,
+            scheduled_days_per_week: None,
+            weekly_paid_minutes: None,
+            terms_effective_from: None,
         };
         // A registration is replayed through its own idempotency row, never
         // here, so the contract's command id only has to be unique.

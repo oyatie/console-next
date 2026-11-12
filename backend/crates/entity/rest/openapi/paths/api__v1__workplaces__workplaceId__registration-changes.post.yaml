@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: changeWorkplaceRegistration
-summary: Move a 사업장 to another 사업자등록 or 종사업장 일련번호, dated (MR-18)
+summary: Move a workplace to another business registration or sub-workplace serial number, dated (MR-18)
 security:
 - bearerAuth: []
 parameters:
@@ -47,7 +47,7 @@ responses:
         schema:
           $ref: '#/components/schemas/ErrorBody'
   '409':
-    description: 'registration_holder_in_use (remedy move_workplaces_first), or the 법인 is not open.'
+    description: 'registration_holder_in_use (remedy move_workplaces_first), or the legal entity is not open.'
     content:
       application/json:
         schema:

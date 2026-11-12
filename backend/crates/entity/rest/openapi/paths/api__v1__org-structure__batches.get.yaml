@@ -2,7 +2,7 @@ x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
 tags:
 - entity
 operationId: listOrgSetupBatches
-summary: Recent setup 부서 batches and undos (설정 단계 기록), newest first
+summary: Recent setup department batches and undos (setup phase log), newest first
 description: The latest 200. undoable is true for an APPLY not yet undone while the tenant is in SETUP.
 security:
 - bearerAuth: []

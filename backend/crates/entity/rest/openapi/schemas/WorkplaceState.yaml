@@ -15,7 +15,7 @@ properties:
     format: date
   before_first_record:
     type: boolean
-    description: Today is before the first record takes effect (e.g. before 개설일); this is that first record.
+    description: Today is before the first record takes effect (e.g. before the opening date); this is that first record.
   name:
     type: string
   address:
@@ -71,7 +71,7 @@ properties:
     - 'null'
     format: date
   status_until:
-    description: 휴업's expected end as reported (SUSPENDED only; a plan, not a clock).
+    description: The business suspension's expected end as reported (SUSPENDED only; a plan, not a clock).
     type:
     - string
     - 'null'
@@ -94,6 +94,6 @@ properties:
     - string
     - 'null'
     maxLength: 500
-    description: Why this 사업장 is its own 근기법 unit; required while independent_lsa_unit is true, so a revise resends it.
+    description: Why this workplace is its own Labor Standards Act unit; required while independent_lsa_unit is true, so a revise resends it.
   change_mode:
     $ref: '#/components/schemas/EntityChangeMode'

@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-description: 「필터와 일치하는 {n}명 모두 선택」 — every employee the list filters admit under the caller's scope,
+description: The "select all {n} people matching the filter" choice — every employee the list filters admit under the caller's scope,
   minus exclude_employee_ids, resolved by the server in the batch transaction (recorded in employee id order).
 required: [query, expected_count]
 properties:

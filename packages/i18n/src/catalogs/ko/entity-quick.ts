@@ -1,5 +1,6 @@
-// Korean source for `entityQuick.` ids (the quick 법인 추가 sheet from the chart's root box, spec S4-quick).
-export const koEntityQuick = {
+// Korean copy for `entityQuick.` ids (the quick 법인 추가 sheet from the chart's root box, spec S4-quick).
+import type { enEntityQuick } from "../en/entity-quick";
+export const koEntityQuick: Record<keyof typeof enEntityQuick, string> = {
   "entityQuick.title": "법인 추가",
   "entityQuick.kicker": "법인 · {n, number}번째 법인",
   "entityQuick.cancel": "취소",

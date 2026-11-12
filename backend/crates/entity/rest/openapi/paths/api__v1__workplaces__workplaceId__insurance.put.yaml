@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: reviseWorkplaceInsurance
-summary: Dated change to a 사업장's 4대보험 relations (only the insurers listed change)
+summary: Dated change to a workplace's four-social-insurance relations (only the insurers listed change)
 security:
 - bearerAuth: []
 parameters:

@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: openChangeSet
-summary: Open the caller's change set (발령안) for an intent (BW-38)
+summary: Open the caller's change set (draft personnel orders) for an intent (BW-38)
 description: The caller's OPEN draft for the intent, opened when there is none; two tabs opening at once share
   one draft. A draft is the caller's alone (another user gets 404 for it and opens their own). Takes org-wide
   employee_directory_manage, the gate of the act a commit performs.

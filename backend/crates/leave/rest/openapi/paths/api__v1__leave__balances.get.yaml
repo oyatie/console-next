@@ -1,7 +1,7 @@
 tags:
   - leave
 operationId: listLeaveBalances
-summary: Per-employee annual-leave balance roster (직원별 연차 현황)
+summary: Per-employee annual-leave balance roster
 description: >-
   Reads the existing employee leave ledger (grant/used/left) — the same
   source of truth as the balances aggregate; not a second store. Requires

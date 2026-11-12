@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: setWorkplaceKind
-summary: Set or clear the kind of a 사업장 (a label only; direct in both phases, audited)
+summary: Set or clear the kind of a workplace (a label only; direct in both phases, audited)
 security:
 - bearerAuth: []
 parameters:

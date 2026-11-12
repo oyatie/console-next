@@ -1,8 +1,8 @@
 tags:
   - employees
 operationId: rehireEmployee
-summary: 재입사 — a new employment period for an EXITED person (BW-19)
-description: 'The same person (same 사번 and history) starts a new period: a REHIRE lifecycle event, the head
+summary: Rehire — a new employment period for an EXITED person (BW-19)
+description: 'The same person (same employee number and history) starts a new period: a REHIRE lifecycle event, the head
   ACTIVE (or PRE_HIRE with a SCHEDULED ONBOARD when hire_date is after today, KST), exit date cleared, the profile''s
   employment type and contract window replaced and probation cleared. 409 rehire_requires_exited for anyone not
   EXITED; 409 idempotency_key_reused for a key used by another request. Org-wide employee_directory_manage.'

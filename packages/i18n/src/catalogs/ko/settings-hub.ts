@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koSettingsHub = {
+import type { enSettingsHub } from "../en/settings-hub";
+export const koSettingsHub: Record<keyof typeof enSettingsHub, string> = {
   "settingsHub.unknown": "확인 불가",
   "settingsHub.approval": "결재",
   "settingsHub.approval.direct": "모두 바로 적용",
@@ -39,4 +40,4 @@ export const koSettingsHub = {
   "settingsHub.key.approval.policy.registration_void": "등록 취소",
   "settingsHub.key.approval.policy.exit": "퇴직 확인",
   "settingsHub.key.approval.policy.import_rollback": "가져오기 되돌리기",
-} as const;
+};

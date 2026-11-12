@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: undoEntitySetupBatch
-summary: Undo a bulk 법인 · 사업장 batch during SETUP (voids what it created, restores what it revised) (MR-29)
+summary: Undo a bulk legal entity and workplace batch during SETUP (voids what it created, restores what it revised) (MR-29)
 security:
 - bearerAuth: []
 parameters:
@@ -41,7 +41,7 @@ responses:
           $ref: '#/components/schemas/ErrorBody'
   '409':
     description: 'phase_not_setup, batch_not_undoable, batch_already_undone, undo_conflict (remedy
-      undo_later_batches_first: a record or a 대표 / 본점 role changed after the batch), or record_in_use.'
+      undo_later_batches_first: a record or a representative / head-office role changed after the batch), or record_in_use.'
     content:
       application/json:
         schema:

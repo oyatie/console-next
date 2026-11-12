@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: createWorkplaceKind
-summary: Add a tenant 사업장 kind (the server generates its code)
+summary: Add a tenant workplace kind (the server generates its code)
 security:
 - bearerAuth: []
 parameters:

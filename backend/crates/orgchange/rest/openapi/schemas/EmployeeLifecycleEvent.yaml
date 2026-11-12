@@ -48,7 +48,7 @@ properties:
     description: OFFBOARD/TERMINATE rows are recorded by exit-case HR confirmation (or are historical);
       EXIT_REVERSAL is the compensating event a rejected/cancelled exit case records; RESCIND is the compensating
       row of a rescission (voids_event_id names the rescinded event); REHIRE starts a new employment period
-      (재입사, BW-19).
+      (rehire, BW-19).
   from_status:
     type: string
     nullable: true
@@ -87,8 +87,8 @@ properties:
   leave_type:
     type: string
     x-extensible-enum: [CHILDCARE, MATERNITY, WORK_INJURY, ILLNESS, PERSONAL, OTHER]
-    description: LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is 산재 요양. Omitted for callers without
-      employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, 개보법 제23조).
+    description: LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is industrial accident medical care. Omitted for callers without
+      employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, Personal Information Protection Act Article 23).
   batch_id:
     $ref: '#/components/schemas/Uuid'
     description: Present when the event was recorded by a bulk appointment (POST /api/v1/employees/lifecycle-events/bulk).
@@ -139,12 +139,12 @@ properties:
     description: BW-11. The correction or RESCIND row that voided this event; it no longer holds.
   to_workplace_id:
     $ref: '#/components/schemas/Uuid'
-    description: TRANSFER (E-S3b). The 사업장 of the same 법인 the event moves the employee to (전근), named or
-      taken from the unit's 사업장; absent when the employee stays where they work. GROUP_TRANSFER - the
-      receiving 사업장 of the other 법인.
+    description: TRANSFER (E-S3b). The workplace of the same legal entity the event moves the employee to (relocation), named or
+      taken from the unit's workplace; absent when the employee stays where they work. GROUP_TRANSFER - the
+      receiving workplace of the other legal entity.
   group_transfer:
     $ref: '#/components/schemas/GroupTransferFacts'
-    description: GROUP_TRANSFER only. The facts recorded with the 전적 (evidence references are omitted from the
+    description: GROUP_TRANSFER only. The facts recorded with the group transfer (evidence references are omitted from the
       read-only view), plus from_legal_entity_id and to_legal_entity_id.
   from_job_title_id:
     $ref: '#/components/schemas/Uuid'
@@ -154,40 +154,40 @@ properties:
     description: PROMOTE by catalog id only, the title after.
   from_grade_id:
     $ref: '#/components/schemas/Uuid'
-    description: PROMOTE with to_grade_id only (MR-25), the 직급 before.
+    description: PROMOTE with to_grade_id only (MR-25), the grade before.
   to_grade_id:
     $ref: '#/components/schemas/Uuid'
-    description: PROMOTE with to_grade_id only, the 직급 after.
+    description: PROMOTE with to_grade_id only, the grade after.
   from_position_kind_id:
     $ref: '#/components/schemas/Uuid'
-    description: APPOINT only, the 직책 before (absent when none).
+    description: APPOINT only, the position before (absent when none).
   to_position_kind_id:
     $ref: '#/components/schemas/Uuid'
-    description: APPOINT only, the 직책 after (absent when none, e.g. 보직 해제).
+    description: APPOINT only, the position after (absent when none, e.g. relieved of position).
   from_job_id:
     $ref: '#/components/schemas/Uuid'
-    description: APPOINT only, the 직무 before.
+    description: APPOINT only, the job before.
   to_job_id:
     $ref: '#/components/schemas/Uuid'
-    description: APPOINT only, the 직무 after.
+    description: APPOINT only, the job after.
   from_job:
     type: string
-    description: APPOINT only, the 종사 업무 text before.
+    description: APPOINT only, the job duties text before.
   to_job:
     type: string
-    description: APPOINT only, the 종사 업무 text after.
+    description: APPOINT only, the job duties text after.
   from_job_family_id:
     $ref: '#/components/schemas/Uuid'
-    description: APPOINT only, the 직군 before.
+    description: APPOINT only, the job family before.
   to_job_family_id:
     $ref: '#/components/schemas/Uuid'
-    description: APPOINT only, the 직군 after.
+    description: APPOINT only, the job family after.
   from_employment_type:
     $ref: '#/components/schemas/EmploymentType'
-    description: EMPLOYMENT_TYPE_CHANGE only (MR-24), the 고용형태 before.
+    description: EMPLOYMENT_TYPE_CHANGE only (MR-24), the employment type before.
   to_employment_type:
     $ref: '#/components/schemas/EmploymentType'
-    description: EMPLOYMENT_TYPE_CHANGE only, the 고용형태 after.
+    description: EMPLOYMENT_TYPE_CHANGE only, the employment type after.
   effective_date:
     type: string
   comment_code:

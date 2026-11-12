@@ -1,6 +1,7 @@
-// Korean source for `attendanceCrews.` ids: 근무조 (A2-crews) and placing people in them from a date.
+// Korean copy for `attendanceCrews.` ids: 근무조 (A2-crews) and placing people in them from a date.
 // Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koAttendanceCrews = {
+import type { enAttendanceCrews } from "../en/attendance-crews";
+export const koAttendanceCrews: Record<keyof typeof enAttendanceCrews, string> = {
   "attendanceCrews.crews.title": "근무조",
   "attendanceCrews.crews.meta": "같은 일정으로 함께 도는 사람들 · 부서와 따로 지정합니다 · 인사 발령(부서)은 바뀌지 않습니다",
   "attendanceCrews.crews.add": "근무조 추가",
@@ -38,4 +39,4 @@ export const koAttendanceCrews = {
   "attendanceCrews.crews.placeCommit": "{count, number}명 추가 · {date}부터",
   "attendanceCrews.crews.placeConsequence": "다른 근무조에 있던 사람은 시작일 전날까지 그 근무조에 있고, 시작일부터 이 근무조를 따릅니다 · 이력에 남습니다",
   "attendanceCrews.crews.placed": "{count, number}명을 {date}부터 「{name}」에 넣었습니다",
-} as const;
+};

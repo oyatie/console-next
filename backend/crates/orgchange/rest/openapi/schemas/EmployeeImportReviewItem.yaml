@@ -11,7 +11,7 @@ properties:
     type: string
     description: A refusal_code, or sheet_needs_mapping, rrn_unavailable, rrn_invalid, unresolved_identity,
       status_unmapped, leave_type_unmapped, unit_unmapped, workplace_unmapped, employment_type_unmapped
-      (blocking, W02), employee_number_missing (사번 미부여), deferred_change, summary_row_skipped and
+      (blocking, W02), employee_number_missing (no employee number assigned), deferred_change, summary_row_skipped and
       phone_invalid (W12, non-blocking). number_invalid (a number column's cell that is not a number, left out)
       and work_period_missing (the run has no pay period, so days and hours worked are left out) are non-blocking.
   blocking:
@@ -28,7 +28,7 @@ properties:
     type: string
   value:
     type: string
-    description: The text to map (a unit, 사업장, 고용형태, 재직상태 or 휴직 유형 text), never a person's value.
+    description: The text to map (a unit, workplace, employment type, employment status or leave type text), never a person's value.
   rows:
     type: integer
     minimum: 1
@@ -51,7 +51,7 @@ properties:
           type: string
   candidates:
     type: array
-    description: 'W03: the records a unit or 사업장 text may mean, best first (resolution.choices are their
+    description: 'W03: the records a unit or workplace text may mean, best first (resolution.choices are their
       ids); never bound without the operator''s answer.'
     items:
       type: object

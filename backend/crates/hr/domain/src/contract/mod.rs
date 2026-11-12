@@ -89,6 +89,10 @@ pub struct ContractTerms {
     pub wage_won: i64,
     pub pay_unit: PayUnit,
     pub weekly_minutes: Option<i32>,
+    pub daily_minutes: Option<i32>,
+    pub scheduled_days_per_week: Option<i32>,
+    pub weekly_paid_minutes: Option<i32>,
+    pub terms_effective_from: Option<Date>,
 }
 
 /// Minutes in a week: a physical bound, not a legal one (the legal contractual
@@ -131,6 +135,30 @@ pub fn validate_terms(terms: &ContractTerms) -> Result<(), KernelError> {
     {
         return refuse("weekly_minutes must be between 1 and 10080");
     }
+    if terms
+        .daily_minutes
+        .is_some_and(|n| !(1..=1440).contains(&n))
+        || terms
+            .scheduled_days_per_week
+            .is_some_and(|n| !(1..=7).contains(&n))
+        || terms
+            .weekly_paid_minutes
+            .is_some_and(|n| !(0..=WEEK_MINUTES).contains(&n))
+    {
+        return Err(
+            KernelError::validation("contract schedule is outside physical bounds")
+                .with_code("contract_schedule_invalid"),
+        );
+    }
+    if terms
+        .terms_effective_from
+        .is_some_and(|on| on < terms.start_date || terms.end_date.is_some_and(|end| on > end))
+    {
+        return Err(KernelError::validation(
+            "terms effective date must be within the contract period",
+        )
+        .with_code("contract_terms_effective_date_invalid"));
+    }
     Ok(())
 }
 
@@ -170,13 +198,14 @@ pub fn overlapping<'a>(
     })
 }
 
-/// The live contract covering `day`, if any (latest start wins).
+/// The contract covering `day`; ambiguous or invalid history has no usable terms.
 #[must_use]
 pub fn in_force(rows: &[ContractRow], day: Date) -> Option<&ContractRow> {
-    live_history(rows)
-        .into_iter()
-        .find(|row| row.terms.start_date <= day && row.terms.end_date.is_none_or(|end| day <= end))
+    terms_on(rows, day).ok().flatten()
 }
+
+mod dated;
+pub use dated::{MonthlyStandardHours, correction_terms, monthly_standard_hours, terms_on};
 
 #[cfg(test)]
 mod tests {
@@ -191,6 +220,10 @@ mod tests {
             wage_won: 2_500_000,
             pay_unit: PayUnit::Monthly,
             weekly_minutes: Some(2400),
+            daily_minutes: None,
+            scheduled_days_per_week: None,
+            weekly_paid_minutes: None,
+            terms_effective_from: None,
         }
     }
 

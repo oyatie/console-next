@@ -45,7 +45,7 @@ properties:
         field:
           type: string
           x-extensible-enum: [org_unit, exit_date, employment_status, employment_type, employee_number, company]
-          description: 'company (r3:worst-case-22): the file names another 법인 than the person''s; routed entity_transfer.'
+          description: 'company (r3:worst-case-22): the file names a legal entity other than the person''s; routed entity_transfer.'
         from:
           type: [string, 'null']
         to:
@@ -54,15 +54,15 @@ properties:
           type: string
           x-extensible-enum: [lifecycle_transfer, exit_case, rehire, correction, value_map, leave, lifecycle,
             employee_number_change, entity_transfer]
-          description: 'entity_transfer (r3:worst-case-22): a 법인 change is a 전적 (or a mistake in the file), never a
-            발령; the 부서 change of the same row takes this route too. Import never moves anyone between 법인.'
+          description: 'entity_transfer (r3:worst-case-22): a legal entity change is a group transfer (or a mistake in the file), never a
+            personnel order; the department change of the same row takes this route too. Import never moves anyone between legal entities.'
   new_person:
     type: object
     required: [status, hire_date, migrated_former]
     properties:
       employee_number:
         type: [string, 'null']
-        description: 'IMPORT-2: the 사번 apply records, shown here (never invented at apply); null — 사번 미부여.'
+        description: 'IMPORT-2: the employee number apply records, shown here (never invented at apply); null — no employee number assigned.'
       employee_number_source:
         type: string
         enum: [file, rule, manual]
@@ -72,7 +72,7 @@ properties:
       leave:
         type: object
         description: 'IMPORT-2 (decisions #26): ON_LEAVE — recorded at apply as an APPLIED LEAVE_OF_ABSENCE from
-          start_date (a setup fact, not a 발령).'
+          start_date (a setup fact, not a personnel order).'
         required: [start_date, leave_type]
         properties:
           start_date:
@@ -101,10 +101,10 @@ properties:
         - type: 'null'
       migrated_former:
         type: boolean
-        description: First load of a former employee (근기법 §42 보존), allowed only before the first approved
+        description: First load of a former employee (Labor Standards Act §42 retention), allowed only before the first approved
           payroll period.
       workplace_id:
-        description: 'MR-7: the 사업장 placed at from hire_date (its 법인 follows); null: 미배치. Never for a former
+        description: 'MR-7: the workplace placed at from hire_date (its legal entity follows); null: unplaced. Never for a former
           employee.'
         oneOf:
         - $ref: '#/components/schemas/Uuid'
@@ -113,26 +113,26 @@ properties:
         type: [string, 'null']
         enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE,
           FREELANCE, null]
-        description: 'MR-7: the employment profile is created with it; null: no profile (정보 미입력).'
+        description: 'MR-7: the employment profile is created with it; null: no profile (information not entered).'
       unresolved_org_unit:
         type: [string, 'null']
         description: 'MR-7: the unit name that bound no unit, kept on the person (source_metadata).'
       unplaced_reason:
         type: string
         enum: [unit_unknown, unit_ambiguous, unit_left_unplaced, workplace_unknown, no_place]
-        description: 'W03: why a current person comes in 미배치 (absent: placed, or a former employee).'
+        description: 'W03: why a current person comes in as unplaced (absent: placed, or a former employee).'
       sex:
         type: string
         enum: [MALE, FEMALE]
-        description: 'r3:hire-16: the first 근로자 명부 성별 (the 성별 column, else the 주민등록번호''s 7th digit).'
+        description: 'r3:hire-16: the first worker register sex (the sex column, else the resident registration number''s 7th digit).'
       contract_end_date:
         type: string
         format: date
-        description: 'r3:hire-16: the employment profile''s 계약종료일.'
+        description: 'r3:hire-16: the employment profile''s contract end date.'
       probation_end_date:
         type: string
         format: date
-        description: 'r3:hire-16: the employment profile''s 수습종료일.'
+        description: 'r3:hire-16: the employment profile''s probation end date.'
   refusal_code:
     type: string
     enum: [duplicate_in_file, invalid_date, identity_mismatch, hire_date_required, former_load_closed,
@@ -147,10 +147,10 @@ properties:
     enum: [employee_number, alias, rrn, pick]
   unit_name:
     type: string
-    description: The unit name that bound no unit; the person comes in 미배치 (unit_map binds it).
+    description: The unit name that bound no unit; the person comes in as unplaced (unit_map binds it).
   workplace_name:
     type: string
-    description: 'MR-7: the 사업장 text that named no open 사업장 (a 현장 name, or two 사업장 of that name);
+    description: 'MR-7: the workplace text that named no open workplace (a site name, or two workplaces of that name);
       workplace_map answers it.'
   candidates:
     type: array
@@ -170,7 +170,7 @@ properties:
           enum: [rrn, name_birth_date, name_only]
         company:
           type: string
-          description: 'IMPORT-2 동명이인: what tells namesakes apart (never a name suffix).'
+          description: 'IMPORT-2 namesakes: what tells namesakes apart (never a name suffix).'
         org_unit:
           type: string
         birth_date_masked:

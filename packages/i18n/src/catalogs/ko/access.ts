@@ -1,5 +1,6 @@
-// Korean source for `access.` ids (관리 ▸ 권한, decision #26 pilot roles). Rules: the header of ../ko.ts and GUIDE.md.
-export const koAccess = {
+// Korean copy for `access.` ids (관리 ▸ 권한, decision #26 pilot roles). Rules: the header of ../ko.ts and GUIDE.md.
+import type { enAccess } from "../en/access";
+export const koAccess: Record<keyof typeof enAccess, string> = {
   "access.title": "권한",
   "access.nav": "권한 화면",
   "access.nav.ops": "비상 관리자 계정",
@@ -280,4 +281,4 @@ export const koAccess = {
   "access.person.rest": "그 밖의 영역",
   "access.person.rest.text": "{domains} · 권한 없음",
   "access.ready.spread": "{people, number}명 · 역할 {roles, number}개",
-} as const;
+};

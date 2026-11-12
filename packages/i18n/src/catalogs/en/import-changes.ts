@@ -1,6 +1,4 @@
-import type { koImportChanges } from "../ko/import-changes";
-
-export const enImportChanges: Record<keyof typeof koImportChanges, string> = {
+export const enImportChanges = {
   "importChanges.title": "Changed cells {cells, number} · people {people, number}",
   "importChanges.changed": "Changed {n, number}",
   "importChanges.same": "As is {n, number}",
@@ -13,4 +11,4 @@ export const enImportChanges: Record<keyof typeof koImportChanges, string> = {
   "importChanges.col.record": "Recorded as",
   "importChanges.correction": "Correction",
   "importChanges.route": "via {route}",
-};
+} as const;

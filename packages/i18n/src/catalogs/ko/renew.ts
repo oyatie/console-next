@@ -1,6 +1,7 @@
-// Korean source for `renew.` ids (features/people/ui/renew-*.tsx): 일괄 계약 갱신 — each person's answer, the term,
+// Korean copy for `renew.` ids (features/people/ui/renew-*.tsx): 일괄 계약 갱신 — each person's answer, the term,
 // what the server would refuse, and the batches (spec E6-renew, BE-EMP-UI §3).
-export const koRenew = {
+import type { enRenew } from "../en/renew";
+export const koRenew: Record<keyof typeof enRenew, string> = {
   "renew.crumb": "일괄 발령 · 계약 갱신",
   "renew.title": "계약 종료 · {n, number}명",
   "renew.steps": "계약 갱신 단계",
@@ -52,4 +53,4 @@ export const koRenew = {
   "renew.empty.title": "선택한 사람이 없습니다",
   "renew.empty.reason": "직원 목록에서 계약 종료가 다가오는 사람을 선택한 다음 「계약 갱신」을 누르십시오",
   "renew.open": "선택한 {count, number}명 계약 갱신",
-} as const;
+};

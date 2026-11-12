@@ -1,5 +1,6 @@
-// Korean source for `home.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koHome = {
+// Korean copy for `home.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enHome } from "../en/home";
+export const koHome: Record<keyof typeof enHome, string> = {
   "home.inbox.privacyRequest": "권리 요구",
   "home.inbox.correction.decide": "정정 요청 검토",
   "home.requests.review": "요청 검토",
@@ -135,4 +136,4 @@ export const koHome = {
   "home.inbox.source.support": "고객 지원",
   "home.inbox.source.workOrder": "작업 지시",
   "home.inbox.source.governance": "운영 검토",
-} as const;
+};

@@ -13,4 +13,4 @@ properties:
   register_kept:
     type: boolean
     default: false
-    description: An EXITED person within the 근로자 명부 period — the tenant keeps its original register.
+    description: An EXITED person within the worker register period — the tenant keeps its original register.

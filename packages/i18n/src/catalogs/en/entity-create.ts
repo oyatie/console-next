@@ -180,4 +180,4 @@ export const enEntityCreate = {
   "entityCreate.otherNames": "Other names · optional",
   "entityCreate.example.displayName": "e.g. Nuri",
   "entityCreate.example.englishName": "e.g. Nuri Co., Ltd.",
-};
+} as const;

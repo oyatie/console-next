@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: listAttendanceCrews
-summary: 근무조 of the caller's 사업장 with members on a date
+summary: Crews of the caller's workplace with members on a date
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: workplace_id, in: query, required: false, schema: { $ref: '#/components/schemas/Uuid' } }

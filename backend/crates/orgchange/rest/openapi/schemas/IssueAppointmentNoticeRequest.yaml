@@ -9,7 +9,7 @@ properties:
   notice_date:
     type: string
     format: date
-    description: The 공고 date; its year numbers the notice.
+    description: The notice date; its year numbers the notice.
   event_ids:
     type: array
     maxItems: 500

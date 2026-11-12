@@ -222,7 +222,7 @@ export interface paths {
         };
         /**
          * Fetch one branch member's summary for a person pin panel
-         * @description Returns a single active branch member's summary using the same non-admin branch directory as the member list, so any employee can open a coworker's person card. Viewing another person records a person.view audit event (열람 — 기록 남음); a self-view records none. A target outside the caller's branch returns 404 with no audit trail (deny-by-omission).
+         * @description Returns a single active branch member's summary using the same non-admin branch directory as the member list, so any employee can open a coworker's person card. Viewing another person records a person.view audit event (viewed — a record is kept); a self-view records none. A target outside the caller's branch returns 404 with no audit trail (deny-by-omission).
          */
         get: operations["getMessengerMember"];
         put?: never;
@@ -950,7 +950,7 @@ export interface paths {
         };
         /**
          * What one account can do now, and what is prepared or scheduled
-         * @description Needs 권한 관리 조회 over the whole tenant, or ops.
+         * @description Needs access management view over the whole tenant, or ops.
          */
         get: operations["getAccountEffectiveAccess"];
         put?: never;
@@ -990,7 +990,7 @@ export interface paths {
         };
         /**
          * Who can grant access — the count and up to five names a refusal shows
-         * @description Any signed-in account. The ops account and every active account holding 권한 관리 등록·수정 that counts now.
+         * @description Any signed-in account. The ops account and every active account holding access management edit that counts now.
          */
         get: operations["listAccessGranters"];
         put?: never;
@@ -1010,7 +1010,7 @@ export interface paths {
         };
         /**
          * List grants
-         * @description Needs 권한 관리 조회 over any node, or ops. A holder scoped below the tenant sees only the grants over nodes it may view. Revoked and expired grants are listed only on request.
+         * @description Needs access management view over any node, or ops. A holder scoped below the tenant sees only the grants over nodes it may view. Revoked and expired grants are listed only on request.
          */
         get: operations["listAccessGrants"];
         put?: never;
@@ -1032,7 +1032,7 @@ export interface paths {
         put?: never;
         /**
          * Apply a previewed batch, all or nothing
-         * @description 권한 부여 is high-risk (decision #26): it needs a fresh passkey `step_up`. The batch is re-checked in
+         * @description Granting access is high-risk (decision #26): it needs a fresh passkey `step_up`. The batch is re-checked in
          *     the write transaction; any difference from the preview is 409 `preview_stale` (preview again). A
          *     receipt with any REFUSED item is 409 `preview_has_refusals`. Every write lands in the grant ledger
          *     and bumps each affected account's authorization version, so it takes effect on that account's
@@ -1058,7 +1058,7 @@ export interface paths {
          * Preview a batch of grant / revoke / set-end operations and get a single-use receipt
          * @description One to 200 operations. Each item is checked on its own and returns OK or REFUSED with a code; the
          *     receipt binds the normalized batch, the caller and the tenant's access state, and expires after
-         *     10 minutes. Nothing is written except the receipt. A non-ops caller needs 권한 관리 등록·수정
+         *     10 minutes. Nothing is written except the receipt. A non-ops caller needs access management edit
          *     over each operation's scope and must already hold every line of the role over that scope.
          */
         post: operations["previewAccessGrants"];
@@ -1123,7 +1123,7 @@ export interface paths {
         };
         /**
          * The tenant's ops account (break-glass, exactly one)
-         * @description Needs 권한 관리 조회 over the whole tenant, or ops.
+         * @description Needs access management view over the whole tenant, or ops.
          */
         get: operations["getOpsAccount"];
         put?: never;
@@ -1142,8 +1142,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 「ops 사용 기록」 — one row per request the ops account made
-         * @description Needs 감사·접속기록 조회 (`audit` × `view`) over the whole tenant, or ops. Newest first.
+         * The ops usage log — one row per request the ops account made
+         * @description Needs audit and access log view (`audit` × `view`) over the whole tenant, or ops. Newest first.
          */
         get: operations["listOpsUsage"];
         put?: never;
@@ -1182,13 +1182,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 「권한 요청」 — the open requests (권한 관리 holders) or the caller's own
-         * @description A holder of 권한 관리 조회 (or ops) sees every open request; any other account sees the requests it filed. Newest first, at most 200.
+         * Access requests — the open requests (access management holders) or the caller's own
+         * @description A holder of access management view (or ops) sees every open request; any other account sees the requests it filed. Newest first, at most 200.
          */
         get: operations["listAccessRequests"];
         put?: never;
         /**
-         * File a 「권한 요청」 from a refused screen
+         * File an access request from a refused screen
          * @description Any signed-in account. One open request per (account, screen); filing again answers the open one with 200. An `OTHER` reason needs a note (422 `access_request_note_required`). Writes an `access.request.create` audit row.
          */
         post: operations["createAccessRequest"];
@@ -1208,8 +1208,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Close a 「권한 요청」
-         * @description DONE or DECLINED by a holder of 권한 관리 등록·수정 (or ops); WITHDRAWN by the requester. 403 `access_denied` otherwise, 404 `access_request_not_found`, 409 `access_request_closed` once closed. Writes an `access.request.close` audit row.
+         * Close an access request
+         * @description DONE or DECLINED by a holder of access management edit (or ops); WITHDRAWN by the requester. 403 `access_denied` otherwise, 404 `access_request_not_found`, 409 `access_request_closed` once closed. Writes an `access.request.close` audit row.
          */
         post: operations["closeAccessRequest"];
         delete?: never;
@@ -1227,13 +1227,13 @@ export interface paths {
         };
         /**
          * List the tenant's roles
-         * @description Needs 권한 관리 조회 (`access` × `view`) over any node, or ops (role definitions are tenant-wide objects).
+         * @description Needs access management view (`access` × `view`) over any node, or ops (role definitions are tenant-wide objects).
          */
         get: operations["listAccessRoles"];
         put?: never;
         /**
          * Create a role (version 1)
-         * @description Needs 권한 관리 등록·수정 (`access` × `edit`) over the whole tenant, or ops. A non-ops author must
+         * @description Needs access management edit (`access` × `edit`) over the whole tenant, or ops. A non-ops author must
          *     hold every line they add, over the whole tenant (grantor ceiling, GR-7). Levels are normalized:
          *     `edit`, `approve` and `export` add `view` when the domain offers it.
          */
@@ -1338,14 +1338,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 발령 공고, newest first (BE-EMP-UI)
+         * Personnel order notices, newest first (BE-EMP-UI)
          * @description Keyset pages by (issued_at, id), newest first; limit 1..500 (default 200), cursor the previous page's next_cursor (422 for one this list did not return). Needs employee_directory_read org-wide.
          */
         get: operations["listAppointmentNotices"];
         put?: never;
         /**
-         * Issue a 발령 공고 with the next 발령 번호 (BE-EMP-UI, EMP-UI 10)
-         * @description Announces recorded lifecycle events (APPLIED or SCHEDULED, not a RESCIND or exit reversal, not undone) named by exactly one of event_ids (printed in that order) or batch_id (a bulk 발령, in employee order). The server assigns notice_no YYYY-NNNN, per tenant and notice_date year, gapless at issue and never reused; a refused issue takes no number. An event is on one notice only. Issued once, never rewritten; no approval step (#26). Audited appointment_notice.issue. Needs employee_directory_manage org-wide.
+         * Issue a personnel order notice with the next order number (BE-EMP-UI, EMP-UI 10)
+         * @description Announces recorded lifecycle events (APPLIED or SCHEDULED, not a RESCIND or exit reversal, not undone) named by exactly one of event_ids (printed in that order) or batch_id (a bulk personnel order, in employee order). The server assigns notice_no YYYY-NNNN, per tenant and notice_date year, gapless at issue and never reused; a refused issue takes no number. An event is on one notice only. Issued once, never rewritten; no approval step (#26). Audited appointment_notice.issue. Needs employee_directory_manage org-wide.
          */
         post: operations["issueAppointmentNotice"];
         delete?: never;
@@ -1382,8 +1382,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * One 발령 공고 with its lines as render data (BE-EMP-UI)
-         * @description Each line carries the employee's name and 사번 and the lifecycle event as the history serves it (a reader without employee_directory_manage sees it redacted as the history redacts it). Needs employee_directory_read org-wide.
+         * One personnel order notice with its lines as render data (BE-EMP-UI)
+         * @description Each line carries the employee's name and employee number and the lifecycle event as the history serves it (a reader without employee_directory_manage sees it redacted as the history redacts it). Needs employee_directory_read org-wide.
          */
         get: operations["getAppointmentNotice"];
         put?: never;
@@ -1483,7 +1483,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 일괄 취소 — the whole save stops counting, until its month closes; the entries stay as history */
+        /** Batch undo — the whole save stops counting, until its month closes; the entries stay as history */
         post: operations["undoAttendanceBatch"];
         delete?: never;
         options?: never;
@@ -1550,10 +1550,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 근무조 of the caller's 사업장 with members on a date */
+        /** Crews of the caller's workplace with members on a date */
         get: operations["listAttendanceCrews"];
         put?: never;
-        /** Add a 근무조 to a 사업장 */
+        /** Add a crew to a workplace */
         post: operations["createAttendanceCrew"];
         delete?: never;
         options?: never;
@@ -1570,7 +1570,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Put people in this 근무조 from a date (a move ends their previous 근무조 the day before) */
+        /** Put people in this crew from a date (a move ends their previous crew the day before) */
         post: operations["placeAttendanceCrewMembers"];
         delete?: never;
         options?: never;
@@ -1586,7 +1586,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first
+         * One day's board (daily · compact) — the partition ledger, then workplace › department groups with issue rows first
          * @description Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and each person's dated workplace are authorized in the same fact snapshot.
          */
         get: operations["readAttendanceDayBoard"];
@@ -1607,7 +1607,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Save cells in one transaction (≤ 10,000) with one 근거; a refused cell (422 cells_refused, error.details.refused) or a changed base (409 entry_conflict, error.details.conflicts) saves nothing */
+        /** Save cells in one transaction (≤ 10,000) with one basis; a refused cell (422 cells_refused, error.details.refused) or a changed base (409 entry_conflict, error.details.conflicts) saves nothing */
         post: operations["saveAttendanceEntries"];
         delete?: never;
         options?: never;
@@ -1624,7 +1624,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Re-parse and evaluate typed cells (잠정 · 저장 전 미리보기) — each cell OK, UNCHANGED, REFUSED with its code, or CONFLICT — writing nothing */
+        /** Re-parse and evaluate typed cells (provisional · preview before saving) — each cell OK, UNCHANGED, REFUSED with its code, or CONFLICT — writing nothing */
         post: operations["previewAttendanceEntries"];
         delete?: never;
         options?: never;
@@ -1641,7 +1641,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 정정 — a new value replaces the entry with a reason and its 근거; both values stay in the history */
+        /** Correction — a new value replaces the entry with a reason and its basis; both values stay in the history */
         post: operations["correctAttendanceEntry"];
         delete?: never;
         options?: never;
@@ -1658,7 +1658,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 기록 취소 — the day goes back to empty with a reason; the entry stays struck in the history and a 재기록 restores a value */
+        /** Entry void — the day goes back to empty with a reason; the entry stays struck in the history and a re-entry restores a value */
         post: operations["voidAttendanceEntry"];
         delete?: never;
         options?: never;
@@ -1725,10 +1725,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The year's 공휴일 (bundled reference data, read-only) and 약정휴일 */
+        /** The year's public holidays (bundled reference data, read-only) and contractual holidays */
         get: operations["listAttendanceHolidays"];
         put?: never;
-        /** Add a 약정휴일 */
+        /** Add a contractual holiday */
         post: operations["createAttendanceHoliday"];
         delete?: never;
         options?: never;
@@ -1745,7 +1745,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** People and closed months a 약정휴일 would touch, and its overlap with 공휴일, writing nothing */
+        /** People and closed months a contractual holiday would touch, and its overlap with public holidays, writing nothing */
         post: operations["previewAttendanceHoliday"];
         delete?: never;
         options?: never;
@@ -1762,7 +1762,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Stop a 약정휴일 from a year on (사용 중지); earlier years keep it */
+        /** Stop a contractual holiday from a year on; earlier years keep it */
         post: operations["retireAttendanceHoliday"];
         delete?: never;
         options?: never;
@@ -1794,7 +1794,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The signed-in employee's own month of 근무 일정 (read-only) */
+        /** The signed-in employee's own month of work schedule (read-only) */
         get: operations["readOwnAttendanceSchedule"];
         put?: never;
         post?: never;
@@ -1829,7 +1829,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The 월간 근무표 — people × days, 100 people a page by keyset, with the four totals per row
+         * The monthly roster — people × days, 100 people a page by keyset, with the four totals per row
          * @description Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and every person's dated workplace use one fact snapshot.
          */
         get: operations["readAttendanceMonthGrid"];
@@ -1848,10 +1848,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 근무 유형 with how many people each one governs today */
+        /** Work patterns with how many people each one governs today */
         get: operations["listAttendancePatterns"];
         put?: never;
-        /** Add a 근무 유형 (WEEKLY, ROTATION or STAGGERED); refused with its rule when it breaks §50, §54 or §55 */
+        /** Add a work pattern (WEEKLY, ROTATION or STAGGERED); refused with its rule when it breaks §50, §54 or §55 */
         post: operations["createAttendancePattern"];
         delete?: never;
         options?: never;
@@ -1868,7 +1868,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Stop using a 근무 유형 (사용 중지); refused while a current or future layer uses it */
+        /** Stop using a work pattern; refused while a current or future layer uses it */
         post: operations["retireAttendancePattern"];
         delete?: never;
         options?: never;
@@ -1884,7 +1884,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * One person's month (개인 근태 카드) — every day with its plan, entry, recognition and marks, and the entry history (잠정 until closed)
+         * One person's month (personal attendance card) — every day with its plan, entry, recognition and marks, and the entry history (provisional until closed)
          * @description Cedar EmployeeDirectoryRead authorizes every dated workplace in the requested month from one fact snapshot.
          */
         get: operations["readAttendancePersonMonth"];
@@ -1920,10 +1920,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Every layer ever assigned at one scope, newest first, with its state (예정 · 적용 중 · 지난 일정 · 취소됨) */
+        /** Every layer ever assigned at one scope, newest first, with its state (scheduled · in effect · past · cancelled) */
         get: operations["listAttendanceScheduleLayers"];
         put?: never;
-        /** Assign a 근무 유형 to one or more scopes from a date; one transaction, re-checked by the server */
+        /** Assign a work pattern to one or more scopes from a date; one transaction, re-checked by the server */
         post: operations["assignAttendanceSchedule"];
         delete?: never;
         options?: never;
@@ -1972,7 +1972,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 법인 › 사업장 › 부서 with 근무조, the layer each node holds on a date, people counts and the unscheduled count */
+        /** Legal entity › workplace › department with crews, the layer each node holds on a date, people counts and the unscheduled count */
         get: operations["readAttendanceScheduleTree"];
         put?: never;
         post?: never;
@@ -2479,7 +2479,7 @@ export interface paths {
         put?: never;
         /**
          * Start a passkey login (identifier-first or usernameless)
-         * @description Starts an authentication ceremony (decisions #33). With no body (autofill, the usernameless button, an N-1 client) the challenge has an empty allowCredentials list and the user is resolved from the asserted credential at finish. With `identifier` (`<아이디>@<회사 도메인>`) the challenge lists that account's credentials, so a non-resident key signs in; an unknown, passkey-less, deactivated or expired-alias identifier gets the same shape with one synthetic credential id, stable per identifier, so the response never reveals an account. With a bearer token (a step-up) it lists the caller's own credentials. Rate-limited per minute to 300 per client IP (sized for an office behind one NAT address), 30 per `X-Device-Id`, 20 000 overall, and 20 per identifier.
+         * @description Starts an authentication ceremony (decisions #33). With no body (autofill, the usernameless button, an N-1 client) the challenge has an empty allowCredentials list and the user is resolved from the asserted credential at finish. With `identifier` (`<login>@<company domain>`) the challenge lists that account's credentials, so a non-resident key signs in; an unknown, passkey-less, deactivated or expired-alias identifier gets the same shape with one synthetic credential id, stable per identifier, so the response never reveals an account. With a bearer token (a step-up) it lists the caller's own credentials. Rate-limited per minute to 300 per client IP (sized for an office behind one NAT address), 30 per `X-Device-Id`, 20 000 overall, and 20 per identifier.
          */
         post: {
             parameters: {
@@ -2504,7 +2504,7 @@ export interface paths {
                     };
                 };
                 401: components["responses"]["Unauthorized"];
-                /** @description sign_in_id_invalid — the identifier is not `<아이디>@<회사 도메인>` by the sign-in ID rule (syntax only; says nothing about any account). */
+                /** @description sign_in_id_invalid — the identifier is not `<login>@<company domain>` by the sign-in ID rule (syntax only; says nothing about any account). */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -3039,7 +3039,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Effective-dated revision of a registration (status 휴업/폐업 confirmed here) */
+        /** Effective-dated revision of a registration (the suspended / closed status is confirmed here) */
         put: operations["reviseBusinessRegistration"];
         post?: never;
         delete?: never;
@@ -3095,7 +3095,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Correct the 사업자등록번호 with evidence (MR-17) */
+        /** Correct the business registration number with evidence (MR-17) */
         post: operations["correctRegistrationNumber"];
         delete?: never;
         options?: never;
@@ -3130,8 +3130,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 등록증 재발급·정정 — a newly issued certificate and the facts it changed, as one dated, evidenced change
-         * @description The registration's new state (and, when the certificate changed what the 법인 records — 대표자, 법인명, 본점 — the 법인's) is appended from effective_from with the certificate linked as its evidence; the certificate kept before stays, superseded. Setup applies at once; after 운영 시작 the change is governed and audited. Never dated before the registration state in force nor before a scheduled registration or 법인 state (full-state revisions would hide or undo it); a 법인 state in force from a later date moves the 법인's part to that date, with the warning entity_change_from_later_state.
+         * Certificate reissue / correction — a newly issued certificate and the facts it changed, as one dated, evidenced change
+         * @description The registration's new state (and, when the certificate changed what the legal entity records — representative, legal entity name, head office — the legal entity's) is appended from effective_from with the certificate linked as its evidence; the certificate kept before stays, superseded. Setup applies at once; after go-live the change is governed and audited. Never dated before the registration state in force nor before a scheduled registration or legal entity state (full-state revisions would hide or undo it); a legal entity state in force from a later date moves the legal entity's part to that date, with the warning entity_change_from_later_state.
          */
         post: operations["reissueBusinessRegistration"];
         delete?: never;
@@ -3147,7 +3147,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dated history of a 사업자등록 */
+        /** Dated history of a business registration */
         get: operations["listBusinessRegistrationRevisions"];
         put?: never;
         post?: never;
@@ -3182,14 +3182,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List change requests (변경 요청)
-         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed (기다리는 중) or is named on. `assignee=me` lists the requests named to the caller (a 소명 요청 to answer); `assignee=role` is HR-only.
+         * List change requests
+         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed ("waiting") or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only.
          */
         get: operations["listChangeRequests"];
         put?: never;
         /**
          * File a change request to HR
-         * @description BW-17. An employee or branch subject outside the caller's branch scope reads as 404. PROFILE_CORRECTION carries `payload.changes` with fields from name, phone, hire_date, employment_type, position_id, base_pay (applied through BW-18). OTHER requires a note and is flagged for review. ACCESS_EXPLANATION (governance S7 소명 요청) needs org-wide audit_log_read, a USER_ACCOUNT subject and `assignee_user_id` equal to it; POLICY_QUESTION (S5) names the ORGANIZATION.
+         * @description BW-17. An employee or branch subject outside the caller's branch scope reads as 404. PROFILE_CORRECTION carries `payload.changes` with fields from name, phone, hire_date, employment_type, position_id, base_pay (applied through BW-18). OTHER requires a note and is flagged for review. ACCESS_EXPLANATION (governance S7 explanation request) needs org-wide audit_log_read, a USER_ACCOUNT subject and `assignee_user_id` equal to it; POLICY_QUESTION (S5) names the ORGANIZATION.
          */
         post: operations["createChangeRequest"];
         delete?: never;
@@ -3227,12 +3227,12 @@ export interface paths {
         };
         /**
          * The caller's open change sets with their unsaved line counts (BW-38)
-         * @description Each OPEN draft with line_count (「저장 안 됨 · n건」) and stale_count (lines whose employee changed since they were drafted). Takes org-wide employee_directory_manage.
+         * @description Each OPEN draft with line_count ("Not saved · n items") and stale_count (lines whose employee changed since they were drafted). Takes org-wide employee_directory_manage.
          */
         get: operations["listChangeSets"];
         put?: never;
         /**
-         * Open the caller's change set (발령안) for an intent (BW-38)
+         * Open the caller's change set (draft personnel orders) for an intent (BW-38)
          * @description The caller's OPEN draft for the intent, opened when there is none; two tabs opening at once share one draft. A draft is the caller's alone (another user gets 404 for it and opens their own). Takes org-wide employee_directory_manage, the gate of the act a commit performs.
          */
         post: operations["openChangeSet"];
@@ -3297,7 +3297,7 @@ export interface paths {
         put?: never;
         /**
          * Draft or redraft one employee's line in the caller's change set (BW-38)
-         * @description One line per employee per set; a second post for the same employee replaces it. Checked on draft (shape and the single event's per-kind field rules, employee 404, an ACTIVE unit for TRANSFER, an active title for PROMOTE, the reason code); catalog ids of APPOINT / 직급 and the state, no-op, schedule and supersede rules run at commit. The pin is expected_head_version, else the employee's version now. At most 500 lines. A set that is not OPEN is 409 invalid_transition.
+         * @description One line per employee per set; a second post for the same employee replaces it. Checked on draft (shape and the single event's per-kind field rules, employee 404, an ACTIVE unit for TRANSFER, an active title for PROMOTE, the reason code); catalog ids of APPOINT / grade and the state, no-op, schedule and supersede rules run at commit. The pin is expected_head_version, else the employee's version now. At most 500 lines. A set that is not OPEN is 409 invalid_transition.
          */
         post: operations["putChangeSetLine"];
         delete?: never;
@@ -3807,7 +3807,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create a customer (고객) directly
+         * Create a customer directly
          * @description Admin-gated (EquipmentManage, the same feature as the site PATCH). Creates a customer in the caller's org on the caller's branch (an org-wide SUPER_ADMIN/EXECUTIVE lands it on the default HQ branch). The name is required, trimmed, and bounded (≤ 200 characters). A same-name customer on that branch is a 409 conflict — an explicit create is a distinct intent from the importer's idempotent upsert, so it is surfaced, not merged.
          */
         post: operations["createCustomer"];
@@ -3936,8 +3936,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The tenant's 사번 numbering rules with each rule's next number (IMPORT-2)
-         * @description Decisions #25. Most specific first at numbering: 사업장, its 법인, the tenant; no rule: E- + 6 digits. Whether an import numbers rows without a 사번 at all is the registry key import.employee_number.unnumbered (assign_by_rule | queue).
+         * The tenant's employee-number rules with each rule's next number (IMPORT-2)
+         * @description Decisions #25. Most specific first at numbering: workplace, its legal entity, the tenant; no rule: E- + 6 digits. Whether an import numbers rows without an employee number at all is the registry key import.employee_number.unnumbered (assign_by_rule | queue).
          */
         get: operations["listEmployeeNumberRules"];
         /** Set the rule of a scope (IMPORT-2) */
@@ -3958,8 +3958,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The live entries of one 인사카드 section across the tenant (sheet export)
-         * @description One row per live entry with the bound employee of the lowest 사번, its entry id and version, in entry id order. The rows go back into the import sheet with entry_id and expected_version to correct or void entries in bulk. Takes org-wide employee_directory_manage. A restricted section (discipline, disability, veteran) is refused with 409 record_restricted_export_unavailable until the per-export 결재 tier exists.
+         * The live entries of one personnel card section across the tenant (sheet export)
+         * @description One row per live entry with the bound employee of the lowest employee number, its entry id and version, in entry id order. The rows go back into the import sheet with entry_id and expected_version to correct or void entries in bulk. Takes org-wide employee_directory_manage. A restricted section (discipline, disability, veteran) is refused with 409 record_restricted_export_unavailable until the per-export approval tier exists.
          */
         get: operations["listEmployeeRecordSheet"];
         put?: never;
@@ -3980,7 +3980,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Apply a previewed 인사카드 section sheet
+         * Apply a previewed personnel card section sheet
          * @description Bound to the preview's plan_digest; 409 record_import_plan_changed when the rows or the records changed since (preview again). Applies every valid row (partial apply) and reports the rest with their codes. Idempotency-Key (a UUID) is required; a replay answers 200 with the stored report. Audited as one employee.record.import row per written entry plus one employee.record.import_batch row. 403 own_record_forbidden, nothing written, when a row names the caller's own record (linked account, or the same person); take that row out; another holder in scope, or the ops account as the sole holder, records it (people-self-33).
          */
         post: operations["applyEmployeeRecordImport"];
@@ -4000,8 +4000,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Preview a 인사카드 section sheet (writes nothing)
-         * @description The browser parses the sheet and sends typed rows keyed by 사번 (1 to 1000). Each row is CREATE, UPDATE, VOID, UNCHANGED (equal to a live entry, so re-importing a sheet changes nothing) or ERROR with a code (employee_not_found, employee_number_ambiguous, fields_required, invalid_fields, invalid_reason, void_needs_entry, entry_not_found, entry_voided, version_conflict, duplicate_in_sheet). A 병역 row without entry_id corrects the person's live entry. 409 record_section_disabled when the section is off and the sheet has a non-void row (a voids-only sheet runs, as a one-by-one void does). In a restricted section each row passes the Cedar gate for its own subject (ERROR restricted_denied otherwise, e.g. one's own record).
+         * Preview a personnel card section sheet (writes nothing)
+         * @description The browser parses the sheet and sends typed rows keyed by employee number (1 to 1000). Each row is CREATE, UPDATE, VOID, UNCHANGED (equal to a live entry, so re-importing a sheet changes nothing) or ERROR with a code (employee_not_found, employee_number_ambiguous, fields_required, invalid_fields, invalid_reason, void_needs_entry, entry_not_found, entry_voided, version_conflict, duplicate_in_sheet). A military service row without entry_id corrects the person's live entry. 409 record_section_disabled when the section is off and the sheet has a non-void row (a voids-only sheet runs, as a one-by-one void does). In a restricted section each row passes the Cedar gate for its own subject (ERROR restricted_denied otherwise, e.g. one's own record).
          */
         post: operations["previewEmployeeRecordImport"];
         delete?: never;
@@ -4025,7 +4025,7 @@ export interface paths {
         put?: never;
         /**
          * Create an employee and governed employment profile
-         * @description HR directory managers only. Creates the stable employee identity, employment profile, ONBOARD lifecycle event, and audit record atomically. Reusing an idempotency key replays the same payload; a different payload conflicts. hire_date is required and the ONBOARD event takes effect on it; a CONTRACT employment also requires contract_end_date (422 validation otherwise). Without employee_number the server assigns one (E-000001, …). When other employees (not EXITED) in the same org unit have exactly this name, the response carries warnings [{code: same_name_in_unit, employee_ids}]; the employee is created regardless. BW-19: a person already on file (any status) with the same name (spaces ignored) and the same phone or 생년월일 is 409 duplicate_candidate listing them in error.refusals [{employee_id, status, employee_number, basis, remedy}] (remedy rehire for an EXITED one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override naming every candidate to record the governed exception DUPLICATE_NAME_CONFIRMED and create the employee. A 사번 already held is 409 employee_number_taken with error.refusals [{holder: {id, status}}]; a reused idempotency key with another payload is 409 idempotency_key_reused. A namesake hired the same day is only the warning same_name_same_hire_date. A future hire_date creates the employee 입사 예정 (status PRE_HIRE) with a SCHEDULED ONBOARD the lifecycle runner applies on that day. MR-22: the 법인 · 사업장 assignment is written in the same transaction from hire_date: the workplace_id asked for (its 법인 follows), else the 사업장 the org unit sits in (its own placement or its nearest ancestor's); neither is 미배치 (no assignment). Cause SETUP_BIND while the tenant is in SETUP, HIRE after. 422 workplace_required (a legal_entity_id without workplace_id), org_unit_at_other_workplace, workplace_of_other_entity, workplace_not_open; nothing is written then.
+         * @description HR directory managers only. Creates the stable employee identity, employment profile, ONBOARD lifecycle event, and audit record atomically. Reusing an idempotency key replays the same payload; a different payload conflicts. hire_date is required and the ONBOARD event takes effect on it; a CONTRACT employment also requires contract_end_date (422 validation otherwise). Without employee_number the server assigns one (E-000001, …). When other employees (not EXITED) in the same org unit have exactly this name, the response carries warnings [{code: same_name_in_unit, employee_ids}]; the employee is created regardless. BW-19: a person already on file (any status) with the same name (spaces ignored) and the same phone or date of birth is 409 duplicate_candidate listing them in error.refusals [{employee_id, status, employee_number, basis, remedy}] (remedy rehire for an EXITED one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override naming every candidate to record the governed exception DUPLICATE_NAME_CONFIRMED and create the employee. An employee number already held is 409 employee_number_taken with error.refusals [{holder: {id, status}}]; a reused idempotency key with another payload is 409 idempotency_key_reused. A namesake hired the same day is only the warning same_name_same_hire_date. A future hire_date creates the employee as a pending hire (status PRE_HIRE) with a SCHEDULED ONBOARD the lifecycle runner applies on that day. MR-22: the legal entity · workplace assignment is written in the same transaction from hire_date: the workplace_id asked for (its legal entity follows), else the workplace the org unit sits in (its own placement or its nearest ancestor's); neither is unplaced (no assignment). Cause SETUP_BIND while the tenant is in SETUP, HIRE after. 422 workplace_required (a legal_entity_id without workplace_id), org_unit_at_other_workplace, workplace_of_other_entity, workplace_not_open; nothing is written then.
          */
         post: operations["createEmployee"];
         delete?: never;
@@ -4041,7 +4041,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Who a 사번 finds — its holder, else the person whose earlier 사번 it was (IMPORT-2) */
+        /** Who an employee number finds — its holder, else the person whose earlier employee number it was (IMPORT-2) */
         get: operations["findEmployeeByNumber"];
         put?: never;
         post?: never;
@@ -4061,7 +4061,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Commit a previewed bulk 정정 as one job (MR-27)
+         * Commit a previewed bulk correction as one job (MR-27)
          * @description The preview body plus preview_digest (and step_up when the preview said step_up_required). One transaction: the employees are locked in id order and planned again; if the plan differs from the preview, 409 rows_changed_since_preview carries the fresh preview in error.refusals and nothing is written. Otherwise CHANGE and PENDING rows are written through the correction ledger (employee_corrections.batch_id = the job), a high-risk field filed as one PROFILE_CORRECTION request per employee (payload.bulk_correction_id) or applied by the step-up-verified sole holder with review_required; REFUSED and UNCHANGED rows are reported, not written. One employee.correct audit per written employee and one employee.correct.bulk for the job.
          */
         post: operations["commitBulkEmployeeCorrection"];
@@ -4081,8 +4081,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Preview a bulk 정정 of scalar employee fields (MR-27)
-         * @description Grid or 「필터와 일치하는 n명 모두」. Send either selection + changes (one set of values for every employee the server selection matches; status absent selects everyone but EXITED) or rows (each employee with its own values and optional expected_updated_at pin). Nothing is written and no row is locked. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk field goes to a second person), UNCHANGED (every value already recorded) or REFUSED with the failed precondition (stale_record, exit_date_needs_exit, employee_number_in_use, employee_merged, employee_correction_sole_holder_refused, a field's validation, ...), and the exact counts. preview_digest binds the commit; preview_id is the job id and the sole holder's step-up object. Needs employee_directory_manage org-wide.
+         * Preview a bulk correction of scalar employee fields (MR-27)
+         * @description Grid or "all n people matching the filter". Send either selection + changes (one set of values for every employee the server selection matches; status absent selects everyone but EXITED) or rows (each employee with its own values and optional expected_updated_at pin). Nothing is written and no row is locked. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk field goes to a second person), UNCHANGED (every value already recorded) or REFUSED with the failed precondition (stale_record, exit_date_needs_exit, employee_number_in_use, employee_merged, employee_correction_sole_holder_refused, a field's validation, ...), and the exact counts. preview_digest binds the commit; preview_id is the job id and the sole holder's step-up object. Needs employee_directory_manage org-wide.
          */
         post: operations["previewBulkEmployeeCorrection"];
         delete?: never;
@@ -4099,7 +4099,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Read a committed bulk 정정 job (MR-27)
+         * Read a committed bulk correction job (MR-27)
          * @description Field names and counts; the values are in the ledger rows that name the job.
          */
         get: operations["getBulkEmployeeCorrection"];
@@ -4120,7 +4120,7 @@ export interface paths {
         };
         /**
          * Export standardized employee directory CSV
-         * @description Exports canonical employee fields only. Raw import ledger values, payroll data, account numbers, resident identifiers, and import provenance are not included. Takes the GET /api/v1/employees filters and every matching row (no cap), streamed as UTF-8 with a BOM and Cache-Control no-store. export_purpose (다운로드 용도) is required; the download is logged (excel_export_logs and an employee.export 접속기록 event with the row count) before the first byte, and a refusal is logged as employee.export_refused.
+         * @description Exports canonical employee fields only. Raw import ledger values, payroll data, account numbers, resident identifiers, and import provenance are not included. Takes the GET /api/v1/employees filters and every matching row (no cap), streamed as UTF-8 with a BOM and Cache-Control no-store. export_purpose (the download purpose) is required; the download is logged (excel_export_logs and an employee.export access log event with the row count) before the first byte, and a refusal is logged as employee.export_refused.
          */
         get: operations["exportEmployeesCsv"];
         put?: never;
@@ -4183,8 +4183,8 @@ export interface paths {
         /**
          * Preview an employee workbook through the governed import ledger
          * @description Creates an immutable tenant-scoped raw import run and preserves every non-empty source row except restricted columns (resident registration number, pay, bank account, phone and similar) and any resident-registration-number-shaped value, which are dropped before anything is stored or returned; such columns are listed in `columns` as `restricted` only. Location values are masked in the response. Returns a column-to-employee schema mapping preview. No employee rows are written until dry-run and apply are completed.
-         *     IMPORT-2 (decisions #25): any layout. The upload is read under the registry caps (import.upload.max_mib: 413 import_file_too_large; import.zip.max_entries, import.zip.max_expanded_mib counted while inflating, import.zip.max_ratio, import.sheet.max_grid_cells, import.workbook.max_cells: 422 workbook_too_many_entries, workbook_expands_too_far, workbook_compression_ratio, sheet_grid_too_large, workbook_too_many_cells, workbook_corrupt, workbook_protected, workbook_not_xlsx). Every sheet is detected on its own — the operator's mapping, then the tenant's remembered header labels, then the catalog aliases; a sheet with no 성명 header is `needs_mapping` (sheets[].header_candidates), stores no cell and is a blocking 확인 필요 item until it is mapped or skipped. A 주민등록번호 column is sealed apart (never in a raw row) when the server has its vault keys, dropped otherwise (rrn_unavailable). Labels the operator maps are remembered for the tenant.
-         *     BE-MIG (walkthrough W12): a totals / footer row (a 합계/총계/소계/계/total cell, a 성명 cell that is empty, a totals word or a count, and no 입사일) is kept PRESERVED, never a person (non-blocking summary_row_skipped). The phone column (휴대폰, 휴대전화, 핸드폰, 연락처, 전화번호, phone, mobile → target phone) is read as E.164 and staged apart, never in a raw row or a preview; apply stores it on the employment profile (a cell that is not a phone number: non-blocking phone_invalid). A sheet skipped once is skipped again by name (sheets[].status skipped, source remembered) until mapping.sheets[name].skip is false.
+         *     IMPORT-2 (decisions #25): any layout. The upload is read under the registry caps (import.upload.max_mib: 413 import_file_too_large; import.zip.max_entries, import.zip.max_expanded_mib counted while inflating, import.zip.max_ratio, import.sheet.max_grid_cells, import.workbook.max_cells: 422 workbook_too_many_entries, workbook_expands_too_far, workbook_compression_ratio, sheet_grid_too_large, workbook_too_many_cells, workbook_corrupt, workbook_protected, workbook_not_xlsx). Every sheet is detected on its own — the operator's mapping, then the tenant's remembered header labels, then the catalog aliases; a sheet with no name header is `needs_mapping` (sheets[].header_candidates), stores no cell and is a blocking needs-checking item until it is mapped or skipped. A resident registration number column is sealed apart (never in a raw row) when the server has its vault keys, dropped otherwise (rrn_unavailable). Labels the operator maps are remembered for the tenant.
+         *     BE-MIG (walkthrough W12): a totals / footer row (a 합계/총계/소계/계/total cell, a name cell that is empty, a totals word or a count, and no hire date) is kept PRESERVED, never a person (non-blocking summary_row_skipped). The phone column (휴대폰, 휴대전화, 핸드폰, 연락처, 전화번호, phone, mobile → target phone) is read as E.164 and staged apart, never in a raw row or a preview; apply stores it on the employment profile (a cell that is not a phone number: non-blocking phone_invalid). A sheet skipped once is skipped again by name (sheets[].status skipped, source remembered) until mapping.sheets[name].skip is false.
          */
         post: operations["previewEmployeeImport"];
         delete?: never;
@@ -4201,8 +4201,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The 미배치 queue — current people without a 사업장 or without the 부서 their file named
-         * @description BE-MIG (walkthrough W03, spec E8) — every current person with no 사업장 (reason no_place, or workplace_unknown when their 부서 sits under no open 사업장), or placed at a 사업장 but without the 부서 their import file named (unit_unknown, source_org_unit is the file's text). count is the whole queue (the roster chip); items are keyset-paged by creation. run_id narrows it to the people one import inserted. 403 without org-wide employee_directory_manage; 422 for a cursor this list did not issue.
+         * The unplaced queue — current people without a workplace or without the department their file named
+         * @description BE-MIG (walkthrough W03, spec E8) — every current person with no workplace (reason no_place, or workplace_unknown when their department sits under no open workplace), or placed at a workplace but without the department their import file named (unit_unknown, source_org_unit is the file's text). count is the whole queue (the roster chip); items are keyset-paged by creation. run_id narrows it to the people one import inserted. 403 without org-wide employee_directory_manage; 422 for a cursor this list did not issue.
          */
         get: operations["listEmployeeImportUnplaced"];
         put?: never;
@@ -4228,7 +4228,7 @@ export interface paths {
         put?: never;
         /**
          * Apply a dry-run employee import run, bound to its dry run
-         * @description BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry run's is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing people only get the fields import may write (업무, 직위, 근무지, an empty 생년월일): never name, status, 퇴직일, 부서 or 법인. New people are created ACTIVE, PRE_HIRE (future 입사일, ONBOARD scheduled) or EXITED (former employees, marked migrated). A replay of the APPLIED run with the same digest returns the stored report. Preserved rows remain raw-ledger evidence only.
+         * @description BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry run's is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing people only get the fields import may write (job duties, title, work location, an empty date of birth): never name, status, exit date, department or legal entity. New people are created ACTIVE, PRE_HIRE (future hire date, ONBOARD scheduled) or EXITED (former employees, marked migrated). A replay of the APPLIED run with the same digest returns the stored report. Preserved rows remain raw-ledger evidence only.
          *     BE-MIG W11 (decisions #27, #28) — with Prefer respond-async every refusal above is still immediate, plus 422 import_row_limit (current-people rows over import.apply.max_rows, former employees apart, refusals [{max, rows}]) and 409 apply_in_progress (a job of this run with another digest is running); then a run that finishes within 2 s answers its 200 report (or its refusal), a longer one 202 with the job (the same digest again gets the same job; an applied and settled run gets its 200 report; RFC 7240). The job settles in chunks of 100 rows, each one transaction with a data_import.apply.progress audit on the run (the import_run realtime event); read it with GET. A job whose driver died is resumed by the schedule loop, or fails apply_interrupted when it stopped before writing (send it again). 503 import_apply_busy with Retry-After when the server already runs its apply drivers. Without the header the same job runs inline and the report is returned (200); 409 apply_in_progress while another driver runs it. Either way the driver outlives the request: a dropped connection or a request timeout never stops an apply half way (read the run with GET).
          */
         post: operations["applyEmployeeImport"];
@@ -4249,9 +4249,9 @@ export interface paths {
         put?: never;
         /**
          * Plan every candidate row against the live roster without writing employees
-         * @description BW-10 6: one planned row per candidate row — insert, update (field diff), unchanged, excluded (BW-07 import_exclude reason), refused (refusal_code, refusal_field) or unresolved_identity (candidates). Identity is the 사번 only; a row without one that resembles people on file waits for an identity pick. MR-7: a unit name that binds no unit is never a question that blocks apply: the person comes in 미배치 (unit_name keeps the name); a new current person is placed at the 사업장 of their unit, else of the 사업장 text (workplace_name when it names none; a unit and a text that disagree are refused workplace_conflict); 고용형태 creates the employment profile (a code as is, a label through employment_type_map; unmapped is deferred value_map) and fills an empty one of a person on file (a different one is deferred correction). Apply records every change to a person on file in the BW-18 correction ledger (reason_code IMPORT_APPLY, import_run_id), and a replayed apply completes what an interrupted one left, never twice. Call again with decisions until unsettled_rows is 0; each call replaces the stored plan and its dry_run_digest.
-         *     IMPORT-2 (decisions #25, #26): identity is the 사번 (or an alias of an earlier 사번), then the 주민등록번호 keyed hash, then namesakes as candidates only (matched_by); a 사번 and an RRN naming two people is identity_conflict, an RRN differing from the stored one identity_mismatch (field rrn). A stated 재직상태 is a setup fact of a new person (휴직 with leave_start_date, leave_type and, for 육아휴직/출산전후휴가, a 복직예정일); unknown texts map through status_map / leave_type_map. New people without a 사번 get the tenant rule's next number here (employee_number_source rule) unless import.employee_number.unnumbered is queue (사번 미부여, employee_numbers answers). Unanswered value maps are filled from the tenant's memory (remembered); review is the counted 확인 필요 queue, and apply refuses while review.blocking > 0. A run older than import.staged_identity.ttl_days is 409 import_run_expired (dry run and apply): its sealed 주민등록번호 rows are purged, so upload the file again.
-         *     BE-MIG (walkthrough W02, W03, W05) — 고용형태 labels with one meaning map without asking (정규/정규직/상용 → REGULAR, 계약/계약직/기간제 → CONTRACT, 일용 → DAILY …; listed in auto_mapped, overridable); any other label is a blocking employment_type_unmapped item (choices — the likely code first, then every code; null leaves it empty, counted in employment_type_empty_rows). A unit or 사업장 text that binds nothing exactly gets candidates (whitespace, width, separators, 공장/지점-style suffixes, the last segment of a path) — offered, never bound; the people come in 미배치, counted in unplaced. Dates also read 2011년 4월 10일. A group_exclusions answer leaves out every row with that refusal (review.groups lists them). 409 apply_in_progress while the run's apply job runs; 422 import_row_limit over import.apply.max_rows.
+         * @description BW-10 6: one planned row per candidate row — insert, update (field diff), unchanged, excluded (BW-07 import_exclude reason), refused (refusal_code, refusal_field) or unresolved_identity (candidates). Identity is the employee number only; a row without one that resembles people on file waits for an identity pick. MR-7: a unit name that binds no unit is never a question that blocks apply: the person comes in as unplaced (unit_name keeps the name); a new current person is placed at the workplace of their unit, else of the workplace text (workplace_name when it names none; a unit and a text that disagree are refused workplace_conflict); the employment type creates the employment profile (a code as is, a label through employment_type_map; unmapped is deferred value_map) and fills an empty one of a person on file (a different one is deferred correction). Apply records every change to a person on file in the BW-18 correction ledger (reason_code IMPORT_APPLY, import_run_id), and a replayed apply completes what an interrupted one left, never twice. Call again with decisions until unsettled_rows is 0; each call replaces the stored plan and its dry_run_digest.
+         *     IMPORT-2 (decisions #25, #26): identity is the employee number (or an alias of an earlier employee number), then the resident registration number keyed hash, then namesakes as candidates only (matched_by); an employee number and an RRN naming two people is identity_conflict, an RRN differing from the stored one identity_mismatch (field rrn). A stated employment status is a setup fact of a new person (leave of absence with leave_start_date, leave_type and, for parental or maternity leave, an expected return date); unknown texts map through status_map / leave_type_map. New people without an employee number get the tenant rule's next number here (employee_number_source rule) unless import.employee_number.unnumbered is queue (no employee number assigned, employee_numbers answers). Unanswered value maps are filled from the tenant's memory (remembered); review is the counted needs-checking queue, and apply refuses while review.blocking > 0. A run older than import.staged_identity.ttl_days is 409 import_run_expired (dry run and apply): its sealed resident registration number rows are purged, so upload the file again.
+         *     BE-MIG (walkthrough W02, W03, W05) — employment type labels with one meaning map without asking (정규/정규직/상용 → REGULAR, 계약/계약직/기간제 → CONTRACT, 일용 → DAILY …; listed in auto_mapped, overridable); any other label is a blocking employment_type_unmapped item (choices — the likely code first, then every code; null leaves it empty, counted in employment_type_empty_rows). A unit or workplace text that binds nothing exactly gets candidates (whitespace, width, separators, 공장/지점 (factory/branch)-style suffixes, the last segment of a path) — offered, never bound; the people come in as unplaced, counted in unplaced. Dates also read 2011년 4월 10일. A group_exclusions answer leaves out every row with that refusal (review.groups lists them). 409 apply_in_progress while the run's apply job runs; 422 import_row_limit over import.apply.max_rows.
          */
         post: operations["dryRunEmployeeImport"];
         delete?: never;
@@ -4268,8 +4268,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 이관 확인 of an applied import (BE-EMP-UI; spec E7-reconcile)
-         * @description The server's account of an applied run - per-sheet funnels from the run's own rows (read, preserved, errors, candidates) and plan (inserted, updated, unchanged, excluded); 배치 대조 per 사업장 against the live roster (current people only, null workplace = 미배치); the per-row verification counts; and the sign-off, if any. 409 import_not_applied before the apply, 404 for an unknown run. Needs employee_directory_manage org-wide (the import's gate).
+         * Migration check of an applied import (BE-EMP-UI; spec E7-reconcile)
+         * @description The server's account of an applied run - per-sheet funnels from the run's own rows (read, preserved, errors, candidates) and plan (inserted, updated, unchanged, excluded); placement reconciliation per workplace against the live roster (current people only, null workplace = unplaced); the per-row verification counts; and the sign-off, if any. 409 import_not_applied before the apply, 404 for an unknown run. Needs employee_directory_manage org-wide (the import's gate).
          */
         get: operations["getEmployeeImportReconcile"];
         put?: never;
@@ -4288,8 +4288,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The 이관 확인 rows of an applied import (BE-EMP-UI; spec E7-row)
-         * @description One row per planned row, keyset by (sheet, row); state filter UNCHECKED, CONFIRMED or NEEDS_CHECK (case-insensitive). Name and 사번 only - never a raw cell, never the 주민등록번호. limit 1..500 (default 100).
+         * The migration check rows of an applied import (BE-EMP-UI; spec E7-row)
+         * @description One row per planned row, keyset by (sheet, row); state filter UNCHECKED, CONFIRMED or NEEDS_CHECK (case-insensitive). Name and employee number only - never a raw cell, never the resident registration number. limit 1..500 (default 100).
          */
         get: operations["listEmployeeImportReconcileRows"];
         put?: never;
@@ -4309,7 +4309,7 @@ export interface paths {
         };
         get?: never;
         /**
-         * Mark one import row 확인함 or 확인 필요 (BE-EMP-UI)
+         * Mark one import row checked or needs checking (BE-EMP-UI)
          * @description Versioned (expected_version = the row's version as read, 0 when never set). Audited data_import.reconcile_check. 409 import_not_applied, import_signed_off (the run is frozen after its sign-off; error.refusals carries the sign-off), stale_revision (error.refusals [{source_key, current_version}]); 404 for a row the run did not plan; 422 for another state or a note over 1000.
          */
         put: operations["setEmployeeImportReconcileRow"];
@@ -4351,7 +4351,7 @@ export interface paths {
         put?: never;
         /**
          * Record one TRANSFER, PROMOTE, APPOINT, EMPLOYMENT_TYPE_CHANGE or CONTRACT_RENEWAL for many employees, all or nothing
-         * @description Bulk appointment (일괄 발령). Every listed employee is locked and validated by the single-event rules of POST /api/v1/employees/{id}/lifecycle-events (state, no-op, signoffs) before anything is written; an effective_date after today (KST) schedules every event (state SCHEDULED) exactly as the single-event endpoint does. If any employee is refused, nothing is recorded and the 422 names every refused employee in error.refusals. Otherwise one lifecycle event per employee is recorded, all sharing one batch_id, each with its own employee.lifecycle.record (or .schedule) audit, plus one employee.lifecycle.bulk audit for the batch. The employees are named by exactly one of employee_ids (up to 500), lines (TRANSFER only, up to 500, each with its own to_org_unit_id; the batch-level to_org_unit_id is then absent), or selection (every employee the GET /api/v1/employees filters admit under the caller's scope, minus exclude_employee_ids, up to 3,000). A selection whose resolved count differs from expected_count is 409 bulk_selection_changed and records nothing. With Prefer respond-async (CAP-04, decisions #28) the batch is a job: the request's own checks (422 validation) answer at once, then 202 returns the job and its Location; the batch runs exactly as above (one transaction, all or nothing) and its outcome is read with GET /api/v1/employees/lifecycle-events/bulk/jobs/{job_id} and announced by the audited employee.lifecycle.bulk.progress steps.
+         * @description Bulk personnel order. Every listed employee is locked and validated by the single-event rules of POST /api/v1/employees/{id}/lifecycle-events (state, no-op, signoffs) before anything is written; an effective_date after today (KST) schedules every event (state SCHEDULED) exactly as the single-event endpoint does. If any employee is refused, nothing is recorded and the 422 names every refused employee in error.refusals. Otherwise one lifecycle event per employee is recorded, all sharing one batch_id, each with its own employee.lifecycle.record (or .schedule) audit, plus one employee.lifecycle.bulk audit for the batch. The employees are named by exactly one of employee_ids (up to 500), lines (TRANSFER only, up to 500, each with its own to_org_unit_id; the batch-level to_org_unit_id is then absent), or selection (every employee the GET /api/v1/employees filters admit under the caller's scope, minus exclude_employee_ids, up to 3,000). A selection whose resolved count differs from expected_count is 409 bulk_selection_changed and records nothing. With Prefer respond-async (CAP-04, decisions #28) the batch is a job: the request's own checks (422 validation) answer at once, then 202 returns the job and its Location; the batch runs exactly as above (one transaction, all or nothing) and its outcome is read with GET /api/v1/employees/lifecycle-events/bulk/jobs/{job_id} and announced by the audited employee.lifecycle.bulk.progress steps.
          */
         post: operations["createBulkEmployeeLifecycleEvents"];
         delete?: never;
@@ -4430,8 +4430,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 근로자 명부 항목 import profile and bulk update
-         * @description MR-23. Org-wide employee_directory_manage. The browser parses the sheet (no file and no 주민등록번호 reaches the server) and sends one row per employee, by `employee_id` or a `employee_number` that names exactly one record, carrying `sex`, `address`, `careers` and `register_note` and the 인적사항 profile's `name_hanja`, `name_en`, `nationality`, `personal_email` and `emergency_contacts` (MR-34), plus a first `exit_reason` or `group_service_start_date` (changing a recorded one is per person, PATCH /employees/{id}; a `photo` is uploaded per person). `dry_run` returns what each row would change and why a row cannot be taken. The apply is all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and writes one 정정 ledger row per changed item; an unchanged value writes nothing. At most 500 rows.
+         * Worker register items import profile and bulk update
+         * @description MR-23. Org-wide employee_directory_manage. The browser parses the sheet (no file and no resident registration number reaches the server) and sends one row per employee, by `employee_id` or a `employee_number` that names exactly one record, carrying `sex`, `address`, `careers` and `register_note` and the personal details profile's `name_hanja`, `name_en`, `nationality`, `personal_email` and `emergency_contacts` (MR-34), plus a first `exit_reason` or `group_service_start_date` (changing a recorded one is per person, PATCH /employees/{id}; a `photo` is uploaded per person). `dry_run` returns what each row would change and why a row cannot be taken. The apply is all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and writes one correction ledger row per changed item; an unchanged value writes nothing. At most 500 rows.
          */
         post: operations["bulkCorrectRegisterFacts"];
         delete?: never;
@@ -4451,7 +4451,7 @@ export interface paths {
         put?: never;
         /**
          * Apply a previewed renumbering as one job (IMPORT-2)
-         * @description Every old 사번 stays its person's alias. SETUP only for now (409 phase_not_setup after 운영 시작; a governed renumbering is not built — 사번 변경 of one person stays available). 409 renumber_preview_stale (people or numbers moved since the preview), renumber_conflicts; 422 reason or effective_date_in_future.
+         * @description Every old employee number stays its person's alias. SETUP only for now (409 phase_not_setup after go-live; a governed renumbering is not built — an employee number change of one person stays available). 409 renumber_preview_stale (people or numbers moved since the preview), renumber_conflicts; 422 reason or effective_date_in_future.
          */
         post: operations["applyEmployeeRenumber"];
         delete?: never;
@@ -4470,8 +4470,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Old → new 사번 of a scope under a new scheme, with conflicts (IMPORT-2)
-         * @description Decisions #25 bulk renumbering. The current people of the scope (재직, 휴직, 입사 예정; former employees keep their numbers) from 1 by 입사일, then current 사번. A new number someone outside the line holds or held is a conflict (number_taken). preview_digest binds the apply.
+         * Old → new employee number of a scope under a new scheme, with conflicts (IMPORT-2)
+         * @description Decisions #25 bulk renumbering. The current people of the scope (employed, on leave of absence, pending hire; former employees keep their numbers) from 1 by hire date, then current employee number. A new number someone outside the line holds or held is a conflict (number_taken). preview_digest binds the apply.
          */
         post: operations["previewEmployeeRenumber"];
         delete?: never;
@@ -4491,7 +4491,7 @@ export interface paths {
         put?: never;
         /**
          * Restore the old numbers of a renumbering, during SETUP only (IMPORT-2)
-         * @description 409 phase_not_setup after 운영 시작, renumber_already_undone, renumber_undo_conflict (a 사번 of the batch changed since).
+         * @description 409 phase_not_setup after go-live, renumber_already_undone, renumber_undo_conflict (an employee number of the batch changed since).
          */
         post: operations["undoEmployeeRenumber"];
         delete?: never;
@@ -4508,8 +4508,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The 「취소된 등록」 list (MR-26)
-         * @description Every voided registration, newest first (at most 500), with its tombstone facts; name reads (파기됨) once the personal data is destroyed. Org-wide employee_directory_manage. A personal-data list read, recorded in the 접속기록 (employee.list_read, view = voided).
+         * The "cancelled registrations" list (MR-26)
+         * @description Every voided registration, newest first (at most 500), with its tombstone facts; name reads (파기됨) ("destroyed") once the personal data is destroyed. Org-wide employee_directory_manage. A personal-data list read, recorded in the access log (employee.list_read, view = voided).
          */
         get: operations["listVoidedEmployees"];
         put?: never;
@@ -4536,14 +4536,14 @@ export interface paths {
         post?: never;
         /**
          * Delete a mistaken registration during SETUP (MR-26)
-         * @description Before 운영 시작 only (409 phase_not_setup after it; use POST /api/v1/employees/{id}/void). Org-wide employee_directory_manage. The record is voided and tombstoned in the same transaction: it leaves every read (lists, facets, export, org chart, detail 404), its 사번 is freed, its personal data (name, contact, birth date, pay, the correction ledger's values, the person's name history) is destroyed, and the ids, dates and void facts stay as the tombstone listed by GET /api/v1/employees/voided. Scheduled 발령 are cancelled and the 법인 · 사업장 assignment is withdrawn. An EXITED person within the 근로자 명부 period (퇴직일 + retention.labor.employee_register years, 근로기준법 §42, 시행령 §22②1) needs register_kept = true (409 exited_register_confirmation_required). Audited as employee.setup_delete with ids, 사번 and the reason only.
+         * @description Before go-live only (409 phase_not_setup after it; use POST /api/v1/employees/{id}/void). Org-wide employee_directory_manage. The record is voided and tombstoned in the same transaction: it leaves every read (lists, facets, export, org chart, detail 404), its employee number is freed, its personal data (name, contact, birth date, pay, the correction ledger's values, the person's name history) is destroyed, and the ids, dates and void facts stay as the tombstone listed by GET /api/v1/employees/voided. Scheduled personnel orders are cancelled and the legal entity · workplace assignment is withdrawn. An EXITED person within the worker register period (exit date + retention.labor.employee_register years, Labor Standards Act §42, Enforcement Decree §22②1) needs register_kept = true (409 exited_register_confirmation_required). Audited as employee.setup_delete with ids, employee number and the reason only.
          */
         delete: operations["setupDeleteEmployee"];
         options?: never;
         head?: never;
         /**
-         * Correct employee master data (정정)
-         * @description BW-18, MR-8: the one correction path for every scalar employee field. Org-wide employee_directory_manage only; a branch-scoped caller files a PROFILE_CORRECTION change request instead. Each changed field is recorded as a 정정 in the ledger (old and new value, reason). `name`, `phone`, `job`, `work_email`, `id_type` and typed catalog ids (`grade_id`, `job_title_id`, `position_kind_id`, `job_id`, `job_family_id`) apply at once. Catalog ids must name an active entry of their kind in the caller's tenant (422 `job_title_unknown`); corrections preserve before/after ids in the ledger and create no lifecycle event. `hire_date`, `exit_date`, `birth_date`, `employee_number`, `employment_type`, `base_pay` (whole won), `pay_unit` and `probation_end_date` go to a second person through a BW-17 change request (202 with `pending_request`) when another eligible holder exists; a sole holder applies them with `review_required` after an EXCEPTION_DECIDE passkey step-up bound to this employee id with payload_hash = SHA-256 hex of `changes` serialized with sorted keys and no whitespace (401 step_up_required without, step_up_failed when it does not verify), unless `authz.sole_holder.mode` is `refuse` (403). Cedar change_request_decide decides the sole holder's self-decision. A field that holds no value yet is a first recording and applies at once. Only `job`, `work_email` and `probation_end_date` may be cleared (null). `position_id` (a promotion or transfer) and the placement text twins `company`, `worksite_name`, `worksite_address` and `org_unit` (the employment assignment: a re-bind or a TRANSFER) are refused with 409 `employee_correction_unavailable`. `exit_date` is corrected only on an EXITED record (409 `exit_date_needs_exit`) that has no live exit case (409 `exit_case_owns_exit_date`), on or after the hire date. A taken `employee_number` is 409 `employee_number_in_use`; `pay_unit` on a record without one needs `base_pay` in the same change (422). A record without an employment profile is 409 `employee_profile_missing` for profile fields; a merged record is 409 `employee_merged`. 근로자 명부 items (MR-23; 근로기준법 §41, 시행령 §20 2·4·5·8·9호): `sex`, `address`, `careers` and `register_note` apply at once and may be cleared (null = 미입력; `careers: []` = 「경력 없음」); `exit_reason` (퇴직 사유, an exit_reason catalog code, never cleared) applies at once when none is recorded and otherwise takes the high-risk path. It is recorded only on an EXITED record (409 `employee_not_exited`) whose exit no live exit case owns (409 `exit_case_owns_exit_reason`). Read them with GET /employees/{id}/register-facts. 인적사항 extras (MR-34): `name_hanja`, `name_en`, `nationality`, `personal_email`, `emergency_contacts` and `photo` apply at once and may be cleared (null = 미입력); `group_service_start_date` (그룹 입사일, 근속 기산일) applies at once when none is recorded and otherwise takes the high-risk path, and is never after the 입사일 (422). `photo` is the id of a confirmed upload of this employee (409 `photo_upload_unconfirmed`, 404 `photo_upload_not_found`). Read them with GET /employees/{id}/personal-facts.
+         * Correct employee master data
+         * @description BW-18, MR-8: the one correction path for every scalar employee field. Org-wide employee_directory_manage only; a branch-scoped caller files a PROFILE_CORRECTION change request instead. Each changed field is recorded as a correction in the ledger (old and new value, reason). `name`, `phone`, `job`, `work_email`, `id_type` and typed catalog ids (`grade_id`, `job_title_id`, `position_kind_id`, `job_id`, `job_family_id`) apply at once. Catalog ids must name an active entry of their kind in the caller's tenant (422 `job_title_unknown`); corrections preserve before/after ids in the ledger and create no lifecycle event. `hire_date`, `exit_date`, `birth_date`, `employee_number`, `employment_type`, `base_pay` (whole won), `pay_unit` and `probation_end_date` go to a second person through a BW-17 change request (202 with `pending_request`) when another eligible holder exists; a sole holder applies them with `review_required` after an EXCEPTION_DECIDE passkey step-up bound to this employee id with payload_hash = SHA-256 hex of `changes` serialized with sorted keys and no whitespace (401 step_up_required without, step_up_failed when it does not verify), unless `authz.sole_holder.mode` is `refuse` (403). Cedar change_request_decide decides the sole holder's self-decision. A field that holds no value yet is a first recording and applies at once. Only `job`, `work_email` and `probation_end_date` may be cleared (null). `position_id` (a promotion or transfer) and the placement text twins `company`, `worksite_name`, `worksite_address` and `org_unit` (the employment assignment: a re-bind or a TRANSFER) are refused with 409 `employee_correction_unavailable`. `exit_date` is corrected only on an EXITED record (409 `exit_date_needs_exit`) that has no live exit case (409 `exit_case_owns_exit_date`), on or after the hire date. A taken `employee_number` is 409 `employee_number_in_use`; `pay_unit` on a record without one needs `base_pay` in the same change (422). A record without an employment profile is 409 `employee_profile_missing` for profile fields; a merged record is 409 `employee_merged`. Worker register items (MR-23; Labor Standards Act §41, Enforcement Decree §20 items 2, 4, 5, 8 and 9): `sex`, `address`, `careers` and `register_note` apply at once and may be cleared (null = not entered; `careers: []` = "no prior experience"); `exit_reason` (exit reason, an exit_reason catalog code, never cleared) applies at once when none is recorded and otherwise takes the high-risk path. It is recorded only on an EXITED record (409 `employee_not_exited`) whose exit no live exit case owns (409 `exit_case_owns_exit_reason`). Read them with GET /employees/{id}/register-facts. Personal details extras (MR-34): `name_hanja`, `name_en`, `nationality`, `personal_email`, `emergency_contacts` and `photo` apply at once and may be cleared (null = not entered); `group_service_start_date` (group hire date, the service start date) applies at once when none is recorded and otherwise takes the high-risk path, and is never after the hire date (422). `photo` is the id of a confirmed upload of this employee (409 `photo_upload_unconfirmed`, 404 `photo_upload_not_found`). Read them with GET /employees/{id}/personal-facts.
          */
         patch: operations["correctEmployee"];
         trace?: never;
@@ -4563,7 +4563,7 @@ export interface paths {
         put?: never;
         /**
          * Record a contract row (append-only)
-         * @description Records a new contract, a renewal, or (with supersedes_id) a correction of an earlier row. Rows are never edited. Idempotency-Key (a UUID) is required; a replay with the same terms answers 200 with the stored row, the same key with other terms 409. A labour contract (OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY) needs a wage above 0 and weekly_minutes (주 소정근로시간, 근기법 §17①). FIXED_TERM, DISPATCH_OUTSOURCING and FREELANCE_SERVICE need end_date; OPEN_ENDED has none. 409 when the period overlaps another live row (correct that row instead) or the corrected row was already corrected. Audited as employee.contract.record without the wage. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+         * @description Records a new contract, a renewal, or (with supersedes_id) a correction of an earlier row. Rows are never edited. Idempotency-Key (a UUID) is required; a replay with the same terms answers 200 with the stored row, the same key with other terms 409. A labour contract (OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY) needs a wage above 0 and weekly_minutes (contractual weekly working hours, Labor Standards Act §17①). FIXED_TERM, DISPATCH_OUTSOURCING and FREELANCE_SERVICE need end_date; OPEN_ENDED has none. 409 when the period overlaps another live row (correct that row instead) or the corrected row was already corrected. Audited as employee.contract.record without the wage. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
          */
         post: operations["recordEmployeeContract"];
         delete?: never;
@@ -4582,8 +4582,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 사번 변경 with an effective date and a reason (IMPORT-2)
-         * @description Decisions #25. Not a 정정: the old 사번 stays an alias that still finds the person (GET /employees/by-number/{number}) and is never handed to anyone else; history in GET …/employee-number/history. reason_code from employee_number_change. 409 employee_number_taken (someone holds or held it), stale_revision; 422 employee_number_unchanged, effective_date_in_future (a change takes effect today or earlier). 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+         * Employee number change with an effective date and a reason (IMPORT-2)
+         * @description Decisions #25. Not a correction: the old employee number stays an alias that still finds the person (GET /employees/by-number/{number}) and is never handed to anyone else; history in GET …/employee-number/history. reason_code from employee_number_change. 409 employee_number_taken (someone holds or held it), stale_revision; 422 employee_number_unchanged, effective_date_in_future (a change takes effect today or earlier). 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
          */
         post: operations["changeEmployeeNumber"];
         delete?: never;
@@ -4599,7 +4599,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The 사번 history of an employee, oldest first (IMPORT-2) */
+        /** The employee number history of an employee, oldest first (IMPORT-2) */
         get: operations["listEmployeeNumberHistory"];
         put?: never;
         post?: never;
@@ -4641,8 +4641,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Whether a registration is cancelled (등록 취소) or the person exits (퇴직), and why not the other
-         * @description CRUD. cancel_route DELETE (setup) or VOID (after 운영 시작, with the employee_void_* refusals); exit is refused employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account holds the act.
+         * Whether a registration is cancelled or the person exits, and why not the other
+         * @description CRUD. cancel_route DELETE (setup) or VOID (after go-live, with the employee_void_* refusals); exit is refused employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account holds the act.
          */
         get: operations["employeeEndOptions"];
         put?: never;
@@ -4678,8 +4678,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Cumulative fixed-term service (BW-12, 기간제법 §4①)
-         * @description Service as of today (KST) from the live contract history (employee_contracts), else the profile's contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). 육아휴직 is not counted (남녀고용평등법 §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract row; the other fields are then null. Takes org-wide employee_directory_read.
+         * Cumulative fixed-term service (BW-12, Fixed-Term Workers Act §4①)
+         * @description Service as of today (KST) from the live contract history (employee_contracts), else the profile's contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). Parental leave is not counted (Equal Employment Opportunity Act §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract row; the other fields are then null. Takes org-wide employee_directory_read.
          */
         get: operations["getEmployeeFixedTerm"];
         put?: never;
@@ -4763,7 +4763,7 @@ export interface paths {
         put?: never;
         /**
          * Record an employee lifecycle transition
-         * @description Mutates the employee status/company/org-unit/position only through an audited event. State rules (409 invalid_transition): no event on an EXITED employee; LEAVE_OF_ABSENCE only from ACTIVE (to ON_LEAVE); RETURN_FROM_LEAVE only from ON_LEAVE (to ACTIVE); ONBOARD/TRANSFER/PROMOTE not while ON_LEAVE; CONTRACT_RENEWAL keeps the current status and requires employment_type CONTRACT. Exits are never recorded here: OFFBOARD/TERMINATE are 422 — an employee leaves only through an exit case, whose HR confirmation records TERMINATE and whose rejection records the compensating EXIT_REVERSAL. No act needs an acknowledgement (decisions #3, A13). TRANSFER, LEAVE_OF_ABSENCE and RETURN_FROM_LEAVE wait for 운영 시작: 409 phase_not_operating while the tenant is in SETUP (first-run §2). A TRANSFER that changes to_company is 409 entity_change_needs_group_transfer: another 법인 is a 전적, never a transfer (E-S3b). A TRANSFER to a unit or 사업장 of another 법인 is 422 transfer_cross_entity naming the target in error.refusals [{field, code, value}] (TR-33, decisions #30); nothing is written. A change that alters nothing is 422 lifecycle_noop (TRANSFER to the current unit within the same company, or with no target; PROMOTE to the current position). An effective_date after today (KST) schedules the event (state SCHEDULED; 발령 효력 예정) for TRANSFER, PROMOTE, LEAVE_OF_ABSENCE, RETURN_FROM_LEAVE and CONTRACT_RENEWAL (ONBOARD is 422): the same rules run now against the employee as they will stand on that date (the current head with every earlier SCHEDULED event applied), nothing about the employee changes, and a SCHEDULED event of the same type on the same date is replaced (CANCELLED with superseded_by; one per type per employee per date). On its date the server re-validates it against the live employee and applies it (APPLIED, employee updated, employee.lifecycle.apply audit) or records the refusal (APPLY_FAILED with failure_code/failure_reason). Withdraw one before its date with POST /api/v1/employees/{id}/lifecycle-events/{event_id}/cancel. A state refusal caused by an earlier SCHEDULED event (not the live employee) is 409 lifecycle_scheduled_state naming it. Every event, immediate or scheduled, must leave the employee's later SCHEDULED events valid: otherwise 409 lifecycle_schedule_conflict names each one in error.refusals and nothing is recorded. The employee detail's allowed_events lists the events these rules admit right now; allowed_scheduled_events those schedulable after the last SCHEDULED event. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
+         * @description Mutates the employee status/company/org-unit/position only through an audited event. State rules (409 invalid_transition): no event on an EXITED employee; LEAVE_OF_ABSENCE only from ACTIVE (to ON_LEAVE); RETURN_FROM_LEAVE only from ON_LEAVE (to ACTIVE); ONBOARD/TRANSFER/PROMOTE not while ON_LEAVE; CONTRACT_RENEWAL keeps the current status and requires employment_type CONTRACT. Exits are never recorded here: OFFBOARD/TERMINATE are 422 — an employee leaves only through an exit case, whose HR confirmation records TERMINATE and whose rejection records the compensating EXIT_REVERSAL. No act needs an acknowledgement (decisions #3, A13). TRANSFER, LEAVE_OF_ABSENCE and RETURN_FROM_LEAVE wait for go-live: 409 phase_not_operating while the tenant is in SETUP (first-run §2). A TRANSFER that changes to_company is 409 entity_change_needs_group_transfer: another legal entity is a group transfer, never a transfer (E-S3b). A TRANSFER to a unit or workplace of another legal entity is 422 transfer_cross_entity naming the target in error.refusals [{field, code, value}] (TR-33, decisions #30); nothing is written. A change that alters nothing is 422 lifecycle_noop (TRANSFER to the current unit within the same company, or with no target; PROMOTE to the current position). An effective_date after today (KST) schedules the event (state SCHEDULED; a personnel order scheduled to take effect) for TRANSFER, PROMOTE, LEAVE_OF_ABSENCE, RETURN_FROM_LEAVE and CONTRACT_RENEWAL (ONBOARD is 422): the same rules run now against the employee as they will stand on that date (the current head with every earlier SCHEDULED event applied), nothing about the employee changes, and a SCHEDULED event of the same type on the same date is replaced (CANCELLED with superseded_by; one per type per employee per date). On its date the server re-validates it against the live employee and applies it (APPLIED, employee updated, employee.lifecycle.apply audit) or records the refusal (APPLY_FAILED with failure_code/failure_reason). Withdraw one before its date with POST /api/v1/employees/{id}/lifecycle-events/{event_id}/cancel. A state refusal caused by an earlier SCHEDULED event (not the live employee) is 409 lifecycle_scheduled_state naming it. Every event, immediate or scheduled, must leave the employee's later SCHEDULED events valid: otherwise 409 lifecycle_schedule_conflict names each one in error.refusals and nothing is recorded. The employee detail's allowed_events lists the events these rules admit right now; allowed_scheduled_events those schedulable after the last SCHEDULED event. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
          */
         post: operations["createEmployeeLifecycleEvent"];
         delete?: never;
@@ -4802,7 +4802,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Correct (정정) an applied lifecycle event on its date (BW-11)
+         * Correct an applied lifecycle event on its date (BW-11)
          * @description The same voidability rules as rescind. The employee is restored and the replacement (same event_type and effective_date, else 422) is recorded in the same transaction with voids_event_id naming the original, which then shows voided_by. A replacement that changes contract_end_date or expected_return_date needs an independent current holder. The original recorder may instead use the governed solo path only when no other eligible holder exists and authz.sole_holder.mode is step_up_notice_review (otherwise 403 second_person_required). The solo path requires a passkey step_up envelope (401 step_up_required when absent, step_up_failed when invalid; 503 step_up_unavailable when WebAuthn is not configured). Its binding is EXCEPTION_DECIDE on the original event_id, with the action's expected reason_key and a SHA-256 payload_hash over UTF-8 compact JSON, recursively sorted by key, of {operation, employee_id, replacement, reason_code, note}. operation is employee.lifecycle.correct; replacement is the complete object as sent, reason_code and note are trimmed, and an absent note is null. The assertion is verified and consumed in the correction transaction. Audited as employee.lifecycle.correct plus employee.lifecycle.record; a solo correction records review_required and step_up_assertion_id in the correction audit.
          */
         post: operations["correctEmployeeLifecycleEvent"];
@@ -4822,7 +4822,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Rescind (취소·철회) an applied lifecycle event (BW-11)
+         * Rescind (cancel or withdraw) an applied lifecycle event (BW-11)
          * @description Undoes the employee's latest effective change (APPLIED, not RESCIND, not voided; otherwise 409 lifecycle_void_not_latest / lifecycle_event_voided / lifecycle_void_not_applied). Exits are reversed through their exit case (409 lifecycle_void_exit_owned); ONBOARD and REHIRE cannot be rescinded (409 lifecycle_void_unsupported). The employee is restored to the event's from_ values (status, company, unit and its binding, position and catalog title, contract end) and a RESCIND row naming it (voids_event_id) is appended; a locked payroll month refuses it. Takes org-wide employee_directory_manage. Audited as employee.lifecycle.rescind.
          */
         post: operations["rescindEmployeeLifecycleEvent"];
@@ -4842,7 +4842,7 @@ export interface paths {
         /**
          * Legacy derived onboarding checklist (EMP-MODEL E10)
          * @deprecated
-         * @description Items derived from recorded facts, never ticked. CONTRACT_DELIVERED (근기법 §17② 교부) and INSURANCE_ACQUISITION_REPORTED (취득신고) are NOT_TRACKED until their attestation and statutory clock exist. NOT_ISSUED identification is a FOLLOW_UP. Org-wide employee_directory_manage.
+         * @description Items derived from recorded facts, never ticked. CONTRACT_DELIVERED (Labor Standards Act §17② delivery) and INSURANCE_ACQUISITION_REPORTED (acquisition report) are NOT_TRACKED until their attestation and statutory clock exist. NOT_ISSUED identification is a FOLLOW_UP. Org-wide employee_directory_manage.
          */
         get: operations["getOnboardingChecklist"];
         put?: never;
@@ -4861,8 +4861,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The 인적사항 extras HR holds for one employee
-         * @description MR-34. 한자 · 영문 성명, 국적, 개인 메일, 비상연락처, 사진 and 그룹 입사일. Org-wide employee_directory_manage; each read leaves a 접속기록 row. null = 미입력. `photo.url` is a presigned GET valid for 5 minutes (null when object storage is not configured). `updated_at` is the employee's version for the PATCH /employees/{id} that corrects them.
+         * The personal details extras HR holds for one employee
+         * @description MR-34. Name in Chinese characters and English name, nationality, personal email, emergency contacts, photo and group hire date. Org-wide employee_directory_manage; each read leaves an access log row. null = not entered. `photo.url` is a presigned GET valid for 5 minutes (null when object storage is not configured). `updated_at` is the employee's version for the PATCH /employees/{id} that corrects them.
          */
         get: operations["getEmployeePersonalFacts"];
         put?: never;
@@ -4883,7 +4883,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Start a 사진 upload (presigned PUT)
+         * Start a photo upload (presigned PUT)
          * @description MR-34. Org-wide employee_directory_manage. JPEG, PNG or WebP (no SVG), 1 byte to 5 MiB (422 otherwise). Answers a presigned PUT valid for 5 minutes; its content type and length are signed, so send exactly the returned headers. Then confirm the upload and PATCH /employees/{id} with `photo` = `upload_id`. 503 `photo_storage_unavailable` when object storage is not configured.
          */
         post: operations["issueEmployeePhotoUpload"];
@@ -4903,7 +4903,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Confirm a 사진 upload once the PUT is done
+         * Confirm a photo upload once the PUT is done
          * @description MR-34. Org-wide employee_directory_manage. Checks that the object is in storage at the declared size (409 `photo_upload_missing`, 409 `photo_upload_size_mismatch`). Confirming twice is a no-op.
          */
         post: operations["confirmEmployeePhotoUpload"];
@@ -4923,7 +4923,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Record the 수습 종료 (EMP-MODEL F5)
+         * Record the end of probation (EMP-MODEL F5)
          * @description Closes the probation period. A command (ME-7) that must assert /employment/probation_end_date in `expected`; 409 stale_facts when it changed. A repeat on a confirmed probation returns the record unchanged. 409 invalid_transition when no probation is recorded. Audited as employee.probation.confirm.
          */
         post: operations["confirmProbation"];
@@ -4941,8 +4941,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 인사카드 sections of an employee (MR-31/33/35)
-         * @description 학력, 자격·면허, 병역, 교육 이수, 어학, 포상, 가족 entries of the natural person this employee is bound to (two employee records of one person show the same entries), with each section's tenant switch (hr.record.<section>.enabled). Voided entries only with include_voided. Takes org-wide employee_directory_manage. Without section, the restricted sections (징계, 장애, 보훈) are left out, knowing such a record exists is itself sensitive. section=discipline|disability|veteran needs a purpose (422 record_purpose_required, reason_code_invalid, reason_note_required), passes the employee_restricted_record Cedar action (403 record_restricted_forbidden; 403 record_restricted_self on one's own record), and writes one employee.record.restricted_read audit row naming the entries and the purpose, never the values. Responses carry Cache-Control no-store.
+         * Personnel card sections of an employee (MR-31/33/35)
+         * @description Education, qualification and license, military service, training completed, language skills, award and family entries of the natural person this employee is bound to (two employee records of one person show the same entries), with each section's tenant switch (hr.record.<section>.enabled). Voided entries only with include_voided. Takes org-wide employee_directory_manage. Without section, the restricted sections (discipline, disability, veterans' status) are left out, knowing such a record exists is itself sensitive. section=discipline|disability|veteran needs a purpose (422 record_purpose_required, reason_code_invalid, reason_note_required), passes the employee_restricted_record Cedar action (403 record_restricted_forbidden; 403 record_restricted_self on one's own record), and writes one employee.record.restricted_read audit row naming the entries and the purpose, never the values. Responses carry Cache-Control no-store.
          */
         get: operations["listEmployeeRecords"];
         put?: never;
@@ -4963,8 +4963,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Record a 인사카드 이력 entry
-         * @description Creates an entry (version 1) in the section. The first write for an employee with no Person binding mints and binds one through the Person port. Idempotency-Key (a UUID) is required; the same key and payload answers 200 with the entry, the same key with another payload 409. 409 record_section_disabled when the tenant turned the section off (장애·보훈 start off, PIPA §23①); 409 record_single_entry_exists for a second live 병역, 장애 or 보훈 entry. 422 for a field rule, including a 주민등록번호/외국인등록번호 shape in any text and any 운전면허번호 (record the licence kind and class only). 장애·보훈 carry a basis (CONSENT with its date, or STATUTE). A restricted section passes the employee_restricted_record Cedar action (403 record_restricted_forbidden, record_restricted_self). Audited as employee.record.create without the values. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+         * Record a personnel card history entry
+         * @description Creates an entry (version 1) in the section. The first write for an employee with no Person binding mints and binds one through the Person port. Idempotency-Key (a UUID) is required; the same key and payload answers 200 with the entry, the same key with another payload 409. 409 record_section_disabled when the tenant turned the section off (disability and veterans' status start off, PIPA §23①); 409 record_single_entry_exists for a second live military service, disability or veterans' status entry. 422 for a field rule, including a resident registration number or alien registration number shape in any text and any driver's license number (record the licence kind and class only). Disability and veterans' status carry a basis (CONSENT with its date, or STATUTE). A restricted section passes the employee_restricted_record Cedar action (403 record_restricted_forbidden, record_restricted_self). Audited as employee.record.create without the values. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
          */
         post: operations["createEmployeeRecord"];
         delete?: never;
@@ -4982,7 +4982,7 @@ export interface paths {
         };
         get?: never;
         /**
-         * Correct a 인사카드 이력 entry
+         * Correct a personnel card history entry
          * @description Appends the whole new snapshot as the next version (history kept). expected_version is the version the editor read; 409 record_version_conflict when the entry moved on. Equal values write nothing. A voided entry cannot be corrected (409 invalid_transition). Idempotency-Key as for create; 200 either way. 409 record_section_disabled when the section is off. Audited as employee.record.update without the values. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
          */
         put: operations["correctEmployeeRecord"];
@@ -5001,7 +5001,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Every revision of one 인사카드 entry, oldest first
+         * Every revision of one personnel card entry, oldest first
          * @description A restricted section (discipline, disability, veteran) needs a purpose and is audited, as for the list. Cache-Control no-store.
          */
         get: operations["getEmployeeRecordHistory"];
@@ -5023,8 +5023,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Void a 인사카드 이력 entry
-         * @description Appends a VOID revision with the required reason; the entry leaves the 인사카드 and keeps its history. Works while the section is switched off, so collected data can still be retired. Voiding a voided entry answers it unchanged. Idempotency-Key as for create. Audited as employee.record.void. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+         * Void a personnel card history entry
+         * @description Appends a VOID revision with the required reason; the entry leaves the personnel card and keeps its history. Works while the section is switched off, so collected data can still be retired. Voiding a voided entry answers it unchanged. Idempotency-Key as for create. Audited as employee.record.void. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
          */
         post: operations["voidEmployeeRecord"];
         delete?: never;
@@ -5041,8 +5041,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The 근로자 명부 items HR holds for one employee
-         * @description MR-23. 성별, 주소, 이력 · 경력, 퇴직 사유 and 그 밖에 필요한 사항 (근로기준법 §41, 시행령 §20). Org-wide employee_directory_manage (the items are not shown to a directory reader); each read leaves a 접속기록 row. null = 미입력. `updated_at` is the employee's version for the PATCH /employees/{id} that corrects them.
+         * The worker register items HR holds for one employee
+         * @description MR-23. Sex, address, history and career, exit reason and other necessary matters (Labor Standards Act §41, Enforcement Decree §20). Org-wide employee_directory_manage (the items are not shown to a directory reader); each read leaves an access log row. null = not entered. `updated_at` is the employee's version for the PATCH /employees/{id} that corrects them.
          */
         get: operations["getEmployeeRegisterFacts"];
         put?: never;
@@ -5063,8 +5063,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 재입사 — a new employment period for an EXITED person (BW-19)
-         * @description The same person (same 사번 and history) starts a new period: a REHIRE lifecycle event, the head ACTIVE (or PRE_HIRE with a SCHEDULED ONBOARD when hire_date is after today, KST), exit date cleared, the profile's employment type and contract window replaced and probation cleared. 409 rehire_requires_exited for anyone not EXITED; 409 idempotency_key_reused for a key used by another request. Org-wide employee_directory_manage.
+         * Rehire — a new employment period for an EXITED person (BW-19)
+         * @description The same person (same employee number and history) starts a new period: a REHIRE lifecycle event, the head ACTIVE (or PRE_HIRE with a SCHEDULED ONBOARD when hire_date is after today, KST), exit date cleared, the profile's employment type and contract window replaced and probation cleared. 409 rehire_requires_exited for anyone not EXITED; 409 idempotency_key_reused for a key used by another request. Org-wide employee_directory_manage.
          */
         post: operations["rehireEmployee"];
         delete?: never;
@@ -5101,8 +5101,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The masked 주민등록번호 of an employee (IMPORT-2)
-         * @description Decisions #25. Masked by default (생년월일 + 성별 digit); recorded false when none is stored. Org-wide employee_directory_manage; each read leaves a 접속기록 row.
+         * The masked resident registration number of an employee (IMPORT-2)
+         * @description Decisions #25. Masked by default (date of birth + sex digit); recorded false when none is stored. Org-wide employee_directory_manage; each read leaves an access log row.
          */
         get: operations["getEmployeeRrn"];
         /**
@@ -5127,8 +5127,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * The full 주민등록번호, with a 사유 (IMPORT-2)
-         * @description Decisions #25. reason_code from the rrn_reveal domain (PAYROLL_WITHHOLDING, SOCIAL_INSURANCE_FILING, IDENTITY_VERIFICATION, DATA_SUBJECT_ACCESS, OTHER + note); the 접속기록 row (action employee.rrn_reveal) names the code, never the number. 404 when none is recorded; 503 rrn_vault_unavailable when the server has no vault keys. Never cached (Cache-Control no-store).
+         * The full resident registration number, with a reason (IMPORT-2)
+         * @description Decisions #25. reason_code from the rrn_reveal domain (PAYROLL_WITHHOLDING, SOCIAL_INSURANCE_FILING, IDENTITY_VERIFICATION, DATA_SUBJECT_ACCESS, OTHER + note); the access log row (action employee.rrn_reveal) names the code, never the number. 404 when none is recorded; 503 rrn_vault_unavailable when the server has no vault keys. Never cached (Cache-Control no-store).
          */
         post: operations["revealEmployeeRrn"];
         delete?: never;
@@ -5147,8 +5147,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Void (등록 취소) a registration that should never have existed (MR-26)
-         * @description After 운영 시작 only (409 phase_not_operating during SETUP; delete instead). Org-wide employee_directory_manage. Allowed for a PRE_HIRE person, or for one registered fewer than people.void_window days ago (default 14) when attest_never_worked is true (409 employee_void_attestation_required without it, 409 employee_void_not_eligible outside the window or for an EXITED or ON_LEAVE record). A record with an exit case, an applied 발령 other than the ONBOARD, an attendance record or a payroll line is 409 employee_void_has_work_records: exit it, or merge a duplicate. Governed like a high-risk 정정: with another eligible holder an EMPLOYEE_VOID change request is filed (202, pending_request) and every condition is checked again when the second person applies it (the window measured at the filing date); a sole holder voids at once with review_required after an EXCEPTION_DECIDE passkey step-up bound to this employee id with payload_hash = SHA-256 hex of {"attest_never_worked":<bool>} (401 step_up_required / step_up_failed), unless authz.sole_holder.mode is refuse (403 employee_void_sole_holder_refused). The record becomes VOIDED and leaves every read; it keeps its 사번 (never reused, decisions #6) and its personal data is destroyed after people.void_pii_retention days (default 30). Scheduled 발령 are cancelled and the 법인 · 사업장 assignment is withdrawn. An EMPLOYEE_VOID request is never filed through POST /change-requests (422).
+         * Void a registration that should never have existed (MR-26)
+         * @description After go-live only (409 phase_not_operating during SETUP; delete instead). Org-wide employee_directory_manage. Allowed for a PRE_HIRE person, or for one registered fewer than people.void_window days ago (default 14) when attest_never_worked is true (409 employee_void_attestation_required without it, 409 employee_void_not_eligible outside the window or for an EXITED or ON_LEAVE record). A record with an exit case, an applied personnel order other than the ONBOARD, an attendance record or a payroll line is 409 employee_void_has_work_records: exit it, or merge a duplicate. Governed like a high-risk correction: with another eligible holder an EMPLOYEE_VOID change request is filed (202, pending_request) and every condition is checked again when the second person applies it (the window measured at the filing date); a sole holder voids at once with review_required after an EXCEPTION_DECIDE passkey step-up bound to this employee id with payload_hash = SHA-256 hex of {"attest_never_worked":<bool>} (401 step_up_required / step_up_failed), unless authz.sole_holder.mode is refuse (403 employee_void_sole_holder_refused). The record becomes VOIDED and leaves every read; it keeps its employee number (never reused, decisions #6) and its personal data is destroyed after people.void_pii_retention days (default 30). Scheduled personnel orders are cancelled and the legal entity · workplace assignment is withdrawn. An EMPLOYEE_VOID request is never filed through POST /change-requests (422).
          */
         post: operations["voidEmployee"];
         delete?: never;
@@ -5164,12 +5164,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One employee's 법인 and 사업장 placements, newest first */
+        /** One employee's legal entity and workplace placements, newest first */
         get: operations["listEmploymentAssignments"];
         put?: never;
         /**
-         * Bind an employee to a 법인 and 사업장 from a date
-         * @description A change of 법인 is refused (entity_change_needs_group_transfer → start_group_transfer).
+         * Bind an employee to a legal entity and workplace from a date
+         * @description A change of legal entity is refused (entity_change_needs_group_transfer → start_group_transfer).
          */
         post: operations["bindEmploymentAssignment"];
         delete?: never;
@@ -5202,7 +5202,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 「회사 이름 정리」: legacy company texts with no mapped 법인 */
+        /** "Clean up company names": legacy company texts with no mapped legal entity */
         get: operations["listUnmappedCompanies"];
         put?: never;
         post?: never;
@@ -5324,12 +5324,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 법인 · 사업장 batch and direct registration receipts, newest first (latest 200), with whether each can still be undone */
+        /** Legal entity and workplace batch and direct registration receipts, newest first (latest 200), with whether each can still be undone */
         get: operations["listEntitySetupBatches"];
         put?: never;
         /**
-         * Dry-run or apply a sheet of 법인 · 사업장 creates and full-state revisions in one transaction (MR-29)
-         * @description The client merges each sheet row over the record it read and sends full states. dry_run runs every op and rolls back: per-op outcome (CREATED / CHANGED / UNCHANGED / ERROR), the changed fields and every row's refusal at once, plus preview_digest. The apply carries that digest and applies all or nothing (the first refused op is named as ops[i].<field>). A revise that changes nothing is not written. In SETUP the receipt can be undone; after 운영 시작 the writes are governed like the one-by-one routes.
+         * Dry-run or apply a sheet of legal entity and workplace creates and full-state revisions in one transaction (MR-29)
+         * @description The client merges each sheet row over the record it read and sends full states. dry_run runs every op and rolls back: per-op outcome (CREATED / CHANGED / UNCHANGED / ERROR), the changed fields and every row's refusal at once, plus preview_digest. The apply carries that digest and applies all or nothing (the first refused op is named as ops[i].<field>). A revise that changes nothing is not written. In SETUP the receipt can be undone; after go-live the writes are governed like the one-by-one routes.
          */
         post: operations["runEntitySetupBatch"];
         delete?: never;
@@ -5347,7 +5347,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Undo a bulk 법인 · 사업장 batch during SETUP (voids what it created, restores what it revised) (MR-29) */
+        /** Undo a bulk legal entity and workplace batch during SETUP (voids what it created, restores what it revised) (MR-29) */
         post: operations["undoEntitySetupBatch"];
         delete?: never;
         options?: never;
@@ -5612,7 +5612,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Assign a substitute (대차) unit to a down/under-repair equipment
+         * Assign a substitute unit to a down/under-repair equipment
          * @description Audited equipment-lifecycle write. Requires EquipmentManage (ADMIN/EXECUTIVE/SUPER_ADMIN).
          */
         post: operations["assignEquipmentSubstitute"];
@@ -5632,7 +5632,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Return an active substitute (대차) assignment
+         * Return an active substitute assignment
          * @description Audited equipment-lifecycle write. Requires EquipmentManage (ADMIN/EXECUTIVE/SUPER_ADMIN).
          */
         post: operations["returnEquipmentSubstitute"];
@@ -5652,7 +5652,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Import the 지게차 master-list workbook into a fresh registry
+         * Import the forklift master-list workbook into a fresh registry
          * @description Org-wide-authority-gated (SUPER_ADMIN for built-in roles; MasterListImport) multipart upload of the customer's master-list .xlsx. The importer writes the tenant HQ master and therefore denies branch-scoped ADMIN principals. Upserts equipment by equipment number and returns a created/updated/error summary.
          */
         post: operations["importEquipmentMasterList"];
@@ -5671,7 +5671,7 @@ export interface paths {
         };
         /**
          * Paginated, filterable, branch-scoped equipment list
-         * @description Read access (WorkOrderReadAll — all authenticated roles). Non-SUPER_ADMIN principals see only rows in their own branch(es). The `q` parameter is normalized like the 호기-lookup: strips a leading `#` and a trailing `호기` suffix then matches leading-zero-insensitively across management_no, equipment_no, model, maker, customer name, site name, and VIN.
+         * @description Read access (WorkOrderReadAll — all authenticated roles). Non-SUPER_ADMIN principals see only rows in their own branch(es). The `q` parameter is normalized like the unit-number lookup: strips a leading `#` and a trailing `호기` (unit number) suffix then matches leading-zero-insensitively across management_no, equipment_no, model, maker, customer name, site name, and VIN.
          */
         get: operations["listEquipment"];
         put?: never;
@@ -5735,7 +5735,7 @@ export interface paths {
         post?: never;
         /**
          * Soft-delete one equipment master row
-         * @description Admin-gated (EquipmentManage). Marks the row 폐기 (disposed) rather than hard-deleting, so work-order and substitution references stay intact.
+         * @description Admin-gated (EquipmentManage). Marks the row disposed rather than hard-deleting, so work-order and substitution references stay intact.
          */
         delete: operations["deleteEquipment"];
         options?: never;
@@ -6280,7 +6280,7 @@ export interface paths {
         };
         /**
          * Export the daily work-progress status workbook
-         * @description Fills the real 일일업무진행현황 Excel template from live work-order, daily-plan, and regular-inspection schedule data for the requested date.
+         * @description Fills the real daily work-progress status Excel template from live work-order, daily-plan, and regular-inspection schedule data for the requested date.
          */
         get: operations["getDailyStatusExport"];
         put?: never;
@@ -6320,7 +6320,7 @@ export interface paths {
         };
         /**
          * Export the confirmed or generated work-diary workbook
-         * @description Exports the 업무일지 workbook for the requested date, preserving the template's additional sheets and using an existing draft when one has been edited or confirmed.
+         * @description Exports the work-diary workbook for the requested date, preserving the template's additional sheets and using an existing draft when one has been edited or confirmed.
          */
         get: operations["getWorkDiaryExport"];
         put?: never;
@@ -6535,7 +6535,7 @@ export interface paths {
         /** List general-ledger vouchers (tenant-scoped; optional branch/status filter) */
         get: operations["listVouchers"];
         put?: never;
-        /** Open a draft voucher (기표) */
+        /** Open a draft voucher */
         post: operations["createVoucherDraft"];
         delete?: never;
         options?: never;
@@ -6569,7 +6569,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 차대검증 → 승인 */
+        /** BALANCE_CHECKED → APPROVED */
         post: operations["approveVoucher"];
         delete?: never;
         options?: never;
@@ -6586,7 +6586,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 승인 → 전기(posted); lines become immutable */
+        /** APPROVED → POSTED; lines become immutable */
         post: operations["postVoucher"];
         delete?: never;
         options?: never;
@@ -6603,7 +6603,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 전기 → 역분개; creates a linked contra voucher (returns the contra) */
+        /** POSTED → REVERSED; creates a linked contra voucher (returns the contra) */
         post: operations["reverseVoucher"];
         delete?: never;
         options?: never;
@@ -6620,7 +6620,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 기표 → 차대검증 (balance gate; unbalanced is rejected) */
+        /** DRAFT → BALANCE_CHECKED (balance gate; unbalanced is rejected) */
         post: operations["submitVoucher"];
         delete?: never;
         options?: never;
@@ -6695,7 +6695,7 @@ export interface paths {
          */
         get: operations["listPurchaseRequests"];
         put?: never;
-        /** Attach a 거래명세표 evidence record and open a purchase request */
+        /** Attach a transaction statement evidence record and open a purchase request */
         post: operations["createPurchaseRequest"];
         delete?: never;
         options?: never;
@@ -7571,8 +7571,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The 최저임금 floor beside a pay input (EMP-CREATE E5)
-         * @description The floor a wage in pay_unit is compared with on a day, from payroll's statutory register, with the 고시 that sets it. A part-time week takes the 209-hour monthly floor in proportion to weekly_minutes; under 15 hours a week no monthly or annual floor is derived (floor_won null). The body is null when the register has no figure for the day. Org-wide employee_directory_manage.
+         * The minimum wage floor beside a pay input (EMP-CREATE E5)
+         * @description The floor a wage in pay_unit is compared with on a day, from payroll's statutory register, with the public notice that sets it. A part-time week takes the 209-hour monthly floor in proportion to weekly_minutes; under 15 hours a week no monthly or annual floor is derived (floor_won null). The body is null when the register has no figure for the day. Org-wide employee_directory_manage.
          */
         get: operations["getMinimumWageHint"];
         put?: never;
@@ -7683,8 +7683,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List governance findings (anomaly / 검토 필요) for the current org
-         * @description Lists governance findings raised by the integrity engine (#34): records that need human review such as self-approval (자가 승인 기록) and price anomalies (이상 징후). Findings are framed as "검토 필요" — items requiring review, NOT accusations of wrongdoing. Gated to EXECUTIVE and SUPER_ADMIN only (IntegrityFindingsRead); an ADMIN must not read findings about themselves. RLS-armed to the caller's org. Results are ordered by severity (CRITICAL first) then detected_at descending. This endpoint is not paginated.
+         * List governance findings (anomaly / needs review) for the current org
+         * @description Lists governance findings raised by the integrity engine (#34): records that need human review such as self-approval records and price anomalies. Findings are framed as "needs review" — items requiring review, NOT accusations of wrongdoing. Gated to EXECUTIVE and SUPER_ADMIN only (IntegrityFindingsRead); an ADMIN must not read findings about themselves. RLS-armed to the caller's org. Results are ordered by severity (CRITICAL first) then detected_at descending. This endpoint is not paginated.
          */
         get: operations["listIntegrityFindings"];
         put?: never;
@@ -7930,13 +7930,13 @@ export interface paths {
         };
         /**
          * The tenant's classification catalogs (BW-13, MR-25)
-         * @description The tenant's five typed lists (kind GRADE 직급, TITLE 직위, POSITION 직책, JOB 직무, JOB_FAMILY 직군), by kind, most senior first (grade_rank descending, unranked last), including deactivated ones (active false) so history keeps resolving. No entries are seeded. Takes employee_directory_read.
+         * @description The tenant's five typed lists (kinds GRADE, TITLE, POSITION, JOB and JOB_FAMILY), by kind, most senior first (grade_rank descending, unranked last), including deactivated ones (active false) so history keeps resolving. No entries are seeded. Takes employee_directory_read.
          */
         get: operations["listJobTitles"];
         put?: never;
         /**
          * Add a catalog entry (BW-13, MR-25)
-         * @description Adds an entry to one of the five lists (the inline 「목록에 추가」). A label the list already has (ignoring case) answers 200 with that row, so a repeated add is harmless (no second audit row); a new row is 201. Who may add is Cedar's job_title_manage (fail-closed), a tenant-wide holder of job_title_manage or org_change_apply (the tenant ops account; after the access model, a role line 조직 · 등록·수정 granted over the tenant). A 법인/사업장-scoped grant is 403 (the lists are tenant-wide). An unknown kind is refused on the wire (422 validation); 422 job_title_label_invalid, job_title_rank_invalid. Audited as job_title.create.
+         * @description Adds an entry to one of the five lists (the inline "Add to list"). A label the list already has (ignoring case) answers 200 with that row, so a repeated add is harmless (no second audit row); a new row is 201. Who may add is Cedar's job_title_manage (fail-closed), a tenant-wide holder of job_title_manage or org_change_apply (the tenant ops account; after the access model, a role line "Organization · Register/Edit" granted over the tenant). A legal-entity- or workplace-scoped grant is 403 (the lists are tenant-wide). An unknown kind is refused on the wire (422 validation); 422 job_title_label_invalid, job_title_rank_invalid. Audited as job_title.create.
          */
         post: operations["createJobTitle"];
         delete?: never;
@@ -7993,7 +7993,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Per-employee annual-leave balance roster (직원별 연차 현황)
+         * Per-employee annual-leave balance roster
          * @description Reads the existing employee leave ledger (grant/used/left) — the same source of truth as the balances aggregate; not a second store. Requires `employee_directory_read`. Org-scoped.
          */
         get: operations["listLeaveBalances"];
@@ -8015,8 +8015,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Serve a §61 연차 사용 촉진 (round 1 or 2)
-         * @description Requires `employee_directory_manage` in the target `branch_id` (which is validated against the actor's scope). Delivers a receipt-gated 연차촉진 notice into the target's 개인 수신함 and records the push. The engine AP- run binds once the 연차촉진 submittable definition exists; until then the push carries `ap_submission: pending_engine_definition`. Idempotent per (target, round).
+         * Serve a §61 annual leave use promotion (round 1 or 2)
+         * @description Requires `employee_directory_manage` in the target `branch_id` (which is validated against the actor's scope). Delivers a receipt-gated annual-leave-promotion notice into the target's personal inbox and records the push. The engine AP- run binds once the annual-leave-promotion submittable definition exists; until then the push carries `ap_submission: pending_engine_definition`. Idempotent per (target, round).
          */
         post: operations["pushLeavePromotion"];
         delete?: never;
@@ -8035,8 +8035,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Serve a 노무수령거부 notice (after a round-2 promotion)
-         * @description Requires `employee_directory_manage` in the target `branch_id`. Delivers a receipt-gated 노무수령거부 notice into the target's 개인 수신함 and records the push. Same engine-binding semantics as promotions. Idempotent per target.
+         * Serve a refusal-to-accept-work notice (after a round-2 promotion)
+         * @description Requires `employee_directory_manage` in the target `branch_id`. Delivers a receipt-gated refusal-to-accept-work notice into the target's personal inbox and records the push. Same engine-binding semantics as promotions. Idempotent per target.
          */
         post: operations["pushLeaveRefusalNotice"];
         delete?: never;
@@ -8053,7 +8053,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the branch-scoped leave-request approval queue (연차 결재함)
+         * List the branch-scoped leave-request approval queue
          * @description Pending-first, then newest. Requires `employee_directory_read`. The queue is confined to the caller's branches (resolved from the JWT); an out-of-scope request is invisible (deny-by-omission).
          */
         get: operations["listLeaveRequests"];
@@ -8075,8 +8075,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Approve a pending leave request or open a 시기변경 협의
-         * @description Requires `employee_directory_manage` in the request's branch. An APPROVE writes the leave ledger (used += days, remaining -= days) in the same audited transaction. Separation of duties — a request cannot be decided by its own requester (403). 근로기준법 §60 forbids refusing 연차: `return`/`reject` are retired (422) and the only non-approve decision is `time_change` (§60⑤ 시기변경 협의), which requires a comment stating the 사업 운영에 막대한 지장 grounds and never touches the ledger. A non-pending request is 409; an out-of-branch / unknown request is 404.
+         * Approve a pending leave request or open a timing-change consultation
+         * @description Requires `employee_directory_manage` in the request's branch. An APPROVE writes the leave ledger (used += days, remaining -= days) in the same audited transaction. Separation of duties — a request cannot be decided by its own requester (403). Labor Standards Act §60 forbids refusing annual leave: `return`/`reject` are retired (422) and the only non-approve decision is `time_change` (§60⑤ timing-change consultation), which requires a comment stating the grounds of a serious disruption to business operations and never touches the ledger. A non-pending request is 409; an out-of-branch / unknown request is 404.
          */
         post: operations["decideLeaveRequest"];
         delete?: never;
@@ -8092,10 +8092,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List 법인 with their 등록 and 사업장 */
+        /** List legal entities with their registrations and workplaces */
         get: operations["listLegalEntities"];
         put?: never;
-        /** Register a 법인 / 개인사업자 */
+        /** Register a corporation / sole proprietor */
         post: operations["createLegalEntity"];
         delete?: never;
         options?: never;
@@ -8110,11 +8110,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One 법인 */
+        /** One legal entity */
         get: operations["getLegalEntity"];
         /**
          * Effective-dated revision (full state)
-         * @description Clears needs_confirmation. Identity changes are corrections: free in SETUP, identifier_locked after 운영 시작.
+         * @description Clears needs_confirmation. Identity changes are corrections: free in SETUP, identifier_locked after go-live.
          */
         put: operations["reviseLegalEntity"];
         post?: never;
@@ -8133,18 +8133,18 @@ export interface paths {
         };
         get?: never;
         /**
-         * Correct a closed 법인's 종료일 or 종료 사유 (catalog company-19)
-         * @description A closed 법인 is read-only except this correction. The 종료일 and 종료 사유 become the given ones and the 사업장 and 사업자등록 that closed with it move to the same date (a CLOSED revision each). It never reopens anything; `why` is kept in the audit row. Refused 409 `legal_entity_not_closed` for an open 법인, 409 `record_in_use` when an earlier date would cut through someone still placed (remedy `move_people_first`), 422 `close_unchanged` (field closed_on) when nothing changes.
+         * Correct a closed legal entity's end date or end reason (catalog company-19)
+         * @description A closed legal entity is read-only except this correction. The end date and end reason become the given ones and the workplaces and business registrations that closed with it move to the same date (a CLOSED revision each). It never reopens anything; `why` is kept in the audit row. Refused 409 `legal_entity_not_closed` for an open legal entity, 409 `record_in_use` when an earlier date would cut through someone still placed (remedy `move_people_first`), 422 `close_unchanged` (field closed_on) when nothing changes.
          */
         put: operations["correctLegalEntityClose"];
         /**
-         * Close a 법인 (해산 or 폐업) with its open 사업장 and 사업자등록
-         * @description MR-15. Records the 법인's close on `closed_on` (no later than today) with `reason_code` DISSOLVED (해산) or BUSINESS_CLOSED (폐업). Its open 사업장 and 사업자등록 close on the same date (a CLOSED revision each; their own units dissolve) and the close is set once: a closed 법인 is read-only. Refused 409 `record_in_use` while anyone not exited is placed in it past `closed_on` (remedy `move_people_first`) or 부서 remain (remedy `move_or_dissolve_units_first`); 409 `legal_entity_not_open` when already closed or voided. A 사업장 alone closes by a revision with status CLOSED (PUT /workplaces/{workplaceId}).
+         * Close a legal entity (dissolution or business closure) with its open workplaces and business registrations
+         * @description MR-15. Records the legal entity's close on `closed_on` (no later than today) with `reason_code` DISSOLVED (dissolution) or BUSINESS_CLOSED (business closure). Its open workplaces and business registrations close on the same date (a CLOSED revision each; their own units dissolve) and the close is set once: a closed legal entity is read-only. Refused 409 `record_in_use` while anyone not exited is placed in it past `closed_on` (remedy `move_people_first`) or departments remain (remedy `move_or_dissolve_units_first`); 409 `legal_entity_not_open` when already closed or voided. A workplace alone closes by a revision with status CLOSED (PUT /workplaces/{workplaceId}).
          */
         post: operations["closeLegalEntity"];
         /**
-         * Withdraw a closed 법인's close (종료 취소, catalog company-19)
-         * @description The business goes on. The 법인 reads open again, and the 사업장 and 사업자등록 that closed with it (on its 종료일, by its close) reopen with the revision each had before the close and every 사업장 its own unit. Grants ended with the close stay ended. `why` is kept in the audit row. Refused 409 `legal_entity_not_closed` for an open 법인; 422 `why` required.
+         * Withdraw a closed legal entity's close (close withdrawal, catalog company-19)
+         * @description The business goes on. The legal entity reads open again, and the workplaces and business registrations that closed with it (on its end date, by its close) reopen with the revision each had before the close and every workplace its own unit. Grants ended with the close stay ended. `why` is kept in the audit row. Refused 409 `legal_entity_not_closed` for an open legal entity; 422 `why` required.
          */
         delete: operations["withdrawLegalEntityClose"];
         options?: never;
@@ -8159,7 +8159,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Originals kept as evidence for a 법인 (superseded ones too), newest first */
+        /** Originals kept as evidence for a legal entity (superseded ones too), newest first */
         get: operations["listEntityDocuments"];
         put?: never;
         post?: never;
@@ -8177,8 +8177,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Whether a 법인 is deleted (never used) or closed (폐업), and why not the other
-         * @description CRUD. During setup the delete is the setup undo (record_in_use while anyone is placed); after 운영 시작 only for a 법인 nothing ever used (record_has_history, record_has_units). can_manage is legal_entity_manage.
+         * Whether a legal entity is deleted (never used) or closed (business closure), and why not the other
+         * @description CRUD. During setup the delete is the setup undo (record_in_use while anyone is placed); after go-live only for a legal entity nothing ever used (record_has_history, record_has_units). can_manage is legal_entity_manage.
          */
         get: operations["legalEntityEndOptions"];
         put?: never;
@@ -8198,7 +8198,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Correct 사업자 구분 or 법인등록번호 with evidence (MR-17) */
+        /** Correct the business kind or corporate registration number with evidence (MR-17) */
         post: operations["correctLegalEntityIdentifier"];
         delete?: never;
         options?: never;
@@ -8215,7 +8215,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Settle a one-time 법인명 review (keep the name, or take the registration 상호 by 정정) */
+        /** Settle a one-time legal entity name review (keep the name, or take the registration trade name by correction) */
         post: operations["settleLegalEntityNameReview"];
         delete?: never;
         options?: never;
@@ -8233,7 +8233,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Record one 사업자등록증
+         * Record one business registration certificate
          * @description The entity's VAT unit is derived while one registration decides it; a second registration without a declared vat_unit_mode is a 422 naming it.
          */
         post: operations["createBusinessRegistration"];
@@ -8250,7 +8250,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dated history of a 법인 (each revision and what it changed) */
+        /** Dated history of a legal entity (each revision and what it changed) */
         get: operations["listLegalEntityRevisions"];
         put?: never;
         post?: never;
@@ -8269,7 +8269,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Set 대표 사업장 / 본점 사업장 */
+        /** Set the representative workplace / head-office workplace */
         post: operations["setLegalEntityRoles"];
         delete?: never;
         options?: never;
@@ -8286,7 +8286,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Undo a mistaken 법인 during setup */
+        /** Undo a mistaken legal entity during setup */
         post: operations["voidLegalEntity"];
         delete?: never;
         options?: never;
@@ -8303,7 +8303,7 @@ export interface paths {
         };
         get: operations["listEntityWorkplaces"];
         put?: never;
-        /** Create a 사업장 (with its default branch and 4대보험 rows) */
+        /** Create a workplace (with its default branch and four-social-insurance rows) */
         post: operations["createWorkplace"];
         delete?: never;
         options?: never;
@@ -9023,8 +9023,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 완료 - what the caller decided, newest first
-         * @description The 업무함 완료 tab. Items the caller decided, newest first by completed_at, merged across sources with one keyset: change requests the caller applied or declined, period unlocks the caller approved, and 정정 the caller approved or declined. Each source keeps the grant its open queue requires, so a row shows only while the caller may still read it (a revoked grant hides it). Not counted and never part of the open list or its filters. A name on a row is a personnel read and is access-logged like the open list. 422 validation on a cursor this route did not issue.
+         * Done - what the caller decided, newest first
+         * @description The inbox done tab. Items the caller decided, newest first by completed_at, merged across sources with one keyset: change requests the caller applied or declined, period unlocks the caller approved, and corrections the caller approved or declined. Each source keeps the grant its open queue requires, so a row shows only while the caller may still read it (a revoked grant hides it). Not counted and never part of the open list or its filters. A name on a row is a personnel read and is access-logged like the open list. 422 validation on a cursor this route did not issue.
          */
         get: operations["listMyActionInboxDone"];
         put?: never;
@@ -9063,8 +9063,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 참조 - the notices addressed to the caller
-         * @description The 업무함 참조 tab: the notifications addressed to the caller (FYI, no action needed), newest first, with the notification center's own recipient and mute rules. Served on the inbox surface so the tab works while the notifications module's own routes are off.
+         * Reference (FYI) - the notices addressed to the caller
+         * @description The inbox reference tab: the notifications addressed to the caller (FYI, no action needed), newest first, with the notification center's own recipient and mute rules. Served on the inbox surface so the tab works while the notifications module's own routes are off.
          */
         get: operations["listMyActionInboxReference"];
         put?: never;
@@ -9085,7 +9085,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 확인 - mark one of the caller's notices read
+         * Acknowledge - mark one of the caller's notices read
          * @description Marks one of the caller's own notices read. A notice that is not the caller's is 404, indistinguishable from an unknown id.
          */
         post: operations["markMyActionInboxReferenceRead"];
@@ -9167,7 +9167,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the authenticated user's statutory-notice vault (개인 수신함)
+         * List the authenticated user's statutory-notice vault (personal inbox)
          * @description Metadata only — a locked legal notice's body never appears in the list. The recipient is bound from the JWT; a non-recipient sees nothing.
          */
         get: operations["listMyInboxDocs"];
@@ -9210,7 +9210,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm receipt of a legal notice (the legal receipt evidence)
-         * @description Requires a FRESH passkey step-up: confirmation IS the legally significant act of receipt (열람 = 법적 수령), audited with receipt semantics. Idempotent — a second confirm returns the existing stamp. Only a legal notice can be confirmed; a payslip is a frictionless self-view (422). Another user's / unknown document is 404.
+         * @description Requires a FRESH passkey step-up: confirmation IS the legally significant act of receipt (opening it = legal receipt), audited with receipt semantics. Idempotent — a second confirm returns the existing stamp. Only a legal notice can be confirmed; a payslip is a frictionless self-view (422). Another user's / unknown document is 404.
          */
         post: operations["confirmMyInboxDocReceipt"];
         delete?: never;
@@ -9563,7 +9563,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 수령확인 — the caller confirms receipt of a published notice (owner-scoped) */
+        /** Acknowledge receipt — the caller confirms receipt of a published notice (owner-scoped) */
         post: operations["acknowledgeNotice"];
         delete?: never;
         options?: never;
@@ -9578,7 +9578,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 수령확인 progress (done/total) for one notice (NoticeManage only) */
+        /** Receipt acknowledgement progress (done/total) for one notice (NoticeManage only) */
         get: operations["getNoticeProgress"];
         put?: never;
         post?: never;
@@ -9612,7 +9612,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 수령확인 receipts drill for one notice (NoticeManage only); acknowledged=false is the outstanding chase list */
+        /** Receipt acknowledgement drill for one notice (NoticeManage only); acknowledged=false is the outstanding chase list */
         get: operations["listNoticeReceipts"];
         put?: never;
         post?: never;
@@ -9850,7 +9850,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 운영 시작 (one-way)
+         * Go-live (one-way)
          * @description SUPER_ADMIN, a fresh passkey step-up and the confirmed digest; the Rust backstop and the Cedar tenant_go_live bundle must both allow.
          */
         post: operations["goLive"];
@@ -9867,7 +9867,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 운영 시작 preview */
+        /** Go-live preview */
         get: operations["getGoLivePreview"];
         put?: never;
         post?: never;
@@ -9923,7 +9923,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 「부서 없이 진행」 / 「직원은 나중에」 */
+        /** Skip a setup step ("proceed without departments" / "add employees later") */
         post: operations["skipSetupStep"];
         delete?: never;
         options?: never;
@@ -9941,7 +9941,7 @@ export interface paths {
         /** Read the exact current service terms and required privacy notice, including before passkey enrollment */
         get: operations["readTerms"];
         put?: never;
-        /** 이용약관 acceptance by the contracting admin */
+        /** Terms of service acceptance by the contracting admin */
         post: operations["acceptTerms"];
         delete?: never;
         options?: never;
@@ -10282,7 +10282,7 @@ export interface paths {
         get: operations["listOrgChanges"];
         put?: never;
         /**
-         * Draft an org change (조직 개편 기안)
+         * Draft an org change (reorganization)
          * @description Creates a DRAFT org-change request. Requires an Idempotency-Key; a replay of the same body under the same key returns the existing request with 200, a different body under the same key conflicts. A revision may supersede an existing request only when that request is REJECTED. Cedar checks draft authority at the target scope, including legacy-role compatibility. Missing create authority returns 403 org_change.refuse.missing_grant; malformed canonical target references return 422. Existing inaccessible documents remain concealed as 404 on edit, preflight and submit.
          */
         post: operations["createOrgChange"];
@@ -10311,7 +10311,7 @@ export interface paths {
         head?: never;
         /**
          * Edit an org-change draft, or move a scheduled change
-         * @description DRAFT or PRECHECKED: every edit returns the request to DRAFT, so a stored preflight receipt must be re-run before submit. APPROVED before its 시행일 (예약 수정): only effectiveDate and reason move (a kind or proposal is 409 org_change_scheduled_content); moved to today it applies at once; under approval.policy.org_structure = route only a caller holding org_change_apply may move it (403 org_change_scheduled_locked). Omitted fields are left unchanged.
+         * @description DRAFT or PRECHECKED: every edit returns the request to DRAFT, so a stored preflight receipt must be re-run before submit. APPROVED before its effective date (scheduled-change edit): only effectiveDate and reason move (a kind or proposal is 409 org_change_scheduled_content); moved to today it applies at once; under approval.policy.org_structure = route only a caller holding org_change_apply may move it (403 org_change_scheduled_locked). Omitted fields are left unchanged.
          */
         patch: operations["updateOrgChangeDraft"];
         trace?: never;
@@ -10347,7 +10347,7 @@ export interface paths {
         put?: never;
         /**
          * Archive a settled dissolve
-         * @description SETTLING only, and refused while any settlement item is open. The deferred dissolve ops replay inside the archive transaction, so uncleared dependents roll the whole action back (참조 무결성).
+         * @description SETTLING only, and refused while any settlement item is open. The deferred dissolve ops replay inside the archive transaction, so uncleared dependents roll the whole action back (referential integrity).
          */
         post: operations["archiveOrgChange"];
         delete?: never;
@@ -10367,7 +10367,7 @@ export interface paths {
         put?: never;
         /**
          * Cancel a draft, withdraw a submitted change, or cancel a scheduled change
-         * @description DRAFT or PRECHECKED, or APPROVED before its 시행일 (예약 취소). Under approval.policy.org_structure = route an approved change is cancelled only by a caller holding org_change_apply (403 org_change_scheduled_locked); IN_APPROVAL can be withdrawn only by its drafter, including after their grant ends (403 org_change.refuse.not_drafter for another caller with draft authority). Create, edit, preflight, submit and draft cancellation share the same scoped Cedar draft decision, retaining legacy-role compatibility. Missing draft authority returns 404 org_change.refuse.missing_grant before any scheduled-lock refusal, with the same body as an unknown id. A drafter who lacks live authority to cancel their own draft receives 403 org_change.refuse.missing_grant, including after the target dissolves. Withdrawal preserves the stored chain and prior decisions; later decisions refuse with lifecycle.refuse.withdrawn.
+         * @description DRAFT or PRECHECKED, or APPROVED before its effective date (scheduled-change cancel). Under approval.policy.org_structure = route an approved change is cancelled only by a caller holding org_change_apply (403 org_change_scheduled_locked); IN_APPROVAL can be withdrawn only by its drafter, including after their grant ends (403 org_change.refuse.not_drafter for another caller with draft authority). Create, edit, preflight, submit and draft cancellation share the same scoped Cedar draft decision, retaining legacy-role compatibility. Missing draft authority returns 404 org_change.refuse.missing_grant before any scheduled-lock refusal, with the same body as an unknown id. A drafter who lacks live authority to cancel their own draft receives 403 org_change.refuse.missing_grant, including after the target dissolves. Withdrawal preserves the stored chain and prior decisions; later decisions refuse with lifecycle.refuse.withdrawn.
          */
         post: operations["cancelOrgChange"];
         delete?: never;
@@ -10387,7 +10387,7 @@ export interface paths {
         put?: never;
         /**
          * Apply the approved change
-         * @description APPROVED only, and never before the effective date (발효일). Every kind replays the proposal atomically to APPLIED (a DISSOLVE closes its unit on the date; no settlement list). A unit moved to another 사업장 takes its people (a dated TRANSFER each) and a reassign moves its members, all in the same transaction; the change's headcount becomes the number of people it moved. A person who cannot move refuses the whole change with that refusal's code (e.g. 422 transfer_cross_entity, 409 lifecycle_schedule_conflict). A due APPROVED change is also applied by the schedule from 00:05 KST on its date.
+         * @description APPROVED only, and never before the effective date. Every kind replays the proposal atomically to APPLIED (a DISSOLVE closes its unit on the date; no settlement list). A unit moved to another workplace takes its people (a dated TRANSFER each) and a reassign moves its members, all in the same transaction; the change's headcount becomes the number of people it moved. A person who cannot move refuses the whole change with that refusal's code (e.g. 422 transfer_cross_entity, 409 lifecycle_schedule_conflict). A due APPROVED change is also applied by the schedule from 00:05 KST on its date.
          */
         post: operations["effectuateOrgChange"];
         delete?: never;
@@ -10464,7 +10464,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List group member entities (법인)
+         * List group member entities (legal entities)
          * @description Active member orgs of every group the caller holds a live grant for; fails closed to an empty list when the caller holds no grant.
          */
         get: operations["listOrgEntities"];
@@ -10483,7 +10483,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 전체 → 법인 → 사업장 → 부서 (any depth) */
+        /** All → legal entity → workplace → department (any depth) */
         get: operations["getOrgStructure"];
         put?: never;
         post?: never;
@@ -10501,14 +10501,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Recent setup 부서 batches and undos (설정 단계 기록), newest first
+         * Recent setup department batches and undos (setup phase log), newest first
          * @description The latest 200. undoable is true for an APPLY not yet undone while the tenant is in SETUP.
          */
         get: operations["listOrgSetupBatches"];
         put?: never;
         /**
-         * Create, rename, move and dissolve 부서 in one transaction during setup
-         * @description SETUP only (after 운영 시작 phase_not_setup with remedy submit_org_change). One 부서 kind (decision 18) — the level follows from the parent. Every op on an existing unit carries expected_version; a stale one is 409 stale_revision naming the op (errors[].field = ops[i].expected_version) and nothing is applied. A move to another 사업장 corrects its people's 사업장 placement too. The receipt's batch_id can be undone.
+         * Create, rename, move and dissolve departments in one transaction during setup
+         * @description SETUP only (after go-live phase_not_setup with remedy submit_org_change). One department kind (decision 18) — the level follows from the parent. Every op on an existing unit carries expected_version; a stale one is 409 stale_revision naming the op (errors[].field = ops[i].expected_version) and nothing is applied. A move to another workplace corrects its people's workplace placement too. The receipt's batch_id can be undone.
          */
         post: operations["applyOrgSetupBatch"];
         delete?: never;
@@ -10527,8 +10527,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Undo a setup 부서 batch (되돌리기)
-         * @description SETUP only. Puts every unit the batch touched back (a unit it created is dissolved; a 부서 moved back takes its people's 사업장 placement back). Refused, applying nothing, when a unit no longer holds what the batch left (undo_conflict, remedy undo_later_batches_first; errors[].field = the unit id), when a created unit has people or 부서 of its own (undo_unit_in_use), or when the batch is an undo (batch_not_undoable) or was undone (batch_already_undone).
+         * Undo a setup department batch
+         * @description SETUP only. Puts every unit the batch touched back (a unit it created is dissolved; a department moved back takes its people's workplace placement back). Refused, applying nothing, when a unit no longer holds what the batch left (undo_conflict, remedy undo_later_batches_first; errors[].field = the unit id), when a created unit has people or departments of its own (undo_unit_in_use), or when the batch is an undo (batch_not_undoable) or was undone (batch_already_undone).
          */
         post: operations["undoOrgSetupBatch"];
         delete?: never;
@@ -10578,8 +10578,8 @@ export interface paths {
         };
         get?: never;
         /**
-         * Put one parent's children in order (순서; a label, direct in both phases, audited)
-         * @description At most one parent: none (the tenant's 법인; needs legal_entity_manage on the tenant), legal_entity_id (its 사업장; needs legal_entity_manage on the 법인), workplace_id (the 부서 directly in that 사업장) or org_unit_id (the 부서 under that 부서; both need the org-change apply permission). children names every current child once, in the new order; expected_children, when sent, is the order the caller read, and a different current order is refused (no lost reorder). Unit versions do not change, so setup batch pins stay valid. The chart, the outline, the 목록, the 법인 list and export read this order.
+         * Put one parent's children in order (display order; a label, direct in both phases, audited)
+         * @description At most one parent: none (the tenant's legal entities; needs legal_entity_manage on the tenant), legal_entity_id (its workplaces; needs legal_entity_manage on the legal entity), workplace_id (the departments directly in that workplace) or org_unit_id (the departments under that department; both need the org-change apply permission). children names every current child once, in the new order; expected_children, when sent, is the order the caller read, and a different current order is refused (no lost reorder). Unit versions do not change, so setup batch pins stay valid. The chart, the outline, the list, the legal entity list and export read this order.
          */
         put: operations["reorderOrgStructure"];
         post?: never;
@@ -10599,8 +10599,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create a 부서 immediately during setup
-         * @description SETUP only; after 운영 시작 the refusal is phase_not_setup with remedy submit_org_change. A batch of one op (undoable by its batch_id). The level is inferred — workplace_id puts it in the 사업장, parent_org_unit_id under that 부서.
+         * Create a department immediately during setup
+         * @description SETUP only; after go-live the refusal is phase_not_setup with remedy submit_org_change. A batch of one op (undoable by its batch_id). The level is inferred — workplace_id puts it in the workplace, parent_org_unit_id under that department.
          */
         post: operations["createSetupOrgUnit"];
         delete?: never;
@@ -10620,15 +10620,15 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Dissolve a 부서 and the 부서 under it during setup
+         * Dissolve a department and the departments under it during setup
          * @description Refused (org_unit_has_members, remedy move_people_first) while anyone who has not left is placed in it or under it. Undoable by its batch_id.
          */
         delete: operations["dissolveSetupOrgUnit"];
         options?: never;
         head?: never;
         /**
-         * Rename and/or move a 부서 during setup
-         * @description A batch of one or two ops (undoable by its batch_id). A move to another 사업장 corrects its people's 사업장 placement too. Send expected_version from the tree; stale is 409 stale_revision.
+         * Rename and/or move a department during setup
+         * @description A batch of one or two ops (undoable by its batch_id). A move to another workplace corrects its people's workplace placement too. Send expected_version from the tree; stale is 409 stale_revision.
          */
         patch: operations["renameSetupOrgUnit"];
         trace?: never;
@@ -10642,8 +10642,8 @@ export interface paths {
         };
         get?: never;
         /**
-         * Set a 부서's 부서장 and 부서 코드 now (either phase)
-         * @description CRUD. The full new values (null clears). After 운영 시작 applied directly and recorded GOVERNED while approval.policy.org_structure is none; under route 409 org_change_routed (submit an org change). Audited org_unit.setup_details.
+         * Set a department's head and department code now (either phase)
+         * @description CRUD. The full new values (null clears). After go-live applied directly and recorded GOVERNED while approval.policy.org_structure is none; under route 409 org_change_routed (submit an org change). Audited org_unit.setup_details.
          */
         put: operations["setOrgUnitDetails"];
         post?: never;
@@ -10663,8 +10663,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 폐지 a used 부서 and its empty sub-부서 now (either phase)
-         * @description CRUD. History kept (a dissolved revision). Refused for a unit nobody ever used (org_unit_never_used, erase it instead), while anyone is placed in it or moving into it (org_unit_has_members), while an org change names it, and after 운영 시작 while org changes are routed. Audited org_unit.setup_dissolve per unit.
+         * Abolish a used department and its empty sub-departments now (either phase)
+         * @description CRUD. History kept (a dissolved revision). Refused for a unit nobody ever used (org_unit_never_used, erase it instead), while anyone is placed in it or moving into it (org_unit_has_members), while an org change names it, and after go-live while org changes are routed. Audited org_unit.setup_dissolve per unit.
          */
         post: operations["dissolveOrgUnit"];
         delete?: never;
@@ -10681,7 +10681,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Whether a 부서 is deleted (never used) or 폐지 (used), and why not the other
+         * Whether a department is deleted (never used) or abolished (used), and why not the other
          * @description CRUD. Read the moment an end is offered. can_manage is Cedar org_unit_manage for the caller.
          */
         get: operations["orgUnitEndOptions"];
@@ -10703,7 +10703,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Delete a 부서 that was never used, with its sub-부서 (either phase)
+         * Delete a department that was never used, with its sub-departments (either phase)
          * @description CRUD. The units, their revisions, own placements and order rows are removed (hard delete); one audit row org_unit.erase per unit keeps what was deleted. Refused when anyone was ever placed in or moved through it (org_unit_has_people_history), when other records name it (org_unit_has_history) or an org change names it.
          */
         post: operations["eraseOrgUnit"];
@@ -10739,7 +10739,7 @@ export interface paths {
         };
         /**
          * List the org tree (flat)
-         * @description The caller's Company root plus every Site/Department/Team head with headcount, in the org chart's order (each parent before its children; Sites in their 법인 then 사업장 order, Departments by their stored order, then name). Read floor is the org-change read floor (ADMIN, EXECUTIVE, SUPER_ADMIN).
+         * @description The caller's Company root plus every Site/Department/Team head with headcount, in the org chart's order (each parent before its children; Sites in their legal entity then workplace order, Departments by their stored order, then name). Read floor is the org-change read floor (ADMIN, EXECUTIVE, SUPER_ADMIN).
          */
         get: operations["listOrgUnits"];
         put?: never;
@@ -10861,7 +10861,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Record an effective-dated 근로계약 wage for an employee
+         * Record an effective-dated employment contract wage for an employee
          * @description Append-only. A raise is a NEW row with a later `effectiveFrom`; the wage in force on a pay date is the greatest `effectiveFrom <= payDate`. This is payroll's only wage source — `employee_employment_profiles.base_pay` is HR-directory display data with no period label and no effective dating, and payroll never reads it. Amounts are integer won.
          */
         post: operations["createEmployeeContractWage"];
@@ -10879,14 +10879,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 4대보험 급여명세서 draft for one employee and period (audited read)
-         * @description Read-only. Computes 국민연금·건강보험·장기요양·고용보험 from the contract wage in force on `payDate`. Every figure carries its instrument, article and 시행일자.
+         * Payslip draft with the four social insurances for one employee and period (audited read)
+         * @description Read-only. Computes National Pension, National Health Insurance, long-term care and Employment Insurance from the contract wage in force on `payDate`. Every figure carries its instrument, article and effective date.
          *
-         *     The period's real attendance is read and GATES the draft; it drives no figure. Nothing here is prorated by attendance. Recorded working days short of the period's working days — including zero 근태기록 — or a CLOCK_IN count that does not match its CLOCK_OUT count adds `ATTENDANCE_INCOMPLETE` (with the counts) to `blockers[]` and forces `issuable: false`. A draft must not read as a full month on a month nobody evidenced.
+         *     The period's real attendance is read and GATES the draft; it drives no figure. Nothing here is prorated by attendance. Recorded working days short of the period's working days — including zero attendance records — or a CLOCK_IN count that does not match its CLOCK_OUT count adds `ATTENDANCE_INCOMPLETE` (with the counts) to `blockers[]` and forces `issuable: false`. A draft must not read as a full month on a month nobody evidenced.
          *
-         *     ASSERTS NO LEGAL COMPLIANCE. 원천징수 (소득세·지방소득세) is deliberately NOT computed: `not_computed[]` names 소득세법 시행령 별표 2 as the instrument that would supply it, `net_pay_won` is null, and `issuable` is false. A deduction this engine did not compute is never emitted as a zero.
+         *     ASSERTS NO LEGAL COMPLIANCE. Withholding (income tax and local income tax) is deliberately NOT computed: `not_computed[]` names Annex 2 of the Enforcement Decree of the Income Tax Act as the instrument that would supply it, `net_pay_won` is null, and `issuable` is false. A deduction this engine did not compute is never emitted as a zero.
          *
-         *     산재보험 appears with `employer_only: true` and a null employee amount (징수법 제13조제5항), so its absence from the deduction total is stated rather than silent. Its `total_won`, `basis_won`, `rate_num` and `rate_den` are null too, not 0: the 사업종류별 요율 lives in 고용노동부고시 제2025-91호's un-ingested 별지, so the employer figures are unknown rather than zero.
+         *     Industrial accident insurance appears with `employer_only: true` and a null employee amount (Insurance Premium Collection Act Article 13(5)), so its absence from the deduction total is stated rather than silent. Its `total_won`, `basis_won`, `rate_num` and `rate_den` are null too, not 0: the rate by business type lives in Ministry of Employment and Labor Notice No. 2025-91's un-ingested annexed form, so the employer figures are unknown rather than zero.
          *
          *     Where a rounding unit is not settled by any instrument read, the engine computes every candidate and emits the won only if they agree; otherwise the component carries `blocked_by` with the open question id and the totals are null. Returns 200 in that case, not 409, so the caller can see which question blocked which line.
          */
@@ -11131,7 +11131,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Issue payslips for a PAID run into each recipient's inbox vault; hard-gated by the registered 노무사/세무사 release-gate record (409 legal_gate otherwise) */
+        /** Issue payslips for a PAID run into each recipient's inbox vault; hard-gated by the registered labor attorney / tax accountant release-gate record (409 legal_gate otherwise) */
         post: operations["issuePayrollPayslips"];
         delete?: never;
         options?: never;
@@ -11242,7 +11242,7 @@ export interface paths {
         put?: never;
         /**
          * Unlock a period lock for a time box (step-up; second person when one exists)
-         * @description Close-authority gated (PeriodLockManage, org-wide), audited (BW-15). Needs a PERIOD_UNLOCK step-up bound to object lockId and the SHA-256 (lowercase hex) of "PERIOD_UNLOCK\n{lockId}\n{reasonCode}\n{relockAt as sent}". relockAt is at most period_lock.unlock_max_days out; the period locks again then on its own. When another eligible holder exists the request waits for them (202, PENDING_SECOND_PERSON; a new request supersedes the open one). With none, authz.sole_holder.mode step_up_notice_review unlocks at once, flags the lock for review and records the 예외 처리 with its 사후 검토 item (200, exception); any other mode refuses (409 period_unlock_sole_holder_refused). An Idempotency-Key replays the first response.
+         * @description Close-authority gated (PeriodLockManage, org-wide), audited (BW-15). Needs a PERIOD_UNLOCK step-up bound to object lockId and the SHA-256 (lowercase hex) of "PERIOD_UNLOCK\n{lockId}\n{reasonCode}\n{relockAt as sent}". relockAt is at most period_lock.unlock_max_days out; the period locks again then on its own. When another eligible holder exists the request waits for them (202, PENDING_SECOND_PERSON; a new request supersedes the open one). With none, authz.sole_holder.mode step_up_notice_review unlocks at once, flags the lock for review and records the exception handling with its post-hoc review item (200, exception); any other mode refuses (409 period_unlock_sole_holder_refused). An Idempotency-Key replays the first response.
          */
         post: operations["unlockPeriodLock"];
         delete?: never;
@@ -11281,7 +11281,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Refuse the waiting unlock request as the second person (반려)
+         * Refuse the waiting unlock request as the second person
          * @description Close-authority gated (PeriodLockManage, org-wide), audited (BW-15). The same second person who may approve (never the requester's own person: 403 second_person_required / second_person_ineligible) refuses the request with a note; the lock stays in force and the requester sees the note on the lock (PeriodLock.unlockRequest). The request must still be the open one (409 period_unlock_request_changed) and inside its window (409 period_unlock_request_expired); a blank or over-long note is 422 period_unlock_reject_note_invalid. An Idempotency-Key replays the first response.
          */
         post: operations["rejectPeriodUnlock"];
@@ -12348,8 +12348,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 상세주소 options (동, then 층·호) of the building a road-address hit names
-         * @description Through the server with DETAILED_JUSO_API_KEY. Without dong it lists the building's 동; with dong (empty for a building without 동) the 층·호 of that 동. UNAVAILABLE or no options keep the free-text 상세주소.
+         * Detailed address options (dong, then floor · unit) of the building a road-address hit names
+         * @description Through the server with DETAILED_JUSO_API_KEY. Without dong it lists the building's dong (blocks); with dong (empty for a building without blocks) the floors and units of that dong. UNAVAILABLE or no options keep the free-text detailed address.
          */
         get: operations["searchAddressDetail"];
         put?: never;
@@ -12368,7 +12368,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 도로명주소 keyword search through the server (juso.go.kr); UNAVAILABLE falls back to manual entry
+         * Road-name address keyword search through the server (juso.go.kr); UNAVAILABLE falls back to manual entry
          * @description The key lives in the server environment (STREET_JUSO_API_KEY). No key, an expired or rejected key, a timeout or a juso failure answer status UNAVAILABLE (200), never an error. Rate-limited per user.
          */
         get: operations["searchRoadAddress"];
@@ -12586,7 +12586,7 @@ export interface paths {
         put?: never;
         /**
          * Add a field to the personnel card
-         * @description Adds a field definition. Type and section are fixed once added. First release, the 인적사항 (PERSONAL) and 재직·배치 (JOB) sections only, values read by managers only; a field is never a pay item. Who may add is Cedar's roster_field_manage (fail-closed), a tenant-wide holder of roster_field_manage or employee_directory_manage; a 법인/사업장-scoped grant is 403. 409 roster_field_label_taken (any field of the tenant, retired included, has the label ignoring case), roster_field_limit (the tenant has active_limit active fields); 422 roster_field_label_invalid, roster_field_choices_invalid. Audited as roster_field.create.
+         * @description Adds a field definition. Type and section are fixed once added. First release, the personal details (PERSONAL) and employment and placement (JOB) sections only, values read by managers only; a field is never a pay item. Who may add is Cedar's roster_field_manage (fail-closed), a tenant-wide holder of roster_field_manage or employee_directory_manage; a legal-entity- or workplace-scoped grant is 403. 409 roster_field_label_taken (any field of the tenant, retired included, has the label ignoring case), roster_field_limit (the tenant has active_limit active fields); 422 roster_field_label_invalid, roster_field_choices_invalid. Audited as roster_field.create.
          */
         post: operations["createRosterField"];
         delete?: never;
@@ -12812,7 +12812,7 @@ export interface paths {
         };
         /**
          * List every setting resolved now
-         * @description Every registered setting key with its definition, the value in force now for the tenant (or the given legal entity or 사업장), where it came from, and rows scheduled to take effect later. The frontend reads these values; the server decides with them.
+         * @description Every registered setting key with its definition, the value in force now for the tenant (or the given legal entity or workplace), where it came from, and rows scheduled to take effect later. The frontend reads these values; the server decides with them.
          */
         get: operations["listSettings"];
         put?: never;
@@ -12924,8 +12924,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create a site (현장) under an existing customer
-         * @description Admin-gated (EquipmentManage). Creates a site under a customer in the caller's authorized branch scope; organization-wide callers may use any customer in their organization. A customer outside that scope is a 404, including another tenant's customer hidden by RLS. The name is required and bounded; optional address / WGS84 coordinates / contact fields follow the same ranges and length bounds as PATCH /api/v1/sites/{id} (a one-sided coordinate or an over-long value is a 422). A duplicate site name under the same customer is a 409. The created site is returned so it appears in the 고객·현장 list immediately.
+         * Create a site under an existing customer
+         * @description Admin-gated (EquipmentManage). Creates a site under a customer in the caller's authorized branch scope; organization-wide callers may use any customer in their organization. A customer outside that scope is a 404, including another tenant's customer hidden by RLS. The name is required and bounded; optional address / WGS84 coordinates / contact fields follow the same ranges and length bounds as PATCH /api/v1/sites/{id} (a one-sided coordinate or an over-long value is a 422). A duplicate site name under the same customer is a 409. The created site is returned so it appears in the customers and sites list immediately.
          */
         post: operations["createSite"];
         delete?: never;
@@ -13028,7 +13028,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List one insurer's 상실 codes in force on a date (BW-30)
+         * List one insurer's loss-of-coverage codes in force on a date (BW-30)
          * @description Reads the global, migration-only statutory register. Rows ship HOLD until a qualified reviewer lifts CTRL-KR-WORKFORCE-001; HOLD rows are listed with their disposition. An insurer with no sourced code table returns an empty list. Any authenticated principal may read it (public law, no tenant data).
          */
         get: operations["listStatutoryInsuranceLossCodes"];
@@ -13590,8 +13590,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Change an account's 아이디
-         * @description Decisions #33. A `user_manage` holder over the account sets a new 아이디 with a reason (`sign_in_id_change` domain) and a 기준일 of today or earlier. The old 아이디 still signs in for 90 days, stays searchable for good and is never reissued to anyone in the tenant. Audited as `user.sign_in_id.change`. 409 sign_in_id_taken (held or held before, including the account's own old values); 422 sign_in_id_invalid, sign_in_id_unchanged, effective_date_in_future and the reason-code refusals.
+         * Change an account's sign-in ID
+         * @description Decisions #33. A `user_manage` holder over the account sets a new sign-in ID with a reason (`sign_in_id_change` domain) and a reference date of today or earlier. The old sign-in ID still signs in for 90 days, stays searchable for good and is never reissued to anyone in the tenant. Audited as `user.sign_in_id.change`. 409 sign_in_id_taken (held or held before, including the account's own old values); 422 sign_in_id_invalid, sign_in_id_unchanged, effective_date_in_future and the reason-code refusals.
          */
         post: operations["changeUserSignInId"];
         delete?: never;
@@ -13608,7 +13608,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Every 아이디 an account held
+         * Every sign-in ID an account held
          * @description Decisions #33. Newest first; `state` is CURRENT, ALIAS (still signs in until `alias_until`) or RESERVED (searchable only, never reissued).
          */
         get: operations["listUserSignInIds"];
@@ -13803,7 +13803,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create a compensating post-finalization rejection (사후 반려)
+         * Create a compensating post-finalization rejection
          * @description Records a compensating document linked to an already-finalized run and notifies the whole approval line. The terminal run is never reopened or mutated; a new POST_FINALIZATION_REJECTION document is created instead. Policy-gated (legacy enforce, inert Cedar shadow). Idempotent on idempotency_key.
          */
         post: operations["createWorkflowPostFinalizationRejection"];
@@ -13866,7 +13866,7 @@ export interface paths {
         };
         /**
          * Automation rules acting on an object kind (dynamics↔ontology)
-         * @description The explore screen's "작용 자동화" panel source. Returns definitions whose primary object_type is the kind or whose declared object_kinds chain touches it, plus the trigger bindings scoped to that kind.
+         * @description The explore screen's "automations acting on it" panel source. Returns definitions whose primary object_type is the kind or whose declared object_kinds chain touches it, plus the trigger bindings scoped to that kind.
          */
         get: operations["listWorkflowDefinitionsByObjectKind"];
         put?: never;
@@ -14189,7 +14189,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List workflow definitions the caller may start (기안 template gallery)
+         * List workflow definitions the caller may start (draft template gallery)
          * @description All-employee (member-gated, not workflow-manage admin) catalog of ACTIVE workflow definitions the caller could actually START. Deny-by-omission: a definition is listed only when its start authority admits the caller — the identical check the start endpoint (POST /api/v1/workflow-runs) enforces (top-level start_policy, else the entry node's required_policy; absent = self-service all-employee). The catalog never advertises a definition the caller would get a 403 starting. Carries only the metadata definitions actually hold (no invented icon/desc/tone — those are frontend presentation).
          */
         get: operations["listSubmittableWorkflowDefinitions"];
@@ -14327,7 +14327,7 @@ export interface paths {
         put?: never;
         /**
          * Finalize an approval document (author or delegate)
-         * @description Completes a finalization waiting task (종결). Author mode requires the initiating author; delegate mode is policy-gated (legacy enforce, inert Cedar shadow) and requires a non-empty reason. Finalization is a pre-terminal WAITING step, not a terminal reopen — the run reaches SUCCEEDED only when no receipt-confirmation step follows; otherwise it stays WAITING and a receipt task opens. Idempotent on idempotency_key.
+         * @description Completes a finalization waiting task. Author mode requires the initiating author; delegate mode is policy-gated (legacy enforce, inert Cedar shadow) and requires a non-empty reason. Finalization is a pre-terminal WAITING step, not a terminal reopen — the run reaches SUCCEEDED only when no receipt-confirmation step follows; otherwise it stays WAITING and a receipt task opens. Idempotent on idempotency_key.
          */
         post: operations["finalizeWorkflowTask"];
         delete?: never;
@@ -14343,10 +14343,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 사업장 kinds (platform defaults, then the tenant's own; inactive ones included) */
+        /** Workplace kinds (platform defaults, then the tenant's own; inactive ones included) */
         get: operations["listWorkplaceKinds"];
         put?: never;
-        /** Add a tenant 사업장 kind (the server generates its code) */
+        /** Add a tenant workplace kind (the server generates its code) */
         post: operations["createWorkplaceKind"];
         delete?: never;
         options?: never;
@@ -14367,7 +14367,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Relabel or (de)activate a 사업장 kind; a platform default gets the tenant's override */
+        /** Relabel or (de)activate a workplace kind; a platform default gets the tenant's override */
         patch: operations["updateWorkplaceKind"];
         trace?: never;
     };
@@ -14396,7 +14396,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getWorkplace"];
-        /** Effective-dated revision of a 사업장 (full state) */
+        /** Effective-dated revision of a workplace (full state) */
         put: operations["reviseWorkplace"];
         post?: never;
         delete?: never;
@@ -14413,14 +14413,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * What closing a 사업장 must plan for, and its open (or last) close job
-         * @description UX-R2 ENDS. Everyone not EXITED who is placed at the 사업장 or bound to its own unit or a 부서 under it, the active 부서 under it (parents first), the open exit cases of those people, and the newest close job. Needs the HR manage door (the list names people).
+         * What closing a workplace must plan for, and its open (or last) close job
+         * @description UX-R2 ENDS. Everyone not EXITED who is placed at the workplace or bound to its own unit or a department under it, the active departments under it (parents first), the open exit cases of those people, and the newest close job. Needs the HR manage door (the list names people).
          */
         get: operations["workplaceClosePlan"];
         put?: never;
         /**
-         * Close a 사업장 that still has people and 부서, by one plan
-         * @description UX-R2 ENDS (decisions #21, #28). A line for every person (TRANSFER = 전근 to an active unit of another open 사업장 of the same 법인, or to a 부서 this plan moves there; EXIT = 퇴직 with 마지막 근무일 the day before `closed_on` and `exit_reason_code` CLOSURE (폐업, default) or INSOLVENCY (도산), opening or joining an exit case at once; GROUP_TRANSFER = 전적 to a unit at another 법인's open 사업장 named by to_workplace_id, with the person's consent and continuity (group_transfer), recorded with the plan and dated `closed_on`, opening the sending 법인's settlement case when 퇴직금 is SETTLED) and for every 부서 directly under the 사업장 (MOVE under another open 사업장's unit or 부서, its sub-부서 with it; DISSOLVE = 폐지 once empty). Fail-closed: nothing is written on any refusal. Applied all-or-none on `closed_on`: in this request when that is today and the plan has at most 300 lines, else by the lifecycle tick on the day (a later or larger plan is dry-run here when it fits); a job WAITS while a 퇴직 it opened or a 전적 it recorded is not in effect and is then finished by the tick. Needs `legal_entity_manage` on the 사업장 AND the HR manage door, and a 발령 grant (lifecycle_manage or employee_directory_manage) on each 전적's receiving place: 403 out_of_scope otherwise, nothing written.
+         * Close a workplace that still has people and departments, by one plan
+         * @description UX-R2 ENDS (decisions #21, #28). A line for every person (TRANSFER = relocation to an active unit of another open workplace of the same legal entity, or to a department this plan moves there; EXIT = exit with the last working day the day before `closed_on` and `exit_reason_code` CLOSURE (business closure, default) or INSOLVENCY (insolvency), opening or joining an exit case at once; GROUP_TRANSFER = group transfer to a unit at another legal entity's open workplace named by to_workplace_id, with the person's consent and continuity (group_transfer), recorded with the plan and dated `closed_on`, opening the sending legal entity's settlement case when severance pay is SETTLED) and for every department directly under the workplace (MOVE under another open workplace's unit or department, its sub-departments with it; DISSOLVE = abolish once empty). Fail-closed: nothing is written on any refusal. Applied all-or-none on `closed_on`: in this request when that is today and the plan has at most 300 lines, else by the lifecycle tick on the day (a later or larger plan is dry-run here when it fits); a job WAITS while an exit it opened or a group transfer it recorded is not in effect and is then finished by the tick. Needs `legal_entity_manage` on the workplace AND the HR manage door, and a personnel order grant (lifecycle_manage or employee_directory_manage) on each group transfer's receiving place: 403 out_of_scope otherwise, nothing written.
          */
         post: operations["planWorkplaceClose"];
         delete?: never;
@@ -14439,7 +14439,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Withdraw a planned 사업장 close
+         * Withdraw a planned workplace close
          * @description UX-R2 ENDS. The open (SCHEDULED or WAITING) job becomes CANCELLED; exit cases it opened stay open and are cancelled on their own. Same doors as planning.
          */
         post: operations["cancelWorkplaceClose"];
@@ -14458,8 +14458,8 @@ export interface paths {
         };
         get?: never;
         /**
-         * Set or clear the code of a 사업장 (a label; direct in both phases, audited)
-         * @description The same rule as 부서 코드 (1-30 letters, digits, '.', '_', '-'), unique among the tenant's open 사업장. A code a closed or voided 사업장 held is accepted with the warning code_reused.
+         * Set or clear the code of a workplace (a label; direct in both phases, audited)
+         * @description The same rule as the department code (1-30 letters, digits, '.', '_', '-'), unique among the tenant's open workplaces. A code a closed or voided workplace held is accepted with the warning code_reused.
          */
         put: operations["setWorkplaceCode"];
         post?: never;
@@ -14477,8 +14477,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Whether a 사업장 is deleted (never used) or closed (폐쇄), and why not the other
-         * @description CRUD. As the 법인 read, for one 사업장.
+         * Whether a workplace is deleted (never used) or closed (closure), and why not the other
+         * @description CRUD. As the legal entity read, for one workplace.
          */
         get: operations["workplaceEndOptions"];
         put?: never;
@@ -14497,7 +14497,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Dated change to a 사업장's 4대보험 relations (only the insurers listed change) */
+        /** Dated change to a workplace's four-social-insurance relations (only the insurers listed change) */
         put: operations["reviseWorkplaceInsurance"];
         post?: never;
         delete?: never;
@@ -14514,7 +14514,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set or clear the kind of a 사업장 (a label only; direct in both phases, audited) */
+        /** Set or clear the kind of a workplace (a label only; direct in both phases, audited) */
         put: operations["setWorkplaceKind"];
         post?: never;
         delete?: never;
@@ -14532,7 +14532,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Move a 사업장 to another 사업자등록 or 종사업장 일련번호, dated (MR-18) */
+        /** Move a workplace to another business registration or sub-workplace serial number, dated (MR-18) */
         post: operations["changeWorkplaceRegistration"];
         delete?: never;
         options?: never;
@@ -14547,7 +14547,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dated history of a 사업장 and its 4대보험 relations (fields insurance.<INSURER>.<field>) */
+        /** Dated history of a workplace and its four-social-insurance relations (fields insurance.<INSURER>.<field>) */
         get: operations["listWorkplaceRevisions"];
         put?: never;
         post?: never;
@@ -14566,7 +14566,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Undo a mistaken 사업장 during setup */
+        /** Undo a mistaken workplace during setup */
         post: operations["voidWorkplace"];
         delete?: never;
         options?: never;
@@ -14602,13 +14602,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the branch-scoped leave-request approval queue (연차 결재함)
+         * List the branch-scoped leave-request approval queue
          * @description Pending-first, then newest. Requires `employee_directory_read`. The queue is confined to the caller's branches (resolved from the JWT); an out-of-scope request is invisible (deny-by-omission).
          */
         get: operations["listLeaveRequestsV2"];
         put?: never;
         /**
-         * File a self-service 연차/반차 request (본인 연차 신청)
+         * File a self-service annual or half-day leave request
          * @description The caller files a leave request for THEMSELVES. `subject_employee_id` and the routing `branch_id` are resolved server-side from the caller's own account and employee.home_branch_id — never from input — so a caller can only file for their own employee record. No directory feature is required (filing one's own leave is a base employee capability); the gate is an active account linked to an active employee; an unlinked or inactive subject is denied with 403. Missing home-branch authority returns the stable 409 `leave_home_branch_review_required`. The request preserves date and AM/PM intent in `review_required`; no calendar-day or fixed-half quantity is invented. A separate resolver pins authoritative evidence before any approval can move the ledger. Modern clients generate one `idempotency_key` per user intent and reuse it after an unknown or lost response. The same key and canonical client intent return the original request without another mutation or audit; a different intent conflicts.
          */
         post: operations["createLeaveRequestV2"];
@@ -14628,8 +14628,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Propose worker-chosen alternate 시기 on a §60⑤ consult
-         * @description Self-service only: the authenticated caller must be the original requester of a `time_change_consult` leave request. No `employee_directory_manage` capability is required (or sufficient) — managers cannot choose the alternate dates. The body carries a new inclusive date span that must differ from the original 시기; leave type and partial-day period are preserved from the consult row. Returns the updated v2 leave-request view with `alternate_*` fields populated.
+         * Propose worker-chosen alternate timing on a §60⑤ consult
+         * @description Self-service only: the authenticated caller must be the original requester of a `time_change_consult` leave request. No `employee_directory_manage` capability is required (or sufficient) — managers cannot choose the alternate dates. The body carries a new inclusive date span that must differ from the original timing; leave type and partial-day period are preserved from the consult row. Returns the updated v2 leave-request view with `alternate_*` fields populated.
          */
         post: operations["proposeLeaveAlternateDatesV2"];
         delete?: never;
@@ -14668,8 +14668,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Approve a pending leave request or open a 시기변경 협의
-         * @description Requires `employee_directory_manage` in the request's branch. An APPROVE writes the leave ledger (used += exact resolved charge units, remaining -= exact resolved charge units) in the same audited transaction. Separation of duties — a request cannot be decided by its own requester (403). 근로기준법 §60 forbids refusing 연차: `return`/`reject` are retired (422) and the only non-approve decision is `time_change` (§60⑤ 시기변경 협의), which requires a comment and never touches the ledger. Eligibility for `time_change` is system-judged from branch coverage evidence (요건 자동 판정); without a coverage shortfall the decision fails closed with 422 `leave_decide.time_change_ineligible`. A successful consult stamps `time_change_grounds` / `time_change_evidence` on the v2 view; the worker then proposes alternate dates via POST `/api/v2/leave/requests/{id}/alternate-dates`. Approval additionally requires a resolved exact charge and a distinct resolver. Clients must carry the current request_version as `expected_version`; omission is rejected so every v2 decision is an explicit compare-and-swap. charge_version identifies immutable evidence and is never a request mutation precondition. A successful decision increments request_version only; charge_version remains unchanged. An unresolved approval returns 409 `leave_calendar_review_required` plus review reasons, audits the blocked attempt, and changes neither request nor ledger.
+         * Approve a pending leave request or open a timing-change consultation
+         * @description Requires `employee_directory_manage` in the request's branch. An APPROVE writes the leave ledger (used += exact resolved charge units, remaining -= exact resolved charge units) in the same audited transaction. Separation of duties — a request cannot be decided by its own requester (403). Labor Standards Act §60 forbids refusing annual leave: `return`/`reject` are retired (422) and the only non-approve decision is `time_change` (§60⑤ timing-change consultation), which requires a comment and never touches the ledger. Eligibility for `time_change` is system-judged from branch coverage evidence (automatic eligibility determination); without a coverage shortfall the decision fails closed with 422 `leave_decide.time_change_ineligible`. A successful consult stamps `time_change_grounds` / `time_change_evidence` on the v2 view; the worker then proposes alternate dates via POST `/api/v2/leave/requests/{id}/alternate-dates`. Approval additionally requires a resolved exact charge and a distinct resolver. Clients must carry the current request_version as `expected_version`; omission is rejected so every v2 decision is an explicit compare-and-swap. charge_version identifies immutable evidence and is never a request mutation precondition. A successful decision increments request_version only; charge_version remains unchanged. An unresolved approval returns 409 `leave_calendar_review_required` plus review reasons, audits the blocked attempt, and changes neither request nor ledger.
          */
         post: operations["decideLeaveRequestV2"];
         delete?: never;
@@ -14953,13 +14953,13 @@ export interface components {
             role_name_ko: string;
             valid_from: components["schemas"]["Timestamp"];
             valid_to?: components["schemas"]["Timestamp"] | null;
-            /** @description The grant's AccessEnforcement, except that an ENFORCED row Cedar denies on the account's own slice (a voided 사업장, a broken chain) reads SCOPE_UNAVAILABLE, and every row of a deactivated account reads ACCOUNT_INACTIVE. */
+            /** @description The grant's AccessEnforcement, except that an ENFORCED row Cedar denies on the account's own slice (a voided workplace, a broken chain) reads SCOPE_UNAVAILABLE, and every row of a deactivated account reads ACCOUNT_INACTIVE. */
             enforcement: string;
             /** @description When the holder confirmed this grant's notice (decisions D0.2); null until then. Until it is set the grant does not count toward an eligible second person. */
             noticed_at?: components["schemas"]["Timestamp"] | null;
         };
         /**
-         * @description ENFORCED — counts now. PREPARED — waits for 운영 시작 (SETUP, not `effective_in_setup`).
+         * @description ENFORCED — counts now. PREPARED — waits for go-live (SETUP, not `effective_in_setup`).
          *     SCHEDULED — `valid_from` is in the future. ENDED — `valid_to` passed. REVOKED — revoked.
          *     ROLE_INACTIVE — the role is not ACTIVE.
          * @enum {string}
@@ -14969,11 +14969,11 @@ export interface components {
             id: components["schemas"]["Uuid"];
             account_id: components["schemas"]["Uuid"];
             account_display_name?: string | null;
-            /** @description false = the account is deactivated; its grants grant nothing (멈춤). */
+            /** @description false = the account is deactivated; its grants grant nothing (paused). */
             account_active: boolean;
             /** @description Whether the holder has enrolled a passkey (can sign in to use the grant). */
             account_has_passkey: boolean;
-            /** @description The holder's 소속 (their employee record's 부서), when the account is linked. */
+            /** @description The holder's affiliation (their employee record's department), when the account is linked. */
             account_unit?: string | null;
             account_employee_number?: string | null;
             role_id: components["schemas"]["Uuid"];
@@ -14987,7 +14987,7 @@ export interface components {
              * @description Pending elevated grant's configured activation deadline; null after activation or cancellation.
              */
             activates_at?: string | null;
-            /** @description 「설정 단계부터 적용」 — enforced during SETUP too. */
+            /** @description Apply from the setup phase — enforced during SETUP too. */
             effective_in_setup: boolean;
             enforcement: components["schemas"]["AccessEnforcement"];
             reason_code: string;
@@ -15079,7 +15079,7 @@ export interface components {
             names: string[];
         };
         /**
-         * @description 조회 `view` · 등록·수정 `edit` · 결재 `approve` · 내보내기 `export`. edit/approve/export imply view.
+         * @description View `view` · create/edit `edit` · approve `approve` · export `export`. edit/approve/export imply view.
          * @enum {string}
          */
         AccessLevel: "view" | "edit" | "approve" | "export";
@@ -15175,7 +15175,7 @@ export interface components {
             closed_at?: components["schemas"]["Timestamp"] | null;
         };
         /**
-         * @description NEW_DUTY 맡은 일이 바뀜 · COVER 다른 사람 대신 · NEEDED_NOW 지금 처리할 일 · OTHER 기타 (note required)
+         * @description NEW_DUTY my duties changed · COVER covering for someone else · NEEDED_NOW work to handle now · OTHER other (note required)
          * @enum {string}
          */
         AccessRequestReason: "NEW_DUTY" | "COVER" | "NEEDED_NOW" | "OTHER";
@@ -15222,7 +15222,7 @@ export interface components {
         };
         AccessScope: {
             kind: components["schemas"]["AccessScopeKind"];
-            /** @description The 법인, 사업장 or 부서 id. Absent or null for TENANT, required otherwise. */
+            /** @description The legal entity, workplace or department id. Absent or null for TENANT, required otherwise. */
             node_id?: components["schemas"]["Uuid"] | null;
             /** @default true */
             include_descendants: boolean;
@@ -15261,7 +15261,7 @@ export interface components {
             /** @enum {string} */
             kind: "automation" | "policy";
         };
-        /** @description An item the caller decided, as the 완료 tab lists it. */
+        /** @description An item the caller decided, as the done tab lists it. */
         ActionInboxDoneItem: {
             /** @description The namespaced id the open item had ("{kind}:{uuid}"). */
             id: string;
@@ -15359,9 +15359,9 @@ export interface components {
                 grants?: components["schemas"]["AccessEffectiveEntry"][];
                 is_ops?: boolean;
             };
-            /** @description Opaque command version for pending org-change approval rows; changes after any step decision. */
+            /** @description Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes. */
             version?: string;
-            /** @description Named policy for the stored approval chain, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without stored steps. Commands recheck live policy. */
+            /** @description Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy. */
             policy?: {
                 /** @description Settings key whose catalog label names the approval policy. */
                 key: string;
@@ -15471,7 +15471,7 @@ export interface components {
             total: number;
         };
         /**
-         * @description JUSO: a 도로명주소 search result (codes required). MANUAL_UNVERIFIED: structured manual entry when the search is unavailable.
+         * @description JUSO: a road-name address search result (codes required). MANUAL_UNVERIFIED: structured manual entry when the search is unavailable.
          * @enum {string}
          */
         AddressSource: "JUSO" | "MANUAL_UNVERIFIED";
@@ -15588,7 +15588,7 @@ export interface components {
         };
         AppointmentNoticeSummary: {
             id: components["schemas"]["Uuid"];
-            /** @description 발령 번호 YYYY-NNNN. */
+            /** @description Order number YYYY-NNNN. */
             notice_no: string;
             title: string;
             /** Format: date */
@@ -15945,7 +15945,7 @@ export interface components {
             no_schedule: number;
             marks: components["schemas"]["AttendanceMarkCounts"];
             rows: components["schemas"]["AttendanceBoardRow"][];
-            /** @description clean rows folded (펼치기) */
+            /** @description clean rows folded behind the expand toggle */
             hidden: number;
         };
         AttendanceBoardRow: {
@@ -15961,7 +15961,7 @@ export interface components {
             employee_id: components["schemas"]["Uuid"];
             /** Format: date */
             work_date: string;
-            /** @description the entry grammar: 9-18 · 22-6+ · 9-12,13-18 · 7:52- · = · x · o · 출장 */
+            /** @description the entry grammar: 9-18 · 22-6+ · 9-12,13-18 · 7:52- · = · x · o · 출장 (business trip) */
             value: string;
             /** @description Optional (false when omitted). Explicit acknowledgement of this cell value over the effective threshold */
             long_span_confirmed?: boolean;
@@ -16228,7 +16228,7 @@ export interface components {
             totals: components["schemas"]["AttendanceGridTotals"];
             month_state: components["schemas"]["AttendanceMonthState"];
         };
-        /** @description 인정 합계 · 소정 밖 근로 · 미승인 초과 (인정 포함) · 미근로 · 미해결 ▲ / ◆ */
+        /** @description Recognised total · work outside the schedule · unapproved excess (recognised included) · not worked · unresolved ▲ / ◆ */
         AttendanceGridTotals: {
             recognised: number;
             approved: number;
@@ -16278,7 +16278,7 @@ export interface components {
         };
         AttendanceHolidayYear: {
             year: number;
-            /** @description false: no reference rows ship for this year, so 공휴일 are unknown, never guessed */
+            /** @description false: no reference rows ship for this year, so public holidays are unknown, never guessed */
             loaded: boolean;
             edition?: string | null;
             public: components["schemas"]["AttendancePublicHoliday"][];
@@ -16471,7 +16471,7 @@ export interface components {
             people_total: number;
             next_cursor?: string | null;
         };
-        /** @description Whether a person's 근태 month takes writes. CLOSED refuses them (lock_id is the payroll period lock to request an unlock of, null when none covers the month); REOPENED takes them while an approved period unlock is open, until relock_at (null only for an unlock without a time box). */
+        /** @description Whether a person's attendance month takes writes. CLOSED refuses them (lock_id is the payroll period lock to request an unlock of, null when none covers the month); REOPENED takes them while an approved period unlock is open, until relock_at (null only for an unlock without a time box). */
         AttendanceMonthState: {
             /** @enum {string} */
             state: "OPEN" | "CLOSED" | "REOPENED";
@@ -16489,7 +16489,7 @@ export interface components {
             days?: components["schemas"]["AttendanceDaySpec"][];
             slots?: components["schemas"]["AttendanceRotationSlot"][];
             start_choices?: number[];
-            /** @description weekly 소정 minutes (ROTATION: the cycle average) */
+            /** @description weekly scheduled minutes (ROTATION: the cycle average) */
             weekly_minutes: number;
             cycle_days: number;
             night_work: boolean;
@@ -16507,7 +16507,7 @@ export interface components {
             name: string;
             kind: components["schemas"]["AttendancePatternKind"];
             /**
-             * @description OFF (default): a 공휴일 or 약정휴일 on a work day is a day off; WORK: the shift runs (교대) and the day is 휴일 근무 예정
+             * @description OFF (default): a public holiday or contractual holiday on a work day is a day off; WORK: the shift runs (shift rotation) and the day is scheduled holiday work
              * @enum {string}
              */
             holiday_rule?: "OFF" | "WORK";
@@ -16515,11 +16515,11 @@ export interface components {
             days?: components["schemas"]["AttendanceDaySpec"][];
             /** @description ROTATION */
             slots?: components["schemas"]["AttendanceRotationSlot"][];
-            /** @description STAGGERED: allowed 시업 times in minutes; the shifts move with the chosen start */
+            /** @description STAGGERED: allowed start times in minutes; the shifts move with the chosen start */
             start_choices?: number[];
         };
         /**
-         * @description FLEXIBLE (탄력), SELECTIVE (선택), DEEMED (간주) and DISCRETIONARY (재량) are refused with regime_not_supported_yet until their agreement records exist.
+         * @description FLEXIBLE, SELECTIVE, DEEMED and DISCRETIONARY are refused with regime_not_supported_yet until their agreement records exist.
          * @enum {string}
          */
         AttendancePatternKind: "WEEKLY" | "ROTATION" | "STAGGERED" | "FLEXIBLE" | "SELECTIVE" | "DEEMED" | "DISCRETIONARY";
@@ -16660,7 +16660,7 @@ export interface components {
             shift?: components["schemas"]["AttendanceShift"];
             slot_code?: string;
             holiday_name?: string;
-            /** @description the pattern runs on this holiday (교대); work counts as 휴일근로 only through a 승인 */
+            /** @description the pattern runs on this holiday (shift rotation); work counts as holiday work only through an approval */
             holiday_work?: boolean;
             decided_by?: components["schemas"]["AttendanceScopeKind"];
             layer_id?: components["schemas"]["Uuid"];
@@ -16724,9 +16724,9 @@ export interface components {
             date: string;
             nodes: components["schemas"]["AttendanceScheduleTreeNode"][];
             people_total: number;
-            /** @description people in the caller's scope with no 근무 일정 on the date */
+            /** @description people in the caller's scope with no work schedule on the date */
             people_unscheduled: number;
-            /** @description the year's 공휴일 reference rows ship with this release */
+            /** @description the year's public holiday reference rows ship with this release */
             holidays_loaded: boolean;
         };
         AttendanceScheduleTreeNode: {
@@ -16858,7 +16858,7 @@ export interface components {
             /** @description Sum of worked minutes outside the schedule in hours, regardless of approval. Null under the same conditions as recognized_hours. */
             overtime_hours?: number | null;
             /**
-             * @description UNKNOWN: 확인 불가 — 법정 근로시간 대장 미등록
+             * @description UNKNOWN: cannot be determined — no statutory working-hours register on file
              * @enum {string}
              */
             tone: "OK" | "WARN" | "DANGER" | "UNKNOWN";
@@ -17253,25 +17253,25 @@ export interface components {
             /** @description TRANSFER only, without to_org_unit_id. Each employee's own destination unit (a pasted sheet across units), still one all-or-nothing batch; recorded in this order. */
             lines?: components["schemas"]["BulkTransferLine"][];
             selection?: components["schemas"]["BulkSelection"];
-            /** @description TRANSFER with employee_ids or selection, required. An ACTIVE Site/Department/Team of this tenant; unknown or foreign is 404, dissolved is 422. An employee of another 법인 than the unit's is refused (transfer_cross_entity, field to_org_unit_id). */
+            /** @description TRANSFER with employee_ids or selection, required. An ACTIVE Site/Department/Team of this tenant; unknown or foreign is 404, dissolved is 422. An employee of a legal entity other than the unit's is refused (transfer_cross_entity, field to_org_unit_id). */
             to_org_unit_id?: components["schemas"]["Uuid"];
             /** @description PROMOTE only; this or to_job_title_id is required. The position every employee receives. */
             to_position?: string;
             /** @description PROMOTE only (BW-13). An active catalog title; its label becomes the position (wins over to_position). Unknown or inactive is 422 job_title_unknown. */
             to_job_title_id?: components["schemas"]["Uuid"];
-            /** @description PROMOTE only (MR-25). An active 직급 (catalog kind GRADE); a lower grade_rank needs DISCIPLINARY_DEMOTION. A 직급-only PROMOTE keeps the 직위. Unknown, inactive or another kind is 422 job_title_unknown. */
+            /** @description PROMOTE only (MR-25). An active grade (catalog kind GRADE); a lower grade_rank needs DISCIPLINARY_DEMOTION. A grade-only PROMOTE keeps the title. Unknown, inactive or another kind is 422 job_title_unknown. */
             to_grade_id?: components["schemas"]["Uuid"] | null;
-            /** @description APPOINT only (MR-25). The 직책 (kind POSITION) after; absent keeps it. */
+            /** @description APPOINT only (MR-25). The position (kind POSITION) after; absent keeps it. */
             to_position_kind_id?: components["schemas"]["Uuid"] | null;
-            /** @description APPOINT only. 보직 해제, the employee holds no 직책 after (excludes to_position_kind_id). */
+            /** @description APPOINT only. Relieved of position, the employee holds no position after (excludes to_position_kind_id). */
             vacate_position_kind?: boolean;
-            /** @description APPOINT only. The 직무 (kind JOB) after; its label becomes the employee's job (종사 업무, 근기법 시행령 §20 6호). */
+            /** @description APPOINT only. The job (kind JOB) after; its label becomes the employee's job (job duties, Enforcement Decree of the Labor Standards Act §20 item 6). */
             to_job_id?: components["schemas"]["Uuid"] | null;
-            /** @description APPOINT only. 종사 업무 as free text when to_job_id is absent; clears the 직무 id. */
+            /** @description APPOINT only. Job duties as free text when to_job_id is absent; clears the job id. */
             to_job?: string | null;
-            /** @description APPOINT only. The 직군 (kind JOB_FAMILY) after. */
+            /** @description APPOINT only. The job family (kind JOB_FAMILY) after. */
             to_job_family_id?: components["schemas"]["Uuid"] | null;
-            /** @description EMPLOYMENT_TYPE_CHANGE only, required there (MR-24, 고용형태 전환). A change to CONTRACT needs contract_end_date (the window starts on effective_date); a change away from CONTRACT closes the window. 409 employment_profile_missing when the employee has no employment profile. */
+            /** @description EMPLOYMENT_TYPE_CHANGE only, required there (MR-24, employment type change). A change to CONTRACT needs contract_end_date (the window starts on effective_date); a change away from CONTRACT closes the window. 409 employment_profile_missing when the employee has no employment profile. */
             to_employment_type?: components["schemas"]["EmploymentType"] | null;
             /**
              * Format: date
@@ -17351,7 +17351,7 @@ export interface components {
                 changes: Record<string, never>;
             }[];
         };
-        /** @description 「필터와 일치하는 {n}명 모두 선택」 — every employee the list filters admit under the caller's scope, minus exclude_employee_ids, resolved by the server in the batch transaction (recorded in employee id order). */
+        /** @description The "select all {n} people matching the filter" choice — every employee the list filters admit under the caller's scope, minus exclude_employee_ids, resolved by the server in the batch transaction (recorded in employee id order). */
         BulkSelection: {
             /** @description The GET /api/v1/employees filters as JSON (company, search, org_unit_id, legal_entity_id, workplace_id, status, employee_number, home_branch_review_required, identity_review_required, department_missing, contract_ending_before, lifecycle_apply_failed), each written as in the query string (status "ACTIVE,ON_LEAVE"); paging fields are ignored. */
             query: {
@@ -17517,7 +17517,7 @@ export interface components {
             /** @description Optional PNG data URL; validated bytes, size and dimensions. Clearing settings does not change previously issued snapshots. */
             seal_png?: string | null;
         };
-        /** @description BW-17 change request (변경 요청) to HR. The requester never decides. */
+        /** @description BW-17 change request to HR. The requester never decides. */
         ChangeRequest: {
             id: components["schemas"]["Uuid"];
             kind: string;
@@ -17561,17 +17561,17 @@ export interface components {
             to_job_title_id: components["schemas"]["Uuid"] | null;
             to_position: string | null;
             reason_code: string | null;
-            /** @description PROMOTE by 직급 (catalog GRADE), MR-27. */
+            /** @description PROMOTE by grade (catalog GRADE), MR-27. */
             to_grade_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT 직책 (catalog POSITION). */
+            /** @description APPOINT position (catalog POSITION). */
             to_position_kind_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT 보직 해제. */
+            /** @description APPOINT, relieved of position. */
             vacate_position_kind?: boolean;
-            /** @description APPOINT 직무 (catalog JOB). */
+            /** @description APPOINT job (catalog JOB). */
             to_job_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT 종사 업무 as text, when to_job_id is absent. */
+            /** @description APPOINT job duties as text, when to_job_id is absent. */
             to_job?: string;
-            /** @description APPOINT 직군 (catalog JOB_FAMILY). */
+            /** @description APPOINT job family (catalog JOB_FAMILY). */
             to_job_family_id?: components["schemas"]["Uuid"];
             /**
              * @description EMPLOYMENT_TYPE_CHANGE target.
@@ -17594,7 +17594,7 @@ export interface components {
             state: "OPEN" | "COMMITTED" | "DISCARDED";
             /** @description The lifecycle batch a commit recorded. */
             batch_id: components["schemas"]["Uuid"] | null;
-            /** @description 「저장 안 됨 · n건」 — lines not yet committed. */
+            /** @description The "Not saved · n items" count — lines not yet committed. */
             line_count: number;
             /** @description Lines whose employee changed since they were drafted; a commit refuses them. */
             stale_count: number;
@@ -17602,7 +17602,7 @@ export interface components {
             created_at: string;
         };
         ChangeSignInIdRequest: {
-            /** @description The new 아이디 (before `@`), a-z 0-9 and . _ - inside, 1-32 characters. */
+            /** @description The new login (before `@`), a-z 0-9 and . _ - inside, 1-32 characters. */
             login: string;
             effective_date: components["schemas"]["Date"];
             /** @description A `sign_in_id_change` reason code (NAME_CHANGE, INPUT_ERROR, HOLDER_REQUEST, SECURITY_INCIDENT, a tenant code, or OTHER with a note). */
@@ -17634,7 +17634,7 @@ export interface components {
         CloseCorrectionRequest: {
             /**
              * Format: date
-             * @description The right 해산일 or 폐업일; no later than today (KST).
+             * @description The right dissolution date or business closure date; no later than today (KST).
              */
             closed_on: string;
             reason_code: components["schemas"]["EntityCloseReason"];
@@ -17648,7 +17648,7 @@ export interface components {
         CloseLegalEntityRequest: {
             /**
              * Format: date
-             * @description 해산일 or 폐업일; no later than today (KST).
+             * @description Dissolution date or business closure date; no later than today (KST).
              */
             closed_on: string;
             reason_code: components["schemas"]["EntityCloseReason"];
@@ -17670,7 +17670,7 @@ export interface components {
             /** @description The list version the choice came from; omitted by N-1 clients. */
             version?: string | null;
         };
-        /** @description A reference-list value: code + label + list version, stamped by the server. version UNVERIFIED = format-checked only (「코드 확인 필요」). */
+        /** @description A reference-list value: code + label + list version, stamped by the server. version UNVERIFIED = format-checked only ("code needs checking"). */
         CodeRef: {
             code: string;
             label: string;
@@ -17906,7 +17906,7 @@ export interface components {
             note?: string | null;
             /** @description HR tier only. Validated exit_reason code; replaces the case's reason when supplied. Required at HR confirmation when the case has no reason. The HQ tier refuses this field. */
             exit_reason_code?: string;
-            /** @description HR tier only. Required for a reason whose catalog entry requires written notice under 근로기준법 제27조. Missing or blank evidence, or service after the statutory exit date, is 422 notice_evidence_missing. Ignored for other reasons; the HQ tier refuses this field. */
+            /** @description HR tier only. Required for a reason whose catalog entry requires written notice under Labor Standards Act Article 27. Missing or blank evidence, or service after the statutory exit date, is 422 notice_evidence_missing. Ignored for other reasons; the HQ tier refuses this field. */
             dismissal_notice?: {
                 reason_text?: string;
                 /** @description Delivery date; blank input reaches the notice_evidence_missing refusal. */
@@ -18170,23 +18170,23 @@ export interface components {
                 org_unit?: string;
                 /** @enum {string|null} */
                 sex?: "MALE" | "FEMALE" | null;
-                /** @description 주소 (영 §20 4호), a juso result or structured manual entry; null clears it. */
+                /** @description Address (Enforcement Decree §20 item 4), a juso result or structured manual entry; null clears it. */
                 address?: components["schemas"]["KrAddress"] | null;
-                /** @description 이력 · 경력 (영 §20 5호), the whole list; [] = 경력 없음, null = 미입력. */
+                /** @description History and career (Enforcement Decree §20 item 5), the whole list; [] = no prior experience, null = not entered. */
                 careers?: components["schemas"]["EmployeeCareer"][] | null;
-                /** @description 퇴직(해고) 사유 (영 §20 8호), an exit_reason catalog code. */
+                /** @description Exit (dismissal) reason (Enforcement Decree §20 item 8), an exit_reason catalog code. */
                 exit_reason?: string;
-                /** @description 그 밖에 필요한 사항 (영 §20 9호). */
+                /** @description Other necessary matters (Enforcement Decree §20 item 9). */
                 register_note?: string | null;
-                /** @description 한자 성명 (CJK ideographs). */
+                /** @description Name in Chinese characters (CJK ideographs). */
                 name_hanja?: string | null;
-                /** @description 영문 성명 (Latin letters, spaces, - ' . ,). */
+                /** @description English name (Latin letters, spaces, - ' . ,). */
                 name_en?: string | null;
-                /** @description 국적, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it. */
+                /** @description Nationality, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it. */
                 nationality?: string | null;
-                /** @description 개인 메일. */
+                /** @description Personal email. */
                 personal_email?: string | null;
-                /** @description 비상연락처, the whole list (at most 3); [] or null clears it. */
+                /** @description Emergency contacts, the whole list (at most 3); [] or null clears it. */
                 emergency_contacts?: {
                     name: string;
                     /** @enum {string} */
@@ -18200,7 +18200,7 @@ export interface components {
                 photo?: components["schemas"]["Uuid"] | null;
                 /**
                  * Format: date
-                 * @description 그룹 입사일 (근속 기산일); on or before the hire date.
+                 * @description Group hire date (service start date); on or before the hire date.
                  */
                 group_service_start_date?: string | null;
             };
@@ -18255,7 +18255,7 @@ export interface components {
         CreateBusinessRegistrationRequest: components["schemas"]["RegistrationInput"] & {
             /**
              * Format: uuid
-             * @description The kept 사업자등록증 this registration is typed from, attached in the same transaction and named as the first revision's evidence (422 document_not_found, document_not_certificate, document_attached_elsewhere, document_not_new).
+             * @description The kept business registration certificate this registration is typed from, attached in the same transaction and named as the first revision's evidence (422 document_not_found, document_not_certificate, document_attached_elsewhere, document_not_new).
              */
             document_id?: string | null;
             /** @description Explicitly accepted pre-save issuing-authority check. Suspension or closure requires acknowledgment. Saving without checking stays available. */
@@ -18333,7 +18333,7 @@ export interface components {
             regulation_links?: components["schemas"]["RegulationLinkRequest"][];
         };
         CreateCustomerRequest: {
-            /** @description Customer name (고객명). Required, trimmed, ≤ 200 characters. */
+            /** @description Customer name. Required, trimmed, ≤ 200 characters. */
             name: string;
         };
         CreateDailyPlanRequest: {
@@ -18366,7 +18366,7 @@ export interface components {
             end_date?: string;
             /**
              * Format: int64
-             * @description Defaults to base_pay_won; required (non-zero) for a 근로계약.
+             * @description Defaults to base_pay_won; required (non-zero) for an employment contract.
              */
             wage_won?: number;
             /**
@@ -18374,12 +18374,12 @@ export interface components {
              * @enum {string}
              */
             pay_unit?: "MONTHLY" | "HOURLY" | "DAILY" | "ANNUAL";
-            /** @description 주 소정근로시간 in minutes; required for a 근로계약. */
+            /** @description Contractual weekly working hours in minutes; required for an employment contract. */
             weekly_minutes?: number;
         };
         CreateEmployeeLifecycleEventRequest: {
             /**
-             * @description Exits are not recorded here — OFFBOARD/TERMINATE are 422; an employee leaves through an exit case (POST /api/v1/hr/exit-cases), whose HR confirmation records TERMINATE. GROUP_TRANSFER (전적, E-S3b) moves the employee to a 사업장 of another 법인 from effective_date (their first day there; the last day at the sending 법인 is the day before), with to_workplace_id and group_transfer required. APPOINT (MR-25) records a dated 직책·직무·직군 change; EMPLOYMENT_TYPE_CHANGE (MR-24) a dated 고용형태 전환. Both keep the employee's status.
+             * @description Exits are not recorded here — OFFBOARD/TERMINATE are 422; an employee leaves through an exit case (POST /api/v1/hr/exit-cases), whose HR confirmation records TERMINATE. GROUP_TRANSFER (group transfer, E-S3b) moves the employee to a workplace of another legal entity from effective_date (their first day there; the last day at the sending legal entity is the day before), with to_workplace_id and group_transfer required. APPOINT (MR-25) records a dated position, job and job family change; EMPLOYMENT_TYPE_CHANGE (MR-24) a dated employment type change. Both keep the employee's status.
              * @enum {string}
              */
             event_type: "ONBOARD" | "TRANSFER" | "GROUP_TRANSFER" | "PROMOTE" | "APPOINT" | "EMPLOYMENT_TYPE_CHANGE" | "LEAVE_OF_ABSENCE" | "RETURN_FROM_LEAVE" | "CONTRACT_RENEWAL";
@@ -18391,37 +18391,37 @@ export interface components {
             to_company?: string | null;
             /** @description Legacy free text. On its own it clears the employee's OrgUnit binding; ignored when to_org_unit_id is given. */
             to_org_unit?: string | null;
-            /** @description TRANSFER target OrgUnit (ACTIVE Site/Department/Team of this tenant). Rebinds the employee and projects the unit name into org_unit / to_org_unit. Unknown or foreign units are 404; dissolved is 422. A unit in another 법인 than the employee's on effective_date (its own 사업장's, or its nearest placed ancestor's for a 부서/팀) is 422 transfer_cross_entity, its error.refusals entry naming field to_org_unit_id with value, from_legal_entity_id and to_legal_entity_id. A 전보 never crosses 법인; that move is a 전적 (decision 30). Nothing is written. */
+            /** @description TRANSFER target OrgUnit (ACTIVE Site/Department/Team of this tenant). Rebinds the employee and projects the unit name into org_unit / to_org_unit. Unknown or foreign units are 404; dissolved is 422. A unit in a legal entity other than the employee's on effective_date (its own workplace's, or its nearest placed ancestor's for a department/team) is 422 transfer_cross_entity, its error.refusals entry naming field to_org_unit_id with value, from_legal_entity_id and to_legal_entity_id. A reassignment never crosses legal entities; that move is a group transfer (decision 30). Nothing is written. */
             to_org_unit_id?: components["schemas"]["Uuid"] | null;
             /** @description PROMOTE needs this or to_job_title_id (the new position). */
             to_position?: string | null;
-            /** @description PROMOTE only (MR-25). An active 직급 (catalog kind GRADE); a lower grade_rank needs DISCIPLINARY_DEMOTION. A 직급-only PROMOTE keeps the 직위. Unknown, inactive or another kind is 422 job_title_unknown. */
+            /** @description PROMOTE only (MR-25). An active grade (catalog kind GRADE); a lower grade_rank needs DISCIPLINARY_DEMOTION. A grade-only PROMOTE keeps the title. Unknown, inactive or another kind is 422 job_title_unknown. */
             to_grade_id?: components["schemas"]["Uuid"] | null;
-            /** @description APPOINT only (MR-25). The 직책 (kind POSITION) after; absent keeps it. */
+            /** @description APPOINT only (MR-25). The position (kind POSITION) after; absent keeps it. */
             to_position_kind_id?: components["schemas"]["Uuid"] | null;
-            /** @description APPOINT only. 보직 해제, the employee holds no 직책 after (excludes to_position_kind_id). */
+            /** @description APPOINT only. Relieved of position, the employee holds no position after (excludes to_position_kind_id). */
             vacate_position_kind?: boolean;
-            /** @description APPOINT only. The 직무 (kind JOB) after; its label becomes the employee's job (종사 업무, 근기법 시행령 §20 6호). */
+            /** @description APPOINT only. The job (kind JOB) after; its label becomes the employee's job (job duties, Enforcement Decree of the Labor Standards Act §20 item 6). */
             to_job_id?: components["schemas"]["Uuid"] | null;
-            /** @description APPOINT only. 종사 업무 as free text when to_job_id is absent; clears the 직무 id. */
+            /** @description APPOINT only. Job duties as free text when to_job_id is absent; clears the job id. */
             to_job?: string | null;
-            /** @description APPOINT only. The 직군 (kind JOB_FAMILY) after. */
+            /** @description APPOINT only. The job family (kind JOB_FAMILY) after. */
             to_job_family_id?: components["schemas"]["Uuid"] | null;
-            /** @description EMPLOYMENT_TYPE_CHANGE only, required there (MR-24, 고용형태 전환). A change to CONTRACT needs contract_end_date (the window starts on effective_date); a change away from CONTRACT closes the window. 409 employment_profile_missing when the employee has no employment profile. */
+            /** @description EMPLOYMENT_TYPE_CHANGE only, required there (MR-24, employment type change). A change to CONTRACT needs contract_end_date (the window starts on effective_date); a change away from CONTRACT closes the window. 409 employment_profile_missing when the employee has no employment profile. */
             to_employment_type?: components["schemas"]["EmploymentType"] | null;
             /** @description PROMOTE only (BW-13). An active catalog title; its label becomes the position (wins over to_position) and the employee's job_title_id is set. Unknown or inactive is 422 job_title_unknown. A PROMOTE by to_position alone clears the employee's catalog title. */
             to_job_title_id?: components["schemas"]["Uuid"] | null;
             /** @description TRANSFER and PROMOTE only (422 otherwise). A BW-07 code of lifecycle_transfer / lifecycle_promote (422 reason_code_invalid / reason_note_required); comment is its note. A PROMOTE from a ranked title to a lower grade_rank needs DISCIPLINARY_DEMOTION (422 demotion_reason_required). */
             reason_code?: string | null;
-            /** @description LEAVE_OF_ABSENCE only. YYYY-MM-DD, on or after effective_date. Required for CHILDCARE and MATERNITY (422 leave_return_date_required); optional for WORK_INJURY (산재 요양). */
+            /** @description LEAVE_OF_ABSENCE only. YYYY-MM-DD, on or after effective_date. Required for CHILDCARE and MATERNITY (422 leave_return_date_required); optional for WORK_INJURY (industrial accident medical care). */
             expected_return_date?: string | null;
-            /** @description CONTRACT_RENEWAL (required), or an EMPLOYMENT_TYPE_CHANGE to CONTRACT (required, the new contract's end; MR-24). YYYY-MM-DD, on or after effective_date. A renewal that takes fixed-term service past the statutory limit (기간제법 §4①, the register's FIXED_TERM_MAX_YEARS; 육아휴직 not counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback (no contract history) is 409 fixed_term_basis_unconfirmed. Record history or an exception; read the basis with GET /api/v1/employees/{id}/fixed-term. */
+            /** @description CONTRACT_RENEWAL (required), or an EMPLOYMENT_TYPE_CHANGE to CONTRACT (required, the new contract's end; MR-24). YYYY-MM-DD, on or after effective_date. A renewal that takes fixed-term service past the statutory limit (Fixed-Term Workers Act §4①, the register's FIXED_TERM_MAX_YEARS; parental leave not counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback (no contract history) is 409 fixed_term_basis_unconfirmed. Record history or an exception; read the basis with GET /api/v1/employees/{id}/fixed-term. */
             contract_end_date?: string | null;
-            /** @description TRANSFER or GROUP_TRANSFER (E-S3b). TRANSFER - a 사업장 of the employee's own 법인 to move them to (전근); the employment_assignments row splits on effective_date. Without it, a to_org_unit_id placed at another 사업장 moves them there. A 사업장 of another 법인 is 422 transfer_cross_entity (field to_workplace_id; a 전적); no 법인 recorded is 409 employee_unassigned; a closed or voided 사업장 is 422 workplace_not_open; one that is not the unit's is 422 org_unit_at_other_workplace; the 사업장 they already work at with no unit change is 422 lifecycle_noop. GROUP_TRANSFER (required then) - a 사업장 of another 법인 (전적); one of the employee's own 법인 is 422 group_transfer_same_entity, a 사업장 outside the caller's grant set is 403 out_of_scope, and the rest refuse as for TRANSFER. */
+            /** @description TRANSFER or GROUP_TRANSFER (E-S3b). TRANSFER - a workplace of the employee's own legal entity to move them to (relocation); the employment_assignments row splits on effective_date. Without it, a to_org_unit_id placed at another workplace moves them there. A workplace of another legal entity is 422 transfer_cross_entity (field to_workplace_id; a group transfer); no legal entity recorded is 409 employee_unassigned; a closed or voided workplace is 422 workplace_not_open; one that is not the unit's is 422 org_unit_at_other_workplace; the workplace they already work at with no unit change is 422 lifecycle_noop. GROUP_TRANSFER (required then) - a workplace of another legal entity (group transfer); one of the employee's own legal entity is 422 group_transfer_same_entity, a workplace outside the caller's grant set is 403 out_of_scope, and the rest refuse as for TRANSFER. */
             to_workplace_id?: components["schemas"]["Uuid"] | null;
-            /** @description GROUP_TRANSFER only, and required then (E-S3b). The 전적's consent (민법 §657①) and its continuity choice; 422 validation names a missing or invalid field. */
+            /** @description GROUP_TRANSFER only, and required then (E-S3b). The group transfer's consent (Civil Act §657①) and its continuity choice; 422 validation names a missing or invalid field. */
             group_transfer?: components["schemas"]["GroupTransferFacts"] | null;
-            /** @description CONTRACT_RENEWAL only (BW-12). A RECORDED or APPROVED FIXED_TERM_OVER_TWO_YEARS exception for this employee whose reason_code is a 기간제법 §4① 단서 ground (PROJECT_COMPLETION, ABSENCE_COVER, STUDY_OR_TRAINING, OLDER_WORKER, PROFESSIONAL, GOVERNMENT_JOB_PROGRAM, DECREE_LISTED; otherwise 422 fixed_term_exemption_ground_invalid), requested for the payload {"employee_id", "contract_end_date"}. It is consumed by this renewal (409 exception_consumed / exception_scope_changed / exception_expired otherwise). */
+            /** @description CONTRACT_RENEWAL only (BW-12). A RECORDED or APPROVED FIXED_TERM_OVER_TWO_YEARS exception for this employee whose reason_code is a Fixed-Term Workers Act §4① proviso ground (PROJECT_COMPLETION, ABSENCE_COVER, STUDY_OR_TRAINING, OLDER_WORKER, PROFESSIONAL, GOVERNMENT_JOB_PROGRAM, DECREE_LISTED; otherwise 422 fixed_term_exemption_ground_invalid), requested for the payload {"employee_id", "contract_end_date"}. It is consumed by this renewal (409 exception_consumed / exception_scope_changed / exception_expired otherwise). */
             exception_id?: components["schemas"]["Uuid"] | null;
             /** @description BW-11 version pin, the head_version of GET /api/v1/employees/{id}/lifecycle-events. When it no longer matches, 409 stale_record; error.refusals[0] names the last applied change (lifecycle_event_id, event_type, effective_date, recorded_by, recorded_at). */
             expected_head_version?: number | null;
@@ -18432,7 +18432,7 @@ export interface components {
             /** @description Required with replaces_event_id (422 reason_code_required). A lifecycle_cancel code. */
             replace_reason_code?: string | null;
             /**
-             * @description Required for LEAVE_OF_ABSENCE (422 leave_type_required; leave_type_invalid for another value); 422 on any other event. WORK_INJURY is 산재 요양 and does not require expected_return_date.
+             * @description Required for LEAVE_OF_ABSENCE (422 leave_type_required; leave_type_invalid for another value); 422 on any other event. WORK_INJURY is industrial accident medical care and does not require expected_return_date.
              * @enum {string|null}
              */
             leave_type?: "CHILDCARE" | "MATERNITY" | "WORK_INJURY" | "ILLNESS" | "PERSONAL" | "OTHER" | null;
@@ -18451,7 +18451,7 @@ export interface components {
             name: string;
             company?: string;
             /**
-             * @description 고용형태 (E13). The worker classification is derived from it, never sent.
+             * @description Employment type (E13). The worker classification is derived from it, never sent.
              * @enum {string}
              */
             employment_type?: "REGULAR" | "CONTRACT" | "PART_TIME" | "INTERN" | "DAILY" | "EXECUTIVE" | "DISPATCHED_IN" | "OUTSOURCED_ON_SITE" | "FREELANCE";
@@ -18482,40 +18482,40 @@ export interface components {
              * @description Optional when employment_type is CONTRACT, refused otherwise. YYYY-MM-DD, on or after contract_start_date. A CONTRACT registration with `contract` may omit both dates (they come from the contract) and must otherwise match it.
              */
             contract_end_date?: string;
-            /** @description 업무용 이메일 (E3); trimmed, domain lower-cased. An HR fact that prefills an invitation, not the invitation address. */
+            /** @description Work email (E3); trimmed, domain lower-cased. An HR fact that prefills an invitation, not the invitation address. */
             work_email?: string;
             /**
              * Format: date
-             * @description 생년월일 (E4); a past date on or after 1900-01-01.
+             * @description Date of birth (E4); a past date on or after 1900-01-01.
              */
             birth_date?: string;
             /**
-             * @description 신분증명 종류 only; the number is never sent or stored (decisions
+             * @description Identification document type only; the document number is never sent or stored.
              * @enum {string}
              */
             id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE" | "NOT_ISSUED";
             /**
              * Format: int64
-             * @description 기본급, integer KRW (E5). Sent together with pay_unit.
+             * @description Base pay, integer KRW (E5). Sent together with pay_unit.
              */
             base_pay_won?: number;
             /** @enum {string} */
             pay_unit?: "MONTHLY" | "HOURLY" | "DAILY" | "ANNUAL";
             /**
              * Format: date
-             * @description 수습 종료일 (E12); employee types only (worker classification EMPLOYEE), on or after hire_date.
+             * @description Probation end date (E12); employee types only (worker classification EMPLOYEE), on or after hire_date.
              */
             probation_end_date?: string;
             contract?: components["schemas"]["CreateEmployeeContract"];
             duplicate_override?: components["schemas"]["DuplicateOverride"];
             /**
              * Format: uuid
-             * @description MR-22: the 법인 of the person's first assignment; needs workplace_id and must be its 법인.
+             * @description MR-22: the legal entity of the person's first assignment; needs workplace_id and must be its legal entity.
              */
             legal_entity_id?: string;
             /**
              * Format: uuid
-             * @description MR-22: the open 사업장 the person works at from hire_date. Omitted: the 사업장 of org_unit_id, else 미배치.
+             * @description MR-22: the open workplace the person works at from hire_date. Omitted: the workplace of org_unit_id, else unplaced.
              */
             workplace_id?: string;
         };
@@ -18525,9 +18525,9 @@ export interface components {
             customer_name: string;
             site_name: string;
             status: components["schemas"]["EquipmentStatus"];
-            /** @description 규격, e.g. 입식 or 좌식. */
+            /** @description Specification, e.g. stand-up or sit-down. */
             specification: string;
-            /** @description 톤수 text, e.g. "2.5T"; numeric milli-tons are derived when the value ends in T. */
+            /** @description Tonnage text, e.g. "2.5T"; numeric milli-tons are derived when the value ends in T. */
             ton_text: string;
             management_no?: string | null;
             power_label?: string | null;
@@ -18554,17 +18554,17 @@ export interface components {
             rental_started_on?: string | null;
             /**
              * Format: int64
-             * @description 임대료 in KRW.
+             * @description Rental fee in KRW.
              */
             rental_fee?: number | null;
             /**
              * Format: int64
-             * @description 취득가액 in KRW.
+             * @description Acquisition cost in KRW.
              */
             vehicle_value?: number | null;
             /**
              * Format: int64
-             * @description 잔존가액 in KRW.
+             * @description Residual value in KRW.
              */
             residual_value?: number | null;
             note?: string | null;
@@ -18638,7 +18638,7 @@ export interface components {
         CreateLegalEntityRequest: components["schemas"]["LegalEntityInput"] & {
             /**
              * Format: uuid
-             * @description A kept document (CORP_REGISTRY_EXTRACT or BIZ_REG_CERT) this 법인 is entered from.
+             * @description A kept document (CORP_REGISTRY_EXTRACT or BIZ_REG_CERT) this legal entity is entered from.
              */
             document_id?: string | null;
         };
@@ -18857,7 +18857,7 @@ export interface components {
             headcount: number;
             /**
              * Format: date
-             * @description Omit or null for an open-ended posting (상시).
+             * @description Omit or null for an open-ended posting.
              */
             deadline?: string | null;
             requirements?: string[];
@@ -18911,25 +18911,25 @@ export interface components {
             name: string;
             /**
              * @deprecated
-             * @description Retired (decision 18, one 부서 kind); accepted and ignored.
+             * @description Retired (decision 18, one department kind); accepted and ignored.
              * @enum {string}
              */
             kind?: "DEPARTMENT" | "TEAM";
             /**
              * Format: uuid
-             * @description The 사업장 the 부서 sits in directly.
+             * @description The workplace the department sits in directly.
              */
             workplace_id?: string | null;
             /**
              * Format: uuid
-             * @description The 부서 (or 사업장 unit) it sits under.
+             * @description The department (or workplace unit) it sits under.
              */
             parent_org_unit_id?: string | null;
         };
         /** @description Create a site under an existing customer. Optional location/contact fields follow the same WGS84 ranges and length bounds as UpdateSiteRequest; latitude and longitude must be supplied together. */
         CreateSiteRequest: {
             customer_id: components["schemas"]["Uuid"];
-            /** @description Site name (현장명). Required, trimmed, ≤ 200 characters. */
+            /** @description Site name. Required, trimmed, ≤ 200 characters. */
             name: string;
             address?: string | null;
             province?: string | null;
@@ -18950,11 +18950,11 @@ export interface components {
              * @description Per-site geofence radius in metres (> 0, ≤ 100000). Null uses the system default (300 m).
              */
             geofence_radius_m?: number | null;
-            /** @description On-site representative contact name (담당자명). */
+            /** @description On-site representative contact name. */
             contact_name?: string | null;
-            /** @description On-site contact phone (연락처). */
+            /** @description On-site contact phone. */
             contact_phone?: string | null;
-            /** @description Optional contact email (이메일). */
+            /** @description Optional contact email. */
             contact_email?: string | null;
         };
         CreateTodoRequest: {
@@ -18985,7 +18985,7 @@ export interface components {
             roles?: string[];
             /** @description Retired with the roles. Anything but an empty list is refused with 422 branch_membership_refused. */
             branch_ids?: components["schemas"]["Uuid"][];
-            /** @description The 아이디 (the part before `@`) HR sets at invite (decisions #33). Absent or empty takes the default (the linked 사번, else `u` + hex). 422 sign_in_id_invalid by the rule, 409 sign_in_id_taken when anyone in the tenant holds or held it. */
+            /** @description The login (the part before `@`) HR sets at invite (decisions #33). Absent or empty takes the default (the linked employee number, else `u` + hex). 422 sign_in_id_invalid by the rule, 409 sign_in_id_taken when anyone in the tenant holds or held it. */
             sign_in_id?: string | null;
         };
         CreateVoucherRequest: {
@@ -19043,7 +19043,7 @@ export interface components {
              * @description Bind this existing open, unbound branch instead of creating one. Branches are never matched by name.
              */
             default_branch_id?: string | null;
-            /** @description 사업장 kind (decisions #18; a label only): a platform default code or a tenant kind code from GET /api/v1/workplace-kinds. Absent = not chosen. */
+            /** @description Workplace kind (decisions #18; a label only): a platform default code or a tenant kind code from GET /api/v1/workplace-kinds. Absent = not chosen. */
             kind_code?: string | null;
         };
         CreatedCustomer: {
@@ -19363,7 +19363,7 @@ export interface components {
             person_id?: string | null;
             id: components["schemas"]["Uuid"];
             display_name: string;
-            /** @description The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label: the account is keyed by `id` only. */
+            /** @description The current sign-in ID `<login>@<company domain>` (decisions #33). A label: the account is keyed by `id` only. */
             sign_in_id?: string | null;
             /** Format: uuid */
             employee_id: string | null;
@@ -19517,9 +19517,9 @@ export interface components {
             org_unit?: string | null;
             /** @description Canonical OrgUnit (Site/Department/Team) binding; null when unbound (legacy or imported rows). */
             org_unit_id: components["schemas"]["Uuid"] | null;
-            /** @description 법인 of the employee's current (or last) employment assignment; null when none is recorded. company stays a display snapshot. */
+            /** @description Legal entity of the employee's current (or last) employment assignment; null when none is recorded. company stays a display snapshot. */
             legal_entity_id: components["schemas"]["Uuid"] | null;
-            /** @description 사업장 of the same assignment; null when none is recorded. */
+            /** @description Workplace of the same assignment; null when none is recorded. */
             workplace_id: components["schemas"]["Uuid"] | null;
             worksite_name?: string | null;
             worksite?: string | null;
@@ -19575,9 +19575,9 @@ export interface components {
              * @description While ON_LEAVE, the expected return date of the leave that put the employee there; absent otherwise or when the leave named none.
              */
             expected_return_date?: string;
-            /** @description 업무용 이메일, the only contact a directory row carries; absent when none is recorded. The registered personal phone is never on the row (EmployeeEmploymentDetail.phone_e164, directory managers only). */
+            /** @description Work email, the only contact a directory row carries; absent when none is recorded. The registered personal phone is never on the row (EmployeeEmploymentDetail.phone_e164, directory managers only). */
             work_email?: string;
-            /** @description The nearest SCHEDULED lifecycle event (effective-dated personnel action, 발령 효력 예정), earliest effective_date first; null when none. */
+            /** @description The nearest SCHEDULED lifecycle event (effective-dated personnel action, a personnel order scheduled to take effect), earliest effective_date first; null when none. */
             next_event: components["schemas"]["EmployeeNextEvent"] | null;
             /** @description The latest scheduled action that could not apply on its date (APPLY_FAILED) and was not redone since, i.e. no SCHEDULED or APPLIED event of the same event_type was recorded after it; null when none and once the employee has EXITED. Redo it by scheduling or recording that action again. GET /api/v1/employees filters on it with lifecycle_apply_failed. */
             failed_event: {
@@ -19636,7 +19636,7 @@ export interface components {
         };
         EmployeeCreateWarning: {
             /**
-             * @description same_name_in_unit — other employees (not EXITED) bound to the same org unit have exactly this name. same_name_same_hire_date — others of the same name (spaces ignored) start on the same day (BW-19). pay_below_minimum_wage — the pay of a 근로자 is below the 최저임금 floor (floor_won) in force on the hire date. Notices, not blocks.
+             * @description same_name_in_unit — other employees (not EXITED) bound to the same org unit have exactly this name. same_name_same_hire_date — others of the same name (spaces ignored) start on the same day (BW-19). pay_below_minimum_wage — the pay of a worker is below the minimum wage floor (floor_won) in force on the hire date. Notices, not blocks.
              * @enum {string}
              */
             code: "same_name_in_unit" | "same_name_same_hire_date" | "pay_below_minimum_wage";
@@ -19663,7 +19663,7 @@ export interface components {
              * @description The effective_date of the employee's last SCHEDULED event; null when none.
              */
             schedule_after: string | null;
-            /** @description MR-25. The current 직급, 직위, 직책, 직무 and 직군 catalog ids (labels from GET /api/v1/job-titles); each null when none. Changed by PROMOTE (직급, 직위) and APPOINT (직책, 직무, 직군). */
+            /** @description MR-25. The current grade, title, position, job and job family catalog ids (labels from GET /api/v1/job-titles); each null when none. Changed by PROMOTE (grade, title) and APPOINT (position, job, job family). */
             classification: {
                 grade_id: components["schemas"]["Uuid"] | null;
                 job_title_id: components["schemas"]["Uuid"] | null;
@@ -19732,7 +19732,7 @@ export interface components {
             can_cancel: boolean;
             can_report_exit: boolean;
         };
-        /** @description Optional fields are omitted (not null) when absent. Required nullable fields are always present; `*_name` actor display names are null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the case's 퇴직 사유, omitted when none was given. */
+        /** @description Optional fields are omitted (not null) when absent. Required nullable fields are always present; `*_name` actor display names are null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the case's exit reason, omitted when none was given. */
         EmployeeExitCase: {
             id: components["schemas"]["Uuid"];
             employee_id: components["schemas"]["Uuid"];
@@ -19748,7 +19748,7 @@ export interface components {
             /** @description YYYY-MM-DD */
             effective_exit_date: string;
             site_manager_note: string;
-            /** @description BE-EMP-UI. The case's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given. */
+            /** @description BE-EMP-UI. The case's exit reason (BW-07 exit_reason code); omitted when none was given. */
             exit_reason_code?: string;
             /** @description Derived from the reason catalog; never stored on the case. */
             readonly involuntary: boolean;
@@ -19794,15 +19794,15 @@ export interface components {
             /** @description Present on REJECTED/CANCELLED cases. */
             closed_reason?: string;
             settlement_package?: components["schemas"]["EmployeeExitSettlementPackage"];
-            /** @description The TERMINATE lifecycle event the HR confirmation recorded; null before HR confirmation (or when the employee was already EXITED by import). For a case a 전적 opened (exit_reason_code GROUP_TRANSFER), the GROUP_TRANSFER event; such a case starts HR_CONFIRMED, offers no cancel_exit or reject_exit (409 exit_case_follows_group_transfer), and is cancelled with the 전적 when it is withdrawn, replaced or rescinded. */
+            /** @description The TERMINATE lifecycle event the HR confirmation recorded; null before HR confirmation (or when the employee was already EXITED by import). For a case a group transfer opened (exit_reason_code GROUP_TRANSFER), the GROUP_TRANSFER event; such a case starts HR_CONFIRMED, offers no cancel_exit or reject_exit (409 exit_case_follows_group_transfer), and is cancelled with the group transfer when it is withdrawn, replaced or rescinded. */
             exit_lifecycle_event_id: components["schemas"]["Uuid"] | null;
             /**
-             * @description That event's state. SCHEDULED while an exit confirmed ahead of its effective_exit_date waits for the date (퇴사 예정); APPLIED once the employee is EXITED; APPLY_FAILED when it could not apply on the date (see the lifecycle event's failure_code); CANCELLED when the case was rejected or cancelled before the date.
+             * @description That event's state. SCHEDULED while an exit confirmed ahead of its effective_exit_date waits for the date (exit scheduled); APPLIED once the employee is EXITED; APPLY_FAILED when it could not apply on the date (see the lifecycle event's failure_code); CANCELLED when the case was rejected or cancelled before the date.
              * @enum {string|null}
              */
             exit_event_state: "SCHEDULED" | "APPLIED" | "APPLY_FAILED" | "CANCELLED" | null;
             next_actions: components["schemas"]["ExitCaseNextAction"][];
-            /** @description GET /api/v1/hr/exit-cases/{id} only. What the leaving employer settles and by when, from the statutory register (근로기준법 §36 금품청산, 근로자퇴직급여 보장법 §9 퇴직금). */
+            /** @description GET /api/v1/hr/exit-cases/{id} only. What the leaving employer settles and by when, from the statutory register (Labor Standards Act §36 final settlement of money and valuables, Employee Retirement Benefit Security Act §9 severance pay). */
             settlement_deadlines?: components["schemas"]["ExitSettlementDeadline"][];
         };
         EmployeeExitCasePage: {
@@ -19895,7 +19895,7 @@ export interface components {
             employment_type: components["schemas"]["EmployeeFacetCount"][];
             /** @description Counts per legal_entity_id (value is the id; null counts rows with no assignment), with every filter except legal_entity_id. */
             legal_entity: components["schemas"]["EmployeeFacetCount"][];
-            /** @description Counts per workplace_id (value is the id; null counts rows with no 사업장), with every filter except workplace_id. */
+            /** @description Counts per workplace_id (value is the id; null counts rows with no workplace), with every filter except workplace_id. */
             workplace: components["schemas"]["EmployeeFacetCount"][];
             review: {
                 /**
@@ -20012,19 +20012,19 @@ export interface components {
             company_map?: {
                 [key: string]: components["schemas"]["Uuid"] | null;
             };
-            /** @description Unit name in the file → an ACTIVE Site/Department/Team id, or null: 미배치. */
+            /** @description Unit name in the file → an ACTIVE Site/Department/Team id, or null: unplaced. */
             unit_map?: {
                 [key: string]: components["schemas"]["Uuid"] | null;
             };
-            /** @description MR-7: 사업장 text in the file → an open 사업장 id, or null: not a 사업장 (a 현장 name). */
+            /** @description MR-7: workplace text in the file → an open workplace id, or null: not a workplace (a site name). */
             workplace_map?: {
                 [key: string]: components["schemas"]["Uuid"] | null;
             };
-            /** @description MR-7: 고용형태 text in the file → an employment type code, or null: leave it empty. */
+            /** @description MR-7: employment type text in the file → an employment type code, or null: leave it empty. */
             employment_type_map?: {
                 [key: string]: "REGULAR" | "CONTRACT" | "PART_TIME" | "INTERN" | "DAILY" | "EXECUTIVE" | "DISPATCHED_IN" | "OUTSOURCED_ON_SITE" | "FREELANCE" | null;
             };
-            /** @description source_key → the person a row without a 사번 is (employee_id), or a new person (null). */
+            /** @description source_key → the person a row without an employee number is (employee_id), or a new person (null). */
             identity?: {
                 [key: string]: {
                     employee_id: components["schemas"]["Uuid"] | null;
@@ -20037,15 +20037,15 @@ export interface components {
                     note?: string;
                 };
             };
-            /** @description IMPORT-2: 재직상태 text → status. */
+            /** @description IMPORT-2: employment status text → status. */
             status_map?: {
                 [key: string]: "ACTIVE" | "ON_LEAVE" | "EXITED" | "PRE_HIRE";
             };
-            /** @description IMPORT-2: 휴직 유형 text ("" for an empty cell) → leave type. */
+            /** @description IMPORT-2: leave type text ("" for an empty cell) → leave type. */
             leave_type_map?: {
                 [key: string]: "CHILDCARE" | "MATERNITY" | "ILLNESS" | "PERSONAL" | "OTHER";
             };
-            /** @description IMPORT-2: source_key → the 사번 the operator gives a new person without one. */
+            /** @description IMPORT-2: source_key → the employee number the operator gives a new person without one. */
             employee_numbers?: {
                 [key: string]: string;
             };
@@ -20056,7 +20056,7 @@ export interface components {
                     note?: string;
                 };
             };
-            /** @description r3:hire-19: one answer for a conflict pattern, never row by row — workplace_conflict: follow_unit (the 부서's 사업장) or follow_workplace (the 근무지, the 부서 left 미배치); status_conflict: pre_hire (재직 with a future 입사일 comes in 입사 예정). Any other key or answer is 422 validation. */
+            /** @description r3:hire-19: one answer for a conflict pattern, never row by row — workplace_conflict: follow_unit (the department's workplace) or follow_workplace (the work location, the department left unplaced); status_conflict: pre_hire (employed with a future hire date comes in as pending hire). Any other key or answer is 422 validation. */
             group_answers?: {
                 /** @enum {string} */
                 workplace_conflict?: "follow_unit" | "follow_workplace";
@@ -20078,9 +20078,9 @@ export interface components {
             companies: components["schemas"]["EmployeeImportCompanySummary"][];
             /** @description New people bound to an ACTIVE unit by its name or by the unit map. */
             org_unit_bound_rows: number;
-            /** @description New people with no unit (a blank cell, or a name that binds no unit, 미배치) or former employees (unit text only). Imports never create units. */
+            /** @description New people with no unit (a blank cell, or a name that binds no unit, unplaced) or former employees (unit text only). Imports never create units. */
             org_unit_unbound_rows: number;
-            /** @description Unit names that bind no unit; their people come in 미배치 (unit_map binds them). */
+            /** @description Unit names that bind no unit; their people come in as unplaced (unit_map binds them). */
             unresolved_org_units: string[];
             /** @description sha-256 of rows; POST …/apply names it. */
             dry_run_digest: string;
@@ -20100,10 +20100,10 @@ export interface components {
                 code: string;
                 rows: number;
             }[];
-            /** @description W02: new people who come in with no 고용형태 (the apply button names it). */
+            /** @description W02: new people who come in with no employment type (the apply button names it). */
             employment_type_empty_rows: number;
             unplaced: components["schemas"]["EmployeeImportUnplaced"];
-            /** @description W12: rows whose 휴대전화 is not stored — a new person with no 고용형태 (the phone lives on the employment profile), or a person on file (their phone is changed on the 인사카드). */
+            /** @description W12: rows whose mobile phone is not stored — a new person with no employment type (the phone lives on the employment profile), or a person on file (their phone is changed on the personnel card). */
             phone_unstored_rows: number;
         };
         EmployeeImportNameCandidate: {
@@ -20136,21 +20136,21 @@ export interface components {
             }[];
             /** @description Differences import never writes for an existing person, with the flow that does them. */
             deferred?: {
-                /** @description company (r3:worst-case-22): the file names another 법인 than the person's; routed entity_transfer. */
+                /** @description company (r3:worst-case-22): the file names a legal entity other than the person's; routed entity_transfer. */
                 field: string;
                 from?: string | null;
                 to?: string | null;
-                /** @description entity_transfer (r3:worst-case-22): a 법인 change is a 전적 (or a mistake in the file), never a 발령; the 부서 change of the same row takes this route too. Import never moves anyone between 법인. */
+                /** @description entity_transfer (r3:worst-case-22): a legal entity change is a group transfer (or a mistake in the file), never a personnel order; the department change of the same row takes this route too. Import never moves anyone between legal entities. */
                 route: string;
             }[];
             new_person?: {
-                /** @description IMPORT-2: the 사번 apply records, shown here (never invented at apply); null — 사번 미부여. */
+                /** @description IMPORT-2: the employee number apply records, shown here (never invented at apply); null — no employee number assigned. */
                 employee_number?: string | null;
                 /** @enum {string} */
                 employee_number_source?: "file" | "rule" | "manual";
                 /** @enum {string} */
                 status: "ACTIVE" | "ON_LEAVE" | "PRE_HIRE" | "EXITED";
-                /** @description IMPORT-2 (decisions #26): ON_LEAVE — recorded at apply as an APPLIED LEAVE_OF_ABSENCE from start_date (a setup fact, not a 발령). */
+                /** @description IMPORT-2 (decisions #26): ON_LEAVE — recorded at apply as an APPLIED LEAVE_OF_ABSENCE from start_date (a setup fact, not a personnel order). */
                 leave?: {
                     /** Format: date */
                     start_date: string;
@@ -20166,35 +20166,35 @@ export interface components {
                 birth_date?: string | null;
                 org_unit?: string | null;
                 org_unit_id?: components["schemas"]["Uuid"] | null;
-                /** @description First load of a former employee (근기법 §42 보존), allowed only before the first approved payroll period. */
+                /** @description First load of a former employee (Labor Standards Act §42 retention), allowed only before the first approved payroll period. */
                 migrated_former: boolean;
-                /** @description MR-7: the 사업장 placed at from hire_date (its 법인 follows); null: 미배치. Never for a former employee. */
+                /** @description MR-7: the workplace placed at from hire_date (its legal entity follows); null: unplaced. Never for a former employee. */
                 workplace_id?: components["schemas"]["Uuid"] | null;
                 /**
-                 * @description MR-7: the employment profile is created with it; null: no profile (정보 미입력).
+                 * @description MR-7: the employment profile is created with it; null: no profile (information not entered).
                  * @enum {string|null}
                  */
                 employment_type?: "REGULAR" | "CONTRACT" | "PART_TIME" | "INTERN" | "DAILY" | "EXECUTIVE" | "DISPATCHED_IN" | "OUTSOURCED_ON_SITE" | "FREELANCE" | null;
                 /** @description MR-7: the unit name that bound no unit, kept on the person (source_metadata). */
                 unresolved_org_unit?: string | null;
                 /**
-                 * @description W03: why a current person comes in 미배치 (absent: placed, or a former employee).
+                 * @description W03: why a current person comes in as unplaced (absent: placed, or a former employee).
                  * @enum {string}
                  */
                 unplaced_reason?: "unit_unknown" | "unit_ambiguous" | "unit_left_unplaced" | "workplace_unknown" | "no_place";
                 /**
-                 * @description r3:hire-16: the first 근로자 명부 성별 (the 성별 column, else the 주민등록번호's 7th digit).
+                 * @description r3:hire-16: the first worker register sex (the sex column, else the resident registration number's 7th digit).
                  * @enum {string}
                  */
                 sex?: "MALE" | "FEMALE";
                 /**
                  * Format: date
-                 * @description r3:hire-16: the employment profile's 계약종료일.
+                 * @description r3:hire-16: the employment profile's contract end date.
                  */
                 contract_end_date?: string;
                 /**
                  * Format: date
-                 * @description r3:hire-16: the employment profile's 수습종료일.
+                 * @description r3:hire-16: the employment profile's probation end date.
                  */
                 probation_end_date?: string;
             };
@@ -20203,9 +20203,9 @@ export interface components {
             refusal_field?: string;
             /** @enum {string} */
             matched_by?: "employee_number" | "alias" | "rrn" | "pick";
-            /** @description The unit name that bound no unit; the person comes in 미배치 (unit_map binds it). */
+            /** @description The unit name that bound no unit; the person comes in as unplaced (unit_map binds it). */
             unit_name?: string;
-            /** @description MR-7: the 사업장 text that named no open 사업장 (a 현장 name, or two 사업장 of that name); workplace_map answers it. */
+            /** @description MR-7: the workplace text that named no open workplace (a site name, or two workplaces of that name); workplace_map answers it. */
             workplace_name?: string;
             /** @description unresolved_identity — people this row may be (never matched on a name alone). */
             candidates?: {
@@ -20214,7 +20214,7 @@ export interface components {
                 status: string;
                 /** @enum {string} */
                 basis: "rrn" | "name_birth_date" | "name_only";
-                /** @description IMPORT-2 동명이인: what tells namesakes apart (never a name suffix). */
+                /** @description IMPORT-2 namesakes: what tells namesakes apart (never a name suffix). */
                 company?: string;
                 org_unit?: string;
                 /** @description 1990-01-** */
@@ -20239,7 +20239,7 @@ export interface components {
             sheets: components["schemas"]["EmployeeImportSheetReport"][];
             sheets_needing_mapping: number;
             available_targets: string[];
-            /** @description Rows whose 주민등록번호 was sealed for matching. */
+            /** @description Rows whose resident registration number was sealed for matching. */
             sealed_identities: number;
         };
         EmployeeImportPreviewRow: {
@@ -20311,7 +20311,7 @@ export interface components {
             /** @description Imported rows bound to the one ACTIVE OrgUnit their org_unit text names. */
             org_units_bound: number;
             unplaced?: components["schemas"]["EmployeeImportUnplaced"];
-            /** @description r3:hire-16 / records-02: the 근로자 명부 (근기법 시행령 §20) items the run's new people still lack after the apply (exit_reason: former employees only); absent on runs applied before it existed. */
+            /** @description r3:hire-16 / records-02: the worker register (Enforcement Decree of the Labor Standards Act §20) items the run's new people still lack after the apply (exit_reason: former employees only); absent on runs applied before it existed. */
             register_gaps?: {
                 people: number;
                 sex: number;
@@ -20325,7 +20325,7 @@ export interface components {
             source_column?: string;
             /** @description Stable across dry runs of one run. */
             id: string;
-            /** @description A refusal_code, or sheet_needs_mapping, rrn_unavailable, rrn_invalid, unresolved_identity, status_unmapped, leave_type_unmapped, unit_unmapped, workplace_unmapped, employment_type_unmapped (blocking, W02), employee_number_missing (사번 미부여), deferred_change, summary_row_skipped and phone_invalid (W12, non-blocking). number_invalid (a number column's cell that is not a number, left out) and work_period_missing (the run has no pay period, so days and hours worked are left out) are non-blocking. */
+            /** @description A refusal_code, or sheet_needs_mapping, rrn_unavailable, rrn_invalid, unresolved_identity, status_unmapped, leave_type_unmapped, unit_unmapped, workplace_unmapped, employment_type_unmapped (blocking, W02), employee_number_missing (no employee number assigned), deferred_change, summary_row_skipped and phone_invalid (W12, non-blocking). number_invalid (a number column's cell that is not a number, left out) and work_period_missing (the run has no pay period, so days and hours worked are left out) are non-blocking. */
             reason: string;
             blocking: boolean;
             sheet: string;
@@ -20334,7 +20334,7 @@ export interface components {
             /** @description The source cell, e.g. B14. */
             cell?: string;
             field?: string;
-            /** @description The text to map (a unit, 사업장, 고용형태, 재직상태 or 휴직 유형 text), never a person's value. */
+            /** @description The text to map (a unit, workplace, employment type, employment status or leave type text), never a person's value. */
             value?: string;
             /** @description Rows the item covers (a value map covers every row with that text). */
             rows: number;
@@ -20344,7 +20344,7 @@ export interface components {
                 key: string;
                 choices: string[];
             };
-            /** @description W03: the records a unit or 사업장 text may mean, best first (resolution.choices are their ids); never bound without the operator's answer. */
+            /** @description W03: the records a unit or workplace text may mean, best first (resolution.choices are their ids); never bound without the operator's answer. */
             candidates?: {
                 id: components["schemas"]["Uuid"];
                 name: string;
@@ -20352,7 +20352,7 @@ export interface components {
                 alias?: string | null;
             }[];
         };
-        /** @description IMPORT-2 (decisions #25): the 「확인 필요」 queue, counted. Blocking items keep apply closed (422 import_unresolved); the rest are imported as the plan says (미배치, 사번 미부여) and stay listed. */
+        /** @description IMPORT-2 (decisions #25): the "needs checking" queue, counted. Blocking items keep apply closed (422 import_unresolved); the rest are imported as the plan says (unplaced, no employee number assigned) and stay listed. */
         EmployeeImportReviewQueue: {
             count: number;
             blocking: number;
@@ -20528,7 +20528,7 @@ export interface components {
             unchecked: number;
             note: string | null;
         };
-        /** @description W03: new people who come in 미배치, by reason (unit_unknown, unit_ambiguous, unit_left_unplaced, workplace_unknown, no_place). */
+        /** @description W03: new people who come in as unplaced, by reason (unit_unknown, unit_ambiguous, unit_left_unplaced, workplace_unknown, no_place). */
         EmployeeImportUnplaced: {
             rows: number;
             by_reason: {
@@ -20545,13 +20545,13 @@ export interface components {
                 legal_entity_id?: components["schemas"]["Uuid"] | null;
                 workplace_id?: components["schemas"]["Uuid"] | null;
                 org_unit_id?: components["schemas"]["Uuid"] | null;
-                /** @description The 부서 text the import file named that bound nothing (원본 부서). */
+                /** @description The department text the import file named that bound nothing (source department). */
                 source_org_unit?: string | null;
-                /** @description The statutory 사업장 text the import file named that bound nothing, separate from the physical site. */
+                /** @description The statutory workplace text the import file named that bound nothing, separate from the physical site. */
                 source_workplace?: string | null;
                 /** @enum {string} */
                 reason: "no_place" | "workplace_unknown" | "unit_unknown";
-                /** @description UX-R3 IMPORT (r3:hire-21): the facts placement is decided with, read with the person (직위, 고용형태 code, 입사일 YYYY-MM-DD, the 근무지 and 부서 texts on the record). */
+                /** @description UX-R3 IMPORT (r3:hire-21): the facts placement is decided with, read with the person (title, employment type code, hire date YYYY-MM-DD, the work location and department texts on the record). */
                 position?: string | null;
                 employment_type?: string | null;
                 hire_date?: string | null;
@@ -20572,7 +20572,7 @@ export interface components {
             id: components["schemas"]["Uuid"];
             employee_id: components["schemas"]["Uuid"];
             /**
-             * @description OFFBOARD/TERMINATE rows are recorded by exit-case HR confirmation (or are historical); EXIT_REVERSAL is the compensating event a rejected/cancelled exit case records; RESCIND is the compensating row of a rescission (voids_event_id names the rescinded event); REHIRE starts a new employment period (재입사, BW-19).
+             * @description OFFBOARD/TERMINATE rows are recorded by exit-case HR confirmation (or are historical); EXIT_REVERSAL is the compensating event a rejected/cancelled exit case records; RESCIND is the compensating row of a rescission (voids_event_id names the rescinded event); REHIRE starts a new employment period (rehire, BW-19).
              * @enum {string}
              */
             event_type: "ONBOARD" | "OFFBOARD" | "TERMINATE" | "TRANSFER" | "PROMOTE" | "LEAVE_OF_ABSENCE" | "RETURN_FROM_LEAVE" | "CONTRACT_RENEWAL" | "EXIT_REVERSAL" | "REHIRE" | "RESCIND" | "GROUP_TRANSFER" | "APPOINT" | "EMPLOYMENT_TYPE_CHANGE";
@@ -20587,7 +20587,7 @@ export interface components {
             to_position?: string | null;
             expected_return_date?: string | null;
             contract_end_date?: string | null;
-            /** @description LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is 산재 요양. Omitted for callers without employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, 개보법 제23조). */
+            /** @description LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is industrial accident medical care. Omitted for callers without employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, Personal Information Protection Act Article 23). */
             leave_type?: string;
             /** @description Present when the event was recorded by a bulk appointment (POST /api/v1/employees/lifecycle-events/bulk). */
             batch_id?: components["schemas"]["Uuid"];
@@ -20618,37 +20618,37 @@ export interface components {
             voids_event_id?: components["schemas"]["Uuid"];
             /** @description BW-11. The correction or RESCIND row that voided this event; it no longer holds. */
             voided_by?: components["schemas"]["Uuid"];
-            /** @description TRANSFER (E-S3b). The 사업장 of the same 법인 the event moves the employee to (전근), named or taken from the unit's 사업장; absent when the employee stays where they work. GROUP_TRANSFER - the receiving 사업장 of the other 법인. */
+            /** @description TRANSFER (E-S3b). The workplace of the same legal entity the event moves the employee to (relocation), named or taken from the unit's workplace; absent when the employee stays where they work. GROUP_TRANSFER - the receiving workplace of the other legal entity. */
             to_workplace_id?: components["schemas"]["Uuid"];
-            /** @description GROUP_TRANSFER only. The facts recorded with the 전적 (evidence references are omitted from the read-only view), plus from_legal_entity_id and to_legal_entity_id. */
+            /** @description GROUP_TRANSFER only. The facts recorded with the group transfer (evidence references are omitted from the read-only view), plus from_legal_entity_id and to_legal_entity_id. */
             group_transfer?: components["schemas"]["GroupTransferFacts"];
             /** @description PROMOTE only, the catalog title before (absent when the employee had none). */
             from_job_title_id?: components["schemas"]["Uuid"];
             /** @description PROMOTE by catalog id only, the title after. */
             to_job_title_id?: components["schemas"]["Uuid"];
-            /** @description PROMOTE with to_grade_id only (MR-25), the 직급 before. */
+            /** @description PROMOTE with to_grade_id only (MR-25), the grade before. */
             from_grade_id?: components["schemas"]["Uuid"];
-            /** @description PROMOTE with to_grade_id only, the 직급 after. */
+            /** @description PROMOTE with to_grade_id only, the grade after. */
             to_grade_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT only, the 직책 before (absent when none). */
+            /** @description APPOINT only, the position before (absent when none). */
             from_position_kind_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT only, the 직책 after (absent when none, e.g. 보직 해제). */
+            /** @description APPOINT only, the position after (absent when none, e.g. relieved of position). */
             to_position_kind_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT only, the 직무 before. */
+            /** @description APPOINT only, the job before. */
             from_job_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT only, the 직무 after. */
+            /** @description APPOINT only, the job after. */
             to_job_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT only, the 종사 업무 text before. */
+            /** @description APPOINT only, the job duties text before. */
             from_job?: string;
-            /** @description APPOINT only, the 종사 업무 text after. */
+            /** @description APPOINT only, the job duties text after. */
             to_job?: string;
-            /** @description APPOINT only, the 직군 before. */
+            /** @description APPOINT only, the job family before. */
             from_job_family_id?: components["schemas"]["Uuid"];
-            /** @description APPOINT only, the 직군 after. */
+            /** @description APPOINT only, the job family after. */
             to_job_family_id?: components["schemas"]["Uuid"];
-            /** @description EMPLOYMENT_TYPE_CHANGE only (MR-24), the 고용형태 before. */
+            /** @description EMPLOYMENT_TYPE_CHANGE only (MR-24), the employment type before. */
             from_employment_type?: components["schemas"]["EmploymentType"];
-            /** @description EMPLOYMENT_TYPE_CHANGE only, the 고용형태 after. */
+            /** @description EMPLOYMENT_TYPE_CHANGE only, the employment type after. */
             to_employment_type?: components["schemas"]["EmploymentType"];
             effective_date: string;
             /** @description System-authored comment catalog code; absent on legacy or user-written notes. */
@@ -20687,7 +20687,7 @@ export interface components {
         EmployeeNumberChange: {
             id: components["schemas"]["Uuid"];
             employee_id: components["schemas"]["Uuid"];
-            /** @description The alias kept; null when the person had no 사번 (사번 미부여). */
+            /** @description The alias kept; null when the person had no employee number. */
             from_number?: string | null;
             to_number: string;
             /** Format: date */
@@ -20803,7 +20803,7 @@ export interface components {
             /** @enum {string|null} */
             sex: "MALE" | "FEMALE" | null;
             address: components["schemas"]["KrAddress"] | null;
-            /** @description null = 미입력; [] = 경력 없음. */
+            /** @description null = not entered; [] = no prior experience. */
             careers: components["schemas"]["EmployeeCareer"][] | null;
             exit_reason_code: string | null;
             exit_reason_label: string | null;
@@ -20913,7 +20913,7 @@ export interface components {
             items: components["schemas"]["EmploymentAssignment"][];
         };
         /**
-         * @description 고용형태 (E13, employee_employment_profiles.employment_type).
+         * @description Employment type (E13, employee_employment_profiles.employment_type).
          * @enum {string}
          */
         EmploymentType: "REGULAR" | "CONTRACT" | "PART_TIME" | "INTERN" | "DAILY" | "EXECUTIVE" | "DISPATCHED_IN" | "OUTSOURCED_ON_SITE" | "FREELANCE";
@@ -20937,7 +20937,7 @@ export interface components {
             poll_token: string;
         };
         /**
-         * @description 사업자 구분 (공통서식 「사업장 형태」).
+         * @description Business kind (the common form's "workplace type").
          * @enum {string}
          */
         EntityBizKind: "CORPORATION" | "INDIVIDUAL" | "ID_NUMBER_ORG";
@@ -20950,9 +20950,9 @@ export interface components {
         };
         EntityBusinessTypeInput: {
             is_main: boolean;
-            /** @description 업태 as printed */
+            /** @description Business type as printed */
             sector: string;
-            /** @description 종목 as printed */
+            /** @description Business item as printed */
             item: string;
             nts_code?: string | null;
             ksic?: components["schemas"]["CodeInput"] | null;
@@ -20960,12 +20960,12 @@ export interface components {
         /** @enum {string} */
         EntityChangeMode: "SETUP" | "GOVERNED" | "SOLE_HOLDER" | "MIGRATION";
         /**
-         * @description Why a 법인 closed (MR-15) — DISSOLVED (해산) or BUSINESS_CLOSED (폐업).
+         * @description Why a legal entity closed (MR-15) — DISSOLVED (dissolution) or BUSINESS_CLOSED (business closure).
          * @enum {string}
          */
         EntityCloseReason: "DISSOLVED" | "BUSINESS_CLOSED";
         /**
-         * @description 정정 sub-reason (부가세법 시행령 §14①).
+         * @description Correction sub-reason (Enforcement Decree of the Value-Added Tax Act §14①).
          * @enum {string}
          */
         EntityCorrectionReason: "TRADE_NAME" | "RELOCATION" | "INDUSTRY" | "UNIT_TAXATION" | "REPRESENTATIVE" | "OTHER";
@@ -20999,7 +20999,7 @@ export interface components {
             registration_id?: string | null;
             /**
              * Format: date
-             * @description 발급일 as typed on the 사업자등록 it backs.
+             * @description Issue date as typed on the business registration it backs.
              */
             issued_on?: string | null;
             /**
@@ -21048,12 +21048,12 @@ export interface components {
             code: string;
         };
         /**
-         * @description 발급 사유 kind; no official list exists, the printed text is kept.
+         * @description Issue reason kind; no official list exists, the printed text is kept.
          * @enum {string}
          */
         EntityIssueReasonKind: "NEW" | "REISSUE" | "CORRECTION" | "OTHER_AS_PRINTED";
         /**
-         * @description 단독 · 각자대표 · 공동대표 (상법 §389②).
+         * @description Sole, several (each representing alone) or joint representation (Commercial Act §389②).
          * @enum {string}
          */
         EntityRepresentationMode: "SINGLE" | "SEVERAL" | "JOINT";
@@ -21073,7 +21073,7 @@ export interface components {
             changes: components["schemas"]["EntityFieldChange"][];
             /**
              * Format: uuid
-             * @description The kept 사업자등록증 a registration revision was recorded from (등록증 재발급·정정); null otherwise.
+             * @description The kept business registration certificate a registration revision was recorded from (certificate reissue / correction); null otherwise.
              */
             evidence_document_id?: string | null;
         };
@@ -21158,10 +21158,10 @@ export interface components {
             expected_version?: number;
             /**
              * Format: uuid
-             * @description CREATE_WORKPLACE, an existing 법인 (or entity_ref).
+             * @description CREATE_WORKPLACE, an existing legal entity (or entity_ref).
              */
             legal_entity_id?: string;
-            /** @description CREATE_WORKPLACE, a 법인 created earlier in the batch. */
+            /** @description CREATE_WORKPLACE, a legal entity created earlier in the batch. */
             entity_ref?: string;
             /** Format: date */
             effective_from?: string;
@@ -21936,11 +21936,11 @@ export interface components {
         };
         ExitSettlementDeadline: {
             /**
-             * @description FINAL_PAY - 금품청산 (final wages, 남은 연차 수당, every 금품). SEVERANCE_PAY - 퇴직금.
+             * @description FINAL_PAY - final settlement (final wages, pay for unused annual leave, all other money and valuables). SEVERANCE_PAY - severance pay.
              * @enum {string}
              */
             kind: "FINAL_PAY" | "SEVERANCE_PAY";
-            /** @description YYYY-MM-DD. The 퇴직일 (the day after effective_exit_date), when payment may be made. */
+            /** @description YYYY-MM-DD. The exit date (the day after effective_exit_date), when payment may be made. */
             opens_on: string | null;
             /** @description YYYY-MM-DD from the register's day count after effective_exit_date; null when the register has no row in force (never a guessed date). */
             due_date: string | null;
@@ -21971,7 +21971,7 @@ export interface components {
             average_wage_total_won: number;
             /**
              * Format: int64
-             * @description Monthly 통상임금; mandatory so the ordinary-wage floor is never skipped.
+             * @description Monthly ordinary wage; mandatory so the ordinary-wage floor is never skipped.
              */
             monthly_ordinary_wage_won: number;
         };
@@ -22266,16 +22266,16 @@ export interface components {
             org_change_approvers: number;
             /** Format: int64 */
             other_eligible_holders: number;
-            /** @description approval.policy.org_structure = route (decisions */
+            /** @description True when approval.policy.org_structure is route, so an org change goes through approval before it applies. */
             org_change_routed: boolean;
             /**
              * Format: int64
-             * @description People employed today (재직 or 휴직); never a 입사 예정, a 퇴직 or a cancelled registration.
+             * @description People employed today (employed or on leave of absence); never a pending hire, an exited person or a cancelled registration.
              */
             employees: number;
             /**
              * Format: int64
-             * @description 입사 예정 people, shown apart from the headcount.
+             * @description Pending hires, shown apart from the headcount.
              */
             employees_starting_later: number;
             /** Format: int64 */
@@ -22398,7 +22398,7 @@ export interface components {
         GoLiveRequest: {
             /** @description The preview digest the actor confirmed. */
             digest: string;
-            /** @description 「결재할 다른 사람이 없어 본인이 단독으로 결재하게 됩니다」 confirmed. */
+            /** @description Confirmed the notice "there is no one else to approve, so you will approve alone". */
             sole_holder_acknowledged?: boolean;
             step_up?: {
                 /** Format: uuid */
@@ -22438,7 +22438,7 @@ export interface components {
             /** @enum {string} */
             decision: "approved" | "rejected";
         };
-        /** @description A governance finding raised by the integrity engine (#34). Findings are "검토 필요" (review needed) — e.g. a self-approval record (detector_id `anomaly.self_approval`) or a price anomaly (`anomaly.price_outlier`) — and are NOT accusations of wrongdoing. */
+        /** @description A governance finding raised by the integrity engine (#34). Findings are "needs review" — e.g. a self-approval record (detector_id `anomaly.self_approval`) or a price anomaly (`anomaly.price_outlier`) — and are NOT accusations of wrongdoing. */
         GovernanceFinding: {
             id: components["schemas"]["Uuid"];
             org_id: components["schemas"]["Uuid"];
@@ -22506,26 +22506,26 @@ export interface components {
             /** @description Free-text detail; required when the reason code requires a note. */
             note?: string;
         };
-        /** @description E-S3b 전적 facts. The consent is an attested offline fact with its evidence (민법 §657①; decisions 3). Continuity is chosen per dimension (퇴직금, 연차, 근속; design/inter-entity-transfer T2), none defaulted; whether 계속근로 legally carries over is listed for the 노무사. A 전적 whose 퇴직금 is SETTLED opens the sending 법인's settlement case (an exit case with exit_reason_code GROUP_TRANSFER, its exit event the 전적) in the same transaction; 409 exit_case_open when the person already has an open exit case. */
+        /** @description E-S3b group transfer facts. The consent is an attested offline fact with its evidence (Civil Act §657①; decisions 3). Continuity is chosen per dimension (severance pay, annual leave, service; design/inter-entity-transfer T2), none defaulted; whether continuous employment legally carries over is listed for the labor attorney. A group transfer whose severance pay is SETTLED opens the sending legal entity's settlement case (an exit case with exit_reason_code GROUP_TRANSFER, its exit event the group transfer) in the same transaction; 409 exit_case_open when the person already has an open exit case. */
         GroupTransferFacts: {
             /**
-             * @description 퇴직금. SETTLED - paid by the sending 법인. CARRIED - 승계 (needs succession_evidence_ref). When neither annual_leave_continuity nor seniority_continuity is sent, this one choice names all three (SETTLED settles 연차 and restarts 근속; CARRIED carries both), as before T2; naming either requires both.
+             * @description Severance pay. SETTLED - paid by the sending legal entity. CARRIED - succession (needs succession_evidence_ref). When neither annual_leave_continuity nor seniority_continuity is sent, this one choice names all three (SETTLED settles annual leave and restarts service; CARRIED carries both), as before T2; naming either requires both.
              * @enum {string}
              */
             continuity: "SETTLED" | "CARRIED";
             /**
-             * @description 연차. SETTLED - 남은 연차 수당 paid by the sending 법인. CARRIED - the balance and 연차 year carried (needs succession_evidence_ref).
+             * @description Annual leave. SETTLED - pay for unused annual leave paid by the sending legal entity. CARRIED - the balance and annual-leave year carried (needs succession_evidence_ref).
              * @enum {string}
              */
             annual_leave_continuity?: "SETTLED" | "CARRIED";
             /**
-             * @description 근속. RESTART - counted from effective_date. CARRIED - counted from the 그룹 입사일 (needs succession_evidence_ref).
+             * @description Service. RESTART - counted from effective_date. CARRIED - counted from the group hire date (needs succession_evidence_ref).
              * @enum {string}
              */
             seniority_continuity?: "RESTART" | "CARRIED";
-            /** @description The sending 법인's settlement case the 전적 opened (퇴직금 SETTLED only). */
+            /** @description The sending legal entity's settlement case the group transfer opened (severance pay SETTLED only). */
             readonly settlement_case_id?: components["schemas"]["Uuid"];
-            /** @description 그룹 입사일, carried in either case; on or before effective_date. */
+            /** @description Group hire date, carried in either case; on or before effective_date. */
             group_service_start_date: components["schemas"]["Date"];
             /** @description The day the employee consented; on or before effective_date. */
             consent_date: components["schemas"]["Date"];
@@ -22555,7 +22555,7 @@ export interface components {
             hold: boolean;
         };
         HrOrgChartCompany: {
-            /** @description The 법인 this group is (company is then its current name); null for a legacy company-text group of employees with no 법인 assignment. */
+            /** @description The legal entity this group is (company is then its current name); null for a legacy company-text group of employees with no legal entity assignment. */
             legal_entity_id: components["schemas"]["Uuid"] | null;
             company: string;
             /** Format: int64 */
@@ -22633,7 +22633,7 @@ export interface components {
         IdentifierCorrectionReason: "TYPO_AT_ENTRY" | "REGISTRY_DIFFERS" | "OTHER_EVIDENCED";
         IdentifierCorrectionRequest: {
             /**
-             * @description biz_kind or crn on a 법인; brn on a 사업자등록. Leaving CORPORATION clears the crn too.
+             * @description biz_kind or crn on a legal entity; brn on a business registration. Leaving CORPORATION clears the crn too.
              * @enum {string}
              */
             field: "biz_kind" | "crn" | "brn";
@@ -22647,13 +22647,13 @@ export interface components {
             reason_code: components["schemas"]["IdentifierCorrectionReason"];
             /**
              * Format: uuid
-             * @description After 운영 시작, the approved or sole-holder recorded governed exception for exactly this correction.
+             * @description After go-live, the approved or sole-holder recorded governed exception for exactly this correction.
              */
             exception_id?: string | null;
-            /** @description After 운영 시작, the tenant ops account covering the correction itself (decisions #26 item d, break-glass): its passkey step-up envelope {binding, assertion}, kind EXCEPTION_DECIDE, object the 법인 (or 사업자등록) id, payload the line "ENTITY_IDENTIFIER_CORRECTION\n{field}\n{canonical value}\n{document_id}". With another eligible holder the server returns 202 PENDING and its exception_id; otherwise it records a sole-holder exception (사후 검토 due) and consumes it. Ignored for anyone else. */
+            /** @description After go-live, the tenant ops account covering the correction itself (decisions #26 item d, break-glass): its passkey step-up envelope {binding, assertion}, kind EXCEPTION_DECIDE, object the legal entity (or business registration) id, payload the line "ENTITY_IDENTIFIER_CORRECTION\n{field}\n{canonical value}\n{document_id}". With another eligible holder the server returns 202 PENDING and its exception_id; otherwise it records a sole-holder exception (post-hoc review due) and consumes it. Ignored for anyone else. */
             step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"] | null;
         };
-        /** @description §16 self-checklist evidence for an ingest-commit ("적재") apply. Missing or false ⇒ fail-closed deny, nothing written (85 판정). */
+        /** @description §16 self-checklist evidence for an ingest-commit ("load") apply. Missing or false ⇒ fail-closed deny, nothing written (ruling 85). */
         ImportApplyRequest: {
             checklist_all_acknowledged?: boolean | null;
         };
@@ -22682,10 +22682,10 @@ export interface components {
             recipient_user_id: components["schemas"]["Uuid"];
             /** @enum {string} */
             kind: "payslip" | "legal_notice";
-            /** @description Statutory subtype for a legal notice (근로계약/취업규칙/연차촉진/노무수령거부). */
+            /** @description Statutory subtype for a legal notice, a Korean value such as 근로계약 (employment contract), 취업규칙 (work rules), 연차촉진 (annual leave use promotion) or 노무수령거부 (refusal to accept work). */
             notice_type?: string;
             title: string;
-            /** @description Statutory basis surfaced in the passkey gate (e.g. 근로기준법 §61). */
+            /** @description Statutory basis surfaced in the passkey gate (e.g. Labor Standards Act §61). */
             legal_basis?: string;
             /** @description Producing-object kind (e.g. workflow_run, payroll_run). */
             source_kind?: string;
@@ -22905,7 +22905,7 @@ export interface components {
             version: number;
             /** Format: date */
             effective_from: string;
-            /** @description Today is before the first record takes effect (e.g. before 개설일); this is that first record. */
+            /** @description Today is before the first record takes effect (e.g. before the opening date); this is that first record. */
             before_first_record: boolean;
             status: components["schemas"]["InsuranceStatus"];
             mgmt_no?: components["schemas"]["FormattedValue"] | null;
@@ -22916,7 +22916,7 @@ export interface components {
             main_workplace_id?: string | null;
         };
         InsuranceRevisionRequest: {
-            /** @description The highest 4대보험 revision version of the 사업장 the client read (0 when it has none). A change since is 409 stale_revision, with error.current_version. */
+            /** @description The highest four-social-insurance revision version of the workplace the client read (0 when it has none). A change since is 409 stale_revision, with error.current_version. */
             expected_version: number;
             /** Format: date */
             effective_from: string;
@@ -22928,7 +22928,7 @@ export interface components {
             insurers?: components["schemas"]["InsurerInput"][];
         };
         /**
-         * @description One-choice 4대보험 setup; no default.
+         * @description One-choice four-social-insurance setup; no default.
          * @enum {string}
          */
         InsuranceShortcut: "ALL_ESTABLISHED_NUMBERS_LATER" | "ALL_ESTABLISHED_NOW" | "NONE_YET" | "PER_INSURER";
@@ -22941,7 +22941,7 @@ export interface components {
         InsurerInput: {
             insurer: components["schemas"]["Insurer"];
             status?: components["schemas"]["InsuranceStatus"];
-            /** @description 사업장관리번호 (8–13 digits). */
+            /** @description Workplace management number (8–13 digits). */
             mgmt_no?: string | null;
             /** Format: date */
             established_on?: string | null;
@@ -22960,7 +22960,7 @@ export interface components {
             iaci_term_from?: string | null;
             /** Format: date */
             iaci_term_to?: string | null;
-            /** @description 사업장관리번호 (8–13 digits). */
+            /** @description Workplace management number (8–13 digits). */
             prime_contractor_mgmt_no?: string | null;
         };
         InventoryConsumptionEvent: {
@@ -23120,7 +23120,7 @@ export interface components {
             title: string;
             /**
              * Format: date
-             * @description The 공고 date; its year numbers the notice.
+             * @description The notice date; its year numbers the notice.
              */
             notice_date: string;
             event_ids?: components["schemas"]["Uuid"][];
@@ -23136,7 +23136,7 @@ export interface components {
             purpose: string;
         };
         /**
-         * @description MR-25 catalog kind - 직급 GRADE, 직위 TITLE, 직책 POSITION, 직무 JOB, 직군 JOB_FAMILY.
+         * @description MR-25 catalog kind - GRADE, TITLE, POSITION, JOB, JOB_FAMILY.
          * @enum {string}
          */
         JobTitleKind: "GRADE" | "TITLE" | "POSITION" | "JOB" | "JOB_FAMILY";
@@ -23196,7 +23196,7 @@ export interface components {
             kind: "company" | "region" | "branch" | "technician";
             id?: components["schemas"]["Uuid"];
         };
-        /** @description Structured Korean address (도로명주소). */
+        /** @description Structured Korean address (road-name address). */
         KrAddress: {
             source: components["schemas"]["AddressSource"];
             road_addr_part1: string;
@@ -23218,7 +23218,7 @@ export interface components {
             mt_yn?: boolean | null;
             lnbr_mnnm?: number | null;
             lnbr_slno?: number | null;
-            /** @description 상세주소 (동·층·호) */
+            /** @description Detailed address (building, floor, unit) */
             detail?: string | null;
             /** @description Address exactly as printed on the certificate. */
             as_printed?: string | null;
@@ -23289,7 +23289,7 @@ export interface components {
         };
         /** @enum {string} */
         LeaveChargeReviewReason: "missing_calendar" | "ambiguous_calendar" | "calendar_source_unavailable" | "missing_policy" | "ambiguous_policy" | "policy_source_unavailable";
-        /** @description A self-service leave-request filing. The subject employee and branch are NOT accepted here — they are resolved from the authenticated caller. There is deliberately no `reason` field: 근로기준법 §60 grants the worker the 시기지정권, so a 연차/반차 filing carries no 사유 and a body that still sends one is rejected (422). */
+        /** @description A self-service leave-request filing. The subject employee and branch are NOT accepted here — they are resolved from the authenticated caller. There is deliberately no `reason` field: Labor Standards Act §60 grants the worker the right to designate the timing, so an annual / half-day leave filing carries no reason and a body that still sends one is rejected (422). */
         LeaveCreateRequest: {
             /**
              * Format: uuid
@@ -23332,7 +23332,7 @@ export interface components {
         };
         LeaveDecideRequest: {
             /**
-             * @description 근로기준법 §60: refusal is not representable. `time_change` opens the §60⑤ 시기변경 협의; `return`/`reject` are rejected with 422.
+             * @description Labor Standards Act §60: refusal is not representable. `time_change` opens the §60⑤ timing-change consultation; `return`/`reject` are rejected with 422.
              * @enum {string}
              */
             decision: "approve" | "time_change";
@@ -23346,7 +23346,7 @@ export interface components {
              */
             expected_version: number;
             /**
-             * @description 근로기준법 §60: refusal is not representable. `time_change` opens the §60⑤ 시기변경 협의 only when system coverage evidence shows a shortfall; `return`/`reject` are rejected with 422.
+             * @description Labor Standards Act §60: refusal is not representable. `time_change` opens the §60⑤ timing-change consultation only when system coverage evidence shows a shortfall; `return`/`reject` are rejected with 422.
              * @enum {string}
              */
             decision: "approve" | "time_change";
@@ -23369,7 +23369,7 @@ export interface components {
             target_count: number;
             confirmed_count: number;
         };
-        /** @description A §61 연차 사용 촉진 push to a target employee. */
+        /** @description A §61 annual leave use promotion push to a target employee. */
         LeavePromotionRequest: {
             branch_id: components["schemas"]["Uuid"];
             target_user_id: components["schemas"]["Uuid"];
@@ -23377,7 +23377,7 @@ export interface components {
             target_name: string;
             /**
              * Format: int32
-             * @description §61 round — 1 (사용 촉구) or 2 (시기 지정).
+             * @description §61 round — 1 (urge use) or 2 (timing designation).
              */
             round: number;
             /**
@@ -23389,16 +23389,16 @@ export interface components {
         LeaveProposeAlternateDatesRequest: {
             /**
              * Format: date
-             * @description Inclusive alternate 시기 start (YYYY-MM-DD); must differ from the original span.
+             * @description Inclusive alternate timing start (YYYY-MM-DD); must differ from the original span.
              */
             start_date: string;
             /**
              * Format: date
-             * @description Inclusive alternate 시기 end (YYYY-MM-DD); must differ from the original span.
+             * @description Inclusive alternate timing end (YYYY-MM-DD); must differ from the original span.
              */
             end_date: string;
         };
-        /** @description A 노무수령거부 notice served after a round-2 promotion. */
+        /** @description A refusal-to-accept-work notice served after a round-2 promotion. */
         LeaveRefusalRequest: {
             branch_id: components["schemas"]["Uuid"];
             target_user_id: components["schemas"]["Uuid"];
@@ -23445,7 +23445,7 @@ export interface components {
              */
             next_cursor: string | null;
         };
-        /** @description One leave request in the approval queue (결재함 leave variant). */
+        /** @description One leave request in the approval queue (its leave variant). */
         LeaveRequestV2View: {
             id: components["schemas"]["Uuid"];
             branch_id: components["schemas"]["Uuid"];
@@ -23487,7 +23487,7 @@ export interface components {
             start_date: string;
             /** Format: date */
             end_date: string;
-            /** @description Historical rows only (filed before the 근로기준법 §60 guardrail); omitted for requests that carry no 사유. */
+            /** @description Historical rows only (filed before the Labor Standards Act §60 guardrail); omitted for requests that carry no reason. */
             reason?: string;
             /**
              * @description `returned`/`rejected` are historical rows only — no decision can produce them since the §60 guardrail. `time_change_consult` is the lawful non-approve outcome.
@@ -23506,12 +23506,12 @@ export interface components {
             time_change_evidence?: components["schemas"]["TimeChangeCoverageEvidence"];
             /**
              * Format: date
-             * @description Worker-chosen alternate 시기 start; omitted until proposed.
+             * @description Worker-chosen alternate timing start; omitted until proposed.
              */
             alternate_start_date?: string;
             /**
              * Format: date
-             * @description Worker-chosen alternate 시기 end; omitted until proposed.
+             * @description Worker-chosen alternate timing end; omitted until proposed.
              */
             alternate_end_date?: string;
             /**
@@ -23531,7 +23531,7 @@ export interface components {
             ap_run_id?: string;
             created_at: components["schemas"]["Timestamp"];
         };
-        /** @description One leave request in the approval queue (결재함 leave variant). */
+        /** @description One leave request in the approval queue (its leave variant). */
         LeaveRequestView: {
             id: components["schemas"]["Uuid"];
             branch_id: components["schemas"]["Uuid"];
@@ -23544,7 +23544,7 @@ export interface components {
             start_date: string;
             /** Format: date */
             end_date: string;
-            /** @description Frozen v1 key. Requests filed since the 근로기준법 §60 guardrail carry no 사유 and serialize as an empty string; only historical rows still hold text. */
+            /** @description Frozen v1 key. Requests filed since the Labor Standards Act §60 guardrail carry no reason and serialize as an empty string; only historical rows still hold text. */
             reason: string;
             /**
              * @description `returned`/`rejected` are historical rows only — no decision can produce them since the §60 guardrail. `time_change_consult` is the lawful non-approve outcome.
@@ -23564,7 +23564,7 @@ export interface components {
             ap_run_id?: string;
             created_at: components["schemas"]["Timestamp"];
         };
-        /** @description One employee's annual-leave balance row (직원별 연차 현황). */
+        /** @description One employee's annual-leave balance row. */
         LeaveRosterEntry: {
             employee_id: components["schemas"]["Uuid"];
             name: string;
@@ -23576,7 +23576,7 @@ export interface components {
             /** Format: double */
             left: number;
             /**
-             * @description Bar color / 촉진 bucket — one of ok, promote, low.
+             * @description Bar color / promotion bucket — one of ok, promote, low.
              * @enum {string}
              */
             tone: "ok" | "promote" | "low";
@@ -23617,7 +23617,7 @@ export interface components {
         LegalEntity: {
             /** @description Typed identity problems, computed on read: legal_name_unconfirmed, legal_name_not_hangul, legal_name_is_person, display_name_is_person, english_name_is_person, primary_registration_classification, legal_name_review. */
             identity_problems?: components["schemas"]["EntityFieldWarning"][];
-            /** @description Open one-time reviews (personal readers only) - a registration 상호 that differed from the name when it became single-source. */
+            /** @description Open one-time reviews (personal readers only) - a registration trade name that differed from the name when it became single-source. */
             name_reviews?: components["schemas"]["LegalEntityNameReview"][];
             /** Format: uuid */
             id: string;
@@ -23625,9 +23625,9 @@ export interface components {
             crn?: components["schemas"]["FormattedValue"] | null;
             needs_confirmation: boolean;
             identity_locked: boolean;
-            /** @description 설립 중 — recorded before its 설립등기 (no 법인등록번호 yet); ends when the number is entered. */
+            /** @description Being incorporated — recorded before its incorporation registration (no corporate registration number yet); ends when the number is entered. */
             founding: boolean;
-            /** @description Whether this reader may manage the 법인 itself (Cedar legal_entity_manage within their scope). */
+            /** @description Whether this reader may manage the legal entity itself (Cedar legal_entity_manage within their scope). */
             can_manage: boolean;
             /** Format: date */
             closed_on?: string | null;
@@ -23647,19 +23647,19 @@ export interface components {
             known_at?: string | null;
             read_only?: boolean;
         };
-        /** @description Create (or the full state of a revision of) a 법인 / 개인사업자. CORPORATION also requires crn and head_office_address. */
+        /** @description Create (or the full state of a revision of) a corporation / sole proprietor. CORPORATION also requires crn and head_office_address. */
         LegalEntityInput: {
-            /** @description Optional 영문명 - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it. */
+            /** @description Optional English name - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it. */
             english_name?: string | null;
             biz_kind: components["schemas"]["EntityBizKind"];
-            /** @description 법인명 / 상호 as printed. */
+            /** @description Legal entity name / trade name as printed. */
             name: string;
             display_name?: string | null;
             representation_mode: components["schemas"]["EntityRepresentationMode"];
             representatives: string[];
-            /** @description Printed as 외 n명. */
+            /** @description Printed as "and n others". */
             additional_representatives?: number;
-            /** @description 법인등록번호. */
+            /** @description Corporate registration number. */
             crn?: string | null;
             head_office_address?: components["schemas"]["KrAddress"] | null;
             /** Format: date */
@@ -23667,7 +23667,7 @@ export interface components {
             fiscal_year_end_month?: number | null;
             /** Format: int64 */
             capital_won?: number | null;
-            /** @description 임원 in printed order. Omitted or null on a revise keeps the current ones; [] removes them all. */
+            /** @description Executives in printed order. Omitted or null on a revise keeps the current ones; [] removes them all. */
             directors?: components["schemas"]["EntityDirectorInput"][] | null;
             /** @description Asked only once two registrations exist; derived otherwise. */
             vat_unit_mode?: components["schemas"]["VatUnitMode"] | null;
@@ -23677,11 +23677,11 @@ export interface components {
             priority_support?: components["schemas"]["PrioritySupport"] | null;
             priority_support_basis?: components["schemas"]["PrioritySupportBasis"] | null;
             large_group_member?: boolean | null;
-            /** @description 설립 중 (create only; a 법인사업자 before its 설립등기, so with no 법인등록번호 yet). On a revise the record decides it; entering the 법인등록번호 ends it. */
+            /** @description Being incorporated (create only; a corporate business before its incorporation registration, so with no corporate registration number yet). On a revise the record decides it; entering the corporate registration number ends it. */
             founding?: boolean | null;
             /**
              * Format: date
-             * @description 개업연월일 of the 사업자등록증 typed with it (create only); the record's first revision starts there when no 설립일 (incorporated_on) is known.
+             * @description Business start date of the business registration certificate typed with it (create only); the record's first revision starts there when no incorporation date (incorporated_on) is known.
              */
             opened_on?: string | null;
         };
@@ -23707,12 +23707,12 @@ export interface components {
             reason_code: string;
         };
         LegalEntityState: {
-            /** @description Optional 영문명 - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it. */
+            /** @description Optional English name - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it. */
             english_name?: string | null;
             version: number;
             /** Format: date */
             effective_from: string;
-            /** @description Today is before the first record takes effect (e.g. before 개설일); this is that first record. */
+            /** @description Today is before the first record takes effect (e.g. before the opening date); this is that first record. */
             before_first_record: boolean;
             name: string;
             display_name?: string | null;
@@ -23726,7 +23726,7 @@ export interface components {
             fiscal_year_end_month?: number | null;
             /** Format: int64 */
             capital_won?: number | null;
-            /** @description 임원 (상법 §317②8). Null for callers who may not manage the 법인, like representatives. */
+            /** @description Executives (Commercial Act §317②8). Null for callers who may not manage the legal entity, like representatives. */
             directors?: components["schemas"]["EntityDirector"][] | null;
             vat_unit_mode?: components["schemas"]["VatUnitMode"] | null;
             vat_unit_mode_basis?: components["schemas"]["VatUnitBasis"] | null;
@@ -23941,7 +23941,7 @@ export interface components {
             status: "draft" | "active" | "archived";
         };
         /**
-         * @description Whether a listed unit is used (중고) or brand-new (신차).
+         * @description Whether a listed unit is used or brand-new.
          * @enum {string}
          */
         ListingCondition: "USED" | "NEW";
@@ -24210,12 +24210,12 @@ export interface components {
             is_flagged: boolean;
         };
         /**
-         * @description Typed maintenance cause (원인).
+         * @description Typed maintenance cause.
          * @enum {string}
          */
         MaintenanceCause: "BREAKDOWN" | "RETURN_PREP" | "SCHEDULED" | "INSPECTION_FINDING" | "OTHER";
         /**
-         * @description Typed maintenance classification (유형).
+         * @description Typed maintenance classification.
          * @enum {string}
          */
         MaintenanceType: "EMERGENCY" | "CORRECTIVE" | "PREVENTIVE" | "INSPECTION";
@@ -24325,7 +24325,7 @@ export interface components {
             read_target_count: number;
             /**
              * Format: int64
-             * @description Members who have acked ("확인") this message.
+             * @description Members who have acked ("Confirm") this message.
              */
             ack_count: number;
             /** @description Whether the reading caller has acked this message. Always false on a realtime message-posted event. */
@@ -24532,7 +24532,7 @@ export interface components {
         NoticeMyReceipt: {
             /**
              * Format: date-time
-             * @description 수령확인 timestamp; null until the caller acknowledges.
+             * @description Receipt acknowledgement timestamp; null until the caller acknowledges.
              */
             acknowledged_at: string | null;
         };
@@ -24562,7 +24562,7 @@ export interface components {
             display_name: string;
             /**
              * Format: date-time
-             * @description 수령확인 timestamp; null while the recipient is outstanding.
+             * @description Receipt acknowledgement timestamp; null while the recipient is outstanding.
              */
             acknowledged_at: string | null;
         };
@@ -24591,7 +24591,7 @@ export interface components {
             audience_scope: "org" | "branches";
             /** @description Audience branches with display names; empty for org-wide notices. */
             audience_branches: components["schemas"]["NamedEntity"][];
-            /** @description The caller's own 수령확인 state; null when the caller is not a snapshotted recipient. */
+            /** @description The caller's own receipt acknowledgement state; null when the caller is not a snapshotted recipient. */
             my_receipt: components["schemas"]["NoticeMyReceipt"] | null;
             /** @description Hydrated only for NoticeManage callers; null otherwise. */
             progress: components["schemas"]["NoticeProgress"] | null;
@@ -24675,7 +24675,7 @@ export interface components {
         NotificationSummary: {
             id: components["schemas"]["Uuid"];
             recipient_user_id: components["schemas"]["Uuid"];
-            /** @description Extensible category (결재/멘션/문서/공지/근태/급여 and beyond). */
+            /** @description Extensible category (literal values such as 결재 approval, 멘션 mention, 문서 document, 공지 notice, 근태 attendance, 급여 pay, and beyond). */
             category: string;
             /** @description Extensible producer kind (default "info"); generic detect->assign->resolve chains key on this. */
             kind: string;
@@ -24697,7 +24697,7 @@ export interface components {
             muted: boolean;
         };
         /**
-         * @description 과세유형, 국세청 tax_type_cd: 01 일반 · 02 간이 · 03 과세특례 · 04 면세 · 05 비영리(수익사업 없음) · 06 고유번호 단체 · 07 간이(세금계산서 발급).
+         * @description Taxation type, National Tax Service tax_type_cd: 01 general · 02 simplified · 03 special taxation · 04 tax-exempt · 05 non-profit (no profit-making business) · 06 unique-number organization · 07 simplified (issues tax invoices).
          * @enum {string}
          */
         NtsTaxType: "01" | "02" | "03" | "04" | "05" | "06" | "07";
@@ -25231,7 +25231,7 @@ export interface components {
             op: "DEACTIVATE_REGION";
             regionId: components["schemas"]["Uuid"];
         };
-        /** @description Mark an OrgUnit DISSOLVED. Preflight blocker ORG_UNIT_ACTIVE_MEMBERS while any employee who is not EXITED (on-leave included) is still bound to it, and ORG_UNIT_ACTIVE_CHILDREN while it has active child units — unless an earlier op of the same change moves them (REASSIGN_ORG_UNIT / MOVE_ORG_UNIT). Applied on the change's 시행일. `mergedInto` (합치기) names the unit it merges into; kept on the dissolved revision as its successor (`merged_into`), and must still be active when the change applies. */
+        /** @description Mark an OrgUnit DISSOLVED. Preflight blocker ORG_UNIT_ACTIVE_MEMBERS while any employee who is not EXITED (on-leave included) is still bound to it, and ORG_UNIT_ACTIVE_CHILDREN while it has active child units — unless an earlier op of the same change moves them (REASSIGN_ORG_UNIT / MOVE_ORG_UNIT). Applied on the change's effective date. `mergedInto` (merge) names the unit it merges into; kept on the dissolved revision as its successor (`merged_into`), and must still be active when the change applies. */
         OrgProposalOpDissolveOrgUnit: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -25251,7 +25251,7 @@ export interface components {
             orgUnitId: components["schemas"]["Uuid"];
             parentId: components["schemas"]["Uuid"];
         };
-        /** @description Move the members of one OrgUnit to another on the change's 시행일: each ACTIVE member gets a dated TRANSFER lifecycle event (전보; also a 전근 when the target sits at another 사업장, its assignment split on the date) batched under the change's id; a member hr refuses a TRANSFER (on leave and the other non-ACTIVE states) is rebound and re-placed with no event, status kept. Matched are every member who is not EXITED, or only `employeeIds` when given (one op per destination). `fromOrgUnit` and `toOrgUnit` are OrgUnit UUIDs (not free-text team labels) and must differ. */
+        /** @description Move the members of one OrgUnit to another on the change's effective date: each ACTIVE member gets a dated TRANSFER lifecycle event (reassignment; also a relocation when the target sits at another workplace, its assignment split on the date) batched under the change's id; a member hr refuses a TRANSFER (on leave and the other non-ACTIVE states) is rebound and re-placed with no event, status kept. Matched are every member who is not EXITED, or only `employeeIds` when given (one op per destination). `fromOrgUnit` and `toOrgUnit` are OrgUnit UUIDs (not free-text team labels) and must differ. */
         OrgProposalOpReassignOrgUnit: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -25311,7 +25311,7 @@ export interface components {
             ops: components["schemas"]["OrgSetupOp"][];
             /**
              * Format: date
-             * @description The day every change of the batch takes effect; today (KST) when absent. Refused on effective_date, nothing written: org_setup_date_future (setup applies at once; a change that waits for its day is an org change), org_setup_date_before_parent (a unit dated before the first record of the unit or 사업장 it goes under), org_setup_date_before_current (a change dated before the unit's current record).
+             * @description The day every change of the batch takes effect; today (KST) when absent. Refused on effective_date, nothing written: org_setup_date_future (setup applies at once; a change that waits for its day is an org change), org_setup_date_before_parent (a unit dated before the first record of the unit or workplace it goes under), org_setup_date_before_current (a change dated before the unit's current record).
              */
             effective_date?: string;
         };
@@ -25337,7 +25337,7 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
-        /** @description One change. CREATE — name and one of workplace_id, parent_org_unit_id, parent_ref (the ref of a unit created earlier in the batch). RENAME — org_unit_id, expected_version, name. MOVE — org_unit_id, expected_version and one parent. DISSOLVE — org_unit_id, expected_version (the 부서 and the 부서 under it). SET_DETAILS — org_unit_id, expected_version, code and head_employee_id, both the full new values (null clears; the head is dated from today). CREATE also takes code and head_employee_id. Field codes: code invalid_format | code_taken (another active 부서 has it), head_employee_id head_unavailable (not found or left). */
+        /** @description One change. CREATE — name and one of workplace_id, parent_org_unit_id, parent_ref (the ref of a unit created earlier in the batch). RENAME — org_unit_id, expected_version, name. MOVE — org_unit_id, expected_version and one parent. DISSOLVE — org_unit_id, expected_version (the department and the departments under it). SET_DETAILS — org_unit_id, expected_version, code and head_employee_id, both the full new values (null clears; the head is dated from today). CREATE also takes code and head_employee_id. Field codes: code invalid_format | code_taken (another active department has it), head_employee_id head_unavailable (not found or left). */
         OrgSetupOp: {
             /** @enum {string} */
             op: "CREATE" | "RENAME" | "MOVE" | "DISSOLVE" | "SET_DETAILS";
@@ -25353,11 +25353,11 @@ export interface components {
             /** Format: uuid */
             parent_org_unit_id?: string;
             parent_ref?: string;
-            /** @description CREATE, SET_DETAILS: 부서 코드, unique among active 부서 (the org change's rule). */
+            /** @description CREATE, SET_DETAILS: department code, unique among active departments (the org change's rule). */
             code?: string | null;
             /**
              * Format: uuid
-             * @description CREATE, SET_DETAILS: 부서장, someone who has not left; may belong to another unit.
+             * @description CREATE, SET_DETAILS: department head, someone who has not left; may belong to another unit.
              */
             head_employee_id?: string | null;
         };
@@ -25367,7 +25367,7 @@ export interface components {
             change_mode: string;
             units: components["schemas"]["OrgSetupUnit"][];
         };
-        /** @description A unit the batch wrote and the version it left it at (a DISSOLVE lists the 부서 under it too). */
+        /** @description A unit the batch wrote and the version it left it at (a DISSOLVE lists the departments under it too). */
         OrgSetupUnit: {
             op_index: number;
             ref?: string;
@@ -25376,7 +25376,7 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
-        /** @description 전체 → 법인 → 사업장 → 부서 (one 부서 kind, any depth; decision 18). */
+        /** @description All → legal entity → workplace → department (one department kind, any depth; decision 18). */
         OrgStructure: {
             tenant_name: string;
             /** @enum {string} */
@@ -25385,7 +25385,7 @@ export interface components {
             unplaced: components["schemas"]["OrgStructureNode"][];
             /**
              * Format: int64
-             * @description 「법인 미정」: people who have not left and have no 법인 today. Only for a tenant-wide caller; absent for a scoped one.
+             * @description "Legal entity not set": people who have not left and have no legal entity today. Only for a tenant-wide caller; absent for a scoped one.
              */
             entity_unknown_headcount?: number;
             /** Format: date */
@@ -25406,31 +25406,31 @@ export interface components {
             version?: number;
             /**
              * Format: uuid
-             * @description WORKPLACE: the 사업장's own unit (register people there with no 부서).
+             * @description WORKPLACE: the workplace's own unit (register people there with no department).
              */
             org_unit_id?: string;
             /** @description WORKPLACE: its kind code (decisions #18), when chosen. */
             workplace_kind?: string;
-            /** @description WORKPLACE: its 사업장 code; DEPARTMENT: its 부서 코드 — when set. */
+            /** @description WORKPLACE: its workplace code; DEPARTMENT: its department code — when set. */
             code?: string;
             head?: components["schemas"]["OrgUnitHeadRef"];
             /**
              * Format: int64
-             * @description 인원: people who have not left, everything below included. LEGAL_ENTITY includes its 미배치 (direct_headcount) since this field was added; WORKPLACE and LEGAL_ENTITY count today's assignments, SITE and DEPARTMENT count members.
+             * @description Headcount: people who have not left, everything below included. LEGAL_ENTITY includes its unplaced (direct_headcount) since this field was added; WORKPLACE and LEGAL_ENTITY count today's assignments, SITE and DEPARTMENT count members.
              */
             headcount: number;
             /**
              * Format: int64
-             * @description People on this node and on no child: DEPARTMENT its own members, WORKPLACE 사업장 직속 (its own unit), LEGAL_ENTITY 미배치 (a 법인 but no 사업장).
+             * @description People on this node and on no child: DEPARTMENT its own members, WORKPLACE directly under the workplace (its own unit), LEGAL_ENTITY unplaced (a legal entity but no workplace).
              */
             direct_headcount: number;
             /**
              * Format: int64
-             * @description Of headcount, people employed as DISPATCHED_IN or OUTSOURCED_ON_SITE (the 「파견·협력 n명 포함」 chip).
+             * @description Of headcount, people employed as DISPATCHED_IN or OUTSOURCED_ON_SITE (the "n dispatched · partner included" chip).
              */
             dispatched_headcount: number;
             chips: ("needs_confirmation" | "suspended" | "closed" | "registration_missing" | "unverified")[];
-            /** @description In order: 순서 first (PUT /api/v1/org-structure/order), then name (부서) or creation (사업장). */
+            /** @description In order: display order first (PUT /api/v1/org-structure/order), then name (departments) or creation (workplaces). */
             children: components["schemas"]["OrgStructureNode"][];
             scheduled_by?: components["schemas"]["StructureScheduledBy"];
             changed_after?: boolean;
@@ -25482,7 +25482,7 @@ export interface components {
             id: string;
             /**
              * Format: int64
-             * @description The units deleted (the 부서 and its sub-부서).
+             * @description The units deleted (the department and its sub-departments).
              */
             erased: number;
             change_mode: string;
@@ -25502,14 +25502,14 @@ export interface components {
             headcount: number;
             updatedAt: components["schemas"]["Timestamp"];
         };
-        /** @description A 부서's head as of today (dated; may belong to another unit). */
+        /** @description A department's head as of today (dated; may belong to another unit). */
         OrgUnitHeadRef: {
             /** Format: uuid */
             employee_id: string;
             name: string | null;
             /** Format: date */
             since: string | null;
-            /** @description 「(겸)」 — the head belongs to another unit, or heads another unit too. */
+            /** @description The "(concurrent)" marker — the head belongs to another unit, or heads another unit too. */
             concurrent: boolean;
         };
         /**
@@ -25528,7 +25528,7 @@ export interface components {
             name: string;
             employeeNumber?: string;
             position?: string;
-            /** @description Current 직책 from the employee card's position-kind catalog fact. */
+            /** @description Current position from the employee card's position-kind catalog fact. */
             title?: string;
             /**
              * Format: date
@@ -25561,11 +25561,11 @@ export interface components {
             createdAt: components["schemas"]["Timestamp"];
             /** @description The unit's code in this revision (a code change is a history line). */
             code?: string | null;
-            /** @description The 부서장 in this revision. */
+            /** @description The department head in this revision. */
             headEmployeeId?: components["schemas"]["Uuid"] | null;
-            /** @description The 부서장's name, resolved within the tenant; null when none or unknown. */
+            /** @description The department head's name, resolved within the tenant; null when none or unknown. */
             headName?: string | null;
-            /** @description The unit a dissolved one was merged into (its successor, 합치기). */
+            /** @description The unit a dissolved one was merged into (its successor, by a merge). */
             mergedInto?: components["schemas"]["Uuid"] | null;
         };
         /** @enum {string} */
@@ -25635,7 +25635,7 @@ export interface components {
             current_hours: number;
             projected_hours: number;
             /**
-             * @description UNKNOWN: 확인 불가 — 법정 근로시간 대장 미등록
+             * @description UNKNOWN: cannot be determined — no statutory working-hours register on file
              * @enum {string}
              */
             tone: "OK" | "WARN" | "DANGER" | "UNKNOWN";
@@ -25736,7 +25736,7 @@ export interface components {
             };
         };
         PasskeyLoginStartRequest: {
-            /** @description The sign-in ID `<아이디>@<회사 도메인>` (decisions #33). Omit for usernameless sign-in. */
+            /** @description The sign-in ID `<login>@<company domain>` (decisions #33). Omit for usernameless sign-in. */
             identifier?: string | null;
         };
         PasskeyLoginStartResponse: {
@@ -25758,7 +25758,7 @@ export interface components {
             passkey_id: components["schemas"]["Uuid"];
             user_id: components["schemas"]["Uuid"];
             credential_id: string;
-            /** @description The account's sign-in ID `<아이디>@<회사 도메인>` (decisions #33): the client signs in with it right after enrollment, identifier-first, so a key with no resident credential works too. */
+            /** @description The account's sign-in ID `<login>@<company domain>` (decisions #33): the client signs in with it right after enrollment, identifier-first, so a key with no resident credential works too. */
             sign_in_id?: string | null;
         };
         /** @description Optional overrides for the authenticated session user's passkey registration (username/display_name default to the user's stored profile when omitted), plus the step-up assertion required to ADD a passkey when the user already has one. A user with zero passkeys (initial enrollment) omits `step_up`; an already-enrolled user MUST supply a fresh `step_up` assertion of an existing passkey (user verification required), or register/start returns 401 — so a stolen session cannot silently add a credential. */
@@ -25980,7 +25980,7 @@ export interface components {
                 monthly_standard_hours: number;
                 source_note: string;
             } | null;
-            /** @description The period's real 근태기록 counts. They GATE the draft and drive no figure — nothing here is prorated by attendance. */
+            /** @description The period's real attendance record counts. They GATE the draft and drive no figure — nothing here is prorated by attendance. */
             attendance: {
                 /** Format: date */
                 period_start: string;
@@ -25996,9 +25996,9 @@ export interface components {
                 /** Format: int64 */
                 clock_out_events: number;
             };
-            /** @description False for every employee in this slice, because 원천징수 is not computed. A draft that cannot state 차인지급액 is not a 급여명세서. */
+            /** @description False for every employee in this slice, because withholding is not computed. A draft that cannot state the net pay is not a payslip. */
             issuable: boolean;
-            /** @description Always carries `WITHHOLDING_NOT_COMPUTED`. Adds `ATTENDANCE_INCOMPLETE` (with the counts) when the recorded working days fall short of the period's working days or the CLOCK_IN and CLOCK_OUT counts differ, `CONTRACT_WAGE_NOT_IN_FORCE`, `HOURLY_WAGE_NOT_SUPPORTED_IN_THIS_SLICE`, the 최저임금 findings, and the id of any unresolved rounding question. */
+            /** @description Always carries `WITHHOLDING_NOT_COMPUTED`. Adds `ATTENDANCE_INCOMPLETE` (with the counts) when the recorded working days fall short of the period's working days or the CLOCK_IN and CLOCK_OUT counts differ, `CONTRACT_WAGE_NOT_IN_FORCE`, `HOURLY_WAGE_NOT_SUPPORTED_IN_THIS_SLICE`, the minimum wage findings, and the id of any unresolved rounding question. */
             blockers: string[];
             statutory_citations: components["schemas"]["PayrollStatutoryCitation"][];
             earnings?: {
@@ -26037,45 +26037,45 @@ export interface components {
             total_employee_insurance_won?: number | null;
             /** Format: int64 */
             remainder_after_insurance_won?: number | null;
-            /** @description 차인지급액. Always null in this slice: 원천징수 is not computed, and a net figure that ignored it would be wrong rather than approximate. */
+            /** @description Net pay. Always null in this slice: withholding is not computed, and a net figure that ignored it would be wrong rather than approximate. */
             net_pay_won?: null;
             net_pay_unavailable_reason_ko?: string;
             /** @description States that the draft asserts no legal compliance. */
             compliance_notice_ko?: string;
         };
-        /** @description One 공제 component, carrying its own basis, rate and instrument so the payslip is recomputable under 근로기준법 제42조. An amount this engine did not compute is null, never 0. */
+        /** @description One deduction component, carrying its own basis, rate and instrument so the payslip is recomputable under Labor Standards Act Article 42. An amount this engine did not compute is null, never 0. */
         PayrollPayslipDraftDeduction: {
             /** @enum {string} */
             code: "NationalPension" | "HealthInsurance" | "LongTermCare" | "EmploymentUnemployment" | "IndustrialAccident";
             label_ko: string;
             /**
-             * @description 장기요양's basis is HealthInsurancePremium — the COMPUTED 건강보험료액 under 노인장기요양보험법 제9조제1항, not 보수월액.
+             * @description Long-term care's basis is HealthInsurancePremium — the COMPUTED health insurance premium under Long-Term Care Insurance Act Article 9(1), not the monthly remuneration.
              * @enum {string}
              */
             basis_kind: "MonthlyStandardIncome" | "MonthlyRemuneration" | "HealthInsurancePremium" | "IndustryTariff";
             /**
              * Format: int64
-             * @description Null for 산재 only: its 사업종류별 요율 and the basis that rate applies to are per-employer figures from an un-ingested 별지.
+             * @description Null for industrial accident insurance only: its rate by business type and the basis that rate applies to are per-employer figures from an un-ingested annexed form.
              */
             basis_won: number | null;
             /**
              * Format: int64
-             * @description Integer numerator, never a decimal. Null for 산재, with `rate_den`.
+             * @description Integer numerator, never a decimal. Null for industrial accident insurance, with `rate_den`.
              */
             rate_num: number | null;
             /** Format: int64 */
             rate_den: number | null;
             /**
              * Format: int64
-             * @description Null for 산재 (the employer premium is unknown, not zero) and null for any component whose rounding unit is unsettled — see `blocked_by`.
+             * @description Null for industrial accident insurance (the employer premium is unknown, not zero) and null for any component whose rounding unit is unsettled — see `blocked_by`.
              */
             total_won: number | null;
             /**
              * Format: int64
-             * @description Always null when `employer_only` is true — 산재 has no employee line.
+             * @description Always null when `employer_only` is true — industrial accident insurance has no employee line.
              */
             employee_won: number | null;
-            /** @description True for 산재 alone (징수법 제13조제5항). The absence of an employee line is STATED here rather than left silent. */
+            /** @description True for industrial accident insurance alone (Insurance Premium Collection Act Article 13(5)). The absence of an employee line is STATED here rather than left silent. */
             employer_only: boolean;
             /** @description The unresolved question id that withheld this amount, if any. */
             blocked_by: string | null;
@@ -26099,7 +26099,7 @@ export interface components {
             blocking_refs: components["schemas"]["Uuid"][];
         };
         PayrollRate: components["schemas"]["PayrollStatutoryCitation"] & {
-            /** @description Per-code Korean item label from the copy catalog; 미분류 for codes without declared display meaning. */
+            /** @description Per-code Korean item label from the copy catalog; the literal 미분류 (unclassified) for codes without declared display meaning. */
             name: string;
             /** @description Code-specific stored quantities. Contributions show numerator/denominator; minimum wage shows hourly won and monthly equivalent won; income and premium bands show lower–upper won. Null for unknown codes or missing quantities. */
             value: string | null;
@@ -26124,7 +26124,7 @@ export interface components {
             calculated_lines: number;
             /** Format: int64 */
             blocked_lines: number;
-            /** @description Always false until the 노무사/세무사 release gate flips the stored rows. */
+            /** @description Always false until the labor attorney / tax accountant release gate flips the stored rows. */
             payable: boolean;
             kernel_rate_table: string;
             /**
@@ -26260,17 +26260,17 @@ export interface components {
             retrieved_on: string;
             provenance_ko: string;
         };
-        /** @description The document that actually sets a number. The version anchor is 공포번호 (법령) or 발령번호 (고시) together with `enforced_on` — never a `flSeq` file handle, three of which serve byte-identical 별표 2 content. */
+        /** @description The document that actually sets a number. The version anchor is the promulgation number (statute) or issuance number (public notice) together with `enforced_on` — never a `flSeq` file handle, three of which serve byte-identical Annex 2 content. */
         PayrollStatutoryInstrument: {
-            /** @description 법령명 or 행정규칙명. */
+            /** @description Name of the statute or administrative rule. */
             name_ko: string;
             /** @description The article carrying the number, quoted tightly enough to diff. */
             article_ko: string;
-            /** @description 공포번호 (법령) or 발령번호 (고시). */
+            /** @description Promulgation number (statute) or issuance number (public notice). */
             promulgation_ko: string;
             /**
              * Format: date
-             * @description 시행일자 of the text quoted in `article_ko` — not the promulgation date, and not the latest promulgated slice.
+             * @description Effective date of the text quoted in `article_ko` — not the promulgation date, and not the latest promulgated slice.
              */
             enforced_on: string;
             url: string;
@@ -26343,7 +26343,7 @@ export interface components {
                 /** Format: date-time */
                 requestedAt: string;
             };
-            /** @description A sole-holder unlock (decisions 7, case B) only. The governed exception (예외 처리, PERIOD_UNLOCK_SOLE_HOLDER) recorded and consumed with the unlock; reviewDueAt is its 사후 검토 due time (review.sole_holder_exception.due). */
+            /** @description A sole-holder unlock (decisions 7, case B) only. The governed exception (exception handling, PERIOD_UNLOCK_SOLE_HOLDER) recorded and consumed with the unlock; reviewDueAt is its post-hoc review due time (review.sole_holder_exception.due). */
             exception?: {
                 /** Format: uuid */
                 id: string;
@@ -26412,7 +26412,7 @@ export interface components {
                 created_at: string;
             }[];
         };
-        /** @description 포상. */
+        /** @description Award. */
         PersonRecordAward: {
             title: string;
             /** Format: date */
@@ -26420,7 +26420,7 @@ export interface components {
             issuer?: string | null;
             details?: string | null;
         };
-        /** @description 개인정보 보호법 §23① basis of a restricted entry — CONSENT (§23①1, separate consent) or STATUTE (§23①2; DISABLED_EMPLOYMENT for 장애, VETERAN_EMPLOYMENT for 보훈). */
+        /** @description Personal Information Protection Act §23① basis of a restricted entry — CONSENT (§23①1, separate consent) or STATUTE (§23①2; DISABLED_EMPLOYMENT for disability, VETERAN_EMPLOYMENT for veterans' status). */
         PersonRecordBasis: {
             /** @enum {string} */
             kind: "CONSENT";
@@ -26432,7 +26432,7 @@ export interface components {
             /** @enum {string} */
             statute: "DISABLED_EMPLOYMENT" | "VETERAN_EMPLOYMENT";
         };
-        /** @description 장애 (restricted, 민감정보). Severity only (중증 counts twice, 장애인고용촉진법 §28의3). */
+        /** @description Disability (restricted, sensitive information). Severity only (severe counts twice, Act on the Employment Promotion of Persons with Disabilities §28-3). */
         PersonRecordDisability: {
             /** @enum {string} */
             severity: "SEVERE" | "NON_SEVERE";
@@ -26440,7 +26440,7 @@ export interface components {
             recognised_on?: string | null;
             basis: components["schemas"]["PersonRecordBasis"];
         };
-        /** @description 징계 (restricted). title is the 징계 종류; ends_on closes a 정직·감급 기간. */
+        /** @description Discipline (restricted). title is the discipline type; ends_on closes a suspension or pay-cut period. */
         PersonRecordDiscipline: {
             title: string;
             /** Format: date */
@@ -26450,7 +26450,7 @@ export interface components {
             /** Format: date */
             ends_on?: string | null;
         };
-        /** @description 학력. Dates are month precision (the day is stored as 1). */
+        /** @description Education. Dates are month precision (the day is stored as 1). */
         PersonRecordEducation: {
             school: string;
             /** @enum {string} */
@@ -26477,7 +26477,7 @@ export interface components {
             /** Format: date-time */
             revised_at: string;
         };
-        /** @description 가족. Never a 주민등록번호; no 부양 flag (payroll). */
+        /** @description Family. Never a resident registration number; no dependant flag (payroll). */
         PersonRecordFamily: {
             /** @enum {string} */
             relation: "SPOUSE" | "CHILD" | "PARENT" | "PARENT_IN_LAW" | "SIBLING" | "GRANDPARENT" | "GRANDCHILD" | "OTHER";
@@ -26541,7 +26541,7 @@ export interface components {
             /** @description Apply only; the preview's plan_digest. */
             plan_digest?: string | null;
         };
-        /** @description 어학. language is an ISO 639 code (stored lower case). */
+        /** @description Language skills. language is an ISO 639 code (stored lower case). */
         PersonRecordLanguage: {
             language: string;
             test?: string | null;
@@ -26558,7 +26558,7 @@ export interface components {
             }[];
             items: components["schemas"]["PersonRecordEntry"][];
         };
-        /** @description 병역. No 면제 사유 and no 전역 구분 (both can disclose health, 개인정보 보호법 §23). branch, rank and dates only for COMPLETED or SERVING. */
+        /** @description Military service. No exemption reason and no discharge type (both can disclose health, Personal Information Protection Act §23). branch, rank and dates only for COMPLETED or SERVING. */
         PersonRecordMilitary: {
             /** @enum {string} */
             status: "COMPLETED" | "SERVING" | "NOT_COMPLETED" | "EXEMPT" | "NOT_APPLICABLE";
@@ -26570,7 +26570,7 @@ export interface components {
             /** Format: date */
             served_to?: string | null;
         };
-        /** @description 자격·면허. number is never a 운전면허번호 (고유식별정보); a DRIVER_LICENSE entry has no number. */
+        /** @description Qualification and license. number is never a driver's license number (unique identifying information); a DRIVER_LICENSE entry has no number. */
         PersonRecordQualification: {
             name: string;
             /** @enum {string} */
@@ -26597,7 +26597,7 @@ export interface components {
             /** Format: uuid */
             next_after: string | null;
         };
-        /** @description 교육 이수. */
+        /** @description Training completed. */
         PersonRecordTraining: {
             course: string;
             provider?: string | null;
@@ -26609,7 +26609,7 @@ export interface components {
             ended_on?: string | null;
             hours?: number | null;
         };
-        /** @description 보훈 (restricted). Whether the employee is the 국가유공자 (SELF) or a family member. */
+        /** @description Veterans' status (restricted). Whether the employee is the person of national merit (SELF) or a family member. */
         PersonRecordVeteran: {
             /** @enum {string} */
             target: "SELF" | "FAMILY";
@@ -27580,7 +27580,7 @@ export interface components {
             sort?: number | null;
         };
         RecordEndOptions: {
-            /** @description UX-R2 ENDS. Exit cases still open (not rejected, cancelled or submitted) for anyone placed at the record, so its close never hides a 퇴직 in flight. */
+            /** @description UX-R2 ENDS. Exit cases still open (not rejected, cancelled or submitted) for anyone placed at the record, so its close never hides an exit in flight. */
             open_exit_cases: {
                 /** Format: uuid */
                 case_id: string;
@@ -27740,7 +27740,7 @@ export interface components {
             hired_count: number;
             /**
              * Format: date
-             * @description Null = open-ended (상시).
+             * @description Null = open-ended.
              */
             deadline: string | null;
             requirements: string[];
@@ -27971,13 +27971,13 @@ export interface components {
             }[];
             can_manage: boolean;
         };
-        /** @description One 사업자등록증. brn, or brn_pending_reason when the number is not issued yet. */
+        /** @description One business registration certificate. brn, or brn_pending_reason when the number is not issued yet. */
         RegistrationInput: {
-            /** @description 개인사업자: 사업자등록증 ① 상호 as printed; ignored for 법인. Absent on create defaults to the entity name; absent on revise preserves the stored value. */
+            /** @description Sole proprietor: the trade name printed in item ① of the business registration certificate; ignored for a corporation. Absent on create defaults to the entity name; absent on revise preserves the stored value. */
             trade_name?: string | null;
             /** @description Explicit exception reason for registration classification or primary head-office requirement. */
             classification_reason?: string | null;
-            /** @description 사업자등록번호; formatted or digits in, canonical digits out. */
+            /** @description Business registration number; formatted or digits in, canonical digits out. */
             brn?: string | null;
             brn_pending_reason?: components["schemas"]["BrnPendingReason"] | null;
             /** Format: date */
@@ -27990,7 +27990,7 @@ export interface components {
             issue_reason_as_printed?: string | null;
             co_owners?: string[];
             liquor_license_no?: string | null;
-            /** @description 사업자 단위 과세 적용사업자 여부 (⑩); no default. */
+            /** @description Whether the business applies business-unit taxation (⑩); no default. */
             unit_taxation: boolean;
             /** Format: email */
             e_invoice_email?: string | null;
@@ -28003,17 +28003,17 @@ export interface components {
         RegistrationReissueRequest: {
             /**
              * Format: uuid
-             * @description The newly issued 사업자등록증, uploaded first (POST /api/v1/entity-documents, kind BIZ_REG_CERT).
+             * @description The newly issued business registration certificate, uploaded first (POST /api/v1/entity-documents, kind BIZ_REG_CERT).
              */
             document_id: string;
             /**
-             * @description 재발급 (lost or damaged, facts unchanged), 정정 신고 (the facts changed from effective_from), or 오류 정정 (the record was wrong from the start). Recorded as the revisions' reason_code.
+             * @description Reissue (lost or damaged, facts unchanged), correction report (the facts changed from effective_from), or error correction (the record was wrong from the start). Recorded as the revisions' reason_code.
              * @enum {string}
              */
             reason: "CERT_REISSUE" | "CERT_CHANGE_REPORT" | "CERT_ERROR_CORRECTION";
             /**
              * Format: date
-             * @description From when the certificate's facts hold (정정일); never after today.
+             * @description From when the certificate's facts hold (correction date); never after today.
              */
             effective_from: string;
             /** @description The registration's full state as the new certificate prints it (cert_issued_on required). */
@@ -28025,7 +28025,7 @@ export interface components {
                 /** Format: date */
                 status_until?: string | null;
             };
-            /** @description The 법인's full state with what the certificate changed (대표자, 법인명, 본점); omitted when the certificate changed nothing the 법인 records. */
+            /** @description The legal entity's full state with what the certificate changed (representative, legal entity name, head office); omitted when the certificate changed nothing the legal entity records. */
             entity?: null | (components["schemas"]["LegalEntityInput"] & {
                 expected_version: number;
             });
@@ -28044,12 +28044,12 @@ export interface components {
             status_since?: string | null;
             /**
              * Format: date
-             * @description 휴업's expected end (SUSPENDED only, never before status_since).
+             * @description The business suspension's expected end (SUSPENDED only, never before status_since).
              */
             status_until?: string | null;
             /**
              * Format: uuid
-             * @description A 재발급 / 정정 사업자등록증 kept for this revision, attached in the same transaction and named as its evidence; it supersedes the one kept before. Never the certificate in force or one already superseded (422 document_not_new).
+             * @description A reissued / corrected business registration certificate kept for this revision, attached in the same transaction and named as its evidence; it supersedes the one kept before. Never the certificate in force or one already superseded (422 document_not_new).
              */
             document_id?: string | null;
         };
@@ -28059,9 +28059,9 @@ export interface components {
             version: number;
             /** Format: date */
             effective_from: string;
-            /** @description Today is before the first record takes effect (e.g. before 개설일); this is that first record. */
+            /** @description Today is before the first record takes effect (e.g. before the opening date); this is that first record. */
             before_first_record: boolean;
-            /** @description INDIVIDUAL: the certificate's own 상호; otherwise the entity's 법인명 (derived). Legacy NULL falls back to the entity name. */
+            /** @description INDIVIDUAL: the certificate's own trade name; otherwise the entity's legal entity name (derived). Legacy NULL falls back to the entity name. */
             readonly trade_name: string;
             /** Format: date */
             opened_on?: string | null;
@@ -28085,7 +28085,7 @@ export interface components {
             status_since?: string | null;
             /**
              * Format: date
-             * @description 휴업's expected end as reported (SUSPENDED only; a plan, not a clock).
+             * @description The business suspension's expected end as reported (SUSPENDED only; a plan, not a clock).
              */
             status_until?: string | null;
             change_mode: components["schemas"]["EntityChangeMode"];
@@ -28105,7 +28105,7 @@ export interface components {
             row: number;
             message: string;
         };
-        /** @description 상시근로자 수 (근로기준법 시행령 §7의2). Derived, never typed; HOLD until a 노무사 releases the method (BW-35), so no value is shown, only the live roster count. */
+        /** @description Number of regular workers (Enforcement Decree of the Labor Standards Act §7-2). Derived, never typed; HOLD until a labor attorney releases the method (BW-35), so no value is shown, only the live roster count. */
         RegularWorkers: {
             /** @enum {string} */
             status: "HOLD";
@@ -28176,7 +28176,7 @@ export interface components {
             employment_type: "REGULAR" | "CONTRACT" | "PART_TIME" | "INTERN" | "DAILY" | "EXECUTIVE" | "DISPATCHED_IN" | "OUTSOURCED_ON_SITE" | "FREELANCE";
             org_unit_id: components["schemas"]["Uuid"];
             position: string;
-            /** @description Defaults to the 법인 of the last period. */
+            /** @description Defaults to the legal entity of the last period. */
             company?: string;
             /**
              * Format: date
@@ -28247,7 +28247,7 @@ export interface components {
             lines: components["schemas"]["QuoteLine"][];
             created_at: components["schemas"]["Timestamp"];
         };
-        /** @description At most one of legal_entity_id, workplace_id, org_unit_id (none = the tenant's 법인), and every current child once. */
+        /** @description At most one of legal_entity_id, workplace_id, org_unit_id (none = the tenant's legal entities), and every current child once. */
         ReorderStructureRequest: {
             /** Format: uuid */
             legal_entity_id?: string;
@@ -28284,7 +28284,7 @@ export interface components {
             /** @description YYYY-MM-DD */
             effective_exit_date: string;
             site_manager_note: string;
-            /** @description BE-EMP-UI (EMP-UI 14). 퇴직 사유, a BW-07 exit_reason code (system, or the tenant's active T_ code); a code that requires a note takes site_manager_note. 422 reason_code_invalid / reason_note_required, nothing written. The case's code is the employee's 퇴직 사유 (register read and 명부 export) while the case is live; a case reported without one leaves the register item to record it. */
+            /** @description BE-EMP-UI (EMP-UI 14). Exit reason, a BW-07 exit_reason code (system, or the tenant's active T_ code); a code that requires a note takes site_manager_note. 422 reason_code_invalid / reason_note_required, nothing written. The case's code is the employee's exit reason (register read and worker register export) while the case is live; a case reported without one leaves the register item to record it. */
             exit_reason_code?: string | null;
         };
         RequestInsuranceFiling: {
@@ -28403,7 +28403,7 @@ export interface components {
             id?: components["schemas"]["Uuid"];
             label: string;
         };
-        /** @description The card section a field sits in - PERSONAL 인적사항, JOB 재직·배치. */
+        /** @description The card section a field sits in - PERSONAL personal details, JOB employment and placement. */
         RosterFieldSection: string;
         /** @description TEXT, INTEGER (whole number), DECIMAL, DATE, or CHOICE (one option from the field's list). */
         RosterFieldValueType: string;
@@ -28742,7 +28742,7 @@ export interface components {
         SettingVersionId: "code_default" | {
             override: components["schemas"]["Uuid"];
         };
-        /** @description Without revision the entity's name stays; with it, the registration's 상호 becomes the name by that dated 정정 (its name must be the review's registration_name). */
+        /** @description Without revision the entity's name stays; with it, the registration's trade name becomes the name by that dated correction (its name must be the review's registration_name). */
         SettleNameReviewRequest: {
             revision?: components["schemas"]["LegalEntityRevisionRequest"];
         };
@@ -28772,7 +28772,7 @@ export interface components {
             sort_order: number;
         };
         /**
-         * @description Cost-settlement lifecycle (정산 → 전표). VOID is terminal and frees the one-live-settlement slot.
+         * @description Cost-settlement lifecycle (settlement → voucher). VOID is terminal and frees the one-live-settlement slot.
          * @enum {string}
          */
         SettlementStatus: "DRAFT" | "SUBMITTED" | "APPROVED" | "VOID";
@@ -28828,7 +28828,7 @@ export interface components {
             expected_updated_at: string;
             reason_code: string;
             /**
-             * @description An EXITED person within the 근로자 명부 period — the tenant keeps its original register.
+             * @description An EXITED person within the worker register period — the tenant keeps its original register.
              * @default false
              */
             register_kept: boolean;
@@ -28874,16 +28874,16 @@ export interface components {
             org_change_approvers: number;
             /** Format: int64 */
             other_eligible_holders: number;
-            /** @description approval.policy.org_structure = route (decisions */
+            /** @description True when approval.policy.org_structure is route, so an org change goes through approval before it applies. */
             org_change_routed: boolean;
             /**
              * Format: int64
-             * @description People employed today (재직 or 휴직); never a 입사 예정, a 퇴직 or a cancelled registration.
+             * @description People employed today (employed or on leave of absence); never a pending hire, an exited person or a cancelled registration.
              */
             employees: number;
             /**
              * Format: int64
-             * @description 입사 예정 people, shown apart from the headcount.
+             * @description Pending hires, shown apart from the headcount.
              */
             employees_starting_later: number;
             /** Format: int64 */
@@ -28978,7 +28978,7 @@ export interface components {
         };
         SignInIdRecord: {
             login: string;
-            /** @description `<아이디>@<회사 도메인>` as a person types it. */
+            /** @description `<login>@<company domain>` as a person types it. */
             sign_in_id: string;
             effective_date: components["schemas"]["Date"];
             /** @description A sign_in_id_change reason code, INVITE or SYSTEM_DEFAULT. */
@@ -28995,7 +28995,7 @@ export interface components {
             retired_at: string | null;
             /**
              * Format: date-time
-             * @description The old 아이디 signs in until then.
+             * @description The old sign-in ID signs in until then.
              */
             alias_until: string | null;
             /** @enum {string} */
@@ -29074,11 +29074,11 @@ export interface components {
              * @description Per-site geofence radius in metres for arrival/departure detection; null uses the system default (300 m).
              */
             geofence_radius_m: number | null;
-            /** @description On-site representative contact name (담당자명). */
+            /** @description On-site representative contact name. */
             contact_name: string | null;
-            /** @description On-site contact phone (연락처). */
+            /** @description On-site contact phone. */
             contact_phone: string | null;
-            /** @description Optional contact email (이메일). */
+            /** @description Optional contact email. */
             contact_email: string | null;
             /** Format: int64 */
             equipment_count: number;
@@ -29208,7 +29208,7 @@ export interface components {
         SubmittableDefinitionListResponse: {
             items: components["schemas"]["SubmittableDefinitionResponse"][];
         };
-        /** @description An ACTIVE workflow definition the caller may start from the 기안 template gallery. Carries only the metadata definitions actually hold; active_version is the version a start binds to. */
+        /** @description An ACTIVE workflow definition the caller may start from the draft template gallery. Carries only the metadata definitions actually hold; active_version is the version a start binds to. */
         SubmittableDefinitionResponse: {
             id: components["schemas"]["Uuid"];
             workflow_key: string;
@@ -29763,7 +29763,7 @@ export interface components {
             idempotency_key?: string | null;
             /**
              * Format: uuid
-             * @description §16 org-scope automation gate (85 판정); ignored for a personal-scope (§3.9.0-①) definition.
+             * @description §16 org-scope automation gate (ruling 85); ignored for a personal-scope (§3.9.0-①) definition.
              */
             four_eyes_request_ref?: string | null;
         };
@@ -29970,11 +29970,11 @@ export interface components {
              * @description Per-site geofence radius in metres (> 0, ≤ 100000). Null clears the override so the system default (300 m) applies.
              */
             geofence_radius_m?: number | null;
-            /** @description On-site representative contact name (담당자명). Null clears it. */
+            /** @description On-site representative contact name. Null clears it. */
             contact_name?: string | null;
-            /** @description On-site contact phone (연락처). Null clears it. */
+            /** @description On-site contact phone. Null clears it. */
             contact_phone?: string | null;
-            /** @description Optional contact email (이메일). Null clears it. */
+            /** @description Optional contact email. Null clears it. */
             contact_email?: string | null;
         };
         UpdateUserRequest: {
@@ -30071,7 +30071,7 @@ export interface components {
             display_name: string;
             /** @description Present and true when the non-null display_name is empty. */
             name_unset?: boolean;
-            /** @description The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label: the account is keyed by `id` only. */
+            /** @description The current sign-in ID `<login>@<company domain>` (decisions #33). A label: the account is keyed by `id` only. */
             sign_in_id?: string | null;
             /** Format: uuid */
             employee_id: string | null;
@@ -30105,7 +30105,7 @@ export interface components {
         /** Format: uuid */
         Uuid: string;
         /**
-         * @description A derived basis is a fact (one registration; 등록증 ⑩), not a default.
+         * @description A derived basis is a fact (one registration; certificate item ⑩), not a default.
          * @enum {string}
          */
         VatUnitBasis: "DECLARED" | "SINGLE_REGISTRATION" | "CERTIFICATE_UNIT_TAXATION";
@@ -30119,7 +30119,7 @@ export interface components {
             reason_code: string;
             note?: string;
             /**
-             * @description 「근무한 적 없음」; required unless the person is PRE_HIRE.
+             * @description The "never worked" attestation; required unless the person is PRE_HIRE.
              * @default false
              */
             attest_never_worked: boolean;
@@ -30136,7 +30136,7 @@ export interface components {
             employee_id: components["schemas"]["Uuid"];
             /** @description Null once a SETUP delete freed it. */
             employee_number?: string | null;
-            /** @description (파기됨) once the personal data is destroyed. */
+            /** @description (파기됨) ("destroyed") once the personal data is destroyed. */
             name: string;
             void_reason_code: string;
             /** @enum {string} */
@@ -30202,7 +30202,7 @@ export interface components {
         };
         /** @enum {string} */
         WithholdingMode: "HEAD_OFFICE" | "OWN_INDEPENDENT_ACCOUNTS" | "HEAD_OFFICE_BULK";
-        /** @description Where the 사업장's 원천세 is filed, derived from 소득세법 §7①3·4 with its basis. */
+        /** @description Where the workplace's withholding tax is filed, derived from Income Tax Act §7①3·4 with its basis. */
         WithholdingTarget: {
             /** @enum {string} */
             kind: "SELF_UNIT" | "WORKPLACE" | "ENTITY_HEAD_OFFICE" | "UNDECIDED";
@@ -30328,7 +30328,7 @@ export interface components {
             equipment: components["schemas"]["EquipmentSummary"];
             customer: components["schemas"]["NamedEntity"];
             site: components["schemas"]["NamedEntity"];
-            /** @description 사업장 대표 담당자 연락처 (#13). 등록된 연락처가 없으면 null. */
+            /** @description Contact details of the workplace's main contact person (#13). Null when no contact is registered. */
             site_contact: null | components["schemas"]["SiteContact"];
             assignments: components["schemas"]["AssignmentSummary"][];
         };
@@ -30738,7 +30738,7 @@ export interface components {
             step_up: components["schemas"]["PasskeyStepUpAssertion"];
             /**
              * Format: uuid
-             * @description §16 org-scope automation gate (85 판정). Required to publish (direct-activate) an org-scope definition; a personal-scope definition (§3.9.0-①) ignores this and publishes directly. References a gov_approvals request_ref recorded by a distinct approver.
+             * @description §16 org-scope automation gate (ruling 85). Required to publish (direct-activate) an org-scope definition; a personal-scope definition (§3.9.0-①) ignores this and publishes directly. References a gov_approvals request_ref recorded by a distinct approver.
              */
             four_eyes_request_ref?: string | null;
         };
@@ -30793,17 +30793,17 @@ export interface components {
             filing_registration_id?: string | null;
             /**
              * Format: uuid
-             * @description Branch backing the 사업장; use as home_branch_id when registering people here.
+             * @description Branch backing the workplace; use as home_branch_id when registering people here.
              */
             default_branch_id?: string | null;
-            /** @description 사업장 kind code (decisions */
+            /** @description Workplace kind code from the tenant's workplace kind list; null when unassigned. */
             kind_code?: string | null;
-            /** @description The 사업장 code (unique among open 사업장), when set. */
+            /** @description The workplace code (unique among open workplaces), when set. */
             code?: string | null;
             is_primary: boolean;
             is_head_office: boolean;
             needs_confirmation: boolean;
-            /** @description Whether this reader may manage the 사업장 (Cedar legal_entity_manage within their scope). */
+            /** @description Whether this reader may manage the workplace (Cedar legal_entity_manage within their scope). */
             can_manage: boolean;
             /** Format: date */
             closed_on?: string | null;
@@ -30814,7 +30814,7 @@ export interface components {
             headcount: number;
             /**
              * Format: uuid
-             * @description The 사업장's own SITE org unit (decisions
+             * @description The workplace's own SITE org unit; people with no department are registered there, and it can be named as a parent unit.
              */
             org_unit_id?: string | null;
             regular_workers: components["schemas"]["RegularWorkers"];
@@ -30861,7 +30861,7 @@ export interface components {
         WorkplaceClosePlanRequest: {
             /**
              * Format: date
-             * @description 폐쇄일, today or later (KST).
+             * @description Closure date, today or later (KST).
              */
             closed_on: string;
             reason_code?: string;
@@ -30876,10 +30876,10 @@ export interface components {
                 exit_reason_code?: "CLOSURE" | "INSOLVENCY";
                 /**
                  * Format: uuid
-                 * @description GROUP_TRANSFER, required then. The receiving 사업장 of another 법인, the one to_org_unit_id sits at; the planner's 발령 grant must reach it (403 out_of_scope, nothing written).
+                 * @description GROUP_TRANSFER, required then. The receiving workplace of another legal entity, the one to_org_unit_id sits at; the planner's personnel order grant must reach it (403 out_of_scope, nothing written).
                  */
                 to_workplace_id?: string;
-                /** @description GROUP_TRANSFER, required then. The person's consent and continuity, checked as a single 전적 checks them. */
+                /** @description GROUP_TRANSFER, required then. The person's consent and continuity, checked as a single group transfer checks them. */
                 group_transfer?: components["schemas"]["GroupTransferFacts"];
             }[];
             units?: {
@@ -30935,7 +30935,7 @@ export interface components {
             name: string;
             /** Format: uuid */
             registration_id?: string | null;
-            /** @description 종사업장 일련번호. */
+            /** @description Sub-workplace serial number. */
             sub_serial?: string | null;
             /** @enum {string|null} */
             reg_mode?: "NEW" | "EXISTING" | "UNIT_TAXATION_SUB" | "NOT_REQUIRED" | "LATER" | null;
@@ -30968,7 +30968,7 @@ export interface components {
             status_since?: string | null;
             /**
              * Format: date
-             * @description 휴업's expected end (SUSPENDED only, never before status_since).
+             * @description The business suspension's expected end (SUSPENDED only, never before status_since).
              */
             status_until?: string | null;
         };
@@ -30978,7 +30978,7 @@ export interface components {
             /** @description The tenant's label. Null on a platform default = the catalog label. */
             label?: string | null;
             platform: boolean;
-            /** @description Offered in the picker. A deactivated kind still reads on its 사업장. */
+            /** @description Offered in the picker. A deactivated kind still reads on its workplaces. */
             active: boolean;
         };
         WorkplaceKindList: {
@@ -30990,10 +30990,10 @@ export interface components {
         WorkplaceRegistrationChangeRequest: {
             /**
              * Format: uuid
-             * @description The 사업자등록 the 사업장 files VAT under from effective_from (null for none).
+             * @description The business registration the workplace files VAT under from effective_from (null for none).
              */
             registration_id?: string | null;
-            /** @description 종사업장 일련번호; required under a 사업자단위과세 registration held by another 사업장, refused otherwise. */
+            /** @description Sub-workplace serial number; required under a business-unit taxation registration held by another workplace, refused otherwise. */
             sub_serial?: string | null;
             /**
              * Format: date
@@ -31016,7 +31016,7 @@ export interface components {
             version: number;
             /** Format: date */
             effective_from: string;
-            /** @description Today is before the first record takes effect (e.g. before 개설일); this is that first record. */
+            /** @description Today is before the first record takes effect (e.g. before the opening date); this is that first record. */
             before_first_record: boolean;
             name: string;
             address?: components["schemas"]["KrAddress"] | null;
@@ -31037,14 +31037,14 @@ export interface components {
             status_since?: string | null;
             /**
              * Format: date
-             * @description 휴업's expected end as reported (SUSPENDED only; a plan, not a clock).
+             * @description The business suspension's expected end as reported (SUSPENDED only; a plan, not a clock).
              */
             status_until?: string | null;
             withholding_mode?: components["schemas"]["WithholdingMode"] | null;
             /** Format: date */
             bulk_filed_on?: string | null;
             independent_lsa_unit?: boolean | null;
-            /** @description Why this 사업장 is its own 근기법 unit; required while independent_lsa_unit is true, so a revise resends it. */
+            /** @description Why this workplace is its own Labor Standards Act unit; required while independent_lsa_unit is true, so a revise resends it. */
             independent_lsa_evidence?: string | null;
             change_mode: components["schemas"]["EntityChangeMode"];
         };
@@ -34506,7 +34506,7 @@ export interface operations {
             query: {
                 date: string;
                 workplace_id?: components["schemas"]["Uuid"];
-                /** @description open this 부서 group (all its rows) */
+                /** @description open this department group (all its rows) */
                 unit_id?: components["schemas"]["Uuid"];
                 issues_only?: boolean;
                 /** @description show only people without a resolved schedule; counts remain for the whole scope */
@@ -36466,7 +36466,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description After 운영 시작 identifier_correction_needs_exception (remedy request_governed_exception: rule ENTITY_IDENTIFIER_CORRECTION over {field, value, document_id}), identifier_correction_unavailable, or the exception's own refusal (exception_not_approved, exception_consumed, exception_expired, exception_scope_changed). */
+            /** @description After go-live identifier_correction_needs_exception (remedy request_governed_exception: rule ENTITY_IDENTIFIER_CORRECTION over {field, value, document_id}), identifier_correction_unavailable, or the exception's own refusal (exception_not_approved, exception_consumed, exception_expired, exception_scope_changed). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -36484,7 +36484,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description After 운영 시작, the tenant ops account sent no step_up: passkey_step_up_required (remedy passkey_step_up). */
+            /** @description After go-live, the tenant ops account sent no step_up: passkey_step_up_required (remedy passkey_step_up). */
             428: {
                 headers: {
                     [name: string]: unknown;
@@ -36632,7 +36632,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Revisions, newest first; restricted names (대표자, 임원, 공동사업자) and their changes only for callers who may change them. */
+            /** @description Revisions, newest first; restricted names (representative, executives, joint business operators) and their changes only for callers who may change them. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -36731,7 +36731,7 @@ export interface operations {
             query?: {
                 /** @description me = named to the caller; role = open to any HR person. */
                 assignee?: "me" | "role";
-                /** @description me = only the requests the caller filed (기다리는 중). */
+                /** @description me = only the requests the caller filed ("waiting"). */
                 requester?: "me";
                 status?: "OPEN" | "APPLIED" | "DECLINED" | "WITHDRAWN";
                 limit?: number;
@@ -37022,17 +37022,17 @@ export interface operations {
                     to_position?: string | null;
                     /** @description A lifecycle_transfer / lifecycle_promote code; comment is its note. */
                     reason_code?: string | null;
-                    /** @description PROMOTE by 직급 (catalog GRADE), MR-27. */
+                    /** @description PROMOTE by grade (catalog GRADE), MR-27. */
                     to_grade_id?: components["schemas"]["Uuid"];
-                    /** @description APPOINT 직책 (catalog POSITION). */
+                    /** @description APPOINT position (catalog POSITION). */
                     to_position_kind_id?: components["schemas"]["Uuid"];
-                    /** @description APPOINT 보직 해제. */
+                    /** @description APPOINT, relieved of position. */
                     vacate_position_kind?: boolean;
-                    /** @description APPOINT 직무 (catalog JOB). */
+                    /** @description APPOINT job (catalog JOB). */
                     to_job_id?: components["schemas"]["Uuid"];
-                    /** @description APPOINT 종사 업무 as text, when to_job_id is absent. */
+                    /** @description APPOINT job duties as text, when to_job_id is absent. */
                     to_job?: string;
-                    /** @description APPOINT 직군 (catalog JOB_FAMILY). */
+                    /** @description APPOINT job family (catalog JOB_FAMILY). */
                     to_job_family_id?: components["schemas"]["Uuid"];
                     /**
                      * @description EMPLOYMENT_TYPE_CHANGE target.
@@ -38667,11 +38667,11 @@ export interface operations {
                 department_missing?: boolean;
                 /** @description Only employees bound to this OrgUnit (direct members; child units are not included). */
                 org_unit_id?: components["schemas"]["Uuid"];
-                /** @description Only employees whose current employment assignment (the last one once exited, the first one before the hire date) names this 법인. */
+                /** @description Only employees whose current employment assignment (the last one once exited, the first one before the hire date) names this legal entity. */
                 legal_entity_id?: components["schemas"]["Uuid"];
-                /** @description Only employees whose current employment assignment names this 사업장. */
+                /** @description Only employees whose current employment assignment names this workplace. */
                 workplace_id?: components["schemas"]["Uuid"];
-                /** @description One employment status or a comma-separated list (`status=ACTIVE,ON_LEAVE`). Omitted means every status, EXITED included. PRE_HIRE is 입사 예정 (a future hire date, ONBOARD scheduled). */
+                /** @description One employment status or a comma-separated list (`status=ACTIVE,ON_LEAVE`). Omitted means every status, EXITED included. PRE_HIRE is a pending hire (a future hire date, ONBOARD scheduled). */
                 status?: ("PRE_HIRE" | "ACTIVE" | "ON_LEAVE" | "EXITED" | "UNKNOWN")[];
                 /** @description Exact employee numbers, comma-separated (`employee_number=A-1,A-2`), at most 500 (422 above). Resolves a pasted column in one read. */
                 employee_number?: string[];
@@ -38918,9 +38918,9 @@ export interface operations {
                 identity_review_required?: boolean;
                 /** @description Only employees bound to this OrgUnit (direct members; child units are not included). */
                 org_unit_id?: components["schemas"]["Uuid"];
-                /** @description Only employees whose current employment assignment (the last one once exited, the first one before the hire date) names this 법인. */
+                /** @description Only employees whose current employment assignment (the last one once exited, the first one before the hire date) names this legal entity. */
                 legal_entity_id?: components["schemas"]["Uuid"];
-                /** @description Only employees whose current employment assignment names this 사업장. */
+                /** @description Only employees whose current employment assignment names this workplace. */
                 workplace_id?: components["schemas"]["Uuid"];
                 /** @description One employment status or a comma-separated list (`status=ACTIVE,ON_LEAVE`). Omitted means every status, EXITED included. */
                 status?: ("ACTIVE" | "ON_LEAVE" | "EXITED" | "UNKNOWN")[];
@@ -38930,9 +38930,9 @@ export interface operations {
                 contract_ending_before?: string;
                 /** @description true lists only employees with a failed_event (a scheduled action that could not apply on its date and was not redone); false only those without. `total` counts the filtered set. */
                 lifecycle_apply_failed?: boolean;
-                /** @description The download 용도 (고시 2023-6 §8②). Missing or unknown is 422 export_purpose_required. */
+                /** @description The download purpose (public notice 2023-6 §8②). Missing or unknown is 422 export_purpose_required. */
                 export_purpose: "AUDIT_RESPONSE" | "INTERNAL_REVIEW" | "DISPUTE_RESPONSE" | "DATA_SUBJECT_REQUEST" | "OTHER";
-                /** @description register writes the 근로자 명부 (근로기준법 §41, 시행령 §20) in 시행규칙 별지 제16호서식 order as employees-register.csv: 사번, 성명, 성별, 생년월일, 주소, 전화번호, 사업장, 소속, 종사 업무, 고용일, 갱신일 (latest applied CONTRACT_RENEWAL), 계약기간 (start~end of the current contract), 마지막 근무일, 퇴직일 (마지막 근무일 + 1), 퇴직(해고) 사유, 이력, 그 밖에 필요한 사항. Items not held yet (성별, 주소, 이력, 기타, 퇴직 사유) are empty cells. Labels only: no codes or internal ids. 사업장 is the assigned workplace's current name (else the imported worksite text); pass workplace_id for one 사업장's register (§41① 각 사업장별로). register needs employee_directory_manage (it carries 생년월일 and the personal phone); a reader gets 403. */
+                /** @description register writes the worker register (Labor Standards Act §41, Enforcement Decree §20) in the order of Enforcement Rule Form No. 16 as employees-register.csv with the headers 사번, 성명, 성별, 생년월일, 주소, 전화번호, 사업장, 소속, 종사 업무, 고용일, 갱신일 (latest applied CONTRACT_RENEWAL), 계약기간 (start~end of the current contract), 마지막 근무일, 퇴직일 (last working day + 1), 퇴직(해고) 사유, 이력, 그 밖에 필요한 사항. Items not held yet (sex, address, history, other, exit reason) are empty cells. Labels only: no codes or internal ids. The workplace column is the assigned workplace's current name (else the imported worksite text); pass workplace_id for one workplace's register (§41①, for each workplace). register needs employee_directory_manage (it carries the date of birth and the personal phone); a reader gets 403. */
                 layout?: "standard" | "register";
             };
             header?: never;
@@ -38973,9 +38973,9 @@ export interface operations {
                 department_missing?: boolean;
                 /** @description Only employees bound to this OrgUnit (direct members; child units are not included). */
                 org_unit_id?: components["schemas"]["Uuid"];
-                /** @description Only employees whose current employment assignment (the last one once exited, the first one before the hire date) names this 법인. */
+                /** @description Only employees whose current employment assignment (the last one once exited, the first one before the hire date) names this legal entity. */
                 legal_entity_id?: components["schemas"]["Uuid"];
-                /** @description Only employees whose current employment assignment names this 사업장. */
+                /** @description Only employees whose current employment assignment names this workplace. */
                 workplace_id?: components["schemas"]["Uuid"];
                 /** @description One employment status or a comma-separated list (`status=ACTIVE,ON_LEAVE`). Omitted means every status, EXITED included. */
                 status?: ("ACTIVE" | "ON_LEAVE" | "EXITED" | "UNKNOWN")[];
@@ -40738,7 +40738,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The 인적사항 extras. */
+            /** @description The personal details extras. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -41976,7 +41976,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description phase_not_setup, batch_not_undoable, batch_already_undone, undo_conflict (remedy undo_later_batches_first: a record or a 대표 / 본점 role changed after the batch), or record_in_use. */
+            /** @description phase_not_setup, batch_not_undoable, batch_already_undone, undo_conflict (remedy undo_later_batches_first: a record or a representative / head-office role changed after the batch), or record_in_use. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -42773,7 +42773,7 @@ export interface operations {
     listEquipment: {
         parameters: {
             query?: {
-                /** @description Free-text search (호기-normalized, leading-zero-insensitive). */
+                /** @description Free-text search (unit-number-normalized, leading-zero-insensitive). */
                 q?: string;
                 status?: components["schemas"]["EquipmentStatus"];
                 /** @description Filter to a specific branch (UUID). */
@@ -44633,7 +44633,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Voucher advanced to 차대검증. */
+            /** @description Voucher advanced to BALANCE_CHECKED. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -47245,7 +47245,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @description BE-EMP-UI. The caller may add or change entries (Cedar job_title_manage); draw the inline 「+ 추가」 only when true. */
+                        /** @description BE-EMP-UI. The caller may add or change entries (Cedar job_title_manage); draw the inline "+ Add" button only when true. */
                         can_manage: boolean;
                         items: {
                             id: components["schemas"]["Uuid"];
@@ -47632,7 +47632,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created; SETUP before 운영 시작, GOVERNED after. */
+            /** @description Created; SETUP before go-live, GOVERNED after. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -47808,7 +47808,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Corrected; the 법인 as it now reads. */
+            /** @description Corrected; the legal entity as it now reads. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -47874,7 +47874,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Closed; the 법인 as it now reads. */
+            /** @description Closed; the legal entity as it now reads. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -47940,7 +47940,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Withdrawn; the 법인 as it now reads. */
+            /** @description Withdrawn; the legal entity as it now reads. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -48131,7 +48131,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description After 운영 시작 identifier_correction_needs_exception (remedy request_governed_exception: rule ENTITY_IDENTIFIER_CORRECTION over {field, value, document_id}), identifier_correction_unavailable, or the exception's own refusal (exception_not_approved, exception_consumed, exception_expired, exception_scope_changed). */
+            /** @description After go-live identifier_correction_needs_exception (remedy request_governed_exception: rule ENTITY_IDENTIFIER_CORRECTION over {field, value, document_id}), identifier_correction_unavailable, or the exception's own refusal (exception_not_approved, exception_consumed, exception_expired, exception_scope_changed). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -48149,7 +48149,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description After 운영 시작, the tenant ops account sent no step_up: passkey_step_up_required (remedy passkey_step_up). */
+            /** @description After go-live, the tenant ops account sent no step_up: passkey_step_up_required (remedy passkey_step_up). */
             428: {
                 headers: {
                     [name: string]: unknown;
@@ -48179,7 +48179,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Settled; the 법인 as it is now. */
+            /** @description Settled; the legal entity as it is now. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -48198,7 +48198,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description name_review_not_found (unknown, settled or another 법인's) or not in this tenant. */
+            /** @description name_review_not_found (unknown, settled or another legal entity's) or not in this tenant. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -48216,7 +48216,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description Field issues: errors[{field, code}] (name_review_choice, or the 정정's own). */
+            /** @description Field issues: errors[{field, code}] (name_review_choice, or the correction's own). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -48304,7 +48304,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Revisions, newest first; restricted names (대표자, 임원, 공동사업자) and their changes only for callers who may change them. */
+            /** @description Revisions, newest first; restricted names (representative, executives, joint business operators) and their changes only for callers who may change them. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -50215,7 +50215,7 @@ export interface operations {
     listMyInboxDocs: {
         parameters: {
             query?: {
-                /** @description 확인 필요 (`action`) = legal notices awaiting receipt; 급여명세 (`pay`) = payslips; 완료 (`done`) = confirmed; 전체 (`all`, default). */
+                /** @description Needs confirmation (`action`) = legal notices awaiting receipt; Payslips (`pay`) = payslips; Done (`done`) = confirmed; All (`all`, default). */
                 filter?: "action" | "pay" | "done" | "all";
                 /** @description Keyset cursor; return documents strictly older than this id. */
                 before?: components["schemas"]["Uuid"];
@@ -54062,7 +54062,7 @@ export interface operations {
                      * @description Integer won. Never a decimal or floating-point amount.
                      */
                     amount_won: number;
-                    /** @description 월 소정근로시간 (209 for a 주40시간 worker, 유급주휴 8시간 포함). The minimum-wage comparator's denominator; mandatory so that a comparison which cannot be made never reads as a pass. */
+                    /** @description Monthly contractual working hours (209 for a 40-hour-week worker, including 8 hours of paid weekly holiday). The minimum-wage comparator's denominator; mandatory so that a comparison which cannot be made never reads as a pass. */
                     monthly_standard_hours: number;
                     source_note?: string;
                 };
@@ -54097,9 +54097,9 @@ export interface operations {
     getEmployeePayslipDraft: {
         parameters: {
             query: {
-                /** @description 급여계산기간, `YYYY-MM`. */
+                /** @description Pay calculation period, `YYYY-MM`. */
                 period: string;
-                /** @description 지급일. Defaults to the period end. A SEPARATE input from the period on purpose: the pay date selects both the rate row and the 기준소득월액 band, so a June period paid in July must not reuse the June band. */
+                /** @description Pay date. Defaults to the period end. A SEPARATE input from the period on purpose: the pay date selects both the rate row and the standard monthly income band, so a June period paid in July must not reuse the June band. */
                 pay_date?: string;
             };
             header?: never;
@@ -57071,7 +57071,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Hits (20 per page), each a full KrAddress with source JUSO and no 상세주소. */
+            /** @description Hits (20 per page), each a full KrAddress with source JUSO and no detailed address. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -57955,7 +57955,7 @@ export interface operations {
     listSettings: {
         parameters: {
             query?: {
-                /** @description Legal entity or 사업장 to resolve for; omitted = tenant-wide. */
+                /** @description Legal entity or workplace to resolve for; omitted = tenant-wide. */
                 entity?: components["schemas"]["Uuid"];
             };
             header?: never;
@@ -59922,7 +59922,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The new current 아이디. */
+            /** @description The new current sign-in ID. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -59949,7 +59949,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The account's 아이디 history. */
+            /** @description The account's sign-in ID history. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -61597,7 +61597,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description Not permitted: `legal_entity_manage` on the 사업장 or the HR manage door is missing. */
+            /** @description Not permitted: `legal_entity_manage` on the workplace or the HR manage door is missing. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -61615,7 +61615,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description `workplace_not_open` (already closed), `workplace_holds_entity_role` (the 대표 사업장 or 본점), `close_job_open` (a close is already planned), `workplace_voided`, `idempotency_key_reused`. */
+            /** @description `workplace_not_open` (already closed), `workplace_holds_entity_role` (the representative workplace or head office), `close_job_open` (a close is already planned), `workplace_voided`, `idempotency_key_reused`. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -61624,7 +61624,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description `date_in_past` / `invalid_date` on `closed_on`; `close_plan_incomplete` (error.refusals names each person or 부서 with no line, `line_missing`); `close_plan_refused` (error.refusals names each refused line: `workplace_not_open` with `open_workplace_ids`, `transfer_cross_entity` (offer the 전적 line), `group_transfer_same_entity`, `org_unit_at_other_workplace`, `to_workplace_id_required`, `org_unit_not_found`, `to_org_unit_id_required`, `to_parent_id_required`, `exit_reason_not_for_close`, `line_not_in_plan`, `line_duplicate`, or a lifecycle refusal of that person). */
+            /** @description `date_in_past` / `invalid_date` on `closed_on`; `close_plan_incomplete` (error.refusals names each person or department with no line, `line_missing`); `close_plan_refused` (error.refusals names each refused line: `workplace_not_open` with `open_workplace_ids`, `transfer_cross_entity` (offer the group transfer line), `group_transfer_same_entity`, `org_unit_at_other_workplace`, `to_workplace_id_required`, `org_unit_not_found`, `to_org_unit_id_required`, `to_parent_id_required`, `exit_reason_not_for_close`, `line_not_in_plan`, `line_duplicate`, or a lifecycle refusal of that person). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -61973,7 +61973,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description registration_holder_in_use (remedy move_workplaces_first), or the 법인 is not open. */
+            /** @description registration_holder_in_use (remedy move_workplaces_first), or the legal entity is not open. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -62004,7 +62004,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Revisions, newest first; restricted names (대표자, 임원, 공동사업자) and their changes only for callers who may change them. */
+            /** @description Revisions, newest first; restricted names (representative, executives, joint business operators) and their changes only for callers who may change them. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -62199,7 +62199,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description Invalid leave type, date range, or partial-day intent — or a body carrying the retired `reason` field (근로기준법 §60: 연차에는 사유가 없다). */
+            /** @description Invalid leave type, date range, or partial-day intent — or a body carrying the retired `reason` field (Labor Standards Act §60: annual leave needs no reason). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -62246,7 +62246,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Request is not in `time_change_consult`, dates are invalid or identical to the original 시기, or the body carries unknown fields. */
+            /** @description Request is not in `time_change_consult`, dates are invalid or identical to the original timing, or the body carries unknown fields. */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -2,7 +2,7 @@ x-console-authz: {"permission": "LegalEntityManage", "scope": "tenant"}
 tags:
 - entity
 operationId: createLegalEntity
-summary: Register a 법인 / 개인사업자
+summary: Register a corporation / sole proprietor
 security:
 - bearerAuth: []
 parameters:
@@ -22,7 +22,7 @@ requestBody:
         $ref: '#/components/schemas/CreateLegalEntityRequest'
 responses:
   '201':
-    description: Created; SETUP before 운영 시작, GOVERNED after.
+    description: Created; SETUP before go-live, GOVERNED after.
     content:
       application/json:
         schema:

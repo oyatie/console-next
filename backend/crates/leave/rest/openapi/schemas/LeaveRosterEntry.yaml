@@ -1,5 +1,5 @@
 type: object
-description: One employee's annual-leave balance row (직원별 연차 현황).
+description: One employee's annual-leave balance row.
 required:
 - employee_id
 - name
@@ -28,5 +28,5 @@ properties:
     format: double
   tone:
     type: string
-    description: Bar color / 촉진 bucket — one of ok, promote, low.
+    description: Bar color / promotion bucket — one of ok, promote, low.
     enum: [ok, promote, low]

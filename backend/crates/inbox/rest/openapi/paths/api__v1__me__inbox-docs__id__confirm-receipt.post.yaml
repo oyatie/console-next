@@ -4,7 +4,7 @@ operationId: confirmMyInboxDocReceipt
 summary: Confirm receipt of a legal notice (the legal receipt evidence)
 description: >-
   Requires a FRESH passkey step-up: confirmation IS the legally
-  significant act of receipt (열람 = 법적 수령), audited with receipt
+  significant act of receipt (opening it = legal receipt), audited with receipt
   semantics. Idempotent — a second confirm returns the existing stamp.
   Only a legal notice can be confirmed; a payslip is a frictionless
   self-view (422). Another user's / unknown document is 404.

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koComposer = {
+import type { enComposer } from "../en/composer";
+export const koComposer: Record<keyof typeof enComposer, string> = {
   "composer.action.support": "지원",
   "composer.verb.end": "종료",
   "composer.action.orgHead": "부서장",
@@ -78,4 +79,4 @@ export const koComposer = {
   "composer.receipt.copied": "접수 번호를 복사했습니다",
   "composer.unsaved": "작성 중인 내용이 있습니다 · 한 번 더 누르면 닫습니다",
   "composer.reason": "{verb} 사유",
-} as const;
+};

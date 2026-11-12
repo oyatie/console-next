@@ -14,13 +14,13 @@ description: >-
   import.zip.max_ratio, import.sheet.max_grid_cells, import.workbook.max_cells: 422 workbook_too_many_entries,
   workbook_expands_too_far, workbook_compression_ratio, sheet_grid_too_large, workbook_too_many_cells,
   workbook_corrupt, workbook_protected, workbook_not_xlsx). Every sheet is detected on its own — the operator's
-  mapping, then the tenant's remembered header labels, then the catalog aliases; a sheet with no 성명 header is
-  `needs_mapping` (sheets[].header_candidates), stores no cell and is a blocking 확인 필요 item until it is mapped
-  or skipped. A 주민등록번호 column is sealed apart (never in a raw row) when the server has its vault keys,
+  mapping, then the tenant's remembered header labels, then the catalog aliases; a sheet with no name header is
+  `needs_mapping` (sheets[].header_candidates), stores no cell and is a blocking needs-checking item until it is mapped
+  or skipped. A resident registration number column is sealed apart (never in a raw row) when the server has its vault keys,
   dropped otherwise (rrn_unavailable). Labels the operator maps are remembered for the tenant.
 
-  BE-MIG (walkthrough W12): a totals / footer row (a 합계/총계/소계/계/total cell, a 성명 cell that is empty, a
-  totals word or a count, and no 입사일) is kept PRESERVED, never a person (non-blocking summary_row_skipped).
+  BE-MIG (walkthrough W12): a totals / footer row (a 합계/총계/소계/계/total cell, a name cell that is empty, a
+  totals word or a count, and no hire date) is kept PRESERVED, never a person (non-blocking summary_row_skipped).
   The phone column (휴대폰, 휴대전화, 핸드폰, 연락처, 전화번호, phone, mobile → target phone) is read as E.164 and
   staged apart, never in a raw row or a preview; apply stores it on the employment profile (a cell that is not
   a phone number: non-blocking phone_invalid). A sheet skipped once is skipped again by name (sheets[].status

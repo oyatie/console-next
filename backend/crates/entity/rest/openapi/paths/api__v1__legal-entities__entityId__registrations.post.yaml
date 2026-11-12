@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: createBusinessRegistration
-summary: Record one 사업자등록증
+summary: Record one business registration certificate
 description: The entity's VAT unit is derived while one registration decides it; a second registration without a declared
   vat_unit_mode is a 422 naming it.
 security:

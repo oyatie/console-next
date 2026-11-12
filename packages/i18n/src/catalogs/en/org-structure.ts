@@ -1,6 +1,4 @@
-import type { koOrgStructure } from "../ko/org-structure";
-
-export const enOrgStructure: Record<keyof typeof koOrgStructure, string> = {
+export const enOrgStructure = {
   "orgStructure.asOf": "As of {date}",
   "orgStructure.title": "Org structure",
   "orgStructure.cancel": "Cancel",
@@ -70,4 +68,4 @@ export const enOrgStructure: Record<keyof typeof koOrgStructure, string> = {
   "orgStructure.order.upDone": "Moved {name} up",
   "orgStructure.order.downDone": "Moved {name} down",
   "orgStructure.members.joinersFailed": "Could not load the upcoming joiner count",
-};
+} as const;

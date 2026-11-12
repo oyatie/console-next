@@ -2,7 +2,7 @@
 tags:
   - me
 operationId: markMyActionInboxReferenceRead
-summary: 확인 - mark one of the caller's notices read
+summary: Acknowledge - mark one of the caller's notices read
 description: >-
   Marks one of the caller's own notices read. A notice that is not the caller's is 404,
   indistinguishable from an unknown id.

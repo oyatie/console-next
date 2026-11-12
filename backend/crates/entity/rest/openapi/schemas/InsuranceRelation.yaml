@@ -16,7 +16,7 @@ properties:
     format: date
   before_first_record:
     type: boolean
-    description: Today is before the first record takes effect (e.g. before 개설일); this is that first record.
+    description: Today is before the first record takes effect (e.g. before the opening date); this is that first record.
   status:
     $ref: '#/components/schemas/InsuranceStatus'
   mgmt_no:

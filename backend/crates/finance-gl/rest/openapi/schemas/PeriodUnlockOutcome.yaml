@@ -31,8 +31,8 @@ properties:
         format: date-time
   exception:
     type: object
-    description: 'A sole-holder unlock (decisions 7, case B) only. The governed exception (예외 처리,
-      PERIOD_UNLOCK_SOLE_HOLDER) recorded and consumed with the unlock; reviewDueAt is its 사후 검토 due time
+    description: 'A sole-holder unlock (decisions 7, case B) only. The governed exception (exception handling,
+      PERIOD_UNLOCK_SOLE_HOLDER) recorded and consumed with the unlock; reviewDueAt is its post-hoc review due time
       (review.sole_holder_exception.due).'
     required: [id]
     properties:

@@ -280,4 +280,4 @@ export const enEntityRecord = {
   "entityRecord.corrections.status.REVIEWED": "Post-review complete",
   "entityRecord.id.field.biz_kind": "Business type",
   "entityRecord.corrections.requester": "Requested by",
-};
+} as const;

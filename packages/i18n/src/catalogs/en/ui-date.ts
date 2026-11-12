@@ -1,6 +1,4 @@
-import type { koUiDate } from "../ko/ui-date";
-
-export const enUiDate: Record<keyof typeof koUiDate, string> = {
+export const enUiDate = {
   "uiDate.presets": "Quick picks for {label}",
   "uiDate.placeholder": "MM/DD/YYYY",
   "uiDate.calendar.open": "Open calendar",
@@ -21,4 +19,4 @@ export const enUiDate: Record<keyof typeof koUiDate, string> = {
   "uiDate.preset.today": "Today",
   "uiDate.preset.nextMonday": "Next Monday",
   "uiDate.preset.nextMonthFirst": "1st of next month",
-};
+} as const;

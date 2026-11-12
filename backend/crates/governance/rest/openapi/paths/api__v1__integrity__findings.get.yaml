@@ -1,9 +1,9 @@
 tags:
   - integrity
 operationId: listIntegrityFindings
-summary: List governance findings (anomaly / 검토 필요) for the current org
+summary: List governance findings (anomaly / needs review) for the current org
 description: 'Lists governance findings raised by the integrity engine (#34): records that need human review such as
-  self-approval (자가 승인 기록) and price anomalies (이상 징후). Findings are framed as "검토 필요" — items requiring review, NOT
+  self-approval records and price anomalies. Findings are framed as "needs review" — items requiring review, NOT
   accusations of wrongdoing. Gated to EXECUTIVE and SUPER_ADMIN only (IntegrityFindingsRead); an ADMIN must not read
   findings about themselves. RLS-armed to the caller''s org. Results are ordered by severity (CRITICAL first) then detected_at
   descending. This endpoint is not paginated.'

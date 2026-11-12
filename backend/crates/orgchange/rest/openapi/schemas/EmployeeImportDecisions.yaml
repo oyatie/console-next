@@ -10,28 +10,28 @@ properties:
       - type: 'null'
   unit_map:
     type: object
-    description: 'Unit name in the file → an ACTIVE Site/Department/Team id, or null: 미배치.'
+    description: 'Unit name in the file → an ACTIVE Site/Department/Team id, or null: unplaced.'
     additionalProperties:
       oneOf:
       - $ref: '#/components/schemas/Uuid'
       - type: 'null'
   workplace_map:
     type: object
-    description: 'MR-7: 사업장 text in the file → an open 사업장 id, or null: not a 사업장 (a 현장 name).'
+    description: 'MR-7: workplace text in the file → an open workplace id, or null: not a workplace (a site name).'
     additionalProperties:
       oneOf:
       - $ref: '#/components/schemas/Uuid'
       - type: 'null'
   employment_type_map:
     type: object
-    description: 'MR-7: 고용형태 text in the file → an employment type code, or null: leave it empty.'
+    description: 'MR-7: employment type text in the file → an employment type code, or null: leave it empty.'
     additionalProperties:
       type: [string, 'null']
       enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE,
         FREELANCE, null]
   identity:
     type: object
-    description: source_key → the person a row without a 사번 is (employee_id), or a new person (null).
+    description: source_key → the person a row without an employee number is (employee_id), or a new person (null).
     additionalProperties:
       type: object
       additionalProperties: false
@@ -56,19 +56,19 @@ properties:
           maxLength: 1000
   status_map:
     type: object
-    description: 'IMPORT-2: 재직상태 text → status.'
+    description: 'IMPORT-2: employment status text → status.'
     additionalProperties:
       type: string
       enum: [ACTIVE, ON_LEAVE, EXITED, PRE_HIRE]
   leave_type_map:
     type: object
-    description: 'IMPORT-2: 휴직 유형 text ("" for an empty cell) → leave type.'
+    description: 'IMPORT-2: leave type text ("" for an empty cell) → leave type.'
     additionalProperties:
       type: string
       enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER]
   employee_numbers:
     type: object
-    description: 'IMPORT-2: source_key → the 사번 the operator gives a new person without one.'
+    description: 'IMPORT-2: source_key → the employee number the operator gives a new person without one.'
     additionalProperties:
       type: string
       minLength: 1
@@ -90,8 +90,8 @@ properties:
   group_answers:
     type: object
     description: 'r3:hire-19: one answer for a conflict pattern, never row by row — workplace_conflict: follow_unit (the
-      부서''s 사업장) or follow_workplace (the 근무지, the 부서 left 미배치); status_conflict: pre_hire (재직 with a future
-      입사일 comes in 입사 예정). Any other key or answer is 422 validation.'
+      department''s workplace) or follow_workplace (the work location, the department left unplaced); status_conflict: pre_hire (employed with a future
+      hire date comes in as pending hire). Any other key or answer is 422 validation.'
     properties:
       workplace_conflict:
         type: string

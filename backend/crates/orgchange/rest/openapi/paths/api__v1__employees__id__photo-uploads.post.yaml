@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: issueEmployeePhotoUpload
-summary: Start a 사진 upload (presigned PUT)
+summary: Start a photo upload (presigned PUT)
 description: >-
   MR-34. Org-wide employee_directory_manage. JPEG, PNG or WebP (no SVG),
   1 byte to 5 MiB (422 otherwise). Answers a presigned PUT valid for 5

@@ -2,7 +2,7 @@
 type: object
 description: Optional fields are omitted (not null) when absent. Required nullable fields are always present;
   `*_name` actor display names are null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the
-  case's 퇴직 사유, omitted when none was given.
+  case's exit reason, omitted when none was given.
 required:
 - id
 - employee_id
@@ -55,7 +55,7 @@ properties:
     type: string
   exit_reason_code:
     type: string
-    description: BE-EMP-UI. The case's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given.
+    description: BE-EMP-UI. The case's exit reason (BW-07 exit_reason code); omitted when none was given.
   involuntary:
     type: boolean
     readOnly: true
@@ -147,9 +147,9 @@ properties:
     $ref: '#/components/schemas/EmployeeExitSettlementPackage'
   exit_lifecycle_event_id:
     description: The TERMINATE lifecycle event the HR confirmation recorded; null before HR confirmation (or when the
-      employee was already EXITED by import). For a case a 전적 opened (exit_reason_code GROUP_TRANSFER), the
+      employee was already EXITED by import). For a case a group transfer opened (exit_reason_code GROUP_TRANSFER), the
       GROUP_TRANSFER event; such a case starts HR_CONFIRMED, offers no cancel_exit or reject_exit (409
-      exit_case_follows_group_transfer), and is cancelled with the 전적 when it is withdrawn, replaced or rescinded.
+      exit_case_follows_group_transfer), and is cancelled with the group transfer when it is withdrawn, replaced or rescinded.
     oneOf:
     - $ref: '#/components/schemas/Uuid'
     - type: 'null'
@@ -157,7 +157,7 @@ properties:
     type: [string, 'null']
     enum: [SCHEDULED, APPLIED, APPLY_FAILED, CANCELLED, null]
     description: That event's state. SCHEDULED while an exit confirmed ahead of its effective_exit_date waits for the
-      date (퇴사 예정); APPLIED once the employee is EXITED; APPLY_FAILED when it could not apply on the date (see the
+      date (exit scheduled); APPLIED once the employee is EXITED; APPLY_FAILED when it could not apply on the date (see the
       lifecycle event's failure_code); CANCELLED when the case was rejected or cancelled before the date.
   next_actions:
     type: array
@@ -166,6 +166,6 @@ properties:
   settlement_deadlines:
     type: array
     description: GET /api/v1/hr/exit-cases/{id} only. What the leaving employer settles and by when, from the
-      statutory register (근로기준법 §36 금품청산, 근로자퇴직급여 보장법 §9 퇴직금).
+      statutory register (Labor Standards Act §36 final settlement of money and valuables, Employee Retirement Benefit Security Act §9 severance pay).
     items:
       $ref: '#/components/schemas/ExitSettlementDeadline'

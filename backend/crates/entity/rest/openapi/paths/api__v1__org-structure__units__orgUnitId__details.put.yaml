@@ -1,8 +1,8 @@
 tags:
 - entity
 operationId: setOrgUnitDetails
-summary: Set a 부서's 부서장 and 부서 코드 now (either phase)
-description: CRUD. The full new values (null clears). After 운영 시작 applied directly and recorded GOVERNED while approval.policy.org_structure
+summary: Set a department's head and department code now (either phase)
+description: CRUD. The full new values (null clears). After go-live applied directly and recorded GOVERNED while approval.policy.org_structure
   is none; under route 409 org_change_routed (submit an org change). Audited org_unit.setup_details.
 security:
 - bearerAuth: []

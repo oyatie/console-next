@@ -55,13 +55,13 @@ parameters:
   schema:
     $ref: '#/components/schemas/Uuid'
   description: Only employees whose current employment assignment (the last one once exited, the first one
-    before the hire date) names this 법인.
+    before the hire date) names this legal entity.
 - name: workplace_id
   in: query
   required: false
   schema:
     $ref: '#/components/schemas/Uuid'
-  description: Only employees whose current employment assignment names this 사업장.
+  description: Only employees whose current employment assignment names this workplace.
 - name: status
   in: query
   required: false

@@ -32,17 +32,17 @@ properties:
           - type: 'null'
         source_org_unit:
           type: [string, 'null']
-          description: The 부서 text the import file named that bound nothing (원본 부서).
+          description: The department text the import file named that bound nothing (source department).
         source_workplace:
           type: [string, 'null']
-          description: The statutory 사업장 text the import file named that bound nothing, separate from the physical site.
+          description: The statutory workplace text the import file named that bound nothing, separate from the physical site.
         reason:
           type: string
           enum: [no_place, workplace_unknown, unit_unknown]
         position:
           type: [string, 'null']
           description: 'UX-R3 IMPORT (r3:hire-21): the facts placement is decided with, read with the
-            person (직위, 고용형태 code, 입사일 YYYY-MM-DD, the 근무지 and 부서 texts on the record).'
+            person (title, employment type code, hire date YYYY-MM-DD, the work location and department texts on the record).'
         employment_type:
           type: [string, 'null']
         hire_date:

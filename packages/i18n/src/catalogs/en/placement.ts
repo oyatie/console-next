@@ -1,6 +1,4 @@
-import type { koPlacement } from "../ko/placement";
-
-export const enPlacement: Record<keyof typeof koPlacement, string> = {
+export const enPlacement = {
   "placement.entity": "Legal entity",
   "placement.workplace": "Workplace",
   "placement.primary": "Main workplace",
@@ -9,4 +7,4 @@ export const enPlacement: Record<keyof typeof koPlacement, string> = {
   "placement.noEntity.action": "Register entity",
   "placement.noWorkplace": "There is no workplace to place them in.",
   "placement.noWorkplace.action": "Register workplace",
-};
+} as const;

@@ -16,7 +16,7 @@ properties:
     type: string
   sign_in_id:
     type: string
-    description: '`<아이디>@<회사 도메인>` as a person types it.'
+    description: '`<login>@<company domain>` as a person types it.'
   effective_date:
     $ref: '#/components/schemas/Date'
   reason_code:
@@ -48,7 +48,7 @@ properties:
     - string
     - 'null'
     format: date-time
-    description: The old 아이디 signs in until then.
+    description: The old sign-in ID signs in until then.
   state:
     type: string
     enum:

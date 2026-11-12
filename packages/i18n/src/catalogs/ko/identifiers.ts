@@ -1,6 +1,7 @@
-// Korean source for `identifiers.` ids (features/identifiers): a person's 사번 and 주민등록번호, the company's
+// Korean copy for `identifiers.` ids (features/identifiers): a person's 사번 and 주민등록번호, the company's
 // numbering rules and SETUP renumbering (IMPORT-2, decisions #25).
-export const koIdentifiers = {
+import type { enIdentifiers } from "../en/identifiers";
+export const koIdentifiers: Record<keyof typeof enIdentifiers, string> = {
   "identifiers.title": "{name} 사번·주민등록번호",
   "identifiers.cancel": "취소",
   "identifiers.scope.tenant": "전체",
@@ -94,4 +95,4 @@ export const koIdentifiers = {
   "identifiers.error.renumber_already_undone": "이미 되돌린 재부여입니다.",
   "identifiers.error.renumber_undo_conflict": "재부여한 뒤 사번이 바뀐 직원이 있어 되돌릴 수 없습니다.",
   "identifiers.error.rrn_vault_unavailable": "서버에 주민등록번호 암호화 키가 없어 지금은 볼 수 없습니다. 운영 담당에게 알리십시오.",
-} as const;
+};

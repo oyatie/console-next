@@ -17,7 +17,7 @@ properties:
     - 'null'
     pattern: ^[0-9]{4}$
     x-console-format: sub_serial
-    description: 종사업장 일련번호.
+    description: Sub-workplace serial number.
   reg_mode:
     type:
     - string
@@ -115,7 +115,7 @@ properties:
     - 'null'
     format: date
   status_until:
-    description: 휴업's expected end (SUSPENDED only, never before status_since).
+    description: The business suspension's expected end (SUSPENDED only, never before status_since).
     type:
     - string
     - 'null'

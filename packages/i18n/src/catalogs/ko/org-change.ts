@@ -1,5 +1,6 @@
-// Korean source for `orgChange.` ids: the org change record and list. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koOrgChange = {
+// Korean copy for `orgChange.` ids: the org change record and list. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enOrgChange } from "../en/org-change";
+export const koOrgChange: Record<keyof typeof enOrgChange, string> = {
   "orgChange.sole.open": "단독 예외 처리",
   "orgChange.sole.next": "다음 결재 단계 열기",
   "orgChange.sole.rule": "다른 결재 권한자가 없어 단독 예외로 승인합니다",
@@ -225,4 +226,4 @@ export const koOrgChange = {
   "orgChange.chip.scheduled": "예정 {count, number}건",
   "orgChange.list.view.cancelled": "취소 {count}",
   "orgChange.list.empty.cancelled": "취소된 조직 변경이 없습니다",
-} as const;
+};

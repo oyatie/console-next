@@ -1,5 +1,6 @@
-// Korean source for `peopleJump.` ids (features/people/ui/people-jump: ⌘K and the key map, E1-jump/E1-keys).
-export const koPeopleJump = {
+// Korean copy for `peopleJump.` ids (features/people/ui/people-jump: ⌘K and the key map, E1-jump/E1-keys).
+import type { enPeopleJump } from "../en/people-jump";
+export const koPeopleJump: Record<keyof typeof enPeopleJump, string> = {
   "peopleJump.do": "{name} {no}에게 할 일",
   "peopleJump.do.events": "인사 이력 보기",
   "peopleJump.do.events.d": "전보·승진·휴직 기록과 예약",
@@ -42,4 +43,4 @@ export const koPeopleJump = {
   "peopleJump.keys.close": "닫기",
   "peopleJump.keys.jump": "찾기와 이동 (사번이면 바로 그 사람)",
   "peopleJump.keys.help": "이 화면",
-} as const;
+};

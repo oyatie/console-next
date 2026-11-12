@@ -1,5 +1,6 @@
-// Korean source for `empRec.` ids (features/people/ui/card: 5 이력 · 6 상벌·가족 rows, 별지 제16호, MR-31/33).
-export const koEmpRec = {
+// Korean copy for `empRec.` ids (features/people/ui/card: 5 이력 · 6 상벌·가족 rows, 별지 제16호, MR-31/33).
+import type { enEmpRec } from "../en/emp-rec";
+export const koEmpRec: Record<keyof typeof enEmpRec, string> = {
   "empRec.meta": "줄마다 수정·무효화가 이력으로 남습니다 · ⋯ 에 이력",
   "empRec.void": "무효화",
   "empRec.voided": "무효화",
@@ -125,4 +126,4 @@ export const koEmpRec = {
   "empRec.history.imported": "일괄 반입",
   "empRec.history.value": "내용",
   "empRec.history.why": "사유",
-} as const;
+};

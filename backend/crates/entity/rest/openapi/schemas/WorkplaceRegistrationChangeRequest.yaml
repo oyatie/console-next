@@ -8,13 +8,13 @@ properties:
     - string
     - 'null'
     format: uuid
-    description: The 사업자등록 the 사업장 files VAT under from effective_from (null for none).
+    description: The business registration the workplace files VAT under from effective_from (null for none).
   sub_serial:
     type:
     - string
     - 'null'
     pattern: ^[0-9]{4}$
-    description: 종사업장 일련번호; required under a 사업자단위과세 registration held by another 사업장, refused otherwise.
+    description: Sub-workplace serial number; required under a business-unit taxation registration held by another workplace, refused otherwise.
   effective_from:
     type: string
     format: date

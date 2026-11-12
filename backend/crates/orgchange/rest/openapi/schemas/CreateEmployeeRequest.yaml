@@ -19,7 +19,7 @@ properties:
   employment_type:
     type: string
     enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, FREELANCE]
-    description: 고용형태 (E13). The worker classification is derived from it, never sent.
+    description: Employment type (E13). The worker classification is derived from it, never sent.
   phone:
     type: string
     description: Phone number normalized by the server to E.164.
@@ -67,28 +67,28 @@ properties:
   work_email:
     type: string
     maxLength: 254
-    description: 업무용 이메일 (E3); trimmed, domain lower-cased. An HR fact that prefills an invitation, not the
+    description: Work email (E3); trimmed, domain lower-cased. An HR fact that prefills an invitation, not the
       invitation address.
   birth_date:
     type: string
     format: date
-    description: 생년월일 (E4); a past date on or after 1900-01-01.
+    description: Date of birth (E4); a past date on or after 1900-01-01.
   id_type:
     type: string
     enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
-    description: 신분증명 종류 only; the number is never sent or stored (decisions #6).
+    description: Identification document type only; the document number is never sent or stored.
   base_pay_won:
     type: integer
     format: int64
     minimum: 0
-    description: 기본급, integer KRW (E5). Sent together with pay_unit.
+    description: Base pay, integer KRW (E5). Sent together with pay_unit.
   pay_unit:
     type: string
     enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
   probation_end_date:
     type: string
     format: date
-    description: 수습 종료일 (E12); employee types only (worker classification EMPLOYEE), on or after hire_date.
+    description: Probation end date (E12); employee types only (worker classification EMPLOYEE), on or after hire_date.
   contract:
     $ref: '#/components/schemas/CreateEmployeeContract'
   duplicate_override:
@@ -96,9 +96,9 @@ properties:
   legal_entity_id:
     type: string
     format: uuid
-    description: 'MR-22: the 법인 of the person''s first assignment; needs workplace_id and must be its 법인.'
+    description: 'MR-22: the legal entity of the person''s first assignment; needs workplace_id and must be its legal entity.'
   workplace_id:
     type: string
     format: uuid
-    description: 'MR-22: the open 사업장 the person works at from hire_date. Omitted: the 사업장 of org_unit_id,
-      else 미배치.'
+    description: 'MR-22: the open workplace the person works at from hire_date. Omitted: the workplace of org_unit_id,
+      else unplaced.'

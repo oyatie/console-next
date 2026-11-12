@@ -1,7 +1,7 @@
 tags:
 - notices
 operationId: acknowledgeNotice
-summary: 수령확인 — the caller confirms receipt of a published notice (owner-scoped)
+summary: Acknowledge receipt — the caller confirms receipt of a published notice (owner-scoped)
 security:
 - bearerAuth: []
 parameters:

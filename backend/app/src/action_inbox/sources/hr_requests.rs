@@ -1,11 +1,15 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Action-inbox source owned by lane PEOPLE (BW-17 change requests the viewer
 //! can decide: OPEN, not their own, open to HR or named to them).
 
+use console_action_inbox_application::decision::DecisionEvidence;
 use console_action_inbox_application::{
     ActionInboxLink, ActionInboxSourceItem, ActionInboxSourcePage, ActionInboxSourceQuery,
 };
 use console_hr_adapter_postgres::HrService;
+use console_hr_adapter_postgres::requests::approval_class;
 use console_hr_adapter_postgres::requests::inbox::INBOX_ID_PREFIX;
+use console_hr_domain::requests::ChangeRequestKind;
 use console_kernel_core::KernelError;
 use console_platform_authz::Principal;
 use sqlx::PgPool;
@@ -14,6 +18,7 @@ pub(crate) async fn page(
     pool: &PgPool,
     principal: &Principal,
     query: ActionInboxSourceQuery,
+    policies: &super::super::policy::Policies,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     let after = query
         .after
@@ -29,33 +34,40 @@ pub(crate) async fn page(
     let items = page
         .items
         .into_iter()
-        .map(|request| ActionInboxSourceItem {
-            context: Some(serde_json::json!({ "request": {
-                "kind": request.kind, "reason_code": request.reason_code
-            }})),
-            id: format!("{INBOX_ID_PREFIX}{}", request.id),
-            kind: "hr_request".to_owned(),
-            ref_code: String::new(),
-            title: request.title,
-            site: None,
-            who: None,
-            due: None,
-            submitted: Some(request.created_at),
-            links: vec![
-                ActionInboxLink {
-                    kind: "change_request".to_owned(),
-                    id: request.id.to_string(),
-                    label: None,
-                },
-                ActionInboxLink {
-                    kind: request.subject_type.to_ascii_lowercase(),
-                    id: request.subject_id.to_string(),
-                    label: None,
-                },
-            ],
-            created_at: request.created_at,
+        .map(|request| {
+            let policy = approval_class(ChangeRequestKind::parse(&request.kind)?)
+                .map_err(|_| KernelError::internal("unregistered HR approval class"))?
+                .and_then(|key| policies.get(&key).copied().flatten())
+                .and_then(|policy| policy.for_stored_steps(true));
+            Ok(ActionInboxSourceItem {
+                context: Some(serde_json::json!({
+                    "request": { "kind": request.kind, "reason_code": request.reason_code },
+                    "decision": DecisionEvidence { version: request.version, policy }
+                })),
+                id: format!("{INBOX_ID_PREFIX}{}", request.id),
+                kind: "hr_request".to_owned(),
+                ref_code: String::new(),
+                title: request.title,
+                site: None,
+                who: None,
+                due: None,
+                submitted: Some(request.created_at),
+                links: vec![
+                    ActionInboxLink {
+                        kind: "change_request".to_owned(),
+                        id: request.id.to_string(),
+                        label: None,
+                    },
+                    ActionInboxLink {
+                        kind: request.subject_type.to_ascii_lowercase(),
+                        id: request.subject_id.to_string(),
+                        label: None,
+                    },
+                ],
+                created_at: request.created_at,
+            })
         })
-        .collect();
+        .collect::<Result<_, KernelError>>()?;
     Ok(ActionInboxSourcePage {
         items,
         total: usize::try_from(page.total).unwrap_or(0),

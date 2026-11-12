@@ -1,7 +1,7 @@
 tags:
 - org
 operationId: listOrgEntities
-summary: List group member entities (법인)
+summary: List group member entities (legal entities)
 description: Active member orgs of every group the caller holds a live grant for; fails closed to an empty list
   when the caller holds no grant.
 security:

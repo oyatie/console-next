@@ -3,4 +3,4 @@ enum:
 - DECLARED
 - SINGLE_REGISTRATION
 - CERTIFICATE_UNIT_TAXATION
-description: A derived basis is a fact (one registration; 등록증 ⑩), not a default.
+description: A derived basis is a fact (one registration; certificate item ⑩), not a default.

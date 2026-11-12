@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: previewAttendanceEntries
-summary: Re-parse and evaluate typed cells (잠정 · 저장 전 미리보기) — each cell OK, UNCHANGED, REFUSED with its code, or CONFLICT — writing nothing
+summary: Re-parse and evaluate typed cells (provisional · preview before saving) — each cell OK, UNCHANGED, REFUSED with its code, or CONFLICT — writing nothing
 security: [{ bearerAuth: [] }]
 requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendancePreviewInput' } } } }
 responses:

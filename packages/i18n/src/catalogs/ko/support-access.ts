@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koSupportAccess = {
+import type { enSupportAccess } from "../en/support-access";
+export const koSupportAccess: Record<keyof typeof enSupportAccess, string> = {
   "supportAccess.title": "지원 접근",
   "supportAccess.description": "공급사의 지원 요청과 승인, 조회 기록을 확인합니다. 고객이 승인한 범위와 시간 안에서만 조회할 수 있으며 언제든 종료할 수 있습니다.",
   "supportAccess.emptyTitle": "지원 접근 요청이 없습니다",
@@ -62,4 +63,4 @@ export const koSupportAccess = {
   "supportAccess.decision.END": "지원 종료",
   "supportAccess.decision.REVOKE": "승인 철회",
   "supportAccess.decision.EXPIRE": "만료"
-} as const;
+};

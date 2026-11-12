@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: assignAttendanceSchedule
-summary: Assign a 근무 유형 to one or more scopes from a date; one transaction, re-checked by the server
+summary: Assign a work pattern to one or more scopes from a date; one transaction, re-checked by the server
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }

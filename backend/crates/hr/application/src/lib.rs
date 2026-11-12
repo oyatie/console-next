@@ -8,3 +8,5 @@
 pub mod lifecycle;
 
 pub mod statutory;
+
+pub mod contract;

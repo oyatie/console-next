@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: reviseWorkplace
-summary: Effective-dated revision of a 사업장 (full state)
+summary: Effective-dated revision of a workplace (full state)
 security:
 - bearerAuth: []
 parameters:

@@ -1,5 +1,6 @@
-// Korean source for `orgTree.` ids (the org chart, the unit card and its actions). Rules: ../ko.ts header and GUIDE.md.
-export const koOrgTree = {
+// Korean copy for `orgTree.` ids (the org chart, the unit card and its actions). Rules: ../ko.ts header and GUIDE.md.
+import type { enOrgTree } from "../en/org-tree";
+export const koOrgTree: Record<keyof typeof enOrgTree, string> = {
   "orgTree.act.register": "{name}에 직원 등록",
   "orgTree.history.title": "이력 {count, plural, other {#건}}",
   "orgTree.history.created": "{date} 신설 · {name}",
@@ -12,4 +13,4 @@ export const koOrgTree = {
   "orgTree.history.merged": "{date} 통합 · {into}에 통합되어 폐지(이력에 남음)",
   "orgTree.history.none": "없음",
   "orgTree.history.vacant": "공석",
-} as const;
+};

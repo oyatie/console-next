@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
-description: Structured Korean address (도로명주소).
+description: Structured Korean address (road-name address).
 required:
 - source
 - road_addr_part1
@@ -91,7 +91,7 @@ properties:
     - string
     - 'null'
     maxLength: 100
-    description: 상세주소 (동·층·호)
+    description: Detailed address (building, floor, unit)
   as_printed:
     type:
     - string

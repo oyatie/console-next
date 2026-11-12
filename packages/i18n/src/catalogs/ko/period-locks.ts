@@ -1,6 +1,7 @@
-// Korean source for `periodLocks.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+// Korean copy for `periodLocks.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 // `consequence` and `unlock.consequence` are read only by the override-sheet gallery sample.
-export const koPeriodLocks = {
+import type { enPeriodLocks } from "../en/period-locks";
+export const koPeriodLocks: Record<keyof typeof enPeriodLocks, string> = {
   // Page
   "periodLocks.title": "기간 잠금",
   "periodLocks.new": "새 기간 잠금",
@@ -133,4 +134,4 @@ export const koPeriodLocks = {
   "periodLocks.request.refused.period_unlock_request_expired": "이 해제 요청은 기간이 지나 만료됐습니다. 잠금은 그대로이며, 필요하면 다시 요청해야 합니다.",
   "periodLocks.request.refused.period_unlock_reject_note_invalid": "반려 사유를 1,000자 이내로 입력하십시오.",
   "periodLocks.request.refused.not_found": "이 해제 요청은 이미 결정됐습니다. 목록에서 지금 상태를 확인하십시오.",
-} as const;
+};
