@@ -13,7 +13,8 @@ const run = (minimum, command, prepare = () => {}) => {
   try {
     const extraEnv = prepare(root);
     const result = spawnSync(process.execPath, [script, "fixture", ...command], { cwd: root, encoding: "utf8", timeout: 15000, env: {
-      ...process.env, RUNNER_DISK_MIN_BYTES: minimum, GITHUB_STEP_SUMMARY: path.join(root, "summary"),
+      // GITHUB_WORKSPACE decides where evidence goes; CI sets it, so pin it to this test's root.
+      ...process.env, GITHUB_WORKSPACE: root, RUNNER_DISK_MIN_BYTES: minimum, GITHUB_STEP_SUMMARY: path.join(root, "summary"),
       ...extraEnv,
     } });
     return { ...result, root, evidence: readFileSync(path.join(root, ".cache/runner-disk/fixture.log"), "utf8") };
