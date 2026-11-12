@@ -41,7 +41,7 @@ pub async fn upsert_exit_settlement_package(
             .with_field("effective_exit_date"),
         ));
     }
-    let under_service = match (context.hire_date.as_deref(), years) {
+    let under_service = match (context.service_start_date.as_deref(), years) {
         (Some(hire), Some(years)) => {
             !completes_service_years(parse_yyyy_mm_dd(hire)?, exit, years)?
         }
