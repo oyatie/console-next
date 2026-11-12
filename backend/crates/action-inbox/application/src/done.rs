@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! 완료: what the viewer decided or finished, newest first, merged across
 //! sources by one keyset `(completed_at, id)`. Separate from the open list:
 //! no lane, no count, and nothing here changes what `all` or `turn` return.
