@@ -18470,7 +18470,7 @@ export interface components {
              */
             birth_date?: string;
             /**
-             * @description Identification document type only; the number is never sent or stored (decisions
+             * @description Identification document type only; the number is never sent or stored (decisions #6).
              * @enum {string}
              */
             id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE" | "NOT_ISSUED";
@@ -22246,7 +22246,7 @@ export interface components {
             org_change_approvers: number;
             /** Format: int64 */
             other_eligible_holders: number;
-            /** @description approval.policy.org_structure = route (decisions */
+            /** @description True when approval.policy.org_structure = route (decisions #26): org changes are routed for approval. */
             org_change_routed: boolean;
             /**
              * Format: int64
@@ -28854,7 +28854,7 @@ export interface components {
             org_change_approvers: number;
             /** Format: int64 */
             other_eligible_holders: number;
-            /** @description approval.policy.org_structure = route (decisions */
+            /** @description True when approval.policy.org_structure = route (decisions #26): org changes are routed for approval. */
             org_change_routed: boolean;
             /**
              * Format: int64
@@ -30776,7 +30776,7 @@ export interface components {
              * @description Branch backing the workplace; use as home_branch_id when registering people here.
              */
             default_branch_id?: string | null;
-            /** @description Workplace kind code (decisions */
+            /** @description Workplace kind code (decisions #18); null when unassigned. */
             kind_code?: string | null;
             /** @description The workplace code (unique among open workplaces), when set. */
             code?: string | null;
@@ -30794,7 +30794,7 @@ export interface components {
             headcount: number;
             /**
              * Format: uuid
-             * @description The workplace's own SITE org unit (decisions
+             * @description The workplace's own SITE org unit (decisions #14.1).
              */
             org_unit_id?: string | null;
             regular_workers: components["schemas"]["RegularWorkers"];
